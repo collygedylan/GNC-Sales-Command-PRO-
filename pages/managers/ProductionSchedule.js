@@ -1,7 +1,7 @@
 import { createProductionScheduleClient } from '../../services/productionScheduleClient.js';
 import { escapeScheduleHtml, renderScheduleCards, renderScheduleDetails, renderScheduleFilters, renderSchedulePager, renderScheduleTabs } from '../../components/managers/ProductionSchedule/render.js';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 20;
 const SEARCH_DELAY_MS = 250;
 const STATUS_INTERVAL_MS = 10000;
 const STATUS_POLL_WINDOW_MS = 30 * 60 * 1000;
@@ -148,15 +148,28 @@ export function createProductionSchedulePage() {
     const filterCount = state ? Object.values(state.filters).filter(Boolean).length : 0;
     const statusText = describeImportRun(run, sheets)
       || (snapshot ? `Imported ${formatImportedAt(snapshot.importedAt)}` : 'No complete workbook snapshot has been published yet.');
-    root.innerHTML = `<section class="ps-page" aria-label="Production Schedule">
+    const renderKey = JSON.stringify([identityScope, String(snapshot?.id || ''), String(sheet?.id ?? 'no-sheet')]);
+    const html = `<section class="ps-page" aria-label="Production Schedule">
       <div class="ps-heading"><div><h2>Production Schedule</h2><p>${escapeScheduleHtml(statusText)}</p></div><div class="ps-heading-actions"><button type="button" data-ps-action="refresh" ${busy || isActiveRun(run) ? 'disabled' : ''}>Refresh workbook</button>${isActiveRun(run) ? '<button type="button" data-ps-action="check-status">Check status</button>' : ''}</div></div>
       ${pageError ? `<div class="ps-error" role="alert">${escapeScheduleHtml(pageError)} <button type="button" data-ps-action="retry">Retry</button></div>` : ''}
       ${sheets.length ? renderScheduleTabs(sheets, activeSheetId) : `<div class="ps-empty">${busy ? 'Loading worksheets…' : 'No worksheets are available yet.'}</div>`}
       ${sheet && state ? `<div class="ps-toolbar"><label class="ps-search-label"><span class="ps-sr-only">Search ${escapeScheduleHtml(sheet.title)}</span><input type="search" data-ps-search placeholder="Search ${escapeScheduleHtml(sheet.title)}…" value="${escapeScheduleHtml(state.q)}" autocomplete="off"></label><button type="button" class="ps-filter-button" data-ps-action="toggle-filters" aria-expanded="${state.filtersOpen}" aria-controls="ps-filters">Filters${filterCount ? ` ${filterCount}` : ''}</button></div>
         ${renderScheduleFilters(sheet, state.filters, state.filtersOpen)}
-        <div class="ps-results" aria-live="polite">${state.error ? `<div class="ps-error" role="alert">${escapeScheduleHtml(state.error)} <button type="button" data-ps-action="retry-rows">Retry</button></div>` : ''}${state.loading ? `<div class="ps-progress">${rowsMatchQuery ? 'Refreshing saved rows…' : 'Loading rows…'}</div>` : ''}${rowsMatchQuery ? renderScheduleCards(sheet, state.rows, state.expandedRows, (row) => detailRowsCache.get(detailKey(sheet, row)) || null) : ''}</div>
+        <div class="ps-results" data-render-key="${escapeScheduleHtml(renderKey)}" aria-live="polite">${state.error ? `<div class="ps-error" role="alert">${escapeScheduleHtml(state.error)} <button type="button" data-ps-action="retry-rows">Retry</button></div>` : ''}${state.loading && !rowsMatchQuery ? '<div class="ps-progress">Loading rows…</div>' : ''}${rowsMatchQuery ? renderScheduleCards(sheet, state.rows, state.expandedRows, (row) => detailRowsCache.get(detailKey(sheet, row)) || null, snapshot?.id || '') : ''}</div>
         ${rowsMatchQuery ? renderSchedulePager(state.page, state.page > 0, Boolean(state.nextCursor), state.total) : ''}` : ''}
     </section>`;
+    const template = root.ownerDocument.createElement('template');
+    template.innerHTML = html;
+    const stableDom = typeof window !== 'undefined' ? window.AgMetricStableViewDom : null;
+    if (stableDom && typeof stableDom.apply === 'function') stableDom.apply(root, template.content);
+    else root.innerHTML = html;
+    if (sheet && state) {
+      root.querySelectorAll('[data-ps-detail]').forEach((details) => {
+        const rowIndex = Number(details.dataset.psDetail);
+        const row = Number.isInteger(rowIndex) ? state.rows[rowIndex] : null;
+        details.open = state.expandedRows.has(String(row?.sourceRow ?? rowIndex));
+      });
+    }
     if (restoreSearch) {
       const replacement = root.querySelector('[data-ps-search]');
       if (replacement) {
@@ -494,11 +507,11 @@ export function createProductionSchedulePage() {
     void loadMetadata();
   }
 
-  function refresh() {
+  function refreshSnapshot() {
     if (root && client) void loadMetadata();
   }
 
-  return { mount, unmount, refresh };
+  return { mount, unmount, refresh: refreshSnapshot };
 }
 
 if (typeof window !== 'undefined') window.GncProductionSchedule = createProductionSchedulePage();

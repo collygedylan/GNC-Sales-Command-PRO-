@@ -106,6 +106,32 @@ test('CSR rep option cache is cleared when authenticated data scope changes',asy
  assert.equal(directReads,2);
 });
 
+test('mapped rep ID lookup reuses a revision-scoped index and preserves aliases and ambiguity',()=>{
+ const c=fixture(async()=>({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'}));
+ let eligibilityChecks=0;
+ c.isActiveRequestCustomerMapping=()=>{eligibilityChecks++;return true;};
+ c.customerRepMapRows=Array.from({length:12000},(_,index)=>({...mappingFixtureRow,
+  unique_id:`map-${index}`,salesrepid:'01',salesrepname:index===11999?'One, Rep':'Rep One'}));
+ assert.equal(c.getRequestSelectedSalesrepId('Rep One'),'01');
+ const firstIndexChecks=eligibilityChecks;
+ assert.equal(firstIndexChecks,12000);
+ assert.equal(c.getRequestSelectedSalesrepId('Rep One'),'01');
+ assert.equal(eligibilityChecks,firstIndexChecks);
+
+ c.mappingRevision='2';
+ c.customerRepMapRows=[{...mappingFixtureRow,salesrepid:'01',salesrepname:'One, Rep'}];
+ assert.equal(c.getRequestSelectedSalesrepId('One, Rep'),'01');
+ c.mappingRevision='3';
+ c.customerRepMapRows=[
+  {...mappingFixtureRow,salesrepid:'01',salesrepname:'One, Rep'},
+  {...mappingFixtureRow,unique_id:'map-2',salesrepid:'02',salesrepname:'Rep One'},
+ ];
+ assert.equal(c.getRequestSelectedSalesrepId('Rep One'),'');
+ c.tempSelectedReqRep='Rep One';
+ c.tempSelectedReqSalesrepId='02';
+ assert.equal(c.getRequestSelectedSalesrepId(),'02');
+});
+
 test('mapping option cache is scoped to the current authenticated identity and permission version',async()=>{
  let calls=0;
  const rows=[mappingFixtureRow];
@@ -174,6 +200,33 @@ test('cold startup retains a finite timeout when a lookup never settles',async()
  const c=fixture(async()=>({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'}));
  c.prefetchRequestModalCustomerOptions=()=>new Promise(()=>{});
  assert.equal(await c.prepareRequestModalChoicesForStartup(250),false);
+});
+
+test('a warm rep directory renders the Request picker inline on modal open',()=>{
+ const c=fixture(async()=>({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'}));
+ c.requestModalRepUserOptionsReady=true;
+ const calls=[];
+ c.filterRepList=term=>calls.push(['render',term]);
+ c.scheduleRequestModalSearchRender=(...args)=>calls.push(['schedule',...args]);
+ assert.equal(c.renderRequestModalRepPickerOnOpen(null),true);
+ assert.deepEqual(calls,[['render','']]);
+});
+
+test('an unavailable rep directory keeps the deferred loading and retry render',async()=>{
+ const c=fixture(async()=>({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'}));
+ c.requestModalRepUserOptionsReady=false;
+ const calls=[];
+ c.filterRepList=term=>calls.push(['render',term]);
+ c.scheduleRequestModalSearchRender=(...args)=>calls.push(['schedule',...args]);
+ let release;
+ const optionsReady=new Promise(resolve=>{release=resolve;});
+ assert.equal(c.renderRequestModalRepPickerOnOpen(optionsReady),false);
+ assert.equal(calls.length,1);
+ c.requestModalRepUserOptionsReady=true;
+ release();
+ await Promise.resolve();
+ assert.equal(calls.length,2);
+ assert.deepEqual(calls.map(call=>call[0]),['schedule','schedule']);
 });
 
 test('modal mapping ensure reuses a prefetched page set without another API read',async()=>{

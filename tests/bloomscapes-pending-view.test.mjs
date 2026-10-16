@@ -19,6 +19,7 @@ const viewSource = between('function canViewBloomscapesPendingOrders(', 'functio
 const escapingSource = between('const escapeHtml =', 'const APP_SHELL_VERSION');
 const watcherSource = between('function installNativeRoleRefreshWatchers()', "document.addEventListener('visibilitychange'");
 const cacheResetSource = between('function clearRoleScopedClientCaches(', 'async function refreshNativeRoleAndCapabilities(');
+const userDirectoryResetSource = between('function resetAssignableUserDirectory(', 'function addFlyerAssignableUserOption(');
 
 function deferred() {
   let resolve;
@@ -89,6 +90,9 @@ function harness(options = {}) {
     invalidateNativeAuthRecovery() {}, disposeAuraWidget: () => auraDisposals.push('dispose'), productionDisplayGroups: new Set(), Date: FixedDate, Intl, atob: (value) => Buffer.from(value, 'base64').toString('binary'),
     currentUser: 'dylan_collyge', currentRole: 'Admin', nativeAuthProfile: profile(),
     nativeAuthSessionActive: true, nativeAuthAccessToken: token(),
+    assignableUserDirectoryGeneration: 0, flyerAssignableUsers: [], flyerAssignableUsersPromise: null,
+    assignableAppUsers: [], assignableAppUsersPromise: null, assignableAppUsersLoaded: false,
+    dockAssignableUsers: [], dockAssignableUsersPromise: null, dockAssignableUsersScope: '',
     navigator: { onLine: true }, window: { GncDatabase: databaseBridge }, localStorage: storage(), sessionStorage: storage(),
     document: {
       getElementById: (id) => id === 'bloomscapes-pending-dialog' ? dialog : null,
@@ -112,7 +116,7 @@ function harness(options = {}) {
     fetch: mutation, supabaseFetch: mutation, runAppApiSupabaseWrite: mutation,
     saveData: mutation, markSalesOfficeComplete: mutation, removeSalesOfficeRowByUniqueId: mutation,
   });
-  vm.runInContext(`${stateSource}\n${escapingSource}\n${viewSource}\n${watcherSource}\n${cacheResetSource}
+  vm.runInContext(`${stateSource}\n${escapingSource}\n${viewSource}\n${watcherSource}\n${userDirectoryResetSource}\n${cacheResetSource}
     globalThis.pendingState = () => bloomscapesPendingState;
   `, ctx);
   ctx.installNativeRoleRefreshWatchers();

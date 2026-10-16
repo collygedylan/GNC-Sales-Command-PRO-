@@ -29,7 +29,7 @@ test('application React components never key rendered records by their array pos
       const filename = path.join(directory, entry.name);
       if (entry.isDirectory()) inspect(filename);
       else if (/\.[jt]sx$/.test(entry.name)) {
-        assert.doesNotMatch(readFileSync(filename, 'utf8'), /\bkey=\{(?:index|idx|i)\}/, filename);
+        assert.doesNotMatch(readFileSync(filename, 'utf8'), /\bkey=\{(?:index|idx|i|rowIndex|cellIndex|itemIndex)\}|\bkey=\{`[^`]*\$\{(?:index|idx|i|rowIndex|cellIndex|itemIndex)\}[^`]*`\}/, filename);
       }
     }
   }

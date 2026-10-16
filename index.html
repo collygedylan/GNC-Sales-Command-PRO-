@@ -10280,9 +10280,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
             accessControlAdminState = { data:null, loading:false, loaded:false, saving:false, publishing:false, error:'', selectedModule:'all', selectedRole:'all', viewMode:'users', editor:null, publishReason:'', requestToken:0, columnOffset:0, columnPageSize:8, subjectOffset:0, subjectPageSize:100, capabilities:null };
             stopCodexOpsPoll();
             codexOpsState = { capabilities:null, capabilitiesLoading:false, capabilitiesLoaded:false, tasks:[], tasksLoading:false, tasksLoaded:false, activeTaskId:'', activeTask:null, taskLoading:false, error:'', composeOpen:false, draft:'', attachments:[], sending:false, messageDraft:'', pollTimer:null, requestToken:0 };
-            assignableAppUsersLoaded = false;
-            assignableAppUsersPromise = null;
-            flyerAssignableUsersPromise = null;
+            resetAssignableUserDirectory();
         }
 
         let productionPermissionCheckElements = [];
@@ -32446,7 +32444,7 @@ let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[
 let bloomShiftReportFormat='report'; let bloomShiftReportColumnMode='custom'; let bloomShiftReportSelectedColumns=new Set(); let bloomShiftReportColumnSearch='';
 let appAdminRecipientUsers=[]; let appAdminRecipientUsersPromise=null; let appAdminRecipientUsersLoaded=false; let appAdminRecipientUsersSignature=''; let appAdminRecipientEmailByToken=new Map(); let appEvalRecipientUsersSignature=''; let appEmailRecipientUsers=[]; let appEmailRecipientUsersPromise=null; let appEmailRecipientUsersLoaded=false; let appEmailRecipientUsersSignature=''; let appEmailRecipientEmailByToken=new Map(); let appEmailRecipientLegacyUsers=[]; let appEmailRecipientDirectoryRevision=''; let appEmailRecipientDirectoryOwner=''; let appEmailRecipientDirectoryLoaded=false; let appEmailRecipientDirectoryPromise=null; let appEmailRecipientDirectoryError=''; let appEmailRecipientDirectoryGeneration=0;
 let emailRecipientOpenGroupByContext={ bloom: '', av: '', drive: '', advertisement: '', request: '' }; let emailRecipientSearchByContext={ bloom: '', av: '', drive: '', advertisement: '', request: '' };
-        let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
+        let dockAssignableUsers=[]; let dockAssignableUsersPromise=null; let dockAssignableUsersScope='';
         let dockTeamStatusByTrip=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false; let dockTeamStatusRenderVersion=0;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssuePhotoSchemaReady=null; let dockIssuePhotoSchemaPromise=null; let dockIssueMeasurementSchemaReady=null; let dockIssueMeasurementSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockIssuePhotoSchemaWarningShown=false; let dockIssueMeasurementSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let selectedDockIssueAllocationId=''; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map(); let dockMistakeSelectionUids=new Set(); let dockMistakeCandidateRows=[]; let dockMistakeModalSourceUid=''; let dockMistakeModalStep='details'; let dockMistakeIssuePhotoLink=''; let dockMistakeIssuePhotoName=''; let dockMistakeIssuePhotoPreviewUrl=''; let dockMistakeIssuePhotoPromise=null; let dockMistakeIssuePhotoUploading=false; let dockMistakeDetailPhotoIssueUid='';
@@ -32889,7 +32887,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let requestMappedRepSource = null;
         let requestMappedRepRevision = '';
         let requestMappedRepOptions = [];
-        const REQUEST_MODAL_OPTION_PAGE_SIZE = 60;
+        let requestMappedRepIdsByName = new Map();
+        const REQUEST_MODAL_OPTION_PAGE_SIZE = 20;
 
         function resetRequestModalVisibleOptionLimits() {
             requestModalVisibleOptionLimits = new Map();
@@ -33549,7 +33548,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const managerSourceScope = () => JSON.stringify([getSupabaseReadIdentityScope(), String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')]);
             const emitManagerSourceRefresh = (surface, authorized, sources) => {
                 const eventContext = getProductionLiveSyncSideContext();
-                return window.GncManagerSourceLiveEvents?.dispatch(window, {
+                const rootId = surface === 'company-directory' ? 'manager-company-directory-root'
+                    : surface === 'hr-command' ? 'manager-hr-command-root' : '';
+                const target = rootId ? document.getElementById(rootId) : null;
+                if (!target?.isConnected) return false;
+                return window.GncManagerSourceLiveEvents?.dispatch(target, {
                     authorized: authorized === true,
                     visible: !document.hidden && document.body.classList.contains('role-access-ready')
                         && eventContext.view === 'managers' && activeHomeTab === surface,
@@ -37069,6 +37072,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function restoreProductionRefreshAnchor(anchor) {
             if (!anchor?.root.isConnected || getCurrentVisibleViewId() !== anchor.view) return;
             const { root, scroller } = anchor;
+            // At the start of a list, sticky-header geometry must not turn a
+            // clipped row anchor into a new scroll position during refresh.
+            if (anchor.top <= 0) { scroller.scrollTop = 0; return; }
             // The browser clamps scrollTop to its valid range. Reading the new
             // scrollHeight here forces layout of every freshly inserted card.
             if (!anchor.anchors.length) { scroller.scrollTop = anchor.top; return; }
@@ -37248,12 +37254,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return true;
         }
 
-        function syncRequestRenderChrome() {
+        function syncRequestRenderChrome(queueCounts = null) {
             activeReqTab = normalizeRequestTabValue(activeReqTab);
-            const queueCounts = getRequestTabQueueCounts();
-            updateFooterRequestBadge(queueCounts);
+            const counts = queueCounts || getRequestTabQueueCounts();
+            updateFooterRequestBadge(counts);
             updateFooterChatBadge();
-            syncRequestTabButtons(queueCounts);
+            syncRequestTabButtons(counts);
             syncRequestHeaderSearchChrome();
         }
 
@@ -37638,6 +37644,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function resetProductionLiveSync() {
             resetRequestArchivePageState();
+            resetAssignableUserDirectory();
             companyDirectoryCache.clear();
             Object.assign(managerCompanyDirectoryState, { owner: '', contacts: [], blocks: [], beds: [], codes: [], loaded: false, loading: false, formOpen: false, editing: null });
             managerCompanyDirectoryState.loadGeneration++;
@@ -40493,7 +40500,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'eval-work': 'Eval Work'
         });
 
-        function getRequestTabQueueCounts() {
+        function getRequestTabQueueCounts(scopedItems = null) {
             const counts = {
                 pending: 0,
                 archived: Math.max(0, Number(requestArchiveListState && requestArchiveListState.total) || 0),
@@ -40504,10 +40511,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 'eval-work': 0
             };
             try {
-                const baseItems = getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: false });
+                const baseItems = Array.isArray(scopedItems)
+                    ? scopedItems
+                    : getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: false });
                 // Category badges describe each authorized queue. A saved filter
                 // from another view must not change its count or hide its work.
-                counts.pending = baseItems.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem).length;
+                // Exclude the separate Dock Suspend mirrors before checking
+                // per-user visibility/completion rules for regular requests.
+                counts.pending = baseItems.filter(isRegularRequestQueueItem).filter(isRequestPendingVisible).length;
                 const suspendSourceRows = canCurrentUserViewDockSuspendDcRequests() ? getDockSuspendDcSourceRows() : [];
                 counts['suspend-tag'] = countPendingSuspendTagQueueItems(baseItems, suspendSourceRows);
                 counts.moves = getApprovedMoveRequestRowsForCurrentUser(baseItems).length;
@@ -41509,8 +41520,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             window.addEventListener('beforeunload', () => persistAppFilterStateNow());
         }
 
-        function reconcileRequestDrillState(items = requestsInventory) {
-            let scopedItems = getScopedRequestItems(items);
+        function reconcileRequestDrillState(items = requestsInventory, itemsAreScoped = false) {
+            let scopedItems = itemsAreScoped && Array.isArray(items) ? items : getScopedRequestItems(items);
             let changed = false;
             if (activeReqTab !== 'reps') {
                 return { items: scopedItems, changed };
@@ -56145,7 +56156,20 @@ function toggleDriveQuickRequestItem(domId) {
         let assignableAppUsers = FLYER_ASSIGNABLE_USER_FALLBACK.slice();
         let assignableAppUsersPromise = null;
         let assignableAppUsersLoaded = false;
+        let assignableUserDirectoryGeneration = 0;
         let assignUserSearchTerm = '';
+
+        function resetAssignableUserDirectory() {
+            assignableUserDirectoryGeneration += 1;
+            flyerAssignableUsers = [];
+            flyerAssignableUsersPromise = null;
+            assignableAppUsers = [];
+            assignableAppUsersPromise = null;
+            assignableAppUsersLoaded = false;
+            dockAssignableUsers = [];
+            dockAssignableUsersPromise = null;
+            dockAssignableUsersScope = '';
+        }
 
         function addFlyerAssignableUserOption(map, username = '', display = '') {
             if (!map || !(map instanceof Map)) return;
@@ -56186,12 +56210,25 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureFlyerAssignableUsers(forceRefresh = false) {
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('users', forceRefresh).then(() => flyerAssignableUsers);
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                const generation = assignableUserDirectoryGeneration;
+                const scope = getSupabaseReadIdentityScope();
+                try { await ensureProductionLiveSyncSideData('users', forceRefresh); }
+                catch (error) {
+                    if (generation === assignableUserDirectoryGeneration && scope === getSupabaseReadIdentityScope()
+                        && isSupabaseReadTerminalDenial(error)) resetAssignableUserDirectory();
+                    throw error;
+                }
+                return generation === assignableUserDirectoryGeneration && scope === getSupabaseReadIdentityScope() ? flyerAssignableUsers : [];
+            }
             if (!forceRefresh && Array.isArray(flyerAssignableUsers) && flyerAssignableUsers.length > FLYER_ASSIGNABLE_USER_FALLBACK.length) return flyerAssignableUsers;
             if (!forceRefresh && flyerAssignableUsersPromise) return flyerAssignableUsersPromise;
+            const generation = assignableUserDirectoryGeneration;
+            const scope = getSupabaseReadIdentityScope();
             const previousUsers = Array.isArray(flyerAssignableUsers) ? flyerAssignableUsers.slice() : FLYER_ASSIGNABLE_USER_FALLBACK.slice();
-            flyerAssignableUsersPromise = (async () => {
+            const load = (async () => {
                 const rows = await supabaseFetch('ph_app_users', 'GET', null, 'select=username,role&order=username.asc&limit=500');
+                if (generation !== assignableUserDirectoryGeneration || scope !== getSupabaseReadIdentityScope()) return [];
                 const map = new Map();
                 FLYER_ASSIGNABLE_USER_FALLBACK.forEach((entry) => addFlyerAssignableUserOption(map, entry.username, entry.display));
                 (rows || []).forEach((row) => {
@@ -56200,13 +56237,19 @@ function toggleDriveQuickRequestItem(domId) {
                 });
                 flyerAssignableUsers = Array.from(map.values()).sort((a, b) => String(a.display || a.username).localeCompare(String(b.display || b.username), undefined, { sensitivity: 'base' }));
                 return flyerAssignableUsers;
-            })().catch(() => {
+            })().catch((error) => {
+                if (generation !== assignableUserDirectoryGeneration || scope !== getSupabaseReadIdentityScope()) return [];
+                if (typeof isSupabaseReadTerminalDenial === 'function' && isSupabaseReadTerminalDenial(error)) {
+                    resetAssignableUserDirectory();
+                    return [];
+                }
                 flyerAssignableUsers = previousUsers.length ? previousUsers : FLYER_ASSIGNABLE_USER_FALLBACK.slice();
                 return flyerAssignableUsers;
             }).finally(() => {
-                flyerAssignableUsersPromise = null;
+                if (flyerAssignableUsersPromise === load) flyerAssignableUsersPromise = null;
             });
-            return flyerAssignableUsersPromise;
+            flyerAssignableUsersPromise = load;
+            return load;
         }
 
         function addAssignableAppUserOption(map, username = '', display = '', role = '') {
@@ -56284,12 +56327,25 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureAssignableAppUsers(forceRefresh = false) {
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('users', forceRefresh).then(() => assignableAppUsers);
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                const generation = assignableUserDirectoryGeneration;
+                const scope = getSupabaseReadIdentityScope();
+                try { await ensureProductionLiveSyncSideData('users', forceRefresh); }
+                catch (error) {
+                    if (generation === assignableUserDirectoryGeneration && scope === getSupabaseReadIdentityScope()
+                        && isSupabaseReadTerminalDenial(error)) resetAssignableUserDirectory();
+                    throw error;
+                }
+                return generation === assignableUserDirectoryGeneration && scope === getSupabaseReadIdentityScope() ? assignableAppUsers : [];
+            }
             if (!forceRefresh && assignableAppUsersLoaded && Array.isArray(assignableAppUsers) && assignableAppUsers.length) return assignableAppUsers;
             if (!forceRefresh && assignableAppUsersPromise) return assignableAppUsersPromise;
+            const generation = assignableUserDirectoryGeneration;
+            const scope = getSupabaseReadIdentityScope();
             const previousUsers = Array.isArray(assignableAppUsers) ? assignableAppUsers.slice() : FLYER_ASSIGNABLE_USER_FALLBACK.slice();
-            assignableAppUsersPromise = (async () => {
+            const load = (async () => {
                 const rows = await supabaseFetch('ph_app_users', 'GET', null, 'select=username,role&order=username.asc&limit=1000');
+                if (generation !== assignableUserDirectoryGeneration || scope !== getSupabaseReadIdentityScope()) return [];
                 const map = new Map();
                 FLYER_ASSIGNABLE_USER_FALLBACK.forEach((entry) => addAssignableAppUserOption(map, entry.username, entry.display, ''));
                 (rows || []).forEach((row) => {
@@ -56299,13 +56355,19 @@ function toggleDriveQuickRequestItem(domId) {
                 assignableAppUsers = Array.from(map.values()).sort((a, b) => String(a.display || a.username).localeCompare(String(b.display || b.username), undefined, { sensitivity: 'base' }));
                 assignableAppUsersLoaded = true;
                 return assignableAppUsers;
-            })().catch(() => {
+            })().catch((error) => {
+                if (generation !== assignableUserDirectoryGeneration || scope !== getSupabaseReadIdentityScope()) return [];
+                if (typeof isSupabaseReadTerminalDenial === 'function' && isSupabaseReadTerminalDenial(error)) {
+                    resetAssignableUserDirectory();
+                    return [];
+                }
                 assignableAppUsers = previousUsers.length ? previousUsers : FLYER_ASSIGNABLE_USER_FALLBACK.slice();
                 return assignableAppUsers;
             }).finally(() => {
-                assignableAppUsersPromise = null;
+                if (assignableAppUsersPromise === load) assignableAppUsersPromise = null;
             });
-            return assignableAppUsersPromise;
+            assignableAppUsersPromise = load;
+            return load;
         }
 
         function getAssignTargetDomIds() {
@@ -57716,29 +57778,40 @@ function toggleDriveQuickRequestItem(domId) {
             return Array.from(options.values()).sort((a,b) => a.label.localeCompare(b.label));
         }
 
-        function getRequestSelectedSalesrepId(repName = tempSelectedReqRep) {
-            const key = normalizeRepMatchToken(normalizeRepDisplayOrder(repName));
-            const currentKey = normalizeRepMatchToken(normalizeRepDisplayOrder(tempSelectedReqRep));
-            const ids = new Set((customerRepMapRows || []).filter(isActiveRequestCustomerMapping)
-                .filter(row => normalizeRepMatchToken(normalizeRepDisplayOrder(getCustomerRepMapRepValue(row))) === key)
-                .map(row => String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '')).trim()).filter(Boolean));
-            if (key === currentKey && tempSelectedReqSalesrepId && ids.has(tempSelectedReqSalesrepId)) return tempSelectedReqSalesrepId;
-            return ids.size === 1 ? Array.from(ids)[0] : '';
-        }
-        function getAllRequestModalRepOptions() {
+        function getRequestMappedRepDirectory() {
             const revision = getDatasetLoadSignature('customerRepMap');
             if (requestMappedRepSource !== customerRepMapRows || requestMappedRepRevision !== revision) {
                 requestMappedRepSource = customerRepMapRows;
                 requestMappedRepRevision = revision;
                 const reps = new Map();
+                const idsByName = new Map();
                 (customerRepMapRows || []).forEach(row => {
                     if (!isActiveRequestCustomerMapping(row)) return;
-                    const id = String(firstNonEmptyValue(row.SALESREPID,row.salesrepid,''));
-                    if (!reps.has(id)) reps.set(id, buildRequestModalRepOption(normalizeRepDisplayOrder(getCustomerRepMapRepValue(row)), {salesrepId:id}));
+                    const id = String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '')).trim();
+                    const name = normalizeRepDisplayOrder(getCustomerRepMapRepValue(row));
+                    if (!reps.has(id)) reps.set(id, buildRequestModalRepOption(name, { salesrepId: id }));
+                    const key = normalizeRepMatchToken(name);
+                    if (key && id) {
+                        if (!idsByName.has(key)) idsByName.set(key, new Set());
+                        idsByName.get(key).add(id);
+                    }
                 });
                 requestMappedRepOptions = Array.from(reps.values());
+                requestMappedRepIdsByName = idsByName;
             }
-            return mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, requestModalRepUserOptions, requestMappedRepOptions);
+            return { options: requestMappedRepOptions, idsByName: requestMappedRepIdsByName };
+        }
+
+        function getRequestSelectedSalesrepId(repName = tempSelectedReqRep) {
+            const key = normalizeRepMatchToken(normalizeRepDisplayOrder(repName));
+            const currentKey = normalizeRepMatchToken(normalizeRepDisplayOrder(tempSelectedReqRep));
+            const ids = new Set(getRequestMappedRepDirectory().idsByName.get(key) || []);
+            if (key === currentKey && tempSelectedReqSalesrepId && ids.has(tempSelectedReqSalesrepId)) return tempSelectedReqSalesrepId;
+            return ids.size === 1 ? Array.from(ids)[0] : '';
+        }
+        function getAllRequestModalRepOptions() {
+            const directory = getRequestMappedRepDirectory();
+            return mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, requestModalRepUserOptions, directory.options);
         }
 
         function getRequestModalLookupOwnerSignature() {
@@ -58110,6 +58183,45 @@ function toggleDriveQuickRequestItem(domId) {
             }, attempt === 0 ? 0 : 350);
         }
 
+        function scheduleGlobalReferencePrefetch(attempt = 0, owner = getRequestModalLookupOwnerSignature()) {
+            setTimeout(() => {
+                if (!currentUser || owner !== getRequestModalLookupOwnerSignature()) return;
+                const accessState = appAccessSnapshotState || {};
+                if ((accessState.status !== 'ready' || accessState.stale) && attempt < 12) {
+                    scheduleGlobalReferencePrefetch(attempt + 1, owner);
+                    return;
+                }
+                if (accessState.status !== 'ready' || accessState.stale) return;
+                const expectedUsername = typeof getRequestCapabilityUsernameKey === 'function'
+                    ? getRequestCapabilityUsernameKey(currentUser) : '';
+                if (expectedUsername && accessState.username !== expectedUsername) return;
+
+                const lookupViews = ['docks', 'tasks', 'drive', 'managers', 'sales-office', 'department-calendar', 'communication', 'chat', 'request'];
+                const needsUserDirectory = lookupViews.some(view => typeof canAccessView === 'function' && canAccessView(view));
+                const loads = [];
+                if (needsUserDirectory && typeof ensureDockAssignableUsers === 'function') {
+                    loads.push(Promise.resolve().then(() => ensureDockAssignableUsers()).catch(() => false));
+                }
+                if (typeof getManagersToolAccess === 'function' && getManagersToolAccess().canManageCompanyDirectory
+                    && typeof getCompanyDirectoryState === 'function' && typeof loadCompanyDirectory === 'function') {
+                    const directory = getCompanyDirectoryState();
+                    if (!directory.loaded && !directory.loading) {
+                        loads.push(Promise.resolve().then(() => loadCompanyDirectory(null)).catch(() => false));
+                    }
+                }
+                if (typeof canManageCustomerRepMappings === 'function' && canManageCustomerRepMappings()
+                    && typeof window.GncDatabase?.prefetchCustomerRepOptions === 'function') {
+                    const identityScope = getSupabaseReadIdentityScope();
+                    loads.push(Promise.resolve().then(() => window.GncDatabase.prefetchCustomerRepOptions(
+                        (payload, signal) => postAppFunctionJson(APP_API_FUNCTION_URL, payload, { signal, timeoutMs: 30000, label: 'Customer mapping reps' }),
+                        identityScope,
+                        new AbortController().signal
+                    )).catch(() => false));
+                }
+                void Promise.allSettled(loads);
+            }, attempt === 0 ? 0 : 350);
+        }
+
         async function prepareRequestModalChoicesForStartup(timeoutMs = 5000) {
             const duration = Math.max(250, Number(timeoutMs) || 5000);
             const deadline = Date.now() + duration;
@@ -58348,6 +58460,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function showRequestModalBase({ restoringSubmission = false } = {}) {
+            markUserInteractionActivity();
             if (!restoringSubmission) {
                 if (requestSubmitInFlight) return false;
                 const pending = Array.from(requestSubmissionEntries.values()).find(entry => entry.ownerKey === getRequestSubmissionOwnerKey()
@@ -58398,10 +58511,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (repPickerLocked) {
                 renderExistingRequestFolderPicker();
             } else {
-                scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true, skipDebounce: true });
-                if (repOptionsPromise && typeof repOptionsPromise.then === 'function') {
-                    repOptionsPromise.then(() => scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true, skipDebounce: true })).catch(() => scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true, skipDebounce: true }));
-                }
+                renderRequestModalRepPickerOnOpen(repOptionsPromise);
             }
         }
 
@@ -60964,6 +61074,7 @@ function toggleDriveQuickRequestItem(domId) {
             syncRoleAccessUi(getRoleAccessState());
             applyRolePermissions();
             runAfterShellInteractive(() => scheduleRequestModalReferencePrefetch(), touchShell ? 180 : 40);
+            runAfterShellInteractive(() => scheduleGlobalReferencePrefetch(), touchShell ? 260 : 80);
             ensureHomeDashboardReadyAfterLogin('login-shell-open');
             if (loginView) loginView.style.display = 'none';
             ensureHomeDashboardReadyAfterLogin('login-shell-open');
@@ -65767,12 +65878,22 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureDockAssignableUsers(forceRefresh = false) {
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('users', forceRefresh).then(() => dockAssignableUsers);
+            const scope = getSupabaseReadIdentityScope();
+            if (dockAssignableUsersScope !== scope) {
+                dockAssignableUsers = [];
+                dockAssignableUsersPromise = null;
+                dockAssignableUsersScope = scope;
+            }
+            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                await ensureProductionLiveSyncSideData('users', forceRefresh);
+                return scope === getSupabaseReadIdentityScope() ? dockAssignableUsers : [];
+            }
             if (!forceRefresh && dockAssignableUsers.length) return dockAssignableUsers;
             if (!forceRefresh && dockAssignableUsersPromise) return dockAssignableUsersPromise;
             const previousUsers = dockAssignableUsers.slice();
-            dockAssignableUsersPromise = (async () => {
+            const load = (async () => {
                 const rows = await supabaseFetch('ph_app_users', 'GET', null, 'select=*');
+                if (scope !== getSupabaseReadIdentityScope()) return [];
                 dockAssignableUsers = Array.from(new Set((rows || [])
                     .filter((user) => isDockAssignableRoleValue(user.role || user.ROLE))
                     .map((user) => String(user.username || user.USERNAME || '').trim())
@@ -65780,13 +65901,15 @@ function toggleDriveQuickRequestItem(domId) {
                 )).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
                 updateDockAssignableTeamOptions();
                 return dockAssignableUsers;
-            })().catch(() => {
-                dockAssignableUsers = previousUsers;
+            })().catch((error) => {
+                if (scope !== getSupabaseReadIdentityScope()) return [];
+                dockAssignableUsers = isSupabaseReadTerminalDenial(error) ? [] : previousUsers;
                 updateDockAssignableTeamOptions();
                 return dockAssignableUsers;
             }).finally(() => {
-                dockAssignableUsersPromise = null;
+                if (dockAssignableUsersPromise === load) dockAssignableUsersPromise = null;
             });
+            dockAssignableUsersPromise = load;
             return dockAssignableUsersPromise;
         }
 
@@ -79494,12 +79617,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function reloadWeatherHoldData() {
-            weatherHoldState.loaded = false;
+            const hasWarmData = weatherHoldState.loaded === true;
+            if (!hasWarmData) weatherHoldState.loaded = false;
             weatherHoldState.error = '';
             weatherHoldState.riskLoaded = false;
             weatherHoldState.riskError = '';
             const container = document.getElementById('weather-hold-content');
-            if (container) setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Refreshing weather...</div></div>');
+            if (!hasWarmData && container) setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Refreshing weather...</div></div>');
             loadWeatherHoldData(true).then(() => {
                 if (isViewVisible('weather-hold')) renderWeatherHold();
             });
@@ -82317,10 +82441,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function reloadShearListData() {
-            shearListState.loaded = false;
+            const hasWarmData = shearListState.loaded === true;
+            if (!hasWarmData) shearListState.loaded = false;
             shearListState.error = '';
             const container = document.getElementById('shear-list-content');
-            if (container) setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-28 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Refreshing shear list...</div></div>');
+            if (!hasWarmData && container) setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-28 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Refreshing shear list...</div></div>');
             loadShearListData(true).then(() => {
                 return reconcileInventoryEditMockShearListRows({ force: true, silent: true, renderVisible: false });
             }).then(() => {
@@ -114244,9 +114369,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         let dockSuspendDcRequestSourceRowLookupCache = { sourceRows: null, revision: '', byId: new Map() };
-        function getDockSuspendDcSourceRowLookup(sourceRows = getDockSuspendDcSourceRows()) {
+        function getDockSuspendDcSourceRowLookup(sourceRows = getDockSuspendDcSourceRows(), knownRevision = '') {
             const rows = Array.isArray(sourceRows) ? sourceRows : [];
-            const revision = getDockSuspendDcSourceRowLookupRevision(sourceRows);
+            const revision = String(knownRevision || getDockSuspendDcSourceRowLookupRevision(sourceRows));
             const cache = dockSuspendDcRequestSourceRowLookupCache;
             if (cache.sourceRows === sourceRows && cache.revision === revision && cache.byId instanceof Map) return cache.byId;
             const byId = new Map();
@@ -114280,6 +114405,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const sourceUid = getDockSuspendDcRequestSourceUid(item);
             if (!sourceUid) return null;
             return getDockSuspendDcSourceRowLookup().get(sourceUid) || null;
+        }
+
+        function getDockSuspendDcRequestSourceRowFromLookup(item = null, sourceLookup = null) {
+            const sourceUid = getDockSuspendDcRequestSourceUid(item);
+            if (!sourceUid) return null;
+            return sourceLookup && typeof sourceLookup.get === 'function'
+                ? sourceLookup.get(sourceUid) || null
+                : findDockSuspendDcRequestSourceRow(item);
         }
 
         const DOCK_SUSPEND_PLANSTART_ALIASES = Object.freeze(['PLANSTART', 'planstart', 'PLAN_START', 'plan_start', 'Plan Start', 'planStart', 'PLANSTARTDATE', 'planstartdate', 'PLAN_START_DATE', 'plan_start_date']);
@@ -114786,8 +114919,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return count;
         }
 
-        function getRequestSuspendTagDockRaw(item = null) {
-            const sourceRow = findDockSuspendDcRequestSourceRow(item) || {};
+        function getRequestSuspendTagDockRaw(item = null, sourceLookup = null) {
+            const sourceRow = getDockSuspendDcRequestSourceRowFromLookup(item, sourceLookup) || {};
             return String(firstNonEmptyValue(
                 item && item.DOCK_NUM,
                 item && item.DOCK,
@@ -114824,8 +114957,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return dockless ? `Dock ${dockless}` : 'No Dock';
         }
 
-        function getRequestSuspendTagDockFilterOptionForItem(item = null) {
-            const rawDock = getRequestSuspendTagDockRaw(item);
+        function getRequestSuspendTagDockFilterOptionForItem(item = null, sourceLookup = null) {
+            const rawDock = getRequestSuspendTagDockRaw(item, sourceLookup);
             const value = normalizeRequestSuspendTagDockFilterValue(rawDock || 'no-dock');
             return { value, label: formatRequestSuspendTagDockLabel(rawDock || value) };
         }
@@ -114843,10 +114976,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return compareText ? compareText(al, bl) : al.localeCompare(bl, undefined, { numeric: true, sensitivity: 'base' });
         }
 
-        function getRequestSuspendTagDockFilterOptions(items = []) {
+        function getRequestSuspendTagDockFilterOptions(items = [], sourceLookup = null) {
             const optionByValue = new Map();
             (Array.isArray(items) ? items : []).forEach((item) => {
-                const option = getRequestSuspendTagDockFilterOptionForItem(item);
+                const option = getRequestSuspendTagDockFilterOptionForItem(item, sourceLookup);
                 const existing = optionByValue.get(option.value);
                 if (existing) {
                     existing.count += 1;
@@ -114857,8 +114990,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return Array.from(optionByValue.values()).sort(compareRequestSuspendTagDockOptions);
         }
 
-        function getRequestSuspendTagContSizeRaw(item = null) {
-            const sourceRow = findDockSuspendDcRequestSourceRow(item) || {};
+        function getRequestSuspendTagContSizeRaw(item = null, sourceLookup = null) {
+            const sourceRow = getDockSuspendDcRequestSourceRowFromLookup(item, sourceLookup) || {};
             return String(firstNonEmptyValue(
                 item && item.CONTSIZE,
                 item && item.contsize,
@@ -114879,16 +115012,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return cleaned ? `size:${cleaned}` : 'no-size';
         }
 
-        function getRequestSuspendTagContSizeFilterOptionForItem(item = null) {
-            const rawSize = getRequestSuspendTagContSizeRaw(item);
+        function getRequestSuspendTagContSizeFilterOptionForItem(item = null, sourceLookup = null) {
+            const rawSize = getRequestSuspendTagContSizeRaw(item, sourceLookup);
             const value = normalizeRequestSuspendTagContSizeFilterValue(rawSize || 'no-size');
             return { value, label: rawSize || 'No Container Size' };
         }
 
-        function getRequestSuspendTagContSizeFilterOptions(items = []) {
+        function getRequestSuspendTagContSizeFilterOptions(items = [], sourceLookup = null) {
             const optionByValue = new Map();
             (Array.isArray(items) ? items : []).forEach((item) => {
-                const option = getRequestSuspendTagContSizeFilterOptionForItem(item);
+                const option = getRequestSuspendTagContSizeFilterOptionForItem(item, sourceLookup);
                 const existing = optionByValue.get(option.value);
                 if (existing) existing.count += 1;
                 else optionByValue.set(option.value, { ...option, count: 1 });
@@ -114913,8 +115046,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return raw;
         }
 
-        function getRequestSuspendTagAssignedToFilterOptionForItem(item = null) {
-            const sourceRow = findDockSuspendDcRequestSourceRow(item) || {};
+        function getRequestSuspendTagAssignedToFilterOptionForItem(item = null, sourceLookup = null) {
+            const sourceRow = getDockSuspendDcRequestSourceRowFromLookup(item, sourceLookup) || {};
             const rawAssigned = firstNonEmptyValue(
                 getDockSuspendDcRequestAssignedToRaw(item),
                 getDockSuspendDcRequestAssignedToRaw(sourceRow),
@@ -114936,10 +115069,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return String(a && a.label || '').localeCompare(String(b && b.label || ''), undefined, { numeric: true, sensitivity: 'base' });
         }
 
-        function getRequestSuspendTagAssignedToFilterOptions(items = []) {
+        function getRequestSuspendTagAssignedToFilterOptions(items = [], sourceLookup = null) {
             const optionByValue = new Map();
             (Array.isArray(items) ? items : []).forEach((item) => {
-                const option = getRequestSuspendTagAssignedToFilterOptionForItem(item);
+                const option = getRequestSuspendTagAssignedToFilterOptionForItem(item, sourceLookup);
                 const existing = optionByValue.get(option.value);
                 if (existing) {
                     existing.count += 1;
@@ -114960,21 +115093,21 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return term ? filterBySearch(safeItems, term, 'task_commonname') : safeItems;
         }
 
-        function applyRequestSuspendTagDockFilter(items = []) {
+        function applyRequestSuspendTagDockFilter(items = [], sourceLookup = null) {
             const safeItems = Array.isArray(items) ? items : [];
             const filterValue = normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter);
             if (filterValue === 'all') return safeItems;
-            return safeItems.filter((item) => getRequestSuspendTagDockFilterOptionForItem(item).value === filterValue);
+            return safeItems.filter((item) => getRequestSuspendTagDockFilterOptionForItem(item, sourceLookup).value === filterValue);
         }
 
-        function applyRequestSuspendTagContSizeFilter(items = []) {
+        function applyRequestSuspendTagContSizeFilter(items = [], sourceLookup = null) {
             const safeItems = Array.isArray(items) ? items : [];
             const filterValue = normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter);
             if (filterValue === 'all') return safeItems;
-            return safeItems.filter((item) => getRequestSuspendTagContSizeFilterOptionForItem(item).value === filterValue);
+            return safeItems.filter((item) => getRequestSuspendTagContSizeFilterOptionForItem(item, sourceLookup).value === filterValue);
         }
 
-        function applyRequestSuspendTagAssignedToFilter(items = []) {
+        function applyRequestSuspendTagAssignedToFilter(items = [], sourceLookup = null) {
             const safeItems = Array.isArray(items) ? items : [];
             if (!canUseRequestSuspendTagAssignedToFilter()) {
                 requestSuspendTagAssignedToFilter = 'all';
@@ -114982,7 +115115,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             const filterValue = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
             if (filterValue === 'all') return safeItems;
-            return safeItems.filter((item) => getRequestSuspendTagAssignedToFilterOptionForItem(item).value === filterValue);
+            return safeItems.filter((item) => getRequestSuspendTagAssignedToFilterOptionForItem(item, sourceLookup).value === filterValue);
         }
 
         function compareRequestSuspendTagRows(a, b, collators = null) {
@@ -115001,7 +115134,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return compareText(String(a && a.COMMONNAME || ''), String(b && b.COMMONNAME || ''));
         }
 
-        function sortRequestSuspendTagRows(items = [], collators = null) {
+        function sortRequestSuspendTagRows(items = [], collators = null, sourceLookup = null) {
             const textCompare = collators ? collators.text : (left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
             const locationCompare = collators ? collators.location : (left, right) => left.localeCompare(right, undefined, { numeric: true });
             const decorated = (Array.isArray(items) ? items : []).map((item, index) => {
@@ -115009,7 +115142,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const match = locationRaw.match(/^([A-Z]+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?$/);
                 return {
                     item, index,
-                    dock: getRequestSuspendTagDockFilterOptionForItem(item),
+                    dock: getRequestSuspendTagDockFilterOptionForItem(item, sourceLookup),
                     stop: String(firstNonEmptyValue(item && item.STOPNUMBER, item && item.STOP, item && item.stopnumber, item && item.stop, '') || ''),
                     location: {
                         raw: locationRaw,
@@ -115039,16 +115172,69 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return decorated.map(entry => entry.item);
         }
 
+        let requestSuspendTagSortedSourceRowsCache = { key: '', rows: [] };
+
+        function getSortedSuspendTagSourceRows(items, collators, sourceLookup = null, sourceLookupRevision = '') {
+            const sourceItems = Array.isArray(items) ? items : [];
+            const sourceRows = sourceItems.filter((item) => isDockSuspendDcRequestMirrorRow(item) && isDockSuspendDcRequestSource(item));
+            const membershipKey = buildRequestBrowseMembershipKey('request:suspend-tag:sort', sourceRows);
+            const sortContentKey = JSON.stringify(sourceRows.map((item) => {
+                const dock = getRequestSuspendTagDockFilterOptionForItem(item, sourceLookup);
+                return [
+                    dock.value,
+                    dock.label,
+                    String(firstNonEmptyValue(item && item.STOPNUMBER, item && item.STOP, item && item.stopnumber, item && item.stop) || ''),
+                    String(item && item.LOCATIONCODE || '').trim().toUpperCase(),
+                    String(item && item.COMMONNAME || '')
+                ];
+            }));
+            const lookupRevision = String(sourceLookupRevision || (dockSuspendDcRequestSourceRowLookupCache && dockSuspendDcRequestSourceRowLookupCache.revision)
+                || getDockSuspendDcSourceRowLookupRevision());
+            const cacheKey = JSON.stringify([
+                getDatasetLoadSignature('requests'),
+                lookupRevision,
+                membershipKey,
+                sortContentKey
+            ]);
+            const cached = requestSuspendTagSortedSourceRowsCache;
+            if (cached.key === cacheKey && Array.isArray(cached.rows)) {
+                const currentRowsById = new Map();
+                sourceRows.forEach((row) => {
+                    const id = getItemUniqueId(row);
+                    if (!currentRowsById.has(id)) currentRowsById.set(id, { rows: [], next: 0 });
+                    currentRowsById.get(id).rows.push(row);
+                });
+                const orderedRows = cached.rows.map((id) => {
+                    const bucket = currentRowsById.get(id);
+                    return bucket && bucket.next < bucket.rows.length ? bucket.rows[bucket.next++] : null;
+                });
+                if (orderedRows.every(Boolean)) return orderedRows;
+            }
+            const rows = sortRequestSuspendTagRows(sourceRows, collators, sourceLookup);
+            requestSuspendTagSortedSourceRowsCache = { key: cacheKey, rows: rows.map(getItemUniqueId) };
+            return rows.slice();
+        }
+
         function buildSuspendTagRenderPlan(items) {
             const collators = {
                 text: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
                 location: new Intl.Collator(undefined, { numeric: true }).compare
             };
-            const allItems = sortRequestSuspendTagRows(getSuspendTagRequestItems(items, requestSuspendTagStatusFilter), collators);
+            // Resolve the source lookup revision once for this render. Filter
+            // option and sort helpers share the authorized point-lookup map
+            // instead of re-reading session identity for every row.
+            const sourceRows = getDockSuspendDcSourceRows();
+            const sourceLookupRevision = getDockSuspendDcSourceRowLookupRevision(sourceRows);
+            const sourceLookup = getDockSuspendDcSourceRowLookup(sourceRows, sourceLookupRevision);
+            // Sorting is independent of status and filters. Cache only the
+            // ordered source candidates; evaluate completion and permissions on
+            // every render so optimistic Done state and reopening stay current.
+            const sortedSourceRows = getSortedSuspendTagSourceRows(items, collators, sourceLookup, sourceLookupRevision);
+            const allItems = getSuspendTagRequestItems(sortedSourceRows, requestSuspendTagStatusFilter);
             const searchItems = applyRequestSuspendTagCommonNameSearchFilter(allItems);
-            const assignedItems = applyRequestSuspendTagAssignedToFilter(searchItems);
-            const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems);
-            const filteredItems = applyRequestSuspendTagDockFilter(contSizeItems);
+            const assignedItems = applyRequestSuspendTagAssignedToFilter(searchItems, sourceLookup);
+            const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems, sourceLookup);
+            const filteredItems = applyRequestSuspendTagDockFilter(contSizeItems, sourceLookup);
             const filterKey = JSON.stringify([
                 requestSuspendTagStatusFilter,
                 normalizeSearchValue(requestSuspendTagCommonNameSearchTerm),
@@ -115062,7 +115248,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return [getItemUniqueId(item), info.value, info.tone, info.valid];
             });
             const mirrorPreparationState = isDockSuspendDcRequestMirrorPreparationPending() ? 'mirrors-preparing' : 'mirrors-ready';
-            return { ...plan, allItems, searchItems, assignedItems, contSizeItems,
+            return { ...plan, allItems, searchItems, assignedItems, contSizeItems, sourceLookup,
                 renderSignature: `${plan.renderSignature}:${mirrorPreparationState}:planstart:${JSON.stringify(planstartSignature)}` };
         }
 
@@ -115097,7 +115283,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return true;
         }
 
-        function renderRequestSuspendTagFilters(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = []) {
+        function renderRequestSuspendTagFilters(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
             const safeAllItems = Array.isArray(allItems) ? allItems : [];
             const safeSearchItems = Array.isArray(searchItems) ? searchItems : safeAllItems;
             const safeAssignedItems = Array.isArray(assignedItems) ? assignedItems : safeSearchItems;
@@ -115116,17 +115302,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return rows;
             };
             const assignedOptions = ensureSelectedOption(
-                canFilterAssigned ? getRequestSuspendTagAssignedToFilterOptions(safeSearchItems) : [],
+                canFilterAssigned ? getRequestSuspendTagAssignedToFilterOptions(safeSearchItems, sourceLookup) : [],
                 selectedAssignedValue,
                 formatRequestSuspendTagAssignedToLabel(selectedAssignedValue)
             );
             const contSizeOptions = ensureSelectedOption(
-                getRequestSuspendTagContSizeFilterOptions(safeAssignedItems),
+                getRequestSuspendTagContSizeFilterOptions(safeAssignedItems, sourceLookup),
                 selectedContSizeValue,
                 selectedContSizeValue === 'no-size' ? 'No Container Size' : selectedContSizeValue.replace(/^size:/i, '')
             );
             const dockOptions = ensureSelectedOption(
-                getRequestSuspendTagDockFilterOptions(safeContSizeItems),
+                getRequestSuspendTagDockFilterOptions(safeContSizeItems, sourceLookup),
                 selectedDockValue,
                 formatRequestSuspendTagDockLabel(selectedDockValue)
             );
@@ -115147,7 +115333,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${assignedHtml}${contSizeHtml}${dockHtml}</div>`;
         }
 
-        function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = []) {
+        function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
             const statusSelect = document.getElementById('request-suspend-tag-status-filter');
             if (statusSelect) statusSelect.value = requestSuspendTagStatusFilter;
             const input = document.getElementById('request-suspend-tag-common-search');
@@ -115162,7 +115348,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const safeContSizeItems = Array.isArray(contSizeItems) ? contSizeItems : safeAssignedItems;
             const safeVisibleItems = Array.isArray(visibleItems) ? visibleItems : [];
             const canFilterAssigned = canUseRequestSuspendTagAssignedToFilter();
-            const assignedOptions = canFilterAssigned ? getRequestSuspendTagAssignedToFilterOptions(safeSearchItems) : [];
+            const assignedOptions = canFilterAssigned ? getRequestSuspendTagAssignedToFilterOptions(safeSearchItems, sourceLookup) : [];
             const currentAssignedValue = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
             requestSuspendTagAssignedToFilter = canFilterAssigned ? currentAssignedValue : 'all';
             const selectedAssignedValue = requestSuspendTagAssignedToFilter;
@@ -115177,7 +115363,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (assignedSelect.innerHTML !== nextAssignedOptionsHtml) assignedSelect.innerHTML = nextAssignedOptionsHtml;
                 if (assignedSelect.value !== selectedAssignedValue) assignedSelect.value = selectedAssignedValue;
             }
-            const contSizeOptions = getRequestSuspendTagContSizeFilterOptions(safeAssignedItems);
+            const contSizeOptions = getRequestSuspendTagContSizeFilterOptions(safeAssignedItems, sourceLookup);
             const selectedContSizeValue = normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter);
             const selectedContSizeOptions = contSizeOptions.slice();
             if (selectedContSizeValue !== 'all' && !selectedContSizeOptions.some((option) => option.value === selectedContSizeValue)) selectedContSizeOptions.push({ value: selectedContSizeValue, label: selectedContSizeValue === 'no-size' ? 'No Container Size' : selectedContSizeValue.replace(/^size:/i, ''), count: 0 });
@@ -115187,7 +115373,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (contSizeSelect.innerHTML !== nextContSizeOptionsHtml) contSizeSelect.innerHTML = nextContSizeOptionsHtml;
                 if (contSizeSelect.value !== selectedContSizeValue) contSizeSelect.value = selectedContSizeValue;
             }
-            const options = getRequestSuspendTagDockFilterOptions(safeContSizeItems);
+            const options = getRequestSuspendTagDockFilterOptions(safeContSizeItems, sourceLookup);
             const currentValue = normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter);
             requestSuspendTagDockFilter = currentValue;
             const selectedValue = requestSuspendTagDockFilter;
@@ -115216,18 +115402,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return true;
         }
 
-        function ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = []) {
+        function ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
             if (!container) return null;
             const filterShell = container.querySelector('#request-suspend-tag-filter-shell');
             let resultsShell = container.querySelector('#request-suspend-tag-results');
             const activeInput = document.activeElement && document.activeElement.id === 'request-suspend-tag-common-search';
             if (!filterShell || !resultsShell) {
-                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems)}</div><div id="request-suspend-tag-results"><div id="request-suspend-tag-card-list" class="request-card-list--suspend-tag"></div><div id="request-suspend-tag-footer"></div></div>`);
+                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems, sourceLookup)}</div><div id="request-suspend-tag-results"><div id="request-suspend-tag-card-list" class="request-card-list--suspend-tag"></div><div id="request-suspend-tag-footer"></div></div>`);
                 resultsShell = container.querySelector('#request-suspend-tag-results');
             } else if (activeInput) {
-                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
+                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems, sourceLookup);
             } else {
-                const filterMarkup = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
+                const filterMarkup = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems, sourceLookup);
                 if (typeof window !== 'undefined' && window.AgMetricStableViewDom) {
                     const next = document.createElement('template');
                     next.innerHTML = filterMarkup;
@@ -117915,7 +118101,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderRequest() {
-            syncRequestRenderChrome();
+            const isSuspendTagRender = normalizeRequestTabValue(activeReqTab) === 'suspend-tag';
+            if (isSuspendTagRender) activeReqTab = 'suspend-tag';
+            else syncRequestRenderChrome();
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
             if (activeReqTab === 'bunch-notes') { BunchNote.render(); return; }
@@ -117944,7 +118132,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 syncRequestArchiveStatus(container, state);
                 return;
             }
-            if (ensureViewDataForRender('request')) return;
+            if (ensureViewDataForRender('request')) {
+                if (isSuspendTagRender) syncRequestRenderChrome();
+                return;
+            }
             scheduleRequestRenderSideData();
             bumpChunkRenderTokenByKey('request-main');
 
@@ -117954,6 +118145,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const baseRequestItems = getScopedRequestItems(requestsInventory, {
                 includeDockSuspendMirrorRows: activeReqTab === 'suspend-tag'
             });
+            if (isSuspendTagRender) syncRequestRenderChrome(getRequestTabQueueCounts(baseRequestItems));
             const legacyViewerPanel = document.getElementById('request-dylan-filter-panel');
             if (legacyViewerPanel) {
                 legacyViewerPanel.innerHTML = '';
@@ -117961,7 +118153,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             const requestFilterSuffix = '';
             const filteredRequestItems = baseRequestItems;
-            const reconciledRequestState = reconcileRequestDrillState(filteredRequestItems);
+            const reconciledRequestState = reconcileRequestDrillState(filteredRequestItems, true);
             if (reconciledRequestState.changed) syncRequestHeaderSearchChrome({ forceHeader: true });
             let items = reconciledRequestState.items;
 
@@ -118106,7 +118298,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (activeReqTab === 'suspend-tag') {
                 const crumbText = `Suspend Tag${requestFilterSuffix}`;
                 const plan = buildSuspendTagRenderPlan(items);
-                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, plan.allItems, plan.searchItems, plan.assignedItems, plan.contSizeItems, plan.items);
+                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, plan.allItems, plan.searchItems, plan.assignedItems, plan.contSizeItems, plan.items, plan.sourceLookup);
                 const footerContainer = container.querySelector('#request-suspend-tag-footer') || resultsContainer;
                 renderSuspendTagPagedCards(resultsContainer, footerContainer, container, crumb, crumbText, plan);
                 return;
@@ -141926,14 +142118,12 @@ C.14.043 C.15.000
             codes: { table: 'ph_company_directory_codes', title: 'Production plant & project codes', columns: [['code','Code'],['description','Project / plant description'],['department_reference','Department ID / name']], fields: [['code','Code',true],['description','Project / plant description',true],['department_reference','Department ID / name',false]] }
         };
         function companyDirectoryEsc(value) { return typeof esc === 'function' ? esc(value == null ? '' : String(value)) : String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-        function renderCompanyDirectoryPanel() {
+        function renderCompanyDirectoryPanel(resultsOnly = false) {
             const state = getCompanyDirectoryState(), meta = managerCompanyDirectoryMeta[state.kind];
             const list = state[state.kind] === undefined ? [] : state.kind === 'blocks' ? state.beds : state[state.kind];
-            const q = state.query.trim().toLowerCase();
             const filterField = state.kind === 'contacts' ? 'location' : state.kind === 'blocks' ? 'block_letter' : 'department_reference';
             const filterLabel = state.kind === 'contacts' ? 'location' : state.kind === 'blocks' ? 'block' : 'department';
-            const filterOptions = [...new Set(list.map(row => String(row[filterField] || '').trim()).filter(Boolean))].sort((a,b) => a.localeCompare(b));
-            const matchingRows = list.filter(row => (!state.reviewOnly || row.needs_review === true) && (!state.filterValue || String(row[filterField] || '') === state.filterValue) && (!q || Object.values(row).some(value => String(value ?? '').toLowerCase().includes(q))));
+            const { filterOptions, rows: matchingRows } = companyDirectoryCache.select(list, filterField, state);
             const pageCount = Math.max(1, Math.ceil(matchingRows.length / state.pageSize));
             state.page = Math.min(Math.max(0, Number(state.page) || 0), pageCount - 1);
             const pageStart = state.page * state.pageSize;
@@ -141942,10 +142132,12 @@ C.14.043 C.15.000
             const totals = state.kind === 'blocks' ? `<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6 mb-3">${state.blocks.map(block => { const beds = state.beds.filter(bed => bed.block_letter === block.letter); const total = beds.reduce((sum, bed) => sum + Number(bed.capacity || 0), 0); return `<div class="rounded-xl border border-emerald-100 bg-white px-3 py-2"><strong class="block text-xs">${companyDirectoryEsc(block.name)}</strong><span class="text-[11px] text-slate-500">${beds.length} beds · ${total.toLocaleString()} total</span><label class="mt-2 grid gap-1 text-[10px] font-bold text-slate-500">Block label<input data-company-directory-block-name="${companyDirectoryEsc(block.letter)}" value="${companyDirectoryEsc(block.name)}" class="min-h-8 rounded border px-2 text-xs font-medium"></label><button type="button" data-company-directory-block-delete="${companyDirectoryEsc(block.letter)}" class="mt-2 rounded border border-red-200 px-2 py-1 text-[10px] font-bold text-red-700">Delete block</button></div>`; }).join('')}<button type="button" data-company-directory-block-add class="min-h-20 rounded-xl border border-dashed border-emerald-300 bg-emerald-50 text-sm font-bold text-emerald-800">＋ Add block</button></div>` : '';
             const tableRows = pageRows.map(row => `<tr data-row-id="${companyDirectoryEsc(row.id)}">${meta.columns.map(([key]) => `<td>${companyDirectoryEsc(row[key] ?? '—')}</td>`).join('')}<td class="whitespace-nowrap"><button type="button" data-company-directory-edit="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-emerald-200 px-2 py-1 text-xs font-bold">Edit</button> <button type="button" data-company-directory-delete="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-700">Delete</button></td></tr>`).join('');
             const form = state.formOpen ? `<div class="fixed inset-0 z-[10000] grid place-items-center bg-slate-950/60 p-3" data-company-directory-scrim><form data-company-directory-form class="max-h-[90dvh] w-full max-w-xl overflow-auto rounded-2xl bg-white p-4 shadow-2xl"><div class="mb-4 flex items-center justify-between"><div><div class="text-[10px] font-black uppercase tracking-widest text-emerald-700">${state.editing ? 'Edit record' : 'New record'}</div><h3 class="text-lg font-black">${meta.title}</h3></div><button type="button" data-company-directory-close aria-label="Close" class="rounded-lg border px-3 py-2">×</button></div><div class="grid grid-cols-1 gap-3 sm:grid-cols-2">${meta.fields.map(([key,label,required,type]) => `<label class="grid gap-1 text-xs font-bold text-slate-700">${label}${state.kind === 'blocks' && key === 'block_letter' ? `<select name="${key}" required class="min-h-10 rounded-lg border px-3">${'ABCDEFGHIJKL'.split('').map(letter => `<option value="${letter}" ${state.editing?.[key] === letter ? 'selected' : ''}>Block ${letter}</option>`).join('')}</select>` : `<input name="${key}" type="${type || 'text'}" ${required ? 'required' : ''} ${type === 'number' ? 'min="0.01" step="0.01"' : ''} value="${companyDirectoryEsc(state.editing?.[key] ?? '')}" class="min-h-10 rounded-lg border px-3">`}</label>`).join('')}</div>${state.error ? `<p role="alert" class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">${companyDirectoryEsc(state.error)}</p>` : ''}<div class="mt-4 flex justify-end gap-2"><button type="button" data-company-directory-close class="min-h-10 rounded-xl border px-4 text-sm font-bold">Cancel</button><button class="min-h-10 rounded-xl bg-emerald-700 px-4 text-sm font-black text-white">Save record</button></div></form></div>` : '';
+            const bodyRows = state.loading && !state.loaded ? `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">Loading directory…</td></tr>` : tableRows || `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">No matching records.</td></tr>`;
             const rangeStart = matchingRows.length ? pageStart + 1 : 0;
             const rangeEnd = Math.min(pageStart + state.pageSize, matchingRows.length);
             const pagination = `<nav aria-label="Company directory pagination" class="flex flex-wrap items-center justify-between gap-2 pt-3 text-xs text-slate-600"><span>${matchingRows.length.toLocaleString()} records · Showing ${rangeStart.toLocaleString()}–${rangeEnd.toLocaleString()} · Page ${state.page + 1} of ${pageCount}</span><div class="flex gap-2"><button type="button" data-company-directory-page="previous" aria-label="Previous page" class="min-h-9 rounded-lg border border-emerald-200 px-3 font-bold text-emerald-800" ${state.page === 0 ? 'disabled' : ''}>Previous</button><button type="button" data-company-directory-page="next" aria-label="Next page" class="min-h-9 rounded-lg border border-emerald-200 px-3 font-bold text-emerald-800" ${state.page >= pageCount - 1 ? 'disabled' : ''}>Next</button></div></nav>`;
-            return `<section class="rounded-2xl border border-emerald-100 bg-white p-3 sm:p-4"><header class="mb-3 flex flex-wrap items-center justify-between gap-2"><div><div class="text-[10px] font-black uppercase tracking-widest text-emerald-700">Production reference data · Dylan</div><h2 class="text-lg font-black text-slate-900">Company Directory</h2></div><button type="button" data-company-directory-refresh class="min-h-10 rounded-xl border border-emerald-200 px-3 text-sm font-bold text-emerald-800" ${state.loading ? 'disabled' : ''}>Refresh</button><button type="button" data-company-directory-add class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-700 px-3 text-sm font-black text-white">＋ Add ${state.kind === 'blocks' ? 'bed row' : 'record'}</button></header><div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[12rem_12rem_minmax(10rem,1fr)]"><select data-company-directory-kind aria-label="Directory category" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm font-bold">${Object.entries(options).map(([key,label]) => `<option value="${key}" ${state.kind === key ? 'selected' : ''}>${label}</option>`).join('')}</select><select data-company-directory-filter aria-label="Filter by ${filterLabel}" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm"><option value="">All ${filterLabel}s</option>${filterOptions.map(value => `<option value="${companyDirectoryEsc(value)}" ${state.filterValue === value ? 'selected' : ''}>${companyDirectoryEsc(value)}</option>`).join('')}</select><input data-company-directory-search aria-label="Search directory" value="${companyDirectoryEsc(state.query)}" placeholder="Search names, departments, extensions, locations, codes…" class="min-h-10 rounded-xl border border-emerald-100 px-3 text-sm"><label class="inline-flex items-center gap-2 text-xs font-bold text-slate-600"><input data-company-directory-review type="checkbox" ${state.reviewOnly ? 'checked' : ''}>Needs review</label></div>${totals}${state.error && !state.formOpen ? `<div role="alert" class="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">${companyDirectoryEsc(state.error)}</div>` : ''}<div class="max-h-[65dvh] overflow-auto rounded-xl border border-slate-200"><table class="w-full min-w-[700px] border-collapse text-left text-xs"><thead class="sticky top-0 bg-emerald-50 text-[10px] uppercase tracking-wide text-emerald-900"><tr>${meta.columns.map(([,label]) => `<th class="px-3 py-2">${label}</th>`).join('')}<th class="px-3 py-2">Actions</th></tr></thead><tbody>${state.loading && !state.loaded ? `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">Loading directory…</td></tr>` : tableRows || `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">No matching records.</td></tr>`}</tbody></table></div>${pagination}</section>${form}`;
+            if (resultsOnly) return { bodyRows, pagination };
+            return `<section class="rounded-2xl border border-emerald-100 bg-white p-3 sm:p-4"><header class="mb-3 flex flex-wrap items-center justify-between gap-2"><div><div class="text-[10px] font-black uppercase tracking-widest text-emerald-700">Production reference data · Dylan</div><h2 class="text-lg font-black text-slate-900">Company Directory</h2></div><button type="button" data-company-directory-refresh class="min-h-10 rounded-xl border border-emerald-200 px-3 text-sm font-bold text-emerald-800" ${state.loading ? 'disabled' : ''}>Refresh</button><button type="button" data-company-directory-add class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-700 px-3 text-sm font-black text-white">＋ Add ${state.kind === 'blocks' ? 'bed row' : 'record'}</button></header><div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[12rem_12rem_minmax(10rem,1fr)]"><select data-company-directory-kind aria-label="Directory category" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm font-bold">${Object.entries(options).map(([key,label]) => `<option value="${key}" ${state.kind === key ? 'selected' : ''}>${label}</option>`).join('')}</select><select data-company-directory-filter aria-label="Filter by ${filterLabel}" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm"><option value="">All ${filterLabel}s</option>${filterOptions.map(value => `<option value="${companyDirectoryEsc(value)}" ${state.filterValue === value ? 'selected' : ''}>${companyDirectoryEsc(value)}</option>`).join('')}</select><input data-company-directory-search aria-label="Search directory" value="${companyDirectoryEsc(state.query)}" placeholder="Search names, departments, extensions, locations, codes…" class="min-h-10 rounded-xl border border-emerald-100 px-3 text-sm"><label class="inline-flex items-center gap-2 text-xs font-bold text-slate-600"><input data-company-directory-review type="checkbox" ${state.reviewOnly ? 'checked' : ''}>Needs review</label></div>${totals}${state.error && !state.formOpen ? `<div role="alert" class="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">${companyDirectoryEsc(state.error)}</div>` : ''}<div class="h-[65dvh] overflow-auto rounded-xl border border-slate-200" style="contain:layout style paint;height:65dvh"><table class="w-full min-w-[700px] border-collapse text-left text-xs" style="table-layout:fixed;overflow-wrap:anywhere"><thead class="sticky top-0 bg-emerald-50 text-[10px] uppercase tracking-wide text-emerald-900"><tr>${meta.columns.map(([,label]) => `<th class="px-3 py-2">${label}</th>`).join('')}<th class="px-3 py-2">Actions</th></tr></thead><tbody>${bodyRows}</tbody></table></div>${pagination}</section>${form}`;
         }
         async function loadCompanyDirectory(root) {
             const state = getCompanyDirectoryState();
@@ -141979,7 +142171,18 @@ C.14.043 C.15.000
             if (!root || root.dataset.companyDirectoryMounted === 'true') return;
             root.dataset.companyDirectoryMounted='true'; root.dataset.preserveDom='true';
             const state=managerCompanyDirectoryState;
-            const redraw=()=>{ root.innerHTML=renderCompanyDirectoryPanel(); };
+            const redraw=()=>{
+                const next=document.createElement('template'); next.innerHTML=renderCompanyDirectoryPanel();
+                window.AgMetricStableViewDom.apply(root,next.content);
+            };
+            const redrawResults=()=>{
+                const parts=renderCompanyDirectoryPanel(true), next=document.createElement('template');
+                next.innerHTML='<table><tbody>'+parts.bodyRows+'</tbody></table>'+parts.pagination;
+                const body=root.querySelector('tbody'), nav=root.querySelector('[aria-label="Company directory pagination"]');
+                if (!body || !nav) { redraw(); return; }
+                window.AgMetricStableViewDom.apply(body,next.content.querySelector('tbody'));
+                window.AgMetricStableViewDom.apply(nav,next.content.querySelector('nav'));
+            };
             root.addEventListener('gnc-manager-source-revision', event => {
                 if (event.detail?.surface !== 'company-directory' || !getManagersToolAccess().canManageCompanyDirectory) return;
                 if (state.formOpen || root.contains(document.activeElement)) { state.refreshPending=true; return; }
@@ -141990,12 +142193,12 @@ C.14.043 C.15.000
                     state.refreshPending=false; void loadCompanyDirectory(root);
                 }
             }, 0));
-            root.addEventListener('input', event => { if (event.target.matches('[data-company-directory-search]')) { state.query=event.target.value; state.page=0; const cursor=event.target.selectionStart; redraw(); const input=root.querySelector('[data-company-directory-search]'); input?.focus(); input?.setSelectionRange(cursor,cursor); } });
-            root.addEventListener('change', event => { if (event.target.matches('[data-company-directory-kind]')) { state.kind=event.target.value; state.query=''; state.filterValue=''; state.page=0; void loadCompanyDirectory(root); } else if(event.target.matches('[data-company-directory-filter]')) { state.filterValue=event.target.value; state.page=0; redraw(); } else if(event.target.matches('[data-company-directory-review]')) { state.reviewOnly=event.target.checked; state.page=0; redraw(); } });
+            root.addEventListener('input', event => { if (event.target.matches('[data-company-directory-search]')) { state.query=event.target.value; state.page=0; redrawResults(); } });
+            root.addEventListener('change', event => { if (event.target.matches('[data-company-directory-kind]')) { state.kind=event.target.value; state.query=''; state.filterValue=''; state.page=0; void loadCompanyDirectory(root); } else if(event.target.matches('[data-company-directory-filter]')) { state.filterValue=event.target.value; state.page=0; redrawResults(); } else if(event.target.matches('[data-company-directory-review]')) { state.reviewOnly=event.target.checked; state.page=0; redrawResults(); } });
             root.addEventListener('click', async event => {
                 const target=event.target.closest('button'); if (!target) return;
                 const pageAction=target.dataset.companyDirectoryPage;
-                if (pageAction) { state.page=Math.max(0,state.page+(pageAction==='next'?1:-1)); redraw(); return; }
+                if (pageAction) { state.page=Math.max(0,state.page+(pageAction==='next'?1:-1)); redrawResults(); return; }
                 if (target.matches('[data-company-directory-refresh]')) { await loadCompanyDirectory(root); return; }
                 if (target.matches('[data-company-directory-add]')) { state.editing=null; state.formOpen=true; state.error=''; redraw(); return; }
                 if (target.matches('[data-company-directory-close]') || event.target.matches('[data-company-directory-scrim]')) { state.formOpen=false; state.error=''; redraw(); if(state.refreshPending){state.refreshPending=false;void loadCompanyDirectory(root);} return; }
@@ -148952,6 +149155,21 @@ C.14.043 C.15.000
             }
         }
 
+        function renderRequestModalRepPickerOnOpen(repOptionsPromise = null) {
+            const render = () => filterRepList('');
+            const directoryReady = !isCsrRequestAssistantUser() || requestModalRepUserOptionsReady;
+            if (directoryReady) {
+                render();
+                return true;
+            }
+            scheduleRequestModalSearchRender('rep', '', render, { force: true, skipDebounce: true });
+            if (repOptionsPromise && typeof repOptionsPromise.then === 'function') {
+                repOptionsPromise.then(() => scheduleRequestModalSearchRender('rep', '', render, { force: true, skipDebounce: true }))
+                    .catch(() => scheduleRequestModalSearchRender('rep', '', render, { force: true, skipDebounce: true }));
+            }
+            return false;
+        }
+
         function filterRepList(searchValue = null) {
             const input = document.getElementById('rep-search-input');
             const rawVal = String(searchValue == null ? (input && input.value) : searchValue || '').trim();
@@ -149015,16 +149233,22 @@ C.14.043 C.15.000
 
         function getExistingRequestFolderRepRows(repName = '') {
             const safeRep = resolveCanonicalRequestRepName(repName || tempSelectedReqRep || '');
+            // A large snapshot repeats a small rep directory. Match each distinct
+            // name once per read; status and folder membership remain live.
+            const repMatches = new Map();
             return (Array.isArray(requestsInventory) ? requestsInventory : []).filter((item) => {
                 if (!item) return false;
                 if (!String(firstNonEmptyValue(item.REQUEST_FOLDER, item.request_folder, '') || '').trim()) return false;
                 if (isRequestRowArchivedForCompletion(item)) return false;
-                return doesRequestRepMatchValue(firstNonEmptyValue(item.REQUESTED_BY, item.requested_by, item.SALESREPNAME, item.SALESREP, ''), safeRep);
+                const value = String(firstNonEmptyValue(item.REQUESTED_BY, item.requested_by, item.SALESREPNAME, item.SALESREP, '') || '');
+                if (!repMatches.has(value)) repMatches.set(value, doesRequestRepMatchValue(value, safeRep));
+                return repMatches.get(value);
             });
         }
 
-        function getExistingRequestFolderRowsSignature(repName = '') {
-            return getExistingRequestFolderRepRows(repName).map((row) => [
+        function getExistingRequestFolderRowsSignature(repName = '', rows = null) {
+            const source = Array.isArray(rows) ? rows : getExistingRequestFolderRepRows(repName);
+            return source.map((row) => [
                 firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, ''),
                 firstNonEmptyValue(row && row.REQUEST_FOLDER, row && row.request_folder, ''),
                 firstNonEmptyValue(row && row.REQ_ARCHIVED, row && row.req_archived, false)
@@ -149075,7 +149299,7 @@ C.14.043 C.15.000
             const existingRows = getExistingRequestFolderRepRows(repName);
             const mappingSignature = getRequestModalCustomerMappingCacheSignature();
             const salesrepId = getRequestSelectedSalesrepId(repName);
-            const rowSignature = getExistingRequestFolderRowsSignature(repName);
+            const rowSignature = getExistingRequestFolderRowsSignature(repName, existingRows);
             const cacheKey = JSON.stringify([salesrepId, mappingSignature, normalizeRepMatchToken(canonicalRepName), rowSignature]);
             const durableKey = JSON.stringify([salesrepId, mappingSignature, requestMappingRpcCache.get(salesrepId)?.revision || '', rowSignature]);
             const precomputedGroups = requestExistingFolderGroupsByRepCache.get(durableKey);
@@ -149388,7 +149612,7 @@ C.14.043 C.15.000
             let html = `<div class="request-step-header flex-shrink-0">${canBackToRepPicker ? `<i data-secondary-back="true" aria-hidden="true" class="request-back-icon ph-bold ph-arrow-left cursor-pointer" ${buildFastInvokeAttrs('backToRequestRepStep', [], 'Back to Sales Reps')}></i>` : ''}<h3 class="font-bold text-lg text-orange-600">${stepTitle}</h3></div>`;
             html += `<div class="request-folder-picker-body">`;
             if (!selectedGroup) {
-                const filteredGroups = groups.filter((group) => requestCustomerGroupMatchesPickerSearch(group, tempExistingReqCustomerSearch, customerSearch));
+                const filteredGroups = customerSearch ? groups.filter((group) => requestCustomerGroupMatchesPickerSearch(group, tempExistingReqCustomerSearch, customerSearch)) : groups;
                 const visibleGroups = getRequestModalVisibleOptions(`existing:customers:${customerSearch || 'all'}`, filteredGroups);
                 html += `<input type="text" id="existing-request-customer-search-input" data-existing-request-search="customer" class="input-field border-orange-200" placeholder="Search customer..." value="${esc(tempExistingReqCustomerSearch)}" oninput="handleExistingRequestCustomerSearchInput(this.value)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">`;
                 html += `<div class="request-folder-picker-scroll">`;
@@ -149459,6 +149683,9 @@ C.14.043 C.15.000
         }
 
         function selectRepForRequest(repName, salesrepId = '') {
+            // Imperative and assistive clicks need the same background-work
+            // deferral as pointer/keyboard input while the next step paints.
+            markUserInteractionActivity();
             const resolvedRepName = resolveRequestRepSelectionForCurrentUser(repName, { showToast: true });
             if (!resolvedRepName) {
                 showToast('Required', 'Please choose a sales rep for this request.', true);

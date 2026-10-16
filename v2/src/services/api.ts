@@ -125,6 +125,30 @@ function redactEvalData<T>(value: T): T {
 
 let clientPromise: Promise<SupabaseClient<Database>> | null = null;
 let sandboxSessionRevision = 0;
+let sandboxSessionScope = createSandboxSessionScope();
+let sandboxSessionIdentity = currentSandboxSessionIdentity();
+const sandboxSessionListeners = new Set<() => void>();
+let sandboxStorageListener: ((event: StorageEvent) => void) | null = null;
+
+function createSandboxSessionScope() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function notifySandboxSessionChange() {
+  sandboxSessionIdentity = currentSandboxSessionIdentity();
+  sandboxSessionRevision += 1;
+  sandboxSessionScope = createSandboxSessionScope();
+  for (const listener of sandboxSessionListeners) listener();
+}
+
+function currentSandboxSessionIdentity() {
+  const session = readStoredSession();
+  return JSON.stringify([
+    session?.token ?? '',
+    session?.username.trim().toLowerCase() ?? '',
+    session?.role?.trim().toLowerCase() ?? ''
+  ]);
+}
 
 async function sandboxClient() {
   if (!clientPromise) {
@@ -169,10 +193,39 @@ export function readStoredSession(): Session | null {
 }
 
 export function storeSession(session: Session | null) {
-  sandboxSessionRevision += 1;
-  if (typeof localStorage === 'undefined') return;
-  if (!session) localStorage.removeItem(SESSION_KEY);
-  else localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  if (typeof localStorage !== 'undefined') {
+    if (!session) localStorage.removeItem(SESSION_KEY);
+    else localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  }
+  notifySandboxSessionChange();
+}
+
+/** Opaque in-memory cache scope that rotates whenever this tab changes identity. */
+export function getInventoryReadScopeKey(): string {
+  const currentIdentity = currentSandboxSessionIdentity();
+  if (currentIdentity !== sandboxSessionIdentity) {
+    sandboxSessionIdentity = currentIdentity;
+    sandboxSessionRevision += 1;
+    sandboxSessionScope = createSandboxSessionScope();
+  }
+  return sandboxSessionScope;
+}
+
+export function subscribeInventorySessionScope(callback: () => void): () => void {
+  sandboxSessionListeners.add(callback);
+  if (typeof window !== 'undefined' && !sandboxStorageListener) {
+    sandboxStorageListener = event => {
+      if (event.key === SESSION_KEY || event.key === null) notifySandboxSessionChange();
+    };
+    window.addEventListener('storage', sandboxStorageListener);
+  }
+  return () => {
+    sandboxSessionListeners.delete(callback);
+    if (typeof window !== 'undefined' && !sandboxSessionListeners.size && sandboxStorageListener) {
+      window.removeEventListener('storage', sandboxStorageListener);
+      sandboxStorageListener = null;
+    }
+  };
 }
 
 export async function login(username: string, password: string): Promise<Session> {

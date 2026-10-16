@@ -61,10 +61,15 @@ insert into public.ph_company_directory_contacts(id,name,location)
 values ('f7000000-0000-0000-0000-000000000001','Revision Signal Fixture','test-only');
 select is((select revision from public.app_dataset_revisions where key='ph_company_directory_contacts'),
   (select value+1 from manager_revision_before), 'insert advances only through the opaque source revision');
+-- touch_source intentionally coalesces repeated same-source changes inside one
+-- transaction. Reset its transaction-local marker to model the next committed
+-- write transaction while keeping this fixture itself rollback-only.
+select set_config('app_sync.touched','{}',true);
 update public.ph_company_directory_contacts set name='Revision Signal Updated'
 where id='f7000000-0000-0000-0000-000000000001';
 select is((select revision from public.app_dataset_revisions where key='ph_company_directory_contacts'),
   (select value+2 from manager_revision_before), 'update advances the source revision');
+select set_config('app_sync.touched','{}',true);
 delete from public.ph_company_directory_contacts where id='f7000000-0000-0000-0000-000000000001';
 select is((select revision from public.app_dataset_revisions where key='ph_company_directory_contacts'),
   (select value+3 from manager_revision_before), 'delete advances the source revision');

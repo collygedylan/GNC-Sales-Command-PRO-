@@ -4,6 +4,12 @@ import { readFileSync } from 'node:fs';
 import { appApiDatabaseBridge, databaseBridge } from './helpers/database-bridge.mjs';
 import { databaseContracts, generateContracts } from '../scripts/generate-database-contracts.mjs';
 import { inspectDatabaseBoundary } from '../scripts/check-database-boundaries.mjs';
+
+test('Company Directory database calls belong only to its compiled service adapter', () => {
+  const read = "client.from('ph_company_directory_contacts').select('*')";
+  assert.deepEqual(inspectDatabaseBoundary('v2/src/services/companyDirectory.ts', read), []);
+  assert.match(inspectDatabaseBoundary('v2/src/components/CompanyDirectory.tsx', read).join(' '), /approved compiled/);
+});
 import { noHistoryLowStockTargets } from './fixtures/hl-order-state.mjs';
 
 test('coverage guard rejects new untyped clients and calls outside adapters', () => {

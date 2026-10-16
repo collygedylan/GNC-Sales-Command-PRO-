@@ -152,7 +152,7 @@ function pendingRequestReuseFixture() {
     extractFunction(html, 'compareRequestLocationCodes', 'function buildPendingRequestRenderPlan('),
     extractFunction(html, 'buildPendingRequestRenderPlan', 'function getRequestPendingReuseContextSnapshot('),
     extractFunction(html, 'getRequestPendingReuseContextSnapshot', 'function rememberCompletedPendingRequestRender('),
-    extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome()'),
+    extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome('),
     extractFunction(html, 'canReuseCompletedPendingRequestRender', 'function cancelProductionRefresh(')
   ].join('\n'), ctx);
   const plan = ctx.buildPendingRequestRenderPlan(rows);
@@ -1130,7 +1130,7 @@ test('Pending reuse is completed-render-only, keeps native scope out of shared l
   const plan = extractFunction(html, 'buildPendingRequestRenderPlan', 'function getRequestPendingReuseContextSnapshot(');
   assert.doesNotMatch(plan, /getProductionLiveSyncContext|canUseProductionLiveSync/,
     'the shared Pending plan remains usable by legacy rendering without requiring native sync');
-  const remember = extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome()');
+  const remember = extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome(');
   assert.match(remember, /options|contextSnapshot/);
   assert.match(remember, /cardNodes/);
   assert.match(remember, /getContainerRenderSignature/);
@@ -1192,6 +1192,13 @@ test('anchor restoration avoids forced layout on the fallback and preserves offs
     root: { isConnected: true }, scroller: fallbackScroller, view: 'request', top: 240, anchors: []
   });
   assert.deepEqual(assignments, [240], 'browser scrollTop assignment uses its native clamping behavior');
+
+  ctx.restoreProductionRefreshAnchor({
+    root: { isConnected: true, querySelector() { throw new Error('top-of-list must not follow a clipped card anchor'); } },
+    scroller: fallbackScroller, view: 'request', top: 0,
+    anchors: [{ attribute: 'data-request-uid', value: 'row-1', offset: -12 }]
+  });
+  assert.deepEqual(assignments, [240, 0], 'a reader at the top stays at the top through sticky-header layout changes');
 
   const remainingAssignments = [];
   const card = { getBoundingClientRect: () => ({ top: 132 }) };

@@ -87,28 +87,36 @@ test('Company Directory keeps 10k rows responsive with stable 50-row pagination'
   await expect(root.locator('[aria-label="Company directory pagination"]')).toContainText('Page 1 of 200');
   await expect(root.locator('tbody tr').first()).toContainText('Employee 00001 generation-1');
 
-  const firstRenderMs = await page.evaluate(() => {
+  const firstRender = await page.evaluate(() => {
     const root = document.querySelector<HTMLElement>('#manager-company-directory-root')!;
     const input = root.querySelector<HTMLInputElement>('[data-company-directory-search]')!;
     const start = performance.now();
     input.value = 'Employee 00999';
     input.dispatchEvent(new Event('input', { bubbles: true }));
+    const afterDispatch = performance.now();
     root.querySelector('tbody')!.getBoundingClientRect();
-    return performance.now() - start;
+    return { totalMs: performance.now() - start, dispatchMs: afterDispatch - start,
+      retainedSearchInput: input === root.querySelector('[data-company-directory-search]') };
   });
+  console.log('DIRECTORY_FIRST_FILTER', JSON.stringify({ project: info.project.name, ...firstRender }));
+  const firstRenderMs = firstRender.totalMs;
+  expect(firstRender.retainedSearchInput).toBe(true);
   expect(firstRenderMs).toBeLessThan(100);
   await expect(root.locator('tbody tr')).toHaveCount(1);
   await expect(root.locator('[aria-label="Company directory pagination"]')).toContainText('Page 1 of 1');
 
-  const warmRenderMs = await page.evaluate(() => {
+  const warmRender = await page.evaluate(() => {
     const root = document.querySelector<HTMLElement>('#manager-company-directory-root')!;
     const input = root.querySelector<HTMLInputElement>('[data-company-directory-search]')!;
     const start = performance.now();
     input.value = '';
     input.dispatchEvent(new Event('input', { bubbles: true }));
+    const afterDispatch = performance.now();
     root.querySelector('tbody')!.getBoundingClientRect();
-    return performance.now() - start;
+    return { totalMs: performance.now() - start, dispatchMs: afterDispatch - start };
   });
+  console.log('DIRECTORY_WARM_FILTER', JSON.stringify({ project: info.project.name, ...warmRender }));
+  const warmRenderMs = warmRender.totalMs;
   expect(warmRenderMs).toBeLessThan(100);
   await expect(root.locator('tbody tr')).toHaveCount(50);
   await root.getByRole('button', { name: 'Next page' }).click();

@@ -1384,7 +1384,7 @@ function ModuleDetail({ view, row, session, demoMode, onBack, onToast }: {
             ['R3', '27.F1', 'H.03.000', 'LD', '1', '94', '0', '94'],
           ].map((cells, index) => (
             <tr key={cells[0]} className={index === 0 ? 'is-current' : ''}>
-              {cells.map((cell, cellIndex) => <td key={`${cell}-${cellIndex}`}>{cell}</td>)}
+              {['row', 'lot', 'location', 'source', 'priority', 'on-hand', 'review', 'available'].map((field, cellIndex) => <td key={field}>{cells[cellIndex]}</td>)}
               <td><button type="button" className="table-open" onClick={() => sandboxToast(`Row ${cells[0]} opened`)}>Open</button></td>
             </tr>
           ))}

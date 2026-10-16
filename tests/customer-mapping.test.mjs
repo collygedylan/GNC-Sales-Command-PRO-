@@ -364,6 +364,19 @@ test('rep directory loads every bounded page and caches it only at the matching 
   client.dispose();dom.window.close();
 });
 
+test('startup rep prefetch seeds the same scoped catalog cache used by the editor',async()=>{
+  const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const calls=[];const choices=[{salesrepId:'01',salesrepName:'Morgan Smith'}];
+  const transport=async payload=>{calls.push(payload);return{ok:true,rows:choices,total:1,page:0,pageSize:100,revision:'prefetch-r1'};};
+  const warmed=await dom.window.MappingEditor.prefetchCustomerRepOptions(transport,'manager:prefetch',new dom.window.AbortController().signal);
+  const client=dom.window.MappingEditor.createCustomerRepAssignments(transport,'manager:prefetch');
+  const reused=await client.reps(new dom.window.AbortController().signal);
+  assert.equal(warmed,reused);assert.equal(calls.length,1);assert.equal(reused[0].salesrepName,'Morgan Smith');
+  const otherIdentity=await dom.window.MappingEditor.prefetchCustomerRepOptions(transport,'manager:other',new dom.window.AbortController().signal);
+  assert.notEqual(otherIdentity,warmed);assert.equal(calls.length,2);
+  client.dispose();dom.window.close();
+});
+
 test('an obsolete or aborted rep response cannot populate the shared catalog cache',async()=>{
   const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
   let resolveOld;const calls=[];

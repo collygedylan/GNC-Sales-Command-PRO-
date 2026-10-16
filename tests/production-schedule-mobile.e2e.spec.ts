@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
 // @test-group: @production-schedule
 
 
@@ -87,4 +88,130 @@ test('mobile schedule keeps one search row, honest filters, and each sheet state
   expect(timings.warmRowsVisible).toBe(1);
   expect(timings.warmExtraReads).toBe(0);
   await testInfo.attach('synthetic-schedule-cold-warm-ms', { body: JSON.stringify(timings), contentType: 'application/json' });
+});
+
+test('schedule paged cold render and warm metadata refresh stay below 100 ms at 10,000-row metadata scale', {"tag":["@production-schedule"]}, async ({ page }, testInfo) => {
+  await page.setContent('<body class="ops-precision-pilot"><main id="view-managers"><div id="manager-production-schedule-root"></div></main></body>');
+  await page.addStyleTag({ path: 'styles/production-schedule.css' });
+  await page.addScriptTag({ path: 'assets/stable-view-dom.js' });
+  await page.addScriptTag({ path: 'assets/production-schedule.js' });
+  const cold = await page.evaluate(async () => {
+    const win = window as any;
+    const nativeApply = win.AgMetricStableViewDom.apply;
+    win.scheduleApplyTimings = [];
+    Object.defineProperty(win, 'AgMetricStableViewDom', { configurable: true, value: Object.freeze({ apply(container: Element, incoming: DocumentFragment) {
+      const hasScheduleCards = Boolean(incoming.querySelector('.ps-card'));
+      const started = performance.now();
+      const result = nativeApply(container, incoming);
+      if (hasScheduleCards) win.scheduleApplyTimings.push(performance.now() - started);
+      return result;
+    } }) });
+    const rows = Array.from({ length: 20 }, (_, index) => ({
+      sourceRow: index + 10,
+      cells: { 1: '3gal', 2: 'Rosa', 3: `ITEM-${String(index).padStart(4, '0')}`, 4: 'A1', 5: 'LOT-1',
+        6: '12', 7: '24' },
+      fieldCount: 7
+    }));
+    win.scheduleCalls = [];
+    win.scheduleRows = rows;
+    win.scheduleColdStartedAt = performance.now();
+    win.scheduleColdPaint = new Promise<any>(resolve => {
+      const observer = new MutationObserver(() => {
+        if (document.querySelectorAll('.ps-card').length !== 20) return;
+        observer.disconnect();
+        const domMountedAt = performance.now();
+        requestAnimationFrame(() => {
+          const firstFrameAt = performance.now();
+          requestAnimationFrame(() => resolve({
+            mountToDomMs: domMountedAt - win.scheduleColdStartedAt,
+            mountToFirstFrameMs: firstFrameAt - win.scheduleColdStartedAt,
+            mountToPaintMs: performance.now() - win.scheduleColdStartedAt
+          }));
+        });
+      });
+      observer.observe(document.getElementById('manager-production-schedule-root')!, { subtree: true, childList: true });
+    });
+    win.GncProductionSchedule.mount(document.getElementById('manager-production-schedule-root'), async (payload: any) => {
+      win.scheduleCalls.push(payload);
+      if (payload.operation === 'metadata') return { ok: true,
+        snapshot: { id: 'perf-snapshot-10k', importedAt: '2026-10-15T12:00:00Z' },
+        sheets: [{ id: 1, index: 0, title: 'PROD SCHED', rowCount: 10000,
+          columns: [{ index: 1, header: 'VAR' }, { index: 2, header: 'GENUS' }, { index: 3, header: 'ITEM NO.' },
+            { index: 4, header: 'Plt.Loc.' }, { index: 5, header: 'LOT' }, { index: 6, header: '2027 SCH TOTAL' }, { index: 7, header: '2027 Bed Space' }],
+          filterColumns: [] }] };
+      if (payload.operation === 'status') return { ok: true, run: null };
+      if (payload.operation === 'rows') return { ok: true, rows: payload.cursor ? rows.map((row: any) => ({ ...row, sourceRow: row.sourceRow + 20, cells: { ...row.cells, 3: `NEXT-${row.cells[3]}` } })) : rows,
+        total: 10000, nextCursor: payload.cursor ? '40' : '20', snapshotId: 'perf-snapshot-10k', hasMore: true };
+      throw new Error(`Unexpected schedule performance operation: ${payload.operation}`);
+    }, 'schedule-perf-dylan-session');
+    const paint = await win.scheduleColdPaint;
+    return { ...paint, applyMs: win.scheduleApplyTimings[0], calls: win.scheduleCalls.length,
+      rowCount: document.querySelectorAll('.ps-card').length, metadataRowCount: 10000 };
+  });
+
+  // Measure the browser frame before Playwright locator assertions run, so
+  // test-runner polling cannot occupy the application's first-paint window.
+  const environment = { browser: testInfo.project.use.browserName || 'Chromium', project: testInfo.project.name,
+    viewport: page.viewportSize(), api: 'isolated mock', cache: 'cold initial 20-row page against 10,000-row metadata' };
+  const coldEvidencePath = testInfo.outputPath('schedule-20-row-cold-performance.json');
+  await writeFile(coldEvidencePath, JSON.stringify({ environment, cold }, null, 2));
+  console.log('[production-schedule-cold-perf]', JSON.stringify({ environment, cold }));
+  await testInfo.attach('schedule-20-row-cold-performance', { path: coldEvidencePath, contentType: 'application/json' });
+  await expect(page.locator('.ps-card')).toHaveCount(20);
+  expect(cold.rowCount).toBe(20);
+  expect(await page.evaluate(() => (window as any).scheduleCalls.find((call: any) => call.operation === 'rows')?.limit)).toBe(20);
+  expect(cold.metadataRowCount).toBe(10000);
+  expect(cold.mountToPaintMs).toBeLessThan(100);
+  expect(cold.applyMs).toBeLessThan(100);
+
+  const warmIdentity = await page.evaluate(() => {
+    const win = window as any;
+    win.scheduleOriginalCard = document.querySelector('.ps-card');
+    win.scheduleOriginalSearch = document.querySelector('[data-ps-search]');
+    const rect = (element: Element) => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; };
+    win.scheduleOriginalCardRect = rect(win.scheduleOriginalCard as Element);
+    win.scheduleOriginalResultsRect = rect(document.querySelector('.ps-results') as Element);
+    return {
+      cardRect: win.scheduleOriginalCardRect,
+      resultsRect: win.scheduleOriginalResultsRect,
+      previousTimings: win.scheduleApplyTimings.length,
+      rowsReads: win.scheduleCalls.filter((call: any) => call.operation === 'rows').length,
+      metadataReads: win.scheduleCalls.filter((call: any) => call.operation === 'metadata').length
+    };
+  });
+  const warm = await page.evaluate(async (baseline) => {
+    const win = window as any;
+    const startedAt = performance.now();
+    win.GncProductionSchedule.refresh();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const rect = (element: Element) => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; };
+    const cardAfter = document.querySelector('.ps-card');
+    const resultsAfter = document.querySelector('.ps-results');
+    return { refreshToPaintMs: performance.now() - startedAt,
+      applyMs: win.scheduleApplyTimings.slice(baseline.previousTimings),
+      sameCard: cardAfter === win.scheduleOriginalCard,
+      sameSearch: document.querySelector('[data-ps-search]') === win.scheduleOriginalSearch,
+      noLayoutShift: JSON.stringify(rect(cardAfter!)) === JSON.stringify(baseline.cardRect)
+        && JSON.stringify(rect(resultsAfter!)) === JSON.stringify(baseline.resultsRect),
+      rowCount: document.querySelectorAll('.ps-card').length,
+      extraRowReads: win.scheduleCalls.filter((call: any) => call.operation === 'rows').length - baseline.rowsReads,
+      cache: 'warm 20-row page; metadata refresh; no row refetch' };
+  }, warmIdentity);
+  const completeEvidencePath = testInfo.outputPath('schedule-20-row-performance.json');
+  const completeEvidence = { environment: { ...environment, cache: 'cold initial 20-row page, then warm metadata-only refresh; cursor paging reaches later rows' }, cold, warm };
+  await writeFile(completeEvidencePath, JSON.stringify(completeEvidence, null, 2));
+  console.log('[production-schedule-full-perf]', JSON.stringify(completeEvidence));
+  await testInfo.attach('schedule-20-row-performance', { path: completeEvidencePath, contentType: 'application/json' });
+  expect(warm.refreshToPaintMs).toBeLessThan(100);
+  expect(warm.applyMs.length).toBeGreaterThan(0);
+  for (const applyMs of warm.applyMs) expect(applyMs).toBeLessThan(100);
+  expect(warm.sameCard).toBeTruthy();
+  expect(warm.sameSearch).toBeTruthy();
+  expect(warm.noLayoutShift).toBeTruthy();
+  expect(warm.rowCount).toBe(20);
+  expect(warm.extraRowReads).toBe(0);
+  await page.locator('[data-ps-action="next"]').click();
+  await expect(page.locator('.ps-card')).toHaveCount(20);
+  await expect(page.locator('.ps-card').first()).toContainText('NEXT-');
+  expect(await page.evaluate(() => (window as any).scheduleCalls.filter((call: any) => call.operation === 'rows').length)).toBe(2);
 });

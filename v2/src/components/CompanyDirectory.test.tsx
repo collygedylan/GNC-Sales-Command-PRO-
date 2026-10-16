@@ -12,6 +12,7 @@ const harness = vi.hoisted(() => ({
   signIn: vi.fn(),
   signOut: vi.fn(),
   readError: null as null | { message: string },
+  readCalls: 0,
   rows: [] as Array<{ id: string; name: string; location: string }>,
   beds: [] as Array<{ id: string; block_letter: string; bed_identifier: string; capacity: number }>,
   blockNames: [] as Array<{ letter: string; name: string | null }>,
@@ -44,8 +45,10 @@ vi.mock('@supabase/supabase-js', () => ({
       builder.delete = () => { harness.deletes.push([table, null]); return builder; };
       builder.maybeSingle = async () => { if (table === 'profiles') { harness.profileReads += 1; await harness.profileWait; return { data: harness.profile, error: null }; } return { data: null, error: null }; };
       builder.single = async () => ({ data: { id: 'new-contact' }, error: null });
-      builder.then = (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
-        Promise.resolve(harness.waitRead).then(() => ({ data: table === 'ph_company_directory_contacts' ? harness.rows : table === 'ph_company_directory_beds' ? harness.beds : table === 'ph_company_directory_blocks' ? harness.blockNames : [], error: harness.readError })).then(resolve, reject);
+      builder.then = (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) => {
+        harness.readCalls += 1;
+        return Promise.resolve(harness.waitRead).then(() => ({ data: table === 'ph_company_directory_contacts' ? harness.rows : table === 'ph_company_directory_beds' ? harness.beds : table === 'ph_company_directory_blocks' ? harness.blockNames : [], error: harness.readError })).then(resolve, reject);
+      };
       return builder;
     }
   }))
@@ -61,6 +64,7 @@ beforeEach(() => {
   harness.profile = { id: 'dylan-id', username: 'dylan_collyge', display_name: 'Dylan Collyge', disabled_at: null, locked_until: null, must_change_password: false };
   harness.inserts = []; harness.updates = []; harness.deletes = [];
   harness.readError = null;
+  harness.readCalls = 0;
   harness.rows = []; harness.beds = []; harness.blockNames = []; harness.waitRead = null; harness.revision = null;
   harness.signOut.mockReset().mockImplementation(async () => { harness.session = null; return { error: null }; });
   harness.signIn.mockReset().mockImplementation(async () => { harness.session = { user: { id: 'dylan-id' } }; return { error: null }; });
@@ -106,10 +110,15 @@ describe('Company Directory native access', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'local-test-secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to directory' }));
     await screen.findByRole('button', { name: 'Refresh' });
+    await screen.findByText('No matching records.');
+    const refresh = screen.getByRole('button', { name: 'Refresh' });
+    await waitFor(() => expect(refresh.hasAttribute('disabled')).toBe(false));
+    expect(harness.readCalls).toBe(4);
 
     harness.readError = { message: 'permission denied for company directory' };
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    fireEvent.click(refresh);
     expect((await screen.findByRole('alert')).textContent).toBe('permission denied for company directory');
+    expect(harness.readCalls).toBeGreaterThan(4);
   });
 
   it('rejects a signed-in profile whose username is not Dylan', async () => {

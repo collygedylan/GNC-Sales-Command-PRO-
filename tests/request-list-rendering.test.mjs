@@ -112,6 +112,62 @@ test('Request chrome shares one queue-count snapshot across badge and tabs', () 
   assert.deepEqual(calls, ['counts', ['badge', counts], 'chat', ['tabs', counts], 'search']);
 });
 
+test('Suspend render chrome reuses the already scoped queue snapshot', () => {
+  const calls = [];
+  const counts = { pending: 2, 'suspend-tag': 1 };
+  const ctx = vm.createContext({
+    activeReqTab: 'suspend-tag', normalizeRequestTabValue: value => value,
+    getRequestTabQueueCounts: () => { calls.push('unexpected-count-scan'); return {}; },
+    updateFooterRequestBadge: snapshot => calls.push(['badge', snapshot]),
+    updateFooterChatBadge: () => calls.push('chat'),
+    syncRequestTabButtons: snapshot => calls.push(['tabs', snapshot]),
+    syncRequestHeaderSearchChrome: () => calls.push('search')
+  });
+  vm.runInContext(source('syncRequestRenderChrome'), ctx);
+  ctx.syncRequestRenderChrome(counts);
+  assert.deepEqual(calls, [['badge', counts], 'chat', ['tabs', counts], 'search']);
+});
+
+test('Request queue counts skip pending-visibility work for Dock Suspend mirror rows', () => {
+  let visibilityChecks = 0;
+  const regular = [{ id: 'regular-1' }, { id: 'regular-2' }, { id: 'regular-hidden' }];
+  const mirrors = Array.from({ length: 1000 }, (_, index) => ({ id: `dock-mirror-${index}`, mirror: true }));
+  const ctx = vm.createContext({
+    requestsInventory: [],
+    requestArchiveListState: { total: 0 },
+    evalWorkRows: [],
+    getScopedRequestItems: () => [...regular, ...mirrors],
+    isRegularRequestQueueItem: row => !row.mirror,
+    isRequestPendingVisible: row => { visibilityChecks += 1; return row.id !== 'regular-hidden'; },
+    canCurrentUserViewDockSuspendDcRequests: () => false,
+    countPendingSuspendTagQueueItems: () => 0,
+    getApprovedMoveRequestRowsForCurrentUser: () => [],
+    getLocationMoveRecountRowsForCurrentUser: () => [],
+    getVisibleShearMoveTestRequestRecords: () => [],
+    console: { warn: (...args) => { throw args[1] || new Error(String(args[0])); } }
+  });
+  vm.runInContext(source('getRequestTabQueueCounts'), ctx);
+
+  const counts = ctx.getRequestTabQueueCounts();
+
+  assert.equal(counts.pending, 2);
+  assert.equal(visibilityChecks, regular.length, 'only regular request rows need visibility/completion checks');
+});
+
+test('already scoped non-rep queue rows skip duplicate visibility filtering', () => {
+  const scopedRows = [{ UNIQUE_ID: 'suspend-row' }];
+  let scopeCalls = 0;
+  const ctx = vm.createContext({
+    requestsInventory: [], activeReqTab: 'suspend-tag',
+    getScopedRequestItems: () => { scopeCalls += 1; throw new Error('duplicate scope pass'); }
+  });
+  vm.runInContext(source('reconcileRequestDrillState'), ctx);
+  const result = ctx.reconcileRequestDrillState(scopedRows, true);
+  assert.equal(result.items, scopedRows);
+  assert.equal(result.changed, false);
+  assert.equal(scopeCalls, 0);
+});
+
 test('Suspend filter shell builds filter markup once per render', () => {
   const calls = { render: 0, update: 0 };
   const cardList = {};
@@ -186,7 +242,11 @@ test('Suspend filtered-empty render signature changes when mirror preparation fi
   const ctx = vm.createContext({
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagStatusFilter: 'active', requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'dock:99',
+    getDockSuspendDcSourceRows: () => [],
+    getDockSuspendDcSourceRowLookupRevision: () => 'empty-source',
+    getDockSuspendDcSourceRowLookup: () => new Map(),
     getSuspendTagRequestItems: items => items.slice(),
+    getSortedSuspendTagSourceRows: items => items.slice(),
     sortRequestSuspendTagRows: items => items.slice(),
     applyRequestSuspendTagCommonNameSearchFilter: items => items,
     applyRequestSuspendTagAssignedToFilter: items => items,
@@ -357,24 +417,44 @@ test('Suspend mirrors prepare in bounded slices, publish atomically, retain same
 test('Suspend keeps all filter totals while bounding cards and plan-start signatures to its page', () => {
   const ctx = fixture();
   const planstartReads = [];
+  let sortCalls = 0;
+  let sourceRevision = 'r1';
+  let identityScope = 'manager-a';
+  let sourceRowsReads = 0;
+  let lookupRevisionReads = 0;
+  let lookupReads = 0;
+  const sourceLookup = new Map();
+  const filterLookups = [];
   Object.assign(ctx, {
+    requestSuspendTagSortedSourceRowsCache: { key: '', rows: [] },
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
-    getSuspendTagRequestItems: values => values.slice(),
+    getSuspendTagRequestItems: (values, status) => values.filter(row => status === 'completed' ? row.status === 'complete' : row.status !== 'complete'),
+    isDockSuspendDcRequestMirrorRow: () => true,
+    isDockSuspendDcRequestSource: () => true,
+    getSupabaseReadIdentityScope: () => identityScope,
+    getDatasetLoadSignature: name => `${name}:${sourceRevision}`,
+    getDockSuspendDcSourceRows: () => { sourceRowsReads += 1; return []; },
+    getDockSuspendDcSourceRowLookup: () => { lookupReads += 1; return sourceLookup; },
+    getDockSuspendDcSourceRowLookupRevision: () => { lookupRevisionReads += 1; return `suspend:${sourceRevision}:${identityScope}`; },
+    getRequestSuspendTagDockFilterOptionForItem: () => ({ value: 'dock:1', label: 'Dock 1' }),
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
     compareRequestSuspendTagRows: (a, b) => a.LOCATIONCODE.localeCompare(b.LOCATIONCODE),
     applyRequestSuspendTagCommonNameSearchFilter: values => values,
-    applyRequestSuspendTagAssignedToFilter: values => values,
-    applyRequestSuspendTagContSizeFilter: values => values,
-    applyRequestSuspendTagDockFilter: values => values,
+    applyRequestSuspendTagAssignedToFilter: (values, lookup) => { filterLookups.push(lookup); return values; },
+    applyRequestSuspendTagContSizeFilter: (values, lookup) => { filterLookups.push(lookup); return values; },
+    applyRequestSuspendTagDockFilter: (values, lookup) => { filterLookups.push(lookup); return values; },
     normalizeSearchValue: value => value,
     normalizeRequestSuspendTagAssignedToFilterValue: value => value,
     normalizeRequestSuspendTagContSizeFilterValue: value => value,
     isDockSuspendDcRequestMirrorPreparationPending: () => false,
     getDockSuspendDcRequestPlanstartInfo: row => { planstartReads.push(row.UNIQUE_ID); return { value: row.date || '', tone: 'monday', valid: true }; }
   });
-  ctx.sortRequestSuspendTagRows = values => values.slice().sort(ctx.compareRequestSuspendTagRows);
+  ctx.sortRequestSuspendTagRows = values => { sortCalls += 1; return values.slice().sort(ctx.compareRequestSuspendTagRows); };
+  vm.runInContext(source('getSortedSuspendTagSourceRows'), ctx);
   vm.runInContext(source('buildSuspendTagRenderPlan'), ctx);
   const data = rows(9539);
+  data.forEach(row => { row.status = 'pending'; });
   const first = ctx.buildSuspendTagRenderPlan(data);
   assert.equal(first.allItems.length, 9539);
   assert.equal(first.items.length, 9539);
@@ -382,8 +462,42 @@ test('Suspend keeps all filter totals while bounding cards and plan-start signat
   assert.equal(first.footerMarkup, '0:9539');
   assert.deepEqual(ctx.signatures, [100]);
   assert.equal(planstartReads.length, 100);
+  assert.equal(sortCalls, 1);
+  assert.equal(sourceRowsReads, 1);
+  assert.equal(lookupRevisionReads, 1);
+  assert.equal(lookupReads, 1);
+  assert.equal(filterLookups.length, 3);
+  assert.ok(filterLookups.every(lookup => lookup === sourceLookup), 'all filter passes share the render-scoped source map');
+  data[0].status = 'complete';
+  assert.equal(ctx.buildSuspendTagRenderPlan(data).allItems.length, 9538, 'status changes are reapplied even when the sort cache is warm');
+  assert.equal(sortCalls, 1);
   data[0].date = '2026-10-19';
   assert.notEqual(ctx.buildSuspendTagRenderPlan(data).renderSignature, first.renderSignature);
+  assert.equal(sortCalls, 1, 'non-sort card updates do not force another full sort');
+  const refreshed = { ...data[0], status: 'pending', COMMONNAME: 'refreshed same-ID source' };
+  data[0] = refreshed;
+  const refreshedPlan = ctx.buildSuspendTagRenderPlan(data);
+  assert.equal(sortCalls, 2, 'same-revision same-ID source content refresh invalidates the ordered rows');
+  assert.equal(refreshedPlan.allItems.includes(refreshed), true, 'the refreshed row object reaches the active list');
+  const nonSortReplacement = { ...data[2], PHOTO_URL: 'https://example.test/refreshed-photo.jpg' };
+  data[2] = nonSortReplacement;
+  const nonSortRefreshedPlan = ctx.buildSuspendTagRenderPlan(data);
+  assert.equal(sortCalls, 2, 'same-order snapshots with non-sort changes reuse the cached order');
+  assert.equal(nonSortRefreshedPlan.allItems.includes(nonSortReplacement), true, 'cached order resolves to fresh same-ID row objects');
+  data[1].LOCATIONCODE = 'ZZ.1';
+  sourceRevision = 'r2';
+  ctx.buildSuspendTagRenderPlan(data);
+  assert.equal(sortCalls, 3, 'source revision changes invalidate the ordered rows');
+  const replacement = { ...data[1], LOCATIONCODE: 'ZZ.2', date: '2026-10-20' };
+  data[1] = replacement;
+  sourceRevision = 'r3';
+  const revised = ctx.buildSuspendTagRenderPlan(data);
+  assert.equal(sortCalls, 4, 'a same-ID replacement snapshot does not reuse prior row objects');
+  assert.equal(revised.allItems.at(-1), data[1]);
+  assert.equal(revised.allItems.at(-1), replacement);
+  identityScope = 'manager-b';
+  ctx.buildSuspendTagRenderPlan(data);
+  assert.equal(sortCalls, 5, 'identity changes never reuse a previous scope cache');
   ctx.pageIndex = 95;
   assert.equal(ctx.buildSuspendTagRenderPlan(data).rows.length, 39);
 });

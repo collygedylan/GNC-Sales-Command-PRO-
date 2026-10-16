@@ -47,3 +47,23 @@ test('transient failures retain the last good snapshot and incomplete pagination
   assert.equal(cache.peek('a:v1'), first);
   await assert.rejects(cache.refresh('a:v1', async () => null), /invalid/i);
 });
+
+test('directory search indexes each snapshot once and preserves filter and review semantics', () => {
+  const cache = fixture(); let reads = 0;
+  const rows = [
+    { id: 'a', get name() { reads++; return 'Álvarez'; }, location: 'PH', needs_review: true },
+    { id: 'b', get name() { reads++; return 'Abbey'; }, location: 'ST', needs_review: false },
+  ];
+  const first = cache.select(rows, 'location', { query: ' álVAREZ ' });
+  assert.deepEqual(Array.from(first.rows, row => row.id), ['a']);
+  assert.deepEqual(Array.from(first.filterOptions), ['PH', 'ST']);
+  const indexedReads = reads;
+  assert.deepEqual(Array.from(cache.select(rows, 'location', { filterValue: 'ST' }).rows, row => row.id), ['b']);
+  assert.deepEqual(Array.from(cache.select(rows, 'location', { reviewOnly: true }).rows, row => row.id), ['a']);
+  assert.equal(cache.select(rows, 'location', { query: 'missing' }).rows.length, 0);
+  assert.equal(reads, indexedReads, 'filter interactions must not renormalize every source field');
+  const next = [{ id: 'c', name: 'New import', location: 'WH', needs_review: true }];
+  assert.deepEqual(Array.from(cache.select(next, 'location', {}).rows, row => row.id), ['c']);
+  cache.clear(); cache.select(rows, 'location', {});
+  assert.ok(reads > indexedReads, 'identity reset clears derived indexes');
+});

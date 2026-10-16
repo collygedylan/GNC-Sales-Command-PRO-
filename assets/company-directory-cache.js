@@ -11,9 +11,31 @@
   ];
   function create() {
     let owner = '', generation = 0;
+    let indexes = new WeakMap();
     /** @type {Snapshot | null} */ let snapshot = null;
     /** @type {Promise<Snapshot> | null} */ let pending = null;
-    function clear() { owner = ''; generation++; snapshot = null; pending = null; }
+    function clear() { owner = ''; generation++; snapshot = null; pending = null; indexes = new WeakMap(); }
+    /** @param {Row[]} rows @param {string} field @param {{ query?: string, filterValue?: string, reviewOnly?: boolean }} options */
+    function select(rows, field, options = {}) {
+      let fields = indexes.get(rows);
+      if (!fields) { fields = new Map(); indexes.set(rows, fields); }
+      let index = fields.get(field);
+      if (!index) {
+        const entries = rows.map(row => ({ row, filter: String(row[field] || ''), review: row.needs_review === true,
+          values: Object.values(row).map(value => String(value ?? '').toLowerCase()) }));
+        const filterOptions = [...new Set(entries.map(entry => entry.filter.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        index = { entries, filterOptions, key: null, result: null }; fields.set(field, index);
+      }
+      const query = String(options.query || '').trim().toLowerCase(), filter = options.filterValue || '', review = options.reviewOnly === true;
+      const key = JSON.stringify([query, filter, review]);
+      if (key !== index.key) {
+        index.result = { filterOptions: index.filterOptions, rows: !query && !filter && !review ? rows : index.entries
+          .filter(entry => (!review || entry.review) && (!filter || entry.filter === filter) && (!query || entry.values.some(value => value.includes(query))))
+          .map(entry => entry.row) };
+        index.key = key;
+      }
+      return index.result;
+    }
     /** @param {string} key */
     function peek(key) { return key && key === owner ? snapshot : null; }
     /** @param {string} key @param {ReadPage} read @returns {Promise<Snapshot>} */
@@ -40,7 +62,7 @@
       pending = promise;
       return promise;
     }
-    return Object.freeze({ peek, refresh, clear });
+    return Object.freeze({ peek, refresh, clear, select });
   }
   Object.defineProperty(global, 'GncCompanyDirectoryCache', { configurable: true, value: Object.freeze({ create }) });
 })(window);

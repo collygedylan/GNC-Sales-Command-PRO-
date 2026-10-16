@@ -1,6 +1,6 @@
 import type { Database } from '../supabase/functions/_shared/database.types';
 import { createCustomerRepAssignments, type AssignmentPage, type RepOption } from './customerRepAssignments';
-export { createCustomerRepAssignments, validateMappingPage as mappingPage, validateMappingRow as mappingRow } from './customerRepAssignments';
+export { createCustomerRepAssignments, prefetchCustomerRepOptions, validateMappingPage as mappingPage, validateMappingRow as mappingRow } from './customerRepAssignments';
 
 type SourceRow = Database['public']['Tables']['ph_customer_consignee_sales_reps']['Row'];
 export type MappingRow = Pick<SourceRow, 'unique_id' | 'customeridentityid' | 'consigneeid' | 'salesrepid' | 'salesrepname' | 'customername' | 'consigneename' | 'customerstatus' | 'consigneestatus'> & {

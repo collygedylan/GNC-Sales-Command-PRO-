@@ -247,6 +247,41 @@ test('Home sync metadata side adapter is bounded, projected, scoped, and commits
     assert.deepEqual(Array.from(h.ctx.dashboardSyncMetadataSummaries[0].files), ['ph_master_inventory-latest-a.xlsx', 'ph_master_inventory-latest-b.xlsx']);
 });
 
+test('manager revision refresh reaches the mounted Company Directory listener only for its visible authorized tab', () => {
+    const h = harness();
+    class FakeCustomEvent {
+        constructor(type, init) { this.type = type; this.detail = init.detail; }
+    }
+    const listeners = new Set();
+    let received = 0;
+    const root = {
+        isConnected: true, CustomEvent: FakeCustomEvent,
+        addEventListener(type, listener) { if (type === 'gnc-manager-source-revision') listeners.add(listener); },
+        dispatchEvent(event) { listeners.forEach(listener => listener(event)); return true; }
+    };
+    h.ctx.document.getElementById = id => id === 'manager-company-directory-root' ? root : null;
+    h.ctx.activeHomeTab = 'company-directory';
+    h.ctx.getCurrentVisibleViewId = () => 'managers';
+    let authorized = true;
+    h.ctx.getManagersToolAccess = () => ({ canManageCompanyDirectory: authorized, canViewProductionSchedule: true, canViewHrCommand: true });
+    root.addEventListener('gnc-manager-source-revision', event => {
+        if (event.detail?.surface === 'company-directory' && authorized) received += 1;
+    });
+
+    const adapter = descriptor(h, 'side:companyDirectoryRevision');
+    adapter.commit({ verified: true });
+    assert.equal(received, 1, 'the event is delivered directly to the mounted component host');
+    assert.deepEqual(Array.from(h.ctx.calls.filter(call => call[0] === 'api').map(call => call[1])), []);
+
+    h.ctx.activeHomeTab = 'dashboard';
+    adapter.commit({ verified: true });
+    assert.equal(received, 1, 'a hidden manager tab receives no refresh event');
+    h.ctx.activeHomeTab = 'company-directory';
+    authorized = false;
+    adapter.commit({ verified: true });
+    assert.equal(received, 1, 'permission loss receives no refresh event');
+});
+
 test('deferred manual run response clears optimistic Starting state without completion side effects', () => {
     const start = html.indexOf('function handleDeferredManualSyncStart(');
     const end = html.indexOf('\n        async function runGoogleAppsScriptTrigger(', start);

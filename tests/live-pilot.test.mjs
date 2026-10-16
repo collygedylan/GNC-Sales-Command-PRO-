@@ -98,7 +98,7 @@ test('Request entry uses semantic high-contrast fields, bounded lists, cached gr
   assert.match(html, /class="request-entry-card"/);
   assert.match(html, /request-entry-field request-entry-field--qty/);
   assert.match(html, /request-entry-field request-entry-field--wide/);
-  assert.match(html, /const REQUEST_MODAL_OPTION_PAGE_SIZE = 60/);
+  assert.match(html, /const REQUEST_MODAL_OPTION_PAGE_SIZE = 20/);
   assert.match(html, /getRequestCustomerPickerGroupsCached\(options\)/);
   assert.match(html, /requestGeneration === requestModalAsyncGeneration/);
   assert.match(html, /if \(requestSubmitInFlight\) return false/);

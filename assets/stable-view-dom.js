@@ -45,6 +45,18 @@
     }
     const element = /** @type {Element} */ (current);
     const incoming = /** @type {Element} */ (next);
+    // Deferred image markup intentionally omits src. Retain the browser's
+    // accepted load state while its source is unchanged; a new source resets it.
+    if (element.tagName === 'IMG' && element.getAttribute('data-photo-hydrated') === '1'
+      && element.getAttribute('data-src') && element.getAttribute('data-src') === incoming.getAttribute('data-src')) {
+      for (const name of ['src', 'data-photo-hydrated', 'data-photo-observed', 'data-photo-load-failed', 'data-av-photo-loaded', 'data-native-image-tuned']) {
+        if (element.hasAttribute(name)) incoming.setAttribute(name, element.getAttribute(name));
+      }
+      if (element.getAttribute('data-photo-load-failed') === '1') {
+        incoming.classList.add('app-photo-thumbnail-failed');
+        incoming.setAttribute('alt', element.getAttribute('alt') || '');
+      }
+    }
     const island = element.hasAttribute('data-preserve-dom') || islandIds.has(element.id);
     const dirty = element === focused
       || ('defaultValue' in element && element.value !== element.defaultValue)
@@ -109,6 +121,12 @@
     const selection = field && 'selectionStart' in field
       ? { start: field.selectionStart, end: field.selectionEnd, direction: field.selectionDirection } : null;
     reconcileChildren(container, incoming, focused);
+    // A failed retained image will not emit a second error event after a refresh.
+    // Reapply its display-only evidence to the refreshed metric nodes.
+    if (typeof global.invalidateCardPhotoMatchOnLoadFailure === 'function') {
+      container.querySelectorAll('img[data-photo-load-failed="1"]').forEach(image =>
+        global.invalidateCardPhotoMatchOnLoadFailure(image));
+    }
     if (focused?.isConnected) {
       if (field && draft !== undefined) field.value = draft;
       if (document.activeElement !== focused && typeof focused.focus === 'function') focused.focus({ preventScroll: true });

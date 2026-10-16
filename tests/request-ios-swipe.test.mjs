@@ -157,7 +157,7 @@ test('Suspend Tag filters compose in one pass and retain cached content during r
   assert.match(html, /function applyRequestSuspendTagContSizeFilter/);
   assert.match(html, /function applyRequestSuspendTagDockFilter/);
   const plan = html.slice(html.indexOf('function buildSuspendTagRenderPlan('), html.indexOf('function getRequestSuspendTagSearchInputState('));
-  assert.match(plan, /const searchItems = applyRequestSuspendTagCommonNameSearchFilter\(allItems\);[\s\S]*const assignedItems = applyRequestSuspendTagAssignedToFilter\(searchItems\);[\s\S]*const contSizeItems = applyRequestSuspendTagContSizeFilter\(assignedItems\);[\s\S]*const filteredItems = applyRequestSuspendTagDockFilter\(contSizeItems\)/);
+  assert.match(plan, /const searchItems = applyRequestSuspendTagCommonNameSearchFilter\(allItems\);[\s\S]*const assignedItems = applyRequestSuspendTagAssignedToFilter\(searchItems, sourceLookup\);[\s\S]*const contSizeItems = applyRequestSuspendTagContSizeFilter\(assignedItems, sourceLookup\);[\s\S]*const filteredItems = applyRequestSuspendTagDockFilter\(contSizeItems, sourceLookup\)/);
   assert.match(plan, /buildRequestPagedRenderPlan\([\s\S]*filteredItems\)/);
   assert.match(html, /request-suspend-tag-contsize-filter/);
   assert.match(html, /request-suspend-tag-dock-filter/);

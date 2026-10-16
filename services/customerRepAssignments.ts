@@ -129,3 +129,10 @@ export function createCustomerRepAssignments(transport: MappingTransport, identi
     reset(row:MappingRow,signal:AbortSignal){return mutation('reset',row,undefined,signal);},
   };
 }
+
+/** Warm the same identity-scoped rep catalog used by the mounted assignment editor. */
+export async function prefetchCustomerRepOptions(transport: MappingTransport, identityScope: string, signal: AbortSignal): Promise<RepOption[]> {
+  const assignments = createCustomerRepAssignments(transport, identityScope);
+  try { return await assignments.reps(signal); }
+  finally { assignments.dispose(); }
+}

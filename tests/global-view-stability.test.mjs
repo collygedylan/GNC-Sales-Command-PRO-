@@ -53,6 +53,28 @@ test('identical background markup produces no subtree mutations', async () => {
   observer.disconnect(); f.dom.window.close();
 });
 
+test('unchanged deferred photos keep loaded identity and failure evidence across refreshes', () => {
+  const f = fixture('<article data-request-uid="a"><img data-deferred-card-photo="1" data-src="same.jpg" src="same.jpg" data-photo-hydrated="1" data-photo-load-failed="1" class="photo app-photo-thumbnail-failed" alt="Unavailable"><span data-loc-photo-match-value>N/A</span></article>');
+  const img = f.container.querySelector('img');
+  f.window.invalidateCardPhotoMatchOnLoadFailure = image => {
+    image.closest('article').querySelector('[data-loc-photo-match-value]').textContent = 'N/A';
+  };
+  f.context.setContainerHtml(f.container, '<article data-request-uid="a"><img data-deferred-card-photo="1" data-src="same.jpg" class="photo" alt=""><span data-loc-photo-match-value>Not verified</span></article>');
+  assert.equal(f.container.querySelector('img'), img);
+  assert.equal(img.getAttribute('src'), 'same.jpg');
+  assert.equal(img.dataset.photoHydrated, '1');
+  assert.equal(img.dataset.photoLoadFailed, '1');
+  assert.equal(img.classList.contains('app-photo-thumbnail-failed'), true);
+  assert.equal(f.container.querySelector('[data-loc-photo-match-value]').textContent, 'N/A');
+  f.context.setContainerHtml(f.container, '<article data-request-uid="a"><img data-deferred-card-photo="1" data-src="changed.jpg" class="photo" alt=""><span data-loc-photo-match-value>20</span></article>');
+  assert.equal(img.hasAttribute('src'), false);
+  assert.equal(img.dataset.photoHydrated, undefined);
+  assert.equal(img.dataset.photoLoadFailed, undefined);
+  assert.equal(img.classList.contains('app-photo-thumbnail-failed'), false);
+  assert.equal(f.container.querySelector('[data-loc-photo-match-value]').textContent, '20');
+  f.dom.window.close();
+});
+
 test('background refresh preserves a mounted React island but permission removal still removes it', () => {
   const f = fixture('<section><div id="manager-assigned-items-root" data-preserve-dom><input value="draft"></div><p>Old total</p></section>');
   const island = f.container.querySelector('[data-preserve-dom]');

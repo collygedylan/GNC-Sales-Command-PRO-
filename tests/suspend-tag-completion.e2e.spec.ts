@@ -17,7 +17,7 @@ type Reply = {
 type CompletionRequest = { body: Record<string, any> };
 const sourceRevision = '2026-09-08T14:00:00.000Z';
 const completionTime = '2026-09-08T15:00:00.000Z';
-const safeDatasetReads = new Set(['request_queue', 'active_request', 'soc', 'suspend_tag', 'cav', 'reserves', 'sales_office', 'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history']);
+const safeDatasetReads = new Set(['request_queue', 'active_request', 'soc', 'suspend_tag', 'cav', 'reserves', 'sales_office', 'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history', 'inventory_edits', 'shear']);
 const fixtures: FixtureRow[] = [1, 2].map((index) => ({
   UNIQUE_ID: `browser-suspend-${index}`,
   ITEMCODE: `BROWSER-ONLY-SUSPEND-${index}`,
@@ -95,6 +95,11 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: corsHeaders });
+    // A real HTTP image failure dispatches the browser's error event consistently;
+    // an intercepted cancellation can leave WebKit's deferred image unsettled.
+    if (request.method() === 'GET' && url.href === 'https://example.test/photo.jpg') {
+      return route.fulfill({ status: 404, contentType: 'image/jpeg', body: '' });
+    }
     if (options.native && url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1' && request.method() === 'POST') {
       const body = request.postDataJSON();
       if (!Array.isArray(body.p_dataset_keys) || Object.keys(body).some(key => key !== 'p_dataset_keys')) throw new Error('Unexpected revision read');
@@ -139,6 +144,18 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     }
     if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
+      if (options.native && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && body.action === 'eval_work' && body.operation === 'list'
+        && Object.keys(body).sort().join(',') === 'action,operation'
+        && !request.headers()['idempotency-key']) {
+        return fulfill(route, { ok: true, data: [], manager: true });
+      }
+      if (options.native && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && body.action === 'shear_location_work' && body.operation === 'list' && body.status === 'active'
+        && Object.keys(body).sort().join(',') === 'action,operation,status'
+        && !request.headers()['idempotency-key']) {
+        return fulfill(route, { ok: true, data: [] });
+      }
       if (options.native && !options.inventoryUnavailable && body.action === 'inventory_read' && body.operation === 'master_page'
         && body.params?.dataset === 'lookup' && body.params?.projection === 'full'
         && typeof body.params?.uniqueId === 'string' && body.params.limit === 1 && body.params.offset === 0
@@ -476,34 +493,32 @@ test('background Suspend revision preserves card identity and layout while updat
     Array.from(suspendTagReclassLoads.values()).filter(entry => entry.row && !entry.promise && !entry.error).length
   `))).toBe(2);
   await expect(card.locator('[data-suspend-tag-reclass-uid]')).toHaveCount(0);
+  // The synthetic photo intentionally fails. Settle its display-only fallback
+  // before measuring a separate revision of the already hydrated card.
+  await expect.poll(() => card.locator('img').evaluateAll(images => images.map(image => ({
+    source: image.getAttribute('data-src'), src: image.getAttribute('src'),
+    hydrated: image.getAttribute('data-photo-hydrated'), failed: image.getAttribute('data-photo-load-failed'),
+    observed: image.getAttribute('data-photo-observed'), complete: image.complete,
+    errorHandler: typeof image.onerror
+  }))), { message: 'The visible synthetic photo must settle its fallback before the revision baseline' })
+    .toEqual([expect.objectContaining({ hydrated: '1', failed: '1' })]);
+  await expect(card.locator('[data-loc-photo-match-value]')).toHaveText(['N/A', 'N/A']);
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  });
   const beforeNode = await card.elementHandle();
   const before = await card.boundingBox();
-  await page.evaluate(() => window.eval(`(() => {
-    const original = document.querySelector('#request-content [data-request-uid]');
-    window.__suspendRemovalLog = [];
-    const record = (node, operation) => {
-      if (original && original.isConnected && node.contains(original)) window.__suspendRemovalLog.push({ operation, id: node.id, stack: new Error().stack });
-    };
-    const inner = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
-    Object.defineProperty(Element.prototype, 'innerHTML', { ...inner, set(value) { record(this, 'innerHTML'); inner.set.call(this, value); } });
-    const replace = Element.prototype.replaceChildren;
-    Element.prototype.replaceChildren = function(...nodes) { record(this, 'replaceChildren'); return replace.apply(this, nodes); };
-    const remove = Node.prototype.removeChild;
-    Node.prototype.removeChild = function(node) { record(node, 'removeChild'); return remove.call(this, node); };
-    const scroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop');
-    Object.defineProperty(Element.prototype, 'scrollTop', { ...scroll, set(value) {
-      if (this.id === 'main-scroll-area') window.__suspendRemovalLog.push({ operation: 'scrollTop', value, stack: new Error().stack });
-      scroll.set.call(this, value);
-    } });
-  })()`));
+  const beforeContent = await card.innerText();
+  const beforeScroll = await page.locator('#main-scroll-area').evaluate(element => element.scrollTop);
   await app.nativeRefresh(fixtures.map(row => ({ ...row, COMMONNAME: String(row.COMMONNAME).replace('fixture', 'updated') })));
   await expect(card).toContainText('Suspend browser updated 1');
-  const removals = await page.evaluate(() => window.eval('window.__suspendRemovalLog'));
-  await info.attach('suspend-dom-removal-diagnostics', { body: JSON.stringify(removals), contentType: 'application/json' });
-  expect(await beforeNode?.evaluate(node => node.isConnected), JSON.stringify(removals)).toBe(true);
+  expect(await beforeNode?.evaluate(node => node.isConnected)).toBe(true);
   const after = await card.boundingBox();
+  const afterContent = await card.innerText();
+  const afterScroll = await page.locator('#main-scroll-area').evaluate(element => element.scrollTop);
   expect(before).not.toBeNull(); expect(after).not.toBeNull();
-  await info.attach('suspend-background-dom-stability', { body: JSON.stringify({ before, after, retainedNode: true }), contentType: 'application/json' });
+  await info.attach('suspend-background-dom-stability', { body: JSON.stringify({ before, after, beforeContent, afterContent, beforeScroll, afterScroll, retainedNode: true }), contentType: 'application/json' });
   for (const field of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after![field] - before![field])).toBeLessThanOrEqual(1);
   app.assertClean();
 });
