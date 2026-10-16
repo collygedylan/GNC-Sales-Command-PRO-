@@ -9,9 +9,6 @@ const SUPPORTED = Object.freeze({
     args: ['uuid', 'text', 'bigint', 'text', 'jsonb', 'jsonb'], declarations: ['destination_season text;', 'destination_lot text;',
       'actor_username text;', 'is_manager boolean;', 'assigned_to_actor boolean;'],
   }),
-  'public.apply_inventory_reclass_moves_v1': Object.freeze({
-    args: ['uuid', 'text', 'bigint', 'jsonb'], declarations: ['source_uid text;'],
-  }),
   'private.apply_inventory_reclass_moves_set_v1': Object.freeze({
     args: ['uuid', 'text', 'bigint', 'jsonb', 'uuid'], declarations: [],
   }),

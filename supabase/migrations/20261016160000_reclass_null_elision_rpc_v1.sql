@@ -5,7 +5,7 @@ begin;
 -- so the API can reconstruct the exact historical row with its declared keys.
 create or replace function private.encode_inventory_reclass_rows_v1(p_receipt jsonb)
 returns jsonb
-language plpgsql immutable security definer set search_path = ''
+language plpgsql stable security definer set search_path = ''
 as $function$
 declare
   row_columns text[];
@@ -35,7 +35,8 @@ begin
     select candidate_columns column_names from row_keysets where row_order=1
   ), validated_rows as (
     select s.row_order,s.row_value,
-      jsonb_object_length(s.row_value)=213 and not (s.candidate_columns is distinct from f.column_names) valid_keyset
+      (select count(*) from jsonb_object_keys(s.row_value))=213
+        and not (s.candidate_columns is distinct from f.column_names) valid_keyset
     from row_keysets s cross join first_keyset f
   ), sparse_rows as (
     select s.row_order,s.valid_keyset,jsonb_build_object('table','ph_master_inventory','values',

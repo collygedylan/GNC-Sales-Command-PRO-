@@ -14,8 +14,12 @@ import {
 
 const fixtureFunctions = () => [
   ['apply_inventory_reclass_move_v1', 'uuid, text, bigint, text, jsonb, jsonb', 'destination_season text;\ndestination_lot text;\nactor_username text;\nis_manager boolean;\nassigned_to_actor boolean;', 'create temporary table reclass_move_targets_v1 (destination_season text primary key) on commit drop;'],
-  ['apply_inventory_reclass_moves_v1', 'uuid, text, bigint, jsonb', 'source_uid text;', 'create temporary table reclass_move_claims_v1 (lineage_key text primary key) on commit drop;'],
-  ['apply_inventory_reclass_moves_set_v1', 'uuid, text, bigint, jsonb, uuid', '', 'create temporary table reclass_batch_source_before_v1 (source_index integer) on commit drop; create temporary table reclass_batch_source_json_v1 (source_index integer, source_before jsonb) on commit drop;'],
+  ['apply_inventory_reclass_moves_set_v1', 'uuid, text, bigint, jsonb, uuid', '', [
+    'reclass_batch_source_before_v1', 'reclass_batch_source_after_v1',
+    'reclass_batch_target_before_v1', 'reclass_batch_target_after_v1',
+    'reclass_batch_sources_v1', 'reclass_batch_lines_v1', 'reclass_batch_targets_v1',
+    'reclass_batch_source_json_v1', 'reclass_batch_target_json_v1',
+  ].map(name => `create temporary table if not exists ${name} (source_index integer) on commit drop;`).join(' ')],
   ['apply_inventory_reclass_import_overlay_v1', 'uuid, uuid', 'movement_request record;\nmovement record;\nsource_stage record;\ntarget_stage record;\nsource_rows integer;\nsource_matches boolean;\nall_pre boolean;\nall_post boolean;\ntarget_count integer;\ntarget_pre boolean;\ntarget_post boolean;\ndesired_status text;\nconflict_reason_value text;', 'perform (select count(*) from pg_temp.ph_master_bulk_stage_v1 s join pg_temp.ph_master_bulk_map_v1 m using(row_number));'],
   ['ph_refresh_hold_learning_itemcode_batch', 'text, integer', 'v_job_name text;\nv_batch_size integer;', 'create temp table tmp_hl_batch on commit drop as select v_job_name as name limit v_batch_size;'],
   ['ph_refresh_hold_learning_summary_batch', 'text, integer', 'v_job_name text;\nv_batch_size integer;', 'create temp table tmp_hl_summary on commit drop as select v_job_name as name limit v_batch_size;'],
@@ -59,20 +63,32 @@ test('bulk master migration exposes both temporary shapes to strict lint without
 test('Reclass movement RPC temporary tables are registered with strict SQL lint context', () => {
   const migration = readFileSync(new URL('../supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql', import.meta.url), 'utf8');
   const specifications = [
-    ['apply_inventory_reclass_move_v1', 'uuid, text, bigint, text, jsonb, jsonb', 'reclass_move_targets_v1'],
-    ['apply_inventory_reclass_moves_v1', 'uuid, text, bigint, jsonb', 'reclass_move_claims_v1'],
+    ['public', 'apply_inventory_reclass_move_v1', 'uuid, text, bigint, text, jsonb, jsonb', ['reclass_move_targets_v1']],
+    ['private', 'apply_inventory_reclass_moves_set_v1', 'uuid, text, bigint, jsonb, uuid', [
+      'reclass_batch_source_before_v1', 'reclass_batch_source_after_v1',
+      'reclass_batch_target_before_v1', 'reclass_batch_target_after_v1',
+      'reclass_batch_sources_v1', 'reclass_batch_lines_v1', 'reclass_batch_targets_v1',
+      'reclass_batch_source_json_v1', 'reclass_batch_target_json_v1',
+    ]],
   ];
-  for (const [name, args, expectedTable] of specifications) {
-    const start = migration.indexOf(`create or replace function public.${name}(`);
+  for (const [schema, name, args, expectedTables] of specifications) {
+    const start = migration.indexOf(`create or replace function ${schema}.${name}(`);
     assert.ok(start >= 0, `missing ${name}`);
     const end = migration.indexOf('$function$;', start) + '$function$;'.length;
     const definition = migration.slice(start, end);
     const body = definition.split('as $function$')[1].split('$function$;')[0];
-    const [supported] = getSupportedFunctions([{ schema: 'public', name, arguments: args,
+    const [supported] = getSupportedFunctions([{ schema, name, arguments: args,
       argumentNames: [], body, definition }], { allowMissing: true });
-    assert.deepEqual(supported.statements.map(statement => statement.name), [expectedTable]);
-    assert.match(probeSql([supported]), new RegExp(`create temporary table if not exists ${expectedTable}`, 'i'));
+    assert.deepEqual(supported.statements.map(statement => statement.name), expectedTables);
+    for (const table of expectedTables) {
+      assert.match(probeSql([supported]), new RegExp(`create temporary table if not exists ${table}`, 'i'));
+    }
   }
+  const publicBatchStart = migration.indexOf('create or replace function public.apply_inventory_reclass_moves_v1(');
+  const publicBatchEnd = migration.indexOf('$function$;', publicBatchStart) + '$function$;'.length;
+  const publicBatchBody = migration.slice(publicBatchStart, publicBatchEnd).split('as $function$')[1].split('$function$;')[0];
+  assert.match(publicBatchBody, /private\.apply_inventory_reclass_moves_set_v1/);
+  assert.doesNotMatch(publicBatchBody, /create\s+(?:temp|temporary)\s+table/i);
   const start = migration.indexOf('create or replace function private.apply_inventory_reclass_import_overlay_v1(');
   const end = migration.indexOf('$function$;', start) + '$function$;'.length;
   const definition = migration.slice(start, end);
@@ -117,7 +133,7 @@ test('temporary SQL parser respects nested comments, dollar strings, and escape 
 test('source inventory validates exact function signatures, local declarations, and static temp DDL', () => {
   const functions = getSupportedFunctions(fixtureFunctions());
   assert.equal(functions.length, 10);
-  assert.equal(functions.flatMap(item => item.statements).length, 10);
+  assert.equal(functions.flatMap(item => item.statements).length, 18);
   assert.match(probeSql(functions), /WITH NO DATA/);
   assert.match(probeSql(functions), /create temporary table season_items/i);
   assert.throws(() => getSupportedFunctions(fixtureFunctions().slice(1)), /FUNCTION_SET_CHANGED/);
