@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
+import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/archive_migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql');
@@ -106,7 +107,7 @@ test('Sales Office surfaces readiness and the release is activated as one shell 
   assert.match(html, /Needs Photo\/Data/);
   assert.match(html, /Reopened — CAV Blank/);
   assert.match(html, /Reopened — Evidence Invalid/);
-  assert.ok(html.includes(`V${JSON.parse(read('../package.json')).version}`));
+  assert.ok(html.includes(normalizeRelease(`V${JSON.parse(read('../package.json')).version}`)));
 });
 
 test('Season Sales Notes cards show an immutable authoritative arrival timestamp', () => {

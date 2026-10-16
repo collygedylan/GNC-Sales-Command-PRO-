@@ -88,3 +88,12 @@ test('inventory master-page mocks return exact full and browse projection contra
   assert.equal(full.rows[0].ptronhand, '12');
   assert.equal(full.total, 1);
 });
+
+test('browser inventory rows normalize matching lower and uppercase physical aliases before strict projection', () => {
+  const liveEditRow = { unique_id: 'live-edit-alias-row', ptronhand: '390', PTRONHAND: '390',
+    ptravailable: '390', PTRAVAILABLE: '390' };
+  const canonical = inventoryReadFixture.fromFixtureShape(liveEditRow);
+  const projected = inventoryReadFixture.readMasterPage([canonical], { dataset: 'master', projection: 'full', limit: 1 });
+  assert.equal(projected.rows[0].ptronhand, '390');
+  assert.equal(projected.rows[0].ptravailable, '390');
+});

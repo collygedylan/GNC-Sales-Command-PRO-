@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { prepareBrandingAssets } from './branding-assets.mjs';
+import { readExpectedRelease } from './deployment-fingerprint-lib.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const site = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
@@ -47,7 +48,7 @@ try {
   await copyTree(path.join(root, 'components', 'common', 'auraQueryPanel.js'), path.join(site, 'components', 'common', 'auraQueryPanel.js'));
   // The top-level widget URL is versioned by the shell. Version its relative
   // imports too: bypassing a service worker alone does not bypass HTTP caches.
-  const auraRelease = `V${JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).version}`;
+  const auraRelease = await readExpectedRelease(root);
   for (const file of ['components/common/auraVoiceWidget.js', 'utils/auraIntentParser.js']) {
     const target = path.join(site, file);
     const source = await readFile(target, 'utf8');

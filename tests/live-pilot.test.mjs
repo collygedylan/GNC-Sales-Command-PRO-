@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
+import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -73,12 +74,13 @@ const requiredHistoricalSourceColumns = Object.freeze([
 ]);
 
 test('release identifiers are synchronized', () => {
-  const release = `V${packageJson.version}`;
+  const release = normalizeRelease(`V${packageJson.version}`);
+  assert.ok(release);
   assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
   assert.equal(manifest.version, release);
-  assert.match(manifest.start_url, new RegExp(release.replaceAll('.', '\\.')));
+  assert.equal(new URL(manifest.start_url, 'https://example.test').searchParams.get('shellv'), release);
   assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, release.slice(1));
+  assert.equal(packageJson.version, release.replace(/^(?:AgData v|V)/, ''));
   assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
 });
 
@@ -618,7 +620,7 @@ test('installed Android keyboard changes cannot replace or blur the active comma
   );
 });
 
-test('Reclass is an email-only Item Inquiry while legacy quantity and transfer labels remain available', () => {
+test('Reclass keeps the Item Inquiry workflow and applies split moves as confirmed live inventory changes', () => {
   const actionBuilder = html.slice(html.indexOf('function buildArgosInventoryTransactionRailHtml'), html.indexOf('function normalizeArgosInventoryNumber'));
   const modalBuilder = html.slice(html.indexOf('function ensureArgosInventoryTransactionModal'), html.indexOf('function renderArgosInventoryTransactionSource'));
   const payloadBuilder = html.slice(html.indexOf('function buildArgosInventoryTransactionPayload'), html.indexOf('async function postArgosInventoryTransactionPayload'));
@@ -644,6 +646,9 @@ test('Reclass is an email-only Item Inquiry while legacy quantity and transfer l
   assert.doesNotMatch(html, /Sending in Background/);
   assert.match(html, /Email Failed — inventory changed/);
   assert.match(html, /reclass_inquiry_status/);
+  assert.match(html, /createInventoryReclassMovesService/);
+  assert.match(html, /applyArgosInventoryReclassMoveCommand/);
+  assert.match(html, /Live move \+ queued inquiry/);
   assert.match(html, /if \(safeAction === 'qty'\) return 'QTY'/);
   assert.match(html, /if \(safeAction === 'transfer'\) return 'TRANSFER'/);
 });
@@ -843,8 +848,9 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(liveShellBuild, /login-critical-styles/);
   assert.match(liveShellBuild, /loginStylesMarker/);
   assert.match(liveShellBuild, /window\.addEventListener\('load', afterPaint/);
-  assert.match(liveShellBuild, /rel="preload" as="script" href="\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE\}" fetchpriority="high"/);
-  assert.match(liveShellBuild, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE\}'/);
+  assert.match(liveShellBuild, /const RELEASE_QUERY = encodeURIComponent\(RELEASE\)/);
+  assert.match(liveShellBuild, /rel="preload" as="script" href="\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE_QUERY\}" fetchpriority="high"/);
+  assert.match(liveShellBuild, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE_QUERY\}'/);
   assert.match(liveVendorBuild, /@phosphor-icons/);
 });
 

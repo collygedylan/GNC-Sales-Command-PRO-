@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { readExpectedRelease } from './deployment-fingerprint-lib.mjs';
 import { GitHubPaginationError, listGitHubApiItems } from './github-api-pagination.mjs';
 
 const workflowPath = '.github/workflows/performance-monitor.yml';
@@ -110,7 +111,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${selected.runId}\nproof-id=${selected.proofArtifactId}\nsite-id=${selected.siteArtifactId}\n`);
     } else if (process.argv[2] === 'verify') {
       const proof = JSON.parse(readFileSync('artifacts/candidate-proof/release-proof.json','utf8'));
-      const release = `V${JSON.parse(readFileSync('package.json','utf8')).version}`;
+      const release = await readExpectedRelease();
       let digest;
       if (process.env.RELEASE_PROOF_ID) {
         const number = name => {

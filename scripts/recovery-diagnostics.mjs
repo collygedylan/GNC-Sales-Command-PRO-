@@ -2,6 +2,7 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
 
 const code = value => /^[A-Z0-9_]{2,64}$/.test(String(value || '')) ? String(value) : 'UNAVAILABLE';
 export const migrationDigest = versions => createHash('sha256').update(JSON.stringify([...versions].sort())).digest('hex');
@@ -23,7 +24,7 @@ export async function collectRecoveryDiagnostics({ fetchImpl = fetch, db, appOri
   const jobs = [check('frontend', async () => {
     const fingerprint = await json(`${appOrigin.replace(/\/$/, '')}/deployment.json?diagnostic=${now()}`);
     if (fingerprint.schemaVersion !== 'gnc-deployment-fingerprint-v1' || !/^[a-f0-9]{40}$/.test(fingerprint.commit)
-      || !/^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(fingerprint.release)) throw new Error();
+      || !normalizeRelease(fingerprint.release)) throw new Error();
     return { commit: fingerprint.commit, release: fingerprint.release };
   }), check('appsScript', async () => {
     if (!deploymentId) throw Object.assign(new Error(), { code: 'CONFIGURATION_MISSING' });

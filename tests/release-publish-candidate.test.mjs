@@ -242,7 +242,8 @@ test('live notification requires both the current descriptor and immutable commi
   assert.equal(wait.env.EXPECTED_COMMIT, '${{ needs.deploy.outputs.build-commit }}');
   const report = live.steps.find(step => step.name === 'Report the verified live version');
   assert.ok(live.steps.indexOf(report) > live.steps.indexOf(wait));
-  assert.match(report.run, /package.json/);
+  assert.match(report.run, /await readExpectedRelease\(\)/);
+  assert.match(report.run, /deployment-fingerprint-lib\.mjs/);
   assert.match(report.run, /is now LIVE/);
   assert.match(report.run, /GITHUB_STEP_SUMMARY/);
 });

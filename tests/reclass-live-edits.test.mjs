@@ -41,12 +41,14 @@ function liveEdit(overrides = {}) {
 
 const html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
 
-test('Reclass notices disclose live field edits and inquiry-only quantity instructions', () => {
-  const noticeText = 'Editable inventory fields update live inventory after confirmation and remain protected until the legacy import matches. Quantity, season, and sheared instructions remain requests for keyers.';
+test('Reclass notices distinguish committed move quantities from inquiry-only sheared instructions', () => {
+  const noticeText = 'Confirmed Move Up/Down quantities update live inventory before the inquiry is sent.';
   const initialNotice = html.match(/id="argos-inventory-transaction-notice"[^>]*>(.*?)<\/div>/s)?.[1];
-  const refreshedNotice = html.match(/notice\.innerHTML = '(<span class="font-black">Send Item Inquiry<\/span>.*?)';/s)?.[1];
+  const refreshedNotice = html.match(/notice\.innerHTML = '(<span class="font-black">Review Reclass<\/span>.*?)';/s)?.[1];
   assert.ok(initialNotice?.includes(noticeText));
-  assert.equal(refreshedNotice, initialNotice, 'editor updates retain the initial submission disclosure');
+  assert.ok(initialNotice?.includes('Sheared instructions remain requests for keyers.'));
+  assert.ok(refreshedNotice?.includes(noticeText), 'editor updates retain the live move disclosure');
+  assert.ok(refreshedNotice?.includes('Editable inventory fields remain protected until the legacy import matches'));
   assert.doesNotMatch(html, /Live inventory quantities and status remain unchanged/);
   assert.doesNotMatch(html, /Hold\/Stop actions automatically mark the configured current-season scope/);
 });
@@ -208,7 +210,7 @@ test('a malformed receipt from a different account cannot invalidate the current
 });
 
 test('accepted Reclass submit is retained for its owner but cannot close or repaint a newer session modal', async () => {
-  const submitStart = html.indexOf('async function submitArgosInventoryTransaction(');
+  const submitStart = html.indexOf('function getArgosInventoryTransactionPayloadForPendingMove(');
   const submitEnd = html.indexOf('function canSendDriveRowToHoldRelease(', submitStart);
   assert.ok(submitStart > 0 && submitEnd > submitStart);
   const submitSource = html.slice(submitStart, submitEnd);
@@ -261,7 +263,7 @@ test('accepted Reclass submit is retained for its owner but cannot close or repa
 });
 
 test('accepted same-account Reclass receipt still reconciles when its original modal was replaced', async () => {
-  const submitStart = html.indexOf('async function submitArgosInventoryTransaction(');
+  const submitStart = html.indexOf('function getArgosInventoryTransactionPayloadForPendingMove(');
   const submitEnd = html.indexOf('function canSendDriveRowToHoldRelease(', submitStart);
   const submitSource = html.slice(submitStart, submitEnd);
   const originalState = { sourceView: 'drive', submitting: false };
@@ -300,7 +302,7 @@ test('accepted same-account Reclass receipt still reconciles when its original m
 });
 
 test('identity changes during recipient selection prevent posting the old Reclass draft', async () => {
-  const submitStart = html.indexOf('async function submitArgosInventoryTransaction(');
+  const submitStart = html.indexOf('function getArgosInventoryTransactionPayloadForPendingMove(');
   const submitEnd = html.indexOf('function canSendDriveRowToHoldRelease(', submitStart);
   const submitSource = html.slice(submitStart, submitEnd);
   let identity = 'account-a';

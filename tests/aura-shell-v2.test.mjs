@@ -471,7 +471,7 @@ test('AURA cancellation during a stale-context response cannot apply settings or
 test('release packaging ships both V2 modules and versions all relative widget imports', () => {
   const packager = fs.readFileSync(new URL('../scripts/prepare-release-site.mjs', import.meta.url), 'utf8');
   for (const module of ['auraConversation.js', 'auraLingo.js', 'auraGeminiSpeech.js']) assert.ok(packager.includes(module));
-  assert.match(packager, /auraRelease = `V\$\{JSON\.parse/);
+  assert.match(packager, /auraRelease = await readExpectedRelease\(root\)/);
   assert.match(packager, /specifier\}\?v=\$\{encodeURIComponent\(auraRelease\)/);
   assert.match(packager, /\['components\/common\/auraVoiceWidget\.js', 'utils\/auraIntentParser\.js'\]/);
 });

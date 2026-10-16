@@ -5,6 +5,19 @@ import { DATABASE_LINT_SCHEMAS } from './database-workspace.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
 
 const SUPPORTED = Object.freeze({
+  'public.apply_inventory_reclass_move_v1': Object.freeze({
+    args: ['uuid', 'text', 'bigint', 'text', 'jsonb', 'jsonb'], declarations: ['destination_season text;', 'destination_lot text;',
+      'actor_username text;', 'is_manager boolean;', 'assigned_to_actor boolean;'],
+  }),
+  'public.apply_inventory_reclass_moves_v1': Object.freeze({
+    args: ['uuid', 'text', 'bigint', 'jsonb'], declarations: ['source_uid text;'],
+  }),
+  'private.apply_inventory_reclass_import_overlay_v1': Object.freeze({
+    args: ['uuid', 'uuid'], declarations: ['movement_request record;', 'movement record;', 'source_stage record;', 'target_stage record;',
+      'source_rows integer;', 'source_matches boolean;', 'all_pre boolean;', 'all_post boolean;', 'target_count integer;',
+      'target_pre boolean;', 'target_post boolean;', 'desired_status text;', 'conflict_reason_value text;'],
+    contextTables: ['ph_master_bulk_stage_v1', 'ph_master_bulk_map_v1'],
+  }),
   'public.bulk_import_master_snapshot_v1': Object.freeze({
     args: ['uuid', 'uuid', 'jsonb', 'text'], declarations: ['v_rows jsonb;'],
   }),
@@ -41,7 +54,8 @@ join pg_namespace n on n.oid = p.pronamespace
 join pg_language l on l.oid = p.prolang
 where l.lanname = 'plpgsql'
   and n.nspname in ('public', 'private', 'aura_private', 'bunch_note_private', 'hl_order_private', 'app_sync_private')
-  and p.prosrc ~* 'create[[:space:]]+(local[[:space:]]+|global[[:space:]]+)?(temp|temporary)[[:space:]]+table';
+  and (p.prosrc ~* 'create[[:space:]]+(local[[:space:]]+|global[[:space:]]+)?(temp|temporary)[[:space:]]+table'
+    or (n.nspname='private' and p.proname='apply_inventory_reclass_import_overlay_v1'));
 `.trim();
 
 function isWord(char) { return Boolean(char && /[A-Za-z0-9_$]/.test(char)); }
@@ -187,7 +201,8 @@ export function getSupportedFunctions(rawFunctions, { allowMissing = false } = {
         throw new Error(`SQL_LINT_TEMP_CONTEXT_LOCAL_DECLARATION_CHANGED:${qualifiedName}:${name}`);
       }
     }
-    const statements = extractTempStatements(item.body, qualifiedName);
+    const statements = specification.contextTables?.length && extractStaticTemporaryDdl(item.body).length === 0
+      ? [] : extractTempStatements(item.body, qualifiedName);
     const beginIndex = firstBeginIndex(item.body);
     const declaredNames = [...item.body.slice(0, beginIndex).matchAll(/^\s*([a-z_][a-z0-9_$]*)\s+(?=[a-z_])/gmi)]
       .map(match => match[1].toLowerCase()).filter(name => name !== 'declare');
@@ -244,21 +259,27 @@ export function validateShapes(functions, rawShapes) {
   if (!Array.isArray(rawShapes)) throw new Error('SQL_LINT_TEMP_CONTEXT_SHAPES_INVALID');
   const byName = new Map(rawShapes.map(shape => [String(shape.name).toLowerCase(), shape]));
   const allStatements = functions.flatMap(item => item.statements.map(statement => ({ functionName: item.qualifiedName, ...statement })));
-  if (byName.size !== allStatements.length) throw new Error('SQL_LINT_TEMP_CONTEXT_SHAPE_COUNT_MISMATCH');
+  const expectedShapeNames = new Set([
+    ...allStatements.map(statement => statement.name.toLowerCase()),
+    ...functions.flatMap(item => item.specification.contextTables || []).map(name => name.toLowerCase()),
+  ]);
+  if (byName.size !== expectedShapeNames.size || [...byName.keys()].some(name => !expectedShapeNames.has(name))) {
+    throw new Error('SQL_LINT_TEMP_CONTEXT_SHAPE_COUNT_MISMATCH');
+  }
   return functions.map(item => ({
     ...item,
-    pragmas: item.statements.map(statement => {
-      const shape = byName.get(statement.name.toLowerCase());
+    pragmas: [...item.statements.map(statement => statement.name), ...(item.specification.contextTables || [])].map(name => {
+      const shape = byName.get(name.toLowerCase());
       if (!shape || !Array.isArray(shape.columns) || shape.columns.length === 0) {
-        throw new Error(`SQL_LINT_TEMP_CONTEXT_SHAPE_MISSING:${item.qualifiedName}:${statement.name}`);
+        throw new Error(`SQL_LINT_TEMP_CONTEXT_SHAPE_MISSING:${item.qualifiedName}:${name}`);
       }
       const columns = shape.columns.map(column => {
         if (!IDENT.test(column.name) || typeof column.type !== 'string' || !/^[a-zA-Z_][a-zA-Z0-9_ .(),\[\]]*$/.test(column.type)) {
-          throw new Error(`SQL_LINT_TEMP_CONTEXT_COLUMN_INVALID:${statement.name}`);
+          throw new Error(`SQL_LINT_TEMP_CONTEXT_COLUMN_INVALID:${name}`);
         }
         return `${column.name} ${column.type}`;
       });
-      return `table: ${statement.name}(${columns.join(', ')})`;
+      return `table: ${name}(${columns.join(', ')})`;
     }),
   }));
 }

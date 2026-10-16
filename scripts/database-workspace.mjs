@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { repoRoot } from './tooling-process.mjs';
@@ -90,10 +90,12 @@ export function createDatabaseWorkspace({ root = repoRoot, includeTests = false,
       if (!fixturePath.startsWith(`${path.resolve(root)}${path.sep}`) || !existsSync(fixturePath)) {
         throw new Error(`DATABASE_PREREQUISITE_SOURCE_INVALID:${prerequisite.source}`);
       }
-      copyFileSync(fixturePath, path.join(migrationsDir, prerequisite.destination));
+      writeFileSync(path.join(migrationsDir, prerequisite.destination), readFileSync(fixturePath, 'utf8').replaceAll('\r\n', '\n'));
       insertedPrerequisites.add(prerequisite.destination);
     }
-    const originalSource = readFileSync(path.join(migrationSource, name), 'utf8');
+    // Match Linux CI even with a CRLF checkout: pg_get_functiondef preserves
+    // embedded newlines, and later migrations validate exact function anchors.
+    const originalSource = readFileSync(path.join(migrationSource, name), 'utf8').replaceAll('\r\n', '\n');
     let source = isolateCanonicalCronJob(originalSource, name);
     if (name === baselineName) {
       const publicSchemaDeclaration = /CREATE SCHEMA public;/g;
@@ -103,13 +105,13 @@ export function createDatabaseWorkspace({ root = repoRoot, includeTests = false,
       source = source.replace(publicSchemaDeclaration, 'CREATE SCHEMA IF NOT EXISTS public;');
       const augmented = augmentPublicBaseline(source, { root });
       source = augmented.baseline;
-      writeFileSync(path.join(migrationsDir, '20260929200001_baseline_private_catalog_postlude.sql'), augmented.postlude);
+      writeFileSync(path.join(migrationsDir, '20260929200001_baseline_private_catalog_postlude.sql'), augmented.postlude.replaceAll('\r\n', '\n'));
       const split = splitPlatformDefaultPrivileges(source);
       source = split.baseline;
       platformPrivilegeSqlPath = path.join(workspace, 'platform-admin-default-privileges.sql');
-      writeFileSync(platformPrivilegeSqlPath, split.platformSql);
+      writeFileSync(platformPrivilegeSqlPath, split.platformSql.replaceAll('\r\n', '\n'));
     }
-    writeFileSync(path.join(migrationsDir, name), source);
+    writeFileSync(path.join(migrationsDir, name), source.replaceAll('\r\n', '\n'));
   }
   if (insertedPrerequisites.size !== CANONICAL_MIGRATION_PREREQUISITES.length) {
     throw new Error(`DATABASE_PREREQUISITE_MIGRATION_TARGET_MISSING:${CANONICAL_MIGRATION_PREREQUISITES.filter(item => !insertedPrerequisites.has(item.destination)).map(item => item.before).join(',')}`);
@@ -123,7 +125,7 @@ export function createDatabaseWorkspace({ root = repoRoot, includeTests = false,
     for (const relativePath of discoverTests({ root, group: testGroup })) {
       const resolved = path.resolve(root, relativePath);
       if (!resolved.startsWith(`${path.resolve(root)}${path.sep}`)) throw new Error('DATABASE_TEST_PATH_OUTSIDE_REPOSITORY');
-      copyFileSync(resolved, path.join(testsDir, path.basename(relativePath)));
+      writeFileSync(path.join(testsDir, path.basename(relativePath)), readFileSync(resolved, 'utf8').replaceAll('\r\n', '\n'));
     }
   }
 

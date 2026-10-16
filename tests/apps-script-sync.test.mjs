@@ -119,6 +119,23 @@ test('successful sync advances and verifies the exact deployment version and hea
   ]);
 });
 
+test('semantic releases label the Apps Script version and deployment consistently', async () => {
+  const { script } = makeScript();
+  const descriptions = [];
+  script.projects.versions.create = async request => {
+    descriptions.push(request.requestBody.description);
+    return { data: { versionNumber: 201 } };
+  };
+  script.projects.deployments.update = async request => {
+    descriptions.push(request.requestBody.deploymentConfig.description);
+    return { data: {} };
+  };
+  await syncAppsScriptProject({ script, scriptId: 'script', deploymentId: 'deployment',
+    source: `${source}\nconst APP_RELEASE_VERSION_ = 'AgData v2.0.0';`, githubSha: sha,
+    fetchImpl: healthyFetch(), sleep: async () => {}, healthAttempts: 1 });
+  assert.deepEqual(descriptions, ['AgData v2.0.0 (0123456)', 'AgData v2.0.0 (0123456)']);
+});
+
 test('production authorization is checked immediately before each source, version, and deployment mutation', async () => {
   const { script, calls } = makeScript();
   await syncAppsScriptProject({ script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha,

@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
 
 export function prepareReleaseVersion(root=process.cwd(), check=false) {
   const read=p=>fs.readFileSync(path.join(root,p),'utf8');
   const version=JSON.parse(read('package.json')).version;
-  if (!/^\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(version)) throw new Error('RELEASE_VERSION_INVALID');
-  const next=`V${version}`, changes=[];
+  const next=normalizeRelease(`V${version}`), changes=[];
+  if (!next) throw new Error('RELEASE_VERSION_INVALID');
   const markers={
     'index.html':/window\.__APP_SHELL_VERSION__\s*=\s*['"]([^'"]+)['"]/, 
     'manifest.json':/"version"\s*:\s*"([^"]+)"/,
@@ -15,11 +16,20 @@ export function prepareReleaseVersion(root=process.cwd(), check=false) {
     'v2/src/services/api.ts':/export const APP_VERSION\s*=\s*['"]([^'"]+)['"]/,
     'v2/public/manifest.webmanifest':/"version"\s*:\s*"([^"]+)"/
   };
+  if (fs.existsSync(path.join(root,'Code.gs'))) markers['Code.gs'] = /const APP_RELEASE_VERSION_\s*=\s*['"]([^'"]+)['"]/;
+  if (fs.existsSync(path.join(root,'assets/ops-precision-pilot.js'))) markers['assets/ops-precision-pilot.js'] = /const RELEASE\s*=\s*['"]([^'"]+)['"]/;
   for (const [file,marker] of Object.entries(markers)) {
     const before=read(file), previous=before.match(marker)?.[1];
-    if (!/^V\d{4}\.\d{2}\.\d{2}\.(?:\d{2,3}|v2\.\d+)$/.test(previous || '')) throw new Error(`RELEASE_MARKER_MISSING:${file}`);
-    if (file==='v2/public/manifest.webmanifest' && JSON.parse(before).start_url!==`./?shellv=${previous}`) throw new Error('RELEASE_V2_START_URL_MISMATCH');
-    const after=before.replaceAll(previous,next);
+    if (!normalizeRelease(previous) && !/^V\d{4}\.\d{2}\.\d{2}\.v2\.\d+$/.test(previous || '')) throw new Error(`RELEASE_MARKER_MISSING:${file}`);
+    if (file==='v2/public/manifest.webmanifest' && JSON.parse(before).start_url!==`./?shellv=${encodeURIComponent(previous)}`) throw new Error('RELEASE_V2_START_URL_MISMATCH');
+    let after=before.replaceAll(previous,next);
+    if (file==='index.html') after=after.replace(/(window\.__APP_RELEASE_VERSION__\s*=\s*['"])[^'"]+(['"])/, `$1${next}$2`);
+    if (encodeURIComponent(previous)!==previous) after=after.replaceAll(encodeURIComponent(previous),encodeURIComponent(next));
+    after=after.replaceAll(`?v=${next}`,`?v=${encodeURIComponent(next)}`).replaceAll(`&v=${next}`,`&v=${encodeURIComponent(next)}`);
+    if (file==='manifest.json' || file==='v2/public/manifest.webmanifest') {
+      after=after.replaceAll(`shellv=${encodeURIComponent(previous)}`,`shellv=${encodeURIComponent(next)}`)
+        .replaceAll(`shellv=${next}`,`shellv=${encodeURIComponent(next)}`);
+    }
     if (check && before!==after) throw new Error(`RELEASE_VERSION_MISMATCH:${file}`);
     if (before!==after) changes.push([file,after]);
   }

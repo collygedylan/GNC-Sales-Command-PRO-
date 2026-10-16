@@ -270,6 +270,11 @@ function modalHarness() {
     argosInquiryOpenRevision: 0, argosInquiryReadController: null, argosInventoryTransactionState: null,
     owner: 'account-a', view: 'request', requestSuspendTagDockFilter: 'dock-2',
     findItemByUniqueId: uid => uid === master.UNIQUE_ID ? master : null,
+    // These tests cover the cold, access-checked Suspend Tag hydration path.
+    getVerifiedCachedArgosItemInquiryGroup: () => null,
+    // The modal VM fixture has no editable controls; production captures a
+    // baseline so silent hydration cannot overwrite later user input.
+    captureArgosInventoryTransactionDraftBaseline: () => [],
     showToast: (...args) => toasts.push(args),
     canUseProductionLiveSync: () => true,
     getSupabaseReadIdentityScope: () => context.owner,
@@ -279,8 +284,12 @@ function modalHarness() {
     ensureArgosInventoryTransactionModal: () => modal,
     getArgosInventorySourceSnapshot: row => ({ uniqueId: row.UNIQUE_ID }),
     buildItemInquiryViewModel: (row, rows) => ({ row, rows }),
+    renderArgosInventoryTransactionSource: () => '',
+    renderArgosReclassInquiryEditor: () => '',
     resetArgosReclassMultiActionState: () => {},
     generateArgosInventoryTransactionId: () => 'inquiry-token',
+    getArgosReclassLiveEditIdentityKey: () => 'actor-a',
+    readPendingArgosInventoryReclassMove: () => null,
     refreshArgosInventoryTransactionLotOptions: () => {},
     refreshArgosInventoryTransactionPriorityOptions: () => {},
     setArgosInventoryTransactionAction: () => {},

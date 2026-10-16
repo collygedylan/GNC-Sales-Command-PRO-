@@ -6,6 +6,7 @@ import { requestRecipientDirectoryFromResult } from './requestRecipients';
 import { reclassShearedProposal } from './reclassSheared';
 import { confirmedReclassLiveEditsFromResult } from './reclassLiveEdits';
 import { inquiryFieldEdits, validateReclassEditableFieldProposals } from './reclassEditableFields';
+import { createInventoryReclassMovesService } from './reclassMoves';
 import { mountCustomerRepMapping } from './customerRepMapping';
 import { prefetchCustomerRepOptions } from './customerRepAssignments';
 import { historicalRequestsQuery } from './historicalRequests';
@@ -28,6 +29,7 @@ export function createLegacyDatabaseBridge(fetcher: FetchWithTimeout) {
       return createRequestArchivePagesService(readPage);
     },
     inquiryFieldEdits, validateReclassEditableFieldProposals,
+    createInventoryReclassMovesService,
     mountCustomerRepMapping,
     prefetchCustomerRepOptions,
     async readHistoricalRequests(client: SupabaseClient<Database>, input: unknown, signal?: AbortSignal) {

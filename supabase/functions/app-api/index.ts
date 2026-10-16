@@ -7,7 +7,7 @@ import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspend
 import { readAvPage } from "../_shared/av-read.ts";
 import { captureInventoryLocationRevision, enrichInventoryLocationRows } from "../_shared/inventory-location-on-hand.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
-import { handleProductionWorkflow, handleInventoryTransactionHistory, workflowError } from "../_shared/production-workflow.ts";
+import { handleProductionWorkflow, handleInventoryTransactionHistory, handleInventoryReclassMove, inventoryReclassMoveError, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { Database } from "../_shared/database.types.ts";
@@ -5145,6 +5145,19 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
   if (action === "request_recipient_directory") return await handleRequestRecipientDirectory(session, payload);
   if (action === "customer-rep-map") return await handleCustomerRepMappingAction(session, payload);
+
+  if (action === "inventory_reclass_move") {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+    const actor = await resolveActiveSessionProfile(session).catch(() => null);
+    if (!actor) return errorResponse("An active, unlocked app profile is required.", 403, { code: "INVENTORY_RECLASS_PROFILE_INACTIVE" });
+    try {
+      const data = await handleInventoryReclassMove({ supabase, actorProfile: actor, payload });
+      return jsonResponse({ ok: true, data });
+    } catch (error) {
+      const failure = inventoryReclassMoveError(error);
+      return jsonResponse(failure.body, failure.status);
+    }
+  }
 
   if (action === "request_history" || action === "sales_credit") {
     return await handleSalesWorkflow({ session, payload, supabase, resolveActiveSessionProfile, headers: corsHeaders });

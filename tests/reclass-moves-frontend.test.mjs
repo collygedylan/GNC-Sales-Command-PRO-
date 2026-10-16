@@ -1,0 +1,603 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { assertInventoryReclassMoveReceiptMatchesCommand, createInventoryReclassMovesService, confirmedInventoryReclassMoveReceipt } from '../services/reclassMoves.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+
+const html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
+
+function extractAppFunction(name) {
+  const marker = `function ${name}(`;
+  let start = html.indexOf(marker);
+  if (start > 0 && html.slice(start - 6, start) === 'async ') start -= 6;
+  assert.ok(start >= 0, `${name} exists`);
+  const open = html.indexOf(') {', start) + 2;
+  let depth = 0;
+  for (let i = open; i < html.length; i++) {
+    if (html[i] === '{') depth++;
+    else if (html[i] === '}' && --depth === 0) return html.slice(start, i + 1);
+  }
+  throw new Error(`Unclosed function ${name}`);
+}
+
+const source = { uniqueId: 'source-uid', identity: {
+  unique_id: 'source-uid', itemcode: 'ITEM-1', contsize: '#3', locationcode: 'C.12.001',
+  lotcode: '27.F1', season: 'F1', ptronhand: '50', ptravailable: '40',
+} };
+const sourceRow = { unique_id: 'source-uid', itemcode: 'ITEM-1', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', season: 'F1', ptronhand: '30', ptravailable: '20' };
+const targetRow = { unique_id: 'server-target-uid', itemcode: 'ITEM-1', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.U1', season: 'U1', ptronhand: '20', ptravailable: '20' };
+const receipt = { ok: true, commandId: 'reclass-command-0001', requestId: 'request-1', revision: 42,
+  rows: [{ table: 'ph_master_inventory', row: sourceRow }, { table: 'ph_master_inventory', row: targetRow }],
+  movements: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20, sourceUniqueId: 'source-uid', destinationUniqueId: 'server-target-uid' }],
+  status: 'applied' };
+
+test('Reclass move service submits a typed command and validates authoritative rows', async () => {
+  const requests = [];
+  const service = createInventoryReclassMovesService(async (payload, options) => { requests.push({ payload, options }); return { ok: true, data: receipt }; });
+  const result = await service.submit({ commandId: 'reclass-command-0001', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'u1', quantity: 20 }] }] });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].payload.action, 'inventory_reclass_move');
+  assert.equal(requests[0].payload.commandId, 'reclass-command-0001');
+  assert.equal(requests[0].payload.expectedRevision, 41);
+  assert.equal(requests[0].options.idempotencyKey, 'reclass-command-0001');
+  assert.equal(result.rows[1].row.unique_id, 'server-target-uid', 'target ID comes from the server receipt');
+});
+
+test('receipt movement and row identities must match the submitted command', () => {
+  const command = { commandId: 'reclass-command-bound-01', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  const boundReceipt = { ...receipt, commandId: command.commandId };
+  assert.equal(assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt(boundReceipt), command).requestId, 'request-1');
+  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt({ ...boundReceipt,
+    movements: [{ ...receipt.movements[0], quantity: 19 }] }), command), /MOVEMENTS_MISMATCH/);
+  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt({ ...boundReceipt,
+    rows: [receipt.rows[0], { table: 'ph_master_inventory', row: { ...targetRow, lotcode: '27.U2' } }] }), command), /DESTINATION_MISMATCH/);
+  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt(receipt), command), /COMMAND_MISMATCH/);
+});
+
+test('confirmed source quantities must equal the submitted movement subtraction', () => {
+  const command = { commandId: 'reclass-command-quantity-01', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  const valid = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId });
+  assert.equal(assertInventoryReclassMoveReceiptMatchesCommand(valid, command).requestId, 'request-1');
+  const wrongOnHand = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId,
+    rows: [{ ...receipt.rows[0], row: { ...sourceRow, ptronhand: '31' } }, receipt.rows[1]] });
+  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(wrongOnHand, command), /SOURCE_PTRONHAND_MISMATCH/);
+  const malformedAvailable = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId,
+    rows: [{ ...receipt.rows[0], row: { ...sourceRow, ptravailable: '20x' } }, receipt.rows[1]] });
+  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(malformedAvailable, command), /SOURCE_PTRAVAILABLE_MISMATCH/);
+});
+
+test('source stock conservation compares decimal quantities at a common scale', () => {
+  const command = { commandId: 'reclass-command-decimal-scale-01', expectedRevision: 41,
+    moves: [{ source: { uniqueId: 'source-uid', identity: { ...source.identity, ptronhand: '1,000.0', ptravailable: '1000.00' } },
+      lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 610 }] }] };
+  const mixedScaleReceipt = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId,
+    movements: [{ ...receipt.movements[0], quantity: 610 }],
+    rows: [{ table: 'ph_master_inventory', row: { ...sourceRow, ptronhand: '390', ptravailable: '390.000' } }, receipt.rows[1]] });
+  assert.equal(assertInventoryReclassMoveReceiptMatchesCommand(mixedScaleReceipt, command).requestId, 'request-1');
+  const wrongScaleValue = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId,
+    movements: [{ ...receipt.movements[0], quantity: 610 }],
+    rows: [{ table: 'ph_master_inventory', row: { ...sourceRow, ptronhand: '389.999', ptravailable: '390.000' } }, receipt.rows[1]] });
+  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(wrongScaleValue, command), /SOURCE_PTRONHAND_MISMATCH/);
+});
+
+test('unknown outcome retries can replay the exact same command and body', async () => {
+  const requests = []; let attempt = 0;
+  const service = createInventoryReclassMovesService(async (payload, options) => {
+    requests.push({ payload: structuredClone(payload), options: { ...options } });
+    if (++attempt === 1) throw Object.assign(new Error('network timeout'), { status: 0 });
+    return { ok: true, data: { ...receipt, commandId: 'reclass-command-0002' } };
+  });
+  const command = { commandId: 'reclass-command-0002', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  await assert.rejects(service.submit(command), /network timeout/);
+  await service.submit(command);
+  assert.deepEqual(requests[1], requests[0]);
+});
+
+test('pending move commands persist before dispatch and remain isolated per account', async () => {
+  const values = new Map();
+  let owner = 'account-a'; let rejectApply;
+  const dispatched = new Promise((_resolve, reject) => { rejectApply = reject; });
+  const command = { commandId: 'reclass-command-owner-01', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  const ctx = { sessionStorage: { getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) },
+    ARGOS_PENDING_INVENTORY_RECLASS_MOVE_KEY: 'pending-move',
+    buildInventoryReclassMoveCommand: () => command,
+    buildOptimisticInventoryReclassMoveModel: () => ({ model: { optimistic: true }, movedUids: ['source-uid'] }),
+    renderArgosInventoryTransactionInquiryModel() {}, setArgosReclassMoveInputsLocked() {},
+    getArgosReclassLiveEditIdentityKey: () => owner,
+    getInventoryReclassMovesService: () => ({ submit: () => dispatched, status: async () => ({ status: 'missing' }) }),
+    persistPendingArgosInventoryReclassMove: null, readPendingArgosInventoryReclassMove: null };
+  vm.createContext(ctx);
+  vm.runInContext(`${extractAppFunction('readPendingArgosInventoryReclassMove')}\n${extractAppFunction('persistPendingArgosInventoryReclassMove')}\n${extractAppFunction('applyArgosInventoryReclassMoveCommand')}`, ctx);
+  const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
+  const inFlight = ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'account-a');
+  assert.equal(ctx.readPendingArgosInventoryReclassMove('account-a').command.commandId, command.commandId,
+    'the original owner record exists before the request settles');
+  owner = 'account-b';
+  rejectApply(Object.assign(new Error('network timeout'), { status: 503 }));
+  await assert.rejects(inFlight, /network timeout/);
+  assert.equal(ctx.readPendingArgosInventoryReclassMove('account-a').command.commandId, command.commandId,
+    'an account switch does not discard an unresolved command');
+  const secondState = { pendingReclassMove: { command: { ...command, commandId: 'reclass-command-owner-02' }, movedUids: ['other-source'] },
+    snapshot: { uniqueId: 'other-source' } };
+  ctx.persistPendingArgosInventoryReclassMove(secondState, 'account-b');
+  assert.equal(ctx.readPendingArgosInventoryReclassMove('account-a').command.commandId, command.commandId);
+  assert.equal(ctx.readPendingArgosInventoryReclassMove('account-b').command.commandId, 'reclass-command-owner-02');
+  ctx.persistPendingArgosInventoryReclassMove(null, 'account-a');
+  assert.equal(ctx.readPendingArgosInventoryReclassMove('account-a'), null);
+  assert.equal(ctx.readPendingArgosInventoryReclassMove('account-b').command.commandId, 'reclass-command-owner-02');
+});
+
+test('a malformed success receipt remains uncertain until status confirms the committed command', async () => {
+  const command = { commandId: 'reclass-command-malformed-01', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  const committedReceipt = { ...receipt, commandId: command.commandId };
+  const requests = [];
+  const service = createInventoryReclassMovesService(async payload => {
+    requests.push(payload);
+    if (!payload.operation) return { ok: true, data: { ...committedReceipt,
+      movements: [{ ...committedReceipt.movements[0], quantity: 19 }] } };
+    return { ok: true, data: committedReceipt };
+  });
+  const applied = [];
+  const ctx = { getInventoryReclassMovesService: () => service,
+    buildInventoryReclassMoveCommand: () => command,
+    buildOptimisticInventoryReclassMoveModel: () => ({ model: { optimistic: true }, movedUids: ['source-uid'] }),
+    renderArgosInventoryTransactionInquiryModel() {}, setArgosReclassMoveInputsLocked() {},
+    getArgosReclassLiveEditIdentityKey: () => 'actor', isInventoryStatusOutcomeUncertain: error => error.outcomeUncertain === true,
+    getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
+    getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
+    applyArgosInventoryTransactionReturnedRow: row => { applied.push(row.unique_id); return row; },
+    confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
+    retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+  const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
+  await assert.rejects(ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor'), error => error.inventoryMovePending === true);
+  assert.equal(state.pendingReclassMove.uncertain, true);
+  assert.deepEqual(state.inquiryModel, { optimistic: true });
+  const result = await ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor');
+  assert.equal(result.receipt.requestId, 'request-1');
+  assert.deepEqual(requests.map(item => item.operation || 'apply'), ['apply', 'status']);
+  assert.deepEqual(applied, ['source-uid', 'server-target-uid']);
+  assert.equal(state.pendingReclassMove, null);
+});
+
+test('pending and conflict command statuses are never accepted as confirmed inventory receipts', async () => {
+  const pending = createInventoryReclassMovesService(async () => ({ ok: true, data: { ok: true, status: 'pending' } }));
+  const conflict = createInventoryReclassMovesService(async () => ({ ok: true, data: { ok: true, status: 'conflict' } }));
+  const command = { commandId: 'reclass-command-status-01', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  await assert.rejects(pending.submit(command), error => error.code === 'INVENTORY_RECLASS_OUTCOME_PENDING' && error.status === 503);
+  await assert.rejects(conflict.submit(command), error => error.code === 'INVENTORY_RECLASS_CONFLICT' && error.status === 409);
+});
+
+test('committed receipts remain confirmed when upstream import reconciliation is pending or conflicted', async () => {
+  for (const importStatus of ['pending', 'conflict']) {
+    const committed = { ...receipt, commandId: `reclass-command-import-${importStatus}`, importStatus,
+      movements: [{ ...receipt.movements[0], status: importStatus }] };
+    const service = createInventoryReclassMovesService(async () => ({ ok: true, data: committed }));
+    const result = await service.submit({ commandId: `reclass-command-import-${importStatus}`, expectedRevision: 41,
+      moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] });
+    assert.equal(result.status, 'applied');
+    assert.equal(result.importStatus, importStatus);
+    assert.equal(result.movements[0].status, importStatus);
+  }
+});
+
+test('Reclass move status distinguishes missing, pending, acknowledged, and malformed receipts', async () => {
+  const response = { ok: true, data: { ...receipt, commandId: 'reclass-command-0005', status: 'applied', importStatus: 'conflict', movements: [{ ...receipt.movements[0], status: 'conflict' }] } };
+  const service = createInventoryReclassMovesService(async (payload) => {
+    if (payload.commandId === 'reclass-command-0003') return { ok: true, data: { ok: true, status: 'missing', requestId: null, movements: [] } };
+    if (payload.commandId === 'reclass-command-0004') return { ok: true, data: { ok: true, status: 'pending' } };
+    return response;
+  });
+  assert.deepEqual(await service.status('reclass-command-0003'), { status: 'missing' });
+  assert.deepEqual(await service.status('reclass-command-0004'), { status: 'pending' });
+  const committed = await service.status('reclass-command-0005', { commandId: 'reclass-command-0005', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] });
+  assert.equal(committed.status, 'applied');
+  assert.equal(committed.receipt.importStatus, 'conflict');
+  assert.equal(committed.receipt.rows[1].row.unique_id, 'server-target-uid');
+  assert.throws(() => confirmedInventoryReclassMoveReceipt({ ...receipt, rows: [{ table: 'other', row: targetRow }] }), /RECEIPT/);
+  const malformedStatus = createInventoryReclassMovesService(async () => ({ ok: true, data: { ...response.data,
+    movements: [{ ...response.data.movements[0], quantity: 19 }] } }));
+  await assert.rejects(malformedStatus.status('reclass-command-0005', { commandId: 'reclass-command-0005', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] }),
+  error => error.outcomeUncertain === true);
+});
+
+test('Reclass UI builds source-bound split movement commands at the current verified revision', () => {
+  const entry = { unique_id: 'source-uid', sourceRow: { unique_id: 'source-uid', itemcode: 'ITEM-1', contsize: '#3',
+    locationcode: 'C.12.001', lotcode: '27.F1', season: 'F1', ptronhand: '50', ptravailable: '40',
+    __reclassIdentityRaw: { unique_id: 'source-uid', itemcode: 'ITEM-1', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', season: 'F1', ptronhand: '50.00', ptravailable: null } } };
+  const ctx = { getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
+    getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }), canUseProductionLiveSync: () => true,
+    isConfirmedInventoryReadRevisionCurrent: () => true, getArgosReclassLiveEditIdentityKey: () => 'actor',
+    readPendingArgosInventoryReclassMove: () => null,
+    generateArgosInventoryTransactionId: () => 'inventory_reclass_move_abc123' };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('buildInventoryReclassMoveCommand'), ctx);
+  const command = ctx.buildInventoryReclassMoveCommand({ rowOverlays: [{ unique_id: 'source-uid', proposals: [
+    { action: 'move_up', splits: [{ destinationSeason: 'U1', quantity: 12 }, { destinationSeason: 'U2', quantity: 8 }] }
+  ] }] }, { inquiryModel: { locationRows: [entry] } });
+  assert.equal(command.expectedRevision, 41);
+  assert.equal(command.moves[0].source.identity.ptronhand, '50.00', 'live identity uses the untouched row values');
+  assert.equal(command.moves[0].source.identity.ptravailable, null);
+  assert.deepEqual(JSON.parse(JSON.stringify(command.moves[0].lines)), [
+    { direction: 'move_up', destinationSeason: 'U1', quantity: 12 },
+    { direction: 'move_up', destinationSeason: 'U2', quantity: 8 },
+  ]);
+});
+
+test('Item Inquiry can paint a complete warm snapshot immediately while live refresh continues separately', () => {
+  const row = { UNIQUE_ID: 'source-uid', unique_id: 'source-uid', ITEMCODE: 'ITEM-1', itemcode: 'ITEM-1',
+    PTRONHAND: '50', ptronhand: '50', PTRAVAILABLE: '40', ptravailable: '40' };
+  const state = { rowCompleteness: 'complete', initialLoaded: true, fullLoaded: true, fieldCoverage: 'full',
+    liveVerifiedScope: 'context-scope-a', liveVerifiedPermission: 'perm-7', liveVerifiedRevision: '41' };
+  const ctx = {
+    getDatasetState: () => state,
+    getProductionLiveSyncContext: () => ({ scope: 'context-scope-a', dataPermissionVersion: 'perm-7' }),
+    getSupabaseReadIdentityScope: () => 'read-owner-a',
+    getItemInquiryItemCode: () => 'ITEM-1',
+    getItemInquiryRows: () => [row],
+    getItemInquiryRowKey: value => value.unique_id,
+    isConfirmedInventoryReadRevisionCurrent: () => true,
+    isRequestLikeItem: () => false, isDockLikeItem: () => false, isSalesOfficeLikeItem: () => false,
+    compareItemInquiryRows: () => 0
+  };
+  vm.createContext(ctx);
+  vm.runInContext(`${extractAppFunction('getVerifiedCachedArgosItemInquiryGroup')}`, ctx);
+  const group = ctx.getVerifiedCachedArgosItemInquiryGroup(row);
+  assert.equal(group.row, row);
+  assert.deepEqual(Array.from(group.rows), [row]);
+  assert.equal(group.scope, 'context-scope-a', 'refresh fences use the coordinator scope stored with the verified revision');
+  assert.equal(group.readScope, 'read-owner-a', 'read identity scope remains a distinct cache ownership domain');
+  assert.equal(group.revision, '41');
+  state.fieldCoverage = 'browse';
+  state.fullLoaded = false;
+  assert.equal(ctx.getVerifiedCachedArgosItemInquiryGroup(row), null,
+    'a complete row set with browse-only fields cannot bypass full detail hydration');
+  state.fieldCoverage = 'full';
+  state.fullLoaded = true;
+  state.liveVerifiedScope = 'context-scope-other';
+  assert.equal(ctx.getVerifiedCachedArgosItemInquiryGroup(row), null,
+    'a snapshot from a different live coordinator scope cannot warm the modal');
+  state.liveVerifiedScope = 'context-scope-a';
+  state.liveVerifiedPermission = 'perm-old';
+  assert.equal(ctx.getVerifiedCachedArgosItemInquiryGroup(row), null,
+    'a snapshot from a prior permission version cannot warm the modal');
+  state.liveVerifiedPermission = 'perm-7';
+  ctx.getSupabaseReadIdentityScope = () => '';
+  assert.equal(ctx.getVerifiedCachedArgosItemInquiryGroup(row), null,
+    'an absent read-owner identity cannot warm the modal even when the coordinator scope matches');
+});
+
+test('silent warm refresh leaves edits, pending moves, and focused controls intact and skips unchanged rows', () => {
+  const control = { id: 'quantity', value: '0' };
+  const modal = { querySelectorAll: () => [control] };
+  const inquiryEl = { contains: () => false };
+  const overlayMap = new Map();
+  let actionCount = 0;
+  const ctx = { Map, document: { activeElement: null }, getArgosReclassV3HoldProposal: () => null,
+    getArgosReclassV3ActionCountForEntry: () => actionCount, getArgosReclassTemporaryOverlayMap: () => overlayMap };
+  vm.createContext(ctx);
+  vm.runInContext(`${extractAppFunction('captureArgosInventoryTransactionDraftBaseline')}\n${extractAppFunction('hasUnsavedArgosInventoryTransactionDraft')}\n${extractAppFunction('getArgosItemInquiryRenderSignature')}\n${extractAppFunction('shouldApplyArgosItemInquiryRefresh')}`, ctx);
+  const model = { locationRows: [{ unique_id: 'source-uid', values: { ptronhand: '50' } }] };
+  const state = { inquiryModel: model, draftBaseline: ctx.captureArgosInventoryTransactionDraftBaseline(modal) };
+  assert.equal(ctx.shouldApplyArgosItemInquiryRefresh(state, modal, inquiryEl, model), false,
+    'an unchanged payload does not replace modal DOM');
+  const changedModel = { locationRows: [{ unique_id: 'source-uid', values: { ptronhand: '49' } }] };
+  assert.equal(ctx.shouldApplyArgosItemInquiryRefresh({ ...state, pendingReclassMove: { uncertain: true } }, modal, inquiryEl, changedModel), false,
+    'a pending recovered move remains fenced');
+  control.value = '5';
+  assert.equal(ctx.shouldApplyArgosItemInquiryRefresh(state, modal, inquiryEl, changedModel), false,
+    'unsaved core fields remain untouched');
+  control.value = '0';
+  actionCount = 1;
+  assert.equal(ctx.shouldApplyArgosItemInquiryRefresh(state, modal, inquiryEl, changedModel), false,
+    'unsaved row actions remain untouched');
+  actionCount = 0;
+  overlayMap.set('source-uid', { temporaryChangedFields: ['locationnote'] });
+  assert.equal(ctx.shouldApplyArgosItemInquiryRefresh(state, modal, inquiryEl, changedModel), false,
+    'unsaved live inventory field edits remain untouched');
+  overlayMap.clear();
+  ctx.document.activeElement = {};
+  inquiryEl.contains = element => element === ctx.document.activeElement;
+  assert.equal(ctx.shouldApplyArgosItemInquiryRefresh(state, modal, inquiryEl, changedModel), false,
+    'refresh does not steal focus while the user is interacting');
+  ctx.document.activeElement = null;
+  inquiryEl.contains = () => false;
+  assert.equal(ctx.shouldApplyArgosItemInquiryRefresh(state, modal, inquiryEl, changedModel), true);
+});
+
+test('Reclass UI blocks batches whose selected sources resolve to the same destination lineage', () => {
+  const entry = uid => ({ unique_id: uid, sourceRow: { unique_id: uid, warehouseid: 'W1', itemcode: 'ITEM-1', contsize: '#3',
+    locationcode: 'C.12.001', lotcode: '27.F1', season: 'F1', ptronhand: '50', ptravailable: '40' } });
+  const first = entry('source-one'); const second = entry('source-two');
+  const ctx = { getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
+    getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }), canUseProductionLiveSync: () => true,
+    isConfirmedInventoryReadRevisionCurrent: () => true, getArgosReclassLiveEditIdentityKey: () => 'actor',
+    readPendingArgosInventoryReclassMove: () => null, generateArgosInventoryTransactionId: () => 'inventory_reclass_move_overlap' };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('buildInventoryReclassMoveCommand'), ctx);
+  assert.throws(() => ctx.buildInventoryReclassMoveCommand({ rowOverlays: ['source-one', 'source-two'].map(unique_id => ({ unique_id,
+    proposals: [{ action: 'move_up', splits: [{ destinationSeason: 'U1', quantity: 5 }] }] })) },
+  { inquiryModel: { locationRows: [first, second] } }), /same inventory row/);
+});
+
+test('after a confirmed move the UI payload retires only move proposals', () => {
+  const ctx = { RECLASS_ACTION_WORKFLOW_V5_ORDER: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down', 'sheared'] };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('removeConfirmedMoveProposalsFromInquiryPayload'), ctx);
+  const payload = { transaction: { requestActions: ['move_up', 'priority_change'], holdStopProposals: [{ action: 'hold' }] },
+    rowOverlays: [{ unique_id: 'source-uid', proposals: [{ action: 'move_up' }, { action: 'priority_change' }],
+      fieldEdits: [{ field: 'locationnote' }] }] };
+  const updated = ctx.removeConfirmedMoveProposalsFromInquiryPayload(payload);
+  assert.deepEqual(updated.rowOverlays[0].proposals.map((item) => item.action), ['priority_change']);
+  assert.deepEqual(updated.transaction.requestActions, ['hold', 'priority_change', 'inventory_fields']);
+  assert.deepEqual(payload.rowOverlays[0].proposals.map((item) => item.action), ['move_up', 'priority_change'], 'source draft payload is not mutated');
+});
+
+test('optimistic move worksheet subtracts source stock and uses a temporary target identity', () => {
+  const sourceRow = { ...source.identity, UNIQUE_ID: 'source-uid', ITEMCODE: 'ITEM-1', CONTSIZE: '#3', LOCATIONCODE: 'C.12.001',
+    LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '50', PTRAVAILABLE: '40' };
+  const ctx = { parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
+    buildItemInquiryViewModel: (_item, rows) => ({ rows, locationRows: rows.map(row => ({ unique_id: row.UNIQUE_ID, sourceRow: row, values: row })) }) };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('buildOptimisticInventoryReclassMoveModel'), ctx);
+  const result = ctx.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows: [sourceRow] } }, {
+    commandId: 'reclass-command-0007', moves: [{ source: { uniqueId: 'source-uid' }, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }]
+  });
+  assert.equal(result.model.rows[0].ptronhand, '30');
+  assert.equal(result.model.rows[0].ptravailable, '20');
+  assert.equal(result.model.rows[1].lotcode, '27.U1');
+  assert.equal(result.model.rows[1].ptronhand, '20');
+  assert.match(result.model.rows[1].unique_id, /^pending-reclass-/);
+  assert.notEqual(result.model.rows[1].unique_id, 'server-target-uid', 'the UI does not guess the server-owned target ID');
+});
+
+test('optimistic destination selection uses full lineage and rejects duplicate canonical targets', () => {
+  const sourceLineage = { warehouseid: 'WH1', source: 'seed', desigitem: 'D1', desigcust: 'C1', desigloc: 'L1' };
+  const sourceRow = { ...source.identity, ...sourceLineage, UNIQUE_ID: 'source-uid', ITEMCODE: 'ITEM-1', CONTSIZE: '#3',
+    LOCATIONCODE: 'C.12.001', LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '50', PTRAVAILABLE: '40' };
+  const foreignTarget = { ...sourceRow, UNIQUE_ID: 'foreign-target', unique_id: 'foreign-target', LOTCODE: '27.U1', lotcode: '27.U1',
+    SEASON: 'U1', season: 'U1', warehouseid: 'WH2',
+    PTRONHAND: '99', PTRAVAILABLE: '99' };
+  const build = rows => {
+    const ctx = { parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
+      buildItemInquiryViewModel: (_item, input) => ({ rows: input, locationRows: input.map(row => ({ unique_id: row.UNIQUE_ID, sourceRow: row, values: row })) }) };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('buildOptimisticInventoryReclassMoveModel'), ctx);
+    return ctx.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows } }, {
+      commandId: 'reclass-command-lineage-01', moves: [{ source: { uniqueId: 'source-uid' },
+        lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }]
+    });
+  };
+  const result = build([sourceRow, foreignTarget]);
+  assert.equal(result.model.rows.find(row => row.unique_id === 'foreign-target').PTRONHAND, '99');
+  assert.equal(result.model.rows.find(row => row.unique_id.startsWith('pending-reclass-')).ptronhand, '20');
+  assert.throws(() => build([sourceRow, { ...foreignTarget, UNIQUE_ID: 'canonical-one', unique_id: 'canonical-one', warehouseid: 'WH1' },
+    { ...foreignTarget, UNIQUE_ID: 'canonical-two', unique_id: 'canonical-two', warehouseid: 'WH1' }]), /ambiguous/);
+});
+
+test('unknown Reclass move outcomes keep the optimistic worksheet and retry the identical command', async () => {
+  const calls = [], applied = [], persists = [];
+  let submits = 0;
+  const service = { status: async (id) => { calls.push(['status', id]); return { status: 'missing' }; },
+    submit: async (command) => { calls.push(['submit', structuredClone(command)]); if (++submits === 1) throw Object.assign(new Error('request timed out'), { status: 500 }); return { ...receipt, status: 'applied' }; } };
+  const ctx = { getInventoryReclassMovesService: () => service,
+    buildInventoryReclassMoveCommand: () => ({ commandId: 'reclass-command-0006', expectedRevision: 41, moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] }),
+    buildOptimisticInventoryReclassMoveModel: () => ({ model: { optimistic: true }, movedUids: ['source-uid'] }),
+    renderArgosInventoryTransactionInquiryModel() {}, setArgosReclassMoveInputsLocked() {},
+    getArgosReclassLiveEditIdentityKey: () => 'actor', isInventoryStatusOutcomeUncertain: error => error.status === 500,
+    getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
+    getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
+    applyArgosInventoryTransactionReturnedRow: row => { applied.push(row.unique_id); return row; },
+    confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
+    retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove: (_state, _identity) => persists.push(_state),
+    readPendingArgosInventoryReclassMove: () => null,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+  const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
+  await assert.rejects(ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor'), error => error.inventoryMovePending === true);
+  assert.equal(state.pendingReclassMove.uncertain, true);
+  assert.deepEqual(state.inquiryModel, { optimistic: true });
+  const result = await ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor');
+  assert.equal(calls[0][0], 'submit');
+  assert.equal(calls[1][0], 'status');
+  assert.deepEqual(calls[0][1], calls[2][1], 'retry uses the original id and body');
+  assert.equal(result.receipt.requestId, 'request-1');
+  assert.deepEqual(applied, ['source-uid', 'server-target-uid']);
+  assert.equal(state.pendingReclassMove, null);
+});
+
+test('pending move retry reuses the original validated inquiry draft after optimistic stock changes', async () => {
+  const calls = [], persisted = [];
+  let submits = 0;
+  const command = { commandId: 'reclass-command-pending-draft-01', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  const draft = { transaction: { requestActions: ['priority_change'] }, rowOverlays: [{ unique_id: 'source-uid',
+    proposals: [{ action: 'move_up', splits: [{ quantity: '20', destinationSeason: 'U1' }] },
+      { action: 'priority_change', priority: '1' }], fieldEdits: [{ field: 'locationnote', value: 'Keep this draft' }] }] };
+  const service = { status: async id => { calls.push(['status', id]); return { status: 'missing' }; },
+    submit: async input => { calls.push(['submit', structuredClone(input)]); if (++submits === 1) throw Object.assign(new Error('lost response'), { status: 503 }); return { ...receipt, status: 'applied' }; } };
+  const ctx = { getInventoryReclassMovesService: () => service,
+    buildInventoryReclassMoveCommand: () => command,
+    buildOptimisticInventoryReclassMoveModel: () => ({ model: { rows: [{ unique_id: 'source-uid', ptronhand: '30' }] }, movedUids: ['source-uid'] }),
+    renderArgosInventoryTransactionInquiryModel() {}, setArgosReclassMoveInputsLocked() {},
+    getArgosReclassLiveEditIdentityKey: () => 'actor', isInventoryStatusOutcomeUncertain: error => error.status === 503,
+    getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
+    getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
+    applyArgosInventoryTransactionReturnedRow: row => row, confirmedArgosReclassLiveEditRevisions: new Map(),
+    invalidateArgosReclassLiveEditCaches() {}, retireConfirmedArgosReclassMoveProposals() {},
+    persistPendingArgosInventoryReclassMove: state => persisted.push(state?.pendingReclassMove?.inquiryPayload || null),
+    readPendingArgosInventoryReclassMove: () => null };
+  vm.createContext(ctx);
+  vm.runInContext(`${extractAppFunction('applyArgosInventoryReclassMoveCommand')}\n${extractAppFunction('getArgosInventoryTransactionPayloadForPendingMove')}`, ctx);
+  const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
+  await assert.rejects(ctx.applyArgosInventoryReclassMoveCommand(state, draft, 'actor'), error => error.inventoryMovePending === true);
+  assert.deepEqual(state.inquiryModel, { rows: [{ unique_id: 'source-uid', ptronhand: '30' }] });
+  assert.equal(JSON.stringify(persisted.at(-1)), JSON.stringify(draft), 'the pre-move remaining inquiry draft is persisted with the idempotent command');
+  const newlyBuiltFromOptimisticState = { transaction: { requestActions: [] }, rowOverlays: [] };
+  const retryPayload = ctx.getArgosInventoryTransactionPayloadForPendingMove(state, newlyBuiltFromOptimisticState);
+  assert.equal(JSON.stringify(retryPayload), JSON.stringify(draft), 'pending retry keeps the original remaining draft instead of validating against optimistic balances');
+  const result = await ctx.applyArgosInventoryReclassMoveCommand(state, retryPayload, 'actor');
+  assert.equal(result.receipt.requestId, 'request-1');
+  assert.deepEqual(calls.map(call => call[0]), ['submit', 'status', 'submit']);
+  assert.deepEqual(calls[0][1], calls[2][1], 'the retry uses the exact original stock command');
+  assert.equal(state.pendingReclassMove, null);
+});
+
+test('pending worksheet lock restores only controls it disabled and preserves authorization state', () => {
+  const makeControl = disabled => {
+    const attrs = new Map();
+    return { disabled,
+      hasAttribute: name => attrs.has(name),
+      getAttribute: name => attrs.get(name) ?? null,
+      setAttribute: (name, value) => attrs.set(name, String(value)),
+      removeAttribute: name => attrs.delete(name) };
+  };
+  const editable = makeControl(false);
+  const permissionDisabled = makeControl(true);
+  let controls = [editable, permissionDisabled];
+  const ctx = { document: { getElementById: id => id === 'argos-reclass-item-inquiry'
+    ? { querySelectorAll: () => controls } : null } };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('setArgosReclassMoveInputsLocked'), ctx);
+  ctx.setArgosReclassMoveInputsLocked(true);
+  assert.equal(editable.disabled, true);
+  assert.equal(permissionDisabled.disabled, true);
+
+  const rendererDisabled = makeControl(true);
+  const rendererEditable = makeControl(false);
+  controls = [rendererDisabled, rendererEditable];
+  ctx.setArgosReclassMoveInputsLocked(false);
+  assert.equal(rendererDisabled.disabled, true, 'freshly rendered permission-disabled controls remain disabled');
+  assert.equal(rendererEditable.disabled, false, 'freshly rendered controls retain renderer state');
+
+  controls = [editable, permissionDisabled];
+  ctx.setArgosReclassMoveInputsLocked(false);
+  assert.equal(editable.disabled, false, 'a control originally enabled is restored');
+  assert.equal(permissionDisabled.disabled, true, 'a control originally disabled by authorization remains disabled');
+  assert.equal(editable.hasAttribute('data-reclass-pending-disabled'), false);
+  assert.equal(permissionDisabled.hasAttribute('data-reclass-pending-disabled'), false);
+});
+
+test('a new stock command is not dispatched when its recovery record cannot be persisted', async () => {
+  let rpcCalls = 0; const lockStates = [];
+  const command = { commandId: 'reclass-command-storage-block-01', expectedRevision: 41,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  const ctx = { getInventoryReclassMovesService: () => ({ status: async () => { rpcCalls++; }, submit: async () => { rpcCalls++; } }),
+    buildInventoryReclassMoveCommand: () => command,
+    buildOptimisticInventoryReclassMoveModel: () => ({ model: { optimistic: true }, movedUids: ['source-uid'] }),
+    renderArgosInventoryTransactionInquiryModel() {}, setArgosReclassMoveInputsLocked: locked => lockStates.push(locked),
+    getArgosReclassLiveEditIdentityKey: () => 'actor', isInventoryStatusOutcomeUncertain: () => false,
+    readPendingArgosInventoryReclassMove: () => null,
+    getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
+    getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
+    confirmedArgosReclassLiveEditRevisions: new Map(), applyArgosInventoryTransactionReturnedRow: row => row,
+    invalidateArgosReclassLiveEditCaches() {}, retireConfirmedArgosReclassMoveProposals() {},
+    persistPendingArgosInventoryReclassMove: () => false };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+  const originalModel = { rows: [{ unique_id: 'source-uid', ptronhand: '50' }] };
+  const state = { inquiryModel: originalModel, item: {}, snapshot: { uniqueId: 'source-uid' } };
+  await assert.rejects(ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor'), error =>
+    error.code === 'INVENTORY_RECLASS_PENDING_STORAGE_UNAVAILABLE');
+  assert.equal(rpcCalls, 0, 'no mutation or status request is made without a recoverable command record');
+  assert.equal(state.pendingReclassMove, null);
+  assert.equal(state.inquiryModel, originalModel, 'optimistic quantities are rolled back');
+  assert.deepEqual(lockStates, [true, false], 'worksheet controls are released after rollback');
+
+  for (const stored of [
+    { command: { ...command, expectedRevision: 42 }, inquiryPayload: {} },
+    { command, inquiryPayload: { changed: true } },
+  ]) {
+    ctx.readPendingArgosInventoryReclassMove = () => stored;
+    const mismatchState = { inquiryModel: originalModel, item: {}, snapshot: { uniqueId: 'source-uid' } };
+    await assert.rejects(ctx.applyArgosInventoryReclassMoveCommand(mismatchState, {}, 'actor'), error =>
+      error.code === 'INVENTORY_RECLASS_PENDING_STORAGE_UNAVAILABLE');
+    assert.equal(mismatchState.pendingReclassMove, null, 'a same-ID but mismatched stored record is never treated as recovery');
+  }
+  assert.equal(rpcCalls, 0, 'mismatched saved bodies and drafts cannot authorize a stock dispatch');
+});
+
+test('lost responses finalize committed pending or conflicted import receipts without resubmitting stock', async () => {
+  for (const importStatus of ['pending', 'conflict']) {
+    const calls = [], applied = [];
+    const command = { commandId: `reclass-command-status-${importStatus}`, expectedRevision: 41,
+      moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+    const committed = { ...receipt, status: 'applied', importStatus };
+    const service = { status: async (id, expected) => { calls.push(['status', id, structuredClone(expected)]); return { status: 'applied', receipt: committed }; },
+      submit: async input => { calls.push(['submit', structuredClone(input)]); throw new Error('A committed movement must not be replayed.'); } };
+    const ctx = { getInventoryReclassMovesService: () => service, buildInventoryReclassMoveCommand: () => command,
+      buildOptimisticInventoryReclassMoveModel: () => ({ model: { optimistic: true }, movedUids: ['source-uid'] }),
+      renderArgosInventoryTransactionInquiryModel() {}, setArgosReclassMoveInputsLocked() {},
+      getArgosReclassLiveEditIdentityKey: () => 'actor', isInventoryStatusOutcomeUncertain: () => true,
+      getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
+      getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
+      applyArgosInventoryTransactionReturnedRow: row => { applied.push(row.unique_id); return row; },
+      confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
+      retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+    const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' },
+      pendingReclassMove: { command, originalModel: { original: true }, movedUids: ['source-uid'], uncertain: true } };
+    const result = await ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor');
+    assert.equal(result.receipt.importStatus, importStatus);
+    assert.deepEqual(calls, [['status', command.commandId, command]]);
+    assert.deepEqual(applied, ['source-uid', 'server-target-uid']);
+    assert.equal(state.pendingReclassMove, null);
+  }
+});
+
+test('recovering an older committed receipt never overwrites newer stock or lowers the revision fence', async () => {
+  const command = { commandId: 'reclass-command-stale-receipt-01', expectedRevision: 10,
+    moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  const staleReceipt = { ...receipt, commandId: command.commandId, revision: '11' };
+  const statusCalls = []; const appliedRows = []; const invalidations = []; const retired = [];
+  const state = { inquiryModel: { newerCanonical: true }, item: {}, snapshot: { uniqueId: 'source-uid' },
+    pendingReclassMove: { command, movedUids: ['source-uid'], uncertain: true, inFlight: false } };
+  const revisions = new Map([['actor', '14']]);
+  const ctx = {
+    getArgosReclassLiveEditIdentityKey: () => 'actor',
+    getInventoryReclassMovesService: () => ({ status: async (...args) => { statusCalls.push(args); return { status: 'applied', receipt: staleReceipt }; },
+      submit: async () => { throw new Error('confirmed status must prevent duplicate apply'); } }),
+    getDatasetState: () => ({ liveVerifiedRevision: '14', liveVerifiedScope: 'scope', liveVerifiedPermission: 'permission' }),
+    getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'permission' }),
+    confirmedArgosReclassLiveEditRevisions: revisions,
+    applyArgosInventoryTransactionReturnedRow: row => { appliedRows.push(row.unique_id); return row; },
+    invalidateArgosReclassLiveEditCaches: reason => { invalidations.push(reason); },
+    retireConfirmedArgosReclassMoveProposals: (_state, movedUids) => { retired.push([...movedUids]); },
+    persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null, setArgosReclassMoveInputsLocked() {},
+    isInventoryStatusOutcomeUncertain: error => error.outcomeUncertain === true,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+  const result = await ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor');
+  assert.equal(result.receipt.requestId, staleReceipt.requestId, 'status still resolves the committed operation');
+  assert.equal(statusCalls.length, 1);
+  assert.deepEqual(appliedRows, [], 'stale receipt rows never overwrite newer canonical inventory');
+  assert.equal(revisions.get('actor'), '14', 'the local revision fence stays monotonic');
+  assert.deepEqual(retired, [['source-uid']], 'only committed move proposals are retired');
+  assert.equal(state.pendingReclassMove, null);
+  assert.deepEqual(invalidations, [], 'a newer, permission-matched canonical snapshot remains valid');
+
+  ctx.getDatasetState = () => ({ liveVerifiedRevision: '', liveVerifiedScope: '', liveVerifiedPermission: '' });
+  const needsRefresh = { inquiryModel: { newerCanonical: true }, item: {}, snapshot: { uniqueId: 'source-uid' },
+    pendingReclassMove: { command, movedUids: ['source-uid'], uncertain: true, inFlight: false } };
+  await ctx.applyArgosInventoryReclassMoveCommand(needsRefresh, {}, 'actor');
+  assert.equal(statusCalls.length, 2);
+  assert.deepEqual(appliedRows, [], 'an old receipt stays unapplied without a verified newer snapshot too');
+  assert.deepEqual(invalidations, ['inventory-reclass-move-stale-receipt'],
+    'when no current verified snapshot covers the old receipt, canonical refresh is requested');
+  assert.equal(revisions.get('actor'), '14');
+});

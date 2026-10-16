@@ -6,11 +6,12 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import test from 'node:test';
+import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const script = path.join(root, 'scripts/wait-for-live-release.mjs');
 const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
-const release = `V${packageJson.version}`;
+const release = normalizeRelease(`V${packageJson.version}`);
 const expectedCommit = 'a'.repeat(40);
 const staleCommit = 'b'.repeat(40);
 const fingerprint = commit => ({ schemaVersion: 'gnc-deployment-fingerprint-v1', release, commit,

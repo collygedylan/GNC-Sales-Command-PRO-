@@ -1203,11 +1203,26 @@ test('Reclass delivery checks issue no requests while hidden and discard respons
 });
 
 test('Reclass delivery status reconciles immediately when visibility returns', () => {
-    const marker = "document.addEventListener('visibilitychange', () => {\n            if (!document.hidden) void pollReclassDeliveryJobs();\n        }, { passive: true });";
-    assert.ok(html.includes(marker)); let handler; let calls = 0;
-    const ctx = { document: { hidden: true, addEventListener: (_, callback) => { handler = callback; } }, pollReclassDeliveryJobs: () => { calls++; } };
-    vm.createContext(ctx); vm.runInContext(marker, ctx);
-    handler(); assert.equal(calls, 0); ctx.document.hidden = false; handler(); assert.equal(calls, 1);
+    assert.match(html, /document\.addEventListener\('visibilitychange', \(\) => \{\s+if \(document\.hidden\) clearReclassDeliveryPollTimer\(\);\s+else startReclassDeliveryPolling\(\);/);
+});
+
+test('Reclass delivery polling uses a foreground-only timer', () => {
+    const timers = new Map(); let nextId = 0, visibilityHandler, polls = 0;
+    const ctx = { document: { hidden: true, addEventListener: (_, fn) => { visibilityHandler = fn; } },
+        window: { setTimeout: (fn, delay) => { const id = ++nextId; timers.set(id, { fn, delay }); return id; },
+            clearTimeout: id => timers.delete(id) }, reclassDeliveryPollTimer: null,
+        clearTimeout: id => timers.delete(id),
+        renderReclassDeliveryStatusTray() {}, pollReclassDeliveryJobs: async () => { polls++; } };
+    vm.createContext(ctx);
+    const from = html.indexOf('function clearReclassDeliveryPollTimer()');
+    vm.runInContext(html.slice(from, html.indexOf('let inventoryStatusSync = null;', from)), ctx);
+    ctx.startReclassDeliveryPolling();
+    assert.equal(timers.size, 0, 'hidden startup does not arm a recurring poll');
+    ctx.document.hidden = false; visibilityHandler();
+    assert.equal(polls, 1, 'foreground entry checks pending jobs immediately');
+    assert.equal([...timers.values()].some(timer => timer.delay === 5000), true, 'foreground polling uses one timeout');
+    ctx.document.hidden = true; visibilityHandler();
+    assert.equal(timers.size, 0, 'backgrounding clears the pending poll timer');
 });
 
 function nativeRecoveryFixture() {
@@ -1480,16 +1495,110 @@ test('revision reads gate status refreshes only for current identity and matchin
 test('SIGNED_OUT watcher invalidates pending native recovery before clearing the session', () => {
     const calls = []; let callback;
     const ctx = { window: {}, nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true, nativeAuthAccessToken: 'old',
+        currentUser: 'alice',
         getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
         invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
     disposeAuraWidget: () => calls.push('dispose-aura'),
-        closeBloomscapesPendingOrders: () => calls.push('close') };
+        closeBloomscapesPendingOrders: () => calls.push('close'),
+        clearInMemorySessionIdentity: () => { calls.push('clear-identity'); ctx.currentUser = ''; },
+        clearCachedNativeAuthProfile: () => calls.push('clear-profile-cache'), resetLoginUiState: () => calls.push('show-login') };
     vm.createContext(ctx);
     const from = html.indexOf('function installNativeRoleRefreshWatchers()');
     vm.runInContext(html.slice(from, html.indexOf("document.addEventListener('visibilitychange'", from)), ctx);
     ctx.installNativeRoleRefreshWatchers(); callback('SIGNED_OUT', null);
     assert.deepEqual(calls.slice(0, 3), ['dispose-aura', 'invalidate', 'reset']);
     assert.equal(ctx.nativeAuthSessionActive, false); assert.equal(ctx.nativeAuthAccessToken, '');
+    assert.equal(ctx.currentUser, '', 'confirmed sign-out clears the prior account identity');
+    assert.ok(calls.includes('show-login'), 'confirmed sign-out routes back to login');
+});
+
+test('native profile transport failures remain retryable and are distinct from a denied profile', async () => {
+    const cachedProfile = { id: 'account-a', username: 'alice', role: 'User' };
+    const ctx = { Error, String, Date, Promise, navigator: { onLine: true },
+        nativeAuthProfile: null, nativeAuthSessionActive: true, nativeAuthAccessToken: 'valid-token', nativeAuthRecoveryEpoch: 1,
+        nativeAuthSessionUserId: 'account-a',
+        getSupabaseBrowserClient: () => ({}), getNativeAuthSession: async () => ({ user: { id: 'account-a' } }),
+        window: { GncDatabase: { readProfile: async () => ({ data: null, error: Object.assign(new Error('service unavailable'), { status: 503 }) }) } },
+        localStorage: { getItem: () => JSON.stringify(cachedProfile), setItem() {}, removeItem() {} },
+        NATIVE_AUTH_PROFILE_CACHE_KEY: 'native-profile', historicalRequestsOwner: '',
+        getHistoricalRequestsOwnerKey: profile => profile.id, destroyHistoricalRequestsIsland() {},
+        closeBloomscapesPendingOrders() {}, syncPasskeyPilotUi() {}, auraWidgetHandle: null,
+        isAuraProfileCandidate: () => false, disposeAuraWidget() {}, nativeAuthProfileRestorePending: false };
+    vm.createContext(ctx);
+    vm.runInContext(`${extractAppFunction('isTransientNativeAuthReadFailure')}\n${extractAppFunction('nativeAuthReadRetryError')}\n${extractAppFunction('loadNativeAuthProfile')}`, ctx);
+    await assert.rejects(ctx.loadNativeAuthProfile(true), error => error.code === 'NATIVE_PROFILE_RETRY_REQUIRED');
+    assert.equal(ctx.nativeAuthProfile, null, 'cached permissions are not installed as verified profile state');
+    assert.equal(ctx.nativeAuthProfileRestorePending, true, 'a valid SDK session remains eligible for foreground retry');
+
+    ctx.nativeAuthSessionActive = false;
+    ctx.getNativeAuthSession = async () => { throw Object.assign(new Error('session read timed out'), { code: 'NATIVE_PROFILE_RETRY_REQUIRED' }); };
+    ctx.nativeAuthProfileRestorePending = false;
+    await assert.rejects(ctx.loadNativeAuthProfile(true), error => error.code === 'NATIVE_PROFILE_RETRY_REQUIRED');
+    assert.equal(ctx.nativeAuthProfileRestorePending, true, 'an unavailable session read remains eligible for a later verification attempt');
+
+    ctx.getNativeAuthSession = async () => ({ user: { id: 'account-a' } });
+    ctx.window.GncDatabase.readProfile = async () => ({ data: { id: 'account-a', disabled_at: '2026-10-01' }, error: null });
+    assert.equal(await ctx.loadNativeAuthProfile(true), null, 'an authoritative disabled profile remains denied');
+});
+
+test('native profile read cannot install an account after sign-out changes the auth epoch', async () => {
+    const gate = deferred(), readStarted = deferred();
+    const ctx = { Error, String, Date, Promise, navigator: { onLine: true }, nativeAuthProfile: null,
+        nativeAuthSessionActive: true, nativeAuthAccessToken: 'token-a', nativeAuthRecoveryEpoch: 7,
+        nativeAuthSessionUserId: 'account-a', getSupabaseBrowserClient: () => ({}),
+        getNativeAuthSession: async () => ({ user: { id: 'account-a' } }),
+        window: { GncDatabase: { readProfile: () => { readStarted.resolve(); return gate.promise; } } },
+        localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, NATIVE_AUTH_PROFILE_CACHE_KEY: 'native-profile',
+        cacheNativeAuthProfile() {},
+        historicalRequestsOwner: '', getHistoricalRequestsOwnerKey: profile => profile.id,
+        destroyHistoricalRequestsIsland() {}, closeBloomscapesPendingOrders() {}, syncPasskeyPilotUi() {},
+        auraWidgetHandle: null, isAuraProfileCandidate: () => false, disposeAuraWidget() {} };
+    vm.createContext(ctx);
+    vm.runInContext(`${extractAppFunction('isTransientNativeAuthReadFailure')}\n${extractAppFunction('nativeAuthReadRetryError')}\n${extractAppFunction('loadNativeAuthProfile')}`, ctx);
+    const pending = ctx.loadNativeAuthProfile(true);
+    await readStarted.promise;
+    ctx.nativeAuthRecoveryEpoch++;
+    ctx.nativeAuthSessionActive = false;
+    ctx.nativeAuthAccessToken = '';
+    gate.resolve({ data: { id: 'account-a', username: 'alice', role: 'Admin' }, error: null });
+    await assert.rejects(pending, error => error.code === 'NATIVE_AUTH_PROFILE_READ_STALE');
+    assert.equal(ctx.nativeAuthProfile, null, 'the late profile is not installed after the session changes');
+});
+
+test('native password sign-in does not revoke a valid SDK session for a retryable profile failure', async () => {
+    let signOuts = 0;
+    const session = { access_token: 'valid-token', user: { id: 'account-a' } };
+    const ctx = { Error, String, Promise, NATIVE_AUTH_ENABLED: true, SUPABASE_KEY: 'public-key',
+        navigator: { onLine: true }, window: {}, nativeAuthProfile: null, nativeAuthSessionActive: false,
+        nativeAuthAccessToken: '', inventoryFieldCountingMode: false,
+        getSupabaseBrowserClient: () => ({ auth: { signInWithPassword: async () => ({ data: { session }, error: null }),
+            signOut: async () => { signOuts++; } } }), normalizeNativeAuthAlias: () => 'alice@example.invalid',
+        invalidateNativeAuthRecovery() {}, destroyFieldCountingIsland() {}, destroyHistoricalRequestsIsland() {},
+        loadNativeAuthProfile: async () => { throw Object.assign(new Error('profile endpoint unavailable'), { code: 'NATIVE_PROFILE_RETRY_REQUIRED' }); },
+        clearCachedNativeAuthProfile() {}, closeBloomscapesPendingOrders() {},
+        BunchNote: { reset() {} }, SalesWorkspace: { reset() {} }, LocationCode: { reset() {} } };
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('tryNativeAuthPasswordLogin'), ctx);
+    await assert.rejects(ctx.tryNativeAuthPasswordLogin('alice', 'secret'), error => error.code === 'NATIVE_PROFILE_RETRY_REQUIRED');
+    assert.equal(signOuts, 0, 'transient profile failure must not destroy the SDK session');
+    assert.equal(ctx.nativeAuthSessionActive, true);
+    assert.equal(ctx.nativeAuthAccessToken, 'valid-token');
+});
+
+test('native profile restore retries only in foreground and coalesces resume signals', async () => {
+    const gate = deferred(); let restores = 0;
+    const ctx = { Promise, nativeAuthProfileRestorePending: true, nativeAuthSessionActive: false,
+        document: { hidden: true }, restoreNativeAuthSessionOnStartup: () => { restores++; return gate.promise; },
+        nativeAuthRestoreRetryPromise: null };
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('retryNativeAuthRestoreOnForeground'), ctx);
+    assert.equal(await ctx.retryNativeAuthRestoreOnForeground(), false);
+    assert.equal(restores, 0, 'hidden state does not start auth restoration');
+    ctx.document.hidden = false;
+    const first = ctx.retryNativeAuthRestoreOnForeground();
+    const joined = ctx.retryNativeAuthRestoreOnForeground();
+    await Promise.resolve();
+    assert.equal(restores, 1, 'focus and visibility signals share one restore attempt');
+    gate.resolve(true);
+    assert.deepEqual(await Promise.all([first, joined]), [true, true]);
 });
 
 
@@ -1513,7 +1622,7 @@ test('native background validation refreshes the existing session without signin
 
 test('initial restored auth event keeps its pending session read while a known account change invalidates it', () => {
     const calls = []; let callback;
-    const ctx = { window: {}, nativeAuthProfile: null,
+    const ctx = { window: {}, nativeAuthProfile: null, nativeAuthSessionUserId: '',
         getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
         invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
         disposeAuraWidget: () => calls.push('dispose-aura'),
@@ -1526,6 +1635,52 @@ test('initial restored auth event keeps its pending session read while a known a
     ctx.nativeAuthProfile = { id: 'account-a' };
     callback('SIGNED_IN', { user: { id: 'account-b' } });
     assert.deepEqual(calls, ['dispose-aura', 'invalidate', 'reset']);
+});
+
+test('native account switch clears old app identity before restoring the new SDK account', async () => {
+    const calls = []; let callback; let deferredAuthCallback;
+    const ctx = { window: {}, nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true,
+        nativeAuthAccessToken: 'token-a', nativeAuthProfileRestorePending: false,
+        currentUser: 'alice',
+        getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
+        invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
+        disposeAuraWidget() {}, closeBloomscapesPendingOrders() {},
+        clearInMemorySessionIdentity: () => { calls.push('clear-identity'); ctx.currentUser = ''; },
+        clearCachedNativeAuthProfile: () => calls.push('clear-profile-cache'), resetLoginUiState: () => calls.push('show-login'),
+        retryNativeAuthRestoreOnForeground: async () => { calls.push('restore-account-b'); },
+        setTimeout: fn => { deferredAuthCallback = fn; } };
+    vm.createContext(ctx);
+    const from = html.indexOf('function installNativeRoleRefreshWatchers()');
+    vm.runInContext(html.slice(from, html.indexOf("document.addEventListener('visibilitychange'", from)), ctx);
+    ctx.installNativeRoleRefreshWatchers();
+    callback('SIGNED_IN', { access_token: 'token-b', user: { id: 'account-b' } });
+    assert.equal(ctx.currentUser, '', 'account A is removed before account B starts restoring');
+    assert.equal(ctx.nativeAuthProfile, null);
+    assert.equal(ctx.nativeAuthSessionActive, true);
+    assert.equal(ctx.nativeAuthAccessToken, 'token-b');
+    assert.ok(calls.includes('show-login'));
+    await deferredAuthCallback();
+    assert.ok(calls.includes('restore-account-b'));
+});
+
+test('iOS runtime self-heal timers are canceled while hidden and rearmed on foreground', () => {
+    const timers = new Map(), listeners = new Map(); let nextTimer = 0;
+    const ctx = { Date, Math, Promise, iosRuntimeSelfHealInitialized: false, iosRuntimeSelfHealTimer: null,
+        iosRuntimeSelfHealMonitorTimer: null, document: { hidden: true, addEventListener: (type, fn) => listeners.set(`document:${type}`, fn) },
+        window: { visualViewport: null, addEventListener: (type, fn) => listeners.set(`window:${type}`, fn) },
+        isIOSDevice: () => true, isStandaloneApp: () => false, isRecentCameraActivity: () => false,
+        scheduleSettledIosRuntimeSelfHeal() {}, runIosRuntimeSelfHeal: async () => {},
+        setTimeout: (fn, delay) => { const id = ++nextTimer; timers.set(id, { fn, delay }); return id; },
+        clearTimeout: id => timers.delete(id) };
+    vm.createContext(ctx);
+    vm.runInContext(`${extractAppFunction('scheduleIosRuntimeSelfHeal')}\n${extractAppFunction('clearIosRuntimeSelfHealMonitor')}\n${extractAppFunction('scheduleIosRuntimeSelfHealMonitor')}\n${extractAppFunction('initializeIosRuntimeSelfHeal')}`, ctx);
+    ctx.initializeIosRuntimeSelfHeal();
+    assert.equal(timers.size, 0, 'initialization while hidden does not arm timers');
+    ctx.document.hidden = false; listeners.get('document:visibilitychange')();
+    assert.equal([...timers.values()].some(timer => timer.delay === 140), true, 'foreground repair is scheduled');
+    assert.equal([...timers.values()].some(timer => timer.delay === 30000), true, 'visible runtime gets one bounded monitor');
+    ctx.document.hidden = true; listeners.get('document:visibilitychange')();
+    assert.equal(timers.size, 0, 'backgrounding cancels pending repair and monitor timers');
 });
 // @test-group: foundation
 

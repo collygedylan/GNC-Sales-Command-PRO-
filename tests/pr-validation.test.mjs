@@ -32,6 +32,7 @@ test('frontend, backend, mixed, and migration changes select the expected PR lan
   const expected = [
     { paths: ['v2/src/App.tsx'], frontend: true, backend: false, schema: false, jobs: ['react'] },
     { paths: ['supabase/functions/aura-llm-router/index.ts'], frontend: false, backend: true, schema: true, jobs: ['backend-unit'] },
+    { paths: ['services/reclassMove.ts'], frontend: true, backend: true, schema: false, jobs: ['react', 'backend-unit'] },
     { paths: ['v2/src/App.tsx', 'supabase/functions/aura-llm-router/index.ts'], frontend: true, backend: true, schema: true, jobs: ['react', 'backend-unit'] },
     { paths: ['supabase/migrations/example.sql'], frontend: false, backend: true, schema: true, jobs: ['backend-unit'] },
   ];

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createReleaseTestServer } from '../scripts/serve-release-tests.mjs';
+import { readExpectedRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 // @test-group: @sw-isolation
 
 
@@ -14,7 +15,7 @@ test('an installed worker bootstraps the compiled shell from its exact cached ru
   expect(compiledShell).toContain('login-runtime-status');
   const runtimePathMatch = compiledShell.match(/runtime\.src\s*=\s*'([^']*live-app-runtime-[^']+)'/);
   expect(runtimePathMatch, 'compiled bootstrap must select a versioned runtime URL').toBeTruthy();
-  expect(new URL(runtimePathMatch![1], `${localOrigin}/`).searchParams.get('v')).toMatch(/^V\d{4}\./);
+  expect(new URL(runtimePathMatch![1], `${localOrigin}/`).searchParams.get('v')).toBe(await readExpectedRelease());
   const workerSource = await (await request.get(`${localOrigin}/sw.js`)).text();
   const buildMatch = workerSource.match(/const APP_SHELL_BUILD = '([^']+)'/);
   expect(buildMatch).toBeTruthy();

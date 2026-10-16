@@ -160,6 +160,6 @@ jobs:
         run: node scripts/wait-for-live-release.mjs
       - name: Report the verified live version
         run: |
-          version=$(node -p "require('./package.json').version")
-          echo "Version ${version} is now LIVE"
-          echo "Version ${version} is now LIVE" >> "$GITHUB_STEP_SUMMARY"
+          version=$(node --input-type=module -e "import { readExpectedRelease } from './scripts/deployment-fingerprint-lib.mjs'; console.log(await readExpectedRelease());")
+          echo "${version} is now LIVE"
+          echo "${version} is now LIVE" >> "$GITHUB_STEP_SUMMARY"

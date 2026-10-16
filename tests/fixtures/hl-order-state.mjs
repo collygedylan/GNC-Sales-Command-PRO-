@@ -784,7 +784,8 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
           const pageRows = rows.slice(offset, offset + limit);
           if (Number(options.holdBackgroundMasterMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.holdBackgroundMasterMs)));
           if (operation === 'master_page') {
-            const projected = inventoryReadFixture.readMasterPage(pageRows, {
+            const canonicalRows = pageRows.map(row => inventoryReadFixture.fromFixtureShape(row));
+            const projected = inventoryReadFixture.readMasterPage(canonicalRows, {
               dataset, projection: params.projection, uniqueId: params.uniqueId, itemCode: params.itemCode,
               locationCode: params.locationCode, lotCode: params.lotCode, source: params.source,
               season: params.season, offset: 0, limit
@@ -832,7 +833,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   }, { ...session, startupMode: options.startupMode || 'restored', username, role });
   // A held runtime may delay load. The shell is usable at DOMContentLoaded,
   // allowing opt-in tests to inspect it before normal cold-login automation.
-  await page.goto('/', { waitUntil: options.beforeLogin ? 'domcontentloaded' : 'load' });
+  await page.goto(new URL('/', baseURL).href, { waitUntil: options.beforeLogin ? 'domcontentloaded' : 'load' });
   if (options.beforeLogin) await options.beforeLogin(control);
   if (options.startupMode === 'cold') {
     await page.locator('#username-input').fill(username);

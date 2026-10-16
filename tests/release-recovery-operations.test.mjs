@@ -27,6 +27,7 @@ test('failed import evidence survives retries and success, deduplicated by run',
   assert.equal(history.length, 1); assert.equal(history[0].code, 'DATABASE_57014');
   assert.ok(!JSON.stringify(history).includes('private'));
   const health = vm.runInContext('getAppsScriptDeploymentHealth_()', ctx);
+  assert.equal(health.release, vm.runInContext('APP_RELEASE_VERSION_', ctx));
   assert.equal(health.importDiagnostics.failureCountLastSevenDays, 1);
   assert.equal(health.importDiagnostics.recentFailures, undefined);
 });

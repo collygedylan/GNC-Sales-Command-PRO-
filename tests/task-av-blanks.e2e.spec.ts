@@ -93,17 +93,19 @@ for (const username of ['madison_austin', 'madelyn_gray']) {
   });
 }
 
+import { readExpectedRelease } from '../scripts/deployment-fingerprint-lib.mjs';
+
 async function settleIosShellVersion(page: import('@playwright/test').Page, projectName: string) {
   if (!projectName.includes('iphone')) return;
   const version = await page.evaluate(() => String((window as any).__APP_SHELL_VERSION__ || ''));
-  expect(version).toMatch(/^V\d/);
+  expect(version).toBe(await readExpectedRelease());
   await page.goto(`/?shellv=${encodeURIComponent(version)}`, { waitUntil: 'load' });
   await page.locator('#view-login').waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.body.classList.contains('role-access-ready')
     && window.eval('hasAppliedInitialHomeView === true'));
 }
 
-test('AV loads through app-api with raw reads blocked and shows release GNC.001', {"tag":["@task-av-blanks"]}, async ({ page, baseURL }, testInfo) => {
+test('AV loads through app-api with raw reads blocked and shows the current release', {"tag":["@task-av-blanks"]}, async ({ page, baseURL }, testInfo) => {
   const rawReads: string[] = [], datasets = new Set<string>();
   page.on('request', request => {
     if (request.method() === 'GET' && /\/rest\/v1\/(ph_reserves|ph_av_notes|ph_view_av_hot_price_keys)(?:\?|$)/.test(request.url())) rawReads.push(request.url());
@@ -135,7 +137,7 @@ test('AV loads through app-api with raw reads blocked and shows release GNC.001'
   await page.evaluate(() => (window as any).toggleMenu());
   const release = page.locator('#app-release-version');
   await expect(release).toBeVisible();
-  await expect(release).toHaveText('GNC.001');
+  await expect(release).toHaveText(await readExpectedRelease());
   expect(await release.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('gnc-001-av-menu.png') });
   expect(fixture.blockedMutations).toEqual([]);

@@ -5,7 +5,8 @@ import { minify } from 'terser';
 import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'V2026.10.14.003';
+const RELEASE = 'AgData v2.0.0';
+const RELEASE_QUERY = encodeURIComponent(RELEASE);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -109,7 +110,7 @@ const runtimeTag = `<script>
     bootTiming.state = 'loading';
     bootTiming.scriptLoadStartMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
     const runtime = document.createElement('script');
-    runtime.src = './assets/${runtimeName}?v=${RELEASE}';
+    runtime.src = './assets/${runtimeName}?v=${RELEASE_QUERY}';
     runtime.defer = true;
     runtime.onerror = failed;
     runtime.onload = () => {
@@ -196,11 +197,11 @@ let optimizedHead = headHtml.replace(stylePattern, (match, css, offset) => {
 
   if (beforePilotStylesheet && !baseLinkWritten) {
     baseLinkWritten = true;
-    return asyncStylesheetMarkup(`./assets/live-app-styles-base-v2026090503.css?v=${RELEASE}`);
+    return asyncStylesheetMarkup(`./assets/live-app-styles-base-v2026090503.css?v=${RELEASE_QUERY}`);
   }
   if (!beforePilotStylesheet && !authorityLinkWritten) {
     authorityLinkWritten = true;
-    return asyncStylesheetMarkup(`./assets/live-app-styles-authority-v2026090503.css?v=${RELEASE}`);
+    return asyncStylesheetMarkup(`./assets/live-app-styles-authority-v2026090503.css?v=${RELEASE_QUERY}`);
   }
   return '';
 });
@@ -208,7 +209,7 @@ let optimizedHead = headHtml.replace(stylePattern, (match, css, offset) => {
 // Fetch the large classic runtime while the browser parses the lightweight
 // shell. Execution stays deferred until the existing after-paint bootstrap,
 // so this overlaps network transfer without blocking first paint.
-const runtimePreloadTag = `<link rel="preload" as="script" href="./assets/${runtimeName}?v=${RELEASE}" fetchpriority="high">`;
+const runtimePreloadTag = `<link rel="preload" as="script" href="./assets/${runtimeName}?v=${RELEASE_QUERY}" fetchpriority="high">`;
 optimizedHead = optimizedHead.replace('</head>', `${runtimePreloadTag}\n</head>`);
 
 if (!baseStyles.length || !authorityStyles.length) {
@@ -216,7 +217,7 @@ if (!baseStyles.length || !authorityStyles.length) {
 }
 
 const deferrableStylesheets = [
-  `./assets/live-tailwind-v2026082010.min.css?v=${RELEASE}`,
+  `./assets/live-tailwind-v2026082010.min.css?v=${RELEASE_QUERY}`,
   './assets/vendor/phosphor/regular/style.css?v=2.1.2',
   './assets/vendor/phosphor/bold/style.css?v=2.1.2',
   './assets/vendor/phosphor/duotone/style.css?v=2.1.2',
@@ -246,7 +247,7 @@ button,input{font:inherit}
 #login-runtime-feedback[hidden],#login-runtime-reload[hidden]{display:none!important}
 `;
 const loginCriticalStyles = loginCriticalReset + pilotCss.slice(loginStylesStart, loginStylesEnd).trim();
-const pilotStylesheetHref = `./assets/ops-precision-pilot.css?v=${RELEASE}`;
+const pilotStylesheetHref = `./assets/ops-precision-pilot.css?v=${RELEASE_QUERY}`;
 const pilotStylesheetTag = `<link rel="stylesheet" href="${pilotStylesheetHref}">`;
 if (!optimizedHead.includes(pilotStylesheetTag)) {
   throw new Error('Unable to locate the blocking pilot stylesheet.');

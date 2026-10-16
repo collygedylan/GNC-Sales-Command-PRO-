@@ -4,6 +4,7 @@ import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const html = read('../index.html');
@@ -99,8 +100,8 @@ test('hosted health fails on retry-storm thresholds and the isolated CI includes
 });
 
 test('all shell references match the package release', () => {
-  const release = `V${JSON.parse(read('../package.json')).version}`;
-  assert.match(release, /^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/);
+  const release = normalizeRelease(`V${JSON.parse(read('../package.json')).version}`);
+  assert.ok(release, 'package version must have a supported release identifier');
   assert.equal(html.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1], release);
   assert.equal(serviceWorker.match(/const APP_SHELL_BUILD = '([^']+)'/)?.[1], release);
   assert.equal(JSON.parse(read('../manifest.json')).version, release);
