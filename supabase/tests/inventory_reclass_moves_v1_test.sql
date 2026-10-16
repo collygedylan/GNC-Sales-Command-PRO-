@@ -1,7 +1,7 @@
 -- @test-runtime: canonical
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(38);
 
 create function pg_temp.reclass_move_raw_fields_v1(p_values jsonb) returns jsonb
 language sql immutable set search_path = '' as $function$
@@ -13,6 +13,39 @@ $function$;
 
 select has_function('public','apply_inventory_reclass_moves_v1',array['uuid','text','bigint','jsonb'],'atomic Reclass batch RPC exists');
 select has_function('public','get_inventory_reclass_move_status_v1',array['uuid','text'],'Reclass move receipt status RPC exists');
+select ok(position('select (jsonb_populate_record' in regexp_replace(lower(pg_get_functiondef(
+  'public.apply_inventory_reclass_move_v1(uuid,text,bigint,text,jsonb,jsonb)'::regprocedure)),'[[:space:]]+',' ','g'))=0
+  and position('from jsonb_populate_record' in regexp_replace(lower(pg_get_functiondef(
+    'public.apply_inventory_reclass_move_v1(uuid,text,bigint,text,jsonb,jsonb)'::regprocedure)),'[[:space:]]+',' ','g'))>0,
+  'single-source insert expands a lateral row function once rather than per projected column');
+select ok(position('select (jsonb_populate_record' in regexp_replace(lower(pg_get_functiondef(
+  'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))=0
+  and position('cross join lateral jsonb_populate_record' in regexp_replace(lower(pg_get_functiondef(
+    'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))>0,
+  'batch insert expands a lateral row function once rather than per projected column');
+select ok(position('returning m.unique_id,to_jsonb(m.*)' in regexp_replace(lower(pg_get_functiondef(
+  'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))>0
+  and position('returning inserted.unique_id,to_jsonb(inserted.*)' in regexp_replace(lower(pg_get_functiondef(
+    'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))>0
+  and position('set source_after=to_jsonb(m.*)' in regexp_replace(lower(pg_get_functiondef(
+    'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))=0
+  and position('set destination_after=to_jsonb(m.*)' in regexp_replace(lower(pg_get_functiondef(
+    'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))=0,
+  'batch receipts reuse rows captured by source/target DML instead of rereading full master rows');
+select ok(position('analyze pg_temp.reclass_batch_sources_v1' in regexp_replace(lower(pg_get_functiondef(
+  'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))>0
+  and position('analyze pg_temp.reclass_batch_lines_v1' in regexp_replace(lower(pg_get_functiondef(
+    'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))>0
+  and position('analyze pg_temp.reclass_batch_targets_v1' in regexp_replace(lower(pg_get_functiondef(
+    'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))>0,
+  'batch staging tables receive actual cardinality statistics before joins');
+select ok(position('with source_rows as materialized' in regexp_replace(lower(pg_get_functiondef(
+  'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))>0
+  and position('private.ph_master_inventory_lineage_key_v1(source_before)' in regexp_replace(lower(pg_get_functiondef(
+    'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))>0
+  and position('private.ph_master_inventory_lineage_key_v1(to_jsonb(m))' in regexp_replace(lower(pg_get_functiondef(
+    'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure)),'[[:space:]]+',' ','g'))=0,
+  'batch source rows serialize each full master row once before lineage derivation');
 select ok(has_function_privilege('service_role','public.apply_inventory_reclass_moves_v1(uuid,text,bigint,jsonb)','execute'),'service role can call the batch RPC');
 select ok(not has_function_privilege('authenticated','public.apply_inventory_reclass_moves_v1(uuid,text,bigint,jsonb)','execute'),'browser sessions cannot bypass app-api authorization');
 select ok(not has_function_privilege('anon','public.apply_inventory_reclass_moves_v1(uuid,text,bigint,jsonb)','execute'),'anonymous sessions cannot call the batch RPC');
@@ -46,13 +79,21 @@ insert into reclass_move_sources values('reclass-move-v1-a-'||gen_random_uuid():
 insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,source,season,saleyear)
 select unique_id,'RECLASS-MOVE-V1','Reclass fixture','#3','C.16.000',case when unique_id like '%-a-%' then '27.F1' else '28.F1' end,
   '12','9','PH','F1','27' from reclass_move_sources;
+insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,source,season,saleyear)
+select 'reclass-existing-u1-'||gen_random_uuid()::text,'RECLASS-MOVE-V1','Existing destination fixture','#3','C.16.000','27.U1',
+  '10','8','PH','U1','27';
 create temporary table reclass_bad_destination(source_uid text primary key,target_uid text not null) on commit drop;
 insert into reclass_bad_destination values(gen_random_uuid()::text,gen_random_uuid()::text);
 create temporary table reclass_move_call(result jsonb) on commit drop;
 create temporary table reclass_move_request(request jsonb) on commit drop;
 create temporary table reclass_move_import(mode text primary key,result jsonb) on commit drop;
+create temporary table reclass_returning_exact_v1(passed boolean not null) on commit drop;
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select set_config('request.jwt.claim.role','service_role',true);
+select set_config('gnc.inventory_reclass_batch',gen_random_uuid()::text,true);
+select ok(not private.ph_inventory_reclass_batch_context_v1(current_setting('gnc.inventory_reclass_batch')::uuid),
+  'a caller supplied batch marker without a transaction-bound private receipt cannot defer crop-roll projection');
+select set_config('gnc.inventory_reclass_batch','',true);
 
 do $test$
 declare actor_id uuid; expected_revision bigint; source_a text; source_b text; request_payload jsonb; result_value jsonb; replay_value jsonb;
@@ -77,20 +118,37 @@ begin
   insert into reclass_move_request values(request_payload);
   result_value:=public.apply_inventory_reclass_moves_v1(actor_id,'reclass-move-v1-command-00001',expected_revision,request_payload);
   insert into reclass_move_call values(result_value);
+  if nullif(current_setting('gnc.inventory_reclass_batch',true),'') is not null then raise exception 'batch defer marker leaked past operation'; end if;
   if result_value->>'status' <> 'applied' or jsonb_array_length(result_value->'movements') <> 3 then raise exception 'batch result missing movement receipts'; end if;
   if jsonb_array_length(result_value->'rows') <> 4 then raise exception 'batch result must contain two source and two target rows'; end if;
   if (select ptronhand from public.ph_master_inventory where unique_id=source_a) <> '7'
     or (select ptravailable from public.ph_master_inventory where unique_id=source_a) <> '4' then raise exception 'source A quantities not reduced'; end if;
   if (select ptronhand from public.ph_master_inventory where unique_id=source_b) <> '8'
     or (select ptravailable from public.ph_master_inventory where unique_id=source_b) <> '5' then raise exception 'source B quantities not reduced'; end if;
-  if (select sum(ptronhand::numeric) from public.ph_master_inventory where itemcode='RECLASS-MOVE-V1') <> 24
-    or (select sum(ptravailable::numeric) from public.ph_master_inventory where itemcode='RECLASS-MOVE-V1') <> 18 then raise exception 'OH or available quantity was not conserved'; end if;
+  if (select sum(ptronhand::numeric) from public.ph_master_inventory where itemcode='RECLASS-MOVE-V1') <> 34
+    or (select sum(ptravailable::numeric) from public.ph_master_inventory where itemcode='RECLASS-MOVE-V1') <> 26 then raise exception 'OH or available quantity was not conserved'; end if;
   select value->>'destinationUniqueId' into target_a from jsonb_array_elements(result_value->'movements') e(value) where value->>'destinationSeason'='U1' limit 1;
   select value->>'destinationUniqueId' into target_b from jsonb_array_elements(result_value->'movements') e(value) where value->>'destinationSeason'='U2' limit 1;
-  if (select ptronhand from public.ph_master_inventory where unique_id=target_a) <> '5'
-    or (select ptravailable from public.ph_master_inventory where unique_id=target_a) <> '5' then raise exception 'aggregated U1 target balance incorrect'; end if;
+  if target_a not like 'reclass-existing-u1-%'
+    or (select ptronhand from public.ph_master_inventory where unique_id=target_a) <> '15'
+    or (select ptravailable from public.ph_master_inventory where unique_id=target_a) <> '13' then raise exception 'existing U1 target identity or aggregate balance incorrect'; end if;
   if (select ptronhand from public.ph_master_inventory where unique_id=target_b) <> '4'
     or (select ptravailable from public.ph_master_inventory where unique_id=target_b) <> '4' then raise exception 'U2 target balance incorrect'; end if;
+  insert into reclass_returning_exact_v1
+  select count(*)=3 and bool_and(m.source_after=to_jsonb(source_row) and m.destination_after=to_jsonb(destination_row))
+  from private.ph_inventory_reclass_movements_v1 m
+  join public.ph_master_inventory source_row on source_row.unique_id=m.source_unique_id
+  join public.ph_master_inventory destination_row on destination_row.unique_id=m.destination_unique_id
+  where m.request_id in (select unnest(child_request_ids) from private.ph_inventory_reclass_batch_receipts_v1
+    where command_id='reclass-move-v1-command-00001');
+  if exists(select 1 from jsonb_array_elements(result_value->'rows') e(value)
+    join public.ph_master_inventory master on master.unique_id=e.value#>>'{row,unique_id}'
+    cross join lateral public.v2_crop_roll_drive_row_from_json(to_jsonb(master)) mapped
+    left join public.ph_crop_roll_drive_rows crop on crop.master_unique_id=master.unique_id
+    where crop.master_unique_id is null
+      or (to_jsonb(crop)-array['created_at','updated_at']) is distinct from (to_jsonb(mapped)-array['created_at','updated_at'])) then
+    raise exception 'set-based crop-roll projection differs from full authoritative mapper output';
+  end if;
   if (select count(*) from public.ph_inventory_transactions where event_type='inventory_reclass_move' and raw_payload->>'commandId'='reclass-batch:'||left(encode(extensions.digest(convert_to('reclass-move-v1-command-00001:1','UTF8'),'sha256'),'hex'),40)) <> 2 then
     raise exception 'original audit lines were not retained';
   end if;
@@ -111,16 +169,24 @@ begin
       'locationcode',before_row->>'locationcode','lotcode',before_row->>'lotcode','source',before_row->>'source',
       'warehousei',before_row->>'warehousei','warehouseid',before_row->>'warehouseid','season',before_row->>'season',
       'ptronhand',before_row->>'ptronhand','ptravailable',before_row->>'ptravailable'),
-      'rawFields','[]'::jsonb) order by source_uid) into imported_rows
-  from (select distinct on(m.source_unique_id) m.source_unique_id source_uid,m.source_before before_row
-    from private.ph_inventory_reclass_movements_v1 m
-    where m.request_id in (select unnest(child_request_ids) from private.ph_inventory_reclass_batch_receipts_v1
-      where command_id='reclass-move-v1-command-00001') order by m.source_unique_id,m.line_index) source_before_rows;
+      'rawFields','[]'::jsonb) order by row_uid) into imported_rows
+  from (select source_uid row_uid,before_row from (
+      select distinct on(m.source_unique_id) m.source_unique_id source_uid,m.source_before before_row
+      from private.ph_inventory_reclass_movements_v1 m
+      where m.request_id in (select unnest(child_request_ids) from private.ph_inventory_reclass_batch_receipts_v1
+        where command_id='reclass-move-v1-command-00001') order by m.source_unique_id,m.line_index) source_before_rows
+    union all
+    select destination_uid,destination_before from (
+      select distinct on(m.destination_unique_id) m.destination_unique_id destination_uid,m.destination_before
+      from private.ph_inventory_reclass_movements_v1 m
+      where m.request_id in (select unnest(child_request_ids) from private.ph_inventory_reclass_batch_receipts_v1
+        where command_id='reclass-move-v1-command-00001') and m.destination_before is not null
+      order by m.destination_unique_id,m.line_index) target_before_rows) pre_state_rows;
   import_result:=public.bulk_import_master_snapshot_v1(run_id,'b4000000-0000-4000-8000-000000000001',imported_rows,repeat('a',64));
   insert into reclass_move_import values('pre',import_result);
   if import_result->>'published' <> 'true' then raise exception 'exact pre-state import failed publication'; end if;
   if (select ptronhand from public.ph_master_inventory where unique_id=source_a) <> '7'
-    or (select ptronhand from public.ph_master_inventory where unique_id=target_a) <> '5' then raise exception 'pre-state import double-applied or deleted reclass balances'; end if;
+    or (select ptronhand from public.ph_master_inventory where unique_id=target_a) <> '15' then raise exception 'pre-state import double-applied or deleted reclass balances'; end if;
   perform public.finish_dataset_import_v1(run_id);
 
   -- An exact post-move snapshot acknowledges the receipt and releases its
@@ -141,6 +207,9 @@ begin
   perform set_config('request.headers','{}',true);
 end
 $test$;
+
+select ok((select passed from reclass_returning_exact_v1),
+  'movement source and destination snapshots exactly match persisted rows after all master triggers');
 
 insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,source,season,saleyear)
 select source_uid,'RECLASS-SEASON-MISMATCH','Season mismatch fixture','#3','C.16.001','29.F1','12','9','PH','F1','29'
@@ -196,6 +265,40 @@ select throws_ok($$select public.apply_inventory_reclass_moves_v1((select id fro
   '22023','INVENTORY_RECLASS_QUANTITY_UNDERFLOW','overdraw of on-hand or available balance is rejected');
 select throws_ok($$select public.apply_inventory_reclass_moves_v1((select id from reclass_move_actor),'reclass-move-v1-command-00001',(select revision from public.app_dataset_revisions where key='ph_master_inventory'),(select request from reclass_move_request))$$,
   '40001','INVENTORY_RECLASS_COMMAND_CONFLICT','changed expected revision under a committed command ID conflicts');
+select throws_ok($$select public.apply_inventory_reclass_moves_v1((select id from reclass_move_actor),'reclass-overlap-command-00001',(select revision from public.app_dataset_revisions where key='ph_master_inventory'),
+  (select jsonb_build_array(
+    jsonb_build_object('source',jsonb_build_object('uniqueId',source_f1.unique_id,'identity',jsonb_build_object(
+      'unique_id',source_f1.unique_id,'itemcode',source_f1.itemcode,'contsize',source_f1.contsize,'locationcode',source_f1.locationcode,
+      'lotcode',source_f1.lotcode,'season',source_f1.season,'ptronhand',source_f1.ptronhand,'ptravailable',source_f1.ptravailable)),
+      'lines',jsonb_build_array(jsonb_build_object('direction','move_up','destinationSeason','U1','quantity',1))),
+    jsonb_build_object('source',jsonb_build_object('uniqueId',source_u1.unique_id,'identity',jsonb_build_object(
+      'unique_id',source_u1.unique_id,'itemcode',source_u1.itemcode,'contsize',source_u1.contsize,'locationcode',source_u1.locationcode,
+      'lotcode',source_u1.lotcode,'season',source_u1.season,'ptronhand',source_u1.ptronhand,'ptravailable',source_u1.ptravailable)),
+      'lines',jsonb_build_array(jsonb_build_object('direction','move_up','destinationSeason','U2','quantity',1))))
+   from public.ph_master_inventory source_f1 cross join public.ph_master_inventory source_u1
+   where source_f1.unique_id=(select unique_id from reclass_move_sources where unique_id like '%-a-%')
+     and source_u1.unique_id=(select value->>'destinationUniqueId' from reclass_move_call
+       cross join lateral jsonb_array_elements(result->'movements') e(value) where value->>'destinationSeason'='U1' limit 1)))$$,
+  '22023','INVENTORY_RECLASS_OVERLAP_INVALID','a batch cannot target another source lineage in the same atomic request');
+select is((select count(*)::integer from private.ph_inventory_reclass_batch_receipts_v1 where command_id='reclass-overlap-command-00001'),0,
+  'overlap rejection rolls back its receipt and stock mutation');
+select is((select count(*)::integer from public.ph_inventory_transactions where event_type='inventory_reclass_move'),3,
+  'overlap rejection leaves prior movement audit lines unchanged');
+insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,source,season,saleyear)
+select 'reclass-existing-u1-duplicate-'||gen_random_uuid()::text,'RECLASS-MOVE-V1','Duplicate destination fixture','#3','C.16.000','27.U1',
+  '0','0','PH','U1','27';
+select throws_ok($$select public.apply_inventory_reclass_moves_v1((select id from reclass_move_actor),'reclass-duplicate-target-0001',(select revision from public.app_dataset_revisions where key='ph_master_inventory'),
+  (select jsonb_build_array(jsonb_build_object('source',jsonb_build_object('uniqueId',source.unique_id,'identity',jsonb_build_object(
+    'unique_id',source.unique_id,'itemcode',source.itemcode,'contsize',source.contsize,'locationcode',source.locationcode,'lotcode',source.lotcode,
+    'season',source.season,'ptronhand',source.ptronhand,'ptravailable',source.ptravailable)),
+    'lines',jsonb_build_array(jsonb_build_object('direction','move_up','destinationSeason','U1','quantity',1))))
+   from public.ph_master_inventory source where source.unique_id=(select unique_id from reclass_move_sources where unique_id like '%-a-%')))$$,
+  '40001','INVENTORY_RECLASS_DESTINATION_AMBIGUOUS','multiple physical rows for one target lineage are rejected');
+select is((select count(*)::integer from private.ph_inventory_reclass_batch_receipts_v1 where command_id='reclass-duplicate-target-0001'),0,
+  'duplicate-target rejection rolls back the receipt and source quantity');
+select ok((select ptronhand='7' and ptravailable='4' from public.ph_master_inventory where unique_id=(select unique_id from reclass_move_sources where unique_id like '%-a-%')),
+  'duplicate-target rejection leaves source inventory unchanged');
+delete from public.ph_master_inventory where unique_id like 'reclass-existing-u1-duplicate-%';
 
 create temporary table reclass_chain_pre(row_uid text primary key,row_value jsonb) on commit drop;
 insert into reclass_chain_pre
@@ -263,7 +366,7 @@ begin
   if result_value->>'published'<>'true' then raise exception 'pre-state chained snapshot failed publication'; end if;
   perform public.finish_dataset_import_v1(run_id);
   if (select ptronhand from public.ph_master_inventory where unique_id=source_uid)<>'4'
-    or (select ptronhand from public.ph_master_inventory where unique_id=target_u1)<>'7'
+    or (select ptronhand from public.ph_master_inventory where unique_id=target_u1)<>'17'
     or (select ptronhand from public.ph_master_inventory where unique_id=destination_u3)<>'1' then
     raise exception 'pre-state snapshot did not retain cumulative chained balances'; end if;
   if exists(select 1 from private.ph_inventory_reclass_movements_v1 where request_id in (
@@ -282,7 +385,7 @@ begin
   if result_value->>'published'<>'true' then raise exception 'intermediate chained snapshot failed publication'; end if;
   perform public.finish_dataset_import_v1(run_id);
   if (select ptronhand from public.ph_master_inventory where unique_id=source_uid)<>'4'
-    or (select ptronhand from public.ph_master_inventory where unique_id=target_u1)<>'7'
+    or (select ptronhand from public.ph_master_inventory where unique_id=target_u1)<>'17'
     or (select ptronhand from public.ph_master_inventory where unique_id=destination_u3)<>'1' then
     raise exception 'intermediate snapshot did not preserve cumulative quantity'; end if;
   if (select status from private.ph_inventory_reclass_movements_v1 where request_id=(select request_id from private.ph_inventory_reclass_commands_v1 where command_id=first_child))<>'acknowledged'

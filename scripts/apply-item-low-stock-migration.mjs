@@ -253,6 +253,17 @@ export function migrationContractQuery(name) {
         to_regprocedure('public.apply_inventory_reclass_moves_v1(uuid,text,bigint,jsonb)'),
         to_regprocedure('public.get_inventory_reclass_move_status_v1(uuid,text)')))
     and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)')
+        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)')
+        and position('INVENTORY_RECLASS_OVERLAP_INVALID' in p.prosrc)>0
+        and position('ph_inventory_reclass_movements_v1' in p.prosrc)>0
+        and position('apply_inventory_reclass_move_v1' in p.prosrc)=0)
+    and exists(select 1 from pg_proc p
       where p.oid=to_regprocedure('public.apply_inventory_reclass_move_v1(uuid,text,bigint,text,jsonb,jsonb)')
         and position('ph_warehouse_assigned_items' in p.prosrc)>0
         and position('DRIVE_RECLASS_ROW_NOT_ASSIGNED' in p.prosrc)>0
@@ -280,6 +291,23 @@ export function migrationContractQuery(name) {
     and exists(select 1 from information_schema.columns
       where table_schema='private' and table_name='ph_inventory_reclass_commands_v1'
         and column_name='operation_order' and is_identity='YES')
+    and (select count(*)=2 and bool_and(p.prosecdef) and bool_and(p.proconfig @> array['search_path=""'])
+      and bool_and(not has_function_privilege('anon',p.oid,'execute'))
+      and bool_and(not has_function_privilege('authenticated',p.oid,'execute'))
+      and bool_and(not has_function_privilege('service_role',p.oid,'execute'))
+      from pg_proc p where p.oid in (
+        to_regprocedure('private.ph_inventory_reclass_batch_context_v1(uuid)'),
+        to_regprocedure('private.ph_master_bulk_crop_roll_defer_active_v1()')))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.ph_inventory_reclass_batch_context_v1(uuid)')
+        and position('backend_pid' in p.prosrc)>0 and position('transaction_id' in p.prosrc)>0
+        and position('auth.role' in p.prosrc)>0 and position('gnc.inventory_reclass_batch' in p.prosrc)>0)
+    and exists(select 1 from information_schema.columns
+      where table_schema='private' and table_name='ph_inventory_reclass_batch_receipts_v1'
+        and column_name='backend_pid')
+    and exists(select 1 from information_schema.columns
+      where table_schema='private' and table_name='ph_inventory_reclass_batch_receipts_v1'
+        and column_name='transaction_id')
     and exists(select 1 from pg_index i
       where i.indexrelid=to_regclass('public.ph_master_inventory_reclass_lineage_v1_idx')
         and i.indrelid='public.ph_master_inventory'::regclass and i.indisvalid and i.indisready
