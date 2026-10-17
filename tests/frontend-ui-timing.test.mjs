@@ -68,4 +68,8 @@ test('representative queue render waiver is inclusive at 800ms and leaves other 
   assert.throws(() => assertFrontendUiTiming(assertion(400.001), {}));
   const source = readFileSync(new URL('./que-inventory-parity.e2e.spec.ts', import.meta.url), 'utf8');
   assert.ok(source.includes('assertRepresentativeQueueRenderTiming(expect(Number(renderMs)))'));
+  const requestSource = readFileSync(new URL('./request-list-performance.e2e.spec.ts', import.meta.url), 'utf8');
+  assert.ok(requestSource.includes('assertRepresentativeQueueRenderTiming(expect.soft(maximumMeasuredMs))'));
+  assert.ok(requestSource.includes('acceptedLimitsMs: { pending: 800, suspend: 800 }'));
+  assert.ok(requestSource.includes('customerLimitMs: 400, otherModalLimitMs: 400'));
 });
