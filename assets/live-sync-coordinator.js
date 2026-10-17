@@ -139,6 +139,18 @@
             });
             return Array.from(result.values());
         }
+        function retainDisplay(ctx = context()) {
+            if (!ctx?.progressive || ctx.visible === false || !ctx.scope || scope !== ctx.scope
+                || !ctx.dataPermissionVersion || permission !== String(ctx.dataPermissionVersion)
+                || !options.retainAppliedDisplay) return false;
+            const entries = (ctx.adapters || []).map(adapter => {
+                const previous = appliedFor(adapter);
+                return previous && previous.cacheKey === adapter.cacheKey ? { adapter, value: previous.value } : null;
+            });
+            if (!entries.length || !entries.every(Boolean)) return false;
+            options.retainAppliedDisplay(ctx, entries);
+            return true;
+        }
         function identity(ctx) {
             const parts = [ctx.scope, ctx.dataPermissionVersion || '', ctx.viewKey,
                 (ctx.adapters || []).map((item) => [item.id, item.cacheKey])];
@@ -403,6 +415,12 @@
                 const previewIdSet = new Set(requestedPreviewIds);
                 previewAdapters = visibleAdapters.filter(adapter => previewIdSet.has(adapter.id));
             }
+            // Keep a previously applied complete cohort on screen during
+            // revalidation. Replaying its old values as part of a newer
+            // progressive preview can overwrite row-level realtime updates
+            // before the replacement cohort passes the final revision check.
+            const retainAppliedPreviewCohort = previewAdapters.length > 0
+                && previewAdapters.every(adapter => appliedFor(adapter)?.cacheKey === adapter.cacheKey);
             if (!background) requested.clear();
             // A current, canonical access snapshot can authorize showing this
             // user's previously verified display cache while the revision RPC
@@ -424,17 +442,13 @@
                 lastPreview = { entries, partialCohort };
                 options.previewSnapshots(entries, { ...ctx, partialCohort }, revisions);
             };
-            const appliedDisplayEntries = (ctx.adapters || []).map(adapter => {
-                const previous = appliedFor(adapter);
-                return previous && previous.cacheKey === adapter.cacheKey ? { adapter, value: previous.value } : null;
-            });
-            const canRetainAppliedDisplay = !background && ctx.progressive && ctx.visible && ctx.dataPermissionVersion
-                && String(permission || '') === String(ctx.dataPermissionVersion)
-                && appliedDisplayEntries.length > 0 && appliedDisplayEntries.every(Boolean);
-            if (canRetainAppliedDisplay && options.retainAppliedDisplay) {
-                options.retainAppliedDisplay(ctx, appliedDisplayEntries);
-            }
-            if (!background && needsCachedDisplay && ctx.progressive && options.readDisplaySnapshot && options.previewSnapshots
+            if (!background) retainDisplay(ctx);
+            // A disk preview is safe only for a cold cohort. If even one
+            // adapter is already applied, its current display may include
+            // newer row-level realtime data that the cached cohort would undo.
+            const hasAppliedPreviewAdapter = previewAdapters.some(adapter => appliedFor(adapter)?.cacheKey === adapter.cacheKey);
+            if (!background && needsCachedDisplay && !hasAppliedPreviewAdapter
+                && ctx.progressive && options.readDisplaySnapshot && options.previewSnapshots
                 && ctx.dataPermissionVersion && current()) {
                 const displayEntries = await Promise.all(previewAdapters.map(async (adapter) => {
                     const meta = { contractVersion: 1, scope: ctx.scope, adapterId: adapter.id, cacheKey: adapter.cacheKey,
@@ -493,10 +507,15 @@
             }
             const changed = adapters.filter(adapter => appliedFor(adapter)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)]));
             const staged = [];
-            const display = new Map(adapters.filter(adapter => appliedFor(adapter)?.cacheKey === adapter.cacheKey)
+            const display = new Map(adapters.filter(adapter => {
+                const entry = appliedFor(adapter);
+                return entry?.cacheKey === adapter.cacheKey
+                    && entry.signature === JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)]);
+            })
                 .map(adapter => [adapter.id, { adapter, value: appliedFor(adapter).value }]));
             const preview = (adapter, value) => {
-                if (!ctx.progressive || background || !options.previewSnapshots || !current() || value === undefined) return;
+                if (!ctx.progressive || background || retainAppliedPreviewCohort
+                    || !options.previewSnapshots || !current() || value === undefined) return;
                 const old = display.get(adapter.id)?.value;
                 if (value.partial && old && !old.partial) return;
                 display.set(adapter.id, { adapter, value });
@@ -527,7 +546,9 @@
                             const cached = options.readCachedSnapshot ? await Promise.resolve().then(() => options.readCachedSnapshot(adapter, meta)).catch(() => null) : null;
                             if (!current()) return;
                             let value;
-                            if (ctx.progressive && !background && !display.has(adapter.id) && !cacheMatches(cached, meta) && options.readDisplaySnapshot) {
+                            if (ctx.progressive && !background && !display.has(adapter.id)
+                                && appliedFor(adapter)?.cacheKey !== adapter.cacheKey
+                                && !cacheMatches(cached, meta) && options.readDisplaySnapshot) {
                                 const displayValue = await options.readDisplaySnapshot(adapter, meta).catch(() => null);
                                 if (displayValue) preview(adapter, displayValue);
                             }
@@ -704,7 +725,7 @@
             return check('loader').then((ok) => ok && appliedFor(adapter)?.cacheKey === adapter.cacheKey);
         }
         function suspend() { epoch++; clearTimers(); closeSubscription(); queued = false; }
-        return Object.freeze({ check, signal, ensure, reset, suspend,
+        return Object.freeze({ check, signal, ensure, reset, suspend, retainDisplay,
             isSourceReadSuspended: () => {
                 const ctx = options.getContext();
                 if (sourceGate && !sourceGateMatches(ctx)) clearSourceGate();
