@@ -327,6 +327,29 @@ test('retained Suspend cards publish completed stages without touch-idle deferra
   assert.deepEqual(calls, ['apply', 'hydrate:true']);
 });
 
+test('Suspend schedules hydration for the complete visible page before rendering its first chunk', () => {
+  const rows = Array.from({ length: 100 }, (_, index) => ({ UNIQUE_ID: `suspend-${index}` }));
+  const reads = [];
+  const ctx = vm.createContext({
+    getQueueCardInventoryState: (row, view) => { reads.push([row.UNIQUE_ID, view]); return { status: 'loading' }; },
+    renderMarkupChunkedByKey: (_key, _container, _crumb, visibleRows) => {
+      assert.equal(reads.length, 100, 'one batch must already include the whole visible page before chunk callbacks can repaint');
+      assert.equal(visibleRows, rows);
+      return true;
+    },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: options => options,
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all'
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  assert.equal(ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', {
+    rows, items: [...rows, { UNIQUE_ID: 'off-page' }], renderSignature: 'page-1', footerMarkup: ''
+  }), true);
+  assert.deepEqual(reads, rows.map(row => [row.UNIQUE_ID, 'request']), 'off-page rows must not start reads');
+});
+
 test('cold Suspend mirror preparation renders a loading state instead of an empty queue', () => {
   let renderOptions;
   const ctx = vm.createContext({
@@ -560,6 +583,12 @@ test('Suspend mirrors prepare in bounded slices, publish atomically, retain same
   assert.equal(builtRows, 1000);
   assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 1000);
   assert.deepEqual(scheduled, [[0, 0, true]]);
+  const stableRows = ctx.dockSuspendDcRequestMirrorRowsCache;
+  ctx.resolvedViewStateEpoch += 1;
+  assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 1000);
+  assert.equal(ctx.dockSuspendDcRequestMirrorRowsPreparation, null, 'unrelated view cache invalidation must not restart the same source mirror');
+  assert.equal(ctx.dockSuspendDcRequestMirrorRowsCache, stableRows);
+  assert.equal(builtRows, 1000);
 
   const previousRows = ctx.dockSuspendDcRequestMirrorRowsCache;
   ctx.revision = 'r2';
@@ -676,4 +705,17 @@ test('Suspend keeps all filter totals while bounding cards and plan-start signat
   assert.equal(sortCalls, 5, 'identity changes never reuse a previous scope cache');
   ctx.pageIndex = 95;
   assert.equal(ctx.buildSuspendTagRenderPlan(data).rows.length, 39);
+});
+
+test('Suspend source stays empty and stable until the active account snapshot is available', () => {
+  const empty = Object.freeze([]);
+  const ctx = vm.createContext({EMPTY_DOCK_SUSPEND_SOURCE_ROWS: empty, activeReqTab: 'suspend-tag',
+    activeDetailSourceView: '', suspendTagInventoryScope: 'old-account', suspendTagInventory: [{ UNIQUE_ID: 'private-old-row' }],
+    socInventory: [{ UNIQUE_ID: 'soc-row' }], getCurrentVisibleViewId: () => 'request', getSupabaseReadIdentityScope: () => 'new-account'});
+  vm.runInContext(source('getDockSuspendDcSourceRows'), ctx);
+  assert.equal(ctx.getDockSuspendDcSourceRows(), empty);
+  assert.equal(ctx.getDockSuspendDcSourceRows(), ctx.getDockSuspendDcSourceRows(), 'repeated cold reads cannot restart preparation through a new array identity');
+  ctx.suspendTagInventoryScope = 'new-account';
+  ctx.suspendTagInventory = [{ UNIQUE_ID: 'new-account-row' }];
+  assert.equal(ctx.getDockSuspendDcSourceRows(), ctx.suspendTagInventory);
 });

@@ -168,6 +168,145 @@ test('location setup is a guided header step before inventory card selection', a
   assert.doesNotMatch(element.innerHTML, /data-bn-structured="header"/);
 });
 
+test('card picker persists multiple selected cards with assigned users and required conditional routing', async () => {
+  const rows = [
+    { unique_id: 'lot-a', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-A', commonname: 'Peony', contsize: '#3', lotcode: 'A' },
+    { unique_id: 'lot-b', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-B', commonname: 'Hosta', contsize: '#2', lotcode: 'B' },
+  ];
+  let savedBody;
+  const { BunchNote: note, element } = createRuntime(async (_url, request) => {
+    if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
+    if (request.operation === 'inventory') return { ok: true, data: { rows } };
+    if (request.operation === 'directory') return { ok: true, data: { users: [{ id: 'user-1', username: 'sam', display: 'Sam' }, { id: 'user-2', username: 'lee', display: 'Lee' }] } };
+    if (request.operation === 'drafts') return { ok: true, data: { drafts: [] } };
+    if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: ['D.06.000'] } };
+    if (request.operation === 'save') {
+      savedBody = plain(request.payload.body);
+      return { ok: true, data: { draft: { id: 'batch-route', revision: 1, body: savedBody } } };
+    }
+    return { ok: true, data: {} };
+  });
+
+  await note.open();
+  await note.chooseBlock('D');
+  note.openLocation('D.05.000');
+  assert.match(element.innerHTML, /value="D\.05\. Bunch Notes"/);
+  await note.nextItems();
+  note.openCardPicker();
+  note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', true);
+  note.togglePickerCard('D.05.000\u001fPLANT-B\u001fHOSTA\u001f#2', true);
+  note.showPickerDetails();
+  assert.match(element.innerHTML, /Assign to Sam/);
+  assert.match(element.innerHTML, /Assign to Lee/);
+  assert.match(element.innerHTML, /Move/);
+  assert.match(element.innerHTML, /Bunch/);
+  assert.match(element.innerHTML, /TA \(Throw Away\)/);
+  note.pickerField('workflow_action', 'bunch');
+  assert.match(element.innerHTML, /South &amp; Center House/);
+  assert.doesNotMatch(element.innerHTML, /aria-label="Move destination"/);
+  note.pickerField('workflow_action', 'ta');
+  assert.doesNotMatch(element.innerHTML, /aria-label="Bunch destination house"/);
+  note.togglePickerOwner('user-1', true);
+  note.togglePickerOwner('user-2', true);
+  note.pickerField('workflow_action', 'move');
+  assert.match(element.innerHTML, /aria-label="Move destination"/);
+  assert.doesNotMatch(element.innerHTML, /aria-label="Bunch destination house"/);
+  note.pickerField('destination_location', 'D.06.000');
+  note.pickerField('notes', 'Move these together');
+  await note.commitPickerCard();
+  const cards = savedBody.locations[0].cards;
+  assert.equal(cards.length, 2);
+  assert.deepEqual(plain(cards.map(card => card.workflow_action)), ['move', 'move']);
+  assert.deepEqual(plain(cards.map(card => card.destination_location)), ['D.06.000', 'D.06.000']);
+  assert.deepEqual(plain(cards.map(card => card.owner_ids)), [['user-1', 'user-2'], ['user-1', 'user-2']]);
+  assert.deepEqual(plain(cards.map(card => card.notes)), ['Move these together', 'Move these together']);
+  assert.equal(savedBody.locations[0].location, 'D.05.000');
+});
+
+test('card picker retains existing per-card owners and does not carry deselected owners onto new cards', async () => {
+  const rows = [
+    { unique_id: 'lot-a', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-A', commonname: 'Peony', contsize: '#3', lotcode: 'A' },
+    { unique_id: 'lot-b', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-B', commonname: 'Hosta', contsize: '#2', lotcode: 'B' },
+  ];
+  const cardA = { id: 'card-a', kind: 'inventory', location_code: 'D.05.000', itemcode: 'PLANT-A', commonname: 'Peony', contsize: '#3', row_ids: ['lot-a'], owner_id: 'user-1', owner_ids: ['user-1'], house: '', direction: '' };
+  const draft = { id: 'batch-owners', revision: 1, body: { format_version: 5, block: 'D', recipient_ids: [], locations: [{ location: 'D.05.000', purposes: 'Inspect', direction: '', instructions: '', row_ids: ['lot-a'], cards: [cardA], source: rows, actions: [] }] } };
+  let savedBody = null;
+  const { BunchNote: note, element } = createRuntime(async (_url, request) => {
+    if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
+    if (request.operation === 'inventory') return { ok: true, data: { rows } };
+    if (request.operation === 'directory') return { ok: true, data: { users: [{ id: 'user-1', username: 'sam', display: 'Sam' }, { id: 'user-2', username: 'lee', display: 'Lee' }] } };
+    if (request.operation === 'drafts') return { ok: true, data: { drafts: [draft] } };
+    if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
+    if (request.operation === 'save') {
+      savedBody = plain(request.payload.body);
+      return { ok: true, data: { draft: { ...draft, revision: (request.expectedRevision || 0) + 1, body: savedBody } } };
+    }
+    return { ok: true, data: {} };
+  });
+
+  await note.open();
+  await note.openDraft(draft.id);
+  note.openLocation('D.05.000');
+  await note.nextItems();
+  note.openCardPicker();
+  note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', true);
+  note.showPickerDetails();
+  assert.match(element.innerHTML, /PLANT-A:<\/b> Sam/);
+  assert.match(element.innerHTML, /Existing cards keep their current assignments/);
+  note.showPickerDetails(false);
+  note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', false);
+  note.togglePickerCard('D.05.000\u001fPLANT-B\u001fHOSTA\u001f#2', true);
+  note.showPickerDetails();
+  note.pickerField('workflow_action', 'ta');
+  await note.commitPickerCard();
+
+  const cards = savedBody.locations[0].cards;
+  assert.deepEqual(plain(cards.find(card => card.id === cardA.id).owner_ids), ['user-1']);
+  const newCard = cards.find(card => card.itemcode === 'PLANT-B');
+  assert.deepEqual(plain(newCard.owner_ids), []);
+  assert.equal(newCard.owner_id, null);
+});
+
+test('card picker validates every selected group before mutating any card when source rows change', async () => {
+  let inventoryRows = [
+    { unique_id: 'lot-a', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-A', commonname: 'Peony', contsize: '#3', lotcode: 'A' },
+    { unique_id: 'lot-b', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-B', commonname: 'Hosta', contsize: '#2', lotcode: 'B' },
+  ];
+  const draft = { id: 'batch-atomic', revision: 1, body: { format_version: 5, block: 'D', recipient_ids: [], locations: [{ location: 'D.05.000', purposes: 'Inspect', direction: '', instructions: '', row_ids: [], cards: [], source: [], actions: [] }] } };
+  const savedBodies = [];
+  const { BunchNote: note, element } = createRuntime(async (_url, request) => {
+    if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
+    if (request.operation === 'inventory') return { ok: true, data: { rows: inventoryRows } };
+    if (request.operation === 'directory') return { ok: true, data: { users: [] } };
+    if (request.operation === 'drafts') return { ok: true, data: { drafts: [draft] } };
+    if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
+    if (request.operation === 'save') {
+      const body = plain(request.payload.body);
+      savedBodies.push(body);
+      return { ok: true, data: { draft: { ...draft, revision: (request.expectedRevision || 0) + 1, body } } };
+    }
+    return { ok: true, data: {} };
+  });
+
+  await note.open();
+  await note.openDraft(draft.id);
+  note.openLocation('D.05.000');
+  await note.nextItems();
+  note.openCardPicker();
+  note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', true);
+  note.togglePickerCard('D.05.000\u001fPLANT-B\u001fHOSTA\u001f#2', true);
+  note.showPickerDetails();
+  note.pickerField('workflow_action', 'ta');
+  inventoryRows = [inventoryRows[0]];
+  await note.refreshSource();
+  await note.commitPickerCard();
+
+  assert.equal(savedBodies.length, 1, 'only the preceding step transition was saved; invalid picker state was not saved');
+  assert.match(element.innerHTML, /Selected lots no longer match/);
+  note.closeCardPicker();
+  assert.doesNotMatch(element.innerHTML, /<article class="bn-card bn-wizard-card"/);
+});
+
 test('structured header changes preserve newer wizard fields but apply fields edited in the header', () => {
   const { BunchNote: note } = createRuntime(async () => ({ ok: true, data: {} }));
   const current = { direction: 'West to East', target_houses: '' };
@@ -274,13 +413,15 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   assert.match(element.innerHTML, /Peony/);
   assert.doesNotMatch(element.innerHTML, /D\.09\.001/);
   note.selectPickerCard('D.08.001\u001fPLANT\u001fPEONY\u001f#3');
+  note.showPickerDetails();
+  note.pickerField('workflow_action', 'ta');
   note.pickerField('direction', 'Check the east row');
   note.pickerField('notes', 'Keep lots separate');
   await note.commitPickerCard();
   assert.equal(savedBody.locations[0].cards.length, 1);
   assert.deepEqual(plain(savedBody.locations[0].cards[0].row_ids), ['lot-1', 'lot-2']);
   assert.equal(savedBody.locations[0].cards[0].direction, 'Check the east row');
-  assert.equal(Object.hasOwn(savedBody.locations[0].cards[0], 'notes'), false);
+  assert.equal(savedBody.locations[0].cards[0].notes, 'Keep lots separate');
   assert.equal(savedBody.locations[0].actions.length, 1);
   assert.equal(savedBody.locations[0].actions[0].kind, 'instruction');
   assert.equal(savedBody.locations[0].actions[0].label, 'Card notes');
@@ -292,7 +433,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   assert.match(element.innerHTML, /Search inventory/);
   assert.match(element.innerHTML, /Peony/);
   note.cardPickerSearch('Peony');
-  assert.equal((element.innerHTML.match(/class="bn-picker-result"/g) || []).length, 1, 'the reset picker remains searchable from cached full source rows');
+  assert.equal((element.innerHTML.match(/class="[^"]*\bbn-picker-result\b[^"]*"/g) || []).length, 1, 'the reset picker remains searchable from cached full source rows');
   assert.equal(requests.filter(request=>request.operation==='inventory').length,1,'reset and search do not fetch inventory again');
   const committedSave=requests.filter(request=>request.operation==='save').at(-1);
   assert.equal(committedSave.payload.body.locations[0].actions[0].instructions,'Keep lots separate');
@@ -336,16 +477,16 @@ test('inventory picker pages complete local results and searches all 1000 groups
   note.wizardField('workType', 'Inspect');
   await note.nextItems();
   note.openCardPicker();
-  assert.equal((element.innerHTML.match(/class="bn-picker-result"/g) || []).length, 100, element.innerHTML.slice(-1500));
+  assert.equal((element.innerHTML.match(/class="[^"]*\bbn-picker-result\b[^"]*"/g) || []).length, 100, element.innerHTML.slice(-1500));
   assert.match(element.innerHTML, /Showing 100 of 1000 cards/);
   assert.match(element.innerHTML, /aria-label="Load more inventory cards"/);
 
   note.loadMorePickerCards();
-  assert.equal((element.innerHTML.match(/class="bn-picker-result"/g) || []).length, 200);
+  assert.equal((element.innerHTML.match(/class="[^"]*\bbn-picker-result\b[^"]*"/g) || []).length, 200);
   assert.match(element.innerHTML, /Showing 200 of 1000 cards/);
 
   note.cardPickerSearch('Plant 1000');
-  assert.equal((element.innerHTML.match(/class="bn-picker-result"/g) || []).length, 1);
+  assert.equal((element.innerHTML.match(/class="[^"]*\bbn-picker-result\b[^"]*"/g) || []).length, 1);
   assert.match(element.innerHTML, /Plant 1000/);
   assert.match(element.innerHTML, /Showing 1 of 1 card/);
   assert.equal(inventoryReads, 1, 'pagination and search use the complete cached source rows');
@@ -408,6 +549,8 @@ test('picker Escape preserves a draft during a busy save and ignores stale navig
   await note.nextItems();
   note.openCardPicker();
   note.selectPickerCard('D.08.001\u001fPLANT\u001fPEONY\u001f#3');
+  note.showPickerDetails();
+  note.pickerField('workflow_action', 'ta');
 
   const saving = note.commitPickerCard();
   let prevented = false;
@@ -485,6 +628,8 @@ test('real DOM dismisses the picker with Escape from an outside focused control 
   await note.nextItems();
   note.openCardPicker();
   note.selectPickerCard('D.08.001\u001fPLANT\u001fPEONY\u001f#3');
+  note.showPickerDetails();
+  note.pickerField('workflow_action', 'ta');
   note.pickerField('direction', 'North rows');
   note.pickerField('notes', 'Keep selected lots separate');
   const portalBackdrop = window.document.querySelector('.bn-picker-backdrop');

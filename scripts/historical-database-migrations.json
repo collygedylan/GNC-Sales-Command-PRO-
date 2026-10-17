@@ -814,5 +814,9 @@
   {
     "source": "supabase/migrations/20261014161813_inventory_assignment_input_generation.sql",
     "destination": "20261014161813_inventory_assignment_input_generation.sql"
+  },
+  {
+    "source": "supabase/migrations/20261017203000_bunch_note_multi_assignment_routing.sql",
+    "destination": "20261017203000_bunch_note_multi_assignment_routing.sql"
   }
 ]

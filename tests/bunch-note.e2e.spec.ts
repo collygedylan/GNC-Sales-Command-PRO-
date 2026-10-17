@@ -14,7 +14,7 @@ function fixturePdf() {
  pdf+=`xref\n0 ${offsets.length}\n0000000000 65535 f \n`+offsets.slice(1).map(offset=>`${String(offset).padStart(10,'0')} 00000 n \n`).join('')+`trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${start}\n%%EOF\n`;
  return Buffer.from(pdf).toString('base64');
 }
-async function fixture(page:any,baseURL:string,worker=false) {
+async function fixture(page:any,baseURL:string,worker=false,directoryUsers:any[]=[{id:hlUserId,username:'dylan_collyge',display:'Dylan',email:'dylan_collyge@greenleafnursery.com'}]) {
  const control=await installHlOrderFixture(page,baseURL,{username:worker?'bn_worker':'dylan_collyge',role:worker?'EVAL':'ADMIN'});
  const headers={'access-control-allow-origin':new URL(baseURL).origin,'access-control-allow-credentials':'true'};
  const rows=[plant('a','C.12.001'),{...plant('a2','C.12.001'),contsize:'#5',lotcode:'LOT2',season:'27.F1',stock:'20',review:null},plant('b','C.12.002')],commands:any[]=[],drafts:any[]=[],inventoryReads:any[]=[];
@@ -35,7 +35,7 @@ async function fixture(page:any,baseURL:string,worker=false) {
   else if(body.operation==='destination_detail')data={location:p.location,locations:['C.12.001','C.12.002','D.05.000','D.08.001'],jobs:jobs.filter(j=>j.location===p.location),incoming:jobs.flatMap(j=>(j.body.actions||[]).filter((a:any)=>a.destination===p.location).map((action:any)=>({job_id:j.id,note_number:j.note_number,source_location:j.location,status:j.status,action,source:j.body.source||[],planned_here:true,actuals:[]})))};
   else if(body.operation==='blocks')data={blocks:['FULL.BLOCK']};
   else if(body.operation==='inventory'){inventoryReads.push({block:p.block,locations:[...new Set(rows.map((row:any)=>row.locationcode))]});data={rows};}
-  else if(body.operation==='directory')data={users:[{id:hlUserId,username:'dylan_collyge',display:'Dylan',email:'dylan_collyge@greenleafnursery.com'}]};
+  else if(body.operation==='directory')data={users:directoryUsers};
   else if(body.operation==='drafts')data={drafts};
   else if(body.operation==='save'){const draft={id:'draft',revision:(drafts[0]?.revision||0)+1,block:p.body.block,body:structuredClone(p.body),updated_at:new Date().toISOString()};draft.body.locations.forEach((l:any)=>{l.source=rows.filter(r=>l.row_ids.includes(r.unique_id));});drafts[0]=draft;data={draft};}
   else if(body.operation==='preview'){lastPreview={id:'preview',reports:drafts[0].body.locations,recipients:[{email:'dylan_collyge@greenleafnursery.com'}]};data={preview:lastPreview};}
@@ -160,8 +160,11 @@ test('Inventory step shortens D.05.000 for display but retains the full location
  const result=page.locator('.bn-picker-result').filter({hasText:'BN-D05'});
  await expect(result).toHaveCount(1);
  await result[press]();
+ await page.getByRole('button',{name:'Continue to card details',exact:true})[press]();
  await expect(page.getByLabel('Select lot #3 27.F1 d05-source',{exact:true})).toBeChecked();
- await page.getByRole('button',{name:'＋ Add card and continue',exact:true})[press]();
+ await page.getByLabel('Assign to Dylan',{exact:true}).check();
+ await page.getByLabel('Required card action',{exact:true}).selectOption('ta');
+ await page.getByRole('button',{name:'＋ Add selected card(s) and continue',exact:true})[press]();
 
   // Wait for the serialized save and next-picker transition before Escape;
   // the modal intentionally ignores dismissal while a save is in flight.
@@ -180,6 +183,7 @@ test('Inventory step shortens D.05.000 for display but retains the full location
  expect(f.inventoryReads).toContainEqual({block:'FULL.BLOCK',locations:['C.12.001','C.12.002','D.05.000']});
  const saved=f.commands.filter(command=>command.operation==='save').at(-1)?.payload.body.locations[0];
  expect(saved).toMatchObject({location:'D.05.000',row_ids:['d05-source']});
+ expect(saved.cards[0]).toMatchObject({owner_ids:[hlUserId],workflow_action:'ta'});
  expect(saved.source_all).toEqual(expect.arrayContaining([expect.objectContaining({unique_id:'d05-source',locationcode:'D.05.000'})]));
  expect(saved.cards).toEqual(expect.arrayContaining([expect.objectContaining({row_ids:['d05-source']})]));
 
@@ -247,29 +251,35 @@ test('wizard persists exact card notes through reload and preview while picker n
  await page.evaluate(()=>{(window as any).BunchNote.render();});
  await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toHaveValue('Bunch Plant');
  await page.locator('.bn-picker-result').filter({hasText:'#3'})[press]();
+ await page.getByRole('button',{name:'Continue to card details',exact:true})[press]();
  await expect(page.getByLabel('Select lot #3 27.F1 a',{exact:true})).toBeChecked();
  await expect(page.getByLabel('Select lot #3 LOT3 a3',{exact:true})).toBeChecked();
- await expect(page.getByRole('dialog',{name:'Card directions and notes'})).toBeVisible();
- await page.getByRole('textbox',{name:'Card direction',exact:true}).fill('Rows east to west');
+ await expect(page.getByRole('dialog',{name:'Card routing and notes'})).toBeVisible();
+ await page.getByLabel('Required card action',{exact:true}).selectOption('move');
+ await page.getByLabel('Move destination',{exact:true}).selectOption('C.12.002');
  await page.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep these lots separate');
  expect(f.commands).toHaveLength(commandCount); // search, selection and field edits are local
  await page.context().setOffline(false);
- await page.getByRole('button',{name:'＋ Add card and continue',exact:true})[press]();
+ await page.getByRole('button',{name:'＋ Add selected card(s) and continue',exact:true})[press]();
  await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
  await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toHaveValue('');
 
  // Adding another card immediately reopens the picker for rapid iteration.
  await page.getByRole('textbox',{name:'Search inventory',exact:true}).fill('Bunch Plant');
  await page.locator('.bn-picker-result').filter({hasText:'#5'})[press]();
+ await page.getByRole('button',{name:'Continue to card details',exact:true})[press]();
  await expect(page.getByLabel('Select lot #5 LOT2 a2',{exact:true})).toBeChecked();
- await page.getByRole('textbox',{name:'Card direction',exact:true}).fill('Rows north to south');
- await page.getByRole('button',{name:'＋ Add card and continue',exact:true})[press]();
+ await page.getByLabel('Required card action',{exact:true}).selectOption('bunch');
+ const houseOptions=await page.getByLabel('Bunch destination house').locator('option').allTextContents();
+ expect(houseOptions.slice(1)).toEqual(['South House','North House','Center House','South & Center House','North & Center House','East House','West House','East & Center House','West & Center House']);
+ await page.getByLabel('Bunch destination house',{exact:true}).selectOption('South House');
+ await page.getByRole('button',{name:'＋ Add selected card(s) and continue',exact:true})[press]();
  await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toBeVisible();
  const committed=f.commands.filter(command=>command.operation==='save').at(-1).payload.body.locations[0];
  expect(committed.cards.map((card:any)=>card.row_ids)).toEqual([['a','a3'],['a2']]);
- expect(committed.actions).toHaveLength(1);
- expect(committed.actions[0]).toMatchObject({kind:'instruction',label:'Card notes',instructions:'Keep these lots separate',scope:'rows',card_id:committed.cards[0].id,row_ids:['a','a3']});
- expect(Object.hasOwn(committed.cards[0],'notes')).toBe(false);
+ expect(committed.cards.map((card:any)=>card.workflow_action)).toEqual(['move','bunch']);
+ expect(committed.cards[0]).toMatchObject({destination_location:'C.12.002',notes:'Keep these lots separate'});
+ expect(committed.cards[1]).toMatchObject({destination_house:'South House'});
 
  await page.locator('#footer-request-btn').focus(); // capture Escape even after focus leaves the modal
  await page.keyboard.press('Escape');
@@ -297,6 +307,80 @@ test('wizard persists exact card notes through reload and preview while picker n
  await expect(page.getByRole('heading',{name:'Review Inv Bunch Notes PDFs'})).toBeVisible();
  expect(f.lastPreview.reports[0].actions[0]).toMatchObject({label:'Card notes',instructions:'Keep these lots separate',card_id:committed.cards[0].id,row_ids:['a','a3']});
  await expect(page.locator('#bunch-note-content iframe')).toHaveCount(1);
+ expect(f.control.blockedMutations).toEqual([]);
+});
+
+test('multi-card routing assigns both workers, requires a destination and safely retries one save', {tag:['@bunch-note']},async({page,baseURL},testInfo)=>{
+ const secondId='dd000000-0000-4000-8000-000000000002';
+ const f=await fixture(page,baseURL!,false,[{id:hlUserId,username:'dylan_collyge',display:'Dylan',email:'dylan_collyge@greenleafnursery.com'},{id:secondId,username:'worker_two',display:'Second Worker',email:'worker_two@example.invalid'}]);
+ for(let i=0;i<998;i++)f.rows.push({...plant(`multi-${i}`,'C.12.001'),itemcode:`MULTI-${i}`,commonname:`Multi candidate ${i}`});
+ await openBunchNotesFromInventory(page);
+ await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
+ await openAuthorLocation(page,'C.12.001');
+ await expect(page.getByLabel('Work type',{exact:true})).toHaveValue('C.12. Bunch Notes');
+ await page.getByRole('button',{name:'Next',exact:true}).click();
+ await page.getByRole('button',{name:'＋ Add inventory card',exact:true}).click();
+ const commandCount=f.commands.length;
+ await page.context().setOffline(true);
+ await page.getByRole('textbox',{name:'Search inventory',exact:true}).fill('Bunch Plant');
+ const results=page.locator('.bn-picker-result');
+ await expect(results).toHaveCount(2);
+ await results.filter({hasText:'#3'}).getByRole('checkbox').check();
+ await results.filter({hasText:'#5'}).getByRole('checkbox').check();
+ await page.evaluate(()=>{document.addEventListener('click',function capture(e){if(!(e.target instanceof Element)||!e.target.closest('button[onclick="BunchNote.showPickerDetails()"]'))return;document.removeEventListener('click',capture,true);const start=performance.now();requestAnimationFrame(()=>requestAnimationFrame(()=>{(window as any).__multiDetailsMs=performance.now()-start;}));},true);});
+ await page.getByRole('button',{name:'Continue to card details',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).__multiDetailsMs)).toBeGreaterThan(0);
+ const elapsedMs=await page.evaluate(()=>(window as any).__multiDetailsMs);
+ expect(elapsedMs).toBeLessThanOrEqual(400);
+ await testInfo.attach('multi-card-details-timing',{body:JSON.stringify({elapsedMs,limitMs:400,groups:1000,selectedCards:2,cache:'warm local; offline; OS cache uncontrolled'}),contentType:'application/json'});
+ await page.getByLabel('Assign to Dylan',{exact:true}).check();
+ await page.getByLabel('Assign to Second Worker',{exact:true}).check();
+ const submit=page.getByRole('button',{name:'＋ Add selected card(s) and continue',exact:true});
+ await expect(submit).toBeDisabled();
+ await page.getByLabel('Required card action',{exact:true}).selectOption('move');
+ await expect(submit).toBeDisabled();
+ await expect(page.getByLabel('Bunch destination house')).toHaveCount(0);
+ await expect(page.getByLabel('Move destination').locator('option[value="D.05.000"]')).toHaveText('D.05.000');
+ await page.getByLabel('Move destination',{exact:true}).selectOption('D.05.000');
+ await expect(submit).toBeEnabled();
+ await page.getByLabel('Required card action',{exact:true}).selectOption('bunch');
+ await expect(page.getByLabel('Move destination')).toHaveCount(0);
+ await expect(submit).toBeDisabled();
+ expect((await page.getByLabel('Bunch destination house').locator('option').allTextContents()).slice(1)).toEqual(['South House','North House','Center House','South & Center House','North & Center House','East House','West House','East & Center House','West & Center House']);
+ await page.getByLabel('Bunch destination house').selectOption('West & Center House');
+ await expect(submit).toBeEnabled();
+ await page.getByLabel('Required card action',{exact:true}).selectOption('ta');
+ await expect(page.getByLabel('Move destination')).toHaveCount(0);
+ await expect(page.getByLabel('Bunch destination house')).toHaveCount(0);
+ await expect(submit).toBeEnabled();
+ await page.getByLabel('Required card action',{exact:true}).selectOption('move');
+ await page.getByLabel('Move destination',{exact:true}).selectOption('D.05.000');
+ await page.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep the two sizes separate');
+ expect(f.commands).toHaveLength(commandCount);
+ await testInfo.attach('advanced-bunch-multi-assignment',{body:await page.screenshot(),contentType:'image/png'});
+ await page.context().setOffline(false);
+ f.failNextSave();
+ await submit.click();
+ await expect(page.locator('#bunch-note-content [role=alert]')).toContainText('Save unavailable');
+ await expect(page.getByLabel('Required card action',{exact:true})).toBeDisabled();
+ await expect(page.getByLabel('Assign to Second Worker',{exact:true})).toBeDisabled();
+ await expect(page.getByRole('textbox',{name:'Card notes',exact:true})).toBeDisabled();
+ const failed=f.commands.filter(c=>c.operation==='save').at(-1);
+ await page.getByRole('button',{name:'Save cards and continue',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
+ await expect(page.locator('#bunch-note-content')).toHaveAttribute('aria-busy','false');
+ const saved=f.commands.filter(c=>c.operation==='save').at(-1);
+ expect(saved.commandId).toBe(failed.commandId);
+ expect(saved.payload).toEqual(failed.payload);
+ const location=saved.payload.body.locations[0];
+ expect(location.location).toBe('C.12.001');
+ expect(location.cards).toHaveLength(2);
+ expect(new Set(location.cards.map((c:any)=>c.id)).size).toBe(2);
+ for(const card of location.cards)expect(card).toMatchObject({owner_ids:[hlUserId,secondId],owner_id:hlUserId,workflow_action:'move',destination_location:'D.05.000',destination_house:null,notes:'Keep the two sizes separate'});
+ expect(location.cards.map((c:any)=>c.row_ids).flat().sort()).toEqual(['a','a2']);
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ await expect(page.locator('.bn-wizard-card')).toHaveCount(2);
  expect(f.control.blockedMutations).toEqual([]);
 });
 
