@@ -116548,8 +116548,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return [getItemUniqueId(item), info.value, info.tone, info.valid];
             });
             const mirrorPreparationState = isDockSuspendDcRequestMirrorPreparationPending() ? 'mirrors-preparing' : 'mirrors-ready';
+            const inventoryContext = typeof getQueueCardInventoryContext === 'function' ? getQueueCardInventoryContext() : null;
+            const sourceAndAuthSignature = JSON.stringify([
+                sourceLookupRevision,
+                inventoryContext?.scope || '',
+                inventoryContext?.permission || '',
+                inventoryContext?.revision || '',
+                typeof productionLiveSyncReadAuthEpoch === 'number' ? productionLiveSyncReadAuthEpoch : ''
+            ]);
             return { ...plan, allItems, searchItems, assignedItems, contSizeItems, sourceLookup,
-                renderSignature: `${plan.renderSignature}:${mirrorPreparationState}:queue-inventory:${Number(queueCardInventoryRenderVersion) || 0}:planstart:${JSON.stringify(planstartSignature)}` };
+                renderSignature: `${plan.renderSignature}:${mirrorPreparationState}:queue-inventory:${Number(queueCardInventoryRenderVersion) || 0}:source-auth:${sourceAndAuthSignature}:planstart:${JSON.stringify(planstartSignature)}` };
         }
 
         function getRequestSuspendTagSearchInputState(event = null) {
@@ -119381,6 +119389,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
             const safePlan = plan && typeof plan === 'object' ? plan : {};
+            const renderSignature = String(safePlan.renderSignature || '');
             // Queue the bounded visible page together. Reading only as each
             // chunk renders lets each small batch restart the detached stage
             // before the rest of that page can finish hydrating and publish.
@@ -119392,9 +119401,25 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             // through that path too, and publish only the complete latest page.
             const retainCards = safePlan.rows?.length && cardContainer?.querySelector?.('[data-request-uid]')
                 && window.AgMetricStableViewDom;
-            const renderTarget = retainCards ? document.createElement('div') : cardContainer;
+            const pendingStage = cardContainer?.__suspendPageStage;
+            const currentRequestToken = typeof chunkRenderTokensByKey !== 'undefined'
+                ? (Number(chunkRenderTokensByKey['request-main']) || 0) : 0;
+            const pendingStageIsCurrent = !!(pendingStage && renderSignature
+                && pendingStage.signature === renderSignature
+                && Number(pendingStage.token) === currentRequestToken
+                && cardContainer?.isConnected
+                && !(rootContainer && rootContainer.isConnected === false));
+            if (retainCards && pendingStageIsCurrent) {
+                syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
+                return true;
+            }
+            if (pendingStage && cardContainer.__suspendPageStage === pendingStage) cardContainer.__suspendPageStage = null;
+            const alreadyPublished = retainCards && getContainerRenderSignature(cardContainer) === renderSignature;
+            const renderTarget = retainCards && !alreadyPublished ? document.createElement('div') : cardContainer;
             const generation = (Number(cardContainer?.__suspendPageGeneration) || 0) + 1;
             if (cardContainer) cardContainer.__suspendPageGeneration = generation;
+            const stage = retainCards && !alreadyPublished ? { signature: renderSignature, generation, target: renderTarget } : null;
+            if (cardContainer) cardContainer.__suspendPageStage = stage;
             const emptyMessage = isDockSuspendDcRequestMirrorPreparationPending()
                 ? 'Loading Suspend Tag rows…'
                 : (requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all'
@@ -119402,13 +119427,21 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const didSchedule = renderMarkupChunkedByKey('request-main', renderTarget, crumb, safePlan.rows, crumbText,
                 (item) => generateCard(item, 'request', 'status-red'), getPendingRequestChunkRenderOptions({
                     _backgroundStage: !!retainCards,
-                    renderSignature: safePlan.renderSignature,
+                    renderSignature,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`,
                     onComplete: () => {
                         if (retainCards) {
-                            if (!cardContainer.isConnected || cardContainer.__suspendPageGeneration !== generation) return;
-                            window.AgMetricStableViewDom.apply(cardContainer, renderTarget);
-                            setContainerRenderSignature(cardContainer, getContainerRenderSignature(renderTarget));
+                            if (!cardContainer.isConnected || (rootContainer && rootContainer.isConnected === false)
+                                || cardContainer.__suspendPageGeneration !== generation
+                                || (stage && cardContainer.__suspendPageStage !== stage)) {
+                                if (cardContainer.__suspendPageStage === stage) cardContainer.__suspendPageStage = null;
+                                return;
+                            }
+                            if (stage) {
+                                window.AgMetricStableViewDom.apply(cardContainer, renderTarget);
+                                setContainerRenderSignature(cardContainer, renderSignature);
+                                cardContainer.__suspendPageStage = null;
+                            }
                             // The chunk renderer's detached staging root cannot
                             // hydrate photos. Re-scan only after its nodes have
                             // been atomically published into the connected list.
@@ -119425,6 +119458,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     onCompleteAfterInteractive: !retainCards,
                     onCompleteDelayMs: 140
                 }));
+            if (stage && cardContainer.__suspendPageStage === stage) {
+                stage.token = typeof chunkRenderTokensByKey !== 'undefined'
+                    ? (Number(chunkRenderTokensByKey['request-main']) || 0) : 0;
+            }
             // Pagination is independent of deferred card completion; keeping it
             // beside the card host also prevents later chunks from inserting
             // cards after the footer.

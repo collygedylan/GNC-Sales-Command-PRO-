@@ -50,7 +50,11 @@ test('the AV cold-load exception does not relax cached or rendering gates', () =
   const source = readFileSync(new URL('./av-hydration.e2e.spec.ts', import.meta.url), 'utf8');
   assert.ok(source.includes('expect.soft(preview.firstCardMs).toBeLessThanOrEqual(1000)'));
   assert.ok(source.includes('assertFrontendUiTiming(expect.soft(warm.firstCardMs), test.info().project)'));
-  assert.ok(source.includes('assertFrontendUiTiming(expect.soft(Math.max(0, ...preview.dataRenderDurationsMs, ...preview.chunkCallbackDurationsMs)), test.info().project)'));
+  assert.match(source, /assertFrontendUiTiming\(expect\.soft\(Math\.max\(0, \.\.\.preview\.dataRenderDurationsMs, \.\.\.preview\.chunkCallbackDurationsMs,\s*\.\.\.preview\.naturalRenderCycleDurationsMs\)\), test\.info\(\)\.project\)/);
   assert.ok(source.includes('acceptedColdAvFirstCardLimitMs: 1000'));
   assert.ok(source.includes('acceptedAvDomRenderLimitMs: 400'));
+  assert.ok(source.includes('acceptedBackgroundLongTaskLimitMs: 250'));
+  for (const phase of ['preview', 'full', 'warm']) {
+    assert.ok(source.includes(`expect.soft(Math.max(0, ...${phase}.nonRenderLongTaskDurationsMs)).toBeLessThanOrEqual(250)`));
+  }
 });

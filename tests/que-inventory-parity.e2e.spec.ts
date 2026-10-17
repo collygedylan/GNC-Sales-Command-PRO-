@@ -180,6 +180,14 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
     throw error;
   }
   expect(imageRequests.some(url=>url.includes('que-updated'))).toBe(true);
+  // A visible updated card/photo does not establish a warm renderer: the live
+  // publication can still have an ordinary side-data repaint or chunk pending.
+  // Wait for the completed publication before measuring a separate warm repaint.
+  await expect.poll(()=>page.evaluate(()=>window.eval(`({
+    synchronized:productionLiveSyncCoordinator?.getStatus?.().state==='Up to date',
+    rendering:!!productionLiveSyncActiveRender||productionLiveSyncRenderPending,
+    chunkActive:isChunkRenderActive()||!!chunkRenderActivityByKey['request-main']
+  })`)),{timeout:30000}).toEqual({synchronized:true,rendering:false,chunkActive:false});
   const renderMs=await page.evaluate(()=>window.eval(`new Promise(resolve=>{const start=performance.now();renderRequest();requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(performance.now()-start)))})`));
   assertFrontendUiTiming(expect(Number(renderMs)),info.project);
   console.log('QUEUE_PARITY_TIMING',JSON.stringify({project:info.project.name,renderMs,masterRows:master.length,requestRows:pending.length,suspendRows:suspended.length,cache:'warm client; shared OS cache uncontrolled'}));
