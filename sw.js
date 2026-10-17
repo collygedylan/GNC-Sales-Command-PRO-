@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.1.0';
+const APP_SHELL_BUILD = 'AgData v2.1.1';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -66,8 +66,8 @@ const BRANDING_CANONICAL_ASSETS = Object.freeze([
 // END GENERATED BRANDING ASSETS
 const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/bunch-note-cards.css",
-  "./assets/bunch-note-chunks/CardBoard-BWK6EEDK.js",
-  "./assets/bunch-note-chunks/StructuredBunchNote-SYPVQHI2.js",
+  "./assets/bunch-note-chunks/CardBoard-WXA27JK6.js",
+  "./assets/bunch-note-chunks/StructuredBunchNote-KKG4GWIR.js",
   "./assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
   "./assets/bunch-note-structured.js",
   "./assets/bunch-note.css",

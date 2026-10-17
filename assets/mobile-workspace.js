@@ -14,7 +14,7 @@
  const common=[card('communication','Communication','ph-chat-circle-dots')];
  const registry={
   sales:[card('sales-office','Sales Office','ph-flower-lotus','return openSalesOfficeView()'),card('request-history','Request History','ph-clock-counter-clockwise'),card('sales-credit','Credit','ph-receipt'),card('credit-request','Credit Request','ph-check-square'),...common],
-  'sales-inventory':[card('bunch-note','Bunch Notes','ph-notepad'),card('hl-order','HL Order','ph-truck'),...common],
+  'sales-inventory':[card('bunch-note','Inv Bunch Notes','ph-notepad'),card('hl-order','HL Order','ph-truck'),...common],
   production:[card('docks','Docks','ph-truck'),card('drive','Drive Mode','ph-car'),card('moves','Inventory Office','ph-buildings','return openInventoryOfficeView()'),...common],
   qc:[card('moves','Inventory Office','ph-buildings','return openInventoryOfficeView()'),...common],
   office:common,

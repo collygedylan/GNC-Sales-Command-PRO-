@@ -191,6 +191,8 @@
     function getEntries(viewId, context = {}) {
         const view = views[viewId];
         if (!view) throw new Error(`Unregistered live-sync view: ${viewId}`);
+        // Assigned-work access to the Inventory hub must not grant broad inventory reads.
+        if (viewId === 'sales-inventory' && context.inventoryNavigationOnly) return [navigation];
         const requestedSurfaces = context.surfaces || [];
         const requestBunchNotes = viewId === 'request' && requestedSurfaces.includes('request:bunch-notes');
         const requestArchived = viewId === 'request' && requestedSurfaces.includes('request:archived');
