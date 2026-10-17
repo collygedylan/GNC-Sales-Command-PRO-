@@ -193,6 +193,14 @@ test('backend production mutations require current-main validation and every con
   }
 });
 
+test('backend dispatch scope includes changes to the migration runner and its own workflow', () => {
+  const sync = yaml.load(fs.readFileSync(new URL('../.github/workflows/apps-script-sync.yml', import.meta.url), 'utf8'));
+  const scope = sync.jobs['authorize-backend'].steps.find(step => step.id === 'scope');
+  assert.ok(scope);
+  assert.match(scope.run, /scripts\/apply-item-low-stock-migration\.mjs/);
+  assert.match(scope.run, /\.github\/workflows\/apps-script-sync\.yml/);
+});
+
 test('disposable live dataset database checks exclude workflow-only and application paths', () => {
   const live = yaml.load(fs.readFileSync(new URL('../.github/workflows/live-dataset-revisions.yml', import.meta.url), 'utf8'));
   assert.ok(Object.hasOwn(live.on, 'workflow_call'));

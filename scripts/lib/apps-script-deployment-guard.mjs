@@ -87,6 +87,7 @@ export async function authorizeAppsScriptDeployment({ repository, eventName, ref
   }
   if (files.length !== finalPr.changed_files || new Set(files.map(file => file.filename)).size !== files.length) fail('CHANGED_PATHS_INCOMPLETE');
   const scriptPath = name => ['Code.gs', DEPLOYMENT_PATH, 'scripts/sync-codegs-to-apps-script.js',
+    'scripts/apply-item-low-stock-migration.mjs', BACKEND_PATH,
     'scripts/apps-script-sync-lib.mjs', 'scripts/apps-script-recovery-evidence.mjs',
     'scripts/lib/apps-script-deployment-guard.mjs', 'scripts/lib/production-release-guard.mjs',
     'scripts/github-api-pagination.mjs', 'scripts/lib/github-json-transport.mjs',

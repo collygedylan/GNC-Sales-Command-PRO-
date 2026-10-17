@@ -101,6 +101,15 @@ test('GAS-only changes allow the backend deploy job to be skipped', async () => 
   assert.equal(result.scriptChanged, true);
 });
 
+test('backend migration runner and dispatch-workflow edits stay in the production release scope', async () => {
+  for (const filename of ['scripts/apply-item-low-stock-migration.mjs', '.github/workflows/apps-script-sync.yml']) {
+    const { api } = harness({ files: [{ filename, status: 'modified' }] });
+    const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+      backendRunAttempt: 1, backendRunSha: commit, api });
+    assert.equal(result.scriptChanged, true, filename);
+  }
+});
+
 test('renamed deployment consumers retain Apps Script path scope', async () => {
   const { api } = harness({ files: [{ filename: 'scripts/retired-script.mjs', previous_filename: 'scripts/apps-script-sync-lib.mjs', status: 'renamed' }] });
   assert.equal((await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
