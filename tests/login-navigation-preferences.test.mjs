@@ -29,7 +29,7 @@ function accessHarness({ preferences, overrides = {} } = {}) {
     canViewCropRollHome: () => true,
     getRequestCapabilities: () => ({ canViewQueue: true }),
     canSeeEvalWorkRequestTab: () => false,
-    canSeeBunchNotesRequestTab: () => false,
+    canUseInvBunchNotes: () => true,
     canUseMovesModule: () => false,
     getRoleAccessState: () => ({ isRepLike: false, isAdmin: false, allowedViews: new Set(['tasks', 'moves']) }),
     canViewManagerSalesReps: () => false,
@@ -63,6 +63,7 @@ test('missing and null navigation modules preserve view baselines and protected 
     assert.equal(runtime.canAccessView('building'), false);
     runtime.canUseHistoricalRequests = () => false;
     runtime.BunchNote.author = () => false;
+    runtime.canUseInvBunchNotes = () => false;
     runtime.canUseHlOrder = () => false;
     runtime.isStrictDylanCollygeUser = () => false;
     runtime.canViewCropRollHome = () => false;

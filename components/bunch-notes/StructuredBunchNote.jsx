@@ -32,7 +32,7 @@ export function StructuredBunchNote({ value, mode, disabled = false, onChange, o
   return <fieldset className="bn-structured" disabled={disabled}>
     <legend>{editing ? 'House sections and task lines' : 'Crew worksheet'}</legend>
     {!editing && <header className="bn-worksheet-header">
-      <h3>{note.purposes || 'Bunch Notes'} · {note.location || note.location_code}</h3>
+      <h3>{note.purposes || 'Inv Bunch Notes'} · {note.location || note.location_code}</h3>
       <p><b>Direction:</b> {note.direction || 'Not specified'} · <b>Target houses:</b> {note.target_houses || 'Not specified'}</p>
       <h4>General instructions</h4><OperationalText value={note.instructions || note.general_instructions || 'None written'} />
       {note.prerequisites && <p><b>Prerequisites:</b> <OperationalText value={note.prerequisites} /></p>}
@@ -110,8 +110,8 @@ export function mountBunchNoteCards(host, props) {
     mounted = module.mountBunchNoteCards(host, latest);
   }).catch(error => {
     if (!destroyed) {
-      console.error('Bunch Notes card board failed to load', error);
-      host.textContent = 'The card board could not load. Reopen Bunch Notes to retry.';
+      console.error('Inv Bunch Notes card board failed to load', error);
+      host.textContent = 'The card board could not load. Reopen Inv Bunch Notes to retry.';
     }
   });
   return {

@@ -43,7 +43,7 @@ function harness() {
     getCurrentLoginCacheScopeKey: () => 'fixture-user', getCurrentChatUsername: () => 'fixture',
     getActiveSpreadCountType: () => 'spread', normalizeProductivityUsername: value => value,
     normalizeInventoryOfficeApprovalType: value => value,
-    getRoleAccessState: () => ({ isAdmin: !context.evalRole, isEval: context.evalRole, isRep: false }),
+    getRoleAccessState: () => ({ isAdmin: !context.evalRole, isEval: context.evalRole, isRep: false, allowedViews: new Set(['sales-inventory']) }),
     canManageCustomerRepMappings: () => context.managerAccess?.canManageCustomerRepMappings !== false,
     getManagersToolAccess: () => ({ canManageCompanyDirectory: true, canViewProductionSchedule: true, canViewHrCommand: true, ...(context.managerAccess || {}) }),
     isAlwaysDriveCardOptionsUser: () => false,

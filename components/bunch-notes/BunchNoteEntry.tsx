@@ -45,7 +45,7 @@ class RecoverableViewBoundary extends Component<{ children: ReactNode; onRetry: 
 
   render() {
     if (this.state.failed) return <div className="bn-view-load-error" role="alert">
-      <span>The Bunch Notes view could not load.</span>
+      <span>The Inv Bunch Notes view could not load.</span>
       <button type="button" onClick={this.props.onRetry}>Retry view</button>
     </div>;
     return this.props.children;
@@ -64,7 +64,7 @@ function RetryableView<P extends object>({ props, initialView, createView }: {
     setGeneration(value => value + 1);
   };
   return <RecoverableViewBoundary key={generation} onRetry={retry}>
-    <Suspense fallback={<p className="bn-view-loading" role="status">Loading Bunch Notes…</p>}>
+    <Suspense fallback={<p className="bn-view-loading" role="status">Loading Inv Bunch Notes…</p>}>
       {React.createElement(View, props)}
     </Suspense>
   </RecoverableViewBoundary>;
