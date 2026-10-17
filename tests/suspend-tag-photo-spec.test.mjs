@@ -19,6 +19,7 @@ test('Suspend Tag editor retains current permissions without a standalone face b
   const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1' }, opened = [];
   const ctx = {
     String, Object, Array, esc: String, escJsAttrValue: String,
+    suspendTagCompletionActions: new Set(), getSupabaseReadIdentityScope: () => 'fixture-owner',
     getSuspendTagStatus: () => status, getDockSuspendDcRequestLinkedMasterRow: () => null,
     findDockSuspendDcRequestSourceRow: () => null, buildArgosInventoryTransactionRailHtml: () => '',
     canCurrentUserViewDockSuspendDcRequests: () => allowed,
@@ -27,7 +28,7 @@ test('Suspend Tag editor retains current permissions without a standalone face b
     firstNonEmptyValue: (...values) => values.find(value => value != null && value !== ''),
     openDetail: (...args) => opened.push(args),
   };
-  evaluate(ctx, 'buildSuspendTagActions', 'openDockSuspendDcRequestUpdate');
+  evaluate(ctx, 'getDockSuspendDcRequestSourceUid', 'buildSuspendTagActions', 'openDockSuspendDcRequestUpdate');
   for (status of ['pending', 'completed', 'awaiting_rep', 'approved', 'denied']) {
     assert.doesNotMatch(ctx.buildSuspendTagActions(item), />Photo \/ Specs</);
   }
