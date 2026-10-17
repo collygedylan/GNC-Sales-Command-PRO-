@@ -196,9 +196,11 @@ test('trusted row aggregate works before a complete master read and preserves ex
   assert.equal(context.getCardLocationOnHandValue(target), '0');
   target.LOC_ON_HAND = null;
   assert.equal(context.getCardLocationOnHandValue(target), null, 'explicit null is authoritative and does not fall back to partial local rows');
+  assert.equal(context.getCardLocationOnHandServerAggregate(target, { preserveUnknown: true }).value, null, 'canonical metrics retain genuine null');
   target.LOC_ON_HAND = 2000;
   target.LOC_ON_HAND_REVISION = '11';
   assert.equal(context.getCardLocationOnHandValue(target), null, 'an older response cannot override the current source revision');
+  assert.equal(context.getCardLocationOnHandServerAggregate(target, { preserveUnknown: true }).value, undefined, 'canonical metrics distinguish an invalid receipt from genuine null');
   target.LOC_ON_HAND_REVISION = '12';
   assert.equal(context.getCardLocationOnHandValue(target), '2,000', 'cold request rows use the independently accepted source revision');
   target.LOC_ON_HAND_LOCATIONCODE = 'C.16.000';

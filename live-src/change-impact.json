@@ -103,6 +103,7 @@
       "id": "inventory",
       "paths": [
         "assets/inventory-list-contract.js",
+        "assets/queue-inventory-hydration.js",
         "assets/location-code.js",
         "playwright.verified-data-cache.config.ts"
       ]

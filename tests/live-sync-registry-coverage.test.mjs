@@ -280,12 +280,12 @@ test('every implemented request subview has an explicit surface instead of silen
 test('Pending and Suspend Tag verify their own queue cohorts while other request tabs keep their joins', () => {
   const registry = harness().AgMetricLiveSyncRegistry;
   assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:pending'] })),
-    ['core:requests', 'side:settings']);
+    ['core:requests', 'side:queueInventoryRevision', 'side:settings']);
   assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:suspend-tag', 'badge:queue'] })),
-    ['core:suspendTag'], 'Suspend Tag keeps cached footer counts without gating entry on broad queue badge sources');
+    ['core:suspendTag', 'side:queueInventoryRevision'], 'Suspend Tag keeps cached footer counts without gating entry on broad queue badge sources');
   const expected = {
     'request:reps': ['core:requests', 'core:master', 'core:customerRepMap', 'core:requestHistory', 'core:salesCredits', 'side:settings'],
-    'request:suspend-tag': ['core:suspendTag'],
+    'request:suspend-tag': ['core:suspendTag', 'side:queueInventoryRevision'],
     'request:eval-work': ['core:requests', 'core:master', 'core:customerRepMap', 'side:evalWork', 'side:settings'],
     'request:av-check': ['core:requests', 'core:master', 'core:customerRepMap', 'side:avOptionEval', 'side:settings'],
     'request:moves': ['core:requests', 'core:master', 'core:customerRepMap', 'core:inventoryEditRequests', 'side:locationWork', 'side:settings'],
@@ -298,7 +298,7 @@ test('Pending and Suspend Tag verify their own queue cohorts while other request
   }
   assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:bunch-notes'] })), ['side:bunchNotes']);
   assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:pending', 'dialog:request'] })),
-    ['core:requests', 'core:master', 'core:reserves', 'core:customerRepMap', 'side:settings']);
+    ['core:requests', 'side:queueInventoryRevision', 'core:master', 'core:reserves', 'core:customerRepMap', 'side:settings']);
 });
 
 test('demand revision surfaces are Drive-detail-only and do not alter AV detail loading', () => {
@@ -373,5 +373,15 @@ test('Drive detail defers its source panels while AV and Docks retain their comp
   const demand = registry.getViewAdapters('detail', { driveDetail: true, surfaces: ['detail:reserves'] });
   assert.ok(demand.includes('side:driveReserves'));
   assert.ok(!demand.includes('core:reserves'));
-  assert.deepEqual(Array.from(registry.getViewAdapters('docks')), ['core:soc', 'core:master', 'core:customerRepMap', 'side:dockWorkflow', 'side:settings']);
+  assert.deepEqual(Array.from(registry.getViewAdapters('docks')), ['core:soc', 'core:master', 'core:customerRepMap', 'side:dockWorkflow', 'side:queueInventoryRevision', 'side:settings']);
+});
+
+
+test('Suspend inventory revision invalidates exact-row hydration without a complete master scan', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+  const ids = Array.from(registry.getViewAdapters('request', { surfaces: ['request:suspend-tag'] }));
+  assert.ok(!ids.includes('core:master'));
+  assert.ok(ids.includes('side:queueInventoryRevision'));
+  assert.deepEqual(Array.from(registry.getSourceKeys(['side:queueInventoryRevision'])), ['ph_master_inventory']);
+  assert.ok(registry.getViewAdapters('docks').includes('side:queueInventoryRevision'));
 });

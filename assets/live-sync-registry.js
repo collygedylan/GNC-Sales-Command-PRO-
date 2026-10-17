@@ -30,6 +30,7 @@
         // owns a server-paged list and must not hydrate the full mapping table.
         customerMappingRevision: ['ph_customer_consignee_sales_reps'],
         companyDirectoryRevision: ['ph_company_directory_contacts', 'ph_company_directory_blocks', 'ph_company_directory_beds', 'ph_company_directory_codes'],
+        queueInventoryRevision: ['ph_master_inventory'],
         productionScheduleRevision: ['production_schedule_active'],
         hrCommandRevision: ['core_employees', 'hr_job_codes', 'labor_timesheets', 'ph_department_calendar_events'],
         avOptionEval: ['ph_av_option_eval_requests'],
@@ -79,7 +80,7 @@
         drive: data(['master'], ['settings']),
         av: data(['avOpen', 'master', 'reserves', 'customerRepMap', 'avHotPriceKeys', 'avNotes'], ['settings']),
         reserves: data(['reserves', 'master', 'customerRepMap']),
-        docks: data(['soc', 'master', 'customerRepMap'], ['dockWorkflow']),
+        docks: data(['soc', 'master', 'customerRepMap'], ['dockWorkflow', 'queueInventoryRevision']),
         'hl-order': data(['soc', 'master']),
         'bunch-note': data([], ['bunchNotes']),
         'historical-requests': data([], []), // Narrow authenticated RPC; never materialize all requests in the shell.
@@ -116,7 +117,7 @@
         'request:bunch-notes': data([], ['bunchNotes']),
         // Pending rows are fully expanded by the requests dataset. History,
         // credits and edit-request joins belong to their consuming subviews.
-        'request:pending': data([]),
+        'request:pending': data([], ['queueInventoryRevision']),
         // Archived rows come from the capability-checked app-api snapshot RPC;
         // they do not subscribe to or refresh the broad live Request datasets.
         'request:archived': data([]),
@@ -124,7 +125,7 @@
         // Suspend Tag renders its own queue rows first. Exact inventory rows are
         // fetched lazily per card for metrics and reclassification, so neither
         // the complete master scan nor the customer map belongs in this gate.
-        'request:suspend-tag': data(['suspendTag']),
+        'request:suspend-tag': data(['suspendTag'], ['queueInventoryRevision']),
         'request:eval-work': data(['master'], ['evalWork']),
         'request:av-check': data(['master'], ['avOptionEval']),
         'request:moves': data(['master', 'inventoryEditRequests'], ['locationWork']),

@@ -129,6 +129,128 @@ test('shared references match production storage paths; only dock context accept
   assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(dock, 'docks'), 174);
 });
 
+test('a queued deferred-photo observer callback never loads an image after its card was detached', () => {
+  let observerCallback = null;
+  class FakeIntersectionObserver {
+    constructor(callback) { observerCallback = callback; }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  const ctx = runtime(['hydrateDeferredCardPhoto', 'getDeferredCardPhotoRootMargin', 'getDeferredCardPhotoObserver'], {
+    DEFERRED_CARD_PHOTO_ROOT_MARGIN_MOBILE: '160px 0px 320px 0px',
+    DEFERRED_CARD_PHOTO_ROOT_MARGIN_DESKTOP: '320px 0px 480px 0px',
+    deferredCardPhotoObserver: null,
+    deferredCardPhotoObserverRootMargin: '',
+    IntersectionObserver: FakeIntersectionObserver,
+    isTouchConstrainedDevice: () => false,
+    document: { querySelectorAll: () => [] },
+  });
+  const image = {
+    isConnected: false,
+    dataset: { src: PHOTO, photoObserved: '1' },
+    src: '',
+    classList: { add() {} },
+    closest: () => null,
+  };
+  ctx.getDeferredCardPhotoObserver();
+  assert.equal(typeof observerCallback, 'function');
+  observerCallback([{ target: image, isIntersecting: true, intersectionRatio: 1 }]);
+  assert.equal(image.src, '', 'detached/replaced card must not trigger a stale image request');
+  assert.notEqual(image.dataset.photoHydrated, '1');
+});
+
+test('a deferred-photo callback for an obsolete URL requeues the connected current card without loading stale media', () => {
+  let observerCallback = null;
+  const scheduledRoots = [];
+  class FakeIntersectionObserver {
+    constructor(callback) { observerCallback = callback; }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  const card = { isConnected: true };
+  const image = {
+    isConnected: true,
+    dataset: { src: PHOTO.replace('crop.webp', 'current.webp'), photoObserved: '1', photoObservedSrc: PHOTO },
+    src: '',
+    parentElement: card,
+    closest: () => card,
+    classList: { add() {} },
+  };
+  const ctx = runtime(['hydrateDeferredCardPhoto', 'getDeferredCardPhotoRootMargin', 'getDeferredCardPhotoObserver'], {
+    DEFERRED_CARD_PHOTO_ROOT_MARGIN_MOBILE: '160px 0px 320px 0px',
+    DEFERRED_CARD_PHOTO_ROOT_MARGIN_DESKTOP: '320px 0px 480px 0px',
+    deferredCardPhotoObserver: null,
+    deferredCardPhotoObserverRootMargin: '',
+    IntersectionObserver: FakeIntersectionObserver,
+    isTouchConstrainedDevice: () => false,
+    document: { querySelectorAll: () => [] },
+    scheduleDeferredCardPhotoHydration: (root) => scheduledRoots.push(root),
+  });
+  ctx.getDeferredCardPhotoObserver();
+  observerCallback([{ target: image, isIntersecting: true, intersectionRatio: 1 }]);
+  assert.equal(image.src, '', 'an old intersection entry must not load the former URL');
+  assert.deepEqual(scheduledRoots, [card], 'the current connected card is rescheduled using its current data-src');
+  assert.notEqual(image.dataset.photoObserved, '1');
+});
+
+test('a late failure from an old photo URL cannot mark the current card photo as unavailable', () => {
+  const failures = [];
+  const image = {
+    isConnected: true,
+    dataset: { src: PHOTO },
+    classList: { add: (name) => failures.push(name) },
+    closest: () => null,
+  };
+  const ctx = runtime(['hydrateDeferredCardPhoto']);
+  ctx.hydrateDeferredCardPhoto(image);
+  assert.equal(image.src, PHOTO);
+  image.dataset.src = PHOTO.replace('crop.webp', 'current.webp');
+  image.onerror();
+  assert.notEqual(image.dataset.photoLoadFailed, '1');
+  assert.deepEqual(failures, []);
+});
+
+test('a callback from a replaced photo observer cannot hydrate media from its old viewport', () => {
+  const observers = [];
+  let touch = false;
+  class FakeIntersectionObserver {
+    constructor(callback, options) { this.callback = callback; this.options = options; this.disconnected = false; observers.push(this); }
+    observe() {}
+    unobserve() {}
+    disconnect() { this.disconnected = true; }
+  }
+  const scheduledRoots = [];
+  const card = { isConnected: true };
+  const image = {
+    isConnected: true,
+    dataset: { src: PHOTO, photoObserved: '1', photoObservedSrc: PHOTO },
+    src: '',
+    parentElement: card,
+    closest: () => card,
+    classList: { add() {} },
+  };
+  const ctx = runtime(['hydrateDeferredCardPhoto', 'getDeferredCardPhotoRootMargin', 'getDeferredCardPhotoObserver'], {
+    DEFERRED_CARD_PHOTO_ROOT_MARGIN_MOBILE: '160px 0px 320px 0px',
+    DEFERRED_CARD_PHOTO_ROOT_MARGIN_DESKTOP: '320px 0px 480px 0px',
+    deferredCardPhotoObserver: null,
+    deferredCardPhotoObserverRootMargin: '',
+    IntersectionObserver: FakeIntersectionObserver,
+    isTouchConstrainedDevice: () => touch,
+    document: { querySelectorAll: () => [] },
+    scheduleDeferredCardPhotoHydration: (root) => scheduledRoots.push(root),
+  });
+  const desktopObserver = ctx.getDeferredCardPhotoObserver();
+  touch = true;
+  const mobileObserver = ctx.getDeferredCardPhotoObserver();
+  assert.notEqual(mobileObserver, desktopObserver);
+  assert.equal(desktopObserver.disconnected, true);
+  desktopObserver.callback([{ target: image, isIntersecting: true, intersectionRatio: 1 }]);
+  assert.equal(image.src, '', 'callbacks from disconnected observers must not initiate requests');
+  assert.deepEqual(scheduledRoots, [card], 'the connected card is scheduled under the active observer policy');
+});
+
 test('request and flyer display evidence belongs to the selected owner only', () => {
   const ctx = runtime();
   const shared = row({ REQ_MATCH: 50, FLYER_MATCH: 50, FLYER_LOC_MATCH_QTY: 99 });
@@ -145,6 +267,33 @@ test('request and flyer display evidence belongs to the selected owner only', ()
   assert.equal(ctx.getDisplayLocMatchQtyValue({ ...flyer, FLYER_MATCH: 0 }, 'tasks'), '0');
   assert.equal(ctx.getDisplayLocMatchQtyValue({ ...flyer, FLYER_PHOTO_LINK: '' }, 'tasks'), '');
   assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...flyer, FLYER_MATCH: '' , MATCH: '' }, 'flyer'), null);
+});
+
+test('Request photo resolution preserves request-owned photos and delegates empty rows to the exact inventory resolver', () => {
+  const request = { SOURCE_TABLE: 'ph_active_request', UNIQUE_ID: 'request-1', MASTER_ID: 'master-1', REQ_PHOTO_LINK: '' };
+  let verifiedInventoryRow = { UNIQUE_ID: 'master-1', ITEMCODE: 'ITEM-1', LOCATIONCODE: 'LOC-1', LOTCODE: 'LOT-1', PHOTO_LINK: PHOTO };
+  const helperCalls = [];
+  const ctx = runtime(['getRowPhotoLink'], {
+    getRequestPhotoLinkCsv: (item) => String(item && item.REQ_PHOTO_LINK || ''),
+    getQueueCardInventoryRow: (item, sourceView) => { helperCalls.push([item, sourceView]); return verifiedInventoryRow; },
+    getSharedAppPhotoLinkCsv: (item) => String(item && item.PHOTO_LINK || ''),
+  });
+  assert.equal(ctx.getRowPhotoLink(request, 'request'), PHOTO,
+    'a request with no own photo should display its authorized exact linked inventory photo');
+  assert.equal(helperCalls.length, 1);
+  assert.equal(helperCalls[0][0], request);
+  assert.equal(helperCalls[0][1], 'request');
+
+  request.REQ_PHOTO_LINK = PHOTO.replace('crop.webp', 'request-owned.webp');
+  helperCalls.length = 0;
+  assert.equal(ctx.getRowPhotoLink(request, 'request'), request.REQ_PHOTO_LINK,
+    'request-owned photo remains the first choice');
+  assert.equal(helperCalls.length, 0, 'linked inventory must not replace a request-owned image');
+
+  request.REQ_PHOTO_LINK = '';
+  verifiedInventoryRow = null;
+  assert.equal(ctx.getRowPhotoLink(request, 'request'), '',
+    'an unresolved inventory lookup must keep the no-photo state rather than guess a row');
 });
 
 test('editor preview uses live Available stock without requiring saved photo evidence', () => {
@@ -445,4 +594,22 @@ test('public cards, shares, exports and previews use projections; invalidation i
   assert.match(source('calculateMatchQty'), /getEditorLocMatchQtyValue/);
   assert.match(source('calculateMatchQty'), /Not verified/);
   assert.doesNotMatch(html, /V2026\.09\.06\.02/);
+});
+
+
+test('Docks photo fallback uses the exact authorized inventory identity and never a same-lot first match', () => {
+  let linked = null;
+  const ctx = runtime(['getDockOwnedPhotoLinkCsv'], {
+    window:{AgMetricQueueInventory:{}},
+    getQueueCardInventoryRow:()=>linked,
+    getLinkedMasterPhotoState:()=>{throw new Error('ambiguous legacy lookup');},
+    getSharedAppPhotoLinkCsv:row=>row.PHOTO_LINK||'',
+    getSharedAppPhotoLinkCsvRaw:()=>'',getSharedAppPhotoName:()=>'',
+    mergePhotoCsvList:values=>values.filter(Boolean).join(','),
+    filterPhotoCsvByRetention:value=>value,getDisplayPhotoLinkCsv:value=>value,
+  });
+  const dock={ITEMCODE:'004380.010.1',LOCATIONCODE:'C.09.000',LOTCODE:'27.F1'};
+  assert.equal(ctx.getDockOwnedPhotoLinkCsv(dock),'');
+  linked={PHOTO_LINK:PHOTO};assert.equal(ctx.getDockOwnedPhotoLinkCsv(dock),PHOTO);
+  linked=null;assert.equal(ctx.getDockOwnedPhotoLinkCsv({...dock,DOCK_PHOTO_LINK:PHOTO}),PHOTO);
 });

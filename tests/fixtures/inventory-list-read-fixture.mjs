@@ -218,6 +218,29 @@ export function createInventoryReadFixture(schema, projections = apiProjections)
 
 export const inventoryReadFixture = createInventoryReadFixture(inventorySchema.schema);
 
+// Wire fixture for the protected batch read. Rows remain schema-checked; the
+// disposable SQL suite separately exercises the real resolver and permissions.
+export function inventoryIdentityBatchFixture(sourceRows, identities, revision = '1') {
+  const normalize = value => String(value ?? '').trim().toUpperCase();
+  const item = value => { const key=normalize(value); return /^\d{6}\.\d{3}\.\d$/.test(key) ? key.replaceAll('.','') : /^\d{1,10}$/.test(key) ? key.padStart(10,'0') : key; };
+  const location = value => { const key=normalize(value).replace(/\s*\.\s*/g,'.'), match=/^([A-Z]+)\.(\d{1,2})\.(\d{1,3})$/.exec(key); return match ? `${match[1]}.${match[2].padStart(2,'0')}.${match[3].padStart(3,'0')}` : key; };
+  const rows=sourceRows.map(row=>inventoryReadFixture.fromFixtureShape(row));
+  return { inventoryRevision:String(revision), projection:'full', fieldCoverage:'full', columns:inventoryReadFixture.projections.full,
+    rows:identities.map((id,inputIndex)=>{
+      const matches=rows.filter(row=>id.masterUid ? row.unique_id===id.masterUid
+        : item(row.itemcode)===item(id.itemCode) && location(row.locationcode)===location(id.locationCode)
+          && normalize(row.lotcode)===normalize(id.lotCode) && (!id.source || normalize(row.source)===normalize(id.source)));
+      let row=null;
+      if(matches.length===1){
+        row={...matches[0]};
+        const same=rows.filter(candidate=>item(candidate.itemcode)===item(row.itemcode)&&location(candidate.locationcode)===location(row.locationcode));
+        row.loc_on_hand=same.some(candidate=>candidate.ptronhand===null || candidate.ptronhand==='') ? null : same.reduce((sum,candidate)=>sum+Number(candidate.ptronhand),0);
+        row.loc_on_hand_revision=String(revision);
+      }
+      return {inputIndex,matchCount:Math.min(2,matches.length),row};
+    }) };
+}
+
 export async function installInventoryReadFixture(page) {
   await page.evaluate(({ factory, schema, projections }) => {
     window.__inventoryReadFixture = window.eval(`(${factory})`)(schema, projections);
