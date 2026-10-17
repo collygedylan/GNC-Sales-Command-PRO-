@@ -96,6 +96,40 @@ test('queue hydration rejects stale account, navigation and revision responses w
   }
 });
 
+test('queue hydration retries an in-flight identity after its revision or navigation signal changes', async () => {
+  for (const change of ['revision', 'navigation']) {
+    const q = harness(), firstController = new AbortController();
+    let context = { scope:'a', permission:'p1', revision:'1', signal:firstController.signal };
+    const resolvers = [], batches = [];
+    const h = q.createHydrator({ context:() => context, load:identities => new Promise(resolve => {
+      batches.push(identities);
+      resolvers.push(resolve);
+    }) });
+
+    assert.equal(h.read(identity).status, 'loading', change);
+    const firstFlush = h.flush();
+    if (change === 'revision') context = { ...context, revision:'2' };
+    else {
+      firstController.abort();
+      context = { ...context, signal:new AbortController().signal };
+    }
+
+    assert.equal(h.read(identity).status, 'loading', `${change}: fresh proof is required`);
+    resolvers[0]([{ inputIndex:0, matchCount:1, row:row({ ptronhand:89 }) }]);
+    await firstFlush;
+
+    for (let turn = 0; batches.length < 2 && turn < 20; turn++) await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(batches.length, 2, `${change}: the new context must dispatch a fresh batch`);
+    assert.equal(batches[1].length, 1);
+    const secondFlush = h.flush();
+    resolvers[1]([{ inputIndex:0, matchCount:1, row:row({ ptronhand:93 }) }]);
+    await secondFlush;
+    assert.equal(h.read(identity).status, 'ready', change);
+    assert.equal(h.read(identity).row.ptronhand, 93, change);
+    h.dispose();
+  }
+});
+
 test('queue hydration rejects contradictory results and retries errors without converting missing stock to zero', async () => {
   const q=harness(), context={scope:'a',permission:'p',revision:'1',signal:new AbortController().signal};
   let bad=true;

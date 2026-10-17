@@ -212,6 +212,38 @@ test('a late failure from an old photo URL cannot mark the current card photo as
   assert.deepEqual(failures, []);
 });
 
+test('deferred-photo batches hydrate every image without treating its array index as an expected URL', () => {
+  for (const loading of ['eager', 'lazy']) {
+    let frame = null;
+    const images = [PHOTO.replace('crop.webp', 'first.webp'), PHOTO.replace('crop.webp', 'second.webp')].map(src => ({
+      isConnected: true,
+      dataset: { src },
+      src: '',
+      classList: { add() {} },
+      getAttribute(name) { return name === 'loading' ? loading : name === 'fetchpriority' ? 'low' : null; },
+      closest: () => null,
+    }));
+    const host = { isConnected: true, querySelectorAll: () => images };
+    const ctx = runtime(['hydrateDeferredCardPhoto', 'scheduleDeferredCardPhotoHydration'], {
+      document: {}, window: { setTimeout: () => 1, clearTimeout() {} },
+      requestAnimationFrame: callback => { frame = callback; return 1; },
+      deferredCardPhotoHydrationRoots: new Set(), deferredCardPhotoHydrationFrame: 0,
+      deferredCardPhotoHydrationIdleTimer: 0, deferredCardPhotoObserver: null,
+      deferredCardPhotoObserverRootMargin: '',
+      getAdaptiveImageHydrationScanLimit: () => 10,
+      getAdaptivePerformanceLevel: () => 0,
+      isTouchConstrainedDevice: () => false,
+      isUserInLiveTouchScrollGesture: () => false,
+      getDeferredCardPhotoObserver: () => null,
+    });
+    ctx.scheduleDeferredCardPhotoHydration(host);
+    assert.equal(typeof frame, 'function');
+    frame();
+    assert.deepEqual(images.map(image => image.src), images.map(image => image.dataset.src), `${loading} batch loads each current image URL`);
+    assert.deepEqual(images.map(image => image.dataset.photoHydrated), ['1', '1'], `${loading} batch marks each image hydrated`);
+  }
+});
+
 test('a callback from a replaced photo observer cannot hydrate media from its old viewport', () => {
   const observers = [];
   let touch = false;

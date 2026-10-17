@@ -47203,7 +47203,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     if (wantsImmediateHydration) eagerImgs.push(img);
                     else observerImgs.push(img);
                 });
-                eagerImgs.forEach(hydrateDeferredCardPhoto);
+                eagerImgs.forEach((img) => hydrateDeferredCardPhoto(img));
                 if (!observerImgs.length) return;
                 const avPhotoFeedVisible = typeof getCurrentVisibleViewId === 'function'
                     && getCurrentVisibleViewId() === 'av'
@@ -47243,7 +47243,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const batchSize = adaptiveLevel >= 2 ? 3 : (adaptiveLevel === 1 || isTouchConstrainedDevice() ? 4 : 8);
                 const batchDelay = adaptiveLevel >= 2 ? 160 : (adaptiveLevel === 1 ? 120 : 80);
                 const hydrateBatch = () => {
-                    observerImgs.slice(index, index + batchSize).forEach(hydrateDeferredCardPhoto);
+                    observerImgs.slice(index, index + batchSize).forEach((img) => hydrateDeferredCardPhoto(img));
                     index += batchSize;
                     if (index < observerImgs.length) window.setTimeout(hydrateBatch, batchDelay);
                 };
@@ -95146,6 +95146,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return `<div class="mt-3" onclick="event.stopPropagation()"><button type="button" class="min-h-[44px] w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-800" ${buildFastInvokeAttrs('openDocksCredit', [uid], 'Request Credit')}>Request Credit</button></div>`;
         }
 
+        function buildDocksStopItemsRenderSignature(dockLabel = '', stopNumber = '', stopItems = []) {
+            return `${buildRowsRenderSignature(`docks-stop-items|${String(dockLabel || '')}|${String(stopNumber || '')}`, stopItems)}:queue-inventory:${Number(queueCardInventoryRenderVersion) || 0}`;
+        }
+
         function renderDocks() {
             if (ensureViewDataForRender('docks')) return;
             const container = document.getElementById('docks-content');
@@ -95330,6 +95334,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 prefixHtml: stopHeaderHtml,
                 approxCardHeight: 265,
                 emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this stop.</div>`,
+                renderSignature: buildDocksStopItemsRenderSignature(selectedDockLabel, selectedDockStop, stopItems),
                 reserveSpace: true
             });
         }
@@ -116541,7 +116546,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             });
             const mirrorPreparationState = isDockSuspendDcRequestMirrorPreparationPending() ? 'mirrors-preparing' : 'mirrors-ready';
             return { ...plan, allItems, searchItems, assignedItems, contSizeItems, sourceLookup,
-                renderSignature: `${plan.renderSignature}:${mirrorPreparationState}:planstart:${JSON.stringify(planstartSignature)}` };
+                renderSignature: `${plan.renderSignature}:${mirrorPreparationState}:queue-inventory:${Number(queueCardInventoryRenderVersion) || 0}:planstart:${JSON.stringify(planstartSignature)}` };
         }
 
         function getRequestSuspendTagSearchInputState(event = null) {
@@ -118461,7 +118466,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 clean(item.MOVE_TO_LOCATIONCODE),
                 clean(item.MOVE_PLANNED_QTY),
                 clean(item.MOVE_ACTUAL_QTY),
-                selectedItems.has(item.DOM_ID) ? '1' : '0'
+                selectedItems.has(item.DOM_ID) ? '1' : '0',
+                `queue-inventory:${typeof queueCardInventoryRenderVersion === 'undefined' ? 0 : Number(queueCardInventoryRenderVersion) || 0}`
             ].join('|');
         }
 
@@ -149377,6 +149383,7 @@ C.14.043 C.15.000
         let queueCardInventoryIndexRows = null;
         let queueCardInventoryIndexReceipt = '';
         let queueCardInventoryRevisionReceipt = null;
+        let queueCardInventoryRenderVersion = 0;
 
         function acceptQueueInventorySourceRevision(source, permission) {
             if (source?.state !== 'ready' || !/^[1-9]\d*$/.test(String(source.revision || ''))) return;
@@ -149446,6 +149453,7 @@ C.14.043 C.15.000
             if (!queueCardInventoryHydrator) queueCardInventoryHydrator = helper.createHydrator({
                 context: getQueueCardInventoryContext, load: loadQueueCardInventoryBatch,
                 onChange: () => {
+                    queueCardInventoryRenderVersion += 1;
                     markViewDirty('request'); markViewDirty('docks');
                     if (isViewVisible('request')) scheduleRequestRender(0, 0, true);
                     if (isViewVisible('docks')) scheduleDocksRender(0);

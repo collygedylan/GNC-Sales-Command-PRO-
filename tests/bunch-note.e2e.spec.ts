@@ -88,8 +88,11 @@ async function openBunchNotesFromQueue(page:any) {
 }
 async function openAuthorLocation(page:any, location:string) {
  const section=page.locator('.bn-card-board__location').filter({has:page.locator('h3',{hasText:location})});
- await expect(section).toBeVisible();
- await section.getByRole('button',{name:'Location instructions',exact:true}).first().click();
+ const wizard=page.locator('.bn-location-list').getByRole('button',{name:`Open location ${location}`,exact:true});
+ const legacy=section.getByRole('button',{name:'Location instructions',exact:true}).first();
+ await expect(wizard.or(legacy)).toBeVisible();
+ if(await wizard.count())await wizard.click();
+ else await legacy.click();
 }
 async function advanceWizardToItems(page:any, workType?:string) {
  const input=page.getByLabel('Work type',{exact:true});
@@ -124,7 +127,7 @@ test('wizard persists exact card notes through reload and preview while picker n
  f.rows.push({...plant('a3','C.12.001'),lotcode:'LOT3'});
  // Keep the chosen location at representative volume: the first two source
  // cards form two groups, then these rows provide 998 distinct candidates.
- // The picker renders the full cached candidate set on open, before search.
+ // Search covers the full cache while the picker pages its visible results.
  for(let i=0;i<998;i++)f.rows.push({...plant(`bulk-${String(i).padStart(4,'0')}`,'C.12.001'),
   itemcode:`BN-BULK-${String(i).padStart(4,'0')}`,commonname:`Bunch Candidate ${String(i).padStart(4,'0')}`});
  const candidates=f.rows.filter(row=>row.locationcode==='C.12.001');
@@ -146,43 +149,54 @@ test('wizard persists exact card notes through reload and preview while picker n
  const commandCount=f.commands.length;
  // Start the timer inside the real click event and stop after two animation
  // frames; this excludes Playwright's cross-process command round trip.
- const pickerPaint=page.evaluate(()=>new Promise<number>((resolve,reject)=>{
-  const button=Array.from(document.querySelectorAll('button')).find(candidate=>candidate.textContent?.includes('Add inventory card'));
-  if(!button){reject(new Error('Add inventory card button was not rendered'));return;}
-  button.addEventListener('click',()=>{const started=performance.now();requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(performance.now()-started)));},{once:true,capture:true});
- }));
+ await page.evaluate(()=>{
+  (window as any).__bunchPickerPaintMs=null;
+  const capture=(event:Event)=>{
+   if(!(event.target instanceof Element)||!event.target.closest('button[onclick="BunchNote.openCardPicker()"]'))return;
+   document.removeEventListener('click',capture,true);
+   const started=performance.now();
+   requestAnimationFrame(()=>requestAnimationFrame(()=>{(window as any).__bunchPickerPaintMs=performance.now()-started;}));
+  };
+  document.addEventListener('click',capture,true);
+ });
  await page.getByRole('button',{name:'＋ Add inventory card',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
- const pickerMs=await pickerPaint;
+ await expect.poll(()=>page.evaluate(()=>(window as any).__bunchPickerPaintMs)).not.toBeNull();
+ const pickerMs=await page.evaluate(()=>(window as any).__bunchPickerPaintMs as number);
  const pickerGroups=page.locator('.bn-picker-result');
- await expect(pickerGroups).toHaveCount(1000);
+ await expect(pickerGroups).toHaveCount(100);
  expect(f.commands).toHaveLength(commandCount);
- await testInfo.attach('bunch-note-wizard-warm-picker.json',{body:JSON.stringify({project:testInfo.project.name,environment:testInfo.project.use.isMobile?'mobile':'desktop',operation:'warm cached inventory card picker click-to-paint',elapsedMs:pickerMs,limitMs:400,locationRows:candidates.length,renderedCardCandidates:1000,cache:'warm local source_all; no inventory RPC during picker open'}),contentType:'application/json'});
+ await testInfo.attach('bunch-note-wizard-warm-picker.json',{body:JSON.stringify({project:testInfo.project.name,environment:testInfo.project.use.isMobile?'mobile':'desktop',operation:'warm cached inventory card picker click-to-paint',elapsedMs:pickerMs,limitMs:400,locationRows:candidates.length,cachedCardCandidates:1000,renderedCardCandidates:100,cache:'warm local source_all; no inventory RPC during picker open'}),contentType:'application/json'});
  expect(pickerMs).toBeLessThanOrEqual(400);
 
  await page.context().setOffline(true);
- await page.getByLabel('Search inventory',{exact:true}).fill('Bunch Plant');
+ await page.getByRole('textbox',{name:'Search inventory',exact:true}).fill('Bunch Candidate 0997');
+ await expect(pickerGroups).toHaveCount(1);
+ await expect(pickerGroups).toContainText('Bunch Candidate 0997');
+ await page.getByRole('textbox',{name:'Search inventory',exact:true}).fill('Bunch Plant');
  await page.evaluate(()=>{(window as any).BunchNote.render();});
- await expect(page.getByLabel('Search inventory',{exact:true})).toHaveValue('Bunch Plant');
+ await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toHaveValue('Bunch Plant');
  await page.locator('.bn-picker-result').filter({hasText:'#3'}).click();
  await expect(page.getByLabel('Select lot #3 27.F1 a',{exact:true})).toBeChecked();
  await expect(page.getByLabel('Select lot #3 LOT3 a3',{exact:true})).toBeChecked();
- await page.getByLabel('Card direction',{exact:true}).fill('Rows east to west');
- await page.getByLabel('Card notes',{exact:true}).fill('Keep these lots separate');
+ await expect(page.getByRole('dialog',{name:'Card directions and notes'})).toBeVisible();
+ await page.getByRole('textbox',{name:'Card direction',exact:true}).fill('Rows east to west');
+ await page.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep these lots separate');
  expect(f.commands).toHaveLength(commandCount); // search, selection and field edits are local
  await page.context().setOffline(false);
  await page.getByRole('button',{name:'＋ Add card and continue',exact:true}).click();
  await expectRequestQueueToolbarRetained(page,requestToolbar);
  await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
- await expect(page.getByLabel('Search inventory',{exact:true})).toHaveValue('');
+ await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toHaveValue('');
 
  // Adding another card immediately reopens the picker for rapid iteration.
+ await page.getByRole('textbox',{name:'Search inventory',exact:true}).fill('Bunch Plant');
  await page.locator('.bn-picker-result').filter({hasText:'#5'}).click();
  await expect(page.getByLabel('Select lot #5 LOT2 a2',{exact:true})).toBeChecked();
- await page.getByLabel('Card direction',{exact:true}).fill('Rows north to south');
+ await page.getByRole('textbox',{name:'Card direction',exact:true}).fill('Rows north to south');
  await page.getByRole('button',{name:'＋ Add card and continue',exact:true}).click();
  await expectRequestQueueToolbarRetained(page,requestToolbar);
- await expect(page.getByLabel('Search inventory',{exact:true})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toBeVisible();
  const committed=f.commands.filter(command=>command.operation==='save').at(-1).payload.body.locations[0];
  expect(committed.cards.map((card:any)=>card.row_ids)).toEqual([['a','a3'],['a2']]);
  expect(committed.actions).toHaveLength(1);

@@ -5,6 +5,12 @@ import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
+
+test('Que navigation labels retain their surface contrast inside the global header', () => {
+  assert.match(css, /#global-header-search-slot \.request-category-chip\s*\{[^}]*color:\s*var\(--ops-text-muted\)[^}]*background:\s*var\(--ops-surface\)/);
+  assert.match(css, /#global-header-search-slot \.request-category-chip\.is-active\s*\{[^}]*color:\s*var\(--ops-brand-strong\)[^}]*background:\s*var\(--ops-brand-soft\)/);
+});
 
 function functionSource(name, nextName) {
   const start = html.indexOf(`        function ${name}(`);

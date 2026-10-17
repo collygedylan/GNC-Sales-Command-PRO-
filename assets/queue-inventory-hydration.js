@@ -52,14 +52,20 @@
         } };
     }
     function createHydrator(options) {
-        let entries = new Map(), pending = new Map(), active = null, timer = null, generation = 0, scope = '';
+        let entries = new Map(), pending = new Map(), active = null, timer = null, generation = 0, scope = '', navigationSignal = null;
         const inflight = new Set();
-        const contextKey = c => c ? JSON.stringify([c.scope, c.permission]) : '';
+        const contextKey = c => c ? JSON.stringify([c.scope, c.permission, String(c.revision || '')]) : '';
         const current = () => {
             const c = options.context();
-            const next = contextKey(c);
-            if (scope !== next) { invalidate(); scope = next; }
-            return c && c.scope && c.permission && !c.signal?.aborted ? c : null;
+            const usable = c && c.scope && c.permission && !c.signal?.aborted;
+            const next = usable ? contextKey(c) : '';
+            const nextSignal = usable ? c.signal || null : null;
+            if (scope !== next || navigationSignal !== nextSignal) {
+                invalidate();
+                scope = next;
+                navigationSignal = nextSignal;
+            }
+            return usable ? c : null;
         };
         const entryKey = value => JSON.stringify(identity(value));
         function invalidate() {

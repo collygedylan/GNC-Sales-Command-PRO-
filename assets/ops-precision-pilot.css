@@ -6744,7 +6744,8 @@ body.ops-precision-pilot .request-category-options {
   overflow: visible !important;
 }
 
-body.ops-precision-pilot .request-category-chip {
+body.ops-precision-pilot .request-category-chip,
+body.ops-precision-pilot #global-header-search-slot .request-category-chip {
   display: inline-flex !important;
   flex: 0 0 auto !important;
   min-width: auto !important;
@@ -6768,7 +6769,8 @@ body.ops-precision-pilot .request-category-chip {
   scroll-snap-align: start;
 }
 
-body.ops-precision-pilot .request-category-chip.is-active {
+body.ops-precision-pilot .request-category-chip.is-active,
+body.ops-precision-pilot #global-header-search-slot .request-category-chip.is-active {
   border-color: var(--ops-brand) !important;
   color: var(--ops-brand-strong) !important;
   background: var(--ops-brand-soft) !important;

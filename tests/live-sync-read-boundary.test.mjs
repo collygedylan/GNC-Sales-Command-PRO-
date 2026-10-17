@@ -574,7 +574,8 @@ test('navigation stops visible-document reads until restoration or trusted inter
     const document = { hidden: false, addEventListener: listen('document'), body: { classList: { contains: () => true } } };
     const window = { document, AbortController, console, addEventListener: listen('window'),
         setTimeout, clearTimeout, requestIdleCallback: callback => setTimeout(callback, 0), cancelIdleCallback: clearTimeout };
-    const ctx = { AbortController, console, document, window,
+    const ctx = { AbortController, console, document, window, inventoryStatusPendingSaves: new Map(),
+        invalidateProductionLiveSyncProofForSuspend() {},
         appAccessSnapshotState: { status: 'ready', stale: false, username: 'fixture' }, currentUser: 'fixture', getRequestCapabilityUsernameKey: value => value,
         productionLiveSyncCoordinator: coordinator,
         getProductionLiveSyncCoordinator: () => coordinator, canUseProductionLiveSync: () => false,
@@ -715,7 +716,13 @@ test('settings-only updates rebuild current-season collections from verified inv
         refreshLiveLocMatchQuantityPreviews() {},
         processAndLoadData: (payload) => { calls.push(payload); ctx.visibleRows = payload.data.filter((row) => row.SEASON === ctx.season); }
     };
-    vm.createContext(ctx); vm.runInContext(`this.commit = ${callback}`, ctx);
+    vm.createContext(ctx);
+    const queueRevisionStart = html.indexOf('function acceptQueueInventorySourceRevision(');
+    const queueRevisionEnd = html.indexOf('\n        function ', queueRevisionStart + 10);
+    assert.ok(queueRevisionStart > 0 && queueRevisionEnd > queueRevisionStart, 'queue revision helper boundary');
+    vm.runInContext(`let queueCardInventoryHydrator = null; let queueCardInventoryIndex = null; let queueCardInventoryRevisionReceipt = null;\n`
+        + html.slice(queueRevisionStart, queueRevisionEnd)
+        + `\nthis.commit = ${callback}`, ctx);
     ctx.commit([{ adapter: { id: 'side:settings', commit: () => { ctx.season = 'F1'; } }, value: {} }], context, metadata);
     assert.deepEqual(ctx.visibleRows.map((row) => row.UNIQUE_ID), ['fall']);
     assert.equal(calls[0]._verifiedLiveSync, true);
