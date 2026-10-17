@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'AgData v2.0.1';
+  const RELEASE = 'AgData v2.0.2';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1';
   const PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:';
@@ -437,11 +437,32 @@
 
   function scheduleDecorateRecordCollections() {
     if (decorateFrame) return;
+    const runDecoration = () => {
+      decorateFrame = 0;
+      if (shouldDeferRecordCollectionDecoration({
+        narrowOrTouch: isNarrowOrTouchLayout(),
+        grid: getEffectiveDisplayMode() === 'grid',
+        activeChunk: hasActiveProgressiveListChunk()
+      })) return;
+      decorateRecordCollections();
+    };
     if (typeof window.requestIdleCallback === 'function') {
-      decorateFrame = window.requestIdleCallback(decorateRecordCollections, { timeout: 220 });
+      decorateFrame = window.requestIdleCallback(runDecoration, { timeout: 220 });
       return;
     }
-    decorateFrame = window.setTimeout(decorateRecordCollections, 48);
+    decorateFrame = window.setTimeout(runDecoration, 48);
+  }
+
+  function isNarrowOrTouchLayout() {
+    const width = Number(window.innerWidth || document.documentElement?.clientWidth || 0);
+    const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    return width <= 767 || coarsePointer;
+  }
+
+  function hasActiveProgressiveListChunk() {
+    const rootId = LIST_ROOT_IDS[state.activeView];
+    const container = rootId ? document.getElementById(rootId) : null;
+    return isProgressiveChunkContainerActive(container);
   }
 
   function installMutationObserver() {
@@ -457,7 +478,7 @@
         });
       });
       scheduleDecorateRecordCollections();
-      scheduleCompactBrowseRails();
+      if (mutationAffectsCompactBrowseRails(records)) scheduleCompactBrowseRails();
       scheduleLayoutHealthCheck('mutation');
     });
     mutationObserver.observe(wrapper, { childList: true, subtree: true });
@@ -478,6 +499,29 @@
     '.manager-eval2-drive-controls',
     '.workflow-control-rail:not(:has(.docks-filter-row))'
   ].join(',');
+  function isProgressiveChunkContainerActive(container) {
+    return Number(container?.dataset?.activeChunkRenderToken || 0) > 0
+      && String(container?.dataset?.activeChunkRenderKey || '').trim() !== '';
+  }
+
+  function shouldDeferRecordCollectionDecoration({ narrowOrTouch, grid, activeChunk }) {
+    return narrowOrTouch === true && grid !== true && activeChunk === true;
+  }
+
+  function nodeTouchesCompactBrowseRail(node, includeDescendants = false) {
+    const element = node && node.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+    if (element && (element.matches(BROWSE_RAIL_SELECTOR) || Boolean(element.closest(BROWSE_RAIL_SELECTOR)))) return true;
+    return includeDescendants && Boolean(node?.querySelector?.(BROWSE_RAIL_SELECTOR));
+  }
+
+  function mutationAffectsCompactBrowseRails(records) {
+    return Array.from(records || []).some((record) => {
+      if (nodeTouchesCompactBrowseRail(record.target)) return true;
+      return [...Array.from(record.addedNodes || []), ...Array.from(record.removedNodes || [])]
+        .some((node) => nodeTouchesCompactBrowseRail(node, true));
+    });
+  }
+
   const compactBrowseRailState = new WeakMap();
   const compactBrowseRailOpenState = new Map();
   let compactBrowseRailFrame = 0;

@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
 // @test-group: @suspend-tag,suspend
 
 import { confirmedDriveEvidence, driveEvidenceColumns } from '../services/driveEvidence.ts';
@@ -6,6 +6,11 @@ import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs
 
 
 type FixtureRow = Record<string, string | number>;
+async function activateSurface(page: Page, locator: Locator) {
+  if ((page.viewportSize()?.width || 0) <= 767) await locator.tap();
+  else await locator.click();
+}
+
 type Reply = {
   operation?: string;
   status?: number;
@@ -110,6 +115,11 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       const body=request.postDataJSON();
       const input=body.payload || {};
       requests.push({body});
+      if(body.operation==='rows') {
+        const ids=Array.isArray(input.ids)?input.ids.map((id:unknown)=>String(id)):[];
+        const rows=backendRows.filter(row=>ids.includes(String(row.UNIQUE_ID))).map(row=>Object.fromEntries(Object.entries(row).map(([key,value])=>[key.toLowerCase(),value])));
+        return fulfill(route,{ok:true,data:{rows}});
+      }
       const source=backendRows.find(row=>row.UNIQUE_ID===input.sourceUid || row.SUSPEND_TAG_APPROVAL_ID===input.approvalId);
       if(!source) return fulfill(route,{message:'Suspend Tag source row was not found.'},404);
       const canonical=()=>Object.fromEntries(Object.entries(source).map(([key,value])=>[key.toLowerCase(),value]));
@@ -342,11 +352,18 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   }
   expect(runtimeResponses, 'must exercise the deferred production-built runtime').toHaveLength(1);
   const card = (row: FixtureRow = rows[0]) => page.locator(`#request-content [data-request-uid="dock_suspend_dc_${row.UNIQUE_ID}"]`);
-  const done = (row: FixtureRow = rows[0]) => card(row).locator('button[onclick*="completeDockSuspendDcRequestFromCard"]');
-  const complete = async (row: FixtureRow = rows[0]) => {
-    await done(row).tap();
+  const done = (row: FixtureRow = rows[0]) => card(row).getByRole('button', { name: 'Complete Tag', exact: true });
+  // Legacy Mark Done remains covered separately from the current card's
+  // Complete Tag close action. This helper deliberately invokes the retained
+  // legacy handler; it does not claim the removed card button still exists.
+  const beginLegacyCompletion = async (row: FixtureRow = rows[0]) => {
+    await page.evaluate(uid => window.eval(`void completeDockSuspendDcRequestFromCard(${JSON.stringify('dock_suspend_dc_' + uid)}, null)`), row.UNIQUE_ID);
     await expect(page.locator('#app-prompt-dialog')).toContainText('Complete Suspend Tag');
-    await page.locator('#app-prompt-dialog').getByRole('button', { name: 'Mark Done', exact: true }).tap();
+  };
+  const activate = (locator: ReturnType<typeof page.locator>) => activateSurface(page, locator);
+  const legacyComplete = async (row: FixtureRow = rows[0]) => {
+    await beginLegacyCompletion(row);
+    await activate(page.locator('#app-prompt-dialog').getByRole('button', { name: 'Mark Done', exact: true }));
   };
   const refresh = async (nextRows: FixtureRow[] = backendRows) => {
     await page.evaluate((data) => {
@@ -371,11 +388,11 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     await page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().check('suspend-fixture-revision')`));
   };
   const assertClean = () => {
-    expect(unexpectedMutations, 'Done must not issue generic PATCH/DELETE, email or stock writes').toEqual([]);
+    expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
   };
-  return { requests, replies, receipts, backendRows, inventoryLookupCalls, card, done, complete, seed, refresh, nativeRefresh, showStatus, assertClean };
+  return { requests, replies, receipts, backendRows, inventoryLookupCalls, card, done, activate, legacyComplete, beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, assertClean };
 }
 
 async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', value: string) {
@@ -386,17 +403,17 @@ async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', va
     await page.locator(`#${id}`).fill(value);
     return;
   }
-  await page.locator(`#${id}`).tap();
-  await page.locator('#detail-measurement-keyboard').getByRole('button', { name: 'Clear', exact: true }).first().tap({ timeout: 10000 });
-  for (const digit of value) await page.locator(`#detail-measurement-keyboard [data-key-token="${digit}"]`).tap();
-  await page.locator('#detail-measurement-keyboard [data-key-token="__done"]').tap();
+  await activateSurface(page, page.locator(`#${id}`));
+  await activateSurface(page, page.locator('#detail-measurement-keyboard').getByRole('button', { name: 'Clear', exact: true }).first());
+  for (const digit of value) await activateSurface(page, page.locator(`#detail-measurement-keyboard [data-key-token="${digit}"]`));
+  await activateSurface(page, page.locator('#detail-measurement-keyboard [data-key-token="__done"]'));
 }
 
-test('Done immediately leaves the active queue, survives stale refresh and reload, and preserves completed approval work', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
+test('legacy Mark Done immediately leaves the active queue, survives stale refresh and reload, and preserves completed approval work', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   let release!: () => void;
   app.replies.push({ wait: new Promise<void>((resolve) => { release = resolve; }) });
-  await app.complete();
+  await app.legacyComplete();
   await expect.poll(() => app.requests.length).toBe(1);
   await expect(app.card()).toHaveCount(0);
   await app.refresh(fixtures);
@@ -419,7 +436,7 @@ test('Done immediately leaves the active queue, survives stale refresh and reloa
   await expect(app.done(fixtures[1])).toBeVisible();
   await app.showStatus('completed');
   await expect(app.card()).toContainText('Completed — Ready to Email');
-  await expect(app.card().getByRole('button', { name: 'Email Rep for Approval', exact: true })).toBeVisible();
+  await expect(app.card().getByRole('button', { name: 'Email', exact: true })).toBeVisible();
   expect(app.backendRows[0].PTRONHAND).toBe('40');
   expect(app.backendRows[0].PTRAVAILABLE).toBe('30');
   expect(app.backendRows[1].DATE_COMPLETED).toBe('');
@@ -435,6 +452,8 @@ test('pastel Suspend cards keep readable text in both themes without removing we
       document.body.classList.toggle('dark-mode', mode === 'dark');
       document.body.dataset.opsTheme = mode;
     }, theme);
+    await page.mouse.move(0, 0);
+    await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
     const evidence = await page.locator('#request-content .app-suspend-tag-compact-card').evaluateAll(cards => {
       const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
       const context = canvas.getContext('2d', { willReadFrequently: true })!;
@@ -619,8 +638,8 @@ test('background Suspend revision preserves card identity and layout while updat
 
 test('canceling confirmation retains the row and makes no completion request', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
-  await app.done().tap();
-  await page.locator('#app-prompt-dialog').getByRole('button', { name: 'Keep Pending', exact: true }).tap();
+  await app.beginLegacyCompletion();
+  await app.activate(page.locator('#app-prompt-dialog').getByRole('button', { name: 'Keep Pending', exact: true }));
   await expect(app.done()).toBeEnabled();
   expect(app.requests).toHaveLength(0);
   app.assertClean();
@@ -714,11 +733,11 @@ test('bounded Suspend Tag cards and filters remain reachable at 320, 390 and 430
   app.assertClean();
 });
 
-test('double activation sends one completion even through a stale rerendered button', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
+test('legacy Mark Done double activation sends one completion even through a stale rerendered button', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   let release!: () => void;
   app.replies.push({ wait: new Promise<void>((resolve) => { release = resolve; }) });
-  await app.complete();
+  await app.legacyComplete();
   await expect.poll(() => app.requests.length).toBe(1);
   await page.evaluate((uid) => window.eval(`void completeDockSuspendDcRequestFromCard(${JSON.stringify('dock_suspend_dc_' + uid)}, null)`), fixtures[0].UNIQUE_ID);
   await expect(page.locator('#app-prompt-dialog')).toBeHidden();
@@ -734,7 +753,7 @@ test('double activation sends one completion even through a stale rerendered but
 test('lost response leaves row actionable and retry after reload reuses the persisted request token', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   app.replies.push({ abort: true, commitBeforeAbort: true });
-  await app.complete();
+  await app.legacyComplete();
   await expect(page.locator('#toast-notification')).toHaveAttribute('data-kind', 'error');
   await expect(app.done()).toBeEnabled();
   expect(app.requests).toHaveLength(1);
@@ -742,7 +761,7 @@ test('lost response leaves row actionable and retry after reload reuses the pers
   // Simulate cached data after a lost response, while the backend retains Done.
   await page.reload({ waitUntil: 'load' });
   await app.seed(fixtures);
-  await app.complete();
+  await app.legacyComplete();
   await expect.poll(() => app.requests.length).toBe(2);
   await expect(app.card()).toHaveCount(0);
   expect(app.requests).toHaveLength(2);
@@ -760,7 +779,7 @@ for (const failure of [
   test(`HTTP ${failure.status} preserves actionable row and shows the actual error`, {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
     const app = await harness(page, baseURL!);
     app.replies.push({ status: failure.status, body: { code: String(failure.status), message: failure.message } });
-    await app.complete();
+    await app.legacyComplete();
     await expect(page.locator('#toast-notification')).toContainText(failure.message);
     await expect(app.done()).toBeEnabled();
     await app.refresh();
@@ -781,7 +800,7 @@ test('malformed or mismatched acknowledgment never marks the row completed', {"t
     { ok: true, sourceUid: fixtures[0].UNIQUE_ID, completedAt: completionTime, sourceLastUpdated: sourceRevision },
   ]) {
     app.replies.push({ body });
-    await app.complete();
+    await app.legacyComplete();
     await expect(page.locator('#toast-notification')).toHaveAttribute('data-kind', 'error');
     await expect(app.done()).toBeEnabled();
     await expect(app.card()).toHaveCount(1);
@@ -792,7 +811,7 @@ test('malformed or mismatched acknowledgment never marks the row completed', {"t
 
 test('a stale snapshot cannot restore Done, but a newer reopened source stays visible', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
-  await app.complete();
+  await app.legacyComplete();
   await expect.poll(() => app.receipts.size).toBe(1);
   await expect(app.card()).toHaveCount(0);
   await app.refresh(fixtures);
@@ -807,7 +826,7 @@ test('an old completion response cannot hide a newer reopened version of the sou
   const app = await harness(page, baseURL!);
   let release!: () => void;
   app.replies.push({ wait: new Promise<void>((resolve) => { release = resolve; }) });
-  await app.complete();
+  await app.legacyComplete();
   await expect.poll(() => app.requests.length).toBe(1);
   const reopened = fixtures.map((row) => ({ ...row, LAST_UPDATED: '2026-09-08T16:00:00.000Z' }));
   await app.refresh(reopened);
@@ -826,14 +845,14 @@ test('detail Mark Done stays in detail until the global save is confirmed, then 
   app.replies.push({ operation: 'complete', wait: new Promise<void>((resolve) => { release = resolve; }) });
   await page.evaluate(() => window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
   await expect(page.locator('#request-open-info-modal')).toBeVisible();
-  await page.locator('#request-open-info-ok').tap();
+  await app.activate(page.locator('#request-open-info-ok'));
   await expect(page.locator('#req-btn-save-complete')).toBeVisible();
   await page.waitForFunction(() => !(window as any).isDetailTransitionActive());
   await setDetailMeasurement(page, 'req-spec', '24');
   await setDetailMeasurement(page, 'req-match', '80');
-  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await app.activate(page.locator('.request-av-note-sheet__close'));
 
-  await page.locator('#req-btn-save-complete').tap({ timeout: 10000 });
+  await app.activate(page.locator('#req-btn-save-complete'));
   await expect.poll(() => app.requests.filter(request => request.body.operation === 'complete').length).toBe(1);
   await expect(page.locator('#view-detail')).toBeVisible();
   await expect(page.locator('#req-spec')).toHaveValue('24');
@@ -856,14 +875,14 @@ test('detail Mark Done completes and returns to Suspend when background inventor
   const app = await harness(page, baseURL!, fixtures, { inventoryUnavailable: true });
   await page.evaluate(() => window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
   await expect(page.locator('#request-open-info-modal')).toBeVisible();
-  await page.locator('#request-open-info-ok').tap();
+  await app.activate(page.locator('#request-open-info-ok'));
   await expect(page.locator('#req-btn-save-complete')).toBeVisible();
   await page.waitForFunction(() => !(window as any).isDetailTransitionActive());
   await setDetailMeasurement(page, 'req-spec', '24');
   await setDetailMeasurement(page, 'req-match', '80');
-  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await app.activate(page.locator('.request-av-note-sheet__close'));
 
-  await page.locator('#req-btn-save-complete').tap({ timeout: 10000 });
+  await app.activate(page.locator('#req-btn-save-complete'));
   await expect.poll(() => app.requests.filter(request => request.body.operation === 'complete').length).toBe(1);
   await expect.poll(() => app.backendRows[0].DATE_COMPLETED).toBe(completionTime);
   await expect.poll(() => app.inventoryLookupCalls.some(call => call.status === 503)).toBe(true);
@@ -884,17 +903,17 @@ test('late detail completion acknowledgment does not override navigation away fr
   app.replies.push({ operation: 'complete', wait: new Promise<void>((resolve) => { release = resolve; }) });
   await page.evaluate(() => window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
   await expect(page.locator('#request-open-info-modal')).toBeVisible();
-  await page.locator('#request-open-info-ok').tap();
+  await app.activate(page.locator('#request-open-info-ok'));
   await expect(page.locator('#req-btn-save-complete')).toBeVisible();
   await page.waitForFunction(() => !(window as any).isDetailTransitionActive());
   await setDetailMeasurement(page, 'req-spec', '24');
   await setDetailMeasurement(page, 'req-match', '80');
-  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await app.activate(page.locator('.request-av-note-sheet__close'));
 
-  await page.locator('#req-btn-save-complete').tap({ timeout: 10000 });
+  await app.activate(page.locator('#req-btn-save-complete'));
   await expect.poll(() => app.requests.filter(request => request.body.operation === 'complete').length).toBe(1);
   await expect(page.locator('#view-detail')).toBeVisible();
-  await page.getByRole('button', { name: 'Home' }).tap();
+  await app.activate(page.getByRole('button', { name: 'Home' }));
   await expect(page.locator('#view-home')).toBeVisible();
 
   release();
@@ -912,29 +931,29 @@ test('detail Mark Done preserves failed form edits and only applies a confirmed 
   const app=await harness(page,baseURL!);
   await page.evaluate(()=>window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
   await expect(page.locator('#request-open-info-modal')).toBeVisible();
-  await page.locator('#request-open-info-ok').tap();
+  await app.activate(page.locator('#request-open-info-ok'));
   await expect(page.locator('#req-spec')).toBeVisible();
   await page.waitForFunction(()=>!(window as any).isDetailTransitionActive());
   for (const [id,value] of [['req-spec','24'],['req-match','80']]) {
     const custom=await page.evaluate(id=>(window as any).shouldPreferDetailMeasurementKeyboard() && (window as any).isDetailMeasurementKeyboardInput(document.getElementById(id)),id);
     if (custom) {
-      await page.locator('#'+id).tap();
-      await page.locator('#detail-measurement-keyboard').getByRole('button',{name:'Clear',exact:true}).first().tap({timeout:10000});
-      for (const digit of value) await page.locator('#detail-measurement-keyboard [data-key-token="'+digit+'"]').tap();
-      await page.locator('#detail-measurement-keyboard [data-key-token="__done"]').tap();
+      await app.activate(page.locator('#'+id));
+      await app.activate(page.locator('#detail-measurement-keyboard').getByRole('button',{name:'Clear',exact:true}).first());
+      for (const digit of value) await app.activate(page.locator('#detail-measurement-keyboard [data-key-token="'+digit+'"]'));
+      await app.activate(page.locator('#detail-measurement-keyboard [data-key-token="__done"]'));
     } else await page.locator('#'+id).fill(value);
     await expect(page.locator('#'+id)).toHaveValue(value);
   }
-  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await app.activate(page.locator('.request-av-note-sheet__close'));
   app.replies.push({operation:'complete',status:403,body:{ok:false,code:'SUSPEND_TAG_FORBIDDEN'}});
-  await page.locator('#req-btn-save-complete').tap({timeout:10000});
+  await app.activate(page.locator('#req-btn-save-complete'));
   await expect.poll(()=>app.requests.filter(r=>r.body.operation==='complete').length).toBeGreaterThan(0);
   await expect(page.locator('#toast-notification')).toHaveAttribute('data-kind','error');
   await expect(page.locator('#view-detail')).toBeVisible();
   await expect(page.locator('#view-home')).toBeHidden();
   await expect(page.locator('#req-spec')).toHaveValue('24');
   expect(app.backendRows[0].DATE_COMPLETED).toBe('');
-  await page.locator('#req-btn-save-complete').tap();
+  await app.activate(page.locator('#req-btn-save-complete'));
   await expect.poll(()=>app.backendRows[0].SUSPEND_TAG_STATUS).toBe('completed');
   expect(app.backendRows[0].DOCK_SPEC).toBe('24');
   expect(String(app.backendRows[0].MATCH)).toBe('80');
@@ -955,48 +974,343 @@ test('emailed approval opens after sign-in and URL decision text never records a
   await expect(dialog).toContainText('Synthetic browser customer');
   await expect(dialog.getByRole('button',{name:'Approve',exact:true})).toBeVisible();
   expect(app.requests.map(r=>r.body.operation)).toEqual(['approval']);
-  await dialog.getByRole('button',{name:'Approve',exact:true}).tap();
+  await app.activate(dialog.getByRole('button',{name:'Approve',exact:true}));
   await expect(dialog).toContainText('Your reply email is queued');
   expect(app.requests.map(r=>r.body.operation)).toEqual(['approval','decide']);
   app.assertClean();
 });
 
-test('manual first email, denial preserves work, and re-completion starts a fresh approval', {"tag":["@suspend-tag"]}, async ({page,baseURL})=>{
+test('generated Suspend Tag email and Complete Tag actions keep readable contrast across themes', {"tag":["@suspend-tag"]}, async ({page,baseURL},info)=>{
+  const colorFixtures=fixtures.map(row=>({...row,PLANSTART:'2026-10-19'}));
+  const app=await harness(page,baseURL!,colorFixtures);
+  const card=app.card();
+  const actions=card.locator('.app-suspend-tag-actions');
+  const email=actions.getByRole('button',{name:'Email',exact:true});
+  const markDone=actions.getByRole('button',{name:'Mark Done',exact:true});
+  const completeTag=actions.getByRole('button',{name:'Complete Tag',exact:true});
+  await expect(email).toBeVisible();
+  await expect(markDone).toHaveCount(0);
+  await expect(completeTag).toBeVisible();
+  const orderedLabels=await actions.locator('button').allTextContents();
+  expect(orderedLabels.indexOf('Email')).toBeLessThan(orderedLabels.indexOf('Complete Tag'));
+  for (const theme of ['light','dark','outdoor']) {
+    await page.evaluate(value=>{
+      document.body.dataset.opsTheme=value;
+      document.body.classList.toggle('dark',value==='dark');
+    },theme);
+    await page.mouse.move(1,1);
+    await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
+    await card.scrollIntoViewIfNeeded();
+    await info.attach(`suspend-email-${theme}.png`, { body: await card.screenshot(), contentType: 'image/png' });
+    for (const button of [email,completeTag]) {
+      await page.mouse.move(1,1);
+      await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
+      const colors=await button.evaluate(node=>{
+        const style=getComputedStyle(node);
+        return {background:style.backgroundColor,color:style.color,textFill:style.getPropertyValue('-webkit-text-fill-color'),
+          icons:Array.from(node.querySelectorAll('i,svg')).map(icon=>{
+            const iconStyle=getComputedStyle(icon);
+            return {color:iconStyle.color,textFill:iconStyle.getPropertyValue('-webkit-text-fill-color'),fill:iconStyle.fill};
+          })};
+      });
+      expect(colors,`${theme} ${await button.innerText()} contrast`).toMatchObject({
+        background:'rgb(0, 122, 77)',color:'rgb(255, 255, 255)',textFill:'rgb(255, 255, 255)'
+      });
+      for (const icon of colors.icons) {
+        expect(icon.color).toBe('rgb(255, 255, 255)');
+        expect(icon.textFill).toBe('rgb(255, 255, 255)');
+        if (icon.fill !== 'none') expect(icon.fill).toBe('rgb(255, 255, 255)');
+      }
+      const actionScope=await button.evaluate(node=>{
+        const uid=node.closest('[data-request-uid]')?.getAttribute('data-request-uid');
+        if(!uid)throw new Error('Action card identity is missing');
+        return window.eval(`(() => { const uid=${JSON.stringify(uid)}, scope=getSupabaseReadIdentityScope();
+          const row=findDockSuspendDcRequestMirrorRowByUniqueId(uid);
+          if(!row || row.UNIQUE_ID!==uid || !getDockSuspendDcRequestSourceUid(row))throw new Error('Contrast fixture exact row is unavailable');
+          const key=scope+'|'+getDockSuspendDcRequestSourceUid(row);
+          suspendTagCompletionActions.add(key);
+          if(!setSuspendTagCardActionsBusy(uid,scope,true))throw new Error('Contrast fixture could not lock its mounted row');
+          return {uid,scope,key}; })()`) as {uid:string;scope:string;key:string};
+      });
+      try {
+        await expect.poll(()=>button.evaluate(node=>{
+          const element=node as HTMLButtonElement,style=getComputedStyle(element);
+          return {connected:element.isConnected,disabled:element.matches(':disabled'),background:style.backgroundColor,
+            color:style.color,textFill:style.getPropertyValue('-webkit-text-fill-color')};
+        }),{timeout:2000,message:`${theme} disabled action style should settle on its accessible palette`}).toMatchObject({
+          connected:true,disabled:true,background:'rgb(82, 117, 101)',color:'rgb(255, 255, 255)',textFill:'rgb(255, 255, 255)'
+        });
+      } finally {
+        const released=await page.evaluate(async state=>{
+          const result=window.eval(`(() => {
+            suspendTagCompletionActions.delete(${JSON.stringify(state.key)});
+            const found=setSuspendTagCardActionsBusy(${JSON.stringify(state.uid)},${JSON.stringify(state.scope)},false);
+            const row=findDockSuspendDcRequestMirrorRowByUniqueId(${JSON.stringify(state.uid)});
+            return {found,scope:getSupabaseReadIdentityScope(),sourceUid:getDockSuspendDcRequestSourceUid(row),locks:Array.from(suspendTagCompletionActions)};
+          })()`);
+          await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
+          return {...result,buttons:Array.from(document.querySelectorAll<HTMLElement>('#request-content [data-request-uid]'))
+            .filter(card=>card.dataset.requestUid===state.uid).flatMap(card=>Array.from(card.querySelectorAll<HTMLButtonElement>('.app-suspend-tag-action'))
+              .map(button=>({text:button.textContent,disabled:button.disabled,marker:button.getAttribute('data-suspend-action-busy'),title:button.title,html:button.outerHTML}))) };
+        },actionScope);
+        await info.attach(`suspend-email-${theme}-lock-release.json`,{body:JSON.stringify({theme,actionScope,released}),contentType:'application/json'});
+        expect(released.found,'the exact row must remain mounted while its style-only lock is released').toBe(true);
+        expect(released.scope).toBe(actionScope.scope);
+        expect(released.locks).not.toContain(actionScope.key);
+        expect(released.buttons.every(button=>!button.disabled),'all exact-row controls must release their busy state').toBe(true);
+      }
+      await button.hover();
+      await expect.poll(()=>button.evaluate(node=>getComputedStyle(node).backgroundColor)).toBe('rgb(0, 102, 64)');
+      await page.mouse.move(1,1);
+      const box=await button.boundingBox();
+      if (!box) throw new Error('Suspend Tag action has no visible hit target');
+      await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+      await page.mouse.down();
+      try {
+        await expect.poll(()=>button.evaluate(node=>getComputedStyle(node).backgroundColor)).toBe('rgb(0, 90, 56)');
+      } finally {
+        // Release outside the action so sampling :active cannot dispatch its click handler.
+        await page.mouse.move(1,1);
+        await page.mouse.up();
+      }
+    }
+    await page.mouse.move(1,1);
+    await email.focus();
+    await page.keyboard.press('Tab');
+    await expect.poll(()=>completeTag.evaluate(node=>getComputedStyle(node).backgroundColor)).toBe('rgb(0, 102, 64)');
+    const focusColors=await completeTag.evaluate(node=>({
+      focused:node.matches(':focus-visible'),background:getComputedStyle(node).backgroundColor,
+      color:getComputedStyle(node).color,textFill:getComputedStyle(node).getPropertyValue('-webkit-text-fill-color'),
+      outlineColor:getComputedStyle(node).outlineColor,outlineStyle:getComputedStyle(node).outlineStyle,outlineWidth:getComputedStyle(node).outlineWidth
+    }));
+    expect(focusColors.focused, 'keyboard navigation should exercise the visible focus treatment').toBe(true);
+    expect(focusColors).toMatchObject({background:'rgb(0, 102, 64)',color:'rgb(255, 255, 255)',textFill:'rgb(255, 255, 255)'});
+    expect(focusColors).toMatchObject({outlineColor:'rgb(251, 191, 36)',outlineStyle:'solid',outlineWidth:'3px'});
+  }
+  expect(app.requests.filter(request=>request.body.operation!=='rows'),'visual-state sampling must not send a Suspend Tag command').toEqual([]);
+  app.assertClean();
+});
+
+test('pending card Email completes the review, queues delivery, and keeps the card visible', {"tag":["@suspend-tag"]}, async ({page,baseURL},info)=>{
+  const app=await harness(page,baseURL!,fixtures,{native:true});
+  await expect(app.card()).toContainText('Pending');
+  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+  await expect.poll(()=>app.inventoryLookupCalls.filter(call=>call.status===200).length).toBeGreaterThanOrEqual(2);
+  await app.card().getByRole('button',{name:'Email',exact:true}).scrollIntoViewIfNeeded();
+  await expect.poll(()=>page.evaluate(()=>document.body.classList.contains('performance-scroll-active'))).toBe(false);
+  await page.evaluate(async()=>{
+    await document.fonts.ready;
+    const card=document.querySelector<HTMLElement>('#request-content [data-request-uid]');
+    if(!card)throw new Error('Pending Suspend Tag card is missing before paint measurement');
+    const rect=()=>{const box=card.getBoundingClientRect();return {x:box.x,y:box.y,width:box.width,height:box.height};};
+    const near=(a:ReturnType<typeof rect>,b:ReturnType<typeof rect>)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y),Math.abs(a.width-b.width),Math.abs(a.height-b.height))<=0.5;
+    let previous=rect(),stableFrames=0;
+    for(let frame=0;frame<120 && stableFrames<3;frame++){
+      await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+      const next=rect(); stableFrames=near(previous,next)?stableFrames+1:0; previous=next;
+    }
+    if(stableFrames<3)throw new Error('Initial native Suspend card did not reach three stable animation frames');
+  });
+  let releaseComplete!:()=>void;
+  app.replies.push({operation:'complete',wait:new Promise<void>(resolve=>{releaseComplete=resolve;})});
+  await page.evaluate(()=>{
+    const state={startedAt:null as number|null,firstDisabledFrameMs:null as number|null,layoutShift:0,layoutEntries:[] as Array<{startTime:number;value:number;hadRecentInput:boolean}>,baselineRect:null as {x:number;y:number;width:number;height:number}|null,baselineScrollY:0,baselineActiveElement:'',cardMissingFrame:false,cardMutationObserver:null as MutationObserver|null,observer:null as MutationObserver|null,layoutObserver:null as PerformanceObserver|null};
+    const card=document.querySelector('#request-content [data-request-uid]');
+    const email=card?.querySelector('.app-suspend-tag-actions button');
+    if(!email)throw new Error('Pending card Email action is missing');
+    const initialRect=card?.getBoundingClientRect();
+    if(!initialRect)throw new Error('Pending card geometry is unavailable before the Email action');
+    state.baselineRect={x:initialRect.x,y:initialRect.y,width:initialRect.width,height:initialRect.height};
+    state.baselineScrollY=window.scrollY;
+    state.baselineActiveElement=document.activeElement instanceof HTMLElement
+      ? `${document.activeElement.tagName.toLowerCase()}#${document.activeElement.id||''}.${String(document.activeElement.className||'').trim().replace(/\s+/g,'.')}`
+      : String(document.activeElement?.nodeName||'');
+    let missingFrameScheduled=false;
+    state.cardMutationObserver=new MutationObserver(()=>{
+      if(missingFrameScheduled)return;
+      missingFrameScheduled=true;
+      requestAnimationFrame(()=>{
+        if(!document.querySelector('#request-content [data-request-uid="dock_suspend_dc_browser-suspend-1"]'))state.cardMissingFrame=true;
+        missingFrameScheduled=false;
+      });
+    });
+    const requestContent=document.querySelector('#request-content');
+    if(requestContent)state.cardMutationObserver.observe(requestContent,{childList:true,subtree:true});
+    const uid=card?.getAttribute('data-request-uid');
+    if(!uid)throw new Error('Pending card identity is missing');
+    const currentEmail=()=>Array.from(document.querySelectorAll<HTMLElement>('#request-content [data-request-uid]'))
+      .find(node=>node.dataset.requestUid===uid)?.querySelector<HTMLButtonElement>('.app-suspend-tag-actions button[onclick*="emailSuspendTagFromCard"]');
+    let disabledFrameScheduled=false;
+    const sampleDisabledFrame=()=>{
+      if(state.startedAt===null || state.firstDisabledFrameMs!==null || disabledFrameScheduled)return;
+      disabledFrameScheduled=true;
+      requestAnimationFrame(()=>{
+        disabledFrameScheduled=false;
+        if(currentEmail()?.disabled)state.firstDisabledFrameMs=performance.now()-state.startedAt!;
+      });
+    };
+    const onEmailClick=(event:MouseEvent)=>{
+      const action=event.target instanceof Element ? event.target.closest('.app-suspend-tag-actions button[onclick*="emailSuspendTagFromCard"]') : null;
+      if(action?.closest('[data-request-uid]')?.getAttribute('data-request-uid')!==uid || state.startedAt!==null)return;
+      state.startedAt=performance.now();
+      document.removeEventListener('click',onEmailClick,true);
+      sampleDisabledFrame();
+    };
+    document.addEventListener('click',onEmailClick,true);
+    state.observer=new MutationObserver(sampleDisabledFrame);
+    if(requestContent)state.observer.observe(requestContent,{attributes:true,attributeFilter:['disabled'],childList:true,subtree:true});
+    if(typeof PerformanceObserver!=='undefined' && PerformanceObserver.supportedEntryTypes?.includes('layout-shift')){
+      state.layoutObserver=new PerformanceObserver(list=>{for(const entry of list.getEntries() as Array<PerformanceEntry & {value:number;hadRecentInput:boolean}>){if(state.startedAt!==null && entry.startTime>=state.startedAt){state.layoutShift+=entry.value;state.layoutEntries.push({startTime:entry.startTime,value:entry.value,hadRecentInput:entry.hadRecentInput});}}});
+      state.layoutObserver.observe({type:'layout-shift'});
+    }
+    (window as any).__suspendEmailPaintProbe=state;
+  });
+  try {
+    await app.activate(app.card().getByRole('button',{name:'Email',exact:true}));
+    await expect.poll(()=>page.evaluate(()=>((window as any).__suspendEmailPaintProbe?.firstDisabledFrameMs ?? null)),
+      {timeout:2000,message:'wait for the first rendered disabled Email frame'}).not.toBeNull();
+    await expect.poll(()=>app.card().getByRole('button',{name:'Email',exact:true}).evaluate(node=>({
+      disabled:(node as HTMLButtonElement).disabled,background:getComputedStyle(node).backgroundColor,
+      color:getComputedStyle(node).color,textFill:getComputedStyle(node).getPropertyValue('-webkit-text-fill-color')
+    }))).toMatchObject({disabled:true,background:'rgb(82, 117, 101)',color:'rgb(255, 255, 255)',textFill:'rgb(255, 255, 255)'});
+  } finally {
+    // Keep the mocked completion response pending until the disabled frame is
+    // observed, so fast mocked network completion cannot race the measurement.
+    releaseComplete();
+  }
+  const operations=()=>app.requests.map(request=>request.body.operation).filter(operation=>operation!=='rows');
+  await expect.poll(operations).toEqual(['complete','send']);
+  await expect(app.card()).toContainText('Awaiting Rep');
+  await expect(app.card()).toBeVisible();
+  // Match the unhovered baseline; desktop cards intentionally translate -2px
+  // on hover, which the click leaves active until the pointer moves away.
+  await page.mouse.move(1,1);
+  await expect.poll(()=>app.card().evaluate(node=>getComputedStyle(node).transform)).toBe('none');
+  const presentation=await page.evaluate(()=>{
+    const state=(window as any).__suspendEmailPaintProbe;
+    const pendingEntries=state?.layoutObserver?.takeRecords?.()||[];
+    for(const entry of pendingEntries as Array<PerformanceEntry & {value:number;hadRecentInput:boolean}>){
+      if(state && state.startedAt!==null && entry.startTime>=state.startedAt){
+        state.layoutShift+=entry.value;
+        state.layoutEntries.push({startTime:entry.startTime,value:entry.value,hadRecentInput:entry.hadRecentInput});
+      }
+    }
+    state?.observer?.disconnect();state?.layoutObserver?.disconnect();state?.cardMutationObserver?.disconnect();
+    const card=document.querySelector<HTMLElement>('#request-content [data-request-uid="dock_suspend_dc_browser-suspend-1"]');
+    const rect=card?.getBoundingClientRect();
+    const geometryDeltaPx=rect && state?.baselineRect ? Math.max(Math.abs(rect.x-state.baselineRect.x),Math.abs(rect.y-state.baselineRect.y),Math.abs(rect.width-state.baselineRect.width),Math.abs(rect.height-state.baselineRect.height)) : null;
+    const documentYDeltaPx=rect && state?.baselineRect ? Math.abs((rect.y+window.scrollY)-(state.baselineRect.y+(state.baselineScrollY||0))) : null;
+    const activeElement=document.activeElement instanceof HTMLElement
+      ? `${document.activeElement.tagName.toLowerCase()}#${document.activeElement.id||''}.${String(document.activeElement.className||'').trim().replace(/\s+/g,'.')}`
+      : String(document.activeElement?.nodeName||'');
+    const finalRect=rect?{x:rect.x,y:rect.y,width:rect.width,height:rect.height}:null;
+    return {elapsedMs:state?.firstDisabledFrameMs,layoutShift:state?.layoutShift,layoutEntries:state?.layoutEntries||[],baselineRect:state?.baselineRect,finalRect,baselineScrollY:state?.baselineScrollY,finalScrollY:window.scrollY,baselineActiveElement:state?.baselineActiveElement,finalActiveElement:activeElement,geometryDeltaPx,documentYDeltaPx,cardMissingFrame:state?.cardMissingFrame,cardVisible:!!card && !!rect && rect.width>0 && rect.height>0};
+  });
+  await info.attach('suspend-email-presentation.json',{body:JSON.stringify(presentation),contentType:'application/json'});
+  console.log('SUSPEND_EMAIL_PRESENTATION ' + JSON.stringify(presentation));
+  expect(presentation.elapsedMs,'Email action should paint its disabled state on the first rendered frame').not.toBeNull();
+  expect(presentation.elapsedMs).toBeLessThanOrEqual(400);
+  expect(presentation.layoutShift,'Email action should not move the card while it queues').toBeLessThanOrEqual(0.01);
+  expect(presentation.geometryDeltaPx).not.toBeNull();
+  expect(presentation.geometryDeltaPx,'the card geometry should remain stable through the queued completion/send').toBeLessThanOrEqual(1);
+  expect(presentation.cardMissingFrame,'the request area must never paint a frame without the pending card').toBe(false);
+  expect(presentation.cardVisible,'the pending card must remain visible after the queued send').toBe(true);
+  const freshRows=app.requests.filter(request=>request.body.operation==='rows');
+  expect(freshRows).toHaveLength(2);
+  expect(freshRows.map(request=>request.body.payload.ids)).toEqual([[fixtures[0].UNIQUE_ID],[fixtures[0].UNIQUE_ID]]);
+  await expect(app.card()).toContainText('Awaiting Rep');
+  await expect(app.card()).toBeVisible();
+  await expect(page.locator('#app-prompt-dialog')).toBeHidden();
+  await expect(page.locator('#toast-notification')).toContainText('Email queued');
+  expect(app.backendRows[0].SUSPEND_TAG_STATUS).toBe('awaiting_rep');
+  app.assertClean();
+});
+
+test('denied card Email records the new review and lets completion queue its approval once', {"tag":["@suspend-tag"]}, async ({page,baseURL},info)=>{
+  const app=await harness(page,baseURL!);
+  app.backendRows[0].SUSPEND_TAG_STATUS='denied';
+  app.backendRows[0].DATE_COMPLETED='';
+  await app.refresh();
+  await expect(app.card()).toContainText('Denied / Needs Changes');
+  await page.evaluate(()=>{
+    const toast=document.querySelector('#toast-notification');
+    if(!toast)throw new Error('Toast region is missing');
+    const history:string[]=[];
+    const observer=new MutationObserver(()=>history.push(String(toast.textContent||'').trim()));
+    observer.observe(toast,{childList:true,subtree:true,characterData:true,attributes:true});
+    (window as any).__suspendToastHistory={history,observer};
+  });
+  await app.activate(app.card().getByRole('button',{name:'Email',exact:true}));
+  await expect.poll(()=>app.requests.map(request=>request.body.operation)).toEqual(['complete']);
+  await expect.poll(()=>page.evaluate(()=>((window as any).__suspendToastHistory?.history||[]).some((text:string)=>text.includes('Email queued')))).toBe(true);
+  const toastHistory=await page.evaluate(()=>{
+    const state=(window as any).__suspendToastHistory;state?.observer?.disconnect();
+    return Array.isArray(state?.history)?state.history:[];
+  });
+  await info.attach('denied-card-email-toast-history.json',{body:JSON.stringify(toastHistory),contentType:'application/json'});
+  await expect(app.card()).toContainText('Awaiting Rep');
+  await expect(app.card()).toBeVisible();
+  await expect(page.locator('#app-prompt-dialog')).toBeHidden();
+  expect(app.backendRows[0].SUSPEND_TAG_APPROVAL_ID).toMatch(/^[0-9a-f-]{36}$/i);
+  app.assertClean();
+});
+
+test('Retry Delivery safely reuses its persisted command when the response is lost after commit', {"tag":["@suspend-tag"]}, async ({page,baseURL})=>{
+  const app=await harness(page,baseURL!);
+  app.backendRows[0].SUSPEND_TAG_STATUS='awaiting_rep';
+  app.backendRows[0].SUSPEND_TAG_DELIVERY_STATUS='failed';
+  await app.refresh();
+  app.replies.push({abort:true,commitBeforeAbort:true});
+  const retry=app.card().getByRole('button',{name:'Retry Delivery',exact:true});
+  await app.activate(retry);
+  await expect(page.locator('#toast-notification')).toHaveAttribute('data-kind','error');
+  await expect(retry).toBeEnabled();
+  expect(app.requests.map(request=>request.body.operation)).toEqual(['retry']);
+  const commandId=app.requests[0].body.commandId;
+  await app.activate(retry);
+  await expect.poll(()=>app.requests.length).toBe(2);
+  expect(app.requests.map(request=>request.body.operation)).toEqual(['retry','retry']);
+  expect(app.requests[1].body.commandId).toBe(commandId);
+  await expect(app.card()).toContainText('Awaiting Rep');
+  await expect(app.card()).toBeVisible();
+  expect(app.receipts.size).toBe(1);
+  app.assertClean();
+});
+
+test('card Email, denial, and re-email preserve the review and create a fresh approval', {"tag":["@suspend-tag"]}, async ({page,baseURL})=>{
   test.setTimeout(120000); // Two complete mobile approval rounds.
   const app=await harness(page,baseURL!);
-  await app.complete();
-  await expect.poll(() => app.receipts.size).toBe(1);
-  await expect(app.card()).toHaveCount(0);
-  await app.showStatus('completed');
-  await expect(app.card()).toContainText('Completed — Ready to Email');
-  expect(app.requests.map(r=>r.body.operation)).toEqual(['complete']);
-  await app.card().getByRole('button',{name:'Email Rep for Approval',exact:true}).tap();
-  await page.locator('#app-prompt-dialog').getByRole('button',{name:'Send',exact:true}).tap();
-  await expect.poll(() => app.requests.map(r => r.body.operation)).toContain('send');
-  await expect(page.locator('#toast-notification')).toContainText('Approval Queued');
+  await app.activate(app.card().getByRole('button',{name:'Email',exact:true}));
+  await expect.poll(() => app.requests.map(r=>r.body.operation)).toEqual(['complete','send']);
+  await expect(page.locator('#toast-notification')).toContainText('Email queued');
   await expect(app.card()).toContainText('Awaiting Rep');
   const firstId=String(app.backendRows[0].SUSPEND_TAG_APPROVAL_ID);
   await page.evaluate(id=>window.eval('void openSuspendTagApproval('+JSON.stringify(id)+')'),firstId);
   const dialog=page.locator('#suspend-tag-approval-dialog');
   await expect(dialog).toContainText('Synthetic browser customer');
   await expect(dialog).toContainText('B.01.000');
-  await dialog.getByRole('button',{name:'Deny',exact:true}).tap();
+  await app.activate(dialog.getByRole('button',{name:'Deny',exact:true}));
   await expect(dialog).toContainText('All data and photos are retained');
-  await dialog.getByRole('button',{name:'Close',exact:true}).tap();
+  await app.activate(dialog.getByRole('button',{name:'Close',exact:true}));
   await app.showStatus('active');
   await app.refresh();
   await expect(app.card()).toContainText('Denied / Needs Changes');
   expect(app.backendRows[0].DOCK_PHOTO_LINK).toBe(fixtures[0].DOCK_PHOTO_LINK);
   expect(app.backendRows[0].AV_NOTE).toBe(fixtures[0].AV_NOTE);
-  await app.complete();
-  await expect.poll(() => app.backendRows[0].SUSPEND_TAG_STATUS).toBe('awaiting_rep');
-  await expect(app.card()).toHaveCount(0);
-  await app.showStatus('completed');
+  await app.activate(app.card().getByRole('button',{name:'Email',exact:true}));
+  await expect.poll(() => app.requests.map(r=>r.body.operation)).toEqual(['complete','send','approval','decide','complete']);
+  // The initial Email queued toast was asserted above. Production deduplicates
+  // an identical toast for 15 seconds, so this immediate resubmission verifies
+  // the acknowledged new approval and saved state instead of demanding a repeat toast.
   await expect(app.card()).toContainText('Awaiting Rep');
+  await expect(app.card()).toBeVisible();
+  expect(app.backendRows[0].SUSPEND_TAG_STATUS).toBe('awaiting_rep');
+  expect(app.backendRows[0].DOCK_PHOTO_LINK).toBe(fixtures[0].DOCK_PHOTO_LINK);
+  expect(app.backendRows[0].AV_NOTE).toBe(fixtures[0].AV_NOTE);
   expect(app.backendRows[0].SUSPEND_TAG_APPROVAL_ID).not.toBe(firstId);
   await page.evaluate(id=>window.eval('void openSuspendTagApproval('+JSON.stringify(id)+',"approve")'),String(app.backendRows[0].SUSPEND_TAG_APPROVAL_ID));
   await expect(dialog).toContainText('Approved. Your reply email is queued.');
-  await dialog.getByRole('button',{name:'Close',exact:true}).tap();
+  await app.activate(dialog.getByRole('button',{name:'Close',exact:true}));
   await app.refresh();
   await expect(app.card()).toContainText('Approved');
   app.assertClean();

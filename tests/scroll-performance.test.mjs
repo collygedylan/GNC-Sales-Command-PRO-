@@ -69,7 +69,12 @@ test('the hosted browser suite measures scrolling and realtime decorations stay 
   assert.match(pilot, /new MutationObserver\(\(records\) =>/);
   assert.match(pilot, /record\.addedNodes/);
   assert.match(pilot, /schedulePremiumDecorations\(node\)/);
-  assert.match(pilot, /requestIdleCallback\(decorateRecordCollections, \{ timeout: 220 \}\)/);
+  const collectionScheduler = pilot.slice(
+    pilot.indexOf('  function scheduleDecorateRecordCollections()'),
+    pilot.indexOf('  function isNarrowOrTouchLayout()')
+  );
+  assert.match(collectionScheduler, /requestIdleCallback\(runDecoration, \{ timeout: 220 \}\)/);
+  assert.match(collectionScheduler, /const runDecoration = \(\) => \{[\s\S]*?shouldDeferRecordCollectionDecoration[\s\S]*?decorateRecordCollections\(\);/);
   assert.doesNotMatch(pilot, /new MutationObserver\(\(\) => \{\s*schedulePremiumDecorations\(\);/);
 });
 

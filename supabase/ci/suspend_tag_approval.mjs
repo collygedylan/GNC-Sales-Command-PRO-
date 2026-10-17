@@ -86,8 +86,15 @@ try {
   assert.equal(completed.row.suspend_tag_status,'completed'); assert.equal(completed.row.suspend_tag_completed_by,'dylan_collyge');
   assert.deepEqual(await command('dylan_collyge','complete',input,1,token),completed);
   assert.equal((await admin('select count(*) from ph_request_delivery_outbox')).rows[0].count,'0','initial completion is manual');
-  const sent=await command('megan_kelly','send',{sourceUid:'row-1',expectedLastUpdated:revision},completed.row.suspend_tag_version);
+  const sendToken=randomUUID();
+  const sent=await command('megan_kelly','send',{sourceUid:'row-1',expectedLastUpdated:revision},completed.row.suspend_tag_version,sendToken);
   const id=sent.row.suspend_tag_approval_id; assert.ok(id); assert.equal(sent.row.suspend_tag_status,'awaiting_rep');
+  const requestEventsAfterSend=(await admin("select count(*)::int as n from ph_request_delivery_outbox where event_type='suspend_tag_approval_requested'")).rows[0].n;
+  assert.equal(requestEventsAfterSend,1,'one durable request event is enqueued for the submission');
+  const replayedSend=await command('megan_kelly','send',{sourceUid:'row-1',expectedLastUpdated:revision},completed.row.suspend_tag_version,sendToken);
+  assert.deepEqual(replayedSend,sent,'replaying the same send command returns its exact approval receipt');
+  assert.equal((await admin("select count(*)::int as n from ph_request_delivery_outbox where event_type='suspend_tag_approval_requested'")).rows[0].n,1,
+    'same-command replay does not create another request email event');
   const snapshot=(await admin('select * from suspend_tag_private.approvals where id=$1',[id])).rows[0];
   assert.equal(snapshot.submitter_email,'dylan_collyge@example.test'); assert.equal(snapshot.rep_email,'toby_brown@example.test');
   await admin("update ph_request_delivery_outbox set status='failed',sanitized_error_code='FIXTURE_DELIVERY_FAILURE' where event_id=$1",[snapshot.request_event_id]);
@@ -147,6 +154,37 @@ try {
   const noRep=await command('megan_kelly','complete',{sourceUid:'missing-rep',expectedLastUpdated:revision},0);
   await assert.rejects(command('megan_kelly','send',{sourceUid:'missing-rep',expectedLastUpdated:revision},noRep.row.suspend_tag_version),/REP_EMAIL_MISSING/);
   assert.equal((await command('megan_kelly','rows',{ids:['missing-rep']})).rows[0].suspend_tag_status,'completed','missing routing does not erase completed work');
+  const staleSendUid='stale-send';
+  await admin(`insert into ph_soc_master(unique_id,last_updated,suspend,suspend_to,itemcode,locationcode,lotcode,salesrepname,match,av_note,dock_photo_link,dock_photo_name)
+    values($1,$2,'SUSPEND','DC','STALE-SEND','E.1','','Toby Brown','100','Available','https://example.test/stale.jpg','stale.jpg')`,[staleSendUid,revision]);
+  const staleCompleted=await command('megan_kelly','complete',{sourceUid:staleSendUid,expectedLastUpdated:revision,patch:{
+    dock_photo_link:'https://example.test/stale.jpg',dock_photo_name:'stale.jpg',match:'100',av_note:'Available'
+  }},0);
+  const requestEventsBeforeStaleSend=(await admin("select count(*)::int as n from ph_request_delivery_outbox where event_type='suspend_tag_approval_requested'")).rows[0].n;
+  const newerRevision='2026-10-05T12:05:00+00:00';
+  await admin('update ph_soc_master set last_updated=$2 where unique_id=$1',[staleSendUid,newerRevision]);
+  await assert.rejects(command('megan_kelly','send',{sourceUid:staleSendUid,expectedLastUpdated:revision},staleCompleted.row.suspend_tag_version),/SOURCE_CHANGED/,
+    'an approval email cannot be queued from a stale source revision');
+  assert.equal((await admin("select count(*)::int as n from suspend_tag_private.approvals where source_uid=$1",[staleSendUid])).rows[0].n,0,
+    'stale send does not create an approval snapshot');
+  assert.equal((await admin("select count(*)::int as n from ph_request_delivery_outbox where event_type='suspend_tag_approval_requested'")).rows[0].n,requestEventsBeforeStaleSend,
+    'stale send does not enqueue a request email');
+  const aliasId=randomUUID();
+  await admin('insert into profiles(id,username,display_name,role) values($1,$2,$3,$4)',[aliasId,'toby_brown_alias','Toby-Brown','REP']);
+  await admin('insert into auth.users values($1,$2,now())',[aliasId,'toby.alias@example.test']);
+  await admin(`insert into ph_soc_master(unique_id,last_updated,suspend,suspend_to,itemcode,locationcode,lotcode,salesrepname,match,av_note,dock_photo_link,dock_photo_name)
+    values('ambiguous-rep',$1,'SUSPEND','DC','AMBIG-REP','E.2','','Toby Brown','100','Available','https://example.test/ambiguous.jpg','ambiguous.jpg')`,[revision]);
+  const ambiguousCompleted=await command('megan_kelly','complete',{sourceUid:'ambiguous-rep',expectedLastUpdated:revision,patch:{
+    dock_photo_link:'https://example.test/ambiguous.jpg',dock_photo_name:'ambiguous.jpg',match:'100',av_note:'Available'
+  }},0);
+  const requestEventsBeforeAmbiguousSend=(await admin("select count(*)::int as n from ph_request_delivery_outbox where event_type='suspend_tag_approval_requested'")).rows[0].n;
+  await assert.rejects(command('megan_kelly','send',{sourceUid:'ambiguous-rep',expectedLastUpdated:revision},ambiguousCompleted.row.suspend_tag_version),/REP_EMAIL_MISSING/,
+    'multiple active profiles matching the assigned rep are rejected');
+  assert.equal((await admin("select count(*)::int as n from suspend_tag_private.approvals where source_uid='ambiguous-rep'")).rows[0].n,0,
+    'ambiguous rep resolution creates no approval snapshot');
+  assert.equal((await admin("select count(*)::int as n from ph_request_delivery_outbox where event_type='suspend_tag_approval_requested'")).rows[0].n,requestEventsBeforeAmbiguousSend,
+    'ambiguous rep resolution creates no request email event');
+  await admin("update profiles set username='ambiguous_test_alias',display_name='Ambiguous test alias' where id=$1",[aliasId]);
   await admin(`create table suspend_tag_private.completion_commands(actor_id uuid,source_uid text,source_last_updated timestamptz,completed_at timestamptz,response jsonb,created_at timestamptz default now());
     insert into ph_soc_master(unique_id,last_updated,suspend,suspend_to,date_completed) values('legacy-proven','2026-10-05T12:00:00Z','SUSPEND','DC','2026-10-05T13:00:00Z'),('legacy-unknown','2026-10-05T12:00:00Z','SUSPEND','DC','2026-10-05T13:00:00Z');`);
   await admin("insert into suspend_tag_private.completion_commands(actor_id,source_uid,source_last_updated,completed_at,response) values($1,'legacy-proven',$2,'2026-10-05T13:00:00Z',$3)",[users.dylan_collyge.id,revision,{alreadyCompleted:false}]);

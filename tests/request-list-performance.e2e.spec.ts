@@ -210,8 +210,29 @@ async function instrumentRequestRender(page: Page) {
     const profile = window.__requestListProfile = {
       renderDurations: [], chunkDurations: [], operations: [], stage: 'setup',
       activeRender: 0, nextRender: 1, longTasks: [], frameGaps: [], lastFrameTimestamp: 0,
+      renderDiagnostics: {},
       schedulingDiagnosticsEnabled: ${captureBrowserScheduling},
     };
+    const recordRenderDiagnostic = event => {
+      if (!profile.schedulingDiagnosticsEnabled || !['Pending', 'Suspend'].includes(profile.stage)) return;
+      const stageEvents = profile.renderDiagnostics[profile.stage] || (profile.renderDiagnostics[profile.stage] = []);
+      if (stageEvents.length >= 100) return;
+      stageEvents.push({ at: performance.now(), stage: profile.stage, ...event });
+    };
+    const renderState = container => {
+      const target = container || document.getElementById('request-content');
+      const key = String(target?.dataset?.activeChunkRenderKey || '');
+      return {
+        tab: String(activeReqTab || ''),
+        cards: document.querySelectorAll('#request-content [data-request-uid]').length,
+        chunkKey: key,
+        chunkToken: Number(target?.dataset?.activeChunkRenderToken || 0),
+        currentToken: Number(chunkRenderTokensByKey[key || 'request-main'] || 0),
+        activityToken: Number(chunkRenderActivityByKey[key || 'request-main'] || 0),
+      };
+    };
+    const safeCaller = () => String(new Error().stack || '').split('\\n').slice(2, 6)
+      .map(line => line.trim().replace(/https?:\\/\\/[^/]+/g, '<app>'));
     if (profile.schedulingDiagnosticsEnabled && typeof PerformanceObserver !== 'undefined'
         && PerformanceObserver.supportedEntryTypes?.includes('longtask')) {
       try {
@@ -240,10 +261,21 @@ async function instrumentRequestRender(page: Page) {
       if (typeof originalOperation !== 'function') continue;
       window[name] = function(...args) {
         const started = performance.now();
-        try { return originalOperation.apply(this, args); }
+        const diagnostic = profile.schedulingDiagnosticsEnabled && ['buildPendingRequestRenderPlan', 'buildSuspendTagRenderPlan', 'renderMarkupChunkedByKey'].includes(name);
+        const renderContainer = name === 'renderMarkupChunkedByKey' && args[1]?.nodeType === 1 ? args[1] : null;
+        const before = diagnostic ? renderState(renderContainer) : null;
+        const inputRows = diagnostic && Array.isArray(args[0]) ? args[0].length
+          : diagnostic && Array.isArray(args[3]) ? args[3].length : undefined;
+        const caller = diagnostic ? safeCaller() : null;
+        let result;
+        try { result = originalOperation.apply(this, args); return result; }
         finally {
           profile.operations.push({ stage: profile.stage, renderId: profile.activeRender,
             name, durationMs: performance.now() - started });
+          if (diagnostic) recordRenderDiagnostic({ type: name, inputRows,
+            key: name === 'renderMarkupChunkedByKey' ? String(args[0] || '') : undefined,
+            outputRows: Array.isArray(result?.rows) ? result.rows.length : undefined,
+            before, after: renderState(renderContainer), caller });
         }
       };
     }
@@ -253,6 +285,8 @@ async function instrumentRequestRender(page: Page) {
       const associatedStage = profile.stage;
       return originalFrame(timestamp => {
       const started = performance.now();
+      const isChunkCallback = callback.name === 'renderNextChunk';
+      const chunkBefore = isChunkCallback && profile.schedulingDiagnosticsEnabled ? renderState() : null;
       if (profile.schedulingDiagnosticsEnabled && profile.lastFrameTimestamp) {
         const gapMs = timestamp - profile.lastFrameTimestamp;
         if (gapMs >= 50) {
@@ -263,12 +297,14 @@ async function instrumentRequestRender(page: Page) {
       if (profile.schedulingDiagnosticsEnabled) profile.lastFrameTimestamp = timestamp;
       const previousRender = profile.activeRender;
       const previousStage = profile.stage;
-      if (callback.name === 'renderNextChunk') profile.activeRender = associatedRender;
-      if (callback.name === 'renderNextChunk') profile.stage = associatedStage;
+      if (isChunkCallback) profile.activeRender = associatedRender;
+      if (isChunkCallback) profile.stage = associatedStage;
       try { callback(timestamp); }
       finally {
         if (callback.name === 'renderNextChunk') {
           profile.chunkDurations.push({ stage: associatedStage, durationMs: performance.now() - started });
+          if (profile.schedulingDiagnosticsEnabled) recordRenderDiagnostic({ type: 'renderNextChunk', renderId: associatedRender,
+            before: chunkBefore, after: renderState() });
         }
         profile.activeRender = previousRender;
         profile.stage = previousStage;
@@ -280,10 +316,14 @@ async function instrumentRequestRender(page: Page) {
       const started = performance.now();
       const renderId = profile.nextRender++;
       const previousRender = profile.activeRender;
+      const diagnostic = profile.schedulingDiagnosticsEnabled;
+      const before = diagnostic ? renderState() : null;
+      const caller = diagnostic ? safeCaller() : null;
       profile.activeRender = renderId;
       try { return original.apply(this, args); }
       finally {
         profile.renderDurations.push({ stage: profile.stage, renderId, durationMs: performance.now() - started });
+        if (diagnostic) recordRenderDiagnostic({ type: 'renderRequest', renderId, before, after: renderState(), caller });
         profile.activeRender = previousRender;
       }
     };
@@ -297,6 +337,7 @@ async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend')
     operations: Array<{ stage: string; renderId: number; name: string; durationMs: number }>;
     longTasks?: Array<{ stage: string; startTime: number; durationMs: number }>;
     frameGaps?: Array<{ stage: string; gapMs: number }>;
+    renderDiagnostics?: Record<string, Array<Record<string, unknown>>>;
     schedulingDiagnosticsEnabled?: boolean;
   }>(page, 'window.__requestListProfile');
   const durations = result.renderDurations.filter(item => item.stage === stage);
@@ -321,6 +362,7 @@ async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend')
     visibility: await appEval(page, '({ state: document.visibilityState, focused: document.hasFocus() })'),
     schedulingDiagnostics: result.schedulingDiagnosticsEnabled ? {
       longTasks: result.longTasks || [], frameGaps: result.frameGaps || [],
+      renderEvents: result.renderDiagnostics || [],
     } : 'disabled (set REQUEST_RENDER_DIAGNOSTICS=1 for failure investigation)',
     cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.' }));
   const maximumMeasuredMs = Math.max(...durations.map(item => item.durationMs), ...chunks.map(item => item.durationMs));
@@ -364,7 +406,7 @@ async function stopRequestCpuProfile(session: Awaited<ReturnType<typeof startReq
   }
 }
 
-async function attachRequestRenderTimings(page: Page, testInfo: TestInfo) {
+async function attachRequestRenderTimings(page: Page, testInfo: TestInfo, apiCalls: string[] = []) {
   try {
     const evidence = await appEval<{
       renderDurations: Array<{ stage: string; renderId: number; durationMs: number }>;
@@ -380,6 +422,11 @@ async function attachRequestRenderTimings(page: Page, testInfo: TestInfo) {
         datasetRows: { pending: 200, suspend: 1000 },
         acceptedLimitsMs: { pending: 400, suspend: 400 },
         cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.',
+        fixtureApiCalls: {
+          pending: apiCalls.filter(call => call.startsWith('dataset_read:request_queue:')).slice(0, 100),
+          suspend: apiCalls.filter(call => call.startsWith('dataset_read:suspend_tag:')).slice(0, 100),
+          archive: apiCalls.filter(call => call.startsWith('request_archive:list:')).slice(0, 100),
+        },
         ...evidence,
       }, null, 2));
     await testInfo.attach('request-render-timings.json', {
@@ -748,7 +795,7 @@ test('Request and Suspend hydrate paged lists within the render gate', { tag: ['
     const pages = await page.locator('#request-content .browse-page-footer').allTextContents();
     expect(pages.join(' ')).toMatch(/Rows 1[–-]100 of 1,?000/);
   } finally {
-    try { await attachRequestRenderTimings(page, testInfo); }
+    try { await attachRequestRenderTimings(page, testInfo, fixture.apiCalls); }
     finally { await stopRequestCpuProfile(cpuProfile, testInfo); }
   }
 });
