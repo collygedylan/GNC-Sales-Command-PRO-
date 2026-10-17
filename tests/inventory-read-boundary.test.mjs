@@ -380,6 +380,17 @@ test('master identity batch enforces access and bounds, returns full rows plus f
   assert.equal(conflict.status, 409);
   assert.equal(conflict.body.code, 'MASTER_IDENTITY_REVISION_CHANGED');
   assert.equal(stale.context.locationCalls.length, 0, 'a stale identity result is not enriched');
+
+  const unfenced = appApiHarness();
+  unfenced.context.identityResult = { inventoryRevision: '12', rows: [{ inputIndex: 0, matchCount: 0, row: null }] };
+  const unpinned = await unfenced.handler(actor, {
+    operation: 'master_identity_batch', params: { queueIdentities: [queueIdentities[0]] },
+  });
+  assert.equal(unpinned.status, 200, 'an omitted expected revision keeps the SQL default and does not reject a valid read');
+  assert.equal(unfenced.context.identityCalls[0][1].p_expected_revision, undefined,
+    'the optional generated RPC argument is omitted instead of passing null');
+  assert.equal(unfenced.context.locationCalls.length, 1, 'the batch performs the location revision handshake');
+  assert.equal(unfenced.context.locationCalls[0].p_pairs.length, 0, 'unmatched identities are not sent for LOC_ON_HAND enrichment');
 });
 
 test('import readiness short-circuits inventory rows and totals before invoking the database RPC', async () => {
