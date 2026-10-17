@@ -72,6 +72,7 @@ function harness({ rows = [row('row-a')], readPair, toastTitle = 'Inquiry Queued
       if (index >= 0) canonicalRows[index] = { ...canonicalRows[index], ...raw };
     },
     persistCurrentCache: () => { changes.persisted++; },
+    scheduleDeferredCardPhotoHydration: root => { (changes.photoRoots ||= []).push(root); },
     paintInventoryStatusCards: () => { changes.paints++; },
     inventoryStatusCardSignature: value => JSON.stringify(['priority', 'holdstopcode', 'holdstopreason', 'last_updated'].map(key => value[key.toUpperCase()] ?? value[key] ?? '')),
     generateCard: (value) => {
@@ -127,6 +128,19 @@ test('optimistic display paints before a deferred save while canonical inventory
   assert.deepEqual(h.changes.dismissed, ['inventory-status-save']);
   resolveSave({ ok: true, status: 'saved' });
   await pendingSave;
+});
+
+test('targeted remote card replacements register new photos for deferred hydration', () => {
+  const h = harness();
+  const sync = h.api.getSync();
+  sync.seed(h.canonicalRows);
+  h.api.rendered.set('card', { uid: 'row-a', row: h.canonicalRows[0], sourceView: 'drive',
+    colorClass: 'status-green', renderMeta: {}, signature: 'before-remote-update' });
+  h.context.generateCard = () => '<div data-dom-id="card"><img data-deferred-card-photo="1" data-src="https://example.invalid/new.jpg"></div>';
+  h.api.paint();
+  const replacement = h.dom.window.document.querySelector('[data-dom-id="card"]');
+  assert.deepEqual(h.changes.photoRoots, [replacement]);
+  assert.ok(replacement.isConnected, 'hydrate the mounted replacement, not the detached template');
 });
 
 test('builds Priority and Hold/Stop patches across explicit fanout targets without mutating source rows', () => {
@@ -307,7 +321,8 @@ test('production subscription authenticates one inventory UPDATE listener and re
   const channel = { on: (_kind, filter, handler) => { handlers.push({ filter, handler }); return channel; },
     subscribe: handler => { subscribed = handler; return channel; } };
   const context = vm.createContext({
-    nativeAuthProfile: { id: 'first' }, getSupabaseReadIdentityScope: () => scope,
+    nativeAuthProfile: { id: 'first' }, getProductionRealtimeOwnerKey: () => scope,
+    document: { hidden: false },
     getSupabaseBrowserClient: () => ({ channel: () => channel, removeChannel: async () => { status.removals++; } }),
     getInventoryStatusSync: () => ({ setSourceReady: ready => readiness.push(ready), handleUpdate: () => { status.events++; }, resume: () => { status.resumes++; }, suspend: () => { status.suspends++; } }),
   });

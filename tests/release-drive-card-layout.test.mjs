@@ -72,7 +72,9 @@ test('Drive card compaction preserves quantity source, labels, and action handle
   assert.match(driveCard, /buildInventoryQuantityChipsHtml\(renderMeta\.verifiedQuantityRow \|\| item, \{ layout: 'row', compact: true, locationMetricItem: item, sourceView: displaySourceView, preserveUnknown: renderMeta && renderMeta\.preserveUnknownAvailability === true \}\)/);
   assert.match(driveCard, /data-inventory-card-field="fieldtagcolor"/);
   assert.doesNotMatch(driveCard, /LOC MATCH %/);
-  assert.match(html, /\['Loc Photo Match', \(sourceView === 'drive' \|\| sourceView === 'request'\) && locationPhotoMatch === 'Not verified' \? 'N\/A' : locationPhotoMatch\],\s*\['Loc On Hand', getCardLocationOnHandValue\(locationMetricRow\) \?\? 'Unknown'\]/);
+  const quantityChips = html.slice(html.indexOf('function buildInventoryQuantityChipsHtml('), html.indexOf('function buildInventoryQuantityChipsHtml(') + 8000);
+  assert.match(quantityChips, /\['Loc Photo Match', \(sourceView === 'drive' \|\| sourceView === 'request' \|\| sourceView === 'docks'\) && locationPhotoMatch === 'Not verified' \? 'N\/A' : locationPhotoMatch\]/);
+  assert.match(quantityChips, /\['Loc On Hand', getCardLocationOnHandValue\(locationMetricRow\) \?\? \(safeOptions.missingValue === 'N\/A' \? 'N\/A' : 'Unknown'\)\]/);
   assert.match(driveCard, /const driveListPriceHtml = !isEvalSensitiveDataRestricted\(\) && sourceView !== 'drive' && displayListPrice !== '-'/);
   assert.match(html, /'Loc Photo Match': 'loc-photo-match',[\s\S]*?'Loc On Hand': 'loc-on-hand'/);
   assert.match(driveCard, /metricsHtml: driveQuantityRowHtml/);

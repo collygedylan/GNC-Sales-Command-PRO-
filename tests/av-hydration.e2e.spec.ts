@@ -646,8 +646,8 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(cachedRows).toBe(SYNTHETIC_MASTER_ROWS);
     const legacyCacheSaved = await page.evaluate(() => window.eval('runPersistCurrentCacheNow()'));
     expect(legacyCacheSaved, 'legacy cache projection and storage must also remain bounded').toBe(true);
-    const legacyCachedRows = await page.evaluate(() => window.eval('loadCacheValue("latest_data").then(value => value?.data?.length || 0)'));
-    expect(legacyCachedRows).toBe(SYNTHETIC_MASTER_ROWS);
+    const ownedCache = await page.evaluate(() => window.eval('loadFromCache().then(value => ({ rows:value?.data?.length || 0, ownerMatches:!!value?.meta?.owner && value.meta.owner === getPersistentInventoryCacheOwner() }))'));
+    expect(ownedCache).toEqual({ rows:SYNTHETIC_MASTER_ROWS, ownerMatches:true });
     const full = await timingEvidence(page);
     await captureMilestone('full-verification', full);
     expect(full.master.fieldCoverage).toBe('browse');

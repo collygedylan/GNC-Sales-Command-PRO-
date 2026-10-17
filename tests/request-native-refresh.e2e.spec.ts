@@ -185,7 +185,8 @@ test('native Request navigation and refresh preserve unchanged verified cards', 
   const expectedQty = String(changedRowNewQty);
   const changedState = await page.evaluate(({ uid, expectedQty }) => window.eval(`({
       renderCalls: window.__requestRenderCalls,
-      changedCardReplaced: !window.__requestChangedCard.isConnected,
+      changedCardRetained: window.__requestChangedCard.isConnected
+        && document.querySelector('#request-content [data-request-uid="${CSS.escape(uid)}"]') === window.__requestChangedCard,
       quantityVisible: (() => {
         const card = document.querySelector('#request-content [data-request-uid="${CSS.escape(uid)}"]');
         const quantityChip = Array.from(card?.querySelectorAll('.app-request-card-meta-chip') || [])
@@ -195,7 +196,7 @@ test('native Request navigation and refresh preserve unchanged verified cards', 
       verified: productionLiveSyncVerifiedView === productionVerifiedViewKey(),
       uid: ${JSON.stringify(uid)}
     })`), { uid: changedUid, expectedQty });
-  expect(changedState).toMatchObject({ changedCardReplaced: true, quantityVisible: true, verified: true });
+  expect(changedState).toMatchObject({ changedCardRetained: true, quantityVisible: true, verified: true });
   const changedRenderCalls: unknown = await page.evaluate(() => window.eval('window.__requestRenderCalls'));
   expect(typeof changedRenderCalls).toBe('number');
   expect(Number(changedRenderCalls)).toBeGreaterThan(Number(postRefreshRenderCalls));

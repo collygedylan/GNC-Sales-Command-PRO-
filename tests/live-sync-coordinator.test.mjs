@@ -689,6 +689,34 @@ test('same-permission display cache previews before revisions without creating c
     coordinator.reset();
 });
 
+test('a new view adapter does not replay stale cached data over an already-applied adapter', async () => {
+    const previews = []; let revision = '1', inventoryState = 'ready';
+    const master = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => ({ rows: ['fresh'] }), commit() {} };
+    const side = { id: 'core:settings', cacheKey: 'settings/all', sourceKeys: ['settings'], stage: async () => ({ rows: ['settings-fresh'] }), commit() {} };
+    const context = { scope: 'account-a', dataPermissionVersion: 'access-v1', viewKey: 'drive', progressive: true, visible: true, online: true, adapters: [master] };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        readDisplaySnapshot: async adapter => adapter.id === master.id ? { rows: ['stale-disk'] } : { rows: ['settings-disk'] },
+        previewSnapshots: entries => previews.push(entries.map(entry => [entry.adapter.id, entry.value.rows[0]])),
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'access-v1', sources: keys.map(key => ({ key, state: key === 'inventory' ? inventoryState : 'ready', revision: key === 'inventory' ? revision : '1' })) }),
+        commitSnapshots: () => {}
+    });
+    assert.equal(await coordinator.check(), true);
+    previews.length = 0;
+    revision = '2';
+    inventoryState = 'importing';
+    context.viewKey = 'drive-with-settings';
+    context.adapters = [master, side];
+    assert.equal(await coordinator.check(), false);
+    assert.equal(previews.some(entries => entries.some(([id, value]) => id === master.id && value === 'stale-disk')), false,
+        'the pre-revision cached cohort must not roll back the live master row');
+    previews.length = 0;
+    inventoryState = 'ready';
+    await coordinator.check();
+    assert.equal(previews.some(entries => entries.some(([id, value]) => id === master.id && value === 'stale-disk')), false,
+        'the changed-revision fallback must not roll back an already-applied row while the fresh cohort stages');
+    coordinator.reset();
+});
+
 test('unchanged revisits keep the already-applied display and do not reapply disk previews', async () => {
     let displayReads = 0, previews = 0, retained = 0, stages = 0;
     const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => { stages++; return ['fresh']; }, commit() {} };
@@ -708,6 +736,99 @@ test('unchanged revisits keep the already-applied display and do not reapply dis
     assert.equal(previews, 1, 'a repeat visit cannot reapply stale data or invalidate the cached report index');
     assert.equal(retained, 1, 'a same-permission revisit republishes the current in-memory display without committing it again');
     assert.equal(stages, 1);
+    coordinator.reset();
+});
+
+test('a changed revision never re-previews an older already-applied cohort over live row updates', async () => {
+    let inventoryRevision = '1', sideRevision = '1';
+    const previews = [], commits = [], retained = [];
+    const inventory = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'],
+        stage: async ({ preview }) => {
+            if (inventoryRevision === '1') return { rows: ['old master'] };
+            preview({ rows: ['fresh master first page'], partial: true });
+            return { rows: ['fresh master'] };
+        }, commit() {} };
+    const side = { id: 'core:settings', cacheKey: 'settings/all', sourceKeys: ['settings'],
+        stage: async ({ preview }) => {
+            if (sideRevision === '1') return { rows: ['old settings'] };
+            // This may complete after a row-level realtime update has already
+            // refreshed the displayed inventory, but before the full cohort commits.
+            preview({ rows: ['fresh settings first page'], partial: true });
+            return { rows: ['fresh settings'] };
+        }, commit() {} };
+    const context = { scope: 'account-a', dataPermissionVersion: 'permission-a', viewKey: 'drive',
+        progressive: true, visible: true, online: true, adapters: [inventory, side] };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'permission-a',
+            sources: keys.map(key => ({ key, state: 'ready', revision: key === 'inventory' ? inventoryRevision : sideRevision })) }),
+        retainAppliedDisplay: (_context, entries) => retained.push(entries),
+        previewSnapshots: entries => previews.push(entries.map(entry => entry.value.rows)),
+        commitSnapshots: entries => commits.push(entries.map(entry => entry.value.rows)) });
+    await coordinator.check();
+    assert.equal(commits.length, 1);
+    previews.length = 0;
+
+    inventoryRevision = sideRevision = '2';
+    const pending = coordinator.check();
+    await settle();
+    assert.deepEqual(previews, [], 'an already-applied complete cohort stays visible until the new atomic cohort commits');
+    assert.ok(retained.length >= 1, 'the previously verified display remains available during revalidation');
+    assert.equal(await pending, true);
+    assert.equal(JSON.stringify(commits.at(-1)), JSON.stringify([['fresh master'], ['fresh settings']]));
+    coordinator.reset();
+});
+
+test('a mixed new cohort cannot preview an old-revision applied adapter beside fresh data', async () => {
+    let inventoryRevision = '1', includeSettings = false;
+    const previews = [], commits = [];
+    const inventory = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'],
+        stage: async ({ preview }) => {
+            if (inventoryRevision === '1') return { rows: ['old master'] };
+            preview({ rows: ['fresh master first page'], partial: true });
+            return { rows: ['fresh master'] };
+        }, commit() {} };
+    const settings = { id: 'core:settings', cacheKey: 'settings/all', sourceKeys: ['settings'],
+        stage: async ({ preview }) => {
+            preview({ rows: ['fresh settings first page'], partial: true });
+            return { rows: ['fresh settings'] };
+        }, commit() {} };
+    const context = { scope: 'account-a', dataPermissionVersion: 'permission-a', viewKey: 'drive',
+        progressive: true, visible: true, online: true, get adapters() { return includeSettings ? [inventory, settings] : [inventory]; } };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'permission-a',
+            sources: keys.map(key => ({ key, state: 'ready', revision: key === 'inventory' ? inventoryRevision : '2' })) }),
+        previewSnapshots: entries => previews.push(entries.map(entry => entry.value.rows)),
+        commitSnapshots: entries => commits.push(entries.map(entry => entry.value.rows)) });
+    await coordinator.check();
+    previews.length = 0;
+    inventoryRevision = '2';
+    includeSettings = true;
+    await coordinator.check();
+    assert.ok(previews.length > 0, 'the new cohort can still show current progressive data');
+    assert.ok(previews.every(cohort => !cohort.flat().includes('old master')),
+        'the old master snapshot cannot be combined with the newly added adapter');
+    assert.equal(JSON.stringify(commits.at(-1)), JSON.stringify([['fresh master'], ['fresh settings']]));
+    coordinator.reset();
+});
+
+test('a new visit can retain its same-account display synchronously before any loading placeholder', async () => {
+    let retained = 0, metadataReads = 0;
+    const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => ['verified'], commit() {} };
+    const context = { scope: 'nellie', dataPermissionVersion: 'access-v1', viewKey: 'drive:1', progressive: true, visible: true, online: true, adapters: [adapter] };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        retainAppliedDisplay: () => { retained++; },
+        readRevisions: async keys => { metadataReads++; return { contractVersion: 1, permissionVersion: 'access-v1', sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }; } });
+    await coordinator.check();
+    context.viewKey = 'drive:2';
+    const priorReads = metadataReads;
+    assert.equal(coordinator.retainDisplay(), true);
+    assert.equal(retained, 1);
+    assert.equal(metadataReads, priorReads, 'retention is synchronous and makes no network request');
+    assert.notEqual(coordinator.getStatus().contextKey, JSON.stringify([context.scope, context.dataPermissionVersion, context.viewKey, [[adapter.id, adapter.cacheKey]]]), 'display reuse never establishes fresh read/write proof');
+    context.dataPermissionVersion = 'access-v2';
+    assert.equal(coordinator.retainDisplay(), false, 'old access cannot authorize display');
+    context.dataPermissionVersion = 'access-v1'; context.scope = 'dylan';
+    assert.equal(coordinator.retainDisplay(), false, 'another user cannot reuse the prior display');
     coordinator.reset();
 });
 

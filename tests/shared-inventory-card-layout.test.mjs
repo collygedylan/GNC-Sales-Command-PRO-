@@ -23,6 +23,40 @@ test('shared header escapes identity fields and keeps zero quantity visible', ()
   assert.ok(root.querySelector('.app-drive-card-details .app-drive-card-quantity-band [data-metrics="shared"]'));
   dom.window.close();
 });
+test('operational cards use N/A for a missing location while other cards keep their existing fallback', () => {
+  const c=vm.createContext({
+    esc:value=>String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'),
+    firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim()!==''),
+    getDockStopOrDropValue:row=>row.STOPNUMBER
+  });
+  vm.runInContext(extract('buildSharedInventoryCardLayout'),c);
+  const operational=new JSDOM(c.buildSharedInventoryCardLayout({COMMONNAME:'Tree',ITEMCODE:'A1'}, {operational:true,operationalMissingValue:'N/A'}));
+  const regular=new JSDOM(c.buildSharedInventoryCardLayout({COMMONNAME:'Tree',ITEMCODE:'A1'}, {}));
+  assert.match(operational.window.document.querySelector('.app-drive-card-meta').textContent,/^N\/A/);
+  assert.match(regular.window.document.querySelector('.app-drive-card-meta').textContent,/^No Loc/);
+  operational.window.close();
+  regular.window.close();
+});
+test('operational metadata precedes Dock/Drop/Qty/Spec chips in the shared card hierarchy', () => {
+  const c=vm.createContext({
+    esc:value=>String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'),
+    firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim()!==''),
+    getDockStopOrDropValue:row=>row.STOPNUMBER
+  });
+  vm.runInContext(extract('buildSharedInventoryCardLayout'),c);
+  const markup=c.buildSharedInventoryCardLayout({COMMONNAME:'Tree',ITEMCODE:'A1',DOCK_NUM:'D1',STOPNUMBER:'2'}, {
+    operational:true, quantity:'8', spec:'Full',
+    operationalMetaHtml:'<div class="app-operational-card-meta"><span>Sales RepSally</span><span>Request Qty8</span></div>'
+  });
+  const dom=new JSDOM(markup), root=dom.window.document;
+  const meta=root.querySelector('.app-operational-card-meta');
+  const fields=root.querySelector('.app-operational-card-header-fields');
+  assert.ok(meta && fields);
+  assert.ok(meta.compareDocumentPosition(fields) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING,
+    'Sales Rep and Request Qty appear before Dock Number, Drop Number, Qty, and Spec');
+  assert.deepEqual([...fields.querySelectorAll('.app-operational-card-header-field')].map(x=>x.textContent),['Dock NumberD1','Drop Number2','Qty8','SpecFull']);
+  dom.window.close();
+});
 test('all three views use the same layout and the six-metric renderer',()=>{
   assert.equal((html.match(/buildSharedInventoryCardLayout\(item, \{/g)||[]).length,3);
   assert.match(html,/metricsHtml: driveQuantityRowHtml/);
@@ -37,6 +71,24 @@ test('Docks details preserve field chips without duplicating the six inventory m
   assert.match(docks,/detailsHtml: `\$\{buildInventoryCardFieldChipsHtml\(item, \{ compact: true \}\)\}\$\{noteHtml\}\$\{inventoryEditActionHtml\}\$\{actionBtns\}`/);
   assert.doesNotMatch(docks,/\$\{compactCardFieldChipsHtml\}/);
   assert.equal((docks.match(/buildInventoryQuantityChipsHtml\(/g)||[]).length,1);
+  assert.match(docks,/operationalMetaHtml: dockMetaHtml/);
+  assert.match(docks,/getDockSuspendDcRequestPlanstartInfo\(item\)/);
+  assert.match(docks,/const dockInventoryRow = getOperationalCardInventoryRow\(item\)/);
+  assert.match(docks,/buildInventoryQuantityChipsHtml\(dockInventoryRow, \{[\s\S]*?locationMetricItem: dockInventoryRow/);
+  assert.match(docks,/Sales Rep/);
+  assert.match(docks,/Request Qty/);
+  const weekdayStart=html.indexOf('.app-smart-card.app-card-planstart-monday');
+  const weekdayTones=html.slice(weekdayStart,html.indexOf('</style>',weekdayStart));
+  for(const [tone,color] of Object.entries({monday:'#f3e8ff',tuesday:'#ffe4e6',wednesday:'#dcfce7',thursday:'#dbeafe',friday:'#e2e8f0'})) {
+    assert.ok(weekdayTones.includes(`app-card-planstart-${tone}`),`shared pastel palette includes ${tone}`);
+    assert.ok(weekdayTones.includes(color),`${tone} uses its specified pastel color`);
+  }
+  assert.match(html,/#docks-content \.app-operational-planstart-card\[class\*="app-planstart-"\][\s\S]*?color:#111827/);
+});
+test('native registry and legacy Docks loading cohorts include master inventory for verified card metrics',()=>{
+  const registry=fs.readFileSync('assets/live-sync-registry.js','utf8');
+  assert.match(registry,/docks:\s*data\(\['soc',\s*'master',\s*'customerRepMap'\]/);
+  assert.match(html,/if \(viewId === 'docks'\) return withEvalInventoryEditRequestsForRowView\(\{ required: \[\{ key: 'soc', mode: 'full' \}\], background: \[\{ key: 'master', mode: 'full' \}\]/);
 });
 test('operational metrics require a verified exact inventory row',()=>{
   let verified=true;
@@ -49,4 +101,39 @@ test('operational metrics require a verified exact inventory row',()=>{
   verified=false;
   assert.equal(c.getOperationalCardInventoryRow({ITEMCODE:'0001',LOCATIONCODE:'A1',LOTCODE:'L1'}).PTRONHAND,0,
     'an unavailable location aggregate does not erase independently verified inventory fields');
+});
+
+test('Docks operational metrics render N/A for missing values without changing other card defaults',()=>{
+  const c=vm.createContext({
+    escapeHtml:value=>String(value ?? ''),
+    normalizeCardQuantityValue:value=>value == null || String(value).trim()==='' ? '0' : String(value),
+    getCardPtrOnHandValue:()=>null, getCardPtrReviewedValue:()=>null, getCardPtrAvailableValue:()=>null,
+    getCardOpenStockValue:()=>null, formatLocPhotoMatchQtyValue:()=> 'Not verified',
+    getCardLocationOnHandValue:()=>null
+  });
+  vm.runInContext(extract('buildInventoryQuantityChipsHtml'),c);
+  const docks=new JSDOM(c.buildInventoryQuantityChipsHtml({}, {layout:'row',sourceView:'docks',preserveUnknown:true,missingValue:'N/A'}));
+  assert.deepEqual([...docks.window.document.querySelectorAll('.app-card-qty-value')].map(node=>node.textContent),Array(6).fill('N/A'));
+  docks.window.close();
+  const other=new JSDOM(c.buildInventoryQuantityChipsHtml({}, {layout:'row',sourceView:'other',preserveUnknown:true}));
+  assert.ok([...other.window.document.querySelectorAll('.app-card-qty-value')].some(node=>node.textContent==='Unknown'));
+  other.window.close();
+});
+
+test('verified Dock metrics preserve zero and location values from one exact hydrated row',()=>{
+  const c=vm.createContext({
+    escapeHtml:value=>String(value ?? ''),
+    normalizeCardQuantityValue:value=>String(value ?? ''),
+    getCardPtrOnHandValue:row=>row?.PTRONHAND ?? null,
+    getCardPtrReviewedValue:row=>row?.PTRREVIEWED ?? null,
+    getCardPtrAvailableValue:row=>row?.PTRAVAILABLE ?? null,
+    getCardOpenStockValue:row=>row?.S_LTS ?? null,
+    formatLocPhotoMatchQtyValue:row=>row?.LOC_PHOTO_MATCH ?? 'Not verified',
+    getCardLocationOnHandValue:row=>row?.LOC_ON_HAND ?? null
+  });
+  vm.runInContext(extract('buildInventoryQuantityChipsHtml'),c);
+  const row={PTRONHAND:0,PTRREVIEWED:4,PTRAVAILABLE:7,S_LTS:8,LOC_PHOTO_MATCH:5,LOC_ON_HAND:9};
+  const dom=new JSDOM(c.buildInventoryQuantityChipsHtml(row,{layout:'row',sourceView:'docks',locationMetricItem:row,preserveUnknown:true,missingValue:'N/A'}));
+  assert.deepEqual([...dom.window.document.querySelectorAll('.app-card-qty-value')].map(node=>node.textContent),['0','4','7','8','5','9']);
+  dom.window.close();
 });

@@ -523,7 +523,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     throw new Error('HL_FIXTURE_REVISION_READS_DID_NOT_SETTLE');
   };
   page.on('response', (response) => { if (/\/assets\/live-app-runtime[^/]*\.js/.test(new URL(response.url()).pathname)) control.runtime++; });
-  await page.routeWebSocket('**/*', (socket) => socket.close());
+  await page.routeWebSocket('**/*', options.realtimeSocket || ((socket) => socket.close()));
   await page.route('**/*', async (route) => {
     const req = route.request(), url = new URL(req.url()), method = req.method();
     if (url.origin === origin && ['GET', 'HEAD'].includes(method)) {

@@ -178,11 +178,12 @@ test('Suspend filter shell builds filter markup once per render', () => {
     mounted: false,
     querySelector(selector) {
       if (!this.mounted) return null;
-      return selector === '#request-suspend-tag-filter-shell' ? {} : selector === '#request-suspend-tag-results' ? resultsShell : null;
+      return selector === '#request-suspend-tag-filter-shell' ? { querySelector: () => null } : selector === '#request-suspend-tag-results' ? resultsShell : null;
     }
   };
   const ctx = vm.createContext({
     document: { activeElement: { id: '' } },
+    canUseRequestSuspendTagAssignedToFilter: () => false,
     setContainerHtml: target => { target.mounted = true; },
     renderRequestSuspendTagFilters: () => { calls.render += 1; return '<filters>'; },
     updateRequestSuspendTagFiltersInPlace: () => { calls.update += 1; },
@@ -195,6 +196,79 @@ test('Suspend filter shell builds filter markup once per render', () => {
   assert.equal(ctx.ensureRequestSuspendTagRenderShell(container, crumb, 'Suspend Tag', [], [], [], [], []), cardList);
   assert.equal(calls.render, 2);
   assert.equal(calls.update, 0);
+});
+
+test('decorated Suspend filter rail refreshes in place when its permission shape matches', () => {
+  const calls = { render: 0, update: 0 };
+  const ids = new Set([
+    '#request-suspend-tag-status-filter', '#request-suspend-tag-common-search', '#request-suspend-tag-common-clear',
+    '#request-suspend-tag-assigned-filter', '#request-suspend-tag-contsize-filter', '#request-suspend-tag-dock-filter',
+    '#request-suspend-tag-filter-count', '#request-suspend-tag-clear-filters'
+  ]);
+  const rail = {
+    classList: { contains: value => value === 'mobile-browse-rail' },
+    querySelector: selector => selector === 'details.mobile-browse-filters' ? {} : null
+  };
+  const filterShell = { querySelector: selector => selector === '.request-view-filters' ? rail : ids.has(selector) ? {} : null };
+  const cardList = {};
+  const resultsShell = { querySelector: selector => selector === '#request-suspend-tag-card-list' ? cardList : null };
+  const container = { querySelector: selector => selector === '#request-suspend-tag-filter-shell' ? filterShell : selector === '#request-suspend-tag-results' ? resultsShell : null };
+  const ctx = vm.createContext({
+    document: { activeElement: { id: '' } },
+    canUseRequestSuspendTagAssignedToFilter: () => true,
+    renderRequestSuspendTagFilters: () => { calls.render += 1; return '<filters>'; },
+    updateRequestSuspendTagFiltersInPlace: () => { calls.update += 1; }
+  });
+  vm.runInContext(source('ensureRequestSuspendTagRenderShell'), ctx);
+
+  assert.equal(ctx.ensureRequestSuspendTagRenderShell(container, null, 'Suspend Tag', [], [], [], [], []), cardList);
+  assert.deepEqual(calls, { render: 0, update: 1 });
+  assert.equal(filterShell.querySelector('.request-view-filters'), rail, 'the existing decorated rail remains mounted');
+});
+
+test('active Suspend search keeps the in-place draft path during refresh', () => {
+  const calls = { render: 0, update: 0 };
+  const resultsShell = { querySelector: selector => selector === '#request-suspend-tag-card-list' ? {} : null };
+  const filterShell = { querySelector: () => null };
+  const container = { querySelector: selector => selector === '#request-suspend-tag-filter-shell' ? filterShell : selector === '#request-suspend-tag-results' ? resultsShell : null };
+  const ctx = vm.createContext({
+    document: { activeElement: { id: 'request-suspend-tag-common-search' } },
+    canUseRequestSuspendTagAssignedToFilter: () => true,
+    renderRequestSuspendTagFilters: () => { calls.render += 1; return '<filters>'; },
+    updateRequestSuspendTagFiltersInPlace: () => { calls.update += 1; }
+  });
+  vm.runInContext(source('ensureRequestSuspendTagRenderShell'), ctx);
+
+  ctx.ensureRequestSuspendTagRenderShell(container, null, 'Suspend Tag', [], [], [], [], []);
+  assert.deepEqual(calls, { render: 0, update: 1 });
+});
+
+test('decorated Suspend filter rail rebuilds when Assigned To permission changes shape', () => {
+  const calls = { render: 0, update: 0 };
+  const ids = new Set([
+    '#request-suspend-tag-status-filter', '#request-suspend-tag-common-search', '#request-suspend-tag-common-clear',
+    '#request-suspend-tag-contsize-filter', '#request-suspend-tag-dock-filter',
+    '#request-suspend-tag-filter-count', '#request-suspend-tag-clear-filters'
+  ]);
+  const rail = {
+    classList: { contains: value => value === 'mobile-browse-rail' },
+    querySelector: selector => selector === 'details.mobile-browse-filters' ? {} : null
+  };
+  const filterShell = { querySelector: selector => selector === '.request-view-filters' ? rail : ids.has(selector) ? {} : null };
+  const cardList = {};
+  const resultsShell = { querySelector: selector => selector === '#request-suspend-tag-card-list' ? cardList : null };
+  const container = { querySelector: selector => selector === '#request-suspend-tag-filter-shell' ? filterShell : selector === '#request-suspend-tag-results' ? resultsShell : null };
+  const ctx = vm.createContext({
+    canUseRequestSuspendTagAssignedToFilter: () => true,
+    renderRequestSuspendTagFilters: () => { calls.render += 1; return '<filters>'; },
+    updateRequestSuspendTagFiltersInPlace: () => { calls.update += 1; },
+    window: { AgMetricStableViewDom: { apply: () => { calls.apply = (calls.apply || 0) + 1; } } },
+    document: { activeElement: { id: '' }, createElement: () => ({ content: {}, set innerHTML(_value) {} }) }
+  });
+  vm.runInContext(source('ensureRequestSuspendTagRenderShell'), ctx);
+
+  assert.equal(ctx.ensureRequestSuspendTagRenderShell(container, null, 'Suspend Tag', [], [], [], [], []), cardList);
+  assert.deepEqual(calls, { render: 1, update: 0, apply: 1 });
 });
 
 test('Suspend pagination footer is mounted before deferred chunk completion', () => {

@@ -517,15 +517,103 @@ test('background Suspend revision preserves card identity and layout while updat
   const before = await card.boundingBox();
   const beforeContent = await card.innerText();
   const beforeScroll = await page.locator('#main-scroll-area').evaluate(element => element.scrollTop);
-  await app.nativeRefresh(fixtures.map(row => ({ ...row, COMMONNAME: String(row.COMMONNAME).replace('fixture', 'updated') })));
-  await expect(card).toContainText('Suspend browser updated 1');
+  type LayoutRect = { x: number; y: number; width: number; height: number } | null;
+  type LayoutSample = {
+    phase: string; at: number; filterShellId: number | null; railId: number | null; detailsId: number | null;
+    detailsOpen: boolean | null; shell: LayoutRect; rail: LayoutRect; details: LayoutRect; panel: LayoutRect;
+    panelDisplay: string | null; panelPosition: string | null; card: LayoutRect;
+  };
+  type LayoutDiagnostics = {
+    samples: LayoutSample[];
+    mutations: Array<{ at: number; records: Array<{ type: string; targetId: number | null; attribute: string | null; added: string[]; removed: string[] }> }>;
+    overflow: boolean;
+    final: { shell: LayoutRect; rail: LayoutRect; detailsOpen: boolean | null; details: LayoutRect; panel: LayoutRect; card: LayoutRect; panelDisplay: string | null; panelPosition: string | null; rootScrollTop: number | null };
+  };
+  await page.evaluate(() => window.eval(`(() => {
+    const root = document.getElementById('request-content');
+    const maxEvents = 1000;
+    const ids = new WeakMap(); let nextId = 1; let stopped = false;
+    let rafId = 0;
+    const id = node => { if (!node) return null; if (!ids.has(node)) ids.set(node, nextId++); return ids.get(node); };
+    const rect = node => { if (!node) return null; const r = node.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; };
+    const stop = () => { stopped = true; observer.disconnect(); if (rafId) cancelAnimationFrame(rafId); };
+    const sample = phase => {
+      if (window.__suspendLayoutDiagnostic.samples.length >= maxEvents) { window.__suspendLayoutDiagnostic.overflow = true; stop(); return; }
+      const filterShell = document.getElementById('request-suspend-tag-filter-shell');
+      const rail = filterShell && filterShell.querySelector('.request-view-filters');
+      const details = rail && rail.querySelector('details.mobile-browse-filters');
+      const panel = details && details.querySelector('.mobile-browse-filter-panel');
+      const card = document.querySelector('#request-content [data-request-uid="dock_suspend_dc_browser-suspend-1"]');
+      const style = panel ? getComputedStyle(panel) : null;
+      window.__suspendLayoutDiagnostic.samples.push({
+        phase, at: performance.now(), filterShellId:id(filterShell), railId:id(rail), detailsId:id(details),
+        detailsOpen: details ? details.open : null, shell:rect(filterShell), rail:rect(rail), details:rect(details),
+        panel:rect(panel), panelDisplay:style && style.display, panelPosition:style && style.position, card:rect(card)
+      });
+    };
+    const observer = new MutationObserver(records => {
+      const remaining = maxEvents - window.__suspendLayoutDiagnostic.mutationRecordCount;
+      if (remaining <= 0) { window.__suspendLayoutDiagnostic.overflow = true; stop(); return; }
+      const retainedRecords = records.slice(0, remaining);
+      if (retainedRecords.length < records.length) window.__suspendLayoutDiagnostic.overflow = true;
+      window.__suspendLayoutDiagnostic.mutations.push({
+        at: performance.now(), records: retainedRecords.map(record => ({type:record.type,targetId:id(record.target),attribute:record.attributeName,
+          added:Array.from(record.addedNodes || []).map(node => node.nodeName + (node.id ? '#' + node.id : '')),
+          removed:Array.from(record.removedNodes || []).map(node => node.nodeName + (node.id ? '#' + node.id : ''))}))
+      });
+      window.__suspendLayoutDiagnostic.mutationRecordCount += retainedRecords.length;
+      sample('mutation');
+    });
+    window.__suspendLayoutDiagnostic = {samples:[],mutations:[],mutationRecordCount:0,overflow:false,stop};
+    sample('before-refresh');
+    if (root) observer.observe(root,{subtree:true,childList:true,attributes:true,attributeFilter:['open','class']});
+    const frame = () => { sample('raf'); if (!stopped) rafId = requestAnimationFrame(frame); };
+    rafId = requestAnimationFrame(frame);
+  })()`));
+  let layoutDiagnostics: LayoutDiagnostics | null;
+  try {
+    await app.nativeRefresh(fixtures.map(row => ({ ...row, COMMONNAME: String(row.COMMONNAME).replace('fixture', 'updated') })));
+    await expect(card).toContainText('Suspend browser updated 1');
+  } finally {
+    layoutDiagnostics = await page.evaluate(() => window.eval(`(() => {
+      const diagnostic = window.__suspendLayoutDiagnostic;
+      if (!diagnostic) return null;
+      const root = document.getElementById('request-content');
+      const filterShell = document.getElementById('request-suspend-tag-filter-shell');
+      const rail = filterShell && filterShell.querySelector('.request-view-filters');
+      const details = rail && rail.querySelector('details.mobile-browse-filters');
+      const panel = details && details.querySelector('.mobile-browse-filter-panel');
+      const card = document.querySelector('#request-content [data-request-uid="dock_suspend_dc_browser-suspend-1"]');
+      const r = node => { if (!node) return null; const b=node.getBoundingClientRect(); return {x:b.x,y:b.y,width:b.width,height:b.height}; };
+      diagnostic.stop();
+      return {samples:diagnostic.samples,mutations:diagnostic.mutations,overflow:diagnostic.overflow,final:{
+        shell:r(filterShell),rail:r(rail),detailsOpen:details ? details.open : null,details:r(details),panel:r(panel),card:r(card),
+        panelDisplay:panel && getComputedStyle(panel).display,panelPosition:panel && getComputedStyle(panel).position,
+        rootScrollTop:root && root.scrollTop
+      }};
+    })()`) as unknown as LayoutDiagnostics | null);
+    if (layoutDiagnostics) await info.attach('suspend-layout-timeline', { body: JSON.stringify(layoutDiagnostics), contentType: 'application/json' });
+  }
   expect(await beforeNode?.evaluate(node => node.isConnected)).toBe(true);
   const after = await card.boundingBox();
   const afterContent = await card.innerText();
   const afterScroll = await page.locator('#main-scroll-area').evaluate(element => element.scrollTop);
   expect(before).not.toBeNull(); expect(after).not.toBeNull();
-  await info.attach('suspend-background-dom-stability', { body: JSON.stringify({ before, after, beforeContent, afterContent, beforeScroll, afterScroll, retainedNode: true }), contentType: 'application/json' });
+  await info.attach('suspend-background-dom-stability', { body: JSON.stringify({ before, after, beforeContent, afterContent, beforeScroll, afterScroll, retainedNode: true, layoutDiagnostics }), contentType: 'application/json' });
   for (const field of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after![field] - before![field])).toBeLessThanOrEqual(1);
+  expect(layoutDiagnostics, 'must capture the filter/card timeline across refresh').not.toBeNull();
+  if (!layoutDiagnostics) throw new Error('Missing Suspend layout diagnostic timeline');
+  const baselineSample = layoutDiagnostics.samples.find(sample => sample.phase === 'before-refresh');
+  expect(baselineSample, 'must capture the rendered filter/card baseline before the revision').toBeDefined();
+  if (!baselineSample?.card || !baselineSample.rail) throw new Error('Missing baseline card or filter rail geometry');
+  expect(layoutDiagnostics?.overflow, 'layout diagnostics must remain complete').toBe(false);
+  for (const sample of layoutDiagnostics.samples) {
+    if (sample.at < baselineSample.at) continue;
+    expect(sample.card, `card must remain measurable during ${sample.phase} at ${sample.at}ms`).not.toBeNull();
+    if (!sample.card || !sample.rail) throw new Error(`Missing card or filter rail geometry during ${sample.phase} at ${sample.at}ms`);
+    expect(Math.abs(sample.card.y - baselineSample.card.y), `card y must remain stable during ${sample.phase} at ${sample.at}ms`).toBeLessThanOrEqual(1);
+    expect(Math.abs(sample.rail.height - baselineSample.rail.height), `filter rail height must remain stable during ${sample.phase} at ${sample.at}ms`).toBeLessThanOrEqual(1);
+  }
   app.assertClean();
 });
 

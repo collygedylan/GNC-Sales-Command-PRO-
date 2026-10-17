@@ -265,12 +265,14 @@ test('incremental card painting recalculates stock changes without a timestamp c
   const current = row({ UNIQUE_ID: 'live-1', PTRAVAILABLE: 1000, LAST_UPDATED: '2026-09-06T18:00:00Z' });
   const replacements = [];
   let focused = false;
+  let hydrationSchedules = 0;
   const card = { getAttribute: () => 'card-1', contains: () => focused,
     replaceWith: (replacement) => replacements.push(replacement) };
   const scroller = { scrollTop: 37 };
   const entries = new Map();
   const ctx = runtime(['inventoryStatusCardSignature', 'paintInventoryStatusCards'], {
     inventoryStatusSync: { getDisplayRow: (item) => item }, inventoryStatusRenderedCards: entries,
+    scheduleDeferredCardPhotoHydration: () => { hydrationSchedules++; },
     findItemByUniqueId: () => current,
     document: { hidden: false, activeElement: { matches: () => true },
       getElementById: () => scroller,
@@ -283,6 +285,7 @@ test('incremental card painting recalculates stock changes without a timestamp c
   current.PTRAVAILABLE = 900;
   ctx.paintInventoryStatusCards();
   assert.equal(replacements[0].quantity, '450');
+  assert.equal(hydrationSchedules, 1, 'replacement cards schedule deferred photo hydration');
   assert.equal(current.LAST_UPDATED, '2026-09-06T18:00:00Z');
   assert.equal(scroller.scrollTop, 37);
   focused = true;
