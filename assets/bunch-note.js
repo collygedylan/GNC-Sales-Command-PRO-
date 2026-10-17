@@ -12,7 +12,7 @@
  const renderedQueues = new WeakMap();
  let pickerPortalHost = null;
  function renderPickerPortal(markup) {
-  if(typeof document.createElement!=='function'||!document.body?.appendChild)return;
+  if(typeof document==='undefined'||typeof document.createElement!=='function'||!document.body?.appendChild)return;
   if(!markup){pickerPortalHost?.remove();pickerPortalHost=null;return;}
   if(!pickerPortalHost||!pickerPortalHost.isConnected){pickerPortalHost=document.createElement('div');pickerPortalHost.className='bn-picker-portal-host';pickerPortalHost.dataset.bnPickerPortal='true';document.body.appendChild(pickerPortalHost);}
   if(pickerPortalHost.innerHTML!==markup)pickerPortalHost.innerHTML=markup;
