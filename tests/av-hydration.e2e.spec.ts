@@ -899,9 +899,8 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
   let chromeTracingStarted = false;
   let chromeTraceCaptured = false;
   let chromeTraceClockSync: TraceClockSync | null = null;
-  let loafObserverStatus: unknown = { enabled: false, supported: false };
   try {
-    loafObserverStatus = await startAvLoafObserver(page, cpuProfileEnabled)
+    const loafObserverStatus = await startAvLoafObserver(page, cpuProfileEnabled)
       .catch(error => ({ enabled: true, supported: false, observeError: String(error) }));
     if (cpuProfileEnabled) {
       console.log('AV_HYDRATION_LOAF_OBSERVER', JSON.stringify(loafObserverStatus));
@@ -1115,9 +1114,7 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
           ? finalEvidence.longAnimationFrames as LoafDiagnosticEntry[] : [];
         await stopAndAttachChromeTimeline(chromeTraceSession, testInfo, chromeTraceClockSync, cpuProfileStartBracket, traceLongTasks, traceLoafEntries);
         chromeTraceCaptured = true;
-        chromeTracingStarted = false;
       } catch (error) {
-        chromeTracingStarted = false;
         console.log('AV_HYDRATION_DEVTOOLS_TIMELINE_CAPTURE_FAILED', String(error));
       }
     }
