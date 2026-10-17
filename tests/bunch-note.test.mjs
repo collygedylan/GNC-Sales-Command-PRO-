@@ -10,7 +10,7 @@ function runtime(extra={}) {
  const ctx=vm.createContext({console,Date,Map,Set,URL,Blob,Uint8Array,structuredClone,
   currentUser:'dylan_collyge',nativeAuthSessionActive:true,nativeAuthProfile:{id:'dylan',username:'dylan_collyge',must_change_password:false},
   APP_API_FUNCTION_URL:'https://fixture.invalid',postAppFunctionJson:async()=>({ok:true,data:{jobs:[]}}),...extra});
- vm.runInContext(read('assets/location-code.js'),ctx);vm.runInContext(js.replace('ensureAccount(); if (state.busy) return;',"ensureAccount(); console.log('BUNCH_RUN',state.busy,state.account,state.queueMode,new Error().stack); if (state.busy) return;"),ctx); return ctx;
+ vm.runInContext(read('assets/location-code.js'),ctx);vm.runInContext(js,ctx); return ctx;
 }
 
 test('base location cards preserve exact bays and nonstandard codes',()=>{
@@ -140,41 +140,41 @@ test('uncertain command retains its id and same-user reauthentication rejects ol
  const pending=ctx.BunchNote.api('list');ctx.BunchNote.reset();resolve({ok:true,data:{jobs:[{private:true}]}});
  await assert.rejects(pending,/session changed/);
 });
-test('failed initial assigned-work Queue refresh does not auto-loop; explicit refresh can recover',async()=>{
+test('bounded assigned-work Queue retries do not loop on render; explicit refresh can recover',async()=>{
  let calls=0;const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
  const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async()=>{calls++;throw new Error('offline');}});
  ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');
- await ctx.BunchNote.refresh();assert.equal(calls,1);
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);
  ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
  ctx.postAppFunctionJson=async()=>{calls++;return {ok:true,data:{jobs:[]}};};await ctx.BunchNote.refresh();assert.equal(calls,2);
 });
 test('backing out of assigned work preserves the selected Que mode',async()=>{
  const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
  const job={id:'work',owner_id:'dylan',status:'open',revision:1,instruction_revision:1,progress:{},body:{actions:[],source:[]},actuals:[]};
- const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},postAppFunctionJson:async(_url,body)=>body.operation==='get'?{ok:true,data:{job,versions:[],audit:[]}}:body.operation==='list'?{ok:true,data:{jobs:[job]}}:{ok:true,data:{options:[],locations:[]}}});
- ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');await ctx.BunchNote.detail('work');ctx.BunchNote.backQueue();
+ const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},postAppFunctionJson:async(_url,body)=>body.operation==='get'?{ok:true,data:{job,versions:[],audit:[]}}:body.operation==='list'?{ok:true,data:{jobs:[job]}}:body.operation==='directory'?{ok:true,data:{users:[]}}:body.operation==='catalog'?{ok:true,data:{options:[],locations:[]}}:{ok:true,data:{blocks:[],drafts:[]}}});
+ ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');await new Promise(resolve=>setImmediate(resolve));await ctx.BunchNote.detail('work');ctx.BunchNote.backQueue();
  assert.match(element.innerHTML,/id="bn-assigned-work-mode"[^>]*aria-pressed="true"/);
 });
 
 test('refresh commits preserve active controls and cannot overwrite newer commands',async()=>{
  const element={classList:{add(){}},innerHTML:'unchanged',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
- const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element}});
+ let view='';const ctx=runtime({getCurrentVisibleViewId:()=>view,activeReqTab:'bunch-notes',document:{getElementById:()=>element}});
+ ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');await new Promise(resolve=>setImmediate(resolve));
  const stale=await ctx.BunchNote.stage({});
  await ctx.BunchNote.api('claim',{job_id:'work'},1,'claim-id');
  ctx.BunchNote.commit(stale);
  assert.equal(element.innerHTML,'unchanged');
  ctx.BunchNote.commit(await ctx.BunchNote.stage({}));
  assert.equal(element.innerHTML,'unchanged');
- ctx.BunchNote.render();
+ view='request';ctx.BunchNote.setQueueMode('assigned');
  assert.ok(element.innerHTML.includes('Bunch Notes'));
 });
 test('pending actual saves lock controls, retain newer input, and preserve failed entries',async()=>{
- const controls=Array.from({length:4},()=>({disabled:false})),attributes={},requests=[],operations=[];
+ const controls=Array.from({length:4},()=>({disabled:false})),attributes={},requests=[];
  const element={classList:{add(){}},childNodes:[],set innerHTML(value){this.html=value;controls.forEach(c=>{c.disabled=false;});},get innerHTML(){return this.html;},setAttribute(k,v){attributes[k]=v;},querySelectorAll:selector=>selector==='input,select,textarea,button'?controls:[]};
  const job={id:'work',owner_id:'dylan',status:'open',revision:1,instruction_revision:1,progress:{},body:{actions:[{id:'ta',kind:'ta',group:'inventory',scope:'location',instructions:'TA'}],source:[]},actuals:[]};
  let release,fail=false,command=0;
- const toasts=[];const ctx=runtime({nativeAuthProfile:{id:'dylan',username:'worker',must_change_password:false},crypto:{randomUUID:()=>String(++command)},getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast:(...args)=>toasts.push(args),postAppFunctionJson:async(_url,body)=>{
-  operations.push(body.operation);
+ const ctx=runtime({crypto:{randomUUID:()=>String(++command)},getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async(_url,body)=>{
   if(body.operation==='get')return {ok:true,data:{job,versions:[],audit:[]}};
   if(body.operation==='catalog')return {ok:true,data:{options:[],locations:[]}};
   if(body.operation==='directory')return {ok:true,data:{users:[]}};
@@ -184,12 +184,11 @@ test('pending actual saves lock controls, retain newer input, and preserve faile
   return {ok:true,data:{job}};
  }});
  ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');
- operations.length=0;
- const detailPending=ctx.BunchNote.detail('work');assert.notEqual(detailPending,undefined,'detail action was suppressed');await detailPending;
- assert.ok(operations.includes('get'),`${operations.join(',')} ${JSON.stringify(toasts)}`);
+ await new Promise(resolve=>setImmediate(resolve));
+ await ctx.BunchNote.detail('work');
  ctx.BunchNote.workField('work:ta','source_id','lot');ctx.BunchNote.workField('work:ta','quantity','2');
  const pending=ctx.BunchNote.recordActual('ta');
- await new Promise(resolve=>setImmediate(resolve));assert.equal(typeof release,'function',operations.join(','));
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(typeof release,'function');
  assert.equal(attributes['aria-busy'],'true');assert.ok(controls.every(c=>c.disabled));
  // A queued event or another caller must not have its newer draft erased by an old response.
  ctx.BunchNote.workField('work:ta','quantity','3');release();await pending;
