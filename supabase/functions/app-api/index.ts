@@ -3905,6 +3905,47 @@ async function handleInventoryRead(
         inventoryRevision, projection, fieldCoverage: projection === "browse" ? "browse" : dataset === "avOpen" || projection === "full" ? "full" : "initial", columns: fields.split(",") } });
     }
 
+    if (operation === "master_identity_batch") {
+      const params = inventoryReadParams(payload, ["queueIdentities", "expectedInventoryRevision"]);
+      if (!Array.isArray(params.queueIdentities) || params.queueIdentities.length < 1 || params.queueIdentities.length > 100) {
+        throw new Error("INVENTORY_READ_IDENTITY_BATCH_INVALID");
+      }
+      const requestedRevision = params.expectedInventoryRevision === undefined || params.expectedInventoryRevision === null
+        ? null : String(params.expectedInventoryRevision).trim();
+      if (requestedRevision !== null && !/^[1-9]\d*$/.test(requestedRevision)) throw new Error("INVENTORY_READ_REVISION_INVALID");
+      const { data, error } = await supabase.rpc("inventory_master_identity_batch_read_v1", {
+        p_actor_id: String(actor.id || ""), p_queue_identities: params.queueIdentities as Json,
+        p_expected_revision: requestedRevision,
+      });
+      if (error) throw new Error(/MASTER_IDENTITY/i.test(error.message) ? error.message : "MASTER_IDENTITY_READ_FAILED");
+      const result = jsonObject(data);
+      const inventoryRevision = String(result?.inventoryRevision || "");
+      if (!/^[1-9]\d*$/.test(inventoryRevision) || (requestedRevision !== null && requestedRevision !== inventoryRevision)
+        || !result || !Array.isArray(result.rows)
+        || result.rows.length !== params.queueIdentities.length) throw new Error("MASTER_IDENTITY_RESPONSE_INVALID");
+      const resolved: Array<{ inputIndex: number; matchCount: number; sourceRow: Json | null }> = [];
+      for (let index = 0; index < result.rows.length; index += 1) {
+        const entry = jsonObject(result.rows[index]);
+        if (!entry || entry.inputIndex !== index || ![0, 1, 2].includes(Number(entry.matchCount))) throw new Error("MASTER_IDENTITY_RESPONSE_INVALID");
+        const matchCount = Number(entry.matchCount);
+        if (matchCount === 1) {
+          if (!entry.row || typeof entry.row !== "object" || Array.isArray(entry.row)) throw new Error("MASTER_IDENTITY_RESPONSE_INVALID");
+          resolved.push({ inputIndex: index, matchCount, sourceRow: entry.row as Json });
+        } else {
+          if (entry.row !== null) throw new Error("MASTER_IDENTITY_RESPONSE_INVALID");
+          resolved.push({ inputIndex: index, matchCount, sourceRow: null });
+        }
+      }
+      const uniqueRows = resolved.filter((entry): entry is typeof entry & { sourceRow: Json } => entry.sourceRow !== null);
+      const projectedRows = projectInventoryRows(uniqueRows.map(entry => entry.sourceRow), INVENTORY_MASTER_FULL_FIELDS);
+      const enrichedRows = await enrichInventoryLocationRows(supabase, String(actor.id || ""), projectedRows, inventoryRevision);
+      let enrichedIndex = 0;
+      const rows = resolved.map(entry => ({ inputIndex: entry.inputIndex, matchCount: entry.matchCount,
+        row: entry.matchCount === 1 ? enrichedRows[enrichedIndex++] : null }));
+      return jsonResponse({ ok: true, data: { rows, inventoryRevision, projection: "full", fieldCoverage: "full",
+        columns: INVENTORY_MASTER_FULL_FIELDS.split(",") } });
+    }
+
     if (operation === "master_delta") {
       const params = inventoryReadParams(payload, ["since", "limit", "offset"]);
       const { limit, offset } = inventoryReadPageBounds(params);
@@ -4001,7 +4042,11 @@ async function handleInventoryRead(
     const message = String(error instanceof Error ? error.message : error || "INVENTORY_READ_FAILED");
     const locationFailure = inventoryLocationReadFailureResponse(error);
     if (locationFailure) return locationFailure;
-    if (/PAYLOAD_INVALID|PARAMETERS_INVALID|PAGE_INVALID|OPERATION_INVALID|FILTER_INVALID|FILTER_REQUIRED|PROJECTION_INVALID|SINCE_INVALID|TYPE_INVALID|VERIFICATION_INVALID/.test(message)) {
+    if (message.includes("MASTER_IDENTITY_SOURCE_NOT_READY")) return errorResponse("Inventory is refreshing. The last verified snapshot remains available.", 423,
+      { code: "MASTER_IDENTITY_SOURCE_NOT_READY", source: "ph_master_inventory", retryable: false, retryAfterMs: 30_000 });
+    if (message.includes("MASTER_IDENTITY_REVISION_CHANGED")) return errorResponse("Inventory changed while resolving queue rows. Refresh the source rows before retrying.", 409,
+      { code: "MASTER_IDENTITY_REVISION_CHANGED", source: "ph_master_inventory", retryable: false });
+    if (/PAYLOAD_INVALID|PARAMETERS_INVALID|PAGE_INVALID|OPERATION_INVALID|FILTER_INVALID|FILTER_REQUIRED|PROJECTION_INVALID|SINCE_INVALID|TYPE_INVALID|VERIFICATION_INVALID|IDENTITY_BATCH_INVALID|IDENTITY_REVISION_INVALID|IDENTITY_QUEUE_INVALID/.test(message)) {
       return errorResponse("Invalid inventory read request.", 400, { code: message });
     }
     return errorResponse("Inventory data is temporarily unavailable.", 503, { code: "INVENTORY_READ_FAILED", retryable: true });

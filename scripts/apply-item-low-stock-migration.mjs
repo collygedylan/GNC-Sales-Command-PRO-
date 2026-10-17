@@ -76,7 +76,8 @@ export const inventoryReclassQuantityTriggerFastpathsMigrationName = '2026101609
 export const inventoryReclassCompactTriggerIdentityMigrationName = '20261016120000_reclass_compact_trigger_identity_v1.sql';
 export const inventoryReclassCompactBatchChildReceiptsMigrationName = '20261016140000_reclass_compact_batch_child_receipts_v1.sql';
 export const inventoryReclassNullElisionRpcMigrationName = '20261016160000_reclass_null_elision_rpc_v1.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName]);
+export const masterIdentityBatchReadMigrationName = '20261017110000_inventory_master_identity_batch_read_v1.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -419,6 +420,38 @@ export function migrationContractQuery(name) {
       where p.oid=to_regprocedure('public.get_inventory_reclass_move_status_compact_v1(uuid,text)')
         and position('get_inventory_reclass_move_status_v1' in p.prosrc)>0
         and position('encode_inventory_reclass_rows_v1' in p.prosrc)>0)
+    as installed`;
+  if (name === masterIdentityBatchReadMigrationName) return `select
+    exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.inventory_master_identity_batch_read_v1(uuid,jsonb,text)')
+        and p.prosecdef and p.provolatile='s'
+        and p.proconfig @> array['search_path=""']
+        and p.proconfig @> array['statement_timeout=5s']
+        and has_function_privilege('service_role',p.oid,'execute')
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.master_identity_item_key_v1(text)')
+        and p.provolatile='i'
+        and p.proconfig @> array['search_path=""']
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.master_identity_location_key_v1(text)')
+        and p.provolatile='i'
+        and p.proconfig @> array['search_path=""']
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from pg_index i
+      where i.indexrelid=to_regclass('public.ph_master_inventory_identity_batch_v1_idx')
+        and i.indrelid='public.ph_master_inventory'::regclass and i.indisvalid and i.indisready)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.inventory_master_identity_batch_read_v1(uuid,jsonb,text)')
+        and position('MASTER_IDENTITY_SOURCE_NOT_READY' in p.prosrc)>0
+        and position('MASTER_IDENTITY_REVISION_CHANGED' in p.prosrc)>0
+        and position('MASTER_IDENTITY_ACTOR_FORBIDDEN' in p.prosrc)>0)
     as installed`;
   if (name === managerModuleRevisionSignalsMigrationName) return `select
     (select count(*)=8 and bool_and(client_enabled) and bool_and(modules=array['managers'])

@@ -149,6 +149,9 @@ function appApiHarness({ moduleAllowed = true, sourceState = 'ready', sourceRevi
     Error,
     inventoryReadRows: [],
     locationCalls: [],
+    identityCalls: [],
+    identityResult: null,
+    identityError: null,
     jsonValue: value => value,
     jsonObject: value => {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
@@ -182,6 +185,10 @@ function appApiHarness({ moduleAllowed = true, sourceState = 'ready', sourceRevi
     jsonResponse: (body) => ({ status: 200, body }),
     supabase: {
       async rpc(name, args) {
+        if (name === 'inventory_master_identity_batch_read_v1') {
+          context.identityCalls.push([name, args]);
+          return { data: context.identityResult, error: context.identityError };
+        }
         assert.equal(name, 'inventory_location_on_hand_read_v1');
         context.locationCalls.push(args);
         return { data: { inventoryRevision: '12', rows: args.p_pairs.map(pair => ({ ...pair, loc_on_hand: 2000, loc_on_hand_revision: '12' })) }, error: null };
@@ -311,6 +318,68 @@ test('master pages and deltas append full pair totals after the physical project
   assert.equal(changed.status, 409);
   assert.equal(changed.body.code, 'LOC_ON_HAND_REVISION_CHANGED');
   assert.equal(changed.body.retryable, false);
+});
+
+test('master identity batch enforces access and bounds, returns full rows plus fenced LOC_ON_HAND, and preserves misses', async () => {
+  const { handler, context } = appApiHarness();
+  const fullSourceRow = Object.fromEntries(MASTER_FULL_FIELDS.split(',').map(field => [field, null]));
+  Object.assign(fullSourceRow, { unique_id: 'MIB-API-1', itemcode: '004380.010.1', locationcode: 'C.09.000', lotcode: 'LOT-1' });
+  context.identityResult = {
+    inventoryRevision: '12',
+    rows: [
+      { inputIndex: 0, matchCount: 1, row: fullSourceRow },
+      { inputIndex: 1, matchCount: 0, row: null },
+      { inputIndex: 2, matchCount: 2, row: null },
+    ],
+  };
+  const actor = { actor: { id: 'profile-1', username: 'reader', role: 'admin' } };
+  const queueIdentities = [
+    { masterUid: 'MIB-API-1', lotCode: 'LOT-1' },
+    { itemCode: 'NO-MATCH', locationCode: 'C.09.000', lotCode: '' },
+    { itemCode: 'AMBIGUOUS', locationCode: 'C.09.000', lotCode: 'LOT-2' },
+  ];
+  const response = await handler(actor, {
+    operation: 'master_identity_batch', params: { queueIdentities, expectedInventoryRevision: '12' },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.projection, 'full');
+  assert.equal(response.body.data.fieldCoverage, 'full');
+  assert.deepEqual(Array.from(response.body.data.columns), MASTER_FULL_FIELDS.split(','));
+  assert.equal(response.body.data.columns.length, 213);
+  assert.equal(response.body.data.inventoryRevision, '12');
+  assert.equal(response.body.data.rows[0].row.unique_id, 'MIB-API-1');
+  assert.equal(response.body.data.rows[0].row.loc_on_hand, 2000);
+  assert.equal(response.body.data.rows[0].row.loc_on_hand_revision, '12');
+  assert.equal(response.body.data.rows[1].row, null);
+  assert.equal(response.body.data.rows[2].row, null);
+  assert.equal(context.identityCalls.length, 1, 'identity lookup is one bounded batch RPC');
+  assert.equal(context.identityCalls[0][1].p_expected_revision, '12');
+  assert.equal(context.locationCalls.length, 1, 'only unique matched rows are sent to LOC_ON_HAND enrichment');
+  assert.equal(context.locationCalls[0].p_expected_revision, '12');
+  assert.equal(context.locationCalls[0].p_pairs.length, 1);
+
+  const denied = appApiHarness();
+  const forbidden = await denied.handler({ actor: { id: 'guest', username: 'outsider', role: 'guest' } }, {
+    operation: 'master_identity_batch', params: { queueIdentities: [queueIdentities[0]] },
+  });
+  assert.equal(forbidden.status, 403);
+  assert.equal(denied.context.identityCalls.length, 0, 'unauthorized roles cannot reach the service RPC');
+
+  const invalid = await handler(actor, {
+    operation: 'master_identity_batch', params: { queueIdentities: Array.from({ length: 101 }, () => queueIdentities[0]) },
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal(invalid.body.code, 'INVENTORY_READ_IDENTITY_BATCH_INVALID');
+  assert.equal(context.identityCalls.length, 1, 'oversized requests are rejected before database access');
+
+  const stale = appApiHarness();
+  stale.context.identityError = { message: 'MASTER_IDENTITY_REVISION_CHANGED' };
+  const conflict = await stale.handler(actor, {
+    operation: 'master_identity_batch', params: { queueIdentities: [queueIdentities[0]], expectedInventoryRevision: '11' },
+  });
+  assert.equal(conflict.status, 409);
+  assert.equal(conflict.body.code, 'MASTER_IDENTITY_REVISION_CHANGED');
+  assert.equal(stale.context.locationCalls.length, 0, 'a stale identity result is not enriched');
 });
 
 test('import readiness short-circuits inventory rows and totals before invoking the database RPC', async () => {
