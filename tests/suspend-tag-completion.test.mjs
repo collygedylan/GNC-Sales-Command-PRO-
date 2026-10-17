@@ -26,10 +26,13 @@ function harness(options = {}) {
   const ctx = {
     Date, Map, Set, JSON, Object, Array, String, Number, Promise,
     currentUser: 'dylan_collyge', SUPABASE_URL: 'https://isolated.invalid', allowed: true,
+    suspendTagCompletionActions: new Set(),
     crypto: { randomUUID: () => `a0000000-0000-4000-8000-${String(storage.size + 1).padStart(12, '0')}` },
     console: { warn() {} },
     localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
     normalizeSessionIdentity: (value) => String(value || '').trim().toLowerCase(),
+    esc: (value) => String(value ?? ''),
+    escJsAttrValue: (value) => String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"),
     firstNonEmptyValue: (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim()) ?? '',
     canCurrentUserViewDockSuspendDcRequests: () => ctx.allowed,
     canCurrentUserWorkRequestItem: () => ctx.allowed,
@@ -89,6 +92,215 @@ function harness(options = {}) {
   vm.runInContext(`${completions}\n${workflow}\n${helpers}\n${handler}`, ctx);
   return { ctx, row, mirror, calls, toasts, storage };
 }
+
+test('card Email completes its exact row then queues approval without confirmation or hiding it', async () => {
+  const h = harness({ live: true, proof: false, confirm: false,
+    api: body => acknowledgement({ suspend_tag_status: body.operation === 'send' ? 'awaiting_rep' : 'completed',
+      suspend_tag_version: body.operation === 'send' ? 2 : 1 }) });
+  await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'complete', 'rows', 'send']);
+  assert.ok(h.calls.filter(call => call.name !== 'rows').every(call => call.body.payload.sourceUid === 'soc-1'));
+  assert.equal(h.ctx.isOptimisticallyCompletedRow(h.mirror), false);
+  assert.equal(h.mirror.SUSPEND, 'SUSPEND');
+  assert.ok(h.toasts.some(([title]) => title === 'Email queued'));
+});
+
+test('rerendered Suspend actions stay disabled only for the exact busy account and source', () => {
+  const h = harness();
+  const owner = h.ctx.getSupabaseReadIdentityScope();
+  const sourceUid = h.ctx.getDockSuspendDcRequestSourceUid(h.mirror);
+  const key = owner + '|' + sourceUid;
+  vm.runInContext(`suspendTagCompletionActions.add(${JSON.stringify(key)})`, h.ctx);
+  assert.equal(vm.runInContext(`suspendTagCompletionActions.has(${JSON.stringify(key)})`, h.ctx), true, 'fixture seeds the exact key checked by production');
+  const markup = h.ctx.buildSuspendTagActions(h.mirror);
+  const buttons = markup.match(/<button[^>]*>/g) || [];
+  assert.equal(buttons.length, 2);
+  assert.ok(buttons.every(buttonMarkup => /\sdisabled(?:\s|>)/.test(buttonMarkup)), `both regenerated action buttons remain disabled while the row command is in flight: ${markup}`);
+  const differentSource = { ...h.mirror, UNIQUE_ID: 'dock_suspend_dc_other-row', DOCK_SUSPEND_SOURCE_UID: 'soc-other' };
+  const otherSourceMarkup = h.ctx.buildSuspendTagActions(differentSource);
+  const otherSourceButtons = otherSourceMarkup.match(/<button[^>]*>/g) || [];
+  assert.equal(otherSourceButtons.length, 2);
+  assert.ok(otherSourceButtons.every(buttonMarkup => !/\sdisabled(?:\s|>)/.test(buttonMarkup)), 'busy state must not leak to a different source row for the same account');
+  h.ctx.currentUser = 'another-user';
+  const otherAccountMarkup = h.ctx.buildSuspendTagActions(h.mirror);
+  const otherAccountButtons = otherAccountMarkup.match(/<button[^>]*>/g) || [];
+  assert.equal(otherAccountButtons.length, 2);
+  assert.ok(otherAccountButtons.every(buttonMarkup => !/\sdisabled(?:\s|>)/.test(buttonMarkup)), 'busy state must not leak across account identity');
+});
+
+test('Email updates replacement card buttons while busy and releases only the same owner row', async () => {
+  let finishComplete;
+  const h = harness({ live: true, api: body => body.operation === 'complete'
+    ? new Promise(resolve => { finishComplete = resolve; })
+    : acknowledgement({ suspend_tag_status: 'awaiting_rep', suspend_tag_version: 2 }) });
+  const makeAction = () => ({ disabled: false, attributes: new Map(),
+    setAttribute(name, value) { this.attributes.set(name, value); },
+    removeAttribute(name) { this.attributes.delete(name); },
+    getAttribute(name) { return this.attributes.get(name) ?? null; } });
+  const replacementActions = [makeAction(), makeAction()];
+  h.ctx.document = { querySelectorAll: selector => selector === '#request-content [data-request-uid]' ? [{
+    getAttribute: name => name === 'data-request-uid' ? h.mirror.UNIQUE_ID : null,
+    querySelectorAll: () => replacementActions,
+  }] : [] };
+  const pending = h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+  await new Promise(setImmediate);
+  assert.ok(replacementActions.every(action => action.disabled && action.attributes.get('aria-disabled') === 'true'), 'the current exact row controls are disabled while its command is pending');
+  const rerender = h.ctx.buildSuspendTagActions(h.mirror);
+  assert.equal((rerender.match(/<button[^>]*\sdisabled(?:\s|>)[^>]*>/g) || []).length, 2, 'a fresh render preserves the in-flight disabled state');
+  finishComplete(acknowledgement({ suspend_tag_status: 'completed', suspend_tag_version: 1 }));
+  await pending;
+  assert.ok(replacementActions.every(action => !action.disabled && !action.attributes.has('aria-disabled')), 'the exact current row is re-enabled after completion and email queueing');
+  assert.ok(h.calls.filter(call => call.name !== 'rows').every(call => call.body.payload.sourceUid === 'soc-1'));
+});
+
+test('card Email does not send twice when denied completion already queued approval', async () => {
+  const h = harness({ live: true, api: () => acknowledgement({ suspend_tag_status: 'awaiting_rep' }) });
+  h.mirror.suspend_tag_status = h.ctx.remoteRow.suspend_tag_status = 'denied';
+  await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'complete']);
+  assert.ok(h.toasts.some(([title]) => title === 'Email queued'));
+});
+
+test('Email retains completed review on missing rep and retries only send with the same command', async () => {
+  let fail = true;
+  const h = harness({ live: true, api: body => {
+    if (body.operation === 'send' && fail) throw new Error('SUSPEND_TAG_REP_EMAIL_MISSING');
+    return acknowledgement({ suspend_tag_status: body.operation === 'send' ? 'awaiting_rep' : 'completed', suspend_tag_version: body.operation === 'send' ? 2 : 1 });
+  } });
+  await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+  assert.equal(h.ctx.getSuspendTagStatus(h.mirror), 'completed');
+  assert.ok(h.toasts.some(([title]) => title === 'Review saved; email not queued'));
+  assert.ok(!h.toasts.some(([title]) => title === 'Email queued'));
+  fail = false;
+  await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+  const writes = h.calls.filter(call => call.name !== 'rows');
+  assert.deepEqual(writes.map(call => call.name), ['complete', 'send', 'send']);
+  assert.equal(writes[1].body.commandId, writes[2].body.commandId);
+  assert.equal(h.ctx.isOptimisticallyCompletedRow(h.mirror), false);
+});
+
+test('Email waits for row uploads and saves, blocks duplicate Email and Complete Tag taps', async () => {
+  let finishUpload, finishSave;
+  const h = harness({ live: true, api: body => acknowledgement({ suspend_tag_status: body.operation === 'send' ? 'awaiting_rep' : 'completed', suspend_tag_version: body.operation === 'send' ? 2 : 1 }) });
+  const upload = new Promise(resolve => { finishUpload = resolve; });
+  h.ctx.getPendingPhotoUploadsForItem = () => [upload];
+  const save = h.ctx.serializeSuspendTagRowWrite(h.mirror, () => new Promise(resolve => { finishSave = resolve; }));
+  const action = button(), pending = h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, action);
+  await new Promise(setImmediate);
+  assert.equal(action.disabled, true);
+  await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+  await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+  assert.equal(h.calls.length, 0);
+  finishUpload(); await new Promise(setImmediate);
+  assert.equal(h.calls.length, 0);
+  finishSave(); await save; await pending;
+  assert.deepEqual(h.calls.filter(call => call.name !== 'rows').map(call => call.name), ['complete', 'send']);
+  assert.equal(action.disabled, false);
+});
+
+test('Email uses the revision acknowledged by queued saves and uploads before completing and sending', async () => {
+  for (const queueType of ['save', 'upload']) {
+    let finishQueue;
+    const updatedRevision = '2026-09-08T15:51:02.654321Z';
+    const h = harness({ live: true, api: body => acknowledgement({
+      last_updated: body.payload.expectedLastUpdated,
+      suspend_tag_status: body.operation === 'send' ? 'awaiting_rep' : 'completed',
+      suspend_tag_version: body.operation === 'send' ? 3 : 2,
+    }) });
+    const advanceRevision = () => {
+      Object.assign(h.row, { LAST_UPDATED: updatedRevision, last_updated: updatedRevision, suspend_tag_version: 1 });
+      Object.assign(h.mirror, { LAST_UPDATED: updatedRevision, last_updated: updatedRevision, suspend_tag_version: 1, SUSPEND_TAG_VERSION: 1 });
+      h.ctx.remoteRow = { ...h.ctx.remoteRow, last_updated: updatedRevision, suspend_tag_version: 1 };
+    };
+    let pendingSave;
+    if (queueType === 'save') {
+      pendingSave = h.ctx.serializeSuspendTagRowWrite(h.mirror, () => new Promise(resolve => { finishQueue = resolve; }));
+    } else {
+      const pendingUpload = new Promise(resolve => { finishQueue = resolve; });
+      h.ctx.getPendingPhotoUploadsForItem = () => [pendingUpload];
+    }
+    const email = h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+    await new Promise(setImmediate);
+    advanceRevision();
+    finishQueue(true);
+    if (pendingSave) await pendingSave;
+    await email;
+    const writes = h.calls.filter(call => call.name !== 'rows');
+    assert.deepEqual(writes.map(call => call.name), ['complete', 'send'], queueType);
+    assert.ok(writes.every(call => call.body.payload.expectedLastUpdated === updatedRevision), `${queueType} completion and send use the queued write's exact revision`);
+    assert.ok(h.toasts.some(([title]) => title === 'Email queued'), queueType);
+  }
+});
+
+test('Email blocks missing data, failed uploads/saves, wrong identity, unauthorized and stale revisions', async () => {
+  for (const reason of ['data', 'upload', 'save', 'identity', 'auth', 'revision', 'version']) {
+    const h = harness({ live: true, ready: reason !== 'data' });
+    if (reason === 'upload') h.ctx.getPendingPhotoUploadsForItem = () => [Promise.reject(new Error('upload failed'))];
+    if (reason === 'save') vm.runInContext('suspendTagRowWrites.set(currentUser + "|soc-1", Promise.reject(new Error("save failed")))', h.ctx);
+    if (reason === 'auth') h.ctx.allowed = false;
+    if (reason === 'revision') h.ctx.remoteRow.last_updated = '2026-09-09T00:00:00Z';
+    if (reason === 'version') h.ctx.remoteRow.suspend_tag_version = 4;
+    await h.ctx.emailSuspendTagFromCard(reason === 'identity' ? 'another-row' : h.mirror.UNIQUE_ID, button());
+    assert.equal(h.calls.filter(call => call.name !== 'rows').length, 0, reason);
+    assert.ok(!h.toasts.some(([title]) => title === 'Email queued'), reason);
+  }
+});
+
+test('Email fences account and navigation switches between completion and send', async () => {
+  for (const change of ['account', 'navigation', 'permissions']) {
+    let finish;
+    const h = harness({ live: true, api: () => new Promise(resolve => { finish = resolve; }) });
+    const pending = h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+    await new Promise(setImmediate);
+    if (change === 'account') h.ctx.currentUser = 'other';
+    if (change === 'navigation') h.ctx.productionLiveSyncNavigation.abort();
+    if (change === 'permissions') h.ctx.permission = 'permissions-2';
+    finish(acknowledgement()); await pending;
+    assert.deepEqual(h.calls.map(call => call.name), ['rows', 'complete']);
+    assert.ok(!h.toasts.some(([title]) => title === 'Email queued'));
+  }
+});
+
+test('Email retries uncertain completion and send responses through their original receipts', async () => {
+  for (const lost of ['complete', 'send']) {
+    let fail = true;
+    const h = harness({ live: true, api: body => {
+      const result = acknowledgement({ suspend_tag_status: body.operation === 'send' ? 'awaiting_rep' : 'completed', suspend_tag_version: body.operation === 'send' ? 2 : 1 });
+      if (body.operation === lost && fail) { fail = false; h.ctx.remoteRow = result.row; throw new Error('response lost'); }
+      return result;
+    } });
+    await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+    assert.ok(!h.toasts.some(([title]) => title === 'Email queued'));
+    await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+    const retries = h.calls.filter(call => call.name === lost);
+    assert.equal(retries.length, 2);
+    assert.equal(retries[0].body.commandId, retries[1].body.commandId);
+    assert.equal(retries[0].body.expectedVersion, retries[1].body.expectedVersion);
+    assert.ok(h.toasts.some(([title]) => title === 'Email queued'));
+  }
+});
+
+test('Email preserves approved and awaiting states; failed delivery retries without completing again', async () => {
+  for (const status of ['completed', 'awaiting_rep', 'approved', 'failed']) {
+    const h = harness({ live: true, api: () => acknowledgement({ suspend_tag_status: 'awaiting_rep' }) });
+    h.mirror.suspend_tag_status = h.ctx.remoteRow.suspend_tag_status = status === 'failed' ? 'awaiting_rep' : status;
+    if (status === 'failed') h.mirror.suspend_tag_delivery_status = 'failed';
+    await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+    assert.deepEqual(h.calls.filter(call => call.name !== 'rows').map(call => call.name), status === 'completed' ? ['send'] : status === 'failed' ? ['retry'] : []);
+  }
+});
+
+test('active Suspend filter keeps emailed and approved tags visible until closure', () => {
+  const h = harness();
+  h.ctx.isDockSuspendDcRequestSource = row => row.SUSPEND === 'SUSPEND';
+  vm.runInContext(between('function getSuspendTagRequestItems(', 'function countPendingSuspendTagQueueItems('), h.ctx);
+  for (const status of ['pending', 'denied', 'completed', 'awaiting_rep', 'approved']) {
+    h.mirror.suspend_tag_status = status;
+    assert.equal(h.ctx.getSuspendTagRequestItems([h.mirror]).length, 1, status);
+  }
+  h.mirror.SUSPEND = null;
+  assert.equal(h.ctx.getSuspendTagRequestItems([h.mirror]).length, 0);
+});
 
 test('native Save verifies only its row and succeeds while the whole view is unverified', async () => {
   const h = harness({ live: true, proof: false });
@@ -269,8 +481,11 @@ test('native lost-response retry retains its exact idempotency token and expecte
 
 test('row verification does not bypass the approval action guard', async () => {
   const h = harness({ live: true, proof: false });
+  await assert.rejects(h.ctx.runSuspendTagRowCommand('send', h.mirror), /REVIEW_LOCKED/);
+  assert.deepEqual(h.calls.map(call => call.name), ['rows']);
+  h.ctx.allowed = false;
   await assert.rejects(h.ctx.runSuspendTagRowCommand('send', h.mirror), /FORBIDDEN/);
-  assert.equal(h.calls.length, 0);
+  assert.deepEqual(h.calls.map(call => call.name), ['rows']);
 });
 
 test('detail save keeps captured fields and waits for photos, with a recoverable verification timeout', async () => {

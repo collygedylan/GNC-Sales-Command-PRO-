@@ -24,6 +24,8 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
     String, Object, Array, Set, Map, Date,
     esc: value => String(value ?? ''), escJsAttrValue: value => String(value ?? '').replaceAll("'", '&#39;'),
     firstNonEmptyValue: (...values) => values.find(value => value !== '' && value != null),
+    owner: 'account-1', currentUser: 'operator-1', currentRole: 'user', suspendTagCompletionActions: new Set(),
+    getSupabaseReadIdentityScope: () => String(context.owner || 'account-1'),
     activeDetailSourceView: '', lastView: 'request',
     canCurrentUserViewDockSuspendDcRequests: () => allowed,
     canUseProductionLiveSync: () => false,
@@ -44,9 +46,9 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
     isSuspendTagHydratedInventoryRowStale: () => false,
     findDockSuspendDcRequestSourceRow: () => source,
   });
-  vm.runInContext(['getMasterInventoryExactKey', 'findLinkedMasterRow', 'getDockSuspendDcRequestLinkedMasterRow',
+  vm.runInContext(['getDockSuspendDcRequestSourceUid', 'getMasterInventoryExactKey', 'findLinkedMasterRow', 'getDockSuspendDcRequestLinkedMasterRow',
     'getSuspendTagInventoryIdentity', 'matchesSuspendTagInventoryIdentity', 'getOperationalCardInventoryRow',
-    'isArgosInventoryTransactionEligible', 'buildArgosInventoryTransactionRailHtml', 'buildSuspendTagReclassActionHtml', 'buildSuspendTagActions'].map(extract).join('\n'), context);
+    'isArgosInventoryTransactionEligible', 'buildArgosInventoryTransactionRailHtml', 'buildArgosInventoryTransactionRailPlaceholderHtml', 'buildSuspendTagReclassActionHtml', 'buildSuspendTagActions'].map(extract).join('\n'), context);
   return { context, item, source, master };
 }
 
@@ -93,7 +95,7 @@ function coldReclassHarness(t, { warmFullCache = false } = {}) {
   return { ...h, dom, card, reads, flush };
 }
 
-test('cold-cache Reclass loads an exact row once and preserves Complete Tag and Mark Done', async t => {
+test('cold-cache Reclass loads an exact row once and preserves Email and Complete Tag', async t => {
   const h = coldReclassHarness(t);
   await h.flush();
   h.context.hydrateRenderedSuspendTagReclassCards();
@@ -109,8 +111,9 @@ test('cold-cache Reclass loads an exact row once and preserves Complete Tag and 
   const button = h.card.querySelector('.app-card-bottom-btn--argos-reclass');
   assert.ok(button);
   assert.equal(h.card.querySelectorAll('.app-card-bottom-btn--argos-reclass').length, 1);
+  assert.match(h.card.textContent, /Email/);
   assert.match(h.card.textContent, /Complete Tag/);
-  assert.match(h.card.textContent, /Mark Done/);
+  assert.doesNotMatch(h.card.textContent, /Mark Done/);
   let opened, bubbled = 0;
   h.dom.window.openArgosInventoryTransactionModal = (...args) => { opened = args; return false; };
   h.card.addEventListener('click', () => { bubbled += 1; });
@@ -178,11 +181,16 @@ test('cold-cache Reclass cannot expose a missing, ambiguous or unauthorized row'
     if (scenario === 'ambiguous') h.reads[0].reject(new Error('More than one inventory row matches'));
     else h.reads[0].resolve(scenario === 'missing' ? null : scenario === 'wrong-row' ? { ...h.master, LOTCODE: 'other' } : h.master);
     await h.flush(); await h.flush();
-    assert.equal(h.card.querySelector('.app-card-bottom-btn--argos-reclass'), null);
+    const reclassButton = h.card.querySelector('.app-card-bottom-btn--argos-reclass');
+    if (reclassButton) {
+      assert.equal(reclassButton.disabled, true, 'an unresolved exact inventory lookup may reserve layout but cannot expose an actionable Reclass');
+      assert.equal(reclassButton.hasAttribute('onclick'), false);
+    }
     assert.equal(h.context.masterInventoryById.has('master-row'), scenario === 'unauthorized',
       'view-authorized exact quantity rows may be indexed even when the user cannot launch Reclass');
+    assert.match(h.card.textContent, /Email/);
     assert.match(h.card.textContent, /Complete Tag/);
-    assert.match(h.card.textContent, /Mark Done/);
+    assert.doesNotMatch(h.card.textContent, /Mark Done/);
   }
 });
 
@@ -190,7 +198,11 @@ test('cold-cache Reclass discards results after navigation, account or permissio
   for (const change of [h => h.context.productionLiveSyncNavigation.abort(), h => { h.context.owner = 'other'; }, h => { h.context.permission = 'other'; }]) {
     const h = coldReclassHarness(t); await h.flush(); change(h);
     h.reads[0].resolve(h.master); await h.flush();
-    assert.equal(h.card.querySelector('.app-card-bottom-btn--argos-reclass'), null);
+    const reclassButton = h.card.querySelector('.app-card-bottom-btn--argos-reclass');
+    if (reclassButton) {
+      assert.equal(reclassButton.disabled, true, 'an unresolved exact inventory lookup may reserve layout but cannot expose an actionable Reclass');
+      assert.equal(reclassButton.hasAttribute('onclick'), false);
+    }
     assert.equal(h.context.masterInventoryById.has('master-row'), false);
   }
 });
@@ -221,7 +233,8 @@ test('Suspend Tag card renders shared Reclass button and its activation does not
   assert.equal(cardClicks, 0);
   assert.deepEqual(opened, ['master-row', 'reclass', 'suspend-tag']);
   assert.equal(master.UNIQUE_ID, opened[0], 'the synthetic Suspend Tag card UID is not submitted');
-  assert.match(dom.window.document.querySelector('#card').textContent, /Mark Done/);
+  assert.match(dom.window.document.querySelector('#card').textContent, /Email/);
+  assert.doesNotMatch(dom.window.document.querySelector('#card').textContent, /Mark Done/);
   assert.match(dom.window.document.querySelector('#card').textContent, /Complete Tag/);
   dom.window.close();
 });
