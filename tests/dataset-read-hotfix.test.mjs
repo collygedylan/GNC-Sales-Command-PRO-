@@ -182,6 +182,50 @@ test('Que and active request pages receive authoritative pair totals without loa
   }
 });
 
+test('service-role request reads mirror the two restricted identities in RLS without narrowing other users', async () => {
+  for (const dataset of ['request_queue', 'active_request']) {
+    for (const username of ['ben_brown', 'chance_alldredge']) {
+      const h = harness({ rows: [{ unique_id: 'request' }] });
+      const response = await h.context.datasetReadTest(h.session('rep', username), {
+        dataset,
+        params: { anyOf: [{ field: 'req_status', op: 'eq', value: 'open' }] },
+      });
+      assert.equal(response.status, 200);
+      const orCall = h.queries[0].calls.find(([method]) => method === 'or');
+      assert.ok(orCall, `${dataset}/${username} must be scoped before its service-role read`);
+      assert.match(orCall[1], /^\(and\(or\(/, `${dataset}/${username} must use PostgREST's parenthesized top-level logical expression`);
+      assert.match(orCall[1], /\)\)\)$/, `${dataset}/${username} must close its top-level and/or expression`);
+      assert.match(orCall[1], /and\(or\(/);
+      assert.match(orCall[1], /request_created_by_username\.imatch/);
+      assert.match(orCall[1], /request_selected_rep_username\.imatch/);
+      assert.match(orCall[1], /requested_by\.imatch/);
+      assert.match(orCall[1], /req_status\.eq\.open/);
+      assert.match(orCall[1], username === 'ben_brown' ? /\^\[\^a-z0-9\]\*b\[\^a-z0-9\]\*e/ : /\^\[\^a-z0-9\]\*c\[\^a-z0-9\]\*h/);
+    }
+
+    const scopedOnly = harness();
+    const scopedOnlyResponse = await scopedOnly.context.datasetReadTest(scopedOnly.session('rep', 'ben_brown'), { dataset, params: {} });
+    assert.equal(scopedOnlyResponse.status, 200);
+    const scopedOnlyOr = scopedOnly.queries[0].calls.find(([method]) => method === 'or');
+    assert.ok(scopedOnlyOr);
+    assert.match(scopedOnlyOr[1], /^\(request_created_by_username\.imatch\./,
+      `${dataset} must wrap the standalone restricted-identity OR for PostgREST`);
+    assert.ok(scopedOnlyOr[1].endsWith(')'), `${dataset} standalone OR must be closed`);
+
+    const unrestricted = harness({ rows: [{ unique_id: 'request' }] });
+    const response = await unrestricted.context.datasetReadTest(unrestricted.session('rep', 'rep_user'), { dataset, params: {} });
+    assert.equal(response.status, 200);
+    assert.equal(unrestricted.queries[0].calls.some(([method]) => method === 'or'), false,
+      `${dataset} remains globally readable for other roles already authorized by RLS`);
+
+    const alias = harness({ rows: [{ unique_id: 'request' }] });
+    const aliasResponse = await alias.context.datasetReadTest(alias.session('rep', 'ben.brown'), { dataset, params: {} });
+    assert.equal(aliasResponse.status, 200);
+    assert.equal(alias.queries[0].calls.some(([method]) => method === 'or'), false,
+      `${dataset} must preserve the database policy’s exact restricted-username set`);
+  }
+});
+
 test('request aggregate enrichment keeps permissions and rejects an inventory revision race', async () => {
   const denied = harness({ rows: [{ unique_id: 'request', itemcode: 'A', locationcode: 'C' }] });
   const allowedRequest = await denied.context.datasetReadTest(denied.session(), { dataset: 'request_queue', params: {} });

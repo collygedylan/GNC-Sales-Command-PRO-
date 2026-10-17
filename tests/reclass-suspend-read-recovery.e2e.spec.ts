@@ -430,7 +430,9 @@ test('Suspend Tag photo queue stays available without whole-view proof and retai
   }
   const pendingDuringRead = await page.evaluate(async () => ({
     blobs: (await getAllIndexedDbRecords(REQUEST_BLOB_STORE)).filter(record => record.requestId === 'dock_suspend_dc-soc-photo-9').length,
-    registered: getPendingPhotoUploadsForItem(requestsInventory[0], 'req-').length,
+    // The live Docks cohort can replace the array while the scoped source
+    // read is held. Assert the queue for the exact request we submitted.
+    registered: getPendingPhotoUploadsForItem((window as any).__suspendPhotoMirrorFixture, 'req-').length,
   }));
   expect(pendingDuringRead).toEqual({ blobs: 1, registered: 1 });
   releaseRows();

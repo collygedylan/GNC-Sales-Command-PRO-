@@ -19,6 +19,19 @@ test('pastel Suspend cards use dark text in both themes without recoloring butto
     assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('button span')).color, 'rgb(255, 255, 255)');
   }
 });
+
+test('operational Docks weekday cards keep dark readable text and independent button colors', t => {
+  const styles = html.match(/<style id="docks-card-contrast">([\s\S]*?)<\/style>/)?.[1];
+  assert.ok(styles);
+  const dom = new JSDOM(`<style>.text-white { color:white; } button { color:white; background:#166534; } ${styles}</style><div id="docks-content"><article class="app-smart-card app-operational-planstart-card app-card-planstart-monday app-planstart-monday"><h3 class="text-white">Monday dock</h3><button>Flag Issue</button></article></div>`);
+  t.after(() => dom.window.close());
+  for (const dark of [false, true]) {
+    dom.window.document.body.dataset.opsTheme = dark ? 'dark' : 'light';
+    dom.window.document.body.classList.add('ops-precision-pilot');
+    assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('h3')).color, 'rgb(17, 24, 39)');
+    assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('button')).color, 'rgb(255, 255, 255)');
+  }
+});
 function extract(name) {
   const start = html.indexOf(`        function ${name}(`);
   assert.ok(start >= 0, name);
@@ -60,6 +73,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     seasonCardShellClass: '', requestCardToneClass: '', requestBorderClass: '', suspendTagPlanstartToneDataAttr: '',
     isChecked: '', requestCustomer: 'A customer', safeCardSourceViewKey: 'request', historyBadge: '', statusChip: '', reserveBadge: '',
     requestMetaHtml: '<div class="app-request-card-meta"><span class="app-request-card-meta-chip">Customer <strong>A long customer name</strong></span></div>',
+    suspendOperationalMetaHtml: '<div class="app-operational-card-meta"><span class="app-request-card-meta-chip">Sales Rep <strong>A rep</strong></span><span class="app-request-card-meta-chip">Request Qty <strong>8</strong></span></div>',
     holdHtml: '<div class="app-card-note">Hold reason remains complete</div>', requestSalesNoteHtml: '<div class="app-card-note">Sales note remains complete</div>',
     dockSuspendCardDataHtml: '', inventoryEditActionHtml: '', actionBadge: '', inlineThumbHtml: photo ? '<img alt="Tree" src="about:blank">' : '',
     activeFastPress: null, lastFastPressActionKey: '', lastFastPressActionAt: 0, lastFastPressActionScope: '', lastFastPressActionScopeAt: 0,
@@ -95,6 +109,12 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
 
 test('card click and Enter open the shared editor for the exact Suspend Tag row', t => {
   const h = harness(t);
+  const meta = h.card.querySelector('.app-operational-card-meta');
+  const fields = h.card.querySelector('.app-operational-card-header-fields');
+  assert.ok(meta && fields);
+  assert.ok(meta.compareDocumentPosition(fields) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.equal(meta.textContent.includes('Sales Rep'), true);
+  assert.equal(meta.textContent.includes('Request Qty'), true);
   h.card.querySelector('.app-drive-card-title').click();
   h.card.dispatchEvent(new h.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
   assert.equal(h.calls.length, 2);

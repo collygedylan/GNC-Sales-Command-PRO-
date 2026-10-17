@@ -8,6 +8,7 @@ const harness = vi.hoisted(() => ({
   cachedRows: null as unknown[] | null,
   cacheKeys: [] as string[],
   readKeys: [] as string[],
+  runtimeConfigPromise: null as Promise<unknown> | null,
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -27,17 +28,34 @@ vi.mock('@supabase/supabase-js', () => ({
     }
   }))
 }));
-vi.mock('./runtime', () => ({ loadRuntimeConfig: vi.fn().mockResolvedValue({
+vi.mock('./runtime', () => ({ loadRuntimeConfig: vi.fn(() => harness.runtimeConfigPromise || Promise.resolve({
   environment: 'sandbox', projectRef: 'gnc-sandbox-006', productionProjectRef: 'kzrnyjsosryejjejliii',
   supabaseUrl: 'https://gnc-sandbox-006.supabase.co', publishableKey: 'sb_publishable_test'
-}) }));
+})) }));
 vi.mock('./cache', () => ({
   cacheInventoryPage: vi.fn((key: string) => { harness.cacheKeys.push(key); return Promise.resolve(); }),
   readCachedInventoryPage: vi.fn((key: string) => { harness.readKeys.push(key); return Promise.resolve(harness.cachedRows); }),
   savePreference: vi.fn()
 }));
 
-import { dbRows, fetchInventoryPage, getInventoryReadScopeKey, subscribeInventorySessionScope, INVENTORY_CARD_COLUMN_NAMES, INVENTORY_TABLE, storeSession, patchRow, REQUEST_TABLE, isAdminSession, isEvalSession } from './api';
+import { dbRows, fetchInventoryPage, fetchRequestRows, getInventoryReadScopeKey, subscribeInventorySessionScope, INVENTORY_CARD_COLUMN_NAMES, INVENTORY_TABLE, storeSession, patchRow, REQUEST_TABLE, isAdminSession, isEvalSession } from './api';
+
+describe('account-scoped request updates', () => {
+  it('does not dispatch a captured account update after the active account changes during client startup', async () => {
+    let resolveConfig!: (value: unknown) => void;
+    harness.runtimeConfigPromise = new Promise(resolve => { resolveConfig = resolve; });
+    const oldSession = { username: 'first', token: 'sandbox:first', role: 'manager' };
+    storeSession(oldSession);
+    const pending = patchRow(oldSession, REQUEST_TABLE, 'reused-id', { REQ_ARCHIVED: true });
+    const settled = expect(pending).rejects.toThrow('account changed during request update');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    storeSession({ username: 'second', token: 'sandbox:second', role: 'manager' });
+    resolveConfig({ environment: 'sandbox', projectRef: 'gnc-sandbox-006', productionProjectRef: 'kzrnyjsosryejjejliii',
+      supabaseUrl: 'https://gnc-sandbox-006.supabase.co', publishableKey: 'sb_publishable_test' });
+    await settled;
+    expect(harness.calls.some(([method]) => method === 'update')).toBe(false);
+  });
+});
 
 describe('Eval data access boundary', () => {
   it('recognizes Eval role variants while leaving explicit Admin roles distinct', () => {
@@ -48,6 +66,7 @@ describe('Eval data access boundary', () => {
   });
 
   it('uses a safe projection and removes nested pricing or administrative fields', async () => {
+    storeSession({ username: 'eval-user', token: 'sandbox:eval-user', role: 'Eval' });
     harness.response = { data: [{ unique_id: 'cav-1', itemcode: '100.1', unitprice: 19, source_payload: { listprice: 22, available: 4 }, available: 4, amountMoved: 3, amountThrownAway: 1 }], error: null };
 
     const rows = await dbRows({ username: 'eval-user', token: 'eval-token', role: 'Evaluator' }, 'ph_cav_import', 'limit=10');
@@ -57,7 +76,7 @@ describe('Eval data access boundary', () => {
     expect(select?.[1]).not.toContain('unitprice');
     expect(select?.[1]).not.toContain('source_payload');
     expect(rows).toEqual([{ unique_id: 'cav-1', itemcode: '100.1', available: 4, amountMoved: 3, amountThrownAway: 1 }]);
-    await expect(patchRow({ username: 'eval-user', token: 'eval-token', role: 'Eval' }, 'ph_cav_import', 'cav-1', { unitprice: 25 }))
+    await expect(patchRow({ username: 'eval-user', token: 'sandbox:eval-user', role: 'Eval' }, 'ph_cav_import', 'cav-1', { unitprice: 25 }))
       .rejects.toThrow(/cannot be changed by Eval/i);
     expect(harness.calls.some(([method]) => method === 'update')).toBe(false);
   });
@@ -76,15 +95,41 @@ describe('Eval data access boundary', () => {
 
 describe('schema-checked request updates', () => {
   it('converts input quantities and blanks to native database values', async () => {
+    storeSession({ username: 'fixture', token: 'sandbox:fixture-token' });
     harness.response = { data: [{ unique_id: 'request-1' }], error: null };
-    await patchRow({ username: 'fixture', token: 'fixture-token' }, REQUEST_TABLE, 'request-1', { REQ_QTY: '12', LOC_MATCH: '', REQ_ARCHIVED: false });
+    await patchRow({ username: 'fixture', token: 'sandbox:fixture-token' }, REQUEST_TABLE, 'request-1', { REQ_QTY: '12', LOC_MATCH: '', REQ_ARCHIVED: false });
     expect(harness.calls).toContainEqual(['update', { req_qty: 12, req_match: null, req_archived: false }]);
     expect(harness.calls).toContainEqual(['eq', 'unique_id', 'request-1']);
   });
   it('rejects invalid numeric inputs and columns absent from the schema', async () => {
-    await expect(patchRow({ username: 'fixture', token: 'fixture-token' }, REQUEST_TABLE, 'request-1', { REQ_QTY: 'twelve' })).rejects.toThrow(/enter a number/);
-    await expect(patchRow({ username: 'fixture', token: 'fixture-token' }, REQUEST_TABLE, 'request-1', { missing_column: true })).rejects.toThrow(/database schema/);
+    storeSession({ username: 'fixture', token: 'sandbox:fixture-token' });
+    await expect(patchRow({ username: 'fixture', token: 'sandbox:fixture-token' }, REQUEST_TABLE, 'request-1', { REQ_QTY: 'twelve' })).rejects.toThrow(/enter a number/);
+    await expect(patchRow({ username: 'fixture', token: 'sandbox:fixture-token' }, REQUEST_TABLE, 'request-1', { missing_column: true })).rejects.toThrow(/database schema/);
     expect(harness.calls.some(([method]) => method === 'update')).toBe(false);
+  });
+
+});
+
+describe('request reads stay inside the active account scope', () => {
+  it('does not allow a stale Admin session argument to select the wide projection after an account switch', async () => {
+    storeSession({ token: 'sandbox:eval_user', username: 'eval_user', role: 'Eval' });
+    harness.calls = [];
+    await expect(fetchRequestRows({ token: 'sandbox:dylan_collyge', username: 'dylan_collyge', role: 'Admin' }))
+      .rejects.toThrow('account changed before request load');
+    expect(harness.calls).toEqual([]);
+  });
+
+  it('rejects an in-flight request response after the active account changes', async () => {
+    let resolveResponse!: (value: unknown) => void;
+    storeSession({ token: 'sandbox:dylan_collyge', username: 'dylan_collyge', role: 'Admin' });
+    harness.calls = [];
+    harness.response = new Promise(resolve => { resolveResponse = resolve; });
+    const pending = fetchRequestRows({ token: 'sandbox:dylan_collyge', username: 'dylan_collyge', role: 'Admin' });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    storeSession({ token: 'sandbox:eval_user', username: 'eval_user', role: 'Eval' });
+    resolveResponse({ data: [{ unique_id: 'stale-admin-row', list_price: 99 }], error: null });
+    await expect(pending).rejects.toThrow('account changed during request load');
+    expect(harness.calls.find(([method]) => method === 'select')?.[1]).toBe('*');
   });
 });
 
@@ -94,6 +139,7 @@ afterEach(() => {
   harness.cachedRows = null;
   harness.cacheKeys = [];
   harness.readKeys = [];
+  harness.runtimeConfigPromise = null;
   vi.resetModules();
 });
 

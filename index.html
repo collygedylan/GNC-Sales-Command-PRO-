@@ -5,7 +5,7 @@
     <script src="./assets/bunch-note.js"></script>
     <script src="./assets/sales-workspace.js"></script>
     <script src="./assets/mobile-workspace.js"></script>
-    <script src="./assets/navigation-preferences.js?v=AgData%20v2.0.0"></script>
+    <script src="./assets/navigation-preferences.js?v=AgData%20v2.0.1"></script>
     <link rel="stylesheet" href="./assets/bunch-note.css">
     <link rel="stylesheet" href="./assets/bunch-note-cards.css">
     <link rel="stylesheet" href="./assets/sales-workspace.css">
@@ -15,7 +15,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#f4fbf7">
-    <link rel="stylesheet" href="./assets/theme-tokens.css?v=AgData%20v2.0.0">
+    <link rel="stylesheet" href="./assets/theme-tokens.css?v=AgData%20v2.0.1">
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/branding/ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/branding/ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/branding/ag-data-solutions-icon-v2026080925-180.png">
@@ -53,7 +53,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#050806' : '#f4fbf7');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=AgData%20v2.0.0">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=AgData%20v2.0.1">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -62,8 +62,8 @@
     <script src="./assets/app-lifecycle.js" data-app-lifecycle></script>
     <script>
       // Public release label; increment independently of the shell cache/build ID.
-      window.__APP_RELEASE_VERSION__ = 'AgData v2.0.0';
-      window.__APP_SHELL_VERSION__ = 'AgData v2.0.0';
+      window.__APP_RELEASE_VERSION__ = 'AgData v2.0.1';
+      window.__APP_SHELL_VERSION__ = 'AgData v2.0.1';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6895,8 +6895,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=AgData%20v2.0.0">
-    <link rel="stylesheet" href="./assets/production-schedule.css?v=AgData%20v2.0.0">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=AgData%20v2.0.1">
+    <link rel="stylesheet" href="./assets/production-schedule.css?v=AgData%20v2.0.1">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -7018,6 +7018,40 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
         #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-amber-50:not(button, button *) { background-color: #fffbeb !important; }
         #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] :is(.bg-red-50,.bg-red-100):not(button, button *) { background-color: #fee2e2 !important; }
     </style>
+    <style id="docks-card-contrast">
+        .app-operational-card-meta { display:flex; flex-wrap:wrap; gap:4px 6px; margin:4px 0; }
+        #docks-content .app-operational-card-meta .app-request-card-meta-chip { display:inline-flex; min-width:0; max-width:100%; align-items:center; gap:4px; border:1px solid #dbe4dc; border-radius:999px; background:#f8fafc; padding:4px 8px; color:#475569; font-size:10px; font-weight:800; line-height:1.15; }
+        #docks-content .app-operational-card-meta .app-request-card-meta-chip strong { color:#0f172a; font-weight:900; overflow-wrap:anywhere; }
+        #docks-content .app-shared-drive-layout .app-drive-card-grid,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid { grid-template-columns:var(--drive-card-photo-width) minmax(0,1fr) auto !important; grid-template-areas:"photo header reclass" "photo operational-meta reclass" "photo operational-fields reclass" "photo details details" !important; }
+        #docks-content .app-shared-drive-layout .app-drive-card-grid:not(.app-drive-card-grid--no-photo):not(.app-drive-card-with-reclass),
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid:not(.app-drive-card-grid--no-photo):not(.app-drive-card-with-reclass) { grid-template-columns:var(--drive-card-photo-width) minmax(0,1fr) !important; grid-template-areas:"photo header" "photo operational-meta" "photo operational-fields" "photo details" !important; }
+        #docks-content .app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo { grid-template-columns:minmax(0,1fr) auto !important; grid-template-areas:"header reclass" "operational-meta reclass" "operational-fields reclass" "details details" !important; }
+        #docks-content .app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo:not(.app-drive-card-with-reclass),
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo:not(.app-drive-card-with-reclass) { grid-template-columns:minmax(0,1fr) !important; grid-template-areas:"header" "operational-meta" "operational-fields" "details" !important; }
+        #docks-content .app-shared-drive-layout .app-operational-card-meta,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-operational-card-meta { grid-area:operational-meta; min-width:0; }
+        #docks-content .app-shared-drive-layout .app-operational-card-header-fields,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-operational-card-header-fields { grid-area:operational-fields; min-width:0; }
+        #docks-content .app-shared-drive-layout .app-drive-card-actions,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-actions { grid-area:reclass; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-monday { background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important; border-color:#a855f7 !important; border-left:8px solid #9333ea !important; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-tuesday { background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important; border-color:#fb7185 !important; border-left:8px solid #ef4444 !important; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-wednesday { background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important; border-color:#22c55e !important; border-left:8px solid #16a34a !important; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-thursday { background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important; border-color:#3b82f6 !important; border-left:8px solid #2563eb !important; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-friday { background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important; border-color:#64748b !important; border-left:8px solid #64748b !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-monday { background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important; border-color:#a855f7 !important; border-left:8px solid #9333ea !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-tuesday { background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important; border-color:#fb7185 !important; border-left:8px solid #ef4444 !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-wednesday { background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important; border-color:#22c55e !important; border-left:8px solid #16a34a !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-thursday { background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important; border-color:#3b82f6 !important; border-left:8px solid #2563eb !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-friday { background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important; border-color:#64748b !important; border-left:8px solid #64748b !important; }
+        #docks-content .app-operational-planstart-card[class*="app-planstart-"] { color:#111827; --ops-text:#111827; --ops-text-muted:#374151; }
+        #docks-content .app-operational-planstart-card[class*="app-planstart-"] :not(button, button *, input, textarea, select) { color:#111827 !important; }
+        #docks-content .app-operational-planstart-card[class*="app-planstart-"] :is(input:not([type="checkbox"]), textarea, select) { color:#111827 !important; background-color:#ffffff !important; }
+        body.ops-precision-pilot[data-ops-theme="dark"] #docks-content .app-operational-card-meta .app-request-card-meta-chip { border-color:var(--border-subtle); background:var(--bg-surface-muted); color:var(--text-muted); }
+        body.ops-precision-pilot[data-ops-theme="dark"] #docks-content .app-operational-card-meta .app-request-card-meta-chip strong { color:var(--text-main); }
+    </style>
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
@@ -7132,25 +7166,25 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/inventory-list-contract.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/login-network-trace.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/live-sync-registry.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/manager-source-live-events.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/customer-mapping-live-events.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/live-sync-adapters.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/live-sync-coordinator.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/av-derived-rows.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/bounded-snapshot-cache.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/stable-view-dom.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/company-directory-cache.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/queue-completion-state.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/request-submission.js?v=AgData%20v2.0.0&mapping=20261014"></script>
-    <script src="./assets/ops-precision-pilot.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/production-schedule.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/eval-reports-engine.js?v=AgData%20v2.0.0"></script>
-    <script src="./assets/report-pages-live.js?v=AgData%20v2.0.0"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=AgData%20v2.0.0"></script>
+    <script src="./assets/drive-demand-detail.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/inventory-list-contract.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/login-network-trace.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/live-sync-registry.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/manager-source-live-events.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/customer-mapping-live-events.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/live-sync-adapters.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/live-sync-coordinator.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/av-derived-rows.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/bounded-snapshot-cache.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/stable-view-dom.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/company-directory-cache.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/queue-completion-state.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/request-submission.js?v=AgData%20v2.0.1&mapping=20261014"></script>
+    <script src="./assets/ops-precision-pilot.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/production-schedule.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/eval-reports-engine.js?v=AgData%20v2.0.1"></script>
+    <script src="./assets/report-pages-live.js?v=AgData%20v2.0.1"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=AgData%20v2.0.1"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7920,7 +7954,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                         <div class="nav-header-meta-row">
  <div id="aura-standby-control"></div>
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v2.0.0').trim() || 'AgData v2.0.0';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v2.0.1').trim() || 'AgData v2.0.1';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9450,7 +9484,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.0.0';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.0.1';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18990,7 +19024,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 'Loc Photo Match': 'loc-photo-match',
                 'Loc On Hand': 'loc-on-hand'
             })[label] || '';
-            const formatQuantity = (value) => safeOptions.preserveUnknown === true && (value === null || typeof value === 'undefined' || String(value).trim() === '') ? 'Unknown' : normalizeCardQuantityValue(value);
+            const formatQuantity = (value) => (value === null || typeof value === 'undefined' || String(value).trim() === '')
+                ? (safeOptions.missingValue === 'N/A' ? 'N/A' : (safeOptions.preserveUnknown === true ? 'Unknown' : normalizeCardQuantityValue(value)))
+                : normalizeCardQuantityValue(value);
             const buildChip = ([label, value], className = '', index = 0) => `<span class="app-card-qty-chip ${className || chipClassFor(index)}" data-inventory-card-metric="${metricIdFor(label)}"><span class="app-card-qty-label">${escapeHtml(label)}</span><span class="px-1 text-slate-400">-</span><span class="app-card-qty-value ${valueClass}"${label === 'Loc Photo Match' ? ' data-loc-photo-match-value' : ''}>${escapeHtml(formatQuantity(value))}</span></span>`;
             const buildStackedChip = ([label, value], index = 0) => {
                 const formatted = formatQuantity(value);
@@ -19006,8 +19042,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const sourceView = String(safeOptions.sourceView || '');
             const locationPhotoMatch = formatLocPhotoMatchQtyValue(locationMetricRow, sourceView);
             const locationChips = safeOptions.includeLocationMetrics === false ? [] : [
-                ['Loc Photo Match', (sourceView === 'drive' || sourceView === 'request') && locationPhotoMatch === 'Not verified' ? 'N/A' : locationPhotoMatch],
-                ['Loc On Hand', getCardLocationOnHandValue(locationMetricRow) ?? 'Unknown']
+                ['Loc Photo Match', (sourceView === 'drive' || sourceView === 'request' || sourceView === 'docks') && locationPhotoMatch === 'Not verified' ? 'N/A' : locationPhotoMatch],
+                ['Loc On Hand', getCardLocationOnHandValue(locationMetricRow) ?? (safeOptions.missingValue === 'N/A' ? 'N/A' : 'Unknown')]
             ];
             const allChips = [...primaryChips, openStockChip, ...locationChips];
             const trailingChipsHtml = String(safeOptions.trailingChipsHtml || '').trim();
@@ -26780,6 +26816,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             ]);
         }
 
+        function getProductionRealtimeOwnerKey() {
+            // A channel belongs to the authenticated account, not to a read.
+            // The read permission version is learned AFTER the channel opens;
+            // including it here would silently discard every subsequent event.
+            return JSON.stringify([SUPABASE_URL, nativeAuthSessionActive, nativeAuthProfile?.id || '',
+                String(currentUser || '').trim().toLowerCase(), String(currentRole || '').trim().toLowerCase(),
+                String(currentUserDivision || ''), productionLiveSyncReadAuthEpoch]);
+        }
+
         function staleSupabaseReadScopeError() {
             const error = new Error('The account or data permissions changed while loading. This response was discarded.');
             error.code = 'DATASET_READ_SCOPE_CHANGED';
@@ -31669,6 +31714,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const normalizedRole = normalizeSessionIdentity(role);
             if (!normalizedUser || !normalizedRole) return false;
             const cachedMeta = cachedRes && cachedRes.meta ? cachedRes.meta : {};
+            if (!cachedMeta.owner || cachedMeta.owner !== getPersistentInventoryCacheOwner()) return false;
             const cachedUser = normalizeSessionIdentity(firstNonEmptyValue(cachedMeta.scopedUser, ''));
             const cachedRole = normalizeSessionIdentity(firstNonEmptyValue(cachedMeta.scopedRole, ''));
             if (!cachedUser || !cachedRole) return false;
@@ -32392,9 +32438,28 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             auditLocalRequestDurability('online', true).catch(() => {});
         });
 
-        async function saveToCache(data) { return saveCacheValue("latest_data", data); }
+        function getPersistentInventoryCacheOwner() {
+            const username = normalizeSessionIdentity(currentUser);
+            const role = normalizeSessionIdentity(currentRole);
+            if (!username || !role || (nativeAuthSessionActive && !nativeAuthProfile?.id)) return '';
+            const permission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+            if (nativeAuthSessionActive && !permission) return '';
+            return JSON.stringify([SUPABASE_URL, nativeAuthSessionActive ? nativeAuthProfile.id : 'legacy',
+                username, role, String(currentUserDivision || ''), permission]);
+        }
 
-        async function loadFromCache() { return loadCacheValue("latest_data"); }
+        async function saveToCache(data) {
+            const owner = getPersistentInventoryCacheOwner();
+            if (!owner || data?.meta?.owner !== owner) return false;
+            return saveCacheValue(`inventory-snapshot-v2:${owner}`, data);
+        }
+
+        async function loadFromCache() {
+            const owner = getPersistentInventoryCacheOwner();
+            if (!owner) return null;
+            const snapshot = await loadCacheValue(`inventory-snapshot-v2:${owner}`);
+            return owner === getPersistentInventoryCacheOwner() && snapshot?.meta?.owner === owner ? snapshot : null;
+        }
         function stripTransientCacheFields(item = {}) {
             const clean = {};
             Object.keys(item || {}).forEach((key) => {
@@ -32473,6 +32538,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 avNotesData: cacheRows(avNotesDb),
                 meta: {
                     cacheSchemaVersion: CACHE_SCHEMA_VERSION,
+                    owner: getPersistentInventoryCacheOwner(),
                     scopedUser: normalizeSessionIdentity(currentUser),
                     scopedRole: normalizeSessionIdentity(safeRole || currentRole),
                     datasetLoadState: serializeDatasetLoadState(),
@@ -32576,8 +32642,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function warmCachedInventory(force = false) {
-            if (force) {
+            const owner = getSupabaseReadIdentityScope();
+            if (force || cacheWarmOwner !== owner) {
                 cacheWarmPromise = null;
+                cacheWarmOwner = owner;
                 clearLoginCachePrefetch();
             }
             if (!cacheWarmPromise) {
@@ -32586,6 +32654,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     ? loginPrefetchPromise
                     : null;
                 cacheWarmPromise = Promise.resolve(prefetchedCachePromise).then((prefetchedCache) => {
+                    if (owner !== getSupabaseReadIdentityScope()) return null;
                     if (prefetchedCache && doesCacheSnapshotMatchCurrentSession(prefetchedCache)) return prefetchedCache;
                     return loadFromCache().then((cachedRes) => {
                         if (!cachedRes) return null;
@@ -32593,7 +32662,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         return normalizeCachedInventorySnapshot(cachedRes);
                     });
                 }).then((normalizedCache) => {
-                    if (!normalizedCache) return false;
+                    if (owner !== getSupabaseReadIdentityScope() || !doesCacheSnapshotMatchCurrentSession(normalizedCache)) return false;
                     processAndLoadData({ ...normalizedCache, _fromCache: true });
                     hydrateDatasetLoadState(getCachedDatasetLoadState(normalizedCache));
                     return true;
@@ -32604,9 +32673,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         function getUserScopedDatasetCacheKey(datasetKey = '') {
             const normalizedDatasetKey = String(datasetKey || '').trim().toLowerCase() || 'unknown';
-            const normalizedRole = String(safeRole || currentRole || 'guest').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'guest';
-            const normalizedUser = String(currentUser || currentUserDisplay || 'guest').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'guest';
-            return `dataset:${normalizedDatasetKey}:${normalizedRole}:${normalizedUser}`;
+            return `dataset-v2:${normalizedDatasetKey}:${getPersistentInventoryCacheOwner()}`;
         }
 
         function buildUserScopedDatasetCacheSnapshot(datasetKey = '') {
@@ -32616,6 +32683,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     rows: buildCacheRows(reservesInventory),
                     meta: {
                         cacheSchemaVersion: CACHE_SCHEMA_VERSION,
+                        owner: getPersistentInventoryCacheOwner(),
                         datasetKey: 'reserves',
                         scopedRole: String(safeRole || currentRole || '').trim(),
                         scopedUser: String(currentUser || currentUserDisplay || '').trim(),
@@ -32630,16 +32698,18 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function persistUserScopedDatasetCache(datasetKey = '') {
-            if (!currentUser || !datasetKey) return false;
+            if (!currentUser || !datasetKey || !getPersistentInventoryCacheOwner()) return false;
             const snapshot = buildUserScopedDatasetCacheSnapshot(datasetKey);
             if (!snapshot) return false;
             return saveCacheValue(getUserScopedDatasetCacheKey(datasetKey), snapshot);
         }
 
         async function warmUserScopedDatasetCaches() {
-            if (!currentUser) return false;
+            if (!currentUser || !getPersistentInventoryCacheOwner()) return false;
+            const owner = getSupabaseReadIdentityScope();
             let warmed = false;
             const reserveCache = await loadCacheValue(getUserScopedDatasetCacheKey('reserves')).catch(() => null);
+            if (owner !== getSupabaseReadIdentityScope() || !doesCacheSnapshotMatchCurrentSession(reserveCache)) return false;
             const reserveRows = reserveCache && Array.isArray(reserveCache.rows) ? reserveCache.rows : [];
             if (reserveRows.length) {
                 const reserveState = getDatasetState('reserves');
@@ -32713,6 +32783,7 @@ const ncrFilterStateByView = {
         let backgroundRefreshInFlight=false;
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
+        let cacheWarmOwner='';
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
 let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let bloomPickerActionsOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
         const REQUEST_CAPABILITY_CONTRACT_VERSION = 2;
@@ -34911,7 +34982,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.0.0').trim() || 'AgData v2.0.0';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.0.1').trim() || 'AgData v2.0.1';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -37877,23 +37948,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 subscribe: (changed, reconnected) => {
                     const client = getSupabaseBrowserClient();
                     const statusSync = getInventoryStatusSync();
-                    const statusScope = getSupabaseReadIdentityScope();
+                    const statusScope = getProductionRealtimeOwnerKey();
+                    let disposed = false;
+                    const isCurrent = () => !disposed && !document.hidden && statusScope === getProductionRealtimeOwnerKey();
                     statusSync?.setSourceReady(false);
                     const channel = client.channel(`dataset-revisions:${nativeAuthProfile.id}`)
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' }, payload => {
-                            if (statusScope !== getSupabaseReadIdentityScope()) return;
+                            if (!isCurrent()) return;
                             if ((payload.new?.key || payload.old?.key) === 'ph_master_inventory') {
                                 statusSync?.setSourceReady(payload.new?.state === 'ready');
                             }
                             changed(payload);
                         })
                         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ph_master_inventory' }, payload => {
-                            if (statusScope === getSupabaseReadIdentityScope()) statusSync?.handleUpdate(payload);
+                            if (isCurrent()) statusSync?.handleUpdate(payload);
                         })
                         .subscribe((state) => {
-                            if (state === 'SUBSCRIBED' && statusScope === getSupabaseReadIdentityScope()) { statusSync?.resume(); reconnected(); }
+                            if (state === 'SUBSCRIBED' && isCurrent()) { statusSync?.resume(); reconnected(); }
                         });
-                    return () => { statusSync?.suspend(); client.removeChannel(channel).catch(() => {}); };
+                    return () => { disposed = true; statusSync?.suspend(); client.removeChannel(channel).catch(() => {}); };
                 }
             });
             return productionLiveSyncCoordinator;
@@ -43369,7 +43442,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (viewId === 'bunch-note' || (viewId === 'request' && activeReqTab === 'bunch-notes')) return { required: [], background: [], label: 'Loading Bunch Notes...' };
             if (viewId === 'hl-order') return { required: [{ key: 'soc', mode: 'full' }, { key: 'master', mode: 'full' }], background: [], label: 'Loading HL orders...' };
-            if (viewId === 'docks') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'soc', mode: 'full' }], background: [], label: 'Loading all dock rows...' });
+            if (viewId === 'docks') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'soc', mode: 'full' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading all dock rows...' });
             if (viewId === 'request') return getRequestViewLoadingConfig(activeReqTab);
             if (viewId === 'managers') {
                 if (isTaskDiagnosticsView(activeHomeTab)) {
@@ -43644,6 +43717,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (getCurrentVisibleViewId() !== viewId) return true;
                 const key = productionVerifiedViewKey(context);
                 if (productionLiveSyncVerifiedView === key) return false;
+                // Navigation changes verification identity, not the ownership of
+                // this account's already-rendered snapshot. Retain its display
+                // before a loading state can replace it; revalidation still runs.
+                if (!hasProgressiveViewData(context)) getProductionLiveSyncCoordinator().retainDisplay();
                 const canDisplay = hasProgressiveViewData(context);
                 if (productionLiveSyncViewLoad?.key === key && productionLiveSyncViewLoad.failed) {
                     if (canDisplay) return false;
@@ -52256,7 +52333,11 @@ let avTopControlsRenderToken = 0;
                 if (signature === entry.signature) return;
                 const template = document.createElement('template');
                 template.innerHTML = generateCard(current, entry.sourceView, entry.colorClass, entry.renderMeta);
-                if (template.content.firstElementChild) node.replaceWith(template.content.firstElementChild);
+                const replacement = template.content.firstElementChild;
+                if (replacement) {
+                    node.replaceWith(replacement);
+                    scheduleDeferredCardPhotoHydration(replacement);
+                }
             });
             document.querySelectorAll('[data-season-priority-card]').forEach(node => {
                 const uid = node.getAttribute('data-season-priority-card');
@@ -116462,10 +116543,27 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const filterShell = container.querySelector('#request-suspend-tag-filter-shell');
             let resultsShell = container.querySelector('#request-suspend-tag-results');
             const activeInput = document.activeElement && document.activeElement.id === 'request-suspend-tag-common-search';
+            const rail = filterShell && filterShell.querySelector('.request-view-filters');
+            const decoratedRail = !!rail
+                && rail.classList.contains('mobile-browse-rail')
+                && !!rail.querySelector('details.mobile-browse-filters');
+            const canFilterAssigned = canUseRequestSuspendTagAssignedToFilter();
+            const requiredFilterIds = [
+                '#request-suspend-tag-status-filter',
+                '#request-suspend-tag-common-search',
+                '#request-suspend-tag-common-clear',
+                '#request-suspend-tag-contsize-filter',
+                '#request-suspend-tag-dock-filter',
+                '#request-suspend-tag-filter-count',
+                '#request-suspend-tag-clear-filters'
+            ];
+            const hasFilterShape = !!filterShell
+                && requiredFilterIds.every((selector) => !!filterShell.querySelector(selector))
+                && (!!filterShell.querySelector('#request-suspend-tag-assigned-filter') === canFilterAssigned);
             if (!filterShell || !resultsShell) {
                 setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems, sourceLookup)}</div><div id="request-suspend-tag-results"><div id="request-suspend-tag-card-list" class="request-card-list--suspend-tag"></div><div id="request-suspend-tag-footer"></div></div>`);
                 resultsShell = container.querySelector('#request-suspend-tag-results');
-            } else if (activeInput) {
+            } else if (activeInput || (decoratedRail && hasFilterShape)) {
                 updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems, sourceLookup);
             } else {
                 const filterMarkup = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems, sourceLookup);
@@ -149111,9 +149209,11 @@ C.14.043 C.15.000
             const actions = options.actionsHtml || '';
             const classes = [!actions ? 'app-drive-card-grid--no-actions' : '', !photo ? 'app-drive-card-grid--no-photo' : ''].filter(Boolean).join(' ');
             const operational = options.operational === true;
-            const field = (label, value) => `<span class="app-operational-card-header-field"><span>${esc(label)}</span><strong>${esc(value === null || value === undefined || String(value).trim() === '' ? '—' : String(value))}</strong></span>`;
+            const field = (label, value) => `<span class="app-operational-card-header-field"><span>${esc(label)}</span><strong>${esc(value === null || value === undefined || String(value).trim() === '' ? (options.operationalMissingValue || '—') : String(value))}</strong></span>`;
             const operationalHeader = operational ? `<div class="app-operational-card-header-fields">${field('Dock Number', firstNonEmptyValue(item.DOCK_NUM, item.dock_num, item.DOCK, item.dock))}${field('Drop Number', getDockStopOrDropValue(item))}${field('Qty', options.quantity)}${field('Spec', options.spec)}</div>` : '';
-            return `<div class="app-drive-card-grid ${classes} flex-grow">${photo ? `<div class="app-drive-card-photo">${photo}</div>` : ''}<div class="app-drive-card-main"><div class="app-drive-card-header">${operationalHeader}<div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')}<span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div></div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(item.LOCATIONCODE || 'No Loc')} · ${esc(item.LOTCODE || '-')} · PRI ${esc(item.PRIORITY ?? '-')}</div>${options.headerHtml || ''}</div><div class="app-drive-card-details"><div class="app-drive-card-quantity-band">${options.metricsHtml || ''}</div>${options.detailsHtml || ''}</div></div>${actions}</div>`;
+            const location = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location,
+                operational ? (options.operationalMissingValue || 'N/A') : 'No Loc');
+            return `<div class="app-drive-card-grid ${classes} flex-grow">${photo ? `<div class="app-drive-card-photo">${photo}</div>` : ''}<div class="app-drive-card-main"><div class="app-drive-card-header"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')}<span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div></div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(location)} · ${esc(item.LOTCODE || '-')} · PRI ${esc(item.PRIORITY ?? '-')}</div>${options.headerHtml || ''}</div>${options.operationalMetaHtml || ''}${operationalHeader}<div class="app-drive-card-details"><div class="app-drive-card-quantity-band">${options.metricsHtml || ''}</div>${options.detailsHtml || ''}</div></div>${actions}</div>`;
         }
 
         const suspendTagReclassLoads = new Map();
@@ -149614,19 +149714,34 @@ C.14.043 C.15.000
                 const requestSalesRep = String(getRequestAssignedRep(item) || 'Unknown').trim();
                 const requestCaliper = String(firstNonEmptyValue(item.REQ_CALIPER, item.req_caliper, item.CALIPER, item.caliper, item.DESIRED_CALIPER, item.desired_caliper, '') || '').trim();
                 const requestMetaChip = (label, value) => `<span class="app-request-card-meta-chip"><span>${label}</span><strong>${esc(value || '—')}</strong></span>`;
-                const requestMetaHtml = `<div class="app-request-card-meta">${requestMetaChip('Customer', requestCustomer)}${requestMetaChip('Consignee', requestConsignee)}${requestMetaChip('Sales Rep', requestSalesRep)}${requestMetaChip('Request Qty', reqQty)}${requestCaliper ? requestMetaChip('Caliper', requestCaliper) : ''}</div>`;
+                const requestMetaHtml = `<div class="app-operational-card-meta app-request-card-meta">${requestMetaChip('Customer', requestCustomer)}${requestMetaChip('Consignee', requestConsignee)}${requestMetaChip('Sales Rep', requestSalesRep)}${requestMetaChip('Request Qty', reqQty)}${requestCaliper ? requestMetaChip('Caliper', requestCaliper) : ''}</div>`;
+                const suspendSalesRep = String(firstNonEmptyValue(item.REQUESTED_BY, item.SALESREPNAME, item.SALESREP, item.SALESREPID, '') || '').trim();
+                const suspendRequestQty = getDockOrderedQtyDisplay(item);
+                const suspendOperationalMetaHtml = `<div class="app-operational-card-meta app-request-card-meta">${requestMetaChip('Customer', requestCustomer)}${requestMetaChip('Consignee', requestConsignee)}${requestMetaChip('Sales Rep', suspendSalesRep || 'N/A')}${requestMetaChip('Request Qty', suspendRequestQty || 'N/A')}${requestCaliper ? requestMetaChip('Caliper', requestCaliper) : ''}</div>`;
                 const requestMetricsHtml = buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, sourceView: 'request' });
                 const requestPhotoCellHtml = inlineThumbHtml ? `<div class="app-drive-card-photo">${inlineThumbHtml}</div>` : '';
                 const requestGridClass = `app-drive-card-grid--no-actions ${inlineThumbHtml ? '' : 'app-drive-card-grid--no-photo'}`.trim();
                 if (isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag') {
                 const suspendTagInventoryRow = getOperationalCardInventoryRow(item);
                 const suspendTagReclassHtml = buildSuspendTagReclassActionHtml(item, nestedDockActionPressAttrs);
-                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout app-suspend-tag-compact-card ${suspendTagReclassHtml ? 'app-drive-card-with-reclass' : ''} ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildFastInvokeAttrs('openDockSuspendDcRequestUpdate', [item.UNIQUE_ID], 'Open Suspend Tag photo and spec editor')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, actionsHtml: suspendTagReclassHtml, quantity: formatDockDisplayQty(getDockDisplayQty(item)), spec: firstNonEmptyValue(item.REQ_SPEC, item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `<div class="app-request-card-status-row">${historyBadge}${statusChip}${reserveBadge}</div>`, metricsHtml: buildInventoryQuantityChipsHtml(suspendTagInventoryRow, { layout: 'row', compact: true, locationMetricItem: suspendTagInventoryRow, sourceView: 'request', preserveUnknown: true }), detailsHtml: `${requestMetaHtml}${holdHtml}${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}<div class="app-request-card-bottom">${dockSuspendTagActionHtml}${actionBadge}</div>` })}</article>`;
+                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout app-suspend-tag-compact-card ${suspendTagReclassHtml ? 'app-drive-card-with-reclass' : ''} ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildFastInvokeAttrs('openDockSuspendDcRequestUpdate', [item.UNIQUE_ID], 'Open Suspend Tag photo and spec editor')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, operationalMetaHtml: suspendOperationalMetaHtml, operationalMissingValue: 'N/A', actionsHtml: suspendTagReclassHtml, quantity: formatDockDisplayQty(getDockDisplayQty(item)), spec: firstNonEmptyValue(item.REQ_SPEC, item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `<div class="app-request-card-status-row">${historyBadge}${statusChip}${reserveBadge}</div>`, metricsHtml: buildInventoryQuantityChipsHtml(suspendTagInventoryRow, { layout: 'row', compact: true, locationMetricItem: suspendTagInventoryRow, sourceView: 'request', preserveUnknown: true, missingValue: 'N/A' }), detailsHtml: `${holdHtml}${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}<div class="app-request-card-bottom">${dockSuspendTagActionHtml}${actionBadge}</div>` })}</article>`;
                 }
                 return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-request-compact-card ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-drive-card-grid ${requestGridClass} flex-grow">${requestPhotoCellHtml}<div class="app-drive-card-main"><div class="app-drive-card-header"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')} <span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div></div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(loc)} · ${esc(lot)} · PRI ${esc(priority)}</div><div class="app-request-card-status-row">${historyBadge}${statusChip}${reserveBadge}</div></div>${requestMetaHtml}${requestSlts !== '-' || requestSource ? `<div class="app-drive-card-chip-row">${requestSlts !== '-' ? `<span class="app-drive-card-source-chip">Season ${esc(requestSlts)}</span>` : ''}${requestSource ? `<span class="app-drive-card-source-chip">${esc(requestSource)}</span>` : ''}</div>` : ''}${holdHtml}${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div><div class="app-drive-card-quantity-band">${requestMetricsHtml}</div><div class="app-request-card-bottom">${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div></article>`;
             }
             if(sourceView === 'docks'){
-                const qty = formatDockDisplayQty(getDockDisplayQty(item));
+                const dockQuantityRaw = firstNonEmptyValue(getDockOrderedQtyRaw(item), item.PTRAVAILABLE, item.ptravailable, '');
+                const qty = String(dockQuantityRaw == null ? '' : dockQuantityRaw).trim()
+                    ? (getDockOrderedQtyDisplay(item) || formatDockDisplayQty(getDockDisplayQty(item)))
+                    : 'N/A';
+                const dockPlanstartInfo = getDockSuspendDcRequestPlanstartInfo(item);
+                const dockPlanstartClass = dockPlanstartInfo.valid ? `app-operational-planstart-card ${dockPlanstartInfo.className} ${dockPlanstartInfo.legacyClassName}` : '';
+                const dockPlanstartData = dockPlanstartInfo.valid ? ` data-planstart-value="${esc(dockPlanstartInfo.value)}" data-planstart-tone="${esc(dockPlanstartInfo.tone)}" data-planstart-valid="true"` : '';
+                const dockSalesRep = String(firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, '') || '').trim();
+                const dockRequestQty = getDockOrderedQtyDisplay(item);
+                const dockInventoryRow = getOperationalCardInventoryRow(item);
+                const dockMetaValue = value => value && value.toUpperCase() !== 'UNKNOWN REP' ? value : 'N/A';
+                const dockMetaChip = (label, value) => `<span class="app-request-card-meta-chip"><span>${esc(label)}</span><strong>${esc(dockMetaValue(value))}</strong></span>`;
+                const dockMetaHtml = `<div class="app-operational-card-meta">${dockMetaChip('Sales Rep', dockSalesRep)}${dockMetaChip('Request Qty', dockRequestQty)}</div>`;
                 const noteText = String(firstNonEmptyValue(item.DOCK_ISSUE_NOTE, item.DOCK_NOTE, '')).trim();
                 const issueState = String(firstNonEmptyValue(item.DOCK_ISSUE_STATE, '')).trim().toLowerCase();
                 let noteHtml = '';
@@ -149648,7 +149763,7 @@ C.14.043 C.15.000
                 noteHtml += buildDocksCreditAction(item);
                 let actionBtns = dockViewOnlyForRep ? '' : `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeDockIssueSourceUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
 
-        return `<div class="flex items-start w-full item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open dock row')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, quantity: qty, spec: firstNonEmptyValue(item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `${issueBadgeHtml}${syntheticBadgeHtml}`, metricsHtml: buildInventoryQuantityChipsHtml(getOperationalCardInventoryRow(item), { layout: 'row', compact: true, locationMetricItem: item, sourceView: 'docks', preserveUnknown: true }), detailsHtml: `${buildInventoryCardFieldChipsHtml(item, { compact: true })}${noteHtml}${inventoryEditActionHtml}${actionBtns}` })}</div>`;
+        return `<div class="flex items-start w-full item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout ${dockPlanstartClass} relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}"${dockPlanstartData} oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open dock row')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, operationalMetaHtml: dockMetaHtml, operationalMissingValue: 'N/A', quantity: qty, spec: firstNonEmptyValue(item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `${issueBadgeHtml}${syntheticBadgeHtml}`, metricsHtml: buildInventoryQuantityChipsHtml(dockInventoryRow, { layout: 'row', compact: true, locationMetricItem: dockInventoryRow, sourceView: 'docks', preserveUnknown: true, missingValue: 'N/A' }), detailsHtml: `${buildInventoryCardFieldChipsHtml(item, { compact: true })}${noteHtml}${inventoryEditActionHtml}${actionBtns}` })}</div>`;
             }
             if(sourceView==='sales-office-order'){
                 const orderQty = firstNonEmptyValue(item.ORDER_QTY, item.REQ_QTY, '0');

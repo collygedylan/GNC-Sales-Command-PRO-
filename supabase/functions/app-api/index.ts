@@ -804,6 +804,17 @@ function datasetReadOrCondition(filter: { field: string; op: string; value: unkn
   return `${filter.field}.${op}.${value}`;
 }
 
+function restrictedRequestIdentityOrCondition(identity: string) {
+  // Keep the service-role dataset_read path aligned with the restrictive RLS
+  // predicate on ph_active_request: split email suffix, lowercase, then strip
+  // every non-alphanumeric character before comparing the actor identity.
+  const canonical = identity.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!canonical) return "";
+  const pattern = `^[^a-z0-9]*${[...canonical].map((character) => `${character}[^a-z0-9]*`).join("")}(@.*)?$`;
+  return ["request_created_by_username", "request_selected_rep_username", "requested_by"]
+    .map((field) => `${field}.imatch.${datasetReadOrLiteral(pattern)}`).join(",");
+}
+
 async function handleDatasetRead(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -847,6 +858,10 @@ async function handleDatasetRead(
     }
     const anyOf = datasetReadFilterParts(source, parsed.anyOf);
     if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
+    const policyUsername = String(actor.username || "").trim().toLowerCase();
+    const restrictedRequestIdentity = ["request_queue", "active_request"].includes(dataset)
+      && ["ben_brown", "chance_alldredge"].includes(policyUsername) ? policyUsername : "";
+    const requestScopeOr = restrictedRequestIdentity ? restrictedRequestIdentityOrCondition(restrictedRequestIdentity) : "";
 
     // Rep access to reserve rows is always scoped to the active profile; a
     // client filter can narrow this set but cannot remove the server scope.
@@ -862,7 +877,11 @@ async function handleDatasetRead(
       if (!patterns.size) return errorResponse("Your sales representative profile is incomplete.", 403, { code: "DATASET_READ_REP_IDENTITY_REQUIRED" });
       const repScope = [...patterns].map((pattern) => `salesrepname.ilike.${datasetReadOrLiteral(pattern)}`).join(",");
       const anyOfScope = anyOf.length ? `or(${anyOf.map(datasetReadOrCondition).join(",")})` : "";
-      query.set("or", anyOfScope ? `and(or(${repScope}),${anyOfScope})` : repScope);
+      query.set("or", anyOfScope ? `(and(or(${repScope}),${anyOfScope}))` : `(${repScope})`);
+    } else if (requestScopeOr && anyOf.length) {
+      query.set("or", `(and(or(${requestScopeOr}),or(${anyOf.map(datasetReadOrCondition).join(",")})))`);
+    } else if (requestScopeOr) {
+      query.set("or", `(${requestScopeOr})`);
     } else if (anyOf.length) {
       query.set("or", `(${anyOf.map(datasetReadOrCondition).join(",")})`);
     }

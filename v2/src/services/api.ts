@@ -14,7 +14,7 @@ import type {
   WorkflowRow
 } from '../types';
 
-export const APP_VERSION = 'AgData v2.0.0';
+export const APP_VERSION = 'AgData v2.0.1';
 export const REQUEST_TABLE = 'ph_active_request';
 export const REQUEST_LIVE_TABLE = REQUEST_TABLE;
 export const INVENTORY_TABLE = 'ph_master_inventory';
@@ -143,6 +143,10 @@ function notifySandboxSessionChange() {
 
 function currentSandboxSessionIdentity() {
   const session = readStoredSession();
+  return sandboxSessionIdentityKey(session);
+}
+
+function sandboxSessionIdentityKey(session: Session | null) {
   return JSON.stringify([
     session?.token ?? '',
     session?.username.trim().toLowerCase() ?? '',
@@ -320,12 +324,20 @@ function normalizedPatch(table: string, body: Record<string, unknown>) {
 export async function patchRow(session: Session, table: string, uniqueId: string | number, body: Record<string, unknown>) {
   assertAllowedTable(table);
   if (uniqueId === '' || uniqueId === null || uniqueId === undefined) throw new Error('Exact row id is required.');
+  const revision = sandboxSessionRevision;
+  const identity = sandboxSessionIdentityKey(session);
+  const isCurrentScope = () => revision === sandboxSessionRevision
+    && identity === currentSandboxSessionIdentity();
+  if (identity !== currentSandboxSessionIdentity()) {
+    throw new Error('Sandbox account changed before request update. Retry in the active account.');
+  }
   if (isEvalSession(session) && (EVAL_RESTRICTED_TABLES.has(table) || Object.keys(body).some(isEvalSensitiveKey))) {
     throw new Error('This administrative data cannot be changed by Eval accounts.');
   }
   const patch = normalizedPatch(table, body);
   if (!Object.keys(patch).length) return;
   const client = await sandboxClient();
+  if (!isCurrentScope()) throw new Error('Sandbox account changed during request update. Retry in the active account.');
   const result = table === REQUEST_TABLE
     ? await client.from(REQUEST_TABLE).update(sandboxUpdate(REQUEST_TABLE, patch)).eq('unique_id', String(uniqueId)).select('unique_id')
     : table === INVENTORY_TABLE
@@ -335,6 +347,7 @@ export async function patchRow(session: Session, table: string, uniqueId: string
         : (() => { throw new Error(`Exact inventory/request updates are unavailable for ${table}.`); })();
   const { data, error } = result;
   if (error) throw error;
+  if (!isCurrentScope()) throw new Error('Sandbox account changed during request update. The response was discarded.');
   if (!data?.length) throw new Error('Sandbox row was not found or is not writable.');
   await recordSandboxEvent(session, 'exact_row_update', {
     table,
@@ -344,12 +357,21 @@ export async function patchRow(session: Session, table: string, uniqueId: string
 }
 
 export async function fetchRequestRows(session: Session, options: PageOptions = {}): Promise<RequestRow[]> {
+  const revision = sandboxSessionRevision;
+  const currentSession = readStoredSession();
+  const identity = sandboxSessionIdentityKey(session);
+  const isCurrentScope = () => revision === sandboxSessionRevision
+    && identity === currentSandboxSessionIdentity();
+  if (identity !== sandboxSessionIdentityKey(currentSession)) {
+    throw new Error('Sandbox account changed before request load. Retry in the active account.');
+  }
   const client = await sandboxClient();
+  if (!isCurrentScope()) throw new Error('Sandbox account changed before request load. Retry in the active account.');
   const page = Math.max(0, options.page || 0);
   const pageSize = Math.min(1000, Math.max(25, options.pageSize || 400));
   let query = client
     .from(REQUEST_TABLE)
-    .select(isEvalSession(session) ? evalSafeProjection(REQUEST_TABLE) : '*')
+    .select(isEvalSession(currentSession) ? evalSafeProjection(REQUEST_TABLE) : '*')
     .order('created_at', { ascending: false })
     .range(page * pageSize, page * pageSize + pageSize - 1);
   if (options.search?.trim()) {
@@ -360,8 +382,9 @@ export async function fetchRequestRows(session: Session, options: PageOptions = 
   if (options.signal) query = query.abortSignal(options.signal);
   const { data, error } = await query;
   if (error) throw error;
+  if (!isCurrentScope()) throw new Error('Sandbox account changed during request load. Retry in the active account.');
   const rows = (data || []) as unknown as RequestRow[];
-  return isEvalSession(session) ? redactEvalData(rows) : rows;
+  return isEvalSession(currentSession) ? redactEvalData(rows) : rows;
 }
 
 export async function fetchInventoryPage(options: PageOptions = {}): Promise<PageResult<InventoryRow>> {

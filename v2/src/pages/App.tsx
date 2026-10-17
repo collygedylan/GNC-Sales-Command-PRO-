@@ -40,6 +40,7 @@ import {
   demoAvOptions,
   demoRows,
   field,
+  getInventoryReadScopeKey,
   isArchived,
   isCompleted,
   login,
@@ -48,6 +49,7 @@ import {
   readStoredSession,
   requestTab,
   storeSession,
+  subscribeInventorySessionScope,
   uniqueId,
   uploadRequestPhoto
 } from '../services/api';
@@ -158,6 +160,17 @@ function requestColumnsKey(session: Session | null) {
   return `${REQUEST_COLUMNS_KEY_PREFIX}${session?.username || 'demo'}`;
 }
 
+function sessionAccountKey(session: Session | null) {
+  return JSON.stringify([
+    session?.username.trim().toLowerCase() ?? '',
+    session?.role?.trim().toLowerCase() ?? ''
+  ]);
+}
+
+export function isCurrentAccountSession(captured: Session | null, active: Session | null) {
+  return sessionAccountKey(captured) === sessionAccountKey(active);
+}
+
 function readRequestColumnKeys(session: Session | null): RequestColumnKey[] {
   try {
     const raw = localStorage.getItem(requestColumnsKey(session));
@@ -194,6 +207,8 @@ function usePhoneViewport() {
 
 export function App() {
   const [session, setSession] = useState<Session | null>(() => readStoredSession());
+  const [sessionRenderScope, setSessionRenderScope] = useState(() => getInventoryReadScopeKey());
+  const sessionAccountRef = useRef(sessionAccountKey(readStoredSession()));
   const [demoMode, setDemoMode] = useState(SANDBOX_ONLY);
   const [view, setView] = useState<ViewId>(() => viewFromHash(window.location.hash));
   const [activeTab, setActiveTab] = useState<TabId>('request');
@@ -232,6 +247,35 @@ export function App() {
   useEffect(() => () => {
     driveRoutePreparation.cancel();
   }, [driveRoutePreparation]);
+
+  useEffect(() => subscribeInventorySessionScope(() => {
+    const nextSession = readStoredSession();
+    const nextAccount = sessionAccountKey(nextSession);
+    const accountChanged = nextAccount !== sessionAccountRef.current;
+    sessionAccountRef.current = nextAccount;
+    setSession(nextSession);
+    if (!accountChanged) return;
+    setSessionRenderScope(getInventoryReadScopeKey());
+
+    // A different account must never inherit another account's visible draft,
+    // selection, undo target, or in-flight route prefetch.
+    cancelDriveInitialPage();
+    setRows([]);
+    setDetailRow(null);
+    setModuleDetail(null);
+    setDriveInitialPage(null);
+    setSearch('');
+    setLoading(false);
+    setError('');
+    setToast('');
+    setUndoRemove(null);
+    setMenuOpen(false);
+    setDisplayMode(readDisplayMode(nextSession));
+    const nextTheme = readThemeMode(nextSession);
+    setThemeMode(nextTheme);
+    applyPrepaintTheme(nextTheme);
+    setRequestColumnKeys(readRequestColumnKeys(nextSession));
+  }), [cancelDriveInitialPage]);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -403,7 +447,7 @@ export function App() {
   }
 
   return (
-    <div ref={shellRef} className={`app-shell app-view-${activeShellView} theme-${themeMode} ${demoMode ? 'demo-shell' : ''}`}>
+    <div key={sessionRenderScope} ref={shellRef} className={`app-shell app-view-${activeShellView} theme-${themeMode} ${demoMode ? 'demo-shell' : ''}`}>
       <div className="top-chrome" ref={topRef}>
         <div className="brand-strip">
           <button className="app-back-button" type="button" aria-label="Back" onClick={() => detailRow ? setDetailRow(null) : moduleDetail ? setModuleDetail(null) : openView('home')}>
@@ -910,7 +954,10 @@ function removeRow(
   setUndoRemove(row);
   setToast('Row removed.');
   if (!demoMode && session) {
-    patchRow(session, REQUEST_TABLE, id, { REQ_ARCHIVED: true }).catch(err => setToast(err instanceof Error ? err.message : 'Remove failed'));
+    const owner = session;
+    patchRow(owner, REQUEST_TABLE, id, { REQ_ARCHIVED: true }).catch(err => {
+      if (isCurrentAccountSession(owner, readStoredSession())) setToast(err instanceof Error ? err.message : 'Remove failed');
+    });
   }
 }
 
