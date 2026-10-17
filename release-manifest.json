@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "eda0c4b7d2bd8dff518a4c1bce55fa5e55fb18b1",
+  "commit": "3c81952b85fc38727b23d059f4e658f69d92d3d4",
   "release": "AgData v2.0.2",
   "files": [
     {
@@ -825,8 +825,8 @@
     },
     {
       "path": "assets/vendor/supabase-browser-2.112.3.min.js",
-      "bytes": 1062252,
-      "sha256": "b648eeef24335113571fed9390bf56b223e2195bec5289d38b7bfb35f64b9855"
+      "bytes": 1062535,
+      "sha256": "a7dbb401d7cd54811b1f892cb2b18f3b31699ba5582a9f8a4ddc479af541eda8"
     },
     {
       "path": "components/common/auraQueryPanel.js",
@@ -841,12 +841,12 @@
     {
       "path": "deployment.json",
       "bytes": 186,
-      "sha256": "92411349d8dfed1da4067e99e06687e28cddedfd571d262e0ecb3df380597fea"
+      "sha256": "25755423846bb408ed6f2cd0275fd2bc37ee35b8934db6f2257e9641b8dd086b"
     },
     {
-      "path": "deployments/eda0c4b7d2bd8dff518a4c1bce55fa5e55fb18b1.json",
+      "path": "deployments/3c81952b85fc38727b23d059f4e658f69d92d3d4.json",
       "bytes": 186,
-      "sha256": "92411349d8dfed1da4067e99e06687e28cddedfd571d262e0ecb3df380597fea"
+      "sha256": "25755423846bb408ed6f2cd0275fd2bc37ee35b8934db6f2257e9641b8dd086b"
     },
     {
       "path": "index.html",
@@ -1121,7 +1121,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 4807,
-      "sha256": "a5aec6727ac72a444c29595d5acf8df6bb2c62dd199543e68fa4a69a969e2ef7"
+      "sha256": "e1d732158125e47e7c486a0b3970ff26f6ddc0edeec332261e1280d1b4cb64cc"
     },
     {
       "path": "v2/v2-cache-migration.js",
