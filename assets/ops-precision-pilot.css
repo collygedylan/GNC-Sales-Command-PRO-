@@ -6744,7 +6744,8 @@ body.ops-precision-pilot .request-category-options {
   overflow: visible !important;
 }
 
-body.ops-precision-pilot .request-category-chip {
+body.ops-precision-pilot .request-category-chip,
+body.ops-precision-pilot #global-header-search-slot .request-category-chip {
   display: inline-flex !important;
   flex: 0 0 auto !important;
   min-width: auto !important;
@@ -6768,7 +6769,8 @@ body.ops-precision-pilot .request-category-chip {
   scroll-snap-align: start;
 }
 
-body.ops-precision-pilot .request-category-chip.is-active {
+body.ops-precision-pilot .request-category-chip.is-active,
+body.ops-precision-pilot #global-header-search-slot .request-category-chip.is-active {
   border-color: var(--ops-brand) !important;
   color: var(--ops-brand-strong) !important;
   background: var(--ops-brand-soft) !important;
@@ -9695,4 +9697,29 @@ body.ops-precision-pilot :is(#drive-content, #request-content, #docks-content) .
   outline: 3px solid #fbbf24 !important;
   outline-offset: 2px;
   box-shadow: 0 0 0 2px #fff !important;
+}
+/* Que navigation is outside card repaint roots and remains in the fixed header. */
+body.ops-precision-pilot.current-view-request #global-header-search-row,
+body.ops-precision-pilot.current-view-request #global-header-search-slot {
+  display: flex !important;
+  visibility: visible !important;
+  min-height: 44px !important;
+  flex-shrink: 0 !important;
+}
+body.ops-precision-pilot.current-view-request #request-filter-toolbar {
+  display: flex !important;
+  visibility: visible !important;
+  min-height: 44px !important;
+  width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+.app-operational-planstart-date {
+  color: #111827;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.5;
+  margin-top: 4px;
 }

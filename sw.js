@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.0.2';
+const APP_SHELL_BUILD = 'AgData v2.1.0';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -101,6 +101,7 @@ const ASSETS_TO_CACHE = [
   './assets/live-sync-coordinator.js',
   './assets/request-submission.js',
   './assets/inventory-list-contract.js',
+  './assets/queue-inventory-hydration.js',
   './assets/av-derived-rows.js',
   './assets/bounded-snapshot-cache.js',
   './assets/live-tailwind-v2026082010.min.css',
