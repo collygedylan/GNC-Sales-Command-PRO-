@@ -1,4 +1,4 @@
-import { inventoryReadFixture } from './inventory-list-read-fixture.mjs';
+import { inventoryReadFixture, inventoryIdentityBatchFixture } from './inventory-list-read-fixture.mjs';
 
 export const hlUserId = '54c87ebf-d76d-452b-96b4-beaaeb1742d9';
 export const hlRecipient = 'dylan_collyge@greenleafnursery.com';
@@ -759,6 +759,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (body.action === 'inventory_read') {
         const operation = String(body.operation || ''), params = body.params || {};
         control.inventoryReadOperations.push(operation);
+        if (operation === 'master_identity_batch') return json(route, { ok:true, data:inventoryIdentityBatchFixture(control.master,params.queueIdentities,String(control.datasetRevision)) });
         if (operation === 'schema_capabilities') return json(route, { ok: true, data: { status: 'checked', capabilities: { evalTask: { available: true }, ncrApproval: { available: true }, holdRelease: { available: true }, avRules: { available: true }, flyerShadow: { available: true } } } });
         if (['master_page', 'master_delta', 'po_detail', 'recount_queue', 'ncr_queue', 'not_on_inventory_queue'].includes(operation)) {
           control.backgroundMasterReads++;

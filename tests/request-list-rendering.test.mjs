@@ -295,6 +295,38 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
   assert.deepEqual(calls, ['render', 'crumb:Suspend Tag Filter', `footer:${plan.footerMarkup}`, 'tones', 'decorate', `footer:${plan.footerMarkup}`]);
 });
 
+test('retained Suspend cards publish completed stages without touch-idle deferral', () => {
+  let renderOptions;
+  const calls = [];
+  const existingCard = {};
+  const container = {
+    isConnected: true,
+    querySelector: selector => selector === '[data-request-uid]' ? existingCard : null
+  };
+  const ctx = vm.createContext({
+    renderMarkupChunkedByKey: (...args) => { renderOptions = args[6]; return true; },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: options => options,
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
+    getContainerRenderSignature: () => 'revision-2', setContainerRenderSignature() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
+    scheduleDeferredCardPhotoHydration: root => calls.push(`hydrate:${root === container}`),
+    window: { AgMetricStableViewDom: { apply: () => { calls.push('apply'); } } },
+    document: { createElement: () => ({}) }
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+
+  ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', {
+    rows: [{ UNIQUE_ID: 'source-r1' }], renderSignature: 'revision-2', footerMarkup: ''
+  });
+
+  assert.equal(renderOptions._backgroundStage, true);
+  assert.equal(renderOptions.onCompleteAfterInteractive, false);
+  renderOptions.onComplete();
+  assert.deepEqual(calls, ['apply', 'hydrate:true']);
+});
+
 test('cold Suspend mirror preparation renders a loading state instead of an empty queue', () => {
   let renderOptions;
   const ctx = vm.createContext({
@@ -316,6 +348,7 @@ test('Suspend filtered-empty render signature changes when mirror preparation fi
   const ctx = vm.createContext({
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagStatusFilter: 'active', requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'dock:99',
+    queueCardInventoryRenderVersion: 0,
     getDockSuspendDcSourceRows: () => [],
     getDockSuspendDcSourceRowLookupRevision: () => 'empty-source',
     getDockSuspendDcSourceRowLookup: () => new Map(),
@@ -350,6 +383,74 @@ test('Suspend filtered-empty render signature changes when mirror preparation fi
   assert.notEqual(readyPlan.renderSignature, loadingPlan.renderSignature);
   assert.match(captured[0].emptyHtml, /Loading Suspend Tag rows/);
   assert.match(captured[1].emptyHtml, /No suspend tag rows match these filters/);
+});
+
+test('Suspend render signature changes when canonical queue hydration completes without source-row changes', () => {
+  const ctx = vm.createContext({
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
+    queueCardInventoryRenderVersion: 0,
+    getItemUniqueId: item => item.UNIQUE_ID,
+    getDockSuspendDcSourceRows: () => [], getDockSuspendDcSourceRowLookupRevision: () => 'source-r1',
+    getDockSuspendDcSourceRowLookup: () => new Map(),
+    getSuspendTagRequestItems: items => items.slice(), getSortedSuspendTagSourceRows: items => items.slice(),
+    applyRequestSuspendTagCommonNameSearchFilter: items => items,
+    applyRequestSuspendTagAssignedToFilter: items => items,
+    applyRequestSuspendTagContSizeFilter: items => items,
+    applyRequestSuspendTagDockFilter: items => items,
+    normalizeSearchValue: value => value,
+    normalizeRequestSuspendTagAssignedToFilterValue: value => value,
+    normalizeRequestSuspendTagContSizeFilterValue: value => value,
+    buildRequestPagedRenderPlan: (_mode, _crumb, items) => ({ rows:items, items, renderSignature:'same-source-and-page', footerMarkup:'' }),
+    getDockSuspendDcRequestPlanstartInfo: () => ({ value:'', tone:'unknown', valid:false }),
+    isDockSuspendDcRequestMirrorPreparationPending: () => false
+  });
+  vm.runInContext(source('buildSuspendTagRenderPlan'), ctx);
+  const unchangedSource = [{ UNIQUE_ID:'suspend-1', DOCK_SUSPEND_DC_REQUEST:true }];
+  const loadingPlan = ctx.buildSuspendTagRenderPlan(unchangedSource);
+  ctx.queueCardInventoryRenderVersion = 1;
+  const hydratedPlan = ctx.buildSuspendTagRenderPlan(unchangedSource);
+  assert.notEqual(hydratedPlan.renderSignature, loadingPlan.renderSignature,
+    'canonical metric hydration must invalidate the chunk-render skip key even when request rows are unchanged');
+});
+
+test('Request card signatures invalidate when canonical queue hydration completes', () => {
+  const ctx = vm.createContext({
+    queueCardInventoryRenderVersion: 0, selectedItems: new Set(),
+    isHoldReleaseOverrideActiveForItem: () => false,
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') || '',
+    getItemDisplayValue: () => '', getRequestAssignedRep: () => 'Rep',
+    getRequestCardSourceLabel: () => 'Request',
+    formatLocPhotoMatchQtyValue: () => 'N/A', normalizeCardQuantityValue: value => value,
+    getCardLocationOnHandValue: () => null, getRowPhotoLink: () => '', getRowPhotoDateLabel: () => '',
+    isRequestComplete: () => false, isRequestDeliverySending: () => false,
+    isRequestDeliveryNeedsAttention: () => false, isDockSuspendDcRequestMirrorRow: () => false,
+    isSeasonSalesNoteCardItem: () => false, getInventoryCardFieldTagColorDisplayValue: () => '', getCardPtrOnHandValue: () => null,
+    getCardPtrReviewedValue: () => null, getCardPtrAvailableValue: () => null,
+    getCardOpenStockValue: () => null, getInventoryCardDesigCustValue: () => '',
+    getInventoryCardDesigItemValue: () => '', getInventoryCardDesigLocValue: () => ''
+  });
+  vm.runInContext(source('buildRequestItemRenderSignature'), ctx);
+  const row = { UNIQUE_ID: 'request-1', DOM_ID: 'request-dom-1', LOCATIONCODE: 'A1' };
+  const loadingSignature = ctx.buildRequestItemRenderSignature(row);
+  ctx.queueCardInventoryRenderVersion = 1;
+  const hydratedSignature = ctx.buildRequestItemRenderSignature(row);
+  assert.notEqual(hydratedSignature, loadingSignature,
+    'Request card render skips must not preserve Loading after a canonical hydration update');
+});
+
+test('Docks stop-item signatures invalidate when canonical queue hydration completes', () => {
+  const ctx = vm.createContext({
+    queueCardInventoryRenderVersion: 0,
+    buildRowsRenderSignature: (prefix, items) => `${prefix}:${items.map(item => item.UNIQUE_ID).join(',')}`
+  });
+  vm.runInContext(source('buildDocksStopItemsRenderSignature'), ctx);
+  const rows = [{ UNIQUE_ID: 'dock-row-1' }];
+  const loadingSignature = ctx.buildDocksStopItemsRenderSignature('Dock 2', 'Stop 3', rows);
+  ctx.queueCardInventoryRenderVersion = 1;
+  const hydratedSignature = ctx.buildDocksStopItemsRenderSignature('Dock 2', 'Stop 3', rows);
+  assert.notEqual(hydratedSignature, loadingSignature,
+    'Docks stop cards must repaint canonical metrics after hydration without source-row changes');
 });
 
 test('Suspend queue counts scan source status without constructing rich mirror rows', () => {
@@ -501,6 +602,7 @@ test('Suspend keeps all filter totals while bounding cards and plan-start signat
   const filterLookups = [];
   Object.assign(ctx, {
     requestSuspendTagSortedSourceRowsCache: { key: '', rows: [] },
+    queueCardInventoryRenderVersion: 0,
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     getSuspendTagRequestItems: (values, status) => values.filter(row => status === 'completed' ? row.status === 'complete' : row.status !== 'complete'),

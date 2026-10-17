@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page, type Route } from '@playwright/t
 // @test-group: @suspend-tag,suspend
 
 import { confirmedDriveEvidence, driveEvidenceColumns } from '../services/driveEvidence.ts';
-import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+import { inventoryReadFixture, inventoryIdentityBatchFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 
 type FixtureRow = Record<string, string | number>;
@@ -165,6 +165,15 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         && Object.keys(body).sort().join(',') === 'action,operation,status'
         && !request.headers()['idempotency-key']) {
         return fulfill(route, { ok: true, data: [] });
+      }
+      if (options.inventoryUnavailable && body.action === 'inventory_read' && body.operation === 'master_identity_batch') {
+        inventoryLookupCalls.push({params:body.params,status:503});
+        return fulfill(route,{ok:false,status:503,error:'Synthetic full inventory lookup unavailable'},503);
+      }
+      if (options.native && !options.inventoryUnavailable && body.action === 'inventory_read' && body.operation === 'master_identity_batch') {
+        const rows=backendRows.map(row=>inventoryReadFixture.fromFixtureShape({ ...row, ...buildConfirmedInventoryRow(row,{}),loc_match_qty:'0' }));
+        inventoryLookupCalls.push({params:body.params,status:200});
+        return fulfill(route,{ok:true,data:inventoryIdentityBatchFixture(rows,body.params.queueIdentities,String(nativeRevision))});
       }
       if (options.native && !options.inventoryUnavailable && body.action === 'inventory_read' && body.operation === 'master_page'
         && body.params?.dataset === 'lookup' && body.params?.projection === 'full'

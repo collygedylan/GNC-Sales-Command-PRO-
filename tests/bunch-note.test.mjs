@@ -39,14 +39,14 @@ test('top-level Back traverses action editor, location instructions and cards wh
  }}),b=ctx.BunchNote;
  await b.open();await b.chooseBlock('D');assert.ok(element.innerHTML.includes('data-bn-cards'));
  assert.ok(!element.innerHTML.includes('Open location D.08.001"'));
- b.openLocation('D.08.001');b.edit(0,'purposes','Grade for shipping');assert.ok(element.innerHTML.includes('Inventory action editor'));assert.ok(!element.innerHTML.includes('Open item PLANT'));await b.nextItems();assert.equal(saved.locations[0].actions.length,0);b.selectItem(0,['source'],true,false);b.openItem('D.08.001|PLANT');
+ b.openLocation('D.08.001');b.wizardField('workType','Grade for shipping');assert.ok(element.innerHTML.includes('Work type'));assert.ok(element.innerHTML.includes('Next'));assert.ok(!element.innerHTML.includes('Open item PLANT'));await b.nextItems();assert.equal(saved.locations[0].actions.length,0);b.selectItem(0,['source'],true,false);b.openItem('D.08.001|PLANT');
  const key='item:0:D.08.001|PLANT';b.startAction(key,'move');b.startAction(key,'move');b.actionField('quantity','4');assert.ok(element.innerHTML.includes('Choose location'));
  await b.chooseActionDestination();assert.ok(element.innerHTML.includes('Locations with this item'));assert.ok(element.innerHTML.includes('All other locations'));
  b.destinationBase('D.09');b.pickDestination('D.09.001');await b.finishAction();assert.equal(saved.locations[0].actions.length,1);
  assert.equal(saved.locations[0].actions[0].destination,'D.09.001');assert.equal(saved.locations[0].actions[0].destination_mode,'matching');
  assert.equal(saved.locations[0].source_all[0].locationcode,'D.08.001');
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open item PLANT'));assert.ok(!element.innerHTML.includes('Choose destination'));
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Inventory action editor'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Advanced inventory and action controls'));assert.ok(!element.innerHTML.includes('Choose destination'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Work type'));
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('data-bn-cards'));
  b.openLocation('D.08.001');assert.ok(element.innerHTML.includes('Grade for shipping'));
  assert.doesNotMatch(element.innerHTML,/>Back(?: to)?[ <]/);
@@ -140,24 +140,33 @@ test('uncertain command retains its id and same-user reauthentication rejects ol
  const pending=ctx.BunchNote.api('list');ctx.BunchNote.reset();resolve({ok:true,data:{jobs:[{private:true}]}});
  await assert.rejects(pending,/session changed/);
 });
-test('failed initial Queue read does not auto-loop; explicit refresh can recover',async()=>{
+test('bounded assigned-work Queue retries do not loop on render; explicit refresh can recover',async()=>{
  let calls=0;const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
  const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async()=>{calls++;throw new Error('offline');}});
- ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
+ ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);
  ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
  ctx.postAppFunctionJson=async()=>{calls++;return {ok:true,data:{jobs:[]}};};await ctx.BunchNote.refresh();assert.equal(calls,2);
+});
+test('backing out of assigned work preserves the selected Que mode',async()=>{
+ const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
+ const job={id:'work',owner_id:'dylan',status:'open',revision:1,instruction_revision:1,progress:{},body:{actions:[],source:[]},actuals:[]};
+ const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},postAppFunctionJson:async(_url,body)=>body.operation==='get'?{ok:true,data:{job,versions:[],audit:[]}}:body.operation==='list'?{ok:true,data:{jobs:[job]}}:body.operation==='directory'?{ok:true,data:{users:[]}}:body.operation==='catalog'?{ok:true,data:{options:[],locations:[]}}:{ok:true,data:{blocks:[],drafts:[]}}});
+ ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');await new Promise(resolve=>setImmediate(resolve));await ctx.BunchNote.detail('work');ctx.BunchNote.backQueue();
+ assert.match(element.innerHTML,/id="bn-assigned-work-mode"[^>]*aria-pressed="true"/);
 });
 
 test('refresh commits preserve active controls and cannot overwrite newer commands',async()=>{
  const element={classList:{add(){}},innerHTML:'unchanged',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
- const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element}});
+ let view='';const ctx=runtime({getCurrentVisibleViewId:()=>view,activeReqTab:'bunch-notes',document:{getElementById:()=>element}});
+ ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');await new Promise(resolve=>setImmediate(resolve));
  const stale=await ctx.BunchNote.stage({});
  await ctx.BunchNote.api('claim',{job_id:'work'},1,'claim-id');
  ctx.BunchNote.commit(stale);
  assert.equal(element.innerHTML,'unchanged');
  ctx.BunchNote.commit(await ctx.BunchNote.stage({}));
  assert.equal(element.innerHTML,'unchanged');
- ctx.BunchNote.render();
+ view='request';ctx.BunchNote.setQueueMode('assigned');
  assert.ok(element.innerHTML.includes('Bunch Notes'));
 });
 test('pending actual saves lock controls, retain newer input, and preserve failed entries',async()=>{
@@ -171,13 +180,15 @@ test('pending actual saves lock controls, retain newer input, and preserve faile
   if(body.operation==='directory')return {ok:true,data:{users:[]}};
   if(body.operation==='list')return {ok:true,data:{jobs:[job]}};
   requests.push(body);if(fail)throw new Error('offline');
-  if(requests.length===1)await new Promise(resolve=>{release=resolve;});
+  if(body.operation==='actual'&&requests.filter(request=>request.operation==='actual').length===1)await new Promise(resolve=>{release=resolve;});
   return {ok:true,data:{job}};
  }});
- await ctx.BunchNote.refresh();
+ ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');
+ await new Promise(resolve=>setImmediate(resolve));
  await ctx.BunchNote.detail('work');
  ctx.BunchNote.workField('work:ta','source_id','lot');ctx.BunchNote.workField('work:ta','quantity','2');
  const pending=ctx.BunchNote.recordActual('ta');
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(typeof release,'function');
  assert.equal(attributes['aria-busy'],'true');assert.ok(controls.every(c=>c.disabled));
  // A queued event or another caller must not have its newer draft erased by an old response.
  ctx.BunchNote.workField('work:ta','quantity','3');release();await pending;
@@ -194,6 +205,13 @@ test('PDF repeats headers, paginates, includes all required details, and escapes
  const html=ctx.buildBunchNotePdfHtml_({note_number:'BN-1',instruction_revision:2,block:'FULL.BLOCK',location:'C.12.1',purposes:'Rain day',priority:'1',instructions:'<script>bad</script>',prerequisites:'Wait for hauling',source:[{unique_id:'row',itemcode:'I-1',commonname:'Plant',contsize:'#3',lotcode:'27.F1',stock:0,available:null,location_notes:'Keep aisles',flags:'Blue'}],actions:Array.from({length:200},(_,i)=>({id:String(i),scope:'rows',row_ids:['row'],instructions:'Work '+i,crew:'BOB',quantity:'5',stage:'Sheared',marking:'Pink'}))});
  for(const expected of ['table-header-group','counter(page)','counter(pages)','Revision 2','FULL.BLOCK','C.12.1','On Hand 0','Review Unknown','Available Unknown','Keep aisles','Work 199','BOB','Sheared','Pink'])assert.ok(html.includes(expected),expected);
  assert.ok(html.includes('&lt;script&gt;bad'));assert.ok(!html.includes('<script>bad'));
+});
+test('per-card wizard notes remain in the saved action contract and render in the reviewed PDF',()=>{
+ const ctx=vm.createContext({escapeEmailHtml_:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')});
+ vm.runInContext(gas.slice(gas.indexOf('function buildBunchNotePdfHtml_'),gas.indexOf('function handleBunchNotePreview_')),ctx);
+ const note={id:'note-action',option_id:'bb000000-0000-4000-8000-000000000001',kind:'instruction',group:'sequence',label:'Card notes',instructions:'Keep <lots> separate',scope:'rows',card_id:'card-1',row_ids:['row-1']};
+ const html=ctx.buildBunchNotePdfHtml_({note_number:'BN-2',instruction_revision:3,block:'D',location:'D.08.001',purposes:'Inspect',cards:[{id:'card-1',kind:'inventory',itemcode:'PLANT',commonname:'Peony',contsize:'#3',row_ids:['row-1'],direction:'East row'}],actions:[note],source:[{unique_id:'row-1',itemcode:'PLANT',commonname:'Peony',contsize:'#3',lotcode:'A',stock:4,review:0,available:4}]});
+ assert.match(html,/Card notes/);assert.match(html,/Keep &lt;lots&gt; separate/);assert.doesNotMatch(html,/<lots>/);
 });
 test('completed-work PDF separates planned/actual types and excludes superseded corrections from totals',()=>{
  const ctx=vm.createContext({escapeEmailHtml_:v=>String(v??'').replaceAll('<','&lt;')});
@@ -276,8 +294,8 @@ test('setup and action saves retain values on failure; source changes preserve c
   const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:['D.09.001','OTHER']}:body.operation==='inventory'?{rows}:body.operation==='destination_lookup'?{itemcode:'PLANT',salesyear:'2026',locations:['D.09.001','OTHER'],matching:[{...rows[0],locationcode:'D.09.001'}]}:body.operation==='save'?(saved=structuredClone(body.payload.body),{draft:{id:'batch',revision:1,body:saved}}):{};
   return {ok:true,data};
  }}),b=ctx.BunchNote;
- await b.open();await b.chooseBlock('D');b.openLocation('D.08.001');b.edit(0,'purposes','Move stock');await b.nextItems();
- assert.match(element.innerHTML,/Save unavailable/);assert.match(element.innerHTML,/value="Move stock"/);assert.match(element.innerHTML,/Inventory action editor/);
+ await b.open();await b.chooseBlock('D');b.openLocation('D.08.001');b.wizardField('workType','Move stock');await b.nextItems();
+ assert.match(element.innerHTML,/Save unavailable/);assert.match(element.innerHTML,/value="Move stock"/);assert.match(element.innerHTML,/Next/);
  fail=false;await b.nextItems();b.selectItem(0,['a','b'],true,false);b.openItem('D.08.001|PLANT');b.startAction('item:0:D.08.001|PLANT','move');b.actionField('quantity','3');
  b.actionSource('PLANT|2026');await b.chooseActionDestination();b.destinationBase('D.09');b.pickDestination('D.09.001');
  b.actionSource('PLANT|');assert.match(element.innerHTML,/Choose location/);assert.ok(!element.innerHTML.includes('Move to: D.09.001'));assert.match(element.innerHTML,/value="PLANT\|2026"/);

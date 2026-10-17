@@ -10,6 +10,13 @@
  };
  const templates = Object.entries(groups).flatMap(([group, labels]) => labels.map(label => ({ group, label, instructions: label, kind: label === 'TA / culls follow-up' ? 'ta' : ['Move','Grade and Save / Move To'].includes(label) ? 'move' : group === 'hauling' && !label.startsWith('Wait') ? 'hauling' : 'instruction' })));
  const renderedQueues = new WeakMap();
+ let pickerPortalHost = null;
+ function renderPickerPortal(markup) {
+  if(typeof document==='undefined'||typeof document.createElement!=='function'||!document.body?.appendChild)return;
+  if(!markup){pickerPortalHost?.remove();pickerPortalHost=null;return;}
+  if(!pickerPortalHost||!pickerPortalHost.isConnected){pickerPortalHost=document.createElement('div');pickerPortalHost.className='bn-picker-portal-host';pickerPortalHost.dataset.bnPickerPortal='true';document.body.appendChild(pickerPortalHost);}
+  if(pickerPortalHost.innerHTML!==markup)pickerPortalHost.innerHTML=markup;
+ }
  const normalize = value => String(value ?? '').trim().toUpperCase();
  const baseLocation = value => root.LocationCode.base(value);
  const locationGroups = values => root.LocationCode.group(values);
@@ -58,7 +65,7 @@
  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const arg = value => esc(JSON.stringify(value));
  const stock = value => quantity(value) === null ? 'Unknown' : String(quantity(value));
- const fresh = () => ({ account: '', epoch: 0, jobs: [], loaded: false, loading: false, error: '', blocks: [], rows: [], users: [], drafts: [], draft: null, location: '', locationStep: 'setup', actionEdit: null, customEdit: null, base: '', item: '', workCard: '', boardState: {}, queueBase: '', queueLocation: '', screen: 'source', destinationBase: '', destinationLocation: '', destinationData: null, destinationNames: [], destinationSearch: '', picker: null, scrolls: new Map(), parked: new Map(), panels: new Set(), options: [], destinations: [], targets: {}, choices: {}, pendingActions: {}, custom: {}, workForms: {}, workRows: {}, workRecipients: [], detail: null, preview: null, urls: [], filter: 'available', busy: false, commands: new Map() });
+ const fresh = () => ({ account: '', epoch: 0, jobs: [], loaded: false, loading: false, error: '', blocks: [], rows: [], users: [], drafts: [], draft: null, location: '', locationStep: 'setup', cardPicker: null, actionEdit: null, customEdit: null, base: '', item: '', workCard: '', boardState: {}, queueBase: '', queueLocation: '', queueMode: 'create', screen: 'source', destinationBase: '', destinationLocation: '', destinationData: null, destinationNames: [], destinationSearch: '', picker: null, scrolls: new Map(), parked: new Map(), panels: new Set(), options: [], destinations: [], targets: {}, choices: {}, pendingActions: {}, custom: {}, workForms: {}, workRows: {}, workRecipients: [], detail: null, preview: null, urls: [], filter: 'available', busy: false, metadataLoaded: false, metadataLoading: false, commands: new Map() });
  let state = fresh();
  const account = () => typeof currentUser === 'undefined' ? '' : String(currentUser || '');
  const author = () => account() === 'dylan_collyge' && typeof nativeAuthSessionActive !== 'undefined' && nativeAuthSessionActive === true && typeof nativeAuthProfile !== 'undefined' && nativeAuthProfile?.username === 'dylan_collyge'
@@ -88,7 +95,7 @@
  function ensureLocation(location) {
   const code=normalize(typeof location==='string'?location:location.location||location.location_code), d=state.draft.body;
   let loc=d.locations.find(l=>normalize(l.location)===code);
-  if(!loc){loc={location:code,purposes:'',priority:'',instructions:'',prerequisites:'',owner_id:null,row_ids:[],cards:[],source_all:state.rows.filter(r=>normalize(r.locationcode)===code),actions:[],house_sections:[]};d.locations.push(loc);}
+  if(!loc){loc={location:code,purposes:'',priority:'',direction:'',instructions:'',prerequisites:'',owner_id:null,row_ids:[],cards:[],source_all:state.rows.filter(r=>normalize(r.locationcode)===code),actions:[],house_sections:[]};d.locations.push(loc);}
   return loc;
  }
  function changeCard(location, value) {
@@ -103,6 +110,11 @@
  }
  function updateBoard() {for(const [host,handle] of structuredHandles)if(host.dataset.bnCards!==undefined)handle.update(cardBoardProps());}
  function bridgeRevisionKey() { const job=workJob();return `${state.epoch}:${job?.revision??state.draft?.revision??''}:${job?.instruction_revision??''}`; }
+ function mergeStructuredHeaderValue(current, baseline, incoming) {
+  const next={...current};
+  for(const key of ['direction','target_houses'])if(!Object.is(incoming?.[key],baseline?.[key]))next[key]=incoming[key];
+  return next;
+ }
  function cardBoardProps() { return {accountKey:state.account,revisionKey:bridgeRevisionKey(),rows:state.rows,locations:state.draft.body.locations.map(l=>({...l,cards:[...l.cards||[]]})),users:state.users,busy:state.busy,viewState:state.boardState,onViewState:next=>{state.boardState=next;updateBoard();},onCardChange:changeCard,onMove:moveCard,onLocationInstructions:location=>root.BunchNote.openLocation(typeof location==='string'?location:location.location||location.location_code),onSave:async()=>{await run(saveDraft);if(state.error)throw new Error(state.error);}}; }
  function moveCard(location,card) {
   if(state.busy)return;changeCard(location,{...card,included:true});const loc=ensureLocation(location), included=loc.cards.find(c=>cardKey(c)===cardKey(card));
@@ -123,17 +135,19 @@
  }
  function workerCards(job) {
   const uid=nativeAuthProfile?.id;
-  return `<h2>${esc(job.location)} · ${esc(job.body.purposes)}</h2><p>${esc(job.note_number)} · Instruction revision ${job.instruction_revision}</p><div class="bn-card-board">${job.cards.map(card=>`<article class="bn-card"><span class="bn-eyebrow">${esc(card.kind==='shared'?'General / Shared Work':card.itemcode)}</span><h3>${esc(card.commonname)} ${esc(card.contsize)}</h3><p>Worker: ${esc(card.owner_name||'Unassigned')} · ${esc(card.status)}</p><p>House: ${esc(card.house||'Not specified')} · Direction: ${esc(card.direction||'Not specified')}</p>${button('Open card',`BunchNote.openWorkCard(${arg(card.id)})`,state.busy)}${job.status==='open'&&card.status==='open'&&!card.owner_id?button('Claim card',`BunchNote.cardCommand('claim_card',${arg(card.id)})`,state.busy):''}${job.status==='open'&&card.status==='open'&&card.owner_id===uid?button('Release card',`BunchNote.cardCommand('release_card',${arg(card.id)})`,state.busy):''}${author()&&job.status==='open'&&card.status==='open'?`<label class="bn-field">Assign / reassign card<select id="bn-owner-${esc(card.id)}">${userOptions(card.owner_id)}</select></label>${button('Apply card assignment',`BunchNote.assignCard(${arg(card.id)})`,state.busy)}`:''}</article>`).join('')}</div>`+(author()&&job.status==='open'?button('Revise instructions','BunchNote.revise()',state.busy)+button('Cancel work','BunchNote.cancel()',state.busy):'');
+  return `<h2>${esc(job.location)} · ${esc(job.body.purposes)}</h2><p>${esc(job.note_number)} · Instruction revision ${job.instruction_revision}</p><div class="bn-card-board">${job.cards.map(card=>{const note=(job.body.actions||[]).find(action=>action.card_id===card.id&&action.kind==='instruction'&&action.label==='Card notes');return `<article class="bn-card"><span class="bn-eyebrow">${esc(card.kind==='shared'?'General / Shared Work':card.itemcode)}</span><h3>${esc(card.commonname)} ${esc(card.contsize)}</h3><p>Worker: ${esc(card.owner_name||'Unassigned')} · ${esc(card.status)}</p><p>House: ${esc(card.house||'Not specified')} · Direction: ${esc(card.direction||'Not specified')}</p>${note?`<p class="bn-pre"><b>Card notes:</b> ${esc(note.instructions)}</p>`:''}${button('Open card',`BunchNote.openWorkCard(${arg(card.id)})`,state.busy)}${job.status==='open'&&card.status==='open'&&!card.owner_id?button('Claim card',`BunchNote.cardCommand('claim_card',${arg(card.id)})`,state.busy):''}${job.status==='open'&&card.status==='open'&&card.owner_id===uid?button('Release card',`BunchNote.cardCommand('release_card',${arg(card.id)})`,state.busy):''}${author()&&job.status==='open'&&card.status==='open'?`<label class="bn-field">Assign / reassign card<select id="bn-owner-${esc(card.id)}">${userOptions(card.owner_id)}</select></label>${button('Apply card assignment',`BunchNote.assignCard(${arg(card.id)})`,state.busy)}`:''}</article>`}).join('')}</div>`+(author()&&job.status==='open'?button('Revise instructions','BunchNote.revise()',state.busy)+button('Cancel work','BunchNote.cancel()',state.busy):'');
  }
- function disposeView() { structuredGeneration++; structuredHandles.forEach(h => h.destroy()); structuredHandles.clear(); }
+ function disposeView(options = {}) { structuredGeneration++; structuredHandles.forEach(h => h.destroy()); structuredHandles.clear();renderPickerPortal('');if(!options.preservePicker)state.cardPicker=null; }
  function reset() { disposeView(); state.urls.forEach(url => URL.revokeObjectURL(url)); state = fresh(); state.account = account(); }
  function structuredProps(host) {
   const mode=host.dataset.bnStructured, index=Number(host.dataset.index);
   const j=workJob();
+  const value=mode==='read'?{...j.body,location:j.location,actions:allActions(j)}:state.draft.body.locations[index];
+  const headerBaseline=mode==='header'?{direction:value.direction,target_houses:value.target_houses}:null;
   return {accountKey:state.account,revisionKey:bridgeRevisionKey(),mode,disabled:state.busy,
-   value:mode==='read'?{...j.body,location:j.location,actions:allActions(j)}:state.draft.body.locations[index],
+   value,
    progress:j?.progress||{},
-   onChange:value=>{if(state.busy||!author())return;invalidate();const current=state.draft.body.locations[index];state.draft.body.locations[index]={...current,...(mode==='header'?{direction:value.direction,target_houses:value.target_houses}:{house_sections:value.house_sections,actions:value.actions})};prepareCards(state.draft.body.locations[index]);state.epoch++;structuredHandles.get(host)?.update(structuredProps(host));},
+   onChange:nextValue=>{if(state.busy||!author())return;invalidate();const current=state.draft.body.locations[index];state.draft.body.locations[index]={...current,...(mode==='header'?mergeStructuredHeaderValue(current,headerBaseline,nextValue):{house_sections:nextValue.house_sections,actions:nextValue.actions})};prepareCards(state.draft.body.locations[index]);state.epoch++;structuredHandles.get(host)?.update(structuredProps(host));},
    onDetails:id=>root.BunchNote.editPlanned(index,id),
    onWork:id=>{const action=allActions(j).find(a=>a.id===id);const row=j.body.source.find(r=>action?.row_ids?.includes(r.unique_id));state.item=action?.scope==='rows'&&row?groupItems([row])[0].key:'';state.workAction=id;render();document.querySelector('[data-bn-work-action="'+CSS.escape(id)+'"]')?.scrollIntoView({block:'start',behavior:'smooth'});}
   };
@@ -209,20 +223,24 @@
   finally { state.loading = false; }
  }
  async function open({refresh = true} = {}) {
-  ensureAccount(); render();
+  ensureAccount();
   // Shell repaints must not start a new busy read while the user navigates.
-  if (!refresh && state.metadataLoaded) return;
-  return run(async () => {
-   const results = await Promise.all([api('blocks'), api('directory'), api('drafts'),api('catalog')]);
-   state.blocks = results[0].blocks; state.users = results[1].users; state.drafts = results[2].drafts; state.options=results[3].options; state.destinations=results[3].locations;
-   state.metadataLoaded = true;
-  });
+  if ((!refresh && state.metadataLoaded) || state.metadataLoading) { render(); return; }
+  state.metadataLoading = true;
+  render();
+  try {
+   return await run(async () => {
+    const results = await Promise.all([api('blocks'), api('directory'), api('drafts'),api('catalog')]);
+    state.blocks = results[0].blocks; state.users = results[1].users; state.drafts = results[2].drafts; state.options=results[3].options; state.destinations=results[3].locations;
+    state.metadataLoaded = true;
+   });
+  } finally { state.metadataLoading = false; render(); }
  }
  const button = (label, action, disabled = false, pressed = null, id = '') => `<button type="button" class="bn-button" ${id ? `id="${esc(id)}"` : ''} onclick="${action}" ${disabled ? 'disabled' : ''} ${pressed === null ? '' : `aria-pressed="${pressed}"`}>${esc(label)}</button>`;
- function field(label, value, action, type = 'text') {
-  return `<label class="bn-field">${esc(label)}<input type="${type}" value="${esc(value)}" oninput="${action}" /></label>`;
+ function field(label, value, action, type = 'text', disabled = false) {
+  return `<label class="bn-field">${esc(label)}<input type="${type}" value="${esc(value)}" oninput="${action}" ${disabled?'disabled':''} /></label>`;
  }
- function textfield(label, value, action) { return `<label class="bn-field">${esc(label)}<textarea rows="3" oninput="${action}">${esc(value)}</textarea></label>`; }
+ function textfield(label, value, action, disabled = false) { return `<label class="bn-field">${esc(label)}<textarea rows="3" oninput="${action}" ${disabled?'disabled':''}>${esc(value)}</textarea></label>`; }
  function userOptions(value, blank = 'Unassigned — available to everyone') { return `<option value="">${esc(blank)}</option>` + state.users.map(u => `<option value="${esc(u.id)}" ${u.id === value ? 'selected' : ''}>${esc(u.display || u.username)}</option>`).join(''); }
  const templateOptions = () => templates.map((t, n) => `<option value="${n}">${esc(t.group + ' — ' + t.label)}</option>`).join('');
  const panelAttrs = key => `${state.panels.has(key) ? 'open' : ''} ontoggle="BunchNote.panel(${arg(key)},this.open)"`;
@@ -249,6 +267,32 @@
     ${!job?draftActions(state.draft.body.locations[index],index,item.rows):''}
     ${selection?actionChoices(key,item.rows,{index,worker,scope:'rows'}):''}</div>` : `<button type="button" class="bn-item-open" aria-label="Open item ${esc(item.itemcode)}" onclick="BunchNote.openItem(${arg(item.key)})"><span>Open lots, actions and recorded work</span><i class="ph-bold ph-caret-right" aria-hidden="true"></i></button>`}</article>`;
   }).join('')}</div>`;
+ }
+ function cardWizardGroups(location) {
+  const grouped=new Map();
+  for(const row of location.source_all||[]){
+   if(!row?.unique_id)continue;
+   const key=cardKey(row);if(!grouped.has(key))grouped.set(key,{key,itemcode:row.itemcode||'',commonname:row.commonname||'',contsize:row.contsize||'',rows:[]});
+   const group=grouped.get(key);if(!group.rows.some(existing=>existing.unique_id===row.unique_id))group.rows.push(row);
+  }
+  return [...grouped.values()].sort((a,b)=>`${a.itemcode} ${a.commonname} ${a.contsize}`.localeCompare(`${b.itemcode} ${b.commonname} ${b.contsize}`));
+ }
+ function cardPickerGroups(location) {
+  return cardWizardGroups(location).map(group=>({...group,searchText:normalize([group.itemcode,group.commonname,group.contsize,...group.rows.map(row=>row.lotcode)].join(' '))}));
+ }
+ function cardNotesAction(location, cardId) {
+  return (location.actions||[]).find(action=>action.card_id===cardId&&action.kind==='instruction'&&action.label==='Card notes')||null;
+ }
+ function cardPickerHtml(location,index) {
+  const picker=state.cardPicker, groups=picker.groups||(picker.groups=cardPickerGroups(location)), selectedGroup=groups.find(group=>group.key===picker.selectedKey), query=normalize(picker.search);
+  const matches=groups.filter(group=>!query||group.searchText.includes(query)), visibleMatches=matches.slice(0,picker.visibleLimit||100);
+  return `<div class="bn-picker-backdrop" role="presentation" onclick="if(event.target===this)BunchNote.closeCardPicker()"><section class="bn-card-picker" role="dialog" aria-modal="true" aria-labelledby="bn-card-picker-title" tabindex="-1" onkeydown="if(event.key==='Escape'){event.preventDefault();BunchNote.closeCardPicker()}">
+   <div class="bn-card-picker__heading"><div><span class="bn-eyebrow">${esc(location.location)}</span><h2 id="bn-card-picker-title">${picker.selectedKey?'Card directions and notes':'Search inventory'}</h2></div>${button('Close','BunchNote.closeCardPicker()',state.busy)}</div>
+   ${picker.selectedKey&&selectedGroup?`<p>${esc(selectedGroup.itemcode)} · ${esc(selectedGroup.commonname)} · ${esc(selectedGroup.contsize||'Size not specified')}</p><fieldset class="bn-picker-lots" ${state.busy?'disabled':''}><legend>Select exact lot rows</legend>${selectedGroup.rows.map(row=>`<label class="bn-choice"><input type="checkbox" aria-label="Select lot ${esc(row.contsize)} ${esc(row.lotcode)} ${esc(row.unique_id)}" ${picker.rowIds.includes(row.unique_id)?'checked':''} onchange="BunchNote.togglePickerLot(${arg(row.unique_id)},this.checked)"><span><b>${esc(row.contsize||'Size not specified')} · Lot ${esc(row.lotcode||'Unknown')}</b><small>On Hand ${esc(stock(row.stock))} · Available ${esc(stock(row.available))} · UID ${esc(row.unique_id)}</small></span></label>`).join('')}</fieldset>
+    ${textfield('Card direction',picker.direction,"BunchNote.pickerField('direction',this.value)",state.busy)}${textfield('Card notes',picker.notes,"BunchNote.pickerField('notes',this.value)",state.busy)}
+    ${picker.committedId?'<p role="status">This card is in the draft. Retry saving or edit its details before continuing.</p>':''}<div class="bn-picker-actions">${button(picker.committedId?'Save card and continue':'＋ Add card and continue','BunchNote.commitPickerCard()',state.busy||(!picker.rowIds.length&&!picker.committedId))}</div>`
+    :`${field('Search inventory',picker.search,"BunchNote.cardPickerSearch(this.value)",'text',state.busy)}<p class="bn-muted" role="status" aria-live="polite">Showing ${visibleMatches.length} of ${matches.length} ${matches.length===1?'card':'cards'}</p><div class="bn-picker-results" role="list">${visibleMatches.map(group=>`<div role="listitem"><button type="button" class="bn-picker-result" onclick="BunchNote.selectPickerCard(${arg(group.key)})" ${state.busy?'disabled':''}><span><strong>${esc(group.itemcode)} · ${esc(group.commonname)}</strong><small>${esc(group.contsize||'Size not specified')} · ${group.rows.length} lot${group.rows.length===1?'':'s'}</small></span><i class="ph-bold ph-caret-right" aria-hidden="true"></i></button></div>`).join('')||'<p class="bn-muted">No verified inventory card matches this search.</p>'}</div>${visibleMatches.length<matches.length?`<button type="button" class="bn-button" aria-label="Load more inventory cards" onclick="BunchNote.loadMorePickerCards()" ${state.busy?'disabled':''}>Load more cards</button>`:''}`}
+   </section></div>`;
  }
  function catalogEditor() {
   return `<details class="bn-card bn-options" ${panelAttrs('catalog')}><summary>Manage reusable choices</summary><div class="bn-options-body">${state.options.map(o=>`<div class="bn-lot"><span>${esc(categoryLabels[o.category])} · ${esc(o.kind)} · ${o.active?'Active':'Retired'}</span><label class="bn-field">Option name<input id="bn-option-${esc(o.id)}" value="${esc(o.label)}"></label>${button('Save name',`BunchNote.editOption(${arg(o.id)},${o.active})`,state.busy)}${button(o.active?'Retire':'Restore',`BunchNote.editOption(${arg(o.id)},${!o.active})`,state.busy)}</div>`).join('')}</div></details>`;
@@ -309,22 +353,28 @@
  }
  function editor() {
   const draft = state.draft;
+  const queCreate = typeof getCurrentVisibleViewId==='function'&&getCurrentVisibleViewId()==='request'&&activeReqTab==='bunch-notes'&&author()&&state.queueMode==='create';
   let html = `<h2>Bunch Notes</h2>${viewTabs()}<p class="bn-muted">Choose a block. Include and assign each inventory card independently; Move plans work without changing inventory.</p>`;
   if (!draft) return html + `<h3>Block Alpha</h3><div class="bn-drill-grid">${state.blocks.map(b => drillCard(b, 'View locations', `BunchNote.chooseBlock(${arg(b)})`, 'block')).join('') || `<p>${state.busy ? 'Loading blocks…' : 'No blocks available.'}</p>`}</div>${catalogEditor()}<h3>Saved batches</h3><div class="bn-drill-grid">${state.drafts.map(d => drillCard(d.block, `${d.body.locations.length} locations · ${new Date(d.updated_at).toLocaleString()}`, `BunchNote.openDraft(${arg(d.id)})`, 'batch')).join('') || '<p class="bn-muted">No saved batches.</p>'}</div>`;
   html += `<nav class="bn-breadcrumb" aria-label="Bunch Note drill-down"><span>${esc([draft.body.block,state.base,state.location,state.item ? state.item.split('|').slice(1).join('|') : ''].filter(Boolean).join(' → '))}</span></nav>`;
   if (!state.location) {
-   html += '<div data-bn-cards></div>';
+   if(queCreate){
+    const locations=groupInventory(state.rows).get(normalize(draft.body.block))||new Map();
+    html += `<section class="bn-location-list" aria-label="Source locations"><h3>Locations in ${esc(draft.body.block)}</h3><div class="bn-drill-grid">${[...locations].sort(([a],[b])=>a.localeCompare(b)).map(([location,rows])=>drillCard(location,`${rows.length} inventory rows`,`BunchNote.openLocation(${arg(location)})`,'location')).join('')||'<p class="bn-muted">No locations in this block.</p>'}</div></section>`;
+   }else html += '<div data-bn-cards></div>';
   } else {
    const i=draft.body.locations.findIndex(l => l.location === state.location), loc=draft.body.locations[i];
    if(loc && state.item) return html+plants(loc.source_all||loc.source||[],loc.row_ids,i)+button('Save draft','BunchNote.save()',state.busy);
-   if(loc && state.locationStep==='setup') return html+`<section class="bn-location-editor" aria-label="Location setup"><h3>${esc(loc.location)} · Location Instructions</h3>`
-    +field('Purposes',loc.purposes,`BunchNote.edit(${i},'purposes',this.value)`)
-    +field('Priority / work order',loc.priority,`BunchNote.edit(${i},'priority',this.value)`)
-    +textfield('General instructions',loc.instructions,`BunchNote.edit(${i},'instructions',this.value)`)
-    +textfield('Prerequisites / wait instructions',loc.prerequisites,`BunchNote.edit(${i},'prerequisites',this.value)`)
-    +`<div data-bn-structured="header" data-index="${i}"></div>`
-    +`<div data-bn-structured="edit" data-index="${i}"></div>${sharedEditor(loc,i)}</section><div class="bn-step-actions">${button('Inventory action editor','BunchNote.nextItems()',state.busy)}${button('Save draft','BunchNote.save()',state.busy)}</div>`;
-   if(loc) html+=`<section class="bn-location-editor"><div class="bn-location-heading"><h3>${esc(loc.location)}</h3>${button('Edit location setup','BunchNote.editSetup()',state.busy)}</div><p>${esc(loc.purposes)}</p><h3>Items at this location</h3>`
+   if(loc && state.locationStep==='setup') return html+`<section class="bn-location-editor" aria-label="Location setup"><h3>Plan work · ${esc(draft.body.block)} · ${esc(loc.location)}</h3>`
+    +field('Work type',loc.purposes,`BunchNote.wizardField('workType',this.value)`)
+    +textfield('Direction',loc.direction||'',"BunchNote.wizardField('direction',this.value)")
+    +textfield('Extra notes',loc.instructions||'',"BunchNote.wizardField('notes',this.value)")
+    +`<details class="bn-options"><summary>Advanced location controls</summary><div class="bn-options-body">${field('Priority / work order',loc.priority,`BunchNote.edit(${i},'priority',this.value)`)}${textfield('Prerequisites / wait instructions',loc.prerequisites,`BunchNote.edit(${i},'prerequisites',this.value)`)}<div data-bn-structured="header" data-index="${i}"></div><div data-bn-structured="edit" data-index="${i}"></div>${sharedEditor(loc,i)}</div></details></section><div class="bn-step-actions">${button('Next','BunchNote.nextItems()',state.busy)}${button('Save draft','BunchNote.save()',state.busy)}</div>`;
+   if(loc && state.locationStep==='items') {
+    const advancedKey='advanced-inventory:'+normalize(loc.location),advancedOpen=state.panels.has(advancedKey);
+    html+=`<section class="bn-location-editor bn-wizard-items" aria-label="Inventory cards"><div class="bn-location-heading"><div><span class="bn-eyebrow">${esc(draft.body.block)} · ${esc(loc.location)}</span><h3>${esc(loc.purposes)}</h3><p><b>Direction:</b> ${esc(loc.direction||'Not specified')}</p>${loc.instructions?`<p><b>Extra notes:</b> ${esc(loc.instructions)}</p>`:''}</div>${button('Edit header','BunchNote.editSetup()',state.busy)}</div><div class="bn-wizard-card-list">${loc.cards.filter(card=>card.kind==='inventory').map(card=>{const note=cardNotesAction(loc,card.id);return `<article class="bn-card bn-wizard-card"><span class="bn-eyebrow">${esc(card.itemcode)}</span><h4>${esc(card.commonname)} · ${esc(card.contsize||'Size not specified')}</h4><p>${card.row_ids.length} selected lot${card.row_ids.length===1?'':'s'}: ${esc(card.row_ids.join(', '))}</p><p><b>Direction:</b> ${esc(card.direction||'Not specified')}</p>${note?`<p class="bn-pre"><b>Notes:</b> ${esc(note.instructions)}</p>`:''}</article>`}).join('')||'<p class="bn-muted">No inventory cards added yet.</p>'}</div><div class="bn-toolbar">${button('＋ Add inventory card','BunchNote.openCardPicker()',state.busy)}${button('Save draft','BunchNote.save()',state.busy||!loc.cards.some(card=>card.kind==='inventory'))}</div><details class="bn-options" ${advancedOpen?'open':''} ontoggle="BunchNote.advancedInventoryPanel(${arg(loc.location)},this.open)"><summary>Advanced inventory and action controls</summary>${advancedOpen?`<div class="bn-options-body"><div data-bn-cards></div>${plants(loc.source_all||loc.source||[],loc.row_ids,i)}<details class="bn-options"><summary>Whole-location actions</summary>${draftActions(loc,i)}${actionChoices('location:'+i,loc.source_all||[],{index:i,worker:false,scope:'location'})}</details></div>`:''}</details></section>`;
+   }
+   if(loc && state.locationStep!=='items') html+=`<section class="bn-location-editor"><div class="bn-location-heading"><h3>${esc(loc.location)}</h3>${button('Edit location setup','BunchNote.editSetup()',state.busy)}</div><p>${esc(loc.purposes)}</p><h3>Items at this location</h3>`
     +`<div data-bn-structured="edit" data-index="${i}"></div>`+plants(loc.source_all||loc.source||[],loc.row_ids,i)
     +`<details class="bn-options" ${panelAttrs('actions:'+loc.location)}><summary>Whole-location actions<i class="ph-bold ph-caret-down"></i></summary>${draftActions(loc,i)}${actionChoices('location:'+i,loc.source_all||[],{index:i,worker:false,scope:'location'})}</details>`
     +button('Remove location from batch',`BunchNote.removeLocation(${arg(loc.location)})`,state.busy||!!draft.id&&draft.body.locations.length===1)+'</section>';
@@ -350,6 +400,10 @@
   if(!state.queueBase)return html+`<div class="bn-drill-grid">${[...groups].map(([base,codes])=>drillCard(base,`${codes.length} full locations`,`BunchNote.queueBase(${arg(base)})`,'location')).join('')||'<p>No work in this filter.</p>'}</div>`;
   if(!state.queueLocation)return html+`<h3>${esc(state.queueBase)}</h3><div class="bn-drill-grid">${(groups.get(state.queueBase)||[]).map(loc=>drillCard(loc,'Open location work',`BunchNote.queueLocation(${arg(loc)})`,'location')).join('')||'<p>No work in this location.</p>'}</div>`;
   return html + (state.loading ? '<p>Loading…</p>' : !jobs.length ? '<p>No work in this filter.</p>' : jobs.filter(j=>normalize(j.location)===state.queueLocation).map(j => `<article class="bn-card"><h3>${esc(j.block)} → ${esc(j.location)}</h3><p>${esc(j.note_number)} · Revision ${j.instruction_revision} · ${esc(j.body.purposes)}</p><p>Priority: ${esc(j.body.priority || '—')} · ${Object.keys(j.progress).length}/${allActions(j).length} actions</p><p>Work: ${esc(j.status)} · Email: ${esc(j.delivery_status)}</p>${button('Open', `BunchNote.detail(${arg(j.id)})`)}</article>`).join(''));
+ }
+ function queueModeMarkup() {
+  if (!author()) return '';
+  return `<nav class="bn-toolbar bn-queue-mode" aria-label="Bunch Notes mode">${button('Create note','BunchNote.setQueueMode(\'create\')',state.busy,state.queueMode==='create','bn-create-note-mode')}${button('Assigned work','BunchNote.setQueueMode(\'assigned\')',state.busy,state.queueMode==='assigned','bn-assigned-work-mode')}</nav>`;
  }
  function detailHtml() {
   const {versions = [], audit = []} = state.detail;
@@ -408,7 +462,8 @@
  function back() {
   if(state.busy)return true;
   rememberScroll();
-  if(state.picker){if(state.picker.base)state.picker.base='';else state.picker=null;}
+  if(state.cardPicker)state.cardPicker=null;
+  else if(state.picker){if(state.picker.base)state.picker.base='';else state.picker=null;}
   else if(state.preview){root.BunchNote.closePreview();return true;}
   else if(state.screen==='destinations'){if(state.destinationLocation){state.destinationLocation='';state.destinationData=null;}else if(state.destinationBase)state.destinationBase='';else state.screen='source';}
   else if(state.customEdit)state.customEdit=null;
@@ -416,7 +471,7 @@
   else if(state.item||state.workAction){state.item='';state.workAction='';}
   else if(state.workCard){state.workCard='';state.item='';}
   else if(state.detail)state.detail=null;
-  else if(typeof getCurrentVisibleViewId==='function'&&getCurrentVisibleViewId()==='request'){if(state.queueLocation)state.queueLocation='';else if(state.queueBase)state.queueBase='';else return false;}
+  else if(typeof getCurrentVisibleViewId==='function'&&getCurrentVisibleViewId()==='request'&&!(author()&&activeReqTab==='bunch-notes'&&state.queueMode==='create')){if(state.queueLocation)state.queueLocation='';else if(state.queueBase)state.queueBase='';else return false;}
   else if(state.location&&state.locationStep==='items')state.locationStep='setup';
   else if(state.location)state.location='';
   else if(state.base)state.base='';
@@ -438,36 +493,46 @@
   ensureAccount();
   const view = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '';
   const container = document.getElementById(view === 'bunch-note' ? 'bunch-note-content' : 'request-content');
-  if (!container || !account() || (view !== 'bunch-note' && !(view === 'request' && activeReqTab === 'bunch-notes'))) return;
+  if (!container || !account() || (view !== 'bunch-note' && !(view === 'request' && activeReqTab === 'bunch-notes'))) { if(state.cardPicker){state.cardPicker=null;renderPickerPortal('');} return; }
   container.classList.add('bn-root');
   if((state.actionEdit?.worker||state.customEdit&&state.targets[state.customEdit.key]?.worker||state.picker?.kind==='actual')&&(!state.detail?.job||state.detail.job.status!=='open'||workJob()?.owner_id!==nativeAuthProfile?.id)){
    state.actionEdit=null;state.customEdit=null;state.picker=null;state.pendingActions={};state.item='';
   }
-  const markup = (state.error ? `<p role="alert">${esc(state.error)}</p>` : '') + (state.picker ? pickerHtml() : state.customEdit ? customEditor() : state.actionEdit ? actionEditor() : state.preview && view==='bunch-note' ? previewHtml() : state.screen==='destinations' ? destinationsHtml() : view === 'bunch-note' && author() ? editor() : queue());
+  const locationIndex=state.draft?.body.locations.findIndex(location=>location.location===state.location)??-1;
+  const currentLocation=locationIndex>=0?state.draft.body.locations[locationIndex]:null;
+  const inRequestQueue = view === 'request' && activeReqTab === 'bunch-notes';
+  if (inRequestQueue && author() && state.queueMode === 'create' && !state.metadataLoaded && !state.metadataLoading && !state.busy && !state.error) void open({refresh:false});
+  const modeMarkup = inRequestQueue ? queueModeMarkup() : '';
+  const pickerMarkup=state.cardPicker&&currentLocation?cardPickerHtml(currentLocation,locationIndex):'';
+  const canPortalPicker=typeof document.createElement==='function'&&!!document.body?.appendChild;
+  const contentMarkup = state.cardPicker&&currentLocation?editor()+(canPortalPicker?'':pickerMarkup) : state.picker ? pickerHtml() : state.customEdit ? customEditor() : state.actionEdit ? actionEditor() : state.preview && (view==='bunch-note'||inRequestQueue&&author()&&state.queueMode==='create') ? previewHtml() : state.screen==='destinations' ? destinationsHtml() : inRequestQueue && author() && state.queueMode === 'create' ? editor() : view === 'bunch-note' && author() ? editor() : queue();
+  const markup = (state.error ? `<p role="alert">${esc(state.error)}</p>` : '') + modeMarkup + contentMarkup;
+  const renderSignature=JSON.stringify([markup,pickerMarkup]);
   const busy = String(state.busy);
   // A live list commit may land between touchstart and click. Replacing an
   // unchanged queue drops that in-flight tap. Compare intended markup and
   // owned child nodes: shell decoration adds classes and replaces icons.
   const previous = renderedQueues.get(container);
-  if (previous?.markup === markup && previous.busy === busy
+  if (previous?.markup === renderSignature && previous.busy === busy
     && previous.nodes.length === container.childNodes.length
-    && previous.nodes.every((node, index) => node === container.childNodes[index])) { void mountStructured(container); return; }
+    && previous.nodes.every((node, index) => node === container.childNodes[index])) { renderPickerPortal(canPortalPicker?pickerMarkup:'');void mountStructured(container); return; }
   const boardHost=markup.includes('data-bn-cards')?container.querySelector?.('[data-bn-cards]'):null;
   const boardHandle=boardHost&&structuredHandles.get(boardHost);
   if(boardHandle)structuredHandles.delete(boardHost);
-  disposeView();
+  disposeView({preservePicker:true});
   container.innerHTML = markup;
   if(boardHandle){container.querySelector('[data-bn-cards]').replaceWith(boardHost);structuredHandles.set(boardHost,boardHandle);boardHandle.update(cardBoardProps());}
+  renderPickerPortal(canPortalPicker?pickerMarkup:'');
   container.setAttribute('aria-busy', busy);
   if (state.busy) container.querySelectorAll('input,select,textarea,button').forEach(control => { if (!control.closest?.('[data-bn-cards]')) control.disabled = true; });
-  renderedQueues.set(container, {markup, nodes: Array.from(container.childNodes), busy});
+  renderedQueues.set(container, {markup:renderSignature, nodes: Array.from(container.childNodes), busy});
   void mountStructured(container);
 }
  const invalidate = () => { state.preview = null; state.urls.forEach(url => URL.revokeObjectURL(url)); state.urls = []; };
  async function saveDraft() {
   prepareDraftCards();const d = state.draft;
   const result = await api('save', {batch_id: d.id, body: d.body}, d.revision, crypto.randomUUID());
-  state.draft = result.draft;state.boardState={...state.boardState,cardForms:{},dirtyCardIds:[],cardErrors:{},rejectedCardIds:[]};
+  state.draft = result.draft;for(const location of state.draft.body.locations)location.source_all=state.rows.filter(row=>normalize(row.locationcode)===normalize(location.location));state.boardState={...state.boardState,cardForms:{},dirtyCardIds:[],cardErrors:{},rejectedCardIds:[]};
  }
  function showPdfs(pdfs) {
   state.urls.forEach(url => URL.revokeObjectURL(url));
@@ -478,11 +543,20 @@
   });
  }
  root.BunchNote = {
-  prepareCards, cardKey, changeCard, moveCard, workJob, actionProblem, templates, normalize, baseLocation, locationGroups, salesYear, sourceGroups, quantity, groupInventory, groupItems, shiftEligible, actionKind, recipientEmails, api, render, reset, open, author, back, disposeView,
+  prepareCards, cardKey, changeCard, moveCard, workJob, actionProblem, templates, normalize, baseLocation, locationGroups, salesYear, sourceGroups, quantity, groupInventory, groupItems, shiftEligible, actionKind, recipientEmails, mergeStructuredHeaderValue, api, render, reset, open, author, back, disposeView,
   queueBase: value => {rememberScroll();state.queueBase=value;render();restoreScroll();},
   queueLocation: value => {rememberScroll();state.queueLocation=value;render();restoreScroll();},
-  hasBack: () => !!(state.actionEdit||state.customEdit||state.picker||state.preview||state.item||state.detail||state.draft||state.queueBase||state.screen==='destinations'),
-  nextItems: () => run(async()=>{const l=state.draft.body.locations.find(l=>l.location===state.location);if(!l.purposes?.trim())throw new Error('Enter a purpose for this location.');await saveDraft();rememberScroll();state.locationStep='items';restoreScroll();}),
+  hasBack: () => !!(state.actionEdit||state.customEdit||state.cardPicker||state.picker||state.preview||state.item||state.detail||state.draft||state.queueBase||state.screen==='destinations'),
+  wizardField: (fieldName,value) => {const location=state.draft?.body.locations.find(location=>location.location===state.location);if(!location||!author())return;invalidate();const key=fieldName==='workType'?'purposes':fieldName==='direction'?'direction':fieldName==='notes'?'instructions':'';if(key)location[key]=String(value??'');},
+  nextItems: () => run(async()=>{const l=state.draft.body.locations.find(l=>l.location===state.location);if(!l.purposes?.trim())throw new Error('Enter a work type for this location.');await saveDraft();rememberScroll();state.locationStep='items';restoreScroll();}),
+  openCardPicker: () => {if(state.busy||!author()||!state.draft||state.locationStep!=='items')return;const location=state.draft.body.locations.find(location=>location.location===state.location);if(!location)return;rememberScroll();state.cardPicker={search:'',selectedKey:'',rowIds:[],direction:location.direction||'',notes:'',committedId:'',groups:cardPickerGroups(location),visibleLimit:100};render();restoreScroll();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker .bn-field input')?.focus());},
+  closeCardPicker: () => {if(state.busy)return;state.cardPicker=null;render();restoreScroll();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-wizard-items button[onclick="BunchNote.openCardPicker()"]')?.focus());},
+  cardPickerSearch: value => {if(!state.cardPicker||state.busy)return;state.cardPicker.search=String(value??'');state.cardPicker.visibleLimit=100;renderSearch('Search inventory',state.cardPicker.search);},
+  loadMorePickerCards: () => {const picker=state.cardPicker;if(!picker||picker.selectedKey)return;picker.visibleLimit=(picker.visibleLimit||100)+100;render();},
+  selectPickerCard: key => {const picker=state.cardPicker,location=state.draft?.body.locations.find(location=>location.location===state.location),group=picker?.groups?.find(group=>group.key===key)||location&&cardWizardGroups(location).find(group=>group.key===key),card=location?.cards.find(existing=>existing.kind==='inventory'&&cardKey(existing)===key),note=card&&location.actions?.find(action=>action.card_id===card.id&&action.kind==='instruction'&&action.label==='Card notes');if(!picker||!group)return;picker.selectedKey=key;picker.rowIds=card?[...card.row_ids]:group.rows.map(row=>row.unique_id);picker.direction=card?.direction||location.direction||'';picker.notes=note?.instructions||'';picker.committedId='';render();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker [aria-label^="Select lot"]')?.focus());},
+  togglePickerLot: (id,included) => {const picker=state.cardPicker,location=state.draft?.body.locations.find(location=>location.location===state.location);if(!picker||!location||state.busy)return;const allowed=new Set((location.source_all||[]).map(row=>row.unique_id));if(!allowed.has(id))return;picker.rowIds=included?[...new Set([...picker.rowIds,id])]:picker.rowIds.filter(value=>value!==id);render();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.(`[aria-label$="${CSS.escape(id)}"]`)?.focus());},
+  pickerField: (fieldName,value) => {if(!state.cardPicker||state.busy||!['direction','notes'].includes(fieldName))return;state.cardPicker[fieldName]=String(value??'');},
+  commitPickerCard: () => run(async()=>{const picker=state.cardPicker,location=state.draft?.body.locations.find(location=>location.location===state.location);if(!picker||!location)throw new Error('Reopen the current location before adding an inventory card.');if(!picker.committedId){const group=cardWizardGroups(location).find(group=>group.key===picker.selectedKey),ids=new Set(picker.rowIds),rows=group?.rows.filter(row=>ids.has(row.unique_id))||[];if(!group||!rows.length||rows.length!==ids.size)throw new Error('Choose verified inventory lot rows for this card.');const selectedIds=rows.map(row=>row.unique_id);let card=location.cards.find(existing=>existing.kind==='inventory'&&cardKey(existing)===group.key);if(!card){card={id:crypto.randomUUID(),kind:'inventory',location_code:location.location,itemcode:group.itemcode,commonname:group.commonname,contsize:group.contsize,row_ids:[],owner_id:null,house:location.target_houses||'',direction:location.direction||''};location.cards.push(card);}card.row_ids=[...new Set([...card.row_ids,...selectedIds])];card.direction=picker.direction.trim()||location.direction||'';if(picker.direction.length>200||picker.notes.length>4000)throw new Error('Card direction or notes exceed the supported length.');const note=(location.actions||[]).find(action=>action.card_id===card.id&&action.kind==='instruction'&&action.label==='Card notes');if(picker.notes.trim()){const action=note||{id:crypto.randomUUID(),option_id:'bb000000-0000-4000-8000-000000000001',group:'sequence',kind:'instruction',label:'Card notes',scope:'rows',row_ids:[],quantity:'',percentage:'',crew:'',stage:'',destination:'',marking:''};action.instructions=picker.notes.trim();action.card_id=card.id;action.scope='rows';action.row_ids=[...card.row_ids];if(!note)location.actions.push(action);}else if(note)location.actions=location.actions.filter(action=>action!==note);location.row_ids=[...new Set([...location.row_ids,...selectedIds])];picker.committedId=card.id;invalidate();}await saveDraft();state.cardPicker={search:'',selectedKey:'',rowIds:[],direction:location.direction||'',notes:'',committedId:'',groups:cardPickerGroups(location),visibleLimit:100};if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker .bn-field input')?.focus());}),
   editSetup: () => {rememberScroll();state.locationStep='setup';render();restoreScroll();},
   startAction: (key,id) => {if(state.busy||state.actionEdit)return;try{beginAction(key,id);state.error='';render();restoreScroll();}catch(e){state.error=e.message;render();}},
   editPlanned: (i,id) => {if(state.busy)return;const l=state.draft.body.locations[i],a=l.actions.find(a=>a.id===id),source=l.source_all||l.source,items=new Set(source.filter(r=>a.row_ids?.includes(r.unique_id)).map(r=>normalize(r.itemcode)));rememberScroll();state.actionEdit={i,id,worker:false,availableIds:source.filter(r=>(a.card_id?l.cards.find(c=>c.id===a.card_id)?.row_ids.includes(r.unique_id):(a.scope==='location'||items.has(normalize(r.itemcode))))&&(a.group!=='hauling'||shiftEligible(r))).map(r=>r.unique_id)};render();restoreScroll();},
@@ -521,10 +595,11 @@
   // The live-sync coordinator schedules the repaint after typing and taps finish.
   commit: value => { ensureAccount(); if (value.account === account() && value.epoch === state.epoch) { state.jobs = value.jobs; state.loaded = true; if (state.detail?.job.id===value.id) {state.detail=value.detail;if(!value.detail)state.item='';} if(value.destination&&state.screen==='destinations'&&state.destinationLocation===value.destinationLocation){state.destinationNames=value.destination.locations;if(state.destinationLocation)state.destinationData=value.destination;} } },
   chooseBlock: block => run(async () => { if (!block) return; state.rows = (await api('inventory',{block})).rows; state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear(); state.draft = {id:null,revision:null,body:{format_version:5,block,locations:[],recipient_ids:[]}};if(state.parked.has(block))state.draft=state.parked.get(block);state.epoch++; }),
-  openDraft: id => run(async () => { const d = state.drafts.find(d => d.id === id); const rows=(await api('inventory',{block:d.block})).rows; state.draft = structuredClone(d); state.rows=rows;prepareDraftCards(); state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear();state.epoch++; }),
+  openDraft: id => run(async () => { const d = state.drafts.find(d => d.id === id); const rows=(await api('inventory',{block:d.block})).rows; state.draft = structuredClone(d); state.rows=rows;for(const location of state.draft.body.locations)location.source_all=rows.filter(row=>normalize(row.locationcode)===normalize(location.location));prepareDraftCards(); state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear();state.epoch++; }),
   backEditor: () => run(async () => { const d=state.draft;if(d.body.locations.length)await saveDraft();state.parked.set(d.body.block,state.draft); state.drafts=(await api('drafts')).drafts; invalidate(); state.draft=null; state.location=''; }),
   backLocations: () => { state.location=''; render(); },
   panel: (key, expanded) => { if(expanded)state.panels.add(key); else state.panels.delete(key); },
+  advancedInventoryPanel: (location, expanded) => { const key='advanced-inventory:'+normalize(location),open=state.panels.has(key);if(open===!!expanded)return;if(expanded)state.panels.add(key);else state.panels.delete(key);render(); },
   openLocation: location => { if(state.busy)return;ensureLocation(location);rememberScroll();state.location=normalize(location);state.base='';state.item='';state.locationStep='setup';render();restoreScroll(); },
   removeLocation: location => run(async () => { if(state.draft.id && state.draft.body.locations.length === 1)return; if(!await showAppConfirm('Remove this location and its draft instructions from this batch?',{title:'Bunch Note'}))return; invalidate(); state.draft.body.locations=state.draft.body.locations.filter(l=>l.location!==location); state.location=''; }),
   selectRow: (i,id,on) => { invalidate(); const l=state.draft.body.locations[i]; l.row_ids=on?[...new Set([...l.row_ids,id])]:l.row_ids.filter(v=>v!==id); const add=document.getElementById('bn-add-selected-'+i); if(add)add.disabled=state.busy || !l.row_ids.length; },
@@ -562,7 +637,8 @@
   publish: send_email => run(async () => { await api('publish',{preview_id:state.preview.id,send_email},state.draft.revision,crypto.randomUUID()); invalidate(); state.draft=null; state.drafts=(await api('drafts')).drafts; await load(); showToast('Bunch Notes',send_email?'Published. Email queued.':'Published to Queue.'); }),
   refresh: () => run(load), filter: value => { state.filter=value;state.queueBase='';state.queueLocation=''; render(); },
   detail: id => run(async () => { rememberScroll();state.item='';state.workAction='';state.workCard='';state.detail=await api('get',{job_id:id}); await refreshCatalog(); if(author()&&!state.users.length)state.users=(await api('directory')).users;restoreScroll(); }),
-  backQueue: () => { state.detail=null;state.item='';state.queueBase='';state.queueLocation='';state.screen='source'; render(); },
+  backQueue: () => { state.detail=null;state.item='';state.queueBase='';state.queueLocation='';state.screen='source';render(); },
+  setQueueMode: mode => {if(mode!=='create'&&mode!=='assigned')return;if(mode==='create'&&!author())return;state.queueMode=mode;state.detail=null;state.item='';state.queueBase='';state.queueLocation='';state.screen='source';render();if(mode==='create'&&!state.metadataLoaded&&!state.metadataLoading)void open({refresh:false});},
   command: (operation, extra={}) => run(async () => { const j=operation==='progress'?workJob():state.detail.job; await api(operation,{job_id:j.id,...workScope(j),...extra},j.revision,crypto.randomUUID()); state.detail=operation==='progress'?await api('get',{job_id:j.id}):null; await load(); }),
   sharedOwner: (index,owner_id) => {if(state.busy||!author())return;const location=state.draft.body.locations[index];if(location.job_id)return;const card=location.cards.find(c=>c.kind==='shared');if(card){invalidate();card.owner_id=owner_id||null;}},
   openWorkCard: id => {rememberScroll();state.workCard=id;state.item='';state.workAction='';render();restoreScroll();},
@@ -576,4 +652,27 @@
   sendSaved: () => run(async () => { await api('send',{preview_id:state.preview.id},null,crypto.randomUUID()); invalidate(); state.detail=null; switchView('request'); setReqTab('bunch-notes'); await load(); }),
   delivery: (preview_id,status) => run(async () => { const p=await api('preview_read',{preview_id}); if(status==='not_sent'){state.preview={...p,saved:true}; showPdfs(p.pdfs); switchView('bunch-note'); return;} if(!await showAppConfirm(status==='failed'?'Retry this failed delivery to the saved recipients?':'Reconcile against Sent mail without sending another copy?',{title:'Bunch Notes delivery'}))return; await api(status==='failed'?'retry':'reconcile',{preview_id},null,crypto.randomUUID()); state.detail=null; await load(); }),
  };
+ function cardPickerContextIsCurrent() {
+  if(!state.cardPicker||state.account!==account()||!author())return false;
+  const view=typeof getCurrentVisibleViewId==='function'?getCurrentVisibleViewId():'';
+  if(view!=='bunch-note'&&!(view==='request'&&activeReqTab==='bunch-notes'))return false;
+  const location=state.draft?.body.locations.find(location=>location.location===state.location);
+  return !!location&&state.locationStep==='items';
+ }
+ function handleCardPickerKeydown(event) {
+  if(event?.key!=='Escape'||state.busy||!cardPickerContextIsCurrent())return;
+  event.preventDefault?.();event.stopPropagation?.();root.BunchNote.closeCardPicker();
+ }
+ function handleCardPickerOutsideClick(event) {
+  if(state.cardPicker&&!cardPickerContextIsCurrent()) { state.cardPicker=null;renderPickerPortal('');return; }
+  if(!state.cardPicker||event?.target?.closest?.('.bn-card-picker'))return;
+  if(state.busy){event.preventDefault?.();event.stopPropagation?.();return;}
+  if(!cardPickerContextIsCurrent())return;
+  event.preventDefault?.();event.stopPropagation?.();root.BunchNote.closeCardPicker();
+  queueMicrotask(()=>{if(state.cardPicker&&!cardPickerContextIsCurrent()){state.cardPicker=null;renderPickerPortal('');}});
+ }
+ if(typeof document!=='undefined'){
+  document.addEventListener?.('keydown',handleCardPickerKeydown,true);
+  document.addEventListener?.('click',handleCardPickerOutsideClick,true);
+ }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

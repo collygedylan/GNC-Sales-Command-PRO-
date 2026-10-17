@@ -73,6 +73,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     canCurrentUserUseDriveCardOptions: () => driveAllowed,
     canCurrentUserSubmitRepInventoryOperations: () => false,
     canUseProductionLiveSync: () => false,
+    getDockSuspendDcRequestPlanstartValue: row => row.PLANSTART || '',
     getDockStopOrDropValue: () => '3', getDockDisplayQty: () => 8, formatDockDisplayQty: String,
     getOperationalCardInventoryRow: () => inventory, buildInventoryQuantityChipsHtml: () => '<div>On Hand 8</div>',
     getSuspendTagStatus: row => row.suspend_tag_status,
@@ -105,6 +106,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     'dispatchFastPressAction', 'finishFastPress', 'shouldSuppressFastPressClick', 'handleFastPressClick', 'handleFastPressKeydown',
     'buildFastPressAttrs', 'buildFastInvokeAttrs', 'stopNestedCardActionPress', 'getDockSuspendDcRequestSourceUid', 'isArgosInventoryTransactionEligible',
     'buildArgosInventoryTransactionRailHtml', 'buildArgosInventoryTransactionRailPlaceholderHtml',
+    'parseDockCardPlanStartEpochDay', 'formatDockCardPlanStartValue',
     'buildSharedInventoryCardLayout', 'buildSuspendTagReclassActionHtml',
     'buildSuspendTagActions', 'openDockSuspendDcRequestUpdate',
   ]) w.eval(extract(name));
@@ -482,7 +484,9 @@ test('legacy Suspend Tag sharing code is removed while the approval action remai
 });
 
 test('Suspend Tag density is scoped and keeps readable wrapping notes and touch targets', () => {
-  const rules = css.slice(css.indexOf('/* Suspend Tag keeps the shared Drive frame'));
+  const start = css.indexOf('/* Suspend Tag keeps the shared Drive frame');
+  const nextSection = css.indexOf('/* Que navigation', start);
+  const rules = css.slice(start, nextSection < 0 ? undefined : nextSection);
   assert.match(rules, /\.app-operational-card-header-fields \{ gap: 4px 6px; margin-bottom: 4px;/);
   assert.match(rules, /\.app-request-card-meta \{ display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0;/);
   assert.match(rules, /:is\(\.app-card-note, \.app-suspend-tag-data-note\) \{ margin: 0; padding: 6px; box-shadow: none; overflow-wrap: anywhere;/);
