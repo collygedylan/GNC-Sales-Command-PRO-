@@ -10,6 +10,13 @@
  };
  const templates = Object.entries(groups).flatMap(([group, labels]) => labels.map(label => ({ group, label, instructions: label, kind: label === 'TA / culls follow-up' ? 'ta' : ['Move','Grade and Save / Move To'].includes(label) ? 'move' : group === 'hauling' && !label.startsWith('Wait') ? 'hauling' : 'instruction' })));
  const renderedQueues = new WeakMap();
+ let pickerPortalHost = null;
+ function renderPickerPortal(markup) {
+  if(typeof document.createElement!=='function'||!document.body?.appendChild)return;
+  if(!markup){pickerPortalHost?.remove();pickerPortalHost=null;return;}
+  if(!pickerPortalHost||!pickerPortalHost.isConnected){pickerPortalHost=document.createElement('div');pickerPortalHost.className='bn-picker-portal-host';pickerPortalHost.dataset.bnPickerPortal='true';document.body.appendChild(pickerPortalHost);}
+  if(pickerPortalHost.innerHTML!==markup)pickerPortalHost.innerHTML=markup;
+ }
  const normalize = value => String(value ?? '').trim().toUpperCase();
  const baseLocation = value => root.LocationCode.base(value);
  const locationGroups = values => root.LocationCode.group(values);
@@ -103,6 +110,11 @@
  }
  function updateBoard() {for(const [host,handle] of structuredHandles)if(host.dataset.bnCards!==undefined)handle.update(cardBoardProps());}
  function bridgeRevisionKey() { const job=workJob();return `${state.epoch}:${job?.revision??state.draft?.revision??''}:${job?.instruction_revision??''}`; }
+ function mergeStructuredHeaderValue(current, baseline, incoming) {
+  const next={...current};
+  for(const key of ['direction','target_houses'])if(!Object.is(incoming?.[key],baseline?.[key]))next[key]=incoming[key];
+  return next;
+ }
  function cardBoardProps() { return {accountKey:state.account,revisionKey:bridgeRevisionKey(),rows:state.rows,locations:state.draft.body.locations.map(l=>({...l,cards:[...l.cards||[]]})),users:state.users,busy:state.busy,viewState:state.boardState,onViewState:next=>{state.boardState=next;updateBoard();},onCardChange:changeCard,onMove:moveCard,onLocationInstructions:location=>root.BunchNote.openLocation(typeof location==='string'?location:location.location||location.location_code),onSave:async()=>{await run(saveDraft);if(state.error)throw new Error(state.error);}}; }
  function moveCard(location,card) {
   if(state.busy)return;changeCard(location,{...card,included:true});const loc=ensureLocation(location), included=loc.cards.find(c=>cardKey(c)===cardKey(card));
@@ -125,15 +137,17 @@
   const uid=nativeAuthProfile?.id;
   return `<h2>${esc(job.location)} · ${esc(job.body.purposes)}</h2><p>${esc(job.note_number)} · Instruction revision ${job.instruction_revision}</p><div class="bn-card-board">${job.cards.map(card=>{const note=(job.body.actions||[]).find(action=>action.card_id===card.id&&action.kind==='instruction'&&action.label==='Card notes');return `<article class="bn-card"><span class="bn-eyebrow">${esc(card.kind==='shared'?'General / Shared Work':card.itemcode)}</span><h3>${esc(card.commonname)} ${esc(card.contsize)}</h3><p>Worker: ${esc(card.owner_name||'Unassigned')} · ${esc(card.status)}</p><p>House: ${esc(card.house||'Not specified')} · Direction: ${esc(card.direction||'Not specified')}</p>${note?`<p class="bn-pre"><b>Card notes:</b> ${esc(note.instructions)}</p>`:''}${button('Open card',`BunchNote.openWorkCard(${arg(card.id)})`,state.busy)}${job.status==='open'&&card.status==='open'&&!card.owner_id?button('Claim card',`BunchNote.cardCommand('claim_card',${arg(card.id)})`,state.busy):''}${job.status==='open'&&card.status==='open'&&card.owner_id===uid?button('Release card',`BunchNote.cardCommand('release_card',${arg(card.id)})`,state.busy):''}${author()&&job.status==='open'&&card.status==='open'?`<label class="bn-field">Assign / reassign card<select id="bn-owner-${esc(card.id)}">${userOptions(card.owner_id)}</select></label>${button('Apply card assignment',`BunchNote.assignCard(${arg(card.id)})`,state.busy)}`:''}</article>`}).join('')}</div>`+(author()&&job.status==='open'?button('Revise instructions','BunchNote.revise()',state.busy)+button('Cancel work','BunchNote.cancel()',state.busy):'');
  }
- function disposeView() { structuredGeneration++; structuredHandles.forEach(h => h.destroy()); structuredHandles.clear(); }
+ function disposeView(options = {}) { structuredGeneration++; structuredHandles.forEach(h => h.destroy()); structuredHandles.clear();renderPickerPortal('');if(!options.preservePicker)state.cardPicker=null; }
  function reset() { disposeView(); state.urls.forEach(url => URL.revokeObjectURL(url)); state = fresh(); state.account = account(); }
  function structuredProps(host) {
   const mode=host.dataset.bnStructured, index=Number(host.dataset.index);
   const j=workJob();
+  const value=mode==='read'?{...j.body,location:j.location,actions:allActions(j)}:state.draft.body.locations[index];
+  const headerBaseline=mode==='header'?{direction:value.direction,target_houses:value.target_houses}:null;
   return {accountKey:state.account,revisionKey:bridgeRevisionKey(),mode,disabled:state.busy,
-   value:mode==='read'?{...j.body,location:j.location,actions:allActions(j)}:state.draft.body.locations[index],
+   value,
    progress:j?.progress||{},
-   onChange:value=>{if(state.busy||!author())return;invalidate();const current=state.draft.body.locations[index];state.draft.body.locations[index]={...current,...(mode==='header'?{direction:value.direction,target_houses:value.target_houses}:{house_sections:value.house_sections,actions:value.actions})};prepareCards(state.draft.body.locations[index]);state.epoch++;structuredHandles.get(host)?.update(structuredProps(host));},
+   onChange:nextValue=>{if(state.busy||!author())return;invalidate();const current=state.draft.body.locations[index];state.draft.body.locations[index]={...current,...(mode==='header'?mergeStructuredHeaderValue(current,headerBaseline,nextValue):{house_sections:nextValue.house_sections,actions:nextValue.actions})};prepareCards(state.draft.body.locations[index]);state.epoch++;structuredHandles.get(host)?.update(structuredProps(host));},
    onDetails:id=>root.BunchNote.editPlanned(index,id),
    onWork:id=>{const action=allActions(j).find(a=>a.id===id);const row=j.body.source.find(r=>action?.row_ids?.includes(r.unique_id));state.item=action?.scope==='rows'&&row?groupItems([row])[0].key:'';state.workAction=id;render();document.querySelector('[data-bn-work-action="'+CSS.escape(id)+'"]')?.scrollIntoView({block:'start',behavior:'smooth'});}
   };
@@ -223,10 +237,10 @@
   } finally { state.metadataLoading = false; render(); }
  }
  const button = (label, action, disabled = false, pressed = null, id = '') => `<button type="button" class="bn-button" ${id ? `id="${esc(id)}"` : ''} onclick="${action}" ${disabled ? 'disabled' : ''} ${pressed === null ? '' : `aria-pressed="${pressed}"`}>${esc(label)}</button>`;
- function field(label, value, action, type = 'text') {
-  return `<label class="bn-field">${esc(label)}<input type="${type}" value="${esc(value)}" oninput="${action}" /></label>`;
+ function field(label, value, action, type = 'text', disabled = false) {
+  return `<label class="bn-field">${esc(label)}<input type="${type}" value="${esc(value)}" oninput="${action}" ${disabled?'disabled':''} /></label>`;
  }
- function textfield(label, value, action) { return `<label class="bn-field">${esc(label)}<textarea rows="3" oninput="${action}">${esc(value)}</textarea></label>`; }
+ function textfield(label, value, action, disabled = false) { return `<label class="bn-field">${esc(label)}<textarea rows="3" oninput="${action}" ${disabled?'disabled':''}>${esc(value)}</textarea></label>`; }
  function userOptions(value, blank = 'Unassigned — available to everyone') { return `<option value="">${esc(blank)}</option>` + state.users.map(u => `<option value="${esc(u.id)}" ${u.id === value ? 'selected' : ''}>${esc(u.display || u.username)}</option>`).join(''); }
  const templateOptions = () => templates.map((t, n) => `<option value="${n}">${esc(t.group + ' — ' + t.label)}</option>`).join('');
  const panelAttrs = key => `${state.panels.has(key) ? 'open' : ''} ontoggle="BunchNote.panel(${arg(key)},this.open)"`;
@@ -275,9 +289,9 @@
   return `<div class="bn-picker-backdrop" role="presentation" onclick="if(event.target===this)BunchNote.closeCardPicker()"><section class="bn-card-picker" role="dialog" aria-modal="true" aria-labelledby="bn-card-picker-title" tabindex="-1" onkeydown="if(event.key==='Escape'){event.preventDefault();BunchNote.closeCardPicker()}">
    <div class="bn-card-picker__heading"><div><span class="bn-eyebrow">${esc(location.location)}</span><h2 id="bn-card-picker-title">${picker.selectedKey?'Card directions and notes':'Search inventory'}</h2></div>${button('Close','BunchNote.closeCardPicker()',state.busy)}</div>
    ${picker.selectedKey&&selectedGroup?`<p>${esc(selectedGroup.itemcode)} · ${esc(selectedGroup.commonname)} · ${esc(selectedGroup.contsize||'Size not specified')}</p><fieldset class="bn-picker-lots" ${state.busy?'disabled':''}><legend>Select exact lot rows</legend>${selectedGroup.rows.map(row=>`<label class="bn-choice"><input type="checkbox" aria-label="Select lot ${esc(row.contsize)} ${esc(row.lotcode)} ${esc(row.unique_id)}" ${picker.rowIds.includes(row.unique_id)?'checked':''} onchange="BunchNote.togglePickerLot(${arg(row.unique_id)},this.checked)"><span><b>${esc(row.contsize||'Size not specified')} · Lot ${esc(row.lotcode||'Unknown')}</b><small>On Hand ${esc(stock(row.stock))} · Available ${esc(stock(row.available))} · UID ${esc(row.unique_id)}</small></span></label>`).join('')}</fieldset>
-    ${textfield('Card direction',picker.direction,"BunchNote.pickerField('direction',this.value)")}${textfield('Card notes',picker.notes,"BunchNote.pickerField('notes',this.value)")}
+    ${textfield('Card direction',picker.direction,"BunchNote.pickerField('direction',this.value)",state.busy)}${textfield('Card notes',picker.notes,"BunchNote.pickerField('notes',this.value)",state.busy)}
     ${picker.committedId?'<p role="status">This card is in the draft. Retry saving or edit its details before continuing.</p>':''}<div class="bn-picker-actions">${button(picker.committedId?'Save card and continue':'＋ Add card and continue','BunchNote.commitPickerCard()',state.busy||(!picker.rowIds.length&&!picker.committedId))}</div>`
-    :`${field('Search inventory',picker.search,"BunchNote.cardPickerSearch(this.value)")}<p class="bn-muted" role="status" aria-live="polite">Showing ${visibleMatches.length} of ${matches.length} ${matches.length===1?'card':'cards'}</p><div class="bn-picker-results" role="list">${visibleMatches.map(group=>`<div role="listitem"><button type="button" class="bn-picker-result" onclick="BunchNote.selectPickerCard(${arg(group.key)})"><span><strong>${esc(group.itemcode)} · ${esc(group.commonname)}</strong><small>${esc(group.contsize||'Size not specified')} · ${group.rows.length} lot${group.rows.length===1?'':'s'}</small></span><i class="ph-bold ph-caret-right" aria-hidden="true"></i></button></div>`).join('')||'<p class="bn-muted">No verified inventory cards match this search.</p>'}</div>${visibleMatches.length<matches.length?'<button type="button" class="bn-button" aria-label="Load more inventory cards" onclick="BunchNote.loadMorePickerCards()">Load more cards</button>':''}`}
+    :`${field('Search inventory',picker.search,"BunchNote.cardPickerSearch(this.value)",'text',state.busy)}<p class="bn-muted" role="status" aria-live="polite">Showing ${visibleMatches.length} of ${matches.length} ${matches.length===1?'card':'cards'}</p><div class="bn-picker-results" role="list">${visibleMatches.map(group=>`<div role="listitem"><button type="button" class="bn-picker-result" onclick="BunchNote.selectPickerCard(${arg(group.key)})" ${state.busy?'disabled':''}><span><strong>${esc(group.itemcode)} · ${esc(group.commonname)}</strong><small>${esc(group.contsize||'Size not specified')} · ${group.rows.length} lot${group.rows.length===1?'':'s'}</small></span><i class="ph-bold ph-caret-right" aria-hidden="true"></i></button></div>`).join('')||'<p class="bn-muted">No verified inventory card matches this search.</p>'}</div>${visibleMatches.length<matches.length?`<button type="button" class="bn-button" aria-label="Load more inventory cards" onclick="BunchNote.loadMorePickerCards()" ${state.busy?'disabled':''}>Load more cards</button>`:''}`}
    </section></div>`;
  }
  function catalogEditor() {
@@ -479,7 +493,7 @@
   ensureAccount();
   const view = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '';
   const container = document.getElementById(view === 'bunch-note' ? 'bunch-note-content' : 'request-content');
-  if (!container || !account() || (view !== 'bunch-note' && !(view === 'request' && activeReqTab === 'bunch-notes'))) return;
+  if (!container || !account() || (view !== 'bunch-note' && !(view === 'request' && activeReqTab === 'bunch-notes'))) { if(state.cardPicker){state.cardPicker=null;renderPickerPortal('');} return; }
   container.classList.add('bn-root');
   if((state.actionEdit?.worker||state.customEdit&&state.targets[state.customEdit.key]?.worker||state.picker?.kind==='actual')&&(!state.detail?.job||state.detail.job.status!=='open'||workJob()?.owner_id!==nativeAuthProfile?.id)){
    state.actionEdit=null;state.customEdit=null;state.picker=null;state.pendingActions={};state.item='';
@@ -489,25 +503,29 @@
   const inRequestQueue = view === 'request' && activeReqTab === 'bunch-notes';
   if (inRequestQueue && author() && state.queueMode === 'create' && !state.metadataLoaded && !state.metadataLoading && !state.busy && !state.error) void open({refresh:false});
   const modeMarkup = inRequestQueue ? queueModeMarkup() : '';
-  const contentMarkup = state.cardPicker&&currentLocation?editor()+cardPickerHtml(currentLocation,locationIndex) : state.picker ? pickerHtml() : state.customEdit ? customEditor() : state.actionEdit ? actionEditor() : state.preview && (view==='bunch-note'||inRequestQueue&&author()&&state.queueMode==='create') ? previewHtml() : state.screen==='destinations' ? destinationsHtml() : inRequestQueue && author() && state.queueMode === 'create' ? editor() : view === 'bunch-note' && author() ? editor() : queue();
+  const pickerMarkup=state.cardPicker&&currentLocation?cardPickerHtml(currentLocation,locationIndex):'';
+  const canPortalPicker=typeof document.createElement==='function'&&!!document.body?.appendChild;
+  const contentMarkup = state.cardPicker&&currentLocation?editor()+(canPortalPicker?'':pickerMarkup) : state.picker ? pickerHtml() : state.customEdit ? customEditor() : state.actionEdit ? actionEditor() : state.preview && (view==='bunch-note'||inRequestQueue&&author()&&state.queueMode==='create') ? previewHtml() : state.screen==='destinations' ? destinationsHtml() : inRequestQueue && author() && state.queueMode === 'create' ? editor() : view === 'bunch-note' && author() ? editor() : queue();
   const markup = (state.error ? `<p role="alert">${esc(state.error)}</p>` : '') + modeMarkup + contentMarkup;
+  const renderSignature=JSON.stringify([markup,pickerMarkup]);
   const busy = String(state.busy);
   // A live list commit may land between touchstart and click. Replacing an
   // unchanged queue drops that in-flight tap. Compare intended markup and
   // owned child nodes: shell decoration adds classes and replaces icons.
   const previous = renderedQueues.get(container);
-  if (previous?.markup === markup && previous.busy === busy
+  if (previous?.markup === renderSignature && previous.busy === busy
     && previous.nodes.length === container.childNodes.length
-    && previous.nodes.every((node, index) => node === container.childNodes[index])) { void mountStructured(container); return; }
+    && previous.nodes.every((node, index) => node === container.childNodes[index])) { renderPickerPortal(canPortalPicker?pickerMarkup:'');void mountStructured(container); return; }
   const boardHost=markup.includes('data-bn-cards')?container.querySelector?.('[data-bn-cards]'):null;
   const boardHandle=boardHost&&structuredHandles.get(boardHost);
   if(boardHandle)structuredHandles.delete(boardHost);
-  disposeView();
+  disposeView({preservePicker:true});
   container.innerHTML = markup;
   if(boardHandle){container.querySelector('[data-bn-cards]').replaceWith(boardHost);structuredHandles.set(boardHost,boardHandle);boardHandle.update(cardBoardProps());}
+  renderPickerPortal(canPortalPicker?pickerMarkup:'');
   container.setAttribute('aria-busy', busy);
   if (state.busy) container.querySelectorAll('input,select,textarea,button').forEach(control => { if (!control.closest?.('[data-bn-cards]')) control.disabled = true; });
-  renderedQueues.set(container, {markup, nodes: Array.from(container.childNodes), busy});
+  renderedQueues.set(container, {markup:renderSignature, nodes: Array.from(container.childNodes), busy});
   void mountStructured(container);
 }
  const invalidate = () => { state.preview = null; state.urls.forEach(url => URL.revokeObjectURL(url)); state.urls = []; };
@@ -525,20 +543,20 @@
   });
  }
  root.BunchNote = {
-  prepareCards, cardKey, changeCard, moveCard, workJob, actionProblem, templates, normalize, baseLocation, locationGroups, salesYear, sourceGroups, quantity, groupInventory, groupItems, shiftEligible, actionKind, recipientEmails, api, render, reset, open, author, back, disposeView,
+  prepareCards, cardKey, changeCard, moveCard, workJob, actionProblem, templates, normalize, baseLocation, locationGroups, salesYear, sourceGroups, quantity, groupInventory, groupItems, shiftEligible, actionKind, recipientEmails, mergeStructuredHeaderValue, api, render, reset, open, author, back, disposeView,
   queueBase: value => {rememberScroll();state.queueBase=value;render();restoreScroll();},
   queueLocation: value => {rememberScroll();state.queueLocation=value;render();restoreScroll();},
   hasBack: () => !!(state.actionEdit||state.customEdit||state.cardPicker||state.picker||state.preview||state.item||state.detail||state.draft||state.queueBase||state.screen==='destinations'),
   wizardField: (fieldName,value) => {const location=state.draft?.body.locations.find(location=>location.location===state.location);if(!location||!author())return;invalidate();const key=fieldName==='workType'?'purposes':fieldName==='direction'?'direction':fieldName==='notes'?'instructions':'';if(key)location[key]=String(value??'');},
   nextItems: () => run(async()=>{const l=state.draft.body.locations.find(l=>l.location===state.location);if(!l.purposes?.trim())throw new Error('Enter a work type for this location.');await saveDraft();rememberScroll();state.locationStep='items';restoreScroll();}),
-  openCardPicker: () => {if(state.busy||!author()||!state.draft||state.locationStep!=='items')return;const location=state.draft.body.locations.find(location=>location.location===state.location);if(!location)return;rememberScroll();state.cardPicker={search:'',selectedKey:'',rowIds:[],direction:location.direction||'',notes:'',committedId:'',groups:cardPickerGroups(location),visibleLimit:100};render();restoreScroll();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker [aria-label="Search inventory"]')?.focus());},
+  openCardPicker: () => {if(state.busy||!author()||!state.draft||state.locationStep!=='items')return;const location=state.draft.body.locations.find(location=>location.location===state.location);if(!location)return;rememberScroll();state.cardPicker={search:'',selectedKey:'',rowIds:[],direction:location.direction||'',notes:'',committedId:'',groups:cardPickerGroups(location),visibleLimit:100};render();restoreScroll();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker .bn-field input')?.focus());},
   closeCardPicker: () => {if(state.busy)return;state.cardPicker=null;render();restoreScroll();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-wizard-items button[onclick="BunchNote.openCardPicker()"]')?.focus());},
-  cardPickerSearch: value => {if(!state.cardPicker)return;state.cardPicker.search=String(value??'');state.cardPicker.visibleLimit=100;renderSearch('Search inventory',state.cardPicker.search);},
+  cardPickerSearch: value => {if(!state.cardPicker||state.busy)return;state.cardPicker.search=String(value??'');state.cardPicker.visibleLimit=100;renderSearch('Search inventory',state.cardPicker.search);},
   loadMorePickerCards: () => {const picker=state.cardPicker;if(!picker||picker.selectedKey)return;picker.visibleLimit=(picker.visibleLimit||100)+100;render();},
   selectPickerCard: key => {const picker=state.cardPicker,location=state.draft?.body.locations.find(location=>location.location===state.location),group=picker?.groups?.find(group=>group.key===key)||location&&cardWizardGroups(location).find(group=>group.key===key),card=location?.cards.find(existing=>existing.kind==='inventory'&&cardKey(existing)===key),note=card&&location.actions?.find(action=>action.card_id===card.id&&action.kind==='instruction'&&action.label==='Card notes');if(!picker||!group)return;picker.selectedKey=key;picker.rowIds=card?[...card.row_ids]:group.rows.map(row=>row.unique_id);picker.direction=card?.direction||location.direction||'';picker.notes=note?.instructions||'';picker.committedId='';render();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker [aria-label^="Select lot"]')?.focus());},
-  togglePickerLot: (id,included) => {const picker=state.cardPicker,location=state.draft?.body.locations.find(location=>location.location===state.location);if(!picker||!location)return;const allowed=new Set((location.source_all||[]).map(row=>row.unique_id));if(!allowed.has(id))return;picker.rowIds=included?[...new Set([...picker.rowIds,id])]:picker.rowIds.filter(value=>value!==id);render();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.(`[aria-label$="${CSS.escape(id)}"]`)?.focus());},
-  pickerField: (fieldName,value) => {if(!state.cardPicker||!['direction','notes'].includes(fieldName))return;state.cardPicker[fieldName]=String(value??'');},
-  commitPickerCard: () => run(async()=>{const picker=state.cardPicker,location=state.draft?.body.locations.find(location=>location.location===state.location);if(!picker||!location)throw new Error('Reopen the current location before adding an inventory card.');if(!picker.committedId){const group=cardWizardGroups(location).find(group=>group.key===picker.selectedKey),ids=new Set(picker.rowIds),rows=group?.rows.filter(row=>ids.has(row.unique_id))||[];if(!group||!rows.length||rows.length!==ids.size)throw new Error('Choose verified inventory lot rows for this card.');const selectedIds=rows.map(row=>row.unique_id);let card=location.cards.find(existing=>existing.kind==='inventory'&&cardKey(existing)===group.key);if(!card){card={id:crypto.randomUUID(),kind:'inventory',location_code:location.location,itemcode:group.itemcode,commonname:group.commonname,contsize:group.contsize,row_ids:[],owner_id:null,house:location.target_houses||'',direction:location.direction||''};location.cards.push(card);}card.row_ids=[...new Set([...card.row_ids,...selectedIds])];card.direction=picker.direction.trim()||location.direction||'';if(picker.direction.length>200||picker.notes.length>4000)throw new Error('Card direction or notes exceed the supported length.');const note=(location.actions||[]).find(action=>action.card_id===card.id&&action.kind==='instruction'&&action.label==='Card notes');if(picker.notes.trim()){const action=note||{id:crypto.randomUUID(),option_id:'bb000000-0000-4000-8000-000000000001',group:'sequence',kind:'instruction',label:'Card notes',scope:'rows',row_ids:[],quantity:'',percentage:'',crew:'',stage:'',destination:'',marking:''};action.instructions=picker.notes.trim();action.card_id=card.id;action.scope='rows';action.row_ids=[...card.row_ids];if(!note)location.actions.push(action);}else if(note)location.actions=location.actions.filter(action=>action!==note);location.row_ids=[...new Set([...location.row_ids,...selectedIds])];picker.committedId=card.id;invalidate();}await saveDraft();state.cardPicker={search:'',selectedKey:'',rowIds:[],direction:location.direction||'',notes:'',committedId:'',groups:cardPickerGroups(location),visibleLimit:100};if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker [aria-label="Search inventory"]')?.focus());}),
+  togglePickerLot: (id,included) => {const picker=state.cardPicker,location=state.draft?.body.locations.find(location=>location.location===state.location);if(!picker||!location||state.busy)return;const allowed=new Set((location.source_all||[]).map(row=>row.unique_id));if(!allowed.has(id))return;picker.rowIds=included?[...new Set([...picker.rowIds,id])]:picker.rowIds.filter(value=>value!==id);render();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.(`[aria-label$="${CSS.escape(id)}"]`)?.focus());},
+  pickerField: (fieldName,value) => {if(!state.cardPicker||state.busy||!['direction','notes'].includes(fieldName))return;state.cardPicker[fieldName]=String(value??'');},
+  commitPickerCard: () => run(async()=>{const picker=state.cardPicker,location=state.draft?.body.locations.find(location=>location.location===state.location);if(!picker||!location)throw new Error('Reopen the current location before adding an inventory card.');if(!picker.committedId){const group=cardWizardGroups(location).find(group=>group.key===picker.selectedKey),ids=new Set(picker.rowIds),rows=group?.rows.filter(row=>ids.has(row.unique_id))||[];if(!group||!rows.length||rows.length!==ids.size)throw new Error('Choose verified inventory lot rows for this card.');const selectedIds=rows.map(row=>row.unique_id);let card=location.cards.find(existing=>existing.kind==='inventory'&&cardKey(existing)===group.key);if(!card){card={id:crypto.randomUUID(),kind:'inventory',location_code:location.location,itemcode:group.itemcode,commonname:group.commonname,contsize:group.contsize,row_ids:[],owner_id:null,house:location.target_houses||'',direction:location.direction||''};location.cards.push(card);}card.row_ids=[...new Set([...card.row_ids,...selectedIds])];card.direction=picker.direction.trim()||location.direction||'';if(picker.direction.length>200||picker.notes.length>4000)throw new Error('Card direction or notes exceed the supported length.');const note=(location.actions||[]).find(action=>action.card_id===card.id&&action.kind==='instruction'&&action.label==='Card notes');if(picker.notes.trim()){const action=note||{id:crypto.randomUUID(),option_id:'bb000000-0000-4000-8000-000000000001',group:'sequence',kind:'instruction',label:'Card notes',scope:'rows',row_ids:[],quantity:'',percentage:'',crew:'',stage:'',destination:'',marking:''};action.instructions=picker.notes.trim();action.card_id=card.id;action.scope='rows';action.row_ids=[...card.row_ids];if(!note)location.actions.push(action);}else if(note)location.actions=location.actions.filter(action=>action!==note);location.row_ids=[...new Set([...location.row_ids,...selectedIds])];picker.committedId=card.id;invalidate();}await saveDraft();state.cardPicker={search:'',selectedKey:'',rowIds:[],direction:location.direction||'',notes:'',committedId:'',groups:cardPickerGroups(location),visibleLimit:100};if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker .bn-field input')?.focus());}),
   editSetup: () => {rememberScroll();state.locationStep='setup';render();restoreScroll();},
   startAction: (key,id) => {if(state.busy||state.actionEdit)return;try{beginAction(key,id);state.error='';render();restoreScroll();}catch(e){state.error=e.message;render();}},
   editPlanned: (i,id) => {if(state.busy)return;const l=state.draft.body.locations[i],a=l.actions.find(a=>a.id===id),source=l.source_all||l.source,items=new Set(source.filter(r=>a.row_ids?.includes(r.unique_id)).map(r=>normalize(r.itemcode)));rememberScroll();state.actionEdit={i,id,worker:false,availableIds:source.filter(r=>(a.card_id?l.cards.find(c=>c.id===a.card_id)?.row_ids.includes(r.unique_id):(a.scope==='location'||items.has(normalize(r.itemcode))))&&(a.group!=='hauling'||shiftEligible(r))).map(r=>r.unique_id)};render();restoreScroll();},
@@ -634,4 +652,27 @@
   sendSaved: () => run(async () => { await api('send',{preview_id:state.preview.id},null,crypto.randomUUID()); invalidate(); state.detail=null; switchView('request'); setReqTab('bunch-notes'); await load(); }),
   delivery: (preview_id,status) => run(async () => { const p=await api('preview_read',{preview_id}); if(status==='not_sent'){state.preview={...p,saved:true}; showPdfs(p.pdfs); switchView('bunch-note'); return;} if(!await showAppConfirm(status==='failed'?'Retry this failed delivery to the saved recipients?':'Reconcile against Sent mail without sending another copy?',{title:'Bunch Notes delivery'}))return; await api(status==='failed'?'retry':'reconcile',{preview_id},null,crypto.randomUUID()); state.detail=null; await load(); }),
  };
+ function cardPickerContextIsCurrent() {
+  if(!state.cardPicker||state.account!==account()||!author())return false;
+  const view=typeof getCurrentVisibleViewId==='function'?getCurrentVisibleViewId():'';
+  if(view!=='bunch-note'&&!(view==='request'&&activeReqTab==='bunch-notes'))return false;
+  const location=state.draft?.body.locations.find(location=>location.location===state.location);
+  return !!location&&state.locationStep==='items';
+ }
+ function handleCardPickerKeydown(event) {
+  if(event?.key!=='Escape'||state.busy||!cardPickerContextIsCurrent())return;
+  event.preventDefault?.();event.stopPropagation?.();root.BunchNote.closeCardPicker();
+ }
+ function handleCardPickerOutsideClick(event) {
+  if(state.cardPicker&&!cardPickerContextIsCurrent()) { state.cardPicker=null;renderPickerPortal('');return; }
+  if(!state.cardPicker||event?.target?.closest?.('.bn-card-picker'))return;
+  if(state.busy){event.preventDefault?.();event.stopPropagation?.();return;}
+  if(!cardPickerContextIsCurrent())return;
+  event.preventDefault?.();event.stopPropagation?.();root.BunchNote.closeCardPicker();
+  queueMicrotask(()=>{if(state.cardPicker&&!cardPickerContextIsCurrent()){state.cardPicker=null;renderPickerPortal('');}});
+ }
+ if(typeof document!=='undefined'){
+  document.addEventListener?.('keydown',handleCardPickerKeydown,true);
+  document.addEventListener?.('click',handleCardPickerOutsideClick,true);
+ }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

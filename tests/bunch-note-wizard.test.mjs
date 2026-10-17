@@ -3,25 +3,35 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { JSDOM } from 'jsdom';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const source = read('assets/bunch-note.js');
 
 function createRuntime(postAppFunctionJson, viewId = 'bunch-note') {
+  let currentView = viewId;
   const element = { classList: { add() {} }, innerHTML: '', childNodes: [], setAttribute() {}, querySelectorAll: () => [] };
+  const documentListeners = new Map();
+  const document = { getElementById: () => element, querySelectorAll: () => [],
+    addEventListener(type, listener) { const listeners=documentListeners.get(type)||new Set();listeners.add(listener);documentListeners.set(type,listeners); },
+    removeEventListener(type, listener) { documentListeners.get(type)?.delete(listener); },
+    dispatchEvent(event) { for (const listener of documentListeners.get(event.type)||[]) listener(event); } };
   const context = vm.createContext({
     console, Date, Map, Set, URL, Blob, Uint8Array, structuredClone, atob: globalThis.atob,
     currentUser: 'dylan_collyge', nativeAuthSessionActive: true,
     nativeAuthProfile: { id: 'dylan', username: 'dylan_collyge', must_change_password: false },
     APP_API_FUNCTION_URL: 'https://fixture.invalid', postAppFunctionJson,
     postGoogleScriptJsonPayload: async () => ({ ok: true, pdfs: [{ base64: 'JVBERi0xLjQK', filename: 'BN.pdf' }] }),
-    document: { getElementById: () => element, querySelectorAll: () => [] }, activeReqTab: 'bunch-notes', getCurrentVisibleViewId: () => viewId,
+    document, activeReqTab: 'bunch-notes', getCurrentVisibleViewId: () => currentView,
     showToast() {}, crypto: { randomUUID: (() => { let id = 0; return () => `wizard-${++id}`; })() }
   });
   vm.runInContext(read('assets/location-code.js'), context);
   vm.runInContext(source, context);
-  return { BunchNote: context.BunchNote, element };
+  return { BunchNote: context.BunchNote, element, document,
+    setView(value) { currentView = value; },
+    setAccount(value) { context.currentUser = value; },
+    setActiveTab(value) { context.activeReqTab = value; } };
 }
 
 test('Que Bunch Notes opens the same author wizard by default and preserves the assigned-work mode', async () => {
@@ -82,6 +92,18 @@ test('location setup is a guided header step before inventory card selection', a
   assert.equal(savedBody.locations[0].instructions, 'Call the crew lead');
   assert.match(element.innerHTML, /Add inventory card/);
   assert.doesNotMatch(element.innerHTML, /data-bn-structured="header"/);
+});
+
+test('structured header changes preserve newer wizard fields but apply fields edited in the header', () => {
+  const { BunchNote: note } = createRuntime(async () => ({ ok: true, data: {} }));
+  const current = { direction: 'West to East', target_houses: '' };
+  const staleStructuredBaseline = { direction: '', target_houses: '' };
+  assert.deepEqual(plain(note.mergeStructuredHeaderValue(current, staleStructuredBaseline, { direction: '', target_houses: 'South house only' })), {
+    direction: 'West to East', target_houses: 'South house only'
+  });
+  assert.deepEqual(plain(note.mergeStructuredHeaderValue(current, staleStructuredBaseline, { direction: 'East to West', target_houses: 'North house only' })), {
+    direction: 'East to West', target_houses: 'North house only'
+  });
 });
 
 test('Que location selection and collapsed advanced controls do not eagerly mount the full CardBoard', async () => {
@@ -239,4 +261,215 @@ test('inventory picker pages complete local results and searches all 1000 groups
   assert.match(element.innerHTML, /Plant 1000/);
   assert.match(element.innerHTML, /Showing 1 of 1 card/);
   assert.equal(inventoryReads, 1, 'pagination and search use the complete cached source rows');
+});
+
+test('inventory picker Escape closes from outside dialog focus and backdrop retains its close action', async () => {
+  const rows = [{ unique_id: 'lot-escape', blockalpha: 'D', locationcode: 'D.08.001', itemcode: 'PLANT', commonname: 'Peony', contsize: '#3', lotcode: 'A', stock: 12, review: 0, available: 12 }];
+  const { BunchNote: note, element, document } = createRuntime(async (_url, request) => {
+    if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
+    if (request.operation === 'inventory') return { ok: true, data: { rows } };
+    if (request.operation === 'directory') return { ok: true, data: { users: [] } };
+    if (request.operation === 'drafts') return { ok: true, data: { drafts: [] } };
+    if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
+    if (request.operation === 'save') return { ok: true, data: { draft: { id: 'batch-escape', revision: (request.expectedRevision || 0) + 1, body: request.payload.body } } };
+    return { ok: true, data: {} };
+  });
+  await note.open();
+  await note.chooseBlock('D');
+  note.openLocation('D.08.001');
+  note.wizardField('workType', 'Inspect');
+  await note.nextItems();
+  note.openCardPicker();
+  assert.match(element.innerHTML, /role="dialog"/);
+
+  let prevented = false, stopped = false;
+  document.dispatchEvent({ type: 'keydown', key: 'Escape', target: { outsidePicker: true }, preventDefault() { prevented = true; }, stopPropagation() { stopped = true; } });
+  assert.equal(prevented, true);
+  assert.equal(stopped, true);
+  assert.doesNotMatch(element.innerHTML, /class="bn-card-picker"/);
+
+  note.openCardPicker();
+  assert.match(element.innerHTML, /onclick="if\(event\.target===this\)BunchNote\.closeCardPicker\(\)"/);
+  note.closeCardPicker();
+  assert.doesNotMatch(element.innerHTML, /class="bn-card-picker"/);
+});
+
+test('picker Escape preserves a draft during a busy save and ignores stale navigation or account scope', async () => {
+  const rows = [{ unique_id: 'lot-busy', blockalpha: 'D', locationcode: 'D.08.001', itemcode: 'PLANT', commonname: 'Peony', contsize: '#3', lotcode: 'A', stock: 12, review: 0, available: 12 }];
+  let resolveSave;
+  let savedBody;
+  const saveGate = new Promise(resolve => { resolveSave = resolve; });
+  const runtime = createRuntime(async (_url, request) => {
+    if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
+    if (request.operation === 'inventory') return { ok: true, data: { rows } };
+    if (request.operation === 'directory') return { ok: true, data: { users: [] } };
+    if (request.operation === 'drafts') return { ok: true, data: { drafts: [] } };
+    if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
+    if (request.operation === 'save') {
+      savedBody = plain(request.payload.body);
+      if (savedBody.locations?.some(location => location.cards?.length)) await saveGate;
+      return { ok: true, data: { draft: { id: 'batch-busy', revision: 1, body: savedBody } } };
+    }
+    return { ok: true, data: {} };
+  });
+  const { BunchNote: note, element, document } = runtime;
+  await note.open();
+  await note.chooseBlock('D');
+  note.openLocation('D.08.001');
+  note.wizardField('workType', 'Inspect');
+  await note.nextItems();
+  note.openCardPicker();
+  note.selectPickerCard('D.08.001\u001fPLANT\u001fPEONY\u001f#3');
+
+  const saving = note.commitPickerCard();
+  let prevented = false;
+  document.dispatchEvent({ type: 'keydown', key: 'Escape', target: {}, preventDefault() { prevented = true; }, stopPropagation() {} });
+  assert.equal(prevented, false, 'Escape must not dismiss a picker while the card save is pending');
+  assert.match(element.innerHTML, /role="dialog"/);
+  assert.match(element.innerHTML, /Peony/);
+  resolveSave();
+  await saving;
+  assert.equal(savedBody.locations[0].cards[0].row_ids[0], 'lot-busy');
+
+  note.openCardPicker();
+  runtime.setView('request');
+  runtime.setActiveTab('assigned');
+  document.dispatchEvent({ type: 'keydown', key: 'Escape', target: {}, preventDefault() {}, stopPropagation() {} });
+  assert.match(element.innerHTML, /role="dialog"/, 'a hidden navigation context cannot close the active picker');
+
+  runtime.setActiveTab('bunch-notes');
+  runtime.setAccount('another-user');
+  document.dispatchEvent({ type: 'keydown', key: 'Escape', target: {}, preventDefault() {}, stopPropagation() {} });
+  assert.match(element.innerHTML, /role="dialog"/, 'an event from a stale account scope cannot mutate the picker');
+
+  runtime.setAccount('dylan_collyge');
+  runtime.setView('bunch-note');
+  let currentPrevented = false;
+  document.dispatchEvent({ type: 'keydown', key: 'Escape', target: {}, preventDefault() { currentPrevented = true; }, stopPropagation() {} });
+  assert.equal(currentPrevented, true);
+  assert.doesNotMatch(element.innerHTML, /class="bn-card-picker"/);
+});
+
+test('real DOM dismisses the picker with Escape from an outside focused control and backdrop click', async () => {
+  const dom = new JSDOM('<!doctype html><div id="bunch-note-content"></div><button id="outside">Outside</button>', {
+    url: 'https://fixture.test/', runScripts: 'dangerously', pretendToBeVisual: true
+  });
+  const { window } = dom;
+  window.currentUser = 'dylan_collyge';
+  window.nativeAuthSessionActive = true;
+  window.nativeAuthProfile = { id: 'dylan', username: 'dylan_collyge', must_change_password: false };
+  window.APP_API_FUNCTION_URL = 'https://fixture.invalid';
+  window.activeReqTab = 'bunch-notes';
+  window.getCurrentVisibleViewId = () => 'bunch-note';
+  window.showToast = () => {};
+  window.structuredClone = structuredClone;
+  let visibleView = 'bunch-note';
+  let activeTab = 'bunch-notes';
+  let currentAccount = 'dylan_collyge';
+  window.getCurrentVisibleViewId = () => visibleView;
+  Object.defineProperty(window, 'currentUser', { configurable: true, get: () => currentAccount });
+  Object.defineProperty(window, 'activeReqTab', { configurable: true, get: () => activeTab });
+  Object.defineProperty(window.crypto, 'randomUUID', { configurable: true, value: (() => { let id = 0; return () => `dom-${++id}`; })() });
+  let releaseSave;
+  let savedBody;
+  let outsideActivated = 0;
+  const saveGate = new Promise(resolve => { releaseSave = resolve; });
+  window.postAppFunctionJson = async (_url, request) => {
+    if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
+    if (request.operation === 'inventory') return { ok: true, data: { rows: [{ unique_id: 'lot-dom', blockalpha: 'D', locationcode: 'D.08.001', itemcode: 'PLANT', commonname: 'Peony', contsize: '#3', lotcode: 'A', stock: 12, review: 0, available: 12 }] } };
+    if (request.operation === 'directory') return { ok: true, data: { users: [] } };
+    if (request.operation === 'drafts') return { ok: true, data: { drafts: [] } };
+    if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
+    if (request.operation === 'save') {
+      savedBody = request.payload.body;
+      if (savedBody.locations?.some(location => location.cards?.length)) await saveGate;
+      return { ok: true, data: { draft: { id: 'batch-dom', revision: 1, body: savedBody } } };
+    }
+    return { ok: true, data: {} };
+  };
+  window.eval(read('assets/location-code.js'));
+  window.eval(source);
+  const note = window.BunchNote;
+  await note.open();
+  await note.chooseBlock('D');
+  note.openLocation('D.08.001');
+  note.wizardField('workType', 'Inspect');
+  await note.nextItems();
+  note.openCardPicker();
+  note.selectPickerCard('D.08.001\u001fPLANT\u001fPEONY\u001f#3');
+  note.pickerField('direction', 'North rows');
+  note.pickerField('notes', 'Keep selected lots separate');
+  const portalBackdrop = window.document.querySelector('.bn-picker-backdrop');
+  assert.ok(portalBackdrop);
+  assert.equal(portalBackdrop.parentElement.parentElement, window.document.body, 'picker overlay must escape transformed content stacking contexts');
+  assert.equal(portalBackdrop.parentElement.dataset.bnPickerPortal, 'true');
+  assert.equal(portalBackdrop.closest('#request-content'), null);
+  const saving = note.commitPickerCard();
+  const portalFields = [...window.document.querySelectorAll('.bn-picker-portal-host textarea')];
+  assert.equal(portalFields.length, 2);
+  assert.ok(portalFields.every(field => field.disabled), 'picker fields are disabled while its save is pending');
+  note.pickerField('notes', 'This late edit must be ignored');
+  assert.equal(portalFields[1].value, 'Keep selected lots separate');
+  const outside = window.document.getElementById('outside');
+  outside.addEventListener('click', () => { outsideActivated++; });
+  outside.focus();
+  assert.equal(window.document.activeElement, outside);
+  const busyClick = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+  outside.dispatchEvent(busyClick);
+  assert.equal(busyClick.defaultPrevented, true, 'busy save blocks an outside navigation click');
+  assert.equal(outsideActivated, 0);
+  assert.ok(window.document.querySelector('.bn-card-picker'));
+  const busyEscape = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  outside.dispatchEvent(busyEscape);
+  assert.equal(busyEscape.defaultPrevented, false, 'busy save cannot dismiss or discard the open picker');
+  assert.ok(window.document.querySelector('.bn-card-picker'));
+  releaseSave();
+  await saving;
+  assert.equal(savedBody.locations[0].cards[0].row_ids[0], 'lot-dom');
+
+  note.openCardPicker();
+  const clicksBeforeDismiss = outsideActivated;
+  const backgroundClick = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+  outside.dispatchEvent(backgroundClick);
+  assert.equal(backgroundClick.defaultPrevented, true, 'background click should dismiss the picker and block the underlying action');
+  assert.equal(outsideActivated, clicksBeforeDismiss, 'underlying navigation/action must not receive the dismiss click');
+  assert.equal(window.document.querySelector('.bn-card-picker'), null);
+
+  note.openCardPicker();
+  window.document.querySelector('.bn-picker-backdrop').click();
+  assert.equal(window.document.querySelector('.bn-card-picker'), null, 'clicking the backdrop dismisses the picker');
+  note.openCardPicker();
+  assert.ok(window.document.querySelector('.bn-picker-portal-host'));
+  note.disposeView();
+  assert.equal(window.document.querySelector('.bn-picker-portal-host'), null, 'navigation disposal removes the body portal');
+  note.render();
+  assert.equal(window.document.querySelector('.bn-card-picker'), null, 'returning to the view cannot resurrect a stale picker');
+  note.openCardPicker();
+  visibleView = 'request';
+  activeTab = 'assigned';
+  const hiddenEscape = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  outside.dispatchEvent(hiddenEscape);
+  assert.equal(hiddenEscape.defaultPrevented, false, 'hidden navigation cannot mutate the picker');
+  const hiddenClick = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+  outside.dispatchEvent(hiddenClick);
+  assert.equal(hiddenClick.defaultPrevented, false, 'hidden navigation cannot dismiss the picker through the document handler');
+  assert.equal(window.document.querySelector('.bn-card-picker'), null, 'a picker cannot remain portaled over another view');
+  assert.equal(window.document.querySelector('.bn-picker-portal-host'), null);
+  activeTab = 'bunch-notes';
+  visibleView = 'bunch-note';
+  note.openCardPicker();
+  currentAccount = 'another-user';
+  note.render();
+  assert.equal(window.document.querySelector('.bn-card-picker'), null, 'account changes remove the old account picker');
+  assert.equal(window.document.querySelector('.bn-picker-portal-host'), null);
+  const staleAccountEscape = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  outside.dispatchEvent(staleAccountEscape);
+  assert.equal(staleAccountEscape.defaultPrevented, false, 'stale account scope cannot mutate the picker');
+  const staleAccountClick = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+  outside.dispatchEvent(staleAccountClick);
+  assert.equal(staleAccountClick.defaultPrevented, false, 'stale account scope cannot dismiss the picker through the document handler');
+  assert.equal(window.document.querySelector('.bn-card-picker'), null);
+  note.reset();
+  assert.equal(window.document.querySelector('.bn-picker-portal-host'), null, 'logout/reset removes any remaining portal host');
+  dom.window.close();
 });

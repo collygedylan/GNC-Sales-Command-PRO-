@@ -119400,12 +119400,20 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                             if (!cardContainer.isConnected || cardContainer.__suspendPageGeneration !== generation) return;
                             window.AgMetricStableViewDom.apply(cardContainer, renderTarget);
                             setContainerRenderSignature(cardContainer, getContainerRenderSignature(renderTarget));
+                            // The chunk renderer's detached staging root cannot
+                            // hydrate photos. Re-scan only after its nodes have
+                            // been atomically published into the connected list.
+                            scheduleDeferredCardPhotoHydration(cardContainer);
                         }
                         repairVisibleDockSuspendDcPlanstartCardTones(rootContainer);
                         decorateRequestRows();
                         syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
                     },
-                    onCompleteAfterInteractive: true,
+                    // Retained pages are staged off-DOM, but their completed
+                    // snapshot is the visible data update itself. Publish it
+                    // immediately after the latest chunk finishes instead of
+                    // routing the atomic apply through touch-idle decoration.
+                    onCompleteAfterInteractive: !retainCards,
                     onCompleteDelayMs: 140
                 }));
             // Pagination is independent of deferred card completion; keeping it

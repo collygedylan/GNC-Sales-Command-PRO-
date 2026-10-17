@@ -203,7 +203,12 @@ test('wizard persists exact card notes through reload and preview while picker n
  expect(committed.actions[0]).toMatchObject({kind:'instruction',label:'Card notes',instructions:'Keep these lots separate',scope:'rows',card_id:committed.cards[0].id,row_ids:['a','a3']});
  expect(Object.hasOwn(committed.cards[0],'notes')).toBe(false);
 
+ await page.locator('#footer-request-btn').focus(); // capture Escape even after focus leaves the modal
  await page.keyboard.press('Escape');
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.getByRole('button',{name:'＋ Add inventory card',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
+ await page.mouse.click(3,3); // outside the panel, including the persistent header
  await expect(page.getByRole('dialog')).toHaveCount(0);
  await expect(page.locator('.bn-wizard-card')).toHaveCount(2);
  await expect(page.locator('.bn-wizard-card').first()).toContainText('Keep these lots separate');
@@ -214,12 +219,12 @@ test('wizard persists exact card notes through reload and preview while picker n
  await page.getByRole('button',{name:/Open batch FULL\.BLOCK/}).click();
  await openAuthorLocation(page,'C.12.001');
  await expect(page.getByLabel('Work type',{exact:true})).toHaveValue('Prepare shipment');
- await expect(page.getByLabel('Extra notes',{exact:true})).toHaveValue('Call the crew lead');
+ await expect(page.getByRole('textbox',{name:'Extra notes',exact:true})).toHaveValue('Call the crew lead');
  await page.getByRole('button',{name:'Next',exact:true}).click();
  await expect(page.locator('.bn-wizard-card').first()).toContainText('Keep these lots separate');
  await page.locator('#global-header-inline-back').click();
  await page.locator('#global-header-inline-back').click();
- await page.locator('#global-header-inline-back').click();
+ await expect(page.getByRole('button',{name:'Preview PDFs and recipients',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Preview PDFs and recipients',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Review Bunch Notes PDFs'})).toBeVisible();
  expect(f.lastPreview.reports[0].actions[0]).toMatchObject({label:'Card notes',instructions:'Keep these lots separate',card_id:committed.cards[0].id,row_ids:['a','a3']});
@@ -256,8 +261,9 @@ test('structured worksheet saves ordered houses, custom crew tags and freeform r
  await page.getByRole('button',{name:'Move Center House up',exact:true}).click();
  f.failNextSave();await page.getByRole('button',{name:'Save draft',exact:true}).click();
  await expect(page.locator('#bunch-note-content').getByRole('alert')).toContainText('Save unavailable');
- await expect(center.getByLabel('Quantity constraint',{exact:true})).toHaveValue('all');
- await expect(north.getByLabel('Action / routing instruction',{exact:true})).toHaveValue('Haul to G15 S-HS. Blue flags');
+ await page.getByText('Advanced location controls',{exact:true}).click();
+ await expect(center.getByRole('textbox',{name:'Quantity constraint',exact:true})).toHaveValue('all');
+  await expect(north.getByRole('textbox',{name:'Action / routing instruction',exact:true})).toHaveValue('Haul to G15 S-HS. Blue flags');
  await page.getByRole('button',{name:'Save draft',exact:true}).click();
  await expect(page.locator('#bunch-note-content')).toHaveAttribute('aria-busy','false');
  const saved=f.commands.filter(c=>c.operation==='save').at(-1).payload.body.locations[0];
@@ -266,8 +272,8 @@ test('structured worksheet saves ordered houses, custom crew tags and freeform r
  expect(saved.actions.map((a:any)=>[a.sequence_order,a.margin_tag,a.quantity_constraint])).toEqual([[1,'NIGHT CREW','all'],[2,'BOB','< 30']]);
  expect(saved.actions.every((a:any)=>a.freeform&&a.row_ids.length===0)).toBe(true);
  await page.evaluate(()=>{(window as any).BunchNote.editSetup();});
- await expect(page.getByLabel('Direction',{exact:true})).toHaveValue('West to East');
- await expect(page.getByText('Advanced location controls',{exact:true})).toBeVisible();
+  await expect(page.getByRole('textbox',{name:'Direction',exact:true})).toHaveValue('West to East');
+ await page.getByText('Advanced location controls',{exact:true}).click();
  await expect(center.locator('mark')).toHaveText('Pink Ribbon');
  await page.screenshot({path:test.info().outputPath('structured-worksheet.png'),fullPage:true});
  expect(f.control.blockedMutations).toEqual([]);
@@ -415,7 +421,7 @@ test('creator adds a whole-location action on the second location card', {"tag":
  await expect(page.locator('.bn-plant')).toContainText('LOC On Hand 10');
  await page.getByRole('checkbox',{name:'Select item BN-I',exact:true}).uncheck();
  await page.getByRole('checkbox',{name:'Select item BN-I',exact:true}).check();
- const checklist=page.locator('.bn-location-editor > details').filter({has:page.locator('summary').filter({hasText:'Whole-location actions'})});
+ const checklist=page.locator('.bn-wizard-items > details.bn-options .bn-options-body > details.bn-options').filter({has:page.locator('summary').filter({hasText:'Whole-location actions'})});
  await checklist.locator('summary').first().click();
  await checklist.getByText('Sequence',{exact:true}).click();
  await checklist.getByRole('button',{name:'Check walkway',exact:true}).click();
@@ -444,13 +450,14 @@ test('saved multi-location batch preserves actions through Bunch and completed-w
  await page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true}).click();
  await openAuthorLocation(page,'C.12.001');
  await expect(page.getByLabel('Work type',{exact:true})).toHaveValue('Rain day 0');
- await page.getByText('Advanced location controls',{exact:true}).click();
+ await advanceWizardToItems(page);
+ await openAdvancedInventoryControls(page);
  await expect(page.getByLabel('Work type',{exact:true})).toHaveCount(0);
  await expect(page.locator('#bunch-note-content')).toContainText('Rain day 0');
  await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
  await page.getByRole('button',{name:'Edit Center house',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Instruction',exact:true})).toHaveValue('Center house');
- await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ await page.getByRole('button',{name:'Done',exact:true}).click();
  await expect(page.locator('#bunch-note-content')).toHaveAttribute('aria-busy','false');
  await page.locator('#global-header-inline-back').click();
  await expect.poll(()=>f.commands.filter(c=>c.operation==='save').length).toBeGreaterThan(0);

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import sharp from 'sharp';
 import { test, expect, type Route } from '@playwright/test';
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 import { realtimeFeed } from './fixtures/que-realtime-feed';
@@ -27,8 +28,6 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
   }));
   const pending=makeRows('pending',200), suspended=makeRows('suspend',1000);
   const imageRequests:string[]=[];
-  const inventoryReads:unknown[]=[], pageErrors:string[]=[];
-  page.on('pageerror', error=>pageErrors.push(error.message));
   const fixture=await installHlOrderFixture(page,baseURL!,{master,realtimeSocket:feed.connect,demandSocRows:suspended,
     appPermissions:['request','drive','docks','po-management'].map(moduleKey=>({permissionKey:`module.${moduleKey}.view`,kind:'module',moduleKey,allowed:true})),
     beforeNavigate:async()=>{
@@ -40,7 +39,6 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
       await page.route('**/rest/v1/rpc/get_request_capabilities',route=>route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({contract_version:2,username:'dylan_collyge',scope:'global',can_view_queue:true,can_edit:true,can_complete:true,can_archive:true,can_create_general:false,can_create_av:false,can_take_photo:false})}));
       await page.route('**/functions/v1/app-api',async(route:Route)=>{
         const body=route.request().postDataJSON();
-        if(body?.action==='inventory_read') inventoryReads.push({operation:body.operation,params:body.params});
         if(body?.action==='dataset_read' && ['request_queue','active_request','suspend_tag'].includes(body.dataset)){
           const source=body.dataset==='suspend_tag'?suspended:pending,offset=Number(body.params.offset)||0,limit=Number(body.params.limit)||500;
           return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({ok:true,data:{rows:source.slice(offset,offset+limit),offset,limit,total:source.length,hasMore:offset+limit<source.length}})});
@@ -55,37 +53,38 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
   for(const [name,value] of Object.entries({'on-hand':'89',review:'27',available:'62','open-stock':'61','loc-on-hand':'100'})) await expect(metric(request,name)).toHaveText(value);
   await expect.poll(()=>request.locator('img').first().evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth===32)).toBe(true);
   const toolbar=page.locator('#request-filter-toolbar'), handle=await toolbar.elementHandle();
-  await page.evaluate(()=>window.eval(`window.__queRenderEvents=[];window.__queOriginalChunkRenderer=renderMarkupChunkedByKey;renderMarkupChunkedByKey=function(key,container,crumb,rows,crumbText,renderRow,options){if(key!=='request-main')return window.__queOriginalChunkRenderer(...arguments);const event={at:performance.now(),signature:options?.renderSignature,rows:rows.length,connected:container.isConnected};window.__queRenderEvents.push(event);return window.__queOriginalChunkRenderer(key,container,crumb,rows,crumbText,renderRow,{...options,onComplete:()=>{event.completedAt=performance.now();event.connectedAtComplete=container.isConnected;options?.onComplete?.();event.applied=true;}});}`));
   await page.evaluate(()=>window.eval("setReqTab('suspend-tag')"));
   const card=page.locator('#request-content [data-request-uid="dock_suspend_dc_suspend-00000"]');
   await expect(card).toBeVisible();
-  try { await expect(metric(card,'on-hand')).toHaveText('89'); }
-  catch(error) {
-    const hydration=await page.evaluate(()=>window.eval(`JSON.stringify({context:getQueueCardInventoryContext(),receipt:queueCardInventoryRevisionReceipt,visible:getCurrentVisibleViewId(),tab:activeReqTab,version:queueCardInventoryRenderVersion,token:chunkRenderTokensByKey['request-main'],activity:chunkRenderActivityByKey['request-main'],events:window.__queRenderEvents,entry:(()=>{const entry=getQueueCardInventoryState(getDockSuspendDcRequestMirrorRows().find(row=>getItemUniqueId(row).includes('suspend-00000')));return {status:entry.status,onHand:entry.row?.ptronhand};})()})`));
-    console.log('QUE_HYDRATION_FAILURE',JSON.stringify({hydration,inventoryReads:inventoryReads.map((read:any)=>({operation:read.operation,params:read.params?.identities?{...read.params,identities:read.params.identities.slice(0,1),count:read.params.identities.length}:read.params})),pageErrors}));
-    throw error;
-  }
+  await expect(metric(card,'on-hand')).toHaveText('89');
   await expect(metric(card,'loc-on-hand')).toHaveText('100');
   await expect(card.locator('.app-operational-planstart-date')).toHaveText('PLANSTART: 10/19/2026');
   for(const [i,day] of ['monday','tuesday','wednesday','thursday','friday'].entries()) await expect(page.locator(`#request-content [data-request-uid="dock_suspend_dc_suspend-${String(i).padStart(5,'0')}"]`)).toHaveClass(new RegExp(`app-planstart-${day}`));
   for(const theme of ['light','dark','outdoor']){
     await page.evaluate(value=>{document.body.dataset.opsTheme=value;document.documentElement.classList.toggle('dark',value==='dark');document.documentElement.classList.toggle('outdoor-mode',value==='outdoor');},theme);
     await expect(toolbar).toBeVisible();
-    const navigationContrast=await toolbar.locator('[data-request-category]').evaluateAll(buttons=>buttons.map(button=>{
-      const luminance=(value:string)=>{const channels=(value.match(/[\d.]+/g)||[]).slice(0,3).map(Number).map(v=>{v/=255;return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4);});return channels[0]*0.2126+channels[1]*0.7152+channels[2]*0.0722;};
-      // Dark-theme active pills use a translucent brand tint. Compare the
-      // painted color after compositing ancestors, not its unpainted RGB tint.
-      const paintedBackground=(element:Element):number[]=>{
-        const layers:number[][]=[];
-        for(let node:Element|null=element;node;node=node.parentElement){
-          const rgba=(getComputedStyle(node).backgroundColor.match(/[\d.]+/g)||[]).map(Number);
-          layers.push([rgba[0]||0,rgba[1]||0,rgba[2]||0,rgba[3]??1]);
-        }
-        return layers.reverse().reduce((base,rgba)=>base.map((v,index)=>rgba[index]*rgba[3]+v*(1-rgba[3])),[255,255,255]);
-      };
-      const foreground=luminance(getComputedStyle(button.querySelector('span')!).color),background=luminance(`rgb(${paintedBackground(button).join(',')})`);
-      return (Math.max(foreground,background)+0.05)/(Math.min(foreground,background)+0.05);
-    }));
+    const navigationContrast:number[]=[];
+    const luminance=(rgb:number[])=>{const c=rgb.map(v=>{v/=255;return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4);});return c[0]*0.2126+c[1]*0.7152+c[2]*0.0722;};
+    for(const button of await toolbar.locator('[data-request-category]').all()){
+      // Sample the real painted padding, including translucent fills and the
+      // header's gradient/backdrop. Computed backgroundColor omits those layers.
+      await button.evaluate(el=>el.scrollIntoView({block:'nearest',inline:'center',behavior:'instant'}));
+      await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+      const sample=await button.evaluate(el=>{
+        const label=el.querySelector('span')!,box=label.getBoundingClientRect();
+        const candidates=[{x:box.left+box.width/2,y:box.top-3},{x:box.left-4,y:box.top+box.height/2},{x:box.right+3,y:box.top+box.height/2}];
+        const point=candidates.find(p=>p.x>=0&&p.y>=0&&p.x<innerWidth&&p.y<innerHeight&&document.elementFromPoint(p.x,p.y)===el);
+        return {point,foreground:(getComputedStyle(label).color.match(/[\d.]+/g)||[]).slice(0,3).map(Number),width:innerWidth,height:innerHeight};
+      });
+      expect(sample.point,'the category label must have visible, unobstructed button padding').toBeTruthy();
+      // Viewport coordinates avoid WebKit element crops and sample the chip's
+      // own padding, rather than the separately colored count badge.
+      const {data,info:imageInfo}=await sharp(await page.screenshot({scale:'css',animations:'disabled'})).removeAlpha().raw().toBuffer({resolveWithObject:true});
+      const x=Math.floor(sample.point!.x*imageInfo.width/sample.width),y=Math.floor(sample.point!.y*imageInfo.height/sample.height);
+      const offset=(y*imageInfo.width+x)*imageInfo.channels;
+      const fg=luminance(sample.foreground),bg=luminance([...data.subarray(offset,offset+3)]);
+      navigationContrast.push((Math.max(fg,bg)+0.05)/(Math.min(fg,bg)+0.05));
+    }
     if(navigationContrast.some(value=>value<4.5)){
       console.log('QUE_NAV_CONTRAST_FAILURE',JSON.stringify({theme,contrast:navigationContrast,styles:await toolbar.locator('[data-request-category]').evaluateAll(buttons=>buttons.map(button=>({text:button.textContent,color:getComputedStyle(button.querySelector('span')!).color,buttonColor:getComputedStyle(button).color,background:getComputedStyle(button).backgroundColor,classes:button.className,opacity:getComputedStyle(button).opacity})))}));
       await page.screenshot({path:`.gnc-local/que-nav-contrast-failure-${info.project.name}-${theme}.png`});
@@ -101,10 +100,17 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
   const navTop=await toolbar.evaluate(el=>el.getBoundingClientRect().top);
   expect(navTop).toBeGreaterThanOrEqual(0);expect(navTop).toBeLessThan(180);
   await page.evaluate(()=>window.eval('setMainAreaScrollTop(0)'));
+  // Deliver a server change only after the real client has joined both feeds.
+  // Publication before phx_join acknowledgement would be lost by the fixture.
+  await expect.poll(()=>feed.subscriptions.filter(entry=>entry.table==='app_dataset_revisions').length).toBeGreaterThan(0);
+  await expect.poll(()=>feed.subscriptions.filter(entry=>entry.table==='ph_master_inventory').length).toBeGreaterThan(0);
+  await expect.poll(()=>page.evaluate(()=>window.eval("productionLiveSyncCoordinator?.getStatus?.().state")),{timeout:30000}).toBe('Up to date');
   Object.assign(fixture.master[0],{photo_link:photo('updated'),photo_name:'que-updated.png',ptronhand:'93',ptravailable:'66',last_updated:new Date().toISOString()});fixture.datasetRevision++;
   feed.publish('app_dataset_revisions',{key:'ph_master_inventory',state:'ready',revision:String(fixture.datasetRevision)});
   feed.publish('ph_master_inventory',{unique_id:fixture.master[0].unique_id,itemcode:fixture.master[0].itemcode,locationcode:'C.09.000',last_updated:fixture.master[0].last_updated});
-  await expect(metric(card,'on-hand')).toHaveText('93',{timeout:20000});
+  try { await expect(metric(card,'on-hand')).toHaveText('93',{timeout:20000}); } catch(error) {
+    console.log('QUE_LIVE_PUBLICATION_FAILURE',JSON.stringify({subscriptions:feed.subscriptions.map(({table,topic})=>({table,topic})),state:await page.evaluate(()=>window.eval(`({status:productionLiveSyncCoordinator?.getStatus?.(),statistics:productionLiveSyncCoordinator?.getStatistics?.(),receipt:queueCardInventoryRevisionReceipt,version:queueCardInventoryRenderVersion,revision:getQueueCardInventoryContext()?.revision,token:chunkRenderTokensByKey['request-main'],activity:chunkRenderActivityByKey['request-main'],entry:(()=>{const state=getQueueCardInventoryState(getDockSuspendDcRequestMirrorRows().find(row=>getItemUniqueId(row).includes('suspend-00000')));return {status:state.status,onHand:state.row?.ptronhand};})()})`))})); throw error;
+  }
   try {
     await expect.poll(()=>card.locator('img').first().evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth===180&&img.src.includes('que-updated'))).toBe(true);
   } catch (error) {
@@ -115,6 +121,7 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
   expect(imageRequests.some(url=>url.includes('que-updated'))).toBe(true);
   const renderMs=await page.evaluate(()=>window.eval(`new Promise(resolve=>{const start=performance.now();renderRequest();requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(performance.now()-start)))})`));
   assertFrontendUiTiming(expect(Number(renderMs)),info.project);
+  console.log('QUEUE_PARITY_TIMING',JSON.stringify({project:info.project.name,renderMs,masterRows:master.length,requestRows:pending.length,suspendRows:suspended.length,cache:'warm client; shared OS cache uncontrolled'}));
   await info.attach('queue-parity-proof',{body:JSON.stringify({masterRows:master.length,requestRows:pending.length,suspendRows:suspended.length,renderMs,photoRequests:imageRequests.length,timezone:'Asia/Tokyo',cache:'warm client; shared OS cache uncontrolled'}),contentType:'application/json'});
   await page.locator('#footer-docks-btn').click();
   await page.locator('#docks-content').getByRole('button',{name:/^Open Dock 1$/i}).click();
