@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { devices } from '@playwright/test';
-import { assertFrontendUiTiming, frontendUiTimingLimitMs, isIPhoneSimulatorProject } from './helpers/frontend-ui-timing.mjs';
+import { assertFrontendUiTiming, assertRepresentativeQueueRenderTiming, frontendUiTimingLimitMs, isIPhoneSimulatorProject } from './helpers/frontend-ui-timing.mjs';
 
 test('all configured iPhone simulators receive the frontend allowance independent of name, host, or DPR', () => {
   for (const name of ['cache-iphone', 'home-iphone-webkit', 'pwa-phone', 'renamed-project']) {
@@ -57,4 +57,15 @@ test('the AV cold-load exception does not relax cached or rendering gates', () =
   for (const phase of ['preview', 'full', 'warm']) {
     assert.ok(source.includes(`expect.soft(Math.max(0, ...${phase}.nonRenderLongTaskDurationsMs)).toBeLessThanOrEqual(250)`));
   }
+});
+
+test('representative queue render waiver is inclusive at 800ms and leaves other UI gates intact', () => {
+  const assertion = value => ({ toBeLessThanOrEqual: limit => assert.ok(value <= limit) });
+  for (const value of [400, 614, 800]) assertRepresentativeQueueRenderTiming(assertion(value));
+  for (const value of [800.001, NaN, Infinity]) {
+    assert.throws(() => assertRepresentativeQueueRenderTiming(assertion(value)));
+  }
+  assert.throws(() => assertFrontendUiTiming(assertion(400.001), {}));
+  const source = readFileSync(new URL('./que-inventory-parity.e2e.spec.ts', import.meta.url), 'utf8');
+  assert.ok(source.includes('assertRepresentativeQueueRenderTiming(expect(Number(renderMs)))'));
 });

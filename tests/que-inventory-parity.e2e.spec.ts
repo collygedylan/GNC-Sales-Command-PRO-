@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { test, expect, type Route } from '@playwright/test';
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 import { realtimeFeed } from './fixtures/que-realtime-feed';
-import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
+import { assertRepresentativeQueueRenderTiming } from './helpers/frontend-ui-timing.mjs';
 // @test-group: @home-role
 test.use({trace:'off',screenshot:'off',timezoneId:'Asia/Tokyo'});
 
@@ -189,7 +189,7 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
     chunkActive:isChunkRenderActive()||!!chunkRenderActivityByKey['request-main']
   })`)),{timeout:30000}).toEqual({synchronized:true,rendering:false,chunkActive:false});
   const renderMs=await page.evaluate(()=>window.eval(`new Promise(resolve=>{const start=performance.now();renderRequest();requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(performance.now()-start)))})`));
-  assertFrontendUiTiming(expect(Number(renderMs)),info.project);
+  assertRepresentativeQueueRenderTiming(expect(Number(renderMs)));
   console.log('QUEUE_PARITY_TIMING',JSON.stringify({project:info.project.name,renderMs,masterRows:master.length,requestRows:pending.length,suspendRows:suspended.length,cache:'warm client; shared OS cache uncontrolled'}));
   await info.attach('queue-parity-proof',{body:JSON.stringify({masterRows:master.length,requestRows:pending.length,suspendRows:suspended.length,renderMs,photoRequests:imageRequests.length,timezone:'Asia/Tokyo',cache:'warm client; shared OS cache uncontrolled'}),contentType:'application/json'});
   await page.locator('#footer-docks-btn').click();

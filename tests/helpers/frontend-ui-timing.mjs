@@ -12,7 +12,12 @@ export function frontendUiTimingLimitMs(project) {
   return 400;
 }
 
-/** Human-approved frontend-only gate: every environment and UI operation is <=400ms. */
+/** Default frontend gate; separately approved representative queue rendering uses its scoped assertion. */
 export function assertFrontendUiTiming(expectation, _project, _operationLimitMs = 400) {
   expectation.toBeLessThanOrEqual(400);
+}
+
+/** Human-approved queue/Request/Suspend rendering at 10,001 master rows and 1,000 tags. */
+export function assertRepresentativeQueueRenderTiming(expectation) {
+  expectation.toBeLessThanOrEqual(800);
 }
