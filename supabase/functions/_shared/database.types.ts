@@ -17837,6 +17837,14 @@ export type Database = {
         }
         Returns: Json
       }
+      inventory_master_identity_batch_read_v1: {
+        Args: {
+          p_actor_id: string
+          p_expected_revision?: string
+          p_queue_identities: Json
+        }
+        Returns: Json
+      }
       inventory_transaction_history_v1: {
         Args: { p_actor_id: string; p_payload?: Json }
         Returns: Json

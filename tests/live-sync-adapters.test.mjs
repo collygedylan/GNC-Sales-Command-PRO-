@@ -656,6 +656,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261016120000_reclass_compact_trigger_identity_v1.sql',
       '20261016140000_reclass_compact_batch_child_receipts_v1.sql',
       '20261016160000_reclass_null_elision_rpc_v1.sql',
+      '20261017110000_inventory_master_identity_batch_read_v1.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain
