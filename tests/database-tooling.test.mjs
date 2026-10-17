@@ -584,9 +584,9 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 204);
+  assert.equal(manifest.length, 205);
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
-  assert.deepEqual(manifest.slice(-24).map(entry => entry.source), [
+  assert.deepEqual(manifest.slice(-25).map(entry => entry.source), [
     'supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql',
     'supabase/migrations/20261010200046_aura_voice_role_access.sql',
     'supabase/migrations/20261011032352_aura_voice_soc_reads.sql',
@@ -611,6 +611,7 @@ test('historical migration order manifest preserves original inputs and appends 
     'supabase/migrations/20261014155536_inventory_assignment_reconciliation_batches.sql',
     'supabase/migrations/20261014160924_inventory_assignment_witness_projection.sql',
     'supabase/migrations/20261014161813_inventory_assignment_input_generation.sql',
+    'supabase/migrations/20261017203000_bunch_note_multi_assignment_routing.sql',
   ]);
   const sources = new Set(manifest.map(entry => entry.source));
   for (const name of ["20261008190038_reclass_sheared_action_v5.sql","20261009053029_reclass_smart_priority_hold_shield_v6.sql","20261009202507_prompt25_editable_field_shield_and_hold_clear.sql","20261010024830_customer_rep_mapping_management.sql","20261010152556_customer_rep_mapping_finalize_timeout_55s.sql","20261010165013_historical_requests_financial_dashboard.sql","20261011170000_request_mapping_salesrep_identity.sql","20261011193000_historical_requests_price_fallback.sql"]) {
