@@ -65,7 +65,7 @@ jobs:
           backend_changed=false
           for changed_file in "${changed_files[@]}"; do
             case "$changed_file" in
-              supabase/*|database/*) backend_changed=true ;;
+              supabase/*|database/*|scripts/apply-item-low-stock-migration.mjs|.github/workflows/apps-script-sync.yml) backend_changed=true ;;
             esac
           done
           echo "backend-changed=$backend_changed" >> "$GITHUB_OUTPUT"
