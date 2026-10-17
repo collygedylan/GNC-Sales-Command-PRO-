@@ -72,9 +72,18 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
     if(entry){entry.status=response.status();entry.finishedAt=Date.now();}
   });
   const toolbar=page.locator('#request-filter-toolbar'), handle=await toolbar.elementHandle();
+  // This cold fixture batch checks 10,001 schema-shaped rows before replying.
+  // Start the DOM hydration assertion after its actual response, separately
+  // from the warm render gate below; never inject values into the client cache.
+  const suspendInventoryResponse=page.waitForResponse(response=>{
+    if(!response.url().includes('/functions/v1/app-api'))return false;
+    const body=response.request().postDataJSON();
+    return body?.action==='inventory_read'&&body.operation==='master_identity_batch';
+  });
   await page.evaluate(()=>window.eval("setReqTab('suspend-tag')"));
   const card=page.locator('#request-content [data-request-uid="dock_suspend_dc_suspend-00000"]');
   await expect(card).toBeVisible();
+  expect((await suspendInventoryResponse).status()).toBe(200);
   try { await expect(metric(card,'on-hand')).toHaveText('89'); } catch(error) {
     const pageState=await page.evaluate(()=>window.eval(`(() => {
       const call=fn=>{try{return typeof fn==='function'?fn():null;}catch(value){return {error:String(value)};}};
