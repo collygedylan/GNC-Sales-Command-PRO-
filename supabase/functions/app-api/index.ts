@@ -3915,7 +3915,7 @@ async function handleInventoryRead(
       if (requestedRevision !== null && !/^[1-9]\d*$/.test(requestedRevision)) throw new Error("INVENTORY_READ_REVISION_INVALID");
       const { data, error } = await supabase.rpc("inventory_master_identity_batch_read_v1", {
         p_actor_id: String(actor.id || ""), p_queue_identities: params.queueIdentities as Json,
-        p_expected_revision: requestedRevision,
+        p_expected_revision: requestedRevision ?? undefined,
       });
       if (error) throw new Error(/MASTER_IDENTITY/i.test(error.message) ? error.message : "MASTER_IDENTITY_READ_FAILED");
       const result = jsonObject(data);
