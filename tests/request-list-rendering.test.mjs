@@ -410,6 +410,47 @@ test('identical in-flight Suspend plans reuse their bounded stage until publicat
   assert.equal(stageTarget, container, 'published identical plans must take the connected-container signature skip path');
 });
 
+test('request render pre-bump preserves an identical pending Suspend stage only', () => {
+  assert.equal(source('renderRequest').includes("if (shouldBumpRequestMainBeforeRender(isSuspendTagRender)) bumpChunkRenderTokenByKey('request-main');"), true,
+    'the real request render entrypoint must apply the tab-specific bump guard');
+  let renderCalls = 0;
+  let stageOptions;
+  const tokens = { 'request-main': 0 };
+  const container = { dataset: {}, isConnected: true, querySelector: () => ({}) };
+  const ctx = vm.createContext({
+    chunkRenderTokensByKey: tokens,
+    renderMarkupChunkedByKey: (...args) => {
+      renderCalls += 1;
+      tokens['request-main'] += 1;
+      stageOptions = args[6];
+      return true;
+    },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: value => value,
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
+    getContainerRenderSignature: root => root.dataset.renderSignature || '', setContainerRenderSignature() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
+    window: { AgMetricStableViewDom: { apply() {} } }, document: { createElement: () => ({}) }
+  });
+  vm.runInContext(source('shouldBumpRequestMainBeforeRender'), ctx);
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+
+  const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'same-auth-source-page', footerMarkup: '' };
+  assert.equal(ctx.shouldBumpRequestMainBeforeRender(true), false);
+  ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
+  const pendingOptions = stageOptions;
+  if (ctx.shouldBumpRequestMainBeforeRender(true)) tokens['request-main'] += 1;
+  ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
+  assert.equal(renderCalls, 1, 'a same-plan Suspend render must not cancel its pending stage');
+
+  assert.equal(ctx.shouldBumpRequestMainBeforeRender(false), true);
+  if (ctx.shouldBumpRequestMainBeforeRender(false)) tokens['request-main'] += 1;
+  ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
+  assert.equal(renderCalls, 2, 'other request views retain the pre-bump cancellation behavior');
+  assert.equal(typeof pendingOptions.onComplete, 'function');
+});
+
 test('an identical Suspend plan restarts when its prior chunk token was cancelled', () => {
   let renderCalls = 0;
   const chunkRenderTokensByKey = { 'request-main': 0 };

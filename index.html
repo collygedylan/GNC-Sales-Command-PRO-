@@ -119469,6 +119469,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return didSchedule;
         }
 
+        function shouldBumpRequestMainBeforeRender(isSuspendTagRender = false) {
+            // Suspend's chunk renderer owns cancellation for changed plans. A
+            // generic pre-bump here would invalidate an identical pending
+            // detached page before renderSuspendTagPagedCards can reuse it.
+            return !isSuspendTagRender;
+        }
+
         function renderRequest() {
             const isSuspendTagRender = normalizeRequestTabValue(activeReqTab) === 'suspend-tag';
             if (isSuspendTagRender) activeReqTab = 'suspend-tag';
@@ -119505,7 +119512,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return;
             }
             scheduleRequestRenderSideData();
-            bumpChunkRenderTokenByKey('request-main');
+            if (shouldBumpRequestMainBeforeRender(isSuspendTagRender)) bumpChunkRenderTokenByKey('request-main');
 
             // Dock Suspend mirrors belong only to Suspend's rendered dataset.
             // Pending, reps, and other request tabs discard them downstream, so
