@@ -139,7 +139,7 @@ function CardEditor({ location, card, users, busy, viewState, onViewState, onCar
         <button type="button" aria-expanded={activeAction === 'direction'} onClick={event => { stop(event); openAction('direction'); }}>Direction</button>
         {activeAction === 'worker' && <label>Worker<select aria-label="Assign worker" value={form.owner_id || ''} disabled={Boolean(location.job_id)} onClick={stop} onChange={event => update({ owner_id: event.target.value || null })}>
           <option value="">Unassigned</option>{workerOptions.map(user => <option key={user.id} value={user.id}>{labelUser(user)}</option>)}
-        </select>{location.job_id && <small>Reassign published work in Que.</small>}</label>}
+        </select>{location.job_id && <small>Reassign published work in Assigned work.</small>}</label>}
         {activeAction === 'house' && <label>House<select aria-label="House to work in" value={customHouse ? 'Custom' : (form.house || '')} onClick={stop} onChange={event => {
           const custom = event.target.value === 'Custom'; setCustomHouse(custom);
           if (!custom) update({ house: event.target.value });

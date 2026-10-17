@@ -128,6 +128,6 @@ test('published assignment controls defer reassignment to Queue', () => {
     users: [{ id: 'worker-1', full_name: 'Toby Brown' }] }));
   fireEvent.click(screen.getByRole('button', { name: 'Assign Worker Name' }));
   assert.equal(screen.getByLabelText('Assign worker').disabled, true);
-  assert.ok(screen.getByText('Reassign published work in Que.'));
+  assert.ok(screen.getByText('Reassign published work in Assigned work.'));
   cleanup();
 });

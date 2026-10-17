@@ -37,9 +37,9 @@ test('top-level Back traverses action editor, location instructions and cards wh
   const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:['D.08.001','D.09.001']}:body.operation==='inventory'?{rows:[row]}:body.operation==='destination_lookup'?{itemcode:'PLANT',salesyear:'2026',locations:['D.08.001','D.09.001','OTHER'],matching:[{...row,locationcode:'D.09.001'}]}:body.operation==='save'?(saved=structuredClone(body.payload.body),{draft:{id:'batch',revision:1,body:saved}}):{};
   return {ok:true,data};
  }}),b=ctx.BunchNote;
- await b.open();await b.chooseBlock('D');assert.ok(element.innerHTML.includes('data-bn-cards'));
- assert.ok(!element.innerHTML.includes('Open location D.08.001"'));
- b.openLocation('D.08.001');b.wizardField('workType','Grade for shipping');assert.ok(element.innerHTML.includes('Work type'));assert.ok(element.innerHTML.includes('Next'));assert.ok(!element.innerHTML.includes('Open item PLANT'));await b.nextItems();assert.equal(saved.locations[0].actions.length,0);b.selectItem(0,['source'],true,false);b.openItem('D.08.001|PLANT');
+ await b.open();await b.chooseBlock('D');assert.ok(!element.innerHTML.includes('data-bn-cards'));
+ assert.ok(element.innerHTML.includes('Open location D.08.'));
+ b.openLocation('D.08.001');b.wizardField('workType','Grade for shipping');assert.ok(element.innerHTML.includes('Work type'));assert.ok(element.innerHTML.includes('Next'));assert.ok(!element.innerHTML.includes('Open item PLANT'));await b.nextItems();assert.equal(saved.locations[0].actions.length,0);b.advancedInventoryPanel('D.08.001',true);b.selectItem(0,['source'],true,false);b.openItem('D.08.001|PLANT');
  const key='item:0:D.08.001|PLANT';b.startAction(key,'move');b.startAction(key,'move');b.actionField('quantity','4');assert.ok(element.innerHTML.includes('Choose location'));
  await b.chooseActionDestination();assert.ok(element.innerHTML.includes('Locations with this item'));assert.ok(element.innerHTML.includes('All other locations'));
  b.destinationBase('D.09');b.pickDestination('D.09.001');await b.finishAction();assert.equal(saved.locations[0].actions.length,1);
@@ -47,9 +47,32 @@ test('top-level Back traverses action editor, location instructions and cards wh
  assert.equal(saved.locations[0].source_all[0].locationcode,'D.08.001');
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Advanced inventory and action controls'));assert.ok(!element.innerHTML.includes('Choose destination'));
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Work type'));
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('data-bn-cards'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08.'));
  b.openLocation('D.08.001');assert.ok(element.innerHTML.includes('Grade for shipping'));
  assert.doesNotMatch(element.innerHTML,/>Back(?: to)?[ <]/);
+});
+
+test('opening a planned action reveals its heading and Back restores the prior main-pane position',async()=>{
+ const row={unique_id:'source',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT',commonname:'Plant',salesyear:'26',contsize:'#3',lotcode:'LOT',stock:12,review:0,available:12};
+ const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
+ const option={id:'move',category:'inventory',label:'Move',kind:'move',active:true};
+ let mainScroll=0;
+ const mainArea={getBoundingClientRect:()=>({top:100})};
+ const heading={getBoundingClientRect:()=>({top:550})};
+ const ctx=runtime({crypto:{randomUUID:()=> 'action-anchor-id'},document:{getElementById:id=>id==='main-scroll-area'?mainArea:element,querySelector:selector=>selector==='#bn-action-editor-heading'?heading:null},getCurrentVisibleViewId:()=> 'bunch-note',
+  getMainAreaScrollTop:()=>mainScroll,setMainAreaScrollTop:value=>{mainScroll=value;},
+  requestAnimationFrame:callback=>{callback();return 1;},showToast(){},
+  postAppFunctionJson:async(_url,body)=>{const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:[]}:body.operation==='inventory'?{rows:[row]}:body.operation==='save'?{draft:{id:'batch',revision:1,body:body.payload.body}}:{};return {ok:true,data};}});
+ const b=ctx.BunchNote;
+ await b.open();await b.chooseBlock('D');b.openLocation('D.08.001');b.wizardField('workType','Move stock');await b.nextItems();
+ b.advancedInventoryPanel('D.08.001',true);b.selectItem(0,['source'],true,false);b.openItem('D.08.001|PLANT');
+ mainScroll=700;
+ b.startAction('item:0:D.08.001|PLANT','move');
+ assert.equal(mainScroll,450,'the action heading should be brought into view below the fixed shell header');
+ assert.match(element.innerHTML,/data-bn-action-editor-heading/);
+ assert.match(element.innerHTML,/Choose location/);
+ assert.equal(b.back(),true);
+ assert.equal(mainScroll,700,'Back should restore the exact position from the inventory card view');
 });
 test('shell repaint preserves creator navigation; explicit refresh and account reset reload metadata',async()=>{
  const row={unique_id:'source',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT'};
@@ -66,7 +89,7 @@ test('shell repaint preserves creator navigation; explicit refresh and account r
  const count=commands.length;
  ctx.renderViewContent('bunch-note',false,true);
  assert.equal(commands.length,count);
- assert.equal(ctx.BunchNote.back(),true);assert.match(element.innerHTML,/data-bn-cards/);
+ assert.equal(ctx.BunchNote.back(),true);assert.match(element.innerHTML,/Open location D\.08\./);
  ctx.BunchNote.openLocation('D.08.001');assert.match(element.innerHTML,/Keep this draft/);
  ctx.renderViewContent('bunch-note',true,true);await new Promise(r=>setImmediate(r));
  assert.equal(commands.length,count+4);assert.match(element.innerHTML,/Keep this draft/);
@@ -140,25 +163,25 @@ test('uncertain command retains its id and same-user reauthentication rejects ol
  const pending=ctx.BunchNote.api('list');ctx.BunchNote.reset();resolve({ok:true,data:{jobs:[{private:true}]}});
  await assert.rejects(pending,/session changed/);
 });
-test('bounded assigned-work Queue retries do not loop on render; explicit refresh can recover',async()=>{
+test('bounded assigned-work reads do not loop on render; explicit refresh can recover',async()=>{
  let calls=0;const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
- const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async()=>{calls++;throw new Error('offline');}});
+ const ctx=runtime({getCurrentVisibleViewId:()=> 'bunch-note',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async()=>{calls++;throw new Error('offline');}});
  ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');
  await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);
  ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
  ctx.postAppFunctionJson=async()=>{calls++;return {ok:true,data:{jobs:[]}};};await ctx.BunchNote.refresh();assert.equal(calls,2);
 });
-test('backing out of assigned work preserves the selected Que mode',async()=>{
+test('backing out of assigned work preserves the selected Inventory mode',async()=>{
  const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
  const job={id:'work',owner_id:'dylan',status:'open',revision:1,instruction_revision:1,progress:{},body:{actions:[],source:[]},actuals:[]};
- const ctx=runtime({getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},postAppFunctionJson:async(_url,body)=>body.operation==='get'?{ok:true,data:{job,versions:[],audit:[]}}:body.operation==='list'?{ok:true,data:{jobs:[job]}}:body.operation==='directory'?{ok:true,data:{users:[]}}:body.operation==='catalog'?{ok:true,data:{options:[],locations:[]}}:{ok:true,data:{blocks:[],drafts:[]}}});
+ const ctx=runtime({getCurrentVisibleViewId:()=> 'bunch-note',document:{getElementById:()=>element},postAppFunctionJson:async(_url,body)=>body.operation==='get'?{ok:true,data:{job,versions:[],audit:[]}}:body.operation==='list'?{ok:true,data:{jobs:[job]}}:body.operation==='directory'?{ok:true,data:{users:[]}}:body.operation==='catalog'?{ok:true,data:{options:[],locations:[]}}:{ok:true,data:{blocks:[],drafts:[]}}});
  ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');await new Promise(resolve=>setImmediate(resolve));await ctx.BunchNote.detail('work');ctx.BunchNote.backQueue();
  assert.match(element.innerHTML,/id="bn-assigned-work-mode"[^>]*aria-pressed="true"/);
 });
 
 test('refresh commits preserve active controls and cannot overwrite newer commands',async()=>{
  const element={classList:{add(){}},innerHTML:'unchanged',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
- let view='';const ctx=runtime({getCurrentVisibleViewId:()=>view,activeReqTab:'bunch-notes',document:{getElementById:()=>element}});
+ let view='';const ctx=runtime({getCurrentVisibleViewId:()=>view,document:{getElementById:()=>element}});
  ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');await new Promise(resolve=>setImmediate(resolve));
  const stale=await ctx.BunchNote.stage({});
  await ctx.BunchNote.api('claim',{job_id:'work'},1,'claim-id');
@@ -166,7 +189,7 @@ test('refresh commits preserve active controls and cannot overwrite newer comman
  assert.equal(element.innerHTML,'unchanged');
  ctx.BunchNote.commit(await ctx.BunchNote.stage({}));
  assert.equal(element.innerHTML,'unchanged');
- view='request';ctx.BunchNote.setQueueMode('assigned');
+ view='bunch-note';ctx.BunchNote.setQueueMode('assigned');
  assert.ok(element.innerHTML.includes('Bunch Notes'));
 });
 test('pending actual saves lock controls, retain newer input, and preserve failed entries',async()=>{
@@ -174,7 +197,7 @@ test('pending actual saves lock controls, retain newer input, and preserve faile
  const element={classList:{add(){}},childNodes:[],set innerHTML(value){this.html=value;controls.forEach(c=>{c.disabled=false;});},get innerHTML(){return this.html;},setAttribute(k,v){attributes[k]=v;},querySelectorAll:selector=>selector==='input,select,textarea,button'?controls:[]};
  const job={id:'work',owner_id:'dylan',status:'open',revision:1,instruction_revision:1,progress:{},body:{actions:[{id:'ta',kind:'ta',group:'inventory',scope:'location',instructions:'TA'}],source:[]},actuals:[]};
  let release,fail=false,command=0;
- const ctx=runtime({crypto:{randomUUID:()=>String(++command)},getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async(_url,body)=>{
+ const ctx=runtime({crypto:{randomUUID:()=>String(++command)},getCurrentVisibleViewId:()=> 'bunch-note',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async(_url,body)=>{
   if(body.operation==='get')return {ok:true,data:{job,versions:[],audit:[]}};
   if(body.operation==='catalog')return {ok:true,data:{options:[],locations:[]}};
   if(body.operation==='directory')return {ok:true,data:{users:[]}};

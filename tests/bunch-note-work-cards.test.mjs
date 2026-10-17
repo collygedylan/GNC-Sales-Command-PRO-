@@ -43,14 +43,17 @@ test('legacy adaptation preserves actions, defaults and shared work without chan
  b.prepareCards(location);assert.equal(location.cards[1].house,'South house');assert.equal(location.cards[0].direction,'');
 });
 test('card edits explicitly include only selected inventory and survive failed persistence',async()=>{
- const commands=[];let saved,fail=true;
+ const commands=[];let saved,fail=false;
  const {b,element}=harness({postAppFunctionJson:async(_url,command)=>{
   commands.push(command);const {operation,payload}=command;
   if(operation==='save'){if(fail)return {ok:false,message:'REVISION_CONFLICT'};saved=structuredClone(payload.body);return {ok:true,data:{draft:{id:'batch',revision:2,body:saved}}};}
   return {ok:true,data:operation==='inventory'?{rows:[row('a'),row('b','#7')]}:{blocks:['E'],users:[],drafts:[],options:[],locations:[]}};
  }});
- await b.open();await b.chooseBlock('E');assert.match(element.innerHTML,/data-bn-cards/);
+ await b.open();await b.chooseBlock('E');
+ b.openLocation('E.15.000');b.wizardField('workType','Inspect');await b.nextItems();b.advancedInventoryPanel('E.15.000',true);
+ assert.match(element.innerHTML,/data-bn-cards/);
  const id=crypto.randomUUID();b.changeCard('E.15.000',{id,included:true,...row('a'),row_ids:['a'],owner_id:'worker',house:'North',direction:'W → E'});
+ fail=true;
  await b.save();assert.match(element.innerHTML,/edits are still here/);
  fail=false;await b.save();assert.equal(saved.format_version,5);assert.equal(saved.locations[0].cards.length,1);
  assert.equal(saved.locations[0].cards[0].id,id);assert.equal(saved.locations[0].cards[0].house,'North');
@@ -73,7 +76,7 @@ test('published card work projects lots and sends card revision for actuals and 
  const commands=[],card={id:'card-a',kind:'inventory',itemcode:'RED',commonname:'Royal Red',contsize:'#3',row_ids:['a'],owner_id:'worker',revision:7,status:'open'};
  const job={id:'job',location:'E.15.000',block:'E',note_number:'BN-1',revision:40,instruction_revision:1,status:'open',owner_id:null,cards:[card,{...card,id:'card-b',row_ids:['b'],owner_id:null}],
   body:{purposes:'Shipping',source:[row('a'),row('b','#7')],actions:[{id:'move',kind:'move',scope:'rows',row_ids:['a'],card_id:'card-a',instructions:'Move',quantity:1},{id:'other',card_id:'card-b',scope:'rows',row_ids:['b'],instructions:'Other'}]},progress:{},actuals:[],worker_actions:[]};
- const {b}=harness({currentUser:'worker',nativeAuthProfile:{id:'worker',username:'worker',must_change_password:false},getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',postAppFunctionJson:async(_url,c)=>{
+ const {b}=harness({currentUser:'worker',nativeAuthProfile:{id:'worker',username:'worker',must_change_password:false},getCurrentVisibleViewId:()=> 'bunch-note',postAppFunctionJson:async(_url,c)=>{
   commands.push(c);return {ok:true,data:c.operation==='list'?{jobs:[job]}:c.operation==='catalog'?{options:[],locations:[]}:c.operation==='get'?{job}:{}};
  }});
  await b.refresh();await b.detail('job');b.openWorkCard('card-a');const scoped=b.workJob();assert.deepEqual(plain(scoped.body.source.map(r=>r.unique_id)),['a']);assert.equal(scoped.body.actions.length,1);

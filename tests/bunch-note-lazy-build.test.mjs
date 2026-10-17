@@ -51,6 +51,8 @@ test('Bunch entry keeps the two lazy views split and caches only authoritative a
   assert.match(source, /mutate\(snapshot, \{ revalidate: false \}\)/);
   assert.doesNotMatch(source, /as unknown as/);
   assert.match(source, /key=\{accountKey\}/);
+  assert.match(source, /Loading Inv Bunch Notes/);
+  assert.match(source, /The Inv Bunch Notes view could not load/);
 });
 
 test('compiled Bunch entry defers card and worksheet markup into their own chunks', async () => {

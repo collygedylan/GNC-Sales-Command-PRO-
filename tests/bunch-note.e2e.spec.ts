@@ -17,7 +17,7 @@ function fixturePdf() {
 async function fixture(page:any,baseURL:string,worker=false) {
  const control=await installHlOrderFixture(page,baseURL,{username:worker?'bn_worker':'dylan_collyge',role:worker?'EVAL':'ADMIN'});
  const headers={'access-control-allow-origin':new URL(baseURL).origin,'access-control-allow-credentials':'true'};
- const rows=[plant('a','C.12.001'),{...plant('a2','C.12.001'),contsize:'#5',lotcode:'LOT2',season:'27.F1',stock:'20',review:null},plant('b','C.12.002')],commands:any[]=[],drafts:any[]=[];
+ const rows=[plant('a','C.12.001'),{...plant('a2','C.12.001'),contsize:'#5',lotcode:'LOT2',season:'27.F1',stock:'20',review:null},plant('b','C.12.002')],commands:any[]=[],drafts:any[]=[],inventoryReads:any[]=[];
  const options:any[]=[['sequence','Early protection','instruction'],['grading','Shear before bunching','instruction'],['grading','Grade and Save / Move To','move'],['placement','Center house','instruction'],['placement','Variety mixes','instruction'],['inventory','TA / culls follow-up','ta'],['inventory','Move','move'],['hauling','Grade shift','hauling']].map(([category,label,kind],i)=>({id:'option'+i,category,label,kind,active:true,revision:1}));
  let lastPreview:any=null;
  let actualReply:Promise<void>|null=null; let saveFailures=0;
@@ -28,13 +28,13 @@ async function fixture(page:any,baseURL:string,worker=false) {
   const body=route.request().postDataJSON(); if(body?.action!=='bunch_note')return route.fallback();
   const p=body.payload||{};commands.push(body);let data:any;
   if(body.operation==='save'&&saveFailures-->0){await route.fulfill({status:503,headers,contentType:'application/json',body:JSON.stringify({ok:false,message:'Save unavailable. Your draft is retained.'})});return;}
-  if(body.operation==='catalog')data={options,locations:['C.12.001','C.12.002','D.08.001']};
+  if(body.operation==='catalog')data={options,locations:['C.12.001','C.12.002','D.05.000','D.08.001']};
   else if(body.operation==='option_add'){if(worker){expect(p.job_id).toBe(jobs[0].id);expect(body.expectedRevision).toBe(jobs[0].revision);}const option={id:'custom'+options.length,category:p.category,label:p.label,kind:p.kind,active:true,revision:1};options.push(option);data={option};}
-  else if(body.operation==='destination_lookup')data={itemcode:'BN-I',salesyear:'2027',locations:['C.12.001','C.12.002','D.08.001'],matching:[rows[2]]};
-  else if(body.operation==='destinations')data={locations:['C.12.001','C.12.002','D.08.001']};
-  else if(body.operation==='destination_detail')data={location:p.location,locations:['C.12.001','C.12.002','D.08.001'],jobs:jobs.filter(j=>j.location===p.location),incoming:jobs.flatMap(j=>(j.body.actions||[]).filter((a:any)=>a.destination===p.location).map((action:any)=>({job_id:j.id,note_number:j.note_number,source_location:j.location,status:j.status,action,source:j.body.source||[],planned_here:true,actuals:[]})))};
+  else if(body.operation==='destination_lookup')data={itemcode:'BN-I',salesyear:'2027',locations:['C.12.001','C.12.002','D.05.000','D.08.001'],matching:[rows[2]]};
+  else if(body.operation==='destinations')data={locations:['C.12.001','C.12.002','D.05.000','D.08.001']};
+  else if(body.operation==='destination_detail')data={location:p.location,locations:['C.12.001','C.12.002','D.05.000','D.08.001'],jobs:jobs.filter(j=>j.location===p.location),incoming:jobs.flatMap(j=>(j.body.actions||[]).filter((a:any)=>a.destination===p.location).map((action:any)=>({job_id:j.id,note_number:j.note_number,source_location:j.location,status:j.status,action,source:j.body.source||[],planned_here:true,actuals:[]})))};
   else if(body.operation==='blocks')data={blocks:['FULL.BLOCK']};
-  else if(body.operation==='inventory')data={rows};
+  else if(body.operation==='inventory'){inventoryReads.push({block:p.block,locations:[...new Set(rows.map((row:any)=>row.locationcode))]});data={rows};}
   else if(body.operation==='directory')data={users:[{id:hlUserId,username:'dylan_collyge',display:'Dylan',email:'dylan_collyge@greenleafnursery.com'}]};
   else if(body.operation==='drafts')data={drafts};
   else if(body.operation==='save'){const draft={id:'draft',revision:(drafts[0]?.revision||0)+1,block:p.body.block,body:structuredClone(p.body),updated_at:new Date().toISOString()};draft.body.locations.forEach((l:any)=>{l.source=rows.filter(r=>l.row_ids.includes(r.unique_id));});drafts[0]=draft;data={draft};}
@@ -66,7 +66,7 @@ async function fixture(page:any,baseURL:string,worker=false) {
   if(body?.type!=='bunch_note_preview')return route.fallback();
   await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify({ok:true,pdfs:lastPreview.reports.map((l:any,i:number)=>({...pdf,job_id:'job'+i,filename:'BN-'+i+'.pdf'}))})});
  });
- return {control,commands,jobs,rows,drafts,options,get lastPreview(){return lastPreview;},failNextSave:()=>{saveFailures=1;},holdActualReply:()=>{let release!:()=>void;actualReply=new Promise<void>(resolve=>{release=resolve;});return release;}};
+ return {control,commands,jobs,rows,drafts,options,inventoryReads,get lastPreview(){return lastPreview;},failNextSave:()=>{saveFailures=1;},holdActualReply:()=>{let release!:()=>void;actualReply=new Promise<void>(resolve=>{release=resolve;});return release;}};
 }
 async function openBunchNotesFromInventory(page:any) {
  await expect(page.locator('#home-tile-bunch-note')).toHaveCount(0);
@@ -74,25 +74,48 @@ async function openBunchNotesFromInventory(page:any) {
  const press=test.info().project.use.isMobile?'tap':'click';
  await page.locator('#home-tile-sales-inventory')[press]();
  await expect(page.locator('#hub-extra-sales-inventory-bunch-note')).toBeVisible();
+ await expect(page.locator('#hub-extra-sales-inventory-bunch-note')).toContainText('Inv Bunch Notes');
  await page.locator('#hub-extra-sales-inventory-bunch-note')[press]();
  await expect(page.locator('#view-bunch-note')).toBeVisible();
+ await expect(page.locator('#view-bunch-note')).toContainText('Inv Bunch Notes');
+ await expect(page.locator('#global-header-view-title')).toHaveText('Inv Bunch Notes');
+ await expect(page.locator('#global-header-inline-title')).toHaveText('Inv Bunch Notes');
 }
-async function openBunchNotesFromQueue(page:any) {
+async function openBunchNotesAfterCheckingQueueRemoval(page:any) {
  const press=test.info().project.use.isMobile?'tap':'click';
  await page.locator('#footer-request-btn')[press]();
- const tab=page.locator('[data-request-category="bunch-notes"]');
- await expect(tab).toBeVisible();
- await tab[press]();
- await expect(page.locator('#bn-create-note-mode')).toBeVisible();
- await expect(page.locator('#bn-create-note-mode')).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('[data-request-category="bunch-notes"]')).toHaveCount(0);
+ await page.locator('#footer-home-btn')[press]();
+ await openBunchNotesFromInventory(page);
 }
-async function openAuthorLocation(page:any, location:string) {
+async function openAssignedBunchWorkFromInventory(page:any) {
+ await openBunchNotesFromInventory(page);
+ const assigned=page.locator('#bn-assigned-work-mode');
+ const press=test.info().project.use.isMobile?'tap':'click';
+ if(await assigned.count()) {
+  await expect(assigned).toBeVisible();
+  await assigned[press]();
+  await expect(assigned).toHaveAttribute('aria-pressed','true');
+ } else {
+  // Non-author workers enter the assigned queue directly; they must not gain
+  // creator controls just to reach work assigned to them.
+  await expect(page.locator('#bn-create-note-mode')).toHaveCount(0);
+ }
+}
+async function wizardLocationButton(page:any, location:string, displayLocation=location.replace(/\.\d{3}$/, '.')) {
+ const handler=`BunchNote.openLocation(${JSON.stringify(location)})`;
+ const button=page.locator(`.bn-location-list .bn-drill-card[onclick=${JSON.stringify(handler)}]`);
+ await expect(button).toHaveAccessibleName(`Open location ${displayLocation}`);
+ return button;
+}
+async function openAuthorLocation(page:any, location:string, displayLocation=location.replace(/\.\d{3}$/, '.')) {
+ const press=test.info().project.use.isMobile?'tap':'click';
  const section=page.locator('.bn-card-board__location').filter({has:page.locator('h3',{hasText:location})});
- const wizard=page.locator('.bn-location-list').getByRole('button',{name:`Open location ${location}`,exact:true});
+ const wizard=await wizardLocationButton(page,location,displayLocation);
  const legacy=section.getByRole('button',{name:'Location instructions',exact:true}).first();
  await expect(wizard.or(legacy)).toBeVisible();
- if(await wizard.count())await wizard.click();
- else await legacy.click();
+ if(await wizard.count())await wizard[press]();
+ else await legacy[press]();
 }
 async function advanceWizardToItems(page:any, workType?:string) {
  const input=page.getByLabel('Work type',{exact:true});
@@ -106,22 +129,65 @@ async function openAdvancedInventoryControls(page:any) {
  await expect(details).toBeVisible();
  if(await details.getAttribute('open')===null)await details.locator('summary').click();
 }
-async function captureRequestQueueToolbar(page:any) {
- const toolbar=page.locator('#request-filter-toolbar');
- await expect(toolbar).toBeVisible();
- return {toolbar,element:await toolbar.elementHandle()};
-}
-async function expectRequestQueueToolbarRetained(page:any, captured:Awaited<ReturnType<typeof captureRequestQueueToolbar>>) {
- await expect(captured.toolbar).toBeVisible();
- expect(captured.element).not.toBeNull();
- expect(await captured.element!.evaluate(node=>node.isConnected&&node.parentElement?.id==='global-header-search-slot')).toBe(true);
- const top=await captured.toolbar.evaluate(node=>node.getBoundingClientRect().top);
- expect(top).toBeGreaterThanOrEqual(0);
- expect(top).toBeLessThan(180);
-}
+
+test('Bunch Notes is launched from Inventory and absent from Que navigation', {tag:['@bunch-note']}, async ({page,baseURL}) => {
+ await fixture(page,baseURL!);
+ const press=test.info().project.use.isMobile?'tap':'click';
+ await page.locator('#footer-request-btn')[press]();
+ await expect(page.locator('[data-request-category="bunch-notes"]')).toHaveCount(0);
+ await page.locator('#footer-home-btn')[press]();
+ await openBunchNotesFromInventory(page);
+ await expect(page.locator('#bn-create-note-mode')).toBeVisible();
+ await expect(page.locator('#bn-create-note-mode')).toHaveAttribute('aria-pressed','true');
+});
+
+test('Inventory step shortens D.05.000 for display but retains the full location code in the saved query and draft', {tag:['@bunch-note']}, async ({page,baseURL}) => {
+ const f=await fixture(page,baseURL!);
+ const press=test.info().project.use.isMobile?'tap':'click';
+ const source={...plant('d05-source','D.05.000'),itemcode:'BN-D05',commonname:'D.05.000 source'};
+ f.rows.push(source);
+ await openBunchNotesFromInventory(page);
+ await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
+ const locationButton=await wizardLocationButton(page,'D.05.000','D.05.');
+ await expect(locationButton).toBeVisible();
+ await expect(locationButton).toContainText('D.05.');
+ await expect(locationButton).not.toContainText('D.05.000');
+ await locationButton[press]();
+ await page.getByLabel('Work type',{exact:true}).fill('Prepare D.05.000');
+ await page.getByRole('button',{name:'Next',exact:true}).click();
+ await page.getByRole('button',{name:'＋ Add inventory card',exact:true})[press]();
+ await page.getByRole('textbox',{name:'Search inventory',exact:true}).fill('BN-D05');
+ const result=page.locator('.bn-picker-result').filter({hasText:'BN-D05'});
+ await expect(result).toHaveCount(1);
+ await result[press]();
+ await expect(page.getByLabel('Select lot #3 27.F1 d05-source',{exact:true})).toBeChecked();
+ await page.getByRole('button',{name:'＋ Add card and continue',exact:true})[press]();
+
+ // The add-and-continue action intentionally opens the next picker. Close it
+ // before using the header Back stack to validate the saved full location.
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+
+ const inventoryRead=f.commands.find(command=>command.operation==='inventory');
+ expect(inventoryRead?.payload).toMatchObject({block:'FULL.BLOCK'});
+ expect(f.inventoryReads).toContainEqual({block:'FULL.BLOCK',locations:['C.12.001','C.12.002','D.05.000']});
+ const saved=f.commands.filter(command=>command.operation==='save').at(-1)?.payload.body.locations[0];
+ expect(saved).toMatchObject({location:'D.05.000',row_ids:['d05-source']});
+ expect(saved.source_all).toEqual(expect.arrayContaining([expect.objectContaining({unique_id:'d05-source',locationcode:'D.05.000'})]));
+ expect(saved.cards).toEqual(expect.arrayContaining([expect.objectContaining({row_ids:['d05-source']})]));
+
+ await page.locator('#global-header-inline-back').click();
+ await page.locator('#global-header-inline-back').click();
+ await page.locator('#global-header-inline-back').click();
+ await page.getByRole('button',{name:/Open batch FULL\.BLOCK/}).click();
+ await openAuthorLocation(page,'D.05.000','D.05.');
+ await expect(page.getByLabel('Work type',{exact:true})).toHaveValue('Prepare D.05.000');
+ expect(f.drafts[0].body.locations[0].location).toBe('D.05.000');
+});
 
 test('wizard persists exact card notes through reload and preview while picker navigation stays local', {tag:['@bunch-note']}, async ({page,baseURL},testInfo) => {
  const f=await fixture(page,baseURL!);
+ const press=test.info().project.use.isMobile?'tap':'click';
  // Add a second lot in the same verified card group so the picker must retain
  // both exact source identities rather than broadening by item code.
  f.rows.push({...plant('a3','C.12.001'),lotcode:'LOT3'});
@@ -132,17 +198,14 @@ test('wizard persists exact card notes through reload and preview while picker n
   itemcode:`BN-BULK-${String(i).padStart(4,'0')}`,commonname:`Bunch Candidate ${String(i).padStart(4,'0')}`});
  const candidates=f.rows.filter(row=>row.locationcode==='C.12.001');
  expect(candidates).toHaveLength(1001);
- await openBunchNotesFromQueue(page);
- const requestToolbar=await captureRequestQueueToolbar(page);
- await expectRequestQueueToolbarRetained(page,requestToolbar);
+ await openBunchNotesAfterCheckingQueueRemoval(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
  await openAuthorLocation(page,'C.12.001');
  await page.getByLabel('Work type',{exact:true}).fill('Prepare shipment');
  await page.getByLabel('Direction',{exact:true}).fill('Start at west gate');
  await page.getByLabel('Extra notes',{exact:true}).fill('Call the crew lead');
  await page.getByRole('button',{name:'Next',exact:true}).click();
- await expectRequestQueueToolbarRetained(page,requestToolbar);
- await expect(page.locator('#request-content')).toContainText('Prepare shipment');
+ await expect(page.locator('#bunch-note-content')).toContainText('Prepare shipment');
  await expect(page.getByLabel('Work type',{exact:true})).toHaveCount(0);
  await expect(page.getByLabel('Direction',{exact:true})).toHaveCount(0);
 
@@ -159,14 +222,14 @@ test('wizard persists exact card notes through reload and preview while picker n
   };
   document.addEventListener('click',capture,true);
  });
- await page.getByRole('button',{name:'＋ Add inventory card',exact:true}).click();
+ await page.getByRole('button',{name:'＋ Add inventory card',exact:true})[press]();
  await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>(window as any).__bunchPickerPaintMs)).not.toBeNull();
  const pickerMs=await page.evaluate(()=>(window as any).__bunchPickerPaintMs as number);
  const pickerGroups=page.locator('.bn-picker-result');
  await expect(pickerGroups).toHaveCount(100);
  expect(f.commands).toHaveLength(commandCount);
- await testInfo.attach('bunch-note-wizard-warm-picker.json',{body:JSON.stringify({project:testInfo.project.name,environment:testInfo.project.use.isMobile?'mobile':'desktop',operation:'warm cached inventory card picker click-to-paint',elapsedMs:pickerMs,limitMs:400,locationRows:candidates.length,cachedCardCandidates:1000,renderedCardCandidates:100,cache:'warm local source_all; no inventory RPC during picker open'}),contentType:'application/json'});
+ await testInfo.attach('bunch-note-wizard-warm-picker.json',{body:JSON.stringify({project:testInfo.project.name,userAgent:testInfo.project.use.userAgent||null,viewport:testInfo.project.use.viewport||null,touch:testInfo.project.use.hasTouch||false,operation:'warm cached inventory card picker click-to-paint',elapsedMs:pickerMs,limitMs:400,locationRows:candidates.length,cachedCardCandidates:1000,renderedCardCandidates:100,cache:'warm local source_all; no inventory RPC during picker open'}),contentType:'application/json'});
  expect(pickerMs).toBeLessThanOrEqual(400);
 
  await page.context().setOffline(true);
@@ -176,7 +239,7 @@ test('wizard persists exact card notes through reload and preview while picker n
  await page.getByRole('textbox',{name:'Search inventory',exact:true}).fill('Bunch Plant');
  await page.evaluate(()=>{(window as any).BunchNote.render();});
  await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toHaveValue('Bunch Plant');
- await page.locator('.bn-picker-result').filter({hasText:'#3'}).click();
+ await page.locator('.bn-picker-result').filter({hasText:'#3'})[press]();
  await expect(page.getByLabel('Select lot #3 27.F1 a',{exact:true})).toBeChecked();
  await expect(page.getByLabel('Select lot #3 LOT3 a3',{exact:true})).toBeChecked();
  await expect(page.getByRole('dialog',{name:'Card directions and notes'})).toBeVisible();
@@ -184,18 +247,16 @@ test('wizard persists exact card notes through reload and preview while picker n
  await page.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep these lots separate');
  expect(f.commands).toHaveLength(commandCount); // search, selection and field edits are local
  await page.context().setOffline(false);
- await page.getByRole('button',{name:'＋ Add card and continue',exact:true}).click();
- await expectRequestQueueToolbarRetained(page,requestToolbar);
+ await page.getByRole('button',{name:'＋ Add card and continue',exact:true})[press]();
  await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
  await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toHaveValue('');
 
  // Adding another card immediately reopens the picker for rapid iteration.
  await page.getByRole('textbox',{name:'Search inventory',exact:true}).fill('Bunch Plant');
- await page.locator('.bn-picker-result').filter({hasText:'#5'}).click();
+ await page.locator('.bn-picker-result').filter({hasText:'#5'})[press]();
  await expect(page.getByLabel('Select lot #5 LOT2 a2',{exact:true})).toBeChecked();
  await page.getByRole('textbox',{name:'Card direction',exact:true}).fill('Rows north to south');
- await page.getByRole('button',{name:'＋ Add card and continue',exact:true}).click();
- await expectRequestQueueToolbarRetained(page,requestToolbar);
+ await page.getByRole('button',{name:'＋ Add card and continue',exact:true})[press]();
  await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toBeVisible();
  const committed=f.commands.filter(command=>command.operation==='save').at(-1).payload.body.locations[0];
  expect(committed.cards.map((card:any)=>card.row_ids)).toEqual([['a','a3'],['a2']]);
@@ -226,9 +287,9 @@ test('wizard persists exact card notes through reload and preview while picker n
  await page.locator('#global-header-inline-back').click();
  await expect(page.getByRole('button',{name:'Preview PDFs and recipients',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Preview PDFs and recipients',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Review Bunch Notes PDFs'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Review Inv Bunch Notes PDFs'})).toBeVisible();
  expect(f.lastPreview.reports[0].actions[0]).toMatchObject({label:'Card notes',instructions:'Keep these lots separate',card_id:committed.cards[0].id,row_ids:['a','a3']});
- await expect(page.locator('#request-content iframe')).toHaveCount(1);
+ await expect(page.locator('#bunch-note-content iframe')).toHaveCount(1);
  expect(f.control.blockedMutations).toEqual([]);
 });
 
@@ -283,6 +344,10 @@ test('author includes one location card explicitly, assigns it, and limits plann
  const f=await fixture(page,baseURL!);
  await openBunchNotesFromInventory(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
+ await openAuthorLocation(page,'C.12.001');
+ await page.getByLabel('Work type',{exact:true}).fill('Assign one card');
+ await page.getByRole('button',{name:'Next',exact:true}).click();
+ await openAdvancedInventoryControls(page);
  const firstLocation=page.locator('.bn-card-board__location').filter({has:page.locator('h3', {hasText:'C.12.001'})});
  await expect(firstLocation).toBeVisible();
  const inventoryCards=firstLocation.locator('.bn-board-card');
@@ -317,19 +382,15 @@ test('author includes one location card explicitly, assigns it, and limits plann
  expect(f.control.blockedMutations).toEqual([]);
 });
 
-test('structured queue shows house directions and survives refresh before opening linked work', {"tag":["@bunch-note"]},async({page,baseURL})=>{
+test('assigned work shows house directions and survives refresh before opening linked work', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!,true),j=f.jobs[0];
  j.body.direction='West to East';j.body.target_houses='South house only';
  j.body.house_sections=[{id:'north',name:'North House',direction:'East to West'}];
  Object.assign(j.body.actions[1],{section_id:'north',margin_tag:'QC',quantity_constraint:'all',instructions:'TA all. Red flags and Yellow Ribbon'});
- await page.evaluate(()=>{(window as any).switchView('request');(window as any).setReqTab('bunch-notes');});
- const requestToolbar=await captureRequestQueueToolbar(page);
- await expectRequestQueueToolbarRetained(page,requestToolbar);
+ await openAssignedBunchWorkFromInventory(page);
  await page.evaluate(()=>window.eval('setMainAreaScrollTop(600)'));
- await expectRequestQueueToolbarRetained(page,requestToolbar);
  await page.evaluate(()=>window.eval('setMainAreaScrollTop(0)'));
  for(const name of ['Open location C.12','Open location C.12.001','Open'])await page.getByRole('button',{name,exact:true}).click();
- await expectRequestQueueToolbarRetained(page,requestToolbar);
  const worksheet=page.locator('[data-bn-structured="read"]');
  await expect(worksheet).toContainText('North House · East to West');
  await expect(worksheet).toContainText('South house only');
@@ -402,7 +463,11 @@ test('creator actions drill through themed block and location cards', {"tag":["@
  expect(created.actions[0].row_ids).toEqual(['a','a2']);
  expect(created.actions.find((a:any)=>a.group==='hauling').row_ids).toEqual(['a']);
  expect(created.actions.filter((a:any)=>['ta','move'].includes(a.kind))).toHaveLength(2);
-  await expect(page.locator('.bn-card-board__location h3',{hasText:'C.12.002'})).toBeVisible();
+ const savedFirstLocation=await wizardLocationButton(page,'C.12.001','C.12.');
+ const savedSecondLocation=await wizardLocationButton(page,'C.12.002','C.12.');
+ await expect(savedFirstLocation).toBeVisible();
+ await expect(savedSecondLocation).toBeVisible();
+ expect(await savedFirstLocation.getAttribute('onclick')).not.toBe(await savedSecondLocation.getAttribute('onclick'));
  expect(f.control.blockedMutations).toEqual([]);
 });
 
@@ -468,7 +533,7 @@ test('saved multi-location batch preserves actions through Bunch and completed-w
  expect(saved.locations[0].actions.filter((a:any)=>['ta','move'].includes(a.kind))).toHaveLength(2);
  expect(saved.locations[1].actions[0].scope).toBe('location');
  await page.getByRole('button',{name:'Preview PDFs and recipients',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Review Bunch Notes PDFs'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Review Inv Bunch Notes PDFs'})).toBeVisible();
  await expect(page.locator('#bunch-note-content iframe')).toHaveCount(2);
  await expect(page.locator('#bunch-note-content')).toContainText('dylan_collyge@greenleafnursery.com');
  await expect.poll(async()=>{const r=await page.locator('#bunch-note-content').boundingBox();return !!r&&r.x+r.width<=page.viewportSize()!.width+1;}).toBe(true);
@@ -476,9 +541,9 @@ test('saved multi-location batch preserves actions through Bunch and completed-w
  await expect.poll(()=>f.jobs.length).toBe(2);
  expect(f.commands.find(c=>c.operation==='publish').payload.send_email).toBe(true);
  f.jobs[0].status='complete';f.jobs[0].actuals=[];f.jobs[0].worker_actions=[];
- await page.evaluate(()=>window.eval(`switchView('request'); setReqTab('bunch-notes');`));
-  await page.getByRole('button',{name:'Assigned work',exact:true}).click();
- const queue=page.locator('#request-content');
+ await page.locator('#bn-assigned-work-mode').click();
+ await expect(page.locator('#bn-assigned-work-mode')).toHaveAttribute('aria-pressed','true');
+ const queue=page.locator('#bunch-note-content');
  const press=test.info().project.use.isMobile?'tap':'click';
  await expect(queue).toHaveAttribute('aria-busy','false');
  await queue.getByRole('button',{name:'Completed',exact:true})[press]();
@@ -519,7 +584,7 @@ test('shell repaint during Back retains creator state without reloading metadata
  await expect(page.getByLabel('Work type',{exact:true})).toBeVisible();
  expect(metadataCount()).toBe(before);
  await page.locator('#global-header-inline-back').click();
-  await expect(page.locator('.bn-card-board__location h3',{hasText:'C.12.002'})).toBeVisible();
+ await expect(await wizardLocationButton(page,'C.12.002','C.12.')).toBeVisible();
 });
 
 test('combined move keeps its full destination and opens destination instructions', {"tag":["@bunch-note"]},async({page,baseURL})=>{
@@ -563,13 +628,12 @@ test('combined move keeps its full destination and opens destination instruction
  await expect(page.getByRole('button',{name:'Open location C.12.001',exact:true})).toBeVisible();
  expect(f.control.blockedMutations).toEqual([]);
 });
-test('worker without Request permission sees Bunch-only Queue, claims and completes without email', {"tag":["@bunch-note"]},async({page,baseURL})=>{
+test('worker without Request permission sees assigned Bunch work in Inventory, claims and completes without email', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!,true);
- await page.evaluate(()=>window.eval(`getRequestCapabilities = () => ({canViewQueue:false}); canSeeEvalWorkRequestTab = () => false; switchView('request');`));
+ await openBunchNotesFromInventory(page);
  await expect(page.locator('#home-tile-bunch-note')).toHaveCount(0);
- await expect(page.locator('[data-request-category="bunch-notes"]')).toBeVisible();
- await expect(page.locator('[data-request-category="pending"]')).toHaveCount(0);
-  await expect(page.locator('#bn-create-note-mode')).toHaveCount(0);
+ await expect(page.locator('[data-request-category="bunch-notes"]')).toHaveCount(0);
+ await expect(page.locator('#bn-create-note-mode')).toHaveCount(0);
  // Reproduce a verified update through the entire shell while the parent
  // press is in flight, not only the Bunch module's own render entry point.
  // The real navigation handler must run exactly once without retrying the press.
@@ -594,7 +658,7 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await page.getByRole('button',{name:'Open',exact:true}).click();
  await expect(page.getByRole('button',{name:'Complete location',exact:true})).toBeDisabled();
  await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
- const action=(label:string)=>page.locator('#request-content article.bn-card').filter({has:page.getByRole('heading',{name:label,exact:true})});
+ const action=(label:string)=>page.locator('#bunch-note-content article.bn-card').filter({has:page.getByRole('heading',{name:label,exact:true})});
  const ta=action('TA / culls follow-up'),move=action('Move');
  await ta.getByText('Record TA / partial work',{exact:true}).click();
  await ta.getByRole('combobox',{name:'Container size and lot',exact:true}).selectOption('a');
@@ -642,12 +706,12 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  await action('Inspect empty spaces · Added by worker').getByRole('button',{name:'Done',exact:true}).click();
  await page.locator('#global-header-inline-back').click();
  await action('placement').getByRole('button',{name:'Done',exact:true}).click();
- await expect.poll(()=>page.locator('#request-content').evaluate(el=>[el,...el.querySelectorAll('button,summary,input,select,textarea,.bn-card')].every(node=>{const box=node.getBoundingClientRect();return !box.width||(box.left>=-1&&box.right<=innerWidth+1);}))).toBe(true);
+ await expect.poll(()=>page.locator('#bunch-note-content').evaluate(el=>[el,...el.querySelectorAll('button,summary,input,select,textarea,.bn-card')].every(node=>{const box=node.getBoundingClientRect();return !box.width||(box.left>=-1&&box.right<=innerWidth+1);}))).toBe(true);
  await page.getByRole('button',{name:'Complete location',exact:true}).click();
  await page.getByRole('button',{name:'Completed',exact:true}).click();
  await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
  await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
- await expect(page.locator('#request-content')).toContainText('BN-1');
+ await expect(page.locator('#bunch-note-content')).toContainText('BN-1');
  expect(f.commands.some(c=>['send','publish','preview','retry'].includes(c.operation))).toBe(false);
 });
 
@@ -662,7 +726,7 @@ test('worker claims and completes only the selected published inventory card', {
   {id:'card-action-b',card_id:'card-b',group:'placement',scope:'rows',row_ids:['a2'],label:'South House task',instructions:'South House task'}
  ];
  job.progress={'card-action-a':{status:'done',reason:'Already handled'}};
- await page.evaluate(()=>{(window as any).switchView('request');(window as any).setReqTab('bunch-notes');});
+ await openAssignedBunchWorkFromInventory(page);
  await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
  await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
  await page.getByRole('button',{name:'Open',exact:true}).click();
@@ -672,10 +736,10 @@ test('worker claims and completes only the selected published inventory card', {
  await cardA.getByRole('button',{name:'Claim card',exact:true}).click();
  expect(f.commands.filter(c=>c.operation==='claim_card').at(-1)).toMatchObject({expectedRevision:4,payload:{card_id:'card-a'}});
  await cardA.getByRole('button',{name:'Open card',exact:true}).click();
- await expect(page.locator('#request-content')).toContainText('North House task');
- await expect(page.locator('#request-content')).not.toContainText('South House task');
- await expect(page.locator('#request-content')).toContainText('27.F1');
- await expect(page.locator('#request-content')).not.toContainText('LOT2');
+ await expect(page.locator('#bunch-note-content')).toContainText('North House task');
+ await expect(page.locator('#bunch-note-content')).not.toContainText('South House task');
+ await expect(page.locator('#bunch-note-content')).toContainText('27.F1');
+ await expect(page.locator('#bunch-note-content')).not.toContainText('LOT2');
  await page.getByRole('button',{name:'Complete card',exact:true}).click();
  expect(f.commands.filter(c=>c.operation==='complete_card').at(-1)).toMatchObject({expectedRevision:5,payload:{card_id:'card-a'}});
  expect(f.control.blockedMutations).toEqual([]);

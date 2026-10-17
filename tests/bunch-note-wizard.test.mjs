@@ -19,11 +19,12 @@ function createRuntime(postAppFunctionJson, viewId = 'bunch-note') {
     dispatchEvent(event) { for (const listener of documentListeners.get(event.type)||[]) listener(event); } };
   const context = vm.createContext({
     console, Date, Map, Set, URL, Blob, Uint8Array, structuredClone, atob: globalThis.atob,
-    currentUser: 'dylan_collyge', nativeAuthSessionActive: true,
+    currentUser: 'dylan_collyge', nativeAuthSessionActive: true, nativeAuthAccessToken: 'fixture-access-token', REQUEST_EMAIL_SCRIPT_TIMEOUT_MS: 45000,
     nativeAuthProfile: { id: 'dylan', username: 'dylan_collyge', must_change_password: false },
     APP_API_FUNCTION_URL: 'https://fixture.invalid', postAppFunctionJson,
     postGoogleScriptJsonPayload: async () => ({ ok: true, pdfs: [{ base64: 'JVBERi0xLjQK', filename: 'BN.pdf' }] }),
     document, activeReqTab: 'bunch-notes', getCurrentVisibleViewId: () => currentView,
+    switchView: value => { currentView = value; },
     showToast() {}, crypto: { randomUUID: (() => { let id = 0; return () => `wizard-${++id}`; })() }
   });
   vm.runInContext(read('assets/location-code.js'), context);
@@ -34,7 +35,7 @@ function createRuntime(postAppFunctionJson, viewId = 'bunch-note') {
     setActiveTab(value) { context.activeReqTab = value; } };
 }
 
-test('Que Bunch Notes opens the same author wizard by default and preserves the assigned-work mode', async () => {
+test('Inventory Bunch Notes exposes Create note and Assigned work on the standalone route', async () => {
   const requests = [];
   const { BunchNote: note, element } = createRuntime(async (_url, request) => {
     requests.push(plain(request));
@@ -44,10 +45,11 @@ test('Que Bunch Notes opens the same author wizard by default and preserves the 
     if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
     if (request.operation === 'list') return { ok: true, data: { jobs: [] } };
     return { ok: true, data: {} };
-  }, 'request');
+  });
 
   await note.open();
   assert.match(element.innerHTML, /id="bn-create-note-mode"[^>]*aria-pressed="true"/);
+  assert.match(element.innerHTML, /<h2>Inv Bunch Notes<\/h2>/);
   assert.match(element.innerHTML, /Open block D/);
   assert.match(element.innerHTML, /id="bn-assigned-work-mode"/);
 
@@ -57,6 +59,78 @@ test('Que Bunch Notes opens the same author wizard by default and preserves the 
   note.setQueueMode('create');
   assert.match(element.innerHTML, /Open block D/);
   assert.ok(requests.some(request => request.operation === 'blocks'));
+});
+
+test('revising assigned work opens the revised draft in Create note mode', async () => {
+  const job = { id: 'job-revise', block: 'D', location: 'D.05.123', status: 'open', owner_id: 'dylan', revision: 3, cards: [], body: { locations: [], actions: [], source: [] }, progress: {}, actuals: [], worker_actions: [] };
+  const draft = { id: 'draft-revise', revision: 1, body: { format_version: 5, block: 'D', locations: [{ location: 'D.05.123', purposes: 'Inspect', direction: '', instructions: '', source: [], row_ids: [], cards: [], actions: [] }], recipient_ids: [] } };
+  const row = { unique_id: 'lot-revise', blockalpha: 'D', locationcode: 'D.05.123', itemcode: 'PLANT', commonname: 'Peony', contsize: '#3', lotcode: 'A', stock: 12, review: 0, available: 12 };
+  const { BunchNote: note, element } = createRuntime(async (_url, request) => {
+    if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
+    if (request.operation === 'directory') return { ok: true, data: { users: [] } };
+    if (request.operation === 'drafts') return { ok: true, data: { drafts: [] } };
+    if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
+    if (request.operation === 'list') return { ok: true, data: { jobs: [job] } };
+    if (request.operation === 'get') return { ok: true, data: { job, versions: [], audit: [] } };
+    if (request.operation === 'revise') return { ok: true, data: { draft } };
+    if (request.operation === 'inventory') return { ok: true, data: { rows: [row] } };
+    return { ok: true, data: {} };
+  });
+
+  await note.open();
+  note.setQueueMode('assigned');
+  await new Promise(resolve => setImmediate(resolve));
+  await note.detail(job.id);
+  await note.revise();
+
+  assert.match(element.innerHTML, /id="bn-create-note-mode"[^>]*aria-pressed="true"/);
+  assert.match(element.innerHTML, /<h2>Inv Bunch Notes<\/h2>/);
+  assert.match(element.innerHTML, /\u003e1 inventory rows\u003c/);
+  assert.match(element.innerHTML, /BunchNote\.openLocation\(&quot;D\.05\.123&quot;\)/);
+});
+
+test('Inv Bunch Notes Step 1 shortens only the displayed three-digit location suffix', async () => {
+  const row = { unique_id: 'lot-5000', blockalpha: 'D', locationcode: 'D.05.123', itemcode: 'PLANT', commonname: 'Peony', contsize: '#3', lotcode: 'A', stock: 12, review: 0, available: 12 };
+  let savedBody;
+  const { BunchNote: note, element } = createRuntime(async (_url, request) => {
+    if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
+    if (request.operation === 'inventory') return { ok: true, data: { rows: [row] } };
+    if (request.operation === 'directory') return { ok: true, data: { users: [] } };
+    if (request.operation === 'drafts') return { ok: true, data: { drafts: [] } };
+    if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
+    if (request.operation === 'save') {
+      savedBody = plain(request.payload.body);
+      return { ok: true, data: { draft: { id: 'batch-5000', revision: 1, body: savedBody } } };
+    }
+    return { ok: true, data: {} };
+  });
+
+  await note.open();
+  note.setQueueMode('create');
+  await note.chooseBlock('D');
+  assert.match(element.innerHTML, /<h2>Inv Bunch Notes<\/h2>/);
+  assert.match(element.innerHTML, /<strong>D\.05\.<\/strong>/);
+  assert.match(element.innerHTML, /aria-label="Open location D\.05\."/);
+  note.openLocation('D.05.123');
+  note.wizardField('workType', 'Prepare shipment');
+  await note.nextItems();
+  assert.equal(savedBody.locations[0].location, 'D.05.123');
+});
+
+test('non-author opens Inventory Bunch Notes directly into assigned work without author metadata reads', async () => {
+  const operations = [];
+  const { BunchNote: note, element, setAccount } = createRuntime(async (_url, request) => {
+    operations.push(request.operation);
+    if (request.operation === 'list') return { ok: true, data: { jobs: [{ id:'job-1', block:'D', location:'D.05.000', status:'open', owner_id:null, cards:[], body:{ purposes:'Inspect' }, progress:{} }] } };
+    return { ok: true, data: {} };
+  });
+  setAccount('field-worker');
+
+  await note.open();
+
+  assert.match(element.innerHTML, /<strong>D\.05<\/strong>/);
+  assert.deepEqual(operations, ['list']);
+  assert.doesNotMatch(element.innerHTML, /Create note/);
 });
 
 test('location setup is a guided header step before inventory card selection', async () => {
@@ -106,7 +180,7 @@ test('structured header changes preserve newer wizard fields but apply fields ed
   });
 });
 
-test('Que location selection and collapsed advanced controls do not eagerly mount the full CardBoard', async () => {
+test('Inventory location selection and collapsed advanced controls do not eagerly mount the full CardBoard', async () => {
   const rows = Array.from({ length: 1001 }, (_, index) => ({
     unique_id: `row-${index}`, blockalpha: 'D', locationcode: index < 1000 ? 'D.08.001' : 'D.08.002',
     itemcode: `ITEM-${index}`, commonname: `Plant ${index}`, contsize: '#3', lotcode: `LOT-${index}`,
@@ -120,14 +194,16 @@ test('Que location selection and collapsed advanced controls do not eagerly moun
     if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
     if (request.operation === 'save') return { ok: true, data: { draft: { id: 'batch-1', revision: 1, body: plain(request.payload.body) } } };
     return { ok: true, data: {} };
-  }, 'request');
+  });
 
   await note.open({ refresh: false });
   await note.chooseBlock('D');
   assert.equal(rows.length, 1001);
   assert.doesNotMatch(element.innerHTML, /data-bn-cards/, 'the location selection step must not mount the full React CardBoard');
-  assert.match(element.innerHTML, /aria-label="Open location D\.08\.001"/);
-  assert.match(element.innerHTML, /aria-label="Open location D\.08\.002"/);
+  assert.equal((element.innerHTML.match(/aria-label="Open location D\.08\."/g) || []).length, 2,
+    'distinct raw locations use the requested shortened display label');
+  assert.match(element.innerHTML, /onclick="BunchNote\.openLocation\(&quot;D\.08\.001&quot;\)"/);
+  assert.match(element.innerHTML, /onclick="BunchNote\.openLocation\(&quot;D\.08\.002&quot;\)"/);
   assert.match(element.innerHTML, /1000 inventory rows/);
   assert.match(element.innerHTML, /1 inventory rows/);
 
@@ -148,11 +224,19 @@ test('Que location selection and collapsed advanced controls do not eagerly moun
     if (request.operation === 'directory') return { ok: true, data: { users: [] } };
     if (request.operation === 'drafts') return { ok: true, data: { drafts: [] } };
     if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
+    if (request.operation === 'save') return { ok: true, data: { draft: { id: 'batch-standalone', revision: 1, body: plain(request.payload.body) } } };
     return { ok: true, data: {} };
   }, 'bunch-note');
   await standalone.BunchNote.open({ refresh: false });
   await standalone.BunchNote.chooseBlock('D');
-  assert.match(standalone.element.innerHTML, /data-bn-cards/, 'standalone authoring retains its CardBoard location workflow');
+  assert.doesNotMatch(standalone.element.innerHTML, /data-bn-cards/, 'standalone authoring begins with the guided location list');
+  standalone.BunchNote.openLocation('D.08.001');
+  standalone.BunchNote.wizardField('workType', 'Inspect');
+  await standalone.BunchNote.nextItems();
+  assert.match(standalone.element.innerHTML, /Advanced inventory and action controls/);
+  assert.doesNotMatch(standalone.element.innerHTML, /data-bn-cards/);
+  standalone.BunchNote.advancedInventoryPanel('D.08.001', true);
+  assert.match(standalone.element.innerHTML, /data-bn-cards/, 'standalone authoring keeps the existing CardBoard in Advanced controls');
 });
 
 test('inventory picker uses only source rows and + commits exact card notes before reopening search', async () => {
@@ -174,7 +258,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
       savedBody = plain(request.payload.body);
       return { ok: true, data: { draft: { id: 'batch-1', revision: (request.expectedRevision || 0) + 1, body: savedBody } } };
     }
-    if (request.operation === 'preview') return { ok: true, data: { preview: { id: 'preview-1', instruction_revision: 1 } } };
+    if (request.operation === 'preview') return { ok: true, data: { preview: { id: 'preview-1', instruction_revision: 1, recipients: [{ email: 'dylan@example.com' }] } } };
     return { ok: true, data: {} };
   });
 
@@ -212,6 +296,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   assert.equal(requests.filter(request=>request.operation==='inventory').length,1,'reset and search do not fetch inventory again');
   const committedSave=requests.filter(request=>request.operation==='save').at(-1);
   assert.equal(committedSave.payload.body.locations[0].actions[0].instructions,'Keep lots separate');
+  note.closeCardPicker();
   await note.backEditor();
   await note.openDraft('batch-1');
   note.openLocation('D.08.001');
@@ -221,6 +306,9 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   const previewRequest=requests.find(request=>request.operation==='preview');
   assert.equal(previewRequest.payload.batch_id,'batch-1');
   assert.ok(savedBody.locations[0].actions.some(action=>action.label==='Card notes'&&action.instructions==='Keep lots separate'));
+  assert.match(element.innerHTML,/Review Inv Bunch Notes PDFs/);
+  note.closePreview();
+  assert.match(element.innerHTML,/id="bn-assigned-work-mode"[^>]*aria-pressed="true"/,'closing the preview returns to Inventory Assigned work');
 });
 
 test('inventory picker pages complete local results and searches all 1000 groups without another inventory read', async () => {
