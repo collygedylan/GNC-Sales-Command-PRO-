@@ -163,8 +163,15 @@ test('Inventory step shortens D.05.000 for display but retains the full location
  await expect(page.getByLabel('Select lot #3 27.F1 d05-source',{exact:true})).toBeChecked();
  await page.getByRole('button',{name:'＋ Add card and continue',exact:true})[press]();
 
- // The add-and-continue action intentionally opens the next picker. Close it
- // before using the header Back stack to validate the saved full location.
+  // Wait for the serialized save and next-picker transition before Escape;
+  // the modal intentionally ignores dismissal while a save is in flight.
+  const content=page.locator('#bunch-note-content');
+  await expect(content).toHaveAttribute('aria-busy','false');
+  const savedCard=content.locator('.bn-wizard-card').filter({hasText:'BN-D05'});
+  await expect(savedCard).toContainText('d05-source');
+  await expect(page.getByRole('textbox',{name:'Search inventory',exact:true})).toBeVisible();
+  // The add-and-continue action intentionally opens the next picker. Close it
+  // before using the header Back stack to validate the saved full location.
  await page.keyboard.press('Escape');
  await expect(page.getByRole('dialog')).toHaveCount(0);
 
