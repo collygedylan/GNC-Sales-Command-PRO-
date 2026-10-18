@@ -149424,7 +149424,16 @@ C.14.043 C.15.000
             const sourceHadDisplayData = applyDisplayData(sourceRow, 'request');
             const displayRow = findDockSuspendDcRequestCardDisplayDataRow(item);
             const optionHadDisplayData = displayRow ? applyDisplayData(displayRow, 'drive') : false;
-            row.DOCK_SUSPEND_DISPLAY_DATA_ROW = !!(sourceHadDisplayData || optionHadDisplayData);
+            // A direct Queue open can render the SOC mirror before its exact
+            // authorized inventory identity batch finishes. The hydration
+            // callback invalidates the request render signature; consume that
+            // ready row here so the subsequent render carries photo/spec/note
+            // evidence in the same card projection as the quantity metrics.
+            const hydratedInventoryRow = typeof getQueueCardInventoryRow === 'function'
+                ? getQueueCardInventoryRow(item, 'request') : null;
+            const hydratedInventoryHadDisplayData = hydratedInventoryRow
+                ? applyDisplayData(hydratedInventoryRow, 'drive') : false;
+            row.DOCK_SUSPEND_DISPLAY_DATA_ROW = !!(sourceHadDisplayData || optionHadDisplayData || hydratedInventoryHadDisplayData);
             syncDockSuspendDcRequestPhotoAliases(row, sourceRow);
             syncDockSuspendDcRequestQuantityAliases(row, sourceRow);
             normalizeRowPhotoFields(row);
