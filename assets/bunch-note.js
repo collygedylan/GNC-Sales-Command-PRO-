@@ -11,6 +11,7 @@
  const templates = Object.entries(groups).flatMap(([group, labels]) => labels.map(label => ({ group, label, instructions: label, kind: label === 'TA / culls follow-up' ? 'ta' : ['Move','Grade and Save / Move To'].includes(label) ? 'move' : group === 'hauling' && !label.startsWith('Wait') ? 'hauling' : 'instruction' })));
  const renderedQueues = new WeakMap();
  let pickerPortalHost = null;
+ let pickerPositionGeneration = 0;
  function focusKeyFor(element) {
   if(!element)return null;
   if(element.dataset?.bnFocusKey)return ['data-bn-focus-key',element.dataset.bnFocusKey];
@@ -60,11 +61,28 @@
    if(Number.isInteger(snapshot.selectionStart)&&Number.isInteger(snapshot.selectionEnd))try{target.setSelectionRange(snapshot.selectionStart,snapshot.selectionEnd,snapshot.selectionDirection||'none');}catch(error){}
   }
  }
+ function schedulePickerScrollRestore(snapshot,portal,generation) {
+  if(!snapshot?.scrolls?.some(saved=>saved.key==='card-picker')||typeof requestAnimationFrame!=='function')return;
+  let cancelled=false;
+  const cancel=()=>{cancelled=true;for(const type of ['pointerdown','touchstart','wheel','keydown','focusin'])portal.removeEventListener(type,cancel,true);};
+  for(const type of ['pointerdown','touchstart','wheel','keydown','focusin'])portal.addEventListener(type,cancel,{capture:true,passive:true});
+  requestAnimationFrame(()=>{
+   for(const type of ['pointerdown','touchstart','wheel','keydown','focusin'])portal.removeEventListener(type,cancel,true);
+   if(cancelled||generation!==pickerPositionGeneration||portal!==pickerPortalHost||!portal.isConnected)return;
+   const active=document.activeElement,target=findFocus([portal],snapshot.focus);
+   if(snapshot.focus&&active!==target&&active!==document.body&&active!==document.documentElement)return;
+   for(const saved of snapshot.scrolls||[]){
+    const nodes=[];if(portal.dataset?.bnScrollKey===saved.key)nodes.push(portal);
+    for(const node of portal.querySelectorAll?.('[data-bn-scroll-key]')||[])if(node.dataset.bnScrollKey===saved.key)nodes.push(node);
+    if(nodes.length){nodes[0].scrollTop=saved.top;nodes[0].scrollLeft=saved.left;}
+   }
+  });
+ }
  function renderPickerPortal(markup,retainedPosition=null) {
   if(typeof document==='undefined'||typeof document.createElement!=='function'||!document.body?.appendChild)return;
-  if(!markup){pickerPortalHost?.remove();pickerPortalHost=null;return;}
+  if(!markup){pickerPositionGeneration++;pickerPortalHost?.remove();pickerPortalHost=null;return;}
   if(!pickerPortalHost||!pickerPortalHost.isConnected){pickerPortalHost=document.createElement('div');pickerPortalHost.className='bn-picker-portal-host';pickerPortalHost.dataset.bnPickerPortal='true';document.body.appendChild(pickerPortalHost);}
-  if(pickerPortalHost.innerHTML!==markup){const position=retainedPosition||captureUiPosition(null,pickerPortalHost);pickerPortalHost.innerHTML=markup;restoreUiPosition(position,null,pickerPortalHost);}
+  if(pickerPortalHost.innerHTML!==markup){const position=retainedPosition||captureUiPosition(null,pickerPortalHost);pickerPortalHost.innerHTML=markup;restoreUiPosition(position,null,pickerPortalHost);const generation=++pickerPositionGeneration;schedulePickerScrollRestore(position,pickerPortalHost,generation);}
  }
  const normalize = value => String(value ?? '').trim().toUpperCase();
  const displayLocation = value => String(value ?? '').replace(/\.\d{3}$/, '.');

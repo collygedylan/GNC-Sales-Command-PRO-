@@ -91,6 +91,42 @@ test('card picker rerenders retain its scroll position and focused checkbox/acti
   rt.dom.window.close();
 });
 
+test('picker deferred scroll restore repairs late layout reset and yields to newer input', async () => {
+  const rt = runtime();
+  await openLocation(rt);
+  await rt.note.nextItems();
+  rt.note.openCardPicker();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  const win = rt.window;
+  const frames = [];
+  win.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
+  let picker = win.document.querySelector('.bn-card-picker');
+  picker.scrollTop = 213;
+  win.document.querySelector('[aria-label="Select card PLANT-A Peony"]').focus();
+  rt.note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', true);
+  picker = win.document.querySelector('.bn-card-picker');
+  picker.scrollTop = 0; // Android may clamp/reset scroll after the synchronous DOM replacement.
+  frames.shift()(0);
+  assert.equal(picker.scrollTop, 213, 'post-layout restore returns the picker to its captured position');
+
+  win.document.querySelector('[aria-label="Select card PLANT-B Hosta"]').focus();
+  rt.note.togglePickerCard('D.05.000\u001fPLANT-B\u001fHOSTA\u001f#2', true);
+  const staleRestore = frames.shift();
+  picker = win.document.querySelector('.bn-card-picker');
+  picker.scrollTop = 0;
+  win.document.querySelector('[aria-label="Select card PLANT-A Peony"]').focus();
+  rt.note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', false);
+  const currentRestore = frames.shift();
+  picker = win.document.querySelector('.bn-card-picker');
+  picker.scrollTop = 72;
+  picker.dispatchEvent(new win.Event('wheel', { bubbles: true }));
+  staleRestore(0);
+  currentRestore(0);
+  assert.equal(picker.scrollTop, 72, 'stale restores and a newer user scroll cannot overwrite the current position');
+  assert.equal(win.document.activeElement?.getAttribute('aria-label'), 'Select card PLANT-A Peony', 'restore does not steal newer focus');
+  rt.dom.window.close();
+});
+
 test('canonical destination selection rerender restores the focused destination input', async () => {
   const rt = runtime();
   await openLocation(rt);
