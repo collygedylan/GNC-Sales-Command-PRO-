@@ -1046,7 +1046,10 @@ export function migrationContractQuery(name) {
         and position('destination_qualifier' in p.prosrc)>0 and position('left_margin' in p.prosrc)>0)
     and exists(select 1 from pg_proc p
       where p.oid=to_regprocedure('bunch_note_private.validate_blueprint_header()')
-        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and not p.prosecdef and p.proconfig @> array['search_path=""']
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute')
         and position('schedule_banner' in p.prosrc)>0 and position('rule_chips' in p.prosrc)>0)
     and (select count(*)=2 from pg_trigger t join pg_class c on c.oid=t.tgrelid
       join pg_namespace n on n.oid=c.relnamespace

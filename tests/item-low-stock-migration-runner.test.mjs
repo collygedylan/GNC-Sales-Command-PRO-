@@ -29,6 +29,8 @@ test('v2.2.1 Bunch Notes migration is selected and loadable by the production mi
   assert.match(contract, /information_schema\.columns/);
   assert.match(contract, /recipients_for_reports/);
   assert.match(contract, /validate_blueprint_header/);
+  assert.match(contract, /not p\.prosecdef and p\.proconfig/);
+  assert.match(contract, /not has_function_privilege\('service_role',p\.oid,'execute'\)/);
   assert.match(contract, /as installed/);
 });
 
