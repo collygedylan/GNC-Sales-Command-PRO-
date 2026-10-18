@@ -9653,30 +9653,57 @@ body.ops-precision-pilot :is(#drive-content, #request-content, #docks-content) .
 
 .app-shared-drive-layout .app-operational-card-header-fields{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:6px}.app-shared-drive-layout .app-operational-card-header-field{display:flex;flex-direction:column;min-width:60px}.app-shared-drive-layout .app-operational-card-header-field>span{font-size:11px;color:var(--ops-text-muted,#526259)}.app-shared-drive-layout .app-operational-card-header-field>strong{font-size:14px;color:var(--ops-text,#17251d);overflow-wrap:anywhere}
 
-/* Compact Suspend headers keep Reclass beside the title and order data below location. */
+/* Compact Suspend uses an independent Reclass rail beside the complete text/order column. */
 #request-content .app-suspend-tag-compact-card .app-drive-card-grid {
   grid-template-columns: var(--drive-card-photo-width) minmax(0, 1fr) !important;
   grid-template-areas: "photo header" "photo details" !important;
+  row-gap: 5px !important;
 }
 #request-content .app-suspend-tag-compact-card .app-drive-card-grid--no-photo {
   grid-template-columns: minmax(0, 1fr) !important;
   grid-template-areas: "header" "details" !important;
+  row-gap: 5px !important;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-header-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-text-column {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 #request-content .app-suspend-tag-compact-card .app-drive-card-title-row {
-  display: flex !important;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 0 !important;
+  display: block !important;
+  margin: 0 !important;
 }
-#request-content .app-suspend-tag-compact-card .app-drive-card-title { min-width: 0; flex: 1; }
-#request-content .app-suspend-tag-compact-card .app-drive-card-title-row > .app-drive-card-reclass {
+#request-content .app-suspend-tag-compact-card .app-drive-card-itemcode,
+#request-content .app-suspend-tag-compact-card .app-drive-card-meta {
+  margin: 0 !important;
+}
+#request-content .app-suspend-tag-compact-card .app-drive-card-meta {
+  max-width: none;
+  padding: 0;
+  text-align: left;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-header-row > .app-drive-card-reclass {
   grid-area: auto !important;
+  align-self: start;
+  justify-self: end;
   flex: 0 0 auto;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-header-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
 }
 #request-content .app-suspend-tag-compact-card .app-drive-card-meta + .app-operational-card-header-fields {
   flex-wrap: nowrap;
-  margin-top: 4px;
+  margin-top: 0;
 }
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn,
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn :is(span, i, svg) {
@@ -9693,25 +9720,26 @@ body.ops-precision-pilot :is(#drive-content, #request-content, #docks-content) .
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn:active { background: #005a38 !important; }
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn:disabled { background: #527565 !important; border-color: #527565 !important; }
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn:focus-visible { outline: 3px solid #fbbf24 !important; outline-offset: 2px; }
-#request-content .app-suspend-tag-compact-card .app-operational-planstart-date { margin: 4px 0; }
+#request-content .app-suspend-tag-compact-card .app-operational-planstart-date { margin: 0; }
 @media (max-width: 900px) {
   #request-content .app-suspend-tag-compact-card .app-drive-card-grid { grid-template-areas: "photo header" "details details" !important; }
   #request-content .app-suspend-tag-compact-card .app-drive-card-grid--no-photo { grid-template-areas: "header" "details" !important; }
 }
 
 /* Suspend Tag keeps the shared Drive frame and touch targets, with compact order data. */
-#request-content .app-suspend-tag-compact-card .app-operational-card-header-fields { gap: 4px 6px; margin-bottom: 4px; }
+#request-content .app-suspend-tag-compact-card .app-operational-card-header-fields { gap: 4px 6px; margin: 0; }
 #request-content .app-suspend-tag-compact-card .app-operational-card-header-field { flex-direction: row; align-items: baseline; gap: 4px; min-width: 0; }
-#request-content .app-suspend-tag-compact-card .app-drive-card-details { gap: 4px; }
-#request-content .app-suspend-tag-compact-card .app-request-card-meta { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0; }
+#request-content .app-suspend-tag-compact-card .app-drive-card-details { gap: 5px; }
+#request-content .app-suspend-tag-compact-card .app-drive-card-quantity-band { margin-top: 2px !important; }
+#request-content .app-suspend-tag-compact-card .app-request-card-meta { display: flex; flex-wrap: wrap; gap: 3px 6px; margin: 0; }
 #request-content .app-suspend-tag-compact-card .app-request-card-meta-chip { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; min-width: 0; max-width: 100%; padding: 2px 6px; border-radius: 6px; font-size: 12px; line-height: 1.3; color: var(--ops-text-muted, #526259); }
 #request-content .app-suspend-tag-compact-card .app-request-card-meta-chip strong { min-width: 0; overflow-wrap: anywhere; color: var(--ops-text, #17251d); }
 #request-content .app-suspend-tag-compact-card :is(.app-card-note, .app-suspend-tag-data-note) { margin: 0; padding: 6px; box-shadow: none; overflow-wrap: anywhere; }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-data-chips { margin: 0; gap: 4px; }
 #request-content .app-suspend-tag-compact-card .app-request-card-bottom { margin: 0; }
-#request-content .app-suspend-tag-compact-card .app-suspend-tag-status { margin: 0; padding-top: 6px; }
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-status { margin: 0; padding-top: 0; }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-status-label { margin: 0 0 4px; font-size: 12px; line-height: 1.3; }
-#request-content .app-suspend-tag-compact-card .app-suspend-tag-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-action { min-width: 44px; min-height: 44px; padding: 6px 8px; line-height: 1.3; }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-action,
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-action :is(span, i, svg) {
