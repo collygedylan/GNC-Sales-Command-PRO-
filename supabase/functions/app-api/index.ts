@@ -5351,7 +5351,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         const rpc = supabase.rpc.bind(supabase) as unknown as BunchNoteRpc;
         const rendered = await renderBunchNotePreview({
           rpc,
-          actor: { id: actor.id, username: actor.username, display_name: typeof actor.display_name === "string" ? actor.display_name : null },
+          actor: { id: actor.id, username: typeof actor.username === "string" ? actor.username : undefined, display_name: typeof actor.display_name === "string" ? actor.display_name : null },
           previewId: previewPayload.preview_id,
         });
         return jsonResponse({ ok: true, data: { pdfs: rendered.pdfs } });
