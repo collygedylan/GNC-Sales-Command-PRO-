@@ -57,7 +57,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     w.document.body.classList.add('ops-precision-pilot');
     applyProductionCardStyles(w);
   }
-  const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1', DOM_ID: 'request-soc-1', COMMONNAME: 'Test tree', CONTSIZE: '#3', ITEMCODE: 'SKU-1', LOTCODE: '27.U3', LOCATIONCODE: 'A1', DOCK_NUM: '12', DOCK_SPEC: 'Full', suspend_tag_status: status, suspend_tag_delivery_status: 'failed' };
+  const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1', DOM_ID: 'request-soc-1', COMMONNAME: 'Test tree', CONTSIZE: '#3', ITEMCODE: 'SKU-1', LOTCODE: '27.U3', LOCATIONCODE: 'A1', DOCK_NUM: 'Dock 30', DOCK_SPEC: 'Full', PLANSTART: '10/19/2026', suspend_tag_status: status, suspend_tag_delivery_status: 'failed' };
   const inventory = master ? { ...item, UNIQUE_ID: 'master-1', SOURCE_TABLE: 'ph_master_inventory' } : null;
   const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll("'", '&#39;');
   Object.assign(w, {
@@ -87,7 +87,8 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     emailSuspendTagFromCard: uid => { calls.push(['email', uid]); return false; },
     closeDockSuspendDcRequestFromCard: uid => { calls.push(['close', uid]); return false; },
     seasonCardShellClass: '', requestCardToneClass: '', requestBorderClass: '', suspendTagPlanstartToneDataAttr: '',
-    isChecked: '', requestCustomer: 'A customer', safeCardSourceViewKey: 'request', historyBadge: '', statusChip: '', reserveBadge: '',
+    isChecked: '', requestCustomer: 'A customer', requestConsignee: 'A consignee', suspendSalesRep: 'A rep', suspendRequestQty: '8', requestCaliper: '', safeCardSourceViewKey: 'request', historyBadge: '', statusChip: '<span>Pending</span>', reserveBadge: '<span>Reserve: NO</span>', reserve: 'NO',
+    requestMetaChip: (label, value) => `<span class="app-request-card-meta-chip"><span>${label}</span><strong>${esc(value)}</strong></span>`,
     getSupabaseReadIdentityScope: () => 'suspend-card-layout-test-account',
     suspendTagCompletionActions: new Set(),
     requestMetaHtml: '<div class="app-request-card-meta"><span class="app-request-card-meta-chip">Customer <strong>A long customer name</strong></span></div>',
@@ -112,7 +113,8 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
   ]) w.eval(extract(name));
   const nestedAttrs = html.match(/const nestedDockActionPressAttrs = '([^\n]+)';/)[1];
   w.nestedDockActionPressAttrs = nestedAttrs;
-  w.dockSuspendTagActionHtml = w.buildSuspendTagActions(item, nestedAttrs);
+  w.suspendOperationalMetaHtml = w.eval(html.match(/const suspendOperationalMetaHtml = ([^\n]+);/)[1]);
+  w.dockSuspendTagActionHtml = w.buildSuspendTagActions(item, nestedAttrs, w.formatDockCardPlanStartValue(item.PLANSTART));
   const start = html.indexOf("                if (isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag') {", html.indexOf('function generateCard('));
   const end = html.indexOf('\n                }', start) + '\n                }'.length;
   const markup = w.eval(`(function () { ${html.slice(start, end)} })()`);
@@ -132,9 +134,11 @@ test('card click and Enter open the shared editor for the exact Suspend Tag row'
   const meta = h.card.querySelector('.app-operational-card-meta');
   const fields = h.card.querySelector('.app-operational-card-header-fields');
   assert.ok(meta && fields);
-  assert.ok(meta.compareDocumentPosition(fields) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.ok(fields.compareDocumentPosition(meta) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
   assert.equal(meta.textContent.includes('Sales Rep'), true);
-  assert.equal(meta.textContent.includes('Request Qty'), true);
+  assert.equal(meta.textContent.includes('Consignee'), true);
+  assert.equal(meta.textContent.includes('Request Qty'), false);
+  assert.equal(meta.textContent.includes('Customer'), false);
   h.card.querySelector('.app-drive-card-title').click();
   h.card.dispatchEvent(new h.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
   assert.equal(h.calls.length, 2);
@@ -419,7 +423,7 @@ test('photo and no-photo cards put exactly one standard Reclass in the shared he
   for (const photo of [true, false]) {
     const h = harness(t, { photo });
     assert.equal(h.card.querySelectorAll('.app-card-bottom-btn--argos-reclass').length, 1);
-    assert.ok(h.card.querySelector('.app-drive-card-grid > .app-drive-card-reclass'));
+    assert.ok(h.card.querySelector('.app-drive-card-header .app-drive-card-title-row > .app-drive-card-reclass'));
     assert.equal(h.card.querySelector('.app-request-card-bottom .app-card-bottom-btn--argos-reclass'), null);
     assert.equal(h.card.querySelector('.app-drive-card-grid').classList.contains('app-drive-card-grid--no-photo'), !photo);
     assert.ok(h.card.classList.contains('app-drive-card-with-reclass'));
@@ -427,6 +431,53 @@ test('photo and no-photo cards put exactly one standard Reclass in the shared he
     assert.ok(h.card.textContent.includes('Sales note remains complete'));
     assert.equal([...h.card.querySelectorAll('button')].some(button => button.textContent === 'Photo / Specs'), false);
   }
+});
+
+test('compact Suspend metadata has Dock/Drop/Qty immediately after location and PLANSTART immediately before actions', t => {
+  const h = harness(t);
+  const location = h.card.querySelector('.app-drive-card-meta');
+  const fields = h.card.querySelector('.app-operational-card-header-fields');
+  assert.equal(location.nextElementSibling, fields);
+  assert.deepEqual([...fields.querySelectorAll('.app-operational-card-header-field')].map(node => node.textContent), ['Dock30', 'Drop3', 'Qty8']);
+  const date = h.card.querySelector('.app-operational-planstart-date');
+  assert.equal(date.textContent, 'PLANSTART: 10/19/2026');
+  assert.equal(date.nextElementSibling, h.card.querySelector('.app-suspend-tag-actions'));
+  assert.ok(h.card.querySelector('.app-request-card-bottom').contains(date));
+  assert.equal(h.card.querySelector('.app-drive-card-header .app-operational-planstart-date'), null);
+  assert.equal(h.card.querySelector('.app-suspend-tag-status-label'), null);
+  assert.doesNotMatch(h.card.textContent, /Pending|Reserve: NO|Customer|Request Qty|Dock Dock/);
+});
+
+test('compact Reclass keeps pure white semibold labels across production themes and disabled state', t => {
+  const h = harness(t, { productionStyles: true });
+  const button = h.card.querySelector('.app-drive-card-reclass button');
+  for (const theme of ['light', 'dark', 'outdoor']) {
+    h.w.document.body.dataset.opsTheme = theme;
+    for (const disabled of [false, true]) {
+      button.disabled = disabled;
+      for (const element of [button, button.querySelector('span')]) {
+        const style = h.w.getComputedStyle(element);
+        assert.equal(style.color, 'rgb(255, 255, 255)');
+        assert.equal(style.getPropertyValue('-webkit-text-fill-color'), 'rgb(255, 255, 255)');
+        assert.equal(style.fontWeight, '600');
+      }
+    }
+  }
+});
+
+test('Suspend detail chips omit photo-count and duplicate location-photo badges while preserving notes and specs', t => {
+  const h = harness(t);
+  Object.assign(h.w, {
+    syncDockSuspendDcRequestPhotoAliases() {}, mergePhotoCsvList: () => 'photo.jpg',
+    getRowPhotoLink: () => 'photo.jpg', getPendingPhotoPreviewEntries: () => [], getPhotoUrlList: () => ['photo.jpg'],
+    getDockSuspendDcRequestCompletionValues: () => ({ spec: 'Full', avNote: 'Keep this note' }),
+    getItemDisplayValue: () => '', formatLocPhotoMatchQtyValue: () => 'Not verified', normalizeCardQuantityValue: String
+  });
+  h.w.eval(extract('buildDockSuspendDcRequestCardDataHtml'));
+  const markup = h.w.buildDockSuspendDcRequestCardDataHtml(h.item);
+  assert.doesNotMatch(markup, /PHOTOS|LOC PHOTO MATCH/);
+  assert.match(markup, /Full/);
+  assert.match(markup, /Keep this note/);
 });
 
 test('Email and retry actions use the shared card action guard', t => {

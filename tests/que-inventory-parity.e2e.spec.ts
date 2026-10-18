@@ -118,6 +118,23 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
   }
   await expect(metric(card,'loc-on-hand')).toHaveText('100');
   await expect(card.locator('.app-operational-planstart-date')).toHaveText('PLANSTART: 10/19/2026');
+  await expect(card.locator('.app-drive-card-header .app-operational-planstart-date')).toHaveCount(0);
+  await expect(card.locator('.app-request-card-bottom .app-operational-planstart-date + .app-suspend-tag-actions')).toHaveCount(1);
+  await expect(card.locator('.app-drive-card-header .app-drive-card-title-row > .app-drive-card-reclass')).toHaveCount(1);
+  const compactOrder=await card.evaluate(el=>({
+    labels:[...el.querySelectorAll('.app-operational-card-header-fields .app-operational-card-header-field > span')].map(node=>node.textContent),
+    fieldsAfterLocation:el.querySelector('.app-drive-card-meta')?.nextElementSibling?.classList.contains('app-operational-card-header-fields'),
+    people:[...el.querySelectorAll('.app-request-card-meta-chip > span')].map(node=>node.textContent),
+    badges:el.querySelector('.app-suspend-tag-data-chips')?.textContent||'',
+    pendingLabel:el.querySelector('.app-suspend-tag-status-label')?.textContent||''
+  }));
+  expect(compactOrder.labels).toEqual(['Dock','Drop','Qty']);
+  expect(compactOrder.fieldsAfterLocation).toBe(true);
+  expect(compactOrder.people).toContain('Consignee');expect(compactOrder.people).toContain('Sales Rep');
+  expect(compactOrder.people).not.toContain('Customer');expect(compactOrder.people).not.toContain('Request Qty');
+  expect(compactOrder.badges).not.toMatch(/PHOTOS|LOC PHOTO MATCH/);
+  expect(compactOrder.pendingLabel).not.toBe('Pending');
+  await expect(card).not.toContainText('Reserve: NO');
   for(const [i,day] of ['monday','tuesday','wednesday','thursday','friday'].entries()) await expect(page.locator(`#request-content [data-request-uid="dock_suspend_dc_suspend-${String(i).padStart(5,'0')}"]`)).toHaveClass(new RegExp(`app-planstart-${day}`));
   const utcBoundaryCard=page.locator('#request-content [data-request-uid="dock_suspend_dc_suspend-00005"]');
   await expect(utcBoundaryCard.locator('.app-operational-planstart-date')).toHaveText('PLANSTART: 10/19/2026');
@@ -153,6 +170,12 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
     }
     for(const contrast of navigationContrast)expect(contrast).toBeGreaterThanOrEqual(4.5);
     for(const button of await card.locator('.app-suspend-tag-action').all()) expect(await button.evaluate(el=>getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
+    const reclass=card.locator('.app-drive-card-reclass button');
+    await expect(reclass).toBeVisible();
+    expect(await reclass.locator('span').evaluate(el=>({color:getComputedStyle(el).color,weight:getComputedStyle(el).fontWeight}))).toEqual({color:'rgb(255, 255, 255)',weight:'600'});
+    const headerBox=await card.locator('.app-drive-card-header').boundingBox(),reclassBox=await reclass.boundingBox();
+    expect(reclassBox!.x+reclassBox!.width).toBeGreaterThanOrEqual(headerBox!.x+headerBox!.width-2);
+    expect(Math.abs(reclassBox!.y-headerBox!.y)).toBeLessThanOrEqual(4);
     for(const [i,color] of ['rgb(243, 232, 255)','rgb(255, 228, 230)','rgb(220, 252, 231)','rgb(219, 234, 254)','rgb(226, 232, 240)'].entries()){
       const weekdayCard=page.locator(`#request-content [data-request-uid="dock_suspend_dc_suspend-${String(i).padStart(5,'0')}"]`);
       expect(await weekdayCard.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain(color);

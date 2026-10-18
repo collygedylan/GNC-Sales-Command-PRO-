@@ -422,13 +422,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   assert.deepEqual(plain(savedBody.locations[0].cards[0].row_ids), ['lot-1', 'lot-2']);
   assert.equal(savedBody.locations[0].cards[0].direction, 'Check the east row');
   assert.equal(savedBody.locations[0].cards[0].notes, 'Keep lots separate');
-  assert.equal(savedBody.locations[0].actions.length, 1);
-  assert.equal(savedBody.locations[0].actions[0].kind, 'instruction');
-  assert.equal(savedBody.locations[0].actions[0].label, 'Card notes');
-  assert.equal(savedBody.locations[0].actions[0].instructions, 'Keep lots separate');
-  assert.equal(savedBody.locations[0].actions[0].card_id, savedBody.locations[0].cards[0].id);
-  assert.deepEqual(plain(savedBody.locations[0].actions[0].row_ids), ['lot-1', 'lot-2']);
-  assert.ok(savedBody.locations[0].actions[0].option_id);
+  assert.equal(savedBody.locations[0].actions.length, 0, 'new card notes live on the card and do not create a duplicate legacy action');
   assert.match(element.innerHTML, /role="dialog"/);
   assert.match(element.innerHTML, /Search inventory/);
   assert.match(element.innerHTML, /Peony/);
@@ -436,7 +430,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   assert.equal((element.innerHTML.match(/class="[^"]*\bbn-picker-result\b[^"]*"/g) || []).length, 1, 'the reset picker remains searchable from cached full source rows');
   assert.equal(requests.filter(request=>request.operation==='inventory').length,1,'reset and search do not fetch inventory again');
   const committedSave=requests.filter(request=>request.operation==='save').at(-1);
-  assert.equal(committedSave.payload.body.locations[0].actions[0].instructions,'Keep lots separate');
+  assert.equal(committedSave.payload.body.locations[0].cards[0].notes,'Keep lots separate');
   note.closeCardPicker();
   await note.backEditor();
   await note.openDraft('batch-1');
@@ -446,7 +440,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   await note.preview();
   const previewRequest=requests.find(request=>request.operation==='preview');
   assert.equal(previewRequest.payload.batch_id,'batch-1');
-  assert.ok(savedBody.locations[0].actions.some(action=>action.label==='Card notes'&&action.instructions==='Keep lots separate'));
+  assert.equal(savedBody.locations[0].cards[0].notes,'Keep lots separate');
   assert.match(element.innerHTML,/Review Inv Bunch Notes PDFs/);
   note.closePreview();
   assert.match(element.innerHTML,/id="bn-assigned-work-mode"[^>]*aria-pressed="true"/,'closing the preview returns to Inventory Assigned work');
@@ -639,7 +633,7 @@ test('real DOM dismisses the picker with Escape from an outside focused control 
   assert.equal(portalBackdrop.closest('#request-content'), null);
   const saving = note.commitPickerCard();
   const portalFields = [...window.document.querySelectorAll('.bn-picker-portal-host textarea')];
-  assert.equal(portalFields.length, 2);
+  assert.equal(portalFields.length, 3);
   assert.ok(portalFields.every(field => field.disabled), 'picker fields are disabled while its save is pending');
   note.pickerField('notes', 'This late edit must be ignored');
   assert.equal(portalFields[1].value, 'Keep selected lots separate');

@@ -57,6 +57,26 @@ test('operational metadata precedes Dock/Drop/Qty/Spec chips in the shared card 
   assert.deepEqual([...fields.querySelectorAll('.app-operational-card-header-field')].map(x=>x.textContent),['Dock NumberD1','Drop Number2','Qty8','SpecFull']);
   dom.window.close();
 });
+
+test('compact Suspend variant moves order fields into the header while leaving shared Docks layout unchanged', () => {
+  const c=vm.createContext({esc:value=>String(value ?? ''),firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim()!==''),getDockStopOrDropValue:row=>row.STOPNUMBER});
+  vm.runInContext(extract('buildSharedInventoryCardLayout'),c);
+  const dom=new JSDOM(c.buildSharedInventoryCardLayout({COMMONNAME:'Tree',DOCK_NUM:'Dock 30',STOPNUMBER:'4',LOCATIONCODE:'I.12.000'}, {
+    operational:true,compactSuspend:true,quantity:0,spec:'Full',planstartValue:'10/19/2026',actionsHtml:'<div class="app-drive-card-reclass"><button>Reclass</button></div>',
+    operationalMetaHtml:'<div class="app-operational-card-meta">Consignee, Sales Rep</div>', detailsHtml:'<div>SpecFull</div>'
+  }));
+  const root=dom.window.document,location=root.querySelector('.app-drive-card-meta'),fields=root.querySelector('.app-operational-card-header-fields');
+  assert.equal(location.nextElementSibling,fields);
+  assert.deepEqual([...fields.querySelectorAll('.app-operational-card-header-field')].map(node=>node.textContent),['Dock30','Drop4','Qty0']);
+  assert.equal(fields.nextElementSibling,root.querySelector('.app-operational-card-meta'));
+  assert.ok(root.querySelector('.app-drive-card-title-row > .app-drive-card-reclass'));
+  assert.equal(root.querySelector('.app-drive-card-header .app-operational-planstart-date'),null);
+  assert.match(root.querySelector('.app-drive-card-details').textContent,/SpecFull/);
+  dom.window.close();
+  const zeroDock=new JSDOM(c.buildSharedInventoryCardLayout({DOCK_NUM:0}, {operational:true,compactSuspend:true}));
+  assert.equal(zeroDock.window.document.querySelector('.app-operational-card-header-field strong').textContent,'0');
+  zeroDock.window.close();
+});
 test('all three views use the same layout and the six-metric renderer',()=>{
   assert.equal((html.match(/buildSharedInventoryCardLayout\(item, \{/g)||[]).length,3);
   assert.match(html,/metricsHtml: driveQuantityRowHtml/);
