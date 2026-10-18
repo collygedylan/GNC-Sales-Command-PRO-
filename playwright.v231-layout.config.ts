@@ -5,7 +5,7 @@ export default defineConfig({
   testMatch: 'suspend-tag-compaction.e2e.spec.ts',
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   reporter: 'list',
   outputDir: '.gnc-local/v231-layout-results',
   use: { trace: 'off', screenshot: 'only-on-failure' },

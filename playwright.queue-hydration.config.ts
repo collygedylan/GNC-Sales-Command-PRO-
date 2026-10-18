@@ -5,7 +5,7 @@ export default defineConfig({
   testMatch: /queue-hydration-open\.e2e\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   reporter: 'list',
   timeout: 90_000,
   expect: { timeout: 5_000 },

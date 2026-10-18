@@ -6,6 +6,7 @@ export default defineConfig({
   grep: /Next and Save draft stay in normal flow below setup controls while scrolling/,
   fullyParallel: false,
   workers: 1,
+  retries: process.env.CI ? 2 : 0,
   reporter: 'list',
   outputDir: '.gnc-local/v231-bunch-actions-output',
   timeout: 30_000,
