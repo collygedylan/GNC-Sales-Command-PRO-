@@ -247,7 +247,7 @@ test('picker repaint keeps result and editor focus/scroll while selecting a cano
  await destination.evaluate(element=>element.dispatchEvent(new Event('change',{bubbles:true})));
  await expect(destination).toBeFocused();
  await expect.poll(()=>dialog.evaluate(element=>element.scrollTop)).toBe(destinationScrollBefore);
- await page.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep this row with the destination crew');
+ await dialog.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep this row with the destination crew');
  await page.getByRole('button',{name:'＋ Add selected card(s) and continue',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
  const saved=f.commands.filter(command=>command.operation==='save').at(-1)?.payload.body.locations[0];
@@ -425,7 +425,7 @@ test('wizard persists exact card notes through reload and preview while picker n
  await ambiguousDestination.press('Tab');
  await expect(page.getByLabel('Full destination location',{exact:true})).toBeVisible();
  await page.getByLabel('Full destination location',{exact:true}).selectOption('C.12.002');
- await page.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep these lots separate');
+ await page.locator('section.bn-card-picker[role="dialog"][data-bn-scroll-key="card-picker"]').getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep these lots separate');
  expect(f.commands).toHaveLength(commandCount); // search, selection and field edits are local
  await page.context().setOffline(false);
  await page.getByRole('button',{name:'＋ Add selected card(s) and continue',exact:true})[press]();
@@ -489,6 +489,7 @@ test('multi-card routing assigns both workers, requires a destination and safely
  await expect(page.getByLabel('Work type',{exact:true})).toHaveValue('C.12. Bunch Notes');
  await page.getByRole('button',{name:'Next',exact:true}).click();
  await page.getByRole('button',{name:'＋ Add inventory card',exact:true}).click();
+ const pickerDialog=page.locator('section.bn-card-picker[role="dialog"][data-bn-scroll-key="card-picker"]');
  const commandCount=f.commands.length;
  await page.context().setOffline(true);
  await page.getByRole('textbox',{name:'Search inventory',exact:true}).fill('Bunch Plant');
@@ -528,7 +529,7 @@ test('multi-card routing assigns both workers, requires a destination and safely
  const retryDestination=page.getByLabel('Move destination',{exact:true});
  await retryDestination.fill('D.05.');
  await retryDestination.press('Tab');
- await page.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep the two sizes separate');
+ await pickerDialog.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep the two sizes separate');
  expect(f.commands).toHaveLength(commandCount);
  await testInfo.attach('advanced-bunch-multi-assignment',{body:await page.screenshot(),contentType:'image/png'});
  await page.context().setOffline(false);
@@ -537,7 +538,7 @@ test('multi-card routing assigns both workers, requires a destination and safely
  await expect(page.locator('#bunch-note-content [role=alert]')).toContainText('Save unavailable');
  await expect(page.getByLabel('Required card action',{exact:true})).toBeDisabled();
  await expect(page.getByLabel('Assign to Second Worker',{exact:true})).toBeDisabled();
- await expect(page.getByRole('textbox',{name:'Card notes',exact:true})).toBeDisabled();
+ await expect(pickerDialog.getByRole('textbox',{name:'Card notes',exact:true})).toBeDisabled();
  const failed=f.commands.filter(c=>c.operation==='save').at(-1);
  await page.getByRole('button',{name:'Save cards and continue',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
