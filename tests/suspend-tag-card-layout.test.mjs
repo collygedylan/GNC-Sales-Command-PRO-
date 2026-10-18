@@ -9,10 +9,11 @@ const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.met
 const themeCss = readFileSync(new URL('../assets/theme-tokens.css', import.meta.url), 'utf8');
 const tailwindCss = readFileSync(new URL('../assets/live-tailwind-v2026082010.min.css', import.meta.url), 'utf8');
 const suspendContrastCss = html.match(/<style id="suspend-card-contrast">([\s\S]*?)<\/style>/)?.[1] || '';
+const docksContrastCss = html.match(/<style id="docks-card-contrast">([\s\S]*?)<\/style>/)?.[1] || '';
 
 function applyProductionCardStyles(window) {
   const style = window.document.createElement('style');
-  style.textContent = `${themeCss}\n${tailwindCss}\n${css}\n${suspendContrastCss}`;
+  style.textContent = `${themeCss}\n${tailwindCss}\n${css}\n${suspendContrastCss}\n${docksContrastCss}`;
   window.document.head.append(style);
 }
 
@@ -54,7 +55,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
   t.after(() => dom.window.close());
   const w = dom.window, calls = [];
   if (productionStyles) {
-    w.document.body.classList.add('ops-precision-pilot');
+    w.document.body.classList.add('ops-precision-pilot', 'current-view-request');
     applyProductionCardStyles(w);
   }
   const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1', DOM_ID: 'request-soc-1', COMMONNAME: 'Test tree', CONTSIZE: '#3', ITEMCODE: 'SKU-1', LOTCODE: '27.U3', LOCATIONCODE: 'A1', DOCK_NUM: 'Dock 30', DOCK_SPEC: 'Full', PLANSTART: '10/19/2026', suspend_tag_status: status, suspend_tag_delivery_status: 'failed' };
@@ -545,8 +546,8 @@ test('Suspend Tag density is scoped and keeps readable wrapping notes and touch 
   const rules = css.slice(start, nextSection < 0 ? undefined : nextSection);
   const compactStart = css.indexOf('/* Compact Suspend uses an independent Reclass rail');
   const compactRules = css.slice(compactStart, start);
-  assert.match(compactRules, /\.app-drive-card-grid \{[\s\S]*?row-gap: 5px !important;/);
-  assert.match(compactRules, /\.app-drive-card-grid--no-photo \{[\s\S]*?row-gap: 5px !important;/);
+  assert.match(compactRules, /body\.ops-precision-pilot\.current-view-request #request-content[\s\S]*?\.app-drive-card-grid,[\s\S]*?\.app-drive-card-grid:not\([\s\S]*?\) \{[\s\S]*?row-gap: 5px !important;/);
+  assert.match(compactRules, /body\.ops-precision-pilot\.current-view-request #request-content[\s\S]*?\.app-drive-card-grid\.app-drive-card-grid--no-photo,[\s\S]*?\.app-drive-card-grid\.app-drive-card-grid--no-photo:not\([\s\S]*?\) \{[\s\S]*?row-gap: 5px !important;/);
   assert.match(compactRules, /\.app-suspend-tag-header-row \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) auto;[\s\S]*?column-gap: 8px;/);
   assert.match(compactRules, /\.app-suspend-tag-text-column \{[\s\S]*?flex-direction: column;[\s\S]*?gap: 3px;/);
   assert.match(compactRules, /\.app-operational-planstart-date \{ margin: 0; \}/);
@@ -565,4 +566,32 @@ test('Suspend Tag density is scoped and keeps readable wrapping notes and touch 
   for (const selector of rules.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{/g)) {
     assert.ok(selector[1].trim().startsWith('#request-content .app-suspend-tag-compact-card '));
   }
+});
+
+test('compact Suspend pilot grid rules outrank the later production inline grid rules', () => {
+  assert.ok(docksContrastCss, 'include the actual later inline Docks/Request contrast stylesheet');
+  const compactStart = css.indexOf('/* Compact Suspend uses an independent Reclass rail');
+  const compactEnd = css.indexOf('/* Suspend Tag keeps the shared Drive frame', compactStart);
+  const compactRules = css.slice(compactStart, compactEnd);
+  const pilotSelectors = compactRules.match(/([^{}]+)\{\s*grid-template-columns:\s*var\(--drive-card-photo-width\) minmax\(0, 1fr\) !important;\s*grid-template-areas:\s*"photo header" "details details" !important;/)?.[1]
+    ?.split(',').map(selector => selector.trim()) || [];
+  const productionSelectors = [...docksContrastCss.matchAll(/([^{}]+)\{[^{}]*grid-template-areas:[^{}]*\}/g)]
+    .flatMap(match => match[1].split(',').map(selector => selector.trim()))
+    .filter(selector => selector.includes('#request-content') && selector.includes('.app-suspend-tag-compact-card') && selector.includes('.app-drive-card-grid'));
+  const specificity = (selector) => [
+    (selector.match(/#[\w-]+/g) || []).length,
+    (selector.match(/\.[\w-]+/g) || []).length,
+    (selector.match(/(?:^|\s|[>+~])(?:article|body|div|section)(?=\s|$|[.#[:])/g) || []).length,
+  ];
+  const compareSpecificity = (left, right) => {
+    const a = specificity(left), b = specificity(right);
+    for (let index = 0; index < a.length; index += 1) if (a[index] !== b[index]) return a[index] - b[index];
+    return 0;
+  };
+  assert.ok(pilotSelectors.some(selector => selector.includes('body.ops-precision-pilot.current-view-request') && selector.includes('.app-inventory-card-overhaul')),
+    'the pilot override is scoped to the live request shell and production card wrapper');
+  assert.ok(productionSelectors.length >= 4, 'compare all four production grid variants (rail/no-rail and photo/no-photo)');
+  const strongestProductionRule = productionSelectors.sort(compareSpecificity).at(-1);
+  assert.ok(pilotSelectors.some(selector => compareSpecificity(selector, strongestProductionRule) > 0),
+    `pilot selector must beat the later inline selector ${strongestProductionRule}`);
 });

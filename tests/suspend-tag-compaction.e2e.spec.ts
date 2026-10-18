@@ -14,6 +14,8 @@ const pilotCss = readFileSync(new URL('../assets/ops-precision-pilot.css', impor
 // 9902b436d5578c9e2889bbae8680d7ce6750ac366cdfca92ce0a6e8ad5d65cec
 const baselinePilotCss = gunzipSync(readFileSync(new URL('./fixtures/suspend-tag-57539e9e.css.gz', import.meta.url))).toString('utf8');
 const contrastCss = indexHtml.match(/<style id="suspend-card-contrast">([\s\S]*?)<\/style>/)?.[1] || '';
+// This later inline rule controls the production request card grid and must be present in the fixture.
+const docksContrastCss = indexHtml.match(/<style id="docks-card-contrast">([\s\S]*?)<\/style>/)?.[1] || '';
 // This is a static layout comparison; prevent the app's global 150ms button transition from skewing computed fonts.
 const noMotionCss = '*, *::before, *::after { transition: none !important; animation: none !important; }';
 
@@ -26,7 +28,7 @@ test('compact Suspend keeps aligned parties and larger full-width metrics at nar
   expect(baseInlineCss).toContain('.app-drive-card-grid{display:grid');
 
   await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body class="ops-precision-pilot current-view-request"><div id="request-content"></div></body></html>');
-  let currentStyle = await page.addStyleTag({ content: `${baseInlineCss}\n${commonCss}\n${pilotCss}\n${contrastCss}\n${noMotionCss}` });
+  let currentStyle = await page.addStyleTag({ content: `${baseInlineCss}\n${commonCss}\n${pilotCss}\n${contrastCss}\n${docksContrastCss}\n${noMotionCss}` });
   await page.evaluate(source => {
     interface SuspendRendererWindow extends Window {
       esc: (value: unknown) => string;
@@ -114,7 +116,7 @@ test('compact Suspend keeps aligned parties and larger full-width metrics at nar
     });
     const currentFonts = layout.fonts;
     await currentStyle.evaluate(style => style.remove());
-    const baselineStyle = await page.addStyleTag({ content: `${baseInlineCss}\n${commonCss}\n${baselinePilotCss}\n${contrastCss}\n${noMotionCss}` });
+    const baselineStyle = await page.addStyleTag({ content: `${baseInlineCss}\n${commonCss}\n${baselinePilotCss}\n${contrastCss}\n${docksContrastCss}\n${noMotionCss}` });
     const baselineFonts = await page.locator('.app-suspend-tag-compact-card').evaluate(card => {
       const font = (selector: string) => {
         const element = card.querySelector(selector);
@@ -128,7 +130,7 @@ test('compact Suspend keeps aligned parties and larger full-width metrics at nar
       contentType: 'application/json',
     });
     await baselineStyle.evaluate(style => style.remove());
-    currentStyle = await page.addStyleTag({ content: `${baseInlineCss}\n${commonCss}\n${pilotCss}\n${contrastCss}\n${noMotionCss}` });
+    currentStyle = await page.addStyleTag({ content: `${baseInlineCss}\n${commonCss}\n${pilotCss}\n${contrastCss}\n${docksContrastCss}\n${noMotionCss}` });
 
     expect(layout.gaps.reclassHeight).toBeGreaterThan(170);
     expect(layout.textColumnBottom).toBeLessThan((await page.locator('.app-drive-card-reclass').evaluate(el => el.getBoundingClientRect().bottom)));

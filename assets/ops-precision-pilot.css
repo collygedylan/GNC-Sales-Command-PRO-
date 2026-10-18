@@ -9654,12 +9654,15 @@ body.ops-precision-pilot :is(#drive-content, #request-content, #docks-content) .
 .app-shared-drive-layout .app-operational-card-header-fields{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:6px}.app-shared-drive-layout .app-operational-card-header-field{display:flex;flex-direction:column;min-width:60px}.app-shared-drive-layout .app-operational-card-header-field>span{font-size:11px;color:var(--ops-text-muted,#526259)}.app-shared-drive-layout .app-operational-card-header-field>strong{font-size:14px;color:var(--ops-text,#17251d);overflow-wrap:anywhere}
 
 /* Compact Suspend uses an independent Reclass rail beside the complete text/order column. */
-#request-content .app-suspend-tag-compact-card .app-drive-card-grid {
+/* Outrank the later #docks-card-contrast inline compatibility selectors for the live request-card variants. */
+body.ops-precision-pilot.current-view-request #request-content .app-inventory-card-overhaul.app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid,
+body.ops-precision-pilot.current-view-request #request-content .app-inventory-card-overhaul.app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid:not(.app-drive-card-grid--no-photo):not(.app-drive-card-with-reclass) {
   grid-template-columns: var(--drive-card-photo-width) minmax(0, 1fr) !important;
   grid-template-areas: "photo header" "details details" !important;
   row-gap: 5px !important;
 }
-#request-content .app-suspend-tag-compact-card .app-drive-card-grid--no-photo {
+body.ops-precision-pilot.current-view-request #request-content .app-inventory-card-overhaul.app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo,
+body.ops-precision-pilot.current-view-request #request-content .app-inventory-card-overhaul.app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo:not(.app-drive-card-with-reclass) {
   grid-template-columns: minmax(0, 1fr) !important;
   grid-template-areas: "header" "details" !important;
   row-gap: 5px !important;
