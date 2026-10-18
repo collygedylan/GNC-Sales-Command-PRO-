@@ -1,18 +1,31 @@
 name: PWA and Supabase performance
-
 on:
   workflow_dispatch:
-
 permissions:
   contents: read
-
-# One-use isolated SQL validation branch. This workflow is not part of the release PR.
-# Node, React, and prior simulator results remain retained per explicit user instruction.
+# Validation-only branch: retry the corrected app-api check; other final SQL jobs
+# remain recorded in39166028105. This workflow is not merged into the release.
 jobs:
-  isolated-sql-validation:
-    uses: ./.github/workflows/release-database.yml
-    with:
-      run-schema-tests: true
-      run-all-schema-tests: true
-      run-browser-tests: false
-      run-performance-tests: false
+  app-api-corrected-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Check and exercise the corrected app-api contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE' > /tmp/app-api-matrix.json
+          import { backendTestMatrices } from './scripts/ci-backend-matrix.mjs';
+          console.log(JSON.stringify(backendTestMatrices().edge.include.find(item => item.suite === 'supabase/functions/app-api')));
+          NODE
+          mapfile -t entrypoints < <(node -e 'for(const file of require("/tmp/app-api-matrix.json").targets) console.log(file)')
+          mapfile -t tests < <(node -e 'for(const file of require("/tmp/app-api-matrix.json").tests) console.log(file)')
+          deno check --node-modules-dir=auto "${entrypoints[@]}"
+          deno test --node-modules-dir=auto --allow-env --allow-net "${tests[@]}"
