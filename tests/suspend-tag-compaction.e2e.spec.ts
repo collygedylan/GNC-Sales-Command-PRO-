@@ -17,7 +17,7 @@ const contrastCss = indexHtml.match(/<style id="suspend-card-contrast">([\s\S]*?
 // This is a static layout comparison; prevent the app's global 150ms button transition from skewing computed fonts.
 const noMotionCss = '*, *::before, *::after { transition: none !important; animation: none !important; }';
 
-test('compact Suspend tag order, spacing, and typography stay stable at narrow and wide widths', { tag: ['@suspend-tag'] }, async ({ page }, testInfo) => {
+test('compact Suspend keeps aligned parties and larger full-width metrics at narrow and wide widths', { tag: ['@suspend-tag'] }, async ({ page }, testInfo) => {
   const layoutStart = indexHtml.indexOf('function buildSharedInventoryCardLayout(');
   const nextFunction = indexHtml.indexOf('\n        function ', layoutStart + 12);
   const layoutSource = indexHtml.slice(layoutStart, nextFunction);
@@ -43,9 +43,9 @@ test('compact Suspend tag order, spacing, and typography stay stable at narrow a
     const reclass = '<div class="app-drive-card-reclass"><button class="app-card-bottom-btn" type="button" style="height:180px">Reclass</button></div>';
     const markup = runtime.buildSharedInventoryCardLayout(item, {
       operational: true, compactSuspend: true, operationalMissingValue: 'N/A', quantity: '8', photoHtml: '<img alt="Plant photo" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=">',
-      operationalMetaHtml: '<div class="app-operational-card-meta app-request-card-meta"><span class="app-request-card-meta-chip">Consignee <strong>North Farm</strong></span><span class="app-request-card-meta-chip">Sales Rep <strong>Jordan</strong></span></div>',
+      operationalMetaHtml: '<div class="app-operational-card-meta app-request-card-meta"><span class="app-request-card-meta-chip">Consignee <strong>SiteOne Lds 179/R03 Wichita, KS</strong></span><span class="app-request-card-meta-chip">Sales Rep <strong>Lugas, Wes</strong></span></div>',
       actionsHtml: reclass, headerHtml: '<span class="app-drive-card-badge">History</span><span class="app-drive-card-badge">Reserve: YES</span>',
-      metricsHtml: '<div class="app-card-qty-row">' + ['On Hand', 'Available', 'Reserved', 'Pending', 'On Order', 'Allocated'].map(label => `<div class="app-card-qty-chip"><span class="app-card-qty-label">${label}</span><strong class="app-card-qty-value">124</strong></div>`).join('') + '</div>',
+      metricsHtml: '<div class="app-card-qty-row">' + ['On Hand', 'Review', 'Available', 'Open Stock', 'Loc Photo Match', 'Loc On Hand'].map((label, index) => `<div class="app-card-qty-chip"><span class="app-card-qty-label">${label}</span><strong class="app-card-qty-value">${index === 4 ? 'N/A' : '23678'}</strong></div>`).join('') + '</div>',
       detailsHtml: '<div class="app-suspend-tag-data-chips"><span>SPEC: Full Sun</span><span>MATCH: 95%</span></div><div class="app-card-note">AV NOTE: retain full note text without clipping</div><div class="app-suspend-tag-status border-t"><div class="app-operational-planstart-date">PLANSTART: 10/19/2026</div><div class="app-suspend-tag-actions"><button class="app-suspend-tag-action text-xs font-bold">Email Rep</button><button class="app-suspend-tag-action text-xs font-bold">Complete Tag</button></div></div>',
     });
     document.querySelector('#request-content')!.innerHTML = `<article class="app-shared-drive-layout app-smart-card app-drive-compact-card app-inventory-card-overhaul app-suspend-tag-compact-card app-drive-card-with-reclass">${markup}</article>`;
@@ -86,7 +86,13 @@ test('compact Suspend tag order, spacing, and typography stay stable at narrow a
       const plan = box('.app-operational-planstart-date');
       const button = box('.app-suspend-tag-action');
       const reclassButton = box('.app-drive-card-reclass .app-card-bottom-btn');
+      const photo = box('.app-drive-card-photo');
+      const grid = box('.app-drive-card-grid');
+      const details = box('.app-drive-card-details');
+      const parties = [...card.querySelectorAll('.app-operational-card-meta > .app-request-card-meta-chip')].map(el => ({ top: el.getBoundingClientRect().top, offsetTop: (el as HTMLElement).offsetTop }));
+      const quantities = [...card.querySelectorAll('.app-card-qty-chip')].map(el => ({ top: el.getBoundingClientRect().top, width: el.clientWidth, scrollWidth: el.scrollWidth }));
       return {
+        edges: { photo, grid, details, metrics, chips, note, planstart, actions }, parties, quantities,
         gaps: {
           titleItem: item.top - titleRow.bottom,
           itemLocation: location.top - item.bottom,
@@ -148,6 +154,22 @@ test('compact Suspend tag order, spacing, and typography stay stable at narrow a
         expect(fontSize, `computed font for ${selector} must be present at ${width}px`).not.toBe('');
       }
     }
-    expect(currentFonts, `font sizes must equal baseline 57539e9e at ${width}px`).toEqual(baselineFonts);
+    const { qtyLabel, qtyValue, ...otherFonts } = currentFonts;
+    const { qtyLabel: oldLabel, qtyValue: oldValue, ...otherBaselineFonts } = baselineFonts;
+    expect(otherFonts, `non-metric fonts stay unchanged at ${width}px`).toEqual(otherBaselineFonts);
+    expect(qtyLabel).toBeGreaterThan(oldLabel);
+    expect(qtyLabel).toBeGreaterThanOrEqual(13);
+    expect(qtyValue).toBeGreaterThan(oldValue);
+    expect(qtyValue).toBeGreaterThanOrEqual(22);
+    expect(layout.parties).toHaveLength(2);
+    expect(layout.parties[0].offsetTop).toBe(layout.parties[1].offsetTop);
+    expect(layout.parties[0].top).toBeCloseTo(layout.parties[1].top, 0);
+    for (const key of ['details', 'metrics', 'chips', 'note', 'planstart', 'actions'] as const) {
+      expect(layout.edges[key].left, `${key} starts at photo edge at ${width}px`).toBeCloseTo(layout.edges.photo.left, 0);
+      expect(layout.edges[key].right, `${key} spans card content at ${width}px`).toBeCloseTo(layout.edges.grid.right, 0);
+    }
+    expect(layout.edges.details.top).toBeGreaterThanOrEqual(layout.edges.photo.bottom);
+    expect(new Set(layout.quantities.map(cell => Math.round(cell.top))).size).toBe(width < 600 ? 2 : 1);
+    for (const cell of layout.quantities) expect(cell.scrollWidth).toBeLessThanOrEqual(cell.width + 1);
   }
 });

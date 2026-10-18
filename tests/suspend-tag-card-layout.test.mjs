@@ -555,7 +555,10 @@ test('Suspend Tag density is scoped and keeps readable wrapping notes and touch 
   assert.match(rules, /\.app-suspend-tag-status \{ margin: 0; padding-top: 0;/);
   assert.match(rules, /\.app-suspend-tag-actions \{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px;/);
   assert.match(rules, /\.app-drive-card-details \{ gap: 5px;/);
-  assert.match(rules, /\.app-request-card-meta \{ display: flex; flex-wrap: wrap; gap: 3px 6px; margin: 0;/);
+  assert.match(rules, /\.app-request-card-meta \{ display: grid; grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\); align-items: start; gap: 3px 6px; margin: 0;/);
+  assert.match(compactRules, /grid-template-areas: "photo header" "details details" !important;/);
+  assert.match(compactRules, /\.app-card-qty-label \{\s*font-size: 13px !important;\s*font-weight: 700 !important;/);
+  assert.match(compactRules, /\.app-card-qty-value \{\s*font-size: 22px !important;\s*font-weight: 800 !important;/);
   assert.match(rules, /:is\(\.app-card-note, \.app-suspend-tag-data-note\) \{ margin: 0; padding: 6px; box-shadow: none; overflow-wrap: anywhere;/);
   assert.match(rules, /\.app-suspend-tag-action \{ min-width: 44px; min-height: 44px; padding: 6px 8px;/);
   assert.doesNotMatch(rules, /line-clamp|max-height|overflow:\s*hidden/);
