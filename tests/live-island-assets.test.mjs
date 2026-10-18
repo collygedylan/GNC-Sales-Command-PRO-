@@ -11,9 +11,9 @@ test('release copies all deferred chunks and precaches only public root-island a
   const root=path.join(base,'source'),site=path.join(base,'site');
   await mkdir(path.join(root,'assets'),{recursive:true});await mkdir(site);
   const worker=await readFile(new URL('../sw.js',import.meta.url),'utf8');await writeFile(path.join(site,'sw.js'),worker);
-  for(const name of ['bunch-note-structured.js','bunch-note.css','bunch-note-cards.css','field-counting.js','field-counting.css','historical-requests.js','historical-requests.css','report-pages.js','report-pages-live.js'])await writeFile(path.join(root,'assets',name),'public code');
+  for(const name of ['bunch-queue.js','bunch-queue-shell.js','bunch-queue.css','bunch-note-structured.js','bunch-note.css','bunch-note-cards.css','field-counting.js','field-counting.css','historical-requests.js','historical-requests.css','report-pages.js','report-pages-live.js'])await writeFile(path.join(root,'assets',name),'public code');
   for(const group of ['bunch-note','field-counting','historical-requests']){await mkdir(path.join(root,'assets',group+'-chunks'));await writeFile(path.join(root,'assets',group+'-chunks','screen-ABC12345.js'),'deferred code');}
-  const assets=await prepareLiveIslandAssets({root,site});assert.equal(assets.length,12);
+  const assets=await prepareLiveIslandAssets({root,site});assert.equal(assets.length,15);
   assert.ok(assets.includes('report-pages.js') && assets.includes('report-pages-live.js'));
   for(const asset of assets)assert.equal(await readFile(path.join(site,'assets',asset),'utf8'),await readFile(path.join(root,'assets',asset),'utf8'));
   const built=await readFile(path.join(site,'sw.js'),'utf8');

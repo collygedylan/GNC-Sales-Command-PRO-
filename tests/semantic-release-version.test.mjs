@@ -56,6 +56,16 @@ test('release preparation synchronizes semantic app, importer and manifest marke
   assert.equal(prepareReleaseVersion(root, true), 'AgData v2.0.1');
   assert.ok(read('index.html').includes('?v=AgData%20v2.0.1'));
   assert.ok(!read('index.html').includes('v2.0.0'));
+  const scriptBefore = read('Code.gs');
+  write('package.json', { version: '2.3.0', appsScriptRelease: 'AgData v2.0.1' });
+  assert.equal(prepareReleaseVersion(root), 'AgData v2.3.0');
+  assert.equal(prepareReleaseVersion(root, true), 'AgData v2.3.0');
+  assert.equal(read('Code.gs'), scriptBefore, 'An explicitly pinned independent Apps Script release remains byte-for-byte unchanged');
+  write('package.json', { version: '2.3.0', appsScriptRelease: 'AgData v2.0.0' });
+  assert.throws(() => prepareReleaseVersion(root), /APPS_SCRIPT_PIN_MISMATCH/);
+  assert.equal(read('Code.gs'), scriptBefore);
+  write('package.json', { version: '2.3.0', appsScriptRelease: 'invalid' });
+  assert.throws(() => prepareReleaseVersion(root), /APPS_SCRIPT_PIN_INVALID/);
 });
 
 test('focused selection recognizes semantic marker changes but retains substantive changes', () => {

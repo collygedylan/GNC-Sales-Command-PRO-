@@ -133,6 +133,7 @@ test('Request queue counts skip pending-visibility work for Dock Suspend mirror 
   const regular = [{ id: 'regular-1' }, { id: 'regular-2' }, { id: 'regular-hidden' }];
   const mirrors = Array.from({ length: 1000 }, (_, index) => ({ id: `dock-mirror-${index}`, mirror: true }));
   const ctx = vm.createContext({
+    window: { BunchQueueShell: { counts: () => ({ active: 4, review: 1, canReview: true }) } },
     requestsInventory: [],
     requestArchiveListState: { total: 0 },
     evalWorkRows: [],
@@ -151,6 +152,8 @@ test('Request queue counts skip pending-visibility work for Dock Suspend mirror 
   const counts = ctx.getRequestTabQueueCounts();
 
   assert.equal(counts.pending, 2);
+  assert.equal(counts['bunch-notes'], 4);
+  assert.equal(counts['bunch-count-review'], 1);
   assert.equal(visibilityChecks, regular.length, 'only regular request rows need visibility/completion checks');
 });
 
@@ -530,6 +533,33 @@ test('request render pre-bump preserves an identical pending Suspend stage only'
   ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
   assert.equal(renderCalls, 2, 'other request views retain the pre-bump cancellation behavior');
   assert.equal(typeof pendingOptions.onComplete, 'function');
+});
+
+test('a delayed Pending side-data callback cannot hydrate over Bunch Notes', () => {
+  const execute = activeReqTab => {
+    const calls = { warm: 0, refresh: 0, catchup: 0, delay: 0 };
+    let scheduled;
+    const ctx = vm.createContext({
+      activeReqTab,
+      REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS: 240,
+      isTouchConstrainedDevice: () => true,
+      isViewVisible: view => view === 'request',
+      runAfterShellInteractive: (callback, delay) => { scheduled = callback; calls.delay = delay; },
+      window: { BunchQueueShell: { warm: () => { calls.warm += 1; }, isTab: tab => tab === 'bunch-notes' || tab === 'bunch-count-review' } },
+      refreshActiveRequestQueueSideData: () => { calls.refresh += 1; return Promise.resolve(); },
+      queueRequestVisibleRenderCatchup: () => { calls.catchup += 1; }
+    });
+    vm.runInContext(source('scheduleRequestRenderSideData'), ctx);
+    ctx.scheduleRequestRenderSideData();
+    assert.equal(calls.delay, 320, 'touch-device side refresh retains its existing delay');
+    scheduled();
+    return calls;
+  };
+
+  const bunch = execute('bunch-notes');
+  assert.deepEqual(bunch, { warm: 1, refresh: 0, catchup: 0, delay: 320 }, 'Bunch may warm its own cache but skips the broad queue refresh and catch-up');
+  const pending = execute('pending');
+  assert.deepEqual(pending, { warm: 1, refresh: 1, catchup: 1, delay: 320 }, 'ordinary Pending retains its existing side-data refresh behavior');
 });
 
 test('an identical Suspend plan restarts when its prior chunk token was cancelled', () => {

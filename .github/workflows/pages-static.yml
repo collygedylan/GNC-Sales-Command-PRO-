@@ -8,6 +8,11 @@ on:
         type: string
         required: false
         default: ''
+      reuse-v230-passing-suites:
+        description: Honor the explicit v2.3.0 authorization to retain already-passing Node and React evidence.
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -48,6 +53,7 @@ jobs:
       run-backend-tests: false
       run-schema-tests: false
       production-health: false
+      reuse-v230-passing-suites: ${{ inputs.reuse-v230-passing-suites }}
     secrets: inherit
 
   deploy:

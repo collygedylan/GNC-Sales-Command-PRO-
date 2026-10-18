@@ -12,7 +12,7 @@ function section(start, end) {
   return html.slice(from, to);
 }
 
-test('Inv Bunch Notes is an Inventory module and has no Que category', () => {
+test('Inv Bunch Notes authors in Inventory and assigned work has a Que category', () => {
   const context = vm.createContext({});
   vm.runInContext(workspace, context);
   const module = context.GncMobileWorkspace.hubs['sales-inventory'].find(entry => entry.targetView === 'bunch-note');
@@ -21,9 +21,9 @@ test('Inv Bunch Notes is an Inventory module and has no Que category', () => {
   const headerContext = vm.createContext({});
   vm.runInContext(section('const AMAZON_HEADER_META =', 'function createAmazonInlineBackButton()') + '\nthis.headerMeta = AMAZON_HEADER_META;', headerContext);
   assert.equal(headerContext.headerMeta['bunch-note'].title, 'Inv Bunch Notes');
-  assert.doesNotMatch(section('const REQUEST_TAB_LABELS', 'function getRequestTabQueueCounts'), /bunch-notes/);
-  assert.doesNotMatch(section('function getAuthorizedRequestCategories', 'const requestCategoryToolbarMarkupByNode'), /bunch-notes/);
-  assert.doesNotMatch(section('function normalizeRequestTabValue', 'function syncRequestTabButtons'), /bunch-notes/);
+  assert.match(section('const REQUEST_TAB_LABELS', 'function getRequestTabQueueCounts'), /bunch-notes/);
+  assert.match(section('function getAuthorizedRequestCategories', 'const requestCategoryToolbarMarkupByNode'), /bunch-notes/);
+  assert.match(section('function normalizeRequestTabValue', 'function syncRequestTabButtons'), /bunch-notes/);
 });
 
 test('moving assigned work into Inventory preserves active-worker access without author rights or extra module access', () => {
@@ -41,8 +41,8 @@ test('moving assigned work into Inventory preserves active-worker access without
   });
   vm.runInContext(section('function canUseInvBunchNotes(', 'const REQUEST_TAB_LABELS'), context);
   vm.runInContext(section('function navigationPreferencesAllowed(', 'function isSalesShellAccess('), context);
-  for (const view of ['sales-inventory', 'bunch-note']) assert.equal(context.canAccessView(view), true, view);
-  for (const view of ['request', 'reports', 'tasks', 'moves', 'hl-order']) assert.equal(context.canAccessView(view), false, view);
+  for (const view of ['sales-inventory', 'bunch-note', 'request']) assert.equal(context.canAccessView(view), true, view);
+  for (const view of ['reports', 'tasks', 'moves', 'hl-order']) assert.equal(context.canAccessView(view), false, view);
   assert.equal(context.canAccessView('bunch-note', 'other-user'), false);
   context.window.GncNavigationPreferences = { allowed: () => false };
   assert.equal(context.canAccessView('bunch-note'), false);

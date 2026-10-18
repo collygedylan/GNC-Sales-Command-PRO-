@@ -3,10 +3,12 @@
 <head>
     <script src="./assets/location-code.js"></script>
     <script src="./assets/bunch-note.js"></script>
+    <script src="./assets/bunch-queue-shell.js"></script>
     <script src="./assets/sales-workspace.js"></script>
     <script src="./assets/mobile-workspace.js"></script>
-    <script src="./assets/navigation-preferences.js?v=AgData%20v2.2.1"></script>
+    <script src="./assets/navigation-preferences.js?v=AgData%20v2.3.0"></script>
     <link rel="stylesheet" href="./assets/bunch-note.css">
+    <link rel="stylesheet" href="./assets/bunch-queue.css">
     <link rel="stylesheet" href="./assets/bunch-note-cards.css">
     <link rel="stylesheet" href="./assets/sales-workspace.css">
     <link rel="stylesheet" href="./assets/mobile-workspace.css">
@@ -15,7 +17,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#f4fbf7">
-    <link rel="stylesheet" href="./assets/theme-tokens.css?v=AgData%20v2.2.1">
+    <link rel="stylesheet" href="./assets/theme-tokens.css?v=AgData%20v2.3.0">
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/branding/ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/branding/ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/branding/ag-data-solutions-icon-v2026080925-180.png">
@@ -53,7 +55,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#050806' : '#f4fbf7');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=AgData%20v2.2.1">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=AgData%20v2.3.0">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -62,8 +64,8 @@
     <script src="./assets/app-lifecycle.js" data-app-lifecycle></script>
     <script>
       // Public release label; increment independently of the shell cache/build ID.
-      window.__APP_RELEASE_VERSION__ = 'AgData v2.2.1';
-      window.__APP_SHELL_VERSION__ = 'AgData v2.2.1';
+      window.__APP_RELEASE_VERSION__ = 'AgData v2.3.0';
+      window.__APP_SHELL_VERSION__ = 'AgData v2.3.0';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6895,8 +6897,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=AgData%20v2.2.1">
-    <link rel="stylesheet" href="./assets/production-schedule.css?v=AgData%20v2.2.1">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=AgData%20v2.3.0">
+    <link rel="stylesheet" href="./assets/production-schedule.css?v=AgData%20v2.3.0">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -7166,26 +7168,26 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/inventory-list-contract.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/queue-inventory-hydration.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/login-network-trace.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/live-sync-registry.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/manager-source-live-events.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/customer-mapping-live-events.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/live-sync-adapters.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/live-sync-coordinator.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/av-derived-rows.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/bounded-snapshot-cache.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/stable-view-dom.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/company-directory-cache.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/queue-completion-state.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/request-submission.js?v=AgData%20v2.2.1&mapping=20261014"></script>
-    <script src="./assets/ops-precision-pilot.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/production-schedule.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/eval-reports-engine.js?v=AgData%20v2.2.1"></script>
-    <script src="./assets/report-pages-live.js?v=AgData%20v2.2.1"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=AgData%20v2.2.1"></script>
+    <script src="./assets/drive-demand-detail.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/inventory-list-contract.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/queue-inventory-hydration.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/login-network-trace.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/live-sync-registry.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/manager-source-live-events.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/customer-mapping-live-events.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/live-sync-adapters.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/live-sync-coordinator.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/av-derived-rows.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/bounded-snapshot-cache.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/stable-view-dom.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/company-directory-cache.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/queue-completion-state.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/request-submission.js?v=AgData%20v2.3.0&mapping=20261014"></script>
+    <script src="./assets/ops-precision-pilot.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/production-schedule.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/eval-reports-engine.js?v=AgData%20v2.3.0"></script>
+    <script src="./assets/report-pages-live.js?v=AgData%20v2.3.0"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=AgData%20v2.3.0"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7955,7 +7957,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                         <div class="nav-header-meta-row">
  <div id="aura-standby-control"></div>
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v2.2.1').trim() || 'AgData v2.2.1';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v2.3.0').trim() || 'AgData v2.3.0';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9485,7 +9487,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.2.1';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.0';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10351,6 +10353,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
         function clearRoleScopedClientCaches(username = currentUser) {
             destroyHistoricalRequestsIsland();
             if (window.BunchNote) BunchNote.reset();
+            window.BunchQueueShell?.reset();
             if (window.SalesWorkspace) SalesWorkspace.reset();
             if (typeof window.GncNavigationPreferences?.reset === 'function') window.GncNavigationPreferences.reset();
             navigationPreferencesAccount = '';
@@ -10627,6 +10630,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
             destroyHistoricalRequestsIsland();
             nativeAuthProfile = null;
             if (window.BunchNote) BunchNote.reset();
+            window.BunchQueueShell?.reset();
             if (window.SalesWorkspace) SalesWorkspace.reset();
             if (typeof window.GncNavigationPreferences?.reset === 'function') window.GncNavigationPreferences.reset();
             navigationPreferencesAccount = '';
@@ -10729,6 +10733,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 destroyHistoricalRequestsIsland();
                 nativeAuthProfile = null;
             if (window.BunchNote) BunchNote.reset();
+            window.BunchQueueShell?.reset();
             if (window.SalesWorkspace) SalesWorkspace.reset();
             if (typeof window.GncNavigationPreferences?.reset === 'function') window.GncNavigationPreferences.reset();
             navigationPreferencesAccount = '';
@@ -23837,6 +23842,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             destroyHistoricalRequestsIsland();
             nativeAuthProfile = null;
             if (window.BunchNote) BunchNote.reset();
+            window.BunchQueueShell?.reset();
             if (window.SalesWorkspace) SalesWorkspace.reset();
             if (typeof window.GncNavigationPreferences?.reset === 'function') window.GncNavigationPreferences.reset();
             navigationPreferencesAccount = '';
@@ -34136,6 +34142,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     stage: async (ctx) => { const result = await evalWorkApi('list', {}, { timeoutMs: 20000, signal: ctx.signal }); return { rows: array(result.data, 'Eval Work'), manager: result.manager === true }; },
                     commit: (value) => { evalWorkRows = value.rows; evalWorkManager = value.manager || isEvalWorkManagerUser(); evalWorkLoaded = true; evalWorkError = ''; }
                 },
+                'side:bunchQueue': {
+                    enabled: (ctx) => !!ctx.username,
+                    scope: () => window.BunchQueueShell.scope(),
+                    stage: (ctx) => window.BunchQueueShell.stage(ctx),
+                    commit: (value) => window.BunchQueueShell.commit(value)
+                },
                 'side:bunchNotes': {
                     enabled: (ctx) => !!ctx.username,
                     scope: (ctx) => ctx.username + ':' + BunchNote.scope(),
@@ -35017,7 +35029,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.2.1').trim() || 'AgData v2.2.1';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.0').trim() || 'AgData v2.3.0';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -37730,7 +37742,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function scheduleRequestRenderSideData() {
             runAfterShellInteractive(() => {
-                if (!isViewVisible('request')) return;
+                window.BunchQueueShell?.warm();
+                // A delayed callback queued by the previous Request view must
+                // not hydrate the general request list over the Bunch queue.
+                if (!isViewVisible('request') || window.BunchQueueShell?.isTab(activeReqTab)) return;
                 refreshActiveRequestQueueSideData('request-render-side-data', {
                     allowWhileInteractive: true,
                     minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
@@ -40964,7 +40979,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             moves: 'Location Moves',
             recount: 'Recount',
             'shear-list': 'Shear List',
-            'eval-work': 'Eval Work'
+            'eval-work': 'Eval Work',
+            'bunch-notes': 'BUNCH NOTES',
+            'bunch-count-review': 'Count Review'
         });
 
         function getRequestTabQueueCounts(scopedItems = null) {
@@ -40975,7 +40992,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 moves: 0,
                 recount: 0,
                 'shear-list': 0,
-                'eval-work': 0
+                'eval-work': 0,
+                'bunch-notes': window.BunchQueueShell?.counts().active || 0,
+                'bunch-count-review': window.BunchQueueShell?.counts().review || 0
             };
             try {
                 const baseItems = Array.isArray(scopedItems)
@@ -41011,7 +41030,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getRequestQueueAlertCount(counts = null) {
             const snapshot = counts || getRequestTabQueueCounts();
-            return ['pending', 'suspend-tag', 'moves', 'recount', 'shear-list', 'eval-work']
+            return ['pending', 'suspend-tag', 'moves', 'recount', 'shear-list', 'eval-work', 'bunch-notes', 'bunch-count-review']
                 .reduce((total, key) => total + Math.max(0, Number(snapshot[key]) || 0), 0);
         }
 
@@ -41060,6 +41079,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (canUseGeneralQueue && canSeeRecountRequestTab(access)) categories.push('recount');
             if (canUseGeneralQueue && canSeeShearListRequestTab(access)) categories.push('shear-list');
             if (canSeeEvalWorkRequestTab()) categories.push('eval-work');
+            if (canUseInvBunchNotes()) categories.push('bunch-notes');
+            if (canUseInvBunchNotes() && window.BunchQueueShell?.counts().canReview) categories.push('bunch-count-review');
             return categories.length ? categories : [];
         }
 
@@ -41265,6 +41286,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const requested = String(tab || '').trim().toLowerCase();
             const capabilities = getRequestCapabilities();
             const canUseGeneralQueue = !!(capabilities && capabilities.canViewQueue);
+            if (requested === 'bunch-notes' && canUseInvBunchNotes()) return 'bunch-notes';
+            if (requested === 'bunch-count-review' && canUseInvBunchNotes() && window.BunchQueueShell?.counts().canReview) return 'bunch-count-review';
             if (requested === 'archived' && canUseGeneralQueue && canCurrentUserArchiveRequestRows()) return 'archived';
             if (requested === 'eval-work' && canSeeEvalWorkRequestTab()) return 'eval-work';
             if (requested === 'reps' && requestSalesRepsManagerMode && canUseGeneralQueue && canSeeRegularRequestTabs(access) && !isRestrictedEvalUser(access)) return 'reps';
@@ -41277,6 +41300,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (canUseGeneralQueue && canSeeMovesRequestTab(access)) return 'moves';
             if (canUseGeneralQueue && canSeeRecountRequestTab(access)) return 'recount';
             if (canUseGeneralQueue && canSeeShearListRequestTab(access)) return 'shear-list';
+            if (!canUseGeneralQueue && canUseInvBunchNotes()) return 'bunch-notes';
             return 'pending';
         }
 
@@ -43494,6 +43518,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getRequestViewLoadingConfig(tab = activeReqTab) {
             const safeTab = String(tab || 'pending').trim().toLowerCase();
+            if (['bunch-notes', 'bunch-count-review'].includes(safeTab)) return { required: [], background: [], label: 'Loading assigned Bunch Notes...' };
             const requests = { key: 'requests', mode: 'full' };
             if (safeTab === 'reps') {
                 return {
@@ -67536,7 +67561,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (targetView === 'crop-roll') return canViewCropRollHome() && navigationPreferencesAllowed(targetView, true);
             if (targetView === 'request') {
                 const capabilities = getRequestCapabilities();
-                return (!!(capabilities && capabilities.canViewQueue) || canSeeEvalWorkRequestTab()) && navigationPreferencesAllowed(targetView, true);
+                return (!!(capabilities && capabilities.canViewQueue) || canSeeEvalWorkRequestTab() || ((!userOverride || userOverride === currentUser) && canUseInvBunchNotes())) && navigationPreferencesAllowed(targetView, true);
             }
             const access = getRoleAccessState('', userOverride);
             if (targetView === 'sales-inventory') return navigationPreferencesAllowed(targetView, access.allowedViews.has(targetView) || ((!userOverride || userOverride === currentUser) && canUseInvBunchNotes()));
@@ -84357,6 +84382,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function switchView(viewId, options = {}) {
             if (viewId !== 'bunch-note') window.BunchNote?.disposeView();
+            if (viewId !== 'request') window.BunchQueueShell?.destroy();
             if (String(viewId || '').trim() !== 'managers') cancelManagerSeasonPriorityRead();
             const viewSwitchStartedAt = beginInternalPerfMeasure();
             persistAppFilterStateNow();
@@ -85892,6 +85918,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 interactionDelayMs: 8,
                 scrollDelayMs: 40
             });
+            if (window.BunchQueueShell?.isTab(nextTab)) return scheduled;
             if (nextTab === 'archived') {
                 loadRequestArchivePage(0, true).catch((error) => console.warn('Archived request page failed', error));
                 return scheduled;
@@ -119499,6 +119526,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const crumb = document.getElementById('request-crumb');
             if (activeReqTab !== 'pending') completedPendingRequestRender = null;
             document.getElementById('request-content')?.classList.remove('bn-root');
+            if (window.BunchQueueShell?.isTab(activeReqTab)) {
+                window.BunchQueueShell.render(container, crumb, activeReqTab === 'bunch-count-review');
+                return;
+            }
+            window.BunchQueueShell?.destroy();
             if (activeReqTab === 'eval-work') {
                 const container = document.getElementById('request-content');
                 const crumb = document.getElementById('request-crumb');
@@ -120442,7 +120474,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (!productionLiveSyncCoordinator || !canUseProductionLiveSync()) return null;
             const context = getProductionLiveSyncContext();
             if (!context.scope || !context.dataPermissionVersion || !context.visible || !context.online) return null;
-            if ((context.surfaces || []).includes('request:bunch-notes')) return null;
+            if ((context.surfaces || []).some(surface => ['request:bunch-notes', 'request:bunch-count-review'].includes(surface))) return null;
             return (context.adapters || []).find((adapter) => adapter.id === 'core:requests'
                 && Array.isArray(adapter.sourceKeys) && adapter.sourceKeys.includes(ACTIVE_REQUEST_TABLE)) || null;
         }
@@ -149435,7 +149467,10 @@ C.14.043 C.15.000
             const operationalHeader = operational ? `<div class="app-operational-card-header-fields">${field(compactSuspend ? 'Dock' : 'Dock Number', compactSuspend ? String(dockValue ?? '').replace(/^dock\s*/i, '').trim() : dockValue)}${field(compactSuspend ? 'Drop' : 'Drop Number', getDockStopOrDropValue(item))}${field('Qty', options.quantity)}${compactSuspend ? '' : field('Spec', options.spec)}</div>` : '';
             const location = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location,
                 operational ? (options.operationalMissingValue || 'N/A') : 'No Loc');
-            return `<div class="app-drive-card-grid ${classes} flex-grow">${photo ? `<div class="app-drive-card-photo">${photo}</div>` : ''}<div class="app-drive-card-main"><div class="app-drive-card-header"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')}<span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div>${compactSuspend ? actions : ''}</div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(location)} · ${esc(item.LOTCODE || '-')} · PRI ${esc(item.PRIORITY ?? '-')}</div>${compactSuspend ? `${operationalHeader}${options.operationalMetaHtml || ''}` : ''}${operational && !compactSuspend ? `<div class="app-operational-planstart-date">PLANSTART: ${esc(options.planstartValue || 'N/A')}</div>` : ''}${options.headerHtml || ''}</div>${compactSuspend ? '' : `${options.operationalMetaHtml || ''}${operationalHeader}`}<div class="app-drive-card-details"><div class="app-drive-card-quantity-band">${options.metricsHtml || ''}</div>${options.detailsHtml || ''}</div></div>${compactSuspend ? '' : actions}</div>`;
+            const compactSuspendHeader = compactSuspend
+                ? `<div class="app-suspend-tag-header-row"><div class="app-suspend-tag-text-column"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')}<span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div></div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(location)} · ${esc(item.LOTCODE || '-')} · PRI ${esc(item.PRIORITY ?? '-')}</div>${operationalHeader}${options.operationalMetaHtml || ''}</div>${actions}</div>${options.headerHtml ? `<div class="app-suspend-tag-header-badges">${options.headerHtml}</div>` : ''}`
+                : `<div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')}<span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div></div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(location)} · ${esc(item.LOTCODE || '-')} · PRI ${esc(item.PRIORITY ?? '-')}</div>${operational ? `<div class="app-operational-planstart-date">PLANSTART: ${esc(options.planstartValue || 'N/A')}</div>` : ''}${options.headerHtml || ''}`;
+            return `<div class="app-drive-card-grid ${classes} flex-grow">${photo ? `<div class="app-drive-card-photo">${photo}</div>` : ''}<div class="app-drive-card-main"><div class="app-drive-card-header">${compactSuspendHeader}</div>${compactSuspend ? '' : `${options.operationalMetaHtml || ''}${operationalHeader}`}<div class="app-drive-card-details"><div class="app-drive-card-quantity-band">${options.metricsHtml || ''}</div>${options.detailsHtml || ''}</div></div>${compactSuspend ? '' : actions}</div>`;
         }
 
         let queueCardInventoryHydrator = null;

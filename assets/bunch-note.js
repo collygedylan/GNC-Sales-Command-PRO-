@@ -726,9 +726,9 @@
  const actionFromOption = (o,ids,scope='rows') => ({id:crypto.randomUUID(),option_id:o.id,group:o.category,label:o.label,kind:o.kind,instructions:o.instructions||o.label,scope,row_ids:ids,quantity:'',percentage:'',crew:'',stage:'',destination:'',marking:''});
  async function refreshCatalog() { const c=await api('catalog'); state.options=c.options; state.destinations=c.locations; }
  async function preparePdf(p) {
-  const owner=state, pdf=await postGoogleScriptJsonPayload({type:'bunch_note_preview',nativeAuthAccessToken,previewId:p.id},REQUEST_EMAIL_SCRIPT_TIMEOUT_MS,'Bunch Note PDF preview');
+  const owner=state, pdf=await api('pdf_preview',{preview_id:p.id});
   if(owner!==state)return;
-  if(!pdf?.ok)throw new Error(pdf?.message||'PDF preview failed.');
+  if(!Array.isArray(pdf?.pdfs)||!pdf.pdfs.length)throw new Error(pdf?.message||'PDF preview failed.');
   state.preview={...p,pdfs:pdf.pdfs}; showPdfs(pdf.pdfs);
  }
  function render(retainedPosition=null) {
@@ -897,15 +897,15 @@
   correctActual: id => {const j=workJob(),x=j.actuals.find(x=>x.id===id),amount=prompt('Corrected quantity (0 cancels this entry):',String(x.quantity));if(amount===null)return;const destination=actionKind(x.action_snapshot)==='ta'?'':prompt('Correct destination:',x.destination);if(destination===null)return;const explanation=prompt('Reason for this correction:');if(!explanation?.trim())return;return run(async()=>{await api('actual',{job_id:j.id,...workScope(j),action_id:x.action_id,source_id:x.source_snapshot.unique_id,replaces_id:id,quantity:amount,destination,explanation},j.revision,crypto.randomUUID());state.detail=await api('get',{job_id:j.id,...workScope(j)});await load();});},
   workRecipient: (id,on) => {state.workRecipients=on?[...new Set([...state.workRecipients,id])]:state.workRecipients.filter(x=>x!==id);syncCheckboxByFocusKey(document.getElementById('bunch-note-content'),`work-recipient:${id}`,on);},
   previewWork: () => run(async()=>{const j=state.detail.job,{preview}=await api('work_preview',{job_id:j.id,recipient_ids:state.workRecipients},j.revision,crypto.randomUUID());await preparePdf(preview);switchView('bunch-note');}),
-  publishWork: send_email => run(async()=>{await api('work_publish',{preview_id:state.preview.id,send_email},state.preview.job_revision,crypto.randomUUID());invalidate();routeToAssignedWork();}),
+  publishWork: send_email => run(async()=>{await api('work_publish',{preview_id:state.preview.id,send_email},state.preview.job_revision,crypto.randomUUID());window.dispatchEvent(new CustomEvent('gnc:bunch-published'));invalidate();routeToAssignedWork();}),
   workPdf: preview_id => run(async()=>{const result=await api('work_pdf',{job_id:state.detail.job.id,preview_id});showPdfs([result.pdf]);const a=document.createElement('a');a.href=state.urls[0];a.target='_blank';a.rel='noopener';a.download=result.pdf.filename;a.click();}),
   removeAction: (i,j) => { invalidate(); state.draft.body.locations[i].actions.splice(j,1); render(); },
   recipient: (id,on) => { if(requiredBunchRecipientIds().has(id)){syncCheckboxByFocusKey(document.getElementById('bunch-note-content'),`recipient:${id}`,true);return;}invalidate(); const d=state.draft.body; d.recipient_ids=on?[...new Set([...d.recipient_ids,id])]:d.recipient_ids.filter(v=>v!==id);syncCheckboxByFocusKey(document.getElementById('bunch-note-content'),`recipient:${id}`,on); },
   refreshSource: () => run(async () => { invalidate(); const d=state.draft.body; state.rows=(await api('inventory',{block:d.block})).rows; const locations=groupInventory(state.rows).get(d.block)||new Map(); d.locations.forEach(l=>{l.source_all=locations.get(l.location)||[];for(const card of l.cards||[]){if(card.kind!=='inventory')continue;const matching=l.source_all.filter(r=>cardKey(r)===cardKey(card)),ids=new Set(matching.map(r=>r.unique_id));if(card.row_ids.every(id=>ids.has(id)))card.row_ids=[...ids];}prepareCards(l);});state.epoch++; }),
   save: () => run(saveDraft),
-  preview: () => run(async () => { await saveDraft(); const d=state.draft; const {preview:p}=await api('preview',{batch_id:d.id},d.revision,crypto.randomUUID()); const owner=state; const pdf=await postGoogleScriptJsonPayload({type:'bunch_note_preview',nativeAuthAccessToken,previewId:p.id},REQUEST_EMAIL_SCRIPT_TIMEOUT_MS,'Bunch Note PDF preview'); if(owner!==state)return; if(!pdf?.ok)throw new Error(pdf?.message||'PDF preview failed.'); state.preview={...p,pdfs:pdf.pdfs}; showPdfs(pdf.pdfs); }),
+  preview: () => run(async () => { await saveDraft(); const d=state.draft; const {preview:p}=await api('preview',{batch_id:d.id},d.revision,crypto.randomUUID()); await preparePdf(p); }),
   closePreview: () => { const work=state.preview?.report_kind==='completed_work';invalidate();if(work)state.detail=null;routeToAssignedWork(); },
-  publish: send_email => run(async () => { await api('publish',{preview_id:state.preview.id,send_email},state.draft.revision,crypto.randomUUID()); invalidate(); state.draft=null; state.drafts=(await api('drafts')).drafts; routeToAssignedWork(); showToast('Inv Bunch Notes',send_email?'Published. Email queued.':'Published to Assigned work.'); }),
+  publish: send_email => run(async () => { await api('publish',{preview_id:state.preview.id,send_email},state.draft.revision,crypto.randomUUID()); window.dispatchEvent(new CustomEvent('gnc:bunch-published')); invalidate(); state.draft=null; state.drafts=(await api('drafts')).drafts; routeToAssignedWork(); showToast('Inv Bunch Notes',send_email?'Published. Email queued.':'Published to Assigned work.'); }),
   refresh: () => run(load), filter: value => { state.filter=value;state.queueBase='';state.queueLocation=''; render(); },
   detail: id => run(async () => { rememberScroll();state.item='';state.workAction='';state.workCard='';state.detail=await api('get',{job_id:id}); await refreshCatalog(); if(author()&&!state.users.length)state.users=(await api('directory')).users;restoreScroll(); }),
   backQueue: () => { state.detail=null;state.item='';state.queueBase='';state.queueLocation='';state.screen='source';render(); },
