@@ -1,31 +1,171 @@
-name: PWA and Supabase performance
+name: Isolated v2.3.0 historical SQL validation
 on:
   workflow_dispatch:
+    inputs:
+      run-schema-tests:
+        type: boolean
+        default: true
+      run-browser-tests:
+        type: boolean
+        default: false
 permissions:
   contents: read
-# Validation-only branch: retry the corrected app-api check; other final SQL jobs
-# remain recorded in39166028105. This workflow is not merged into the release.
+  actions: read
 jobs:
-  app-api-corrected-contract:
+  historical-database:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - uses: denoland/setup-deno@v2
+          fetch-depth: 0
+      - id: dependencies
+        uses: ./.github/actions/setup-node-dependencies
+      - uses: supabase/setup-cli@v1
         with:
-          deno-version: v2.9.6
-      - name: Check and exercise the corrected app-api contract
+          version: 2.111.0
+      - name: Restore pinned CLI registry fallback
+        id: registry
+        shell: bash
+        run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/setup-supabase-images
+        id: images
+      - name: Prepare isolated migration project
+        id: prepare
+        run: node scripts/historical-database-fixture.mjs "$RUNNER_TEMP/gnc-supabase-ci"
+      - name: Start isolated Supabase stack
+        id: stack
+        run: node scripts/release-database-startup.mjs start
+      - run: node scripts/ci-supabase-image-cache.mjs save
+        if: steps.images.outputs.cache-hit != 'true'
+      - name: Apply migrations and strictly lint the isolated database
+        id: migrations
+        run: node scripts/sql-lint-temp-context.mjs --historical-reset
+          "$SUPABASE_CI_ROOT"
+      - name: Run pgTAP and RLS tests
+        id: sql
+        run: supabase --workdir "$SUPABASE_CI_ROOT" test db
+      - name: Run PostgreSQL concurrency transactions
+        if: inputs.run-schema-tests
+        shell: bash
+        run: >
+          set -euo pipefail
+
+          supabase --workdir "$SUPABASE_CI_ROOT" status -o env >
+          "$RUNNER_TEMP/supabase-status.env"
+
+          set -a
+
+          source "$RUNNER_TEMP/supabase-status.env"
+
+          set +a
+
+          node scripts/run-discovered-database-tests.mjs postgres-concurrency
+          "$DB_URL"
+      - id: browser_setup
+        if: inputs.run-browser-tests
+        uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - name: Run browser request transactions against local Supabase
+        id: transactions
+        if: inputs.run-browser-tests
+        shell: bash
+        run: >
+          set -euo pipefail
+
+          supabase --workdir "$SUPABASE_CI_ROOT" status -o env >
+          "$RUNNER_TEMP/supabase-status.env"
+
+          set -a
+
+          source "$RUNNER_TEMP/supabase-status.env"
+
+          set +a
+
+          SUPABASE_LOCAL_URL="$API_URL" \
+
+          SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
+
+          SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+
+          SUPABASE_LOCAL_DB_URL="$DB_URL" \
+
+          npx playwright test --config playwright.database.config.ts
+          --project=chromium --workers=1 --max-failures=1
+      - name: Run native authentication smoke tests against loopback Supabase
         shell: bash
         run: |
           set -euo pipefail
-          node --input-type=module <<'NODE' > /tmp/app-api-matrix.json
-          import { backendTestMatrices } from './scripts/ci-backend-matrix.mjs';
-          console.log(JSON.stringify(backendTestMatrices().edge.include.find(item => item.suite === 'supabase/functions/app-api')));
-          NODE
-          mapfile -t entrypoints < <(node -e 'for(const file of require("/tmp/app-api-matrix.json").targets) console.log(file)')
-          mapfile -t tests < <(node -e 'for(const file of require("/tmp/app-api-matrix.json").tests) console.log(file)')
-          deno check --node-modules-dir=auto "${entrypoints[@]}"
-          deno test --node-modules-dir=auto --allow-env --allow-net "${tests[@]}"
+          supabase --workdir "$SUPABASE_CI_ROOT" status --output env > "$RUNNER_TEMP/supabase-status.env"
+          set -a
+          source "$RUNNER_TEMP/supabase-status.env"
+          set +a
+          local_env_file="$RUNNER_TEMP/local-app-api.env"
+          printf 'SUPABASE_URL=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nAPP_SESSION_SECRET=%s\n' \
+            "$API_URL" "$SERVICE_ROLE_KEY" "$(openssl rand -hex 32)" > "$local_env_file"
+          supabase --workdir "$SUPABASE_CI_ROOT" functions serve --env-file "$local_env_file" --no-verify-jwt > "$RUNNER_TEMP/local-functions.log" 2>&1 &
+          functions_pid=$!
+          cleanup_functions() {
+            kill "$functions_pid" 2>/dev/null || true
+            wait "$functions_pid" 2>/dev/null || true
+            rm -f "$local_env_file" "$RUNNER_TEMP/supabase-status.env"
+          }
+          trap cleanup_functions EXIT
+          ready=false
+          for attempt in $(seq 1 60); do
+            status=$(curl --silent --show-error --max-time 2 -o /dev/null -w '%{http_code}' \
+              -X POST "$API_URL/functions/v1/app-api" -H 'Content-Type: application/json' -d '{}' 2>/dev/null || true)
+            case "$status" in
+              400|401|403|405|422) ready=true; break ;;
+            esac
+            if ! kill -0 "$functions_pid" 2>/dev/null; then
+              cat "$RUNNER_TEMP/local-functions.log"
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat "$RUNNER_TEMP/local-functions.log"
+            echo 'Local app-api function did not become ready on loopback.' >&2
+            exit 1
+          fi
+          SUPABASE_URL="$API_URL" \
+          SUPABASE_PUBLISHABLE_KEY="$ANON_KEY" \
+          SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          EXPECTED_PROJECT_REF=local \
+          node scripts/run-discovered-tests.mjs local-auth-smoke
+      - name: Save relation-size report query
+        run: >
+          mkdir -p artifacts
+
+          cp scripts/report-database-bloat.sql
+          artifacts/report-database-bloat.sql
+
+          cp scripts/report-unused-table-candidates.sql
+          artifacts/report-unused-table-candidates.sql
+
+          cp scripts/report-rls-policies.sql artifacts/report-rls-policies.sql
+
+          cp scripts/report-secret-bearing-functions.sql
+          artifacts/report-secret-bearing-functions.sql
+
+          cp scripts/report-drive-around-compaction-parity.sql
+          artifacts/report-drive-around-compaction-parity.sql
+
+          cp scripts/report-app-live-events-retirement.sql
+          artifacts/report-app-live-events-retirement.sql
+      - name: Record sanitized database stage and image evidence
+        if: always()
+        env:
+          DATABASE_STEPS: ${{ toJSON(steps) }}
+        run: node scripts/release-database-startup.mjs evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-database-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts
+            playwright-report/database
+            test-results/database
+          if-no-files-found: ignore
