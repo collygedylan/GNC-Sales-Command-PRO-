@@ -78,7 +78,8 @@ export const inventoryReclassCompactBatchChildReceiptsMigrationName = '202610161
 export const inventoryReclassNullElisionRpcMigrationName = '20261016160000_reclass_null_elision_rpc_v1.sql';
 export const masterIdentityBatchReadMigrationName = '20261017110000_inventory_master_identity_batch_read_v1.sql';
 export const bunchNoteMultiAssignmentRoutingMigrationName = '20261017203000_bunch_note_multi_assignment_routing.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName]);
+export const bunchNoteBlueprintHeaderPdfDeliveryMigrationName = '20261018014347_bunch_note_blueprint_header_pdf_delivery.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -1017,6 +1018,52 @@ export function migrationContractQuery(name) {
       and p.prosecdef and p.proconfig @> array['search_path=""'])
     and exists(select 1 from pg_proc p where p.oid='private.manager_report_season_page_v2(uuid,jsonb,text,integer,integer,text)'::regprocedure
       and p.prosecdef and p.proconfig @> array['search_path=""']) as installed`;
+  if (name === bunchNoteBlueprintHeaderPdfDeliveryMigrationName) return `select
+    (select count(*)=3 and bool_and(is_nullable='NO') and bool_and(data_type='text')
+      from information_schema.columns
+      where table_schema='bunch_note_private' and table_name='bunch_note_work_cards'
+        and column_name=any(array['destination_qualifier','workflow_instructions','left_margin']::text[]))
+    and exists(select 1 from pg_constraint c
+      where c.conrelid='bunch_note_private.bunch_note_work_cards'::regclass
+        and c.conname='bunch_note_work_cards_workflow_action_check'
+        and position('compound' in pg_get_constraintdef(c.oid))>0
+        and position('set_out' in pg_get_constraintdef(c.oid))>0)
+    and exists(select 1 from pg_constraint c
+      where c.conrelid='bunch_note_private.bunch_note_work_cards'::regclass
+        and c.conname='bunch_note_work_cards_routing_check'
+        and position('workflow_instructions' in pg_get_constraintdef(c.oid))>0
+        and position('destination_qualifier' in pg_get_constraintdef(c.oid))>0)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('bunch_note_private.structured_note(jsonb,jsonb)')
+        and position('purpose_thread' in p.prosrc)>0 and position('default_house_plan' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('bunch_note_private.normalize_work_cards(jsonb,jsonb)')
+        and position('kind' in p.prosrc)>0 and position('workflow_instructions' in p.prosrc)>0
+        and position('destination_qualifier' in p.prosrc)>0 and position('left_margin' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('bunch_note_private.mirror_work_cards()')
+        and position('kind' in p.prosrc)>0 and position('workflow_instructions' in p.prosrc)>0
+        and position('destination_qualifier' in p.prosrc)>0 and position('left_margin' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('bunch_note_private.validate_blueprint_header()')
+        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and position('schedule_banner' in p.prosrc)>0 and position('rule_chips' in p.prosrc)>0)
+    and (select count(*)=2 from pg_trigger t join pg_class c on c.oid=t.tgrelid
+      join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='bunch_note_private' and not t.tgisinternal
+        and t.tgname=any(array['zzz_bunch_note_v221_header_guard','zzz_bunch_note_v221_job_header_guard']::text[]))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('bunch_note_private.recipients_for_reports(jsonb,jsonb)')
+        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute')
+        and position('megan_kelly' in p.prosrc)>0 and position('sharon_combs' in p.prosrc)>0
+        and position('owner_ids' in p.prosrc)>0 and position('bunch_note_private.recipients(ids)' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('bunch_note_private.bunch_note_command_legacy(uuid,text,jsonb,uuid,bigint)')
+        and position('recipients_for_reports' in p.prosrc)>0)
+    as installed`;
   if (name === bunchNoteMultiAssignmentRoutingMigrationName) return `select
     (select count(*)=4 from information_schema.columns
       where table_schema='bunch_note_private' and table_name='bunch_note_work_cards'
