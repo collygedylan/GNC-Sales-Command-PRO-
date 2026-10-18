@@ -66,6 +66,7 @@ declare
  saved_action_id text; saved_action_snapshot jsonb;
  automatic_preview bunch_note_private.previews; automatic_event public.ph_request_delivery_outbox; route_entry jsonb; route_normalized jsonb;
  invalid_row_rejected boolean;
+ perf_started timestamptz; perf_elapsed_ms numeric;
  manual_preview jsonb; publish_result jsonb; invalid_body jsonb; legacy_body jsonb; legacy_draft jsonb; perf_body jsonb; perf_draft jsonb; perf_replay jsonb; perf_revision jsonb; perf_batch uuid; perf_command uuid; perf_revision_command uuid;
 begin
  select jsonb_agg(to_jsonb(m) order by unique_id) into inventory_before from public.ph_master_inventory m;
@@ -360,7 +361,11 @@ begin
   '100-card save and identical command replay retain all selected rows and both assignees');
  perf_body:=jsonb_set(perf_body,'{locations,0,cards,0,notes}','"Revised 100 regression card"'::jsonb);
  perf_revision_command:='bb000000-0000-4000-8000-000000000096';
+ perf_started:=clock_timestamp();
  perf_revision:=public.bunch_note_command_v1(d,'save',jsonb_build_object('batch_id',perf_batch,'body',perf_body),perf_revision_command,1)->'draft';
+ perf_elapsed_ms:=extract(epoch from clock_timestamp()-perf_started)*1000;
+ raise notice 'BUNCH_V221_100_CARD_REVISION_MS=%',round(perf_elapsed_ms,3);
+ perform pg_temp.bn_card_check(perf_elapsed_ms<=300,format('100-card revision save completed in %s ms (approved <=300 ms)',round(perf_elapsed_ms,3)));
  perform pg_temp.bn_card_check((perf_revision->>'revision')::integer=2
   and perf_revision->'body'->'locations'->0->'cards'->0->>'notes'='Revised 100 regression card'
   and (select count(*)=100 from bunch_note_private.bunch_note_work_cards wc join bunch_note_private.bunch_notes n on n.id=wc.bunch_note_id where n.batch_id=perf_batch and wc.active)
