@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { test, expect, type Route } from '@playwright/test';
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 import { realtimeFeed } from './fixtures/que-realtime-feed';
-import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
+import { assertRepresentativeQueueRenderTiming } from './helpers/frontend-ui-timing.mjs';
 // @test-group: @home-role
 test.use({trace:'off',screenshot:'off',timezoneId:'Asia/Tokyo'});
 
@@ -27,6 +27,10 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
     ...(prefix==='suspend'?{suspend:'SUSPEND',suspend_to:'dc',source_table:'ph_soc_master',request_source:'docks'}:{master_id:master[i].unique_id})
   }));
   const pending=makeRows('pending',200), suspended=makeRows('suspend',1000);
+  // Exercise the real printed-date/color mismatch, including a UTC date whose
+  // calendar date in the facility is still Monday. Device timezone is Tokyo.
+  suspended[0].planstart='October 19, 2026 12:00:00 GMT-0500';
+  suspended[5].planstart='Tue, 20 Oct 2026 02:00:00 GMT';
   const imageRequests:string[]=[];
   const fixture=await installHlOrderFixture(page,baseURL!,{master,realtimeSocket:feed.connect,demandSocRows:suspended,
     appPermissions:['request','drive','docks','po-management'].map(moduleKey=>({permissionKey:`module.${moduleKey}.view`,kind:'module',moduleKey,allowed:true})),
@@ -52,14 +56,72 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
   const metric=(card:typeof request,name:string)=>card.locator(`[data-inventory-card-metric="${name}"] .app-card-qty-value`);
   for(const [name,value] of Object.entries({'on-hand':'89',review:'27',available:'62','open-stock':'61','loc-on-hand':'100'})) await expect(metric(request,name)).toHaveText(value);
   await expect.poll(()=>request.locator('img').first().evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth===32)).toBe(true);
+  const suspendHydrationRequests:Array<Record<string,unknown>>=[];
+  const suspendRequestEntries=new WeakMap<object,Record<string,unknown>>();
+  page.on('request',req=>{
+    let url:URL;try{url=new URL(req.url());}catch{return;}
+    if(!url.pathname.includes('/functions/v1/app-api')&&!url.pathname.includes('/rest/v1/rpc/'))return;
+    let body:Record<string,unknown>={};try{const parsed=req.postDataJSON();if(parsed&&typeof parsed==='object')body=parsed as Record<string,unknown>;}catch{}
+    const params=body.params&&typeof body.params==='object'?body.params as Record<string,unknown>:{};
+    const entry:Record<string,unknown>={at:Date.now(),path:url.pathname,method:req.method(),action:body.action||null,
+      operation:body.operation||null,dataset:body.dataset||null,offset:params.offset??body.offset??null,limit:params.limit??body.limit??null,status:null};
+    if(suspendHydrationRequests.length<40){suspendHydrationRequests.push(entry);suspendRequestEntries.set(req,entry);}
+  });
+  page.on('response',response=>{
+    const entry=suspendRequestEntries.get(response.request());
+    if(entry){entry.status=response.status();entry.finishedAt=Date.now();}
+  });
   const toolbar=page.locator('#request-filter-toolbar'), handle=await toolbar.elementHandle();
+  // This cold fixture batch checks 10,001 schema-shaped rows before replying.
+  // Start the DOM hydration assertion after its actual response, separately
+  // from the warm render gate below; never inject values into the client cache.
+  const suspendInventoryResponse=page.waitForResponse(response=>{
+    if(!response.url().includes('/functions/v1/app-api'))return false;
+    const body=response.request().postDataJSON();
+    return body?.action==='inventory_read'&&body.operation==='master_identity_batch';
+  });
   await page.evaluate(()=>window.eval("setReqTab('suspend-tag')"));
   const card=page.locator('#request-content [data-request-uid="dock_suspend_dc_suspend-00000"]');
   await expect(card).toBeVisible();
-  await expect(metric(card,'on-hand')).toHaveText('89');
+  expect((await suspendInventoryResponse).status()).toBe(200);
+  try { await expect(metric(card,'on-hand')).toHaveText('89'); } catch(error) {
+    const pageState=await page.evaluate(()=>window.eval(`(() => {
+      const call=fn=>{try{return typeof fn==='function'?fn():null;}catch(value){return {error:String(value)};}};
+      const context=call(()=>getQueueCardInventoryContext());
+      const master=call(()=>getDatasetState('master'));
+      const source=call(()=>getDockSuspendDcSourceRows());
+      const preparation=typeof dockSuspendDcRequestMirrorRowsPreparation==='undefined'?null:dockSuspendDcRequestMirrorRowsPreparation;
+      const cacheRows=typeof dockSuspendDcRequestMirrorRowsCache==='undefined'?[]:dockSuspendDcRequestMirrorRowsCache;
+      const cacheSource=typeof dockSuspendDcRequestMirrorRowsCacheSource==='undefined'?null:dockSuspendDcRequestMirrorRowsCacheSource;
+      const container=document.querySelector('#request-suspend-tag-card-list');
+      const card=document.querySelector('#request-content [data-request-uid="dock_suspend_dc_suspend-00000"]');
+      const receipt=typeof queueCardInventoryRevisionReceipt==='undefined'?null:queueCardInventoryRevisionReceipt;
+      return {tab:typeof activeReqTab==='undefined'?'':activeReqTab,requestVisible:call(()=>isViewVisible('request')),
+        context:context?{scopePresent:!!context.scope,permissionPresent:!!context.permission,revision:String(context.revision||''),hasSignal:!!context.signal,signalAborted:!!context.signal?.aborted}:null,
+        revisionReceipt:receipt?{scopeMatches:receipt.scope===context?.scope,permissionMatches:receipt.permission===context?.permission,revision:String(receipt.revision||'')}:null,
+        master:master?{initialLoaded:!!master.initialLoaded,rowCompleteness:master.rowCompleteness||'',scopeMatches:master.liveVerifiedScope===context?.scope,
+          permissionMatches:master.liveVerifiedPermission===context?.permission,revisionMatches:String(master.liveVerifiedRevision||'')===String(context?.revision||'')}:null,
+        renderVersion:typeof queueCardInventoryRenderVersion==='undefined'?null:queueCardInventoryRenderVersion,
+        indexReceiptPresent:typeof queueCardInventoryIndexReceipt==='undefined'?null:!!queueCardInventoryIndexReceipt,
+        mirror:{sourceRows:Array.isArray(source)?source.length:null,preparing:!!preparation,cursor:preparation?.cursor??null,total:preparation?.sourceRows?.length??null,
+          preparedRows:preparation?.rows?.length??null,preparedRevision:preparation?.revision??null,cacheRows:Array.isArray(cacheRows)?cacheRows.length:null,
+          cacheKeyMatches:typeof dockSuspendDcRequestMirrorRowsCacheKey!=='undefined'&&dockSuspendDcRequestMirrorRowsCacheKey===call(()=>getDockSuspendDcSourceRowLookupRevision(source)),
+          cacheSourceMatches:cacheSource===source},
+        render:{pageGeneration:container?.__suspendPageGeneration??null,token:typeof chunkRenderTokensByKey==='undefined'?null:chunkRenderTokensByKey['request-main']??null,
+          activity:typeof chunkRenderActivityByKey==='undefined'?null:chunkRenderActivityByKey['request-main']??null,activeToken:container?.dataset?.activeChunkRenderToken??null,
+          signature:container?.dataset?.renderSignature??null,cardMetric:card?.querySelector('[data-inventory-card-metric="on-hand"] .app-card-qty-value')?.textContent?.trim()||null}};
+    })()`));
+    const diagnostics={project:info.project.name,activeTab:'suspend-tag',failure:String(error),pageState,requests:suspendHydrationRequests};
+    console.log('QUEUE_SUSPEND_HYDRATION_FAILURE',JSON.stringify(diagnostics));
+    await info.attach('queue-suspend-hydration-failure',{body:JSON.stringify(diagnostics,null,2),contentType:'application/json'});
+    throw error;
+  }
   await expect(metric(card,'loc-on-hand')).toHaveText('100');
   await expect(card.locator('.app-operational-planstart-date')).toHaveText('PLANSTART: 10/19/2026');
   for(const [i,day] of ['monday','tuesday','wednesday','thursday','friday'].entries()) await expect(page.locator(`#request-content [data-request-uid="dock_suspend_dc_suspend-${String(i).padStart(5,'0')}"]`)).toHaveClass(new RegExp(`app-planstart-${day}`));
+  const utcBoundaryCard=page.locator('#request-content [data-request-uid="dock_suspend_dc_suspend-00005"]');
+  await expect(utcBoundaryCard.locator('.app-operational-planstart-date')).toHaveText('PLANSTART: 10/19/2026');
+  await expect(utcBoundaryCard).toHaveClass(/app-planstart-monday/);
   for(const theme of ['light','dark','outdoor']){
     await page.evaluate(value=>{document.body.dataset.opsTheme=value;document.documentElement.classList.toggle('dark',value==='dark');document.documentElement.classList.toggle('outdoor-mode',value==='outdoor');},theme);
     await expect(toolbar).toBeVisible();
@@ -91,6 +153,10 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
     }
     for(const contrast of navigationContrast)expect(contrast).toBeGreaterThanOrEqual(4.5);
     for(const button of await card.locator('.app-suspend-tag-action').all()) expect(await button.evaluate(el=>getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
+    for(const [i,color] of ['rgb(243, 232, 255)','rgb(255, 228, 230)','rgb(220, 252, 231)','rgb(219, 234, 254)','rgb(226, 232, 240)'].entries()){
+      const weekdayCard=page.locator(`#request-content [data-request-uid="dock_suspend_dc_suspend-${String(i).padStart(5,'0')}"]`);
+      expect(await weekdayCard.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain(color);
+    }
     expect(await card.locator('.app-operational-planstart-date').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(17, 24, 39)');
     await page.screenshot({path:`.gnc-local/que-parity-${info.project.name}-${theme}.png`});
   }
@@ -105,12 +171,27 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
   await expect.poll(()=>feed.subscriptions.filter(entry=>entry.table==='app_dataset_revisions').length).toBeGreaterThan(0);
   await expect.poll(()=>feed.subscriptions.filter(entry=>entry.table==='ph_master_inventory').length).toBeGreaterThan(0);
   await expect.poll(()=>page.evaluate(()=>window.eval("productionLiveSyncCoordinator?.getStatus?.().state")),{timeout:30000}).toBe('Up to date');
+
   Object.assign(fixture.master[0],{photo_link:photo('updated'),photo_name:'que-updated.png',ptronhand:'93',ptravailable:'66',last_updated:new Date().toISOString()});fixture.datasetRevision++;
   feed.publish('app_dataset_revisions',{key:'ph_master_inventory',state:'ready',revision:String(fixture.datasetRevision)});
   feed.publish('ph_master_inventory',{unique_id:fixture.master[0].unique_id,itemcode:fixture.master[0].itemcode,locationcode:'C.09.000',last_updated:fixture.master[0].last_updated});
-  try { await expect(metric(card,'on-hand')).toHaveText('93',{timeout:20000}); } catch(error) {
-    console.log('QUE_LIVE_PUBLICATION_FAILURE',JSON.stringify({subscriptions:feed.subscriptions.map(({table,topic})=>({table,topic})),state:await page.evaluate(()=>window.eval(`({status:productionLiveSyncCoordinator?.getStatus?.(),statistics:productionLiveSyncCoordinator?.getStatistics?.(),receipt:queueCardInventoryRevisionReceipt,version:queueCardInventoryRenderVersion,revision:getQueueCardInventoryContext()?.revision,token:chunkRenderTokensByKey['request-main'],activity:chunkRenderActivityByKey['request-main'],entry:(()=>{const state=getQueueCardInventoryState(getDockSuspendDcRequestMirrorRows().find(row=>getItemUniqueId(row).includes('suspend-00000')));return {status:state.status,onHand:state.row?.ptronhand};})()})`))})); throw error;
+   try { await expect(metric(card,'on-hand')).toHaveText('93',{timeout:20000}); } catch(error) {
+     const diagnostics={subscriptions:feed.subscriptions.map(({table,topic})=>({table,topic})),state:await page.evaluate(()=>window.eval(`({status:productionLiveSyncCoordinator?.getStatus?.(),statistics:productionLiveSyncCoordinator?.getStatistics?.(),receipt:queueCardInventoryRevisionReceipt,version:queueCardInventoryRenderVersion,revision:getQueueCardInventoryContext()?.revision,token:chunkRenderTokensByKey['request-main'],activity:chunkRenderActivityByKey['request-main'],entry:(()=>{const state=getQueueCardInventoryState(getDockSuspendDcRequestMirrorRows().find(row=>getItemUniqueId(row).includes('suspend-00000')));return {status:state.status,onHand:state.row?.ptronhand};})()})`))};
+     console.log('QUE_LIVE_PUBLICATION_FAILURE',JSON.stringify(diagnostics));
+     await info.attach('queue-live-publication-failure',{body:JSON.stringify(diagnostics,null,2),contentType:'application/json'});
+     throw error;
   }
+  const livePublication=await page.evaluate(()=>window.eval(`(() => {
+    const list=document.querySelector('#request-suspend-tag-card-list');
+    const receipt=list?.__suspendPagePublicationReceipt;
+    return {durationMs:receipt?.durationMs,renderSignature:receipt?.renderSignature,
+      inventoryVersion:queueCardInventoryRenderVersion,rows:list?.querySelectorAll('[data-request-uid]').length};
+  })()`));
+  expect(livePublication.rows).toBe(100);
+  expect(livePublication.renderSignature).toContain(`queue-inventory:${livePublication.inventoryVersion}`);
+  assertRepresentativeQueueRenderTiming(expect(Number(livePublication.durationMs)));
+  console.log('QUEUE_LIVE_PUBLICATION_TIMING',JSON.stringify({project:info.project.name,durationMs:livePublication.durationMs,
+    rows:livePublication.rows,limitMs:1500,scope:'stage generation through atomic visible publication; network excluded'}));
   try {
     await expect.poll(()=>card.locator('img').first().evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth===180&&img.src.includes('que-updated'))).toBe(true);
   } catch (error) {
@@ -119,8 +200,16 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
     throw error;
   }
   expect(imageRequests.some(url=>url.includes('que-updated'))).toBe(true);
+  // A visible updated card/photo does not establish a warm renderer: the live
+  // publication can still have an ordinary side-data repaint or chunk pending.
+  // Wait for the completed publication before measuring a separate warm repaint.
+  await expect.poll(()=>page.evaluate(()=>window.eval(`({
+    synchronized:productionLiveSyncCoordinator?.getStatus?.().state==='Up to date',
+    rendering:!!productionLiveSyncActiveRender||productionLiveSyncRenderPending,
+    chunkActive:isChunkRenderActive()||!!chunkRenderActivityByKey['request-main']
+  })`)),{timeout:30000}).toEqual({synchronized:true,rendering:false,chunkActive:false});
   const renderMs=await page.evaluate(()=>window.eval(`new Promise(resolve=>{const start=performance.now();renderRequest();requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(performance.now()-start)))})`));
-  assertFrontendUiTiming(expect(Number(renderMs)),info.project);
+  assertRepresentativeQueueRenderTiming(expect(Number(renderMs)));
   console.log('QUEUE_PARITY_TIMING',JSON.stringify({project:info.project.name,renderMs,masterRows:master.length,requestRows:pending.length,suspendRows:suspended.length,cache:'warm client; shared OS cache uncontrolled'}));
   await info.attach('queue-parity-proof',{body:JSON.stringify({masterRows:master.length,requestRows:pending.length,suspendRows:suspended.length,renderMs,photoRequests:imageRequests.length,timezone:'Asia/Tokyo',cache:'warm client; shared OS cache uncontrolled'}),contentType:'application/json'});
   await page.locator('#footer-docks-btn').click();

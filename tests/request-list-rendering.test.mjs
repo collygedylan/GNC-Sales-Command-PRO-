@@ -297,18 +297,21 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
 
 test('retained Suspend cards publish completed stages without touch-idle deferral', () => {
   let renderOptions;
+  let renderTarget;
   const calls = [];
   const existingCard = {};
   const container = {
+    dataset: {},
     isConnected: true,
     querySelector: selector => selector === '[data-request-uid]' ? existingCard : null
   };
   const ctx = vm.createContext({
-    renderMarkupChunkedByKey: (...args) => { renderOptions = args[6]; return true; },
+    renderMarkupChunkedByKey: (...args) => { renderTarget = args[1]; renderOptions = args[6]; return true; },
     generateCard: () => '<card>', getPendingRequestChunkRenderOptions: options => options,
     isDockSuspendDcRequestMirrorPreparationPending: () => false,
     repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
-    getContainerRenderSignature: () => 'revision-2', setContainerRenderSignature() {},
+    getContainerRenderSignature: root => root.dataset?.renderSignature || '',
+    setContainerRenderSignature: (root, signature) => { root.dataset.renderSignature = signature; },
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     scheduleDeferredCardPhotoHydration: root => calls.push(`hydrate:${root === container}`),
@@ -323,8 +326,258 @@ test('retained Suspend cards publish completed stages without touch-idle deferra
 
   assert.equal(renderOptions._backgroundStage, true);
   assert.equal(renderOptions.onCompleteAfterInteractive, false);
+  assert.equal(renderOptions.completionDeadlineMs, 250, 'retained Suspend snapshots need a bounded completion deadline');
+  assert.equal(renderOptions.completionDeadlineDrainAll, true, 'only retained Suspend stages opt into an atomic deadline drain');
+  renderTarget.dataset = { renderSignature: 'revision-2' };
   renderOptions.onComplete();
   assert.deepEqual(calls, ['apply', 'hydrate:true']);
+  assert.equal(container.__suspendPagePublicationReceipt.generation, container.__suspendPageGeneration);
+  assert.equal(container.__suspendPagePublicationReceipt.renderSignature, 'revision-2');
+  assert.ok(Number.isFinite(container.__suspendPagePublicationReceipt.durationMs));
+});
+
+test('chunk deadline drains only opted-in bounded Suspend pages despite live-gesture pacing', () => {
+  const run = ({ staleAtDeadline = false, drainAll = true } = {}) => {
+    const rendered = [];
+    const frames = [];
+    let deadline;
+    let completed = 0;
+    const container = { dataset: {}, style: {}, classList: { add() {} } };
+    const tokens = { 'request-main': 0 };
+    const ctx = vm.createContext({
+      chunkRenderTokensByKey: tokens,
+      chunkRenderActivityByKey: {},
+      productionLiveSyncRendering: false,
+      productionLiveSyncActiveRender: null,
+      normalizeRenderSignature: value => String(value || ''),
+      buildRowsRenderSignature: () => 'render-test',
+      CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 260,
+      IOS_CHUNK_SYNC_ROW_LIMIT: 24,
+      window: { matchMedia: () => ({ matches: true }) },
+      document: { documentElement: { clientHeight: 640 } },
+      performance: { now: () => 1 },
+      requestAnimationFrame: callback => { frames.push(callback); return frames.length; },
+      scheduleChunkRenderTimeout: (_key, callback, delay) => { if (delay === 250) deadline = callback; return 1; },
+      cancelChunkRenderWorkForContainer() {},
+      bumpChunkRenderTokenByKey: key => (tokens[key] = (tokens[key] || 0) + 1),
+      getContainerChunkRenderKey: target => target.dataset.activeChunkRenderKey || '',
+      setContainerChunkRenderState: (target, key, token) => { target.dataset.activeChunkRenderKey = key; target.dataset.activeChunkRenderToken = String(token); },
+      clearContainerChunkRenderState: (target, key, token) => {
+        if (target.dataset.activeChunkRenderKey === key && target.dataset.activeChunkRenderToken === String(token)) {
+          delete target.dataset.activeChunkRenderKey; delete target.dataset.activeChunkRenderToken;
+        }
+      },
+      isChunkRenderCurrentForContainer: (target, key, token) => Number(tokens[key]) === token
+        && (!target.dataset.activeChunkRenderToken || Number(target.dataset.activeChunkRenderToken) === token),
+      beginInternalPerfMeasure: () => 1, getAdaptivePerfElapsedMs: () => 1,
+      isAdaptivePerformanceMode: () => false, getAdaptivePerformanceLevel: () => 0,
+      isIOSDevice: () => false, isStandaloneApp: () => false,
+      getChunkRenderPacing: count => ({ batchTarget: Math.min(count, Math.max(8, Math.ceil(count / 3))), timeBudget: 2, frameDelayMs: 0 }),
+      shouldHoldFollowupChunkFramesForInteraction: () => false,
+      isUserInLiveTouchScrollGesture: () => true,
+      beginChunkRenderActivity() {}, endChunkRenderActivity() {},
+      setContainerHtml() {}, appendHtmlFragment() {}, setContainerUiState() {},
+      getContainerRenderSignature: target => target.dataset.renderSignature || '',
+      setContainerRenderSignature: (target, signature) => { target.dataset.renderSignature = signature; },
+      incrementInternalPerfCounter() {}, recordGncPerfStat() {}, recordInternalPerfDuration() {},
+      reportSemanticHealthEvent() {}
+    });
+    vm.runInContext(source('renderMarkupChunkedByKey'), ctx);
+    const rows = Array.from({ length: 100 }, (_, index) => ({ id: index }));
+    ctx.renderMarkupChunkedByKey('request-main', container, null, rows, '', row => {
+      rendered.push(row.id); return `<row>${row.id}</row>`;
+    }, { initialRows: 2, chunkSize: 8, perFrameRows: 8, completionDeadlineMs: 250,
+      completionDeadlineDrainAll: drainAll, onComplete: () => { completed += 1; } });
+    assert.equal(rendered.length, 2, 'initial rendering stays bounded before the deadline');
+    if (staleAtDeadline) tokens['request-main'] += 1;
+    assert.equal(typeof deadline, 'function');
+    deadline();
+    if (!staleAtDeadline && drainAll) {
+      assert.equal(rendered.length, 100, 'opted-in deadline must synchronously finish the bounded visible page');
+      while (frames.length) frames.shift()();
+      assert.equal(completed, 1, 'current complete stage publishes through its completion callback');
+    } else if (!staleAtDeadline) {
+      assert.ok(rendered.length < 100, 'generic deadlines must preserve interaction-paced batching');
+      for (let count = 0; frames.length && count < 200; count += 1) frames.shift()();
+      assert.equal(rendered.length, 100, 'generic paced frames continue after their deadline batch');
+      assert.equal(completed, 1, 'generic render still completes through its regular token-checked callback');
+    } else {
+      while (frames.length) frames.shift()();
+      assert.equal(rendered.length, 2, 'stale token must block the deadline drain');
+      assert.equal(completed, 0, 'stale token must block publication');
+    }
+  };
+  run();
+  run({ staleAtDeadline: true });
+  run({ drainAll: false });
+});
+
+test('a detached Suspend stage cannot publish after its root disconnects', () => {
+  let renderOptions;
+  let renderTarget;
+  let applyCount = 0;
+  const container = { dataset: {}, isConnected: true, querySelector: () => ({}) };
+  const root = { isConnected: true };
+  const ctx = vm.createContext({
+    renderMarkupChunkedByKey: (...args) => { renderTarget = args[1]; renderOptions = args[6]; return true; },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: value => value,
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
+    getContainerRenderSignature: target => target.dataset?.renderSignature || '',
+    setContainerRenderSignature: (target, signature) => { target.dataset.renderSignature = signature; },
+    scheduleDeferredCardPhotoHydration() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
+    window: { AgMetricStableViewDom: { apply: () => { applyCount += 1; } } }, document: { createElement: () => ({}) }
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  ctx.renderSuspendTagPagedCards(container, {}, root, null, 'Suspend Tag', {
+    rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'auth-r1:source-r1:page-1', footerMarkup: ''
+  });
+
+  renderTarget.dataset = { renderSignature: 'auth-r1:source-r1:page-1' };
+  root.isConnected = false;
+  renderOptions.onComplete();
+
+  assert.equal(applyCount, 0);
+  assert.equal(container.dataset.renderSignature || '', '');
+  assert.equal(container.__suspendPageStage, null);
+});
+
+test('identical in-flight Suspend plans reuse their bounded stage until publication', () => {
+  let renderCalls = 0;
+  let options;
+  let stageTarget;
+  const chunkRenderTokensByKey = { 'request-main': 0 };
+  const container = {
+    dataset: {},
+    isConnected: true,
+    querySelector: selector => selector === '[data-request-uid]' ? {} : null
+  };
+  const footerCalls = [];
+  const ctx = vm.createContext({
+    renderMarkupChunkedByKey: (...args) => {
+      renderCalls += 1;
+      chunkRenderTokensByKey['request-main'] += 1;
+      stageTarget = args[1];
+      options = args[6];
+      return true;
+    },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: value => value,
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {},
+    syncRequestBrowseFooter: (_container, markup) => footerCalls.push(markup),
+    getContainerRenderSignature: root => root.dataset.renderSignature || '',
+    setContainerRenderSignature: (root, signature) => { root.dataset.renderSignature = signature; },
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
+    scheduleDeferredCardPhotoHydration() {},
+    chunkRenderTokensByKey,
+    window: { AgMetricStableViewDom: { apply() {} } }, document: { createElement: () => ({}) }
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+
+  const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'auth-r1:source-r1:page-1', footerMarkup: '<footer>1</footer>' };
+  assert.equal(ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan), true);
+  const stageOptions = options;
+  assert.equal(ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan), true);
+  assert.equal(renderCalls, 1, 'the same render signature must not cancel and restart its pending detached stage');
+  assert.deepEqual(footerCalls, ['<footer>1</footer>', '<footer>1</footer>']);
+
+  stageTarget.dataset = { renderSignature: plan.renderSignature };
+  stageOptions.onComplete();
+  assert.equal(ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan), true);
+  assert.equal(renderCalls, 2, 'once published, the existing renderer signature skip handles an identical redraw');
+  assert.equal(stageTarget, container, 'published identical plans must take the connected-container signature skip path');
+});
+
+test('request render pre-bump preserves an identical pending Suspend stage only', () => {
+  assert.equal(source('renderRequest').includes("if (shouldBumpRequestMainBeforeRender(isSuspendTagRender)) bumpChunkRenderTokenByKey('request-main');"), true,
+    'the real request render entrypoint must apply the tab-specific bump guard');
+  let renderCalls = 0;
+  let stageOptions;
+  const tokens = { 'request-main': 0 };
+  const container = { dataset: {}, isConnected: true, querySelector: () => ({}) };
+  const ctx = vm.createContext({
+    chunkRenderTokensByKey: tokens,
+    renderMarkupChunkedByKey: (...args) => {
+      renderCalls += 1;
+      tokens['request-main'] += 1;
+      stageOptions = args[6];
+      return true;
+    },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: value => value,
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
+    getContainerRenderSignature: root => root.dataset.renderSignature || '', setContainerRenderSignature() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
+    window: { AgMetricStableViewDom: { apply() {} } }, document: { createElement: () => ({}) }
+  });
+  vm.runInContext(source('shouldBumpRequestMainBeforeRender'), ctx);
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+
+  const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'same-auth-source-page', footerMarkup: '' };
+  assert.equal(ctx.shouldBumpRequestMainBeforeRender(true), false);
+  ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
+  const pendingOptions = stageOptions;
+  if (ctx.shouldBumpRequestMainBeforeRender(true)) tokens['request-main'] += 1;
+  ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
+  assert.equal(renderCalls, 1, 'a same-plan Suspend render must not cancel its pending stage');
+
+  assert.equal(ctx.shouldBumpRequestMainBeforeRender(false), true);
+  if (ctx.shouldBumpRequestMainBeforeRender(false)) tokens['request-main'] += 1;
+  ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
+  assert.equal(renderCalls, 2, 'other request views retain the pre-bump cancellation behavior');
+  assert.equal(typeof pendingOptions.onComplete, 'function');
+});
+
+test('an identical Suspend plan restarts when its prior chunk token was cancelled', () => {
+  let renderCalls = 0;
+  const chunkRenderTokensByKey = { 'request-main': 0 };
+  const container = { dataset: {}, isConnected: true, querySelector: () => ({}) };
+  const ctx = vm.createContext({
+    renderMarkupChunkedByKey: () => { renderCalls += 1; chunkRenderTokensByKey['request-main'] += 1; return true; },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: value => value,
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
+    getContainerRenderSignature: target => target.dataset?.renderSignature || '', setContainerRenderSignature() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
+    chunkRenderTokensByKey,
+    window: { AgMetricStableViewDom: { apply() {} } }, document: { createElement: () => ({}) }
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'same-auth-source-page', footerMarkup: '' };
+
+  ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
+  chunkRenderTokensByKey['request-main'] += 1;
+  ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
+
+  assert.equal(renderCalls, 2, 'a stage whose global chunk token was superseded must not suppress its replacement');
+});
+
+test('Suspend schedules hydration for the complete visible page before rendering its first chunk', () => {
+  const rows = Array.from({ length: 100 }, (_, index) => ({ UNIQUE_ID: `suspend-${index}` }));
+  const reads = [];
+  const ctx = vm.createContext({
+    getQueueCardInventoryState: (row, view) => { reads.push([row.UNIQUE_ID, view]); return { status: 'loading' }; },
+    renderMarkupChunkedByKey: (_key, _container, _crumb, visibleRows) => {
+      assert.equal(reads.length, 100, 'one batch must already include the whole visible page before chunk callbacks can repaint');
+      assert.equal(visibleRows, rows);
+      return true;
+    },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: options => options,
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all'
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  assert.equal(ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', {
+    rows, items: [...rows, { UNIQUE_ID: 'off-page' }], renderSignature: 'page-1', footerMarkup: ''
+  }), true);
+  assert.deepEqual(reads, rows.map(row => [row.UNIQUE_ID, 'request']), 'off-page rows must not start reads');
 });
 
 test('cold Suspend mirror preparation renders a loading state instead of an empty queue', () => {
@@ -386,13 +639,16 @@ test('Suspend filtered-empty render signature changes when mirror preparation fi
 });
 
 test('Suspend render signature changes when canonical queue hydration completes without source-row changes', () => {
+  let sourceRevision = 'source-r1';
+  let permissionRevision = 'permission-r1';
   const ctx = vm.createContext({
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     queueCardInventoryRenderVersion: 0,
     getItemUniqueId: item => item.UNIQUE_ID,
-    getDockSuspendDcSourceRows: () => [], getDockSuspendDcSourceRowLookupRevision: () => 'source-r1',
+    getDockSuspendDcSourceRows: () => [], getDockSuspendDcSourceRowLookupRevision: () => sourceRevision,
     getDockSuspendDcSourceRowLookup: () => new Map(),
+    getQueueCardInventoryContext: () => ({ scope: 'scope-1', permission: permissionRevision, revision: '1' }),
     getSuspendTagRequestItems: items => items.slice(), getSortedSuspendTagSourceRows: items => items.slice(),
     applyRequestSuspendTagCommonNameSearchFilter: items => items,
     applyRequestSuspendTagAssignedToFilter: items => items,
@@ -412,6 +668,13 @@ test('Suspend render signature changes when canonical queue hydration completes 
   const hydratedPlan = ctx.buildSuspendTagRenderPlan(unchangedSource);
   assert.notEqual(hydratedPlan.renderSignature, loadingPlan.renderSignature,
     'canonical metric hydration must invalidate the chunk-render skip key even when request rows are unchanged');
+  sourceRevision = 'source-r2';
+  const changedSourcePlan = ctx.buildSuspendTagRenderPlan(unchangedSource);
+  assert.notEqual(changedSourcePlan.renderSignature, hydratedPlan.renderSignature,
+    'a changed Suspend source revision must supersede an in-flight stage');
+  permissionRevision = 'permission-r2';
+  assert.notEqual(ctx.buildSuspendTagRenderPlan(unchangedSource).renderSignature, changedSourcePlan.renderSignature,
+    'a changed inventory permission revision must supersede an in-flight stage');
 });
 
 test('Request card signatures invalidate when canonical queue hydration completes', () => {
@@ -560,6 +823,12 @@ test('Suspend mirrors prepare in bounded slices, publish atomically, retain same
   assert.equal(builtRows, 1000);
   assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 1000);
   assert.deepEqual(scheduled, [[0, 0, true]]);
+  const stableRows = ctx.dockSuspendDcRequestMirrorRowsCache;
+  ctx.resolvedViewStateEpoch += 1;
+  assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 1000);
+  assert.equal(ctx.dockSuspendDcRequestMirrorRowsPreparation, null, 'unrelated view cache invalidation must not restart the same source mirror');
+  assert.equal(ctx.dockSuspendDcRequestMirrorRowsCache, stableRows);
+  assert.equal(builtRows, 1000);
 
   const previousRows = ctx.dockSuspendDcRequestMirrorRowsCache;
   ctx.revision = 'r2';
@@ -676,4 +945,17 @@ test('Suspend keeps all filter totals while bounding cards and plan-start signat
   assert.equal(sortCalls, 5, 'identity changes never reuse a previous scope cache');
   ctx.pageIndex = 95;
   assert.equal(ctx.buildSuspendTagRenderPlan(data).rows.length, 39);
+});
+
+test('Suspend source stays empty and stable until the active account snapshot is available', () => {
+  const empty = Object.freeze([]);
+  const ctx = vm.createContext({EMPTY_DOCK_SUSPEND_SOURCE_ROWS: empty, activeReqTab: 'suspend-tag',
+    activeDetailSourceView: '', suspendTagInventoryScope: 'old-account', suspendTagInventory: [{ UNIQUE_ID: 'private-old-row' }],
+    socInventory: [{ UNIQUE_ID: 'soc-row' }], getCurrentVisibleViewId: () => 'request', getSupabaseReadIdentityScope: () => 'new-account'});
+  vm.runInContext(source('getDockSuspendDcSourceRows'), ctx);
+  assert.equal(ctx.getDockSuspendDcSourceRows(), empty);
+  assert.equal(ctx.getDockSuspendDcSourceRows(), ctx.getDockSuspendDcSourceRows(), 'repeated cold reads cannot restart preparation through a new array identity');
+  ctx.suspendTagInventoryScope = 'new-account';
+  ctx.suspendTagInventory = [{ UNIQUE_ID: 'new-account-row' }];
+  assert.equal(ctx.getDockSuspendDcSourceRows(), ctx.suspendTagInventory);
 });

@@ -15,6 +15,7 @@ function source(name) {
 function fixture() {
   const full = [{ id: 'other' }], pending = [{ id: 'pending', group: 'one' }], calls = [];
   const ctx = vm.createContext({
+    EMPTY_DOCK_SUSPEND_SOURCE_ROWS: Object.freeze([]),
     activeView: 'request', activeReqTab: 'suspend-tag', activeDetailSourceView: '',
     getCurrentVisibleViewId: () => ctx.activeView,
     socInventory: full, suspendTagInventory: pending, suspendTagInventoryScope: 'account-a',

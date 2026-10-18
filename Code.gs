@@ -1966,7 +1966,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.1.1';
+const APP_RELEASE_VERSION_ = 'AgData v2.2.0';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -20684,7 +20684,7 @@ function buildBunchNotePdfHtml_(report) {
   const cardHeading = function(card) {
     const ids=new Set(card.row_ids||[]),seenRows=new Set(),source=(report.source||[]).filter(function(r){if(!ids.has(r.unique_id)||seenRows.has(r.unique_id))return false;seenRows.add(r.unique_id);return true;});
     const total=function(field){const values=source.map(function(r){return number(r[field]);});return source.length!==ids.size||values.some(function(v){return v===null;})?'Unknown / incomplete':String(values.reduce(function(sum,v){return sum+v;},0));};
-    return '<tr class="house"><th colspan="5">'+e(card.kind==='shared'?'General / Shared Work':[card.itemcode,card.commonname,card.contsize].filter(Boolean).join(' · '))+'<br><small>Worker: '+e(card.owner_name||'Unassigned')+' · House: '+e(card.house||'Not specified')+' · Direction: '+e(card.direction||'Not specified')+(card.kind==='shared'?'':'<br>Location Total (On Hand): '+e(total('stock'))+' · Available: '+e(total('available'))+' · '+source.length+' lot rows')+'</small></th></tr>';
+    const assignees=Array.isArray(card.owner_names)&&card.owner_names.length?card.owner_names:[card.owner_name||'Unassigned'];const route=card.workflow_action==='move'?'Move to '+(card.destination_location||'—'):card.workflow_action==='bunch'?'Bunch to '+(card.destination_house||'—'):card.workflow_action==='ta'?'TA': '';return '<tr class="house"><th colspan="5">'+e(card.kind==='shared'?'General / Shared Work':[card.itemcode,card.commonname,card.contsize].filter(Boolean).join(' · '))+'<br><small>Workers: '+e(assignees.join(', '))+' · House: '+e(card.house||'Not specified')+' · Direction: '+e(card.direction||'Not specified')+(route?' · Plan: '+e(route):'')+(card.notes?'<br>Notes: '+e(card.notes):'')+(card.kind==='shared'?'':'<br>Location Total (On Hand): '+e(total('stock'))+' · Available: '+e(total('available'))+' · '+source.length+' lot rows')+'</small></th></tr>';
   };
   const cards=report.cards||[];
   const actions=cards.length?cards.map(function(card){lastHouse=null;activeCard=card;return cardHeading(card)+orderedActions.filter(function(a){return a.card_id===card.id;}).map(actionRow).join('');}).join(''):orderedActions.map(actionRow).join('');

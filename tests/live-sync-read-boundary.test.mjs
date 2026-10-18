@@ -34,6 +34,13 @@ function extractAppFunction(name) {
     return html.slice(match.index, end);
 }
 
+function extractMasterPagingFunction() {
+    const start = html.indexOf('        async function fetchAllInventoryReadRows(');
+    const end = html.indexOf('\n        let inventorySchemaCapabilitiesPromise', start);
+    assert.ok(start >= 0 && end > start, 'fetchAllInventoryReadRows boundaries');
+    return html.slice(start, end);
+}
+
 test('AV sorting preserves numeric locale order with one reusable collator per sort', () => {
     let collators = 0;
     const ctx = { Intl: { Collator: function(locale, options) {
@@ -77,7 +84,7 @@ test('AV page keys use ordered membership while visible card signatures retain c
     assert.match(render, /buildRowsRenderSignature\(pageKey, reserveBrowsePage\.rows/);
 });
 
-function avCardChunkFixture({ ios = false, total = 100 } = {}) {
+function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = false } = {}) {
     const generated = [], batches = [], frames = [], footers = [];
     const container = { classList: { add() {} }, style: {}, signature: '',
         insertAdjacentHTML: (_position, markup) => footers.push(markup) };
@@ -112,7 +119,7 @@ function avCardChunkFixture({ ios = false, total = 100 } = {}) {
     vm.runInContext(extractAppFunction('shouldUseChunkedAVOpenRender')
         + extractAppFunction('renderAVOpenCardsChunked'), ctx);
     const rows = Array.from({ length: total }, (_value, id) => ({ id }));
-    const start = () => ctx.renderAVOpenCardsChunked(container, crumb, rows, 'av', 'AV rows', '<footer/>');
+    const start = () => ctx.renderAVOpenCardsChunked(container, crumb, rows, 'av', 'AV rows', '<footer/>', { firstPreviewCardSync });
     const flush = () => {
         let callbacks = 0;
         while (frames.length) {
@@ -122,6 +129,18 @@ function avCardChunkFixture({ ios = false, total = 100 } = {}) {
     };
     return { ctx, rows, generated, batches, footers, container, crumb, start, flush, flushOne: () => frames.shift()?.() };
 }
+
+test('partial AV preview publishes one prepared card immediately then completes the full page in cancellable chunks', () => {
+    const fixture = avCardChunkFixture({ total: 20, firstPreviewCardSync: true });
+    fixture.start();
+    assert.deepEqual(fixture.generated.map(row => row.id), [0], 'the partial preview immediately replaces Loading with one card');
+    assert.deepEqual(fixture.batches, ['<card>0</card>']);
+    assert.deepEqual(fixture.footers, [], 'the page footer waits for the complete visible page');
+    fixture.flush();
+    assert.deepEqual(fixture.generated.map(row => row.id), fixture.rows.map(row => row.id));
+    assert.deepEqual(fixture.footers, ['<footer/>']);
+    assert.ok(fixture.container.signature);
+});
 
 test('AV paginated cards render in bounded batches while preserving every row and footer', () => {
     for (const ios of [false, true]) {
@@ -1289,18 +1308,22 @@ test('native database helpers never fall through to the prohibited legacy proxy'
 
 test('progressive disk display accepts an older revision only with the same account, query and permissions', async () => {
     const meta = { contractVersion: 1, scope: 'account-a', adapterId: 'core:master', cacheKey: 'master/all', dataPermissionVersion: 'permission-a', signature: JSON.stringify(['permission-a', ['master', '2', 'ready']]) };
-    let saved = { format: 'verified-raw-v1', meta: { ...meta, signature: JSON.stringify(['permission-a', ['master', '1', 'ready']]) }, rawRows: [{ id: 'old-row' }], rowCount: 1,
-        projection: 'browse', fieldCoverage: 'browse', columns: inventoryContract.columns };
+    let saved = { format: 'verified-raw-v1', meta: { ...meta, signature: JSON.stringify(['permission-a', ['master', '1', 'ready']]) },
+        rawRows: Array.from({ length: 1300 }, (_, index) => ({ unique_id: `old-${index}`, commonname: `Plant ${index}` })), rowCount: 1300,
+        rowCompleteness: 'complete', projection: 'browse', fieldCoverage: 'browse', columns: inventoryContract.columns };
     const ctx = { JSON, Array, Map, getSupabaseReadIdentityScope: () => 'account-a',
         appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'permission-a' } },
         currentMasterPreparationSeasonKey: () => 'season-a',
+        MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT: 1200, shouldScopeMasterInventoryToCurrentEval: () => false,
+        firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
         prepareProductionMasterSnapshot: async (rows) => ({ payload: { data: rows }, rowCount: rows.length }),
         productionDisplaySnapshotTimes: new Map(),
         productionDisplayGroupKey: () => 'cohort', loadCacheValue: async () => saved,
         verifiedSnapshotCacheKey: () => 'scope-key', buildDatasetPayload: (_, rows) => ({ data: rows }),
         window: { AgMetricInventoryList: inventoryContract } };
     vm.createContext(ctx);
-    vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
+    vm.runInContext([extractAppFunction('countUniqueCacheCommonNames'), extractAppFunction('masterRowsLookPartialForCurrentScope'),
+        extractAppFunction('validateInventoryReadProjection')].join('\n'), ctx);
     const from = html.indexOf('async function readProductionDisplaySnapshot(');
     vm.runInContext(html.slice(from, html.indexOf('function previewProductionSnapshots(', from)), ctx);
     const read = () => ctx.readProductionDisplaySnapshot({ id: 'core:master', projection: 'browse' }, meta);
@@ -1312,6 +1335,8 @@ test('progressive disk display accepts an older revision only with the same acco
         { meta: { ...saved.meta, dataPermissionVersion: 'permission-b' } },
         { meta: { ...saved.meta, contractVersion: 2 } },
         { meta: { ...saved.meta, dataPermissionVersion: undefined } },
+        { rowCompleteness: 'partial' },
+        { rawRows: saved.rawRows.slice(0, 12), rowCount: 12 },
         { columns: undefined }, { fieldCoverage: 'full' }, { projection: 'full' },
         { format: 'legacy-unscoped' }, { rowCount: 2 }
     ]) { saved = { ...original, ...change }; assert.equal(await read(), null); }
@@ -2067,4 +2092,79 @@ test('successful request saves remain immediate and require no canonical reread'
   assert.equal(outcome.status, 'saved');
   assert.equal(sends, 1);
   assert.equal(outcome.result.row_version, 5);
+});
+
+test('AV complete paging uses a 50-row preview followed by concurrent 500-row inventory pages', async () => {
+  const sourceRows = Array.from({ length: 1200 }, (_, index) => ({ unique_id: `inventory-${index + 1}` }));
+  const calls = [];
+  const ctx = {
+    fetchInventoryReadPage: async (operation, params, limit, offset) => {
+      calls.push({ operation, limit, offset });
+      const rows = sourceRows.slice(offset, offset + limit);
+      return { rows, total: sourceRows.length, hasMore: offset + rows.length < sourceRows.length,
+        projection: 'browse', fieldCoverage: 'browse', columns: ['unique_id'] };
+    },
+    yieldToUiFrame: async () => {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractMasterPagingFunction(), ctx);
+  let previewMeta = null;
+  const rows = await ctx.fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'browse' }, {
+    firstPageLimit: 50, limit: 500, pageConcurrency: 2, requireComplete: true,
+    onFirstPage: (pageRows, meta) => { previewMeta = { count: pageRows.length, ...meta }; }
+  });
+
+  assert.deepEqual(calls.slice(0, 2).map(({ offset, limit }) => [offset, limit]), [[0, 50], [50, 500]]);
+  assert.deepEqual(calls.slice(2).map(({ offset, limit }) => [offset, limit]).sort((a, b) => a[0] - b[0]), [[550, 500], [1050, 500]]);
+  assert.equal(previewMeta.count, 50);
+  assert.equal(previewMeta.limit, 50);
+  assert.equal(rows.length, 1200);
+  assert.equal(rows[0].unique_id, 'inventory-1');
+  assert.equal(rows.at(-1).unique_id, 'inventory-1200');
+  assert.equal(rows.readMeta.fieldCoverage, 'browse');
+});
+
+test('AV small cold preview continues from its exact first-page offset and verifies every row', async () => {
+  const sourceRows = Array.from({ length: 1200 }, (_, index) => ({ unique_id: `inventory-${index + 1}` }));
+  const calls = [];
+  const ctx = {
+    fetchInventoryReadPage: async (_operation, _params, limit, offset) => {
+      calls.push({ limit, offset });
+      const rows = sourceRows.slice(offset, offset + limit);
+      return { rows, total: sourceRows.length, hasMore: offset + rows.length < sourceRows.length,
+        projection: 'browse', fieldCoverage: 'browse', columns: ['unique_id'] };
+    },
+    yieldToUiFrame: async () => {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractMasterPagingFunction(), ctx);
+  let previewCount = 0;
+  const rows = await ctx.fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'browse' }, {
+    firstPageLimit: 16, limit: 500, requireComplete: true,
+    onFirstPage: pageRows => { previewCount = pageRows.length; }
+  });
+
+  assert.deepEqual(calls.slice(0, 3).map(({ offset, limit }) => [offset, limit]), [[0, 16], [16, 500], [516, 500]]);
+  assert.equal(previewCount, 16);
+  assert.equal(rows.length, sourceRows.length);
+  assert.deepEqual(Array.from(rows, row => row.unique_id), sourceRows.map(row => row.unique_id));
+  assert.equal(rows.readMeta.fieldCoverage, 'browse');
+});
+
+test('complete concurrent paging rejects a short continuation page instead of publishing a partial snapshot', async () => {
+  const sourceRows = Array.from({ length: 1200 }, (_, index) => ({ unique_id: `inventory-${index + 1}` }));
+  const ctx = {
+    fetchInventoryReadPage: async (operation, params, limit, offset) => {
+      const end = offset === 550 ? offset + limit - 1 : offset + limit;
+      return { rows: sourceRows.slice(offset, end), total: sourceRows.length, hasMore: offset + limit < sourceRows.length,
+        projection: 'browse', fieldCoverage: 'browse', columns: ['unique_id'] };
+    },
+    yieldToUiFrame: async () => {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractMasterPagingFunction(), ctx);
+
+  await assert.rejects(ctx.fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'browse' }, {
+    firstPageLimit: 50, limit: 500, pageConcurrency: 2, requireComplete: true
+  }), /Inventory page was incomplete/);
 });

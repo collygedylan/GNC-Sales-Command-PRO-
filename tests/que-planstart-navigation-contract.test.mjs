@@ -30,6 +30,8 @@ function makePlanstartContext() {
   const start = html.indexOf('        const DOCK_SUSPEND_PLANSTART_ALIASES');
   const end = html.indexOf('\n        function getDockSuspendDcRequestPlanstartWeekday(', start);
   assert.ok(start >= 0 && end > start, 'Plan Start value/parser helper block exists');
+  vm.runInContext(functionSource('parseDockCardPlanStartEpochDay', 'isDockRowWithinPlanStartWindow'), context);
+  vm.runInContext(functionSource('formatDockCardPlanStartValue', 'compareDockPlanStartLabels'), context);
   vm.runInContext(html.slice(start, end), context);
   return context;
 }
@@ -114,4 +116,19 @@ test('Que primary panel is retained and hidden rather than removed during primar
   assert.match(visibility, /el\.classList\.add\('hidden'\)/);
   assert.doesNotMatch(visibility, /\.remove\(\)|\.replaceWith\(/);
   assert.match(html, /function switchView\(viewId, options = \{\}\)[\s\S]*?scheduleRequestNavigationLiveWake\('request-switch'\)/);
+});
+
+// A formatted date and its color must use the same calendar interpretation.
+test('every supported printed PLANSTART date drives the identical weekday color', () => {
+  const context=makePlanstartContext();
+  for (const [day,tone] of [[19,'monday'],[20,'tuesday'],[21,'wednesday'],[22,'thursday'],[23,'friday']]) {
+    for (const value of [`10/${day}/2026`, `2026-10-${day}`, `2026-10-${day}T00:00:00+14:00`, `October ${day}, 2026 12:00:00 GMT-0500`]) {
+      const info=context.getDockSuspendDcRequestPlanstartInfo({PLANSTART:value});
+      assert.equal(context.formatDockCardPlanStartValue(value), `10/${day}/2026`);
+      assert.equal(info.tone,tone,`${value} must match its printed date`);
+    }
+  }
+  const value='Tue, 20 Oct 2026 02:00:00 GMT';
+  assert.equal(context.formatDockCardPlanStartValue(value),'10/19/2026');
+  assert.equal(context.getDockSuspendDcRequestPlanstartInfo({PLANSTART:value}).tone,'monday');
 });
