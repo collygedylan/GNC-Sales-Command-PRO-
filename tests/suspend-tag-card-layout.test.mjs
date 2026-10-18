@@ -423,7 +423,12 @@ test('photo and no-photo cards put exactly one standard Reclass in the shared he
   for (const photo of [true, false]) {
     const h = harness(t, { photo });
     assert.equal(h.card.querySelectorAll('.app-card-bottom-btn--argos-reclass').length, 1);
-    assert.ok(h.card.querySelector('.app-drive-card-header .app-drive-card-title-row > .app-drive-card-reclass'));
+    assert.ok(h.card.querySelector('.app-drive-card-header .app-suspend-tag-header-row > .app-drive-card-reclass'));
+    const textColumn = h.card.querySelector('.app-suspend-tag-text-column');
+    assert.ok(textColumn?.contains(h.card.querySelector('.app-drive-card-title')));
+    assert.ok(textColumn?.contains(h.card.querySelector('.app-drive-card-itemcode')));
+    assert.ok(textColumn?.contains(h.card.querySelector('.app-drive-card-meta')));
+    assert.equal(h.card.querySelector('.app-drive-card-title-row > .app-drive-card-reclass'), null);
     assert.equal(h.card.querySelector('.app-request-card-bottom .app-card-bottom-btn--argos-reclass'), null);
     assert.equal(h.card.querySelector('.app-drive-card-grid').classList.contains('app-drive-card-grid--no-photo'), !photo);
     assert.ok(h.card.classList.contains('app-drive-card-with-reclass'));
@@ -538,8 +543,19 @@ test('Suspend Tag density is scoped and keeps readable wrapping notes and touch 
   const start = css.indexOf('/* Suspend Tag keeps the shared Drive frame');
   const nextSection = css.indexOf('/* Que navigation', start);
   const rules = css.slice(start, nextSection < 0 ? undefined : nextSection);
-  assert.match(rules, /\.app-operational-card-header-fields \{ gap: 4px 6px; margin-bottom: 4px;/);
-  assert.match(rules, /\.app-request-card-meta \{ display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0;/);
+  const compactStart = css.indexOf('/* Compact Suspend uses an independent Reclass rail');
+  const compactRules = css.slice(compactStart, start);
+  assert.match(compactRules, /\.app-drive-card-grid \{[\s\S]*?row-gap: 5px !important;/);
+  assert.match(compactRules, /\.app-drive-card-grid--no-photo \{[\s\S]*?row-gap: 5px !important;/);
+  assert.match(compactRules, /\.app-suspend-tag-header-row \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) auto;[\s\S]*?column-gap: 8px;/);
+  assert.match(compactRules, /\.app-suspend-tag-text-column \{[\s\S]*?flex-direction: column;[\s\S]*?gap: 3px;/);
+  assert.match(compactRules, /\.app-operational-planstart-date \{ margin: 0; \}/);
+  assert.match(rules, /\.app-operational-card-header-fields \{ gap: 4px 6px; margin: 0;/);
+  assert.match(rules, /\.app-drive-card-quantity-band \{ margin-top: 2px !important;/);
+  assert.match(rules, /\.app-suspend-tag-status \{ margin: 0; padding-top: 0;/);
+  assert.match(rules, /\.app-suspend-tag-actions \{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px;/);
+  assert.match(rules, /\.app-drive-card-details \{ gap: 5px;/);
+  assert.match(rules, /\.app-request-card-meta \{ display: flex; flex-wrap: wrap; gap: 3px 6px; margin: 0;/);
   assert.match(rules, /:is\(\.app-card-note, \.app-suspend-tag-data-note\) \{ margin: 0; padding: 6px; box-shadow: none; overflow-wrap: anywhere;/);
   assert.match(rules, /\.app-suspend-tag-action \{ min-width: 44px; min-height: 44px; padding: 6px 8px;/);
   assert.doesNotMatch(rules, /line-clamp|max-height|overflow:\s*hidden/);

@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "agdata-v230-retained-validation-v1",
+  "authorization": "explicit-user-v230-reset",
+  "baseline": "57539e9e83003d0ebce810454c72074e12ee6472",
+  "recordedAt": "2026-10-18T21:18:54.740Z",
+  "node": {
+    "passed": 3546,
+    "rerun": false,
+    "logSha256": "ed6d1ffe9c9baba023788e0b3d1a51525aaf3d462e5109664a6c2f6cc41a3ec3"
+  },
+  "react": {
+    "passed": 147,
+    "rerun": false,
+    "logSha256": "3d92cbf7eecb34eacc4ed7b805ea99ef94c36395d692dfb31e29e661c5d2810b"
+  },
+  "sql": {
+    "status": "passed",
+    "logSha256": "082793635f14f26e5fe00e213567e037bc25d268140c8dd8d0c4fc681b631d76",
+    "focusedInternalChecks": 108,
+    "validationRun": 39166028105,
+    "correctedAppApiRun": 39166299424,
+    "benchmark": {
+      "masterRows": 10001,
+      "cards": 100,
+      "queueMs": [
+        12.216,
+        9.496,
+        6.257,
+        6.454,
+        6.567,
+        6.807
+      ],
+      "completeCardMs": [
+        75.958,
+        37.353,
+        37.859,
+        30.679,
+        33.811
+      ],
+      "idempotentReplayMs": 2.406,
+      "assignmentMsRange": [
+        0.35,
+        1.256
+      ],
+      "recountMsRange": [
+        0.377,
+        0.828
+      ],
+      "discrepancyListMs": [
+        3.308,
+        10.069
+      ],
+      "environment": "isolated local Docker database on Windows; clean timing without auto_explain instrumentation",
+      "cache": "first RPC after setup/EXPLAIN; warm data; OS caches uncontrolled; not a controlled cold-cache measurement",
+      "plan": "LIMIT 100 before source hydration; one scan of10001 master rows, loops=1",
+      "log": "v230-queue-benchmark-aggregation-r2.log",
+      "logSha256": "47cb1772ffb3dc6a04e7fe1329e84d6356977a4d7d9e735a23416e151188bc1b"
+    },
+    "correctedHistoricalRun": 39166786190,
+    "sourceEquivalentBackendHead": "73bfae525465e45d4cdce199f90b66b51f2fa12b",
+    "receipts": [
+      {
+        "file": "v230-ci-schema-contracts-original.log",
+        "sourceSha256": "35acc6b9c51fcb7e0a5d059794ce6180e4aafafb8dc86e10c0def52790ac3b64"
+      },
+      {
+        "file": "v230-ci-historical-final.log",
+        "sourceSha256": "f65ab946f2db154d8f22813f5ad278586bf1ed5451002e6dc1c6eea6d98ef5ba"
+      },
+      {
+        "file": "v230-ci-app-api-final.log",
+        "sourceSha256": "2219ac67d735aab1e10096edd8d52560d733b413bab25c3330dfcd7a62a587e8"
+      },
+      {
+        "file": "v230-focused-aggregation-r4.log",
+        "sourceSha256": "8cfb995f4cc48fe8703ee22e537ebdb4ed5f7dafa5a4a17a008b0594c7c0a958"
+      },
+      {
+        "file": "v230-queue-benchmark-aggregation-r2.log",
+        "sourceSha256": "47cb1772ffb3dc6a04e7fe1329e84d6356977a4d7d9e735a23416e151188bc1b"
+      }
+    ],
+    "activeMigrations": 86,
+    "canonicalFiles": 29,
+    "canonicalAssertions": 959,
+    "httpDrivers": 2,
+    "rollbackCanaries": 3,
+    "sandboxAssertions": 47,
+    "historicalOrderedMigrations": 207,
+    "historicalFiles": 58,
+    "historicalAssertions": 1462,
+    "appApiTests": 32,
+    "browserRequestSteps": "skipped",
+    "nativeAuthentication": "passed",
+    "strictSqlLint": "passed",
+    "concurrency": "passed",
+    "bulk": {
+      "environment": "GitHub Ubuntu runner; disposable Docker/Postgres; shared OS cache uncontrolled",
+      "rows": 9539,
+      "columns": 213,
+      "importerFields": 171,
+      "triggers": 28,
+      "insertMs": 26661,
+      "exactReplayMs": 2765,
+      "changedMs": 28708,
+      "unchangedMs": 12890,
+      "legacyBootstrapMs": 28718
+    }
+  },
+  "suspendLayout": {
+    "status": "passed",
+    "logSha256": "ea70077f95af85083ed99da345f7b7030ce34a4bb33a2f3ee78439eb208fdbe6",
+    "browserProjects": [
+      "Android Chromium",
+      "iPhone WebKit"
+    ],
+    "viewportWidths": [
+      390,
+      1200
+    ],
+    "passed": 2,
+    "structuralChecksPassed": 26,
+    "fontSizes": "exact computed equality to baseline at each width",
+    "gapsPx": {
+      "textRows": 3,
+      "headerToMetrics": 7,
+      "metricsToBadges": 5,
+      "badgesToNotes": 5,
+      "notesToPlanstart": 6,
+      "planstartToActions": 5
+    },
+    "measurement": "static fixture disables transitions equally for baseline/current to measure settled layout",
+    "priorFailedAttempts": 5
+  },
+  "limits": {
+    "frontendUiMs": 1500,
+    "avBackgroundMs": 250,
+    "revisionSave100CardsMs": 300,
+    "otherInteractiveDbMsExclusive": 100,
+    "bulkImportRpcSeconds": 55
+  },
+  "protectedOperations": {
+    "appsScriptSourceUnchanged": true,
+    "automation": "PAUSED",
+    "noRealEmailSentInValidation": true
+  },
+  "sourceSha256": {
+    "supabase/migrations/20261018183204_bunch_note_queue_execution_and_recounts.sql": "e5f3c1ed1b1afdb0519499b727080339757fc1c522ed68b7d0199b6f4a878d65",
+    "supabase/tests/bunch_note_per_card_test.sql": "473490e349963bf7ef49d7e8f8004d1ddcbfcc527ec92077679eab1a7b4c597a",
+    "supabase/functions/app-api/index.ts": "933a5fac8d87700226675067c78b86cae0e896f884543494051ea974bcf1dae7",
+    "assets/ops-precision-pilot.css": "d982d50fc80644db5967a57a6f595e785954563852ea0a6ce2302dacea6de389",
+    "index.html": "f2351a35d5fb4a3ec41a9bf0005dad52c7e11182c20f52dd79fa95cbfeab7fc8",
+    "tests/suspend-tag-compaction.e2e.spec.ts": "e9fb5bc16143d266523491980771e8469c231d0dded0aed4440989c1a6a17b31",
+    "tests/suspend-tag-card-layout.test.mjs": "66dfa9bff4870b9e5fdc4013a6866041a3886f657d5081ddd7f5f838877ee38d",
+    "tests/fixtures/suspend-tag-57539e9e.css.gz": "6552662ef35dac0bb5bba262d248b0b2d7edcb0cdb7449ae55301d7fe1662462",
+    ".github/workflows/pages-static.yml": "efc4d6f6c7066346e7a4fa0c8df7f39a2441a986627e3ac866cfb61454ad0657",
+    ".github/workflows/release-validation.yml": "5860e01d0218d9e36647cb1223167abee88d6ae02308df88a99d47f2dad3a868",
+    "scripts/check-v230-retained-validation.mjs": "e4072300e26053cc8e221830a25326b85fbc9161db4b3e617cc2350fe79c68ee",
+    "scripts/historical-database-migrations.json": "d28d6c2259932e494a234c577225a8b8720123fbb3605d503ccb0e7470b5e26a"
+  }
+}

@@ -193,20 +193,27 @@ begin
         and p.disabled_at is null and not p.must_change_password),'[]'::jsonb) as assignee_json,
     (select c.id from bunch_note_private.card_completions c where c.job_id=k.jid and c.card_id=k.card_id) as completion_id
    from page_keys k
+  ), source_keys as materialized (
+   select a.jid,a.bunch_note_id,a.card_id,a.location_code,a.completion_id,rid.value as row_id
+   from selected a left join lateral jsonb_array_elements_text(a.row_ids) rid(value) on true
+  ), source_rows as materialized (
+   select k.*,m.unique_id,m.locationcode,m.lotcode,m.ptravailable
+   from source_keys k left join public.ph_master_inventory m on m.unique_id=k.row_id
+  ), source_summary as (
+   select s.jid,s.bunch_note_id,s.card_id,
+    coalesce(jsonb_agg(jsonb_build_object('row_id',s.row_id,'location',coalesce(s.locationcode,s.location_code),
+      'lot',coalesce(s.lotcode,''),'ptravailable',case when s.ptravailable is not null and btrim(s.ptravailable) ~ '^-?[0-9]+(\.[0-9]+)?$' then btrim(s.ptravailable)::numeric else null end,
+      'actual_qty',case when s.completion_id is not null then (select c.actual_qty_by_row->s.row_id from bunch_note_private.card_completions c where c.id=s.completion_id) else null end)
+      order by s.row_id) filter(where s.row_id is not null),'[]'::jsonb) as rows_json,
+    coalesce(sum(case when s.ptravailable is not null and btrim(s.ptravailable) ~ '^-?[0-9]+(\.[0-9]+)?$' then btrim(s.ptravailable)::numeric end)
+      filter(where s.row_id is not null),0) as total_ptr,
+    bool_and(s.unique_id is not null and s.ptravailable is not null and btrim(s.ptravailable) ~ '^-?[0-9]+(\.[0-9]+)?$')
+      filter(where s.row_id is not null) as all_known,
+    string_agg(distinct coalesce(s.lotcode,''),', ' order by coalesce(s.lotcode,'')) filter(where s.row_id is not null) as lots
+   from source_rows s group by s.jid,s.bunch_note_id,s.card_id
   ), measured as (
-   select a.*, src.rows_json,src.total_ptr,src.all_known,src.lots
-   from selected a
-   cross join lateral (
-    select coalesce(jsonb_agg(jsonb_build_object('row_id',rid.value,'location',coalesce(m.locationcode,a.location_code),
-      'lot',coalesce(m.lotcode,''),'ptravailable',case when m.ptravailable is not null and btrim(m.ptravailable) ~ '^-?[0-9]+(\.[0-9]+)?$' then btrim(m.ptravailable)::numeric else null end,
-      'actual_qty',case when a.completion_id is not null then (select c.actual_qty_by_row->rid.value from bunch_note_private.card_completions c where c.id=a.completion_id) else null end)
-      order by rid.value),'[]'::jsonb) as rows_json,
-     coalesce(sum(case when m.ptravailable is not null and btrim(m.ptravailable) ~ '^-?[0-9]+(\.[0-9]+)?$' then btrim(m.ptravailable)::numeric end),0) as total_ptr,
-     bool_and(m.unique_id is not null and m.ptravailable is not null and btrim(m.ptravailable) ~ '^-?[0-9]+(\.[0-9]+)?$') as all_known,
-     string_agg(distinct coalesce(m.lotcode,''),', ' order by coalesce(m.lotcode,'')) as lots
-    from jsonb_array_elements_text(a.row_ids) rid(value)
-    left join public.ph_master_inventory m on m.unique_id=rid.value
-   ) src
+   select a.*,coalesce(src.rows_json,'[]'::jsonb) as rows_json,coalesce(src.total_ptr,0) as total_ptr,src.all_known,src.lots
+   from selected a left join source_summary src on src.jid=a.jid and src.bunch_note_id=a.bunch_note_id and src.card_id=a.card_id
   ), prepared as (
    select m.*,
     (select count(*) from bunch_note_private.card_completions c where c.job_id=m.jid and c.card_id=m.card_id) as completed_count,

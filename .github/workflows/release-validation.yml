@@ -27,6 +27,10 @@ on:
       run-backend-tests:
         type: boolean
         default: true
+      reuse-v230-passing-suites:
+        description: Explicitly authorized v2.3.0-only reuse; guarded by ancestry, scope and retained receipts.
+        type: boolean
+        default: false
     outputs:
       digest:
         description: Verified release manifest SHA256
@@ -105,7 +109,21 @@ jobs:
         if: inputs.run-frontend-tests
       - run: npm run check:tooling
 
+  retained-v230-evidence:
+    if: inputs.reuse-v230-passing-suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify the narrowly scoped retained evidence authorization
+        env:
+          RUN_NIGHTLY_SUITES: ${{ inputs.run-nightly-suites }}
+        run: node scripts/check-v230-retained-validation.mjs
+
   unit:
+    if: ${{ !inputs.reuse-v230-passing-suites }}
     strategy:
       fail-fast: true
       matrix:
@@ -121,7 +139,7 @@ jobs:
 
   react:
     needs: release-mode
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.reuse-v230-passing-suites
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -968,7 +986,7 @@ jobs:
 
   release-gate:
     if: always()
-    needs: [release-mode, lint, unit, react, contracts, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse]
+    needs: [release-mode, retained-v230-evidence, lint, unit, react, contracts, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse]
     runs-on: ubuntu-latest
     outputs:
       run-id: ${{ github.run_id }}
@@ -981,6 +999,7 @@ jobs:
         env:
           HOTFIX: ${{ needs.release-mode.outputs.hotfix }}
           RELEASE_JOB_RESULTS: ${{ toJSON(needs) }}
+          REUSE_V230_PASSING_SUITES: ${{ inputs.reuse-v230-passing-suites }}
           RUN_NIGHTLY_SUITES: ${{ inputs.run-nightly-suites }}
           RUN_SCHEMA_TESTS: ${{ inputs.run-schema-tests }}
           RUN_FRONTEND_TESTS: ${{ inputs.run-frontend-tests }}
@@ -996,6 +1015,15 @@ jobs:
             if (process.env.RUN_NIGHTLY_SUITES === 'true') required.push('fast-browser','foundation','functional','compiled','timing','performance','lighthouse');
           }
           if (!hotfix && process.env.RUN_BACKEND_TESTS === 'true') required.push('database');
+          if (process.env.REUSE_V230_PASSING_SUITES === 'true') {
+            if (process.env.RUN_NIGHTLY_SUITES === 'true') throw new Error('RETAINED_EVIDENCE_FORBIDDEN_FOR_NIGHTLY');
+            if (jobs['retained-v230-evidence']?.result !== 'success') throw new Error('RETAINED_V230_EVIDENCE_REQUIRED');
+            for (const name of ['unit', 'react']) {
+              const index = required.indexOf(name);
+              if (index >= 0) required.splice(index, 1);
+              if (jobs[name]?.result !== 'skipped') throw new Error(`RETAINED_SUITE_STATUS_INVALID_${name}`);
+            }
+          }
           for (const name of required) {
             if (jobs[name]?.result !== 'success') throw new Error(`RELEASE_GATE_FAILED_${name}`);
           }
@@ -1004,6 +1032,7 @@ jobs:
           NODE
       - name: Record the passing immutable candidate
         env:
+          REUSE_V230_PASSING_SUITES: ${{ inputs.reuse-v230-passing-suites }}
           HOTFIX: ${{ needs.release-mode.outputs.hotfix }}
           RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
           RELEASE_SITE_ID: ${{ needs.build.outputs.artifact-id }}
@@ -1022,6 +1051,7 @@ jobs:
             attempt:Number(process.env.GITHUB_RUN_ATTEMPT), siteArtifactId:Number(process.env.RELEASE_SITE_ID),
             digest:process.env.RELEASE_DIGEST,
             hotfix,
+            retainedSuites:process.env.REUSE_V230_PASSING_SUITES === 'true' ? {authorization:'explicit-user-v230-reset', baseline:'57539e9e83003d0ebce810454c72074e12ee6472', node:3546, react:147, rerun:false} : null,
             browserMode:hotfix ? 'hotfix-minimal' : process.env.RUN_NIGHTLY_SUITES === 'true' ? 'full' : 'none',
             testScope:{frontend:!hotfix && process.env.RUN_FRONTEND_TESTS === 'true', backend:!hotfix && process.env.RUN_BACKEND_TESTS === 'true', schema:!hotfix && process.env.RUN_SCHEMA_TESTS === 'true'}
           }));

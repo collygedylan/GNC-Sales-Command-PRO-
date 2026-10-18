@@ -822,5 +822,9 @@
   {
     "source": "supabase/migrations/20261018014347_bunch_note_blueprint_header_pdf_delivery.sql",
     "destination": "20261018014347_bunch_note_blueprint_header_pdf_delivery.sql"
+  },
+  {
+    "source": "supabase/migrations/20261018183204_bunch_note_queue_execution_and_recounts.sql",
+    "destination": "20261018183204_bunch_note_queue_execution_and_recounts.sql"
   }
 ]

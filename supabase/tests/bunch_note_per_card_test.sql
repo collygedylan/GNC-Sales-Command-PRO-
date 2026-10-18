@@ -446,18 +446,22 @@ begin
   into result from jsonb_array_elements(preview->'reports') report;
  perform public.bunch_note_freeze_pdfs_v1((preview->>'id')::uuid,result);
  perform public.bunch_note_command_v1(d,'publish',jsonb_build_object('preview_id',preview->'id'),gen_random_uuid(),1);
+ select (report->>'job_id')::uuid into target_job_id
+  from jsonb_array_elements(preview->'reports') report
+  cross join lateral jsonb_array_elements(coalesce(report->'cards','[]'::jsonb)) preview_card
+  where preview_card->>'id'=target_card_id::text limit 1;
  -- Historical rows can contain a shared task that current format-five save validation will not create.
  -- Inject it only in this transaction while suppressing the sync triggers, then restore them immediately.
  alter table bunch_note_private.jobs disable trigger user;
  update bunch_note_private.jobs j set body=jsonb_set(j.body,'{actions}',coalesce(j.body->'actions','[]'::jsonb)||jsonb_build_array(
   jsonb_build_object('id','unscoped-legacy-action','group','sequence','kind','instruction','label','Shared irrigation check',
    'instructions','Coordinate with irrigation','scope','location','row_ids','[]'::jsonb,'quantity','1')))
-  where j.id=(select n.job_id from bunch_note_private.bunch_notes n where n.batch_id=target_batch_id and n.location_code='C.88.003');
+  where j.id=target_job_id;
  alter table bunch_note_private.jobs enable trigger user;
  select j.id,n.id,wc.revision into target_job_id,target_note_id,card_revision
   from bunch_note_private.jobs j join bunch_note_private.bunch_notes n on n.job_id=j.id
   join bunch_note_private.bunch_note_work_cards wc on wc.bunch_note_id=n.id
-  where n.batch_id=target_batch_id and wc.card_id=target_card_id;
+  where j.id=target_job_id and wc.card_id=target_card_id;
  delete from bunch_note_private.bunch_note_card_assignees where bunch_note_id=target_note_id and card_id=target_card_id and user_id=w1;
  perform pg_temp.bn_card_check(target_job_id is not null and target_note_id is not null and card_revision=1,
   'publish materializes an assigned work card with its initial card revision');
@@ -530,12 +534,19 @@ begin
   and (select count(*)=1 from bunch_note_private.previews p where p.job_id=target_job_id and p.report_kind='completed_work' and p.published)
   and (select count(*)=1 from public.ph_request_delivery_outbox e where e.event_key='bunch-note-card-completion:'||target_job_id::text||':'||target_card_id::text||':2'),
    'actual-count completion works with an unresolved legacy action while preserving job progress and avoiding duplicate delivery');
+ result:=public.bunch_note_workflow_command_v1(w2,'queue',jsonb_build_object('filter','mine','limit',100,'offset',0));
+ review_active_before:=(result->>'active_count')::bigint;
+ result:=public.bunch_note_workflow_command_v1(w2,'queue',jsonb_build_object('filter','completed','limit',100,'offset',0));
+ perform pg_temp.bn_card_check((result->>'active_count')::bigint=review_active_before and review_active_before>=1,
+  'completed filter retains the authorized active-work badge count while an assigned card remains open');
  result:=public.bunch_note_workflow_command_v1(w2,'complete_card',jsonb_build_object('job_id',target_job_id,'card_id',other_card_id,
    'actual_qty_by_row','{"BN-CARD-WORKFLOW-OTHER":7}'::jsonb),gen_random_uuid(),1);
  perform pg_temp.bn_card_check(result->'job'->>'status'='open'
   and (select progress='{}'::jsonb and status='open' from bunch_note_private.jobs where id=target_job_id)
-  and exists(select 1 from bunch_note_private.card_actions((select j.* from bunch_note_private.jobs j where j.id=target_job_id)) a
-    where a->>'id'='unscoped-legacy-action' and nullif(a->>'card_id','') is null),
+  and exists(select 1 from jsonb_array_elements(bunch_note_private.card_actions((select j from bunch_note_private.jobs j where j.id=target_job_id))) action_row(action)
+    where action->>'id'='unscoped-legacy-action')
+  and exists(select 1 from bunch_note_private.bunch_note_work_cards wc where wc.bunch_note_id=target_note_id
+    and wc.card_id='aa000000-0000-4000-8000-000000000006' and wc.kind='shared' and wc.status='open'),
   'the final inventory card preserves progress and leaves unrelated unscoped work open');
 
  select r.* into review from bunch_note_private.count_reviews r where r.job_id=target_job_id and r.card_id=target_card_id;
@@ -549,11 +560,6 @@ begin
    and not(result->'counters' @> jsonb_build_array(jsonb_build_object('id',disabled_counter)))
   and result->'reviews' @> jsonb_build_array(jsonb_build_object('id',review.id,'variance',-2,'actual_qty',3,'ptravailable',5)),
   'counter choices place Sharon and Dylan first, then include active non-sales-rep profiles only');
- result:=public.bunch_note_workflow_command_v1(sharon,'queue',jsonb_build_object('filter','mine','limit',100,'offset',0));
- review_active_before:=(result->>'active_count')::bigint;
- result:=public.bunch_note_workflow_command_v1(sharon,'queue',jsonb_build_object('filter','completed','limit',100,'offset',0));
- perform pg_temp.bn_card_check((result->>'active_count')::bigint=review_active_before and review_active_before>=1,
-  'completed filter retains the authorized active-work badge count');
  update bunch_note_private.jobs set updated_at='2000-01-01 00:00:00+00' where id=target_job_id;
  select updated_at,revision into prior_job_updated_at,prior_job_revision from bunch_note_private.jobs where id=target_job_id;
   result:=public.bunch_note_workflow_command_v1(sharon,'assign_counter',jsonb_build_object('review_id',review.id,'counter_username','  FIELD.TAG_1  '),
