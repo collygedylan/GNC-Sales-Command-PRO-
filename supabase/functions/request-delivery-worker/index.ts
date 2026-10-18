@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { Database, Json } from "../_shared/database.types.ts";
+import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs";
+import { ensureBunchCompletionPdf as prepareBunchCompletionPdf } from "../_shared/bunch-note-pdf-delivery.ts";
 import { withObservedRequest } from "../_shared/observability.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -268,6 +270,24 @@ async function recordHlOrderDelivery(event: JsonRecord, status: string, result: 
   if (error) throw new Error("HL_ORDER_DELIVERY_RECORD_FAILED");
 }
 
+async function ensureBunchCompletionPdf(event: JsonRecord) {
+  await prepareBunchCompletionPdf({
+    event: event as Record<string, unknown>,
+    rpc: async (name, args) => {
+      const result = name === "bunch_note_delivery_lookup_v1"
+        ? await supabase.rpc(name, { p_event_id: String(args.p_event_id || "") })
+        : await supabase.rpc(name, { p_preview_id: String(args.p_preview_id || ""), p_pdfs: args.p_pdfs as Json });
+      return { data: result.data, error: result.error ? { message: result.error.message, code: result.error.code } : null };
+    },
+    lookupProfile: async profileId => {
+      const { data: profile, error } = await supabase.from("profiles")
+        .select("username,display_name").eq("id", profileId).maybeSingle();
+      return error || !profile ? null : { username: profile.username, displayName: profile.display_name };
+    },
+    render: renderBunchNoteReportsPdf,
+  });
+}
+
 async function failEvent(eventId: string, leaseToken: string, error: unknown) {
   const { error: rpcError } = await supabase.rpc("fail_request_delivery_event", {
     p_event_id: eventId,
@@ -411,6 +431,7 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           // HL is email-only. Apps Script resolves its frozen report and sole recipient
           // from protected storage and durably records intent before Gmail is called.
           if (!event.email_delivered_at) {
+            if (isBunchNoteEvent(event)) await ensureBunchCompletionPdf(event);
             const emailResult = await callAppsScript(event, [], null);
             channelResults.email = {
               status: "sent", delivered_at: new Date().toISOString(),

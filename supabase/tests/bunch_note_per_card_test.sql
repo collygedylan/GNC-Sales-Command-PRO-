@@ -33,18 +33,38 @@ insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values
  ('99000000-0000-0000-0000-000000000001','dylan-card@example.invalid','{}','{}'),
  ('99000000-0000-0000-0000-000000000002','crew-one@example.invalid','{}','{}'),
  ('99000000-0000-0000-0000-000000000003','crew-two@example.invalid','{}','{}'),
- ('99000000-0000-0000-0000-000000000004','unassigned@example.invalid','{}','{}');
+ ('99000000-0000-0000-0000-000000000004','unassigned@example.invalid','{}','{}'),
+ ('99000000-0000-0000-0000-000000000005','sharon-review@example.invalid','{}','{}'),
+ ('99000000-0000-0000-0000-000000000006','outside-supervisor@example.invalid','{}','{}'),
+ ('99000000-0000-0000-0000-000000000007','count-only@example.invalid','{}','{}'),
+ ('99000000-0000-0000-0000-000000000008','sales-rep@example.invalid','{}','{}'),
+ ('99000000-0000-0000-0000-000000000009','disabled-counter@example.invalid','{}','{}');
 insert into public.profiles(id,username,display_name,role,must_change_password) values
  ('99000000-0000-0000-0000-000000000001','dylan_collyge','Dylan','ADMIN',false),
  ('99000000-0000-0000-0000-000000000002','bn_card_one','Crew One','EVAL',false),
  ('99000000-0000-0000-0000-000000000003','bn_card_two','Crew Two','EVAL',false),
- ('99000000-0000-0000-0000-000000000004','bn_card_none','No Assigned Work','EVAL',false);
+ ('99000000-0000-0000-0000-000000000004','bn_card_none','No Assigned Work','EVAL',false),
+ ('99000000-0000-0000-0000-000000000005','sharon_combs','Sharon Review','EVAL',false),
+ ('99000000-0000-0000-0000-000000000006','bn_outside_supervisor','Outside Supervisor','SUPERVISOR',false),
+ ('99000000-0000-0000-0000-000000000007','bn_count_only','Count Only','EVAL',false),
+ ('99000000-0000-0000-0000-000000000008','bn_sales_rep','Sales Rep','SALESREP',false),
+ ('99000000-0000-0000-0000-000000000009','bn_disabled','Disabled Counter','EVAL',false);
+update public.profiles set disabled_at=now() where id='99000000-0000-0000-0000-000000000009';
 select set_config('request.jwt.claims','{"role":"service_role"}',true),set_config('request.jwt.claim.role','service_role',true);
 insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,blockalpha,locationcode,lotcode,ptronhand,ptravailable,season,ptrreviewed)
  values('BN-CARD-A','CARD-I','Card Plant','#3','CARD','C.88.001','CARD-LOT-A','0',null,'27.Y','0'),
  ('BN-CARD-B','CARD-I','Card Plant','#5','CARD','C.88.001','CARD-LOT-B','12','0','27.F1','0'),
  ('BN-CARD-SIBLING','CARD-I','Card Plant','#4','CARD','C.88.001','CARD-LOT-SIBLING','8','8','27.Y','0'),
- ('BN-CARD-C','CARD-J','Setup Plant','#1','CARD','C.88.002','CARD-LOT-C','5','5','27.Y','0');
+ ('BN-CARD-C','CARD-J','Setup Plant','#1','CARD','C.88.002','CARD-LOT-C','5','5','27.Y','0'),
+ ('BN-CARD-WORKFLOW','CARD-W','Workflow Plant','#2','CARD','C.88.003','CARD-LOT-W','5','5','27.Y','0'),
+ ('BN-CARD-WORKFLOW-OTHER','CARD-W-OTHER','Other Workflow Plant','#2','CARD','C.88.003','CARD-LOT-W-OTHER','7','7','27.Y','0');
+insert into public.core_employees(id,profile_id,name,emp_number,department,role)
+values('99100000-0000-4000-8000-000000000002','99000000-0000-0000-0000-000000000002','Crew One','BN-COUNT-ONE','Kiers & Counters','Counter'),
+ ('99100000-0000-4000-8000-000000000003','99000000-0000-0000-0000-000000000003','Crew Two','BN-COUNT-TWO','Kiers & Counters','Counter'),
+ ('99100000-0000-4000-8000-000000000007','99000000-0000-0000-0000-000000000007','Count Only','BN-COUNT-ONLY','Kiers & Counters','Counter');
+insert into bunch_note_private.options(id,category,label,kind)
+select 'bb000000-0000-4000-8000-000000000002','inventory','TA / culls follow-up','ta'
+where not exists(select 1 from bunch_note_private.options where kind='ta');
 
 create function pg_temp.bn_card_call(actor_id uuid, operation_name text, payload jsonb default '{}', revision_value bigint default null, command_id uuid default gen_random_uuid())
 returns jsonb language sql as $$
@@ -163,22 +183,23 @@ begin
  result:=pg_temp.bn_card_call(d,'assign_card',jsonb_build_object('job_id',job_setup,'card_id',setup_card,'owner_ids',jsonb_build_array(w1,w2)),card_revision,gen_random_uuid());
  perform pg_temp.bn_card_check(result->'job'->'cards'->0->'owner_ids'=jsonb_build_array(w1,w2) and result->'job'->'cards'->0->>'owner_id'=w1::text,'multi-assignment returns every assignee and keeps the first assignee as legacy owner');
  perform pg_temp.bn_card_check(result->'job'->'cards'->0->'owner_names'=jsonb_build_array('Crew One','Crew Two'),'assignment projection preserves readable names in owner order');
- perform pg_temp.bn_card_check(result->'job'->'cards'->0->>'workflow_action'='ta' and result->'job'->'cards'->0->>'notes'='TA staging only','published card exposes exact routing plan and notes');
+ select revision into card_revision from bunch_note_private.bunch_note_work_cards where card_id=setup_card and bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_setup);
+ perform pg_temp.bn_card_reject(d,'assign_card',jsonb_build_object('job_id',job_setup,'card_id',setup_card,'owner_ids','not-an-array'),card_revision,gen_random_uuid(),'BUNCH_NOTE_CARD_OWNER_INVALID');
+ perform pg_temp.bn_card_check((select revision=card_revision and owner_id=w1 from bunch_note_private.bunch_note_work_cards where card_id=setup_card and bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_setup)) and (select count(*)=2 from bunch_note_private.bunch_note_card_assignees where card_id=setup_card and user_id in (w1,w2)),
+  'malformed owner_ids rejection is atomic and preserves prior assignments');
+ update public.profiles set disabled_at=now() where id=other;
+ select revision into card_revision from bunch_note_private.bunch_note_work_cards where card_id=setup_card and bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_setup);
+ perform pg_temp.bn_card_reject(d,'assign_card',jsonb_build_object('job_id',job_setup,'card_id',setup_card,'owner_ids',jsonb_build_array(w1,other)),card_revision,gen_random_uuid(),'BUNCH_NOTE_CARD_OWNER_INVALID');
+ update public.profiles set disabled_at=null where id=other;
+ perform pg_temp.bn_card_check((select revision=card_revision and owner_id=w1 from bunch_note_private.bunch_note_work_cards where card_id=setup_card and bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_setup)) and (select count(*)=2 from bunch_note_private.bunch_note_card_assignees where card_id=setup_card and user_id in (w1,w2)),'inactive assignee rejection leaves revision and both prior assignments unchanged');
+ result:=pg_temp.bn_card_call(w1,'get',jsonb_build_object('job_id',job_setup));
+ perform pg_temp.bn_card_check(result->'job'->'cards'->0->>'workflow_action'='ta' and result->'job'->'cards'->0->>'notes'='TA staging only','published card exposes exact routing plan and notes before completion');
  select bunch_note_private.card_instruction_snapshot(j.body,setup_card) into snapshot_before from bunch_note_private.jobs j where j.id=job_setup;
  perform pg_temp.bn_card_check(snapshot_before is not distinct from (select bunch_note_private.card_instruction_snapshot(jsonb_set(jsonb_set(j.body,'{cards,0,owner_ids}','["99000000-0000-0000-0000-000000000002","99000000-0000-0000-0000-000000000003"]'::jsonb),'{cards,0,owner_names}','["Crew One","Crew Two"]'::jsonb),setup_card) from bunch_note_private.jobs j where j.id=job_setup),
    'assignment display metadata is excluded from instruction snapshot semantics');
  update bunch_note_private.jobs j set body=j.body||jsonb_build_object('worker_assignment_touch','preserve-relations') where j.id=job_setup;
  perform pg_temp.bn_card_check((select count(*)=2 and count(*) filter(where user_id in (w1,w2))=2 from bunch_note_private.bunch_note_card_assignees where card_id=setup_card),
    'job body mirror with unchanged legacy owner fields retains all relational assignments');
- select revision into card_revision from bunch_note_private.bunch_note_work_cards where card_id=setup_card and bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_setup);
- perform pg_temp.bn_card_reject(d,'assign_card',jsonb_build_object('job_id',job_setup,'card_id',setup_card,'owner_ids','not-an-array'),card_revision,gen_random_uuid(),'BUNCH_NOTE_CARD_OWNER_INVALID');
- perform pg_temp.bn_card_check((select revision=card_revision and owner_id=w1 from bunch_note_private.bunch_note_work_cards where card_id=setup_card and bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_setup)) and (select count(*)=2 from bunch_note_private.bunch_note_card_assignees where card_id=setup_card and user_id in (w1,w2)),
-   'malformed owner_ids rejection is atomic and preserves prior assignments');
- update public.profiles set disabled_at=now() where id=other;
- select revision into card_revision from bunch_note_private.bunch_note_work_cards where card_id=setup_card and bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_setup);
- perform pg_temp.bn_card_reject(d,'assign_card',jsonb_build_object('job_id',job_setup,'card_id',setup_card,'owner_ids',jsonb_build_array(w1,other)),card_revision,gen_random_uuid(),'BUNCH_NOTE_CARD_OWNER_INVALID');
- update public.profiles set disabled_at=null where id=other;
- perform pg_temp.bn_card_check((select revision=card_revision and owner_id=w1 from bunch_note_private.bunch_note_work_cards where card_id=setup_card and bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_setup)) and (select count(*)=2 from bunch_note_private.bunch_note_card_assignees where card_id=setup_card and user_id in (w1,w2)),'inactive assignee rejection leaves revision and both prior assignments unchanged');
  result:=pg_temp.bn_card_call(w1,'get',jsonb_build_object('job_id',job_setup));
  perform pg_temp.bn_card_check(result->'job'->'cards'->0->'owner_ids'=jsonb_build_array(w1,w2),'first assigned worker can read multi-assignee card');
  result:=pg_temp.bn_card_call(w2,'get',jsonb_build_object('job_id',job_setup));
@@ -374,6 +395,252 @@ begin
  delete from public.ph_master_inventory where unique_id like 'BN-SAVE100-%';
  select jsonb_agg(to_jsonb(m) order by unique_id) into inventory_after from public.ph_master_inventory m;
  perform pg_temp.bn_card_check(inventory_after=inventory_before,'card assignment, actuals and completion never mutate source inventory');
+end $$;
+
+do $$
+declare
+ d uuid:='99000000-0000-0000-0000-000000000001';
+ w1 uuid:='99000000-0000-0000-0000-000000000002';
+ w2 uuid:='99000000-0000-0000-0000-000000000003';
+ other uuid:='99000000-0000-0000-0000-000000000004';
+ counter_only uuid:='99000000-0000-0000-0000-000000000007';
+ sales_rep uuid:='99000000-0000-0000-0000-000000000008';
+ disabled_counter uuid:='99000000-0000-0000-0000-000000000009';
+ sharon uuid:='99000000-0000-0000-0000-000000000005';
+ outside_supervisor uuid:='99000000-0000-0000-0000-000000000006';
+ target_card_id uuid:='aa000000-0000-4000-8000-000000000004';
+ other_card_id uuid:='aa000000-0000-4000-8000-000000000005';
+ body jsonb; draft jsonb; preview jsonb; result jsonb; replay jsonb; review bunch_note_private.count_reviews; delivery jsonb; ta bunch_note_private.options;
+ target_batch_id uuid; target_job_id uuid; target_note_id uuid; card_revision bigint; review_revision bigint;
+ complete_command uuid:='bb000000-0000-4000-8000-000000000201';
+ actuals jsonb:='{"BN-CARD-WORKFLOW":3}'::jsonb;
+ rejected boolean:=false;
+ review_active_before bigint;
+ prior_job_updated_at timestamptz;
+ prior_job_revision bigint;
+begin
+ select * into ta from bunch_note_private.options where kind='ta' order by label limit 1;
+ body:=jsonb_build_object('block','CARD','recipient_ids','[]'::jsonb,'locations',jsonb_build_array(
+  jsonb_build_object('location','C.88.003','purposes','Count variance workflow','instructions','Record the completed movement quantity',
+   'row_ids',jsonb_build_array('BN-CARD-WORKFLOW','BN-CARD-WORKFLOW-OTHER'),'cards',jsonb_build_array(
+    jsonb_build_object('id',target_card_id,'kind','inventory','location_code','C.88.003','itemcode','CARD-W','commonname','Workflow Plant','contsize','#2',
+     'row_ids',jsonb_build_array('BN-CARD-WORKFLOW'),'owner_id',w1,'owner_ids',jsonb_build_array(w1,w2),
+      'workflow_action','move','destination_location','C.88.004','notes','Move and reconcile'),
+     jsonb_build_object('id',other_card_id,'kind','inventory','location_code','C.88.003','itemcode','CARD-W-OTHER','commonname','Other Workflow Plant','contsize','#2',
+      'row_ids',jsonb_build_array('BN-CARD-WORKFLOW-OTHER'),'owner_id',w2,'owner_ids',jsonb_build_array(w2),
+       'workflow_action','ta','notes','Other assigned card'),
+      jsonb_build_object('id','aa000000-0000-4000-8000-000000000006'::uuid,'kind','shared','location_code','C.88.003',
+       'row_ids','[]'::jsonb,'owner_id',w1)),
+    'actions',jsonb_build_array(
+     jsonb_build_object('id','workflow-legacy-action','card_id',target_card_id,'option_id',ta.id,
+      'group',ta.category,'kind',ta.kind,'label',ta.label,'instructions',ta.label,'scope','rows',
+      'row_ids',jsonb_build_array('BN-CARD-WORKFLOW'),'quantity','1'),
+     jsonb_build_object('id','other-legacy-action','card_id',other_card_id,'option_id',ta.id,
+      'group',ta.category,'kind',ta.kind,'label',ta.label,'instructions',ta.label,'scope','rows',
+      'row_ids',jsonb_build_array('BN-CARD-WORKFLOW-OTHER'),'quantity','1')))));
+ draft:=public.bunch_note_command_v1(d,'save',jsonb_build_object('body',body),gen_random_uuid(),null)->'draft';
+ target_batch_id:=(draft->>'id')::uuid;
+ preview:=public.bunch_note_command_v1(d,'preview',jsonb_build_object('batch_id',target_batch_id),gen_random_uuid(),1)->'preview';
+ select jsonb_agg(jsonb_build_object('job_id',report->'job_id','filename','instruction.pdf',
+   'base64',encode(convert_to('%PDF-1.4'||repeat('i',200),'UTF8'),'base64')))
+  into result from jsonb_array_elements(preview->'reports') report;
+ perform public.bunch_note_freeze_pdfs_v1((preview->>'id')::uuid,result);
+ perform public.bunch_note_command_v1(d,'publish',jsonb_build_object('preview_id',preview->'id'),gen_random_uuid(),1);
+ select (report->>'job_id')::uuid into target_job_id
+  from jsonb_array_elements(preview->'reports') report
+  cross join lateral jsonb_array_elements(coalesce(report->'cards','[]'::jsonb)) preview_card
+  where preview_card->>'id'=target_card_id::text limit 1;
+ -- Historical rows can contain a shared task that current format-five save validation will not create.
+ -- Inject it only in this transaction while suppressing the sync triggers, then restore them immediately.
+ alter table bunch_note_private.jobs disable trigger user;
+ update bunch_note_private.jobs j set body=jsonb_set(j.body,'{actions}',coalesce(j.body->'actions','[]'::jsonb)||jsonb_build_array(
+  jsonb_build_object('id','unscoped-legacy-action','group','sequence','kind','instruction','label','Shared irrigation check',
+   'instructions','Coordinate with irrigation','scope','location','row_ids','[]'::jsonb,'quantity','1')))
+  where j.id=target_job_id;
+ alter table bunch_note_private.jobs enable trigger user;
+ select j.id,n.id,wc.revision into target_job_id,target_note_id,card_revision
+  from bunch_note_private.jobs j join bunch_note_private.bunch_notes n on n.job_id=j.id
+  join bunch_note_private.bunch_note_work_cards wc on wc.bunch_note_id=n.id
+  where j.id=target_job_id and wc.card_id=target_card_id;
+ delete from bunch_note_private.bunch_note_card_assignees where bunch_note_id=target_note_id and card_id=target_card_id and user_id=w1;
+ perform pg_temp.bn_card_check(target_job_id is not null and target_note_id is not null and card_revision=1,
+  'publish materializes an assigned work card with its initial card revision');
+
+ result:=public.bunch_note_workflow_command_v1(w1,'queue',jsonb_build_object('filter','mine','limit',100,'offset',0));
+ perform pg_temp.bn_card_check((result->>'total')::integer>=1
+   and exists(select 1 from jsonb_array_elements(result->'cards') c where c->>'card_id'=target_card_id::text
+    and c->>'stablecard_id'=target_job_id::text||':'||target_card_id::text
+    and c->>'status'='open' and c->>'can_complete'='true' and c->'assignees' @> jsonb_build_array(jsonb_build_object('id',w2))
+    and c->'assignees' @> jsonb_build_array(jsonb_build_object('id',w1))),
+   'assigned worker queue returns relational assignees and the legacy owner, plus a completion capability');
+ result:=public.bunch_note_workflow_command_v1(sharon,'queue',jsonb_build_object('filter','mine','limit',100,'offset',0));
+ perform pg_temp.bn_card_check(not exists(select 1 from jsonb_array_elements(result->'cards') c where c->>'card_id'=target_card_id::text)
+   and exists(select 1 from jsonb_array_elements(public.bunch_note_workflow_command_v1(sharon,'queue',jsonb_build_object('filter','all','limit',100,'offset',0))->'cards') c where c->>'card_id'=target_card_id::text),
+   'reviewers see all authorized cards in all filter while mine remains assigned-only');
+ perform pg_temp.bn_card_check((select jsonb_array_length((public.bunch_note_workflow_command_v1(other,'queue',
+   jsonb_build_object('filter','mine','limit',100,'offset',0))->'cards'))=0),
+   'unassigned worker cannot discover assigned card or source inventory');
+ perform pg_temp.bn_card_check((select jsonb_array_length((public.bunch_note_workflow_command_v1(outside_supervisor,'queue',
+   jsonb_build_object('filter','all','limit',100,'offset',0))->'cards'))=0),
+   'supervisors outside Kiers & Counters do not receive global Bunch review visibility');
+ rejected:=false;
+ begin
+  perform public.bunch_note_workflow_command_v1(other,'complete_card',jsonb_build_object('job_id',target_job_id,'card_id',target_card_id,
+    'actual_qty_by_row',actuals),gen_random_uuid(),card_revision);
+  raise exception 'Expected unassigned worker card completion to be denied';
+ exception when others then
+  if sqlerrm='BUNCH_NOTE_OWNER_ONLY' then rejected:=true; else raise; end if;
+ end;
+ perform pg_temp.bn_card_check(rejected and not exists(select 1 from bunch_note_private.card_completions c where c.card_id=target_card_id),
+  'unassigned worker cannot complete another user card');
+
+  rejected:=false;
+  begin
+   perform public.bunch_note_workflow_command_v1(w1,'complete_card',jsonb_build_object('job_id',target_job_id,
+    'card_id','aa000000-0000-4000-8000-000000000006','actual_qty_by_row','{}'::jsonb),gen_random_uuid(),1);
+   raise exception 'Expected a shared card completion attempt to be rejected';
+  exception when others then
+   if sqlerrm='BUNCH_NOTE_CARD_NOT_INVENTORY' then rejected:=true; else raise; end if;
+  end;
+  perform pg_temp.bn_card_check(rejected and not exists(select 1 from bunch_note_private.card_completions c
+    where c.job_id=target_job_id and c.card_id='aa000000-0000-4000-8000-000000000006'),
+   'shared briefing cards cannot be submitted as inventory quantities');
+
+ rejected:=false;
+ begin
+  perform public.bunch_note_workflow_command_v1(w1,'complete_card',jsonb_build_object('job_id',target_job_id,'card_id',target_card_id,
+    'actual_qty_by_row','{}'::jsonb),gen_random_uuid(),card_revision);
+  raise exception 'Expected incomplete source quantities to be rejected';
+ exception when others then
+  if sqlerrm='BUNCH_NOTE_ACTUAL_ROWS_INVALID' then rejected:=true; else raise; end if;
+ end;
+ perform pg_temp.bn_card_check(rejected and not exists(select 1 from bunch_note_private.card_completions c where c.card_id=target_card_id),
+  'completion requires an exact quantity for every underlying inventory row and remains atomic');
+
+ perform set_config('bunch_note.card_command','off',true);
+ perform set_config('bunch_note.workflow_card_completion','off',true);
+ result:=public.bunch_note_workflow_command_v1(w1,'complete_card',jsonb_build_object('job_id',target_job_id,'card_id',target_card_id,
+   'actual_qty_by_row',actuals),complete_command,card_revision);
+ replay:=public.bunch_note_workflow_command_v1(w1,'complete_card',jsonb_build_object('job_id',target_job_id,'card_id',target_card_id,
+   'actual_qty_by_row',actuals),complete_command,card_revision);
+ perform pg_temp.bn_card_check(result=replay and result->'completion'->>'variance'='-2'
+  and result->'discrepancy'->>'routed_to'='sharon_combs' and result->>'delivery_queued'='true',
+  'card completion compares actual quantity with live PTRAVAILABLE, routes the variance, and replays idempotently');
+ perform pg_temp.bn_card_check(current_setting('bunch_note.card_command',true)='off'
+  and current_setting('bunch_note.workflow_card_completion',true)='off',
+  'successful workflow completion restores transaction-local trigger guards before a subsequent RPC');
+  perform pg_temp.bn_card_check((select wc.status='complete' and wc.revision=2 from bunch_note_private.bunch_note_work_cards wc where wc.bunch_note_id=target_note_id and wc.card_id=target_card_id)
+   and (select j.status='open' and j.progress='{}'::jsonb from bunch_note_private.jobs j where j.id=target_job_id)
+  and (select count(*)=1 from bunch_note_private.previews p where p.job_id=target_job_id and p.report_kind='completed_work' and p.published)
+  and (select count(*)=1 from public.ph_request_delivery_outbox e where e.event_key='bunch-note-card-completion:'||target_job_id::text||':'||target_card_id::text||':2'),
+   'actual-count completion works with an unresolved legacy action while preserving job progress and avoiding duplicate delivery');
+ result:=public.bunch_note_workflow_command_v1(w2,'queue',jsonb_build_object('filter','mine','limit',100,'offset',0));
+ review_active_before:=(result->>'active_count')::bigint;
+ result:=public.bunch_note_workflow_command_v1(w2,'queue',jsonb_build_object('filter','completed','limit',100,'offset',0));
+ perform pg_temp.bn_card_check((result->>'active_count')::bigint=review_active_before and review_active_before>=1,
+  'completed filter retains the authorized active-work badge count while an assigned card remains open');
+ result:=public.bunch_note_workflow_command_v1(w2,'complete_card',jsonb_build_object('job_id',target_job_id,'card_id',other_card_id,
+   'actual_qty_by_row','{"BN-CARD-WORKFLOW-OTHER":7}'::jsonb),gen_random_uuid(),1);
+ perform pg_temp.bn_card_check(result->'job'->>'status'='open'
+  and (select progress='{}'::jsonb and status='open' from bunch_note_private.jobs where id=target_job_id)
+  and exists(select 1 from jsonb_array_elements(bunch_note_private.card_actions((select j from bunch_note_private.jobs j where j.id=target_job_id))) action_row(action)
+    where action->>'id'='unscoped-legacy-action')
+  and exists(select 1 from bunch_note_private.bunch_note_work_cards wc where wc.bunch_note_id=target_note_id
+    and wc.card_id='aa000000-0000-4000-8000-000000000006' and wc.kind='shared' and wc.status='open'),
+  'the final inventory card preserves progress and leaves unrelated unscoped work open');
+
+ select r.* into review from bunch_note_private.count_reviews r where r.job_id=target_job_id and r.card_id=target_card_id;
+ result:=public.bunch_note_workflow_command_v1(sharon,'list_discrepancies',jsonb_build_object('limit',100,'offset',0));
+  perform pg_temp.bn_card_check(result->>'can_review'='true'
+   and result->'counters'->0->>'username'='sharon_combs'
+   and result->'counters'->1->>'username'='dylan_collyge'
+   and result->'counters' @> jsonb_build_array(jsonb_build_object('id',w2))
+   and result->'counters' @> jsonb_build_array(jsonb_build_object('id',w1))
+   and not(result->'counters' @> jsonb_build_array(jsonb_build_object('id',sales_rep)))
+   and not(result->'counters' @> jsonb_build_array(jsonb_build_object('id',disabled_counter)))
+  and result->'reviews' @> jsonb_build_array(jsonb_build_object('id',review.id,'variance',-2,'actual_qty',3,'ptravailable',5)),
+  'counter choices place Sharon and Dylan first, then include active non-sales-rep profiles only');
+ update bunch_note_private.jobs set updated_at='2000-01-01 00:00:00+00' where id=target_job_id;
+ select updated_at,revision into prior_job_updated_at,prior_job_revision from bunch_note_private.jobs where id=target_job_id;
+  result:=public.bunch_note_workflow_command_v1(sharon,'assign_counter',jsonb_build_object('review_id',review.id,'counter_username','  FIELD.TAG_1  '),
+   gen_random_uuid(),review.revision);
+  review_revision:=(result->'review'->>'revision')::bigint;
+  perform pg_temp.bn_card_check(result->'review'->>'assigned_counter_id' is null
+   and result->'review'->>'assigned_counter_username'='field.tag_1'
+   and (select assigned_counter_id is null and assigned_counter_username='field.tag_1' from bunch_note_private.count_reviews where id=review.id),
+   'unknown valid username becomes a normalized custom tag without granting account access');
+  rejected:=false;
+  begin
+   perform public.bunch_note_workflow_command_v1(other,'complete_recount',jsonb_build_object('review_id',review.id,
+    'recount_qty_by_row','{"BN-CARD-WORKFLOW":4}'::jsonb),gen_random_uuid(),review_revision);
+   raise exception 'Expected custom tag to confer no access';
+  exception when others then
+   if sqlerrm='BUNCH_NOTE_REVIEW_FORBIDDEN' then rejected:=true; else raise; end if;
+  end;
+  perform pg_temp.bn_card_check(rejected,'custom username tag does not grant completion permission to any profile');
+  rejected:=false;
+  begin
+   perform public.bunch_note_workflow_command_v1(sharon,'assign_counter',jsonb_build_object('review_id',review.id,'counter_username','bn_sales_rep'),
+    gen_random_uuid(),review_revision);
+   raise exception 'Expected sales rep assignment to be rejected';
+  exception when others then
+   if sqlerrm='BUNCH_NOTE_COUNTER_INVALID' then rejected:=true; else raise; end if;
+  end;
+  perform pg_temp.bn_card_check(rejected,'known sales-rep username is rejected instead of downgraded to a custom tag');
+  rejected:=false;
+  begin
+   perform public.bunch_note_workflow_command_v1(sharon,'assign_counter',jsonb_build_object('review_id',review.id,'counter_username','bn_disabled'),
+    gen_random_uuid(),review_revision);
+   raise exception 'Expected inactive username assignment to be rejected';
+  exception when others then
+   if sqlerrm='BUNCH_NOTE_COUNTER_INVALID' then rejected:=true; else raise; end if;
+  end;
+  perform pg_temp.bn_card_check(rejected,'known disabled username is rejected instead of downgraded to a custom tag');
+  result:=public.bunch_note_workflow_command_v1(sharon,'assign_counter',jsonb_build_object('review_id',review.id,'counter_id',counter_only),
+   gen_random_uuid(),review_revision);
+ review_revision:=(result->'review'->>'revision')::bigint;
+  perform pg_temp.bn_card_check(result->'review'->>'assigned_counter_id'=counter_only::text
+   and result->'review'->>'assigned_counter_username'='bn_count_only' and result->'review'->>'status'='assigned',
+   'authorized reviewer assigns a profile-backed active non-sales-rep counter with canonical username');
+ result:=public.bunch_note_workflow_command_v1(counter_only,'queue',jsonb_build_object('filter','mine','limit',100,'offset',0));
+ perform pg_temp.bn_card_check((result->>'total')::integer=0 and (result->>'review_count')::integer=1
+  and result->>'can_review'='false'
+  and (select (public.bunch_note_workflow_command_v1(counter_only,'list_discrepancies',jsonb_build_object('limit',100,'offset',0))->>'total')::integer=1),
+  'a counter assigned to recount without an original job sees its review count and assigned discrepancy only');
+ perform pg_temp.bn_card_check((select updated_at>prior_job_updated_at and revision=prior_job_revision from bunch_note_private.jobs where id=target_job_id),
+  'recount assignment emits a watched Bunch job update without changing its business revision');
+ result:=public.bunch_note_workflow_command_v1(counter_only,'complete_recount',jsonb_build_object('review_id',review.id,
+  'recount_qty_by_row','{"BN-CARD-WORKFLOW":4}'::jsonb),gen_random_uuid(),review_revision);
+ perform pg_temp.bn_card_check(result->'review'->>'status'='resolved' and result->'review'->>'recount_qty'='4'
+  and (select recount_qty_by_row->>'BN-CARD-WORKFLOW'='4' from bunch_note_private.count_reviews where id=review.id),
+  'assigned count worker resolves the discrepancy using exact per-row recount quantities');
+ result:=public.bunch_note_workflow_command_v1(w2,'list_discrepancies',jsonb_build_object('limit',100,'offset',0));
+ perform pg_temp.bn_card_check(not(result->'reviews' @> jsonb_build_array(jsonb_build_object('id',review.id))),
+  'resolved recounts leave the active review queue');
+
+ select p.id into target_note_id from bunch_note_private.previews p
+  where p.job_id=target_job_id and p.report_kind='completed_work' and p.published
+   and p.reports->0->'cards'->0->>'id'=target_card_id::text;
+ delivery:=public.bunch_note_delivery_lookup_v1((select e.event_id from public.ph_request_delivery_outbox e
+   where e.payload->>'preview_id'=target_note_id::text));
+ perform pg_temp.bn_card_check(delivery->>'preview_id'=target_note_id::text and delivery->'pdfs'='null'::jsonb
+  and delivery->'reports'->0->>'report_kind'='completed_work'
+  and delivery->'recipients' @> jsonb_build_array(jsonb_build_object('username','bn_card_two'))
+  and delivery->'recipients' @> jsonb_build_array(jsonb_build_object('username','sharon_combs'))
+  and jsonb_array_length(delivery->'reports'->0->'actions')=1
+  and delivery->'reports'->0->'actions'->0->>'card_id'=target_card_id::text
+  and jsonb_array_length(delivery->'reports'->0->'source')=1
+  and delivery->'reports'->0->'source'->0->>'unique_id'='BN-CARD-WORKFLOW'
+  and delivery->'reports'->0->'completion'->'actual_qty_by_row'=actuals
+  and delivery->'reports'->0->'cards'->0->>'workflow_instructions' like '%Completed By: bn_card_one (Crew One)%'
+  and delivery->'reports'->0->'cards'->0->>'workflow_instructions' like '%Actual Qty reported: 3%'
+  and delivery->'reports'->0->'cards'->0->>'workflow_instructions' like '%Drive Mode PTRAVAILABLE: 5%'
+  and delivery->'reports'->0->'cards'->0->>'workflow_instructions' like '%Count discrepancy: -2 (needs recount review)%',
+  'automatic per-card completion delivery includes assignee recipients and complete execution summary for worker-side PDF freezing');
+ perform public.bunch_note_freeze_pdfs_v1(target_note_id,jsonb_build_array(jsonb_build_object('job_id',target_job_id,'filename','completed-work.pdf',
+  'base64',encode(convert_to('%PDF-1.4'||repeat('w',200),'UTF8'),'base64'))));
+ perform pg_temp.bn_card_check((select p.pdfs->0->>'filename'='completed-work.pdf' from bunch_note_private.previews p where p.id=target_note_id),
+  'authorized delivery worker freezes the completed-work PDF bytes before sending');
 end $$;
 
 select plan(1);
