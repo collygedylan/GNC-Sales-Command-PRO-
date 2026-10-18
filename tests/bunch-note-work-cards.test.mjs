@@ -128,7 +128,7 @@ test('release acknowledgement refreshes the list without refetching work no long
 
 test('location PDF orders assignments and shared work before saved inventory and escapes card text',()=>{
  const gas=read('Code.gs'),ctx=vm.createContext({escapeEmailHtml_:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;')});
- vm.runInContext(gas.slice(gas.indexOf('function buildBunchNotePdfHtml_'),gas.indexOf('function handleBunchNotePreview_')),ctx);
+ vm.runInContext(gas.slice(gas.indexOf('function bunchNoteFreeHeaderInstructions_'),gas.indexOf('function handleBunchNotePreview_')),ctx);
  const html=ctx.buildBunchNotePdfHtml_({location:'E.15.000',purposes:'Shipping',cards:[{id:'a',kind:'inventory',itemcode:'RED',commonname:'Royal Red',contsize:'#3',row_ids:['a','a'],owner_name:'Worker <A>',owner_names:['Worker <A>','Second Worker'],workflow_action:'bunch',destination_house:'North & Center House',notes:'Keep grouped',house:'North',direction:'W → E'},{id:'shared',kind:'shared',row_ids:[],owner_name:'Dylan'}],source:[row('a'),row('a')],actions:[{id:'move',card_id:'a',scope:'rows',row_ids:['a'],instructions:'Move to D15. Blue flags',destination:'D.15.000',quantity:0},{id:'general',card_id:'shared',scope:'location',instructions:'Remove drape. Pink Ribbon'}]});
  for(const text of ['Worker &lt;A&gt;','Second Worker','Plan: Bunch to North &amp; Center House','Notes: Keep grouped','House: North','Direction: W → E','Location Total (On Hand): 0','Available: 0','General / Shared Work','Blue flags','Pink Ribbon'])assert.ok(html.includes(text),text);
  assert.ok(html.indexOf('General instructions')<html.indexOf('House: North'));
