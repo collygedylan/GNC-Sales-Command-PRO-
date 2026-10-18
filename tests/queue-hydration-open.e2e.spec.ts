@@ -94,22 +94,21 @@ test('direct Que → Suspend open repaints hydrated photo and evaluation evidenc
   holdIdentityBatch = true;
   await page.locator('[data-request-category="suspend-tag"]').click();
   const card = page.locator('#request-content [data-request-uid="dock_suspend_dc_soc-hydration-448"]');
-  let initialImages: string[] = [];
-  let batchResponsePromise: Promise<import('@playwright/test').Response> | null = null;
+  let batchResponsePromise!: Promise<import('@playwright/test').Response>;
   try {
     await expect(card).toBeVisible();
     await identityBatchStarted;
     batchResponsePromise = page.waitForResponse(response => response.url().includes('/functions/v1/app-api')
       && response.request().postDataJSON()?.action === 'inventory_read'
       && response.request().postDataJSON()?.operation === 'master_identity_batch');
-    initialImages = await card.locator('img').evaluateAll(images => images.map(image => (image as HTMLImageElement).getAttribute('src') || ''));
+    const initialImages = await card.locator('img').evaluateAll(images => images.map(image => (image as HTMLImageElement).getAttribute('src') || ''));
     expect(initialImages.some(src => src === photoLink)).toBe(false);
     await expect(card).not.toContainText('SPEC: 6-8" H');
     await expect(card).not.toContainText('AV NOTE: SPEC - 6-8" H');
   } finally {
     releaseIdentityBatch();
   }
-  const batchResponse = await batchResponsePromise!;
+  const batchResponse = await batchResponsePromise;
   const batchBody = await batchResponse.json();
   const diagnostics = await page.evaluate(() => window.eval(`(() => {
     const card=document.querySelector('#request-content [data-request-uid="dock_suspend_dc_soc-hydration-448"]');
