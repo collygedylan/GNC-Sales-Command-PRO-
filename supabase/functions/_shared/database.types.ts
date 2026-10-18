@@ -16743,6 +16743,16 @@ export type Database = {
         Args: { p_pdfs: Json; p_preview_id: string }
         Returns: Json
       }
+      bunch_note_workflow_command_v1: {
+        Args: {
+          p_actor_id: string
+          p_command_id?: string
+          p_expected_revision?: number
+          p_operation: string
+          p_payload?: Json
+        }
+        Returns: Json
+      }
       cancel_codex_ops_task_v1: {
         Args: {
           p_expected_revision: number

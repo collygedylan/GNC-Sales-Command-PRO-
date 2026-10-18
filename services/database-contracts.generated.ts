@@ -86633,6 +86633,57 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "bunch_note_workflow_command_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "cancel_codex_ops_task_v1": {
       "oneOf": [
         {
@@ -93491,6 +93542,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "bunch_note_freeze_pdfs_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "bunch_note_workflow_command_v1": {
       "oneOf": [
         "json"
       ]
