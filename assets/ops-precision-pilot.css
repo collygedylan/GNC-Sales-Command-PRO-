@@ -9654,12 +9654,15 @@ body.ops-precision-pilot :is(#drive-content, #request-content, #docks-content) .
 .app-shared-drive-layout .app-operational-card-header-fields{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:6px}.app-shared-drive-layout .app-operational-card-header-field{display:flex;flex-direction:column;min-width:60px}.app-shared-drive-layout .app-operational-card-header-field>span{font-size:11px;color:var(--ops-text-muted,#526259)}.app-shared-drive-layout .app-operational-card-header-field>strong{font-size:14px;color:var(--ops-text,#17251d);overflow-wrap:anywhere}
 
 /* Compact Suspend uses an independent Reclass rail beside the complete text/order column. */
-#request-content .app-suspend-tag-compact-card .app-drive-card-grid {
+/* Outrank the later #docks-card-contrast inline compatibility selectors for the live request-card variants. */
+body.ops-precision-pilot.current-view-request #request-content .app-inventory-card-overhaul.app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid,
+body.ops-precision-pilot.current-view-request #request-content .app-inventory-card-overhaul.app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid:not(.app-drive-card-grid--no-photo):not(.app-drive-card-with-reclass) {
   grid-template-columns: var(--drive-card-photo-width) minmax(0, 1fr) !important;
-  grid-template-areas: "photo header" "photo details" !important;
+  grid-template-areas: "photo header" "details details" !important;
   row-gap: 5px !important;
 }
-#request-content .app-suspend-tag-compact-card .app-drive-card-grid--no-photo {
+body.ops-precision-pilot.current-view-request #request-content .app-inventory-card-overhaul.app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo,
+body.ops-precision-pilot.current-view-request #request-content .app-inventory-card-overhaul.app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo:not(.app-drive-card-with-reclass) {
   grid-template-columns: minmax(0, 1fr) !important;
   grid-template-areas: "header" "details" !important;
   row-gap: 5px !important;
@@ -9721,9 +9724,34 @@ body.ops-precision-pilot :is(#drive-content, #request-content, #docks-content) .
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn:disabled { background: #527565 !important; border-color: #527565 !important; }
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn:focus-visible { outline: 3px solid #fbbf24 !important; outline-offset: 2px; }
 #request-content .app-suspend-tag-compact-card .app-operational-planstart-date { margin: 0; }
-@media (max-width: 900px) {
-  #request-content .app-suspend-tag-compact-card .app-drive-card-grid { grid-template-areas: "photo header" "details details" !important; }
-  #request-content .app-suspend-tag-compact-card .app-drive-card-grid--no-photo { grid-template-areas: "header" "details" !important; }
+/* Lower sections share the complete card width, with readable metrics at every size. */
+body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-row {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+}
+body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-label {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-value {
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-value--unknown {
+  font-size: 14px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+@media (max-width: 600px) {
+  body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
 }
 
 /* Suspend Tag keeps the shared Drive frame and touch targets, with compact order data. */
@@ -9731,7 +9759,7 @@ body.ops-precision-pilot :is(#drive-content, #request-content, #docks-content) .
 #request-content .app-suspend-tag-compact-card .app-operational-card-header-field { flex-direction: row; align-items: baseline; gap: 4px; min-width: 0; }
 #request-content .app-suspend-tag-compact-card .app-drive-card-details { gap: 5px; }
 #request-content .app-suspend-tag-compact-card .app-drive-card-quantity-band { margin-top: 2px !important; }
-#request-content .app-suspend-tag-compact-card .app-request-card-meta { display: flex; flex-wrap: wrap; gap: 3px 6px; margin: 0; }
+#request-content .app-suspend-tag-compact-card .app-request-card-meta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 3px 6px; margin: 0; }
 #request-content .app-suspend-tag-compact-card .app-request-card-meta-chip { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; min-width: 0; max-width: 100%; padding: 2px 6px; border-radius: 6px; font-size: 12px; line-height: 1.3; color: var(--ops-text-muted, #526259); }
 #request-content .app-suspend-tag-compact-card .app-request-card-meta-chip strong { min-width: 0; overflow-wrap: anywhere; color: var(--ops-text, #17251d); }
 #request-content .app-suspend-tag-compact-card :is(.app-card-note, .app-suspend-tag-data-note) { margin: 0; padding: 6px; box-shadow: none; overflow-wrap: anywhere; }
