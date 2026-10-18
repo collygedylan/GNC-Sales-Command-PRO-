@@ -15,7 +15,11 @@ function fixturePdf() {
  return Buffer.from(pdf).toString('base64');
 }
 async function fixture(page:any,baseURL:string,worker=false,directoryUsers:any[]=[{id:hlUserId,username:'dylan_collyge',display:'Dylan',email:'dylan_collyge@greenleafnursery.com'}]) {
- const control=await installHlOrderFixture(page,baseURL,{username:worker?'bn_worker':'dylan_collyge',role:worker?'EVAL':'ADMIN'});
+ const control=await installHlOrderFixture(page,baseURL,{username:worker?'bn_worker':'dylan_collyge',role:worker?'EVAL':'ADMIN',beforeLogin:async()=>{
+  // This fixture grants Bunch Notes access only. Return an explicit capability
+  // denial for the unrelated voice module instead of an invalid generic payload.
+  await page.route('**/functions/v1/aura-llm-router',async(route)=>route.fulfill({status:403,headers:{'access-control-allow-origin':new URL(baseURL).origin},contentType:'application/json',body:JSON.stringify({ok:false,code:'AURA_FORBIDDEN',message:'Voice access is not part of this fixture.'})}));
+ }});
  const headers={'access-control-allow-origin':new URL(baseURL).origin,'access-control-allow-credentials':'true'};
  const rows=[plant('a','C.12.001'),{...plant('a2','C.12.001'),contsize:'#5',lotcode:'LOT2',season:'27.F1',stock:'20',review:null},plant('b','C.12.002')],commands:any[]=[],drafts:any[]=[],inventoryReads:any[]=[];
  const options:any[]=[['sequence','Early protection','instruction'],['grading','Shear before bunching','instruction'],['grading','Grade and Save / Move To','move'],['placement','Center house','instruction'],['placement','Variety mixes','instruction'],['inventory','TA / culls follow-up','ta'],['inventory','Move','move'],['hauling','Grade shift','hauling']].map(([category,label,kind],i)=>({id:'option'+i,category,label,kind,active:true,revision:1}));
@@ -218,40 +222,73 @@ test('picker repaint keeps result and editor focus/scroll while selecting a cano
  const candidateIndex=await page.locator('.bn-picker-result').evaluateAll((rows,selector)=>{
   const scroller=document.querySelector(selector as string);if(!scroller)return -1;
   const outer=scroller.getBoundingClientRect();
-  return rows.findIndex(row=>{const control=row.querySelector('input[type="checkbox"]');if(!control)return false;const rect=control.getBoundingClientRect();return rect.top>=Math.max(outer.top,0)&&rect.bottom<=Math.min(outer.bottom,innerHeight);});
+  return rows.findIndex(row=>{const control=row.querySelector('input[type="checkbox"]');if(!control)return false;const rect=control.getBoundingClientRect();return rect.top>=Math.max(outer.top,0)&&rect.bottom<=Math.min(outer.bottom,innerHeight)&&document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2)===control;});
  },'.bn-card-picker');
  expect(candidateIndex).toBeGreaterThanOrEqual(0);
  const visibleCandidate=page.locator('.bn-picker-result').nth(candidateIndex);
  const selected=visibleCandidate.getByRole('checkbox');
+ const originalDialog=await dialog.elementHandle();
+ const originalCheckbox=await selected.elementHandle();
+ const originalWorkspaceChild=await page.locator('#bunch-note-content > :first-child').elementHandle();
   const selectedItemcode=(await visibleCandidate.locator('strong').innerText()).split(' · ')[0];
  await expect.poll(()=>selected.evaluate(element=>{const box=element.getBoundingClientRect(),scroller=element.closest('.bn-card-picker');if(!scroller)return false;const outer=scroller.getBoundingClientRect();return box.top>=Math.max(outer.top,0)&&box.bottom<=Math.min(outer.bottom,innerHeight);})).toBe(true);
   await selected.evaluate(element=>(element as HTMLElement).focus({preventScroll:true}));
- await selected.check();
+ // Locator.check() scrolls the control before pointer-down. Tap its already-visible
+ // hit target directly so this assertion measures the application's native change.
+ const selectedPoint=await selected.evaluate(element=>{const box=element.getBoundingClientRect();const x=box.left+box.width/2,y=box.top+box.height/2;return {x,y,hit:document.elementFromPoint(x,y)===element};});
+ expect(selectedPoint.hit).toBe(true);
+ if(test.info().project.use.hasTouch)await page.touchscreen.tap(selectedPoint.x,selectedPoint.y);
+ else await page.mouse.click(selectedPoint.x,selectedPoint.y);
+ await expect(selected).toBeChecked();
+ expect(await originalDialog!.evaluate(element=>element.isConnected)).toBe(true);
+ expect(await originalCheckbox!.evaluate(element=>element.isConnected)).toBe(true);
+ expect(await originalWorkspaceChild!.evaluate(element=>element.isConnected)).toBe(true);
  await expect.poll(()=>dialog.evaluate(element=>element.scrollTop)).toBe(dialogScrollBefore);
  await expect(visibleCandidate.getByRole('checkbox')).toBeFocused();
  await expect(dialog.getByRole('heading',{name:'Card routing and notes',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Continue to card details',exact:true}).click();
  const action=page.getByLabel('Required card action',{exact:true});
+ const originalAction=await action.elementHandle();
+ const detailsDialog=await dialog.elementHandle();
  await dialog.evaluate(element=>{element.scrollTop=Math.min(340,element.scrollHeight-element.clientHeight);});
   await action.evaluate(element=>(element as HTMLElement).focus({preventScroll:true}));
  const actionScrollBefore=await dialog.evaluate(element=>element.scrollTop);
  expect(actionScrollBefore).toBeGreaterThan(0);
  await action.selectOption('move');
+ expect(await originalAction!.evaluate(element=>element.isConnected)).toBe(true);
+ expect(await detailsDialog!.evaluate(element=>element.isConnected)).toBe(true);
  await expect(action).toBeFocused();
  await expect.poll(()=>dialog.evaluate(element=>element.scrollTop)).toBe(actionScrollBefore);
  const destination=page.getByLabel('Move destination',{exact:true});
+ const originalDestination=await destination.elementHandle();
   await destination.evaluate(element=>(element as HTMLElement).focus({preventScroll:true}));
  const destinationScrollBefore=await dialog.evaluate(element=>element.scrollTop);
  await destination.fill('D.05.');
  await expect.poll(()=>dialog.evaluate(element=>element.scrollTop)).toBe(destinationScrollBefore);
  await destination.evaluate(element=>element.dispatchEvent(new Event('change',{bubbles:true})));
+ expect(await originalDestination!.evaluate(element=>element.isConnected)).toBe(true);
  await expect(destination).toBeFocused();
  await expect.poll(()=>dialog.evaluate(element=>element.scrollTop)).toBe(destinationScrollBefore);
+ const owner=dialog.getByLabel('Assign to Picker Worker 10',{exact:true});
+ await owner.scrollIntoViewIfNeeded();
+ await owner.evaluate(element=>(element as HTMLElement).focus({preventScroll:true}));
+ const ownerScrollBefore=await dialog.evaluate(element=>element.scrollTop);
+ const originalOwner=await owner.elementHandle();
+ const ownerPoint=await owner.evaluate(element=>{const box=element.getBoundingClientRect();const x=box.left+box.width/2,y=box.top+box.height/2;return {x,y,hit:document.elementFromPoint(x,y)===element};});
+ expect(ownerPoint.hit).toBe(true);
+ if(test.info().project.use.hasTouch)await page.touchscreen.tap(ownerPoint.x,ownerPoint.y);
+ else await page.mouse.click(ownerPoint.x,ownerPoint.y);
+ await expect(owner).toBeChecked();
+ expect(await originalOwner!.evaluate(element=>element.isConnected)).toBe(true);
+ expect(await detailsDialog!.evaluate(element=>element.isConnected)).toBe(true);
+ await expect(owner).toBeFocused();
+ await expect.poll(()=>dialog.evaluate(element=>element.scrollTop)).toBe(ownerScrollBefore);
  await dialog.getByRole('textbox',{name:'Card notes',exact:true}).fill('Keep this row with the destination crew');
  await page.getByRole('button',{name:'＋ Add selected card(s) and continue',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Search inventory'})).toBeVisible();
  const saved=f.commands.filter(command=>command.operation==='save').at(-1)?.payload.body.locations[0];
   expect(saved.cards[0]).toMatchObject({itemcode:selectedItemcode,workflow_action:'move',destination_location:'D.05.000',notes:'Keep this row with the destination crew'});
+ expect(saved.cards[0].owner_ids).toContain('picker-worker-10');
  expect(saved.cards[0]).not.toHaveProperty('uid');
  expect(f.control.blockedMutations).toEqual([]);
 });
@@ -276,7 +313,11 @@ test('header-only recipient choices survive main-page scrolling and PDF preview 
  await recipients.locator('summary').click();
  const recipient=recipients.getByRole('checkbox',{name:/Recipient 20/});
  await recipient.scrollIntoViewIfNeeded();
+ const originalRecipient=await recipient.elementHandle();
+ const originalRecipientPanel=await recipients.elementHandle();
  await recipient.check();
+ expect(await originalRecipient!.evaluate(element=>element.isConnected)).toBe(true);
+ expect(await originalRecipientPanel!.evaluate(element=>element.isConnected)).toBe(true);
  const main=page.locator('#main-scroll-area');
  const mainScrollBefore=await main.evaluate(element=>element.scrollTop);
  expect(mainScrollBefore).toBeGreaterThan(0);

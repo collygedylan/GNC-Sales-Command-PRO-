@@ -3,9 +3,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
+import vm from 'node:vm';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
+
+test('Bunch Notes native scrollers are excluded from delayed shell input repositioning', () => {
+  const html=read('index.html');
+  const source=html.slice(html.indexOf('        function isMobileTextEntryPositionLocked('),html.indexOf('        function rememberMobileTextEntryScroll('));
+  const context=vm.createContext({shouldUseMobileTextEntryStabilizer:()=>true, mobileTextEntryState:null, Date});
+  vm.runInContext(source,context);
+  for(const insideBunch of [false,true]){
+    const target={closest:selector=>{assert.equal(selector,'.bn-card-picker, #bunch-note-content');return insideBunch?{}:null;}};
+    context.mobileTextEntryState={target,preserveUntil:Date.now()+9000};
+    assert.equal(context.isMobileTextEntryPositionLocked(target),!insideBunch);
+  }
+});
 const rows = [
   { unique_id: 'private-lot-1', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-A', commonname: 'Peony', contsize: '#3', lotcode: 'A', stock: 12, review: 1, available: 11 },
   { unique_id: 'private-lot-2', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-B', commonname: 'Hosta', contsize: '#2', lotcode: 'B', stock: 8, review: 0, available: 8 },
@@ -36,6 +49,7 @@ function runtime() {
   Object.defineProperty(window.crypto, 'randomUUID', { configurable: true, value: (() => { let id = 0; return () => `v221-${++id}`; })() });
   const requests = [];
   let savedBody = null;
+  let frozenPreviewBody = null;
   window.postAppFunctionJson = async (_url, request) => {
     requests.push(plain(request));
     if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
@@ -47,13 +61,16 @@ function runtime() {
       savedBody = plain(request.payload.body);
       return { ok: true, data: { draft: { id: 'batch-v221', revision: (request.expectedRevision || 0) + 1, body: savedBody } } };
     }
-    if (request.operation === 'preview') return { ok: true, data: { preview: { id: 'preview-v221', recipients: [{ email: 'dylan@example.test' }], pdfs: [] } } };
+    if (request.operation === 'preview') {
+      frozenPreviewBody = plain(savedBody);
+      return { ok: true, data: { preview: { id: 'preview-v221', body: frozenPreviewBody, recipients: [{ email: 'dylan@example.test' }], pdfs: [] } } };
+    }
     return { ok: true, data: {} };
   };
   window.postGoogleScriptJsonPayload = async () => ({ ok: true, pdfs: [{ base64: 'JVBERi0xLjQK', filename: 'Bunch-note.pdf' }] });
   window.eval(read('assets/location-code.js'));
   window.eval(read('assets/bunch-note.js'));
-  return { dom, window, note: window.BunchNote, requests, get savedBody() { return savedBody; } };
+  return { dom, window, note: window.BunchNote, requests, get savedBody() { return savedBody; }, get frozenPreviewBody() { return frozenPreviewBody; } };
 }
 
 async function openLocation(rt) {
@@ -62,7 +79,13 @@ async function openLocation(rt) {
   rt.note.openLocation('D.05.000');
 }
 
-test('card picker rerenders retain its scroll position and focused checkbox/action control', async () => {
+test('Bunch Notes focus calls never use the native scrolling default', () => {
+  const source=read('assets/bunch-note.js');
+  assert.doesNotMatch(source,/\.focus(?:\?\.)?\(\s*\)/);
+  assert.doesNotMatch(source,/schedulePickerScrollRestore|pickerPositionGeneration/);
+});
+
+test('card picker input changes retain DOM identity, scroll and focused controls', async () => {
   const rt = runtime();
   await openLocation(rt);
   rt.note.wizardField('workType', 'Inspect');
@@ -75,6 +98,9 @@ test('card picker rerenders retain its scroll position and focused checkbox/acti
   let checkbox = rt.window.document.querySelector('[aria-label="Select card PLANT-A Peony"]');
   checkbox.focus();
   rt.note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', true);
+  assert.equal(rt.window.document.querySelector('.bn-card-picker'), picker);
+  assert.equal(rt.window.document.querySelector('.bn-picker-results'), results);
+  assert.equal(rt.window.document.querySelector('[aria-label="Select card PLANT-A Peony"]'), checkbox);
   assert.equal(rt.window.document.querySelector('.bn-card-picker').scrollTop, 213);
   assert.equal(rt.window.document.querySelector('.bn-picker-results').scrollTop, 97);
   checkbox = rt.window.document.querySelector('[aria-label="Select card PLANT-A Peony"]');
@@ -86,48 +112,51 @@ test('card picker rerenders retain its scroll position and focused checkbox/acti
   const details = rt.window.document.querySelector('.bn-card-picker');
   details.scrollTop = 180;
   rt.note.pickerField('workflow_action', 'move');
+  assert.equal(rt.window.document.querySelector('.bn-card-picker'), details);
+  assert.equal(rt.window.document.querySelector('[aria-label="Required card action"]'), action);
   assert.equal(rt.window.document.activeElement, rt.window.document.querySelector('[aria-label="Required card action"]'));
   assert.equal(rt.window.document.querySelector('.bn-card-picker').scrollTop, 180);
   rt.dom.window.close();
 });
 
-test('picker deferred scroll restore repairs late layout reset and yields to newer input', async () => {
+test('picker assignments and lots update in place without deferred scroll restoration', async () => {
   const rt = runtime();
   await openLocation(rt);
   await rt.note.nextItems();
   rt.note.openCardPicker();
-  await new Promise(resolve => setTimeout(resolve, 20));
   const win = rt.window;
-  const frames = [];
-  win.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
-  let picker = win.document.querySelector('.bn-card-picker');
-  picker.scrollTop = 213;
-  win.document.querySelector('[aria-label="Select card PLANT-A Peony"]').focus();
   rt.note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', true);
-  picker = win.document.querySelector('.bn-card-picker');
-  picker.scrollTop = 0; // Android may clamp/reset scroll after the synchronous DOM replacement.
-  frames.shift()(0);
-  assert.equal(picker.scrollTop, 213, 'post-layout restore returns the picker to its captured position');
-
-  win.document.querySelector('[aria-label="Select card PLANT-B Hosta"]').focus();
-  rt.note.togglePickerCard('D.05.000\u001fPLANT-B\u001fHOSTA\u001f#2', true);
-  const staleRestore = frames.shift();
-  picker = win.document.querySelector('.bn-card-picker');
-  picker.scrollTop = 0;
-  win.document.querySelector('[aria-label="Select card PLANT-A Peony"]').focus();
-  rt.note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', false);
-  const currentRestore = frames.shift();
-  picker = win.document.querySelector('.bn-card-picker');
-  picker.scrollTop = 72;
-  picker.dispatchEvent(new win.Event('wheel', { bubbles: true }));
-  staleRestore(0);
-  currentRestore(0);
-  assert.equal(picker.scrollTop, 72, 'stale restores and a newer user scroll cannot overwrite the current position');
-  assert.equal(win.document.activeElement?.getAttribute('aria-label'), 'Select card PLANT-A Peony', 'restore does not steal newer focus');
+  rt.note.showPickerDetails();
+  const workspace = win.document.querySelector('#bunch-note-content');
+  const heading = workspace.querySelector('h2');
+  const picker = win.document.querySelector('.bn-card-picker');
+  const owner = picker.querySelector('[aria-label="Assign to Sam"]');
+  const lot = picker.querySelector('[aria-label^="Select lot"]');
+  assert.ok(owner && lot);
+  picker.scrollTop = 213;
+  owner.focus({ preventScroll: true });
+  rt.note.togglePickerOwner('worker-1', true);
+  assert.equal(win.document.querySelector('.bn-card-picker'), picker);
+  assert.equal(picker.querySelector('[aria-label="Assign to Sam"]'), owner);
+  assert.equal(owner.checked, true);
+  assert.equal(win.document.activeElement, owner);
+  lot.focus({ preventScroll: true });
+  rt.note.togglePickerLot('private-lot-1', false);
+  assert.equal(picker.querySelector('[aria-label^="Select lot"]'), lot);
+  assert.equal(lot.checked, false);
+  assert.equal(picker.scrollTop, 213);
+  assert.equal(workspace.querySelector('h2'), heading);
+  assert.equal(win.document.activeElement, lot);
+  const frames=[];
+  win.requestAnimationFrame=callback=>{frames.push(callback);return frames.length;};
+  picker.scrollTop=72;
+  rt.note.togglePickerLot('private-lot-1', true);
+  assert.equal(frames.length,0, 'input changes need no deferred focus/scroll repair');
+  assert.equal(picker.scrollTop,72);
   rt.dom.window.close();
 });
 
-test('canonical destination selection rerender restores the focused destination input', async () => {
+test('canonical destination selection keeps the input and does not steal newer focus', async () => {
   const rt = runtime();
   await openLocation(rt);
   await rt.note.nextItems();
@@ -135,15 +164,51 @@ test('canonical destination selection rerender restores the focused destination 
   rt.note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', true);
   rt.note.showPickerDetails();
   rt.note.pickerField('workflow_action', 'move');
-  let destination = rt.window.document.querySelector('[aria-label="Move destination"]');
+  const destination = rt.window.document.querySelector('[aria-label="Move destination"]');
   assert.ok(destination);
   destination.focus();
   rt.note.pickerField('destination_search', 'D.05.');
-  // A native datalist choice may blur its text input before dispatching change.
-  destination.blur();
+  const action=rt.window.document.querySelector('[aria-label="Required card action"]');
+  action.focus({preventScroll:true});
   rt.note.pickCardDestination('D.05.');
-  destination = rt.window.document.querySelector('[aria-label="Move destination"]');
-  assert.equal(rt.window.document.activeElement, destination);
+  assert.equal(rt.window.document.querySelector('[aria-label="Move destination"]'),destination);
+  assert.equal(rt.window.document.activeElement, action);
+  rt.dom.window.close();
+});
+
+test('reopening and saving an existing Move card preserves qualifier and instructions in the frozen preview', async () => {
+  const rt = runtime();
+  await openLocation(rt);
+  rt.note.wizardField('workType', 'Inspect');
+  await rt.note.nextItems();
+  rt.note.openCardPicker();
+  const cardKey = 'D.05.000\u001fPLANT-A\u001fPEONY\u001f#3';
+  rt.note.togglePickerCard(cardKey, true);
+  rt.note.showPickerDetails();
+  rt.note.pickerField('workflow_action', 'move');
+  rt.note.pickerField('destination_search', 'D.05.');
+  rt.note.pickCardDestination('D.05.');
+  rt.note.pickerField('destination_qualifier', 'South House staging row');
+  rt.note.pickerField('workflow_instructions', 'Keep this lot with the south crew');
+  await rt.note.commitPickerCard();
+  assert.equal(rt.savedBody.locations[0].cards[0].destination_qualifier, 'South House staging row');
+  assert.equal(rt.savedBody.locations[0].cards[0].workflow_instructions, 'Keep this lot with the south crew');
+
+  rt.note.togglePickerCard(cardKey, true);
+  rt.note.showPickerDetails();
+  assert.equal(rt.window.document.querySelector('[aria-label="Required card action"]').value, 'move');
+  assert.equal(rt.window.document.querySelector('[aria-label="Destination qualifier"]').value, 'South House staging row');
+  assert.equal(rt.window.document.querySelector('[data-bn-focus-key="field:Workflow instructions"]').value, 'Keep this lot with the south crew');
+  await rt.note.commitPickerCard();
+  await rt.note.preview();
+
+  const saved = rt.savedBody.locations[0].cards[0];
+  assert.equal(saved.destination_qualifier, 'South House staging row');
+  assert.equal(saved.workflow_instructions, 'Keep this lot with the south crew');
+  assert.deepEqual(plain(rt.frozenPreviewBody.locations[0].cards[0]), plain(saved));
+  const saveIndexes = rt.requests.map((request, index) => request.operation === 'save' ? index : -1).filter(index => index >= 0);
+  const previewIndex = rt.requests.findIndex(request => request.operation === 'preview');
+  assert.ok(saveIndexes.at(-1) < previewIndex, 'the frozen preview is requested only after the latest preserved card save');
   rt.dom.window.close();
 });
 
@@ -159,6 +224,31 @@ test('header-only location can save and open PDF preview with no inventory cards
   await rt.note.preview();
   assert.ok(rt.requests.some(request => request.operation === 'preview'));
   assert.match(rt.window.document.querySelector('#bunch-note-content').textContent, /Review Inv Bunch Notes PDFs/);
+  rt.dom.window.close();
+});
+
+test('email recipient checkbox updates preserve the main workspace and current focus', async () => {
+  const rt=runtime();
+  rt.window.postAppFunctionJson=new Proxy(rt.window.postAppFunctionJson,{apply(target,thisArg,args){
+    if(args[1]?.operation==='directory')return Promise.resolve({ok:true,data:{users:[{id:'worker-1',username:'sam',display:'Sam',email:'sam@example.test'}]}});
+    return Reflect.apply(target,thisArg,args);
+  }});
+  await rt.note.open();
+  await rt.note.chooseBlock('D');
+  const main=rt.window.document.querySelector('#bunch-note-content');
+  const firstChild=main.firstElementChild;
+  const checkbox=main.querySelector('[aria-label="Email recipient Sam"]');
+  assert.ok(checkbox);
+  const scroller=rt.window.document.querySelector('#main-scroll-area');
+  scroller.scrollTop=197;
+  checkbox.focus({preventScroll:true});
+  checkbox.checked=true;
+  checkbox.dispatchEvent(new rt.window.Event('change',{bubbles:true}));
+  assert.equal(main.firstElementChild,firstChild);
+  assert.equal(main.querySelector('[aria-label="Email recipient Sam"]'),checkbox);
+  assert.equal(scroller.scrollTop,197);
+  assert.equal(rt.window.document.activeElement,checkbox);
+  assert.ok(checkbox.checked);
   rt.dom.window.close();
 });
 

@@ -12225,6 +12225,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function isMobileTextEntryPositionLocked(target = null) {
             if (!shouldUseMobileTextEntryStabilizer()) return false;
+            // Bunch Notes retains its input nodes and native scrollers in place.
+            // A delayed shell settle must not pull those scrollers back to an old field.
+            if (target && target.closest && target.closest('.bn-card-picker, #bunch-note-content')) return false;
             if (!mobileTextEntryState || mobileTextEntryState.target !== target) return false;
             return Date.now() < (mobileTextEntryState.preserveUntil || 0);
         }
