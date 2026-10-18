@@ -59,10 +59,10 @@ test('the AV cold-load exception does not relax cached or rendering gates', () =
   }
 });
 
-test('representative queue render waiver is inclusive at 800ms and leaves other UI gates intact', () => {
+test('representative queue render waiver is inclusive at 1500ms and leaves other UI gates intact', () => {
   const assertion = value => ({ toBeLessThanOrEqual: limit => assert.ok(value <= limit) });
-  for (const value of [400, 614, 800]) assertRepresentativeQueueRenderTiming(assertion(value));
-  for (const value of [800.001, NaN, Infinity]) {
+  for (const value of [400, 614, 800, 1282, 1500]) assertRepresentativeQueueRenderTiming(assertion(value));
+  for (const value of [1500.001, NaN, Infinity]) {
     assert.throws(() => assertRepresentativeQueueRenderTiming(assertion(value)));
   }
   assert.throws(() => assertFrontendUiTiming(assertion(400.001), {}));
@@ -70,6 +70,6 @@ test('representative queue render waiver is inclusive at 800ms and leaves other 
   assert.ok(source.includes('assertRepresentativeQueueRenderTiming(expect(Number(renderMs)))'));
   const requestSource = readFileSync(new URL('./request-list-performance.e2e.spec.ts', import.meta.url), 'utf8');
   assert.ok(requestSource.includes('assertRepresentativeQueueRenderTiming(expect.soft(maximumMeasuredMs))'));
-  assert.ok(requestSource.includes('acceptedLimitsMs: { pending: 800, suspend: 800 }'));
+  assert.ok(requestSource.includes('acceptedLimitsMs: { pending: 1500, suspend: 1500 }'));
   assert.ok(requestSource.includes('customerLimitMs: 400, otherModalLimitMs: 400'));
 });

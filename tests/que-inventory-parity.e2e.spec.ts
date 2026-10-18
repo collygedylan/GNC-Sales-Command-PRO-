@@ -181,6 +181,17 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
      await info.attach('queue-live-publication-failure',{body:JSON.stringify(diagnostics,null,2),contentType:'application/json'});
      throw error;
   }
+  const livePublication=await page.evaluate(()=>window.eval(`(() => {
+    const list=document.querySelector('#request-suspend-tag-card-list');
+    const receipt=list?.__suspendPagePublicationReceipt;
+    return {durationMs:receipt?.durationMs,renderSignature:receipt?.renderSignature,
+      inventoryVersion:queueCardInventoryRenderVersion,rows:list?.querySelectorAll('[data-request-uid]').length};
+  })()`));
+  expect(livePublication.rows).toBe(100);
+  expect(livePublication.renderSignature).toContain(`queue-inventory:${livePublication.inventoryVersion}`);
+  assertRepresentativeQueueRenderTiming(expect(Number(livePublication.durationMs)));
+  console.log('QUEUE_LIVE_PUBLICATION_TIMING',JSON.stringify({project:info.project.name,durationMs:livePublication.durationMs,
+    rows:livePublication.rows,limitMs:1500,scope:'stage generation through atomic visible publication; network excluded'}));
   try {
     await expect.poll(()=>card.locator('img').first().evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth===180&&img.src.includes('que-updated'))).toBe(true);
   } catch (error) {

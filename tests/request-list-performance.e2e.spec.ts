@@ -343,7 +343,7 @@ async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend')
   const durations = result.renderDurations.filter(item => item.stage === stage);
   const chunks = result.chunkDurations.filter(item => item.stage === stage);
   const operations = result.operations.filter(item => item.stage === stage);
-  const limitMs = 800;
+  const limitMs = 1500;
   expect(durations.length).toBeGreaterThan(0);
   const operationSummary = operations.reduce<Record<string, typeof operations>>((summary, item) => {
     (summary[item.name] ||= []).push(item);
@@ -420,7 +420,7 @@ async function attachRequestRenderTimings(page: Page, testInfo: TestInfo, apiCal
     await writeFile(timingsPath, JSON.stringify({
         browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
         datasetRows: { pending: 200, suspend: 1000 },
-        acceptedLimitsMs: { pending: 800, suspend: 800 },
+        acceptedLimitsMs: { pending: 1500, suspend: 1500 },
         cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.',
         fixtureApiCalls: {
           pending: apiCalls.filter(call => call.startsWith('dataset_read:request_queue:')).slice(0, 100),

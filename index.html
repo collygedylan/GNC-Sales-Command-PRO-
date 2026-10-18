@@ -93007,11 +93007,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (hasFollowupChunks) beginChunkRenderActivity(key, token);
             if (hasFollowupChunks) setContainerChunkRenderState(container, key, token);
 
-            const renderBatch = (targetCount, useBudget) => {
+            const renderBatch = (targetCount, useBudget, drainAll = false) => {
                 let html = '';
                 let rendered = 0;
                 const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: (iosConstrained || adaptiveConstrained) ? 4 : 8 });
-                const batchTarget = pacing.batchTarget;
+                const batchTarget = drainAll ? targetCount : pacing.batchTarget;
                 const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
                 while (index < total && rendered < batchTarget) {
@@ -93112,7 +93112,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (completionDeadlineMs > 0) {
                     scheduleChunkRenderTimeout(key, () => {
                         if (completed || !isChunkRenderCurrentForContainer(container, key, token)) return;
-                        const html = renderBatch(total - index, false);
+                        // A retained Suspend page is bounded to the visible
+                        // 100-row page. Its opt-in deadline drain prevents
+                        // interaction pacing from holding a nearly complete
+                        // snapshot unpublished indefinitely.
+                        const html = renderBatch(total - index, false, options.completionDeadlineDrainAll === true);
                         if (html) appendHtmlFragment(container, html);
                         if (index >= total) fireComplete();
                     }, completionDeadlineMs);
@@ -119418,8 +119422,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const renderTarget = retainCards && !alreadyPublished ? document.createElement('div') : cardContainer;
             const generation = (Number(cardContainer?.__suspendPageGeneration) || 0) + 1;
             if (cardContainer) cardContainer.__suspendPageGeneration = generation;
-            const stage = retainCards && !alreadyPublished ? { signature: renderSignature, generation, target: renderTarget } : null;
+            const stage = retainCards && !alreadyPublished
+                ? { signature: renderSignature, generation, target: renderTarget, startedAt: Date.now() } : null;
             if (cardContainer) cardContainer.__suspendPageStage = stage;
+            if (stage) cardContainer.__suspendPagePublicationReceipt = null;
             const emptyMessage = isDockSuspendDcRequestMirrorPreparationPending()
                 ? 'Loading Suspend Tag rows…'
                 : (requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all'
@@ -119440,6 +119446,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                             if (stage) {
                                 window.AgMetricStableViewDom.apply(cardContainer, renderTarget);
                                 setContainerRenderSignature(cardContainer, renderSignature);
+                                cardContainer.__suspendPagePublicationReceipt = {
+                                    generation,
+                                    renderSignature,
+                                    durationMs: Math.max(0, Date.now() - stage.startedAt)
+                                };
                                 cardContainer.__suspendPageStage = null;
                             }
                             // The chunk renderer's detached staging root cannot
@@ -119456,6 +119467,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     // immediately after the latest chunk finishes instead of
                     // routing the atomic apply through touch-idle decoration.
                     onCompleteAfterInteractive: !retainCards,
+                    ...(retainCards ? { completionDeadlineMs: 250, completionDeadlineDrainAll: true } : {}),
                     onCompleteDelayMs: 140
                 }));
             if (stage && cardContainer.__suspendPageStage === stage) {

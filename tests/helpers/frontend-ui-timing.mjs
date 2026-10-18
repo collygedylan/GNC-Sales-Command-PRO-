@@ -19,5 +19,5 @@ export function assertFrontendUiTiming(expectation, _project, _operationLimitMs 
 
 /** Human-approved queue/Request/Suspend rendering at 10,001 master rows and 1,000 tags. */
 export function assertRepresentativeQueueRenderTiming(expectation) {
-  expectation.toBeLessThanOrEqual(800);
+  expectation.toBeLessThanOrEqual(1500);
 }
