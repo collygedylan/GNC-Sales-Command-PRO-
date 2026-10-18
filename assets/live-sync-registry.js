@@ -36,6 +36,7 @@
         avOptionEval: ['ph_av_option_eval_requests'],
         evalWork: ['ph_eval_work', 'ph_eval_work_origin_rows', 'ph_eval_work_events', 'ph_request_delivery_outbox'],
         bunchNotes: ['bunch_note_private.jobs', 'bunch_note_private.previews'],
+        bunchQueue: ['bunch_note_private.jobs', 'bunch_note_private.previews', 'ph_master_inventory'],
         locationWork: ['ph_location_work_jobs', 'ph_location_work_lines', 'ph_location_work_assignments', 'ph_request_delivery_outbox'],
         shear: ['ph_shear_list', 'ph_shear_location_inquiries', 'ph_shear_location_items', 'ph_shear_location_rows', 'ph_request_delivery_outbox'],
         productionWorkflow: ['ph_production_workflow_rows'],
@@ -114,7 +115,8 @@
         'dialog:av-notes': data(['avNotes']),
         'detail:reserves': data([], ['driveReserves']),
         'detail:open-orders': data([], ['driveOpenOrders']),
-        'request:bunch-notes': data([], ['bunchNotes']),
+        'request:bunch-notes': data([], ['bunchQueue']),
+        'request:bunch-count-review': data([], ['bunchQueue']),
         // Pending rows are fully expanded by the requests dataset. History,
         // credits and edit-request joins belong to their consuming subviews.
         'request:pending': data([], ['queueInventoryRevision']),
@@ -194,7 +196,7 @@
         // Assigned-work access to the Inventory hub must not grant broad inventory reads.
         if (viewId === 'sales-inventory' && context.inventoryNavigationOnly) return [navigation];
         const requestedSurfaces = context.surfaces || [];
-        const requestBunchNotes = viewId === 'request' && requestedSurfaces.includes('request:bunch-notes');
+        const requestBunchNotes = viewId === 'request' && requestedSurfaces.some(surface => ['request:bunch-notes', 'request:bunch-count-review'].includes(surface));
         const requestArchived = viewId === 'request' && requestedSurfaces.includes('request:archived');
         const requestPending = viewId === 'request' && requestedSurfaces.includes('request:pending');
         const requestSuspendTag = viewId === 'request' && requestedSurfaces.includes('request:suspend-tag');
@@ -202,7 +204,7 @@
         // still request their normal complete source adapters.
         const pagedReport = context.pagedReportSurface && !requestedSurfaces.some(id => id.startsWith('dialog:'));
         const reportAdapter = { eval1:'reportEval1', eval2:'reportEval2', ncr:'reportNcr', 'assigned-items':'reportAssigned', 'season-priority':'reportSeason', approval:'reportApproval' }[context.pagedReportSurface];
-        const entries = [pagedReport ? data([], reportAdapter ? ['settings', reportAdapter] : []) : requestBunchNotes ? data([], ['bunchNotes'])
+        const entries = [pagedReport ? data([], reportAdapter ? ['settings', reportAdapter] : []) : requestBunchNotes ? data([], ['bunchQueue'])
             : requestArchived ? data([], [])
             : requestPending ? data(['requests'])
             : requestSuspendTag ? data([])
@@ -225,7 +227,7 @@
             // Suspend Tag keeps the footer's last known badge counts but does
             // not make the broad queue badge cohort a foreground gate. Save and
             // close acknowledgements update the affected count directly.
-            if (requestSuspendTag && surface === 'badge:queue') return;
+            if ((requestSuspendTag || requestBunchNotes) && surface === 'badge:queue') return;
             if (pagedReport && surface.startsWith('managers:')) return;
             entries.push(surfaces[surface]);
         });

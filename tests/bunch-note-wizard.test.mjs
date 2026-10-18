@@ -404,6 +404,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
       return { ok: true, data: { draft: { id: 'batch-1', revision: (request.expectedRevision || 0) + 1, body: savedBody } } };
     }
     if (request.operation === 'preview') return { ok: true, data: { preview: { id: 'preview-1', instruction_revision: 1, recipients: [{ email: 'dylan@example.com' }] } } };
+    if (request.operation === 'pdf_preview') return { ok: true, data: { pdfs: [{ base64: 'JVBERi0xLjQK', filename: 'BN.pdf' }] } };
     return { ok: true, data: {} };
   });
 

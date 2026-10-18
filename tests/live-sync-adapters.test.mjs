@@ -141,6 +141,7 @@ function harness(sourceFactory = factorySource) {
     vm.runInContext(`${registrySource}\n${adapterSource}`, ctx);
     vm.runInContext(managerEventsSource, ctx);
     ctx.window.SalesWorkspace = ctx.SalesWorkspace;
+    ctx.window.BunchQueueShell = { scope: () => 'bunch:scope', stage: async () => { calls.push(['api', 'bunch_note_workflow', 'queue']); return { cards: rows }; }, commit() {} };
     ctx.window.AgMetricLiveSyncRegistry = ctx.AgMetricLiveSyncRegistry;
     ctx.window.AgMetricLiveSyncAdapters = ctx.AgMetricLiveSyncAdapters;
     ctx.window.GncManagerSourceLiveEvents = ctx.GncManagerSourceLiveEvents;
@@ -206,7 +207,7 @@ test('every side adapter executes a read-only stage and a synchronous commit', a
     for (const call of h.calls) {
         assert.ok(['GET', 'PAGE', 'RPC', 'dock', 'eval', 'location', 'shear', 'codex', 'script', 'api'].includes(call[0]), JSON.stringify(call));
         if (['dock', 'eval', 'location', 'shear'].includes(call[0])) assert.ok(['list', 'get'].includes(call[1]), JSON.stringify(call));
-        if (call[0] === 'api') assert.ok(['sales_credit:sources','production_workflow:list','inventory_transaction_history:read','report_read_v2:metadata','customer-rep-map:list'].includes(call[1]+':'+call[2]), JSON.stringify(call));
+        if (call[0] === 'api') assert.ok(['sales_credit:sources','production_workflow:list','inventory_transaction_history:read','report_read_v2:metadata','customer-rep-map:list','bunch_note_workflow:queue'].includes(call[1]+':'+call[2]), JSON.stringify(call));
         if (call[1] === 'bloomscapes_pending_command') assert.equal(call[2].p_action, 'state');
     }
     assert.equal(h.ctx.shearListState.draft, 'keep me');
@@ -659,6 +660,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261017110000_inventory_master_identity_batch_read_v1.sql',
       '20261017203000_bunch_note_multi_assignment_routing.sql',
       '20261018014347_bunch_note_blueprint_header_pdf_delivery.sql',
+      '20261018183204_bunch_note_queue_execution_and_recounts.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain

@@ -23,6 +23,7 @@ import {
 } from "../_shared/inventory-projections.ts";
 import { createDatabaseRestBridge, legacyDatabaseTableAliases } from "../../../services/databaseRest.ts";
 import { jsonObject, jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
+import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs";
 import { suspendTagRowsFromResult } from "./suspend-tag-read.ts";
 import { createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
@@ -5186,6 +5187,40 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
   }
 }
 
+type BunchNoteRpcResult = { data: unknown; error: { message?: string; code?: string } | null };
+type BunchNoteRpc = (name: string, args: Record<string, unknown>) => Promise<BunchNoteRpcResult>;
+
+export async function renderBunchNotePreview(options: {
+  rpc: BunchNoteRpc;
+  actor: { id: string; username?: string; display_name?: string | null };
+  previewId: string;
+}) {
+  const { data: previewValue, error: previewError } = await options.rpc("bunch_note_command_v1", {
+    p_actor_id: options.actor.id,
+    p_operation: "preview_read",
+    p_payload: { preview_id: options.previewId },
+  });
+  if (previewError) throw new Error(previewError.message || "BUNCH_NOTE_PREVIEW_READ_FAILED");
+  const preview = previewValue && typeof previewValue === "object" && !Array.isArray(previewValue)
+    ? previewValue as Record<string, unknown> : {};
+  if (!Array.isArray(preview.reports) || preview.reports.length === 0) throw new Error("BUNCH_NOTE_PREVIEW_INVALID");
+  if (preview.pdfs !== null && preview.pdfs !== undefined) {
+    if (!Array.isArray(preview.pdfs)) throw new Error("BUNCH_NOTE_PREVIEW_PDFS_INVALID");
+    return { ok: true as const, pdfs: preview.pdfs };
+  }
+  const preparedBy = String(options.actor.display_name || options.actor.username || "Unknown").trim();
+  const pdfs = await renderBunchNoteReportsPdf(preview.reports, preparedBy || "Unknown");
+  const { data: frozenValue, error: freezeError } = await options.rpc("bunch_note_freeze_pdfs_v1", {
+    p_preview_id: options.previewId,
+    p_pdfs: pdfs,
+  });
+  if (freezeError) throw new Error(freezeError.message || "BUNCH_NOTE_PDF_FREEZE_FAILED");
+  const frozen = frozenValue && typeof frozenValue === "object" && !Array.isArray(frozenValue)
+    ? frozenValue as Record<string, unknown> : {};
+  if (!Array.isArray(frozen.pdfs)) throw new Error("BUNCH_NOTE_PDF_FREEZE_INVALID");
+  return { ok: true as const, pdfs: frozen.pdfs };
+}
+
 if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
@@ -5266,6 +5301,37 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
   if (action === "season_sales_office") return await handleSeasonSalesOfficeAction(session, payload);
   if (action === "shear_location_work") return await handleShearLocationAction(session, payload);
+  if (action === "bunch_note_workflow") {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+    try {
+      const actor = await resolveActiveSessionProfile(session);
+      const allowed = new Set(["action", "operation", "payload", "commandId", "expectedRevision"]);
+      if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("BUNCH_NOTE_WORKFLOW_PAYLOAD_INVALID");
+      const operation = String(payload.operation || "");
+      if (!["queue", "list_discrepancies", "complete_card", "assign_counter", "complete_recount"].includes(operation)) {
+        throw new Error("BUNCH_NOTE_WORKFLOW_OPERATION_INVALID");
+      }
+      const commandId = typeof payload.commandId === "string" ? payload.commandId.trim() : "";
+      if (["complete_card", "assign_counter", "complete_recount"].includes(operation)
+        && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commandId)) {
+        throw new Error("BUNCH_NOTE_COMMAND_REQUIRED");
+      }
+      const rpc = supabase.rpc.bind(supabase) as unknown as BunchNoteRpc;
+      const { data, error } = await rpc("bunch_note_workflow_command_v1", {
+        p_actor_id: actor.id,
+        p_operation: operation,
+        p_payload: jsonValue(payload.payload || {}),
+        ...(commandId ? { p_command_id: commandId } : {}),
+        ...(typeof payload.expectedRevision === "number" ? { p_expected_revision: payload.expectedRevision } : {}),
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    } catch (error) {
+      const source = error as Record<string, unknown>;
+      const code = String(source.message || "BUNCH_NOTE_WORKFLOW_FAILED");
+      return errorResponse(code, source.code === "42501" ? 403 : /CONFLICT|CHANGED|COMPLETE/.test(code) ? 409 : 400, { code });
+    }
+  }
   if (action === "bunch_note") {
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401);
     try {
@@ -5274,6 +5340,22 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const allowed = new Set(["action", "operation", "payload", "commandId", "expectedRevision"]);
       if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("BUNCH_NOTE_PAYLOAD_INVALID");
       const operation = String(payload.operation || "");
+      if (operation === "pdf_preview") {
+        const previewPayload = payload.payload && typeof payload.payload === "object" && !Array.isArray(payload.payload)
+          ? payload.payload as Record<string, unknown> : {};
+        if (Object.keys(previewPayload).some(key => key !== "preview_id")
+          || typeof previewPayload.preview_id !== "string"
+          || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(previewPayload.preview_id)) {
+          throw new Error("BUNCH_NOTE_PREVIEW_ID_REQUIRED");
+        }
+        const rpc = supabase.rpc.bind(supabase) as unknown as BunchNoteRpc;
+        const rendered = await renderBunchNotePreview({
+          rpc,
+          actor: { id: actor.id, username: actor.username, display_name: typeof actor.display_name === "string" ? actor.display_name : null },
+          previewId: previewPayload.preview_id,
+        });
+        return jsonResponse({ ok: true, data: { pdfs: rendered.pdfs } });
+      }
       const { data, error } = await supabase.rpc("bunch_note_command_v1", {
         p_actor_id: actor.id, p_operation: operation,
         p_payload: jsonValue(payload.payload || {}), ...(typeof payload.commandId === "string" && payload.commandId ? { p_command_id: payload.commandId } : {}),

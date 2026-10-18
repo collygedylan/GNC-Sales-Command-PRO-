@@ -296,7 +296,8 @@ test('Pending and Suspend Tag verify their own queue cohorts while other request
   for (const [surface, adapters] of Object.entries(expected)) {
     assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: [surface] })), adapters, surface);
   }
-  assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:bunch-notes'] })), ['side:bunchNotes']);
+  assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:bunch-notes'] })), ['side:bunchQueue']);
+  for (const surface of ['request:bunch-notes', 'request:bunch-count-review']) assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: [surface, 'badge:queue'] })), ['side:bunchQueue'], 'Assigned-work queues do not hydrate broad inventory or requests');
   assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:pending', 'dialog:request'] })),
     ['core:requests', 'side:queueInventoryRevision', 'core:master', 'core:reserves', 'core:customerRepMap', 'side:settings']);
 });

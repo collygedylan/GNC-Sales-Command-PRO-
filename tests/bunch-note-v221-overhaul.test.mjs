@@ -65,9 +65,10 @@ function runtime() {
       frozenPreviewBody = plain(savedBody);
       return { ok: true, data: { preview: { id: 'preview-v221', body: frozenPreviewBody, recipients: [{ email: 'dylan@example.test' }], pdfs: [] } } };
     }
+    if (request.operation === 'pdf_preview') return { ok: true, data: { pdfs: [{ base64: 'JVBERi0xLjQK', filename: 'Bunch-note.pdf' }] } };
     return { ok: true, data: {} };
   };
-  window.postGoogleScriptJsonPayload = async () => ({ ok: true, pdfs: [{ base64: 'JVBERi0xLjQK', filename: 'Bunch-note.pdf' }] });
+  window.postGoogleScriptJsonPayload = async () => { throw new Error('PDF preview must use the authenticated app API'); };
   window.eval(read('assets/location-code.js'));
   window.eval(read('assets/bunch-note.js'));
   return { dom, window, note: window.BunchNote, requests, get savedBody() { return savedBody; }, get frozenPreviewBody() { return frozenPreviewBody; } };

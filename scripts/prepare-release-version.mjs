@@ -5,7 +5,10 @@ import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
 
 export function prepareReleaseVersion(root=process.cwd(), check=false) {
   const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-  const version=JSON.parse(read('package.json')).version;
+  const packageManifest=JSON.parse(read('package.json'));
+  const version=packageManifest.version;
+  const preservedScriptRelease=packageManifest.appsScriptRelease;
+  if (preservedScriptRelease !== undefined && normalizeRelease(preservedScriptRelease) !== preservedScriptRelease) throw new Error('RELEASE_APPS_SCRIPT_PIN_INVALID');
   const next=normalizeRelease(`V${version}`), changes=[];
   if (!next) throw new Error('RELEASE_VERSION_INVALID');
   const markers={
@@ -16,7 +19,12 @@ export function prepareReleaseVersion(root=process.cwd(), check=false) {
     'v2/src/services/api.ts':/export const APP_VERSION\s*=\s*['"]([^'"]+)['"]/,
     'v2/public/manifest.webmanifest':/"version"\s*:\s*"([^"]+)"/
   };
-  if (fs.existsSync(path.join(root,'Code.gs'))) markers['Code.gs'] = /const APP_RELEASE_VERSION_\s*=\s*['"]([^'"]+)['"]/;
+  if (fs.existsSync(path.join(root,'Code.gs'))) {
+    if (preservedScriptRelease) {
+      const actual=read('Code.gs').match(/const APP_RELEASE_VERSION_\s*=\s*['"]([^'"]+)['"]/)?.[1];
+      if (actual !== preservedScriptRelease) throw new Error('RELEASE_APPS_SCRIPT_PIN_MISMATCH');
+    } else markers['Code.gs'] = /const APP_RELEASE_VERSION_\s*=\s*['"]([^'"]+)['"]/;
+  }
   if (fs.existsSync(path.join(root,'assets/ops-precision-pilot.js'))) markers['assets/ops-precision-pilot.js'] = /const RELEASE\s*=\s*['"]([^'"]+)['"]/;
   for (const [file,marker] of Object.entries(markers)) {
     const before=read(file), previous=before.match(marker)?.[1];

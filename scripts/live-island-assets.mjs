@@ -5,7 +5,7 @@ import path from 'node:path';
 // Account-scoped SWR data is memory-only and is never copied or precached here.
 const islands = ['bunch-note', 'field-counting', 'historical-requests'];
 export async function prepareLiveIslandAssets({ root, site }) {
-  const assets = ['bunch-note-structured.js', 'bunch-note.css', 'bunch-note-cards.css', 'field-counting.js', 'field-counting.css', 'historical-requests.js', 'historical-requests.css', 'report-pages.js', 'report-pages-live.js'];
+  const assets = ['bunch-queue.js', 'bunch-queue-shell.js', 'bunch-queue.css', 'bunch-note-structured.js', 'bunch-note.css', 'bunch-note-cards.css', 'field-counting.js', 'field-counting.css', 'historical-requests.js', 'historical-requests.css', 'report-pages.js', 'report-pages-live.js'];
   for (const island of islands) {
     const directory = `${island}-chunks`;
     const entries = await readdir(path.join(root, 'assets', directory), { withFileTypes: true });

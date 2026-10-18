@@ -29,7 +29,20 @@ async function fixture(page:any,baseURL:string,worker=false,directoryUsers:any[]
  const pdf={job_id:'work',filename:'BN-1_R1.pdf',base64:fixturePdf()};
  await page.route('**/functions/v1/app-api',async(route:any)=>{
   if(route.request().method()!=='POST')return route.fallback();
-  const body=route.request().postDataJSON(); if(body?.action!=='bunch_note')return route.fallback();
+  const body=route.request().postDataJSON();
+  if(body?.action==='bunch_note_workflow'){
+   commands.push(body);
+   if(body.operation!=='queue')throw new Error('Unexpected Bunch queue operation '+body.operation);
+   const cards=jobs.map((job:any,index:number)=>{
+    const location=job.body?.location||job.location||'C.12.001';
+    const sourceRows=job.body?.source||job.body?.source_all||rows.filter((row:any)=>row.locationcode===location);
+    const sources=(sourceRows||[]).map((row:any,i:number)=>({row_id:row.unique_id||`queue-source-${index}-${i}`,location,lot:row.lotcode||'LOT-A',ptravailable:Number(row.available||row.stock||10),actual_qty:null}));
+    return {stablecard_id:`${job.id}:card-1`,job_id:job.id,card_id:'card-1',revision:job.revision||1,job_revision:job.revision||1,status:'open',can_complete:true,itemcode:'BN-I',variety:'Bunch Plant',contsize:'#3',source_location:location,lot:'',ptravailable:sources.reduce((sum:any,row:any)=>sum+(row.ptravailable||0),0),action:'Work',destination:'',notes:'Published Bunch Note',assignees:[],sources};
+   });
+   const data={cards,total:cards.length,active_count:cards.length,review_count:0,can_review:false,counters:[]};
+   await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify({ok:true,data})});return;
+  }
+  if(body?.action!=='bunch_note')return route.fallback();
   const p=body.payload||{};commands.push(body);let data:any;
   if(body.operation==='save'&&saveFailures-->0){await route.fulfill({status:503,headers,contentType:'application/json',body:JSON.stringify({ok:false,message:'Save unavailable. Your draft is retained.'})});return;}
   if(body.operation==='catalog')data={options,locations:['C.12.001','C.12.002','D.05.000','D.08.001']};
@@ -43,6 +56,7 @@ async function fixture(page:any,baseURL:string,worker=false,directoryUsers:any[]
   else if(body.operation==='drafts')data={drafts};
   else if(body.operation==='save'){const draft={id:'draft',revision:(drafts[0]?.revision||0)+1,block:p.body.block,body:structuredClone(p.body),updated_at:new Date().toISOString()};draft.body.locations.forEach((l:any)=>{l.source=rows.filter(r=>l.row_ids.includes(r.unique_id));});drafts[0]=draft;data={draft};}
   else if(body.operation==='preview'){lastPreview={id:'preview',reports:drafts[0].body.locations,recipients:[{email:'dylan_collyge@greenleafnursery.com'}]};data={preview:lastPreview};}
+  else if(body.operation==='pdf_preview')data={pdfs:(lastPreview?.reports||[]).map((report:any,i:number)=>({...pdf,job_id:`job${i}`,filename:`BN-${i}.pdf`}))};
   else if(body.operation==='work_preview'){lastPreview={id:'work-preview',report_kind:'completed_work',job_revision:jobs[0].revision,reports:[jobs[0].body],recipients:[{email:'dylan_collyge@greenleafnursery.com'}]};data={preview:lastPreview};}
   else if(body.operation==='work_publish')data={published:true};
   else if(body.operation==='publish'){drafts[0].body.locations.forEach((l:any,i:number)=>jobs.push({id:'job'+i,block:'FULL.BLOCK',location:l.location,body:l,status:'open',owner_id:null,revision:1,instruction_revision:1,progress:{},note_number:'BN-'+i,delivery_status:'queued'}));data={published:true};}
@@ -87,8 +101,6 @@ async function openBunchNotesFromInventory(page:any) {
 }
 async function openBunchNotesAfterCheckingQueueRemoval(page:any) {
  const press=test.info().project.use.isMobile?'tap':'click';
- await page.locator('#footer-request-btn')[press]();
- await expect(page.locator('[data-request-category="bunch-notes"]')).toHaveCount(0);
  await page.locator('#footer-home-btn')[press]();
  await openBunchNotesFromInventory(page);
 }
@@ -134,11 +146,14 @@ async function openAdvancedInventoryControls(page:any) {
  if(await details.getAttribute('open')===null)await details.locator('summary').click();
 }
 
-test('Bunch Notes is launched from Inventory and absent from Que navigation', {tag:['@bunch-note']}, async ({page,baseURL}) => {
+test('Inventory launches Bunch Note authoring while Que exposes the assigned-work queue', {tag:['@bunch-note']}, async ({page,baseURL}) => {
  await fixture(page,baseURL!);
  const press=test.info().project.use.isMobile?'tap':'click';
  await page.locator('#footer-request-btn')[press]();
- await expect(page.locator('[data-request-category="bunch-notes"]')).toHaveCount(0);
+ await expect(page.locator('[data-request-category="bunch-notes"]')).toBeVisible();
+ // This author fixture is not entitled to discrepancy review; separate queue
+ // E2E coverage verifies the Count Review category for an authorized reviewer.
+ await expect(page.locator('[data-request-category="bunch-count-review"]')).toHaveCount(0);
  await page.locator('#footer-home-btn')[press]();
  await openBunchNotesFromInventory(page);
  await expect(page.locator('#bn-create-note-mode')).toBeVisible();
@@ -843,8 +858,10 @@ test('saved multi-location batch preserves actions through Bunch and completed-w
  await expect(page.locator('#bunch-note-content iframe')).toHaveCount(2);
  await expect(page.locator('#bunch-note-content')).toContainText('dylan_collyge@greenleafnursery.com');
  await expect.poll(async()=>{const r=await page.locator('#bunch-note-content').boundingBox();return !!r&&r.x+r.width<=page.viewportSize()!.width+1;}).toBe(true);
+ await page.evaluate(()=>{(window as any).__bunchPublishedEvents=0;window.addEventListener('gnc:bunch-published',()=>{(window as any).__bunchPublishedEvents++;});});
  await page.getByRole('button',{name:'Publish and email reviewed PDFs',exact:true}).click();
  await expect.poll(()=>f.jobs.length).toBe(2);
+ await expect.poll(()=>page.evaluate(()=>(window as any).__bunchPublishedEvents)).toBe(1);
  expect(f.commands.find(c=>c.operation==='publish').payload.send_email).toBe(true);
  f.jobs[0].status='complete';f.jobs[0].actuals=[];f.jobs[0].worker_actions=[];
  await page.locator('#bn-assigned-work-mode').click();
@@ -870,6 +887,13 @@ test('saved multi-location batch preserves actions through Bunch and completed-w
  await expect(page.locator('#bunch-note-content iframe')).toHaveCount(1);
  await page.getByRole('button',{name:'Save and email reviewed PDF',exact:true}).click();
  await expect.poll(()=>f.commands.filter(c=>c.operation==='work_publish').length).toBe(1);
+ // The mocked API publish emits the event consumed by the Que shell; opening
+ // the queue must show both newly published jobs without a manual refresh.
+ const queuePress=test.info().project.use.isMobile?'tap':'click';
+ await page.locator('#footer-request-btn')[queuePress]();
+ await page.locator('[data-request-category="bunch-notes"]')[queuePress]();
+ await expect(page.locator('[data-bunch-card]')).toHaveCount(2);
+ await expect(page.locator('[data-bunch-card]').first()).toContainText('Published Bunch Note');
  expect(f.control.blockedMutations).toEqual([]);
 });
 
