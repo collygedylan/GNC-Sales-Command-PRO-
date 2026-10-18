@@ -20643,6 +20643,13 @@ function handleSignedHlOrderDelivery_(delivery) {
   } finally { if (lock) { try { lock.releaseLock(); } catch (releaseError) {} } }
 }
 
+function bunchNoteFreeHeaderInstructions_(report) {
+  const ruleChips = new Set((Array.isArray(report && report.rule_chips) ? report.rule_chips : [])
+    .map(function(rule) { return String(rule || '').trim(); }).filter(Boolean));
+  return String(report && (report.instructions || report.general_instructions) || '')
+    .split(/\r?\n/).filter(function(line) { return !ruleChips.has(line.trim()); }).join('\n').trim();
+}
+
 function buildBunchNotePdfHtml_(report) {
   const e = escapeEmailHtml_;
   const rich = function(value) { return e(value == null ? '' : value).replace(/\b(red\s+flags?|blue\s+flags?|pink\s+ribbons?|yellow\s+ribbons?)\b/gi,function(word){const key=word.split(/\s/)[0].toLowerCase(),colors={red:['#fee2e2','#991b1b'],blue:['#dbeafe','#1e40af'],pink:['#fce7f3','#9d174d'],yellow:['#fef9c3','#713f12']}[key];return '<b style="background:'+colors[0]+';color:'+colors[1]+'">'+word+'</b>';}); };
@@ -20682,12 +20689,24 @@ function buildBunchNotePdfHtml_(report) {
     return house+'<tr><td>'+badge(a.margin_tag == null ? a.crew : a.margin_tag)+'<br>'+e(a.label || a.group)+(a.worker_added?'<br><b>Worker added</b>':'')+'</td><td><b>'+e([a.item_size,a.item_desc].filter(Boolean).join(' · '))+'</b><br>'+e(target)+'</td><td>'+((a.quantity_constraint !== undefined && a.quantity_constraint !== '')?'<b>'+e(a.quantity_constraint)+'</b><br>':'')+'Planned '+e(a.quantity == null || a.quantity === '' ? '—' : a.quantity)+' / '+e(a.percentage || '—')+'%'+(work?'<br>Actual '+(recorded.length?e(recorded.reduce(function(sum,x) { return sum+Number(x.quantity); },0)):'Not recorded'):'')+'</td><td class="pre routing">'+(a.stage?e(a.stage)+'<br>':'')+(a.destination?'<b>To '+e(a.destination)+'</b><br>':'')+(a.marking?rich(a.marking)+'<br>':'')+rich(a.instructions)+'</td><td>'+completion+'</td></tr>';
   };
   const cardHeading = function(card) {
+    if (card.kind === 'divider') {
+      return '<tr class="divider"><td colspan="5" class="dividerText">'+(card.left_margin?'<b>'+e(card.left_margin)+'</b>　':'')+rich(card.text || card.instructions || '—')+'</td></tr>';
+    }
     const ids=new Set(card.row_ids||[]),seenRows=new Set(),source=(report.source||[]).filter(function(r){if(!ids.has(r.unique_id)||seenRows.has(r.unique_id))return false;seenRows.add(r.unique_id);return true;});
     const total=function(field){const values=source.map(function(r){return number(r[field]);});return source.length!==ids.size||values.some(function(v){return v===null;})?'Unknown / incomplete':String(values.reduce(function(sum,v){return sum+v;},0));};
-    const assignees=Array.isArray(card.owner_names)&&card.owner_names.length?card.owner_names:[card.owner_name||'Unassigned'];const route=card.workflow_action==='move'?'Move to '+(card.destination_location||'—'):card.workflow_action==='bunch'?'Bunch to '+(card.destination_house||'—'):card.workflow_action==='ta'?'TA': '';return '<tr class="house"><th colspan="5">'+e(card.kind==='shared'?'General / Shared Work':[card.itemcode,card.commonname,card.contsize].filter(Boolean).join(' · '))+'<br><small>Workers: '+e(assignees.join(', '))+' · House: '+e(card.house||'Not specified')+' · Direction: '+e(card.direction||'Not specified')+(route?' · Plan: '+e(route):'')+(card.notes?'<br>Notes: '+e(card.notes):'')+(card.kind==='shared'?'':'<br>Location Total (On Hand): '+e(total('stock'))+' · Available: '+e(total('available'))+' · '+source.length+' lot rows')+'</small></th></tr>';
+    const assignees=Array.isArray(card.owner_names)&&card.owner_names.length?card.owner_names:[card.owner_name||'Unassigned'];
+    let route=card.workflow_action==='move'?'Move to '+(card.destination_location||'—')+(card.destination_qualifier?' · '+card.destination_qualifier:''):
+      card.workflow_action==='bunch'?'Bunch to '+(card.destination_house||'—'):card.workflow_action==='ta'?'TA':
+      card.workflow_action==='haul'?'Haul':card.workflow_action==='set_out'?'Set out':
+      card.workflow_action==='custom'?'Custom':card.workflow_action==='compound'?'Compound':'';
+    if(card.destination_location&&card.workflow_action!=='move')route+=(route?' · ':'')+'Destination '+card.destination_location+(card.destination_qualifier?' · '+card.destination_qualifier:'');
+    return '<tr class="house"><th colspan="5">'+(card.left_margin?'<b>'+e(card.left_margin)+'</b>　':'')+e(card.kind==='shared'?'General / Shared Work':[card.itemcode,card.commonname,card.contsize].filter(Boolean).join(' · '))+'<br><small>Workers: '+e(assignees.join(', '))+' · House: '+e(card.house||'Not specified')+' · Direction: '+e(card.direction||'Not specified')+(route?' · Plan: '+e(route):'')+(card.workflow_instructions?'<br>Action: '+rich(card.workflow_instructions):'')+(card.notes?'<br>Notes: '+rich(card.notes):'')+(card.kind==='shared'?'':'<br>Location Total (On Hand): '+e(total('stock'))+' · Available: '+e(total('available'))+' · '+source.length+' lot rows')+'</small></th></tr>';
   };
   const cards=report.cards||[];
+  const blueprint=Number(report.format_version)>=5 || Number(report.layout_version)>=5;
   const actions=cards.length?cards.map(function(card){lastHouse=null;activeCard=card;return cardHeading(card)+orderedActions.filter(function(a){return a.card_id===card.id;}).map(actionRow).join('');}).join(''):orderedActions.map(actionRow).join('');
+  const actionSection=actions?'<h2>Crew task instructions'+(work?' — planned versus actual':'')+'</h2><table><colgroup><col style="width:13%"><col style="width:23%"><col style="width:12%"><col style="width:38%"><col style="width:14%"></colgroup><thead><tr><th>Crew / action</th><th>Item / source</th><th>Quantity</th><th>Instructions / routing</th><th>Completion</th></tr></thead><tbody>'+actions+'</tbody></table>':(!cards.length&&!orderedActions.length?'<p class="pre">Whole-location instructions; no individual inventory cards selected.</p>':'');
+  const plantSection=!blueprint&&rows?'<h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Sales Year / Season / Designation</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes / Source</th></tr></thead><tbody>'+rows+'</tbody></table>':'';
   let recorded = '';
   if (work) {
     const totals={};
@@ -20695,7 +20714,39 @@ function buildBunchNotePdfHtml_(report) {
     recorded='<h2>Recorded totals by action type</h2><p>'+Object.keys(totals).map(function(type) { return e(type.toUpperCase())+': '+e(totals[type]); }).join(' · ')+'</p><h2>Actual work and correction history</h2><table><thead><tr><th>Action / item</th><th>Size / lot</th><th>Quantity / destination</th><th>Record / actor</th><th>Explanation / review</th></tr></thead><tbody>'+
       actuals.map(function(a) { const r=a.source_snapshot;return '<tr><td>'+e(a.action_snapshot.label || a.action_snapshot.instructions)+'<br>'+e(r.itemcode)+'</td><td>'+e(r.contsize)+'<br>'+e(r.lotcode)+'<br>Sales year '+e(r.salesyear || 'Unknown')+'</td><td>'+e(a.quantity)+'<br>'+e(a.destination || '—')+'</td><td>'+e(a.created_at)+'<br>'+e(a.actor_id)+'<br>'+e(a.superseded?'Replaced; excluded from totals':a.replaces_id?'Correction; current':'Current')+'</td><td class="pre">'+e(a.explanation || '—')+(a.review_flags.length?'<br><b>REVIEW: '+e(reviewText(a.review_flags))+'</b>':'')+'</td></tr>'; }).join('')+'</tbody></table>';
   }
-  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px;margin:0 0 10px}p{margin:6px 0}h2{font-size:15px;margin:12px 0 6px;break-after:avoid;page-break-after:avoid}tr.item{break-after:avoid;page-break-after:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th,.item{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}.crew{display:inline-block;color:#fff;padding:5px;font-size:12px;overflow-wrap:anywhere}.house{break-after:avoid;page-break-after:avoid}.house th{font-size:15px;background:#dce8df}.routing{font-size:12px;font-weight:bold}</style></head><body><h1>'+e(report.purposes || 'Bunch Notes')+'</h1><h2>Bunch Note '+e(report.note_number)+' · Revision '+e(report.instruction_revision)+(work?' · Completed work '+e(report.work_revision):'')+'</h2><div class="meta"><b>Block:</b> '+e(report.block)+' <b>Location:</b> '+e(report.location)+'<br><b>Direction:</b> '+e(report.direction || 'Not specified')+' <b>Target houses:</b> '+e(report.target_houses || 'Not specified')+'<br><b>Purposes:</b> '+e(report.purposes)+'<br><b>Priority / order:</b> '+e(report.priority || '—')+(work?'<br><b>Owner:</b> '+e(report.owner_name || report.owner_id || '—'):'')+'</div><h2>General instructions</h2><p class="pre">'+rich(report.instructions || report.general_instructions || '—')+'</p><h2>Prerequisites / wait instructions</h2><p class="pre">'+rich(report.prerequisites || '—')+'</p><h2>Crew task instructions'+(work?' — planned versus actual':'')+'</h2><table><colgroup><col style="width:13%"><col style="width:23%"><col style="width:12%"><col style="width:38%"><col style="width:14%"></colgroup><thead><tr><th>Crew / action</th><th>Item / source</th><th>Quantity</th><th>Instructions / routing</th><th>Completion</th></tr></thead><tbody>'+actions+'</tbody></table><h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Sales Year / Season / Designation</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes / Source</th></tr></thead><tbody>'+rows+'</tbody></table>'+recorded+'<p>Instructions and recorded work only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
+  const title=report.work_type||report.title||report.purposes||report.purpose_thread||'Bunch Notes';
+  const headerInstructions=bunchNoteFreeHeaderInstructions_(report);
+  let blueprintRows='';
+  (report.cards||[]).forEach(function(card) {
+    if(card.kind==='divider') {
+      blueprintRows+='<li class="walk-divider">'+(card.left_margin?'<b>'+e(card.left_margin)+'</b>　':'')+rich(card.text||card.instructions||'')+'</li>';
+      return;
+    }
+    const variety=card.kind==='shared'?'General / Shared Work':card.commonname||card.itemcode||'Unspecified item';
+    let route=card.workflow_action==='move'?'Move to '+(card.destination_location||'—'):
+      card.workflow_action==='bunch'?'Bunch to '+(card.destination_house||'—'):
+      card.workflow_action==='ta'?'TA':card.workflow_action==='haul'?'Haul':
+      card.workflow_action==='set_out'?'Set out':card.workflow_action==='custom'?'Custom':
+      card.workflow_action==='compound'?'Compound':'';
+    if(card.destination_location&&card.workflow_action!=='move') route+=(route?' · ':'')+'Destination '+card.destination_location;
+    if(card.destination_qualifier) route+=(route?' · ':'')+card.destination_qualifier;
+    if(route) route='Plan: '+route;
+    if(!route&&report.default_house_plan) route='Plan: '+report.default_house_plan;
+    const legacyCardActions=orderedActions.filter(function(action){return action.card_id===card.id;}).map(function(action){
+      const label=action.label||action.group||'Instructions', instructions=String(action.instructions||'');
+      if(!instructions||instructions===String(card.workflow_instructions||'')||instructions===String(card.notes||''))return '';
+      return label+(action.destination?' → '+action.destination:'')+': '+rich(instructions);
+    }).filter(Boolean).join(' · ');
+    const details=[route,card.workflow_instructions?'Instructions: '+rich(card.workflow_instructions):'',card.notes?'Notes: '+rich(card.notes):'',legacyCardActions].filter(Boolean).join(' — ');
+    const workers=Array.isArray(card.owner_names)&&card.owner_names.length?'<small class="walk-workers">Assigned: '+e(card.owner_names.join(', '))+'</small>':'';
+    blueprintRows+='<li class="walk-row"><span class="walk-lead">'+(card.left_margin?'<b>'+e(card.left_margin)+'</b>　':'')+
+      (card.contsize?'<b>'+e(card.contsize)+'</b>　':'')+e(variety)+'</span>'+
+      (details?'<span class="walk-detail"> — '+details+'</span>':'')+workers+'</li>';
+  });
+  const blueprintSection=blueprint?'<h2>Walking order</h2>'+(blueprintRows?'<ol class="walk-list">'+blueprintRows+'</ol>':'<p class="pre">Whole-location instructions; no individual inventory cards selected.</p>'):actionSection+plantSection;
+  const rules=Array.isArray(report.rule_chips)&&report.rule_chips.length?'<br><b>Header rules:</b> '+report.rule_chips.map(rich).join(' · '):'';
+  const legacyPurpose=report.purposes&&report.purposes!==report.purpose_thread&&report.purposes!==title?'<br><b>Legacy purpose:</b> '+e(report.purposes):'';
+  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px;margin:0 0 10px}p{margin:6px 0}h2{font-size:15px;margin:12px 0 6px;break-after:avoid;page-break-after:avoid}tr.item{break-after:avoid;page-break-after:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th,.item{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}.crew{display:inline-block;color:#fff;padding:5px;font-size:12px;overflow-wrap:anywhere}.house{break-after:avoid;page-break-after:avoid}.house th{font-size:15px;background:#dce8df}.divider td{font-weight:bold;background:#f1f5f2;white-space:pre-wrap}.routing{font-size:12px;font-weight:bold}.walk-list{padding-left:28px}.walk-row{padding:8px 4px;border-bottom:1px solid #bdc9c0;break-inside:avoid;page-break-inside:avoid}.walk-lead{font-size:12px;font-weight:bold}.walk-detail{white-space:pre-wrap}.walk-workers{display:block;color:#526258;margin:4px 0 0 10px}.walk-divider{list-style:none;margin:8px 0;padding:8px 4px;border-top:2px solid #526258;border-bottom:2px solid #526258;font-weight:bold;white-space:pre-wrap}</style></head><body><h1>'+e(title)+'</h1><h2>Bunch Note '+e(report.note_number)+' · Revision '+e(report.instruction_revision)+(work?' · Completed work '+e(report.work_revision):'')+'</h2><div class="meta"><b>Block:</b> '+e(report.block)+' <b>Location:</b> '+e(report.location)+'<br><b>Purpose / sequence:</b> '+e(report.purpose_thread||'Not specified')+legacyPurpose+'<br><b>Direction:</b> '+e(report.direction || 'Not specified')+' <b>Target houses:</b> '+e(report.target_houses || 'Not specified')+'<br><b>Default house plan:</b> '+e(report.default_house_plan||report.target_houses||'Not specified')+'<br><b>Priority / order:</b> '+e(report.priority || '—')+(report.schedule_banner?'<br><b>Schedule / prerequisite alert:</b> '+rich(report.schedule_banner):'')+rules+(work?'<br><b>Owner:</b> '+e(report.owner_name || report.owner_id || '—'):'')+'</div><h2>General instructions</h2><p class="pre">'+rich(headerInstructions || '—')+'</p><h2>Prerequisites / wait instructions</h2><p class="pre">'+rich(report.prerequisites || '—')+'</p>'+blueprintSection+recorded+'<p>Instructions and recorded work only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
 }
 
 function freezeBunchNoteReportPdfs_(previewId, reports) {
@@ -20757,10 +20808,34 @@ function handleSignedBunchNoteDelivery_(delivery) {
     const pdfs = saved.pdfs || freezeBunchNoteReportPdfs_(saved.preview_id, saved.reports);
     const attachments = pdfs.map(function(pdf) { return Utilities.newBlob(Utilities.base64Decode(pdf.base64),MimeType.PDF,pdf.filename); });
     const block = saved.reports[0].block;
-    const purposes = Array.from(new Set(saved.reports.map(function(r) { return r.purposes; }))).join('; ');
+    const purposes = Array.from(new Set(saved.reports.map(function(r) {
+      return [r.work_type || r.title || r.purposes || 'Bunch Notes', r.purpose_thread].filter(function(value,index,all) { return Boolean(value) && (index===0 || value!==all[0]); }).join(' — ');
+    }))).join('; ');
     const completedWork = saved.reports[0].report_kind === 'completed_work';
     const subject = ('BUNCH NOTES — ' + (completedWork ? 'COMPLETED WORK — ' : '') + block + ' — ' + purposes).replace(/[\r\n]+/g,' ');
-    const text = saved.reports.map(function(r) { return r.note_number + ' / revision ' + r.instruction_revision + ' / ' + r.location; }).join('\n') + (completedWork ? '\n\nCompleted work, quantities, destinations and corrections are recorded in the attached PDF. No inventory quantities were changed.' : '\n\nEach location has a separate attached PDF. Claim and complete work in Queue → Bunch Notes.');
+    const text = saved.reports.map(function(r) {
+      const lines = [r.work_type || r.title || 'Bunch Notes', r.note_number + ' / revision ' + r.instruction_revision + ' / ' + r.location,
+        'Purpose / sequence: ' + (r.purpose_thread || 'Not specified'), 'Direction: ' + (r.direction || 'Not specified'),
+        'Default house plan: ' + (r.default_house_plan || r.target_houses || 'Not specified')];
+      if (r.schedule_banner) lines.push('Schedule / prerequisite alert: ' + r.schedule_banner);
+      if (Array.isArray(r.rule_chips) && r.rule_chips.length) lines.push('Header rules: ' + r.rule_chips.join(' · '));
+      const headerNotes = bunchNoteFreeHeaderInstructions_(r);
+      if (headerNotes) lines.push('Header notes: ' + headerNotes);
+      if (r.prerequisites) lines.push('Prerequisites: ' + r.prerequisites);
+      const cards = Array.isArray(r.cards) ? r.cards : [];
+      if (cards.length) {
+        lines.push('Walking order:');
+        cards.forEach(function(card) {
+          if (card.kind === 'divider') { lines.push((card.left_margin ? '[' + card.left_margin + '] ' : '') + (card.text || card.instructions || '')); return; }
+          const action = {move:'Move to ' + (card.destination_location || '—') + (card.destination_qualifier ? ' · ' + card.destination_qualifier : ''),
+            bunch:'Bunch to ' + (card.destination_house || '—'),ta:'TA',haul:'Haul',set_out:'Set out',custom:'Custom',compound:'Compound'}[card.workflow_action] || '';
+          const destination = card.destination_location && card.workflow_action !== 'move' ? 'Destination ' + card.destination_location + (card.destination_qualifier ? ' · ' + card.destination_qualifier : '') : '';
+          lines.push([card.left_margin ? '[' + card.left_margin + ']' : '', card.contsize || '', card.commonname || card.itemcode || '', action, destination,
+            card.workflow_instructions || '', card.notes ? 'Notes: ' + card.notes : ''].filter(Boolean).join(' — '));
+        });
+      }
+      return lines.join('\n');
+    }).join('\n\n---\n\n') + (completedWork ? '\n\nCompleted work, quantities, destinations and corrections are recorded in the attached PDF. No inventory quantities were changed.' : '\n\nEach location has a separate attached PDF. Claim and complete work in Inventory → Inv Bunch Notes.');
     const intent = bunchNoteDeliveryRecord_(delivery,'sending',{message_id_header:expectedId,recipients:recipients});
     if (!intent || intent.allow_send !== true) { started=true; throw new Error('BUNCH_NOTE_DELIVERY_UNKNOWN'); }
     started=true;

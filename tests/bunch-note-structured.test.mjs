@@ -69,7 +69,7 @@ test('React editor change callbacks keep fields, sections, and stable action IDs
 });
 function pdf(report) {
  const gas=read('Code.gs'),ctx=vm.createContext({escapeEmailHtml_:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;')});
- vm.runInContext(gas.slice(gas.indexOf('function buildBunchNotePdfHtml_'),gas.indexOf('function handleBunchNotePreview_')),ctx);
+ vm.runInContext(gas.slice(gas.indexOf('function bunchNoteFreeHeaderInstructions_'),gas.indexOf('function handleBunchNotePreview_')),ctx);
  return ctx.buildBunchNotePdfHtml_(report);
 }
 test('PDF uses identical house order, directions, quantity text, and colors before source detail',()=>{
