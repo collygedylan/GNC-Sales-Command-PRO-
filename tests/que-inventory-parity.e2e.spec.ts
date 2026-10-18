@@ -27,6 +27,7 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
     ...(prefix==='suspend'?{suspend:'SUSPEND',suspend_to:'dc',source_table:'ph_soc_master',request_source:'docks'}:{master_id:master[i].unique_id})
   }));
   const pending=makeRows('pending',200), suspended=makeRows('suspend',1000);
+  suspended[0].consigneename='SiteOne Lds 179/R03 Wichita, KS';
   // Exercise the real printed-date/color mismatch, including a UTC date whose
   // calendar date in the facility is still Monday. Device timezone is Tokyo.
   suspended[0].planstart='October 19, 2026 12:00:00 GMT-0500';
@@ -120,7 +121,7 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
   await expect(card.locator('.app-operational-planstart-date')).toHaveText('PLANSTART: 10/19/2026');
   await expect(card.locator('.app-drive-card-header .app-operational-planstart-date')).toHaveCount(0);
   await expect(card.locator('.app-request-card-bottom .app-operational-planstart-date + .app-suspend-tag-actions')).toHaveCount(1);
-  await expect(card.locator('.app-drive-card-header .app-drive-card-title-row > .app-drive-card-reclass')).toHaveCount(1);
+  await expect(card.locator('.app-drive-card-header .app-suspend-tag-header-row > .app-drive-card-reclass')).toHaveCount(1);
   const compactOrder=await card.evaluate(el=>({
     labels:[...el.querySelectorAll('.app-operational-card-header-fields .app-operational-card-header-field > span')].map(node=>node.textContent),
     fieldsAfterLocation:el.querySelector('.app-drive-card-meta')?.nextElementSibling?.classList.contains('app-operational-card-header-fields'),
@@ -135,6 +136,27 @@ test('Que inventory, thumbnails, PLANSTART and navigation retain parity through 
   expect(compactOrder.badges).not.toMatch(/PHOTOS|LOC PHOTO MATCH/);
   expect(compactOrder.pendingLabel).not.toBe('Pending');
   await expect(card).not.toContainText('Reserve: NO');
+  // Exercise the full built-shell CSS cascade, including its later inline overrides.
+  const geometry=await card.evaluate(el=>{
+    const rect=(selector:string)=>{const box=el.querySelector(selector)!.getBoundingClientRect();return {left:box.left,right:box.right,top:box.top,bottom:box.bottom};};
+    const label=getComputedStyle(el.querySelector('.app-card-qty-label')!);
+    const value=getComputedStyle(el.querySelector('.app-card-qty-value')!);
+    return {photo:rect('.app-drive-card-photo'),grid:rect('.app-drive-card-grid'),details:rect('.app-drive-card-details'),
+      metrics:rect('.app-drive-card-quantity-band'),actions:rect('.app-suspend-tag-actions'),
+      parties:[...el.querySelectorAll('.app-request-card-meta-chip')].map(node=>(node as HTMLElement).offsetTop),
+      fonts:{label:parseFloat(label.fontSize),value:parseFloat(value.fontSize),labelWeight:Number(label.fontWeight),valueWeight:Number(value.fontWeight)}};
+  });
+  expect(geometry.parties).toHaveLength(2);
+  expect(geometry.parties[0]).toBe(geometry.parties[1]);
+  for(const section of [geometry.details,geometry.metrics,geometry.actions]){
+    expect(section.left).toBeCloseTo(geometry.photo.left,0);
+    expect(section.right).toBeCloseTo(geometry.grid.right,0);
+  }
+  expect(geometry.details.top).toBeGreaterThanOrEqual(geometry.photo.bottom);
+  expect(geometry.fonts.label).toBeGreaterThanOrEqual(13);
+  expect(geometry.fonts.value).toBeGreaterThanOrEqual(22);
+  expect(geometry.fonts.labelWeight).toBeGreaterThanOrEqual(700);
+  expect(geometry.fonts.valueWeight).toBeGreaterThanOrEqual(800);
   for(const [i,day] of ['monday','tuesday','wednesday','thursday','friday'].entries()) await expect(page.locator(`#request-content [data-request-uid="dock_suspend_dc_suspend-${String(i).padStart(5,'0')}"]`)).toHaveClass(new RegExp(`app-planstart-${day}`));
   const utcBoundaryCard=page.locator('#request-content [data-request-uid="dock_suspend_dc_suspend-00005"]');
   await expect(utcBoundaryCard.locator('.app-operational-planstart-date')).toHaveText('PLANSTART: 10/19/2026');
