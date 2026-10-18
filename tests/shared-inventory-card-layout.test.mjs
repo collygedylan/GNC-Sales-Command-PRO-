@@ -69,7 +69,12 @@ test('compact Suspend variant moves order fields into the header while leaving s
   assert.equal(location.nextElementSibling,fields);
   assert.deepEqual([...fields.querySelectorAll('.app-operational-card-header-field')].map(node=>node.textContent),['Dock30','Drop4','Qty0']);
   assert.equal(fields.nextElementSibling,root.querySelector('.app-operational-card-meta'));
-  assert.ok(root.querySelector('.app-drive-card-title-row > .app-drive-card-reclass'));
+  const headerRow=root.querySelector('.app-suspend-tag-header-row');
+  const textColumn=headerRow?.querySelector(':scope > .app-suspend-tag-text-column');
+  const reclassRail=headerRow?.querySelector(':scope > .app-drive-card-reclass');
+  assert.ok(headerRow && textColumn && reclassRail,'compact Suspend keeps Reclass in its independent header rail');
+  assert.equal(textColumn.nextElementSibling,reclassRail,'the Reclass rail is beside, not nested in, the text column');
+  assert.ok(textColumn.querySelector('.app-drive-card-title-row .app-drive-card-title'));
   assert.equal(root.querySelector('.app-drive-card-header .app-operational-planstart-date'),null);
   assert.match(root.querySelector('.app-drive-card-details').textContent,/SpecFull/);
   dom.window.close();
