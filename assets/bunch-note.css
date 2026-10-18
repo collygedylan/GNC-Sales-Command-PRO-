@@ -81,10 +81,10 @@
 .bn-destination{padding:14px;border:2px solid var(--ops-brand,#07874f);border-radius:12px;margin:12px 0}
 .bn-destination b,.bn-destination small{display:block}
 .bn-destination .bn-button{width:100%;margin:10px 0 0}
-.bn-step-actions{display:flex;position:sticky;bottom:calc(90px + env(safe-area-inset-bottom));padding:8px;background:var(--ops-surface,#fff);border-top:1px solid var(--ops-border,#cbd8d1);z-index:2;margin-top:20px}
+.bn-step-actions{display:flex;position:static;padding:8px;background:var(--ops-surface,#fff);border-top:1px solid var(--ops-border,#cbd8d1);margin-top:20px}
 .bn-step-actions .bn-button{width:100%;margin:0;min-height:48px}
 .bn-root :is(input,textarea,select){scroll-margin-bottom:190px}
-@media(max-width:520px){.bn-root .bn-step-actions{position:static}.bn-field textarea{min-height:72px}}
+@media(max-width:520px){.bn-field textarea{min-height:72px}}
 .bn-structured{border:0;min-width:0;padding:0;margin:16px 0;color:inherit;font:inherit}
 .bn-structured legend{font-weight:800;font-size:1.1rem;margin-bottom:12px}
 .bn-worksheet-header,.bn-house-heading{padding:16px;background:var(--ops-surface,#f1f5f9);border:1px solid var(--ops-border,#cbd5e1);border-radius:12px}
