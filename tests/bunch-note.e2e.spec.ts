@@ -226,14 +226,17 @@ test('Next and Save draft stay in normal flow below setup controls while scrolli
 
  const main=page.locator('#main-scroll-area');
  const setup=page.getByRole('region',{name:'Location setup'});
- const actions=page.locator('.bn-step-actions');
+ const actions=setup.locator('xpath=following-sibling::*[1]');
+ await expect(actions).toHaveClass(/bn-step-actions/);
  const advanced=setup.locator('details.bn-options').filter({hasText:'Advanced location controls'}).first();
  await expect(actions).toBeVisible();
  await expect(advanced).toBeVisible();
+ await advanced.locator('summary').click();
  await expect(page.getByLabel('Purpose / Sequence Thread',{exact:true})).toBeVisible();
  await expect(page.getByLabel('Direction',{exact:true})).toBeVisible();
  await expect(page.getByLabel('Default House Plan',{exact:true})).toBeVisible();
  await expect(page.getByLabel('Schedule / Prerequisite Alert',{exact:true})).toBeVisible();
+ await expect(page.getByLabel('Priority / work order',{exact:true})).toBeVisible();
 
  const layout=await actions.evaluate((element,scrollElement)=>{
   const style=getComputedStyle(element), box=element.getBoundingClientRect();
@@ -249,10 +252,10 @@ test('Next and Save draft stay in normal flow below setup controls while scrolli
  await expect.poll(()=>main.evaluate(element=>Math.round((element as HTMLElement).scrollTop))).toBeGreaterThan(0);
  const bottomPosition=await actions.evaluate(element=>({position:getComputedStyle(element).position,top:element.getBoundingClientRect().top,bottom:element.getBoundingClientRect().bottom}));
  expect(bottomPosition.position).toBe('static');
- const overlapsAtBottom=await actions.evaluate(element=>[...document.querySelectorAll('.bn-location-editor [data-bn-field]')].filter(field=>{
+ const overlapsAtBottom=await actions.evaluate(element=>[...document.querySelectorAll('.bn-location-editor [data-bn-field]')].filter(field=>field.checkVisibility()&&(()=>{
   const actionBox=element.getBoundingClientRect(),fieldBox=field.getBoundingClientRect();
   return actionBox.left<fieldBox.right&&actionBox.right>fieldBox.left&&actionBox.top<fieldBox.bottom&&actionBox.bottom>fieldBox.top;
- }).map(field=>(field as HTMLElement).dataset.bnField));
+ })()).map(field=>(field as HTMLElement).dataset.bnField));
  expect(overlapsAtBottom).toEqual([]);
 
  await main.evaluate(element=>{(element as HTMLElement).scrollTop=0;});
@@ -262,10 +265,10 @@ test('Next and Save draft stay in normal flow below setup controls while scrolli
  expect(topPosition.bottom).toBeGreaterThan(0);
  expect(topPosition.top).toBeGreaterThanOrEqual(0);
  expect(topPosition.top).toBeGreaterThanOrEqual(await setup.evaluate(element=>element.getBoundingClientRect().top));
- const overlapsAtTop=await actions.evaluate(element=>[...document.querySelectorAll('.bn-location-editor [data-bn-field]')].filter(field=>{
+ const overlapsAtTop=await actions.evaluate(element=>[...document.querySelectorAll('.bn-location-editor [data-bn-field]')].filter(field=>field.checkVisibility()&&(()=>{
   const actionBox=element.getBoundingClientRect(),fieldBox=field.getBoundingClientRect();
   return actionBox.left<fieldBox.right&&actionBox.right>fieldBox.left&&actionBox.top<fieldBox.bottom&&actionBox.bottom>fieldBox.top;
- }).map(field=>(field as HTMLElement).dataset.bnField));
+ })()).map(field=>(field as HTMLElement).dataset.bnField));
  expect(overlapsAtTop).toEqual([]);
 });
 

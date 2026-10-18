@@ -20,7 +20,7 @@ export default defineConfig({
     { name: 'iphone-webkit-emulation', use: { ...devices['iPhone 13'] } },
   ],
   webServer: {
-    command: 'python -m http.server 43157 --bind 127.0.0.1',
+    command: 'python -m http.server 43157 --bind 127.0.0.1 --directory _site',
     url: 'http://127.0.0.1:43157',
     reuseExistingServer: false,
     timeout: 20_000,
