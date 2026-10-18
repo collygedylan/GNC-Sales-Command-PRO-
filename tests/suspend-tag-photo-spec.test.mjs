@@ -134,9 +134,8 @@ test('Suspend Tag quantity chips use exact hydrated inventory fields independent
   assert.deepEqual(metrics, { 'on-hand':'89', review:'27', available:'62', 'open-stock':'61', 'loc-photo-match':'14', 'loc-on-hand':'Unknown' });
   const cardDataStart = html.indexOf('        function buildDockSuspendDcRequestCardDataHtml(');
   const cardDataEnd = html.indexOf('\n        function ', cardDataStart + 20);
-  assert.match(html.slice(cardDataStart, cardDataEnd),
-    /formatLocPhotoMatchQtyValue\(getOperationalCardInventoryRow\(item\), 'request'\)/,
-    'the duplicate LOC PHOTO MATCH chip uses the same verified inventory row as the six metrics');
+  assert.doesNotMatch(html.slice(cardDataStart, cardDataEnd), /LOC PHOTO MATCH:/,
+    'the compact card removes only the duplicate badge; the verified numeric metric above remains');
   dom.window.close();
 });
 

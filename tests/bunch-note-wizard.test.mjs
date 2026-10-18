@@ -9,11 +9,14 @@ const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 const plain = value => JSON.parse(JSON.stringify(value));
 const source = read('assets/bunch-note.js');
 
-function createRuntime(postAppFunctionJson, viewId = 'bunch-note') {
+function createRuntime(postAppFunctionJson, viewId = 'bunch-note', useDom = false) {
   let currentView = viewId;
-  const element = { classList: { add() {} }, innerHTML: '', childNodes: [], setAttribute() {}, querySelectorAll: () => [] };
+  const dom = useDom ? new JSDOM('<!doctype html><main id="main-scroll-area"><div id="bunch-note-content"></div></main>', {
+    url: 'https://fixture.test/', runScripts: 'dangerously', pretendToBeVisual: true,
+  }) : null;
+  const element = dom ? dom.window.document.getElementById('bunch-note-content') : { classList: { add() {} }, innerHTML: '', childNodes: [], setAttribute() {}, querySelectorAll: () => [] };
   const documentListeners = new Map();
-  const document = { getElementById: () => element, querySelectorAll: () => [],
+  const document = dom ? dom.window.document : { getElementById: () => element, querySelectorAll: () => [],
     addEventListener(type, listener) { const listeners=documentListeners.get(type)||new Set();listeners.add(listener);documentListeners.set(type,listeners); },
     removeEventListener(type, listener) { documentListeners.get(type)?.delete(listener); },
     dispatchEvent(event) { for (const listener of documentListeners.get(event.type)||[]) listener(event); } };
@@ -32,7 +35,8 @@ function createRuntime(postAppFunctionJson, viewId = 'bunch-note') {
   return { BunchNote: context.BunchNote, element, document,
     setView(value) { currentView = value; },
     setAccount(value) { context.currentUser = value; },
-    setActiveTab(value) { context.activeReqTab = value; } };
+    setActiveTab(value) { context.activeReqTab = value; },
+    close() { dom?.window.close(); } };
 }
 
 test('Inventory Bunch Notes exposes Create note and Assigned work on the standalone route', async () => {
@@ -174,7 +178,7 @@ test('card picker persists multiple selected cards with assigned users and requi
     { unique_id: 'lot-b', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-B', commonname: 'Hosta', contsize: '#2', lotcode: 'B' },
   ];
   let savedBody;
-  const { BunchNote: note, element } = createRuntime(async (_url, request) => {
+  const { BunchNote: note, element, document, close } = createRuntime(async (_url, request) => {
     if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
     if (request.operation === 'inventory') return { ok: true, data: { rows } };
     if (request.operation === 'directory') return { ok: true, data: { users: [{ id: 'user-1', username: 'sam', display: 'Sam' }, { id: 'user-2', username: 'lee', display: 'Lee' }] } };
@@ -185,7 +189,7 @@ test('card picker persists multiple selected cards with assigned users and requi
       return { ok: true, data: { draft: { id: 'batch-route', revision: 1, body: savedBody } } };
     }
     return { ok: true, data: {} };
-  });
+  }, 'bunch-note', true);
 
   await note.open();
   await note.chooseBlock('D');
@@ -196,21 +200,22 @@ test('card picker persists multiple selected cards with assigned users and requi
   note.togglePickerCard('D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', true);
   note.togglePickerCard('D.05.000\u001fPLANT-B\u001fHOSTA\u001f#2', true);
   note.showPickerDetails();
-  assert.match(element.innerHTML, /Assign to Sam/);
-  assert.match(element.innerHTML, /Assign to Lee/);
-  assert.match(element.innerHTML, /Move/);
-  assert.match(element.innerHTML, /Bunch/);
-  assert.match(element.innerHTML, /TA \(Throw Away\)/);
+  const dialog = () => document.querySelector('.bn-card-picker');
+  assert.ok(dialog().querySelector('[aria-label="Assign to Sam"]'));
+  assert.ok(dialog().querySelector('[aria-label="Assign to Lee"]'));
+  assert.match(dialog().textContent, /Move/);
+  assert.match(dialog().textContent, /Bunch/);
+  assert.match(dialog().textContent, /TA \(Throw Away\)/);
   note.pickerField('workflow_action', 'bunch');
-  assert.match(element.innerHTML, /South &amp; Center House/);
-  assert.doesNotMatch(element.innerHTML, /aria-label="Move destination"/);
+  assert.match(dialog().innerHTML, /South &amp; Center House/);
+  assert.doesNotMatch(dialog().innerHTML, /aria-label="Move destination"/);
   note.pickerField('workflow_action', 'ta');
-  assert.doesNotMatch(element.innerHTML, /aria-label="Bunch destination house"/);
+  assert.doesNotMatch(dialog().innerHTML, /aria-label="Bunch destination house"/);
   note.togglePickerOwner('user-1', true);
   note.togglePickerOwner('user-2', true);
   note.pickerField('workflow_action', 'move');
-  assert.match(element.innerHTML, /aria-label="Move destination"/);
-  assert.doesNotMatch(element.innerHTML, /aria-label="Bunch destination house"/);
+  assert.match(dialog().innerHTML, /aria-label="Move destination"/);
+  assert.doesNotMatch(dialog().innerHTML, /aria-label="Bunch destination house"/);
   note.pickerField('destination_location', 'D.06.000');
   note.pickerField('notes', 'Move these together');
   await note.commitPickerCard();
@@ -221,6 +226,7 @@ test('card picker persists multiple selected cards with assigned users and requi
   assert.deepEqual(plain(cards.map(card => card.owner_ids)), [['user-1', 'user-2'], ['user-1', 'user-2']]);
   assert.deepEqual(plain(cards.map(card => card.notes)), ['Move these together', 'Move these together']);
   assert.equal(savedBody.locations[0].location, 'D.05.000');
+  close();
 });
 
 test('card picker retains existing per-card owners and does not carry deselected owners onto new cards', async () => {
@@ -422,13 +428,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   assert.deepEqual(plain(savedBody.locations[0].cards[0].row_ids), ['lot-1', 'lot-2']);
   assert.equal(savedBody.locations[0].cards[0].direction, 'Check the east row');
   assert.equal(savedBody.locations[0].cards[0].notes, 'Keep lots separate');
-  assert.equal(savedBody.locations[0].actions.length, 1);
-  assert.equal(savedBody.locations[0].actions[0].kind, 'instruction');
-  assert.equal(savedBody.locations[0].actions[0].label, 'Card notes');
-  assert.equal(savedBody.locations[0].actions[0].instructions, 'Keep lots separate');
-  assert.equal(savedBody.locations[0].actions[0].card_id, savedBody.locations[0].cards[0].id);
-  assert.deepEqual(plain(savedBody.locations[0].actions[0].row_ids), ['lot-1', 'lot-2']);
-  assert.ok(savedBody.locations[0].actions[0].option_id);
+  assert.equal(savedBody.locations[0].actions.length, 0, 'new card notes live on the card and do not create a duplicate legacy action');
   assert.match(element.innerHTML, /role="dialog"/);
   assert.match(element.innerHTML, /Search inventory/);
   assert.match(element.innerHTML, /Peony/);
@@ -436,7 +436,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   assert.equal((element.innerHTML.match(/class="[^"]*\bbn-picker-result\b[^"]*"/g) || []).length, 1, 'the reset picker remains searchable from cached full source rows');
   assert.equal(requests.filter(request=>request.operation==='inventory').length,1,'reset and search do not fetch inventory again');
   const committedSave=requests.filter(request=>request.operation==='save').at(-1);
-  assert.equal(committedSave.payload.body.locations[0].actions[0].instructions,'Keep lots separate');
+  assert.equal(committedSave.payload.body.locations[0].cards[0].notes,'Keep lots separate');
   note.closeCardPicker();
   await note.backEditor();
   await note.openDraft('batch-1');
@@ -446,7 +446,7 @@ test('inventory picker uses only source rows and + commits exact card notes befo
   await note.preview();
   const previewRequest=requests.find(request=>request.operation==='preview');
   assert.equal(previewRequest.payload.batch_id,'batch-1');
-  assert.ok(savedBody.locations[0].actions.some(action=>action.label==='Card notes'&&action.instructions==='Keep lots separate'));
+  assert.equal(savedBody.locations[0].cards[0].notes,'Keep lots separate');
   assert.match(element.innerHTML,/Review Inv Bunch Notes PDFs/);
   note.closePreview();
   assert.match(element.innerHTML,/id="bn-assigned-work-mode"[^>]*aria-pressed="true"/,'closing the preview returns to Inventory Assigned work');
@@ -459,7 +459,7 @@ test('inventory picker pages complete local results and searches all 1000 groups
     contsize: '#3', lotcode: `LOT-${index + 1}`, stock: 12, review: 0, available: 12
   }));
   let inventoryReads = 0;
-  const { BunchNote: note, element } = createRuntime(async (_url, request) => {
+  const { BunchNote: note, element, document, close } = createRuntime(async (_url, request) => {
     if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
     if (request.operation === 'inventory') { inventoryReads += 1; return { ok: true, data: { rows } }; }
     if (request.operation === 'directory') return { ok: true, data: { users: [] } };
@@ -467,7 +467,7 @@ test('inventory picker pages complete local results and searches all 1000 groups
     if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: [] } };
     if (request.operation === 'save') return { ok: true, data: { draft: { id: 'batch-test', revision: (request.expectedRevision || 0) + 1, body: request.payload.body } } };
     return { ok: true, data: {} };
-  });
+  }, 'bunch-note', true);
 
   await note.open();
   await note.chooseBlock('D');
@@ -477,19 +477,21 @@ test('inventory picker pages complete local results and searches all 1000 groups
   note.wizardField('workType', 'Inspect');
   await note.nextItems();
   note.openCardPicker();
-  assert.equal((element.innerHTML.match(/class="[^"]*\bbn-picker-result\b[^"]*"/g) || []).length, 100, element.innerHTML.slice(-1500));
-  assert.match(element.innerHTML, /Showing 100 of 1000 cards/);
-  assert.match(element.innerHTML, /aria-label="Load more inventory cards"/);
+  const dialog = () => document.querySelector('.bn-card-picker');
+  assert.equal(dialog().querySelectorAll('.bn-picker-result').length, 100);
+  assert.match(dialog().textContent, /Showing 100 of 1000 cards/);
+  assert.ok(dialog().querySelector('[aria-label="Load more inventory cards"]'));
 
   note.loadMorePickerCards();
-  assert.equal((element.innerHTML.match(/class="[^"]*\bbn-picker-result\b[^"]*"/g) || []).length, 200);
-  assert.match(element.innerHTML, /Showing 200 of 1000 cards/);
+  assert.equal(dialog().querySelectorAll('.bn-picker-result').length, 200);
+  assert.match(dialog().textContent, /Showing 200 of 1000 cards/);
 
   note.cardPickerSearch('Plant 1000');
-  assert.equal((element.innerHTML.match(/class="[^"]*\bbn-picker-result\b[^"]*"/g) || []).length, 1);
-  assert.match(element.innerHTML, /Plant 1000/);
-  assert.match(element.innerHTML, /Showing 1 of 1 card/);
+  assert.equal(dialog().querySelectorAll('.bn-picker-result').length, 1);
+  assert.match(dialog().textContent, /Plant 1000/);
+  assert.match(dialog().textContent, /Showing 1 of 1 card/);
   assert.equal(inventoryReads, 1, 'pagination and search use the complete cached source rows');
+  close();
 });
 
 test('inventory picker Escape closes from outside dialog focus and backdrop retains its close action', async () => {
@@ -639,7 +641,7 @@ test('real DOM dismisses the picker with Escape from an outside focused control 
   assert.equal(portalBackdrop.closest('#request-content'), null);
   const saving = note.commitPickerCard();
   const portalFields = [...window.document.querySelectorAll('.bn-picker-portal-host textarea')];
-  assert.equal(portalFields.length, 2);
+  assert.equal(portalFields.length, 3);
   assert.ok(portalFields.every(field => field.disabled), 'picker fields are disabled while its save is pending');
   note.pickerField('notes', 'This late edit must be ignored');
   assert.equal(portalFields[1].value, 'Keep selected lots separate');
