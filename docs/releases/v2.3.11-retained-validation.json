@@ -40,7 +40,7 @@
     "supabase/functions/_shared/production-workflow.ts": "66dd5a83a5fe443cb0d883852bea43cde5aa19e6834ff30fa9eabfcdfe0d03db",
     "supabase/functions/app-api/index.ts": "0ca8ad43438399e2aaf4f0c861ac66a6d05a24387e2c633f37c601d483873a33",
     "supabase/functions/request-delivery-worker/index.ts": "571b2300a99b61056138ae3c3e8d04ed0155855ff979698a67499612450bf8d3",
-    "supabase/migrations/20261019163128_canonical_user_access_control_v1.sql": "4d7f32dae92ad2350f3586298cb8d82658becdc2366b435fafac1dc10b4d7e45",
+    "supabase/migrations/20261019163128_canonical_user_access_control_v1.sql": "f90a16956c412094251027092e61dd1efff280ffcc2b688d35097cbb93764efd",
     "supabase/migrations/20261019172019_inventory_reclass_move_delivery_v1.sql": "9478aac23f25de48cb3b0c8409c4c46f18c243a079fa3b9d555fa43cefa85134",
     "supabase/tests/inventory_reclass_move_delivery_v1_test.sql": "03360ab1ecccdda6f6ba290d8a796d251da2dd625b77464214397fe16e5efa62",
     "supabase/tests/inventory_reclass_moves_v1_test.sql": "94ce59c498b3be84135bf4f9f027cbebad2994813dca45156f8a7d5ecd84f78f",
@@ -82,7 +82,7 @@
     "v2/public/manifest.webmanifest": "b45cab3d1cdc70c4f2192f02229d5f62a777656113a7233352a06d670e2baf0e",
     "v2/src/services/api.ts": "9b9dddca4689604ce0260a8b3bd8e04c19a2734a89991ffce6aa1f7340c0524d"
   },
-  "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66",
+  "sourceHashDigest": "686170c3593641b1045bb855382ee6acfba6a1fd2f99453f2f26a0cd0d48d4a3",
   "provenance": {
     "kind": "retained-evidence-aggregation",
     "sourceHashDigestMeaning": "Seal of the assembled release sources, not a claim that every historical run was rerun on this tree.",
@@ -97,44 +97,44 @@
   "validation": {
     "node": {
       "artifactPath": "docs/releases/v2.3.11-validation/node.json",
-      "artifactSha256": "529ee3cd7674a1709e85db4804603f3e2f0676b32a4dc08234276d1e0be4e4f4",
+      "artifactSha256": "06f39f5352eb91c3381dde12125e2dc362cff99d0c497216240178e9c6694a4f",
       "validationId": "v2311-node-retained-20261019-reset3",
       "status": "passed",
       "checks": 229,
-      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66"
+      "sourceHashDigest": "686170c3593641b1045bb855382ee6acfba6a1fd2f99453f2f26a0cd0d48d4a3"
     },
     "database": {
       "artifactPath": "docs/releases/v2.3.11-validation/database.json",
-      "artifactSha256": "5eebf6f3f7cab6d0ff950aec7183fa773290bd8ec82903d1d94d4bd52184ade5",
+      "artifactSha256": "b413d13a868ac04b34dbefe651f7e2f9870bfb151a5710aa2fa36e0fd3199d62",
       "validationId": "v2311-database-retained-20261019-reset3",
       "status": "passed",
       "checks": 98,
-      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66",
+      "sourceHashDigest": "686170c3593641b1045bb855382ee6acfba6a1fd2f99453f2f26a0cd0d48d4a3",
       "interactiveMaxMs": 4.044
     },
     "browser": {
       "artifactPath": "docs/releases/v2.3.11-validation/browser.json",
-      "artifactSha256": "ec95e3764e3e1f1295ec44378af7f73a5a1548e059658c35792b3a2f858fa70f",
+      "artifactSha256": "4e57e1bf130f8b20c2445950da4ca63f76fe6207508cf401c988de62a21a8d1d",
       "validationId": "v2311-browser-retained-20261019-reset3",
       "status": "passed",
       "checks": 32,
-      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66"
+      "sourceHashDigest": "686170c3593641b1045bb855382ee6acfba6a1fd2f99453f2f26a0cd0d48d4a3"
     },
     "tooling": {
       "artifactPath": "docs/releases/v2.3.11-validation/tooling.json",
-      "artifactSha256": "e8f677498776ae407385bbdd46187cd40ea7a458dcf7ba633957a75aa697f392",
+      "artifactSha256": "d01370aa63455cd206ba5b8211aa2f008c540dd4f098cbb025b9674f56d3fb8a",
       "validationId": "v2311-tooling-retained-20261019-reset3",
       "status": "passed",
       "checks": 1,
-      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66"
+      "sourceHashDigest": "686170c3593641b1045bb855382ee6acfba6a1fd2f99453f2f26a0cd0d48d4a3"
     },
     "build": {
       "artifactPath": "docs/releases/v2.3.11-validation/build.json",
-      "artifactSha256": "e65af444ad5dfa7d92ef59b1ceeae9c76e938542b7644d9b049eb51a0236bb0d",
+      "artifactSha256": "efbb65b8202ae7c83b89f8209394f3ce21926710ba01f456d3446f89b4aa78ea",
       "validationId": "v2311-build-retained-20261019-reset3",
       "status": "passed",
       "checks": 3,
-      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66"
+      "sourceHashDigest": "686170c3593641b1045bb855382ee6acfba6a1fd2f99453f2f26a0cd0d48d4a3"
     }
   },
   "browser": {
@@ -297,5 +297,14 @@
     "delegatedRawLogsAvailable": false,
     "delegatedLogHashes": [],
     "source": "v2311-validation-progress.json updates.originalFocusedChecks; update clarifies the 55 has no separate local raw logs. No missing logs are represented as present."
+  },
+  "publicationCorrection": {
+    "failureRun": 39319088382,
+    "reason": "Canonical access migration lacked the explicit BEGIN/COMMIT envelope required by the guarded publisher; it was rejected before application.",
+    "correction": "Added transaction wrapper only; original executable SQL body preserved exactly after trailing newline normalization.",
+    "productionProbe": "Both new public contracts absent after failed run; Edge Functions and Apps Script publication did not run.",
+    "validation": "migrationBody() accepts wrapper and strict assertion compares body to retained validated original.",
+    "originalBodySha256": "499e3b861aeec7149eb1ba512702759886c06f58fafca497b3af7ef7a1b53e91",
+    "fullSqlRerun": false
   }
 }
