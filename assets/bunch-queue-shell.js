@@ -1,12 +1,57 @@
-/* global canUseInvBunchNotes, nativeAuthProfile, getSupabaseReadIdentityScope, getCurrentVisibleViewId, renderRequestCategoryToolbar, updateFooterRequestBadge, SUPABASE_URL, postAppFunctionJson, APP_API_FUNCTION_URL, activeReqTab */
+/* global canUseInvBunchNotes, nativeAuthProfile, getSupabaseReadIdentityScope, getCurrentVisibleViewId, renderRequestCategoryToolbar, updateFooterRequestBadge, SUPABASE_URL, postAppFunctionJson, APP_API_FUNCTION_URL, activeReqTab, getMainAreaScrollTarget, setMainAreaScrollTop, showPrimaryViewWithScrollPolicy, schedulePrimaryViewChromeRefresh, clearPendingDetailHydration */
+/* global activeItem: writable, activeDetailSourceView: writable, lastView: writable */
 /* Que integration; authenticated reads and durable drafts live in the typed client. */
 (function () {
     'use strict';
-    let modulePromise, client, clientScope = '', mounted, host, generation = 0;
+    let modulePromise, client, clientScope = '', mounted, host, detail, generation = 0;
     let counts = { active: 0, review: 0, canReview: false }, lastWarm = 0;
     const isTab = tab => tab === 'bunch-notes' || tab === 'bunch-count-review';
     const scope = () => canUseInvBunchNotes() ? `${nativeAuthProfile.id}:${getSupabaseReadIdentityScope()}` : '';
-    function destroy() { generation++; mounted?.destroy(); mounted = null; host = null; }
+    function destroy() { closeDetail(); generation++; mounted?.destroy(); mounted = null; host = null; }
+    function closeDetail() {
+        if (!detail) return false;
+        const previous = detail;
+        detail = null;
+        previous.root.classList.remove('bunch-work-detail-mode');
+        if (!previous.hadRequestMode) previous.root.classList.remove('detail-request-mode');
+        previous.panels.forEach(({ panel, display, priority }) => {
+            if (display) panel.style.setProperty('display', display, priority);
+            else panel.style.removeProperty('display');
+        });
+        previous.host.remove();
+        previous.onClose();
+        activeDetailSourceView = '';
+        if (getCurrentVisibleViewId() === 'detail') {
+            showPrimaryViewWithScrollPolicy('request', { scrollPolicy: 'preserve' });
+            renderRequestCategoryToolbar();
+            setMainAreaScrollTop(previous.scrollTop);
+            schedulePrimaryViewChromeRefresh('request', { delay: 0, passive: true });
+            const focusTarget = previous.focus?.isConnected ? previous.focus : host?.querySelector('select, [role="button"]');
+            focusTarget?.focus({ preventScroll: true });
+        }
+        return true;
+    }
+    function openDetail({ title, onClose }) {
+        closeDetail();
+        const root = document.getElementById('view-detail');
+        if (!root) throw new Error('The opened-card view is unavailable. Reload and retry.');
+        const detailHost = document.createElement('div');
+        detailHost.id = 'bunch-queue-detail-host';
+        detailHost.setAttribute('aria-label', title);
+        const panels = Array.from(root.children, panel => ({ panel, display: panel.style.getPropertyValue('display'), priority: panel.style.getPropertyPriority('display') }));
+        panels.forEach(({ panel }) => panel.style.setProperty('display', 'none', 'important'));
+        detail = { root, host: detailHost, panels, onClose, scrollTop: getMainAreaScrollTarget()?.scrollTop || 0,
+            focus: document.activeElement, hadRequestMode: root.classList.contains('detail-request-mode') };
+        clearPendingDetailHydration();
+        activeItem = null;
+        activeDetailSourceView = 'bunch-notes';
+        lastView = 'request';
+        root.classList.add('bunch-work-detail-mode', 'detail-request-mode');
+        root.appendChild(detailHost);
+        showPrimaryViewWithScrollPolicy('detail', { scrollPolicy: 'reset', scrollTop: 0 });
+        schedulePrimaryViewChromeRefresh('detail', { delay: 0, passive: true });
+        return detailHost;
+    }
     function reset() { destroy(); client?.dispose(); client = null; clientScope = ''; lastWarm = 0; counts = { active: 0, review: 0, canReview: false }; }
     function changed(next) {
         if (JSON.stringify(counts) === JSON.stringify(next)) return;
@@ -18,7 +63,11 @@
         const nextScope = scope();
         if (!nextScope) { reset(); throw new Error('Sign in to view assigned Bunch Notes.'); }
         if (clientScope !== nextScope) { if (clientScope) reset(); clientScope = nextScope; }
-        if (!modulePromise) modulePromise = import(new URL('./bunch-queue.js', document.currentScript?.src || new URL('./assets/bunch-queue-shell.js', document.baseURI)).href).catch(error => { modulePromise = null; throw error; });
+        if (!modulePromise) {
+            const moduleUrl = new URL('./bunch-queue.js', document.currentScript?.src || new URL('./assets/bunch-queue-shell.js', document.baseURI));
+            moduleUrl.search = '?v=' + encodeURIComponent(String(window.__APP_SHELL_VERSION__ || ''));
+            modulePromise = import(moduleUrl.href).catch(error => { modulePromise = null; throw error; });
+        }
         const module = await modulePromise;
         if (scope() !== nextScope || clientScope !== nextScope) throw new Error('The signed-in session changed.');
         if (!client) {
@@ -58,10 +107,13 @@
         }
     }
     window.BunchQueueShell = {
-        isTab, reset, destroy, warm, render, counts: () => counts,
+        isTab, reset, destroy, warm, render, openDetail, closeDetail, isDetailOpen: () => !!detail, counts: () => counts,
         scope: () => `${scope()}:${activeReqTab}:${client?.getSnapshot().filter || 'mine'}:${client?.getSnapshot().offset || 0}`,
         stage: async ctx => (await ensure()).client.stage(activeReqTab === 'bunch-count-review', ctx.signal),
         commit: value => client?.commit(value)
     };
     window.addEventListener('gnc:bunch-published', () => { void warm(true); });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && detail) { event.preventDefault(); event.stopImmediatePropagation(); closeDetail(); }
+    }, true);
 })();
