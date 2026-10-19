@@ -28,7 +28,8 @@ function harness() {
     canUseProductionLiveSync: () => true,
     getActiveManagerReportPageSurface: () => '', useManagerReportPages: () => false,
     currentUser: 'fixture', currentRole: 'ADMIN', activeReqTab: 'pending', activeHomeTab: 'orders',
-    activeMovesTab: 'office', activeInventoryOfficeApprovalType: 'crop-roll', activeAVTab: 'open',
+    activeMovesTab: 'office', activeInventoryOfficeApprovalType: 'crop-roll', activeAVTab: 'open', activeAvSalesBucket: 'current',
+    avRepCustomerDropdownOpen: false, selectedAvRepCustomerKey: '',
     activeTaskView: 'flyer', cropRollDriveSchemaReady: true, inventoryMainTab: 'sales', productionInventoryTab: 'counting',
     productionWorkflowActive: 'spacing', selectedProductivityUser: '', requestDeliveryRecoveryOpen: false,
     activeDetailTab: '', activeDetailSourceView: '', activeItem: null, activeLocationWorkJobId: '', managersSearchTerm: '', evalRole: false,
@@ -42,6 +43,7 @@ function harness() {
     getCurrentVisibleViewId: () => context.view,
     getCurrentLoginCacheScopeKey: () => 'fixture-user', getCurrentChatUsername: () => 'fixture',
     getActiveSpreadCountType: () => 'spread', normalizeProductivityUsername: value => value,
+    normalizeAvSalesBucket: value => ['current', 'customer', 'customer-open', 'hot-price'].includes(String(value || '').toLowerCase()) ? String(value).toLowerCase() : 'current',
     normalizeInventoryOfficeApprovalType: value => value,
     getRoleAccessState: () => ({ isAdmin: !context.evalRole, isEval: context.evalRole, isRep: false, allowedViews: new Set(['sales-inventory']) }),
     canManageCustomerRepMappings: () => context.managerAccess?.canManageCustomerRepMappings !== false,
@@ -51,7 +53,10 @@ function harness() {
     isInventoryChecksApprovalTaskView: value => value === 'inventory-checks',
     isTaskDiagnosticsView: () => false, isManagerApprovalTab: () => false,
     isInventoryOfficeBlankShellTab: () => false, isCropRollManagerReviewActive: () => false,
-    shouldUseRepAvOpenDataset: () => true, shouldPrepareAvRepCustomerFilterData: () => true,
+    shouldUseRepAvOpenDataset: () => true,
+    isAvCustomerSalesBucket: value => ['customer', 'customer-open'].includes(String(value || '').toLowerCase()),
+    shouldPrepareAvRepCustomerFilterData: () => !!(context.avRepCustomerDropdownOpen || context.selectedAvRepCustomerKey
+      || context.isAvCustomerSalesBucket(context.activeAvSalesBucket) || context.activeAVTab === 'reserves'),
     canAccessView: () => false, canManageRequestDeliveryRecovery: () => false,
     canViewDashboardSyncStatus: () => false,
     canUseWeatherHoldRiskTools: () => false, canViewBloomscapesPendingOrders: () => false,
@@ -84,6 +89,59 @@ test('Home registers its metadata-only verification surface only for authorized 
   assert.equal(context.getProductionLiveSyncSideContext().surfaces.includes('home:sync-metadata'), false);
   context.canViewDashboardSyncStatus = () => true;
   assert.equal(context.getProductionLiveSyncSideContext().surfaces.includes('home:sync-metadata'), true);
+});
+
+test('AV open does not let unopened optional datasets block the verified inventory and reserve snapshot', async () => {
+  const context = harness(), registry = context.AgMetricLiveSyncRegistry;
+  Object.assign(context, { view: 'av', activeAVTab: 'open', activeAvSalesBucket: 'current', avRepCustomerDropdownOpen: false,
+    selectedAvRepCustomerKey: '', document: { activeElement: {}, body: { classList: { contains: () => false } }, getElementById: () => null } });
+  const avContext = context.getProductionLiveSyncSideContext();
+  const ids = Array.from(registry.getViewAdapters('av', avContext));
+  const adapters = ids.map(id => ({
+    id,
+    cacheKey: `${id}:open`,
+    sourceKeys: Array.from(registry.getSourceKeys([id])),
+    stage: async ({ preview } = {}) => {
+      if (id === 'core:master') preview?.({ rows: ['first page'], partial: true });
+      if (id === 'core:avNotes') throw new Error('Optional AV notes are unavailable');
+      return { rows: [id] };
+    },
+    commit() {}
+  }));
+  const liveContext = { scope: 'rep-account', viewKey: 'av', visible: true, online: true,
+    dataPermissionVersion: 'rep-v1', progressive: true, previewAdapterIds: ['core:master'], adapters };
+  let commits = 0;
+  vm.runInContext(coordinatorCode, context);
+  const coordinator = context.AgMetricLiveSync.createCoordinator({
+    getContext: () => liveContext,
+    readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'rep-v1', sources: keys.map(key => ({ key, revision: '1', state: 'ready' })) }),
+    commitSnapshots: () => { commits += 1; },
+    setTimeout: () => 1, clearTimeout() {}
+  });
+
+  assert.ok(ids.includes('core:master'), 'Current Season needs the complete master inventory');
+  assert.ok(ids.includes('core:reserves'), 'nonpositive Open Stock visibility needs the rep reserve snapshot');
+  assert.ok(ids.includes('side:settings'), 'Current Season settings remain part of the atomic snapshot');
+  assert.ok(!ids.includes('core:avNotes'), 'AV notes are not required to display the open-stock catalog');
+  assert.ok(!ids.includes('core:avHotPriceKeys'), 'hot-price keys are not required for All Open Stock');
+  assert.ok(!ids.includes('core:customerRepMap'), 'customer mapping loads only when the rep customer filter is used');
+  assert.ok(Array.from(registry.getViewAdapters('av', { ...avContext, avRepCustomerFilterData: true })).includes('core:customerRepMap'),
+    'opening the Customer filter adds its mapping dependency');
+  context.activeAVTab = 'reserves';
+  assert.ok(Array.from(registry.getViewAdapters('av', context.getProductionLiveSyncSideContext())).includes('core:customerRepMap'),
+    'the reserves tab retains its mapping dependency');
+  context.activeAVTab = 'open';
+  context.activeAvSalesBucket = 'customer';
+  assert.ok(Array.from(registry.getViewAdapters('av', context.getProductionLiveSyncSideContext())).includes('core:customerRepMap'),
+    'customer reserve buckets retain their mapping dependency');
+  context.activeAvSalesBucket = 'hot-price';
+  assert.ok(Array.from(registry.getViewAdapters('av', context.getProductionLiveSyncSideContext())).includes('core:avHotPriceKeys'),
+    'a hot-price bucket retains its exact key dependency');
+  assert.ok(Array.from(registry.getViewAdapters('av', { ...context.getProductionLiveSyncSideContext(), surfaces: ['dialog:av-notes'] })).includes('core:avNotes'),
+    'the AV notes dialog keeps its explicit notes dependency');
+  assert.equal(await coordinator.check('visible-view'), true);
+  assert.equal(commits, 1, 'master and reserves publish together even when optional AV-note data is unavailable');
+  coordinator.reset();
 });
 
 test('manager low-stock summaries load only for Assigned Items consumers', () => {

@@ -33940,6 +33940,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 driveAssignmentsRequired: !!(access && !access.isAdmin && (access.isEval || access.isRepLike) && !isAlwaysDriveCardOptionsUser()),
                 taskView: String(activeTaskView || '').trim().toLowerCase(),
                 taskFilter: String(getActiveEvalSimpleTaskFilterValue() || '').trim().toLowerCase(),
+                avTab: view === 'av' ? String(activeAVTab || 'open') : '',
+                avSalesBucket: view === 'av' ? normalizeAvSalesBucket(activeAvSalesBucket) : '',
+                avRepCustomerFilterData: view === 'av' && shouldPrepareAvRepCustomerFilterData() === true,
                 scope: getCurrentLoginCacheScopeKey(),
                 username: getCurrentChatUsername(),
                 evalInventoryRows: shouldLoadInventoryEditRequestsForEvalRows(),
@@ -37309,6 +37312,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             appendSuspendTagBackgroundCustomerRepMap(backgroundAdapters, foregroundIds, view, foregroundContext.surfaces,
                 () => createProductionCoreLiveAdapter('customerRepMap',
                     getProductionCoreLiveProjection('customerRepMap', view, foregroundContext), { pageConcurrency: 1 }));
+            // Optional AV enhancements still refresh, but an unopened notes or
+            // customer/hot-price surface must not hold the catalog at its preview.
+            if (view === 'av') {
+                for (const key of ['customerRepMap', 'avHotPriceKeys', 'avNotes']) {
+                    if (!foregroundIds.has(`core:${key}`) && !backgroundAdapters.some(adapter => adapter.id === `core:${key}`)) {
+                        backgroundAdapters.push(createProductionCoreLiveAdapter(key,
+                            getProductionCoreLiveProjection(key, view, foregroundContext), { pageConcurrency: 1 }));
+                    }
+                }
+            }
             return observeHlOrderVerificationContext({ ...foregroundContext, progressive, previewAdapterIds, scope: context.scope, viewKey: JSON.stringify([view, foregroundContext.surfaces, productionLiveSyncNavigationGeneration, view === 'av' ? activeAVTab : null]), visible, online: navigator.onLine !== false, adapters, backgroundAdapters });
         }
 
