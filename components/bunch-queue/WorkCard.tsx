@@ -25,12 +25,19 @@ export function WorkCard({ card, client, pending, onSaved }: { card: BunchWorkCa
     <p className="bq-plan"><strong>{card.action}</strong>{card.destination ? ` → ${card.destination}` : ''}</p>
     {card.notes && <p className="bq-notes">Notes: {card.notes}</p>}
     <p className="bq-assignees">Assigned: {card.assignees.map(person => person.display_name || person.username).join(', ') || 'Unassigned'}</p>
-    {card.sources.map(source => <div className="bq-source" key={source.row_id}>
-      <div>{source.location} · Lot {source.lot || '—'}<small>Drive PTRAVAILABLE: {source.ptravailable ?? 'Unavailable'}</small></div>
+    {card.sources.map(source => {
+      const sameLocation = card.sources.length === 1 && source.location === card.source_location && source.lot === card.lot;
+      const sameAvailable = card.sources.length === 1 && source.ptravailable === card.ptravailable;
+      return <div className="bq-source" key={source.row_id}>
+      {(!sameLocation || !sameAvailable) && <div className="bq-source-details">
+        {!sameLocation && <span>{source.location} · Lot {source.lot || '—'}</span>}
+        {!sameAvailable && <small>Drive PTRAVAILABLE: {source.ptravailable ?? 'Unavailable'}</small>}
+      </div>}
       {card.can_complete && card.status === 'open' ? <label>Actual Qty Completed
         <input type="text" inputMode="numeric" pattern="[0-9]*" aria-label={`Actual Qty Completed ${source.row_id}`} value={draft[source.row_id] ?? ''} disabled={saving || pending} onChange={event => change(source.row_id, event.target.value)} placeholder="Enter actual count" />
       </label> : source.actual_qty != null && <p>Completed: <strong>{source.actual_qty}</strong></p>}
-    </div>)}
+    </div>;
+    })}
     {error && <p role="alert" className="bq-error">{error}</p>}
     {card.can_complete && card.status === 'open' && <button type="button" className="bq-primary text-white" disabled={saving || pending || !card.sources.length} onClick={() => void complete()}>{pending ? 'Completion queued' : saving ? 'Saving…' : 'Complete Work'}</button>}
   </article>;
