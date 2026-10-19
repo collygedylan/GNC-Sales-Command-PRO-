@@ -7,6 +7,7 @@ import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspend
 import { readAvPage } from "../_shared/av-read.ts";
 import { captureInventoryLocationRevision, enrichInventoryLocationRows } from "../_shared/inventory-location-on-hand.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
+import { resolveCanonicalUserAccess, hasAnyCanonicalUserAccessFlag, requireCanonicalUserAccessFlag, type CanonicalUserAccess, type CanonicalUserAccessFlag } from "../_shared/canonical-user-access.ts";
 import { handleProductionWorkflow, handleInventoryTransactionHistory, handleInventoryReclassMove, inventoryReclassMoveError, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
@@ -650,6 +651,49 @@ function hasTableReadAccess(role = "", table = "", username = "") {
   return false;
 }
 
+// Canonical module grants extend only the explicitly owned dataset surfaces.
+// They never replace actor/profile checks, named restrictions, or row scoping.
+const CANONICAL_DATASET_READ_FLAGS: Record<string, readonly CanonicalUserAccessFlag[]> = {
+  inventory_edits: ["can_access_drive_mode", "can_access_manager_tab"],
+  shear: ["can_access_drive_mode"],
+  request_queue: ["can_access_que"],
+  active_request: ["can_access_que"],
+  soc: ["can_access_drive_mode", "can_access_que"],
+  cav: ["can_access_av"],
+  reserves: ["can_access_av", "can_access_drive_mode"],
+  sales_office: ["can_access_que", "can_access_drive_mode"],
+  dock_team: ["can_access_que"],
+  dock_item: ["can_access_que"],
+  dock_issue: ["can_access_que"],
+  dock_allocations: ["can_access_que"],
+  productivity_history: ["can_access_drive_mode", "can_access_manager_tab"],
+};
+
+function canonicalDatasetReadAllowed(access: CanonicalUserAccess | null, dataset: string) {
+  const flags = CANONICAL_DATASET_READ_FLAGS[dataset];
+  return Boolean(access && flags && hasAnyCanonicalUserAccessFlag(access, flags));
+}
+
+function canonicalInventoryReadAllowed(access: CanonicalUserAccess | null, operation: string, params: Record<string, unknown>) {
+  if (!access) return false;
+  const inventoryConsumers: readonly CanonicalUserAccessFlag[] = [
+    "can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab",
+  ];
+  if (operation === "source_freshness" || operation === "schema_capabilities") {
+    return hasAnyCanonicalUserAccessFlag(access, inventoryConsumers);
+  }
+  if (operation !== "master_page") return false;
+  const dataset = String(params.dataset || "").trim();
+  if (dataset === "avOpen") return access.permissions.can_access_av === true;
+  if (dataset === "lookup") {
+    return hasAnyCanonicalUserAccessFlag(access, [...inventoryConsumers, "can_submit_reclass"]);
+  }
+  if (dataset === "master") {
+    return hasAnyCanonicalUserAccessFlag(access, inventoryConsumers);
+  }
+  return false;
+}
+
 // This read boundary deliberately accepts dataset and typed filter names rather
 // than PostgREST query strings. The table, projection, stable key, and filter
 // fields are all selected by this server-owned map.
@@ -820,6 +864,7 @@ async function handleDatasetRead(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
   request?: Request,
+  canonicalAccess: CanonicalUserAccess | null = null,
 ) {
   if (!session) return errorResponse("Unauthorized", 401, { code: "DATASET_READ_UNAUTHORIZED" });
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
@@ -831,7 +876,12 @@ async function handleDatasetRead(
   const dataset = String(payload.dataset || "").trim().toLowerCase();
   const source = DATASET_READ_SOURCES[dataset];
   if (!source) return errorResponse("Unsupported dataset.", 400, { code: "DATASET_READ_INVALID" });
-  if (dataset === "suspend_tag" ? !SUSPEND_TAG_EDITORS.has(username) : !hasTableReadAccess(role, source.permission, username)) return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
+  const canonicalDatasetAccess = dataset !== "suspend_tag" && canonicalDatasetReadAllowed(canonicalAccess, dataset);
+  if (dataset === "suspend_tag"
+    ? !SUSPEND_TAG_EDITORS.has(username)
+    : !hasTableReadAccess(role, source.permission, username) && !canonicalDatasetAccess) {
+    return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
+  }
   if (dataset === "suspend_tag") {
     try { actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, request); }
     catch { return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" }); }
@@ -2636,6 +2686,7 @@ function normalizeEvalWorkBatchInquiry(value: unknown) {
 async function handleEvalWorkAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
+  canonicalAccess: CanonicalUserAccess | null = null,
 ) {
   if (!session) return errorResponse("Authentication required.", 401);
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
@@ -2646,9 +2697,8 @@ async function handleEvalWorkAction(
   const operation = String(payload.operation || "list").trim().toLowerCase();
   try {
     if (operation === "report_page") {
-      if (!isEvalWorkManager(session)) {
-        return errorResponse("Only Dylan, Megan, or JD can view Eval Reports #2.", 403, { code: "eval_report2_view_forbidden" });
-      }
+      const resolvedAccess = canonicalAccess || await resolveCanonicalUserAccess(supabase, String(activeProfile.id || ""));
+      if (resolvedAccess.permissions.can_access_eval_reports_2 !== true) return errorResponse("Eval Reports #2 access is not enabled for this profile.", 403, { code: "eval_report2_view_forbidden" });
       const reportId = String(payload.reportId || "").trim().toLowerCase();
       const cursorItemcode = String(payload.cursorItemcode || "").trim().toUpperCase();
       const limit = Math.min(50, Math.max(1, Number(payload.limit) || 25));
@@ -2923,6 +2973,7 @@ async function handleEvalWorkAction(
 export async function handleManagerReportReadAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
+  canonicalAccess: CanonicalUserAccess | null = null,
 ) {
   if (!session) return errorResponse("Authentication required.", 401, { code: "AUTH_REQUIRED" });
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
@@ -2934,11 +2985,12 @@ export async function handleManagerReportReadAction(
   const operation = String(query?.operation || payload.operation || "").trim().toLowerCase();
   if (operation === "capabilities") {
     const canViewEval1 = ["dylan_collyge", "megan_kelly"].includes(actor);
-    const canViewEval2 = ["dylan_collyge", "megan_kelly", "jd_jones"].includes(actor);
     const canViewInventoryManager = hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor);
     const canViewApproval = INVENTORY_NCR_FIRST_STAGE_USERS.has(actor) || INVENTORY_NCR_JD_STAGE_USERS.has(actor);
     const roleCanReadInventory = hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor);
     try {
+      const access = canonicalAccess || await resolveCanonicalUserAccess(supabase, String(profile.id || ""));
+      const canViewEval2 = access.permissions.can_access_eval_reports_2 === true;
       const { data, error } = await supabase.rpc("manager_report_read_v2", { p_payload: {
         actorUsername: actor, operation: "capabilities",
       } });
@@ -3095,7 +3147,7 @@ export async function handleManagerReportReadAction(
   }
   if (surface === "ncr" && !hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor)) return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
   if ((surface === "eval1" && !["dylan_collyge", "megan_kelly"].includes(actor))
-    || (surface === "eval2" && !["dylan_collyge", "megan_kelly", "jd_jones"].includes(actor))) {
+    || (surface === "eval2" && (canonicalAccess || await resolveCanonicalUserAccess(supabase, String(profile.id || ""))).permissions.can_access_eval_reports_2 !== true)) {
     return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
   }
   const allowed = new Set(["surface", "operation", "filters", "offset", "limit", "sourceRevision"]);
@@ -3827,6 +3879,7 @@ function inventoryReadQuery(actor: Record<string, unknown>, fields: string, incl
 async function handleInventoryRead(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
+  canonicalAccess: CanonicalUserAccess | null = null,
 ) {
   if (!session) return errorResponse("Unauthorized", 401);
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
@@ -3838,9 +3891,14 @@ async function handleInventoryRead(
   }
   const username = normalizeUsername(String(actor.username || ""));
   const role = String(actor.role || "");
-  if (!hasTableReadAccess(role, "ph_master_inventory", username)) return errorResponse("Forbidden", 403, { code: "INVENTORY_READ_FORBIDDEN" });
-
   const operation = String(payload.operation || "").trim().toLowerCase();
+  const readParams = payload.params && typeof payload.params === "object" && !Array.isArray(payload.params)
+    ? payload.params as Record<string, unknown> : {};
+  const canonicalInventoryAccess = canonicalInventoryReadAllowed(canonicalAccess, operation, readParams);
+  if (!hasTableReadAccess(role, "ph_master_inventory", username) && !canonicalInventoryAccess) {
+    return errorResponse("Forbidden", 403, { code: "INVENTORY_READ_FORBIDDEN" });
+  }
+
   try {
     if (operation === "source_freshness") {
       inventoryReadParams(payload, []);
@@ -5221,6 +5279,52 @@ export async function renderBunchNotePreview(options: {
   return { ok: true as const, pdfs: frozen.pdfs };
 }
 
+type CanonicalActionGate = { flag: CanonicalUserAccessFlag } | { any: readonly CanonicalUserAccessFlag[] };
+
+function canonicalActionGate(action: string, payload: Record<string, unknown>): CanonicalActionGate | null {
+  if (action === "av_read") return { flag: "can_access_av" };
+  if (action === "dataset_read") {
+    const dataset = String(payload.dataset || "").trim().toLowerCase();
+    if (dataset === "suspend_tag") return { flag: "can_access_que" };
+    const flags = CANONICAL_DATASET_READ_FLAGS[dataset];
+    if (flags) return { any: flags };
+    return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] };
+  }
+  if (action === "inventory_read") {
+    const params = payload.params && typeof payload.params === "object" && !Array.isArray(payload.params)
+      ? payload.params as Record<string, unknown> : {};
+    if (String(params.dataset || "").trim() === "avOpen") return { flag: "can_access_av" };
+    return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab", "can_submit_reclass"] };
+  }
+  if (action === "drive_reclass_inquiry") {
+    return String(payload.operation || "create").trim().toLowerCase() === "create"
+      ? { flag: "can_submit_reclass" } : { flag: "can_access_drive_mode" };
+  }
+  if (action === "inventory_reclass_move") return { flag: "can_submit_reclass" };
+  if (["request_history", "sales_credit", "request_queue_remove", "request_archive", "bunch_note", "bunch_note_workflow"].includes(action)) {
+    return { flag: "can_access_que" };
+  }
+  if (action === "eval_work" && String(payload.operation || "list").trim().toLowerCase() === "report_page") {
+    return { flag: "can_access_eval_reports_2" };
+  }
+  if (action === "suspend_tag") {
+    return String(payload.operation || "").trim().toLowerCase() === "decide"
+      ? { flag: "can_approve_deny_suspend" }
+      : ["approval", "rows"].includes(String(payload.operation || "").trim().toLowerCase())
+      ? { flag: "can_access_que" } : { flag: "can_complete_suspend_tag" };
+  }
+  if (action === "production_workflow" || action === "inventory_transaction_history") return { flag: "can_access_drive_mode" };
+  if (action === "manager_season_settings") return { flag: "can_access_manager_tab" };
+  if (action === "report_read_v2") {
+    const query = payload.query && typeof payload.query === "object" && !Array.isArray(payload.query)
+      ? payload.query as Record<string, unknown> : payload;
+    const surface = String(query.surface || "").trim().toLowerCase();
+    if (surface === "eval2") return { flag: "can_access_eval_reports_2" };
+    if (["assigned-items", "season-priority"].includes(surface)) return { flag: "can_access_manager_tab" };
+  }
+  return null;
+}
+
 if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
@@ -5240,6 +5344,76 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
+
+  const actionGate = canonicalActionGate(action, payload);
+  let canonicalAccessForRequest: CanonicalUserAccess | null = null;
+  if (actionGate && session && !session.mustChangePassword) {
+    try {
+      const actor = await resolveActiveSessionProfile(session);
+      const access = await resolveCanonicalUserAccess(supabase, String(actor.id || ""));
+      canonicalAccessForRequest = access;
+      if ("flag" in actionGate) requireCanonicalUserAccessFlag(access, actionGate.flag);
+      else if (!hasAnyCanonicalUserAccessFlag(access, actionGate.any)) throw new Error("USER_ACCESS_SHARED_READ_FORBIDDEN");
+    } catch (error) {
+      const message = String((error as { message?: unknown })?.message || "USER_ACCESS_UNAVAILABLE");
+      const denied = message.startsWith("USER_ACCESS_FORBIDDEN:") || message === "USER_ACCESS_SHARED_READ_FORBIDDEN";
+      const status = denied ? 403 : /profile_not_active|USER_ACCESS_PROFILE_REQUIRED|AUTH_REQUIRED/.test(message) ? 401 : 503;
+      const code = denied ? "USER_ACCESS_FORBIDDEN" : status === 401 ? "ACTIVE_PROFILE_REQUIRED" : "USER_ACCESS_UNAVAILABLE";
+      return errorResponse(denied ? "This feature is not enabled for your active profile." : "Access could not be verified. Retry when the service is available.", status, { code });
+    }
+  }
+
+  if (action === "user_access") {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+    try {
+      const actor = await resolveActiveSessionProfile(session);
+      const allowed = new Set(["action", "operation", "role", "permissions", "username", "permission_overrides", "expected_revision", "command_id"]);
+      if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("USER_ACCESS_PAYLOAD_INVALID");
+      const operation = String(payload.operation || "").trim().toLowerCase();
+      if (!["resolve", "directory", "save_role_baseline", "save_user_overrides"].includes(operation)) {
+        throw new Error("USER_ACCESS_OPERATION_INVALID");
+      }
+      const mutation = operation === "save_role_baseline" || operation === "save_user_overrides";
+      const expectedRevision = payload.expected_revision;
+      const commandId = String(payload.command_id || "").trim();
+      if (mutation && (!Number.isSafeInteger(expectedRevision) || (expectedRevision as number) < 0)) {
+        throw new Error("USER_ACCESS_REVISION_REQUIRED");
+      }
+      if (mutation && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commandId)) {
+        throw new Error("USER_ACCESS_COMMAND_REQUIRED");
+      }
+      let commandPayload: Record<string, unknown> = {};
+      if (operation === "save_role_baseline") {
+        if (typeof payload.role !== "string" || !payload.permissions || typeof payload.permissions !== "object" || Array.isArray(payload.permissions)) {
+          throw new Error("USER_ACCESS_ROLE_PAYLOAD_INVALID");
+        }
+        commandPayload = { role: payload.role, permissions: payload.permissions };
+      } else if (operation === "save_user_overrides") {
+        if (typeof payload.username !== "string" || !payload.username.trim()
+          || !payload.permission_overrides || typeof payload.permission_overrides !== "object" || Array.isArray(payload.permission_overrides)) {
+          throw new Error("USER_ACCESS_USER_PAYLOAD_INVALID");
+        }
+        commandPayload = { username: payload.username, permission_overrides: payload.permission_overrides };
+      } else if (operation === "resolve" && Object.keys(payload).some(key => key !== "action" && key !== "operation")) {
+        throw new Error("USER_ACCESS_SELF_ONLY");
+      }
+      const { data, error } = await supabase.rpc("user_access_command_v1", {
+        p_actor_profile_id: actor.id,
+        p_operation: operation,
+        p_payload: commandPayload,
+        ...(mutation ? { p_expected_revision: expectedRevision as number, p_command_id: commandId } : {})
+      } as never);
+      if (error) throw error;
+      if (data && typeof data === "object" && !Array.isArray(data) && typeof (data as Record<string, unknown>).ok === "boolean") {
+        return jsonResponse(data);
+      }
+      return jsonResponse({ ok: true, data });
+    } catch (error) {
+      const source = error as Record<string, unknown>;
+      const code = String(source.message || "USER_ACCESS_FAILED");
+      return errorResponse(code, source.code === "42501" ? 403 : /REVISION|CONFLICT|CHANGED/.test(code) ? 409 : /AUTH/.test(code) ? 401 : 400, { code });
+    }
+  }
 
   if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
   if (action === "request_recipient_directory") return await handleRequestRecipientDirectory(session, payload);
@@ -5295,8 +5469,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "set_user_preferences" || action === "live_pilot_preferences_save") {
     return await handleSetUserPreferences(session, payload);
   }
-  if (action === "eval_work") return await handleEvalWorkAction(session, payload);
-  if (action === "report_read_v2") return await handleManagerReportReadAction(session, payload);
+  if (action === "eval_work") return await handleEvalWorkAction(session, payload, canonicalAccessForRequest);
+  if (action === "report_read_v2") return await handleManagerReportReadAction(session, payload, canonicalAccessForRequest);
   if (action === "photo_history") return await handlePhotoHistoryAction(session, payload);
   if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
   if (action === "season_sales_office") return await handleSeasonSalesOfficeAction(session, payload);
@@ -5398,7 +5572,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       });
     }
   }
-  if (action === "dataset_read") return await handleDatasetRead(session, payload, req);
+  if (action === "dataset_read") return await handleDatasetRead(session, payload, req, canonicalAccessForRequest);
   if (action === "request_queue_remove") return await handleRequestQueueRemove(session, payload);
   if (action === "request_archive") return await handleRequestArchive(session, payload);
   if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);
@@ -5417,6 +5591,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         // Existing active master-inventory readers may read the single
         // current-season dependency. readAvPage pins settings to that key.
         canRead: table => hasTableReadAccess(role, table, username)
+          || (canonicalAccessForRequest?.permissions.can_access_av === true
+            && new Set(["ph_cav_import", "ph_reserves", "ph_av_notes", "ph_view_av_hot_price_keys", "ph_app_settings"]).has(table))
           || (table === "ph_app_settings" && hasTableReadAccess(role, "ph_master_inventory", username)),
         restrictRep: access.isRep && !access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username),
       });
@@ -5440,7 +5616,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       });
     }
   }
-  if (action === "inventory_read") return await handleInventoryRead(session, payload);
+  if (action === "inventory_read") return await handleInventoryRead(session, payload, canonicalAccessForRequest);
   if (action === "db") {
     if (session && session.ver >= 2) {
       return errorResponse("Native Auth sessions must use PostgREST with RLS for database access.", 410, {

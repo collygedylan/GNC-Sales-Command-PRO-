@@ -27,7 +27,7 @@
         const applied = new Map();
         const appliedKey = adapter => JSON.stringify([adapter.id, adapter.cacheKey]);
         const appliedFor = adapter => applied.get(appliedKey(adapter));
-        function rememberApplied(adapter, value, metadata) {
+        function rememberApplied(adapter, value, metadata, ctx) {
             const sourceSignature = signature(metadata, adapter.sourceKeys);
             const key = appliedKey(adapter);
             // Browse and full reads share an identity, but are distinct verified
@@ -43,13 +43,15 @@
                     && entry.sourceSignature === sourceSignature;
                 if (!coveredBrowse || otherKey === key) applied.delete(otherKey);
             }
-            applied.set(key, { id: adapter.id, value, cacheKey: adapter.cacheKey, sourceSignature,
+            applied.set(key, { id: adapter.id, value, cacheKey: adapter.cacheKey, scope: String(ctx?.scope || ''),
+                permissionVersion: String(metadata.permissionVersion || ''), sourceSignature,
                 projection: adapter.projection, projectionFamily: adapter.projectionFamily,
                 signature: JSON.stringify([adapter.cacheKey, sourceSignature]) });
             const siblings = [...applied].filter(([, entry]) => entry.id === adapter.id);
             while (siblings.length > 2) applied.delete(siblings.shift()[0]);
         }
         const requested = new Map();
+        const forcedReloads = new Map();
         let epoch = 0, scope = '', permission = '', running = null, queued = false;
         let activeRun = null, backgroundRunning = null, backgroundGeneration = 0, backgroundTimer = null, backgroundController = null;
         let pollTimer = null, signalTimer = null, signalAt = Infinity, signalReason = '', signalIdentity = '', unsubscribe = null, subscribedScope = '';
@@ -97,7 +99,7 @@
             unsubscribe = null; subscribedScope = '';
         }
         function reset() {
-            epoch++; clearTimers(); sourceGate = null; revisionChurnCounts.clear(); closeSubscription(); applied.clear(); requested.clear(); verifiedAtByIdentity.clear();
+            epoch++; clearTimers(); sourceGate = null; revisionChurnCounts.clear(); closeSubscription(); applied.clear(); requested.clear(); forcedReloads.clear(); verifiedAtByIdentity.clear();
             permission = ''; scope = ''; lastVerifiedAt = null; queued = false;
             backgroundStatus = { state: 'Waiting', lastVerifiedAt: null };
             publish('Syncing', 'Waiting to verify current data.');
@@ -109,7 +111,7 @@
                 invalidateBackground();
                 clearSourceGate();
                 revisionChurnCounts.clear();
-                epoch++; applied.clear(); requested.clear(); verifiedAtByIdentity.clear(); permission = ''; lastVerifiedAt = null;
+                epoch++; applied.clear(); requested.clear(); forcedReloads.clear(); verifiedAtByIdentity.clear(); permission = ''; lastVerifiedAt = null;
                 scope = next.scope; closeSubscription();
             }
             return { ...next, adapters: (next.adapters || []).map((adapter) => ({ ...adapter, sourceKeys: [...adapter.sourceKeys] })) };
@@ -145,7 +147,7 @@
                 || !options.retainAppliedDisplay) return false;
             const entries = (ctx.adapters || []).map(adapter => {
                 const previous = appliedFor(adapter);
-                return previous && previous.cacheKey === adapter.cacheKey ? { adapter, value: previous.value } : null;
+                return isTrustedApplied(previous, adapter, ctx) ? { adapter, value: previous.value } : null;
             });
             if (!entries.length || !entries.every(Boolean)) return false;
             options.retainAppliedDisplay(ctx, entries);
@@ -156,6 +158,32 @@
                 (ctx.adapters || []).map((item) => [item.id, item.cacheKey])];
             if (Array.isArray(ctx.previewAdapterIds)) parts.push([...ctx.previewAdapterIds].sort());
             return JSON.stringify(parts);
+        }
+        function isTrustedApplied(entry, adapter, ctx) {
+            if (!entry || entry.cacheKey !== adapter.cacheKey || entry.scope !== String(ctx?.scope || '')
+                || !entry.permissionVersion) return false;
+            if (Object.prototype.hasOwnProperty.call(ctx || {}, 'dataPermissionVersion'))
+                return !!String(ctx.dataPermissionVersion || '') && String(ctx.dataPermissionVersion) === entry.permissionVersion;
+            return true;
+        }
+        function isAuthorizationDenied(error) {
+            const status = Number(error?.status || error?.payload?.status || 0);
+            const code = String(error?.code || error?.payload?.code || error?.payload?.sqlState || '').trim().toUpperCase();
+            return [401, 403].includes(status) || ['42501', 'PGRST301', 'PGRST302', 'UNAUTHORIZED', 'FORBIDDEN', 'AUTHORIZATION_DENIED'].includes(code);
+        }
+        function discardAppliedAfterDenial(ctx, error) {
+            if (!isAuthorizationDenied(error)) return false;
+            const currentContext = options.getContext() || {};
+            if (identity(currentContext) !== identity(ctx || {})) return false;
+            applied.clear();
+            verifiedAtByIdentity.clear();
+            lastVerifiedAt = null;
+            try {
+                // This callback also clears the rendered display cache. A retained
+                // snapshot is never kept after the server has denied this identity.
+                Promise.resolve(options.onPermissionChange?.(null, { reason: 'authorization-denied' })).catch(() => {});
+            } catch (_) {}
+            return true;
         }
         function stillCurrent(ctx, startedEpoch) {
             const next = options.getContext();
@@ -528,8 +556,11 @@
             const fail = (error, adapter = null) => {
                 if (failure) return;
                 failure = error;
+                const permissionDenied = discardAppliedAfterDenial(ctx, error);
                 suspendForSourceReadiness(error, adapter, before, ctx);
-                if (current()) emit('Needs attention', error?.message || String(error));
+                if (current()) emit('Needs attention', error?.message || String(error), permissionDenied
+                    ? { status: Number(error?.status || error?.payload?.status || 0), code: String(error?.code || error?.payload?.code || '').toUpperCase(), authorizationDenied: true }
+                    : {});
                 run.controller?.abort(error);
             };
             if (changed.length) {
@@ -584,7 +615,7 @@
                     if (!current()) {
                         return discard('View settings changed; verifying the updated selection.');
                     }
-                    staged.forEach(({ adapter, value }) => rememberApplied(adapter, value, after));
+                    staged.forEach(({ adapter, value }) => rememberApplied(adapter, value, after, ctx));
                     staged.forEach(({ adapter, value }) => {
                         try { Promise.resolve(options.writeCachedSnapshot?.(adapter, value, cacheMeta(adapter, ctx, after))).catch(() => {}); }
                         catch (error) { /* Cache persistence must not invalidate an authoritative commit. */ }
@@ -668,7 +699,15 @@
                     activeRun = run;
                     try { result = await cycle(run); }
                     catch (error) {
-                        if (epoch === run.epoch && stillCurrent(run.context || {}, run.epoch)) publish('Needs attention', error.message || String(error), { contextKey: identity(run.context || {}) });
+                        if (epoch === run.epoch && stillCurrent(run.context || {}, run.epoch)) {
+                            const permissionDenied = discardAppliedAfterDenial(run.context, error);
+                            publish('Needs attention', error.message || String(error), {
+                                contextKey: identity(run.context || {}),
+                                ...(permissionDenied ? { status: Number(error?.status || error?.payload?.status || 0),
+                                    code: String(error?.code || error?.payload?.code || error?.payload?.sqlState || '').toUpperCase(),
+                                    authorizationDenied: true } : {})
+                            });
+                        }
                         result = false;
                     }
                 }
@@ -706,7 +745,17 @@
         function ensure(adapter, force = false) {
             const ctx = context();
             if (!ctx?.scope || ctx.visible === false || ctx.online === false) return Promise.resolve(false);
-            const wasApplied = appliedFor(adapter)?.cacheKey === adapter.cacheKey;
+            const ensureEpoch = epoch;
+            const ensureKey = appliedKey(adapter);
+            if (force && forcedReloads.has(ensureKey)) return forcedReloads.get(ensureKey);
+            const appliedEntry = appliedFor(adapter);
+            const hasCurrentPermissionSnapshot = Object.prototype.hasOwnProperty.call(ctx, 'dataPermissionVersion');
+            if (appliedEntry && appliedEntry.scope === String(ctx.scope)
+                && hasCurrentPermissionSnapshot && !isTrustedApplied(appliedEntry, adapter, ctx)) {
+                applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
+                try { Promise.resolve(options.onPermissionChange?.(String(ctx.dataPermissionVersion || ''), { reason: 'access-snapshot-changed' })).catch(() => {}); } catch (_) {}
+            }
+            const wasApplied = isTrustedApplied(appliedFor(adapter), adapter, ctx);
             if (!force && wasApplied) {
                 const contextKey = identity(ctx);
                 const verifiedAt = verifiedAtByIdentity.get(contextKey);
@@ -716,13 +765,21 @@
                 signal('cache-expired', 0);
                 return Promise.resolve(true);
             }
-            if (force) applied.delete(appliedKey(adapter));
             if (running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === identity(ctx)
                 && (!force || !wasApplied) && activeRun.adapters?.some(item => item.id === adapter.id && item.cacheKey === adapter.cacheKey)) {
-                return running.then(() => appliedFor(adapter)?.cacheKey === adapter.cacheKey);
+                return running.then(() => isTrustedApplied(appliedFor(adapter), adapter, options.getContext() || {}));
             }
+            // Invalidate freshness without dropping the same-owner display value.
+            // A forced loader must reapply its adapter even at an unchanged revision.
+            if (force && appliedFor(adapter)) appliedFor(adapter).signature = null;
             requested.set(adapter.id, adapter);
-            return check('loader').then((ok) => ok && appliedFor(adapter)?.cacheKey === adapter.cacheKey);
+            const result = check('loader').then(() => epoch === ensureEpoch
+                && isTrustedApplied(appliedFor(adapter), adapter, options.getContext() || {}));
+            if (force) {
+                forcedReloads.set(ensureKey, result);
+                result.finally(() => { if (forcedReloads.get(ensureKey) === result) forcedReloads.delete(ensureKey); });
+            }
+            return result;
         }
         function suspend() { epoch++; clearTimers(); closeSubscription(); queued = false; }
         return Object.freeze({ check, signal, ensure, reset, suspend, retainDisplay,

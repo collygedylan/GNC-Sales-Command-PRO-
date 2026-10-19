@@ -1,4 +1,5 @@
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './inventory-list-read-fixture.mjs';
+import { createDefaultV2311CanonicalAccessFixture, installV2311CanonicalAccessRoute } from './v2311-canonical-access.mjs';
 
 export const hlUserId = '54c87ebf-d76d-452b-96b4-beaaeb1742d9';
 export const hlRecipient = 'dylan_collyge@greenleafnursery.com';
@@ -842,6 +843,9 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   });
   // Install specialized routes after the catch-all and before navigation.
   // Keep interception stable while the compiled runtime starts.
+  const canonicalAccessFixture = options.canonicalAccessFixture || createDefaultV2311CanonicalAccessFixture({ username, role });
+  control.canonicalAccessFixture = canonicalAccessFixture;
+  await installV2311CanonicalAccessRoute(page, baseURL, canonicalAccessFixture);
   if (options.beforeNavigate) await options.beforeNavigate(control);
   await page.addInitScript((value) => {
     if (value.startupMode === 'cold') {

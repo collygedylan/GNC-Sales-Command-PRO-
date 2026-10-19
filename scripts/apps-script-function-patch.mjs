@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { parse } from 'acorn';
 
 const fingerprint = 'APPS_SCRIPT_DEPLOYMENT_COMMIT_';
+const additiveEmailHandler = 'handleSignedInventoryReclassMoveDelivery_';
 const fail = code => { throw new Error(`APPS_SCRIPT_FUNCTION_PATCH_${code}`); };
 const digest = source => createHash('sha256').update(source).digest('hex');
 
@@ -27,16 +28,24 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
   if (!Array.isArray(functionNames) || !functionNames.length
     || new Set(functionNames).size !== functionNames.length
     || functionNames.some(name => !/^[A-Za-z_$][\w$]*$/.test(name)
-      || (!/SuspendTag/i.test(name) && name !== 'handleSignedRequestDeliveryEvent_'))) fail('ALLOWLIST_INVALID');
-  const remote = boundaries(remoteSource, functionNames);
+      || (!/SuspendTag/i.test(name) && name !== 'handleSignedRequestDeliveryEvent_' && name !== additiveEmailHandler))) fail('ALLOWLIST_INVALID');
+  // Only this authorized additive handler may be absent remotely. All existing
+  // source bytes stay intact; stage a placeholder at EOF, then use the same
+  // parsed-function replacement and protected-source comparison below.
+  let preparedRemote = remoteSource;
+  let remote = boundaries(preparedRemote, functionNames);
+  if (functionNames.includes(additiveEmailHandler) && !remote.has(additiveEmailHandler)) {
+    preparedRemote += '\n\nfunction ' + additiveEmailHandler + '() {}\n';
+    remote = boundaries(preparedRemote, functionNames);
+  }
   const local = boundaries(localSource, functionNames);
   const names = [...functionNames, fingerprint];
   for (const name of names) if (!local.has(name) || !remote.has(name)) fail('FUNCTION_MISSING');
   const changes = names.map(name => ({ name, ...remote.get(name),
     replacement: localSource.slice(local.get(name).start, local.get(name).end) }))
     .sort((a, b) => b.start - a.start);
-  let merged = remoteSource;
-  let protectedSource = remoteSource;
+  let merged = preparedRemote;
+  let protectedSource = preparedRemote;
   for (const change of changes) {
     merged = merged.slice(0, change.start) + change.replacement + merged.slice(change.end);
     protectedSource = protectedSource.slice(0, change.start) + `/* authorized:${change.name} */` + protectedSource.slice(change.end);

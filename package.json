@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.10",
+  "version": "2.3.11",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -135,6 +135,8 @@
   "appsScriptRelease": "AgData v2.2.1",
   "appsScriptPatchFunctions": [
     "buildSuspendTagApprovalEmail_",
-    "handleSignedSuspendTagDelivery_"
+    "handleSignedSuspendTagDelivery_",
+    "handleSignedInventoryReclassMoveDelivery_",
+    "handleSignedRequestDeliveryEvent_"
   ]
 }

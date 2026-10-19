@@ -21060,6 +21060,7 @@ function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
   if (eventType === 'suspend_tag_approval_requested' || eventType === 'suspend_tag_approval_decided') return handleSignedSuspendTagDelivery_(delivery);
+  if (eventType === 'inventory_reclass_move_completed') return handleSignedInventoryReclassMoveDelivery_(delivery);
   if (eventType === 'hl_order_submission' || eventType === 'hl_order_cancellation') return handleSignedHlOrderDelivery_(delivery);
   if (eventType === 'bunch_note_submission') return handleSignedBunchNoteDelivery_(delivery);
   if (eventType === 'field_count_completion') return handleSignedFieldCountDelivery_(delivery);
@@ -21163,6 +21164,117 @@ function handleSignedRequestDeliveryEvent_(payload) {
   } finally {
     deliveryLock.releaseLock();
   }
+}
+
+function handleSignedInventoryReclassMoveDelivery_(delivery) {
+  if (!delivery || !delivery.eventId || !delivery.eventKey || !delivery.leaseToken || !delivery.messageIdHeader) {
+    throw new Error('INVENTORY_RECLASS_MOVE_DELIVERY_INVALID');
+  }
+  const eventId = String(delivery.eventId);
+  const eventKey = String(delivery.eventKey);
+  const messageIdHeader = String(delivery.messageIdHeader);
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuid.test(eventId) || !/^[0-9a-f-]{36}$/i.test(String(delivery.leaseToken))
+    || eventKey.length > 512 || !/^inventory-reclass-move-completed:[0-9a-f-]{36}:[A-Za-z0-9:_.-]{12,180}$/i.test(eventKey)) {
+    throw new Error('INVENTORY_RECLASS_MOVE_DELIVERY_INVALID');
+  }
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, eventKey, Utilities.Charset.UTF_8);
+  const expectedMessageId = '<gnc-' + digest.map(function(byte) { return ('0' + (byte & 255).toString(16)).slice(-2); }).join('').slice(0, 40)
+    + '@request-delivery.agdatasolutions.local>';
+  if (messageIdHeader !== expectedMessageId) throw new Error('INVENTORY_RECLASS_MOVE_DELIVERY_INVALID');
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('REQUEST_DELIVERY_BUSY');
+  try {
+    const saved = getRequestDeliveryReceipt_(messageIdHeader) || findSentRequestDeliveryByMessageId_(messageIdHeader);
+    if (saved) {
+      saveRequestDeliveryReceipt_(messageIdHeader, saved);
+      return Object.assign({ ok: true, mode: 'gmail_api_idempotent_recovery', recipients: [] }, saved, { messageIdHeader: messageIdHeader });
+    }
+    const props = PropertiesService.getScriptProperties();
+    const intentKey = 'inventory_reclass_move_send:' + messageIdHeader;
+    if (props.getProperty(intentKey)) throw new Error('INVENTORY_RECLASS_MOVE_EMAIL_RECONCILIATION_REQUIRED');
+
+    // Re-read the leased delivery payload from the database; the signed worker
+    // envelope only supplies identifiers and is never the email-content source.
+    const verified = requestDeliveryRest_('rpc/prepare_inventory_reclass_move_delivery_v1', 'POST', '', {
+      p_event_id: eventId, p_lease_token: String(delivery.leaseToken)
+    });
+    const commandId = String(verified && verified.commandId || '');
+    const requestId = String(verified && verified.requestId || '');
+    const actorId = String(verified && verified.actorProfileId || '');
+    if (!verified || verified.contractVersion !== 'inventory-reclass-move-completed-v1'
+      || !commandId || !requestId || !actorId || !uuid.test(requestId) || !uuid.test(actorId)
+      || String(delivery.requestId || '') !== requestId
+      || eventKey !== 'inventory-reclass-move-completed:' + actorId + ':' + commandId
+      || !/^[A-Za-z0-9:_.-]{12,180}$/.test(commandId)) {
+      throw new Error('INVENTORY_RECLASS_MOVE_RECEIPT_INVALID');
+    }
+    const moves = verified.moves;
+    const rawRecipients = verified.deliveryRecipients;
+    const actorEmail = normalizeEmailAddress_(verified.actorEmail);
+    if (!Array.isArray(moves) || moves.length < 1 || moves.length > 100
+      || !Array.isArray(rawRecipients) || rawRecipients.length < 1 || rawRecipients.length > 8
+      || !actorEmail || rawRecipients.some(function(email) { return typeof email !== 'string' || !isLikelyEmailAddress_(email); })) {
+      throw new Error('INVENTORY_RECLASS_MOVE_DELIVERY_INVALID');
+    }
+    const recipients = dedupeEmailAddresses_(rawRecipients);
+    if (recipients.length !== rawRecipients.length || recipients.indexOf(actorEmail) < 0) {
+      throw new Error('INVENTORY_RECLASS_MOVE_RECIPIENTS_INVALID');
+    }
+    const routed = resolveOperationalEmailHeaders_(recipients, [], []).to;
+    if (routed.length !== recipients.length || recipients.some(function(email) { return routed.indexOf(email) < 0; })) {
+      throw new Error('INVENTORY_RECLASS_MOVE_RECIPIENT_CHANGED');
+    }
+
+    function clean(value, max) {
+      return String(value == null ? '' : value).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+    }
+    function renderMove(move, index) {
+      if (!move || typeof move !== 'object' || !['move_up', 'move_down'].includes(String(move.direction || ''))
+        || !move.source || !move.destination || !Number.isFinite(Number(move.quantity)) || Number(move.quantity) <= 0) {
+        throw new Error('INVENTORY_RECLASS_MOVE_ROW_INVALID');
+      }
+      const source = move.source;
+      const destination = move.destination;
+      const sourceText = [source.commonname, source.contsize, source.itemcode, source.season, source.lotcode, source.locationcode]
+        .map(function(value) { return clean(value, 180); }).filter(Boolean).join(' · ');
+      const destinationText = [destination.commonname, destination.contsize, destination.itemcode, destination.season, destination.lotcode, destination.locationcode]
+        .map(function(value) { return clean(value, 180); }).filter(Boolean).join(' · ');
+      return { label: 'Move ' + (index + 1) + ' (' + (move.direction === 'move_up' ? 'up' : 'down') + ')',
+        quantity: clean(move.quantity, 32), source: sourceText, destination: destinationText };
+    }
+    const rows = moves.map(renderMove);
+    const actorDisplay = clean(verified.actorDisplayName || verified.actorUsername, 120) || 'AgData user';
+    const subject = ('GNC PH Reclass move completed - ' + actorDisplay + ' - ' + commandId).replace(/[\r\n]+/g, ' ').slice(0, 220);
+    const textLines = ['GNC PH Reclass move completed', 'Completed by: ' + actorDisplay, 'Command: ' + commandId, 'Revision: ' + clean(verified.revision, 32), ''];
+    rows.forEach(function(row) {
+      textLines.push(row.label + ': ' + row.quantity, 'Source: ' + row.source, 'Destination: ' + row.destination, '');
+    });
+    const html = '<div style="font-family:Arial,sans-serif"><h2>GNC PH Reclass move completed</h2><p><strong>Completed by:</strong> '
+      + escapeEmailHtml_(actorDisplay) + '<br><strong>Command:</strong> ' + escapeEmailHtml_(commandId)
+      + '<br><strong>Revision:</strong> ' + escapeEmailHtml_(clean(verified.revision, 32)) + '</p><table cellpadding="6" cellspacing="0" style="border-collapse:collapse">'
+      + '<thead><tr><th align="left">Move</th><th align="left">Qty</th><th align="left">Source</th><th align="left">Destination</th></tr></thead><tbody>'
+      + rows.map(function(row) { return '<tr><td>' + escapeEmailHtml_(row.label) + '</td><td>' + escapeEmailHtml_(row.quantity)
+        + '</td><td>' + escapeEmailHtml_(row.source) + '</td><td>' + escapeEmailHtml_(row.destination) + '</td></tr>'; }).join('')
+      + '</tbody></table></div>';
+    props.setProperty(intentKey, new Date().toISOString());
+    let result;
+    try {
+      result = sendGmailApiMessage_({ toList: recipients.join(','), toArray: recipients, requiredRecipientEmails: recipients,
+        fromName: 'GNC PH Reclass', fromAddress: resolveAutomatedEmailSenderAddress_(), subject: subject,
+        textBody: textLines.join('\n'), htmlBody: html, messageIdHeader: messageIdHeader });
+    } catch (error) {
+      const status = Number(error && (error.code || (error.details && error.details.code)));
+      if ([400, 401, 403, 404, 429].indexOf(status) >= 0) props.deleteProperty(intentKey);
+      throw error;
+    }
+    if (!result || !result.gmailMessageId) throw new Error('INVENTORY_RECLASS_MOVE_EMAIL_RECONCILIATION_REQUIRED');
+    result.messageIdHeader = messageIdHeader;
+    saveRequestDeliveryReceipt_(messageIdHeader, result);
+    props.deleteProperty(intentKey);
+    return result;
+  } finally { lock.releaseLock(); }
 }
 
 function updateRequestDeliveryEvent_(eventId, patch) {

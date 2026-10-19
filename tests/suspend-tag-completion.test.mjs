@@ -20,7 +20,8 @@ const button = () => ({ innerHTML: 'Done', disabled: false, classList: { add() {
 const acknowledgement = (changes = {}) => ({ ok: true, row: { unique_id: 'soc-1', last_updated: revision, date_completed: '2026-09-08T16:00:00Z', suspend_tag_version: 1, suspend_tag_status: 'completed', ...changes } });
 function harness(options = {}) {
   const storage = options.storage || new Map();
-  const calls = [], toasts = [];
+  const calls = [], toasts = [], documentListeners = new Map();
+  let confirmCalls = 0, openUpdateCalls = 0;
   const row = source();
   const mirror = { ...row, UNIQUE_ID: 'dock_suspend_dc_soc-1', DOCK_SUSPEND_SOURCE_UID: row.UNIQUE_ID };
   const ctx = {
@@ -29,6 +30,10 @@ function harness(options = {}) {
     suspendTagCompletionActions: new Set(),
     crypto: { randomUUID: () => `a0000000-0000-4000-8000-${String(storage.size + 1).padStart(12, '0')}` },
     console: { warn() {} },
+    document: {
+      addEventListener: (name, listener, capture) => documentListeners.set(name, { listener, capture }),
+      querySelectorAll: () => [],
+    },
     localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
     normalizeSessionIdentity: (value) => String(value || '').trim().toLowerCase(),
     esc: (value) => String(value ?? ''),
@@ -36,6 +41,7 @@ function harness(options = {}) {
     firstNonEmptyValue: (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim()) ?? '',
     canCurrentUserViewDockSuspendDcRequests: () => ctx.allowed,
     canCurrentUserWorkRequestItem: () => ctx.allowed,
+    canonicalFeaturePermission: (flag) => options.canonicalPermissions?.[flag] ?? null,
     canUseProductionLiveSync: () => options.live === true,
     AbortController,
     productionLiveSyncNavigation: new AbortController(),
@@ -56,7 +62,7 @@ function harness(options = {}) {
     findDockSuspendDcRequestMirrorRowByUniqueId: () => mirror,
     isDockSuspendDcRequestMirrorRow: (item) => Boolean(item?.DOCK_SUSPEND_SOURCE_UID),
     getDockSuspendDcRequestGroupParts: () => ({}),
-    showAppConfirm: async () => options.confirm !== false,
+    showAppConfirm: async () => { confirmCalls += 1; return options.confirm !== false; },
     showToast: (...args) => toasts.push(args),
     getDetailRowWriteTimeoutMs: () => 1000,
     postAppFunctionJson: async (_url, body) => {
@@ -67,7 +73,7 @@ function harness(options = {}) {
       return { ok: true, data: result };
     },
     APP_API_FUNCTION_URL: 'https://example.invalid', normalizeRowPhotoFields() {}, buildSearchIndex() {},
-    getDockSuspendDcRequestCompletionReadiness: () => ({ ready: options.ready !== false, missing: ['photo'] }), openDockSuspendDcRequestUpdate() {},
+    getDockSuspendDcRequestCompletionReadiness: () => ({ ready: options.ready !== false, missing: ['photo'] }), openDockSuspendDcRequestUpdate() { openUpdateCalls += 1; },
     applyDockSuspendDcRequestHandledState: (item, at) => { item.DATE_COMPLETED = at; item.date_completed = at; },
     refreshLocalDockSuspendDcRequestState() {}, markViewDirty() {},
     queueSuspendTagInventoryReconciliation() {},
@@ -90,7 +96,7 @@ function harness(options = {}) {
   vm.runInContext(readFileSync(new URL('../assets/queue-completion-state.js', import.meta.url), 'utf8'), ctx);
   const completions = between('let queueCompletionState = null;', 'function trackOptimisticCompletedRows(');
   vm.runInContext(`${completions}\n${workflow}\n${helpers}\n${handler}`, ctx);
-  return { ctx, row, mirror, calls, toasts, storage };
+  return { ctx, row, mirror, calls, toasts, storage, documentListeners, get confirmCalls() { return confirmCalls; }, get openUpdateCalls() { return openUpdateCalls; } };
 }
 
 test('card Email completes its exact row then queues approval without confirmation or hiding it', async () => {
@@ -138,7 +144,7 @@ test('Email updates replacement card buttons while busy and releases only the sa
     removeAttribute(name) { this.attributes.delete(name); },
     getAttribute(name) { return this.attributes.get(name) ?? null; } });
   const replacementActions = [makeAction(), makeAction()];
-  h.ctx.document = { querySelectorAll: selector => selector === '#request-content [data-request-uid]' ? [{
+  h.ctx.document = { addEventListener() {}, querySelectorAll: selector => selector === '#request-content [data-request-uid]' ? [{
     getAttribute: name => name === 'data-request-uid' ? h.mirror.UNIQUE_ID : null,
     querySelectorAll: () => replacementActions,
   }] : [] };
@@ -325,7 +331,7 @@ test('Done applies canonical inventory evidence and removes the row from the act
   assert.equal(h.ctx.isOptimisticallyCompletedRow(h.mirror), true);
 });
 
-test('Complete Tag waits for confirmation, permits pending approval, and removes eligibility without emailing', async () => {
+test('Complete Tag is direct, permits pending approval, and removes eligibility without emailing', async () => {
   let finish;
   const h = harness({ live: true, proof: false, api: () => new Promise(resolve => { finish = resolve; }) });
   h.ctx.remoteRow.suspend_tag_status = h.mirror.suspend_tag_status = 'awaiting_rep';
@@ -336,12 +342,43 @@ test('Complete Tag waits for confirmation, permits pending approval, and removes
   assert.equal(h.row.SUSPEND, 'SUSPEND');
   await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
   assert.deepEqual(h.calls.map(call => call.name), ['rows', 'close']);
+  assert.equal(h.confirmCalls, 0);
+  assert.equal(h.openUpdateCalls, 0);
   finish(acknowledgement({ suspend: null, suspend_to: null }));
   await pending;
   assert.equal(h.row.SUSPEND, null);
   assert.equal(h.mirror.SUSPEND_TO, null);
   assert.equal(action.disabled, false);
   assert.ok(h.toasts.some(([title]) => title === 'Tag Complete'));
+});
+
+test('Suspend card actions use delegated data-action buttons and preserve nested press guards', () => {
+  const h = harness();
+  const markup = h.ctx.buildSuspendTagActions(h.mirror, 'data-fast-press-ignore onpointerdown="return stopNestedCardActionPress(event)"');
+  assert.match(markup, /data-action="email-tag"/);
+  assert.match(markup, /data-action="complete-tag"/);
+  assert.match(markup, /data-fast-press-ignore onpointerdown=/);
+  assert.doesNotMatch(markup, /\sonclick=/);
+  const registration = h.documentListeners.get('click');
+  assert.equal(registration?.capture, true);
+  assert.equal(typeof registration?.listener, 'function');
+  const dispatches = [];
+  h.ctx.closeDockSuspendDcRequestFromCard = (id, target) => { dispatches.push([id, target]); return false; };
+  const actionButton = {
+    disabled: false,
+    getAttribute: name => ({ 'data-unique-id': h.mirror.UNIQUE_ID, 'data-action': 'complete-tag' })[name] || null,
+  };
+  let prevented = false, stopped = false, immediateStopped = false;
+  registration.listener({
+    target: { closest: selector => selector.includes('.app-suspend-tag-actions') ? actionButton : null },
+    preventDefault() { prevented = true; },
+    stopPropagation() { stopped = true; },
+    stopImmediatePropagation() { immediateStopped = true; },
+  });
+  assert.equal(dispatches.length, 1);
+  assert.equal(dispatches[0][0], h.mirror.UNIQUE_ID);
+  assert.equal(dispatches[0][1], actionButton);
+  assert.deepEqual([prevented, stopped, immediateStopped], [true, true, true]);
 });
 
 test('lost close response retries its receipt even after the row leaves the eligible dataset', async () => {
@@ -374,6 +411,8 @@ test('Complete Tag retains the card when uploads fail, data is incomplete, or th
     assert.equal(h.row.SUSPEND, 'SUSPEND');
     assert.equal(h.calls.filter(call => call.name === 'close').length, scenario === 'conflict' ? 1 : 0);
     assert.ok(!h.toasts.some(([title]) => title === 'Tag Complete'));
+    assert.equal(h.openUpdateCalls, 0, 'incomplete details must not open a summary/detail modal from the card action');
+    assert.equal(h.confirmCalls, 0, 'Complete Tag must not show a confirmation modal');
   }
 });
 

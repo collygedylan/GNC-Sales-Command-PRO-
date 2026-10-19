@@ -660,16 +660,45 @@ test('canceling confirmation retains the row and makes no completion request', {
   app.assertClean();
 });
 
-test('Complete Tag saves and removes the row from the active Suspend view', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
-  const app = await harness(page, baseURL!);
+test('Complete Tag saves and removes the row from the active Suspend view', {"tag":["@suspend-tag","@v2311-workflow"]}, async ({ page, baseURL }, info) => {
+  const representativeRows=Array.from({length:1000},(_,index)=>({...fixtures[index%2],UNIQUE_ID:'browser-suspend-'+(index+1)}));
+  const app = await harness(page, baseURL!, representativeRows);
   const row = app.backendRows[0];
   const uniqueId = row.UNIQUE_ID;
+  let release!: () => void;
+  app.replies.push({ operation:'close', wait:new Promise<void>(resolve => { release=resolve; }) });
   await app.showStatus('active');
   await expect(app.card(row)).toBeVisible();
-  await app.activate(app.done(row));
+  await page.evaluate(uid => {
+    const selector='#request-content [data-request-uid="dock_suspend_dc_'+uid+'"]';
+    const probe={started:0,domMs:-1,paintMs:-1};
+    Object.assign(window,{__v2311CompleteTagProbe:probe});
+    window.addEventListener('click', event => {
+      if (!(event.target instanceof Element) || !event.target.closest(selector+' [data-action="complete-tag"]')) return;
+      probe.started=performance.now();
+      const observer=new MutationObserver(() => {
+        if(document.querySelector(selector))return;
+        probe.domMs=performance.now()-probe.started;observer.disconnect();
+        requestAnimationFrame(()=>{probe.paintMs=performance.now()-probe.started;});
+      });
+      observer.observe(document.getElementById('request-content')!,{childList:true,subtree:true});
+    },{capture:true,once:true});
+  }, uniqueId);
+  try {
+    await app.activate(app.done(row));
+    await expect(app.card(row)).toHaveCount(0);
+    await expect(page.locator('#request-open-info-modal')).toBeHidden();
+    await expect(page.locator('#view-detail')).toBeHidden();
+    await expect(page.locator('#app-prompt-dialog')).toBeHidden();
+    expect(app.backendRows.find(candidate=>candidate.UNIQUE_ID===uniqueId)?.SUSPEND_TAG_STATUS).toBe('pending');
+    await expect(page.locator('[data-request-category="suspend-tag"]')).toContainText('999');
+    await page.waitForFunction(()=>Number((window as Window & {__v2311CompleteTagProbe?:{paintMs:number}}).__v2311CompleteTagProbe?.paintMs)>=0);
+    const metric=await page.evaluate(()=>(window as Window & {__v2311CompleteTagProbe?:{domMs:number;paintMs:number}}).__v2311CompleteTagProbe!);
+    await info.attach('v2311-optimistic-completion.json',{body:JSON.stringify({...metric,rows:1000,environment:info.project.name,cache:'warm',backendAcknowledgmentHeld:true}),contentType:'application/json'});
+    expect(metric.domMs).toBeLessThan(50);expect(metric.paintMs).toBeLessThan(50);
+  } finally { release(); }
   await expect.poll(() => app.requests.map(request => request.body.operation)).toEqual(['close']);
-  await expect(app.card(row)).toHaveCount(0);
-  expect(app.backendRows.find(candidate => candidate.UNIQUE_ID === uniqueId)?.SUSPEND_TAG_STATUS).toBe('completed');
+  await expect.poll(()=>app.backendRows.find(candidate=>candidate.UNIQUE_ID===uniqueId)?.SUSPEND_TAG_STATUS).toBe('completed');
   app.assertClean();
 });
 
@@ -895,6 +924,36 @@ test('detail Mark Done stays in detail until the global save is confirmed, then 
   await expect.poll(() => page.evaluate(() => window.eval('Object.keys(getDockSuspendCompletionState().receipts).length'))).toBe(1);
   expect(app.backendRows[0].DOCK_SPEC).toBe('24');
   expect(String(app.backendRows[0].MATCH)).toBe('80');
+  app.assertClean();
+});
+
+test('v2311 Item Detail uses shared AV options and saves a note without spec or caliper', {tag:['@v2311-workflow']}, async ({page,baseURL})=>{
+  const app=await harness(page,baseURL!);
+  await page.evaluate(rows=>{
+    Object.assign(window,{__v2311DetailMaster:rows.map(row=>({...row,UNIQUE_ID:'master-'+row.UNIQUE_ID,SPEC:'',CALIPER:''}))});
+    window.eval('processAndLoadData({data:window.__v2311DetailMaster,_fromCache:true}); const master=getDatasetState("master"); master.initialLoaded=master.fullLoaded=true; master.fieldCoverage="full"; master.rowCompleteness="complete";');
+  },fixtures);
+  await page.evaluate(()=>window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
+  await expect(page.locator('#request-open-info-modal')).toBeVisible();
+  await app.activate(page.locator('#request-open-info-ok'));
+  await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+  await page.waitForFunction(()=>!(window as any).isDetailTransitionActive());
+  await expect(page.locator('#req-spec')).toHaveValue('');
+  await expect(page.locator('#req-caliper')).toHaveValue('');
+  await expect.poll(()=>page.evaluate(()=>window.eval('getRequestSharedInventoryOptionRows(activeItem).length'))).toBeGreaterThan(0);
+  await expect(page.locator('#view-detail')).not.toContainText('Could not load AV options right now.');
+  const avHeader=page.locator('#detail-av-options-panel .request-av-options-header');
+  await app.activate(avHeader);
+  await expect(page.locator('#detail-av-options-panel [data-request-itemcode-option-card]')).toHaveCount(1);
+  await app.activate(avHeader);
+  await page.locator('#req-av-note').fill('UPDATED NOTE WITHOUT SPEC');
+  if(await page.locator('.request-av-note-sheet__close').isVisible())await app.activate(page.locator('.request-av-note-sheet__close'));
+  await app.activate(page.locator('#req-btn-save-complete'));
+  await expect.poll(()=>app.backendRows[0].SUSPEND_TAG_STATUS).toBe('completed');
+  expect(app.backendRows[0].AV_NOTE).toBe('UPDATED NOTE WITHOUT SPEC');
+  await expect(page.locator('#view-detail')).toBeHidden();
+  await expect(app.card()).toHaveCount(0);
+  await expect(page.locator('#toast-notification')).not.toContainText('Spec and caliper are blank');
   app.assertClean();
 });
 

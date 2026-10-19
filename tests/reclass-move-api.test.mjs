@@ -19,10 +19,11 @@ test('Reclass API binds the authenticated actor and forwards the bounded atomic 
   assert.equal(result.commandId, command.commandId);
   assert.equal(result.importStatus, 'pending');
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].name, 'apply_inventory_reclass_moves_v1');
+  assert.equal(calls[0].name, 'apply_inventory_reclass_moves_with_delivery_v1');
   assert.equal(calls[0].params.p_actor_id, actor.id);
   assert.equal(calls[0].params.p_command_id, command.commandId);
   assert.deepEqual(calls[0].params.p_moves[0].source, source);
+  assert.equal(calls[0].params.p_receipt_encoding, null);
   await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile: actor,
     payload: { ...command, actorId: 'attacker' } }), /PAYLOAD_INVALID/);
 });
@@ -51,9 +52,10 @@ test('Reclass compact transport is an additive RPC adapter and preserves receipt
   const supabase = { rpc: async (name, params) => { calls.push({ name, params }); return { data: compact, error: null }; } };
   const compactCommand = { ...command, receiptEncoding: 'master-null-elision-v1' };
   const result = await handleInventoryReclassMove({ supabase, actorProfile: actor, payload: compactCommand });
-  assert.equal(calls[0].name, 'apply_inventory_reclass_moves_compact_v1');
+  assert.equal(calls[0].name, 'apply_inventory_reclass_moves_with_delivery_v1');
   assert.equal(result.rowEncoding, 'master-null-elision-v1');
   assert.equal(result.importStatus, 'pending');
+  assert.equal(calls[0].params.p_receipt_encoding, 'master-null-elision-v1');
   const status = await handleInventoryReclassMove({ supabase, actorProfile: actor,
     payload: { action: 'inventory_reclass_move', operation: 'status', commandId: command.commandId,
       receiptEncoding: 'master-null-elision-v1' } });

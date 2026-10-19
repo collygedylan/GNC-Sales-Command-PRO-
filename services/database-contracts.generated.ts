@@ -85214,6 +85214,60 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "apply_inventory_reclass_moves_with_delivery_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_moves": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_receipt_encoding": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "apply_inventory_transaction_v1": {
       "oneOf": [
         {
@@ -89908,6 +89962,30 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "prepare_inventory_reclass_move_delivery_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_event_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_lease_token": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "prepare_transactions_keyed_import": {
       "oneOf": [
         {
@@ -93317,6 +93395,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "apply_inventory_reclass_moves_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "apply_inventory_reclass_moves_with_delivery_v1": {
       "oneOf": [
         "json"
       ]
@@ -99787,6 +99870,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "prepare_suspend_tag_delivery_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "prepare_inventory_reclass_move_delivery_v1": {
       "oneOf": [
         "json"
       ]

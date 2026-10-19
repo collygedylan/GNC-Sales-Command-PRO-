@@ -383,6 +383,33 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           continue;
         }
 
+        if (eventType === "inventory_reclass_move_completed") {
+          const { data: prepared, error } = await supabase.rpc("prepare_inventory_reclass_move_delivery_v1", {
+            p_event_id: eventId, p_lease_token: leaseToken,
+          });
+          if (error) throw new Error(`INVENTORY_RECLASS_MOVE_PREPARE_FAILED:${error.code || "unknown"}`);
+          const payload = asJsonRecord(prepared);
+          const recipients = Array.isArray(payload.deliveryRecipients) ? payload.deliveryRecipients : [];
+          const moves = Array.isArray(payload.moves) ? payload.moves : [];
+          if (payload.contractVersion !== "inventory-reclass-move-completed-v1" || recipients.length < 1 || recipients.length > 8
+            || recipients.some(email => typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+            || moves.length < 1 || moves.length > 100) throw new Error("INVENTORY_RECLASS_MOVE_DELIVERY_INVALID");
+          event.payload = payload;
+          const result = await callAppsScript(event, [], null);
+          if (!result.gmailMessageId || result.messageIdHeader !== await stableMessageId(String(event.event_key || event.event_id))) {
+            throw new Error("INVENTORY_RECLASS_MOVE_EMAIL_RECEIPT_MISSING");
+          }
+          channelResults.email = {
+            delivered_at: new Date().toISOString(), recipients: Array.isArray(result.recipients) ? result.recipients : recipients,
+            gmail_message_id: result.gmailMessageId, thread_id: result.threadId || "",
+            message_id: result.messageId || "", message_id_header: result.messageIdHeader, mode: result.mode || "gmail_api",
+          };
+          await recordChannels(eventId, leaseToken, { email: channelResults.email });
+          await finishEvent(eventId, leaseToken, channelResults);
+          delivered += 1;
+          continue;
+        }
+
         if (["suspend_tag_approval_requested", "suspend_tag_approval_decided"].includes(eventType)) {
           const { data: prepared, error } = await supabase.rpc("prepare_suspend_tag_delivery_v1", { p_event_id: eventId, p_lease_token: leaseToken });
           if (error) throw new Error(error.message);

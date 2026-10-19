@@ -9899,3 +9899,162 @@ body.ops-precision-pilot.current-view-request #request-filter-toolbar {
   line-height: 1.5;
   margin-top: 4px;
 }
+
+/* Shared Bloom card contract: title/photo/index share one stable header, while
+   the six inventory metrics remain a single readable row. */
+#bloom-picker-actions-list:not(.hidden) {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scrollbar-width: thin;
+}
+#bloom-picker-actions-list > :is(button, div) { flex: 0 0 auto !important; }
+#bloom-picker-actions-list > div > button { min-width: 72px; min-height: 52px; }
+.app-bloom-card-header {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+}
+.app-bloom-card-photo {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  overflow: hidden;
+  border: 1px solid var(--ops-photo-border, #b8d4c4);
+  border-radius: 9px;
+  background: var(--ops-photo-placeholder, #e8f2ec);
+}
+.app-bloom-card-photo :is(img, .app-smart-thumb, .app-inline-thumb-box) {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+}
+.app-bloom-card-heading { min-width: 0; overflow: hidden; }
+.app-bloom-card-index { min-width: 0; max-width: 7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-bloom-card-meta { min-width: 0; overflow-wrap: anywhere; }
+.app-bloom-card-metrics { min-width: 0; width: 100%; }
+.app-bloom-card-metrics .app-card-qty-row {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  min-width: 0;
+}
+.app-bloom-card-metrics :is(.app-card-qty-label, .app-card-qty-value) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+}
+
+/* Suspend uses the same five-field order strip in the card and Bloom summary. */
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-strip {
+  grid-template-columns: minmax(0, .65fr) minmax(0, .65fr) minmax(0, .7fr) minmax(0, 1.6fr) minmax(0, 1.4fr) !important;
+  min-width: 0;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-field,
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-field strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+#request-content .app-suspend-tag-compact-card .app-card-qty-row {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+#request-content .app-suspend-tag-compact-card :is(.app-card-qty-label, .app-card-qty-value) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+}
+#request-content .app-suspend-tag-compact-card .app-inline-thumb-column {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  gap: 0;
+}
+#request-content .app-suspend-tag-compact-card .app-inline-thumb-column--empty .app-inline-thumb-box--empty {
+  display: grid;
+  width: 100%;
+  height: var(--drive-card-photo-height, 86px);
+  aspect-ratio: auto;
+  place-items: center;
+  border-style: dashed;
+  border-color: var(--ops-photo-border, #b8d4c4);
+  color: var(--ops-photo-text, #426252);
+  background: var(--ops-photo-placeholder, #e8f2ec);
+  box-shadow: none;
+}
+
+/* AV filter buttons used to be compressed to tiny type at 3–5 controls. Let the
+   controls wrap without crossing into adjacent filter shells or result content. */
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline {
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row {
+  display: grid !important;
+  grid-auto-flow: row !important;
+  grid-auto-columns: auto !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 156px), 1fr)) !important;
+  grid-template-rows: none !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row > .av-filter-shell {
+  z-index: auto;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row > .av-filter-shell.av-filter-shell--open {
+  z-index: 80 !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row .task-top-control-button {
+  box-sizing: border-box;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 46px !important;
+  padding: 7px 10px !important;
+  gap: 7px !important;
+  overflow: hidden !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .task-top-control-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px !important;
+  letter-spacing: .04em !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .task-top-control-summary {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px !important;
+  line-height: 1.15 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 720px), (pointer: coarse) {
+  body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+}
