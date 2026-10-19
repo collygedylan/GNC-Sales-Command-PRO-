@@ -2,9 +2,9 @@
   "schemaVersion": "agdata-v2312-validation-result-v1",
   "scope": "node",
   "status": "passed",
-  "validationId": "v2312-node-d881a6af91cb",
+  "validationId": "v2312-node-0e3b6c16846b",
   "checks": 72,
-  "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751",
+  "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a",
   "provenance": {
     "kind": "scoped-retained-and-focused-evidence",
     "focusedUniqueChecks": 72,
@@ -243,6 +243,21 @@
       "cause": "Backend unit discover failed because the release-database job had no installed Node dependencies for the checker import. Workflow now uses the locked dependency setup; YAML dependency ordering was validated, while exact-head CI rerun status remains separate.",
       "evidence": ".gnc-local/v2312-ci-discover-failure-1.log",
       "sha256": "54777123fa51a669443e58a5407d5c50603c4fefc4c5607c2e4417cc3ab0e217"
+    },
+    {
+      "issue": "backend-unit-empty-matrix-gate",
+      "attempt": 1,
+      "fail": 1,
+      "cause": "Exact-head CI 39328145495 failed only the reusable backend-unit empty Edge matrix gate after discovery succeeded; all actual selected jobs passed. Workflow now skips that reusable job when the discovered Edge matrix is empty; CI rerun is still pending and mobile run 39328145391 status was not verified in this update.",
+      "head": "4f39f444",
+      "runId": 39328145495,
+      "mobileRunId": 39328145391,
+      "evidence": ".gnc-local/v2312-ci-failure-2.log",
+      "sha256": "ddd70789ae6103e62c07b3ca9ed5272215e7c2a6bc4e29b02302d9827fe692d2",
+      "summaryEvidence": ".gnc-local/v2312-ci-run-summary-2.log",
+      "summarySha256": "f332ced94c9f19948297399fbc993d33a9164de92991b8d1e356b8445a09d065",
+      "workflowValidation": ".gnc-local/v2312-ci-wiring-fix-2.log",
+      "workflowValidationSha256": "57a28d58eee735e49bfef0684bad5e3fa347be57ed782810feff7639c06b16c0"
     }
   ],
   "initialSuiteLog": {
