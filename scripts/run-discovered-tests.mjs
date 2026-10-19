@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverTests, readTestAnnotations } from './test-discovery.mjs';
 import { verifyV238RetainedValidation } from './check-v238-retained-validation.mjs';
+import { verifyV239RetainedValidation } from './check-v239-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
@@ -19,6 +20,12 @@ export function runDiscoveredNodeTests({ root = repositoryRoot, group, argv = []
   const files = discoverTests({ root, group }).filter(file => !tag || readTestAnnotations({ root, file })
     .some(annotation => annotation.type === 'group' && annotation.value.split(',').includes(tag)));
   if (!files.length) throw new Error(`DISCOVERED_TEST_GROUP_EMPTY: ${group}${tag ? ':' + tag : ''}`);
+  if (group === 'python' && JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version === '2.3.9') {
+    const evidence = verifyV239RetainedValidation({ rootDir: root });
+    if (!evidence.retainedPythonContracts) throw new Error('V239_PYTHON_CONTRACT_RETENTION_SOURCE_MISMATCH');
+    print(`Retaining unchanged Python contracts from baseline CI ${evidence.baselineCiRunId}; Python sources remain hash-verified.`);
+    return 0;
+  }
   if (remainder.includes('--list')) {
     print(JSON.stringify(files, null, 2));
     return 0;

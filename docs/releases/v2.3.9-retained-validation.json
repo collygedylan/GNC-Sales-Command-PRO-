@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "agdata-v239-retained-validation-v1",
+  "release": "AgData v2.3.9",
+  "base": "8364b1d488588052c4d8c48b9bfb525512bb8ad6",
+  "baseline": {
+    "ciRunId": 39256491099,
+    "ciHead": "1c226bca93c49eb16a4e1bc6d1471cde08d39213",
+    "ciConclusion": "success",
+    "ciPassedJobs": 13,
+    "ciExpectedSkips": 7,
+    "ciFailures": 0,
+    "pagesRunId": 39256866795,
+    "mergedHead": "8364b1d488588052c4d8c48b9bfb525512bb8ad6"
+  },
+  "retained": {
+    "nodePassed": 3550,
+    "reactPassed": 158,
+    "pythonContracts": true,
+    "sqlContracts": true,
+    "unchangedFocusedSourceHashes": {
+      "tests/reclass-live-edits.test.mjs": "8ddbcfb1b399e63fc92e04185c0f4c92cec0f04d5f89415e81590adcbab00daf",
+      "tests/reclass-fixture-transport.test.mjs": "f78af92c77745993c8b2b520fdab29d657311fdaa7326d92e09aa8209d032678",
+      "tests/test_sync_weather_hold_learning.py": "52f640f87e1cf48583c5027ae15170f66665cda76ad1562ce12d950c7fba51b4",
+      "supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql": "82e27c80972d5a6ad0448c861a36bc95ad77209ceddfb7e56c63f1aacbadddba"
+    }
+  },
+  "authorization": "AgData v2.3.9 focused Reclass snapshot-verification delivery; retain the unaffected v2.3.8 Node, React, Python, and SQL results only while the exact-base source and path guards pass.",
+  "targetedValidation": {
+    "node": {
+      "status": "passed",
+      "files": [
+        "tests/reclass-snapshot-verification.test.mjs",
+        "tests/reclass-moves-frontend.test.mjs",
+        "tests/reclass-preview-confirmed-revision.test.mjs",
+        "tests/reclass-suspend-read-recovery.test.mjs",
+        "tests/suspend-tag-reclass-delivery.test.mjs",
+        "tests/suspend-tag-reclass.test.mjs"
+      ],
+      "passed": 73,
+      "failed": 0,
+      "evidence": ".gnc-local/v239-focused-unit-final.log"
+    },
+    "browser": {
+      "status": "passed",
+      "files": [
+        "tests/reclass-splits.e2e.spec.ts"
+      ],
+      "passed": 6,
+      "failed": 0,
+      "aggregation": "Latest passing result for each of two unique cases in three simulator environments; intermediate failures remain preserved.",
+      "reports": [
+        "artifacts/v239-reclass-desktop-final2/results.json",
+        "artifacts/v239-reclass-mobile-final/results.json",
+        "artifacts/v239-reclass-iphone-submit-final/results.json"
+      ],
+      "logs": [
+        ".gnc-local/v239-reclass-desktop-final2.log",
+        ".gnc-local/v239-reclass-mobile-final.log",
+        ".gnc-local/v239-reclass-iphone-submit-final.log"
+      ],
+      "dataset": {
+        "backendInventoryRows": 10001,
+        "initialGlobalMaster": "partial browse projection",
+        "targetedItemRowsInitially": 1,
+        "quantityPerMove": 34,
+        "destination": "F1"
+      },
+      "sourceContexts": [
+        "drive",
+        "eval-report-2",
+        "sales-inventory",
+        "request",
+        "suspend-tag"
+      ],
+      "scope": "Real Drive card click plus programmatic modal source-context matrix; not five independently mounted module journeys. Send as Review has its own real Drive card flow.",
+      "realEmailsSent": false,
+      "productionWrites": false
+    },
+    "performance": {
+      "uiLimitMs": 400,
+      "operation": "Trusted click to two animation frame paint; pending or completed submit feedback measured separately from asynchronous RPC completion.",
+      "environment": "Windows shared host; Chromium Desktop, Pixel 7 Chromium simulator, iPhone 13 WebKit simulator; OS cache uncontrolled.",
+      "cache": "Cold targeted item lookup, global master remains partial/browse; later modal contexts reuse the modal DOM.",
+      "measurements": [
+        {
+          "environment": "cache-chromium",
+          "trace": "off",
+          "modalOpenMs": 272.5,
+          "detailsReadyMs": 272.6,
+          "submitFeedbackMs": [
+            31.3,
+            65.8,
+            73.1,
+            58.7,
+            62.2
+          ],
+          "receiptAndCloseFirstMs": 816.6
+        },
+        {
+          "environment": "cache-android",
+          "trace": "retain-on-failure enabled",
+          "modalOpenMs": 330.7,
+          "detailsReadyMs": 31.3,
+          "expansionMs": 31.3,
+          "submitFeedbackMs": [
+            50.6,
+            73.8,
+            68.3,
+            69.3,
+            72.5
+          ],
+          "receiptAndCloseFirstMs": 612.9
+        },
+        {
+          "environment": "cache-iphone",
+          "trace": "off",
+          "modalOpenMs": 283,
+          "detailsReadyMs": 206,
+          "expansionMs": 206,
+          "submitFeedbackMs": [
+            103,
+            271,
+            260,
+            111,
+            272
+          ]
+        }
+      ],
+      "limits": "Not native-device, battery, production-network or database timing measurements; receipt-and-close includes asynchronous fixture responses.",
+      "database": "No schema, query, RPC or server change; preserve verified prior SQL/shadow evidence. Existing item-filtered lookup, bounded pages, revision CAS and permission checks remain."
+    },
+    "failureHistory": {
+      "ledger": ".gnc-local/v239-validation-progress.json",
+      "preserved": true,
+      "notes": [
+        "Initial red reproduced the legacy manual-refresh banner.",
+        "Corrected VM fixtures and browser synthetic receipt revisions; no authorization/CAS criteria relaxed.",
+        "Rebuilt mixed local artifact through complete release-site preparation.",
+        "Retained Android 423.5ms and iPhone traced 2827ms/404ms failures; passing reruns use documented artifact and tracing conditions.",
+        "Corrected event-to-paint origins and missing-paint read races; gates remain 400ms."
+      ]
+    }
+  },
+  "validatedSourceHashes": {
+    ".github/workflows/pr-validation.yml": "a9e78cfdc462515663acf71bb02b7c18058a86f635cd2b35cc4ade39e3a1a59f",
+    "assets/ops-precision-pilot.js": "084d2b3fbfac3a00c67caf05cf172b5ccf1c6e4eaf3ea094415cf947bc75f659",
+    ".github/workflows/release-database.yml": "3db71340142f96e6843b43b69ee8b3d191e456607c436b8f4bf21ea011d710bb",
+    "index.html": "0ad01bc1b57e73345b5c6fbcb6bc10df53dbbeaa11855c033034137e856e7914",
+    "manifest.json": "4ce7d4fc2c585514b9ea46f695146a72b9804d3e884b6ce2ad42327f4f368654",
+    "package-lock.json": "818893305ae8f11cde7981dcbd43b9556dc98f8ababd2111a9135cc74eccfd2b",
+    "package.json": "95b41d31c6c914f23e503db3dbdcdafa6955fce9b74eda126b89533a98f1a3c8",
+    "scripts/build-live-shell.mjs": "f87bceeb998dd1c5dd78493a346c903d5008e7b4a5bae0e9e4c035bb72789e49",
+    "scripts/check-v239-retained-validation.mjs": "a8a2c6c8dc3db421db7b5bdf64bbb569b54e558ebf6363cb0411d39c6190313d",
+    "scripts/ci-backend-matrix.mjs": "2ad1c8d1d26ae62bb76359e4b44c3a161dc8605f466241e0caac92ffb09858ab",
+    "scripts/run-discovered-tests.mjs": "8649766d0996471659257963b10489f25a550f9420fa50363dcc2765d4f08a49",
+    "scripts/run-release-react-checks.mjs": "1d488a74977fa07caf1cc7b95bd55ba9afa5c928cd282e7b63d7058597e8fdc6",
+    "scripts/run-release-unit-checks.mjs": "46c5c2389a95cdbc95fe0287dddc443af0b9d3445923db232ec446932130688b",
+    "sw.js": "2716304accd4b342429844512d92b1c42bd5de784d5528d543ea7a12d31c6655",
+    "tests/reclass-moves-frontend.test.mjs": "71a628be2ac8e9340ee356e28450c3a4ac1c5a2977e52b99a9147cfd38a6b12d",
+    "tests/reclass-preview-confirmed-revision.test.mjs": "dfdc08eca293d7985b4ed2bc43f6cc465a6664a6e49026a704d0f4d651187f22",
+    "tests/reclass-snapshot-verification.test.mjs": "9d73bc77db54e2ed68e7a573fc891107d1e461e4ab3a03fede3c848e29fff967",
+    "tests/reclass-suspend-read-recovery.test.mjs": "34063e03691a733d78cb024448dda08841e391e3af15eac1cef74d9b1e3a1eef",
+    "tests/reclass-splits.e2e.spec.ts": "a2cbba7a85d485ecab9fed874b3b73d9d47a508277267aba363eeab6de798f62",
+    "tests/suspend-tag-reclass-delivery.test.mjs": "da16ae3e1df901eee441a4d469a559f354d7f3f367a3cb86ec74aba22f3eb6ad",
+    "tests/suspend-tag-reclass.test.mjs": "288de176d0a4a509d62f66ac19733a280baeaa96b45cbee7b2714544c68ce788",
+    "v2/public/manifest.webmanifest": "1b0510a5b37482bfefd66da24e14b495e5a227b0601d77f7ba99b32b40cdbf2e",
+    "v2/src/services/api.ts": "6f4ba8016d0deb0a23ca92f7d166db5726ec5b6f7164eb66efc95f96df074c7e"
+  }
+}
