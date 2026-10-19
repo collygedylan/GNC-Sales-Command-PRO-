@@ -10090,3 +10090,24 @@ body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .task-top-contro
     gap: 6px !important;
   }
 }
+
+/* Suspend quantities stay legible on narrow cards: three columns by two rows. */
+body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-value {
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+}
+@media (max-width: 639px) {
+  body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    column-gap: 6px !important;
+    row-gap: 4px !important;
+  }
+  body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-chip {
+    min-width: 0;
+  }
+  body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-value {
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+    text-overflow: clip !important;
+  }
+}
