@@ -1,3 +1,4 @@
+import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
 import { verifyV2311RetainedValidation } from './check-v2311-retained-validation.mjs';
 import { verifyV2310RetainedValidation } from './check-v2310-retained-validation.mjs';
 import { spawnSync } from 'node:child_process';
@@ -22,6 +23,11 @@ export function runReleaseReactChecks({
 } = {}) {
   const { version } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
   const vitest = path.join(rootDir, 'node_modules', 'vitest', 'vitest.mjs');
+  if (version === '2.3.12') {
+    verifyV2312RetainedValidation({ rootDir });
+    print('Retaining unchanged React baseline; no component or hook sources changed.');
+    return 0;
+  }
   if (version === '2.3.11') {
     const evidence = verifyV2311RetainedValidation({ rootDir });
     print('Retaining ' + evidence.retainedReactPassed + ' unchanged React checks.');

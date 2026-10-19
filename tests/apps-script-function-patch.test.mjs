@@ -14,6 +14,19 @@ function historicalRunner() { return 'remote resumable state'; }
 function remoteOnlyFunction() { return /[{}]/.test('{}'); }`;
 const names = ['buildSuspendTagApprovalEmail_'];
 
+test('live ERP patch preserves paused historical source and adds only its temporary-file classifier', () => {
+  const before = remote + '\nfunction runQueuedManualSyncStage_() { return "old"; }';
+  const after = local + '\nfunction runQueuedManualSyncStage_() { return "continue-independent-stages"; }'
+    + '\nfunction isLiveImportTemporaryFile_(name) { return /^(?:TEMP_|~\\$)/i.test(name); }';
+  const functions = ['runQueuedManualSyncStage_', 'isLiveImportTemporaryFile_'];
+  const result = patchAppsScriptFunctions({ remoteSource: before, localSource: after, functionNames: functions });
+  assert.match(result.source, /continue-independent-stages/);
+  assert.ok(result.source.includes("function historicalRunner() { return 'remote resumable state'; }"));
+  assert.ok(result.source.includes("const BACKFILL_CONTINUOUS_UNTIL = '2026-10-19T06:15:00-05:00';"));
+  assert.equal(patchAppsScriptFunctions({ remoteSource: result.source, localSource: after, functionNames: functions }).source, result.source);
+  assert.throws(() => patchAppsScriptFunctions({ remoteSource: before, localSource: after, functionNames: ['startImportHistoryBackfill'] }), /ALLOWLIST_INVALID/);
+});
+
 test('scoped email publication preserves remote-only history functions and schedule byte-for-byte', () => {
   const patched = patchAppsScriptFunctions({ remoteSource: remote, localSource: local, functionNames: names });
   assert.match(patched.source, /<a>Approve<\/a>/);

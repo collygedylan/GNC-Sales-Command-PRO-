@@ -181,9 +181,11 @@ test('Suspend Tag shows five order fields before six inventory metrics and place
   assert.match(status.textContent, /PLANSTART:\s*10\/19\/2026/);
 });
 
-test('Suspend Tag mobile metrics keep all six fields in a single six-column grid', () => {
-  const mobileBlock = css.match(/@media \(max-width:\s*600px\)\s*\{([\s\S]*?)\n\}/)?.[1] || '';
-  assert.doesNotMatch(mobileBlock, /app-suspend-tag-compact-card[\s\S]{0,220}repeat\(3/);
+test('Suspend Tag mobile metrics use a readable three-by-two grid and keep numeric values on one line', () => {
+  const mobileBlock = [...css.matchAll(/@media \(max-width:\s*639px\)\s*\{([\s\S]*?)\n\}/g)].at(-1)?.[1] || '';
+  assert.match(mobileBlock, /\.app-suspend-tag-compact-card \.app-card-qty-row\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/s);
+  assert.match(mobileBlock, /\.app-suspend-tag-compact-card \.app-card-qty-value\s*\{[^}]*white-space:\s*nowrap !important;[^}]*overflow-wrap:\s*normal !important;/s);
+  assert.match(mobileBlock, /\.app-suspend-tag-compact-card \.app-card-qty-chip\s*\{[^}]*min-width:\s*0;/s);
   assert.match(css, /\.app-suspend-tag-order-strip\s*\{[^}]*grid-template-columns:\s*repeat\(5,/s);
   assert.match(css, /\.app-suspend-tag-compact-card \.app-card-qty-row\s*\{[^}]*grid-template-columns:\s*repeat\(6,/s);
 });

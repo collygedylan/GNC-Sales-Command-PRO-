@@ -94,7 +94,8 @@ function latestFile(id, name, data, modifiedAt) {
   return { id, name, data, modifiedAt };
 }
 
-function processMasterSnapshotBatch(ctx, files, existing = [], bulkRpcHandler = null, { mutateSourceDuringRpc = false } = {}) {
+function processMasterSnapshotBatch(ctx, files, existing = [], bulkRpcHandler = null,
+  { mutateSourceDuringRpc = false, captureError = false } = {}) {
   const events = [];
   const entries = files.map((file, index) => {
     const name = typeof file.getName === 'function' ? file.getName() : file.name || `synthetic-${index}.csv`;
@@ -168,9 +169,51 @@ function processMasterSnapshotBatch(ctx, files, existing = [], bulkRpcHandler = 
     return { status: 'complete', resolved: 0 };
   };
   const processedFolderId = vm.runInContext('FOLDERS.MASTER_PROCESSED', ctx);
-  const result = invoke(ctx, 'processSnapshotBatchFolderLocked_', 'source', processedFolderId, 'ph_master_inventory', ctx.buildMasterPayload, {});
-  return { result, events };
+  let result;
+  let error = null;
+  try {
+    result = invoke(ctx, 'processSnapshotBatchFolderLocked_', 'source', processedFolderId, 'ph_master_inventory', ctx.buildMasterPayload, {});
+  } catch (caught) {
+    if (!captureError) throw caught;
+    error = caught;
+  }
+  return { result, events, error };
 }
+
+test('snapshot import defers before source parsing when less than the protected time reserve remains', () => {
+  const ctx = context();
+  vm.runInContext('manualSyncInvocationDeadlineMs_ = Date.now() + 1000', ctx);
+  const data = [
+    ['ITEMCODE', 'LOCATIONCODE', 'COMMONNAME', 'CONTSIZE', 'LOTCODE', 'SOURCE', 'PRIORITY', 'HOLDSTOPCODE', 'HOLDSTOPREASON'],
+    ['SYNTHETIC-ITEM', 'TEST.LOC', 'Synthetic Plant', '#3', '27.F1', 'PH', '2', 'H', 'Synthetic hold'],
+  ];
+  const file = latestFile('budget-preparse', 'budget-preparse.csv', data, '2026-09-08T17:00:00.000Z');
+
+  const { events, error } = processMasterSnapshotBatch(ctx, [file], [], null, { captureError: true });
+
+  assert.equal(error && error.errorCode, 'IMPORT_PREPARATION_DEFERRED');
+  assert.equal(error && error.phase, 'snapshot_source_parse');
+  assert.equal(events.some(event => ['begin', 'bulk-rpc', 'upsert', 'delete', 'archive'].includes(event.type)), false);
+});
+
+test('snapshot import defers before publication without opening a fence or mutating live data', () => {
+  const ctx = context();
+  vm.runInContext('manualSyncInvocationDeadlineMs_ = Date.now() + 70000', ctx);
+  ctx.revalidateCanonicalMasterSnapshotSources_ = () => {
+    vm.runInContext('manualSyncInvocationDeadlineMs_ = Date.now() + 1000', ctx);
+  };
+  const data = [
+    ['ITEMCODE', 'LOCATIONCODE', 'COMMONNAME', 'CONTSIZE', 'LOTCODE', 'SOURCE', 'PRIORITY', 'HOLDSTOPCODE', 'HOLDSTOPREASON'],
+    ['SYNTHETIC-ITEM', 'TEST.LOC', 'Synthetic Plant', '#3', '27.F1', 'PH', '2', 'H', 'Synthetic hold'],
+  ];
+  const file = latestFile('budget-publication', 'budget-publication.csv', data, '2026-09-08T17:00:00.000Z');
+
+  const { events, error } = processMasterSnapshotBatch(ctx, [file], [], null, { captureError: true });
+
+  assert.equal(error && error.errorCode, 'IMPORT_PREPARATION_DEFERRED');
+  assert.equal(error && error.phase, 'snapshot_publication');
+  assert.equal(events.some(event => ['begin', 'bulk-rpc', 'upsert', 'delete', 'archive'].includes(event.type)), false);
+});
 
 test('SOC imports omit blank, null-like, and nonblank completion columns uniformly', () => {
   const ctx = context();

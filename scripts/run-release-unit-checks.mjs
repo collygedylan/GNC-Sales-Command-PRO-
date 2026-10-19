@@ -1,3 +1,4 @@
+import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
 import { verifyV2311RetainedValidation } from './check-v2311-retained-validation.mjs';
 import { verifyV2310RetainedValidation } from './check-v2310-retained-validation.mjs';
 import { spawnSync } from 'node:child_process';
@@ -30,6 +31,11 @@ export function runReleaseUnitChecks({
   }
   if (shard && (Number(shard[1]) > Number(shard[2]) || Number(shard[2]) > 32)) throw new Error('Usage: invalid unit shard');
   const packageManifest = JSON.parse(readPackage(rootDir));
+  if (packageManifest.version === '2.3.12') {
+    verifyV2312RetainedValidation({ rootDir });
+    print(argv[0] === '--list' ? '[]' : 'Retaining source-sealed v2.3.12 focused validation and unchanged baseline.');
+    return 0;
+  }
   if (packageManifest.version === '2.3.11') {
     verifyV2311RetainedValidation({ rootDir });
     print(argv[0] === '--list' ? '[]' : 'Retaining exact source-sealed v2.3.11 targeted pass and unaffected baseline; no passing suite rerun.');

@@ -3,6 +3,19 @@ import { parse } from 'acorn';
 
 const fingerprint = 'APPS_SCRIPT_DEPLOYMENT_COMMIT_';
 const additiveEmailHandler = 'handleSignedInventoryReclassMoveDelivery_';
+const liveImportFunctions = new Set([
+  'assertRoutedPendingSourceSelection_',
+  'processCustomerRepMapSnapshotLocked_',
+  'getManualSyncStatusForClient_',
+  'createManualSyncQueuedStatus_',
+  'sanitizeManualSyncStatusForClient_',
+  'runRoutedDropImport_', 'listRoutedDropFiles_', 'processSnapshotBatchFolderLocked_',
+  'processLatestFileOnlyFolderLocked_', 'runQueuedManualSyncStage_', 'isLiveImportTemporaryFile_',
+  'syncHlPoParsedFolder_', 'syncTransactionsKeyedFolder_', 'syncPikesOrdersFolder_', 'processFolderLocked_',
+  'readManualSyncLiveSourceWatermark_', 'saveManualSyncLiveSourceWatermark_',
+  'assertRoutedPendingSourceSelection_', 'processCustomerRepMapSnapshotLocked_',
+]);
+const additiveFunctions = new Set([additiveEmailHandler, 'isLiveImportTemporaryFile_', 'readManualSyncLiveSourceWatermark_', 'saveManualSyncLiveSourceWatermark_']);
 const fail = code => { throw new Error(`APPS_SCRIPT_FUNCTION_PATCH_${code}`); };
 const digest = source => createHash('sha256').update(source).digest('hex');
 
@@ -28,15 +41,17 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
   if (!Array.isArray(functionNames) || !functionNames.length
     || new Set(functionNames).size !== functionNames.length
     || functionNames.some(name => !/^[A-Za-z_$][\w$]*$/.test(name)
-      || (!/SuspendTag/i.test(name) && name !== 'handleSignedRequestDeliveryEvent_' && name !== additiveEmailHandler && name !== 'buildReclassInquiryCompactReportHtml_' && name !== 'buildReclassInquiryReportModel_'))) fail('ALLOWLIST_INVALID');
-  // Only this authorized additive handler may be absent remotely. All existing
+      || (!/SuspendTag/i.test(name) && name !== 'handleSignedRequestDeliveryEvent_' && name !== additiveEmailHandler && name !== 'buildReclassInquiryCompactReportHtml_' && name !== 'buildReclassInquiryReportModel_' && !liveImportFunctions.has(name)))) fail('ALLOWLIST_INVALID');
+  // Only the authorized additive handlers and helpers may be absent remotely. All existing
   // source bytes stay intact; stage a placeholder at EOF, then use the same
   // parsed-function replacement and protected-source comparison below.
   let preparedRemote = remoteSource;
   let remote = boundaries(preparedRemote, functionNames);
-  if (functionNames.includes(additiveEmailHandler) && !remote.has(additiveEmailHandler)) {
-    preparedRemote += '\n\nfunction ' + additiveEmailHandler + '() {}\n';
-    remote = boundaries(preparedRemote, functionNames);
+  for (const name of additiveFunctions) {
+    if (functionNames.includes(name) && !remote.has(name)) {
+      preparedRemote += '\n\nfunction ' + name + '() {}\n';
+      remote = boundaries(preparedRemote, functionNames);
+    }
   }
   const local = boundaries(localSource, functionNames);
   const names = [...functionNames, fingerprint];
