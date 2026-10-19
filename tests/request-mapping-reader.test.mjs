@@ -23,6 +23,17 @@ test('Request reader loads every rep-ID page before publishing choices',async()=
  assert.equal(c.tempSelectedReqSalesrepId,'01');
  assert.equal(c.requestModalCustomerOptionsCacheKey,'01:9');
 });
+test('a 103-customer rep directory is fully available without a short display cap',async()=>{
+ const rows=Array.from({length:103},(_,index)=>({...mappingFixtureRow,
+  unique_id:`customer-${index+1}`,customeridentityid:String(index+1).padStart(5,'0'),
+  consigneeid:`consignee-${index+1}`,customername:`Customer ${String(index+1).padStart(3,'0')}`,
+  consigneename:`Consignee ${String(index+1).padStart(3,'0')}`}));
+ const calls=[];
+ const c=fixture(async(_url,body)=>{calls.push(body);return{ok:true,rows:rows.slice(body.page*200,(body.page+1)*200),total:rows.length,revision:'customers-r1'};});
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,103);
+ assert.deepEqual(calls.map(body=>body.page),[0]);
+});
 test('a mapping revision change between pages rejects partial results',async()=>{
  const c=fixture(async(_url,body)=>({ok:true,rows:Array.from({length:body.page?1:200},(_,i)=>({...mappingFixtureRow,customeridentityid:String(body.page*200+i),consigneeid:String(i)})),total:201,revision:body.page?'10':'9'}));
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),false);
@@ -39,12 +50,34 @@ test('an obsolete rep read cannot overwrite the new selection',async()=>{
  assert.equal(await pending,false);
  assert.equal(c.requestMappingRpcCache.size,0);
 });
-test('transport failure clears the selection and preserves a retryable error',async()=>{
+test('transport failure preserves the customer draft but leaves mapping unverified and retryable',async()=>{
  const c=fixture(async()=>{throw new Error('Network unavailable');});
- c.tempRequestCustomerSelectedContext={customeridentityid:'00012'};
+ const selection={customeridentityid:'00012'};
+ c.tempRequestCustomerSelectedContext=selection;
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),false);
- assert.equal(c.tempRequestCustomerSelectedContext,null);
+ assert.equal(c.tempRequestCustomerSelectedContext,selection);
+ assert.equal(c.requestModalCustomerOptionsReady,false);
+ assert.equal(c.requestMappingRpcCache.size,0);
  assert.match(c.requestModalCustomerOptionsError,/Network unavailable/);
+});
+test('same-identity mapping options remain displayable but unverified after a refresh failure',async()=>{
+ let shouldFail=false;
+ const c=fixture(async()=>{
+  if(shouldFail)throw new Error('Network unavailable');
+  return{ok:true,rows:[mappingFixtureRow],total:1,revision:'9'};
+ });
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ const prior=c.getRequestModalCustomerOptionsForRep('Rep One');
+ shouldFail=true;
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(true),false);
+ assert.equal(c.requestModalCustomerOptionsReady,false);
+ assert.equal(c.getRequestModalCachedCustomerOptionsForRep('Rep One').length,1);
+ assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Rep One'),row=>row.customeridentityid),['00012']);
+ assert.equal(c.requestMappingRpcCache.get('01').stale,true);
+ assert.equal(c.requestModalCustomerOptionsReady,false,'same-owner choices remain visible but do not validate submission during a failed refresh');
+ assert.match(c.requestModalCustomerOptionsError,/Network unavailable/);
+ assert.equal(c.getSupabaseReadIdentityScope(),'identity-1');
+ assert.equal(prior.length,1);
 });
 
 test('modal cache initialization uses only a complete RPC result for the exact rep ID',async()=>{
@@ -58,10 +91,11 @@ test('modal cache initialization uses only a complete RPC result for the exact r
  assert.equal(calls,1);
  c.mappingRevision='2';
  c.tempRequestCustomerSelectedContext={customeridentityid:'00012',consigneeidentityid:'00007',customername:'Garden ®',consigneename:'North ™',request_selected_salesrep_id:'01'};
- assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,0);
- assert.equal(c.requestMappingRpcCache.size,0);
+ assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,1,'same-owner choices remain available as stale display data');
+ assert.equal(c.requestMappingRpcCache.size,1);
  assert.equal(c.requestModalCustomerOptionsReady,false);
- assert.equal(c.tempRequestCustomerSelectedContext,null);
+ assert.notEqual(c.tempRequestCustomerSelectedContext,null);
+ assert.equal(c.isRequestModalCustomerMapReady(),false,'revision drift blocks use until the replacement read completes');
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
  assert.equal(calls,2);
 });

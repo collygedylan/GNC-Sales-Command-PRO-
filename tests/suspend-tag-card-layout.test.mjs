@@ -117,6 +117,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     lastFastPressSuppressSessionId: 0, lastFastPressSuppressUntil: 0, lastFastPressSuppressScope: '', touchInteractionSessionSerial: 1,
     FAST_PRESS_MOVE_THRESHOLD_PX: 14, FAST_PRESS_CLICK_SUPPRESS_MS: 420, FAST_PRESS_SCOPE_SUPPRESS_MS: 280,
     DRIVE_DRILL_FAST_PRESS_ACTIONS: new Set(), shouldSuppressDriveDrillCardClick: () => false, armDriveDrillCardClickSuppression() {},
+    suspendTagCardActionDelegationBound: false,
   });
   for (const name of [
     'encodeFastPressArgs', 'decodeFastPressArgs', 'getFastPressActionKey', 'getFastPressActionScope',
@@ -124,6 +125,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     'shouldIgnoreFastPressTarget', 'clearActiveFastPress', 'beginFastPress', 'trackFastPressMove', 'cancelFastPress',
     'dispatchFastPressAction', 'finishFastPress', 'shouldSuppressFastPressClick', 'handleFastPressClick', 'handleFastPressKeydown',
     'buildFastPressAttrs', 'buildFastInvokeAttrs', 'stopNestedCardActionPress', 'getDockSuspendDcRequestSourceUid', 'isArgosInventoryTransactionEligible',
+    'initializeSuspendTagCardActionDelegation',
     'buildArgosInventoryTransactionRailHtml', 'buildArgosInventoryTransactionRailPlaceholderHtml',
     'parseDockCardPlanStartEpochDay', 'formatDockCardPlanStartValue',
     'buildSharedInventoryCardLayout', 'buildSuspendTagReclassActionHtml',
@@ -675,4 +677,29 @@ test('compact Suspend pilot grid rules outrank the later production inline grid 
   const strongestProductionRule = productionSelectors.sort(compareSpecificity).at(-1);
   assert.ok(pilotSelectors.some(selector => compareSpecificity(selector, strongestProductionRule) > 0),
     `pilot selector must beat the later inline selector ${strongestProductionRule}`);
+});
+
+test('Bloom summary, Suspend order strip, AV filters, and empty photos retain readable responsive styles', () => {
+  const addedStylesStart = css.indexOf('/* Shared Bloom card contract:');
+  assert.notEqual(addedStylesStart, -1, 'shared Bloom/Suspend/AV rules are present');
+  const addedStyles = css.slice(addedStylesStart);
+
+  assert.match(addedStyles, /\.app-bloom-card-header\s*\{[^}]*grid-template-columns:\s*64px minmax\(0, 1fr\) auto;/);
+  assert.match(addedStyles, /\.app-bloom-card-photo\s*\{[^}]*width:\s*64px;[^}]*height:\s*64px;/);
+  assert.match(addedStyles, /\.app-bloom-card-metrics \.app-card-qty-row\s*\{[^}]*grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) !important;/);
+  assert.match(addedStyles, /#bloom-picker-actions-list:not\(\.hidden\)\s*\{[^}]*overflow-x:\s*auto !important;/);
+
+  const suspendStart = addedStyles.indexOf('/* Suspend uses the same five-field');
+  const avStart = addedStyles.indexOf('/* AV filter buttons used to be compressed', suspendStart);
+  const suspendRules = addedStyles.slice(suspendStart, avStart < 0 ? undefined : avStart);
+  assert.match(suspendRules, /grid-template-columns:\s*minmax\(0, \.65fr\) minmax\(0, \.65fr\) minmax\(0, \.7fr\) minmax\(0, 1\.6fr\) minmax\(0, 1\.4fr\) !important;/);
+  assert.match(suspendRules, /#request-content \.app-suspend-tag-compact-card \.app-card-qty-row\s*\{\s*grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) !important;/);
+  assert.match(suspendRules, /\.app-inline-thumb-column--empty \.app-inline-thumb-box--empty\s*\{[^}]*background:\s*var\(--ops-photo-placeholder, #e8f2ec\);/);
+  assert.doesNotMatch(suspendRules, /font-size\s*:/i, 'the compact order and metric overrides do not shrink type');
+
+  assert.match(addedStyles, /#view-av #av-top-filters\.av-top-inline \.av-top-controls-row\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 156px\), 1fr\)\) !important;/);
+  assert.match(addedStyles, /\.task-top-control-title\s*\{[^}]*font-size:\s*11px !important;/);
+  assert.match(addedStyles, /\.task-top-control-summary\s*\{[^}]*font-size:\s*13px !important;/);
+  assert.match(addedStyles, /@media \(max-width: 720px\), \(pointer: coarse\)[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) !important;/);
+  assert.match(html, /app-inline-thumb-column--empty[\s\S]*?app-inline-thumb-box--empty/);
 });

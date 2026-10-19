@@ -15,7 +15,7 @@ function fixture() {
     let revision = '1', state = 'ready', permission = 'role-v1', changedAt = '2026-10-08T00:00:00Z', clock = 1000;
     let rows = [{ id: 'dock-28' }], reads = 0, metadataReads = 0, subscriptions = 0, closes = 0;
     let fault = null, loadHook = null, metadataHook = null, notify = null, sourceGateReadChecks = false;
-    const commits = [], statuses = [], timers = new Map(); let timerId = 0;
+    const commits = [], statuses = [], permissionChanges = [], timers = new Map(); let timerId = 0;
     const adapter = { id: 'core:soc', cacheKey: 'soc/all', sourceKeys: ['ph_soc_master'],
         stage: async ({ signal } = {}) => { reads++; if (sourceGateReadChecks && coordinator.isSourceReadSuspended()) throw Object.assign(new Error('LOC_SOURCE_READ_SUSPENDED'), { code: 'LOC_SOURCE_READ_SUSPENDED' }); if (fault) throw fault; const captured = structuredClone(rows); if (loadHook) await loadHook(signal); if (signal?.aborted) throw signal.reason || new Error('Stage aborted.'); return captured; },
         commit: (value) => commits.push(value) };
@@ -29,12 +29,12 @@ function fixture() {
                 sources: keys.map((key) => ({ key, revision, state, changedAt })) };
             return result;
         },
-        onStatus: (value) => statuses.push(value), now: () => clock,
+        onStatus: (value) => statuses.push(value), onPermissionChange: (...args) => permissionChanges.push(args), now: () => clock,
         subscribe: (changed) => { subscriptions++; notify = changed; return () => { closes++; }; },
         setTimeout: (callback, delay) => { const id = ++timerId; timers.set(id, { callback, at: clock + delay }); return id; },
         clearTimeout: (id) => timers.delete(id)
     });
-    return { coordinator, context, adapter, commits, statuses, timers,
+    return { coordinator, context, adapter, commits, statuses, permissionChanges, timers,
         get revision() { return revision; }, set revision(value) { revision = value; }, set state(value) { state = value; }, set changedAt(value) { changedAt = value; }, set rows(value) { rows = value; },
         set fault(value) { fault = value; }, set loadHook(value) { loadHook = value; }, set metadataHook(value) { metadataHook = value; }, set sourceGateReadChecks(value) { sourceGateReadChecks = value; },
         set permission(value) { permission = value; },
@@ -166,6 +166,36 @@ test('network failures keep old data visibly stale instead of committing an empt
     await f.coordinator.check(); assert.equal(f.commits.length, 1);
     assert.equal(f.coordinator.getStatus().state, 'Needs attention');
     assert.match(f.coordinator.getStatus().message, /timed out/);
+});
+
+test('forced refresh keeps the same verified display available through import and transient failure without masking status', async () => {
+    const f = fixture();
+    f.context.dataPermissionVersion = 'role-v1';
+    assert.equal(await f.coordinator.check(), true);
+    f.state = 'importing'; f.revision = '2';
+    assert.equal(await f.coordinator.ensure(f.adapter, true), true, 'force requests revalidation but does not discard the same trusted snapshot');
+    assert.equal(f.coordinator.getStatus().state, 'Importing', 'retained display availability does not claim freshness');
+    assert.match(f.coordinator.getStatus().message, /Keeping the last verified data/);
+    assert.deepEqual(f.commits.at(-1), [{ id: 'dock-28' }]);
+
+    f.state = 'ready'; f.revision = '3'; f.fault = new Error('Read timed out');
+    assert.equal(await f.coordinator.ensure(f.adapter, true), true, 'a transient read error keeps the same authorized display usable');
+    assert.equal(f.coordinator.getStatus().state, 'Needs attention');
+    assert.match(f.coordinator.getStatus().message, /timed out/);
+    assert.deepEqual(f.commits.at(-1), [{ id: 'dock-28' }], 'the failed replacement is never committed');
+});
+
+test('a real authorization denial clears retained data and remains a hard failure', async () => {
+    const f = fixture();
+    f.context.dataPermissionVersion = 'role-v1';
+    assert.equal(await f.coordinator.check(), true);
+    f.revision = '2';
+    f.fault = Object.assign(new Error('Forbidden'), { status: 403, code: '42501' });
+    assert.equal(await f.coordinator.ensure(f.adapter, true), false, 'a denied read cannot fall back to the previous display');
+    assert.equal(f.coordinator.getStatus().state, 'Needs attention');
+    assert.equal(f.coordinator.getStatus().authorizationDenied, true);
+    assert.equal(f.coordinator.retainDisplay(), false);
+    assert.equal(f.permissionChanges.length, 1, 'the application is told to clear its rendered display cache');
 });
 
 test('semantic location readiness failures gate repeated checks until a new ready revision is confirmed', async () => {

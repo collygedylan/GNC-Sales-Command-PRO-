@@ -71,3 +71,16 @@ test('remote edits or withdrawn authorization stop scoped publication before the
   const denied = createAppsScriptSourceGuard({ script, scriptId: 'fixture', beforeDigest, afterDigest: beforeDigest, authorize: async () => { throw new Error('CURRENT_MAIN_CHANGED'); } });
   await assert.rejects(denied(), /CURRENT_MAIN_CHANGED/);
 });
+
+test('only the explicitly authorized Reclass email handler may be added without changing remote backfill',()=>{
+ const name='handleSignedInventoryReclassMoveDelivery_';
+ const additions=local+'\nfunction '+name+'(delivery) { return {ok:true,eventId:delivery.eventId}; }';
+ const first=patchAppsScriptFunctions({remoteSource:remote,localSource:additions,functionNames:[...names,name]});
+ const oldTail=remote.slice(remote.indexOf('function historicalRunner'));
+ assert.ok(first.source.includes(oldTail),'all original history and remote-only function bytes remain intact');
+ assert.match(first.source,/function handleSignedInventoryReclassMoveDelivery_\(delivery\)/);
+ const retry=patchAppsScriptFunctions({remoteSource:first.source,localSource:additions,functionNames:[...names,name]});
+ assert.equal(retry.source,first.source,'repeat publication adds no duplicate handler');
+ assert.throws(()=>patchAppsScriptFunctions({remoteSource:remote,localSource:local,functionNames:[...names,name]}),/FUNCTION_MISSING/);
+ assert.throws(()=>patchAppsScriptFunctions({remoteSource:remote,localSource:additions+'\nfunction newBackfillRunner() {}',functionNames:['newBackfillRunner']}),/ALLOWLIST_INVALID/);
+});

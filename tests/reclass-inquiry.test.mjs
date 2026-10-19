@@ -5,6 +5,17 @@ import test from 'node:test';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
+test('Item Spec uses the exact authoritative opening row when the source projection is blank', () => {
+  const server = loadServerModel();
+  const source = { unique_id: 'madison', itemcode: '001524.030.1', itemspec: '', locationcode: 'D.26.000', lotcode: '27.F1' };
+  const rows = [{ ...source, unique_id: 'other', itemspec: 'Wrong location spec' }, { ...source, itemspec: '34" H' }];
+  const model = server.buildReclassInquiryReportModel_(source, rows, [], {}, new Date('2026-10-19T17:00:00Z'));
+  assert.equal(model.identity.itemspec, '34" H');
+  assert.equal(source.itemspec, '');
+  const missing = server.buildReclassInquiryReportModel_({ ...source, unique_id: 'missing' }, rows, [], {}, new Date());
+  assert.equal(missing.identity.itemspec, '', 'another row cannot supply an unverified Item Spec');
+});
+
 const root = process.cwd();
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const code = fs.readFileSync(path.join(root, 'Code.gs'), 'utf8');
@@ -174,8 +185,9 @@ function assertReclassReportGridLayout(output, expectedRows) {
     assert.equal(style.lineHeight, '1.05');
     assert.equal(style.height, 'auto');
     assert.equal(style.minHeight, '0px');
-    assert.equal(style.overflowWrap, 'anywhere');
-    assert.equal(style.wordBreak, 'break-word');
+    assert.equal(style.overflowWrap, 'normal');
+    assert.equal(style.whiteSpace, 'nowrap');
+    assert.equal(style.wordBreak, 'normal');
   }
   const metadataCellStyle = getComputedStyle(summary);
   assert.equal(metadataCellStyle.padding, '3px 0px', 'compact cell padding does not leak onto metadata');
@@ -333,8 +345,8 @@ test('cleared and added Priority values are retained as changed fields and highl
   assert.equal(Array.from(result.rows[1].changedFields).join('|'), 'priority');
   const model = server.buildReclassInquiryReportModel_(rows[0], rows, result.rows, { actor: { display: 'Tester' } }, new Date('2026-08-22T14:15:00Z'));
   const output = server.buildReclassInquiryReportHtml_(model, true);
-  assert.match(output, /class="edited-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>\[blank\]<\/strong>/);
-  assert.match(output, /class="edited-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>7<\/strong>/);
+  assert.match(output, /class="edited-cell (?:code|note)-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>\[blank\]<\/strong>/);
+  assert.match(output, /class="edited-cell (?:code|note)-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>7<\/strong>/);
   assert.match(output, /<div class="meta"><strong>Submitted:<\/strong>[^<]*&nbsp; <strong>By:<\/strong> Tester<\/div>/);
   assert.doesNotMatch(output, /<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
 });
@@ -1545,7 +1557,7 @@ test('V7 Reclass PDF prints frozen editable fields in the main row and preserves
   }
   assert.match(output, /New note/);
   assert.match(output, /Yes - AB/);
-  assert.match(output, /<td class="edited-cell" data-edited="true"><span class="proposal-box"><strong>10\/9\/2026<\/strong><\/span><\/td>/);
+  assert.match(output, /<td class="edited-cell (?:code|note)-cell" data-edited="true"><span class="proposal-box"><strong>10\/9\/2026<\/strong><\/span><\/td>/);
   assert.match(output, /<th>Lotcode<\/th>[\s\S]*?<th>Desig Item<\/th>[\s\S]*?<th>Desig Cust<\/th>[\s\S]*?<th>Desig Loc<\/th>[\s\S]*?<th>SUS<\/th>/);
   assert.match(output, /2--&gt;S1/);
   assert.match(output, /By AB \| Eval 10\/9\/2026 \| Updated 10\/9\/2026/);
@@ -1691,7 +1703,7 @@ test('Eval V7 completion consumes protected editable-field snapshots and report 
   assert.equal(model.rows.find((entry) => entry.unique_id === 'origin').values.locationnote, 'Confirmed');
   assert.match(model.requestActionLabel, /Inventory Fields Updated/);
   assert.match(server.buildReclassInquiryCompactReportHtml_(model, true), /Confirmed/);
-  assert.match(server.buildReclassInquiryCompactReportHtml_(model, true), /<td class="edited-cell" data-edited="true"><span class="proposal-box"><strong>10\/9\/2026<\/strong><\/span><\/td>/);
+  assert.match(server.buildReclassInquiryCompactReportHtml_(model, true), /<td class="edited-cell (?:code|note)-cell" data-edited="true"><span class="proposal-box"><strong>10\/9\/2026<\/strong><\/span><\/td>/);
 });
 
 test('Item Inquiry repairs mojibake common names for display without mutating source inventory', () => {

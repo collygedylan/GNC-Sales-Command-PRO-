@@ -143,6 +143,52 @@ test('AV first cards use scheduled bounded frames and obsolete renders never rep
   assert.equal(container.signature, 'changed:page:50');
 });
 
+test('partial native REP AV keeps its first card visible and atomically publishes the prepared window', () => {
+  const frames = [], commits = [], generated = [], refreshed = [];
+  const container = { style: {}, classList: { add() {} }, html: 'loading' };
+  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String,
+    CLIENT_BROWSE_PAGE_SIZE: 100, canUseProductionLiveSync: () => true, shouldUseRepAvOpenDataset: () => true,
+    performance: { now: () => 0 }, beginInternalPerfMeasure: () => 0,
+    clearChunkRenderTimersByKey() {}, buildRowsRenderSignature: () => 'partial',
+    isAdaptivePerformanceMode: () => false, getAdaptivePerformanceLevel: () => 0,
+    isIOSDevice: () => false, isStandaloneApp: () => false,
+    CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 1000, getContainerRenderSignature: () => '',
+    getAvCardWindowEnd: (total, start) => Math.min(total, start + 20),
+    getChunkRenderPacing: count => ({ batchTarget: count, timeBudget: 5, frameDelayMs: 0, interactionSlowMode: false }),
+    generateCard: row => { generated.push(row); return `[${row.DOM_ID}]`; },
+    setContainerHtml: (target, value) => { commits.push(value); target.html = value; },
+    appendHtmlFragment: (target, value) => { target.html += value; },
+    shouldHoldFollowupChunkFramesForInteraction: () => false,
+    isUserInLiveTouchScrollGesture: () => false,
+    scheduleChunkRenderTimeout: (_key, callback) => frames.push(callback),
+    requestAnimationFrame: callback => frames.push(callback),
+    setContainerRenderSignature: (target, value) => { target.signature = value; },
+    captureProductionRefreshAnchor: () => null, refreshCartButtons: ids => refreshed.push(ids),
+    restoreProductionRefreshAnchor() {}, installAvCardWindowContinuation() {}, recordInternalPerfDuration() {} };
+  vm.createContext(context);
+  vm.runInContext(extractAppFunction('renderAVOpenCardsChunked'), context);
+
+  const rows = Array.from({ length: 20 }, (_, id) => ({ DOM_ID: `id-${id}` }));
+  const render = () => context.renderAVOpenCardsChunked(container, {}, rows, 'av', 'Rows', 'footer', { firstPreviewCardSync: true });
+
+  render();
+  assert.equal(container.html, '[id-0]', 'the synchronous preview remains visible while the rest is prepared');
+  assert.equal(commits.length, 1, 'only the immediate one-card preview has reached the DOM');
+  frames.shift()();
+  assert.equal(container.html, '[id-0]', 'prepared chunks stay off-DOM');
+  assert.equal(commits.length, 1);
+  context.avRenderChunkToken += 1;
+  frames.shift()();
+  assert.equal(container.html, '[id-0]', 'a superseded render cannot replace the visible preview');
+
+  render();
+  assert.equal(container.html, '[id-0]');
+  while (frames.length) frames.shift()();
+  assert.equal(container.html, `${rows.map(row => `[${row.DOM_ID}]`).join('')}footer`);
+  assert.equal(commits.length, 3, 'one preview write, one retry preview write, and one completed-window publication');
+  assert.deepEqual(Array.from(refreshed.at(-1)), rows.map(row => row.DOM_ID));
+});
+
 test('AV derived rows publish atomically after bounded slices and reuse exact source revisions', async () => {
   const h = createHarness(), rows = Array.from({ length: 9_539 }, (_, id) => ({ id }));
   const batchSizes = [];

@@ -42,6 +42,24 @@ function validateSnapshotFixture(fixture) {
   return fixture;
 }
 
+function selectSnapshotReps(fixture) {
+  const requestedText = String(process.env.GNC_AV_REP_USERS || '').trim();
+  const requestedUsers = requestedText ? requestedText.split(',').map(value => value.trim().toLowerCase()).filter(Boolean) : [];
+  const limitText = String(process.env.GNC_AV_REP_LIMIT || '').trim();
+  if (requestedUsers.length && limitText) fail('Use either GNC_AV_REP_USERS or GNC_AV_REP_LIMIT, not both.');
+  if (requestedUsers.length) {
+    const unique = new Set(requestedUsers);
+    if (unique.size !== requestedUsers.length) fail('GNC_AV_REP_USERS contains duplicate usernames.');
+    const byUsername = new Map(fixture.reps.map(rep => [String(rep.username).trim().toLowerCase(), rep]));
+    const missing = requestedUsers.filter(username => !byUsername.has(username));
+    if (missing.length) fail('GNC_AV_REP_USERS contains a username outside the validated snapshot directory.');
+    return requestedUsers.map(username => byUsername.get(username));
+  }
+  const requestedLimit = Number(limitText);
+  if (limitText && (!Number.isInteger(requestedLimit) || requestedLimit < 1)) fail('GNC_AV_REP_LIMIT must be a positive integer.');
+  return fixture.reps.slice(0, requestedLimit || fixture.reps.length);
+}
+
 function precomputeMasterPageFixtureResponses(masterRows, firstPageLimit) {
   const startedAt = Date.now();
   const canonicalRows = masterRows.map(row => inventoryReadFixture.fromFixtureShape(row))
@@ -85,7 +103,7 @@ async function mainSnapshotFixture() {
   const device = devices[deviceName];
   if (!device) fail(`Unsupported Playwright device profile: ${deviceName}.`);
   const browserType = /^iPhone/i.test(deviceName) ? webkit : chromium;
-  const selectedReps = fixture.reps.slice(0, Math.max(1, Number(process.env.GNC_AV_REP_LIMIT) || fixture.reps.length));
+  const selectedReps = selectSnapshotReps(fixture);
   const browser = await browserType.launch({ headless: true });
   const output = {
     startedAt: new Date().toISOString(), mode: 'production_snapshot_fixture',
@@ -101,7 +119,8 @@ async function mainSnapshotFixture() {
       compression: 'none; raw UTF-8 JSON matches the existing fixture route response envelope' },
     environment: { device: deviceName, browser: /^iPhone/i.test(deviceName) ? 'WebKit' : 'Chromium',
       viewport: device.viewport, trace: 'off', cache: 'fresh browser context; shared OS cache uncontrolled' },
-    repCountExpected: selectedReps.length, repCountInSnapshot: fixture.reps.length, reps: [],
+    repCountExpected: selectedReps.length, repCountInSnapshot: fixture.reps.length,
+    selectedUsernames: selectedReps.map(rep => String(rep.username).trim().toLowerCase()), reps: [],
   };
   safeProgress.completedUsers = output.reps;
   let currentlyChecking = '';

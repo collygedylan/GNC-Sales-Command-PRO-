@@ -85214,6 +85214,60 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "apply_inventory_reclass_moves_with_delivery_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_moves": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_receipt_encoding": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "apply_inventory_transaction_v1": {
       "oneOf": [
         {
@@ -89908,6 +89962,30 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "prepare_inventory_reclass_move_delivery_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_event_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_lease_token": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "prepare_transactions_keyed_import": {
       "oneOf": [
         {
@@ -92939,6 +93017,56 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "user_access_command_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_profile_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "update_location_work_job_v1": {
       "oneOf": [
         {
@@ -93317,6 +93445,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "apply_inventory_reclass_moves_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "apply_inventory_reclass_moves_with_delivery_v1": {
       "oneOf": [
         "json"
       ]
@@ -99791,6 +99924,11 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "prepare_inventory_reclass_move_delivery_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "prepare_transactions_keyed_import": {
       "oneOf": [
         "json"
@@ -105701,6 +105839,11 @@ export const contracts: RuntimeContracts<Database> = {
             "null"
           ]
         }
+      ]
+    },
+    "user_access_command_v1": {
+      "oneOf": [
+        "json"
       ]
     },
     "update_location_work_job_v1": {

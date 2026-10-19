@@ -1,7 +1,7 @@
 -- @test-runtime: canonical
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(53);
+select plan(60);
 
 create function pg_temp.reclass_move_raw_fields_v1(p_values jsonb) returns jsonb
 language sql immutable set search_path = '' as $function$
@@ -139,6 +139,7 @@ insert into reclass_bad_destination values(gen_random_uuid()::text,gen_random_uu
 create temporary table reclass_move_call(result jsonb) on commit drop;
 create temporary table reclass_move_request(request jsonb) on commit drop;
 create temporary table reclass_move_import(mode text primary key,result jsonb) on commit drop;
+create temporary table reclass_move_delivery_results(first_result jsonb,replay_result jsonb) on commit drop;
 create temporary table reclass_returning_exact_v1(passed boolean not null) on commit drop;
 create temporary table reclass_child_replay_exact_v1(passed boolean not null) on commit drop;
 create temporary table reclass_child_marker_guards_v1(missing_parent boolean not null,bad_index boolean not null) on commit drop;
@@ -194,7 +195,7 @@ begin
   ) into request_payload
   from public.ph_master_inventory m cross join public.ph_master_inventory n where m.unique_id=source_a and n.unique_id=source_b;
   insert into reclass_move_request values(request_payload);
-  result_value:=public.apply_inventory_reclass_moves_v1(actor_id,'reclass-move-v1-command-00001',expected_revision,request_payload);
+  result_value:=public.apply_inventory_reclass_moves_with_delivery_v1(actor_id,'reclass-move-v1-command-00001',expected_revision,request_payload,null);
   insert into reclass_move_call values(result_value);
   if nullif(current_setting('gnc.inventory_reclass_batch',true),'') is not null then raise exception 'batch defer marker leaked past operation'; end if;
   if result_value->>'status' <> 'applied' or jsonb_array_length(result_value->'movements') <> 3 then raise exception 'batch result missing movement receipts'; end if;
@@ -230,8 +231,14 @@ begin
   if (select count(*) from public.ph_inventory_transactions where event_type='inventory_reclass_move' and raw_payload->>'commandId'='reclass-batch:'||left(encode(extensions.digest(convert_to('reclass-move-v1-command-00001:1','UTF8'),'sha256'),'hex'),40)) <> 2 then
     raise exception 'original audit lines were not retained';
   end if;
-  replay_value:=public.apply_inventory_reclass_moves_v1(actor_id,'reclass-move-v1-command-00001',expected_revision,request_payload);
-  if replay_value is distinct from result_value then raise exception 'exact replay did not return identical result'; end if;
+  replay_value:=public.apply_inventory_reclass_moves_with_delivery_v1(actor_id,'reclass-move-v1-command-00001',expected_revision,request_payload,null);
+  if replay_value-'duplicate'-'emailQueued'-'deliveryEventId' is distinct from result_value-'duplicate'-'emailQueued'-'deliveryEventId'
+    or result_value->>'duplicate'<>'false' or replay_value->>'duplicate'<>'true'
+    or result_value->>'emailQueued'<>'true' or replay_value->>'emailQueued'<>'true'
+    or result_value->>'deliveryEventId' is distinct from replay_value->>'deliveryEventId' then
+    raise exception 'exact replay changed movement receipt or duplicated its delivery event';
+  end if;
+  insert into reclass_move_delivery_results values(result_value,replay_value);
   select c.* into child_command_row from private.ph_inventory_reclass_commands_v1 c
     where c.actor_id=(select id from reclass_move_actor) and c.command_id like 'reclass-batch:%' and c.request->>'sourceUid'=source_a;
   if child_command_row.request_id is null then raise exception 'batch child command receipt missing'; end if;
@@ -343,6 +350,23 @@ begin
   perform set_config('request.headers','{}',true);
 end
 $test$;
+
+select ok((select count(*)=1 from public.ph_request_delivery_outbox o
+  cross join reclass_move_delivery_results d
+  where o.event_id=(d.first_result->>'deliveryEventId')::uuid
+    and o.event_key='inventory-reclass-move-completed:'||(select id::text from reclass_move_actor)||':reclass-move-v1-command-00001'
+    and o.event_type='inventory_reclass_move_completed' and o.status='pending'
+    and o.request_id=d.first_result->>'requestId'),
+  'successful movement and one pending delivery intent share the same command receipt');
+select ok((select o.payload->>'contractVersion'='inventory-reclass-move-completed-v1'
+    and o.payload->>'actorProfileId'=(select id::text from reclass_move_actor)
+    and o.payload->>'actorEmail'=(select lower(u.email) from auth.users u where u.id=(select id from reclass_move_actor))
+    and o.payload->'deliveryRecipients' @> jsonb_build_array((select lower(u.email) from auth.users u where u.id=(select id from reclass_move_actor)))
+    and jsonb_array_length(o.payload->'deliveryRecipients')=6
+    and jsonb_array_length(o.payload->'moves')=3
+  from public.ph_request_delivery_outbox o cross join reclass_move_delivery_results d
+  where o.event_id=(d.first_result->>'deliveryEventId')::uuid),
+  'outbox payload is frozen from the server receipt and includes authenticated actor, server recipients, and movement details');
 
 select ok((select passed from reclass_returning_exact_v1),
   'movement source and destination snapshots exactly match persisted rows after all master triggers');
@@ -770,6 +794,78 @@ select throws_ok($$with row_a as (
 ) select private.encode_inventory_reclass_rows_v1(value) from receipt$$,
   '55000','INVENTORY_RECLASS_ROW_SCHEMA_MISMATCH',
   'compact encoding fails closed when historical row keysets differ');
+
+-- Run the representative maximum-size timing after the behavioral assertions,
+-- so its 100 synthetic rows cannot influence the rest of this contract.
+-- No delivery worker or email runs; the enclosing pgTAP rollback discards it.
+create temporary table v2311_reclass_perf_evidence(payload jsonb) on commit drop;
+do $v2311_reclass_perf$
+declare
+  actor_id uuid;
+  expected_revision bigint;
+  moves_value jsonb;
+  ids text[];
+  first_result jsonb;
+  retry_result jsonb;
+  first_ms numeric;
+  retry_ms numeric;
+  started_at timestamptz;
+  event_count integer;
+  retry_event_count integer;
+begin
+  select id into actor_id from reclass_move_actor;
+  insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,
+      ptronhand,ptravailable,source,season,saleyear)
+    select 'reclass-v2311-perf-'||n::text,'RECLASS-V2311-'||lpad(n::text,3,'0'),
+      'Reclass performance fixture','#3','C.29.001','27.F1','10','10','PH','F1','27'
+    from generate_series(1,100) n;
+  select array_agg(unique_id order by unique_id) into ids from public.ph_master_inventory
+    where unique_id like 'reclass-v2311-perf-%';
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'source',jsonb_build_object('uniqueId',m.unique_id,'identity',jsonb_build_object(
+        'unique_id',m.unique_id,'itemcode',m.itemcode,'contsize',m.contsize,'locationcode',m.locationcode,
+        'lotcode',m.lotcode,'season',m.season,'ptronhand',m.ptronhand,'ptravailable',m.ptravailable)),
+      'lines',jsonb_build_array(jsonb_build_object('direction','move_up','destinationSeason','U1','quantity',1))
+    ) order by m.unique_id),'[]'::jsonb) into moves_value
+    from public.ph_master_inventory m where m.unique_id=any(ids);
+  select revision into expected_revision from public.app_dataset_revisions where key='ph_master_inventory';
+  started_at:=clock_timestamp();
+  first_result:=public.apply_inventory_reclass_moves_with_delivery_v1(actor_id,
+    'reclass-v2311-perf-100-source-00001',expected_revision,moves_value,null);
+  first_ms:=extract(epoch from(clock_timestamp()-started_at))*1000;
+  select count(*)::integer into event_count from public.ph_request_delivery_outbox
+    where event_key='inventory-reclass-move-completed:'||actor_id::text||':reclass-v2311-perf-100-source-00001'
+      and event_type='inventory_reclass_move_completed';
+  started_at:=clock_timestamp();
+  retry_result:=public.apply_inventory_reclass_moves_with_delivery_v1(actor_id,
+    'reclass-v2311-perf-100-source-00001',expected_revision,moves_value,null);
+  retry_ms:=extract(epoch from(clock_timestamp()-started_at))*1000;
+  select count(*)::integer into retry_event_count from public.ph_request_delivery_outbox
+    where event_key='inventory-reclass-move-completed:'||actor_id::text||':reclass-v2311-perf-100-source-00001'
+      and event_type='inventory_reclass_move_completed';
+  insert into v2311_reclass_perf_evidence(payload) values(jsonb_build_object(
+    'source_count',cardinality(ids),'submitted_move_count',jsonb_array_length(moves_value),
+    'first_atomic_rpc_ms',round(first_ms,3),'retry_rpc_ms',round(retry_ms,3),
+    'first_status',first_result->>'status','first_movement_count',jsonb_array_length(first_result->'movements'),
+    'first_outbox_event_count',event_count,'retry_duplicate',retry_result->>'duplicate',
+    'retry_event_count',retry_event_count,'request_id',first_result->>'requestId',
+    'retry_request_id',retry_result->>'requestId','delivery_event_id',first_result->>'deliveryEventId',
+    'retry_delivery_event_id',retry_result->>'deliveryEventId'));
+end
+$v2311_reclass_perf$;
+select is((select (payload->>'source_count')::integer from v2311_reclass_perf_evidence),100,
+  'the performance fixture contains 100 distinct source rows');
+select ok((select payload->>'first_status'='applied' and (payload->>'first_movement_count')::integer=100
+  from v2311_reclass_perf_evidence),'atomic Reclass receipt covers all 100 requested movements');
+select ok((select (payload->>'first_atomic_rpc_ms')::numeric<=1000 from v2311_reclass_perf_evidence),
+  '100-source atomic Reclass plus durable delivery enqueue is within 1000ms');
+select is((select (payload->>'first_outbox_event_count')::integer from v2311_reclass_perf_evidence),1,
+  'the completed movement and its durable notification intent commit exactly once');
+select ok((select payload->>'retry_duplicate'='true' and (payload->>'retry_event_count')::integer=1
+  and payload->>'request_id'=payload->>'retry_request_id'
+  and payload->>'delivery_event_id'=payload->>'retry_delivery_event_id'
+  from v2311_reclass_perf_evidence),'same-command retry reuses its receipt and does not enqueue a second event');
+select diag('V2311_RECLASS_PERFORMANCE_JSON='||(select payload::text from v2311_reclass_perf_evidence));
 
 select * from finish();
 rollback;

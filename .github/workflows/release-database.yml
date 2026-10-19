@@ -35,6 +35,7 @@ jobs:
     outputs:
       changed: ${{ steps.scope.outputs.changed }}
       v238: ${{ steps.scope.outputs.v238 }}
+      v2311: ${{ steps.scope.outputs.v2311 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -96,6 +97,7 @@ jobs:
           done
           if [[ "${{ inputs.run-all-schema-tests }}" == 'true' ]]; then changed=true; fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "v2311=$(test "$(jq -r .version package.json)" = 2.3.11 && echo true || echo false)" >> "$GITHUB_OUTPUT"
           if [[ "$(jq -r '.version' package.json)" == '2.3.8' ]]; then
             echo 'v238=true' >> "$GITHUB_OUTPUT"
           else
@@ -129,18 +131,21 @@ jobs:
         test: ${{ fromJSON(needs.discover.outputs.pglite) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - name: Restore isolated PGlite modules
+        if: needs.schema-path-scope.outputs.v2311 != 'true'
         id: pglite
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/gnc-handover-pglite
           key: pglite-v1-${{ runner.os }}-${{ runner.arch }}-node22-0.5.8
       - name: Install pinned PGlite
-        if: steps.pglite.outputs.cache-hit != 'true'
+        if: needs.schema-path-scope.outputs.v2311 != 'true' && steps.pglite.outputs.cache-hit != 'true'
         run: npm install --prefix "$RUNNER_TEMP/gnc-handover-pglite" --no-save --package-lock=false --no-audit --no-fund @electric-sql/pglite@0.5.8
       - name: Save isolated PGlite modules
-        if: steps.pglite.outputs.cache-hit != 'true'
+        if: needs.schema-path-scope.outputs.v2311 != 'true' && steps.pglite.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/gnc-handover-pglite
@@ -187,7 +192,7 @@ jobs:
           mapfile -t tests < <(node -e 'for (const file of JSON.parse(process.env.EDGE_TESTS)) console.log(file)')
           cache_log="$RUNNER_TEMP/deno-dependency-prefetch.log"
           transient_pattern='\b429[[:space:]]+Too Many Requests\b|\b5[0-9]{2}[[:space:]]+[A-Za-z][A-Za-z ]*\b|connection reset by peer|connection refused|connection timed out|timed out|unexpected EOF|temporary failure in name resolution|DNS error|failed to connect|network is unreachable|TLS handshake timeout'
-          for attempt in 1 2 3; do
+          for attempt in 1 2; do
             if deno cache --node-modules-dir=auto "${entrypoints[@]}" "${tests[@]}" >"$cache_log" 2>&1; then
               echo "Deno dependency graph cached on attempt $attempt."
               break
@@ -195,14 +200,14 @@ jobs:
               status=$?
             fi
             if grep -Eiq "$transient_pattern" "$cache_log"; then
-              if [ "$attempt" -lt 3 ]; then
+              if [ "$attempt" -lt 2 ]; then
                 delay=$((attempt * 4))
-                echo "Transient Deno module fetch failure; retrying cache prefetch in ${delay}s (attempt $((attempt + 1))/3)."
+                echo "Transient Deno module fetch failure; retrying cache prefetch in ${delay}s (attempt $((attempt + 1))/2)."
                 sleep "$delay"
                 continue
               fi
               cat "$cache_log" >&2
-              echo 'Deno dependency prefetch exhausted three transient-failure attempts.' >&2
+              echo 'Deno dependency prefetch exhausted two transient-failure attempts.' >&2
               exit "$status"
             fi
             cat "$cache_log" >&2
@@ -240,6 +245,7 @@ jobs:
         env:
           SCOPE: ${{ needs.schema-path-scope.outputs.changed }}
           V238: ${{ needs.schema-path-scope.outputs.v238 }}
+          V2311: ${{ needs.schema-path-scope.outputs.v2311 }}
           REQUIRE_SCHEMA_SCOPE: ${{ inputs.run-all-schema-tests }}
           RESULTS: ${{ toJSON(needs) }}
         run: |
@@ -253,14 +259,14 @@ jobs:
           if (scope !== 'true') {
             if (scope !== 'false' || process.env.REQUIRE_SCHEMA_SCOPE === 'true') throw new Error('BACKEND_SCHEMA_SCOPE_REQUIRED');
             console.log('No database paths changed; schema integration jobs were intentionally skipped.');
-          } else if (process.env.V238 === 'true') {
+          } else if (process.env.V238 === 'true' || process.env.V2311 === 'true') {
             for (const name of ['integration', 'edge-functions']) {
               if (jobs[name]?.result !== 'success') throw new Error(`BACKEND_SCHEMA_GATE_FAILED_${name}`);
             }
             for (const name of ['schema-contracts', 'suspend-tag-approval', 'database-and-functions']) {
               if (jobs[name]?.result !== 'skipped') throw new Error(`V238_UNEXPECTED_FULL_SCHEMA_JOB_${name}`);
             }
-            console.log('v2.3.8 scoped PGlite and changed-edge checks passed; full-schema jobs are intentionally retained by the release receipt gate.');
+            console.log('Scoped SQL evidence and changed-edge checks passed; unaffected full-schema results are retained by the source-sealed receipt gate.');
           } else {
             required.push('integration', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions');
             for (const name of required) {
@@ -275,7 +281,7 @@ jobs:
           NODE
 
   schema-contracts:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true' && needs.schema-path-scope.outputs.v2311 != 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
     # The timeout is a safety bound for full schema diagnostics, including the
@@ -304,7 +310,7 @@ jobs:
           path: artifacts/performance
           if-no-files-found: ignore
   suspend-tag-approval:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true' && needs.schema-path-scope.outputs.v2311 != 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -323,7 +329,7 @@ jobs:
       - name: Verify Suspend Tag grants, completion, decisions, and delivery isolation
         run: node scripts/run-discovered-tests.mjs postgres-runtime
   database-and-functions:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true' && needs.schema-path-scope.outputs.v2311 != 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
     timeout-minutes: 35

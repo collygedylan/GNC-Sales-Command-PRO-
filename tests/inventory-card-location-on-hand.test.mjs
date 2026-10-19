@@ -306,3 +306,21 @@ test('aggregate invalidation preserves aliased values but makes them Unknown unt
   context.clearCardLocationOnHandReceipt(cached);
   assert.deepEqual(Object.keys(cached), [], 'cache cleanup strips lowercase derived fields too');
 });
+
+// v2.3.11: cached row decoration must not veto a complete authorized location index.
+test('Blue Point location totals survive absent row receipts and unrelated adapters', () => {
+  const fixture = setup([
+    { UNIQUE_ID:'blue-g', ITEMCODE:'000152.050.1', LOCATIONCODE:'G.11.000', LOTCODE:'27.F1', PTRONHAND:88, LOC_ON_HAND:88, SOURCE:'MASTER' },
+    { UNIQUE_ID:'blue-l', ITEMCODE:'000152.050.1', LOCATIONCODE:'L.05.000', LOTCODE:'25.F1', PTRONHAND:1, LOC_ON_HAND:1, SOURCE:'MASTER' },
+  ]);
+  const { context, state } = fixture;
+  context.nativeAuthSessionActive = true; context.nativeAuthProfile = {id:'fixture-profile'};
+  Object.assign(state, {liveVerifiedScope:'actor-a',liveVerifiedPermission:'permissions-1',liveVerifiedRevision:'12'});
+  context.hasCurrentProductionLiveSyncProof = () => false;
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '88');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[1]), '1');
+  state.rowCompleteness = 'partial';
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null);
+  state.rowCompleteness = 'complete'; state.liveVerifiedPermission = 'stale';
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null);
+});

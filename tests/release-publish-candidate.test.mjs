@@ -28,15 +28,34 @@ function fixture(options = {}) {
     base: { ref: 'main', repo: { full_name: repository } },
     head: { ref: 'candidate', sha: headSha, repo: { full_name: repository } }, ...options.pr };
   const candidates = options.candidates ?? [pr];
-  const calls = { associated: [], merges: [], dispatches: [], notices: [], warnings: [], workflowRuns: [] };
+  const calls = { associated: [], merges: [], dispatches: [], notices: [], warnings: [], workflowRuns: [], events: [] };
   const workflowRuns = options.workflowRuns ?? [];
+  const dispatchedBackendRun = options.dispatchedBackendRun ?? null;
   const api = {
     actions: {
-      getWorkflowRun: async args => ({ data: validatedRun }),
-      listWorkflowRuns: async args => { calls.workflowRuns.push(args); return { data: Array.isArray(workflowRuns) ? workflowRuns : (workflowRuns[args.workflow_id] || []) }; },
-      createWorkflowDispatch: async args => { calls.dispatches.push(args); if (options.backendError && args.workflow_id === 'apps-script-sync.yml') throw new Error('backend unavailable'); return { status: 204 }; },
+      getWorkflowRun: async args => {
+        calls.events.push(`get:${args.run_id}`);
+        return { data: args.run_id === (dispatchedBackendRun?.id ?? -1) ? dispatchedBackendRun : validatedRun };
+      },
+      listWorkflowRuns: async args => {
+        calls.workflowRuns.push(args);
+        const values = Array.isArray(workflowRuns) ? workflowRuns : (workflowRuns[args.workflow_id] || []);
+        const backendAlreadyDispatched = calls.dispatches.some(run => run.workflow_id === 'apps-script-sync.yml');
+        const dispatched = args.workflow_id === 'apps-script-sync.yml' && backendAlreadyDispatched && dispatchedBackendRun
+          ? [dispatchedBackendRun] : [];
+        return { data: [...dispatched, ...values] };
+      },
+      createWorkflowDispatch: async args => {
+        calls.dispatches.push(args);
+        calls.events.push(`dispatch:${args.workflow_id}`);
+        if (options.backendError && args.workflow_id === 'apps-script-sync.yml') throw new Error('backend unavailable');
+        return { status: 204 };
+      },
     },
-    repos: { listPullRequestsAssociatedWithCommit: async args => { calls.associated.push(args); return { data: candidates }; } },
+    repos: {
+      listPullRequestsAssociatedWithCommit: async args => { calls.associated.push(args); return { data: candidates }; },
+      getContent: async args => ({ data: { content: Buffer.from(JSON.stringify({ version: options.releaseVersion ?? '2.3.10' })).toString('base64') } }),
+    },
     pulls: {
       get: async () => ({ data: pr }),
       merge: async args => {
@@ -52,7 +71,8 @@ function fixture(options = {}) {
   const context = { repo: { owner: 'example', repo: 'gnc' }, payload: { workflow_run: eventRun } };
   const core = { notice: message => calls.notices.push(message), warning: message => calls.warnings.push(message) };
   return { calls, pr, async execute() {
-    await vm.runInNewContext(`(async () => {\n${script}\n})()`, { github, context, core });
+    await vm.runInNewContext(`(async () => {\n${script}\n})()`, { github, context, core, Buffer,
+      Date, setTimeout: callback => setTimeout(callback, 0) });
     return calls;
   } };
 }
@@ -68,6 +88,25 @@ test('trusted completed PR validation dispatches Pages first and an independent 
   assert.deepEqual(f.calls.workflowRuns.map(run => run.workflow_id), ['pages-static.yml', 'apps-script-sync.yml']);
   assert.deepEqual(f.calls.merges, []);
   assert.deepEqual(JSON.parse(JSON.stringify(f.calls.associated)), [{ owner: 'example', repo: 'gnc', commit_sha: headSha, per_page: 100 }]);
+});
+
+test('v2.3.11 waits for the exact backend deployment to succeed before dispatching Pages', async () => {
+  const backendRun = { id: 91, head_branch: 'main', head_sha: mergeSha, event: 'workflow_dispatch',
+    status: 'completed', conclusion: 'success' };
+  const f = fixture({ releaseVersion: '2.3.11', dispatchedBackendRun: backendRun });
+  await f.execute();
+  assert.deepEqual(f.calls.dispatches.map(run => run.workflow_id), ['apps-script-sync.yml', 'pages-static.yml']);
+  assert.ok(f.calls.events.indexOf('dispatch:apps-script-sync.yml') < f.calls.events.indexOf('get:91'));
+  assert.ok(f.calls.events.indexOf('get:91') < f.calls.events.indexOf('dispatch:pages-static.yml'));
+  assert.equal(f.calls.dispatches.every(run => run.inputs['expected-commit'] === mergeSha), true);
+});
+
+test('v2.3.11 does not dispatch Pages when the exact backend deployment fails', async () => {
+  const backendRun = { id: 92, head_branch: 'main', head_sha: mergeSha, event: 'workflow_dispatch',
+    status: 'completed', conclusion: 'failure' };
+  const f = fixture({ releaseVersion: '2.3.11', dispatchedBackendRun: backendRun });
+  await assert.rejects(f.execute(), /BACKEND_WORKFLOW_FAILED:apps-script-sync\.yml:failure/);
+  assert.deepEqual(f.calls.dispatches.map(run => run.workflow_id), ['apps-script-sync.yml']);
 });
 
 test('empty workflow_run pull_requests are resolved from the validated commit', async () => {
@@ -158,6 +197,11 @@ test('the dispatcher is trusted, least-scoped, and cannot recursively dispatch i
   assert.match(script, /pulls\.merge\([\s\S]*sha: run\.head_sha/);
   assert.match(script, /dispatchOnce\('pages-static\.yml'\)/);
   assert.match(script, /dispatchOnce\('apps-script-sync\.yml'\)/);
+  assert.match(script, /getContent\([\s\S]*path: 'package\.json'[\s\S]*ref: pr\.merge_commit_sha/);
+  assert.match(script, /releaseVersion === '2\.3\.11'/);
+  assert.match(script, /waitForSuccessfulWorkflow\('apps-script-sync\.yml', backendDispatch\)/);
+  assert.match(script, /BACKEND_WORKFLOW_FAILED/);
+  assert.ok(workflow.jobs.publish['timeout-minutes'] >= 40);
   assert.match(script, /'expected-commit': pr\.merge_commit_sha/);
   assert.ok(Object.hasOwn(backend.on, 'workflow_dispatch'));
   assert.equal(Object.hasOwn(backend.on, 'push'), false, 'only a validated candidate or guarded recovery starts backend publication');

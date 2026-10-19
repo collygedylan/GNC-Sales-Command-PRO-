@@ -1,0 +1,301 @@
+{
+  "schemaVersion": "agdata-v2311-scoped-validation-v1",
+  "base": "f3bb57f2d77524617bce1502efd75a207b19bac7",
+  "release": "AgData v2.3.11",
+  "assembledAt": "2026-10-19T20:20:26.033Z",
+  "validatedSourceHashes": {
+    ".github/workflows/apps-script-sync.yml": "3276305594b54d2797a7bf3aaaa5be30d6dd48622f03cdf5e26cfa914a7f1cbe",
+    ".github/workflows/publish-candidate.yml": "c2943b698b6f2f1826276de7b2dfb9c2888ba252f34f4cfc2f21c2afba1a882e",
+    ".github/workflows/release-database.yml": "c2aeb73164f37d03609502fb8cc12020f206e352af98fc18ca8471adf8260822",
+    "AGENTS.md": "9a1abaded3dc56062eb07c121cf1b08e521e06ff60cf5cc39905adb170fa7532",
+    "Code.gs": "d1100fed51d709a6a7beaaa87e88306909eb9c218ec4e16c142edab50ab24c72",
+    "assets/live-sync-coordinator.js": "51568a8092d8a9c2832b00ff3869ca691be3aa7cdfccedc1bca374fa5faaf56d",
+    "assets/ops-precision-pilot.css": "3f7739d8aebffa28be0a596909d4a49c328df40be1176a0fb216f23e7db8b171",
+    "assets/ops-precision-pilot.js": "c95f92235068623116802def2aa778e6b15380d4e5c90bd48a22c4b20bced590",
+    "assets/user-access-control.css": "634fa2fce3d0b9d9204e6110cba44ebb4726570566e794444e725add6d191add",
+    "assets/user-access-control.js": "574dee27c533879973db70543d0be292615ad15c0df48691cefbd2df01a6c00e",
+    "deno.lock": "ef0e5e29ae00e67b27a7c3f415a5d670b6922673d71e538c3f7b0223ed9a2de9",
+    "index.html": "568dde8d34ca401471c50ef94a68f72dde14ea929ada77413eb40c59ef1ae9ce",
+    "manifest.json": "5902e88d770c13b374c77747053b3dc2e64df9a548f65aed7fcd25bfc9545d52",
+    "package-lock.json": "db1e8b1964154e3f0aa1473813a72ed190886f1ffae149b4753315c2dcbe62da",
+    "package.json": "6b11dddae9f86dbb34924540a0e893087ecfc5d76298156ae65e377efb77afa9",
+    "playwright.v2311-frontend-smoke.config.ts": "a842229719c136c17ba1a4d44f5d03d055686c74f5b19c648da8c97c7482481e",
+    "playwright.v2311-scoped.config.ts": "eb64d953a13d01cfcd3e04c632128e9b7e0f61c6f9f9fb887379e1796522d671",
+    "scripts/apply-item-low-stock-migration.mjs": "f0f5315ca998ff5fb9dfe9ef8acbd1aa92f12149ede325e6a3ea76768a6e10cd",
+    "scripts/apps-script-function-patch.mjs": "c36e7b6b6e721981e9645f54888e3c925ca9e48d9daa3e1cd252bed417211040",
+    "scripts/build-live-shell.mjs": "9048a7b3b9e9390d1df81200cd2e5fdecc50b7613a0ba6af03b4eccd6ed7b3d3",
+    "scripts/check-v2311-retained-validation.mjs": "d20bf0ade856d014e0e1684b0c72085f5c050fc8016bdf4b8eb214579246ae02",
+    "scripts/ci-backend-matrix.mjs": "78d856f2c8c9fa407b2b243c4f064d956cb30b07e542d1657df37b620aa5e355",
+    "scripts/database-workspace.mjs": "e0dc0cf8d6c7e60862781209f1035591831e432c67e9466b4aba3b9092f1987d",
+    "scripts/run-discovered-tests.mjs": "2603a14c60e9a243045ce645b805791ee95473a3d39b65e640142eb11ccd29b3",
+    "scripts/run-release-react-checks.mjs": "68c7176becb6e3a79034b17c98811bbc968ed0690a06625f05695946450d32dd",
+    "scripts/run-release-unit-checks.mjs": "2fef635415159e396415a560123e04e5d25d3286932fc0f04db50f9f98beae31",
+    "scripts/verify-live-av-sales-reps.mjs": "f7051d0c599e17e028d5aa37c2b474dd8bf93cb87c7841e08769bcf9dd0c950d",
+    "scripts/verify-v2311-database.mjs": "ddbecce9aa76e8797a02fd1f9b1ebd59369e595d1bdd7d59e12aa2d058a43215",
+    "services/database-contracts.generated.ts": "9807046afc7ae6100c844518f4bcba5202c6116b53e1f68877ff917753262c3d",
+    "supabase/ci/v2311_suspend_recipient_cleanup.sql": "915b51a80336d1e4e4e3c38c98d0e116fc32b3ebe0b77d5d864d6c599d5d1e3a",
+    "supabase/ci/v2311_suspend_recipient_prerequisites.sql": "1c15175e023d93a432a9ae6737908ee5db6328ab1b1416b92906d9804161f32c",
+    "supabase/functions/_shared/canonical-user-access.ts": "578ac621274c7f4cfb693396453bda560cbfd314d4f52b6689fb2dd15baca00b",
+    "supabase/functions/_shared/database.types.ts": "1045dc348aff4c64a87a87d77e27da95db5b96327edb047e06ab0c8b19af4557",
+    "supabase/functions/_shared/production-workflow.ts": "66dd5a83a5fe443cb0d883852bea43cde5aa19e6834ff30fa9eabfcdfe0d03db",
+    "supabase/functions/app-api/index.ts": "0ca8ad43438399e2aaf4f0c861ac66a6d05a24387e2c633f37c601d483873a33",
+    "supabase/functions/request-delivery-worker/index.ts": "571b2300a99b61056138ae3c3e8d04ed0155855ff979698a67499612450bf8d3",
+    "supabase/migrations/20261019163128_canonical_user_access_control_v1.sql": "4d7f32dae92ad2350f3586298cb8d82658becdc2366b435fafac1dc10b4d7e45",
+    "supabase/migrations/20261019172019_inventory_reclass_move_delivery_v1.sql": "9478aac23f25de48cb3b0c8409c4c46f18c243a079fa3b9d555fa43cefa85134",
+    "supabase/tests/inventory_reclass_move_delivery_v1_test.sql": "03360ab1ecccdda6f6ba290d8a796d251da2dd625b77464214397fe16e5efa62",
+    "supabase/tests/inventory_reclass_moves_v1_test.sql": "94ce59c498b3be84135bf4f9f027cbebad2994813dca45156f8a7d5ecd84f78f",
+    "supabase/tests/user_access_control_v1_test.sql": "547f5dd496a09b8b6d928af634b25c9e1eba7923a36391b112e24f7db29054fa",
+    "sw.js": "761e2c1f7124e4d40d0ee3a60869912366665837f5735bf8f776d0a766d5d62e",
+    "tests/access-control-audit.test.mjs": "05238f6eb9c28c7a809e41f7bf0bad725721e6a22ee3ea838d08b4e59b4dc57a",
+    "tests/apps-script-function-patch.test.mjs": "88e4b4720eea22df593dcb5afaa61e730a537fea0ec2fec6c265a260c2496730",
+    "tests/av-derived-rows.test.mjs": "9f0da54bfe08abf807c7d290f06298aceed0f07d7edf0898252cef84396a902f",
+    "tests/bloom-picker-metrics.test.mjs": "f3c99fae3e93b9946b85f02a6b6100f5fb87a5af73a7191338074d848e5f6cf8",
+    "tests/database-tooling.test.mjs": "aa25664d5d199eae7543bae5d1afabd8c8d0a5bb80bb8d59be89dc1991a83dd7",
+    "tests/eval-report2-async-index.e2e.spec.ts": "0591f5a940d7fd1a2ced390f0112c48849c5eafa147de321b50b026b097b8228",
+    "tests/fixtures/hl-order-state.mjs": "d5e6aa3ffccdf625df87a99a63e33e59325a67d636add0aada5c73a92e94286a",
+    "tests/fixtures/v2311-canonical-access.mjs": "7229562a2055ef1e4093d137480d5add1c9252e8138acc7850faecc389bfc637",
+    "tests/helpers/customer-mapping-fixture.mjs": "e9b0348af6607a145d58011a35d40fb98790a548abe36f92c736c243c1049688",
+    "tests/helpers/reclass-pdf-fixture.mjs": "ff6aa32ee526e23465a29a35e9a0fff0d50dd54c0e73b4e18d811c96c518a805",
+    "tests/inventory-card-location-on-hand.test.mjs": "f4658a330df4584825cedb835818bae42c283e92eea4f5f656c89f25ab44157d",
+    "tests/item-detail-shared-options.test.mjs": "cef978c256320f176a35f6a1af62aa9d4349334c97fb390a4ac7b31629ccc867",
+    "tests/live-sync-coordinator.test.mjs": "eef62f224b033934b0ca076ea3eaa204662a881c0d9372f5c652b489d69f1302",
+    "tests/reclass-completion-delivery.test.mjs": "9eb298850cb323c7879c18105d8a9360f2c8675bab2dcba33a86f3f60b0c5bcf",
+    "tests/reclass-confirmed-live-edit.test.mjs": "875d79ce1dea4576a5691620a0fe16e289d8596ce797848ff278b206cdb161fe",
+    "tests/reclass-inquiry-compact-layout.e2e.spec.ts": "5c19c26e1266695371569f8c9baafece7aa1ece3f4beec001f88bf500aef9588",
+    "tests/reclass-inquiry-compact-layout.test.mjs": "130dc0e8e45f4fc3b5cd3f17faabdff057a13eb4ac49eb6787c46f0c3afec154",
+    "tests/reclass-inquiry.test.mjs": "2b9b50005e41a324566a67904641db8326a8ab4830c1a2e8a62a39d7d89a49e7",
+    "tests/reclass-live-edits.test.mjs": "51603089e25ac8f3a692bb548ca0252a04fc15ad60491fea1312420be5fc337f",
+    "tests/reclass-move-api.test.mjs": "3d55d4c250b181d4247b125122b9208d6fc51f1a518b834acfdcc6d1e6390bf2",
+    "tests/reclass-pdf-layout.browser.test.mjs": "2d729cb98d2b602ec49e4f42b475c87313aa202cd4c4b64a6287ef064ead9489",
+    "tests/reclass-shared-receipt.test.mjs": "8a5a1c45dece16ae637a720f13cbbe24c8d38270fb8d57df53e584388afccda9",
+    "tests/release-drive-card-layout.test.mjs": "1c7afa9eee77e496b2c49e1289b7dd6e19b1ad3ea4d030472b58263128119936",
+    "tests/release-publish-candidate.test.mjs": "4b9f7aeaaebc802f062f4717fc1ff1c59bdee22f90a4b72bfaa19e912774fdbd",
+    "tests/request-mapping-reader.test.mjs": "586834250ef94ad4d25aabd82bb6caf9bfd30f5237b0ad0aa1a3235586517c17",
+    "tests/retained-view-status.test.mjs": "0e27daa88124da0471740651b3845c014b1b82352db135d5ac3f631b2f88b6f7",
+    "tests/suspend-tag-card-layout.test.mjs": "7b155d655fa32e3fb5e72f4a3be7e5567040e64aeb4654a079f9bb04ba36273f",
+    "tests/suspend-tag-completion.e2e.spec.ts": "656ef59893cdfce47b239f1333b5425b68a277eb5a4adc5a53a3b23916028c89",
+    "tests/suspend-tag-completion.test.mjs": "3f9ea0f26ea8589cd51edf8d07919f41be4c4f374450af20d2247dca254d92da",
+    "tests/user-access-control.test.mjs": "f0efd66e74d1e7d26a14dcab1cf22bb70b6368533796bfda867fd7038ddff312",
+    "tests/user-access-integration.test.mjs": "d5fc339997413ffd8721ba093a5d196e9ea3b7048f05bec3832e49ff85640c73",
+    "tests/v2311-frontend-smoke.e2e.spec.ts": "bea29ddad26199d833946ee102c6b74dcfec869b964d62e182f5918d36fa5bd8",
+    "tests/v2311-release-gates.test.mjs": "9dbb82f037cf0de501590b24c2188ec98bbdb09799426a0f2d55beb86cb86e83",
+    "v2/public/manifest.webmanifest": "b45cab3d1cdc70c4f2192f02229d5f62a777656113a7233352a06d670e2baf0e",
+    "v2/src/services/api.ts": "9b9dddca4689604ce0260a8b3bd8e04c19a2734a89991ffce6aa1f7340c0524d"
+  },
+  "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66",
+  "provenance": {
+    "kind": "retained-evidence-aggregation",
+    "sourceHashDigestMeaning": "Seal of the assembled release sources, not a claim that every historical run was rerun on this tree.",
+    "preservedCommit": "d547b5ddfb5bcfc305a6eb18387273e63dce4c53",
+    "productionSourceUnchangedSincePreservedCommit": true,
+    "onlyNewExecution": "Final iPhone Complete Tag, tooling validation and evidence integrity checks.",
+    "scopeCompatibility": "Latest changes affect the iPhone assertion and release evidence checker only; unchanged application, SQL, and build sources retain their prior scoped evidence."
+  },
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "fixtureAuthentication": true,
+  "validation": {
+    "node": {
+      "artifactPath": "docs/releases/v2.3.11-validation/node.json",
+      "artifactSha256": "529ee3cd7674a1709e85db4804603f3e2f0676b32a4dc08234276d1e0be4e4f4",
+      "validationId": "v2311-node-retained-20261019-reset3",
+      "status": "passed",
+      "checks": 229,
+      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66"
+    },
+    "database": {
+      "artifactPath": "docs/releases/v2.3.11-validation/database.json",
+      "artifactSha256": "5eebf6f3f7cab6d0ff950aec7183fa773290bd8ec82903d1d94d4bd52184ade5",
+      "validationId": "v2311-database-retained-20261019-reset3",
+      "status": "passed",
+      "checks": 98,
+      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66",
+      "interactiveMaxMs": 4.044
+    },
+    "browser": {
+      "artifactPath": "docs/releases/v2.3.11-validation/browser.json",
+      "artifactSha256": "ec95e3764e3e1f1295ec44378af7f73a5a1548e059658c35792b3a2f858fa70f",
+      "validationId": "v2311-browser-retained-20261019-reset3",
+      "status": "passed",
+      "checks": 32,
+      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66"
+    },
+    "tooling": {
+      "artifactPath": "docs/releases/v2.3.11-validation/tooling.json",
+      "artifactSha256": "e8f677498776ae407385bbdd46187cd40ea7a458dcf7ba633957a75aa697f392",
+      "validationId": "v2311-tooling-retained-20261019-reset3",
+      "status": "passed",
+      "checks": 1,
+      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66"
+    },
+    "build": {
+      "artifactPath": "docs/releases/v2.3.11-validation/build.json",
+      "artifactSha256": "e65af444ad5dfa7d92ef59b1ceeae9c76e938542b7644d9b049eb51a0236bb0d",
+      "validationId": "v2311-build-retained-20261019-reset3",
+      "status": "passed",
+      "checks": 3,
+      "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66"
+    }
+  },
+  "browser": {
+    "optimisticMaxMs": 20,
+    "eval2MaxMs": 275,
+    "completeTagIphone": {
+      "status": "passed",
+      "project": "v2311-iphone-webkit",
+      "rows": 1000,
+      "mountedRows": 100,
+      "domMs": 12,
+      "paintMs": 105,
+      "summaryModalOpened": false,
+      "detailModalOpened": false,
+      "promptModalOpened": false,
+      "backendAcknowledgmentHeld": true,
+      "trace": "off",
+      "cache": "warm",
+      "rowRemoved": true,
+      "backingCountAfter": 999,
+      "displayCountAfter": "99+",
+      "evidence": {
+        "path": ".gnc-local/v2311-validation/browser-iphone-reset2-34.json",
+        "sha256": "045c1e3a152c9a355b4d5c7b2bb1f4653dbeed2fa81e2c79dcc5443e59c59911",
+        "retained": true
+      },
+      "noModalAndCountEvidence": "Assertions after the metric attachment completed in the passed test.",
+      "noModalOpened": true
+    },
+    "salesReps": [
+      {
+        "username": "toby_brown",
+        "status": "passed",
+        "actualRows": 3214,
+        "expectedRows": 3214,
+        "initialWindowPaintMs": 723.9000000059605,
+        "fullHydrationMs": 10737.199999988079,
+        "loadingCleared": true,
+        "mountedCards": 20,
+        "environment": {
+          "device": "Pixel 7",
+          "browser": "Chromium",
+          "viewport": {
+            "width": 412,
+            "height": 839
+          },
+          "trace": "off",
+          "cache": "fresh browser context; shared OS cache uncontrolled"
+        }
+      },
+      {
+        "username": "annette_hancock",
+        "status": "passed",
+        "actualRows": 3133,
+        "expectedRows": 3133,
+        "initialWindowPaintMs": 703.5999999940395,
+        "fullHydrationMs": 9789.699999988079,
+        "loadingCleared": true,
+        "mountedCards": 20,
+        "environment": {
+          "device": "Pixel 7",
+          "browser": "Chromium",
+          "viewport": {
+            "width": 412,
+            "height": 839
+          },
+          "trace": "off",
+          "cache": "fresh browser context; shared OS cache uncontrolled"
+        }
+      }
+    ],
+    "knownUnresolved": [
+      {
+        "case": "hs-iphone",
+        "status": "unresolved",
+        "measurementsMs": {
+          "drive": 416,
+          "av": 621,
+          "request": 812,
+          "bloom": 408
+        },
+        "limitMs": 400,
+        "note": "Prior emulated iPhone paint failure retained; not certified as passed.",
+        "evidencePath": ".gnc-local/v2311-validation/browser-iphone-shell-31.json",
+        "evidenceSha256": "90a5e7ca737c9223268d4eb7b4272b4e01e0cd0b202b7bf218916d7dc34eed6e"
+      },
+      {
+        "case": "av-iphone",
+        "status": "unresolved",
+        "username": "toby_brown",
+        "actualRows": 3214,
+        "initialWindowMs": 7431,
+        "fullHydrationMs": 66166,
+        "limitMs": 1500,
+        "evidence": {
+          "path": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+          "sha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051",
+          "retained": true
+        },
+        "note": "Annette iPhone not completed. Android representative snapshot passed; no cross-browser timing claim.",
+        "evidencePath": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+        "evidenceSha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051"
+      }
+    ]
+  },
+  "knownUnresolved": [
+    {
+      "case": "hs-iphone",
+      "status": "unresolved",
+      "measurementsMs": {
+        "drive": 416,
+        "av": 621,
+        "request": 812,
+        "bloom": 408
+      },
+      "limitMs": 400,
+      "note": "Prior emulated iPhone paint failure retained; not certified as passed.",
+      "evidencePath": ".gnc-local/v2311-validation/browser-iphone-shell-31.json",
+      "evidenceSha256": "90a5e7ca737c9223268d4eb7b4272b4e01e0cd0b202b7bf218916d7dc34eed6e"
+    },
+    {
+      "case": "av-iphone",
+      "status": "unresolved",
+      "username": "toby_brown",
+      "actualRows": 3214,
+      "initialWindowMs": 7431,
+      "fullHydrationMs": 66166,
+      "limitMs": 1500,
+      "evidence": {
+        "path": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+        "sha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051",
+        "retained": true
+      },
+      "note": "Annette iPhone not completed. Android representative snapshot passed; no cross-browser timing claim.",
+      "evidencePath": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+      "evidenceSha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051"
+    }
+  ],
+  "acceptance": "Latest user instruction explicitly runs only Complete Tag and directs Step1 publication after it passes; unresolved historical timing failures remain disclosed.",
+  "retainedBaseline": {
+    "nodePassed": 3550,
+    "reactPassed": 158,
+    "fullSuitesRerun": false,
+    "evidence": [
+      {
+        "path": ".gnc-local/v235-retained-final.json",
+        "sha256": "c5b1d9426494ba57dc4eb178d9724dc75dab60b71a0214daae8996aacb8b87ac"
+      },
+      {
+        "path": ".gnc-local/v236-retained-final.json",
+        "sha256": "bddd7de5da2b914a3b285d097ecd0112e73c85fced3e4b31fcfeb6a6cc7914de"
+      }
+    ]
+  },
+  "originalFocusedNode": {
+    "originalTotal": 229,
+    "verifiedPassed": 174,
+    "delegatedReportedPassed": 55,
+    "arithmeticTotal": 229,
+    "delegatedRawLogsAvailable": false,
+    "delegatedLogHashes": [],
+    "source": "v2311-validation-progress.json updates.originalFocusedChecks; update clarifies the 55 has no separate local raw logs. No missing logs are represented as present."
+  }
+}

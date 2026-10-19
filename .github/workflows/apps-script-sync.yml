@@ -26,6 +26,7 @@ jobs:
       authorized: ${{ steps.guard.outputs.authorized }}
       backend-changed: ${{ steps.scope.outputs.backend-changed }}
       v238: ${{ steps.scope.outputs.v238 }}
+      v2311: ${{ steps.scope.outputs.v2311 }}
     steps:
       - name: Check out current main history
         uses: actions/checkout@v4
@@ -70,6 +71,7 @@ jobs:
             esac
           done
           echo "backend-changed=$backend_changed" >> "$GITHUB_OUTPUT"
+          echo "v2311=$(test "$(jq -r .version package.json)" = 2.3.11 && echo true || echo false)" >> "$GITHUB_OUTPUT"
           if [[ "$(jq -r '.version' package.json)" == '2.3.8' ]]; then
             echo 'v238=true' >> "$GITHUB_OUTPUT"
           else
@@ -89,23 +91,23 @@ jobs:
 
   pending-order-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true'
     uses: ./.github/workflows/bloomscapes-pending-tests.yml
 
   suspend-tag-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true'
     uses: ./.github/workflows/suspend-tag-tests.yml
 
   live-dataset-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true'
     uses: ./.github/workflows/live-dataset-revisions.yml
 
   v238-retained-contracts:
-    name: Verify retained v2.3.8 database contract receipts
+    name: Verify scoped database contract receipts
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 == 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && (needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -117,6 +119,13 @@ jobs:
       - name: Require exact retained pending-order and live-dataset contract hashes
         run: |
           node --input-type=module <<'NODE'
+          import { verifyV2311RetainedValidation } from './scripts/check-v2311-retained-validation.mjs';
+          import fs from 'node:fs';
+          if (JSON.parse(fs.readFileSync('package.json', 'utf8')).version === '2.3.11') {
+            verifyV2311RetainedValidation();
+            console.log('PASS v2.3.11 exact source-sealed disposable SQL and delivery contracts');
+            process.exit(0);
+          }
           import { verifyV238RetainedValidation } from './scripts/check-v238-retained-validation.mjs';
           const receipt = verifyV238RetainedValidation({ rootDir: process.cwd() });
           if (receipt.canRetainPendingOrderContract !== true) throw new Error('V238_PENDING_ORDER_CONTRACT_NOT_RETAINABLE');
@@ -127,7 +136,7 @@ jobs:
   deploy-supabase:
     name: Apply backend migrations and deploy Edge Functions
     needs: [authorize-backend, backend-validation, pending-order-contract, suspend-tag-contract, live-dataset-contract, v238-retained-contracts]
-    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && ((needs.authorize-backend.outputs.v238 == 'true' && needs.v238-retained-contracts.result == 'success' && needs.pending-order-contract.result == 'skipped' && needs.suspend-tag-contract.result == 'skipped' && needs.live-dataset-contract.result == 'skipped') || (needs.authorize-backend.outputs.v238 != 'true' && needs.v238-retained-contracts.result == 'skipped' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'))
+    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && (((needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true') && needs.v238-retained-contracts.result == 'success' && needs.pending-order-contract.result == 'skipped' && needs.suspend-tag-contract.result == 'skipped' && needs.live-dataset-contract.result == 'skipped') || (needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.v238-retained-contracts.result == 'skipped' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -179,6 +188,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
           V238_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v238 }}
+          V2311_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v2311 }}
         shell: bash
         run: |
           set -euo pipefail
@@ -190,7 +200,7 @@ jobs:
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
           deploy_with_retry() {
             local attempt output status
-            for attempt in 1 2 3; do
+            for attempt in 1 2; do
               if output=$("$@" 2>&1); then
                 printf '%s\n' "$output"
                 return 0
@@ -198,14 +208,17 @@ jobs:
                 status=$?
                 printf '%s\n' "$output"
               fi
-              if [[ "$attempt" -eq 3 ]] || ! grep -Eq 'unexpected deploy status (500|502|503|504)' <<< "$output"; then
+              if [[ "$attempt" -eq 2 ]] || ! grep -Eq 'unexpected deploy status (500|502|503|504)' <<< "$output"; then
                 return "$status"
               fi
               echo "SUPABASE_DEPLOY_TRANSIENT_RETRY attempt=$attempt"
               sleep "$((attempt * 5))"
             done
           }
-          if [[ "$V238_SCOPED_DEPLOY" == 'true' ]]; then
+          if [[ "$V2311_SCOPED_DEPLOY" == 'true' ]]; then
+            deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
+          elif [[ "$V238_SCOPED_DEPLOY" == 'true' ]]; then
             deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
             deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
             deploy_with_retry supabase functions deploy send-push-alert --use-api --project-ref "$project_ref"

@@ -660,16 +660,88 @@ test('canceling confirmation retains the row and makes no completion request', {
   app.assertClean();
 });
 
-test('Complete Tag saves and removes the row from the active Suspend view', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
-  const app = await harness(page, baseURL!);
+test('Complete Tag saves and removes the row from the active Suspend view', {"tag":["@suspend-tag","@v2311-workflow"]}, async ({ page, baseURL }, info) => {
+  const representativeRows=Array.from({length:1000},(_,index)=>({...fixtures[index%2],UNIQUE_ID:'browser-suspend-'+(index+1)}));
+  const app = await harness(page, baseURL!, representativeRows);
   const row = app.backendRows[0];
   const uniqueId = row.UNIQUE_ID;
+  let release!: () => void;
+  app.replies.push({ operation:'close', wait:new Promise<void>(resolve => { release=resolve; }) });
+  // Establish the active list through the same filter path used by the UI.
   await app.showStatus('active');
   await expect(app.card(row)).toBeVisible();
-  await app.activate(app.done(row));
+  // Start the warm action with its control on screen, after initial rendering.
+  await app.done(row).scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.eval(`(() => {
+    const names=['syncIosFixedTopChromeMetrics','syncIosBottomNavViewportLock','auditIosFixedShellGap','syncViewportHeight','renderRequest'];
+    const diagnostic={phase:'settling',visibility:document.visibilityState,hasFocus:document.hasFocus(),functions:Object.create(null)};
+    window.__v2311ShellDiagnostic=diagnostic;
+    for(const name of names){
+      const original=window[name];
+      if(typeof original!=='function')continue;
+      diagnostic.functions[name]={settling:{count:0,totalMs:0,maxMs:0},action:{count:0,totalMs:0,maxMs:0}};
+      window[name]=function(...args){
+        const started=performance.now();
+        try{return original.apply(this,args)}
+        finally{const elapsed=performance.now()-started;const bucket=diagnostic.functions[name][diagnostic.phase==='action'?'action':'settling'];bucket.count++;bucket.totalMs+=elapsed;bucket.maxMs=Math.max(bucket.maxMs,elapsed)}
+      };
+    }
+  })()`));
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    const gaps:number[]=[];
+    let previous=performance.now();
+    for(let frame=0;frame<4;frame++)await new Promise<void>(resolve=>requestAnimationFrame(()=>{
+      const now=performance.now();gaps.push(now-previous);previous=now;resolve();
+    }));
+    const diagnostic=(window as Window & {__v2311ShellDiagnostic?:{phase:string;settledFrameGaps?:number[]}}).__v2311ShellDiagnostic;
+    if(diagnostic){diagnostic.settledFrameGaps=gaps;diagnostic.phase='idle'}
+  });
+  await page.evaluate(uid => {
+    const selector='#request-content [data-request-uid="dock_suspend_dc_'+uid+'"]';
+    const probe={started:0,domMs:-1,paintMs:-1, mountedRows:document.querySelectorAll('#request-content [data-request-uid]').length,
+      settledFrameGaps:(window as Window & {__v2311ShellDiagnostic?:{settledFrameGaps?:number[]}}).__v2311ShellDiagnostic?.settledFrameGaps,
+      shellFunctions:(window as Window & {__v2311ShellDiagnostic?:{functions?:Record<string,unknown>}}).__v2311ShellDiagnostic?.functions,
+      visibility:document.visibilityState,hasFocus:document.hasFocus(),
+      chromeBackdropFilters:Array.from(document.querySelectorAll('#app-top-chrome,#bottom-nav,.fixed-filter-rail')).map(element=>({id:element.id,filter:getComputedStyle(element).backdropFilter}))};
+    Object.assign(window,{__v2311CompleteTagProbe:probe});
+    window.addEventListener('click', event => {
+      if (!(event.target instanceof Element) || !event.target.closest(selector+' [data-action="complete-tag"]')) return;
+      const diagnostic=(window as Window & {__v2311ShellDiagnostic?:{phase:string}}).__v2311ShellDiagnostic;
+      if(diagnostic)diagnostic.phase='action';
+      probe.started=performance.now();
+      const observer=new MutationObserver(() => {
+        if(document.querySelector(selector))return;
+        probe.domMs=performance.now()-probe.started;observer.disconnect();
+        probe.paintRafRequestedAt=performance.now();
+        requestAnimationFrame(timestamp=>{probe.paintRafTimestamp=timestamp;probe.paintCallbackAt=performance.now();probe.paintMs=probe.paintCallbackAt-probe.started;});
+      });
+      observer.observe(document.getElementById('request-content')!,{childList:true,subtree:true});
+    },{capture:true,once:true});
+  }, uniqueId);
+  try {
+    await app.activate(app.done(row));
+    // Keep the paint probe passive: queue-count scans and locator assertions
+    // below must not compete with the first frame being measured.
+    await page.waitForFunction(()=>Number((window as Window & {__v2311CompleteTagProbe?:{paintMs:number}}).__v2311CompleteTagProbe?.paintMs)>=0);
+    const metric=await page.evaluate(()=>(window as Window & {__v2311CompleteTagProbe?:{domMs:number;paintMs:number}}).__v2311CompleteTagProbe!);
+    await info.attach('v2311-optimistic-completion.json',{body:JSON.stringify({...metric,rows:1000,environment:info.project.name,cache:'warm',backendAcknowledgmentHeld:true}),contentType:'application/json'});
+    expect(metric.domMs).toBeLessThan(50);
+    // Explicit user allowance for Windows emulated iPhone frame scheduling.
+    const paintBudgetMs = info.project.name === 'v2311-iphone-webkit' ? 350 : 50;
+    expect(metric.paintMs).toBeLessThan(paintBudgetMs);
+    await expect(app.card(row)).toHaveCount(0);
+    await expect(page.locator('#request-open-info-modal')).toBeHidden();
+    await expect(page.locator('#view-detail')).toBeHidden();
+    await expect(page.locator('#app-prompt-dialog')).toBeHidden();
+    expect(app.backendRows.find(candidate=>candidate.UNIQUE_ID===uniqueId)?.SUSPEND_TAG_STATUS).toBe('pending');
+    const suspendCategory = page.locator('[data-request-category="suspend-tag"]');
+    const suspendBackingCount = await page.evaluate(() => window.eval("getRequestTabQueueCounts()['suspend-tag']"));
+    expect(suspendBackingCount).toBe(999);
+    await expect(suspendCategory.locator('.request-category-chip__count')).toHaveText('99+');
+  } finally { release(); }
   await expect.poll(() => app.requests.map(request => request.body.operation)).toEqual(['close']);
-  await expect(app.card(row)).toHaveCount(0);
-  expect(app.backendRows.find(candidate => candidate.UNIQUE_ID === uniqueId)?.SUSPEND_TAG_STATUS).toBe('completed');
+  await expect.poll(()=>app.backendRows.find(candidate=>candidate.UNIQUE_ID===uniqueId)?.SUSPEND_TAG_STATUS).toBe('completed');
   app.assertClean();
 });
 
@@ -895,6 +967,47 @@ test('detail Mark Done stays in detail until the global save is confirmed, then 
   await expect.poll(() => page.evaluate(() => window.eval('Object.keys(getDockSuspendCompletionState().receipts).length'))).toBe(1);
   expect(app.backendRows[0].DOCK_SPEC).toBe('24');
   expect(String(app.backendRows[0].MATCH)).toBe('80');
+  app.assertClean();
+});
+
+test('v2311 Item Detail uses shared AV options and saves a note without spec or caliper', {tag:['@v2311-workflow']}, async ({page,baseURL})=>{
+  const app=await harness(page,baseURL!);
+  await page.evaluate(rows=>{
+    const note = 'UPDATED NOTE WITHOUT SPEC';
+    Object.assign(window,{__v2311DetailMaster:rows.map(row=>({...row,UNIQUE_ID:'master-'+row.UNIQUE_ID,SPEC:'',CALIPER:''})),__v2311DetailAvNotes:rows.map(row=>({COMMONNAME:row.COMMONNAME,SALESNOTE:note}))});
+    window.eval('processAndLoadData({data:window.__v2311DetailMaster,avNotesData:window.__v2311DetailAvNotes,_fromCache:true}); const master=getDatasetState("master"); master.initialLoaded=master.fullLoaded=true; master.fieldCoverage="full"; master.rowCompleteness="complete"; const notes=getDatasetState("avNotes"); notes.initialLoaded=notes.fullLoaded=true;');
+  },fixtures);
+  await page.evaluate(()=>window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
+  await expect(page.locator('#request-open-info-modal')).toBeVisible();
+  await app.activate(page.locator('#request-open-info-ok'));
+  await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+  await page.waitForFunction(()=>!(window as any).isDetailTransitionActive());
+  await expect(page.locator('#req-spec')).toHaveValue('');
+  await expect(page.locator('#req-caliper')).toHaveValue('');
+  await expect.poll(()=>page.evaluate(()=>window.eval('getRequestSharedInventoryOptionRows(activeItem).length'))).toBeGreaterThan(0);
+  await expect(page.locator('#view-detail')).not.toContainText('Could not load AV options right now.');
+  const avHeader=page.locator('#detail-av-options-panel .request-av-options-header');
+  await app.activate(avHeader);
+  await expect(page.locator('#detail-av-options-panel [data-request-itemcode-option-card]')).toHaveCount(1);
+  await app.activate(avHeader);
+  const avNoteInput = page.locator('#req-av-note');
+  await expect(page.locator('[data-av-note-dropdown-trigger="req-"]')).toBeVisible();
+  await app.activate(page.locator('[data-av-note-dropdown-trigger="req-"]'));
+  const noteSheet=page.locator('#request-av-note-sheet');
+  await expect(noteSheet).toBeVisible();
+  await page.locator('#request-av-note-sheet-search').fill('UPDATED NOTE WITHOUT SPEC');
+  const noteOption=noteSheet.locator('[data-av-note-option="UPDATED NOTE WITHOUT SPEC"]');
+  await expect(noteOption).toBeVisible();
+  await app.activate(noteOption);
+  await expect(avNoteInput).toHaveValue('UPDATED NOTE WITHOUT SPEC');
+  await expect.poll(() => page.evaluate(() => window.eval('getDockSuspendDcRequestFormValues(activeItem).avNote'))).toBe('UPDATED NOTE WITHOUT SPEC');
+  if(await page.locator('.request-av-note-sheet__close').isVisible())await app.activate(page.locator('.request-av-note-sheet__close'));
+  await app.activate(page.locator('#req-btn-save-complete'));
+  await expect.poll(()=>app.backendRows[0].SUSPEND_TAG_STATUS).toBe('completed');
+  expect(app.backendRows[0].AV_NOTE).toBe('UPDATED NOTE WITHOUT SPEC');
+  await expect(page.locator('#view-detail')).toBeHidden();
+  await expect(app.card()).toHaveCount(0);
+  await expect(page.locator('#toast-notification')).not.toContainText('Spec and caliper are blank');
   app.assertClean();
 });
 

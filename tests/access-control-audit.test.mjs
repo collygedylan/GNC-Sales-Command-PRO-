@@ -78,6 +78,16 @@ test('Manager Access Control renders the effective matrix and saves only the dra
   assert.match(html, /nextTab === MANAGER_ACCESS_CONTROL_VIEW[\s\S]{0,120}loadAccessControlMatrix\(false\)/);
 });
 
+test('canonical User and Role Access renders independently of the optional legacy matrix adapter', () => {
+  const managerGate = html.match(/if \(activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW[^\n]*ensureViewDataForRender\('managers'\)\) return;/)?.[0] || '';
+  assert.ok(managerGate, 'access-control must be excluded from the legacy manager data gate');
+  assert.match(html, /id="canonical-user-access-editor"/);
+  assert.match(html, /renderCanonicalUserAccessEditor\(\)/);
+  const legacyPanel = html.split('function renderAccessControlPanel() {')[1]?.split('\n        function ')[0] || '';
+  assert.match(legacyPanel, /if \(!data\) return .*The access audit matrix is unavailable/);
+  assert.match(html, /if \(!canViewAccessControl\(\)\) return/);
+});
+
 test('active managers can read bounded V2 pages while only maintainers can edit', () => {
   assert.match(managerReadMigration, /private\.can_view_access_control_v2\(\)/);
   assert.match(managerReadMigration, /in \('ADMIN', 'MANAGER'\)/);

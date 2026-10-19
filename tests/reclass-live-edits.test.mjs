@@ -63,6 +63,7 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
   const dirtyViews = [];
   const masterState = { liveVerifiedRevision: revision, liveVerifiedScope: 'old-scope', liveVerifiedPermission: 'old-permission' };
   const fullInventory = [currentRow];
+  const masterInventoryById = new Map([[String(currentRow?.UNIQUE_ID || '').trim(), currentRow]]);
   const avOpenInventory = [];
   const context = {
     nativeAuthProfile: { id: 'user-1' },
@@ -77,6 +78,7 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
     getCurrentLoginCacheScopeKey: () => 'user-1:manager',
     getDatasetState: () => masterState,
     fullInventory,
+    masterInventoryById,
     avOpenInventory,
     formatFetchedRows: rows => rows.map(raw => Object.fromEntries(Object.entries(raw).filter(([, value]) => value !== null && typeof value !== 'undefined'))),
     normalizeAppTableName: value => String(value || ''),

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 /** Synthetic data exercises the production Apps Script renderer without email or database access. */
-export function reclassPdfFixture(count = 35, { v7 = false } = {}) {
+export function reclassPdfFixture(count = 35, { v7 = false, holdStop = false } = {}) {
   const source = readFileSync(new URL('../../Code.gs', import.meta.url), 'utf8');
   const start = source.indexOf('const RECLASS_INQUIRY_ROW_FIELDS_');
   const end = source.indexOf('function handleInventoryTransaction_', start);
@@ -104,9 +104,17 @@ export function reclassPdfFixture(count = 35, { v7 = false } = {}) {
   const model = context.buildReclassInquiryReportModel_(rows[0], rows, reportRows,
     reportPayload, new Date('2026-10-08T14:00:00Z'));
   model.isSyntheticPilot = true;
+  if (holdStop) {
+    model.identity = { commonname: 'Madison Hardy Star Jasmine', contsize: '#3', itemcode: '001524.030.1', itemspec: '34" H', pullerresponsibility: '' };
+    model.requestActions = ['stop_ship']; model.requestAction = 'stop_ship'; model.isV7 = true;
+    model.liveEditSummary = { rowCount: 1, scopeNote: 'Same item 001524.030.1 | F1 | sales year <= 27 | 1 row in scope' };
+    model.rows = [{ unique_id: 'madison', values: { lotcode: '27.F1', locationcode: 'D.26.000', source: 'Shipping', priority: '1', ptronhand: '5', ptrreviewed: '5', holdstopcode: 'S', holdstopreason: 'none', holdstopbegindate: '2026-10-19', locationnotedate: '10/19/2026 12:00:00 AM', locationptn1: 'fullest on stake', locationnote: 'needs retied', salesnote: 'NEW!' }, changedFields: ['holdstopcode','priority'], v7ReportStamps: { prisetby: 'MK', evaldate: '10/19/2026', priupdated: '10/19/2026 11:56:05 AM' }, actionValues: {} }];
+  }
   return { html: context.buildReclassInquiryCompactReportHtml_(model, true), arrows };
 }
 
 export function reclassPdfV7Fixture(count = 35) {
   return reclassPdfFixture(count, { v7: true });
 }
+
+export function reclassHoldStopFixture() { return reclassPdfFixture(1, { v7: true, holdStop: true }); }

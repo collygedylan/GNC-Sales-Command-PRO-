@@ -16485,6 +16485,16 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_inventory_reclass_moves_with_delivery_v1: {
+        Args: {
+          p_actor_id: string
+          p_command_id: string
+          p_expected_revision: number
+          p_moves: Json
+          p_receipt_encoding?: string | null
+        }
+        Returns: Json
+      }
       apply_inventory_transaction_v1: {
         Args: {
           p_actor_id: string
@@ -18040,6 +18050,10 @@ export type Database = {
         Args: { p_event_id: string; p_lease_token: string }
         Returns: Json
       }
+      prepare_inventory_reclass_move_delivery_v1: {
+        Args: { p_event_id: string; p_lease_token: string }
+        Returns: Json
+      }
       prepare_transactions_keyed_import: {
         Args: {
           source_content_bytes?: number
@@ -19305,6 +19319,16 @@ export type Database = {
           p_endpoint: string
         }
         Returns: boolean
+      }
+      user_access_command_v1: {
+        Args: {
+          p_actor_profile_id: string
+          p_operation: string
+          p_payload: Json
+          p_expected_revision?: number
+          p_command_id?: string
+        }
+        Returns: Json
       }
       update_location_work_job_v1: {
         Args: {
