@@ -172,8 +172,10 @@ test('Que Bunch Notes paginates 10,001 authorized rows as 100 cards and keeps re
   const elapsed = await page.evaluate(() => (window as any).__queueRender);
   expect(await page.locator('[data-bunch-card]').count()).toBe(100);
   expect(await page.locator('input[aria-label^="Actual Qty Completed"]').count()).toBe(150);
-  const queueRequest = fixture.commands.find((command: any) => command.operation === 'queue');
-  expect(queueRequest?.payload).toMatchObject({ filter: 'mine', offset: 0, limit: 100 });
+  const queueRequests = fixture.commands.filter((command: any) => command.operation === 'queue');
+  expect(queueRequests[0]?.payload).toMatchObject({ filter: 'mine', offset: 0, limit: 100 });
+  const mountedQueueRequest = queueRequests.find((command: any) => command.payload.filter === 'all');
+  expect(mountedQueueRequest?.payload).toMatchObject({ filter: 'all', offset: 0, limit: 100 });
   expect(fixture.commands.some((command: any) => /master|hydrate|inventory/i.test(command.operation))).toBe(false);
 
   const card = page.locator('[data-bunch-card="card-0"]');
