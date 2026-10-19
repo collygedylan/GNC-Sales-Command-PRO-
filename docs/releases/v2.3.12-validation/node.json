@@ -2,9 +2,9 @@
   "schemaVersion": "agdata-v2312-validation-result-v1",
   "scope": "node",
   "status": "passed",
-  "validationId": "v2312-node-4b480bebe4d5",
+  "validationId": "v2312-node-d881a6af91cb",
   "checks": 72,
-  "sourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54",
+  "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751",
   "provenance": {
     "kind": "scoped-retained-and-focused-evidence",
     "focusedUniqueChecks": 72,
@@ -235,6 +235,14 @@
       "cause": "Retained iPhone completion deadline1ms eliminates idle250ms. DOM749/paint1092; 1000source100mounted400numericcells nowrap/fit pass.",
       "evidence": ".gnc-local/v2312-browser-render-reset5.json",
       "sha256": "25db0ba6075f28925bd0a7f5b2214d0401ca6cd9658e7e0ccac25fbe245eaaec"
+    },
+    {
+      "issue": "backend-unit-discovery-dependency-setup",
+      "attempt": 1,
+      "fail": 1,
+      "cause": "Backend unit discover failed because the release-database job had no installed Node dependencies for the checker import. Workflow now uses the locked dependency setup; YAML dependency ordering was validated, while exact-head CI rerun status remains separate.",
+      "evidence": ".gnc-local/v2312-ci-discover-failure-1.log",
+      "sha256": "54777123fa51a669443e58a5407d5c50603c4fefc4c5607c2e4417cc3ab0e217"
     }
   ],
   "initialSuiteLog": {

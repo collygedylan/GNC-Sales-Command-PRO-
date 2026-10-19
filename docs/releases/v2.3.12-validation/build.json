@@ -2,9 +2,9 @@
   "schemaVersion": "agdata-v2312-validation-result-v1",
   "scope": "build",
   "status": "passed",
-  "validationId": "v2312-build-4b480bebe4d5",
+  "validationId": "v2312-build-d881a6af91cb",
   "checks": 2,
-  "sourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54",
+  "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751",
   "commands": [
     {
       "command": "LIVE_SITE_DIR=.gnc-local/foundation-site-v2312-reset1 node scripts/build-live-shell.mjs",
@@ -68,7 +68,7 @@
     ],
     "retainedBaseline": {
       "commit": "c228f1e1b665238d5fd61a2a93d4633cd7cd4d16",
-      "summary": "Full live asset build and shell builds retained at c228; the changed index shell was freshly rebuilt and fingerprinted. Production CI builds the versioned v2 artifact.",
+      "summary": "Full assets, v2, and release-site build retained at c228; only the changed index shell was freshly rebuilt and fingerprinted.",
       "checks": 3,
       "evidence": [
         {
@@ -87,7 +87,7 @@
       "fullCommandsRerun": false
     },
     "noFullRerunClaimed": true,
-    "currentSourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54"
+    "currentSourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751"
   },
   "evidence": [
     {

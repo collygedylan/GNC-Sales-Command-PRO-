@@ -2,9 +2,9 @@
   "schemaVersion": "agdata-v2312-validation-result-v1",
   "scope": "tooling",
   "status": "passed",
-  "validationId": "v2312-tooling-4b480bebe4d5",
-  "checks": 2,
-  "sourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54",
+  "validationId": "v2312-tooling-d881a6af91cb",
+  "checks": 3,
+  "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751",
   "provenance": {
     "kind": "retained-baseline-plus-current-touched-scope",
     "preservedCommit": "c228f1e1b665238d5fd61a2a93d4633cd7cd4d16",
@@ -24,6 +24,10 @@
       {
         "path": "tests/suspend-tag-completion.e2e.spec.ts",
         "sha256": "1864f6a91a0445de620f69326f78d0619c832125931ba867ad43ff92aefcdf72"
+      },
+      {
+        "path": ".github/workflows/release-database.yml",
+        "sha256": "42a009eaa367c73da44b78fa619c7a4ee58d233e9b3fcefd642ee9228abbd3e8"
       }
     ],
     "currentCommands": [
@@ -50,11 +54,22 @@
           "path": ".gnc-local/v2312-reset-final-tooling.log",
           "sha256": "ea0856ad81c83859601af427114f45416fe14a1438981f56d34be8e788836e51"
         }
+      },
+      {
+        "command": "Parse release-database.yml and assert locked dependency setup precedes backend matrix discovery",
+        "exitCode": 0,
+        "sourcePaths": [
+          ".github/workflows/release-database.yml"
+        ],
+        "evidence": {
+          "path": ".gnc-local/v2312-ci-wiring-fix.log",
+          "sha256": "ef6f81b0a99df3ba6f106aec6296343ce8a41352c3982a448cb4df3d67837940"
+        }
       }
     ],
     "retainedBaseline": {
       "commit": "c228f1e1b665238d5fd61a2a93d4633cd7cd4d16",
-      "summary": "Full tooling baseline retained at c228; current changed files received fresh targeted ESLint and inline-script parsing.",
+      "summary": "Full tooling baseline retained at c228; fresh targeted lint/inline parsing and workflow dependency-order validation cover every file changed since c228.",
       "checks": 1,
       "evidence": [
         {
@@ -65,7 +80,7 @@
       "fullCommandsRerun": false
     },
     "noFullRerunClaimed": true,
-    "currentSourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54"
+    "currentSourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751"
   },
   "evidence": [
     {
@@ -79,6 +94,10 @@
     {
       "path": ".gnc-local/v2312-reset-final-tooling.log",
       "sha256": "ea0856ad81c83859601af427114f45416fe14a1438981f56d34be8e788836e51"
+    },
+    {
+      "path": ".gnc-local/v2312-ci-wiring-fix.log",
+      "sha256": "ef6f81b0a99df3ba6f106aec6296343ce8a41352c3982a448cb4df3d67837940"
     }
   ]
 }

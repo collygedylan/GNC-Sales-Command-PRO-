@@ -2,8 +2,9 @@
   "schemaVersion": "agdata-v2312-scoped-validation-v1",
   "release": "AgData v2.3.12",
   "base": "b4990af247236f6ae673236b8229ea5af92333d5",
-  "assembledAt": "2026-10-19T21:27:09.275Z",
+  "assembledAt": "2026-10-19T21:31:01.732Z",
   "validatedSourceHashes": {
+    ".github/workflows/release-database.yml": "42a009eaa367c73da44b78fa619c7a4ee58d233e9b3fcefd642ee9228abbd3e8",
     "Code.gs": "79fa36976165c7a2b786546d297c0236a05ff21733a12e9a90c9c6cc77b1fa6b",
     "assets/ops-precision-pilot.css": "0a6b366ac803df92d90ecfebd66dfc58e2929fbf5d74b0482d47483e557c78a6",
     "assets/ops-precision-pilot.js": "27605eb4ae2fe59a90c1d90808f2c2d37e5250f4c4dbd418219203c4f8a9b6c1",
@@ -31,41 +32,41 @@
     "v2/public/manifest.webmanifest": "0373c5f8cd67367eff02168f93e762944bdebbb4389c01efc7a9871c65b8811e",
     "v2/src/services/api.ts": "ffe8171ff9794c360a22a2d629ce6a73e1bcc2339748a84a3d86dbc7e1ddde37"
   },
-  "sourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54",
+  "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751",
   "productionWrites": false,
   "realEmailsSent": false,
   "validation": {
     "node": {
       "artifactPath": "docs/releases/v2.3.12-validation/node.json",
-      "artifactSha256": "36c6a3c1c31c10f841816fc940ae4628684f970c049fe546ecf341f38887dcac",
-      "validationId": "v2312-node-4b480bebe4d5",
+      "artifactSha256": "8b94b477a1c01b7ff5fcfa17966c0ca8159d36954a4d6341e9b96c45d7f447dd",
+      "validationId": "v2312-node-d881a6af91cb",
       "status": "passed",
       "checks": 72,
-      "sourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54"
+      "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751"
     },
     "browser": {
       "artifactPath": "docs/releases/v2.3.12-validation/browser.json",
-      "artifactSha256": "b6ffd5b1ce3a1de43e91421704a9ea16025ab7a2600bd36a67a3b2a37ba7c22b",
-      "validationId": "v2312-browser-4b480bebe4d5",
+      "artifactSha256": "930abfccbda681730a08b1ba5ad866977dc9909a78e54a0f91d7e30d24e02331",
+      "validationId": "v2312-browser-d881a6af91cb",
       "status": "passed",
       "checks": 12,
-      "sourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54"
+      "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751"
     },
     "tooling": {
       "artifactPath": "docs/releases/v2.3.12-validation/tooling.json",
-      "artifactSha256": "4bae8c375685ad61b9ce4828094680a9232247f76cc1899f00a8769d4465e6a1",
-      "validationId": "v2312-tooling-4b480bebe4d5",
+      "artifactSha256": "972679e867026580dd518e4303c8063c52e6e8ba793f660262175e12436b3fc7",
+      "validationId": "v2312-tooling-d881a6af91cb",
       "status": "passed",
-      "checks": 2,
-      "sourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54"
+      "checks": 3,
+      "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751"
     },
     "build": {
       "artifactPath": "docs/releases/v2.3.12-validation/build.json",
-      "artifactSha256": "71be2efad0c907b79f49e83946578ae22f39dc8c1996f618421be079e456457a",
-      "validationId": "v2312-build-4b480bebe4d5",
+      "artifactSha256": "2664e78f6ba2fa565943fb7131b3ebc1c828d23d3c42cc6ac5dfbf30f114a82c",
+      "validationId": "v2312-build-d881a6af91cb",
       "status": "passed",
       "checks": 2,
-      "sourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54"
+      "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751"
     }
   },
   "knownUnresolved": [
