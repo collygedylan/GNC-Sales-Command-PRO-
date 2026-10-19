@@ -21,13 +21,18 @@ const initialReview = {
   assigned_counter_id: null, assigned_counter_username: null, can_assign: true, can_complete: false, sources: reviewSources,
 };
 
-async function installQueueFixture(page: any, baseURL: string, options: { worker?: boolean; failFirstCompletion?: boolean; largeQueue?: boolean; startEmpty?: boolean; layoutCards?: number; layoutReviews?: number } = {}) {
+async function installQueueFixture(page: any, baseURL: string, options: { worker?: boolean; failFirstCompletion?: boolean; largeQueue?: boolean; startEmpty?: boolean; layoutCards?: number; layoutReviews?: number; holdCompletion?: boolean; reviewsInitiallyEmpty?: boolean } = {}) {
   const control = await installHlOrderFixture(page, baseURL, { username: options.worker ? 'bn_worker' : 'dylan_collyge', role: options.worker ? 'EVAL' : 'ADMIN' });
   const headers = { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' };
   const commands: any[] = [];
   let completionFailures = options.failFirstCompletion ? 1 : 0;
   let review = initialReview;
+  let createdReview = false;
   let publishedCard: any = null, draftBody: any = null;
+  const completedCardIds = new Set<string>();
+  let completionObserved = () => {};
+  const completionRequest = new Promise<void>(resolve => { completionObserved = resolve; });
+  let releaseHeldCompletion: (() => void) | null = null;
   await page.route('**/functions/v1/app-api', async (route: any) => {
     if (route.request().method() !== 'POST') return route.fallback();
     const body = route.request().postDataJSON();
@@ -94,7 +99,10 @@ async function installQueueFixture(page: any, baseURL: string, options: { worker
           }));
           data = { cards, total: cards.length, active_count: cards.length, review_count: options.layoutReviews ?? 0, can_review: !!options.layoutReviews, counters: [] };
         } else if (options.startEmpty && !publishedCard) data = { cards: [], total: 0, active_count: 0, review_count: 0, can_review: false, counters: [] };
-        else data = { cards: [publishedCard || queueCard], total: 1, active_count: 1, review_count: publishedCard ? 0 : 1, can_review: !publishedCard, counters: [] };
+        else {
+          const activeCards = [publishedCard || queueCard].filter(card => !completedCardIds.has(card.card_id));
+          data = { cards: activeCards, total: activeCards.length, active_count: activeCards.length, review_count: options.reviewsInitiallyEmpty ? Number(createdReview) : 1, can_review: true, counters: [] };
+        }
         break;
       case 'list_discrepancies': {
         const reviews = options.layoutReviews
@@ -110,7 +118,7 @@ async function installQueueFixture(page: any, baseURL: string, options: { worker
               actual_qty: null,
             }],
           }))
-          : [review];
+          : options.reviewsInitiallyEmpty && !createdReview ? [] : [review];
         data = { reviews, total: reviews.length, review_count: reviews.length, can_review: true, counters: [
           { id: 'worker-z', username: 'worker_z', display_name: 'Worker Z' },
           { id: 'dylan-id', username: 'dylan_collyge', display_name: 'Dylan' },
@@ -119,17 +127,34 @@ async function installQueueFixture(page: any, baseURL: string, options: { worker
         ] };
         break;
       }
-      case 'complete_card':
+      case 'complete_card': {
         expect(body.commandId).toBeTruthy();
-        expect(body.expectedRevision).toBe(queueCard.revision);
-        expect(payload.actual_qty_by_row).toEqual(options.largeQueue ? { 'row-0-0': 7, 'row-0-1': 9 } : { 'row-1': 7, 'row-2': 9 });
+        completionObserved();
+        const sourceCard = options.largeQueue && /^card-\d+$/.test(String(payload.card_id))
+          ? {
+            ...queueCard,
+            card_id: String(payload.card_id),
+            revision: queueCard.revision,
+            sources: Array.from({ length: Number(String(payload.card_id).slice(5)) % 2 === 0 ? 2 : 1 }, (_, sourceIndex) => ({ row_id: `row-${String(payload.card_id).slice(5)}-${sourceIndex}`, ptravailable: 10 })),
+          }
+          : [publishedCard || queueCard].find(card => card.card_id === payload.card_id) || queueCard;
+        expect(body.expectedRevision).toBe(sourceCard.revision);
+        expect(Object.keys(payload.actual_qty_by_row).sort()).toEqual(sourceCard.sources.map((source: any) => source.row_id).sort());
         if (completionFailures > 0) {
           completionFailures -= 1;
           await route.fulfill({ status: 503, headers, contentType: 'application/json', body: JSON.stringify({ ok: false, message: 'Temporary connection failure. Retry saved update.' }) });
           return;
         }
-        data = { saved: true, review_created: true };
+        if (options.holdCompletion) await new Promise<void>(resolve => { releaseHeldCompletion = resolve; });
+        completedCardIds.add(sourceCard.card_id);
+        const discrepant = sourceCard.sources.some((source: any) => Number(payload.actual_qty_by_row[source.row_id]) !== Number(source.ptravailable));
+        if (discrepant) {
+          createdReview = true;
+          review = { ...initialReview, id: 'review-after-completion', card_id: sourceCard.card_id, status: 'needs_review' };
+        }
+        data = { saved: true, review_created: discrepant };
         break;
+      }
       case 'assign_counter':
         expect(payload.review_id).toBe(review.id);
         review = { ...review, revision: review.revision + 1, assigned_counter_id: typeof payload.counter_id === 'string' ? payload.counter_id : null, assigned_counter_username: typeof payload.counter_username === 'string' ? payload.counter_username : null, can_assign: false, can_complete: true };
@@ -145,7 +170,7 @@ async function installQueueFixture(page: any, baseURL: string, options: { worker
     }
     await route.fulfill({ status: 200, headers, contentType: 'application/json', body: JSON.stringify({ ok: true, data }) });
   });
-  return { control, commands };
+  return { control, commands, waitForCompletion: () => completionRequest, releaseCompletion: () => releaseHeldCompletion?.() };
 }
 
 async function openQueue(page: Page, category: 'bunch-notes' | 'bunch-count-review' = 'bunch-notes') {
@@ -162,7 +187,7 @@ const responsiveQueueViewports = [
   { name: 'iPhone-sized viewport', width: 390, height: 844 },
 ];
 
-async function assertSingleColumnCardLayout(page: Page, selector: string, expectedCount: number, checkActualCountInput: boolean) {
+async function assertSingleColumnCardLayout(page: Page, selector: string, expectedCount: number, expectedInputCount = 0) {
   const metrics = await page.evaluate(({ selector: cardSelector }) => {
     const queue = document.querySelector<HTMLElement>('.bq-root');
     const list = document.querySelector<HTMLElement>('.bq-grid');
@@ -201,8 +226,8 @@ async function assertSingleColumnCardLayout(page: Page, selector: string, expect
     expect(button.left, 'action button stays within its card').toBeGreaterThanOrEqual(-1);
     expect(button.right, 'action button stays within its card').toBeGreaterThanOrEqual(-1);
   }
-  if (checkActualCountInput) {
-    expect(metrics.inputs).toHaveLength(expectedCount);
+  expect(metrics.inputs).toHaveLength(expectedInputCount);
+  if (expectedInputCount > 0) {
     for (const input of metrics.inputs) {
       expect(input.clientWidth, `${input.label} has usable width`).toBeGreaterThanOrEqual(160);
       expect(input.contentWidth, `${input.label} can display its complete placeholder`).toBeGreaterThanOrEqual(input.placeholderWidth);
@@ -218,34 +243,72 @@ for (const viewport of responsiveQueueViewports) {
     const fixture = await installQueueFixture(page, baseURL!, { layoutCards: 3, layoutReviews: 3 });
     await openQueue(page, 'bunch-notes');
     await expect(page.locator('[data-bunch-card]')).toHaveCount(3);
+    await expect(page.locator('[data-bunch-card] input[placeholder="Enter actual count"]')).toHaveCount(0);
+    await expect(page.locator('[data-bunch-card] button', { hasText: 'Complete Work' })).toHaveCount(0);
+    await assertSingleColumnCardLayout(page, '[data-bunch-card]', 3);
     const maximumQuantity = page.locator('[data-bunch-card="layout-card-0"] input[placeholder="Enter actual count"]');
+    await page.locator('[data-bunch-card="layout-card-0"]').getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }).click();
+    await expect(maximumQuantity).toBeVisible();
     await maximumQuantity.fill('999999999');
     await expect(maximumQuantity).toHaveValue('999999999');
-    await assertSingleColumnCardLayout(page, '[data-bunch-card]', 3, true);
+    await assertSingleColumnCardLayout(page, '[data-bunch-card]', 3, 1);
     await expect(page.locator('[data-bunch-card="layout-card-0"] .bq-id')).toContainText('D.05.000');
     await expect(page.locator('[data-bunch-card="layout-card-0"] input[placeholder="Enter actual count"]')).toHaveCount(1);
 
     await openQueue(page, 'bunch-count-review');
     await expect(page.locator('[data-bunch-review]')).toHaveCount(3);
-    await assertSingleColumnCardLayout(page, '[data-bunch-review]', 3, false);
+    await assertSingleColumnCardLayout(page, '[data-bunch-review]', 3, 0);
     expect(fixture.commands.some((command: any) => command.operation === 'queue')).toBe(true);
     expect(fixture.commands.some((command: any) => command.operation === 'list_discrepancies')).toBe(true);
   });
 }
 
-test('Que Bunch Notes shows assigned cards and completes all source quantities', { tag: ['@bunch-note'] }, async ({ page, baseURL }) => {
-  const fixture = await installQueueFixture(page, baseURL!, { worker: true });
+test('closed Bunch card opens accessibly, contains its own controls, and removes confirmed completion from the active queue', { tag: ['@bunch-note'] }, async ({ page, baseURL }) => {
+  const fixture = await installQueueFixture(page, baseURL!, { worker: true, holdCompletion: true, reviewsInitiallyEmpty: true });
   await openQueue(page);
   const card = page.locator('[data-bunch-card="card-1"]');
   await expect(card).toContainText('Bunch Plant');
   await expect(card).toContainText('Assigned: Dylan');
   await expect(card).toContainText('Keep lots separate');
-  await card.getByRole('textbox', { name: 'Actual Qty Completed row-1' }).fill('7');
-  await card.getByRole('textbox', { name: 'Actual Qty Completed row-2' }).fill('9');
-  await card.getByRole('button', { name: 'Complete Work' }).click();
+  await expect(card.locator('input[placeholder="Enter actual count"]')).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'Complete Work' })).toHaveCount(0);
+  const summary = card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' });
+  await expect(summary).toBeVisible();
+  await summary.focus();
+  await page.keyboard.press('Enter');
+  const entry = card.getByRole('region', { name: 'Bunch Notes entry Bunch Plant' });
+  await expect(entry).toBeVisible();
+  const firstQuantity = card.getByRole('textbox', { name: 'Actual Qty Completed row-1' });
+  const secondQuantity = card.getByRole('textbox', { name: 'Actual Qty Completed row-2' });
+  await expect(firstQuantity).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Done' })).toBeVisible();
+  // Interacting with entry controls must not bubble into the summary toggle.
+  await firstQuantity.fill('7');
+  await secondQuantity.fill('9');
+  await expect(entry).toBeVisible();
+  await expect(firstQuantity).toHaveValue('7');
+  await card.getByRole('button', { name: 'Close' }).click();
+  await expect(card.locator('input[placeholder="Enter actual count"]')).toHaveCount(0);
+  await card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }).click();
+  await expect(entry).toBeVisible();
+  await expect(firstQuantity).toHaveValue('7');
+  const activeBadge = page.locator('[data-request-category="bunch-notes"]');
+  const beforeBadgeText = await activeBadge.innerText();
+  const beforeCount = Number(beforeBadgeText.match(/\d+/)?.[0]);
+  expect(Number.isFinite(beforeCount), `Bunch Notes pill should expose its count: ${beforeBadgeText}`).toBe(true);
+  await card.getByRole('button', { name: 'Done' }).click();
+  await fixture.waitForCompletion();
+  // Service removes the pending completion optimistically before its response resolves.
+  await expect(page.locator('[data-bunch-card="card-1"]')).toHaveCount(0);
+  await expect.poll(async () => Number((await activeBadge.innerText()).match(/\d+/)?.[0])).toBe(beforeCount - 1);
+  fixture.releaseCompletion();
   await expect(page.getByText(/Work completed|Completion queued/)).toBeVisible();
+  await page.getByRole('button', { name: 'Refresh' }).click();
+  await expect(page.locator('[data-bunch-card="card-1"]')).toHaveCount(0);
+  await page.locator('[data-request-category="bunch-count-review"]').click();
+  await expect(page.locator('[data-bunch-review="review-after-completion"]')).toBeVisible();
   expect(fixture.commands.filter((command: any) => command.operation === 'complete_card')).toHaveLength(1);
-  expect(fixture.commands.some((command: any) => command.operation.includes('email') || command.operation === 'publish')).toBe(false);
+  expect(fixture.commands.some((command: any) => command.operation === 'list_discrepancies')).toBe(true);
 });
 
 test('Que Bunch Notes paginates 10,001 authorized rows as 100 cards and keeps render/mutation under 1,500 ms', { tag: ['@bunch-note'] }, async ({ page, baseURL }) => {
@@ -261,7 +324,7 @@ test('Que Bunch Notes paginates 10,001 authorized rows as 100 cards and keeps re
       let startedAt: number | null = null;
       const observer = new MutationObserver(() => {
         const host = document.getElementById('bunch-queue-host');
-        if (startedAt !== null && host?.querySelectorAll('[data-bunch-card]').length === 100 && host.querySelectorAll('input[aria-label^="Actual Qty Completed"]').length === 150) {
+        if (startedAt !== null && host?.querySelectorAll('[data-bunch-card]').length === 100 && host.querySelectorAll('input[aria-label^="Actual Qty Completed"]').length === 0) {
           observer.disconnect();
           document.removeEventListener('click', startOnUserAction, true);
           document.removeEventListener('touchend', startOnUserAction, true);
@@ -280,7 +343,7 @@ test('Que Bunch Notes paginates 10,001 authorized rows as 100 cards and keeps re
   await page.locator('[data-request-category="bunch-notes"]')[press]();
   const elapsed = await page.evaluate(() => (window as any).__queueRender);
   expect(await page.locator('[data-bunch-card]').count()).toBe(100);
-  expect(await page.locator('input[aria-label^="Actual Qty Completed"]').count()).toBe(150);
+  expect(await page.locator('input[aria-label^="Actual Qty Completed"]').count()).toBe(0);
   const queueRequests = fixture.commands.filter((command: any) => command.operation === 'queue');
   expect(queueRequests[0]?.payload).toMatchObject({ filter: 'mine', offset: 0, limit: 100 });
   const mountedQueueRequest = queueRequests.find((command: any) => command.payload.filter === 'all');
@@ -288,11 +351,14 @@ test('Que Bunch Notes paginates 10,001 authorized rows as 100 cards and keeps re
   expect(fixture.commands.some((command: any) => /master|hydrate|inventory/i.test(command.operation))).toBe(false);
 
   const card = page.locator('[data-bunch-card="card-0"]');
+  await card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }).click();
+  await expect(card.getByRole('region', { name: 'Bunch Notes entry Bunch Plant' })).toBeVisible();
+  await expect(card.locator('input[aria-label^="Actual Qty Completed"]')).toHaveCount(2);
   await card.getByRole('textbox', { name: 'Actual Qty Completed row-0-0' }).fill('7');
   await card.getByRole('textbox', { name: 'Actual Qty Completed row-0-1' }).fill('9');
   const mutation = await page.evaluate(() => {
-    const button = [...document.querySelectorAll<HTMLButtonElement>('[data-bunch-card="card-0"] button')].find(item => item.textContent?.includes('Complete Work'));
-    if (!button) throw new Error('Complete Work button not found');
+    const button = [...document.querySelectorAll<HTMLButtonElement>('[data-bunch-card="card-0"] button')].find(item => item.textContent?.trim() === 'Done');
+    if (!button) throw new Error('Done button not found');
     const start = performance.now();
     (window as any).__queueMutation = new Promise<number>(resolve => {
       const observer = new MutationObserver(() => {
@@ -312,7 +378,7 @@ test('Que Bunch Notes paginates 10,001 authorized rows as 100 cards and keeps re
     body: Buffer.from(JSON.stringify({
       browserProject: test.info().project.name,
       environment,
-      dataset: { authorizedTotal: 10001, renderedCards: 100, renderedSourceInputs: 150, sourcesPerCard: '1–2' },
+      dataset: { authorizedTotal: 10001, renderedCards: 100, renderedSourceInputsClosed: 0, openedCardSourceInputs: 2, sourcesPerCard: '1–2' },
       cache: 'warm cached reopening after initial queue load',
       trace: 'off',
       osCaches: 'uncontrolled',
@@ -359,10 +425,11 @@ test('offline card completion remains in the local outbox and replays the same r
   const fixture = await installQueueFixture(page, baseURL!, { worker: true, failFirstCompletion: true });
   await openQueue(page);
   const card = page.locator('[data-bunch-card="card-1"]');
+  await card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }).click();
   await card.getByRole('textbox', { name: 'Actual Qty Completed row-1' }).fill('7');
   await card.getByRole('textbox', { name: 'Actual Qty Completed row-2' }).fill('9');
   await page.context().setOffline(true);
-  await card.getByRole('button', { name: 'Complete Work' }).click();
+  await card.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByText(/saved update\(s\) awaiting confirmation/i)).toBeVisible();
   const saved = await page.evaluate(() => {
     const key = Object.keys(localStorage).find(value => value.startsWith('gnc:bunch-queue:v230:') && value.endsWith(':outbox'));
@@ -372,8 +439,18 @@ test('offline card completion remains in the local outbox and replays the same r
   await page.context().setOffline(false);
   await expect.poll(() => fixture.commands.filter((command: any) => command.operation === 'complete_card').length).toBe(1);
   await expect(page.getByText(/saved update\(s\) awaiting confirmation/i)).toBeVisible();
+  // A 503 cannot prove the server rejected the completion. Keep the row hidden
+  // and replay the durable receipt instead of permitting a duplicate submit.
+  await expect(card).toHaveCount(0);
+  expect(saved.payload.actual_qty_by_row).toEqual({ 'row-1': 7, 'row-2': 9 });
+  const retainedDraft = await page.evaluate(() => {
+    const key = Object.keys(localStorage).find(value => value.endsWith(':draft:job-1:card-1'));
+    return key ? JSON.parse(localStorage.getItem(key) || '{}') : null;
+  });
+  expect(retainedDraft).toMatchObject({ 'row-1': '7', 'row-2': '9' });
   await page.getByRole('button', { name: 'Retry saved updates' }).click();
   await expect.poll(() => fixture.commands.filter((command: any) => command.operation === 'complete_card').length).toBe(2);
+  await expect(page.locator('[data-bunch-card="card-1"]')).toHaveCount(0);
   const retried = fixture.commands.filter((command: any) => command.operation === 'complete_card');
   expect(retried[0].commandId).toBe(saved.commandId);
   expect(retried[1].commandId).toBe(retried[0].commandId);

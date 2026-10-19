@@ -144,8 +144,10 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
-      - run: npm run test:v2
+      - run: node scripts/run-release-react-checks.mjs
 
   contracts:
     needs: release-mode

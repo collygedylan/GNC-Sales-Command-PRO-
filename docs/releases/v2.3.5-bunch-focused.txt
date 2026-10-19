@@ -1,0 +1,9 @@
+
+ RUN  v4.1.10 C:/Users/dylan/Projects/GNC/worktrees/bunch-card-entry-v234/v2
+
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  21:51:27
+   Duration  2.58s (transform 143ms, setup 0ms, import 369ms, tests 893ms, environment 1.06s)
+
