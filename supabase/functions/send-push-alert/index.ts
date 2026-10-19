@@ -136,7 +136,8 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
   if (eventType === "suspend_tag_approval_requested") {
     const approvalId = String(payload.approvalId || "");
     if (!/^[0-9a-f-]{36}$/i.test(approvalId)) throw new Error("SUSPEND_TAG_APPROVAL_INVALID");
-    return { title: "GNC PH Suspend Tag", body: `${String(payload.customer || "")} — ${String(payload.itemDescription || "")} — Approval requested`,
+    const sender = String(payload.senderDisplay || payload.senderUsername || "A teammate").trim();
+    return { title: "GNC PH Suspend Tag", body: `${String(payload.customer || "")} — ${String(payload.itemDescription || "")} — Approval requested by ${sender}`,
       tag: `suspend-tag-${approvalId}`, viewId: "suspend-tag-approval", approvalId,
       actions: [{ action: "approve", title: "Approve" }, { action: "deny", title: "Deny" }], url: `./?suspendApproval=${approvalId}` };
   }

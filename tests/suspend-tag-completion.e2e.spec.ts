@@ -138,6 +138,12 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       const wasDenied=source.SUSPEND_TAG_STATUS==='denied';
       Object.entries(input.patch || {}).forEach(([key,value])=>{source[key.toUpperCase()]=value as string;});
       if(body.operation==='complete') { source.DATE_COMPLETED=completionTime; source.SUSPEND_TAG_STATUS='completed'; }
+      if(body.operation==='close') {
+        source.DATE_COMPLETED=completionTime;
+        for (const key of ['SUSPEND','suspend','Suspend']) source[key]=null;
+        for (const key of ['SUSPENDTO','suspendto','SUSPEND_TO','suspend_to','SUSPEND-TO','suspend-to','SUSPEND TO','suspend to','SuspendTo','Suspend-To','Suspend To']) source[key]=null;
+        source.SUSPEND_TAG_STATUS='completed';
+      }
       if(body.operation==='send' || (body.operation==='complete' && wasDenied)) {
         source.SUSPEND_TAG_STATUS='awaiting_rep'; source.SUSPEND_TAG_APPROVAL_ID='a0000000-0000-4000-8000-'+String(receipts.size+1).padStart(12,'0');
       }
@@ -654,6 +660,19 @@ test('canceling confirmation retains the row and makes no completion request', {
   app.assertClean();
 });
 
+test('Complete Tag saves and removes the row from the active Suspend view', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
+  const app = await harness(page, baseURL!);
+  const row = app.backendRows[0];
+  const uniqueId = row.UNIQUE_ID;
+  await app.showStatus('active');
+  await expect(app.card(row)).toBeVisible();
+  await app.activate(app.done(row));
+  await expect.poll(() => app.requests.map(request => request.body.operation)).toEqual(['close']);
+  await expect(app.card(row)).toHaveCount(0);
+  expect(app.backendRows.find(candidate => candidate.UNIQUE_ID === uniqueId)?.SUSPEND_TAG_STATUS).toBe('completed');
+  app.assertClean();
+});
+
 test('Suspend filters stay in the view, preserve a restored choice across Queue tabs, and Clear Filters restores rows on phone', {"tag":["@suspend-tag"]}, async ({ page, baseURL }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const app = await harness(page, baseURL!);
@@ -970,22 +989,26 @@ test('detail Mark Done preserves failed form edits and only applies a confirmed 
   app.assertClean();
 });
 
-test('emailed approval opens after sign-in and URL decision text never records a decision', {"tag":["@suspend-tag"]},async({page,baseURL})=>{
+test('approval decision links preselect without mutation and submit the optional message explicitly', {"tag":["@suspend-tag"]},async({page,baseURL})=>{
   test.setTimeout(120000);
   const id='b0000000-0000-4000-8000-000000000001';
   const row={...fixtures[0],DATE_COMPLETED:completionTime,SUSPEND_TAG_STATUS:'awaiting_rep',SUSPEND_TAG_APPROVAL_ID:id};
-  const app=await harness(page,baseURL!,[row],{search:'&suspendApproval='+id+'&decision=approve',expired:true});
+  const app=await harness(page,baseURL!,[row],{search:'&suspendApproval='+id+'&suspendDecision=approve',expired:true});
   await page.waitForTimeout(1800);
   await expect(page.locator('#suspend-tag-approval-dialog')).toHaveCount(0);
   expect(app.requests).toHaveLength(0);
   await page.evaluate(()=>{(window as any).__suspendTestAuthReady=true;});
   const dialog=page.locator('#suspend-tag-approval-dialog');
   await expect(dialog).toContainText('Synthetic browser customer');
-  await expect(dialog.getByRole('button',{name:'Approve',exact:true})).toBeVisible();
+  const approve=dialog.getByRole('button',{name:'Approve',exact:true});
+  await expect(approve).toHaveAttribute('aria-pressed','true');
   expect(app.requests.map(r=>r.body.operation)).toEqual(['approval']);
-  await app.activate(dialog.getByRole('button',{name:'Approve',exact:true}));
+  expect(app.requests.some(r=>r.body.operation==='decide')).toBe(false);
+  await dialog.locator('#suspend-tag-decision-message').fill('Please recount the saved location.');
+  await app.activate(dialog.getByRole('button',{name:'Submit decision',exact:true}));
   await expect(dialog).toContainText('Your reply email is queued');
   expect(app.requests.map(r=>r.body.operation)).toEqual(['approval','decide']);
+  expect(app.requests[1].body.payload).toMatchObject({approvalId:id,decision:'approve',decisionMessage:'Please recount the saved location.'});
   app.assertClean();
 });
 

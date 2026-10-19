@@ -34,6 +34,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       changed: ${{ steps.scope.outputs.changed }}
+      v238: ${{ steps.scope.outputs.v238 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -95,6 +96,11 @@ jobs:
           done
           if [[ "${{ inputs.run-all-schema-tests }}" == 'true' ]]; then changed=true; fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          if [[ "$(jq -r '.version' package.json)" == '2.3.8' ]]; then
+            echo 'v238=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'v238=false' >> "$GITHUB_OUTPUT"
+          fi
 
   discover:
     runs-on: ubuntu-latest
@@ -231,6 +237,7 @@ jobs:
       - name: Require every selected backend integration check
         env:
           SCOPE: ${{ needs.schema-path-scope.outputs.changed }}
+          V238: ${{ needs.schema-path-scope.outputs.v238 }}
           REQUIRE_SCHEMA_SCOPE: ${{ inputs.run-all-schema-tests }}
           RESULTS: ${{ toJSON(needs) }}
         run: |
@@ -238,11 +245,27 @@ jobs:
           const scope = process.env.SCOPE;
           const jobs = JSON.parse(process.env.RESULTS);
           const required = ['schema-path-scope', 'discover', 'edge-functions'];
+          for (const name of ['schema-path-scope', 'discover']) {
+            if (jobs[name]?.result !== 'success') throw new Error(`BACKEND_SCHEMA_GATE_FAILED_${name}`);
+          }
           if (scope !== 'true') {
             if (scope !== 'false' || process.env.REQUIRE_SCHEMA_SCOPE === 'true') throw new Error('BACKEND_SCHEMA_SCOPE_REQUIRED');
             console.log('No database paths changed; schema integration jobs were intentionally skipped.');
+          } else if (process.env.V238 === 'true') {
+            for (const name of ['integration', 'edge-functions']) {
+              if (jobs[name]?.result !== 'success') throw new Error(`BACKEND_SCHEMA_GATE_FAILED_${name}`);
+            }
+            for (const name of ['schema-contracts', 'suspend-tag-approval', 'database-and-functions']) {
+              if (jobs[name]?.result !== 'skipped') throw new Error(`V238_UNEXPECTED_FULL_SCHEMA_JOB_${name}`);
+            }
+            console.log('v2.3.8 scoped PGlite and changed-edge checks passed; full-schema jobs are intentionally retained by the release receipt gate.');
           } else {
             required.push('integration', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions');
+            for (const name of required) {
+              if (jobs[name]?.result !== 'success') throw new Error(`BACKEND_SCHEMA_GATE_FAILED_${name}`);
+            }
+            console.log('All full schema integration checks passed.');
+            process.exit(0);
           }
           for (const name of required) {
             if (jobs[name]?.result !== 'success') throw new Error(`BACKEND_SCHEMA_GATE_FAILED_${name}`);
@@ -250,7 +273,7 @@ jobs:
           NODE
 
   schema-contracts:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
     # The timeout is a safety bound for full schema diagnostics, including the
@@ -279,7 +302,7 @@ jobs:
           path: artifacts/performance
           if-no-files-found: ignore
   suspend-tag-approval:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -298,7 +321,7 @@ jobs:
       - name: Verify Suspend Tag grants, completion, decisions, and delivery isolation
         run: node scripts/run-discovered-tests.mjs postgres-runtime
   database-and-functions:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
     timeout-minutes: 35

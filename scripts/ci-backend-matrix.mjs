@@ -1,12 +1,34 @@
-import { appendFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { appendFileSync, readFileSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { discoverTests } from './test-discovery.mjs';
 
 export function backendTestMatrices({ root } = {}) {
+  const repositoryRoot = path.resolve(root || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
+  const packageVersion = JSON.parse(readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8')).version;
   const pglite = discoverTests({ root, group: 'pglite' });
   const entrypoints = discoverTests({ root, group: 'deno-entrypoints' });
   const tests = discoverTests({ root, group: 'deno-tests' });
+
+  if (packageVersion === '2.3.8') {
+    const requiredPglite = 'supabase/ci/suspend_tag_sender_identity_pglite.mjs';
+    const requiredEntrypoints = [
+      'supabase/functions/app-api/index.ts',
+      'supabase/functions/request-delivery-worker/index.ts',
+      'supabase/functions/send-push-alert/index.ts',
+    ];
+    if (!pglite.includes(requiredPglite)) throw new Error(`V238_REQUIRED_PGLITE_MISSING:${requiredPglite}`);
+    for (const file of requiredEntrypoints) {
+      if (!entrypoints.includes(file)) throw new Error(`V238_REQUIRED_EDGE_ENTRYPOINT_MISSING:${file}`);
+    }
+    const groups = requiredEntrypoints.map(file => ({
+      suite: file.split('/').slice(0, 3).join('/'),
+      targets: [file],
+      tests: [],
+    }));
+    return { pglite: [requiredPglite], edge: { include: groups } };
+  }
+
   const groups = new Map();
   for (const file of [...entrypoints, ...tests]) {
     const suite = file.split('/').slice(0, 3).join('/');

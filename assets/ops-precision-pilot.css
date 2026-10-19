@@ -9669,9 +9669,10 @@ body.ops-precision-pilot.current-view-request #request-content .app-inventory-ca
 }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-header-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) clamp(5rem, 23vw, 7rem);
   align-items: start;
-  column-gap: 8px;
+  gap: 6px;
+  box-sizing: border-box;
 }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-text-column {
   display: flex;
@@ -9693,10 +9694,14 @@ body.ops-precision-pilot.current-view-request #request-content .app-inventory-ca
   text-align: left;
 }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-header-row > .app-drive-card-reclass {
-  grid-area: auto !important;
-  align-self: start;
-  justify-self: end;
-  flex: 0 0 auto;
+  position: static !important;
+  grid-column: 2;
+  grid-row: 1;
+  width: clamp(5rem, 23vw, 7rem);
+  max-width: 100%;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-header-row > .app-drive-card-reclass > .app-card-bottom-btn {
+  width: 100%;
 }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-header-badges {
   display: flex;
@@ -9748,12 +9753,6 @@ body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-car
   white-space: normal !important;
   overflow-wrap: anywhere !important;
 }
-@media (max-width: 600px) {
-  body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-}
-
 /* Suspend Tag keeps the shared Drive frame and touch targets, with compact order data. */
 #request-content .app-suspend-tag-compact-card .app-operational-card-header-fields { gap: 4px 6px; margin: 0; }
 #request-content .app-suspend-tag-compact-card .app-operational-card-header-field { flex-direction: row; align-items: baseline; gap: 4px; min-width: 0; }
@@ -9799,6 +9798,81 @@ body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-car
   outline: 3px solid #fbbf24 !important;
   outline-offset: 2px;
   box-shadow: 0 0 0 2px #fff !important;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  width: 100%;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid #d9e5dd;
+  border-radius: 7px;
+  background: #f7faf8;
+  color: var(--ops-text-muted, #526259);
+  font-size: 14px;
+  line-height: 1.25;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-field strong {
+  min-width: 0;
+  color: var(--ops-text, #17251d);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-reclass-spec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding: 4px 6px;
+  border: 1px solid #d9e5dd;
+  border-radius: 7px;
+  background: #f7faf8;
+  color: var(--ops-text-muted, #526259);
+  font-size: 10px;
+  line-height: 1.2;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-reclass-spec strong {
+  color: var(--ops-text, #17251d);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-holdstop-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 0 !important;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-holdstop-row > span {
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+  align-items: baseline;
+  padding: 3px 6px;
+  border: 1px solid #f1d596;
+  border-radius: 6px;
+  background: #fff9e9;
+  color: #7c5c10;
+  font-size: 11px;
+  line-height: 1.25;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-holdstop-row strong {
+  min-width: 0;
+  color: #5b4510;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  #request-content .app-suspend-tag-compact-card .app-suspend-tag-order-strip {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+  }
+  #request-content .app-suspend-tag-compact-card .app-suspend-tag-order-field {
+    padding: 3px 4px;
+  }
 }
 /* Que navigation is outside card repaint roots and remains in the fixed header. */
 body.ops-precision-pilot.current-view-request #global-header-search-row,

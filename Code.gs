@@ -20968,30 +20968,49 @@ function handleSignedFieldCountDelivery_(delivery) {
 function buildSuspendTagApprovalEmail_(delivery) {
   const approval = delivery.payload.approval;
   const row = approval.snapshot;
+  const payload = delivery.payload || {};
   const decision = delivery.eventType === 'suspend_tag_approval_decided';
   const value = function(v) { return v === null || typeof v === 'undefined' ? '' : String(v); };
   const fields = [
     ['Customer', value(row.customername)], ['Consignee', value(row.consigneename)],
     ['Item Description', [row.commonname, row.contsize].filter(Boolean).join(' ')],
+    ['Completed by', value(row.completed_by_display || row.completed_by_username)],
+    ['Sent by', value(row.sent_by_display || row.sent_by_username)],
     ['Location Code', value(row.locationcode)], ['Qty', value(row.quantityordered)],
     ['Spec', value(row.dock_spec)], ['Caliper', value(row.dock_caliper)],
     ['LOC MATCH %', value(row.match)], ['Match Qty', value(row.loc_match_qty)], ['Initial PTR', value(row.initial_ptr)],
     ['AV Note', value(row.av_note)], ['Notes', value(row.dock_note)]
   ];
   const appUrl = 'https://agmetricapp.com/' + '?suspendApproval=' + encodeURIComponent(approval.id);
+  const approveUrl = appUrl + '&suspendDecision=approve';
+  const denyUrl = appUrl + '&suspendDecision=deny';
+  const decisionMessage = String(payload.decisionMessage || '').trim();
+  if (decisionMessage.length > 1000) throw new Error('SUSPEND_TAG_DECISION_MESSAGE_INVALID');
+  const rawRecipients = Array.isArray(payload.deliveryRecipients) ? payload.deliveryRecipients
+    : [decision ? approval.submitter_email : approval.rep_email];
+  if (!rawRecipients.length || rawRecipients.length > 16) throw new Error('SUSPEND_TAG_RECIPIENTS_INVALID');
+  const toArray = dedupeEmailAddresses_(rawRecipients);
+  if (toArray.length !== rawRecipients.length || toArray.some(function(email) { return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); })) {
+    throw new Error('SUSPEND_TAG_RECIPIENTS_INVALID');
+  }
   const title = decision ? value(row.rep_display) + ' ' + (approval.status === 'approved' ? 'approved' : 'denied') + ' this Suspend Tag row.'
-    : approval.status !== 'pending' ? 'Saved Suspend Tag review. The Sales Rep has already ' + value(approval.status) + ' this round.' : 'Please review this completed Suspend Tag row.';
+    : approval.status !== 'pending' ? 'Saved Suspend Tag review. The Sales Rep has already ' + value(approval.status) + ' this round.'
+      : 'Please review this completed Suspend Tag row.' + (row.sent_by_display ? ' Sent by ' + value(row.sent_by_display) + '.' : '');
   const subject = ('GNC PH Suspend Tag - ' + value(row.customername || row.consigneename) + ' - ' + value(row.commonname) + ' - ' + approval.id).replace(/[\r\n]+/g, ' ');
   const item = Object.assign({}, row, { req_qty: row.quantityordered, req_spec: row.dock_spec, req_caliper: row.dock_caliper,
     req_photo_link: row.dock_photo_link, req_photo_name: row.dock_photo_name, req_customer: [row.customername,row.consigneename].filter(Boolean).join(' | ') });
   return {
-    subject: subject, to: decision ? approval.submitter_email : approval.rep_email,
+    subject: subject, to: toArray.join(','), toArray: toArray,
     replyTo: decision ? approval.rep_email : approval.submitter_email,
     textBody: ['GNC PH Suspend Tag', title].concat(fields.map(function(f) { return f[0] + ': ' + f[1]; }),
+      decisionMessage ? ['Decision message: ' + decisionMessage] : [],
+      decision || approval.status !== 'pending' ? [] : ['Approve: ' + approveUrl, 'Deny: ' + denyUrl],
       ['Photos: ' + value(row.dock_photo_link), 'Open approval: ' + appUrl]).join('\n'),
     htmlBody: '<div style="font-family:Arial,sans-serif"><h2>GNC PH Suspend Tag</h2><p>' + escapeEmailHtml_(title) + '</p>'
       + fields.map(function(f) { return '<p><strong>' + escapeEmailHtml_(f[0]) + ':</strong> ' + escapeEmailHtml_(f[1]) + '</p>'; }).join('')
+      + (decisionMessage ? '<p><strong>Decision message:</strong> ' + escapeEmailHtml_(decisionMessage) + '</p>' : '')
       + buildRequestEmailTableItemsHtml_({ requestItems: [item], folderId: 'suspend-tag-' + approval.id }, { title: 'Suspend Tag Row' })
+      + (!decision && approval.status === 'pending' ? '<div style="display:flex;gap:12px;margin:20px 0"><a href="' + escapeEmailHtml_(approveUrl) + '" style="display:inline-block;padding:12px 20px;background:#087443;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Approve</a><a href="' + escapeEmailHtml_(denyUrl) + '" style="display:inline-block;padding:12px 20px;background:#9f1d1d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Deny</a></div>' : '')
       + '<p><a href="' + escapeEmailHtml_(appUrl) + '">Open approval in the app</a></p></div>'
   };
 }
@@ -21013,11 +21032,11 @@ function handleSignedSuspendTagDelivery_(delivery) {
     const intentKey = 'suspend_tag_send:' + messageId;
     if (props.getProperty(intentKey)) throw new Error('SUSPEND_TAG_EMAIL_RECONCILIATION_REQUIRED');
     // Validate delivery-time routing before recording a potentially sent message.
-    const routed = resolveOperationalEmailHeaders_([model.to], [], []).to;
-    if (routed.length !== 1 || routed[0].toLowerCase() !== String(model.to).toLowerCase()) throw new Error('SUSPEND_TAG_RECIPIENT_CHANGED');
+    const routed = resolveOperationalEmailHeaders_(model.toArray, [], []).to;
+    if (routed.length !== model.toArray.length || model.toArray.some(function(email) { return routed.indexOf(email) === -1; })) throw new Error('SUSPEND_TAG_RECIPIENT_CHANGED');
     props.setProperty(intentKey, new Date().toISOString());
     let result;
-    try { result = sendGmailApiMessage_({ toList: model.to, toArray: [model.to], replyTo: model.replyTo,
+    try { result = sendGmailApiMessage_({ toList: model.toArray.join(','), toArray: model.toArray, replyTo: model.replyTo,
       fromName: 'GNC PH Suspend Tag', fromAddress: resolveAutomatedEmailSenderAddress_(), subject: model.subject,
       textBody: model.textBody, htmlBody: model.htmlBody, messageIdHeader: messageId,
       threadId: isDecision ? thread.threadId : '', inReplyTo: isDecision ? thread.messageId : '', references: isDecision ? thread.messageId : '' });

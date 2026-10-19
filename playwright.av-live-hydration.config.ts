@@ -12,7 +12,7 @@ export default defineConfig({
   retries: 0,
   timeout: 120_000,
   expect: { timeout: 60_000 },
-  outputDir: './artifacts/av-live-hydration',
+  outputDir: './artifacts/v238-av-live-hydration',
   reporter: 'list',
   use: {
     baseURL,

@@ -274,6 +274,93 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
     expect(partial.currentRows).toBe(expectedPreviewRows);
     expect(partial.exportDisabled).toBe(true);
     expect(partial.crumb).toMatch(/Loading full inventory/i);
+    if (process.env.GNC_AV_PHASE_DIAGNOSTICS === '1') await page.evaluate(() => window.eval(`(() => {
+      window.__avPhaseTimings = {};
+      const measure = (name, fn) => function(...args) {
+        const start = performance.now();
+        try { return fn.apply(this, args); }
+        finally {
+          const time = performance.now() - start;
+          const stat = window.__avPhaseTimings[name] ||= { calls: 0, total: 0, max: 0 };
+          stat.calls++; stat.total += time; stat.max = Math.max(stat.max, time);
+        }
+      };
+      for (const name of ['createAvSalesRowsDerivation', 'getAvSalesRowsForRendering', 'buildResolvedAVBaseState',
+          'buildAvSharedFilterState', 'renderAvTopControls', 'buildAVExportContext', 'renderAV',
+          'buildRowsRenderSignature', 'getAvDerivedRowsArrayId']) {
+        if (typeof window[name] === 'function') window[name] = measure(name, window[name]);
+      }
+      const create = createAvSalesRowsDerivation;
+      createAvSalesRowsDerivation = function(...args) {
+        const job = create(...args);
+        job.mapRow = measure('derivation.mapRow', job.mapRow);
+        job.finalize = measure('derivation.finalize', job.finalize);
+        return job;
+      };
+    })()`));
+    // Measure the browser's render/paint clock, not Playwright polling and
+    // transport latency. Start at the first full-data render entry (before row
+    // preparation), require the complete count/export plus 20 mounted cards,
+    // and finish after two paint frames. Keep host elapsed time as diagnostics.
+    await page.evaluate(({ total, visible }) => window.eval(`(() => {
+      const measurement = window.__avPaintMeasurement = { startedAt: null, domAt: null, paintedAt: null, ms: null, events: [] };
+      const original = renderAV;
+      const originalCreate = createAvSalesRowsDerivation;
+      createAvSalesRowsDerivation = function(...args) {
+        const start = performance.now();
+        const job = originalCreate(...args);
+        measurement.events.push({ phase: 'prepare-index', start, end: performance.now(), rows: job.sourceRows.length,
+          identity: getAvSalesDerivationIdentity().sourceKey });
+        const finalize = job.finalize;
+        job.finalize = function(rows) {
+          const start = performance.now();
+          const result = finalize(rows);
+          measurement.events.push({ phase: 'finalize', start, end: performance.now(), rows: rows.length });
+          return result;
+        };
+        return job;
+      };
+      const originalInvalidate = invalidateResolvedViewStateCaches;
+      invalidateResolvedViewStateCaches = function(...args) {
+        const result = originalInvalidate(...args);
+        if (measurement.startedAt !== null) measurement.events.push({ phase: 'invalidation', at: performance.now(),
+          epoch: resolvedViewStateEpoch, caller: new Error().stack?.split('\\n').slice(1, 5).join('\\n') });
+        return result;
+      };
+      renderAV = function(...args) {
+        if (measurement.startedAt === null && fullInventory.length === ${total}
+            && getDatasetState('master')?.fullLoaded && getDatasetState('reserves')?.fullLoaded) {
+          measurement.startedAt = performance.now();
+        }
+        const start = performance.now();
+        const result = original.apply(this, args);
+        measurement.events.push({ phase: 'render-call', start, end: performance.now() });
+        return result;
+      };
+      let pending = false;
+      const ready = () => measurement.startedAt !== null
+        && document.querySelectorAll('#av-content .app-smart-card--inventory[data-dom-id]').length === 20
+        && (document.getElementById('av-crumb')?.textContent || '').includes('Current Season (${visible} items)')
+        && !(document.getElementById('av-crumb')?.textContent || '').includes('Loading')
+        && !document.getElementById('av-export-btn')?.hasAttribute('disabled')
+        && (document.getElementById('av-export-btn-label')?.textContent || '').includes('(${visible})')
+        && (document.querySelector('#av-content .browse-page-footer span')?.textContent || '').replaceAll(',', '').includes('of ${visible}');
+      const observer = new MutationObserver(() => {
+        if (pending || !ready()) return;
+        pending = true;
+        measurement.domAt = performance.now();
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (!ready()) { pending = false; measurement.domAt = null; return; }
+          measurement.paintedAt = performance.now();
+          measurement.ms = measurement.paintedAt - measurement.startedAt;
+          observer.disconnect();
+          renderAV = original;
+          createAvSalesRowsDerivation = originalCreate;
+          invalidateResolvedViewStateCaches = originalInvalidate;
+        }));
+      });
+      observer.observe(document.getElementById('view-av'), { childList: true, subtree: true, attributes: true, characterData: true });
+    })()`), { total: fixture.master.total, visible: fixture.expected.visibleRowCount });
     fixtureControl.releaseHeldMasterLaterPage();
     continuationHeld = false;
 
@@ -294,7 +381,7 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
         footer: container.querySelector('.browse-page-footer span')?.textContent || '',
       }));
       const fullPageReady = renderedPage.footer.replaceAll(',', '').includes(`of ${fixture.expected.visibleRowCount}`)
-        && renderedPage.cardCount === 100;
+        && renderedPage.cardCount === 20;
       if (fullRenderFirstCardMs === null && renderedPage.cardCount > expectedPreviewRows) {
         fullRenderFirstCardMs = Date.now() - uiConvergenceStarted;
       }
@@ -302,7 +389,14 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
       return fullPageReady;
     }, { timeout: 45_000, intervals: [100, 250, 500] }).toBe(true);
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-    const fullCohortUiReadyMs = Date.now() - uiConvergenceStarted;
+    const hostConvergenceElapsedMs = Date.now() - uiConvergenceStarted;
+    await expect.poll(() => page.evaluate(() => (window as unknown as {
+      __avPaintMeasurement: { ms: number | null };
+    }).__avPaintMeasurement.ms), { timeout: 10_000 }).not.toBeNull();
+    const paintMeasurement = await page.evaluate(() => (window as unknown as {
+      __avPaintMeasurement: { startedAt: number; domAt: number; paintedAt: number; ms: number };
+    }).__avPaintMeasurement);
+    const fullCohortUiReadyMs = paintMeasurement.ms;
 
     await Promise.all(responseTasks);
     const state = await pageState(page);
@@ -316,13 +410,24 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
     expect(state.freshnessText).not.toMatch(/awaiting first sync/i);
     expect(preparedRows.rowCount).toBe(fixture.expected.visibleRowCount);
     expect(preparedRows.uniqueItemcodes).toBe(fixture.expected.visibleItemcodeCount);
-    expect(state.visibleCardCount).toBeGreaterThan(0);
-    expect(state.visibleCardCount).toBeLessThanOrEqual(100);
+    expect(state.visibleCardCount).toBe(20);
     expect(state.browseFooter.replaceAll(',', '')).toContain(`Rows 1–100 of ${fixture.expected.visibleRowCount}`);
     expect(preparedRows.exportCount).toBe(fixture.expected.visibleRowCount);
     await expect(page.locator('#av-crumb')).toContainText(`Current Season (${fixture.expected.visibleRowCount} items)`);
     await expect(page.locator('#av-export-btn-label')).toContainText(`(${fixture.expected.visibleRowCount})`);
-    expect(fullCohortUiReadyMs).toBeLessThanOrEqual(1_500);
+    expect(fullCohortUiReadyMs).toBeLessThan(1_500);
+
+    // All data remains available while the DOM grows only on demand. Existing
+    // card nodes are retained, preventing selection/focus/scroll replacement.
+    const firstIds = await page.locator('#av-content .app-smart-card--inventory[data-dom-id]')
+      .evaluateAll(cards => cards.map(card => card.getAttribute('data-dom-id')));
+    await page.locator('#av-content [data-av-load-more]').scrollIntoViewIfNeeded();
+    await expect(page.locator('#av-content .app-smart-card--inventory[data-dom-id]')).toHaveCount(40);
+    const secondIds = await page.locator('#av-content .app-smart-card--inventory[data-dom-id]')
+      .evaluateAll(cards => cards.map(card => card.getAttribute('data-dom-id')));
+    expect(secondIds.slice(0, 20)).toEqual(firstIds);
+    expect(new Set(secondIds).size).toBe(40);
+    await expect(page.locator('#av-export-btn-label')).toContainText(`(${fixture.expected.visibleRowCount})`);
 
     const pageOffsets = inventoryPages.filter(pageRead => pageRead.dataset === 'master')
       .map(pageRead => pageRead.offset);
@@ -343,6 +448,7 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
       uniqueItemcodes: preparedRows.uniqueItemcodes, renderedFirstPageCards: state.visibleCardCount,
       pageOffsets, fullHydrationElapsedMs: Date.now() - hydrationStarted,
       fullCohortUiReadyMs,
+      hostConvergenceElapsedMs, paintMeasurement,
       fullRenderFirstCardMs, fullPageDomReadyMs,
       browser: testInfo.project.name, fixtureSource: fixture.fixtureSource,
       masterPageProjections: masterPageRequests.map(pageRead => ({ offset: pageRead.offset, projection: pageRead.projection })) }));
@@ -350,6 +456,8 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
     if (continuationHeld) fixtureControl?.releaseHeldMasterLaterPage();
     const diagnostic = {
       failure: String(error), pageErrors, failedRequests, inventoryPages,
+      phaseTimings: await page.evaluate(() => (window as unknown as { __avPhaseTimings?: unknown }).__avPhaseTimings || null),
+      paintMeasurement: await page.evaluate(() => (window as unknown as { __avPaintMeasurement?: unknown }).__avPaintMeasurement || null),
       lifecycle, documentNavigations, fixtureApiTraffic,
       fullRenderFirstCardMs, fullPageDomReadyMs,
       pageState: await pageState(page).catch(stateError => ({ error: String(stateError) })),

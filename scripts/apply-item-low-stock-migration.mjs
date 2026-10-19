@@ -81,7 +81,8 @@ export const bunchNoteMultiAssignmentRoutingMigrationName = '20261017203000_bunc
 export const bunchNoteBlueprintHeaderPdfDeliveryMigrationName = '20261018014347_bunch_note_blueprint_header_pdf_delivery.sql';
 export const bunchNoteQueueExecutionMigrationName = '20261018183204_bunch_note_queue_execution_and_recounts.sql';
 export const bunchNoteSupervisorAssigneeFacetsMigrationName = '20261019003759_bunch_note_supervisor_assignee_facets_v1.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName]);
+export const suspendTagSenderIdentityMigrationName = '20261019113414_suspend_tag_sender_identity.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -1154,6 +1155,47 @@ export function migrationContractQuery(name) {
     and position('coalesce(r.assigned_counter_id=actor.id or review_allowed,false)' in pg_get_functiondef(to_regprocedure('public.bunch_note_workflow_command_v1(uuid,text,jsonb,uuid,bigint)')))>0
     and position('coalesce(v.assigned_counter_id=actor.id or review_allowed,false)' in pg_get_functiondef(to_regprocedure('public.bunch_note_workflow_command_v1(uuid,text,jsonb,uuid,bigint)')))>0
     and position('if not coalesce(card.owner_id=actor.id' in pg_get_functiondef(to_regprocedure('public.bunch_note_workflow_command_v1(uuid,text,jsonb,uuid,bigint)')))>0
+    as installed`;
+  if (name === suspendTagSenderIdentityMigrationName) return `select
+    exists(select 1 from information_schema.columns where table_schema='suspend_tag_private' and table_name='approvals'
+      and column_name='sent_by' and udt_name='uuid' and is_nullable='NO')
+    and exists(select 1 from information_schema.columns where table_schema='suspend_tag_private' and table_name='approvals'
+      and column_name='decision_message' and data_type='text')
+    and exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='suspend_tag_private' and c.relname='approval_recipients' and c.relrowsecurity)
+    and not exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) acl
+      where n.nspname='suspend_tag_private' and c.relname='approval_recipients'
+        and acl.grantee=0 and acl.privilege_type='SELECT')
+    and not has_table_privilege('anon','suspend_tag_private.approval_recipients','select')
+    and not has_table_privilege('authenticated','suspend_tag_private.approval_recipients','select')
+    and not has_table_privilege('anon','suspend_tag_private.approval_recipients','insert')
+    and not has_table_privilege('authenticated','suspend_tag_private.approval_recipients','insert')
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('suspend_tag_private.capture_decision_message()')
+      and p.prosecdef and p.proconfig @> array['search_path=""']
+      and not has_function_privilege('anon',p.oid,'execute')
+      and not has_function_privilege('authenticated',p.oid,'execute'))
+    and exists(select 1 from pg_trigger t where t.tgrelid='suspend_tag_private.approvals'::regclass
+      and t.tgname='suspend_tag_capture_decision_message' and t.tgenabled='O'
+      and t.tgfoid=to_regprocedure('suspend_tag_private.capture_decision_message()'))
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('suspend_tag_private.request_approval(text)')
+      and p.prosecdef and p.proconfig @> array['search_path=""']
+      and position('sender_id' in pg_get_functiondef(p.oid))>0
+      and position('app.suspend_tag_actor_id' in pg_get_functiondef(p.oid))>0
+      and position('decision_emails' in pg_get_functiondef(p.oid))>0
+      and position('approval_recipients' in pg_get_functiondef(p.oid))>0
+      and position('sent_by' in pg_get_functiondef(p.oid))>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.suspend_tag_command_v1(uuid,text,jsonb,uuid,bigint,uuid)')
+      and p.prosecdef is false
+      and position('session_active' in pg_get_functiondef(p.oid))>0
+      and position('app.suspend_tag_decision_message' in pg_get_functiondef(p.oid))>0
+      and position('SUSPEND_TAG_DECISION_MESSAGE_INVALID' in pg_get_functiondef(p.oid))>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.prepare_suspend_tag_delivery_v1(uuid,uuid)')
+      and p.prosecdef and p.proconfig @> array['search_path=""']
+      and position('approval_recipients' in pg_get_functiondef(p.oid))>0
+      and position('decision_emails' in pg_get_functiondef(p.oid))>0
+      and position('decisionMessage' in pg_get_functiondef(p.oid))>0
+      and position('DELIVERY_WORKER_FORBIDDEN' in pg_get_functiondef(p.oid))>0)
     as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }

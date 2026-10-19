@@ -156,6 +156,8 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - uses: actions/setup-python@v5
         with:
