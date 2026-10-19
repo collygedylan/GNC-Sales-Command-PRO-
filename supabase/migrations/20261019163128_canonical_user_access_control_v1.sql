@@ -1,3 +1,5 @@
+begin;
+
 -- Canonical nine-flag access model. Access is resolved only by app-api after
 -- it has verified an active native profile; browser roles/local storage are
 -- display hints and never authorize a request.
@@ -485,3 +487,5 @@ grant usage,select on sequence public.user_access_control_audit_id_seq to servic
 revoke all on function public.user_access_command_v1(uuid,text,jsonb,bigint,uuid) from public,anon,authenticated;
 grant execute on function public.user_access_command_v1(uuid,text,jsonb,bigint,uuid) to service_role;
 revoke all on function private.canonical_user_access_role_v1(text),private.user_access_effective_permissions_v1(jsonb,jsonb) from public,anon,authenticated;
+
+commit;

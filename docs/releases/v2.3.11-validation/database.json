@@ -3,7 +3,7 @@
   "scope": "database",
   "status": "passed",
   "validationId": "v2311-database-retained-20261019-reset3",
-  "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66",
+  "sourceHashDigest": "686170c3593641b1045bb855382ee6acfba6a1fd2f99453f2f26a0cd0d48d4a3",
   "assembledAt": "2026-10-19T20:20:26.033Z",
   "provenance": {
     "kind": "retained-evidence-aggregation",
@@ -267,5 +267,14 @@
       "sha256": "1aaa53d7568a375662d4ff1787ea746d309900d4b0b08c0a071946a6d59890d6",
       "retained": true
     }
-  ]
+  ],
+  "publicationCorrection": {
+    "failureRun": 39319088382,
+    "reason": "Canonical access migration lacked the explicit BEGIN/COMMIT envelope required by the guarded publisher; it was rejected before application.",
+    "correction": "Added transaction wrapper only; original executable SQL body preserved exactly after trailing newline normalization.",
+    "productionProbe": "Both new public contracts absent after failed run; Edge Functions and Apps Script publication did not run.",
+    "validation": "migrationBody() accepts wrapper and strict assertion compares body to retained validated original.",
+    "originalBodySha256": "499e3b861aeec7149eb1ba512702759886c06f58fafca497b3af7ef7a1b53e91",
+    "fullSqlRerun": false
+  }
 }
