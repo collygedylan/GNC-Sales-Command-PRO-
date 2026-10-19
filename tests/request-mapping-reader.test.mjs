@@ -50,11 +50,14 @@ test('an obsolete rep read cannot overwrite the new selection',async()=>{
  assert.equal(await pending,false);
  assert.equal(c.requestMappingRpcCache.size,0);
 });
-test('transport failure clears the selection and preserves a retryable error',async()=>{
+test('transport failure preserves the customer draft but leaves mapping unverified and retryable',async()=>{
  const c=fixture(async()=>{throw new Error('Network unavailable');});
- c.tempRequestCustomerSelectedContext={customeridentityid:'00012'};
+ const selection={customeridentityid:'00012'};
+ c.tempRequestCustomerSelectedContext=selection;
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),false);
- assert.equal(c.tempRequestCustomerSelectedContext,null);
+ assert.equal(c.tempRequestCustomerSelectedContext,selection);
+ assert.equal(c.requestModalCustomerOptionsReady,false);
+ assert.equal(c.requestMappingRpcCache.size,0);
  assert.match(c.requestModalCustomerOptionsError,/Network unavailable/);
 });
 test('same-identity mapping options remain displayable but unverified after a refresh failure',async()=>{
@@ -71,6 +74,7 @@ test('same-identity mapping options remain displayable but unverified after a re
  assert.equal(c.getRequestModalCachedCustomerOptionsForRep('Rep One').length,1);
  assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Rep One'),row=>row.customeridentityid),['00012']);
  assert.equal(c.requestMappingRpcCache.get('01').stale,true);
+ assert.equal(c.requestModalCustomerOptionsReady,false,'same-owner choices remain visible but do not validate submission during a failed refresh');
  assert.match(c.requestModalCustomerOptionsError,/Network unavailable/);
  assert.equal(c.getSupabaseReadIdentityScope(),'identity-1');
  assert.equal(prior.length,1);
@@ -87,10 +91,11 @@ test('modal cache initialization uses only a complete RPC result for the exact r
  assert.equal(calls,1);
  c.mappingRevision='2';
  c.tempRequestCustomerSelectedContext={customeridentityid:'00012',consigneeidentityid:'00007',customername:'Garden ®',consigneename:'North ™',request_selected_salesrep_id:'01'};
- assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,0);
- assert.equal(c.requestMappingRpcCache.size,0);
+ assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,1,'same-owner choices remain available as stale display data');
+ assert.equal(c.requestMappingRpcCache.size,1);
  assert.equal(c.requestModalCustomerOptionsReady,false);
- assert.equal(c.tempRequestCustomerSelectedContext,null);
+ assert.notEqual(c.tempRequestCustomerSelectedContext,null);
+ assert.equal(c.isRequestModalCustomerMapReady(),false,'revision drift blocks use until the replacement read completes');
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
  assert.equal(calls,2);
 });

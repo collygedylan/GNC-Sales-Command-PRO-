@@ -215,7 +215,14 @@ test('Eval #2 shared snapshot reopens without loading flash and keeps MORE open 
     const ensureDatasetLoads = ensureDatasetLoaded;
     const loadSettings = loadManagerEvalReportSettings;
     let datasetLoads = 0, settingsLoads = 0;
-    ensureDatasetLoaded = async (...args) => { datasetLoads += 1; return ensureDatasetLoads(...args); };
+    const observedDatasetLoads = [];
+    ensureDatasetLoaded = async (...args) => {
+      observedDatasetLoads.push(String(args[0]));
+      // Background lookup prefetch is independent of the warm Eval2 snapshot.
+      // Assert zero loads for the two datasets this report actually consumes.
+      if (['master', 'warehouseAssignedItems'].includes(String(args[0]))) datasetLoads += 1;
+      return ensureDatasetLoads(...args);
+    };
     loadManagerEvalReportSettings = async (...args) => { settingsLoads += 1; return loadSettings(...args); };
     const cacheStart = performance.now();
     await loadManagerEvalReports2(false);
@@ -299,7 +306,7 @@ test('Eval #2 shared snapshot reopens without loading flash and keeps MORE open 
       managerEvalReport2SelectedLocationCode = '';
     }
     return { warmOpenMs, warmOpenDomMs, initialCardCount:initialRenderedCardCount,
-      userFilterRendered:true, filterResults, datasetLoads, settingsLoads, openedByUser, drawerStayedOpen:!!details?.open,
+      userFilterRendered:true, filterResults, datasetLoads, observedDatasetLoads, settingsLoads, openedByUser, drawerStayedOpen:!!details?.open,
       loadingFlashSeen, cardLost, cardCount:initialCardCount, cacheCodes,
       visibleUserOptions:getManagerEvalReport2UserFilterOptions(getManagerEvalReport2Rows()).map(option => option.label),
       drawerClosed, diagnostics:{ beforeBuild, sourceRowsNow:fullInventory.length,

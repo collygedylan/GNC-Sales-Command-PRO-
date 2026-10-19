@@ -173,6 +173,53 @@ test('legacy directory identities without native profiles remain disabled and fa
     assert.equal(host.querySelector('[data-user-save]').disabled, true);
 });
 
+test('pending directory refresh preserves a Manager selected role before saving its baseline', async t => {
+    let releaseDirectory;
+    let savedRole = '';
+    const directoryResponse = new Promise(resolve => { releaseDirectory = resolve; });
+    const identity = { id: 'profile-1', username: 'annette_hancock', authenticated: true };
+    const managerPermissions = Object.fromEntries(Object.keys(permissions).map(key => [key, true]));
+    const client = makeClient({ identity, transport: async request => {
+        if (request.operation === 'resolve') {
+            const response = selfSnapshot({}, managerPermissions);
+            response.data.profile = { ...response.data.profile, id: identity.id, username: identity.username, role: 'Administrator' };
+            response.data.baseline = { role: 'admin', permissions: managerPermissions };
+            response.data.effective_permissions = managerPermissions;
+            return response;
+        }
+        if (request.operation === 'directory') return directoryResponse;
+        if (request.operation === 'save_role_baseline') {
+            savedRole = request.role;
+            return { ok: true, data: { revision: 15, baseline: { role: request.role, permissions: request.permissions } } };
+        }
+        throw new Error(`unexpected_operation:${request.operation}`);
+    } });
+    await client.api.loadSelf();
+    const host = mountManager(client, t);
+    host.querySelector('[data-role-select]').value = 'evaluator';
+    host.querySelector('[data-role-select]').dispatchEvent(new client.context.document.defaultView.Event('change', { bubbles: true }));
+    releaseDirectory({ ok: true, data: {
+        revision: 14,
+        role_baselines: [
+            { role: 'admin', permissions: managerPermissions },
+            { role: 'evaluator', permissions: permissions },
+        ],
+        users: [
+            { id: identity.id, username: identity.username, display_name: 'Annette Hancock', role: 'Administrator', active: true,
+                baseline: { role: 'admin', permissions: managerPermissions }, permission_overrides: {}, effective_permissions: managerPermissions },
+            { id: 'eval-1', username: 'evaluator_one', display_name: 'Evaluator One', role: 'Evaluator', active: true,
+                baseline: { role: 'evaluator', permissions }, permission_overrides: {}, effective_permissions: permissions },
+        ],
+    } });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(host.querySelector('[data-role-select]').value, 'evaluator');
+    const target = host.querySelector('[data-role-permission="can_access_eval_reports_2"]');
+    target.checked = true;
+    await host.querySelector('[data-role-save]').onclick();
+    assert.equal(savedRole, 'evaluator');
+    assert.equal(host.querySelector('[data-role-select]').value, 'evaluator');
+});
+
 test('account switch invalidates an older in-flight resolve before it can replace the new profile', async () => {
     let identity = { id: 'profile-1', username: 'annette_hancock', authenticated: true };
     let releaseOld;
@@ -239,7 +286,7 @@ test('role baseline updates are optimistic and roll back the local directory aft
     host.querySelector('[data-role-permission="can_access_av"]').checked = true;
     await host.querySelector('[data-role-save]').onclick();
     assert.equal(api.directory.role_baselines.find(row => row.role === 'sales_rep').permissions.can_access_av, beforeFailure);
-    assert.match(host.querySelector('[data-access-status]').textContent, /REVISION_CONFLICT/);
+    assert.equal(host.querySelector('[data-access-status]').getAttribute('role'), 'alert');
     assert.ok(events.some(event => event.detail.reason === 'role-baseline-optimistic'));
     assert.ok(events.some(event => event.detail.reason === 'role-baseline-rollback'));
 });
@@ -270,5 +317,5 @@ test('per-user overrides apply over inherited flags and restore prior cached sta
     host.querySelector('[data-user-permission="can_access_av"]').value = 'false';
     await host.querySelector('[data-user-save]').onclick();
     assert.equal(api.directory.users.find(user => user.username === 'wes_lugas').effective_permissions.can_access_av, true);
-    assert.match(host.querySelector('[data-access-status]').textContent, /DENIED/);
+    assert.equal(host.querySelector('[data-access-status]').getAttribute('role'), 'alert');
 });

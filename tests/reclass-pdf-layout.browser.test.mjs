@@ -88,7 +88,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     assert.match(html, /<s>SYN<\/s>/, 'cleared SUS value is shown as struck through');
     assert.match(html, /Yes - SR/, 'blank SUS Yes is rendered with server initials');
     assert.match(report, /By SR \| Eval 10\/8\/2026 \| Updated 10\/8\/2026/, 'server stamps appear as compact row annotations');
-    assert.match(html, /class="edited-cell" data-edited="true"/, 'confirmed edits remain highlighted');
+    assert.match(html, /class="edited-cell (?:code|note)-cell" data-edited="true"/, 'confirmed edits remain highlighted');
 
     const geometry = await page.locator('.location-table tbody tr[data-location-row="true"]').evaluateAll(rows => rows.map(row => {
       const box = row.getBoundingClientRect();
@@ -167,7 +167,9 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       `yellow title header repeats once on PDF page ${index + 1}`));
     const normalizedPageTexts = pageTexts.map(text => text.replace(/\s+/g, ' '));
     const compactPageTexts = normalizedPageTexts.map(text => text.replace(/\s/g, ''));
-    const pagesWithLocationRows = normalizedPageTexts.map((text, index) => /A\.01\.\d{3}/.test(text) ? index : -1).filter(index => index >= 0);
+    // Audit annotations now repeat the row identity outside the data grid.
+    // Movement instructions identify the actual data pages requiring column headers.
+    const pagesWithLocationRows = [...new Set(pagesByArrow.values())].map(page => page - 1);
     assert.ok(pagesWithLocationRows.length > 1, 'fixture puts location rows on multiple PDF pages');
     for (const pageIndex of pagesWithLocationRows) {
       for (const heading of expectedHeadings) assert.ok(compactPageTexts[pageIndex].includes(heading.replace(/\s/g, '')),

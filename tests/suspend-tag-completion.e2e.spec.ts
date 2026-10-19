@@ -691,7 +691,10 @@ test('Complete Tag saves and removes the row from the active Suspend view', {"ta
     await expect(page.locator('#view-detail')).toBeHidden();
     await expect(page.locator('#app-prompt-dialog')).toBeHidden();
     expect(app.backendRows.find(candidate=>candidate.UNIQUE_ID===uniqueId)?.SUSPEND_TAG_STATUS).toBe('pending');
-    await expect(page.locator('[data-request-category="suspend-tag"]')).toContainText('999');
+    const suspendCategory = page.locator('[data-request-category="suspend-tag"]');
+    const suspendBackingCount = await page.evaluate(() => window.eval("getRequestTabQueueCounts()['suspend-tag']"));
+    expect(suspendBackingCount).toBe(999);
+    await expect(suspendCategory.locator('.request-category-chip__count')).toHaveText('99+');
     await page.waitForFunction(()=>Number((window as Window & {__v2311CompleteTagProbe?:{paintMs:number}}).__v2311CompleteTagProbe?.paintMs)>=0);
     const metric=await page.evaluate(()=>(window as Window & {__v2311CompleteTagProbe?:{domMs:number;paintMs:number}}).__v2311CompleteTagProbe!);
     await info.attach('v2311-optimistic-completion.json',{body:JSON.stringify({...metric,rows:1000,environment:info.project.name,cache:'warm',backendAcknowledgmentHeld:true}),contentType:'application/json'});
@@ -930,8 +933,9 @@ test('detail Mark Done stays in detail until the global save is confirmed, then 
 test('v2311 Item Detail uses shared AV options and saves a note without spec or caliper', {tag:['@v2311-workflow']}, async ({page,baseURL})=>{
   const app=await harness(page,baseURL!);
   await page.evaluate(rows=>{
-    Object.assign(window,{__v2311DetailMaster:rows.map(row=>({...row,UNIQUE_ID:'master-'+row.UNIQUE_ID,SPEC:'',CALIPER:''}))});
-    window.eval('processAndLoadData({data:window.__v2311DetailMaster,_fromCache:true}); const master=getDatasetState("master"); master.initialLoaded=master.fullLoaded=true; master.fieldCoverage="full"; master.rowCompleteness="complete";');
+    const note = 'UPDATED NOTE WITHOUT SPEC';
+    Object.assign(window,{__v2311DetailMaster:rows.map(row=>({...row,UNIQUE_ID:'master-'+row.UNIQUE_ID,SPEC:'',CALIPER:''})),__v2311DetailAvNotes:rows.map(row=>({COMMONNAME:row.COMMONNAME,SALESNOTE:note}))});
+    window.eval('processAndLoadData({data:window.__v2311DetailMaster,avNotesData:window.__v2311DetailAvNotes,_fromCache:true}); const master=getDatasetState("master"); master.initialLoaded=master.fullLoaded=true; master.fieldCoverage="full"; master.rowCompleteness="complete"; const notes=getDatasetState("avNotes"); notes.initialLoaded=notes.fullLoaded=true;');
   },fixtures);
   await page.evaluate(()=>window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
   await expect(page.locator('#request-open-info-modal')).toBeVisible();
@@ -946,7 +950,17 @@ test('v2311 Item Detail uses shared AV options and saves a note without spec or 
   await app.activate(avHeader);
   await expect(page.locator('#detail-av-options-panel [data-request-itemcode-option-card]')).toHaveCount(1);
   await app.activate(avHeader);
-  await page.locator('#req-av-note').fill('UPDATED NOTE WITHOUT SPEC');
+  const avNoteInput = page.locator('#req-av-note');
+  await expect(page.locator('[data-av-note-dropdown-trigger="req-"]')).toBeVisible();
+  await app.activate(page.locator('[data-av-note-dropdown-trigger="req-"]'));
+  const noteSheet=page.locator('#request-av-note-sheet');
+  await expect(noteSheet).toBeVisible();
+  await page.locator('#request-av-note-sheet-search').fill('UPDATED NOTE WITHOUT SPEC');
+  const noteOption=noteSheet.locator('[data-av-note-option="UPDATED NOTE WITHOUT SPEC"]');
+  await expect(noteOption).toBeVisible();
+  await app.activate(noteOption);
+  await expect(avNoteInput).toHaveValue('UPDATED NOTE WITHOUT SPEC');
+  await expect.poll(() => page.evaluate(() => window.eval('getDockSuspendDcRequestFormValues(activeItem).avNote'))).toBe('UPDATED NOTE WITHOUT SPEC');
   if(await page.locator('.request-av-note-sheet__close').isVisible())await app.activate(page.locator('.request-av-note-sheet__close'));
   await app.activate(page.locator('#req-btn-save-complete'));
   await expect.poll(()=>app.backendRows[0].SUSPEND_TAG_STATUS).toBe('completed');

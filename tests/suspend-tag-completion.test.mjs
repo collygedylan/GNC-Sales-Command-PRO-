@@ -14,6 +14,7 @@ function between(start, end) {
 const workflow = between('function getSuspendTagStatus(', 'let dockSuspendCompletionState = null;');
 const helpers = between('let dockSuspendCompletionState = null;', 'async function openDockSuspendDcNotFoundRecount(');
 const handler = between('async function completeDockSuspendDcRequestFromCard(', 'async function saveDockSuspendDcRequestMirrorData(');
+const optimisticPainter = between('function paintOptimisticSuspendTagRemoval(', 'function forcePendingRequestRoot(');
 const revision = '2026-09-08T15:50:47.123456Z';
 const source = () => ({ UNIQUE_ID: 'soc-1', LAST_UPDATED: revision, DATE_COMPLETED: '', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC', PTRONHAND: '0' });
 const button = () => ({ innerHTML: 'Done', disabled: false, classList: { add() {}, remove() {} } });
@@ -76,6 +77,8 @@ function harness(options = {}) {
     getDockSuspendDcRequestCompletionReadiness: () => ({ ready: options.ready !== false, missing: ['photo'] }), openDockSuspendDcRequestUpdate() { openUpdateCalls += 1; },
     applyDockSuspendDcRequestHandledState: (item, at) => { item.DATE_COMPLETED = at; item.date_completed = at; },
     refreshLocalDockSuspendDcRequestState() {}, markViewDirty() {},
+    yieldToUiFrame: async () => {},
+    requestTabQueueCountsSnapshot: null, requestTabQueueCountsSnapshotScope: '',
     queueSuspendTagInventoryReconciliation() {},
     invalidateSuspendTagInventoryRows() {},
     invalidateDockSuspendDcSourceRowLookup() {},
@@ -95,7 +98,7 @@ function harness(options = {}) {
   ctx.window.localStorage = ctx.localStorage;
   vm.runInContext(readFileSync(new URL('../assets/queue-completion-state.js', import.meta.url), 'utf8'), ctx);
   const completions = between('let queueCompletionState = null;', 'function trackOptimisticCompletedRows(');
-  vm.runInContext(`${completions}\n${workflow}\n${helpers}\n${handler}`, ctx);
+  vm.runInContext(`${completions}\n${workflow}\n${helpers}\n${optimisticPainter}\n${handler}`, ctx);
   return { ctx, row, mirror, calls, toasts, storage, documentListeners, get confirmCalls() { return confirmCalls; }, get openUpdateCalls() { return openUpdateCalls; } };
 }
 
@@ -571,7 +574,7 @@ test('detail Mark Done returns to the request list only after the current detail
     h.ctx.detailBackCalls = 0;
     h.ctx.isViewVisible = viewId => h.ctx.view === viewId;
     h.ctx.goBackFromDetail = () => { h.ctx.detailBackCalls += 1; };
-    h.ctx.document = { getElementById: () => button() };
+    h.ctx.document = { ...h.ctx.document, getElementById: () => button() };
     h.ctx.getDockSuspendDcRequestFormValues = () => ({ spec: 'saved', caliper: '', match: '', avNote: '' });
     h.ctx.buildDockSuspendDcRequestNote = () => '';
     h.ctx.getDockSuspendDcRequestCompletionReadiness = () => ({ ready: true, missing: [] });
@@ -746,6 +749,25 @@ test('recount completion shares the protected persistence path', async () => {
 
  test('incomplete cards cannot bypass detail photo validation', async () => { const h=harness({ready:false}); await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID,button()); assert.equal(h.calls.length,0); assert.equal(h.row.DATE_COMPLETED,''); });
 test('new denial state supersedes a cached completion without dropping photos', async () => { const h=harness(); await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID,button()); const denied={...source(),suspend_tag_status:'denied',suspend_tag_version:2,DOCK_PHOTO_LINK:'saved.jpg'}; assert.equal(h.ctx.getSuspendTagStatus(denied),'denied'); assert.equal(h.ctx.overlaySuspendTagReceipt(denied).DOCK_PHOTO_LINK,'saved.jpg'); });
+
+test('Complete Tag paints row removal and cached Suspend badge decrement before broad reconciliation', () => {
+  const commandStart = html.indexOf('async function runSuspendTagRowCommand(');
+  const commandEnd = html.indexOf('const photoOnly =', commandStart);
+  const beginPath = html.slice(commandStart, commandEnd);
+  assert.match(beginPath, /completion\.begin\(completionKey[\s\S]*?paintOptimisticSuspendTagRemoval\(mirror\)[\s\S]*?serializeSuspendTagRowWrite/);
+  assert.match(beginPath, /paintOptimisticSuspendTagRemoval\(mirror\)[\s\S]*?await yieldToUiFrame\(\);[\s\S]*?invalidateResolvedViewStateCaches\(\);[\s\S]*?serializeSuspendTagRowWrite/);
+  assert.doesNotMatch(beginPath, /refreshLocalDockSuspendDcRequestState\('suspend-tag-completing'/);
+  const paintStart = html.indexOf('function paintOptimisticSuspendTagRemoval(');
+  const paintEnd = html.indexOf('function forcePendingRequestRoot(', paintStart);
+  const paint = html.slice(paintStart, paintEnd);
+  assert.doesNotMatch(paint, /invalidateResolvedViewStateCaches/);
+  assert.match(paint, /\.request-card-list--suspend-tag \[data-request-uid\]/);
+  assert.match(paint, /row\.remove\(\)/);
+  assert.match(paint, /'suspend-tag': Math\.max\(0, Number\(requestTabQueueCountsSnapshot\['suspend-tag'\]\) - 1\)/);
+  assert.match(paint, /updateRequestTabButtonLabels\(requestTabQueueCountsSnapshot\)/);
+  assert.match(paint, /updateFooterRequestBadge\(requestTabQueueCountsSnapshot\)/);
+  assert.match(html, /completion\?\.rollback\(completionKey\)[\s\S]{0,180}refreshLocalDockSuspendDcRequestState\('suspend-tag-completion-settled'/);
+});
 
 test('queued evidence saves use the latest version and retain photos and the newest unsaved draft', async () => {
   let release;

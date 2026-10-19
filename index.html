@@ -41372,6 +41372,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return 'pending';
         }
 
+        let requestTabQueueCountsSnapshot = null;
+        let requestTabQueueCountsSnapshotScope = '';
         function syncRequestTabButtons(counts = null) {
             activeReqTab = normalizeRequestTabValue(activeReqTab);
             const access = getRoleAccessState();
@@ -41402,8 +41404,38 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (shearListTab) shearListTab.classList.toggle('active', activeReqTab === 'shear-list');
             if (evalWorkTab) evalWorkTab.classList.toggle('active', activeReqTab === 'eval-work');
             counts = counts || getRequestTabQueueCounts();
+            requestTabQueueCountsSnapshot = { ...counts };
+            requestTabQueueCountsSnapshotScope = getSupabaseReadIdentityScope();
             updateRequestTabButtonLabels(counts);
             renderRequestCategoryToolbar(counts);
+        }
+
+        function paintOptimisticSuspendTagRemoval(mirror = null) {
+            const uid = String(firstNonEmptyValue(mirror && mirror.UNIQUE_ID, mirror && mirror.unique_id, '') || '').trim();
+            if (!uid || typeof document === 'undefined') return false;
+            const cards = Array.from(document.querySelectorAll('#request-content .request-card-list--suspend-tag [data-request-uid]'))
+                .filter(card => String(card.getAttribute('data-request-uid') || '') === uid);
+            let removed = false;
+            cards.forEach(card => {
+                const row = card.closest('.request-swipe-row') || card;
+                if (row && row.parentNode) { row.remove(); removed = true; }
+            });
+            const scope = getSupabaseReadIdentityScope();
+            if (requestTabQueueCountsSnapshot && requestTabQueueCountsSnapshotScope === scope) {
+                requestTabQueueCountsSnapshot = {
+                    ...requestTabQueueCountsSnapshot,
+                    'suspend-tag': Math.max(0, Number(requestTabQueueCountsSnapshot['suspend-tag']) - 1)
+                };
+                updateRequestTabButtonLabels(requestTabQueueCountsSnapshot);
+                const categoryCount = document.querySelector('.request-category-chip[data-request-category="suspend-tag"] .request-category-chip__count');
+                if (categoryCount) {
+                    const count = requestTabQueueCountsSnapshot['suspend-tag'];
+                    categoryCount.textContent = formatRequestTabCount(count);
+                    categoryCount.classList.toggle('has-count', count > 0);
+                }
+                updateFooterRequestBadge(requestTabQueueCountsSnapshot);
+            }
+            return removed;
         }
 
         function forcePendingRequestRoot(options = {}) {
@@ -52922,7 +52954,9 @@ let avTopControlsRenderToken = 0;
             formatted.SOURCE_TABLE = sourceTable;
             formatted.source_table = sourceTable;
             const uid = String(firstNonEmptyValue(formatted.UNIQUE_ID, fallbackUid, '') || '').trim();
-            const existing = uid ? findItemByUniqueId(uid) : null;
+            const existing = uid
+                ? (sourceTable === 'ph_master_inventory' ? getCanonicalMasterInventoryRowByUniqueId(uid) : findItemByUniqueId(uid))
+                : null;
             if (existing && existing.DOM_ID && !formatted.DOM_ID) formatted.DOM_ID = existing.DOM_ID;
             if (!formatted.DOM_ID && uid) formatted.DOM_ID = `inv_${uid}`;
             upsertRealtimeRow(fullInventory, formatted, sourceTable);
@@ -52942,6 +52976,34 @@ let avTopControlsRenderToken = 0;
 
         const confirmedArgosReclassLiveEditRevisions = new Map();
 
+        function getCanonicalMasterInventoryRowByUniqueId(uid = '') {
+            const normalizedUid = String(uid || '').trim();
+            if (!normalizedUid) return null;
+            if (!Array.isArray(fullInventory) || !fullInventory.length) return null;
+            const row = masterInventoryById instanceof Map
+                ? masterInventoryById.get(normalizedUid) || null
+                : fullInventory.find(candidate => String(firstNonEmptyValue(candidate && candidate.UNIQUE_ID, candidate && candidate.unique_id, '') || '').trim() === normalizedUid) || null;
+            if (!row) return null;
+            const sourceTable = String(firstNonEmptyValue(row.SOURCE_TABLE, row.source_table, '') || '').trim().toLowerCase();
+            return !sourceTable || sourceTable === 'ph_master_inventory' ? row : null;
+        }
+
+        function confirmedArgosLiveEditRevisionAdvancesSnapshot(incomingRevision = '', snapshotRevision = '') {
+            const incoming = String(incomingRevision || '').trim();
+            const snapshot = String(snapshotRevision || '').trim();
+            if (!/^[1-9]\d*$/.test(incoming)) return false;
+            if (!/^[1-9]\d*$/.test(snapshot)) return true;
+            return BigInt(incoming) > BigInt(snapshot);
+        }
+
+        function canApplyConfirmedArgosLiveEdit(currentUpdatedAt = 0, confirmedUpdatedAt = 0, receiptAdvancesSnapshot = false) {
+            const current = Number(currentUpdatedAt) || 0;
+            const confirmed = Number(confirmedUpdatedAt) || 0;
+            if (current > 0 && confirmed > 0 && current > confirmed) return false;
+            if (receiptAdvancesSnapshot === true) return true;
+            return current > 0 && confirmed > current;
+        }
+
         function isConfirmedInventoryReadRevisionCurrent(revision) {
             const confirmed = confirmedArgosReclassLiveEditRevisions.get(getArgosReclassLiveEditIdentityKey());
             if (!confirmed) return true;
@@ -52960,9 +53022,23 @@ let avTopControlsRenderToken = 0;
 
         function invalidateArgosReclassLiveEditCaches(reason = 'reclass-live-edit-confirmed', options = {}) {
             const masterState = getDatasetState('master');
-            masterState.liveVerifiedRevision = '';
-            masterState.liveVerifiedScope = '';
-            masterState.liveVerifiedPermission = '';
+            let preserveMasterProof = options.preserveMasterProof === true
+                && masterState.initialLoaded === true
+                && masterState.rowCompleteness === 'complete'
+                && /^[1-9]\d*$/.test(String(masterState.liveVerifiedRevision || ''));
+            if (preserveMasterProof) {
+                try {
+                    const context = getProductionLiveSyncContext();
+                    preserveMasterProof = !!context.scope && !!context.dataPermissionVersion
+                        && masterState.liveVerifiedScope === context.scope
+                        && masterState.liveVerifiedPermission === context.dataPermissionVersion;
+                } catch (_) { preserveMasterProof = false; }
+            }
+            if (!preserveMasterProof) {
+                masterState.liveVerifiedRevision = '';
+                masterState.liveVerifiedScope = '';
+                masterState.liveVerifiedPermission = '';
+            }
             if (typeof productionLiveSyncVerifiedView !== 'undefined') productionLiveSyncVerifiedView = '';
             invalidateResolvedViewStateCaches();
             getAffectedViewsForDatasets(['master']).forEach((viewId) => markViewDirty(viewId));
@@ -53009,7 +53085,7 @@ let avTopControlsRenderToken = 0;
             let applied = 0;
             let stale = false;
             confirmed.liveEdits.forEach((edit) => {
-                const current = findItemByUniqueId(edit.unique_id);
+                const current = getCanonicalMasterInventoryRowByUniqueId(edit.unique_id);
                 if (!current) { stale = true; return; }
                 const currentPriority = String(firstNonEmptyValue(current.PRIORITY, current.priority, '') ?? '');
                 const currentHoldCode = String(firstNonEmptyValue(current.HOLDSTOPCODE, current.holdstopcode, '') ?? '');
@@ -53028,7 +53104,8 @@ let avTopControlsRenderToken = 0;
                     applied += 1;
                     return;
                 }
-                if (!alreadyMatches && (!currentUpdatedAt || !confirmedUpdatedAt || currentUpdatedAt >= confirmedUpdatedAt)) {
+                const receiptAdvancesSnapshot = confirmedArgosLiveEditRevisionAdvancesSnapshot(confirmed.inventoryRevision, datasetRevision);
+                if (!alreadyMatches && !canApplyConfirmedArgosLiveEdit(currentUpdatedAt, confirmedUpdatedAt, receiptAdvancesSnapshot)) {
                     stale = true;
                     return;
                 }
@@ -53046,7 +53123,9 @@ let avTopControlsRenderToken = 0;
                 if (applyArgosInventoryTransactionReturnedRow(patched, edit.unique_id, { confirmedEvidence: edit.evidence, confirmedInventoryFields })) applied += 1;
                 else stale = true;
             });
-            invalidateArgosReclassLiveEditCaches(stale ? 'reclass-live-edit-cache-incomplete' : 'reclass-live-edit-confirmed');
+            invalidateArgosReclassLiveEditCaches(stale ? 'reclass-live-edit-cache-incomplete' : 'reclass-live-edit-confirmed', {
+                preserveMasterProof: !stale && applied > 0,
+            });
             return { applied, stale };
         }
 
@@ -61159,6 +61238,12 @@ function toggleDriveQuickRequestItem(domId) {
             items.forEach((item) => {
                 const safeDomId = esc(item.DOM_ID);
                 const safeDomIdJs = escJsAttrValue(item.DOM_ID);
+                const holdOverrideActive = isHoldReleaseOverrideActiveForItem(item);
+                const bloomHoldCode = holdOverrideActive ? '' : String(firstNonEmptyValue(item.HOLDSTOPCODE, item.holdstopcode, item.HOLSTOPCODE, item.holstopcode, '') || '').trim();
+                const bloomHoldReason = holdOverrideActive ? '' : String(firstNonEmptyValue(item.HOLDSTOPREASON, item.holdstopreason, item.HOLD_STOP_REASON, item.hold_stop_reason, '') || '').trim();
+                const bloomHoldHtml = bloomHoldCode || bloomHoldReason
+                    ? `<div class="app-bloom-picker-hold-status mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900" data-inventory-card-field="holdstopstatus"><span class="font-black uppercase">${bloomHoldCode.includes('S') ? 'STOP' : 'HOLD'}${bloomHoldCode ? ` ${esc(bloomHoldCode)}` : ''}</span>${bloomHoldReason ? `<span class="ml-2" data-inventory-card-field="holdstopreason">${esc(bloomHoldReason)}</span>` : ''}</div>`
+                    : '';
                 const isTree = item.PLANTGROUPCODE && String(item.PLANTGROUPCODE).includes('330_TREES');
                 const needsCaliper = isTree && ['#7','#10','#15','#25','#45'].includes(item.CONTSIZE);
                 const orderSpec = firstNonEmptyValue(getItemDisplayValue(item, 'SPEC', 'drive'), item.REQ_SPEC, '');
@@ -61175,7 +61260,7 @@ function toggleDriveQuickRequestItem(domId) {
                         <div class="min-w-0">
                             <div class="text-sm font-black text-slate-900 leading-tight">${esc(item.COMMONNAME || 'Unknown')}</div>
                             <div class="mt-1 text-[11px] font-semibold text-slate-500">${esc(item.CONTSIZE || '-')} | Loc: ${esc(item.LOCATIONCODE || '-')} | Lot: ${esc(item.LOTCODE || '-')}</div>
-                            <div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]">${buildInventoryQuantityChipsHtml(item, { compact: true })}${buildInventoryCardFieldChipsHtml(item, { compact: true })}</div>
+                    <div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]">${buildInventoryQuantityChipsHtml(item, { compact: true })}${buildInventoryCardFieldChipsHtml(item, { compact: true })}</div>${bloomHoldHtml}
                         </div>
                         <div class="flex shrink-0 items-start gap-2">
                             ${mediaHtml}
@@ -146875,7 +146960,10 @@ C.14.043 C.15.000
                 const existingHrRoot = container.querySelector('#manager-hr-command-root');
                 if (existingHrRoot) { void mountAlphaCommandCenter('hr', existingHrRoot); return; }
             }
-            if (activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW && activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_COMPANY_DIRECTORY_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && ensureViewDataForRender('managers')) return;
+            // User & Role Access has its own authenticated canonical resolver.
+            // Keep that editor available when the optional legacy audit matrix
+            // cannot load; renderAccessControlPanel provides its own fallback.
+            if (activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW && activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW && activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_COMPANY_DIRECTORY_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && ensureViewDataForRender('managers')) return;
             if (activeHomeTab !== 'productivity') selectedProductivityUser = '';
             let html = '';
             if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);
@@ -171572,11 +171660,19 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const completion = ['complete', 'close'].includes(operation) && !options.keepVisible ? getQueueCompletionState() : null;
                 const completionKey = completion ? getQueueCompletionKey(mirror) : '';
                 if (completion && !completion.begin(completionKey, getQueueCompletionVersion(mirror))) return false;
-                if (completion) refreshLocalDockSuspendDcRequestState('suspend-tag-completing', mirror);
-                try { return await serializeSuspendTagRowWrite(mirror, () => {
+                try {
+                    if (completion) {
+                        paintOptimisticSuspendTagRemoval(mirror);
+                        markViewDirty('request'); markViewDirty('reports'); markViewDirty('docks');
+                        // Paint the pending removal before proof preparation can scan other rows.
+                        await yieldToUiFrame();
+                        invalidateResolvedViewStateCaches();
+                    }
+                    return await serializeSuspendTagRowWrite(mirror, () => {
                     if (navigationSignal && (navigationSignal.aborted || navigationSignal !== productionLiveSyncNavigation.signal)) throw staleSupabaseReadScopeError();
                     return runSuspendTagRowCommand(operation, mirror, patch, expectedRevision, { ...options, serialized: true });
-                }); } finally {
+                    });
+                } finally {
                     completion?.rollback(completionKey);
                     if (completion) refreshLocalDockSuspendDcRequestState('suspend-tag-completion-settled', mirror);
                 }

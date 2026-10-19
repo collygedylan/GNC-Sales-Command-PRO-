@@ -551,6 +551,15 @@
         container.dataset.selectedUsername = chosenUser?.username || '';
         container.dataset.query = query;
         container.dataset.roleFilter = roleFilter;
+        // Async self/directory refreshes can finish after a manager has changed
+        // a selector. Read the rendered state at completion time so an older
+        // render's captured defaults cannot reset the active selection.
+        const latestManagerOptions = () => ({
+            selectedRole: container.dataset.selectedRole || selectedRole,
+            selectedUsername: container.dataset.selectedUsername ?? selectedUsername,
+            query: container.dataset.query ?? query,
+            roleFilter: container.dataset.roleFilter ?? roleFilter,
+        });
         container.setAttribute('aria-busy', String(directoryStatus === 'loading'));
         container.innerHTML = `<div class="agdata-user-access__heading"><div><h2>User &amp; Role Access</h2><p>Role baselines are inherited by users unless a per-user override is saved.</p></div><button type="button" data-access-refresh>Refresh access</button></div>
             <p class="agdata-user-access__status" data-access-status role="${directoryError ? 'alert' : 'status'}">${escapeHtml(statusText)}</p>
@@ -573,9 +582,9 @@
             try {
                 if (!getSelfState().verified) await loadSelf({ force: true });
                 if (isVerifiedManager()) await loadDirectory({ force: true });
-                renderManager(container, { selectedRole, selectedUsername, query, roleFilter });
+                renderManager(container, latestManagerOptions());
             }
-            catch (error) { directoryError = text(error?.message); renderManager(container); }
+            catch (error) { directoryError = text(error?.message); renderManager(container, latestManagerOptions()); }
         };
         container.querySelector('[data-role-select]').onchange = event => renderManager(container, { selectedRole: event.target.value, selectedUsername, query, roleFilter });
         container.querySelector('[data-user-search]').oninput = event => {
@@ -589,8 +598,9 @@
         container.querySelector('[data-user-select]').onchange = event => renderManager(container, { selectedRole, selectedUsername: event.target.value, query, roleFilter });
         container.querySelector('[data-role-save]').onclick = async () => {
             const permissions = Object.fromEntries(PERMISSION_KEYS.map(permission => [permission, !!container.querySelector(`[data-role-permission="${permission}"]`)?.checked]));
-            try { await saveRoleBaseline(selectedRole, permissions); renderManager(container, { selectedRole, selectedUsername, query, roleFilter }); }
-            catch (error) { directoryError = text(error?.message); renderManager(container, { selectedRole, selectedUsername, query, roleFilter }); }
+            const roleAtSubmit = normalizeRole(container.dataset.selectedRole || selectedRole);
+            try { await saveRoleBaseline(roleAtSubmit, permissions); renderManager(container, latestManagerOptions()); }
+            catch (error) { directoryError = text(error?.message); renderManager(container, latestManagerOptions()); }
         };
         container.querySelector('[data-user-save]').onclick = async () => {
             if (!chosenUser) return;
@@ -598,26 +608,26 @@
                 const value = container.querySelector(`[data-user-permission="${permission}"]`)?.value || 'inherit';
                 return [permission, value === 'inherit' ? null : value === 'true'];
             }));
-            try { await saveUserOverrides(chosenUser.username, overrides); renderManager(container, { selectedRole, selectedUsername: chosenUser.username, query, roleFilter }); }
-            catch (error) { directoryError = text(error?.message); renderManager(container, { selectedRole, selectedUsername: chosenUser.username, query, roleFilter }); }
+            try { await saveUserOverrides(chosenUser.username, overrides); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username }); }
+            catch (error) { directoryError = text(error?.message); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username }); }
         };
         if (!self.verified && selfStatus === 'idle' && !selfInFlight) loadSelf().then(async () => {
             if (isVerifiedManager() && directoryStatus !== 'ready') await loadDirectory().catch(() => {});
-            renderManager(container, { selectedRole, selectedUsername, query, roleFilter });
+            renderManager(container, latestManagerOptions());
         });
         else if (!self.verified && selfInFlight) selfInFlight.then(async () => {
             if (isVerifiedManager() && directoryStatus !== 'ready' && !directoryInFlight) await loadDirectory().catch(() => {});
-            renderManager(container, { selectedRole, selectedUsername, query, roleFilter });
+            renderManager(container, latestManagerOptions());
         });
         else if (isVerifiedManager() && directoryStatus !== 'ready' && !directoryInFlight) loadDirectory().then(() => {
-            renderManager(container, { selectedRole, selectedUsername, query, roleFilter });
+            renderManager(container, latestManagerOptions());
         }).catch(error => {
-            directoryError = text(error?.message); renderManager(container, { selectedRole, selectedUsername, query, roleFilter });
+            directoryError = text(error?.message); renderManager(container, latestManagerOptions());
         });
         else if (isVerifiedManager() && directoryInFlight) directoryInFlight.then(() => {
-            renderManager(container, { selectedRole, selectedUsername, query, roleFilter });
+            renderManager(container, latestManagerOptions());
         }).catch(error => {
-            directoryError = text(error?.message); renderManager(container, { selectedRole, selectedUsername, query, roleFilter });
+            directoryError = text(error?.message); renderManager(container, latestManagerOptions());
         });
         return { self, directory: current, directoryStatus, manager: canManage };
     }

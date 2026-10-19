@@ -15,6 +15,16 @@ const CANONICAL_MIGRATION_PREREQUISITES = [
     source: 'supabase/ci/canonical_migration_data_prerequisites.sql',
     destination: '20261002134137_ci_canonical_migration_data_prerequisites.sql',
   },
+  {
+    before: '20261019113414_suspend_tag_sender_identity.sql',
+    source: 'supabase/ci/v2311_suspend_recipient_prerequisites.sql',
+    destination: '20261019113413_ci_v2311_suspend_recipients.sql',
+  },
+  {
+    before: '20261019163128_canonical_user_access_control_v1.sql',
+    source: 'supabase/ci/v2311_suspend_recipient_cleanup.sql',
+    destination: '20261019163127_ci_v2311_suspend_recipients_cleanup.sql',
+  },
 ];
 const CANONICAL_CRON_ISOLATIONS = new Map([
   ['20261001025638_aura_hr_command_center_v1.sql', 'hr_calendar_reminder_sweep'],
@@ -133,7 +143,7 @@ export function createDatabaseWorkspace({ root = repoRoot, includeTests = false,
     root: workspace,
     projectId,
     platformPrivilegeSqlPath,
-    migrationCount: migrations.length + 3,
+    migrationCount: migrations.length + 5,
     dispose() {
       const resolved = path.resolve(workspace);
       const parent = path.resolve(os.tmpdir());

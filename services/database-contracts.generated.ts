@@ -93017,6 +93017,56 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "user_access_command_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_profile_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "update_location_work_job_v1": {
       "oneOf": [
         {
@@ -105789,6 +105839,11 @@ export const contracts: RuntimeContracts<Database> = {
             "null"
           ]
         }
+      ]
+    },
+    "user_access_command_v1": {
+      "oneOf": [
+        "json"
       ]
     },
     "update_location_work_job_v1": {

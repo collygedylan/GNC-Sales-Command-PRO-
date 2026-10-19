@@ -137,6 +137,8 @@
     "buildSuspendTagApprovalEmail_",
     "handleSignedSuspendTagDelivery_",
     "handleSignedInventoryReclassMoveDelivery_",
-    "handleSignedRequestDeliveryEvent_"
+    "handleSignedRequestDeliveryEvent_",
+    "buildReclassInquiryCompactReportHtml_",
+    "buildReclassInquiryReportModel_"
   ]
 }

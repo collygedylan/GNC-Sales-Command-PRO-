@@ -57,11 +57,11 @@ on conflict(id) do update set role=excluded.role,must_change_password=false,disa
 insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data)
 select ('a9f10000-0000-4000-8000-'||lpad((n+1000)::text,12,'0'))::uuid,
   format('access-rep-%s@example.invalid',n),'{}','{}'
-from generate_series(1,64) n on conflict(id) do nothing;
+from generate_series(1,63) n on conflict(id) do nothing;
 insert into public.profiles(id,username,display_name,role,must_change_password,disabled_at,locked_until)
 select ('a9f10000-0000-4000-8000-'||lpad((n+1000)::text,12,'0'))::uuid,
   format('access_rep_%s',n),format('Access Rep %s',n),'REP',false,null,null
-from generate_series(1,64) n
+from generate_series(1,63) n
 on conflict(id) do update set role=excluded.role,must_change_password=false,disabled_at=null,locked_until=null;
 analyze public.profiles;
 analyze public.user_access_control;
@@ -94,9 +94,9 @@ begin
   started_at:=clock_timestamp();
   warm_value:=public.user_access_command_v1('a9f10000-0000-4000-8000-000000000001','directory','{}');
   directory_warm_ms:=extract(epoch from (clock_timestamp()-started_at))*1000;
-  execute $explain$explain (analyze, buffers, format json)
-    select p.id from public.user_access_control u join public.profiles p on p.id=u.profile_id
-    where u.username='access_rep' and u.active and p.disabled_at is null and not p.must_change_password$explain
+  execute 'explain (analyze, buffers, format json) '
+    || 'select p.id from public.user_access_control u join public.profiles p on p.id=u.profile_id '
+    || 'where u.username = ''access_rep'' and u.active and p.disabled_at is null and not p.must_change_password'
     into auth_lookup_plan;
   insert into user_access_perf_evidence(payload) values(jsonb_build_object(
     'postgres_version',current_setting('server_version'),
@@ -106,6 +106,7 @@ begin
     'cache_condition','first call after fixture setup; second call immediately repeated in same transaction; OS/cache state otherwise uncontrolled',
     'directory_result_count',jsonb_array_length(directory_value->'users'),
     'indexed_auth_lookup_plan',auth_lookup_plan));
+  raise notice 'V2311_ACCESS_PREFLIGHT_DIAG=%',(select payload::text from user_access_perf_evidence limit 1);
   return resolve_first_ms<100 and resolve_warm_ms<100 and directory_first_ms<100 and directory_warm_ms<100
     and (select count(*)=67 from public.profiles)
     and jsonb_typeof(resolve_value->'effective_permissions')='object'
@@ -127,7 +128,7 @@ select is((public.user_access_command_v1('a9f10000-0000-4000-8000-000000000001',
 select is((public.user_access_command_v1('a9f10000-0000-4000-8000-000000000001','save_user_overrides',
   '{"username":"access_rep","permission_overrides":{"can_access_av":false}}',
   (select revision from public.user_access_control_state where singleton),
-  'a9f10000-0000-4000-8000-000000000101')->'user'->'effective_permissions'->>'can_access_av','false',
+  'a9f10000-0000-4000-8000-000000000101')->'user'->'effective_permissions'->>'can_access_av'),'false',
   'manager override is reflected in the effective authorization response');
 select is(public.user_access_command_v1('a9f10000-0000-4000-8000-000000000001','save_user_overrides',
   '{"username":"access_rep","permission_overrides":{"can_access_av":false}}',
@@ -162,7 +163,7 @@ declare plan_value jsonb;
 begin
   execute $explain$explain (analyze, buffers, format json)
     select unique_id,itemcode from public.ph_master_inventory
-    where unique_id='user-access-direct-read-probe'$explain into plan_value;
+    where unique_id='user-access-direct-read-probe'$explain$ into plan_value;
   update user_access_perf_evidence set payload=payload || jsonb_build_object(
     'representative_master_row_count',(select count(*) from public.ph_master_inventory),
     'representative_master_read_plan',plan_value);

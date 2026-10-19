@@ -15673,6 +15673,15 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   RECLASS_INQUIRY_IDENTITY_FIELDS_.forEach(function(field) {
     identity[field.key] = getReclassInquiryExactValue_(sourceRow, field.aliases, getReclassInquiryExactValue_(authoritativeRows[0], field.aliases, ''));
   });
+  // A browse projection may own an empty Item Spec; only the same authoritative
+  // opening row can fill it, never another location or a guessed evaluation spec.
+  if (!String(identity.itemspec || '').trim()) {
+    const originId = normalizeInventoryTransactionText_(getInventoryTransactionRowUid_(sourceRow));
+    const origin = originId && (Array.isArray(authoritativeRows) ? authoritativeRows : []).find(function(row) {
+      return normalizeInventoryTransactionText_(getInventoryTransactionRowUid_(row)) === originId;
+    });
+    identity.itemspec = origin ? String(firstNonEmptyRequestValue_(origin.itemspec, origin.ITEMSPEC, '') || '') : '';
+  }
   identity.commonname = repairDisplayUtf8Mojibake_(identity.commonname);
   identity.holdstopreason = getReclassInquiryExactValue_(sourceRow, ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], getReclassInquiryExactValue_(authoritativeRows[0], ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], '')).trim().toLowerCase();
   const normalizedReportRows = (Array.isArray(reportRows) ? reportRows : []).map(function(row) {
@@ -16001,8 +16010,8 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const holdColumns = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
     .some(function(field) { return field.key === 'holdstopcode'; });
   const compactWidths = holdColumns
-    ? { lotcode: '.50in', locationcode: '.60in', source: '.30in', priority: '.40in', ptronhand: '1.10in', ptrreviewed: '.35in', locationnotedate: '.70in', locationptn1: '.55in', holdstopcode: '.30in', holdstopreason: '.65in', holdstopbegindate: '.60in', desigitem: '.45in', desigcust: '.45in', desigloc: '.45in', pullerresponsibility: '.40in', oversellpercentage: '.30in', salesnote: '.60in', suspend: '.30in' }
-    : { lotcode: '.55in', locationcode: '.65in', source: '.40in', priority: '.55in', ptronhand: '.70in', ptrreviewed: '.55in', locationnotedate: '.85in', locationptn1: '.85in', desigitem: '.55in', desigcust: '.55in', desigloc: '.55in', pullerresponsibility: '.50in', oversellpercentage: '.35in', salesnote: '.95in', suspend: '.35in' };
+    ? { lotcode: '.50in', locationcode: '.65in', source: '.50in', priority: '.45in', ptronhand: '.85in', ptrreviewed: '.27in', holdstopcode: '.27in', holdstopreason: '.68in', holdstopbegindate: '.82in', locationnotedate: '.70in', locationptn1: '.72in', locationnote: '.90in', desigitem: '.55in', desigcust: '.55in', desigloc: '.55in', pullerresponsibility: '.30in', oversellpercentage: '.28in', salesnote: '.80in', suspend: '.27in' }
+    : { lotcode: '.55in', locationcode: '.65in', source: '.50in', priority: '.55in', ptronhand: '.70in', ptrreviewed: '.55in', locationnotedate: '.85in', locationptn1: '.85in', locationnote: '1.00in', desigitem: '.55in', desigcust: '.55in', desigloc: '.55in', pullerresponsibility: '.50in', oversellpercentage: '.35in', salesnote: '.95in', suspend: '.35in' };
   const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
     .map(function(field) { return Object.assign({}, field, { width: compactWidths[field.key] || '' }); });
   [
@@ -16018,17 +16027,22 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
     return '<div class="identity-cell' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : '<strong>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>') + '</div>';
   }).join('');
   const columnWidths = compactFields.map(function(field) { return '<col' + (field.width ? ' style="width:' + esc(field.width) + '"' : '') + '>'; }).join('');
+  const noteFields = ['holdstopreason', 'locationptn1', 'locationnote', 'salesnote'];
+  const cellClass = function(field, edited) {
+    return (edited ? 'edited-cell ' : '') + (noteFields.indexOf(field.key) !== -1 ? 'note-cell' : 'code-cell');
+  };
   const rowHead = compactFields.map(function(field) { return '<th>' + esc(field.label) + '</th>'; }).join('');
   const sortedRows = sortReclassInquiryCompactRows_(safeModel.rows);
   const rowBody = sortedRows.map(function(row) {
     const changedFields = Array.isArray(row && row.changedFields) ? row.changedFields : [];
     return '<tr data-location-row="true">' + compactFields.map(function(field) {
       if (['desigitem', 'desigcust', 'desigloc', 'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend'].indexOf(field.key) !== -1) {
-        return '<td>' + buildReclassInquiryInventoryFieldHtml_(row, field.key) + '</td>';
+        return '<td class="' + cellClass(field, false) + '">' + buildReclassInquiryInventoryFieldHtml_(row, field.key) + '</td>';
       }
       const edited = changedFields.indexOf(field.key) !== -1;
       const sourceValues = field.source === 'actionValues' ? row && row.actionValues : row && row.values;
       let rawValue = sourceValues && Object.prototype.hasOwnProperty.call(sourceValues, field.key) ? sourceValues[field.key] : '';
+      if (field.key === 'locationnotedate') rawValue = String(rawValue || '').replace(/[T\s]+\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:\s*[AP]M|Z|[+-]\d{2}:?\d{2})?$/i, '').trim();
       if (field.key === 'priority' && edited && safeModel.transaction && safeModel.transaction.seasonPriority) {
         rawValue = String(row.expectedPriority || '[blank]') + ' -> ' + String(rawValue || '[blank]');
       }
@@ -16057,21 +16071,19 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
         }
         return '<td' + (movementLines.length ? ' class="movement-cell edited-cell" data-edited="true"' : '') + '><strong class="original-oh">' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>' + movementLines.join('') + '</td>';
       }
-      let stampHtml = '';
-      if (field.key === 'holdstopcode' && edited && scopeNote) {
-        stampHtml = '<small class="scope-note">' + esc(scopeNote) + '</small>';
-      }
-      if (field.key === 'priority' && row && row.v7ReportStamps) {
-        const stamps = row.v7ReportStamps;
-        const stampParts = [];
-        if (stamps.prisetby) stampParts.push('By ' + String(stamps.prisetby));
-        if (stamps.evaldate) stampParts.push('Eval ' + String(stamps.evaldate));
-        if (stamps.priupdated) stampParts.push('Updated ' + String(stamps.priupdated));
-        if (stampParts.length) stampHtml = '<small class="row-stamps">' + esc(stampParts.join(' | ')) + '</small>';
-      }
-      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;')) + stampHtml + '</td>';
+      return '<td class="' + cellClass(field, edited) + '"' + (edited ? ' data-edited="true"' : '') + '>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;')) + '</td>';
     }).join('') + '</tr>';
   }).join('');
+  const auditLines = sortedRows.map(function(row) {
+    const stamps = row && row.v7ReportStamps || {};
+    const parts = [];
+    if (stamps.prisetby) parts.push('By ' + String(stamps.prisetby));
+    if (stamps.evaldate) parts.push('Eval ' + String(stamps.evaldate));
+    if (stamps.priupdated) parts.push('Updated ' + String(stamps.priupdated));
+    const values = row && row.values || {};
+    return parts.length ? '<div><strong>' + esc([values.locationcode, values.lotcode].filter(Boolean).join(' / ')) + '</strong> ' + esc(parts.join(' | ')) + '</div>' : '';
+  }).join('');
+  const auditHtml = scopeNote || auditLines ? '<div class="report-audit">' + (scopeNote ? '<div>' + esc(scopeNote) + '</div>' : '') + auditLines + '</div>' : '';
   const compactFieldKeys = new Set(compactFields.map(function(field) { return field.key; }));
   const supplementalTemporaryRows = [];
   sortedRows.forEach(function(row) {
@@ -16125,9 +16137,10 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   // Repeat only the banner in the outer header; the nested grid owns its column header.
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
     '@page{size:Letter landscape;margin:.16in .34in .34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:7pt;line-height:1.15}.page-title-cell{padding:0;border:0}.page-header{padding:3px 8px;border:2px solid #000;background:#fff176;color:#000;font:800 10pt Arial,Helvetica,sans-serif;text-align:center}.report-summary-cell{padding:3px 0;border:0}.report-summary-row{break-inside:auto;page-break-inside:auto}.meta{margin:0 0 5px;font-size:8pt}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px;break-inside:avoid;page-break-inside:avoid}.original-oh{display:block;font-size:7pt}.row-stamps{display:block;margin-top:2px;font-size:5.5pt;line-height:1.1;overflow-wrap:anywhere}.inventory-field-value{overflow-wrap:anywhere;word-break:break-word}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:2px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:6.5pt;text-align:left}td{font-size:6.5pt;white-space:pre-line}.edited-cell{background:#fff176!important}.inventory-field-value s{color:#333}.report-frame>tbody>tr{break-inside:auto;page-break-inside:auto}.report-grid-cell,.supplemental-temporary-cell{padding:0;border:0;white-space:normal}.report-grid-cell>.section-title{break-after:avoid;page-break-after:avoid}.location-table th,.location-table td{padding:0.5px 2px;line-height:1.05;height:auto;min-height:0}.location-table tr{break-inside:avoid;page-break-inside:avoid}.location-table .proposal-box{margin:0.5px 0;padding:0.5px 2px}.location-table .row-stamps{margin-top:0.5px;line-height:1.05}.location-table .scope-note{margin-top:0.5px;padding-top:0.5px}' +
+    '.location-table .movement-cell .proposal-box,.location-table .movement-cell strong{white-space:nowrap;overflow-wrap:normal;word-break:normal}.location-table th,.location-table .code-cell,.location-table .code-cell .proposal-box,.location-table .code-cell strong{white-space:nowrap;overflow-wrap:normal;word-break:normal}.location-table .note-cell{white-space:normal;overflow-wrap:break-word;word-break:normal}.location-table .code-cell .inventory-field-value{white-space:normal;overflow-wrap:break-word;word-break:normal}.report-audit{margin-top:4px;padding:4px 6px;border:1px solid #000;font-size:6.5pt;line-height:1.3;white-space:normal;overflow-wrap:break-word}.identity-cell:nth-last-child(-n+3){border-bottom:1px solid #000}.identity-cell:last-child{grid-column:1/-1;border-right:0;border-bottom:0}' +
     '</style></head><body><table class="report-frame"><thead><tr class="page-title-row"><th class="page-title-cell" colspan="1"><div class="page-header">' + esc(pageHeaderText) + '</div></th></tr></thead><tbody>' +
     '<tr class="report-summary-row"><td class="report-summary-cell"><div class="meta"><strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + '</div><div class="proposal-legend"><span>' + esc(proposalLegend) + '</span></div><div class="identity">' + identityCells + '</div>' + evidenceHtml + '</td></tr>' +
-    '<tr class="report-grid-row"><td class="report-grid-cell"><div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr class="column-heading-row">' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table></td></tr>' +
+    '<tr class="report-grid-row"><td class="report-grid-cell"><div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr class="column-heading-row">' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + auditHtml + '</td></tr>' +
     (supplementalTemporaryHtml ? '<tr class="supplemental-temporary-row"><td class="supplemental-temporary-cell">' + supplementalTemporaryHtml + '</td></tr>' : '') + '</tbody></table></body></html>';
 }
 

@@ -21,8 +21,8 @@ test('database workspace replays the production baseline and active chain withou
   try {
     const migrations = path.join(workspace.root, 'supabase', 'migrations');
     const workspaceNames = readdirSync(migrations).sort();
-    assert.equal(workspace.migrationCount, activeNames.length + 3);
-    assert.equal(workspaceNames.length, activeNames.length + 3);
+    assert.equal(workspace.migrationCount, activeNames.length + 5);
+    assert.equal(workspaceNames.length, activeNames.length + 5);
     for (const name of workspaceNames) {
       assert.doesNotMatch(readFileSync(path.join(migrations, name), 'utf8'), /\r\n/,
         `disposable ${name} must use the same LF function-body text as Linux CI`);
@@ -34,7 +34,21 @@ test('database workspace replays the production baseline and active chain withou
     assert.ok(prerequisiteIndex > 3);
     assert.equal(workspaceNames[prerequisiteIndex - 1], '20261002121446_aura_inventory_v2_007.sql');
     assert.equal(workspaceNames[prerequisiteIndex + 1], '20261002134138_nelly_access_audit_baseline_repair_007.sql');
-    assert.deepEqual(workspaceNames.slice(3).filter(name => name !== '20261002134137_ci_canonical_migration_data_prerequisites.sql'),
+    const suspendRecipientIndex = workspaceNames.indexOf('20261019113413_ci_v2311_suspend_recipients.sql');
+    const suspendCleanupIndex = workspaceNames.indexOf('20261019163127_ci_v2311_suspend_recipients_cleanup.sql');
+    assert.equal(workspaceNames[suspendRecipientIndex + 1], '20261019113414_suspend_tag_sender_identity.sql');
+    assert.equal(workspaceNames[suspendCleanupIndex + 1], '20261019163128_canonical_user_access_control_v1.sql');
+    const recipientFixture = readFileSync(path.join(migrations, workspaceNames[suspendRecipientIndex]), 'utf8');
+    const recipientCleanup = readFileSync(path.join(migrations, workspaceNames[suspendCleanupIndex]), 'utf8');
+    assert.match(recipientFixture, /V2311_SYNTHETIC_RECIPIENT_FIXTURE_PRECONDITION_FAILED/);
+    assert.match(recipientFixture, /@fixture\.invalid/);
+    assert.match(recipientCleanup, /V2311_SYNTHETIC_RECIPIENT_CLEANUP_PRECONDITION_FAILED/);
+    assert.match(recipientCleanup, /delete from auth\.users/);
+    assert.deepEqual(workspaceNames.slice(3).filter(name => ![
+      '20261002134137_ci_canonical_migration_data_prerequisites.sql',
+      '20261019113413_ci_v2311_suspend_recipients.sql',
+      '20261019163127_ci_v2311_suspend_recipients_cleanup.sql',
+    ].includes(name)),
       activeNames.filter((name) => name !== '20260929200000_production_baseline.sql'));
     const baseline = readFileSync(path.join(migrations, '20260929200000_production_baseline.sql'), 'utf8');
     const postlude = readFileSync(path.join(migrations, workspaceNames[2]), 'utf8');

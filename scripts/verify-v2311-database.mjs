@@ -65,6 +65,12 @@ export function verifyV2311Database({ root = repoRoot, cli = packageBin('supabas
           database: 'local disposable Supabase stack',
           postgresVersion: accessPerformance.postgres_version,
           cacheCondition: accessPerformance.cache_condition,
+          syntheticRecipientProfiles: 4,
+          syntheticRecipientEmails: 'fixture.invalid only',
+          stagedPrerequisiteMigrations: [
+            '20261019113413_ci_v2311_suspend_recipients.sql',
+            '20261019163127_ci_v2311_suspend_recipients_cleanup.sql',
+          ],
           noProductionConnection: true,
           noEmailOrDeliveryWorker: true,
         },
@@ -90,6 +96,13 @@ if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === imp
     console.log(`[v2311-database] passed ${result.focusedSqlTests.length} focused SQL contracts after replaying ${result.migrationsReplayed} migrations on a disposable local Supabase stack.`);
   } catch (error) {
     const safeCode = String(error?.message || 'unknown').split('\n')[0].slice(0, 240);
+    const diagnostic = String(error?.message || 'unknown')
+      .replace(/postgres(?:ql)?:\/\/[^\s)]+/gi, '[redacted-local-db-url]')
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted-email]')
+      .slice(-30000);
+    const diagnosticPath = path.resolve(repoRoot, '.gnc-local/v2311-validation/database-test-diagnostics.log');
+    mkdirSync(path.dirname(diagnosticPath), { recursive: true });
+    writeFileSync(diagnosticPath, `${new Date().toISOString()}\n${diagnostic}\n`, { mode: 0o600 });
     console.error(`[v2311-database] failed: ${safeCode}`);
     process.exitCode = 1;
   }

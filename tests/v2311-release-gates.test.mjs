@@ -69,10 +69,10 @@ test('v2311 backend publication is authorized independently and only deploys tou
 import { parse } from 'acorn';
 import { execFileSync } from 'node:child_process';
 
-test('v2311 Code.gs edits are restricted to the completed receipt handler and signed dispatcher',()=>{
+test('v2311 Code.gs edits are restricted to the completed receipt handler, signed dispatcher and Inquiry report layout',()=>{
  const before=execFileSync('git',['show','f3bb57f2d77524617bce1502efd75a207b19bac7:Code.gs'],{encoding:'utf8',maxBuffer:16*1024*1024});
  const after=fs.readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
- const allowed=new Set(['handleSignedRequestDeliveryEvent_','handleSignedInventoryReclassMoveDelivery_']);
+ const allowed=new Set(['handleSignedRequestDeliveryEvent_','handleSignedInventoryReclassMoveDelivery_','buildReclassInquiryCompactReportHtml_','buildReclassInquiryReportModel_']);
  const protectedNodes=source=>parse(source,{ecmaVersion:'latest',sourceType:'script'}).body
   .filter(node=>node.type!=='FunctionDeclaration'||!allowed.has(node.id.name))
   .map(node=>source.slice(node.start,node.end).replaceAll('\r\n','\n'));
