@@ -3673,6 +3673,26 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
                 display:none !important;
             }
         }
+        @media (max-width:720px),(pointer:coarse){
+            /* The AV customer chooser lives inside the compact Filters disclosure.
+               Keep its options in that panel's scroll flow: a fixed descendant is
+               clipped/stacked by the disclosure's overflow and backdrop-filter. */
+            #view-av #av-top-filters.av-top-inline .mobile-browse-filter-panel
+            [data-av-filter-shell="customer"].av-filter-shell--open > .task-top-control-panel.av-excel-filter-panel--floating{
+                position:static !important;
+                inset:auto !important;
+                width:100% !important;
+                min-width:0 !important;
+                max-width:none !important;
+                height:auto !important;
+                min-height:0 !important;
+                max-height:min(38vh,22rem) !important;
+                margin:.375rem 0 0 !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                z-index:auto !important;
+            }
+        }
         #drive-season-filters.drive-top-inline .drive-filter-reset-row,
         #view-av #av-top-filters.av-top-inline .av-filter-reset-row{
             display:flex !important;

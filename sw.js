@@ -10,7 +10,7 @@ const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD + '-scope-r1-lists-r1';
+const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD + '-scope-r1-lists-r1-av-stock-r2';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
