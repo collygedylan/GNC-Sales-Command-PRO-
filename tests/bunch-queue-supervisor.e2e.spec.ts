@@ -13,6 +13,7 @@ async function fixture(page: Page, baseURL: string, username: string, large = fa
   await installHlOrderFixture(page, baseURL, { username, role: 'ADMIN' });
   const actor = { id: hlUserId, username, display_name: 'Dylan' };
   const assignments = [[one], [one], [one, two], [two], [two], [two], [actor], [legacy], []];
+  const completedCardIds = new Set<string>();
   const cards: BunchWorkCard[] = assignments.map((assignees, i) => ({
     stablecard_id: `${id(10)}:${id(20 + i)}`, job_id: id(10), card_id: id(20 + i), revision: 1, job_revision: 1,
     status: 'open', can_complete: true, itemcode: `BN-${i}`, variety: `Queue Plant ${i}`, contsize: '#1',
@@ -30,19 +31,20 @@ async function fixture(page: Page, baseURL: string, username: string, large = fa
     let data: unknown;
     if (body.operation === 'queue') {
       const filter = String(payload.filter || 'all');
-      let selected = cards;
-      if (filter === 'mine') selected = cards.filter(card => card.assignees.some(person => person.id === hlUserId));
-      else if (filter === 'unassigned') selected = cards.filter(card => !card.assignees.length);
-      else if (filter.startsWith('assignee:')) selected = cards.filter(card => card.assignees.some(person => person.id === filter.slice(9)));
+      let selected = cards.filter(card => !completedCardIds.has(card.card_id));
+      if (filter === 'mine') selected = selected.filter(card => card.assignees.some(person => person.id === hlUserId));
+      else if (filter === 'unassigned') selected = selected.filter(card => !card.assignees.length);
+      else if (filter.startsWith('assignee:')) selected = selected.filter(card => card.assignees.some(person => person.id === filter.slice(9)));
       else if (filter === 'completed') selected = [];
       if (large && filter === 'all') selected = Array.from({ length: 100 }, (_, index) => ({ ...cards[index % 7], stablecard_id: `large:${index}`, card_id: id(1000 + index) }));
-      data = { cards: selected, total: large && filter === 'all' ? 10001 : selected.length, active_count: large ? 10001 : 9, review_count: 1,
+      data = { cards: selected, total: large && filter === 'all' ? 10001 : selected.length, active_count: large ? 10001 : cards.length - completedCardIds.size, review_count: 1,
         can_review: true, counters: [], assignee_options: options, unassigned_count: 1 };
     } else if (body.operation === 'list_discrepancies') {
       data = { reviews: [{ id: id(40), revision: 1, status: 'needs_review', job_id: id(10), card_id: id(20), itemcode: 'BN-0', variety: 'Queue Plant 0', contsize: '#1', source_location: 'D.05.000', destination: 'D.06.000', completed_by: 'counter_one', actual_qty: 8, ptravailable: 10, variance: -2, sources: cards[0].sources, assigned_counter_id: null, assigned_counter_username: null, recount_qty: null, can_assign: true, can_complete: true }], total: 1, review_count: 1, can_review: true, counters: [actor, one, two] };
     } else if (body.operation === 'complete_card') {
       expect(payload.job_id).toBe(id(10));
-      data = { saved: true, review_created: false };
+      completedCardIds.add(String(payload.card_id));
+      data = { saved: true, review_created: true };
     } else throw new Error(`Unexpected operation ${body.operation}`);
     await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' }, body: JSON.stringify({ ok: true, data }) });
   });
@@ -84,11 +86,15 @@ for (const username of ['dylan_collyge', 'Dylan_College']) {
     }
     await select.selectOption('unassigned'); await expect(cards).toHaveCount(1);
     expect(requests.filter(request => request.operation === 'queue')).toHaveLength(initialRequests);
-    await expect(cards.first().getByRole('button', { name: 'Complete Work' })).toBeEnabled();
+    const card = cards.first();
+    await expect(card.locator('input[placeholder="Enter actual count"]')).toHaveCount(0);
+    await expect(card.getByRole('button', { name: 'Complete Work' })).toHaveCount(0);
+    await card.getByRole('button', { name: 'Open Bunch Notes card Queue Plant 8' }).click();
     await cards.first().getByRole('textbox', { name: 'Actual Qty Completed source-8' }).fill('10');
-    await cards.first().getByRole('button', { name: 'Complete Work' }).click();
+    await cards.first().getByRole('button', { name: 'Done' }).click();
     await expect.poll(() => requests.filter(request => request.operation === 'complete_card').length).toBe(1);
-    await select.selectOption('all'); await expect(cards).toHaveCount(9);
+    await expect(cards).toHaveCount(0);
+    await select.selectOption('all'); await expect(cards).toHaveCount(8);
     await page.locator('[data-request-category="bunch-count-review"]').click();
     await expect(page.locator('[data-bunch-review]')).toHaveCount(1);
     await expect(page.getByRole('combobox', { name: `Assign Recount To ${id(40)}` })).toBeEnabled();

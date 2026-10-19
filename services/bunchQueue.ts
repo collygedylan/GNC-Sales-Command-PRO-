@@ -56,7 +56,9 @@ export function createBunchQueueClient({ scopeKey, cacheScopeKey = scopeKey, tra
   if (!scopeKey) throw new Error('Sign in to load Bunch Notes.');
   const key = `gnc:bunch-queue:v230:${scopeKey}`, legacyCacheKey = `gnc:bunch-queue:v230:${cacheScopeKey}`;
   const cacheKey = `gnc:bunch-queue:v232:${cacheScopeKey}`, listeners = new Set<() => void>();
-  let disposed = false, loadingId = 0, flushing = false, outboxBlocked = false;
+  let disposed = false, loadingId = 0, mutationEpoch = 0, flushing = false, outboxBlocked = false;
+  let sourcePage: BunchQueuePage | null = null;
+  const completed = new Map<string, number>();
   const controller = new AbortController();
   let state: BunchQueueSnapshot = { page: null, reviews: null, filter: 'all', loadedFilter: null, offset: 0, loading: false, error: '', message: '', offline: !online(), pending: [] };
   const storageKey = (suffix: string) => (suffix === ':outbox' || suffix === ':last-rejected' || suffix.startsWith(':draft:') ? key : cacheKey) + suffix;
@@ -65,9 +67,28 @@ export function createBunchQueueClient({ scopeKey, cacheScopeKey = scopeKey, tra
     try { if (!storage && required) throw new Error('Storage unavailable'); storage?.setItem(storageKey(suffix), JSON.stringify(value)); }
     catch { if (required) throw new Error('Your device could not retain this work. Free storage and retry before leaving this screen.'); }
   };
+  // Keep server/cache snapshots intact so a rejected receipt restores its row.
+  // Successful receipts remain masked in older offline snapshots after restart.
+  const projectPage = (page: BunchQueuePage | null, pending: BunchMutation[]): BunchQueuePage | null => {
+    if (!page) return page;
+    const pendingTargets = new Set(pending.filter(command => command.operation === 'complete_card').map(command => command.target));
+    const removed = page.cards.filter(card => card.status === 'open' && (pendingTargets.has(card.stablecard_id) || card.revision <= (completed.get(card.stablecard_id) ?? -1)));
+    if (!removed.length) return page;
+    return {
+      ...page,
+      cards: page.cards.filter(card => !removed.includes(card)),
+      total: Math.max(0, page.total - removed.length),
+      active_count: Math.max(0, page.active_count - removed.length),
+      assignee_options: page.assignee_options.map(person => ({ ...person, count: Math.max(0, person.count - removed.filter(card => card.assignees.some(assignee => assignee.id === person.id)).length) })).filter(person => person.count > 0),
+      unassigned_count: Math.max(0, page.unassigned_count - removed.filter(card => !card.assignees.length).length),
+    };
+  };
+  const invalidateReads = () => { loadingId++; mutationEpoch++; };
   const publish = (patch: Partial<BunchQueueSnapshot>) => {
     if (disposed) return;
+    if ('page' in patch) sourcePage = patch.page ?? null;
     state = { ...state, ...patch };
+    state.page = projectPage(sourcePage, state.pending);
     onCounts?.({ active: state.page?.active_count ?? 0, review: state.reviews?.review_count ?? state.page?.review_count ?? 0, canReview: !!(state.page?.can_review || state.reviews?.can_review || state.page?.review_count || state.reviews?.review_count) });
     listeners.forEach(listener => listener());
   };
@@ -86,6 +107,15 @@ export function createBunchQueueClient({ scopeKey, cacheScopeKey = scopeKey, tra
       return { operation: operation as BunchMutation['operation'], payload: object(command.payload), commandId: text(command.commandId), expectedRevision: integer(command.expectedRevision), target: text(command.target) };
     });
   } catch { outboxBlocked = true; state.error = 'Saved pending work could not be read. It has been retained on this device.'; }
+  try {
+    const saved = read(':completed');
+    if (saved != null) {
+      if (!Array.isArray(saved)) throw new Error('Invalid completed receipts.');
+      saved.forEach(value => { const receipt = object(value); completed.set(text(receipt.target), integer(receipt.revision)); });
+    }
+  } catch { /* The server remains authoritative if an optional completion cache is damaged. */ }
+  sourcePage = state.page;
+  state.page = projectPage(sourcePage, state.pending);
   async function call(operation: string, payload: Record<string, unknown>, command?: BunchMutation) {
     if (disposed) throw new Error('The signed-in session changed.');
     let result: unknown;
@@ -135,15 +165,26 @@ export function createBunchQueueClient({ scopeKey, cacheScopeKey = scopeKey, tra
         if (disposed || !online()) break;
         try {
           await call(command.operation, command.payload, command);
+          if (command.operation === 'complete_card') {
+            const confirmed = new Map(completed).set(command.target, command.expectedRevision);
+            persist(':completed', [...confirmed].map(([target, revision]) => ({ target, revision })), true);
+            completed.set(command.target, command.expectedRevision);
+          }
           const pending = state.pending.filter(item => item.commandId !== command.commandId);
           persist(':outbox', pending, true);
-          publish({ pending, message: command.operation === 'complete_card' ? 'Work completed. Completion email queued; any variance was routed for recount.' : 'Recount update saved.', error: '' });
+          invalidateReads();
+          publish({ pending, loading: false, message: command.operation === 'complete_card' ? 'Work completed. Completion email queued; any variance was routed for recount.' : 'Recount update saved.', error: '' });
         } catch (error) {
           if (error instanceof RejectedCommand) {
-            persist(':last-rejected', { command, error: error.message, at: new Date().toISOString() }, true);
-            const pending = state.pending.filter(item => item.commandId !== command.commandId);
-            persist(':outbox', pending, true);
-            publish({ pending, error: error.message });
+            try {
+              persist(':last-rejected', { command, error: error.message, at: new Date().toISOString() }, true);
+              const pending = state.pending.filter(item => item.commandId !== command.commandId);
+              persist(':outbox', pending, true);
+              invalidateReads();
+              publish({ pending, loading: false, error: error.message, message: '' });
+            } catch (storageError) {
+              publish({ error: `${error.message}. ${storageError instanceof Error ? storageError.message : 'Unable to retain the rejection.'} The saved request is retained for recovery.`, message: '' });
+            }
           } else publish({ error: 'Completion is not confirmed. Your saved request will retry with the same receipt; do not submit it again.' });
           break;
         }
@@ -156,20 +197,21 @@ export function createBunchQueueClient({ scopeKey, cacheScopeKey = scopeKey, tra
     const command = { operation, payload, expectedRevision, target, commandId: uuid() };
     const pending = [...state.pending, command];
     persist(':outbox', pending, true);
-    publish({ pending, error: '', message: online() ? 'Saving work…' : 'Saved on this device. Completion will be confirmed when you reconnect.', offline: !online() });
+    invalidateReads();
+    publish({ pending, loading: false, error: '', message: online() ? 'Saving work…' : 'Saved on this device. Completion will be confirmed when you reconnect.', offline: !online() });
     await flush();
     if (state.error) throw new Error(state.error);
   }
   return {
     scopeKey,
     async stage(reviews = false, signal?: AbortSignal) {
-      const filter = state.filter, offset = state.offset;
+      const filter = state.filter, offset = state.offset, epoch = mutationEpoch;
       const response = object(await transport({ action: 'bunch_note_workflow', operation: reviews ? 'list_discrepancies' : 'queue', payload: { filter, offset, limit: 100 } }, signal || controller.signal));
       if (response.ok !== true) throw new Error(typeof response.message === 'string' ? response.message : 'Unable to refresh Bunch Notes.');
-      return { scopeKey, filter, offset, reviews, data: reviews ? parseBunchReviews(response.data) : parseBunchQueue(response.data) };
+      return { scopeKey, filter, offset, reviews, epoch, data: reviews ? parseBunchReviews(response.data) : parseBunchQueue(response.data) };
     },
-    commit(value: { scopeKey: string; filter: BunchQueueFilter; offset: number; reviews: boolean; data: BunchQueuePage | BunchReviewPage }) {
-      if (disposed || value.scopeKey !== scopeKey || value.filter !== state.filter || value.offset !== state.offset) return;
+    commit(value: { scopeKey: string; filter: BunchQueueFilter; offset: number; reviews: boolean; epoch: number; data: BunchQueuePage | BunchReviewPage }) {
+      if (disposed || value.epoch !== mutationEpoch || value.scopeKey !== scopeKey || value.filter !== state.filter || value.offset !== state.offset) return;
       persist(value.reviews ? ':reviews:' + value.offset : ':' + value.filter + ':' + value.offset, value.data);
       publish(value.reviews ? { reviews: value.data as BunchReviewPage } : { page: value.data as BunchQueuePage, loadedFilter: value.filter });
     },

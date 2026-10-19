@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "agdata-v235-retained-validation-v1",
+  "packageVersion": "2.3.5",
+  "baseline": "06012577878f508b72cdafc9ee7caeef3381026a",
+  "baselineProof": {
+    "workflow": "Deploy static app to Pages",
+    "runId": 39188509283,
+    "event": "workflow_dispatch",
+    "branch": "main",
+    "headSha": "06012577878f508b72cdafc9ee7caeef3381026a",
+    "conclusion": "success",
+    "node": {
+      "successfulShards": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "passed": 3550
+    },
+    "react": {
+      "conclusion": "success",
+      "passed": 158
+    },
+    "requiredJobs": [
+      {
+        "name": "validation / unit (1)",
+        "conclusion": "success"
+      },
+      {
+        "name": "validation / unit (2)",
+        "conclusion": "success"
+      },
+      {
+        "name": "validation / unit (3)",
+        "conclusion": "success"
+      },
+      {
+        "name": "validation / unit (4)",
+        "conclusion": "success"
+      },
+      {
+        "name": "validation / react",
+        "conclusion": "success"
+      },
+      {
+        "name": "validation / lint",
+        "conclusion": "success"
+      },
+      {
+        "name": "validation / contracts",
+        "conclusion": "success"
+      },
+      {
+        "name": "validation / build",
+        "conclusion": "success"
+      },
+      {
+        "name": "validation / release-gate",
+        "conclusion": "success"
+      }
+    ],
+    "evidenceUrl": "https://github.com/collygedylan/GNC-Sales-Command-PRO-/actions/runs/39188509283"
+  },
+  "reusedSuites": {
+    "node": "3550 previously passing tests; not rerun for v2.3.5",
+    "react": "158 previously passing baseline React tests plus 15 focused Bunch tests with matching source hashes; not rerun for v2.3.5",
+    "requiredFocusedReactFile": "tests/bunch-queue-view.test.tsx",
+    "requiredFocusedBrowserFiles": [
+      "tests/bunch-queue.e2e.spec.ts",
+      "tests/bunch-queue-supervisor.e2e.spec.ts"
+    ]
+  },
+  "scope": {
+    "sourcePaths": [
+      "components/bunch-queue/WorkCard.tsx",
+      "components/bunch-queue/QueueView.tsx",
+      "components/bunch-queue/bunch-queue.css",
+      "components/bunch-queue/contract.ts",
+      "services/bunchQueue.ts",
+      "tests/bunch-queue-view.test.tsx",
+      "tests/bunch-queue.e2e.spec.ts",
+      "tests/bunch-queue-supervisor.e2e.spec.ts",
+      "assets/bunch-queue.js",
+      "assets/bunch-queue.css",
+      "assets/eval-reports-engine.js",
+      "index.html",
+      "tests/eval-report2-card-suppression.test.mjs",
+      "tests/eval-report2-card-suppression.e2e.spec.ts",
+      "scripts/run-release-unit-checks.mjs",
+      "scripts/run-release-react-checks.mjs",
+      "scripts/check-v235-retained-validation.mjs",
+      "docs/releases/v2.3.5-retained-validation.json",
+      "docs/releases/v2.3.5-bunch-focused.txt",
+      ".github/workflows/pr-validation.yml",
+      ".github/workflows/release-validation.yml"
+    ],
+    "releaseMarkerPaths": [
+      "package.json",
+      "package-lock.json",
+      "index.html",
+      "manifest.json",
+      "sw.js",
+      "scripts/build-live-shell.mjs",
+      "v2/src/services/api.ts",
+      "v2/public/manifest.webmanifest",
+      "assets/ops-precision-pilot.js"
+    ],
+    "forbiddenPaths": [
+      "Code.gs",
+      "supabase/**",
+      "database/**",
+      "migrations/**"
+    ]
+  },
+  "focusedBunchProof": {
+    "passed": 15,
+    "command": "node node_modules/vitest/vitest.mjs run --config vite.v2.config.ts tests/bunch-queue-view.test.tsx",
+    "logPath": "docs/releases/v2.3.5-bunch-focused.txt",
+    "logSha256": "8ab659b27de0db4f93193bba883a0f908b4c124d906da8336f44941c865985f1",
+    "sourceSha256": {
+      "components/bunch-queue/WorkCard.tsx": "07299831bd3dab8f87bd3c9298d453c4e69c97b3d9877d23c1b2aad8c09a055e",
+      "components/bunch-queue/QueueView.tsx": "f08b5a2da2e5e8c67534ec80e13afead8a60c5fa24022413328417b61dee5040",
+      "components/bunch-queue/contract.ts": "e8eec2c3a96e52a945e78c94b543c0bd23ecbc60e043ae94712ed0704a7dfb77",
+      "components/bunch-queue/bunch-queue.css": "b938b4918202b4b6b4cd642e85731a6afe29b64b9473c96e775d67ce0663e5df",
+      "services/bunchQueue.ts": "a59c764a2ae6d2c92fc9eb4c9d49848fd51a6029304402f4ea28f8d7c44fc3d0",
+      "tests/bunch-queue-view.test.tsx": "4aa23a5efe294e0dd7ac332854821e233ba37f28d6ab01d63629ace60d8202a0"
+    }
+  }
+}

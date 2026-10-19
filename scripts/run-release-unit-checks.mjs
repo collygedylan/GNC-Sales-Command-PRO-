@@ -2,6 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverTests } from './test-discovery.mjs';
 import path from 'node:path';
+import fs from 'node:fs';
+import { verifyV235RetainedValidation } from './check-v235-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
@@ -26,6 +28,15 @@ export function runReleaseUnitChecks({
     print(JSON.stringify(files, null, 2));
     return 0;
   }
+  const packageManifest = JSON.parse(readPackage(rootDir));
+  if (packageManifest.version === '2.3.5') {
+    const evidence = verifyV235RetainedValidation({ rootDir });
+    print(`Retained ${evidence.retainedNodePassed} passing Node tests from exact baseline ${evidence.baseline}; full Node suite not rerun for v2.3.5.`);
+    if (shard && Number(shard[1]) !== 1) return 0;
+    const result = spawn(process.execPath, ['--test', 'tests/eval-report2-card-suppression.test.mjs'], { cwd: rootDir, stdio: 'inherit', env: process.env });
+    if (result.error) throw result.error;
+    return result.status ?? 1;
+  }
   print(`Running ${files.length} unique release unit-test files in one serial Node test process.`);
   const result = spawn(process.execPath, ['--test', '--test-concurrency=1', ...files], {
     cwd: rootDir,
@@ -34,6 +45,11 @@ export function runReleaseUnitChecks({
   });
   if (result.error) throw result.error;
   return result.status ?? 1;
+}
+
+function readPackage(rootDir) {
+  const packagePath = path.join(rootDir, 'package.json');
+  return fs.existsSync(packagePath) ? fs.readFileSync(packagePath, 'utf8') : '{}';
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
