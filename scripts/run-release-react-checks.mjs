@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyV235RetainedValidation } from './check-v235-retained-validation.mjs';
+import { verifyV236RetainedValidation } from './check-v236-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const focusedFile = 'tests/bunch-queue-view.test.tsx';
@@ -15,7 +16,7 @@ export function runReleaseReactChecks({
 } = {}) {
   const { version } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
   const vitest = path.join(rootDir, 'node_modules', 'vitest', 'vitest.mjs');
-  const args = version === '2.3.5'
+  const args = ['2.3.5', '2.3.6'].includes(version)
     ? ['run', '--config', 'vite.v2.config.ts', focusedFile]
     : ['run', '--config', 'vite.v2.config.ts', ...argv];
 
@@ -23,6 +24,10 @@ export function runReleaseReactChecks({
     const evidence = verifyV235RetainedValidation({ rootDir });
     print(`Retaining ${evidence.retainedReactPassed} baseline React tests and ${evidence.retainedFocusedBunchPassed} passing focused Bunch tests with verified source hashes; no React suites rerun.`);
     return 0;
+  }
+  if (version === '2.3.6') {
+    const evidence = verifyV236RetainedValidation({ rootDir });
+    print(`Retaining ${evidence.retainedReactPassed} baseline React tests; running only ${focusedFile}.`);
   }
 
   const result = spawn(process.execPath, [vitest, ...args], {

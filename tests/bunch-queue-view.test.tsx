@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { mountBunchQueue } from '../components/bunch-queue/mount';
 import { createBunchQueueClient } from '../services/bunchQueue';
 
@@ -98,26 +99,33 @@ describe('Bunch Notes queue cards', () => {
     const summary = screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' });
     expect(summary.getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(summary);
-    expect(screen.getByRole('region', { name: 'Bunch Notes entry Bunch Plant' })).toBeTruthy();
+    const detail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    expect(detail).toBeTruthy();
+    const closedCard = screen.getByRole('article');
+    expect(closedCard.contains(screen.queryByRole('textbox', { name: 'Actual Qty Completed row-1' }))).toBe(false);
+    expect(within(closedCard).queryByRole('button', { name: 'Done' })).toBeNull();
     expect(summary.getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByText(/D\.05\.000 · Lot LOT-A/)).toBeTruthy();
-    expect(screen.getByText(/D\.05\.000 · Lot LOT-B/)).toBeTruthy();
-    const sourceRows = screen.getAllByText(/Drive PTRAVAILABLE:/);
-    expect(sourceRows).toHaveLength(3); // Aggregate summary plus each distinct source value in the opened entry panel.
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '7' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '9' } });
+    expect(within(detail).getByText(/D\.05\.000 · Lot LOT-A/)).toBeTruthy();
+    expect(within(detail).getByText(/D\.05\.000 · Lot LOT-B/)).toBeTruthy();
+    const sourceRows = within(detail).getAllByText(/Drive PTRAVAILABLE:/);
+    expect(sourceRows).toHaveLength(2); // The detail panel renders each distinct source value once.
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '7' } });
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '9' } });
     expect(summary.getAttribute('aria-expanded')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(within(detail).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('textbox', { name: 'Actual Qty Completed row-1' })).toBeNull();
+    expect(summary.getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
-    expect((screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }) as HTMLInputElement).value).toBe('7');
-    expect((screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }) as HTMLInputElement).value).toBe('9');
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    const reopenedDetail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    expect((within(reopenedDetail).getByRole('textbox', { name: 'Actual Qty Completed row-1' }) as HTMLInputElement).value).toBe('7');
+    expect((within(reopenedDetail).getByRole('textbox', { name: 'Actual Qty Completed row-2' }) as HTMLInputElement).value).toBe('9');
+    fireEvent.click(within(reopenedDetail).getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(transport).toHaveBeenCalledWith(expect.objectContaining({
       operation: 'complete_card',
       payload: { job_id: 'job-1', card_id: 'card-1', actual_qty_by_row: { 'row-1': 7, 'row-2': 9 } },
       commandId: 'card-receipt', expectedRevision: 4,
     }), expect.any(AbortSignal)));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' })).toBeNull());
     await act(async () => { mounted.destroy(); client.dispose(); });
   });
 
@@ -138,13 +146,15 @@ describe('Bunch Notes queue cards', () => {
     expect(card.querySelector('.bq-id')?.textContent).toContain('D.05.000 · Lot LOT-A');
     expect(card.querySelectorAll('.bq-source')).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
-    expect(card.querySelectorAll('.bq-source')).toHaveLength(1);
-    const source = card.querySelector('.bq-source');
+    expect(card.querySelectorAll('.bq-source')).toHaveLength(0);
+    const detail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    expect(detail.querySelectorAll('.bq-source')).toHaveLength(1);
+    const source = detail.querySelector('.bq-source');
     expect(source?.textContent).not.toContain('D.05.000');
     expect(source?.textContent).not.toContain('LOT-A');
     expect(source?.textContent).not.toContain('Drive PTRAVAILABLE');
-    expect(screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-1' })).toBeTruthy();
+    fireEvent.click(within(detail).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('textbox', { name: 'Actual Qty Completed row-1' })).toBeNull();
     await act(async () => { mounted.destroy(); client.dispose(); });
   });
@@ -161,28 +171,117 @@ describe('Bunch Notes queue cards', () => {
     expect((await screen.findByRole('status')).textContent).toMatch(/Offline/);
     expect(screen.queryByRole('textbox', { name: 'Actual Qty Completed row-1' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
-    expect((screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }) as HTMLInputElement).value).toBe('5');
-    expect((screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }) as HTMLInputElement).value).toBe('6');
+    const detail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    expect((within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-1' }) as HTMLInputElement).value).toBe('5');
+    expect((within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-2' }) as HTMLInputElement).value).toBe('6');
     expect(transport).not.toHaveBeenCalled();
     await act(async () => { mounted.destroy(); client.dispose(); });
   });
 
-  it('opens the compact summary with Enter or Space keyboard activation', async () => {
+  it('opens the full-screen fallback detail with native Enter and Space activation', async () => {
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const user = userEvent.setup();
     const transport = vi.fn(async () => ({ ok: true, data: queuePage }));
     const client = createBunchQueueClient({ scopeKey: 'keyboard-open', transport, storage: storage(), online: () => true });
     let mounted!: ReturnType<typeof mountBunchQueue>;
     await act(async () => { mounted = mountBunchQueue(host(), client); await Promise.resolve(); });
 
     const summary = await screen.findByRole('button', { name: 'Open Bunch Notes card Bunch Plant' });
-    fireEvent.keyDown(summary, { key: 'Enter' });
+    summary.focus();
+    await user.keyboard('{Enter}');
     expect(summary.getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' })).toBeTruthy();
-    fireEvent.keyDown(summary, { key: ' ' });
+    const enterDetail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    expect(screen.getByRole('article').contains(screen.queryByRole('textbox', { name: 'Actual Qty Completed row-1' }))).toBe(false);
+    fireEvent.click(within(enterDetail).getByRole('button', { name: 'Close' }));
     expect(summary.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByRole('textbox', { name: 'Actual Qty Completed row-1' })).toBeNull();
+    summary.focus();
+    await user.keyboard(' ');
+    expect(screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' })).toBeTruthy();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' })).toBeNull();
 
     await act(async () => { mounted.destroy(); client.dispose(); });
+  });
+
+  it('uses the app detail host, returns without losing queue errors, and closes the shell on unmount', async () => {
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const requestRoot = document.createElement('div');
+    requestRoot.id = 'view-request';
+    const detailRoot = document.createElement('div');
+    detailRoot.id = 'view-detail';
+    detailRoot.hidden = true;
+    const detailHost = document.createElement('div');
+    detailHost.id = 'bunch-queue-detail-host';
+    detailRoot.append(detailHost);
+    document.body.append(requestRoot, detailRoot);
+    let shellOnClose: (() => void) | null = null;
+    const bridge = {
+      openDetail: vi.fn(({ onClose }: { title: string; onClose: () => void }) => {
+        shellOnClose = onClose;
+        requestRoot.hidden = true;
+        detailRoot.hidden = false;
+        return detailHost;
+      }),
+      closeDetail: vi.fn(() => {
+        requestRoot.hidden = false;
+        detailRoot.hidden = true;
+        const callback = shellOnClose;
+        shellOnClose = null;
+        callback?.();
+        return true;
+      }),
+    };
+    const previousShell = (window as Window & { BunchQueueShell?: unknown }).BunchQueueShell;
+    Object.defineProperty(window, 'BunchQueueShell', { configurable: true, value: bridge });
+    let queueReads = 0;
+    const transport = vi.fn(async (request: Record<string, unknown>) => {
+      if (request.operation !== 'queue') return { ok: true, data: { saved: true } };
+      queueReads += 1;
+      return queueReads === 1
+        ? { ok: true, data: queuePage }
+        : { ok: false, message: 'BUNCH_QUEUE_REFRESH_FAILED' };
+    });
+    const client = createBunchQueueClient({ scopeKey: 'shell-bridge', transport, storage: storage(), online: () => true });
+    let mounted!: ReturnType<typeof mountBunchQueue>;
+    try {
+      await act(async () => { mounted = mountBunchQueue(host(), client); await Promise.resolve(); });
+      fireEvent.click(await screen.findByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
+      const detail = within(detailHost).getByRole('dialog', { name: 'Bunch Notes detail Bunch Plant' });
+      expect(detail.getAttribute('aria-modal')).toBe('false');
+      expect(requestRoot.hidden).toBe(true);
+      expect(detailRoot.hidden).toBe(false);
+      const article = screen.getByRole('article');
+      expect(article.querySelectorAll('input[placeholder="Enter actual count"]')).toHaveLength(0);
+      expect(within(article).queryByRole('button', { name: 'Done' })).toBeNull();
+      expect(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-1' })).toBeTruthy();
+      fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '5' } });
+      expect(detailRoot.hidden).toBe(false);
+
+      await act(async () => { await client.load('all', 0); });
+      expect(screen.getByRole('dialog', { name: 'Bunch Notes detail Bunch Plant' })).toBeTruthy();
+      fireEvent.click(within(detail).getByRole('button', { name: 'Close' }));
+      await waitFor(() => expect(detailRoot.hidden).toBe(true));
+      expect(requestRoot.hidden).toBe(false);
+      expect((await screen.findByRole('alert')).textContent).toContain('BUNCH_QUEUE_REFRESH_FAILED');
+      expect(client.draft('job-1:card-1')).toEqual({ 'row-1': '5' });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
+      expect(within(detailHost).getByRole('dialog', { name: 'Bunch Notes detail Bunch Plant' })).toBeTruthy();
+      const closeCallsBeforeUnmount = bridge.closeDetail.mock.calls.length;
+      await act(async () => { mounted.destroy(); });
+      mounted = undefined as unknown as ReturnType<typeof mountBunchQueue>;
+      expect(bridge.closeDetail.mock.calls.length).toBe(closeCallsBeforeUnmount + 1);
+      expect(requestRoot.hidden).toBe(false);
+      expect(detailRoot.hidden).toBe(true);
+    } finally {
+      if (mounted) await act(async () => { mounted.destroy(); });
+      client.dispose();
+      if (previousShell === undefined) delete (window as Window & { BunchQueueShell?: unknown }).BunchQueueShell;
+      else Object.defineProperty(window, 'BunchQueueShell', { configurable: true, value: previousShell });
+      requestRoot.remove();
+      detailRoot.remove();
+    }
   });
 
   it('optimistically hides Done work, ignores stale queue commits, and keeps success available in Completed', async () => {
@@ -206,11 +305,14 @@ describe('Bunch Notes queue cards', () => {
     await screen.findByRole('article');
     const staleQueue = await client.stage();
     fireEvent.click(screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '7' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '9' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    const detail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    expect(screen.getByRole('article').contains(screen.queryByRole('textbox', { name: 'Actual Qty Completed row-1' }))).toBe(false);
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '7' } });
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '9' } });
+    fireEvent.click(within(detail).getByRole('button', { name: 'Done' }));
 
     await waitFor(() => expect(screen.queryByRole('article')).toBeNull());
+    expect(screen.queryByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' })).toBeNull();
     expect(countEvents.at(-1)).toMatchObject({ active: 0 });
     expect(client.getSnapshot().message).not.toMatch(/Work completed/i);
     client.commit(staleQueue);
@@ -219,6 +321,7 @@ describe('Bunch Notes queue cards', () => {
 
     await act(async () => { completeReply.resolve({ ok: true, data: { saved: true } }); await completeReply.promise; });
     await waitFor(() => expect(client.getSnapshot().message).toMatch(/Work completed/i));
+    expect(screen.queryByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' })).toBeNull();
     await waitFor(() => expect(transport).toHaveBeenCalledWith(expect.objectContaining({ operation: 'queue', payload: expect.objectContaining({ filter: 'all' }) }), expect.any(AbortSignal)));
     expect(screen.queryByRole('article')).toBeNull();
     client.commit(staleQueue);
@@ -243,16 +346,19 @@ describe('Bunch Notes queue cards', () => {
     await act(async () => { mounted = mountBunchQueue(host(), client); await Promise.resolve(); });
     await screen.findByRole('article');
     fireEvent.click(screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '13' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '17' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    const detail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '13' } });
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '17' } });
+    fireEvent.click(within(detail).getByRole('button', { name: 'Done' }));
 
     expect(await screen.findByRole('article')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' })).toBeNull());
     expect(countEvents.at(-1)).toMatchObject({ active: 1 });
     expect((screen.getByRole('alert')).textContent).toContain('BUNCH_NOTE_REVISION_CONFLICT');
     fireEvent.click(screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
-    expect((screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }) as HTMLInputElement).value).toBe('13');
-    expect((screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }) as HTMLInputElement).value).toBe('17');
+    const restoredDetail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    expect((within(restoredDetail).getByRole('textbox', { name: 'Actual Qty Completed row-1' }) as HTMLInputElement).value).toBe('13');
+    expect((within(restoredDetail).getByRole('textbox', { name: 'Actual Qty Completed row-2' }) as HTMLInputElement).value).toBe('17');
     await act(async () => { mounted.destroy(); client.dispose(); });
   });
 
@@ -266,10 +372,12 @@ describe('Bunch Notes queue cards', () => {
     await act(async () => { mounted = mountBunchQueue(host(), client); await Promise.resolve(); });
     await screen.findByRole('article');
     fireEvent.click(screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '21' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '22' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    const detail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '21' } });
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '22' } });
+    fireEvent.click(within(detail).getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(screen.queryByRole('article')).toBeNull());
+    expect(screen.queryByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' })).toBeNull();
     expect(values.get('gnc:bunch-queue:v230:offline-done:outbox')).toContain('offline-receipt');
     expect(client.getSnapshot().message).not.toMatch(/Work completed/i);
     expect(transport).not.toHaveBeenCalled();
@@ -300,9 +408,10 @@ describe('Bunch Notes queue cards', () => {
     await act(async () => { mounted = mountBunchQueue(host(), client); await Promise.resolve(); });
     await screen.findByRole('article');
     fireEvent.click(screen.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '1' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '2' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    const detail = screen.getByRole('dialog', { name: 'Bunch Notes entry Bunch Plant' });
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '1' } });
+    fireEvent.change(within(detail).getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '2' } });
+    fireEvent.click(within(detail).getByRole('button', { name: 'Done' }));
 
     expect(await screen.findByRole('article')).toBeTruthy();
     expect(await screen.findByRole('alert')).toBeTruthy();

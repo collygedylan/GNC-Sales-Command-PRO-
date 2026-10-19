@@ -90,8 +90,15 @@ for (const username of ['dylan_collyge', 'Dylan_College']) {
     await expect(card.locator('input[placeholder="Enter actual count"]')).toHaveCount(0);
     await expect(card.getByRole('button', { name: 'Complete Work' })).toHaveCount(0);
     await card.getByRole('button', { name: 'Open Bunch Notes card Queue Plant 8' }).click();
-    await cards.first().getByRole('textbox', { name: 'Actual Qty Completed source-8' }).fill('10');
-    await cards.first().getByRole('button', { name: 'Done' }).click();
+    await expect(page.locator('#view-detail')).toBeVisible();
+    await expect(page.locator('#view-request')).toBeHidden();
+    const detail = page.locator('#bunch-queue-detail-host').getByRole('dialog', { name: 'Bunch Notes detail Queue Plant 8' });
+    await expect(detail).toBeVisible();
+    await expect(card.locator('input[placeholder="Enter actual count"]')).toHaveCount(0);
+    await page.locator('#bunch-queue-detail-host').getByRole('textbox', { name: 'Actual Qty Completed source-8' }).fill('10');
+    await page.locator('#bunch-queue-detail-host').getByRole('button', { name: 'Done' }).click();
+    await expect(page.locator('#view-request')).toBeVisible();
+    await expect(page.locator('#view-detail')).toBeHidden();
     await expect.poll(() => requests.filter(request => request.operation === 'complete_card').length).toBe(1);
     await expect(cards).toHaveCount(0);
     await select.selectOption('all'); await expect(cards).toHaveCount(8);
