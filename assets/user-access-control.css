@@ -1,0 +1,23 @@
+.agdata-user-access{--uac-border:#d9e5dc;--uac-muted:#f5f8f6;--uac-text:#10241a;--uac-subtle:#53675b;--uac-brand:#08794d;color:var(--uac-text);display:grid;gap:16px;min-width:0}
+.agdata-user-access *{box-sizing:border-box}
+.agdata-user-access__heading{align-items:center;display:flex;gap:16px;justify-content:space-between}
+.agdata-user-access__heading h2,.agdata-user-access__panel h3{font-size:1.1rem;font-weight:800;line-height:1.25;margin:0}
+.agdata-user-access__heading p{color:var(--uac-subtle);font-size:.9rem;margin:5px 0 0}
+.agdata-user-access button,.agdata-user-access input,.agdata-user-access select{font:inherit;min-height:44px}
+.agdata-user-access button{background:#fff;border:1px solid var(--uac-border);border-radius:10px;color:var(--uac-text);cursor:pointer;font-weight:750;padding:9px 13px}
+.agdata-user-access button[data-role-save],.agdata-user-access button[data-user-save]{background:var(--uac-brand);border-color:var(--uac-brand);color:#fff;margin-top:12px;width:100%}
+.agdata-user-access button:disabled,.agdata-user-access select:disabled,.agdata-user-access input:disabled{cursor:not-allowed;opacity:.58}
+.agdata-user-access__status{background:var(--uac-muted);border:1px solid var(--uac-border);border-radius:10px;color:var(--uac-subtle);margin:0;padding:10px 12px}
+.agdata-user-access__status[role=alert]{background:#fff5f3;border-color:#f0b9b0;color:#912c1d}
+.agdata-user-access__grid{display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.agdata-user-access__panel{background:#fff;border:1px solid var(--uac-border);border-radius:14px;min-width:0;padding:16px}
+.agdata-user-access__panel>label{display:grid;font-size:.9rem;font-weight:700;gap:6px;margin:12px 0}
+.agdata-user-access__panel select,.agdata-user-access__panel input[type=search]{background:#fff;border:1px solid var(--uac-border);border-radius:9px;color:var(--uac-text);min-width:0;padding:8px 10px;width:100%}
+.agdata-user-access__permission{align-items:center;border-bottom:1px solid #edf1ee;display:flex;gap:12px;justify-content:space-between;min-height:48px;padding:6px 0}
+.agdata-user-access__permission:last-child{border-bottom:0}
+.agdata-user-access__permission>span{font-size:.9rem;font-weight:700;text-transform:capitalize}
+.agdata-user-access__permission small{color:var(--uac-subtle);display:block;font-size:.78rem;font-weight:500;margin-top:2px;text-transform:none}
+.agdata-user-access__permission input[type=checkbox]{accent-color:var(--uac-brand);height:21px;margin:0;width:21px}
+.agdata-user-access__permission select{max-width:210px}
+.agdata-user-access__inherited{background:var(--uac-muted);border-radius:8px;color:var(--uac-subtle);font-size:.88rem;margin:12px 0;padding:10px}
+@media(max-width:760px){.agdata-user-access__grid{grid-template-columns:minmax(0,1fr)}.agdata-user-access__heading{align-items:flex-start;flex-direction:column}.agdata-user-access__heading button{width:100%}.agdata-user-access__permission select{max-width:52%}}

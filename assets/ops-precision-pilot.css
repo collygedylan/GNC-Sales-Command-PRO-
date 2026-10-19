@@ -9258,6 +9258,18 @@ html body.gnc-perf-adaptive-hard.ops-precision-pilot :is(#app-top-chrome, .nav-h
   backdrop-filter: none !important;
 }
 
+/* The earlier glass rule includes an html:not(...) selector and an ID inside
+   :is(), so the lower-specificity iOS fallback above cannot win on iPhone.
+   Keep the same constrained-device intent, including the fixed filter rail. */
+html body.ios-device.ops-precision-pilot :is(
+  #app-top-chrome, .nav-header, #global-header-search-row, #bottom-nav,
+  .sticky-search, .freeze-panel, .fixed-filter-rail, .mobile-browse-rail,
+  .grower-mobile-toolbar, .grower-toolbar-popover
+) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   body.ops-precision-pilot *,
   body.ops-precision-pilot *::before,
@@ -9898,4 +9910,183 @@ body.ops-precision-pilot.current-view-request #request-filter-toolbar {
   font-weight: 800;
   line-height: 1.5;
   margin-top: 4px;
+}
+
+/* Shared Bloom card contract: title/photo/index share one stable header, while
+   metadata wraps above the responsive six-metric grid. */
+#bloom-picker-actions-list:not(.hidden) {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scrollbar-width: thin;
+}
+#bloom-picker-actions-list > :is(button, div) { flex: 0 0 auto !important; }
+#bloom-picker-actions-list > div > button { min-width: 72px; min-height: 52px; }
+.app-bloom-card-header {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+}
+.app-bloom-card-photo {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  overflow: hidden;
+  border: 1px solid var(--ops-photo-border, #b8d4c4);
+  border-radius: 9px;
+  background: var(--ops-photo-placeholder, #e8f2ec);
+}
+.app-bloom-card-photo :is(img, .app-smart-thumb, .app-inline-thumb-box) {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+}
+.app-bloom-card-heading { min-width: 0; overflow: hidden; }
+.app-bloom-card-index { min-width: 0; max-width: 7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-bloom-card-meta { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; margin: 6px 0; }
+.app-bloom-card-meta > span {
+  min-width: 0; max-width: 100%; padding: 3px 6px; border-radius: 999px;
+  border: 1px solid var(--ops-border, #d8e1db); background: var(--ops-surface-muted, #f3f7f4);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#bloom-picker-tray .app-bloom-card-metrics { min-width: 0; width: 100%; }
+#bloom-picker-tray .app-bloom-card-metrics .app-card-qty-row {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-auto-rows: 1fr;
+  gap: 5px !important;
+  min-width: 0;
+}
+#bloom-picker-tray .app-bloom-card-metrics .app-card-qty-chip {
+  display: grid !important;
+  grid-template-rows: auto auto;
+  align-content: center;
+  min-width: 0;
+  gap: 3px;
+}
+#bloom-picker-tray .app-bloom-card-metrics .app-card-qty-chip > :is(.app-card-qty-label, .app-card-qty-value) { display: block; }
+#bloom-picker-tray .app-bloom-card-metrics .app-card-qty-separator { display: none !important; }
+#bloom-picker-tray .app-bloom-card-metrics :is(.app-card-qty-chip, .app-card-qty-label, .app-card-qty-value)::before,
+#bloom-picker-tray .app-bloom-card-metrics :is(.app-card-qty-chip, .app-card-qty-label, .app-card-qty-value)::after { content: none !important; }
+@media (min-width: 768px) {
+  #bloom-picker-tray .app-bloom-card-metrics .app-card-qty-row { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+}
+#bloom-picker-tray .app-bloom-card-metrics :is(.app-card-qty-label, .app-card-qty-value) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+}
+
+/* Suspend uses the same five-field order strip in the card and Bloom summary. */
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-strip {
+  grid-template-columns: minmax(0, .65fr) minmax(0, .65fr) minmax(0, .7fr) minmax(0, 1.6fr) minmax(0, 1.4fr) !important;
+  min-width: 0;
+}
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-field,
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-field strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+#request-content .app-suspend-tag-compact-card .app-card-qty-row {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+#request-content .app-suspend-tag-compact-card :is(.app-card-qty-label, .app-card-qty-value) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+}
+#request-content .app-suspend-tag-compact-card .app-inline-thumb-column {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  gap: 0;
+}
+#request-content .app-suspend-tag-compact-card .app-inline-thumb-column--empty .app-inline-thumb-box--empty {
+  display: grid;
+  width: 100%;
+  height: var(--drive-card-photo-height, 86px);
+  aspect-ratio: auto;
+  place-items: center;
+  border-style: dashed;
+  border-color: var(--ops-photo-border, #b8d4c4);
+  color: var(--ops-photo-text, #426252);
+  background: var(--ops-photo-placeholder, #e8f2ec);
+  box-shadow: none;
+}
+
+/* AV filter buttons used to be compressed to tiny type at 3–5 controls. Let the
+   controls wrap without crossing into adjacent filter shells or result content. */
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline {
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row {
+  display: grid !important;
+  grid-auto-flow: row !important;
+  grid-auto-columns: auto !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 156px), 1fr)) !important;
+  grid-template-rows: none !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row > .av-filter-shell {
+  z-index: auto;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row > .av-filter-shell.av-filter-shell--open {
+  z-index: 80 !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row .task-top-control-button {
+  box-sizing: border-box;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 46px !important;
+  padding: 7px 10px !important;
+  gap: 7px !important;
+  overflow: hidden !important;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .task-top-control-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px !important;
+  letter-spacing: .04em !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .task-top-control-summary {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px !important;
+  line-height: 1.15 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 720px), (pointer: coarse) {
+  body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .av-top-controls-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
 }
