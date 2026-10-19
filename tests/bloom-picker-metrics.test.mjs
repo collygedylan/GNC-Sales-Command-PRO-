@@ -24,7 +24,8 @@ function setup(){
 const row=()=>({DOM_ID:'blue',ITEMCODE:'000152.050.1',COMMONNAME:'Blue Point Juniper - 2 Tier Poodle',CONTSIZE:'#5',LOCATIONCODE:'G.11.000',LOTCODE:'27.F1',PRIORITY:1,DESIGLOC:'NORTH',PTRONHAND:88,PTRREVIEWED:10,PTRAVAILABLE:78,S_LTS:153,LOC_ON_HAND:88});
 test('Bloom has a thumbnail header and exactly six single-line metrics without separator elements',()=>{
  const {context}=setup();const rendered=context.getBloomPickerTrayRowHtml({...row(),PHOTO:'https://example.invalid/plant.webp'});
- assert.match(rendered,/app-bloom-card-photo[\s\S]*<img/); assert.match(rendered,/LOC G.11.000 · LOT 27.F1 · PRI 1 · DESIGLOC NORTH/);
+ assert.match(rendered,/app-bloom-card-photo[\s\S]*<img/); for (const pill of ['LOC G.11.000','LOT 27.F1','PRI 1','DESIGLOC NORTH']) assert.ok(rendered.includes('<span>'+pill+'</span>'));
+ assert.ok(rendered.indexOf('app-bloom-card-meta') < rendered.indexOf('app-bloom-card-metrics'));
  assert.equal((rendered.match(/data-inventory-card-metric=/g)||[]).length,6);
  assert.match(rendered,/data-inventory-card-metric="available"[^]*?app-card-qty-value[^>]*>78</);
  assert.match(rendered,/data-inventory-card-metric="loc-on-hand"[^]*?app-card-qty-value[^>]*>88</);

@@ -195,9 +195,17 @@ test('pending directory refresh preserves a Manager selected role before saving 
         throw new Error(`unexpected_operation:${request.operation}`);
     } });
     await client.api.loadSelf();
-    const host = mountManager(client, t);
+    let host = mountManager(client, t);
     host.querySelector('[data-role-select]').value = 'evaluator';
     host.querySelector('[data-role-select]').dispatchEvent(new client.context.document.defaultView.Event('change', { bubbles: true }));
+    // Manager pages can replace the entire editor host during an unrelated
+    // parent refresh. The authenticated user's in-progress selection must
+    // survive that remount, not fall back to the first (admin) role.
+    const replacement = client.context.document.createElement('div');
+    host.replaceWith(replacement);
+    host = replacement;
+    client.api.mountManager(host);
+    assert.equal(host.querySelector('[data-role-select]').value, 'evaluator');
     releaseDirectory({ ok: true, data: {
         revision: 14,
         role_baselines: [

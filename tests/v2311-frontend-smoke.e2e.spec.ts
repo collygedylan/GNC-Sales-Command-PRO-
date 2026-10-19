@@ -1,7 +1,9 @@
 // @test-group: @v2311-frontend-smoke
 import { test, expect } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
 import { hlMaster, installHlOrderFixture, hlUserId } from './fixtures/hl-order-state.mjs';
 import { createV2311CanonicalAccessFixture } from './fixtures/v2311-canonical-access.mjs';
+import { syntheticMappingSnapshot } from '../supabase/ci/customer_rep_mapping_http.mjs';
 
 const access = (overrides: Record<string, boolean | null> = {}) => ({
   can_access_drive_mode: false,
@@ -83,18 +85,39 @@ test('v2.3.11 canonical Manager access editor updates a role baseline and a user
 
 test('v2.3.11 Request picker shows and searches all 103 mapped customers for Annette @v2311-frontend-smoke', { tag: '@v2311-frontend-smoke' }, async ({ page, baseURL }, info) => {
   if (!baseURL) throw new Error('The isolated release artifact baseURL is required.');
-  const mapRows = Array.from({ length: 103 }, (_, index) => ({
-    unique_id: `v2311-customer-${index + 1}`,
-    salesrepid: 'S05', salesrepname: 'Annette Hancock',
-    customeridentityid: String(index + 1).padStart(6, '0'),
-    customername: index === 102 ? "V2311 O'Brian & Sons 103" : `V2311 Customer ${String(index + 1).padStart(3, '0')}`,
-    customerstatus: 'A', consigneestatus: 'A',
-  })).flatMap((row, customerIndex) => Array.from({ length: customerIndex === 0 ? 100 : 1 }, (_, locationIndex) => ({
-    ...row,
-    unique_id: `${row.unique_id}-${locationIndex + 1}`,
-    consigneeid: String(1001 + customerIndex * 100 + locationIndex).padStart(6, '0'),
-    consigneename: `V2311 Location ${String(customerIndex + 1).padStart(3, '0')}${locationIndex ? `-${locationIndex + 1}` : ''}`,
-  })));
+  const mappingTemplate = syntheticMappingSnapshot()[0];
+  const mapRows = Array.from({ length: 103 }, (_, customerIndex) => Array.from({
+    length: customerIndex === 0 ? 100 : 1,
+  }, (_, locationIndex) => {
+    const customerIdentityId = String(customerIndex + 1).padStart(7, '0');
+    const customerName = customerIndex === 102 ? "V2311 O'Brian & Sons 103" : `V2311 Customer ${String(customerIndex + 1).padStart(3, '0')}`;
+    const consigneeId = String(1001 + customerIndex * 100 + locationIndex).padStart(8, '0');
+    const consigneeName = `V2311 Location ${String(customerIndex + 1).padStart(3, '0')}${locationIndex ? `-${locationIndex + 1}` : ''}`;
+    return {
+      ...mappingTemplate,
+      unique_id: `v2311-customer-${customerIndex + 1}-${locationIndex + 1}`,
+      source_row_number: customerIndex * 100 + locationIndex + 1,
+      customeridentityid: customerIdentityId,
+      customername: customerName,
+      consigneeid: consigneeId,
+      consigneename: consigneeName,
+      salesrepid: 'S05',
+      salesrepname: 'Annette Hancock',
+      customerstatus: 'A',
+      consigneestatus: 'A',
+      raw_data: {
+        ...mappingTemplate.raw_data,
+        CUSTOMERIDENTITYID: customerIdentityId,
+        CUSTOMERNAME: customerName,
+        CONSIGNEEID: consigneeId,
+        CONSIGNEENAME: consigneeName,
+        SALESREPID: 'S05',
+        SALESREPNAME: 'Annette Hancock',
+        CUSTOMERSTATUS: 'A',
+        CONSIGNEESTATUS: 'A',
+      },
+    };
+  })).flat();
   const customerMapApi: { driftNextRead: boolean; failNextRead: boolean; restReads: number; optionsReads: number; restRows: number[] } = {
     driftNextRead: false, failNextRead: false, restReads: 0, optionsReads: 0, restRows: [],
   };
@@ -110,9 +133,11 @@ test('v2.3.11 Request picker shows and searches all 103 mapped customers for Ann
     await page.route('**/rest/v1/ph_customer_consignee_sales_reps*', route => {
       customerMapApi.restReads += 1;
       customerMapApi.restRows.push(mapRows.length);
+      const requested = new URL(route.request().url()).searchParams.get('select')?.split(',') || [];
+      const projectedRows = mapRows.map(row => Object.fromEntries(requested.map(column => [column, row[column as keyof typeof row]])));
       return route.fulfill({
-        status: 200, contentType: 'application/json', body: JSON.stringify(mapRows),
-        headers: { 'access-control-allow-origin': origin, 'access-control-allow-credentials': 'true', 'access-control-expose-headers': 'content-range', 'content-range': `0-${mapRows.length - 1}/${mapRows.length}` },
+        status: 200, contentType: 'application/json', body: JSON.stringify(projectedRows),
+        headers: { 'access-control-allow-origin': origin, 'access-control-allow-credentials': 'true', 'access-control-expose-headers': 'content-range', 'content-range': `0-${projectedRows.length - 1}/${projectedRows.length}` },
       });
     });
     await page.route('**/functions/v1/app-api*', async route => {
@@ -137,13 +162,83 @@ test('v2.3.11 Request picker shows and searches all 103 mapped customers for Ann
     }), headers: { 'access-control-allow-origin': origin, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': request.headers()['access-control-request-headers'] || 'authorization, apikey, content-type', 'access-control-allow-credentials': 'true' } });
     });
   } });
-  // Request is a shared-dataset view. Enter its normal authenticated view
-  // context before forcing the full customer map, rather than requesting a
-  // hidden-view adapter while Home's startup cohort is still syncing.
+  await page.evaluate(() => window.eval(`(() => {
+    const diagnostics = window.__v2311RequestPickerDiagnostics = { stages: [], commits: [], processErrors: [], dedupeReads: [], readFailures: [] };
+    const originalBackoff = runSupabaseReadWithBackoff;
+    runSupabaseReadWithBackoff = async function(cooldownKey, taskFn, ...args) {
+      let readKey = '';
+      try { readKey = String(JSON.parse(cooldownKey || '[]')?.[1] || '').slice(0, 180); } catch (_) {}
+      const prior = supabaseReadFailureCooldowns.get(cooldownKey);
+      const entry = { readKey, priorFailures: Number(prior?.failures || 0), priorUntil: Number(prior?.until || 0) };
+      try { return await originalBackoff.call(this, cooldownKey, taskFn, ...args); }
+      catch (error) {
+        entry.code = String(error?.code || error?.payload?.code || '').slice(0, 80);
+        entry.message = String(error?.message || error || '').slice(0, 240);
+        entry.status = Number(error?.status || error?.payload?.status || 0);
+        diagnostics.readFailures.push(entry);
+        throw error;
+      }
+    };
+    const originalDedupe = runDedupeSupabaseRead;
+    runDedupeSupabaseRead = function(readKey, taskFn, options = {}) {
+      const entry = { readKey: String(readKey || '').slice(0, 180), explicitRetry: options?.explicitRetry === true };
+      diagnostics.dedupeReads.push(entry);
+      try {
+        return originalDedupe.call(this, readKey, taskFn, options).catch(error => {
+          entry.outcome = 'rejected';
+          entry.code = String(error?.code || error?.payload?.code || '').slice(0, 80);
+          entry.message = String(error?.message || error || '').slice(0, 240);
+          throw error;
+        });
+      } catch (error) {
+        entry.outcome = 'threw';
+        entry.code = String(error?.code || error?.payload?.code || '').slice(0, 80);
+        entry.message = String(error?.message || error || '').slice(0, 240);
+        throw error;
+      }
+    };
+    const originalAdapterFactory = createProductionCoreLiveAdapter;
+    createProductionCoreLiveAdapter = function(key, ...args) {
+      const adapter = originalAdapterFactory.call(this, key, ...args);
+      if (!['requests', 'master', 'customerRepMap'].includes(String(key || ''))) return adapter;
+      const originalStage = adapter.stage;
+      adapter.stage = async function(options = {}) {
+        const entry = { key: String(key), projection: String(adapter.projection || ''), sourceKeys: [...(adapter.sourceKeys || [])], outcome: 'pending' };
+        diagnostics.stages.push(entry);
+        try {
+          const snapshot = await originalStage.call(this, options);
+          entry.outcome = 'resolved';
+          entry.rows = Number(snapshot?.rowCount || snapshot?.rawRows?.length || 0);
+          entry.fieldCoverage = String(snapshot?.fieldCoverage || '');
+          return snapshot;
+        } catch (error) {
+          entry.outcome = 'rejected';
+          entry.error = String(error?.message || error || '').slice(0, 240);
+          entry.code = String(error?.code || error?.payload?.code || '').slice(0, 80);
+          entry.status = Number(error?.status || error?.payload?.status || 0);
+          throw error;
+        }
+      };
+      return adapter;
+    };
+    const originalProcess = processAndLoadData;
+    processAndLoadData = function(payload, ...args) {
+      const entry = { keys: Object.keys(payload || {}), mapRows: Array.isArray(payload?.customerRepMapData) ? payload.customerRepMapData.length : null };
+      diagnostics.commits.push(entry);
+      try { return originalProcess.call(this, payload, ...args); }
+      catch (error) { diagnostics.processErrors.push(String(error?.message || error || '').slice(0, 240)); throw error; }
+    };
+  })()`));
+  // Enter the real Request picker path. It must resolve the rep ID, load the
+  // complete server options, and show all mapped customers without a test-only
+  // forced coordinator read or a prerequisite wait on unrelated Request data.
   await page.evaluate(() => window.eval("switchView('request')"));
   await expect(page.locator('#view-request')).toBeVisible();
-  const mappingsLoaded = await page.evaluate(() => window.eval("ensureDatasetLoaded('customerRepMap', 'full', { force: true })"));
-  if (!mappingsLoaded) {
+  await page.evaluate(() => window.eval("selectRepForRequest('Annette Hancock', 'S05')"));
+  const picker = page.locator('#existing-folder-container');
+  try {
+    await expect(picker.locator('[data-render-key^="request-customer:"]')).toHaveCount(103, { timeout: 30000 });
+  } catch (error) {
     const loadFailure = await page.evaluate(() => window.eval(`(() => {
       const state = getDatasetState('customerRepMap');
       let coordinator = null;
@@ -163,44 +258,25 @@ test('v2.3.11 Request picker shows and searches all 103 mapped customers for Ann
           fieldCoverage: state.fieldCoverage, rowCompleteness: state.rowCompleteness,
           lastError: String(state.lastError?.message || state.lastError || '').slice(0, 240),
           loadSignature: String(state.loadSignature || '').slice(0, 180) },
-        mapRows: customerRepMapRows.length, resolvedRep: getRequestSelectedSalesrepId('Annette Hancock'), coordinator,
+        mapRows: customerRepMapRows.length, resolvedRep: getRequestSelectedSalesrepId('Annette Hancock'),
+        activeView: getCurrentVisibleViewId(), optionLoading: requestModalCustomerOptionsLoading,
+        optionError: String(requestModalCustomerOptionsError || '').slice(0, 240),
+        renderedCustomers: document.querySelectorAll('#existing-folder-container [data-render-key^="request-customer:"]').length,
+        coordinator,
+        cooldowns: [...supabaseReadFailureCooldowns.entries()].map(([key, value]) => {
+          let readKey = '';
+          try { readKey = String(JSON.parse(key)?.[1] || '').slice(0, 180); } catch (_) {}
+          return { readKey, failures: Number(value?.failures || 0), until: Number(value?.until || 0) };
+        }).filter(entry => /customer_consignee_sales_reps|customerRepMap/i.test(entry.readKey)),
+        liveSyncDiagnostics: window.__v2311RequestPickerDiagnostics || null,
       };
     })()`));
-    await info.attach('request-customer-map-ensure-false', {
+    await info.attach('request-picker-options-not-ready', {
       contentType: 'application/json', body: JSON.stringify({ ...loadFailure, routeCounters: customerMapApi, requestLoadErrors }),
     });
-  }
-  expect(mappingsLoaded).toBe(true);
-  // ensureDatasetLoaded may resolve on coordinator publication before its
-  // view-specific commit callback swaps the active rows array. Wait for the
-  // committed mapping and its canonical rep resolution before opening UI.
-  try {
-    await page.waitForFunction(expected => {
-      const ready = window.eval(`(() => ({
-        full: getDatasetState('customerRepMap').fullLoaded === true,
-        rows: customerRepMapRows.length,
-        rep: getRequestSelectedSalesrepId('Annette Hancock')
-      }))()`);
-      return ready.full && ready.rows === expected && ready.rep === 'S05';
-    }, mapRows.length, { timeout: 10000 });
-  } catch (error) {
-    const state = await page.evaluate(() => window.eval(`(() => ({
-      dataset: getDatasetState('customerRepMap'), rowCount: customerRepMapRows.length,
-      sample: customerRepMapRows.slice(0, 2).map(row => ({ rep: row.SALESREPID || row.salesrepid,
-        repName: row.SALESREPNAME || row.salesrepname, customerStatus: row.CUSTOMERSTATUS || row.customerstatus,
-        consigneeStatus: row.CONSIGNEESTATUS || row.consigneestatus })),
-      resolvedRep: getRequestSelectedSalesrepId('Annette Hancock'),
-      loadError: String(getDatasetState('customerRepMap').lastError || '')
-    }))()`));
-    await info.attach('request-customer-map-loader-state', { body: JSON.stringify({ ...state, ...customerMapApi }), contentType: 'application/json' });
+    await writeFile(info.outputPath('request-picker-options-not-ready.json'), JSON.stringify({ ...loadFailure, routeCounters: customerMapApi, requestLoadErrors }, null, 2), 'utf8');
     throw error;
   }
-
-  // Start at the real request customer picker and let its normal mapping
-  // loader, identity grouping, search, and click handlers populate the UI.
-  await page.evaluate(() => window.eval("selectRepForRequest('Annette Hancock', 'S05')"));
-  const picker = page.locator('#existing-folder-container');
-  await expect(picker.locator('[data-render-key^="request-customer:"]')).toHaveCount(103);
   await expect(picker).toContainText("V2311 O'Brian & Sons 103");
   customerMapApi.failNextRead = true;
   const errorRefreshSucceeded = await page.evaluate(() => window.eval('ensureRequestModalCustomerOptionsReady(true)'));
@@ -223,7 +299,7 @@ test('v2.3.11 Request picker shows and searches all 103 mapped customers for Ann
   expect(fixture.errors).toEqual([]);
 });
 
-test('v2.3.11 confirmed H/S receipt updates canonical fields and paints status across inventory surfaces @v2311-frontend-smoke', { tag: '@v2311-frontend-smoke' }, async ({ page, baseURL }) => {
+test('v2.3.11 confirmed H/S receipt updates canonical fields and paints status across inventory surfaces @v2311-frontend-smoke', { tag: '@v2311-frontend-smoke' }, async ({ page, baseURL }, info) => {
   if (!baseURL) throw new Error('The isolated release artifact baseURL is required.');
   const master = [hlMaster('v2311-hs-confirmed-row', {
     itemcode: 'V2311.HS.001', commonname: 'V2311 H/S Confirmed Plant', contsize: '#3',
@@ -287,15 +363,21 @@ test('v2.3.11 confirmed H/S receipt updates canonical fields and paints status a
       painted: await (async () => {
         const surfaces = {};
         for (const sourceView of ['drive', 'av', 'request']) {
-          const startedAt = performance.now();
+          // Measure a visible card update. Appending below the entire Drive
+          // page and scrolling there also measured unrelated scroll/layout work.
           const host = document.createElement('div');
           host.className = 'w-full';
+          const view = document.getElementById('view-drive');
+          if (!view) throw new Error('H/S visible Drive view is missing');
+          view.prepend(host);
+          host.scrollIntoView({ block: 'start', behavior: 'instant' });
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const startedAt = performance.now();
           host.innerHTML = generateCard(row, sourceView);
-          document.getElementById('view-drive')?.appendChild(host);
-          host.scrollIntoView({ block: 'nearest' });
+          const renderMs = performance.now() - startedAt;
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
           const card = host.firstElementChild;
-          surfaces[sourceView] = { paintMs: performance.now() - startedAt, text: card?.textContent || '', holdClass: card?.classList.contains('app-card-hold') || false,
+          surfaces[sourceView] = { renderMs, paintMs: performance.now() - startedAt, text: card?.textContent || '', holdClass: card?.classList.contains('app-card-hold') || false,
             stopClass: card?.classList.contains('app-card-stop') || false,
             code: card?.querySelector('[data-inventory-card-field="holdstopcode"]')?.textContent || '',
             reason: card?.querySelector('[data-inventory-card-field="holdstopreason"]')?.textContent || '',
@@ -320,6 +402,7 @@ test('v2.3.11 confirmed H/S receipt updates canonical fields and paints status a
         return surfaces;
       })() };
   })()`));
+  await info.attach('v2311-hold-stop-paint.json', {contentType:'application/json',body:JSON.stringify(result.painted)});
   expect(result.applied).toEqual({ applied: 1, stale: false });
   expect(result.row).toMatchObject({ priority: '1', hold: 'H', reason: 'quality review', available: '25', reviewed: before.reviewed,
     photo: '', photoName: '', avNote: '', spec: '', caliper: '', matchKnown: true, photoMatchQty: null, locationOnHand: '25' });
@@ -362,14 +445,14 @@ test('v2.3.11 Drive Bloom tray preserves all six inventory metrics before and af
     hlMaster('v2311-bloom-metrics-main', {
       itemcode, commonname: 'V2311 Bloom Metric Plant', contsize: '#3',
       locationcode: 'G.11.000', lotcode: '27.F1', season: 'F1', saleyear: '27',
-      ptronhand: '88', ptrreviewed: '10', ptravailable: '78', s_lts: '153',
+      ptronhand: '88', ptrreviewed: '10', ptravailable: '78', s_lts: '85', priority: '1', desigloc: 'NORTH',
       loc_match_qty: '', match: '', warehouseid: '10', warehousei: '10',
       photo_link: photoUrl, photo_name: 'Blue Point Juniper', av_rule_photo_updated_at: new Date().toISOString(),
     }),
     hlMaster('v2311-bloom-metrics-second-location', {
       itemcode, commonname: 'V2311 Bloom Metric Plant', contsize: '#3',
       locationcode: 'G.11.001', lotcode: '27.F1', season: 'F1', saleyear: '27',
-      ptronhand: '1', ptrreviewed: '0', ptravailable: '1', s_lts: '153',
+      ptronhand: '1', ptrreviewed: '0', ptravailable: '1', s_lts: '85',
       loc_match_qty: '', match: '', warehouseid: '10', warehousei: '10',
       photo_link: photoUrl, photo_name: 'Blue Point Juniper', av_rule_photo_updated_at: new Date().toISOString(),
     }),
@@ -394,7 +477,7 @@ test('v2.3.11 Drive Bloom tray preserves all six inventory metrics before and af
   const driveMetrics = await readMetrics(card);
   await info.attach('bloom-master-receipt', { contentType: 'application/json', body: JSON.stringify(await page.evaluate(() => window.eval(`(() => ({ state: getDatasetState('master'), context: getProductionLiveSyncContext(), rows: fullInventory.length, values: fullInventory.map(row => getCardLocationOnHandValue(row)) }))()`))) });
   expect(driveMetrics.map(metric => metric.label)).toEqual(expectedLabels);
-  expect(driveMetrics.map(metric => metric.value)).toEqual(['88', '10', '78', '153', 'N/A', '88']);
+  expect(driveMetrics.map(metric => metric.value)).toEqual(['88', '10', '78', '85', 'N/A', '88']);
   const drivePhoto = card.locator('img').first();
   await expect(drivePhoto).toBeVisible();
   await expect.poll(() => drivePhoto.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
@@ -411,14 +494,13 @@ test('v2.3.11 Drive Bloom tray preserves all six inventory metrics before and af
   expect(driveCellStyles).toHaveLength(6);
   for (const cell of driveCellStyles.flat()) {
     expect(cell.whiteSpace).toBe('nowrap');
-    expect(cell.textOverflow).toBe('ellipsis');
     expect(cell.height).toBeLessThanOrEqual(cell.lineHeight + 1);
   }
   const secondLocation = page.locator('#drive-content [role="button"][aria-label="Open drive row"]').filter({ hasText: 'G.11.001' }).first();
   await expect(secondLocation).toBeVisible();
   expect((await readMetrics(secondLocation)).find(metric => metric.label === 'Loc On Hand')?.value).toBe('1');
 
-  await card.getByRole('button', { name: 'Add To Bloom Picker', exact: true }).click();
+  await card.getByRole('button', { name: /Add To Bloom Picker$/ }).click();
   await page.locator('#footer-cart-btn').click();
   const tray = page.locator('#bloom-picker-tray');
   await expect(tray).toBeVisible();
@@ -428,7 +510,11 @@ test('v2.3.11 Drive Bloom tray preserves all six inventory metrics before and af
   expect(beforeActions.map(metric => metric.value)).toEqual(driveMetrics.map(metric => metric.value));
   expect(await readMetrics(card)).toEqual(driveMetrics);
   const bloomGridColumns = await trayCard.locator('.app-bloom-card-metrics .app-card-qty-row').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
-  expect(bloomGridColumns).toBe(6);
+  const expectedColumns = (page.viewportSize()?.width || 0) < 768 ? 3 : 6;
+  expect(bloomGridColumns).toBe(expectedColumns);
+  const meta = trayCard.locator('.app-bloom-card-meta');
+  await expect(meta.locator(':scope > span')).toHaveText(['LOC G.11.000', 'LOT 27.F1', 'PRI 1', 'DESIGLOC NORTH']);
+  expect(await meta.evaluate(element => getComputedStyle(element).flexWrap)).toBe('wrap');
   await expect(trayCard.locator('img').first()).toBeVisible();
   await expect.poll(() => trayCard.locator('img').first().evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   const bloomCells = await trayCard.locator('.app-bloom-card-metrics [data-inventory-card-metric]').evaluateAll(nodes => nodes.map(node => {
@@ -441,6 +527,19 @@ test('v2.3.11 Drive Bloom tray preserves all six inventory metrics before and af
       lineHeight: parseFloat(getComputedStyle(element).lineHeight) || 0,
     }));
   }));
+  const geometry = await trayCard.locator('.app-bloom-card-metrics [data-inventory-card-metric]').evaluateAll(nodes => nodes.map(node => {
+    const rect = node.getBoundingClientRect();
+    const value = node.querySelector('.app-card-qty-value') as HTMLElement;
+    return { top: rect.top, height: rect.height, children: node.children.length,
+      valueCount: node.querySelectorAll('.app-card-qty-value').length, fits: value.scrollWidth <= value.clientWidth + 1,
+      before: getComputedStyle(value, '::before').content, after: getComputedStyle(value, '::after').content };
+  }));
+  expect(new Set(geometry.map(cell => Math.round(cell.top))).size).toBe(expectedColumns === 3 ? 2 : 1);
+  expect(Math.max(...geometry.map(cell => cell.height)) - Math.min(...geometry.map(cell => cell.height))).toBeLessThanOrEqual(1);
+  for (const cell of geometry) {
+    expect(cell.children).toBe(2); expect(cell.valueCount).toBe(1); expect(cell.fits).toBe(true);
+    expect(['none', 'normal', '""']).toContain(cell.before); expect(['none', 'normal', '""']).toContain(cell.after);
+  }
   expect(bloomCells).toHaveLength(6);
   for (const cell of bloomCells.flat()) {
     expect(cell.whiteSpace).toBe('nowrap');

@@ -667,25 +667,77 @@ test('Complete Tag saves and removes the row from the active Suspend view', {"ta
   const uniqueId = row.UNIQUE_ID;
   let release!: () => void;
   app.replies.push({ operation:'close', wait:new Promise<void>(resolve => { release=resolve; }) });
-  await app.showStatus('active');
+  // The harness already opens active Suspend rows. Reselecting the same value
+  // emits change and rebuilds the list immediately before this warm-action gate.
+  await expect(page.locator('#request-suspend-tag-status-filter')).toHaveValue('active');
   await expect(app.card(row)).toBeVisible();
+  // Completion timing starts with the action already on screen. Playwright's
+  // automatic tap scroll otherwise mixes viewport chrome/layout with the click.
+  await app.done(row).scrollIntoViewIfNeeded();
+  // Wait for the actual initial publication and queued Request work, without
+  // cancelling background jobs or changing the click-to-paint measurement.
+  await page.waitForFunction(() => window.eval(`(() => {
+    const cards = document.querySelector('#request-content .request-card-list--suspend-tag');
+    return !!cards && !cards.__suspendPageStage
+      && !Number(chunkRenderActivityByKey['request-main'] || 0)
+      && !Object.keys(uiRenderTokens).some(key => /request/i.test(key))
+      && !isDockSuspendDcRequestMirrorPreparationPending();
+  })()`));
+  await page.evaluate(() => window.eval(`(() => {
+    const names=['syncIosFixedTopChromeMetrics','syncIosBottomNavViewportLock','auditIosFixedShellGap','syncViewportHeight','renderRequest'];
+    const diagnostic={phase:'settling',visibility:document.visibilityState,hasFocus:document.hasFocus(),functions:Object.create(null)};
+    window.__v2311ShellDiagnostic=diagnostic;
+    for(const name of names){
+      const original=window[name];
+      if(typeof original!=='function')continue;
+      diagnostic.functions[name]={settling:{count:0,totalMs:0,maxMs:0},action:{count:0,totalMs:0,maxMs:0}};
+      window[name]=function(...args){
+        const started=performance.now();
+        try{return original.apply(this,args)}
+        finally{const elapsed=performance.now()-started;const bucket=diagnostic.functions[name][diagnostic.phase==='action'?'action':'settling'];bucket.count++;bucket.totalMs+=elapsed;bucket.maxMs=Math.max(bucket.maxMs,elapsed)}
+      };
+    }
+  })()`));
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    const gaps:number[]=[];
+    let previous=performance.now();
+    for(let frame=0;frame<4;frame++)await new Promise<void>(resolve=>requestAnimationFrame(()=>{
+      const now=performance.now();gaps.push(now-previous);previous=now;resolve();
+    }));
+    const diagnostic=(window as Window & {__v2311ShellDiagnostic?:{phase:string;settledFrameGaps?:number[]}}).__v2311ShellDiagnostic;
+    if(diagnostic){diagnostic.settledFrameGaps=gaps;diagnostic.phase='idle'}
+  });
   await page.evaluate(uid => {
     const selector='#request-content [data-request-uid="dock_suspend_dc_'+uid+'"]';
-    const probe={started:0,domMs:-1,paintMs:-1};
+    const probe={started:0,domMs:-1,paintMs:-1, mountedRows:document.querySelectorAll('#request-content [data-request-uid]').length,
+      settledFrameGaps:(window as Window & {__v2311ShellDiagnostic?:{settledFrameGaps?:number[]}}).__v2311ShellDiagnostic?.settledFrameGaps,
+      shellFunctions:(window as Window & {__v2311ShellDiagnostic?:{functions?:Record<string,unknown>}}).__v2311ShellDiagnostic?.functions,
+      visibility:document.visibilityState,hasFocus:document.hasFocus(),
+      chromeBackdropFilters:Array.from(document.querySelectorAll('#app-top-chrome,#bottom-nav,.fixed-filter-rail')).map(element=>({id:element.id,filter:getComputedStyle(element).backdropFilter}))};
     Object.assign(window,{__v2311CompleteTagProbe:probe});
     window.addEventListener('click', event => {
       if (!(event.target instanceof Element) || !event.target.closest(selector+' [data-action="complete-tag"]')) return;
+      const diagnostic=(window as Window & {__v2311ShellDiagnostic?:{phase:string}}).__v2311ShellDiagnostic;
+      if(diagnostic)diagnostic.phase='action';
       probe.started=performance.now();
       const observer=new MutationObserver(() => {
         if(document.querySelector(selector))return;
         probe.domMs=performance.now()-probe.started;observer.disconnect();
-        requestAnimationFrame(()=>{probe.paintMs=performance.now()-probe.started;});
+        probe.paintRafRequestedAt=performance.now();
+        requestAnimationFrame(timestamp=>{probe.paintRafTimestamp=timestamp;probe.paintCallbackAt=performance.now();probe.paintMs=probe.paintCallbackAt-probe.started;});
       });
       observer.observe(document.getElementById('request-content')!,{childList:true,subtree:true});
     },{capture:true,once:true});
   }, uniqueId);
   try {
     await app.activate(app.done(row));
+    // Keep the paint probe passive: queue-count scans and locator assertions
+    // below must not compete with the first frame being measured.
+    await page.waitForFunction(()=>Number((window as Window & {__v2311CompleteTagProbe?:{paintMs:number}}).__v2311CompleteTagProbe?.paintMs)>=0);
+    const metric=await page.evaluate(()=>(window as Window & {__v2311CompleteTagProbe?:{domMs:number;paintMs:number}}).__v2311CompleteTagProbe!);
+    await info.attach('v2311-optimistic-completion.json',{body:JSON.stringify({...metric,rows:1000,environment:info.project.name,cache:'warm',backendAcknowledgmentHeld:true}),contentType:'application/json'});
+    expect(metric.domMs).toBeLessThan(50);expect(metric.paintMs).toBeLessThan(50);
     await expect(app.card(row)).toHaveCount(0);
     await expect(page.locator('#request-open-info-modal')).toBeHidden();
     await expect(page.locator('#view-detail')).toBeHidden();
@@ -695,10 +747,6 @@ test('Complete Tag saves and removes the row from the active Suspend view', {"ta
     const suspendBackingCount = await page.evaluate(() => window.eval("getRequestTabQueueCounts()['suspend-tag']"));
     expect(suspendBackingCount).toBe(999);
     await expect(suspendCategory.locator('.request-category-chip__count')).toHaveText('99+');
-    await page.waitForFunction(()=>Number((window as Window & {__v2311CompleteTagProbe?:{paintMs:number}}).__v2311CompleteTagProbe?.paintMs)>=0);
-    const metric=await page.evaluate(()=>(window as Window & {__v2311CompleteTagProbe?:{domMs:number;paintMs:number}}).__v2311CompleteTagProbe!);
-    await info.attach('v2311-optimistic-completion.json',{body:JSON.stringify({...metric,rows:1000,environment:info.project.name,cache:'warm',backendAcknowledgmentHeld:true}),contentType:'application/json'});
-    expect(metric.domMs).toBeLessThan(50);expect(metric.paintMs).toBeLessThan(50);
   } finally { release(); }
   await expect.poll(() => app.requests.map(request => request.body.operation)).toEqual(['close']);
   await expect.poll(()=>app.backendRows.find(candidate=>candidate.UNIQUE_ID===uniqueId)?.SUSPEND_TAG_STATUS).toBe('completed');

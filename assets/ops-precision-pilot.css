@@ -9258,6 +9258,18 @@ html body.gnc-perf-adaptive-hard.ops-precision-pilot :is(#app-top-chrome, .nav-h
   backdrop-filter: none !important;
 }
 
+/* The earlier glass rule includes an html:not(...) selector and an ID inside
+   :is(), so the lower-specificity iOS fallback above cannot win on iPhone.
+   Keep the same constrained-device intent, including the fixed filter rail. */
+html body.ios-device.ops-precision-pilot :is(
+  #app-top-chrome, .nav-header, #global-header-search-row, #bottom-nav,
+  .sticky-search, .freeze-panel, .fixed-filter-rail, .mobile-browse-rail,
+  .grower-mobile-toolbar, .grower-toolbar-popover
+) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   body.ops-precision-pilot *,
   body.ops-precision-pilot *::before,
@@ -9901,7 +9913,7 @@ body.ops-precision-pilot.current-view-request #request-filter-toolbar {
 }
 
 /* Shared Bloom card contract: title/photo/index share one stable header, while
-   the six inventory metrics remain a single readable row. */
+   metadata wraps above the responsive six-metric grid. */
 #bloom-picker-actions-list:not(.hidden) {
   display: flex !important;
   flex-wrap: nowrap !important;
@@ -9940,15 +9952,35 @@ body.ops-precision-pilot.current-view-request #request-filter-toolbar {
 }
 .app-bloom-card-heading { min-width: 0; overflow: hidden; }
 .app-bloom-card-index { min-width: 0; max-width: 7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app-bloom-card-meta { min-width: 0; overflow-wrap: anywhere; }
-.app-bloom-card-metrics { min-width: 0; width: 100%; }
-.app-bloom-card-metrics .app-card-qty-row {
+.app-bloom-card-meta { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; margin: 6px 0; }
+.app-bloom-card-meta > span {
+  min-width: 0; max-width: 100%; padding: 3px 6px; border-radius: 999px;
+  border: 1px solid var(--ops-border, #d8e1db); background: var(--ops-surface-muted, #f3f7f4);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#bloom-picker-tray .app-bloom-card-metrics { min-width: 0; width: 100%; }
+#bloom-picker-tray .app-bloom-card-metrics .app-card-qty-row {
   display: grid !important;
-  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-auto-rows: 1fr;
   gap: 5px !important;
   min-width: 0;
 }
-.app-bloom-card-metrics :is(.app-card-qty-label, .app-card-qty-value) {
+#bloom-picker-tray .app-bloom-card-metrics .app-card-qty-chip {
+  display: grid !important;
+  grid-template-rows: auto auto;
+  align-content: center;
+  min-width: 0;
+  gap: 3px;
+}
+#bloom-picker-tray .app-bloom-card-metrics .app-card-qty-chip > :is(.app-card-qty-label, .app-card-qty-value) { display: block; }
+#bloom-picker-tray .app-bloom-card-metrics .app-card-qty-separator { display: none !important; }
+#bloom-picker-tray .app-bloom-card-metrics :is(.app-card-qty-chip, .app-card-qty-label, .app-card-qty-value)::before,
+#bloom-picker-tray .app-bloom-card-metrics :is(.app-card-qty-chip, .app-card-qty-label, .app-card-qty-value)::after { content: none !important; }
+@media (min-width: 768px) {
+  #bloom-picker-tray .app-bloom-card-metrics .app-card-qty-row { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+}
+#bloom-picker-tray .app-bloom-card-metrics :is(.app-card-qty-label, .app-card-qty-value) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

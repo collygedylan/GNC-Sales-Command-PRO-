@@ -29,7 +29,7 @@ const SOURCE_FILES = Object.freeze([
   'supabase/ci/v2311_suspend_recipient_cleanup.sql', 'supabase/ci/v2311_suspend_recipient_prerequisites.sql',
   'supabase/tests/inventory_reclass_move_delivery_v1_test.sql',
   'supabase/tests/inventory_reclass_moves_v1_test.sql', 'supabase/tests/user_access_control_v1_test.sql',
-  'sw.js', 'tests/access-control-audit.test.mjs', 'tests/apps-script-function-patch.test.mjs', 'tests/bloom-picker-metrics.test.mjs',
+  'sw.js', 'tests/access-control-audit.test.mjs', 'tests/apps-script-function-patch.test.mjs', 'tests/av-derived-rows.test.mjs', 'tests/bloom-picker-metrics.test.mjs',
   'tests/fixtures/hl-order-state.mjs', 'tests/fixtures/v2311-canonical-access.mjs', 'tests/helpers/customer-mapping-fixture.mjs',
   'tests/inventory-card-location-on-hand.test.mjs', 'tests/item-detail-shared-options.test.mjs',
   'tests/database-tooling.test.mjs', 'tests/eval-report2-async-index.e2e.spec.ts',

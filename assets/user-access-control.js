@@ -37,6 +37,7 @@
     let selfInFlight = null;
     let directoryInFlight = null;
     let configuredIdentityKey = '';
+    let managerUiState = null;
     const saveInFlight = new Set();
 
     const text = value => String(value == null ? '' : value).trim();
@@ -497,6 +498,7 @@
         directoryRecord = null; cachedDirectoryRecord = readDisplayCache();
         directoryStatus = cachedDirectoryRecord ? 'stale' : 'idle'; directoryError = '';
         selfInFlight = null; directoryInFlight = null; saveInFlight.clear();
+        managerUiState = null;
         publish('reset');
     }
 
@@ -530,10 +532,13 @@
         container.classList.add('agdata-user-access');
         const directory = currentDirectory();
         const self = getSelfState();
-        const selectedRole = normalizeRole(options.selectedRole || container.dataset.selectedRole || ROLE_KEYS[0]);
-        const selectedUsername = key(options.selectedUsername || container.dataset.selectedUsername || '');
-        const query = text(options.query ?? container.dataset.query ?? '');
-        const roleFilter = normalizeRole(options.roleFilter ?? container.dataset.roleFilter ?? '');
+        const identity = getIdentity();
+        const identityKey = identity ? `${identity.id}:${identity.username}` : '';
+        const remembered = managerUiState?.identityKey === identityKey ? managerUiState : null;
+        const selectedRole = normalizeRole(options.selectedRole || container.dataset.selectedRole || remembered?.selectedRole || ROLE_KEYS[0]);
+        const selectedUsername = key(options.selectedUsername || container.dataset.selectedUsername || remembered?.selectedUsername || '');
+        const query = text(options.query ?? container.dataset.query ?? remembered?.query ?? '');
+        const roleFilter = normalizeRole(options.roleFilter ?? container.dataset.roleFilter ?? remembered?.roleFilter ?? '');
         const canManage = isVerifiedManager();
         const activeUserCount = currentDirectory()?.users.filter(user => user.active === true).length || 0;
         const statusText = directoryStatus === 'loading' ? 'Refreshing active user access…'
@@ -551,6 +556,7 @@
         container.dataset.selectedUsername = chosenUser?.username || '';
         container.dataset.query = query;
         container.dataset.roleFilter = roleFilter;
+        managerUiState = { identityKey, selectedRole, selectedUsername: chosenUser?.username || selectedUsername, query, roleFilter };
         // Async self/directory refreshes can finish after a manager has changed
         // a selector. Read the rendered state at completion time so an older
         // render's captured defaults cannot reset the active selection.

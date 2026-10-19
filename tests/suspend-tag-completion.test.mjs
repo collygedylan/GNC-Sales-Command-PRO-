@@ -5,6 +5,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const precisionCss = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
 function between(start, end) {
   const from = html.indexOf(start);
   const to = html.indexOf(end, from + start.length);
@@ -765,8 +766,57 @@ test('Complete Tag paints row removal and cached Suspend badge decrement before 
   assert.match(paint, /row\.remove\(\)/);
   assert.match(paint, /'suspend-tag': Math\.max\(0, Number\(requestTabQueueCountsSnapshot\['suspend-tag'\]\) - 1\)/);
   assert.match(paint, /updateRequestTabButtonLabels\(requestTabQueueCountsSnapshot\)/);
-  assert.match(paint, /updateFooterRequestBadge\(requestTabQueueCountsSnapshot\)/);
+  assert.match(paint, /paintFooterRequestBadgeOnly\(requestTabQueueCountsSnapshot\)/);
+  assert.match(paint, /queueRequestBadgeLiveSync\(\)/);
+  assert.doesNotMatch(paint, /updateFooterNavState/);
   assert.match(html, /completion\?\.rollback\(completionKey\)[\s\S]{0,180}refreshLocalDockSuspendDcRequestState\('suspend-tag-completion-settled'/);
+});
+
+test('optimistic Suspend badge paint does not synchronously rebuild mobile navigation', () => {
+  const badgePaint = between('function paintFooterRequestBadgeOnly(', 'function updateFooterRequestBadge(');
+  const normalUpdate = between('function updateFooterRequestBadge(', 'function isQuickDriveRequestMode(');
+  const badgeClasses = new Set();
+  const buttonClasses = new Set();
+  const button = { classList: { toggle: (name, enabled) => enabled ? buttonClasses.add(name) : buttonClasses.delete(name) } };
+  const badge = { innerText: '', classList: {
+    add: name => badgeClasses.add(name),
+    remove: name => badgeClasses.delete(name),
+  } };
+  let liveSyncCalls = 0;
+  let navSyncCalls = 0;
+  const ctx = {
+    document: { getElementById: id => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null },
+    canUseFooterRequestShortcut: () => true,
+    getRequestQueueAlertCount: counts => Number(counts.pending || 0),
+    queueRequestBadgeLiveSync: () => { liveSyncCalls += 1; },
+    updateFooterNavState: () => { navSyncCalls += 1; },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(`${badgePaint}\n${normalUpdate}`, ctx);
+
+  assert.equal(ctx.paintFooterRequestBadgeOnly({ pending: 0 }), true);
+  assert.equal(buttonClasses.has('hidden'), false);
+  assert.equal(badgeClasses.has('hidden'), true);
+  assert.equal(navSyncCalls, 0);
+  assert.equal(liveSyncCalls, 0);
+
+  ctx.updateFooterRequestBadge({ pending: 1 });
+  assert.equal(buttonClasses.has('hidden'), false);
+  assert.equal(badge.innerText, '!');
+  assert.equal(badgeClasses.has('hidden'), false);
+  assert.equal(navSyncCalls, 1, 'ordinary badge updates retain normal navigation reconciliation');
+  assert.equal(liveSyncCalls, 1, 'ordinary badge updates retain background synchronization');
+});
+
+test('iOS constrained chrome fallback overrides the glass rule on fixed filter rails', () => {
+  const glassAt = precisionCss.indexOf('html:not(.outdoor-mode) body.ops-precision-pilot :is(', precisionCss.indexOf('backdrop-filter: blur(16px)'));
+  const fallbackAt = precisionCss.indexOf('html body.ios-device.ops-precision-pilot :is(');
+  assert.ok(glassAt >= 0 && fallbackAt > glassAt, 'the iOS override follows the shared glass rule');
+  const fallbackEnd = precisionCss.indexOf('\n}', fallbackAt);
+  const fallback = precisionCss.slice(fallbackAt, fallbackEnd);
+  assert.match(fallback, /\.fixed-filter-rail/);
+  assert.match(fallback, /-webkit-backdrop-filter:\s*none\s*!important/);
+  assert.match(fallback, /backdrop-filter:\s*none\s*!important/);
 });
 
 test('queued evidence saves use the latest version and retain photos and the newest unsaved draft', async () => {

@@ -41433,7 +41433,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     categoryCount.textContent = formatRequestTabCount(count);
                     categoryCount.classList.toggle('has-count', count > 0);
                 }
-                updateFooterRequestBadge(requestTabQueueCountsSnapshot);
+                paintFooterRequestBadgeOnly(requestTabQueueCountsSnapshot);
+                queueRequestBadgeLiveSync();
             }
             return removed;
         }
@@ -56930,16 +56931,15 @@ let avTopControlsRenderToken = 0;
             }, Math.max(0, Number(delay) || 0));
         }
 
-        function updateFooterRequestBadge(counts = null) {
+        function paintFooterRequestBadgeOnly(counts = null) {
             const button = document.getElementById('footer-request-btn');
             const badge = document.getElementById('footer-request-badge');
-            if (!button || !badge) return;
+            if (!button || !badge) return null;
             const canUse = canUseFooterRequestShortcut();
             button.classList.toggle('hidden', !canUse);
             if (!canUse) {
                 badge.classList.add('hidden');
-                updateFooterNavState();
-                return;
+                return false;
             }
             const queueCount = getRequestQueueAlertCount(counts);
             if (queueCount > 0) {
@@ -56947,6 +56947,16 @@ let avTopControlsRenderToken = 0;
                 badge.classList.remove('hidden');
             } else {
                 badge.classList.add('hidden');
+            }
+            return true;
+        }
+
+        function updateFooterRequestBadge(counts = null) {
+            const canUse = paintFooterRequestBadgeOnly(counts);
+            if (canUse === null) return;
+            if (!canUse) {
+                updateFooterNavState();
+                return;
             }
             queueRequestBadgeLiveSync();
             updateFooterNavState();
@@ -93870,8 +93880,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // Keep the verified preview visible while preparing the bounded
             // native REP page. Publishing once avoids repeated style/layout of
             // the growing list; generation still yields between small batches.
-            const publishTogether = options.firstPreviewCardSync !== true
-                && total <= CLIENT_BROWSE_PAGE_SIZE
+            const publishTogether = total <= CLIENT_BROWSE_PAGE_SIZE
                 && canUseProductionLiveSync() && shouldUseRepAvOpenDataset();
             let preparedMarkup = '';
             let firstBatch = true;
@@ -93942,6 +93951,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // animation-frame batch. All remaining cards keep normal pacing.
             if (options.firstPreviewCardSync === true && index < total) {
                 const firstCard = renderBatch(1, false);
+                // Keep the one-card loading preview interactive while the rest
+                // of a verified partial page is generated off-DOM. If this
+                // render is superseded, the token guard leaves that preview
+                // intact; a current render publishes the full window once.
+                if (publishTogether) preparedMarkup = firstCard;
                 setContainerHtml(container, firstCard);
                 firstBatch = false;
             }
@@ -101387,9 +101401,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         <div class="app-bloom-card-heading min-w-0">
                             <div class="truncate text-sm font-black leading-tight text-slate-900">${title} ${contSize}</div>
                             <div class="mt-0.5 truncate text-[11px] font-bold text-slate-500">${itemCode}</div>
-                            <div class="app-bloom-card-meta text-[9px] font-black uppercase">LOC ${locationCode} · LOT ${lotCode} · PRI ${priority} · DESIGLOC ${desigLoc}</div>
                         </div>
                         <div class="app-bloom-card-index shrink-0 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase text-[#007a4d]">${index + 1}</div>
+                    </div>
+                    <div class="app-bloom-card-meta text-[9px] font-black uppercase" aria-label="Row details">
+                        <span>LOC ${locationCode}</span><span>LOT ${lotCode}</span><span>PRI ${priority}</span><span>DESIGLOC ${desigLoc}</span>
                     </div>
                     <div class="app-bloom-card-metrics">${buildInventoryQuantityChipsHtml(item, { compact: true, layout: 'row', preserveUnknown: true, sourceView: 'drive' })}</div>
                 </div>
