@@ -109,6 +109,7 @@ test('AV first cards use scheduled bounded frames and obsolete renders never rep
   const frames = [], generated = [];
   const container = { style: {}, classList: { add() {} }, html: 'previous', insertAdjacentHTML(_where, value) { this.html += value; } };
   const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String,
+    CLIENT_BROWSE_PAGE_SIZE: 100, canUseProductionLiveSync: () => false, shouldUseRepAvOpenDataset: () => false,
     performance: { now: () => 0 }, beginInternalPerfMeasure: () => 0,
     clearChunkRenderTimersByKey() {}, buildRowsRenderSignature: () => 'changed',
     isAdaptivePerformanceMode: () => false, getAdaptivePerformanceLevel: () => 0,
@@ -268,7 +269,7 @@ test('failed AV derivation clears only its current partial view cache so a later
         return prepareCalls === 1 ? Promise.reject(new Error('temporary preparation failure')) : Promise.resolve([{ id: 'complete' }]);
       }
     } },
-    normalizeAvSalesBucket: value => String(value),
+    normalizeAvSalesBucket: value => String(value), shouldUseRepAvOpenDataset: () => false,
     getAvSalesDerivationIdentity: () => identity,
     AV_DERIVED_ROWS_CHUNK_SIZE: 96,
     AV_DERIVED_PREVIEW_SOURCE_LIMIT: 50,
@@ -277,7 +278,7 @@ test('failed AV derivation clears only its current partial view cache so a later
     }),
     avDerivedRowsActiveScope: '', avDerivedRowsPendingSignature: '',
     avResolvedBaseStateKey: 'partial-state', avResolvedBaseStateCache: { isPartial: true },
-    activeAVTab: 'open', isViewVisible: () => true, scheduleAVRender() { scheduledRenders += 1; },
+    activeAVTab: 'open', activeAvSalesBucket: 'current', isViewVisible: () => true, scheduleAVRender() { scheduledRenders += 1; },
     console: { warn() {} },
   };
   vm.createContext(context);
@@ -310,6 +311,7 @@ test('AV retries a cancelled source generation without reviving an old account o
       window: { AgMetricAvDerivedRows: { peek: () => null, prepare: () => new Promise(resolve => { finish = resolve; }) } },
       normalizeAvSalesBucket: value => String(value), getAvSalesDerivationIdentity: () => identity,
       AV_DERIVED_ROWS_CHUNK_SIZE: 96, AV_DERIVED_PREVIEW_SOURCE_LIMIT: 50,
+      shouldUseRepAvOpenDataset: () => false,
       createAvSalesRowsDerivation: () => ({ sourceRows: [], mapRow: row => row, finalize: rows => rows }),
       avDerivedRowsActiveScope: '', avDerivedRowsPendingSignature: '',
       avResolvedBaseStateKey: 'preview', avResolvedBaseStateCache: { isPartial: true },
@@ -347,7 +349,7 @@ test('chunked AV derivation preserves bucket filtering, approval, deduplication,
     Map, Array, Number, String, Promise, Intl,
     activeAvSalesBucket: 'current', activeAvOpenTab: 'name', fullInventory: rows,
     AV_FILTER_SEASON_OPTIONS: ['F1', 'S1', 'U1', 'U2'],
-    normalizeAvSalesBucket: bucket => String(bucket),
+    normalizeAvSalesBucket: bucket => String(bucket), shouldUseRepAvOpenDataset: () => false,
     getAvSalesReserveDemandRows: () => [], buildAvReserveSeasonIndex: () => ({}),
     isAvCustomerSalesBucket: () => false,
     getAvSalesInventorySourceRows: () => rows,
@@ -410,7 +412,7 @@ test('hot-price row batching preserves the matched source fields and season rule
     Map, Array, Number, String, Object,
     activeAvSalesBucket: 'hot-price', fullInventory: rows,
     AV_FILTER_SEASON_OPTIONS: ['F1', 'S1', 'U1', 'U2'],
-    normalizeAvSalesBucket: value => String(value), getAvSalesReserveDemandRows: () => [],
+    normalizeAvSalesBucket: value => String(value), getAvSalesReserveDemandRows: () => [], shouldUseRepAvOpenDataset: () => false,
     buildAvReserveSeasonIndex: () => ({}), isAvCustomerSalesBucket: () => false,
     avHotPriceKeysInventory: [
       { ITEMCODE: 'ITEM-A', CAV_HOT_PRICE: '12.50', CAV_ITEMCODE: 'PRICE-A', CAV_FILENAME: 'prices.csv', CAV_LAST_UPDATED: '2026-10-15' },
@@ -483,7 +485,7 @@ test('prepared AV raw-tab rows preserve photo and shift membership while rejecti
     window: {}, activeAvSalesBucket: 'current', activeAVTab: 'open', activeAvOpenTab: 'name', activeAvPhotoMode: 'all',
     resolvedViewStateEpoch: 11, avPreparedRawTabRows: new WeakMap(),
     fullInventory: rows, avHotPriceKeysInventory: [], AV_FILTER_SEASON_OPTIONS: ['F1', 'S1'],
-    normalizeAvSalesBucket: value => String(value), getAvSalesReserveDemandRows: () => [], buildAvReserveSeasonIndex: () => ({}),
+    normalizeAvSalesBucket: value => String(value), getAvSalesReserveDemandRows: () => [], buildAvReserveSeasonIndex: () => ({}), shouldUseRepAvOpenDataset: () => false,
     isAvCustomerSalesBucket: () => false, getAvSalesInventorySourceRows: () => rows,
     shouldHideU3InventoryRowForRep: () => false, itemMatchesAvOpenSalesWindow: row => row.inWindow !== false,
     getAvSalesSeasonValue: row => String(row.SEASON || ''), isShiftDesigItemRow: row => String(row.DESIGITEM || '').includes('SHFT'),

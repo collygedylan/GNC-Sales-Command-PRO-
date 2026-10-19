@@ -1,7 +1,9 @@
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverTests, readTestAnnotations } from './test-discovery.mjs';
+import { verifyV238RetainedValidation } from './check-v238-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
@@ -19,6 +21,12 @@ export function runDiscoveredNodeTests({ root = repositoryRoot, group, argv = []
   if (!files.length) throw new Error(`DISCOVERED_TEST_GROUP_EMPTY: ${group}${tag ? ':' + tag : ''}`);
   if (remainder.includes('--list')) {
     print(JSON.stringify(files, null, 2));
+    return 0;
+  }
+  if (group === 'python' && JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version === '2.3.8') {
+    const evidence = verifyV238RetainedValidation({ rootDir: root });
+    if (!evidence.retainedPythonContractUnchanged) throw new Error('V238_PYTHON_CONTRACT_RETENTION_SOURCE_MISMATCH');
+    print(`Retaining the unchanged Python contract check from successful baseline CI ${evidence.baselineContractsRun}; source hash matches base, so Python is not rerun.`);
     return 0;
   }
   if (group === 'local-auth-smoke') {

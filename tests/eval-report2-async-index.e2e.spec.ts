@@ -1,5 +1,6 @@
 import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test } from '@playwright/test';
+import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 // @test-group: @local-e2e,@release-timing,eval
 
 
@@ -154,4 +155,175 @@ test('large Eval Report2 cache rebuild stays off the render path and preserves e
     firstLoadFailed: true, firstFailureEvent: true, failedTargetReadCalls: 5, retryTargetReadCalls: 5,
     targetCases: { overrideWinsAndExcludes: true, suggestionBoundaryIsStrict: true,
       noHistoryUsesFallback: true, completeRequestedSummaries: true } });
+});
+
+test('Eval #2 shared snapshot reopens without loading flash and keeps MORE open through updates', {"tag":["@local-e2e","@release-timing"]}, async ({ page, baseURL }, testInfo) => {
+  const fixture = await installHlOrderFixture(page, baseURL!, {
+    username: 'dylan_collyge', role: 'ADMIN', startupMode: 'restored',
+  });
+  await fixture.waitForRevisionIdle();
+  await page.waitForFunction(() => typeof (window as any).renderManagerEvalReport2Records === 'function');
+  const result = await page.evaluate(async () => (window as any).eval(`(async () => {
+    resetProductionLiveSync();
+    currentUser = 'dylan_collyge'; currentRole = 'Manager';
+    canViewManagerEvalReports2 = () => true;
+    canUseProductionLiveSync = () => false;
+    useManagerReportPages = () => false;
+    getSupabaseReadIdentityScope = () => 'eval2-shared-snapshot';
+    scheduleManagersRender = () => {};
+    getConfiguredCurrentSeasonCode = () => 'F1';
+    getConfiguredCurrentSalesYearCode = () => 27;
+    getConfiguredNextSaleSeasonTarget = () => ({ season:'S1', salesYear:27 });
+    managerEvalReportSettings = { lowStockMaxSLts:150, holdAgeDays:5, locationNoteAgeDays:10 };
+    loadManagerEvalReportSettings = async () => managerEvalReportSettings;
+    fullInventory = [];
+    warehouseAssignedItemsInventory = [];
+    for (let item = 0; item < 1000; item += 1) {
+      const itemcode = item === 0 ? 'CACHE-001' : 'SUP-' + String(item).padStart(4, '0');
+      for (let physical = 0; physical < 10; physical += 1) {
+        const uniqueId = 'eval2-' + item + '-' + physical;
+        const active = item === 0 && physical === 0;
+        fullInventory.push({ UNIQUE_ID:uniqueId, ITEMCODE:itemcode, COMMONNAME:item === 0 ? 'Cache Test' : 'Suppressed ' + item,
+          GENUSNAME:'Genus', SEASON:active ? 'F1' : 'U3', SALEYEAR:27, LOTCODE:active ? '27.F1' : '27.U3',
+          CONTSIZE:'#1', LOCATIONCODE:'A.' + String(item % 99).padStart(2, '0') + '.' + String(physical).padStart(3, '0'),
+          S_LTS:40, ITEMDESI:'' });
+        warehouseAssignedItemsInventory.push({ master_unique_id:uniqueId, ASSIGNEDTO:physical % 2 ? 'Bob' : 'Alice' });
+      }
+    }
+    fullInventory.push({ UNIQUE_ID:'eval2-10000', ITEMCODE:'CACHE-001', COMMONNAME:'Cache Test', GENUSNAME:'Genus',
+      SEASON:'U3', SALEYEAR:27, LOTCODE:'27.U3', CONTSIZE:'#1', LOCATIONCODE:'B.01.001', S_LTS:40, ITEMDESI:'' });
+    warehouseAssignedItemsInventory.push({ master_unique_id:'eval2-10000', ASSIGNEDTO:'Bob' });
+    for (const name of ['master','warehouseAssignedItems']) {
+      const state = getDatasetState(name); state.initialLoaded = state.fullLoaded = true;
+      state.fieldCoverage = 'full'; state.rowCompleteness = 'complete';
+    }
+    managerEvalReport2LoadState = { loading:false, error:'', promise:null, lastSourceUpdatedAt:'' };
+    managerEvalReport2Cache = null; managerEvalReport2CacheKey = '';
+    managerEvalReport2NeedsReconcile = false;
+    managerEvalReport2MoreMenuOpen = false;
+    managerEvalReport2AssignedToFilter = 'all'; managerEvalReport2AssignedToFilters = new Set();
+    managerEvalReport2SeasonFilters = new Set(); managerEvalReport2ContSizeFilter = 'all';
+    managerEvalReport2LocationFilter = 'all'; managerEvalReport2PriorityFilter = 'all';
+    managerEvalReport2SelectedReportIds = ['u3']; activeManagerEvalReport2 = 'u3';
+    managerEvalReport2BrowseMode = 'plant'; managerEvalReport2DrillLevel = 0;
+    managerEvalReport2VisibleGroupsCacheKey = ''; managerEvalReport2VisibleGroupsCache = [];
+    const beforeBuild = { sourceRows:fullInventory.length, assignmentRows:warehouseAssignedItemsInventory.length,
+      selectedReports:getManagerEvalReport2SelectedReportIds(), displaySourcesReady:managerEvalReport2DisplaySourcesReady(),
+      cacheKey:getManagerEvalReport2CacheKeyValue(), apiAvailable:!!getManagerEvalReports2Api() };
+    const index = getManagerEvalReport2Index(true);
+    if (!index) throw new Error('shared cache fixture could not build the Eval2 index');
+    const ensureDatasetLoads = ensureDatasetLoaded;
+    const loadSettings = loadManagerEvalReportSettings;
+    let datasetLoads = 0, settingsLoads = 0;
+    ensureDatasetLoaded = async (...args) => { datasetLoads += 1; return ensureDatasetLoads(...args); };
+    loadManagerEvalReportSettings = async (...args) => { settingsLoads += 1; return loadSettings(...args); };
+    const cacheStart = performance.now();
+    await loadManagerEvalReports2(false);
+    const warmOpenMs = performance.now() - cacheStart;
+    const panelHost = document.createElement('div'); panelHost.id = 'eval2-panel-host'; document.body.appendChild(panelHost);
+    const domOpenStart = performance.now();
+    panelHost.innerHTML = renderManagerEvalReports2Panel();
+    renderManagerEvalReport2Records();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const warmOpenDomMs = performance.now() - domOpenStart;
+    const recordsHost = panelHost.querySelector('#manager-eval-report-2-records');
+    const userFilter = panelHost.querySelector('[data-role="manager-eval2-user-filter"]');
+    if (!recordsHost || !(userFilter instanceof HTMLSelectElement)) throw new Error('warm Eval2 panel or direct Users filter did not render');
+    const groups = getManagerEvalReport2VisibleItemGroups();
+    const cacheCodes = groups.map(group => group.itemCode);
+    let details = panelHost.querySelector('details#manager-eval-report-2-more-menu');
+    if (!details) throw new Error('Eval2 MORE drawer missing from the shared snapshot');
+    details.querySelector('summary').click();
+    await new Promise(resolve => setTimeout(resolve, 25));
+    details = panelHost.querySelector('details#manager-eval-report-2-more-menu');
+    const openedByUser = !!details.open && managerEvalReport2MoreMenuOpen;
+    const initialCardCount = recordsHost.querySelectorAll('.manager-eval2-item-card').length;
+    const initialRenderedCardCount = initialCardCount;
+    const initialCardText = recordsHost.textContent;
+    const start = performance.now();
+    let loadingFlashSeen = false, drawerClosed = false, cardLost = false;
+    while (performance.now() - start < 5000) {
+      await loadManagerEvalReports2(false);
+      // Match production live-sync updates: repaint report records while the
+      // shared controls (including the MORE details node) remain mounted.
+      renderManagerEvalReport2Records();
+      details = panelHost.querySelector('details#manager-eval-report-2-more-menu');
+      loadingFlashSeen ||= /Loading inventory and assignments|Refreshing complete inventory/i.test(panelHost.textContent + recordsHost.textContent);
+      drawerClosed ||= !details?.open;
+      cardLost ||= recordsHost.querySelectorAll('.manager-eval2-item-card').length !== initialCardCount
+        || recordsHost.textContent !== initialCardText;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    const expectedForUser = username => index.reports.u3.filter(row =>
+      getManagerEvalReportRowAssignedToUsers(row).some(value => String(value).toLocaleLowerCase() === username.toLocaleLowerCase()));
+    const filterResults = {};
+    for (const username of ['Alice', 'Bob']) {
+      const activeUserFilter = panelHost.querySelector('[data-role="manager-eval2-user-filter"]');
+      if (!(activeUserFilter instanceof HTMLSelectElement)) throw new Error('direct Users filter disappeared after panel update');
+      activeUserFilter.value = username;
+      activeUserFilter.dispatchEvent(new Event('change', { bubbles:true }));
+      panelHost.innerHTML = renderManagerEvalReports2Panel();
+      renderManagerEvalReport2Records();
+      const visibleGroups = getManagerEvalReport2VisibleItemGroups();
+      const expectedRows = expectedForUser(username);
+      const expectedCodes = Array.from(new Set(expectedRows.map(getManagerEvalReport2ItemCode))).sort();
+      const visibleCodes = visibleGroups.map(group => group.itemCode).sort();
+      const cards = Array.from(panelHost.querySelectorAll('.manager-eval2-item-card'));
+      const cardCodes = cards.map(card => card.querySelector('[data-role="manager-eval2-selection-toggle"]')?.getAttribute('data-itemcode') || '')
+        .filter(Boolean).sort();
+
+      managerEvalReport2BrowseMode = 'location';
+      managerEvalReport2DrillLevel = 0;
+      managerEvalReport2SelectedBlockAlpha = '';
+      managerEvalReport2SelectedLocationCode = '';
+      const blockGroups = getManagerEvalReport2DrillGroups();
+      const expectedBlocks = Array.from(new Set(expectedRows.map(getDriveBlockAlphaValue))).sort();
+      const actualBlocks = blockGroups.map(group => group.value).sort();
+      const locationGroups = [];
+      for (const block of blockGroups) {
+        managerEvalReport2SelectedBlockAlpha = block.value;
+        managerEvalReport2DrillLevel = 1;
+        locationGroups.push(...getManagerEvalReport2DrillGroups());
+      }
+      const expectedLocations = Array.from(new Set(expectedRows.map(row => getManagerEvalReportRowLocation(row)))).sort();
+      const actualLocations = locationGroups.map(group => group.value).sort();
+      filterResults[username] = {
+        expectedCodes, visibleCodes, cardCodes,
+        expectedBlocks, actualBlocks, expectedLocations, actualLocations,
+        blockRowsMatchUser: blockGroups.every(group => group.rows.every(row =>
+          getManagerEvalReportRowAssignedToUsers(row).some(value => String(value).toLocaleLowerCase() === username.toLocaleLowerCase()))),
+      };
+      managerEvalReport2BrowseMode = 'plant';
+      managerEvalReport2DrillLevel = 0;
+      managerEvalReport2SelectedBlockAlpha = '';
+      managerEvalReport2SelectedLocationCode = '';
+    }
+    return { warmOpenMs, warmOpenDomMs, initialCardCount:initialRenderedCardCount,
+      userFilterRendered:true, filterResults, datasetLoads, settingsLoads, openedByUser, drawerStayedOpen:!!details?.open,
+      loadingFlashSeen, cardLost, cardCount:initialCardCount, cacheCodes,
+      visibleUserOptions:getManagerEvalReport2UserFilterOptions(getManagerEvalReport2Rows()).map(option => option.label),
+      drawerClosed, diagnostics:{ beforeBuild, sourceRowsNow:fullInventory.length,
+        reportRows:index.reports.u3.length, selectedReports:getManagerEvalReport2SelectedReportIds(),
+        allRows:index.allRows.length, selectedRows:getManagerEvalReport2Rows().length,
+        assignedNames:index.assignedToOptions, datasetState:{ master:getDatasetState('master').fullLoaded,
+          assignments:getDatasetState('warehouseAssignedItems').fullLoaded } } };
+  })()`));
+  console.log(`EVAL2_SHARED_CACHE_RESULT ${JSON.stringify(result)}`);
+  await testInfo.attach('eval-report2-shared-cache-open', { body:JSON.stringify(result), contentType:'application/json' });
+  expect(result.warmOpenMs).toBeLessThan(300);
+  expect(result.warmOpenDomMs).toBeLessThan(300);
+  expect(result).toMatchObject({ datasetLoads:0, settingsLoads:0, openedByUser:true, drawerStayedOpen:true,
+    loadingFlashSeen:false, cardLost:false, cardCount:1, initialCardCount:1, userFilterRendered:true,
+    cacheCodes:['CACHE-001'], drawerClosed:false,
+    visibleUserOptions:['All Users (1)','Alice (1)','Bob (1)'] });
+  for (const username of ['Alice', 'Bob'] as const) {
+    const snapshot = result.filterResults[username];
+    expect(snapshot.visibleCodes, `${username} filtered ITEMCODE groups`).toEqual(snapshot.expectedCodes);
+    expect(snapshot.cardCodes, `${username} rendered ITEMCODE cards`).toEqual(snapshot.expectedCodes);
+    expect(snapshot.actualBlocks, `${username} filtered location blocks`).toEqual(snapshot.expectedBlocks);
+    expect(snapshot.actualLocations, `${username} filtered location rows`).toEqual(snapshot.expectedLocations);
+    expect(snapshot.blockRowsMatchUser, `${username} block/location rows remain assigned to the selected user`).toBeTruthy();
+  }
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
 });

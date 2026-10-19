@@ -25,6 +25,7 @@ jobs:
     outputs:
       authorized: ${{ steps.guard.outputs.authorized }}
       backend-changed: ${{ steps.scope.outputs.backend-changed }}
+      v238: ${{ steps.scope.outputs.v238 }}
     steps:
       - name: Check out current main history
         uses: actions/checkout@v4
@@ -69,6 +70,11 @@ jobs:
             esac
           done
           echo "backend-changed=$backend_changed" >> "$GITHUB_OUTPUT"
+          if [[ "$(jq -r '.version' package.json)" == '2.3.8' ]]; then
+            echo 'v238=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'v238=false' >> "$GITHUB_OUTPUT"
+          fi
 
   backend-validation:
     name: Validate backend schema and transactions before deployment
@@ -83,23 +89,45 @@ jobs:
 
   pending-order-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true'
     uses: ./.github/workflows/bloomscapes-pending-tests.yml
 
   suspend-tag-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true'
     uses: ./.github/workflows/suspend-tag-tests.yml
 
   live-dataset-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true'
     uses: ./.github/workflows/live-dataset-revisions.yml
+
+  v238-retained-contracts:
+    name: Verify retained v2.3.8 database contract receipts
+    needs: [authorize-backend, backend-validation]
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install locked checker dependencies
+        uses: ./.github/actions/setup-node-dependencies
+      - name: Require exact retained pending-order and live-dataset contract hashes
+        run: |
+          node --input-type=module <<'NODE'
+          import { verifyV238RetainedValidation } from './scripts/check-v238-retained-validation.mjs';
+          const receipt = verifyV238RetainedValidation({ rootDir: process.cwd() });
+          if (receipt.canRetainPendingOrderContract !== true) throw new Error('V238_PENDING_ORDER_CONTRACT_NOT_RETAINABLE');
+          if (receipt.canRetainLiveDatasetContract !== true) throw new Error('V238_LIVE_DATASET_CONTRACT_NOT_RETAINABLE');
+          console.log('PASS retained pending-order and live-dataset contracts match their verified baseline hashes');
+          NODE
 
   deploy-supabase:
     name: Apply backend migrations and deploy Edge Functions
-    needs: [authorize-backend, backend-validation, pending-order-contract, suspend-tag-contract, live-dataset-contract]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'
+    needs: [authorize-backend, backend-validation, pending-order-contract, suspend-tag-contract, live-dataset-contract, v238-retained-contracts]
+    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && ((needs.authorize-backend.outputs.v238 == 'true' && needs.v238-retained-contracts.result == 'success' && needs.pending-order-contract.result == 'skipped' && needs.suspend-tag-contract.result == 'skipped' && needs.live-dataset-contract.result == 'skipped') || (needs.authorize-backend.outputs.v238 != 'true' && needs.v238-retained-contracts.result == 'skipped' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -150,6 +178,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
+          V238_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v238 }}
         shell: bash
         run: |
           set -euo pipefail
@@ -159,7 +188,6 @@ jobs:
           [[ "$APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID" =~ ^AKfy[a-zA-Z0-9_-]+$ ]] || { echo 'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID_REQUIRED'; exit 1; }
           web_app_url="https://script.google.com/macros/s/${APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID}/exec"
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
-          supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
           deploy_with_retry() {
             local attempt output status
             for attempt in 1 2 3; do
@@ -177,15 +205,22 @@ jobs:
               sleep "$((attempt * 5))"
             done
           }
-          deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
-          # send-push-alert remains intentionally held at its current production version.
-          deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
-          deploy_with_retry supabase functions deploy calendar-reminder-sweep --use-api --project-ref "$project_ref"
-          deploy_with_retry supabase functions deploy scheduled-offboarding --use-api --project-ref "$project_ref"
-          deploy_with_retry supabase functions deploy auth-admin --use-api --project-ref "$project_ref"
-          deploy_with_retry supabase functions deploy inventory-assistant --use-api --project-ref "$project_ref"
-          deploy_with_retry supabase functions deploy aura-query --use-api --project-ref "$project_ref"
-          deploy_with_retry supabase functions deploy aura-llm-router --use-api --project-ref "$project_ref"
+          if [[ "$V238_SCOPED_DEPLOY" == 'true' ]]; then
+            deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy send-push-alert --use-api --project-ref "$project_ref"
+          else
+            supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy send-push-alert --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy calendar-reminder-sweep --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy scheduled-offboarding --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy auth-admin --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy inventory-assistant --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy aura-query --use-api --project-ref "$project_ref"
+            deploy_with_retry supabase functions deploy aura-llm-router --use-api --project-ref "$project_ref"
+          fi
 
       - name: Verify deployed Aura authorization
         env:

@@ -17,6 +17,22 @@ function applyProductionCardStyles(window) {
   window.document.head.append(style);
 }
 
+function extractCssBlock(source, marker) {
+  const start = source.indexOf(marker);
+  assert.ok(start >= 0, `missing CSS marker ${marker}`);
+  const brace = source.indexOf('{', start);
+  assert.ok(brace >= 0, `missing CSS block ${marker}`);
+  let depth = 0;
+  for (let index = brace; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(brace + 1, index);
+    }
+  }
+  assert.fail(`unterminated CSS block ${marker}`);
+}
+
 test('pastel Suspend cards use dark text in both themes without recoloring buttons', t => {
   const styles = html.match(/<style id="suspend-card-contrast">([\s\S]*?)<\/style>/)?.[1];
   assert.ok(styles);
@@ -58,12 +74,13 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     w.document.body.classList.add('ops-precision-pilot', 'current-view-request');
     applyProductionCardStyles(w);
   }
-  const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1', DOM_ID: 'request-soc-1', COMMONNAME: 'Test tree', CONTSIZE: '#3', ITEMCODE: 'SKU-1', LOTCODE: '27.U3', LOCATIONCODE: 'A1', DOCK_NUM: 'Dock 30', DOCK_SPEC: 'Full', PLANSTART: '10/19/2026', suspend_tag_status: status, suspend_tag_delivery_status: 'failed' };
+  const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1', DOM_ID: 'request-soc-1', COMMONNAME: 'Test tree', CONTSIZE: '#3', ITEMCODE: 'SKU-1', LOTCODE: '27.U3', LOCATIONCODE: 'A1', DOCK_NUM: 'Dock 30', DOCK_SPEC: 'Full', PLANSTART: '10/19/2026', HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'Await release', CONSIGNEENAME: 'A consignee', SALESREPNAME: 'A rep', suspend_tag_status: status, suspend_tag_delivery_status: 'failed' };
   const inventory = master ? { ...item, UNIQUE_ID: 'master-1', SOURCE_TABLE: 'ph_master_inventory' } : null;
   const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll("'", '&#39;');
   Object.assign(w, {
     item, activeReqTab: 'suspend-tag', sourceView: 'request', activeDetailSourceView: '', lastView: 'request',
     esc, escJsAttrValue: esc, firstNonEmptyValue: (...values) => values.find(v => v != null && String(v).trim()) ?? '',
+    cleanHoldCode: 'H', holdReasonText: 'Await release',
     isDockSuspendDcRequestMirrorRow: row => row?.UNIQUE_ID === item.UNIQUE_ID,
     findDockSuspendDcRequestSourceRow: () => ({ UNIQUE_ID: 'soc-1', SOURCE_TABLE: 'ph_soc_master' }),
     getDockSuspendDcRequestLinkedMasterRow: () => inventory,
@@ -76,7 +93,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     canUseProductionLiveSync: () => false,
     getDockSuspendDcRequestPlanstartValue: row => row.PLANSTART || '',
     getDockStopOrDropValue: () => '3', getDockDisplayQty: () => 8, formatDockDisplayQty: String,
-    getOperationalCardInventoryRow: () => inventory, buildInventoryQuantityChipsHtml: () => '<div>On Hand 8</div>',
+    getOperationalCardInventoryRow: () => inventory, buildInventoryQuantityChipsHtml: () => '<div class="app-card-qty-row"><span>On Hand</span><span>Review</span><span>Available</span><span>Open Stock</span><span>Loc Photo Match</span><span>Loc On Hand</span></div>',
     getSuspendTagStatus: row => row.suspend_tag_status,
     findDockSuspendDcRequestMirrorRowByUniqueId: uid => uid === item.UNIQUE_ID ? item : null,
     retryPendingSuspendTagInventoryReconciliations() {}, showToast() {},
@@ -133,17 +150,49 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
 test('card click and Enter open the shared editor for the exact Suspend Tag row', t => {
   const h = harness(t);
   const meta = h.card.querySelector('.app-operational-card-meta');
-  const fields = h.card.querySelector('.app-operational-card-header-fields');
-  assert.ok(meta && fields);
-  assert.ok(fields.compareDocumentPosition(meta) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
-  assert.equal(meta.textContent.includes('Sales Rep'), true);
-  assert.equal(meta.textContent.includes('Consignee'), true);
-  assert.equal(meta.textContent.includes('Request Qty'), false);
-  assert.equal(meta.textContent.includes('Customer'), false);
+  const order = h.card.querySelector('.app-suspend-tag-order-strip');
+  assert.ok(order);
+  assert.equal(meta, null, 'the compact order fields are rendered only once');
+  assert.deepEqual([...order.querySelectorAll('.app-suspend-tag-order-field > span:first-child')].map(node => node.textContent), ['Dock', 'Drop', 'Qty', 'Consignee', 'Sales Rep']);
+  assert.equal(order.textContent.includes('A consignee'), true);
+  assert.equal(order.textContent.includes('A rep'), true);
   h.card.querySelector('.app-drive-card-title').click();
   h.card.dispatchEvent(new h.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
   assert.equal(h.calls.length, 2);
   for (const call of h.calls) assert.deepEqual([call[0], call[1], call[2], call[3].preferredTab], ['detail', h.item.UNIQUE_ID, 'request', 'request']);
+});
+
+test('Suspend Tag shows five order fields before six inventory metrics and places one hold row before PLANSTART', t => {
+  const h = harness(t);
+  const order = h.card.querySelector('.app-suspend-tag-order-strip');
+  const metrics = h.card.querySelector('.app-card-qty-row');
+  const hold = h.card.querySelector('.app-suspend-tag-holdstop-row');
+  const status = h.card.querySelector('.app-suspend-tag-status');
+  assert.ok(order && metrics && hold && status);
+  assert.ok(order.compareDocumentPosition(metrics) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.ok(metrics.compareDocumentPosition(hold) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.ok(hold.compareDocumentPosition(status) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.equal(order.querySelectorAll('.app-suspend-tag-order-field').length, 5);
+  assert.equal(metrics.children.length, 6);
+  assert.ok(hold.textContent.includes('H') && hold.textContent.includes('Await release'));
+  assert.equal(h.card.querySelectorAll('.app-suspend-tag-holdstop-row').length, 1);
+  assert.match(status.textContent, /PLANSTART:\s*10\/19\/2026/);
+});
+
+test('Suspend Tag mobile metrics keep all six fields in a single six-column grid', () => {
+  const mobileBlock = css.match(/@media \(max-width:\s*600px\)\s*\{([\s\S]*?)\n\}/)?.[1] || '';
+  assert.doesNotMatch(mobileBlock, /app-suspend-tag-compact-card[\s\S]{0,220}repeat\(3/);
+  assert.match(css, /\.app-suspend-tag-order-strip\s*\{[^}]*grid-template-columns:\s*repeat\(5,/s);
+  assert.match(css, /\.app-suspend-tag-compact-card \.app-card-qty-row\s*\{[^}]*grid-template-columns:\s*repeat\(6,/s);
+});
+
+test('Suspend Tag mobile compaction preserves desktop order-field font sizes', () => {
+  const field = extractCssBlock(css, '#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-field {');
+  const strong = extractCssBlock(css, '#request-content .app-suspend-tag-compact-card .app-suspend-tag-order-field strong {');
+  const mobile = extractCssBlock(css, '@media (max-width: 600px) {');
+  assert.match(field, /font-size:\s*14px/);
+  assert.match(strong, /font-size:\s*14px/);
+  assert.doesNotMatch(mobile, /app-suspend-tag-order-field[^}]*font-size\s*:/s);
 });
 
 test('touch opens once and suppresses its following synthetic click', t => {
@@ -425,6 +474,12 @@ test('photo and no-photo cards put exactly one standard Reclass in the shared he
     const h = harness(t, { photo });
     assert.equal(h.card.querySelectorAll('.app-card-bottom-btn--argos-reclass').length, 1);
     assert.ok(h.card.querySelector('.app-drive-card-header .app-suspend-tag-header-row > .app-drive-card-reclass'));
+    const reclass = h.card.querySelector('.app-drive-card-header .app-suspend-tag-header-row > .app-drive-card-reclass');
+    const spec = reclass.querySelector('.app-suspend-tag-reclass-spec');
+    assert.ok(spec, 'SPEC stays directly below Reclass in the top-right header rail');
+    assert.equal(spec.previousElementSibling?.textContent, 'Reclass');
+    assert.equal(h.card.querySelectorAll('.app-suspend-tag-reclass-spec').length, 1);
+    assert.doesNotMatch(h.card.textContent, /(^|\s)MATCH(?:\s|:|$)/, 'the duplicate MATCH badge is removed');
     const textColumn = h.card.querySelector('.app-suspend-tag-text-column');
     assert.ok(textColumn?.contains(h.card.querySelector('.app-drive-card-title')));
     assert.ok(textColumn?.contains(h.card.querySelector('.app-drive-card-itemcode')));
@@ -433,7 +488,7 @@ test('photo and no-photo cards put exactly one standard Reclass in the shared he
     assert.equal(h.card.querySelector('.app-request-card-bottom .app-card-bottom-btn--argos-reclass'), null);
     assert.equal(h.card.querySelector('.app-drive-card-grid').classList.contains('app-drive-card-grid--no-photo'), !photo);
     assert.ok(h.card.classList.contains('app-drive-card-with-reclass'));
-    assert.ok(h.card.textContent.includes('Hold reason remains complete'));
+    assert.ok(h.card.textContent.includes('Await release'));
     assert.ok(h.card.textContent.includes('Sales note remains complete'));
     assert.equal([...h.card.querySelectorAll('button')].some(button => button.textContent === 'Photo / Specs'), false);
   }
@@ -442,9 +497,10 @@ test('photo and no-photo cards put exactly one standard Reclass in the shared he
 test('compact Suspend metadata has Dock/Drop/Qty immediately after location and PLANSTART immediately before actions', t => {
   const h = harness(t);
   const location = h.card.querySelector('.app-drive-card-meta');
-  const fields = h.card.querySelector('.app-operational-card-header-fields');
-  assert.equal(location.nextElementSibling, fields);
-  assert.deepEqual([...fields.querySelectorAll('.app-operational-card-header-field')].map(node => node.textContent), ['Dock30', 'Drop3', 'Qty8']);
+  const fields = h.card.querySelector('.app-suspend-tag-order-strip');
+  assert.ok(location);
+  assert.ok(h.card.querySelector('.app-drive-card-header').compareDocumentPosition(fields) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.deepEqual([...fields.querySelectorAll('.app-suspend-tag-order-field')].map(node => node.textContent.replace(/\s+/g, '')), ['Dock30', 'Drop3', 'Qty8', 'ConsigneeAconsignee', 'SalesRepArep']);
   const date = h.card.querySelector('.app-operational-planstart-date');
   assert.equal(date.textContent, 'PLANSTART: 10/19/2026');
   assert.equal(date.nextElementSibling, h.card.querySelector('.app-suspend-tag-actions'));
@@ -482,8 +538,8 @@ test('Suspend detail chips omit photo-count and duplicate location-photo badges 
   h.w.eval(extract('buildDockSuspendDcRequestCardDataHtml'));
   const markup = h.w.buildDockSuspendDcRequestCardDataHtml(h.item);
   assert.doesNotMatch(markup, /PHOTOS|LOC PHOTO MATCH/);
-  assert.match(markup, /Full/);
   assert.match(markup, /Keep this note/);
+  assert.match(h.card.querySelector('.app-suspend-tag-reclass-spec')?.textContent || '', /Full/);
 });
 
 test('Email and retry actions use the shared card action guard', t => {
@@ -548,7 +604,7 @@ test('Suspend Tag density is scoped and keeps readable wrapping notes and touch 
   const compactRules = css.slice(compactStart, start);
   assert.match(compactRules, /body\.ops-precision-pilot\.current-view-request #request-content[\s\S]*?\.app-drive-card-grid,[\s\S]*?\.app-drive-card-grid:not\([\s\S]*?\) \{[\s\S]*?row-gap: 5px !important;/);
   assert.match(compactRules, /body\.ops-precision-pilot\.current-view-request #request-content[\s\S]*?\.app-drive-card-grid\.app-drive-card-grid--no-photo,[\s\S]*?\.app-drive-card-grid\.app-drive-card-grid--no-photo:not\([\s\S]*?\) \{[\s\S]*?row-gap: 5px !important;/);
-  assert.match(compactRules, /\.app-suspend-tag-header-row \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) auto;[\s\S]*?column-gap: 8px;/);
+  assert.match(compactRules, /\.app-suspend-tag-header-row \{[\s\S]*?display: grid;[\s\S]*?grid-template-columns: minmax\(0, 1fr\) clamp\(5rem, 23vw, 7rem\);[\s\S]*?gap: 6px;/);
   assert.match(compactRules, /\.app-suspend-tag-text-column \{[\s\S]*?flex-direction: column;[\s\S]*?gap: 3px;/);
   assert.match(compactRules, /\.app-operational-planstart-date \{ margin: 0; \}/);
   assert.match(rules, /\.app-operational-card-header-fields \{ gap: 4px 6px; margin: 0;/);
@@ -563,8 +619,33 @@ test('Suspend Tag density is scoped and keeps readable wrapping notes and touch 
   assert.match(rules, /:is\(\.app-card-note, \.app-suspend-tag-data-note\) \{ margin: 0; padding: 6px; box-shadow: none; overflow-wrap: anywhere;/);
   assert.match(rules, /\.app-suspend-tag-action \{ min-width: 44px; min-height: 44px; padding: 6px 8px;/);
   assert.doesNotMatch(rules, /line-clamp|max-height|overflow:\s*hidden/);
-  for (const selector of rules.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{/g)) {
-    assert.ok(selector[1].trim().startsWith('#request-content .app-suspend-tag-compact-card '));
+  const scopedSource = rules.replace(/\/\*[\s\S]*?\*\//g, '');
+  const selectors = [];
+  let depth = 0, buffer = '';
+  for (const char of scopedSource) {
+    if (char === '{') {
+      const head = buffer.trim();
+      if (head && !head.startsWith('@')) selectors.push(head);
+      depth += 1; buffer = '';
+    } else if (char === '}') { depth = Math.max(0, depth - 1); buffer = ''; }
+    else if (depth === 0) buffer += char;
+  }
+  const splitSelectorList = value => {
+    const parts = [];
+    let depth = 0, start = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      if (value[index] === '(' || value[index] === '[') depth += 1;
+      else if (value[index] === ')' || value[index] === ']') depth = Math.max(0, depth - 1);
+      else if (value[index] === ',' && depth === 0) {
+        parts.push(value.slice(start, index));
+        start = index + 1;
+      }
+    }
+    parts.push(value.slice(start));
+    return parts;
+  };
+  for (const selector of selectors.flatMap(splitSelectorList)) {
+    assert.ok(selector.trim().startsWith('#request-content .app-suspend-tag-compact-card '), selector.trim());
   }
 });
 

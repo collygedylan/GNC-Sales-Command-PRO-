@@ -1,0 +1,365 @@
+{
+  "schemaVersion": "agdata-v238-retained-validation-v1",
+  "release": "AgData v2.3.8",
+  "base": "56d19543e1d1dee8ac0ad749b690b949af09a346",
+  "baselineCiRun": 39226551039,
+  "baselinePagesRun": 39226748483,
+  "retainedNode": 3550,
+  "retainedReact": 158,
+  "retainedBunchShellPassed": 2,
+  "retainedBunchReactPassed": 16,
+  "retainedV237FocusedNodePassed": 45,
+  "baselineReceipt": "docs/releases/v2.3.7-retained-validation.json",
+  "authorization": "AgData v2.3.8 scoped Eval #2, AV, Suspend, and Apps Script function-patch delivery; retain unaffected v2.3.7 results by exact-base and source hashes; do not rerun full Node, React, Python, or SQL suites.",
+  "baselineContracts": {
+    "runId": 39226551039,
+    "headSha": "b6c1d47322af50daa8ce4c8d215edc843c2bea3c",
+    "conclusion": "success",
+    "pythonContractsStep": "success",
+    "reactJob": "success"
+  },
+  "backendContracts": {
+    "pendingOrder": {
+      "runId": 37700127880,
+      "head": "2c127fcd81f68d3c4531dae04224a909784b1f58",
+      "job": "pending-transactions",
+      "conclusion": "success",
+      "inputHashes": {
+        "supabase/tests/bloomscapes_pending_orders_test.sql": "4e101f0e5b1aafddc37a4a810cf8c8cd167707d946972bd0544fc414e0ab46d8",
+        "supabase/ci/bloomscapes_pending_baseline.sql": "b6788a1a6bc34b35b2019086a8eb39d6ccf63defc80f3da3e243373cd0efc2de",
+        "supabase/ci/bloomscapes_pending_concurrency.mjs": "e6215ab9e7ef43646e0e5acdac11ac5100f54daf8ca06bf571d0148d31efabd5"
+      },
+      "workflowJobContractHash": "72482b067c7d5b1a482980d4efb4f9fa05e361f07a18cc1aadc2811d5f5fd66f"
+    },
+    "liveDataset": {
+      "runId": 38309240953,
+      "head": "98dfa06c7c4266fb0ea09b0860e09a80392814d1",
+      "job": "isolated-native-revisions",
+      "conclusion": "success",
+      "inputHashes": {
+        "docs/live-dataset-revisions.md": "e68b3b845bdf56554994640f5b175544129a174b55e0d6fcebf64d464901a76d",
+        "tests/transactions-keyed.test.mjs": "76c63fa01908820e38ea7aad0fca0fbccd0396f625f46e3c4916d34d48380488",
+        "scripts/isolated-preview.mjs": "2b25ecc1d0fde6866216a78cba9b4583f76075b4000fd3d14102cf58361614e6",
+        "scripts/check-isolated-preview.mjs": "6713b9e1e197652b2cfa774e5bb486456702b6becece40db957e06d9c248e86f"
+      },
+      "workflowJobContractHash": "66116bf44c6b8853c22ebff47df15a241af43bdb792f37c420ab8135304318cd"
+    }
+  },
+  "retainedPythonContractFiles": [
+    "tests/test_sync_weather_hold_learning.py"
+  ],
+  "retainedUnchangedSourceHashes": {
+    "assets/bunch-queue-shell.js": "dc944df99d3b9fa2620c2243f5483807ffb5554f3c4b9693a913dc332c45ac4f",
+    "components/bunch-queue/QueueView.tsx": "8a707d0514023012f49a7a8c91b000952102d30996f7b53555262a2904c41457",
+    "components/bunch-queue/WorkCard.tsx": "9433e9f67e52c50f822d44dedca5a6fdcbbfc09087c002e3a8103cf6aadcc120",
+    "components/bunch-queue/bunch-queue.css": "c9d0daf914ee86a3597d0f69c788db07eb65c70a0d5365388d1569f1410ad9b5",
+    "services/bunchQueue.ts": "a59c764a2ae6d2c92fc9eb4c9d49848fd51a6029304402f4ea28f8d7c44fc3d0",
+    "tests/bunch-queue-shell.test.mjs": "d609590a48d6032e560363b504e875bd48086df075e525920a82a6cd1729becb",
+    "tests/bunch-queue-view.test.tsx": "0af8880ef0adc3812b46e42ae32de0d0116a5b0e6aa77db1003ae64f9fc6ae30",
+    "tests/test_sync_weather_hold_learning.py": "52f640f87e1cf48583c5027ae15170f66665cda76ad1562ce12d950c7fba51b4"
+  },
+  "focusedNodeFiles": [
+    "tests/av-windowed-paint.test.mjs",
+    "tests/eval-report2-card-suppression.test.mjs",
+    "tests/suspend-tag-card-layout.test.mjs",
+    "tests/suspend-tag-approval-delivery.test.mjs",
+    "tests/suspend-tag-approval-email-vm.test.mjs",
+    "tests/apps-script-function-patch.test.mjs",
+    "tests/suspend-tag-migration-registration.test.mjs"
+  ],
+  "validatedSourceHashes": {
+    ".github/workflows/apps-script-sync.yml": "81531dc55b55f55e2fac44e89cc769b09c0802db495ce39dc3d79eef229b494c",
+    ".github/workflows/pr-validation.yml": "a9e78cfdc462515663acf71bb02b7c18058a86f635cd2b35cc4ade39e3a1a59f",
+    ".github/workflows/release-database.yml": "8d9f56ef7ede4b609bb94c0b8ee5bf38e7ab3e1edfd918162daee648f27382f7",
+    ".github/workflows/release-validation.yml": "f34327a1d256ba1dd81007e0cf4dc6125e4223b4f84794ada2e75726dad206bc",
+    "Code.gs": "94b7060864265abdf83d9ba6def4011e27d7ebee9b2a53d9596f3445fc86679b",
+    "assets/ops-precision-pilot.css": "c41f9c59a87fbb0049a191cff3e7df49705ce8e8504951db1c5734bfc73cb1f0",
+    "assets/ops-precision-pilot.js": "7066bc91662955dc927a8ca63105e4bf2e18fe9cf59509f46a24fb4b78e04380",
+    "index.html": "bce846ec085c909c744431a7d9d6dd30aceb091ccf3d81dd518ec189081bbb5c",
+    "manifest.json": "e8302b4f15a7b690288b4c63533ec8489eb431f16dd599dbd6127ad386396087",
+    "package-lock.json": "8fafe361f47c640438ab48d9e4edb7e0884531fa077efa1e199035f0ffaefb48",
+    "package.json": "48fa08a7cf29217e3fe4ecdeee989e34830b87fbfa8db3910aa06ac045c7829b",
+    "playwright.av-live-hydration.config.ts": "d9a3aed7f162fd72825e6a61fae2687c111a28c097a13c51f75c7f75fbbf5b88",
+    "scripts/apply-item-low-stock-migration.mjs": "dd111992a5e22086297539573f0255c99502fe42a4d01cb4ce3c2a34d17e6875",
+    "scripts/apps-script-function-patch.mjs": "8a1a2e220c50929d546e17be4130333141c559f9ce23fd02107ab8e9caebc139",
+    "scripts/build-live-shell.mjs": "8202f9045fa04947a3fe2d2af43f5927430cc95277e600994656e780d14cd040",
+    "scripts/check-v238-retained-validation.mjs": "baa402eac609220f3c0067368f54faab971ece9cf25365b9103490c3fb1eb93d",
+    "scripts/ci-backend-matrix.mjs": "e566466c64e9b1296fd592476a71143c43438a7c4ed31a61e27d9bccb9769c43",
+    "scripts/run-discovered-tests.mjs": "74c93bc6bd83a3ec100301488f843ad87dc5cf547749815973de8d586ddfaa8e",
+    "scripts/run-release-react-checks.mjs": "acc61e3bd192e9d7f4ffd6c1317c429985e56f74951fc825c2ef4f1568b0025f",
+    "scripts/run-release-unit-checks.mjs": "c9a889d102bb4e2b1bb7d158316f4042de65f7638c0b2181d2e2ee18ca420d89",
+    "scripts/sync-codegs-to-apps-script.js": "f6740c12141db210d0cea4e0516e0837bd2451b00a99433b5a7386e7d374a469",
+    "supabase/ci/suspend_tag_approval.mjs": "4a2d17548e67ceff5acca5fc8ba5c138b016af74026cc03fc79dd8c0a7c4d1e6",
+    "supabase/ci/suspend_tag_sender_identity_pglite.mjs": "1429301e433beb232b1af31ceedf7eae9e6c5a9bfff4fea0d482fc1cafc03931",
+    "supabase/functions/_shared/suspend-tag.ts": "72611694f33ac749caeebee7a9eee005d53dc840269d743aa8fca330c3bc59b9",
+    "supabase/functions/request-delivery-worker/index.ts": "c9556ee2c177189b576134ed888ec122bf207072ace0086ddd77374db8a510c3",
+    "supabase/functions/send-push-alert/index.ts": "57d60a4dd28fc1203eb64d78bf4d22c458a85511f9ae5142c995ccd7dd5088b7",
+    "supabase/migrations/20261019113414_suspend_tag_sender_identity.sql": "b5174bf018fb47d47bbf613a9bdc2ae73c4b10d9c56c4f5f490bf573e633c012",
+    "sw.js": "6f65d45dabf9557e024f074fb22fa6cde32837e5fe5e1bfa1051f71db7523987",
+    "tests/apps-script-function-patch.test.mjs": "0193ac839f6b41f9d527a88ffb0890766b9ccb516a585d6e133590ff495934c0",
+    "tests/av-live-hydration.e2e.spec.ts": "8223d327c71ff0a505776ba9d1e97307a09040ef25580eaaf18bf44028f708c1",
+    "tests/av-windowed-paint.test.mjs": "f081647297a93e59d87a9a44f6c36a26f68d83dbdc080bebb58c966971d769ef",
+    "tests/eval-report2-async-index.e2e.spec.ts": "b443fd86af97fc183b056f27ff7a4d678f48e7079dfe65e7cc0d4fcc21e367e2",
+    "tests/eval-report2-card-suppression.test.mjs": "b84d8429a4db80e03533397945ff0393156f772940e7794a03349c1b7237ba1d",
+    "tests/suspend-tag-approval-delivery.test.mjs": "aa579243e399e6ff53ba62c62ed26572a9b16c427b542e18e9fb8fbc1c4e65db",
+    "tests/suspend-tag-approval-email-vm.test.mjs": "7fb868985e9f980f216a7cd2bd991eeb1f6c8c7802ec26ec8a5203d84d2fdadc",
+    "tests/suspend-tag-compaction.e2e.spec.ts": "c08aac2da3e6c1600de331d87107bb787d606758cfcbc38cee8fa37ceaed6b88",
+    "tests/suspend-tag-card-layout.test.mjs": "1ff855d3431b3729b38a0c410edf64f1164284436c925c8e68c240af00a5d489",
+    "tests/suspend-tag-completion.e2e.spec.ts": "36a7f24563e8ec19361208d3db1231a944e3bc5351461dc95331edf1cd254f67",
+    "tests/suspend-tag-migration-registration.test.mjs": "c293be9c4d083e75c08f997e7dfdb9e72bb1462a289cd89032d61478d6eade11",
+    "v2/public/manifest.webmanifest": "398f3590b97d9f83af47bc95148ab0f30a356d00403d5ee3cfc4a5555746935e",
+    "v2/src/services/api.ts": "bb99d5618994b1a3ce17a76e56990bef056483c4889a00c7d257136c6c7a8cb8"
+  },
+  "targetedValidation": {
+    "node": {
+      "status": "passed",
+      "files": [
+        "tests/av-windowed-paint.test.mjs",
+        "tests/eval-report2-card-suppression.test.mjs",
+        "tests/suspend-tag-card-layout.test.mjs",
+        "tests/suspend-tag-approval-delivery.test.mjs",
+        "tests/suspend-tag-approval-email-vm.test.mjs",
+        "tests/apps-script-function-patch.test.mjs",
+        "tests/suspend-tag-migration-registration.test.mjs"
+      ],
+      "passed": 57,
+      "failed": 0,
+      "stdout": ".gnc-local/v238-focused-node-final.log",
+      "stdoutSha256": "fd9c49a4889d80026b62752cb005080213c084abd0a7f59624628fb759b73cb9"
+    },
+    "migrationRegistrationFocused": {
+      "status": "passed",
+      "command": "node --test tests/suspend-tag-migration-registration.test.mjs",
+      "passed": 1,
+      "failed": 0,
+      "stdout": ".gnc-local/v238-focused-node-final.log"
+    },
+    "evalBrowser": {
+      "renderedPanelLimitMs": 300,
+      "userOptions": [
+        "All Users (1)",
+        "Alice (1)",
+        "Bob (1)"
+      ],
+      "warmOpenMs": 0.5,
+      "settingsLoads": 0,
+      "blockedMutations": 0,
+      "sourceRows": 10001,
+      "datasetLoads": 0,
+      "assignmentRows": 10001,
+      "drawerStayedOpen": true,
+      "fixtureErrors": 0,
+      "stdout": ".gnc-local/v238-eval-e2e-attempt7-augmented.log",
+      "renderedPanelRecordsControlsThroughTwoAnimationFramesMs": 52,
+      "warmOpenLimitMs": 300,
+      "loadingFlash": false,
+      "browser": "chromium",
+      "status": "passed",
+      "fiveSecondUpdates": true,
+      "userFilterCoverage": {
+        "locationBlocksMatchedExpected": true,
+        "itemcodeCardsMatchedExpected": true,
+        "users": [
+          "Alice",
+          "Bob"
+        ],
+        "distinctLocationsMatchedExpected": true
+      }
+    },
+    "avBrowser": {
+      "status": "passed",
+      "browser": "av-live-hydration-iphone",
+      "environment": "iPhone WebKit simulator; trace off; cold browser cache; shared OS cache uncontrolled",
+      "fixtureSource": "sanitized production snapshot",
+      "masterRows": 9501,
+      "ownReserveRows": 702,
+      "currentSeason": "F1",
+      "salesYearInclusive": 27,
+      "eligibleRows": 3236,
+      "eligibleItemcodes": 1981,
+      "initialDomCards": 20,
+      "paintMs": 948,
+      "paintLimitMs": 1000,
+      "measurement": "full-data AV render entry through two animation frames",
+      "scrollDomCards": 40,
+      "scrollPreservedExistingNodes": 20,
+      "fullHydrationElapsedMs": 32529,
+      "fullHydrationScope": "includes held page/full network fixture; not the paint measurement",
+      "stdout": ".gnc-local/v238-av-iphone-attempt8.log"
+    },
+    "suspendBrowser": {
+      "status": "passed",
+      "functionalRun": ".gnc-local/v238-suspend-playwright-final-6.log",
+      "functionalPassed": 4,
+      "functionalExpected": 4,
+      "layoutRun": ".gnc-local/v238-suspend-actual-attempt8.log",
+      "layoutPassed": 2,
+      "layoutExpected": 2,
+      "projects": [
+        "Android Pixel 7 Chromium",
+        "iPhone 13 WebKit"
+      ],
+      "viewports": [
+        390,
+        1200
+      ],
+      "latestSource": "current shared index.html and assets/ops-precision-pilot.css",
+      "failedHistoryRetained": 7,
+      "cancelledRunsRetained": 1,
+      "attemptCapReset": false
+    },
+    "appsScriptRemoteVerification": {
+      "status": "pending"
+    },
+    "isolatedDatabase": {
+      "task": "AgData v2.3.8 Suspend Tag isolated database validation",
+      "startedAt": "2026-10-19T12:55:57.6537018Z",
+      "completedAt": "2026-10-19T12:57:00.5216601Z",
+      "productionDatabaseAccessed": false,
+      "productionDataModified": false,
+      "realEmailOrPushSent": false,
+      "checks": [
+        {
+          "name": "suspend_tag_approval.mjs",
+          "command": "PGHOST=127.0.0.1 PGPORT=55439 PGDATABASE=suspend_tag_test node supabase/ci/suspend_tag_approval.mjs",
+          "log": ".gnc-local/v238-suspend-postgres-final-2.log",
+          "result": "passed",
+          "database": "Disposable local PostgreSQL 17; database recreated fresh; container stopped after run",
+          "volumeAtRequestRpc": {
+            "public.ph_soc_master": 9502,
+            "suspend_tag_private.workflows": 9501
+          },
+          "measurementsMs": {
+            "coldRequestRpc": 10.79,
+            "warmDecisionRpc": 7.85
+          },
+          "queryPlan": "Index Only Scan for unique_id and workflow source_uid lookups",
+          "coverage": "permissions, atomic completion, retention, approval/denial, validation, resubmission, stale decisions, request-to-assigned-rep-only, decision-to-frozen-team-plus-sender, installed migration contract"
+        },
+        {
+          "name": "suspend_tag_sender_identity_pglite.mjs",
+          "command": "node supabase/ci/suspend_tag_sender_identity_pglite.mjs --pglite-root .gnc-local/v238-pglite",
+          "log": "stdout recorded in task run; final run after the revoke fix",
+          "result": "passed",
+          "database": "PGlite WASM disposable in-memory PostgreSQL",
+          "syntheticRows": {
+            "ph_soc_master": 9501,
+            "suspend_tag_private.workflows": 9501
+          },
+          "measurementsMs": {
+            "requestApprovalFirst": 26.92,
+            "idempotentRepeat": 1.34,
+            "decisionPersistence": 1.95
+          },
+          "queryPlan": "primary-key scans confirmed for master/workflow lookup",
+          "limitations": "PGlite in-memory timings are not production PostgreSQL latency; focused migration harness stubs the pre-existing private command and review validator."
+        },
+        {
+          "name": "suspend-tag-migration-registration.test.mjs",
+          "command": "node --test tests/suspend-tag-migration-registration.test.mjs",
+          "result": "passed",
+          "summary": "1 test passed; release registration and installed security-contract query markers verified."
+        }
+      ],
+      "issueHistory": "Initial native installed-contract probe failed once because the trigger helper retained default PUBLIC execute. Added explicit revoke from PUBLIC, anon, and authenticated; final fresh-database run passed. This is one resolved contract issue, not an attempt reset.",
+      "browserHistory": "No browser checks run by this agent after root's successful actual attempt 8 (2/2). Seven prior compaction failures and one canceled run remain accounted in the shared ledger."
+    },
+    "tooling": {
+      "status": "passed",
+      "stdout": ".gnc-local/v238-tooling-final.log",
+      "scope": "syntax, TypeScript, contracts, boundaries, test discovery"
+    },
+    "shellBuild": {
+      "status": "passed",
+      "stdout": ".gnc-local/v238-shell-build-final.log",
+      "indexBytes": 363912,
+      "runtimeBytes": 8284749,
+      "deferredCssBytes": 579691
+    }
+  },
+  "protectedScope": {
+    "codeGsOutsideAuthorizedFunctions": "verified unchanged relative to preserved base by AST function patch guard",
+    "backfillChanged": false,
+    "automation": "PAUSED"
+  },
+  "deliveryStatus": "SCOPED_VALIDATION_COMPLETE_PENDING_EXACT_HEAD_CI_AND_PUBLICATION",
+  "appsScriptPatchFunctions": [
+    "buildSuspendTagApprovalEmail_",
+    "handleSignedSuspendTagDelivery_"
+  ],
+  "focusedBrowserFiles": [
+    "tests/av-live-hydration.e2e.spec.ts",
+    "tests/eval-report2-async-index.e2e.spec.ts",
+    "tests/suspend-tag-completion.e2e.spec.ts",
+    "tests/suspend-tag-compaction.e2e.spec.ts"
+  ],
+  "v237FocusedNodeEvidence": {
+    "passed": 45,
+    "failed": 0,
+    "stdoutSha256": "32858a4ff45ca7d87ea6d61a24cc3a782d4409dcd286efb39d8d3fbbee03135ba",
+    "progressSha256": "d12851630174f01e3fe275b5097242f1045affed7b03185adce7e447ddf5973c",
+    "validatedSourceHashes": {
+      "assets/av-derived-rows.js": "54f5584dbbec011025e0d3f0c497a326a062119d19d0519b1ea58e9c841a6bf8",
+      "tests/av-derived-rows.test.mjs": "7a0b58f14832f54071c9906e98f4556667404df9e499f39fe7c3d078fb1c10a4",
+      "assets/ops-precision-pilot.js": "eed8101cbbae6e64abb584891114da30b9774c67b38e162d48afcf522e684297",
+      "index.html": "431097139175e5b69bbb6971f1c8f8118512dac18922a5554aa0ea18f5c2ade7",
+      "manifest.json": "9ff5aec909e7d1702472e2b7093a0f6e6dbb92f3f4623074df331f24b7d86006",
+      "package-lock.json": "c7f63343c9862c7954bd732ae13166a5fbdcaecfbe38bece45a51566cda91eb4",
+      "package.json": "0258203223cf6483dd34f1ae2777204efb5e2eff19636e503f3d623d37eb9fcc",
+      "scripts/build-live-shell.mjs": "10c4cb5c315f8f94553a03b5265e87f0be6a9ea56522fa11583f3ce26a5161aa",
+      "sw.js": "01511f7447703b79111106db0498c0f6111f17b07619ec644c387965673dd0eb",
+      "v2/public/manifest.webmanifest": "738721870f71370f38345244370a40ce47596ce095660d8802d064bc69ec0d82",
+      "v2/src/services/api.ts": "68016797dff69e254470316eed881f991230be0408d16906ab116c3e9b189a1d",
+      "playwright.av-live-hydration.config.ts": "0f5f816d661410aff4ac8bba4691ee155febf7b13c076b0404985e1eb9079ec1",
+      "tests/av-live-current-season.test.mjs": "4a2258d645bb82d3afd9b43a1d387d80b24ddb01e06b906215142f77d19ee723",
+      "tests/av-live-hydration.e2e.spec.ts": "3944faef513894f292cffbd02808ae1c2e7adb3de082dbeb8aa523c52c7ef8d7",
+      "tests/av-native-cache-hydration.test.mjs": "e960f7e78192c9d53223f7ffc5b1b645afa288fdaf65012fcafcf9bd1dec55ae",
+      "tests/av-sales-stock-visibility.test.mjs": "106c1413cb4f08f3dbe17333789b4fbf06cd17aa6d2b57f5ffb04fc3b2a0ed4f",
+      "scripts/check-v237-retained-validation.mjs": "42a285503bc55910e45bd270f77335f0029e0d67204bc53840a3290f2fb64d6b",
+      "scripts/run-release-unit-checks.mjs": "f121c34cf68ed6f6319250f9330b96a36391564eb0a7cbdedff6ddeaecce7502",
+      "scripts/run-release-react-checks.mjs": "fef98c7cd504c0fdd6b55764a20314bf274672cae304c0ce8f2e90de3d1154bc"
+    },
+    "sourceHashesAtV238Base": {
+      "assets/av-derived-rows.js": "54f5584dbbec011025e0d3f0c497a326a062119d19d0519b1ea58e9c841a6bf8",
+      "tests/av-derived-rows.test.mjs": "7a0b58f14832f54071c9906e98f4556667404df9e499f39fe7c3d078fb1c10a4",
+      "assets/ops-precision-pilot.js": "eed8101cbbae6e64abb584891114da30b9774c67b38e162d48afcf522e684297",
+      "index.html": "431097139175e5b69bbb6971f1c8f8118512dac18922a5554aa0ea18f5c2ade7",
+      "manifest.json": "9ff5aec909e7d1702472e2b7093a0f6e6dbb92f3f4623074df331f24b7d86006",
+      "package-lock.json": "c7f63343c9862c7954bd732ae13166a5fbdcaecfbe38bece45a51566cda91eb4",
+      "package.json": "0258203223cf6483dd34f1ae2777204efb5e2eff19636e503f3d623d37eb9fcc",
+      "scripts/build-live-shell.mjs": "10c4cb5c315f8f94553a03b5265e87f0be6a9ea56522fa11583f3ce26a5161aa",
+      "sw.js": "01511f7447703b79111106db0498c0f6111f17b07619ec644c387965673dd0eb",
+      "v2/public/manifest.webmanifest": "738721870f71370f38345244370a40ce47596ce095660d8802d064bc69ec0d82",
+      "v2/src/services/api.ts": "68016797dff69e254470316eed881f991230be0408d16906ab116c3e9b189a1d",
+      "playwright.av-live-hydration.config.ts": "0f5f816d661410aff4ac8bba4691ee155febf7b13c076b0404985e1eb9079ec1",
+      "tests/av-live-current-season.test.mjs": "4a2258d645bb82d3afd9b43a1d387d80b24ddb01e06b906215142f77d19ee723",
+      "tests/av-live-hydration.e2e.spec.ts": "3944faef513894f292cffbd02808ae1c2e7adb3de082dbeb8aa523c52c7ef8d7",
+      "tests/av-native-cache-hydration.test.mjs": "e960f7e78192c9d53223f7ffc5b1b645afa288fdaf65012fcafcf9bd1dec55ae",
+      "tests/av-sales-stock-visibility.test.mjs": "106c1413cb4f08f3dbe17333789b4fbf06cd17aa6d2b57f5ffb04fc3b2a0ed4f",
+      "scripts/check-v237-retained-validation.mjs": "42a285503bc55910e45bd270f77335f0029e0d67204bc53840a3290f2fb64d6b",
+      "scripts/run-release-unit-checks.mjs": "f121c34cf68ed6f6319250f9330b96a36391564eb0a7cbdedff6ddeaecce7502",
+      "scripts/run-release-react-checks.mjs": "fef98c7cd504c0fdd6b55764a20314bf274672cae304c0ce8f2e90de3d1154bc"
+    },
+    "sourceHashMatchesAtV238Base": {
+      "assets/av-derived-rows.js": true,
+      "tests/av-derived-rows.test.mjs": true,
+      "assets/ops-precision-pilot.js": true,
+      "index.html": true,
+      "manifest.json": true,
+      "package-lock.json": true,
+      "package.json": true,
+      "scripts/build-live-shell.mjs": true,
+      "sw.js": true,
+      "v2/public/manifest.webmanifest": true,
+      "v2/src/services/api.ts": true,
+      "playwright.av-live-hydration.config.ts": true,
+      "tests/av-live-current-season.test.mjs": true,
+      "tests/av-live-hydration.e2e.spec.ts": true,
+      "tests/av-native-cache-hydration.test.mjs": true,
+      "tests/av-sales-stock-visibility.test.mjs": true,
+      "scripts/check-v237-retained-validation.mjs": true,
+      "scripts/run-release-unit-checks.mjs": true,
+      "scripts/run-release-react-checks.mjs": true
+    }
+  }
+}

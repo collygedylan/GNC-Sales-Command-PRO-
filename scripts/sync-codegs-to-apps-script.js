@@ -14,6 +14,7 @@ import {
 } from './lib/production-release-guard.mjs';
 import { authorizeProductionAppsScriptDeploymentFromEnvironment } from './lib/apps-script-deployment-guard.mjs';
 import { createAppsScriptRecoveryEvidence } from './apps-script-recovery-evidence.mjs';
+import { patchAppsScriptFunctions, appsScriptFilesDigest, createAppsScriptSourceGuard } from './apps-script-function-patch.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -92,7 +93,7 @@ async function main() {
     fail(error?.code || 'PRODUCTION_RELEASE_GUARD_TARGET_INVALID');
   }
   if (!fs.existsSync(codeGsPath)) fail('APPS_SCRIPT_SOURCE_NOT_FOUND');
-  const source = fs.readFileSync(codeGsPath, 'utf8');
+  let source = fs.readFileSync(codeGsPath, 'utf8');
   if (!source.trim()) fail('APPS_SCRIPT_SOURCE_EMPTY');
   if (source.includes(supabaseServiceRolePlaceholder)) {
     console.log('Supabase service credentials remain in Apps Script Properties; no credential is embedded in source.');
@@ -105,6 +106,25 @@ async function main() {
 
   await verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId });
   console.log('Production Apps Script deployment ownership verified.');
+  const packageManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+  const functionNames = packageManifest.appsScriptPatchFunctions;
+  let patchEvidence = null;
+  let expectedRemoteDigest = '';
+  let publishedDigest = '';
+  if (functionNames !== undefined) {
+    const current = await script.projects.getContent({ scriptId });
+    const files = current.data?.files;
+    const code = files?.find(file => String(file.name).replace(/\.(gs|js)$/i, '') === 'Code' && file.type === 'SERVER_JS');
+    if (!code?.source) fail('APPS_SCRIPT_PATCH_REMOTE_SOURCE_MISSING');
+    const patch = patchAppsScriptFunctions({ remoteSource: code.source, localSource: source, functionNames });
+    source = patch.source;
+    expectedRemoteDigest = appsScriptFilesDigest(files);
+    const publishedSource = applyDeploymentFingerprint(source, githubSha);
+    publishedDigest = appsScriptFilesDigest(files.map(file => file === code ? { ...file, source: publishedSource } : file));
+    patchEvidence = { functions: patch.functions, protectedSourceDigest: patch.protectedSourceDigest,
+      remoteFilesDigestBefore: expectedRemoteDigest, remoteFilesDigestAfter: publishedDigest };
+    console.log(`Scoped Apps Script patch prepared for ${functionNames.length} email functions; protected remote code is unchanged.`);
+  }
   console.log('Preflighting Apps Script version capacity before source update...');
   const result = await syncAppsScriptProject({
     script,
@@ -112,7 +132,10 @@ async function main() {
     deploymentId,
     source,
     githubSha,
-    beforeMutation: () => authorizeProductionAppsScriptDeploymentFromEnvironment(),
+    beforeMutation: patchEvidence ? createAppsScriptSourceGuard({ script, scriptId,
+      beforeDigest: expectedRemoteDigest, afterDigest: publishedDigest,
+      authorize: authorizeProductionAppsScriptDeploymentFromEnvironment,
+    }) : authorizeProductionAppsScriptDeploymentFromEnvironment,
     logger: console
   });
 
@@ -130,7 +153,7 @@ async function main() {
     });
     const evidenceDirectory = path.join(repoRoot, '.gnc-local');
     fs.mkdirSync(evidenceDirectory, { recursive: true });
-    fs.writeFileSync(path.join(evidenceDirectory, 'apps-script-recovery-evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`);
+    fs.writeFileSync(path.join(evidenceDirectory, 'apps-script-recovery-evidence.json'), `${JSON.stringify({ ...evidence, scopedPatch: patchEvidence }, null, 2)}\n`);
     console.log(`Deployment updated and verified at Apps Script version ${result.versionNumber}.`);
     console.log(`Deployment health verified for commit ${result.health.deployedCommit.slice(0, 7)}.`);
     console.log(`Lifecycle recipient policy ${REQUEST_LIFECYCLE_POLICY_VERSION} verified with ${REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_COUNT} required recipients.`);

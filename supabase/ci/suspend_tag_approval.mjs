@@ -3,7 +3,11 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import { migrationContractQuery, suspendTagApprovalMigrationName } from '../../scripts/apply-item-low-stock-migration.mjs';
+import {
+  migrationContractQuery,
+  suspendTagApprovalMigrationName,
+  suspendTagSenderIdentityMigrationName,
+} from '../../scripts/apply-item-low-stock-migration.mjs';
 import { latestMigrationFunctionDefinition } from '../../scripts/migration-function-source.mjs';
 
 // Disposable PostgreSQL only. No hosted connection string or production access.
@@ -56,6 +60,9 @@ try {
     await db.query('insert into auth.users values($1,$2,now());',[users[name].id,`${name}@example.test`]);
     await db.query('insert into auth.sessions values($1,$2,null)',[users[name].session,users[name].id]);
   }
+  await db.query(fs.readFileSync('supabase/migrations/'+suspendTagSenderIdentityMigrationName,'utf8'));
+  assert.equal((await db.query(migrationContractQuery(suspendTagSenderIdentityMigrationName))).rows[0].installed,true,
+    'the v2.3.8 sender-identity migration satisfies its installed database contract');
   const actor=async(name,service=false)=>{
     await db.query('reset role'); const u=users[name];
     await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({iss:'https://kzrnyjsosryejjejliii.supabase.co/auth/v1',sub:u.id,session_id:u.session,role:service?'service_role':'authenticated',exp:Math.floor(Date.now()/1000)+3600})]);
@@ -67,6 +74,15 @@ try {
   };
   const admin=async(sql,args=[])=>{await db.query('reset role'); return db.query(sql,args);};
   const revision='2026-10-05T12:00:00+00:00';
+  await admin(`insert into ph_soc_master(unique_id,last_updated,suspend,suspend_to,salesrepname)
+    select 'benchmark-master-'||g,$1,'','','Unrelated Rep' from generate_series(1,9500) g`,[revision]);
+  await admin(`insert into suspend_tag_private.workflows(source_uid,source_revision,completed_by)
+    select 'benchmark-workflow-'||g,$1,$2 from generate_series(1,9500) g`,[revision,users.dylan_collyge.id]);
+  const representativeCounts=(await admin(`select
+    (select count(*)::int from ph_soc_master) as master_rows,
+    (select count(*)::int from suspend_tag_private.workflows) as workflow_rows`)).rows[0];
+  assert.equal(representativeCounts.master_rows,9500);
+  assert.equal(representativeCounts.workflow_rows,9500);
   await admin(`insert into ph_soc_master(unique_id,last_updated,suspend,suspend_to,itemcode,locationcode,lotcode,salesrepname,customername,consigneename,commonname,contsize,quantityordered)
     values('row-1',$1,'SUSPEND','DC','ROYAL','E.23.000','LOT','Toby Brown','Outdoor Living Supply','Outdoor Living Supply','Royal Red butterfly bush','#1','10'),
       ('not-suspend',$1,'','DC','OTHER','B.1','','Toby Brown','','','Other','#1','0');`,[revision]);
@@ -87,7 +103,13 @@ try {
   assert.deepEqual(await command('dylan_collyge','complete',input,1,token),completed);
   assert.equal((await admin('select count(*) from ph_request_delivery_outbox')).rows[0].count,'0','initial completion is manual');
   const sendToken=randomUUID();
+  const requestVolume=(await admin(`select
+    (select count(*)::int from ph_soc_master) as master_rows,
+    (select count(*)::int from suspend_tag_private.workflows) as workflow_rows`)).rows[0];
+  const requestStarted=performance.now();
   const sent=await command('megan_kelly','send',{sourceUid:'row-1',expectedLastUpdated:revision},completed.row.suspend_tag_version,sendToken);
+  const requestRpcMs=performance.now()-requestStarted;
+  assert.ok(requestRpcMs<100,`representative Suspend request RPC must stay below 100ms (observed ${requestRpcMs.toFixed(2)}ms)`);
   const id=sent.row.suspend_tag_approval_id; assert.ok(id); assert.equal(sent.row.suspend_tag_status,'awaiting_rep');
   const requestEventsAfterSend=(await admin("select count(*)::int as n from ph_request_delivery_outbox where event_type='suspend_tag_approval_requested'")).rows[0].n;
   assert.equal(requestEventsAfterSend,1,'one durable request event is enqueued for the submission');
@@ -96,7 +118,17 @@ try {
   assert.equal((await admin("select count(*)::int as n from ph_request_delivery_outbox where event_type='suspend_tag_approval_requested'")).rows[0].n,1,
     'same-command replay does not create another request email event');
   const snapshot=(await admin('select * from suspend_tag_private.approvals where id=$1',[id])).rows[0];
-  assert.equal(snapshot.submitter_email,'dylan_collyge@example.test'); assert.equal(snapshot.rep_email,'toby_brown@example.test');
+  assert.equal(snapshot.completed_by,users.dylan_collyge.id); assert.equal(snapshot.sent_by,users.megan_kelly.id);
+  assert.equal(snapshot.submitter_email,'megan_kelly@example.test'); assert.equal(snapshot.rep_email,'toby_brown@example.test');
+  const recipientPlan=(await admin('select request_email,decision_emails from suspend_tag_private.approval_recipients where approval_id=$1',[id])).rows[0];
+  assert.equal(recipientPlan.request_email,'toby_brown@example.test','the initial request targets only the assigned sales rep');
+  const decisionRecipients=recipientPlan.decision_emails;
+  assert.deepEqual(new Set(decisionRecipients),new Set(['megan_kelly@example.test','dan_mccuistion@example.test','dylan_collyge@example.test','jd_jones@example.test']));
+  const requestLease=randomUUID();
+  await admin("update ph_request_delivery_outbox set status='processing',lease_token=$2 where event_id=$1",[snapshot.request_event_id,requestLease]);
+  await actor('dylan_collyge',true);
+  const requestPrepared=(await db.query('select prepare_suspend_tag_delivery_v1($1,$2) result',[snapshot.request_event_id,requestLease])).rows[0].result;
+  assert.deepEqual(requestPrepared.deliveryRecipients,[recipientPlan.request_email]);
   await admin("update ph_request_delivery_outbox set status='failed',sanitized_error_code='FIXTURE_DELIVERY_FAILURE' where event_id=$1",[snapshot.request_event_id]);
   const retried=await command('dylan_collyge','retry',{sourceUid:'row-1',expectedLastUpdated:revision},sent.row.suspend_tag_version);
   assert.equal(retried.ok,true,'retry runs for an active approval');
@@ -105,9 +137,17 @@ try {
   await assert.rejects(command('dan_mccuistion','save',{...input,patch:{dock_note:'changed'}},sent.row.suspend_tag_version),/REVIEW_LOCKED/);
   await assert.rejects(command('other_rep','decide',{approvalId:id,decision:'approve'}),/FORBIDDEN/);
   assert.equal((await command('toby_brown','approval',{approvalId:id})).canDecide,true);
-  const denied=await command('toby_brown','decide',{approvalId:id,decision:'deny'}); assert.equal(denied.decision,'denied');
+  const decisionStarted=performance.now();
+  const denied=await command('toby_brown','decide',{approvalId:id,decision:'deny',decisionMessage:'Please recheck the location photo.'});
+  const decisionRpcMs=performance.now()-decisionStarted;
+  assert.ok(decisionRpcMs<100,`representative Suspend decision RPC must stay below 100ms (observed ${decisionRpcMs.toFixed(2)}ms)`);
+  assert.equal(denied.decision,'denied');
   assert.equal((await command('toby_brown','decide',{approvalId:id,decision:'deny'})).decision,'denied');
   await assert.rejects(command('toby_brown','decide',{approvalId:id,decision:'approve'}),/DECISION_CONFLICT/);
+  const masterPlan=(await admin(`explain (analyze,format json) select unique_id from public.ph_soc_master where unique_id='row-1'`)).rows[0]['QUERY PLAN'][0]['Plan'];
+  const workflowPlan=(await admin(`explain (analyze,format json) select source_uid from suspend_tag_private.workflows where source_uid='row-1'`)).rows[0]['QUERY PLAN'][0]['Plan'];
+  assert.match(masterPlan['Node Type'],/Index Scan|Index Only Scan/,'master source lookup uses its unique_id index');
+  assert.match(workflowPlan['Node Type'],/Index Scan|Index Only Scan/,'workflow source lookup uses its primary-key index');
   const retained=(await command('dan_mccuistion','rows',{ids:['row-1']})).rows[0];
   assert.equal(retained.suspend_tag_status,'denied'); assert.equal(retained.date_completed,null);
   for(const [key,value] of Object.entries(patch)) assert.equal(retained[key],value,`${key} survives denial`);
@@ -149,6 +189,9 @@ try {
   const prepared=(await db.query('select prepare_suspend_tag_delivery_v1($1,$2) result',[round2Record.decision_event_id,lease])).rows[0].result;
   assert.equal(prepared.thread.threadId,'original-thread');assert.equal(prepared.thread.messageId,'<original@test>');
   assert.equal(prepared.approval.snapshot.dock_photo_name,patch.dock_photo_name);
+  assert.equal(prepared.decisionMessage,'','round two decision has no custom message');
+  assert.deepEqual(new Set(prepared.deliveryRecipients),new Set(['dan_mccuistion@example.test','dylan_collyge@example.test','megan_kelly@example.test','jd_jones@example.test']),
+    'decision delivery targets the frozen team plus the sender, deduplicated');
   await admin(`insert into ph_soc_master(unique_id,last_updated,suspend,suspend_to,salesrepname,match,av_note,dock_photo_link,dock_photo_name)
     values('missing-rep',$1,'SUSPEND','DC','Unknown Sales Rep','100','Available','https://example.test/saved.jpg','saved.jpg')`,[revision]);
   const noRep=await command('megan_kelly','complete',{sourceUid:'missing-rep',expectedLastUpdated:revision},0);
@@ -202,5 +245,5 @@ try {
   await actor('dylan_collyge'); assert.equal((await db.query('select count(*) from ph_soc_master')).rows[0].count,'0');
   await assert.rejects(command('dylan_collyge','rows',{ids:['row-1']}),/SESSION_REQUIRED/);
   await assert.rejects(command('dylan_collyge','complete',input),/SESSION_REQUIRED/);
-  console.log('Suspend Tag PostgreSQL: permissions, atomic completion, retention, approval, denial, validation, resubmission, and stale decisions passed.');
+  console.log(`Suspend Tag PostgreSQL 17 disposable: permissions, atomic completion, retention, approval, denial, validation, resubmission, stale decisions and recipient routing passed; volume at request RPC master=${requestVolume.master_rows}, workflows=${requestVolume.workflow_rows}; request RPC ${requestRpcMs.toFixed(2)}ms, decision RPC ${decisionRpcMs.toFixed(2)}ms (local PostgreSQL, cold request/warm decision); lookup plans ${masterPlan['Node Type']}/${workflowPlan['Node Type']}.`);
 } finally { await db.end(); }

@@ -392,7 +392,14 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           const snapshot = asJsonRecord(approval.snapshot);
           if (!Object.keys(approval).length || !Object.keys(snapshot).length) throw new Error("SUSPEND_TAG_APPROVAL_SNAPSHOT_MISSING");
           const thread = preparedRecord.thread;
-          event.payload = { approval, thread };
+          const deliveryRecipients = Array.isArray(preparedRecord.deliveryRecipients) ? preparedRecord.deliveryRecipients : [];
+          if (deliveryRecipients.length < 1 || deliveryRecipients.length > 16
+            || deliveryRecipients.some(email => typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+            throw new Error("SUSPEND_TAG_RECIPIENTS_INVALID");
+          }
+          const decisionMessage = String(preparedRecord.decisionMessage || "");
+          if (decisionMessage.length > 1000) throw new Error("SUSPEND_TAG_DECISION_MESSAGE_INVALID");
+          event.payload = { approval, thread, deliveryRecipients, decisionMessage };
           if (!event.email_delivered_at) {
             const result = await callAppsScript(event, [snapshot], thread);
             if (!result.gmailMessageId || !result.threadId || !result.messageIdHeader) throw new Error("SUSPEND_TAG_EMAIL_RECEIPT_MISSING");
@@ -412,6 +419,7 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
             const response = await fetch(`${SUPABASE_URL}/functions/v1/send-push-alert`, {
               method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, apikey: SUPABASE_SERVICE_ROLE_KEY },
               body: JSON.stringify({ eventType, approvalId: approval.id, repUsername: snapshot.rep_username,
+                senderDisplay: snapshot.sent_by_display,
                 customer: snapshot.customername || snapshot.consigneename, itemDescription: [snapshot.commonname, snapshot.contsize].filter(Boolean).join(" ") }),
             });
             if (!response.ok) throw new Error(`PUSH_SEND_FAILED:${response.status}`);
