@@ -254,6 +254,21 @@
         return textValue(row, ['DESIGITEM', 'desigitem', 'DesigItem']).toUpperCase().includes('SHFT');
     }
 
+    function isSuppressedEvalReportCardRow(row) {
+        const season = normalizeSeason(row);
+        if (season === 'Y' || season === 'U3') return true;
+        const lot = textValue(row, ['LOTCODE', 'lotcode', 'LOT', 'lot']).toUpperCase();
+        if (/(?:^|\.)(?:Y|U3)$/.test(lot)) return true;
+        return textValue(row, ['ITEMDESI', 'itemdesi', 'DESIGITEM', 'desigitem', 'ITEM_DESI', 'item_desi'])
+            .toUpperCase()
+            .includes('SHFT');
+    }
+
+    function isSuppressedEvalReportCardRows(rows) {
+        const source = Array.isArray(rows) ? rows.filter(Boolean) : [];
+        return source.length > 0 && source.every(isSuppressedEvalReportCardRow);
+    }
+
     function normalizeSalesYear(value) {
         const numeric = Number(String(value == null ? '' : value).replace(/,/g, '').trim());
         if (!Number.isFinite(numeric) || numeric <= 0) return null;
@@ -831,6 +846,8 @@
         normalizeSettings,
         resolveLowStockLimit: (itemCode, settings, targets) => resolveLowStockLimit(String(itemCode || '').toUpperCase(), normalizeSettings(settings), normalizeLowStockTargetIndex(targets)),
         isExcludedShiftSeasonRow,
+        isSuppressedEvalReportCardRow,
+        isSuppressedEvalReportCardRows,
         parseInventoryDateEpochDay,
         getCentralDateParts,
         compareRows,
