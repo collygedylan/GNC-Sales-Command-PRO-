@@ -86,6 +86,10 @@ describe('Bunch Notes queue cards', () => {
     expect(await screen.findByRole('heading', { name: 'Bunch Notes' })).toBeTruthy();
     expect(screen.getByText(/Worker One/)).toBeTruthy();
     expect(screen.getByText(/Keep lots separate/)).toBeTruthy();
+    const sourceRows = screen.getAllByText(/Drive PTRAVAILABLE:/);
+    expect(sourceRows).toHaveLength(3); // One aggregate summary plus one distinct value for each source row.
+    expect(screen.getByText(/D\.05\.000 · Lot LOT-A/)).toBeTruthy();
+    expect(screen.getByText(/D\.05\.000 · Lot LOT-B/)).toBeTruthy();
     fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }), { target: { value: '7' } });
     fireEvent.change(screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }), { target: { value: '9' } });
     fireEvent.click(screen.getByRole('button', { name: 'Complete Work' }));
@@ -94,6 +98,30 @@ describe('Bunch Notes queue cards', () => {
       payload: { job_id: 'job-1', card_id: 'card-1', actual_qty_by_row: { 'row-1': 7, 'row-2': 9 } },
       commandId: 'card-receipt', expectedRevision: 4,
     }), expect.any(AbortSignal)));
+    await act(async () => { mounted.destroy(); client.dispose(); });
+  });
+
+  it('does not repeat source location, lot, or Drive PTRAVAILABLE when a single-source row duplicates the card summary', async () => {
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const singleSourceCard = {
+      ...baseCard,
+      lot: 'LOT-A',
+      ptravailable: 8,
+      sources: [{ row_id: 'row-1', location: 'D.05.000', lot: 'LOT-A', ptravailable: 8, actual_qty: null }],
+    };
+    const transport = vi.fn(async () => ({ ok: true, data: { ...queuePage, cards: [singleSourceCard], total: 1, active_count: 1 } }));
+    const client = createBunchQueueClient({ scopeKey: 'single-source-summary', transport, storage: storage(), online: () => true });
+    let mounted!: ReturnType<typeof mountBunchQueue>;
+    await act(async () => { mounted = mountBunchQueue(host(), client); await Promise.resolve(); });
+
+    const card = await screen.findByRole('article');
+    expect(card.querySelector('.bq-id')?.textContent).toContain('D.05.000 · Lot LOT-A');
+    expect(card.querySelectorAll('.bq-source')).toHaveLength(1);
+    const source = card.querySelector('.bq-source');
+    expect(source?.textContent).not.toContain('D.05.000');
+    expect(source?.textContent).not.toContain('LOT-A');
+    expect(source?.textContent).not.toContain('Drive PTRAVAILABLE');
+    expect(screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' })).toBeTruthy();
     await act(async () => { mounted.destroy(); client.dispose(); });
   });
 

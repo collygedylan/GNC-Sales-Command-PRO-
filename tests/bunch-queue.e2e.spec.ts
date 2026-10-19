@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { installHlOrderFixture, hlUserId } from './fixtures/hl-order-state.mjs';
 
 // @test-group: @bunch-note,bunch-notes
@@ -21,7 +21,7 @@ const initialReview = {
   assigned_counter_id: null, assigned_counter_username: null, can_assign: true, can_complete: false, sources: reviewSources,
 };
 
-async function installQueueFixture(page: any, baseURL: string, options: { worker?: boolean; failFirstCompletion?: boolean; largeQueue?: boolean; startEmpty?: boolean } = {}) {
+async function installQueueFixture(page: any, baseURL: string, options: { worker?: boolean; failFirstCompletion?: boolean; largeQueue?: boolean; startEmpty?: boolean; layoutCards?: number; layoutReviews?: number } = {}) {
   const control = await installHlOrderFixture(page, baseURL, { username: options.worker ? 'bn_worker' : 'dylan_collyge', role: options.worker ? 'EVAL' : 'ADMIN' });
   const headers = { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' };
   const commands: any[] = [];
@@ -77,17 +77,48 @@ async function installQueueFixture(page: any, baseURL: string, options: { worker
             })),
           }));
           data = { cards, total: 10001, active_count: 10001, review_count: 0, can_review: false, counters: [] };
+        } else if (options.layoutCards) {
+          const cards = Array.from({ length: options.layoutCards }, (_, cardIndex) => ({
+            ...queueCard,
+            stablecard_id: `layout-job-${cardIndex}:layout-card-${cardIndex}`,
+            job_id: `layout-job-${cardIndex}`,
+            card_id: `layout-card-${cardIndex}`,
+            lot: `LOT-${cardIndex}`,
+            sources: [{
+              row_id: `layout-row-${cardIndex}`,
+              location: queueCard.source_location,
+              lot: `LOT-${cardIndex}`,
+              ptravailable: queueCard.ptravailable,
+              actual_qty: null,
+            }],
+          }));
+          data = { cards, total: cards.length, active_count: cards.length, review_count: options.layoutReviews ?? 0, can_review: !!options.layoutReviews, counters: [] };
         } else if (options.startEmpty && !publishedCard) data = { cards: [], total: 0, active_count: 0, review_count: 0, can_review: false, counters: [] };
         else data = { cards: [publishedCard || queueCard], total: 1, active_count: 1, review_count: publishedCard ? 0 : 1, can_review: !publishedCard, counters: [] };
         break;
-      case 'list_discrepancies':
-        data = { reviews: [review], total: 1, review_count: 1, can_review: true, counters: [
+      case 'list_discrepancies': {
+        const reviews = options.layoutReviews
+          ? Array.from({ length: options.layoutReviews }, (_, reviewIndex) => ({
+            ...initialReview,
+            id: `layout-review-${reviewIndex}`,
+            card_id: `layout-review-card-${reviewIndex}`,
+            sources: [{
+              row_id: `layout-review-row-${reviewIndex}`,
+              location: initialReview.source_location,
+              lot: `REVIEW-${reviewIndex}`,
+              ptravailable: initialReview.ptravailable,
+              actual_qty: null,
+            }],
+          }))
+          : [review];
+        data = { reviews, total: reviews.length, review_count: reviews.length, can_review: true, counters: [
           { id: 'worker-z', username: 'worker_z', display_name: 'Worker Z' },
           { id: 'dylan-id', username: 'dylan_collyge', display_name: 'Dylan' },
           { id: 'sharon-id', username: 'sharon_combs', display_name: 'Sharon' },
           { id: 'counter-1', username: 'counter', display_name: 'Count Team One' },
         ] };
         break;
+      }
       case 'complete_card':
         expect(body.commandId).toBeTruthy();
         expect(body.expectedRevision).toBe(queueCard.revision);
@@ -117,11 +148,89 @@ async function installQueueFixture(page: any, baseURL: string, options: { worker
   return { control, commands };
 }
 
-async function openQueue(page: any, category: 'bunch-notes' | 'bunch-count-review' = 'bunch-notes') {
+async function openQueue(page: Page, category: 'bunch-notes' | 'bunch-count-review' = 'bunch-notes') {
   const press = test.info().project.use.isMobile ? 'tap' : 'click';
   await page.locator('#footer-request-btn')[press]();
   await page.locator(`[data-request-category="${category}"]`)[press]();
   await expect(page.locator('#bunch-queue-host')).toBeVisible();
+}
+
+const responsiveQueueViewports = [
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'tablet', width: 820, height: 900 },
+  { name: 'Android-sized viewport', width: 412, height: 915 },
+  { name: 'iPhone-sized viewport', width: 390, height: 844 },
+];
+
+async function assertSingleColumnCardLayout(page: Page, selector: string, expectedCount: number, checkActualCountInput: boolean) {
+  const metrics = await page.evaluate(({ selector: cardSelector }) => {
+    const queue = document.querySelector<HTMLElement>('.bq-root');
+    const list = document.querySelector<HTMLElement>('.bq-grid');
+    const cards = [...document.querySelectorAll<HTMLElement>(cardSelector)];
+    if (!queue || !list) throw new Error('Bunch queue list was not rendered.');
+    const cardRects = cards.map(card => ({ top: card.offsetTop, width: card.getBoundingClientRect().width }));
+    const inputs = [...document.querySelectorAll<HTMLInputElement>('[placeholder="Enter actual count"]')].map(input => {
+      const style = getComputedStyle(input);
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (context) context.font = style.font;
+      const placeholderWidth = context?.measureText(input.placeholder).width ?? 0;
+      const maxValidQuantityWidth = context?.measureText('999999999').width ?? 0;
+      const contentWidth = input.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight);
+      const valueWidth = context?.measureText(input.value).width ?? 0;
+      return { clientWidth: input.clientWidth, placeholderWidth, maxValidQuantityWidth, contentWidth, valueWidth, label: input.getAttribute('aria-label') };
+    });
+    const buttonBounds = [...document.querySelectorAll<HTMLElement>(`${cardSelector} .bq-primary`)].map(button => {
+      const bounds = button.getBoundingClientRect();
+      const cardBounds = button.closest<HTMLElement>(cardSelector)!.getBoundingClientRect();
+      return { left: bounds.left - cardBounds.left, right: cardBounds.right - bounds.right, width: bounds.width };
+    });
+    return { queueWidth: queue.getBoundingClientRect().width, listWidth: list.getBoundingClientRect().width, cardRects, inputs, buttonBounds };
+  }, { selector });
+
+  expect(metrics.cardRects, `${selector} card count`).toHaveLength(expectedCount);
+  expect(metrics.cardRects.map(card => card.top), 'each later card must start below the previous card').toEqual(
+    [...metrics.cardRects.map(card => card.top)].sort((left, right) => left - right),
+  );
+  for (let index = 1; index < metrics.cardRects.length; index += 1) {
+    expect(metrics.cardRects[index].top, `${selector} card ${index} offsetTop`).toBeGreaterThan(metrics.cardRects[index - 1].top);
+  }
+  for (const card of metrics.cardRects) expect(Math.abs(card.width - metrics.listWidth)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.listWidth - metrics.queueWidth)).toBeLessThanOrEqual(1);
+  for (const button of metrics.buttonBounds) {
+    expect(button.left, 'action button stays within its card').toBeGreaterThanOrEqual(-1);
+    expect(button.right, 'action button stays within its card').toBeGreaterThanOrEqual(-1);
+  }
+  if (checkActualCountInput) {
+    expect(metrics.inputs).toHaveLength(expectedCount);
+    for (const input of metrics.inputs) {
+      expect(input.clientWidth, `${input.label} has usable width`).toBeGreaterThanOrEqual(160);
+      expect(input.contentWidth, `${input.label} can display its complete placeholder`).toBeGreaterThanOrEqual(input.placeholderWidth);
+      expect(input.contentWidth, `${input.label} can display the largest accepted quantity`).toBeGreaterThanOrEqual(input.maxValidQuantityWidth);
+      expect(input.contentWidth, `${input.label} does not clip entered quantity`).toBeGreaterThanOrEqual(input.valueWidth);
+    }
+  }
+}
+
+for (const viewport of responsiveQueueViewports) {
+  test(`Que Bunch Notes and Count Review use one full-width card per row at ${viewport.name} width`, { tag: ['@bunch-note', '@bunch-layout', '@local-e2e'] }, async ({ page, baseURL }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    const fixture = await installQueueFixture(page, baseURL!, { layoutCards: 3, layoutReviews: 3 });
+    await openQueue(page, 'bunch-notes');
+    await expect(page.locator('[data-bunch-card]')).toHaveCount(3);
+    const maximumQuantity = page.locator('[data-bunch-card="layout-card-0"] input[placeholder="Enter actual count"]');
+    await maximumQuantity.fill('999999999');
+    await expect(maximumQuantity).toHaveValue('999999999');
+    await assertSingleColumnCardLayout(page, '[data-bunch-card]', 3, true);
+    await expect(page.locator('[data-bunch-card="layout-card-0"] .bq-id')).toContainText('D.05.000');
+    await expect(page.locator('[data-bunch-card="layout-card-0"] input[placeholder="Enter actual count"]')).toHaveCount(1);
+
+    await openQueue(page, 'bunch-count-review');
+    await expect(page.locator('[data-bunch-review]')).toHaveCount(3);
+    await assertSingleColumnCardLayout(page, '[data-bunch-review]', 3, false);
+    expect(fixture.commands.some((command: any) => command.operation === 'queue')).toBe(true);
+    expect(fixture.commands.some((command: any) => command.operation === 'list_discrepancies')).toBe(true);
+  });
 }
 
 test('Que Bunch Notes shows assigned cards and completes all source quantities', { tag: ['@bunch-note'] }, async ({ page, baseURL }) => {
