@@ -661,6 +661,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261017203000_bunch_note_multi_assignment_routing.sql',
       '20261018014347_bunch_note_blueprint_header_pdf_delivery.sql',
       '20261018183204_bunch_note_queue_execution_and_recounts.sql',
+      '20261019003759_bunch_note_supervisor_assignee_facets_v1.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain
