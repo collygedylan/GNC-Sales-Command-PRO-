@@ -21,7 +21,7 @@ const initialReview = {
   assigned_counter_id: null, assigned_counter_username: null, can_assign: true, can_complete: false, sources: reviewSources,
 };
 
-async function installQueueFixture(page: any, baseURL: string, options: { worker?: boolean; failFirstCompletion?: boolean; largeQueue?: boolean; startEmpty?: boolean; layoutCards?: number; layoutReviews?: number; holdCompletion?: boolean; reviewsInitiallyEmpty?: boolean } = {}) {
+async function installQueueFixture(page: any, baseURL: string, options: { worker?: boolean; failFirstCompletion?: boolean; largeQueue?: boolean; startEmpty?: boolean; layoutCards?: number; layoutReviews?: number; holdCompletion?: boolean; reviewsInitiallyEmpty?: boolean; surroundingCards?: boolean } = {}) {
   const control = await installHlOrderFixture(page, baseURL, { username: options.worker ? 'bn_worker' : 'dylan_collyge', role: options.worker ? 'EVAL' : 'ADMIN' });
   const headers = { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' };
   const commands: any[] = [];
@@ -100,7 +100,12 @@ async function installQueueFixture(page: any, baseURL: string, options: { worker
           data = { cards, total: cards.length, active_count: cards.length, review_count: options.layoutReviews ?? 0, can_review: !!options.layoutReviews, counters: [] };
         } else if (options.startEmpty && !publishedCard) data = { cards: [], total: 0, active_count: 0, review_count: 0, can_review: false, counters: [] };
         else {
-          const activeCards = [publishedCard || queueCard].filter(card => !completedCardIds.has(card.card_id));
+          const surrounding = options.surroundingCards ? Array.from({ length: 6 }, (_, index) => ({
+            ...queueCard, stablecard_id: `context-job-${index}:context-card-${index}`, job_id: `context-job-${index}`,
+            card_id: `context-card-${index}`, variety: `Surrounding Plant ${index}`,
+          })) : [];
+          const activeCards = [...surrounding.slice(0, 3), publishedCard || queueCard, ...surrounding.slice(3)]
+            .filter(card => !completedCardIds.has(card.card_id));
           data = { cards: activeCards, total: activeCards.length, active_count: activeCards.length, review_count: options.reviewsInitiallyEmpty ? Number(createdReview) : 1, can_review: true, counters: [] };
         }
         break;
@@ -186,24 +191,6 @@ async function expectQueueDetail(page: Page, name: string) {
   const detail = page.locator('#bunch-queue-detail-host').getByRole('dialog', { name: `Bunch Notes detail ${name}` });
   await expect(detail).toBeVisible();
   return detail;
-}
-
-async function addQueueScrollFixture(page: Page) {
-  await page.evaluate(() => document.fonts.ready);
-  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  return page.evaluate(() => {
-    const scrollArea = document.getElementById('main-scroll-area');
-    const requestView = document.getElementById('view-request');
-    if (!scrollArea || !requestView) throw new Error('Request shell scroll area is unavailable.');
-    requestView.style.minHeight = '1600px';
-    const spacer = document.createElement('div');
-    spacer.dataset.queueScrollFixture = 'true';
-    spacer.setAttribute('aria-hidden', 'true');
-    spacer.style.height = '360px';
-    requestView.prepend(spacer);
-    scrollArea.scrollTop = 280;
-    return scrollArea.scrollTop;
-  });
 }
 
 const responsiveQueueViewports = [
@@ -298,9 +285,10 @@ for (const viewport of responsiveQueueViewports) {
 }
 
 test('closed Bunch card opens accessibly, contains its own controls, and removes confirmed completion from the active queue', { tag: ['@bunch-note'] }, async ({ page, baseURL }) => {
-  const fixture = await installQueueFixture(page, baseURL!, { worker: true, holdCompletion: true, reviewsInitiallyEmpty: true });
+  const fixture = await installQueueFixture(page, baseURL!, { worker: true, holdCompletion: true, reviewsInitiallyEmpty: true, surroundingCards: true });
   await openQueue(page);
-  await addQueueScrollFixture(page);
+  await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled();
+  await page.evaluate(() => document.fonts.ready);
   const card = page.locator('[data-bunch-card="card-1"]');
   await expect(card).toContainText('Bunch Plant');
   await expect(card).toContainText('Assigned: Dylan');
@@ -309,10 +297,16 @@ test('closed Bunch card opens accessibly, contains its own controls, and removes
   await expect(card.getByRole('button', { name: 'Complete Work' })).toHaveCount(0);
   const summary = card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' });
   await expect(summary).toBeVisible();
-  await summary.scrollIntoViewIfNeeded();
+  await expect.poll(async () => {
+    await summary.scrollIntoViewIfNeeded();
+    return page.locator('#main-scroll-area').evaluate(element => (element as HTMLElement).scrollTop);
+  }).toBeGreaterThan(0);
   await summary.evaluate(element => (element as HTMLElement).focus({ preventScroll: true }));
   const scrollBeforeDetail = await page.locator('#main-scroll-area').evaluate(element => (element as HTMLElement).scrollTop);
   expect(scrollBeforeDetail).toBeGreaterThan(0);
+  // The native REQUEST phone layout returns to the top on iPhone; other
+  // environments preserve the list position. Bunch uses the same policy.
+  const expectedReturnTop = test.info().project.name.includes('iphone') ? 0 : scrollBeforeDetail;
   await page.keyboard.press('Enter');
   const entry = await expectQueueDetail(page, 'Bunch Plant');
   await expect(entry).toBeVisible();
@@ -332,7 +326,7 @@ test('closed Bunch card opens accessibly, contains its own controls, and removes
   await page.locator('#global-header-inline-back').click();
   await expect(page.locator('#view-request')).toBeVisible();
   await expect(page.locator('#view-detail')).toBeHidden();
-  await expect.poll(() => page.locator('#main-scroll-area').evaluate(element => (element as HTMLElement).scrollTop)).toBe(scrollBeforeDetail);
+  await expect.poll(() => page.locator('#main-scroll-area').evaluate(element => (element as HTMLElement).scrollTop)).toBe(expectedReturnTop);
   await expect(card.locator('input[placeholder="Enter actual count"]')).toHaveCount(0);
   await card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }).click();
   const reopenedEntry = await expectQueueDetail(page, 'Bunch Plant');

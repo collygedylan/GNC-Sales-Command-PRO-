@@ -1,4 +1,4 @@
-/* global canUseInvBunchNotes, nativeAuthProfile, getSupabaseReadIdentityScope, getCurrentVisibleViewId, renderRequestCategoryToolbar, updateFooterRequestBadge, SUPABASE_URL, postAppFunctionJson, APP_API_FUNCTION_URL, activeReqTab, getMainAreaScrollTarget, setMainAreaScrollTop, showPrimaryViewWithScrollPolicy, schedulePrimaryViewChromeRefresh, clearPendingDetailHydration */
+/* global canUseInvBunchNotes, nativeAuthProfile, getSupabaseReadIdentityScope, getCurrentVisibleViewId, renderRequestCategoryToolbar, updateFooterRequestBadge, SUPABASE_URL, postAppFunctionJson, APP_API_FUNCTION_URL, activeReqTab, getMainAreaScrollTarget, setMainAreaScrollTop, showPrimaryViewWithScrollPolicy, schedulePrimaryViewChromeRefresh, clearPendingDetailHydration, shouldResetIosPhoneMainScrollForView */
 /* global activeItem: writable, activeDetailSourceView: writable, lastView: writable */
 /* Que integration; authenticated reads and durable drafts live in the typed client. */
 (function () {
@@ -24,7 +24,7 @@
         if (getCurrentVisibleViewId() === 'detail') {
             showPrimaryViewWithScrollPolicy('request', { scrollPolicy: 'preserve' });
             renderRequestCategoryToolbar();
-            setMainAreaScrollTop(previous.scrollTop);
+            setMainAreaScrollTop(shouldResetIosPhoneMainScrollForView('request') ? 0 : previous.scrollTop);
             schedulePrimaryViewChromeRefresh('request', { delay: 0, passive: true });
             const focusTarget = previous.focus?.isConnected ? previous.focus : host?.querySelector('select, [role="button"]');
             focusTarget?.focus({ preventScroll: true });
