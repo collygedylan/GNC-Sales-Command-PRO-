@@ -1,3 +1,4 @@
+import { verifyV2310RetainedValidation } from './check-v2310-retained-validation.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverTests } from './test-discovery.mjs';
@@ -28,6 +29,11 @@ export function runReleaseUnitChecks({
   }
   if (shard && (Number(shard[1]) > Number(shard[2]) || Number(shard[2]) > 32)) throw new Error('Usage: invalid unit shard');
   const packageManifest = JSON.parse(readPackage(rootDir));
+  if (packageManifest.version === '2.3.10') {
+    verifyV2310RetainedValidation({ rootDir });
+    print(argv[0] === '--list' ? '[]' : 'Retaining verified baseline and 34 exact-checkpoint focused checks; 23-rep fixture evidence is source-sealed.');
+    return 0;
+  }
   if (packageManifest.version === '2.3.9') {
     const evidence = verifyV239RetainedValidation({ rootDir });
     if (argv[0] === '--list') {

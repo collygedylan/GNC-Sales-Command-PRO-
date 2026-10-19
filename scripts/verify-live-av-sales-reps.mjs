@@ -1,13 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { Client } from 'pg';
-import { chromium } from '@playwright/test';
+import { chromium, devices, webkit } from '@playwright/test';
+import { installHlOrderFixture } from '../tests/fixtures/hl-order-state.mjs';
+import { inventoryReadFixture } from '../tests/fixtures/inventory-list-read-fixture.mjs';
 
-// This verifier deliberately fails closed without genuine, native Supabase
-// sessions for every active Rep. It does not create, refresh, or impersonate
-// sessions, and it never records auth headers, page traces, screenshots, or
-// inventory row data.
+// Default mode verifies supplied genuine sessions. Snapshot-fixture mode uses
+// synthetic profiles and fully intercepted reads from a saved production
+// snapshot; it never claims live authentication or records tokens/row data.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const origin = String(process.env.GNC_AV_REP_APP_ORIGIN || 'https://agmetricapp.com').replace(/\/+$/, '');
 const sessionFile = String(process.env.GNC_AV_REP_SESSIONS_FILE || '').trim();
@@ -19,10 +21,377 @@ const supabaseUrl = shell.match(/const SUPABASE_URL = "([^"]+)"/)?.[1] || '';
 const publishableKey = shell.match(/const SUPABASE_KEY = "([^"]+)"/)?.[1] || '';
 const safeProgress = { failedUsername: null, completedUsers: [] };
 
+function validateSnapshotFixture(fixture) {
+  if (fixture?.mode !== 'production_snapshot_fixture' || fixture?.configuration?.currentSeason !== 'F1'
+    || Number(fixture?.configuration?.currentSalesYearMax) !== 27 || !Array.isArray(fixture?.master?.rows)
+    || fixture.master.rows.length !== Number(fixture?.source?.masterRowCount)
+    || !Array.isArray(fixture?.reps) || fixture.reps.length !== 23) {
+    fail('The production snapshot fixture does not match the 23-Rep F1/27 contract.');
+  }
+  const names = new Set();
+  for (const rep of fixture.reps) {
+    const username = String(rep?.username || '').trim().toLowerCase();
+    if (!username || names.has(username) || String(rep?.role || '').trim().toUpperCase() !== 'REP'
+      || !Number.isInteger(Number(rep?.expectedRows)) || Number(rep.expectedRows) < 1
+      || !Number.isInteger(Number(rep?.expectedItemcodes)) || Number(rep.expectedItemcodes) < 1
+      || !Array.isArray(rep?.reserveOwnerRows)) {
+      fail('The production snapshot fixture contains an invalid or duplicate Rep contract.');
+    }
+    names.add(username);
+  }
+  return fixture;
+}
+
+function precomputeMasterPageFixtureResponses(masterRows, firstPageLimit) {
+  const startedAt = Date.now();
+  const canonicalRows = masterRows.map(row => inventoryReadFixture.fromFixtureShape(row))
+    .sort((left, right) => String(left.unique_id).localeCompare(String(right.unique_id)));
+  const cache = new Map();
+  const continuationOffsets = [];
+  for (let offset = firstPageLimit; offset < canonicalRows.length; offset += 500) continuationOffsets.push(offset);
+  const offsetsByLimit = new Map([[firstPageLimit, [0]], [500, [0, ...continuationOffsets]]]);
+  for (const projection of ['full', 'browse']) {
+    for (const [limit, offsets] of offsetsByLimit) {
+      for (const offset of offsets) {
+        const pageRows = canonicalRows.slice(offset, offset + limit);
+        const projected = inventoryReadFixture.readMasterPage(pageRows, { dataset: 'master', projection, offset: 0, limit });
+        const body = JSON.stringify({ ok: true, data: { ...projected, total: canonicalRows.length, offset, limit,
+          hasMore: offset + projected.rows.length < canonicalRows.length } });
+        const payloadBytes = Buffer.from(body);
+        const byteLength = payloadBytes.byteLength;
+        const sha256 = createHash('sha256').update(payloadBytes).digest('hex');
+        cache.set(`${projection}|${offset}|${limit}`, { body, responseRows: projected.rows.length,
+          uncompressedByteLength: byteLength, wireByteLength: byteLength, sha256, status: 200 });
+      }
+    }
+  }
+  return { cache, rowCount: canonicalRows.length, precomputeMs: Date.now() - startedAt,
+    responseCount: cache.size,
+    uncompressedResponseBytes: [...cache.values()].reduce((sum, item) => sum + item.uncompressedByteLength, 0),
+    wireResponseBytes: [...cache.values()].reduce((sum, item) => sum + item.wireByteLength, 0) };
+}
+
+async function mainSnapshotFixture() {
+  const fixtureFile = path.resolve(process.env.GNC_AV_REP_SNAPSHOT_FIXTURE || path.join(root, '.gnc-local', 'v2310-live-reps-fixture.json'));
+  const fixture = validateSnapshotFixture(JSON.parse(fs.readFileSync(fixtureFile, 'utf8')));
+  const fixtureDigest = await import('node:crypto').then(({ createHash }) => createHash('sha256').update(fs.readFileSync(fixtureFile)).digest('hex'));
+  const firstPageLimit = Number(shell.match(/options\.preview && isAvOpenPreview \? \{ firstPageLimit:\s*(\d+) \}/)?.[1] || 0);
+  if (!Number.isInteger(firstPageLimit) || firstPageLimit < 1 || firstPageLimit > 500) {
+    fail('Could not derive AV preview first-page limit from the current application source.');
+  }
+  const masterPageFixture = precomputeMasterPageFixtureResponses(fixture.master.rows, firstPageLimit);
+  const appOrigin = String(process.env.GNC_AV_REP_FIXTURE_ORIGIN || 'http://127.0.0.1:43116').replace(/\/+$/, '');
+  const deviceName = String(process.env.GNC_AV_REP_DEVICE || 'Pixel 7').trim();
+  const device = devices[deviceName];
+  if (!device) fail(`Unsupported Playwright device profile: ${deviceName}.`);
+  const browserType = /^iPhone/i.test(deviceName) ? webkit : chromium;
+  const selectedReps = fixture.reps.slice(0, Math.max(1, Number(process.env.GNC_AV_REP_LIMIT) || fixture.reps.length));
+  const browser = await browserType.launch({ headless: true });
+  const output = {
+    startedAt: new Date().toISOString(), mode: 'production_snapshot_fixture',
+    realAuthenticationVerified: false, syntheticProfileRequestBinding: true,
+    fixtureFile: path.relative(root, fixtureFile).replaceAll('\\', '/'), fixtureSha256: fixtureDigest,
+    snapshotCapturedAt: fixture.capturedAt, snapshotRevisions: fixture.source?.revisions || null,
+    snapshotSource: fixture.oracle?.limitations || 'Sanitized saved production snapshot; no genuine sessions or live API reads.',
+    fixtureTransport: { kind: 'precomputed exact master_page responses via inventoryReadFixture contract',
+      masterRows: masterPageFixture.rowCount, responseCount: masterPageFixture.responseCount,
+      firstPageLimit,
+      uncompressedResponseBytes: masterPageFixture.uncompressedResponseBytes,
+      wireResponseBytes: masterPageFixture.wireResponseBytes, precomputeMs: masterPageFixture.precomputeMs,
+      compression: 'none; raw UTF-8 JSON matches the existing fixture route response envelope' },
+    environment: { device: deviceName, browser: /^iPhone/i.test(deviceName) ? 'WebKit' : 'Chromium',
+      viewport: device.viewport, trace: 'off', cache: 'fresh browser context; shared OS cache uncontrolled' },
+    repCountExpected: selectedReps.length, repCountInSnapshot: fixture.reps.length, reps: [],
+  };
+  safeProgress.completedUsers = output.reps;
+  let currentlyChecking = '';
+  try {
+    for (const rep of selectedReps) {
+      const username = String(rep.username).trim().toLowerCase();
+      currentlyChecking = username;
+      safeProgress.failedUsername = username;
+      safeProgress.currentResult = { username, phase: 'context-create', status: 'in_progress' };
+      const context = await browser.newContext({ ...device, serviceWorkers: 'block' });
+      const page = await context.newPage();
+      const pageErrors = [];
+      const consoleDiagnostics = [];
+      const readRequests = [];
+      const precomputedRequestEvents = [];
+      page.on('pageerror', error => pageErrors.push(error.message));
+      page.on('console', message => {
+        if (!['error', 'warning'].includes(message.type()) || consoleDiagnostics.length >= 40) return;
+        consoleDiagnostics.push({ type: message.type(), message: safeDiagnostic({ message: message.text() }).message });
+      });
+      page.on('request', request => {
+        if (!request.url().includes('/functions/v1/app-api') || request.method() !== 'POST') return;
+        let body;
+        try { body = request.postDataJSON() || {}; } catch { return; }
+        const startedAt = Date.now();
+        if (body.action !== 'inventory_read') return;
+        const params = body.params || {};
+        const cachedPage = body.action === 'inventory_read' && body.operation === 'master_page' && params.dataset === 'master'
+          ? masterPageFixture.cache.get(`${String(params.projection || 'initial')}|${Math.max(0, Number(params.offset) || 0)}|${Math.min(500, Math.max(1, Number(params.limit) || 250))}`)
+          : null;
+        const record = { action: String(body.action || '').slice(0, 40), operation: String(body.operation || '').slice(0, 60),
+          dataset: String(params.dataset || '').slice(0, 40), offset: Number(params.offset || 0),
+          limit: Number(params.limit || 0), projection: String(params.projection || ''), startedAt, responseHeadersAt: null, responseFinishedAt: null,
+          durationToHeadersMs: null, durationToFinishMs: null, httpStatus: null,
+          responseRows: cachedPage?.responseRows ?? null, precomputed: !!cachedPage,
+          responseUncompressedBytes: cachedPage?.uncompressedByteLength ?? null, responseWireBytes: cachedPage?.wireByteLength ?? null,
+          authorizationPresent: Boolean(request.headers()['authorization']) };
+        readRequests.push(record);
+        request.response().then(async response => {
+          if (!response) return;
+          record.responseHeadersAt = Date.now();
+          record.durationToHeadersMs = record.responseHeadersAt - startedAt;
+          record.httpStatus = response.status();
+          if (!response.ok()) return;
+          if (!cachedPage) {
+            try {
+              const payload = await response.json();
+              const rows = Array.isArray(payload) ? payload
+                : Array.isArray(payload?.rows) ? payload.rows
+                  : Array.isArray(payload?.data?.rows) ? payload.data.rows
+                    : Array.isArray(payload?.data) ? payload.data
+                      : Array.isArray(payload?.result?.rows) ? payload.result.rows : null;
+              record.responseRows = rows?.length ?? null;
+            } catch { record.responseRows = null; }
+          }
+          await response.finished().catch(() => null);
+          record.responseFinishedAt = Date.now();
+          record.durationToFinishMs = record.responseFinishedAt - startedAt;
+        });
+      });
+      safeProgress.currentResult = { username, phase: 'synthetic-login-bootstrap', status: 'in_progress' };
+      let control;
+      try {
+        control = await installHlOrderFixture(page, appOrigin, {
+          username, role: 'REP', startupMode: 'cold', master: fixture.master.rows,
+          reserveRows: rep.reserveOwnerRows,
+          beforeNavigate: async () => {
+            await page.route('**/functions/v1/app-api*', async route => {
+              const request = route.request();
+              if (request.method() !== 'POST') return route.fallback();
+              let body;
+              try { body = request.postDataJSON() || {}; } catch { return route.fallback(); }
+              if (body.action !== 'inventory_read' || body.operation !== 'master_page'
+                || body.params?.dataset !== 'master' || body.params?.season || body.params?.uniqueId
+                || body.params?.itemCode || body.params?.locationCode || body.params?.lotCode || body.params?.source) {
+                return route.fallback();
+              }
+              const params = body.params || {};
+              const projection = String(params.projection || 'initial');
+              const offset = Math.max(0, Number(params.offset) || 0);
+              const limit = Math.min(500, Math.max(1, Number(params.limit) || 250));
+              const precomputed = masterPageFixture.cache.get(`${projection}|${offset}|${limit}`);
+              if (!precomputed) return route.fallback();
+              const startedAt = Date.now();
+              await route.fulfill({ status: precomputed.status, contentType: 'application/json', headers: {
+                'access-control-allow-origin': appOrigin,
+                'access-control-allow-methods': 'GET, HEAD, POST, OPTIONS',
+                'access-control-allow-headers': request.headers()['access-control-request-headers'] || 'authorization, apikey, content-type, x-client-info, prefer, range, accept-profile, content-profile',
+                'access-control-expose-headers': 'content-range', 'access-control-allow-credentials': 'true',
+              }, body: precomputed.body });
+              precomputedRequestEvents.push({ offset, limit, projection, responseRows: precomputed.responseRows,
+                uncompressedResponseBytes: precomputed.uncompressedByteLength, wireResponseBytes: precomputed.wireByteLength,
+                sha256: precomputed.sha256, routeFulfillMs: Date.now() - startedAt });
+            });
+          },
+        });
+      } catch (error) {
+        safeProgress.currentResult = { username, status: 'synthetic_fixture_bootstrap_failed', error: safeDiagnostic(error) };
+        throw error;
+      }
+      safeProgress.currentResult = { username, phase: 'profile-check', status: 'in_progress', fixtureErrors: control.errors.length };
+      await page.waitForFunction(expected => {
+        const profile = window.eval(`({ username: String(nativeAuthProfile?.username || '').trim().toLowerCase(), role: String(nativeAuthProfile?.role || '').trim().toUpperCase() })`);
+        return profile.username === expected && profile.role === 'REP';
+      }, username, { timeout: 30_000 });
+      const profile = await page.evaluate(() => window.eval(`({ username: String(nativeAuthProfile.username || '').trim().toLowerCase(), role: String(nativeAuthProfile.role || '').trim().toUpperCase() })`));
+      if (profile.username !== username || profile.role !== 'REP') fail(`Synthetic profile binding failed for ${username}.`);
+      safeProgress.currentResult = { username, phase: 'navigate-av', status: 'in_progress', fixtureErrors: control.errors.length };
+      await page.locator('#footer-menu-btn').click();
+      const avNav = page.locator('#drawer-av-btn');
+      await avNav.waitFor({ state: 'visible', timeout: 10_000 });
+      safeProgress.currentResult = { username, phase: 'measure-av-initial-window', status: 'in_progress', fixtureErrors: control.errors.length };
+      await page.evaluate(expectedRows => {
+        const measurement = window.__gncAvPaint = { startedAt: null, firstCardMs: null, initialWindowMs: null, fullReadyMs: null,
+          loadingObserved: false, previewCardCount: 0, lastObservation: null, coordinatorTransitions: [],
+          renderWindowTransitions: [] };
+        let previousCoordinator = '';
+        let previousWindow = '';
+        const sampleInternals = (elapsedMs, dataReadiness) => {
+          const syncState = window.eval(`String(getProductionLiveSyncCoordinator?.().getStatus?.()?.state||'')`);
+          const status = { state: syncState, masterRows: dataReadiness.masterRows, reserveRows: dataReadiness.reserveRows,
+            masterFull: dataReadiness.masterFull, reservesFull: dataReadiness.reservesFull };
+          const coordinatorKey = JSON.stringify(status);
+          if (coordinatorKey !== previousCoordinator && measurement.coordinatorTransitions.length < 160) {
+            measurement.coordinatorTransitions.push({ elapsedMs, ...status });
+            previousCoordinator = coordinatorKey;
+          }
+          const win = window.eval(`(() => { const el=document.getElementById('av-content'); const s=el?._avCardWindow||{};
+            return { token:Number(typeof avRenderChunkToken==='undefined'?-1:avRenderChunkToken), index:Number(s.index||0),
+              total:Number(s.rows?.length||0), loading:!!s.loading, more:!!s.moreButton?.isConnected,
+              cards:document.querySelectorAll('#av-content .app-smart-card--inventory[data-dom-id]').length }; })()`);
+          const windowKey = JSON.stringify(win);
+          if (windowKey !== previousWindow && measurement.renderWindowTransitions.length < 240) {
+            measurement.renderWindowTransitions.push({ elapsedMs, ...win });
+            previousWindow = windowKey;
+          }
+        };
+        let pendingFrame = false;
+        const sample = () => {
+          if (measurement.startedAt === null || pendingFrame) return;
+          pendingFrame = true;
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            pendingFrame = false;
+            const cards = document.querySelectorAll('#av-content .app-smart-card--inventory[data-dom-id]');
+            const visible = !!cards[0]?.getClientRects().length;
+            const elapsed = performance.now() - measurement.startedAt;
+            if (visible && measurement.firstCardMs === null) measurement.firstCardMs = elapsed;
+            if (visible && cards.length >= 20 && measurement.initialWindowMs === null) measurement.initialWindowMs = elapsed;
+            const crumb = document.getElementById('av-crumb')?.textContent || '';
+            if (/loading full inventory/i.test(crumb)) {
+              measurement.loadingObserved = true;
+              measurement.previewCardCount = Math.max(measurement.previewCardCount, cards.length);
+            }
+            const dataReadiness = window.eval(`({ masterRows: Array.isArray(fullInventory) ? fullInventory.length : -1,
+              reserveRows: Array.isArray(reservesInventory) ? reservesInventory.length : -1,
+              masterFull: !!getDatasetState('master')?.fullLoaded, reservesFull: !!getDatasetState('reserves')?.fullLoaded,
+              syncState: String(getProductionLiveSyncCoordinator?.().getStatus?.()?.state || ''),
+              syncMessage: (() => { const s=getProductionLiveSyncCoordinator?.().getStatus?.()||{}; const v=String(s.message||s.error?.message||'');
+                return v.replace(/https?:\\/\\/\\S+/g,'[url]').replace(/Bearer\\s+\\S+/gi,'[authorization]').slice(0,180); })(),
+              viewLoadError: (() => { const v=String(productionLiveSyncViewLoad?.error?.message||'');
+                return v.replace(/https?:\\/\\/\\S+/g,'[url]').replace(/Bearer\\s+\\S+/gi,'[authorization]').slice(0,180); })() })`);
+            sampleInternals(elapsed, dataReadiness);
+            measurement.lastObservation = { elapsedMs: elapsed, masterRows: dataReadiness.masterRows,
+              reserveRows: dataReadiness.reserveRows, masterFull: dataReadiness.masterFull,
+              reservesFull: dataReadiness.reservesFull, syncState: dataReadiness.syncState,
+              syncMessage: dataReadiness.syncMessage, viewLoadError: dataReadiness.viewLoadError,
+              crumb: crumb.slice(0, 120), mountedCards: cards.length, exportDisabled: !!document.getElementById('av-export-btn')?.disabled };
+            const count = Number(crumb.match(/\(([\d,]+) items?\)/i)?.[1]?.replace(/,/g, '') || -1);
+            const exportLabel = document.getElementById('av-export-btn-label')?.textContent || '';
+            const exportCount = Number(exportLabel.match(/\(([\d,]+)\)\s*$/)?.[1]?.replace(/,/g, '') || -1);
+            const ready = window.eval("getDatasetState('master').fullLoaded && getDatasetState('reserves').fullLoaded && !isAvLiveCatalogIncomplete()");
+            if (ready && visible && cards.length >= 20 && count === expectedRows && exportCount === expectedRows
+              && !/loading full inventory/i.test(crumb) && !document.getElementById('av-export-btn')?.disabled) {
+              measurement.fullReadyMs = elapsed;
+              observer.disconnect();
+            }
+          }));
+        };
+        const observer = new MutationObserver(sample);
+        observer.observe(document.getElementById('view-av'), { subtree: true, childList: true, characterData: true, attributes: true });
+        document.addEventListener('click', event => {
+          if (event.target instanceof Element && event.target.closest('#drawer-av-btn')) {
+            measurement.startedAt = performance.now();
+            sample();
+          }
+        }, true);
+      }, Number(rep.expectedRows));
+      safeProgress.currentResult = { username, phase: 'first-window-and-full-ready', status: 'in_progress', fixtureErrors: control.errors.length };
+      await avNav.click();
+      try {
+        await page.waitForFunction(() => Number.isFinite(window.__gncAvPaint?.fullReadyMs), null, { timeout: 120_000 });
+      } catch (error) {
+        const diagnostics = await page.evaluate(() => ({ lastObservation: window.__gncAvPaint?.lastObservation || null,
+          coordinatorTransitions: window.__gncAvPaint?.coordinatorTransitions || [],
+          renderWindowTransitions: window.__gncAvPaint?.renderWindowTransitions || [] })).catch(() => ({}));
+        safeProgress.currentResult = { username, phase: 'full-ready-wait', status: 'full_ready_timeout',
+        ...diagnostics, apiRequests: readRequests, precomputedMasterPageRequests: precomputedRequestEvents,
+        fixtureTransport: { rowCount: masterPageFixture.rowCount, responseCount: masterPageFixture.responseCount, firstPageLimit,
+          uncompressedResponseBytes: masterPageFixture.uncompressedResponseBytes,
+          wireResponseBytes: masterPageFixture.wireResponseBytes, precomputeMs: masterPageFixture.precomputeMs },
+        pageErrors: pageErrors.length, consoleDiagnostics, fixtureErrors: control.errors.length,
+          blockedMutations: control.blockedMutations.length, masterPageRequests: readRequests.length,
+          error: safeDiagnostic(error) };
+        throw error;
+      }
+      const paint = await page.evaluate(() => window.__gncAvPaint);
+      safeProgress.currentResult = { username, phase: 'final-visible-state-snapshot', status: 'in_progress',
+        loadingObserved: paint.loadingObserved, previewCardCount: paint.previewCardCount };
+      const state = await page.evaluate(() => window.eval(`(() => {
+        const resolved = getCurrentAVBaseItems({ usePreparedSalesRows: true }) || {};
+        const rows = Array.isArray(resolved.items) ? resolved.items : [];
+        const crumb = document.getElementById('av-crumb')?.textContent || '';
+        const label = document.getElementById('av-export-btn-label')?.textContent || '';
+        return { masterRows: Array.isArray(fullInventory) ? fullInventory.length : -1,
+          reserveRows: Array.isArray(reservesInventory) ? reservesInventory.length : -1,
+          renderedRows: rows.length,
+          itemcodes: new Set(rows.map(row => String(row.ITEMCODE || row.itemcode || '').trim().toUpperCase()).filter(Boolean)).size,
+          exportCount: getAVVisibleExportCount(rows), exportLabel: label,
+          exportDisabled: !!document.getElementById('av-export-btn')?.disabled,
+          isPartial: !!resolved.isPartial, loading: /loading full inventory/i.test(crumb),
+          crumbCount: Number(crumb.match(/\\(([\\d,]+) items?\\)/i)?.[1]?.replace(/,/g, '') || -1),
+          mountedCards: document.querySelectorAll('#av-content .app-smart-card--inventory[data-dom-id]').length,
+          currentView: getCurrentVisibleViewId() };
+      })()`));
+      const apiReadCount = readRequests.filter(request => request.dataset === 'master').length;
+      const currentResult = { username, expectedRows: Number(rep.expectedRows), expectedItemcodes: Number(rep.expectedItemcodes),
+        actualRows: state.renderedRows, actualItemcodes: state.itemcodes, exportCount: state.exportCount,
+        mountedCards: state.mountedCards, masterRows: state.masterRows, reserveRows: state.reserveRows,
+        firstCardMs: paint.firstCardMs, initialWindowMs: paint.initialWindowMs, fullReadyMs: paint.fullReadyMs,
+        loadingObserved: paint.loadingObserved, previewCardCount: paint.previewCardCount,
+        loadingCleared: !state.loading, status: 'not_passed' };
+      currentResult.apiRequests = readRequests;
+      currentResult.precomputedMasterPageRequests = precomputedRequestEvents;
+      currentResult.fixtureTransport = { rowCount: masterPageFixture.rowCount, responseCount: masterPageFixture.responseCount,
+        uncompressedResponseBytes: masterPageFixture.uncompressedResponseBytes,
+        wireResponseBytes: masterPageFixture.wireResponseBytes, precomputeMs: masterPageFixture.precomputeMs };
+      currentResult.consoleDiagnostics = consoleDiagnostics;
+      currentResult.pageErrorMessages = pageErrors.slice(0, 20).map(message => safeDiagnostic({ message }).message);
+      currentResult.coordinatorTransitions = paint.coordinatorTransitions;
+      currentResult.renderWindowTransitions = paint.renderWindowTransitions;
+      safeProgress.currentResult = currentResult;
+      if (state.masterRows !== fixture.master.rows.length || state.reserveRows !== rep.reserveOwnerRows.length
+        || state.exportDisabled || state.loading || state.currentView !== 'av' || state.isPartial
+        || state.renderedRows !== Number(rep.expectedRows) || state.itemcodes !== Number(rep.expectedItemcodes)
+        || state.crumbCount !== state.renderedRows || state.mountedCards < 20
+        || state.exportCount !== state.renderedRows || Number(state.exportLabel.match(/\(([\d,]+)\)\s*$/)?.[1]?.replace(/,/g, '') || -1) !== state.exportCount
+        || ![paint.firstCardMs, paint.initialWindowMs].every(value => Number.isFinite(value) && value < 1500)
+        || !apiReadCount || readRequests.some(request => !request.authorizationPresent)
+        || pageErrors.length || control.blockedMutations.length || control.errors.length) {
+        fail(`Snapshot fixture AV visibility/readiness/paint gate failed for ${username}.`);
+      }
+      currentResult.role = profile.role;
+      currentResult.syntheticProfileRequestBinding = true;
+      currentResult.masterRows = state.masterRows;
+      currentResult.reserveRows = state.reserveRows;
+      currentResult.masterRevision = fixture.source?.revisions?.ph_master_inventory?.revision ?? null;
+      currentResult.reservesRevision = fixture.source?.revisions?.ph_reserves?.revision ?? null;
+      currentResult.masterPageRequests = apiReadCount;
+      currentResult.requestAuthHeadersPresent = readRequests.filter(request => request.dataset === 'master').every(request => request.authorizationPresent);
+      currentResult.pageErrors = pageErrors.length;
+      currentResult.blockedMutations = control.blockedMutations.length;
+      currentResult.status = 'passed';
+      output.reps.push(currentResult);
+      safeProgress.failedUsername = null;
+      await context.close();
+    }
+    output.completedAt = new Date().toISOString();
+    fs.mkdirSync(path.dirname(outputFile), { recursive: true });
+    fs.writeFileSync(outputFile, `${JSON.stringify(output, null, 2)}\n`, { flag: 'wx' });
+    process.stdout.write(JSON.stringify({ output: outputFile, mode: output.mode,
+      realAuthenticationVerified: false, repCount: output.reps.length,
+      status: 'PASS', results: output.reps.map(rep => ({ username: rep.username, currentSeasonRows: rep.actualRows,
+        firstCardMs: rep.firstCardMs, initialWindowMs: rep.initialWindowMs, fullReadyMs: rep.fullReadyMs,
+        loadingObserved: rep.loadingObserved, previewCardCount: rep.previewCardCount,
+        loadingCleared: rep.loadingCleared, status: rep.status })) }) + '\n');
+  } finally { await browser.close().catch(() => {}); }
+}
+
 function fail(message) {
   const error = new Error(message);
   error.name = 'SafeVerifierError';
   throw error;
+}
+
+function safeDiagnostic(error) {
+  const message = String(error?.message || '').replace(/https?:\/\/[^\s)]+/gi, '[url]')
+    .replace(/(?:bearer\s+)[A-Za-z0-9._~+\/-]+/gi, '[authorization]')
+    .replace(/(token|apikey|password|secret)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
+    .slice(0, 240);
+  return { name: String(error?.name || 'Error').slice(0, 60), code: String(error?.code || '').slice(0, 60), message };
 }
 
 function loadDatabaseUrl() {
@@ -128,6 +497,9 @@ function validateSessionFile(value, usernames) {
 }
 
 async function main() {
+  if (String(process.env.GNC_AV_REP_MODE || '').trim().toLowerCase() === 'snapshot-fixture') {
+    return mainSnapshotFixture();
+  }
   if (!sessionFile || !fs.existsSync(sessionFile)) fail('Set GNC_AV_REP_SESSIONS_FILE to a protected JSON file of genuine native sessions for every active Rep.');
   if (!supabaseUrl || !publishableKey || !fs.existsSync(caFile)) fail('Live Supabase URL/key or verified CA is unavailable.');
   const rawSessions = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
@@ -136,8 +508,8 @@ async function main() {
   let browser;
   const output = { startedAt: new Date().toISOString(), appOrigin: origin, mode: 'live-read-only', noMocks: true, reps: [] };
   safeProgress.completedUsers = output.reps;
-  let currentlyChecking = '';
-  let initialRevisions = null;
+  let currentlyChecking;
+  let initialRevisions;
   try {
     await db.connect();
     await db.query('begin read only');
@@ -313,7 +685,8 @@ main().catch(error => {
   const failurePath = path.join(root, '.gnc-local', `v2310-live-av-e2e-failure-${new Date().toISOString().replace(/[-:.]/g, '')}.json`);
   try {
     fs.mkdirSync(path.dirname(failurePath), { recursive: true });
-    fs.writeFileSync(failurePath, JSON.stringify({ failure: safeMessage, failedUsername: safeProgress.failedUsername, completedUsers: safeProgress.completedUsers }, null, 2) + '\n', { flag: 'wx' });
+    fs.writeFileSync(failurePath, JSON.stringify({ failure: safeMessage, diagnostic: safeDiagnostic(error), failedUsername: safeProgress.failedUsername,
+      currentResult: safeProgress.currentResult || null, completedUsers: safeProgress.completedUsers }, null, 2) + '\n', { flag: 'wx' });
   } catch { /* Preserve no secret-bearing error output when local evidence cannot be saved. */ }
   process.stderr.write(`${safeMessage}\n`);
   process.exitCode = 1;

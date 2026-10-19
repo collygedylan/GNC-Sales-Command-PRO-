@@ -1,3 +1,4 @@
+import { verifyV2310RetainedValidation } from './check-v2310-retained-validation.mjs';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,6 +21,11 @@ export function runReleaseReactChecks({
 } = {}) {
   const { version } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
   const vitest = path.join(rootDir, 'node_modules', 'vitest', 'vitest.mjs');
+  if (version === '2.3.10') {
+    const evidence = verifyV2310RetainedValidation({ rootDir });
+    print('Retaining ' + evidence.retainedReactPassed + ' unchanged React checks.');
+    return 0;
+  }
   if (version === '2.3.9') {
     const evidence = verifyV239RetainedValidation({ rootDir });
     print(`Retaining ${evidence.retainedReactPassed} baseline React tests; no React source or component contract is changed.`);

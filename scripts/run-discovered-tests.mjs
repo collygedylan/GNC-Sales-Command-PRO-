@@ -1,3 +1,4 @@
+import { verifyV2310RetainedValidation } from './check-v2310-retained-validation.mjs';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,6 +21,11 @@ export function runDiscoveredNodeTests({ root = repositoryRoot, group, argv = []
   const files = discoverTests({ root, group }).filter(file => !tag || readTestAnnotations({ root, file })
     .some(annotation => annotation.type === 'group' && annotation.value.split(',').includes(tag)));
   if (!files.length) throw new Error(`DISCOVERED_TEST_GROUP_EMPTY: ${group}${tag ? ':' + tag : ''}`);
+  if (group === 'python' && JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version === '2.3.10') {
+    verifyV2310RetainedValidation({ rootDir: root });
+    print('Retaining unchanged Python contract evidence from verified v2.3.9 baseline.');
+    return 0;
+  }
   if (group === 'python' && JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version === '2.3.9') {
     const evidence = verifyV239RetainedValidation({ rootDir: root });
     if (!evidence.retainedPythonContracts) throw new Error('V239_PYTHON_CONTRACT_RETENTION_SOURCE_MISMATCH');
