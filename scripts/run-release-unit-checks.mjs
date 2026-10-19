@@ -4,6 +4,7 @@ import { discoverTests } from './test-discovery.mjs';
 import path from 'node:path';
 import fs from 'node:fs';
 import { verifyV235RetainedValidation } from './check-v235-retained-validation.mjs';
+import { verifyV236RetainedValidation } from './check-v236-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
@@ -29,6 +30,11 @@ export function runReleaseUnitChecks({
     return 0;
   }
   const packageManifest = JSON.parse(readPackage(rootDir));
+  if (packageManifest.version === '2.3.6') {
+    const evidence = verifyV236RetainedValidation({ rootDir });
+    print(`Retaining ${evidence.retainedNodePassed} passing Node tests from ${evidence.baseline}; v2.3.6 runs only focused Bunch React/browser checks.`);
+    return 0;
+  }
   if (packageManifest.version === '2.3.5') {
     const evidence = verifyV235RetainedValidation({ rootDir });
     print(`Retained ${evidence.retainedNodePassed} passing Node tests from exact baseline ${evidence.baseline}; full Node suite not rerun for v2.3.5.`);

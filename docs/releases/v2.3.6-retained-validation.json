@@ -1,0 +1,11 @@
+{
+  "release": "AgData v2.3.6",
+  "base": "a8738c35a3ca4819fae6e005a481c57f1dfdd7ec",
+  "baselinePagesRun": 39193074267,
+  "baselineCiRun": 39192936119,
+  "retainedNode": 3550,
+  "retainedReact": 158,
+  "baselineReceipt": "docs/releases/v2.3.5-retained-validation.json",
+  "focusedReactFile": "tests/bunch-queue-view.test.tsx",
+  "authorization": "User requested targeted Bunch Notes unit/browser validation and reuse of unaffected full Node, React and SQL suites."
+}

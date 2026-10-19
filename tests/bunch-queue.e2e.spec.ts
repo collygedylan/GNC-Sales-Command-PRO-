@@ -180,6 +180,32 @@ async function openQueue(page: Page, category: 'bunch-notes' | 'bunch-count-revi
   await expect(page.locator('#bunch-queue-host')).toBeVisible();
 }
 
+async function expectQueueDetail(page: Page, name: string) {
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await expect(page.locator('#view-request')).toBeHidden();
+  const detail = page.locator('#bunch-queue-detail-host').getByRole('dialog', { name: `Bunch Notes detail ${name}` });
+  await expect(detail).toBeVisible();
+  return detail;
+}
+
+async function addQueueScrollFixture(page: Page) {
+  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  return page.evaluate(() => {
+    const scrollArea = document.getElementById('main-scroll-area');
+    const requestView = document.getElementById('view-request');
+    if (!scrollArea || !requestView) throw new Error('Request shell scroll area is unavailable.');
+    requestView.style.minHeight = '1600px';
+    const spacer = document.createElement('div');
+    spacer.dataset.queueScrollFixture = 'true';
+    spacer.setAttribute('aria-hidden', 'true');
+    spacer.style.height = '360px';
+    requestView.prepend(spacer);
+    scrollArea.scrollTop = 280;
+    return scrollArea.scrollTop;
+  });
+}
+
 const responsiveQueueViewports = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'tablet', width: 820, height: 900 },
@@ -246,14 +272,22 @@ for (const viewport of responsiveQueueViewports) {
     await expect(page.locator('[data-bunch-card] input[placeholder="Enter actual count"]')).toHaveCount(0);
     await expect(page.locator('[data-bunch-card] button', { hasText: 'Complete Work' })).toHaveCount(0);
     await assertSingleColumnCardLayout(page, '[data-bunch-card]', 3);
-    const maximumQuantity = page.locator('[data-bunch-card="layout-card-0"] input[placeholder="Enter actual count"]');
     await page.locator('[data-bunch-card="layout-card-0"]').getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }).click();
-    await expect(maximumQuantity).toBeVisible();
-    await maximumQuantity.fill('999999999');
-    await expect(maximumQuantity).toHaveValue('999999999');
+    const detail = await expectQueueDetail(page, 'Bunch Plant');
+    await expect(page.locator('[data-bunch-card] input[placeholder="Enter actual count"]')).toHaveCount(0);
+    await expect(page.locator('[data-bunch-card] button', { hasText: 'Done' })).toHaveCount(0);
+    const detailQuantity = page.locator('#bunch-queue-detail-host input[placeholder="Enter actual count"]');
+    await expect(detailQuantity).toBeVisible();
+    await detailQuantity.fill('999999999');
+    await expect(detailQuantity).toHaveValue('999999999');
     await assertSingleColumnCardLayout(page, '[data-bunch-card]', 3, 1);
     await expect(page.locator('[data-bunch-card="layout-card-0"] .bq-id')).toContainText('D.05.000');
-    await expect(page.locator('[data-bunch-card="layout-card-0"] input[placeholder="Enter actual count"]')).toHaveCount(1);
+    await expect(page.locator('[data-bunch-card="layout-card-0"] input[placeholder="Enter actual count"]')).toHaveCount(0);
+    await expect(detail.locator('input[placeholder="Enter actual count"]')).toHaveValue('999999999');
+    await expect(page.locator('#global-header-inline-back')).toBeVisible();
+    await page.locator('#global-header-inline-back').click();
+    await expect(page.locator('#view-request')).toBeVisible();
+    await expect(page.locator('#view-detail')).toBeHidden();
 
     await openQueue(page, 'bunch-count-review');
     await expect(page.locator('[data-bunch-review]')).toHaveCount(3);
@@ -266,6 +300,7 @@ for (const viewport of responsiveQueueViewports) {
 test('closed Bunch card opens accessibly, contains its own controls, and removes confirmed completion from the active queue', { tag: ['@bunch-note'] }, async ({ page, baseURL }) => {
   const fixture = await installQueueFixture(page, baseURL!, { worker: true, holdCompletion: true, reviewsInitiallyEmpty: true });
   await openQueue(page);
+  await addQueueScrollFixture(page);
   const card = page.locator('[data-bunch-card="card-1"]');
   await expect(card).toContainText('Bunch Plant');
   await expect(card).toContainText('Assigned: Dylan');
@@ -274,29 +309,42 @@ test('closed Bunch card opens accessibly, contains its own controls, and removes
   await expect(card.getByRole('button', { name: 'Complete Work' })).toHaveCount(0);
   const summary = card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' });
   await expect(summary).toBeVisible();
-  await summary.focus();
+  await summary.scrollIntoViewIfNeeded();
+  await summary.evaluate(element => (element as HTMLElement).focus({ preventScroll: true }));
+  const scrollBeforeDetail = await page.locator('#main-scroll-area').evaluate(element => (element as HTMLElement).scrollTop);
+  expect(scrollBeforeDetail).toBeGreaterThan(0);
   await page.keyboard.press('Enter');
-  const entry = card.getByRole('region', { name: 'Bunch Notes entry Bunch Plant' });
+  const entry = await expectQueueDetail(page, 'Bunch Plant');
   await expect(entry).toBeVisible();
-  const firstQuantity = card.getByRole('textbox', { name: 'Actual Qty Completed row-1' });
-  const secondQuantity = card.getByRole('textbox', { name: 'Actual Qty Completed row-2' });
+  await expect(page.locator('#global-header-inline-back')).toBeVisible();
+  const firstQuantity = page.locator('#bunch-queue-detail-host').getByRole('textbox', { name: 'Actual Qty Completed row-1' });
+  const secondQuantity = page.locator('#bunch-queue-detail-host').getByRole('textbox', { name: 'Actual Qty Completed row-2' });
   await expect(firstQuantity).toBeVisible();
-  await expect(card.getByRole('button', { name: 'Done' })).toBeVisible();
+  await expect(card.locator('input[placeholder="Enter actual count"]')).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'Done' })).toHaveCount(0);
+  await expect(page.locator('#bunch-queue-detail-host').getByRole('button', { name: 'Done' })).toBeVisible();
   // Interacting with entry controls must not bubble into the summary toggle.
   await firstQuantity.fill('7');
   await secondQuantity.fill('9');
   await expect(entry).toBeVisible();
+  await expect(page.locator('#view-request')).toBeHidden();
   await expect(firstQuantity).toHaveValue('7');
-  await card.getByRole('button', { name: 'Close' }).click();
+  await page.locator('#global-header-inline-back').click();
+  await expect(page.locator('#view-request')).toBeVisible();
+  await expect(page.locator('#view-detail')).toBeHidden();
+  await expect.poll(() => page.locator('#main-scroll-area').evaluate(element => (element as HTMLElement).scrollTop)).toBe(scrollBeforeDetail);
   await expect(card.locator('input[placeholder="Enter actual count"]')).toHaveCount(0);
   await card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }).click();
-  await expect(entry).toBeVisible();
+  const reopenedEntry = await expectQueueDetail(page, 'Bunch Plant');
+  await expect(reopenedEntry).toBeVisible();
   await expect(firstQuantity).toHaveValue('7');
   const activeBadge = page.locator('[data-request-category="bunch-notes"]');
   const beforeBadgeText = await activeBadge.innerText();
   const beforeCount = Number(beforeBadgeText.match(/\d+/)?.[0]);
   expect(Number.isFinite(beforeCount), `Bunch Notes pill should expose its count: ${beforeBadgeText}`).toBe(true);
-  await card.getByRole('button', { name: 'Done' }).click();
+  await page.locator('#bunch-queue-detail-host').getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('#view-request')).toBeVisible();
+  await expect(page.locator('#view-detail')).toBeHidden();
   await fixture.waitForCompletion();
   // Service removes the pending completion optimistically before its response resolves.
   await expect(page.locator('[data-bunch-card="card-1"]')).toHaveCount(0);
@@ -304,8 +352,10 @@ test('closed Bunch card opens accessibly, contains its own controls, and removes
   fixture.releaseCompletion();
   await expect(page.getByText(/Work completed|Completion queued/)).toBeVisible();
   await page.getByRole('button', { name: 'Refresh' }).click();
+  await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled();
   await expect(page.locator('[data-bunch-card="card-1"]')).toHaveCount(0);
-  await page.locator('[data-request-category="bunch-count-review"]').click();
+  const categoryPress = test.info().project.use.isMobile ? 'tap' : 'click';
+  await page.locator('[data-request-category="bunch-count-review"]')[categoryPress]();
   await expect(page.locator('[data-bunch-review="review-after-completion"]')).toBeVisible();
   expect(fixture.commands.filter((command: any) => command.operation === 'complete_card')).toHaveLength(1);
   expect(fixture.commands.some((command: any) => command.operation === 'list_discrepancies')).toBe(true);
@@ -351,13 +401,35 @@ test('Que Bunch Notes paginates 10,001 authorized rows as 100 cards and keeps re
   expect(fixture.commands.some((command: any) => /master|hydrate|inventory/i.test(command.operation))).toBe(false);
 
   const card = page.locator('[data-bunch-card="card-0"]');
+  await page.evaluate(() => {
+    (window as any).__bunchDetailOpen = new Promise<number>((resolve, reject) => {
+      let startedAt: number | null = null;
+      const timeout = window.setTimeout(() => { observer.disconnect(); reject(new Error('Bunch detail did not open within 5 seconds')); }, 5000);
+      const observer = new MutationObserver(() => {
+        const detail = document.querySelector('#bunch-queue-detail-host [role="dialog"]');
+        const inputs = detail?.querySelectorAll('input[aria-label^="Actual Qty Completed"]');
+        if (startedAt !== null && inputs?.length === 2 && !document.getElementById('view-detail')?.hidden) {
+          observer.disconnect();
+          window.clearTimeout(timeout);
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve(performance.now() - startedAt!)));
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+      document.addEventListener('click', event => {
+        const target = event.target;
+        if (startedAt === null && target instanceof Element && target.closest('[data-bunch-card="card-0"] button[aria-label^="Open Bunch Notes card"]')) startedAt = performance.now();
+      }, { capture: true, once: true });
+    });
+  });
   await card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }).click();
-  await expect(card.getByRole('region', { name: 'Bunch Notes entry Bunch Plant' })).toBeVisible();
-  await expect(card.locator('input[aria-label^="Actual Qty Completed"]')).toHaveCount(2);
-  await card.getByRole('textbox', { name: 'Actual Qty Completed row-0-0' }).fill('7');
-  await card.getByRole('textbox', { name: 'Actual Qty Completed row-0-1' }).fill('9');
+  const detailOpenElapsed = await page.evaluate(() => (window as any).__bunchDetailOpen);
+  const detail = await expectQueueDetail(page, 'Bunch Plant');
+  await expect(card.locator('input[aria-label^="Actual Qty Completed"]')).toHaveCount(0);
+  await expect(page.locator('#bunch-queue-detail-host input[aria-label^="Actual Qty Completed"]')).toHaveCount(2);
+  await page.locator('#bunch-queue-detail-host').getByRole('textbox', { name: 'Actual Qty Completed row-0-0' }).fill('7');
+  await page.locator('#bunch-queue-detail-host').getByRole('textbox', { name: 'Actual Qty Completed row-0-1' }).fill('9');
   const mutation = await page.evaluate(() => {
-    const button = [...document.querySelectorAll<HTMLButtonElement>('[data-bunch-card="card-0"] button')].find(item => item.textContent?.trim() === 'Done');
+    const button = [...document.querySelectorAll<HTMLButtonElement>('#bunch-queue-detail-host button')].find(item => item.textContent?.trim() === 'Done');
     if (!button) throw new Error('Done button not found');
     const start = performance.now();
     (window as any).__queueMutation = new Promise<number>(resolve => {
@@ -372,6 +444,7 @@ test('Que Bunch Notes paginates 10,001 authorized rows as 100 cards and keeps re
   });
   expect(mutation).toBe(true);
   const mutationElapsed = await page.evaluate(() => (window as any).__queueMutation);
+  await expect(page.locator('#view-detail')).toBeHidden();
   expect(fixture.commands.some((command: any) => command.operation === 'queue' && command.payload.limit !== 100)).toBe(false);
   const environment = await page.evaluate(() => ({ userAgent: navigator.userAgent, viewport: { width: innerWidth, height: innerHeight } }));
   await test.info().attach('queue-render-and-mutation-metrics.json', {
@@ -382,11 +455,12 @@ test('Que Bunch Notes paginates 10,001 authorized rows as 100 cards and keeps re
       cache: 'warm cached reopening after initial queue load',
       trace: 'off',
       osCaches: 'uncontrolled',
-      operations: { cachedQueueRenderMs: elapsed, completeCardMutationMs: mutationElapsed, inclusiveLimitMs: 1500 },
+      operations: { cachedQueueRenderMs: elapsed, cachedDetailOpenMs: detailOpenElapsed, completeCardMutationMs: mutationElapsed, inclusiveLimitMs: 1500 },
     }, null, 2)),
     contentType: 'application/json',
   });
   expect(elapsed).toBeLessThanOrEqual(1500);
+  expect(detailOpenElapsed).toBeLessThanOrEqual(1500);
   expect(mutationElapsed).toBeLessThanOrEqual(1500);
 });
 
@@ -426,10 +500,12 @@ test('offline card completion remains in the local outbox and replays the same r
   await openQueue(page);
   const card = page.locator('[data-bunch-card="card-1"]');
   await card.getByRole('button', { name: 'Open Bunch Notes card Bunch Plant' }).click();
-  await card.getByRole('textbox', { name: 'Actual Qty Completed row-1' }).fill('7');
-  await card.getByRole('textbox', { name: 'Actual Qty Completed row-2' }).fill('9');
+  const detail = await expectQueueDetail(page, 'Bunch Plant');
+  await page.locator('#bunch-queue-detail-host').getByRole('textbox', { name: 'Actual Qty Completed row-1' }).fill('7');
+  await page.locator('#bunch-queue-detail-host').getByRole('textbox', { name: 'Actual Qty Completed row-2' }).fill('9');
   await page.context().setOffline(true);
-  await card.getByRole('button', { name: 'Done' }).click();
+  await page.locator('#bunch-queue-detail-host').getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('#view-detail')).toBeHidden();
   await expect(page.getByText(/saved update\(s\) awaiting confirmation/i)).toBeVisible();
   const saved = await page.evaluate(() => {
     const key = Object.keys(localStorage).find(value => value.startsWith('gnc:bunch-queue:v230:') && value.endsWith(':outbox'));
@@ -437,6 +513,7 @@ test('offline card completion remains in the local outbox and replays the same r
   });
   expect(saved?.commandId).toBeTruthy();
   await page.context().setOffline(false);
+  await expect(detail).toHaveCount(0);
   await expect.poll(() => fixture.commands.filter((command: any) => command.operation === 'complete_card').length).toBe(1);
   await expect(page.getByText(/saved update\(s\) awaiting confirmation/i)).toBeVisible();
   // A 503 cannot prove the server rejected the completion. Keep the row hidden
