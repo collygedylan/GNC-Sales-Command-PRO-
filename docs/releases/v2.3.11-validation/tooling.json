@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "agdata-v2311-validation-result-v1",
+  "scope": "tooling",
+  "status": "passed",
+  "validationId": "v2311-tooling-retained-20261019-reset3",
+  "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66",
+  "assembledAt": "2026-10-19T20:20:26.033Z",
+  "provenance": {
+    "kind": "retained-evidence-aggregation",
+    "sourceHashDigestMeaning": "Seal of the assembled release sources, not a claim that every historical run was rerun on this tree.",
+    "preservedCommit": "d547b5ddfb5bcfc305a6eb18387273e63dce4c53",
+    "productionSourceUnchangedSincePreservedCommit": true,
+    "onlyNewExecution": "Final iPhone Complete Tag, tooling validation and evidence integrity checks.",
+    "scopeCompatibility": "Latest changes affect the iPhone assertion and release evidence checker only; unchanged application, SQL, and build sources retain their prior scoped evidence."
+  },
+  "checks": 1,
+  "command": "node scripts/check-tooling-ci.mjs",
+  "exitCode": 0,
+  "additionalCheckerLint": "ESLint --max-warnings=0 passed after the additive receipt gate change",
+  "evidence": [
+    {
+      "path": ".gnc-local/v2311-tooling-final-reset3.log",
+      "sha256": "4d68e3b0d748f55d1bd3a0eb1649d9c4160950e432da54223bca698705a9d3ce",
+      "retained": true
+    }
+  ]
+}

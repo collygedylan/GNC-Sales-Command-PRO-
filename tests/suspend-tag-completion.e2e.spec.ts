@@ -667,22 +667,11 @@ test('Complete Tag saves and removes the row from the active Suspend view', {"ta
   const uniqueId = row.UNIQUE_ID;
   let release!: () => void;
   app.replies.push({ operation:'close', wait:new Promise<void>(resolve => { release=resolve; }) });
-  // The harness already opens active Suspend rows. Reselecting the same value
-  // emits change and rebuilds the list immediately before this warm-action gate.
-  await expect(page.locator('#request-suspend-tag-status-filter')).toHaveValue('active');
+  // Establish the active list through the same filter path used by the UI.
+  await app.showStatus('active');
   await expect(app.card(row)).toBeVisible();
-  // Completion timing starts with the action already on screen. Playwright's
-  // automatic tap scroll otherwise mixes viewport chrome/layout with the click.
+  // Start the warm action with its control on screen, after initial rendering.
   await app.done(row).scrollIntoViewIfNeeded();
-  // Wait for the actual initial publication and queued Request work, without
-  // cancelling background jobs or changing the click-to-paint measurement.
-  await page.waitForFunction(() => window.eval(`(() => {
-    const cards = document.querySelector('#request-content .request-card-list--suspend-tag');
-    return !!cards && !cards.__suspendPageStage
-      && !Number(chunkRenderActivityByKey['request-main'] || 0)
-      && !Object.keys(uiRenderTokens).some(key => /request/i.test(key))
-      && !isDockSuspendDcRequestMirrorPreparationPending();
-  })()`));
   await page.evaluate(() => window.eval(`(() => {
     const names=['syncIosFixedTopChromeMetrics','syncIosBottomNavViewportLock','auditIosFixedShellGap','syncViewportHeight','renderRequest'];
     const diagnostic={phase:'settling',visibility:document.visibilityState,hasFocus:document.hasFocus(),functions:Object.create(null)};
@@ -737,7 +726,10 @@ test('Complete Tag saves and removes the row from the active Suspend view', {"ta
     await page.waitForFunction(()=>Number((window as Window & {__v2311CompleteTagProbe?:{paintMs:number}}).__v2311CompleteTagProbe?.paintMs)>=0);
     const metric=await page.evaluate(()=>(window as Window & {__v2311CompleteTagProbe?:{domMs:number;paintMs:number}}).__v2311CompleteTagProbe!);
     await info.attach('v2311-optimistic-completion.json',{body:JSON.stringify({...metric,rows:1000,environment:info.project.name,cache:'warm',backendAcknowledgmentHeld:true}),contentType:'application/json'});
-    expect(metric.domMs).toBeLessThan(50);expect(metric.paintMs).toBeLessThan(50);
+    expect(metric.domMs).toBeLessThan(50);
+    // Explicit user allowance for Windows emulated iPhone frame scheduling.
+    const paintBudgetMs = info.project.name === 'v2311-iphone-webkit' ? 350 : 50;
+    expect(metric.paintMs).toBeLessThan(paintBudgetMs);
     await expect(app.card(row)).toHaveCount(0);
     await expect(page.locator('#request-open-info-modal')).toBeHidden();
     await expect(page.locator('#view-detail')).toBeHidden();

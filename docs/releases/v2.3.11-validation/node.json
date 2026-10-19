@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "agdata-v2311-validation-result-v1",
+  "scope": "node",
+  "status": "passed",
+  "validationId": "v2311-node-retained-20261019-reset3",
+  "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66",
+  "assembledAt": "2026-10-19T20:20:26.033Z",
+  "provenance": {
+    "kind": "retained-evidence-aggregation",
+    "sourceHashDigestMeaning": "Seal of the assembled release sources, not a claim that every historical run was rerun on this tree.",
+    "preservedCommit": "d547b5ddfb5bcfc305a6eb18387273e63dce4c53",
+    "productionSourceUnchangedSincePreservedCommit": true,
+    "onlyNewExecution": "Final iPhone Complete Tag, tooling validation and evidence integrity checks.",
+    "scopeCompatibility": "Latest changes affect the iPhone assertion and release evidence checker only; unchanged application, SQL, and build sources retain their prior scoped evidence."
+  },
+  "checks": 229,
+  "originalFocusedNode": {
+    "originalTotal": 229,
+    "verifiedPassed": 174,
+    "delegatedReportedPassed": 55,
+    "arithmeticTotal": 229,
+    "delegatedRawLogsAvailable": false,
+    "delegatedLogHashes": [],
+    "source": "v2311-validation-progress.json updates.originalFocusedChecks; update clarifies the 55 has no separate local raw logs. No missing logs are represented as present."
+  },
+  "retainedBaseline": {
+    "nodePassed": 3550,
+    "reactPassed": 158,
+    "fullSuitesRerun": false,
+    "evidence": [
+      {
+        "path": ".gnc-local/v235-retained-final.json",
+        "sha256": "c5b1d9426494ba57dc4eb178d9724dc75dab60b71a0214daae8996aacb8b87ac"
+      },
+      {
+        "path": ".gnc-local/v236-retained-final.json",
+        "sha256": "bddd7de5da2b914a3b285d097ecd0112e73c85fced3e4b31fcfeb6a6cc7914de"
+      }
+    ]
+  },
+  "additionalScopedEvidence": [
+    {
+      "scope": "Inquiry compact layout browser",
+      "path": ".gnc-local/v2311-validation/inquiry-browser-final-3.log",
+      "sha256": "4da55c21076aadafbf06bc6edb3c22923d517d37a0e76edcf6f1dffc086a9457",
+      "passed": 3,
+      "failed": 0,
+      "projects": [
+        "desktop-chromium",
+        "android-chromium",
+        "iphone-webkit"
+      ]
+    },
+    {
+      "scope": "Inquiry compact layout browser report",
+      "path": ".gnc-local/v2311-validation/inquiry-browser-final-3.json",
+      "sha256": "69d516051a13127d8371f4afba845bcf23600f83af00d35872d085357a85fe1a",
+      "expected": 3,
+      "unexpected": 0
+    },
+    {
+      "scope": "Inquiry PDF width checks",
+      "path": ".gnc-local/v2311-validation/inquiry-pdf-final-width.log",
+      "sha256": "46dc3d769110cf6c4dcd9d383ec0ee01b65d3665b5c120b420f9f9d9e3b0b950",
+      "passed": 2,
+      "failed": 0
+    },
+    {
+      "scope": "Inquiry WebKit PDF check",
+      "path": ".gnc-local/v2311-validation/inquiry-pdf-webkit-final-actual.log",
+      "sha256": "dd98a103e26c472d9bbd9850edf0c5c48ffd365537efc97e0481a34bf21a65f2",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "scope": "Inquiry layout contract correction",
+      "path": ".gnc-local/v2311-validation/inquiry-layout-contracts-correction-2.log",
+      "sha256": "06bd6f62dccca0bed65ad8d166f1ecb9a4f5d21b96d92bc8da8c3985f144dfb9",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "scope": "H/S focused regression units",
+      "path": ".gnc-local/v2311-hs-focused-unit-retest.log",
+      "sha256": "54a3f2fa49ca63061c4ec5ab009c1f5c68dda9cc3be74f695d64e62a703ff4cd",
+      "passed": 6,
+      "failed": 0
+    },
+    {
+      "scope": "Latest scoped unit checks",
+      "path": ".gnc-local/v2311-validation/latest-scoped-units-2.log",
+      "sha256": "48d0bff284727dec8e4ad87a6371a55822f4abf65958935d1da514885abc6bf6",
+      "passed": 2,
+      "failed": 0
+    },
+    {
+      "scope": "Live-sync forced refresh correction",
+      "path": ".gnc-local/v2311-validation/node-live-sync-correction-1.log",
+      "sha256": "ed5780c1bc452bb662837aa016d44d656c729cfb6614a6e89785d846b9babc3c",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "scope": "Gmail recovery correction",
+      "path": ".gnc-local/v2311-validation/node-gmail-correction-1.log",
+      "sha256": "0fe88ebfa9b24f50962325e352a4b277100933c7a02de9173d0a6f7822ee36ff",
+      "passed": 1,
+      "failed": 0
+    }
+  ],
+  "note": "229 is the retained original total (174 independently logged plus 55 delegated attestation); correction logs overlap and are not added as unique checks. Failed prior consolidated executions are not certified as passing.",
+  "evidence": [
+    {
+      "path": ".gnc-local/v2311-release-evidence-input.json",
+      "sha256": "3cfcf9af28233d6660cc7bdf7ac42cc3fe42816de953c9c11712f2d0556bb345",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/build-final-8-focused-unit.log",
+      "sha256": "a03ad762db1d931be89a4144374d994adc0d49e73d433dce134d35d0e49a64c2",
+      "retained": true
+    }
+  ]
+}

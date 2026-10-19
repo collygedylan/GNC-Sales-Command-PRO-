@@ -1,0 +1,615 @@
+{
+  "schemaVersion": "agdata-v2311-validation-result-v1",
+  "scope": "browser",
+  "status": "passed",
+  "validationId": "v2311-browser-retained-20261019-reset3",
+  "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66",
+  "assembledAt": "2026-10-19T20:20:26.033Z",
+  "provenance": {
+    "kind": "retained-evidence-aggregation",
+    "sourceHashDigestMeaning": "Seal of the assembled release sources, not a claim that every historical run was rerun on this tree.",
+    "preservedCommit": "d547b5ddfb5bcfc305a6eb18387273e63dce4c53",
+    "productionSourceUnchangedSincePreservedCommit": true,
+    "onlyNewExecution": "Final iPhone Complete Tag, tooling validation and evidence integrity checks.",
+    "scopeCompatibility": "Latest changes affect the iPhone assertion and release evidence checker only; unchanged application, SQL, and build sources retain their prior scoped evidence."
+  },
+  "checks": 32,
+  "originalGateCases": 33,
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "fixtureAuthentication": true,
+  "realAuthenticationVerified": false,
+  "optimisticMaxMs": 20,
+  "optimisticMetric": "Maximum retained Complete Tag DOM removal; iPhone frame metric separately governed by explicit 350ms waiver.",
+  "eval2MaxMs": 275,
+  "completeTagIphone": {
+    "status": "passed",
+    "project": "v2311-iphone-webkit",
+    "rows": 1000,
+    "mountedRows": 100,
+    "domMs": 12,
+    "paintMs": 105,
+    "summaryModalOpened": false,
+    "detailModalOpened": false,
+    "promptModalOpened": false,
+    "backendAcknowledgmentHeld": true,
+    "trace": "off",
+    "cache": "warm",
+    "rowRemoved": true,
+    "backingCountAfter": 999,
+    "displayCountAfter": "99+",
+    "evidence": {
+      "path": ".gnc-local/v2311-validation/browser-iphone-reset2-34.json",
+      "sha256": "045c1e3a152c9a355b4d5c7b2bb1f4653dbeed2fa81e2c79dcc5443e59c59911",
+      "retained": true
+    },
+    "noModalAndCountEvidence": "Assertions after the metric attachment completed in the passed test.",
+    "noModalOpened": true
+  },
+  "salesReps": [
+    {
+      "username": "toby_brown",
+      "status": "passed",
+      "actualRows": 3214,
+      "expectedRows": 3214,
+      "initialWindowPaintMs": 723.9000000059605,
+      "fullHydrationMs": 10737.199999988079,
+      "loadingCleared": true,
+      "mountedCards": 20,
+      "environment": {
+        "device": "Pixel 7",
+        "browser": "Chromium",
+        "viewport": {
+          "width": 412,
+          "height": 839
+        },
+        "trace": "off",
+        "cache": "fresh browser context; shared OS cache uncontrolled"
+      }
+    },
+    {
+      "username": "annette_hancock",
+      "status": "passed",
+      "actualRows": 3133,
+      "expectedRows": 3133,
+      "initialWindowPaintMs": 703.5999999940395,
+      "fullHydrationMs": 9789.699999988079,
+      "loadingCleared": true,
+      "mountedCards": 20,
+      "environment": {
+        "device": "Pixel 7",
+        "browser": "Chromium",
+        "viewport": {
+          "width": 412,
+          "height": 839
+        },
+        "trace": "off",
+        "cache": "fresh browser context; shared OS cache uncontrolled"
+      }
+    }
+  ],
+  "knownUnresolved": [
+    {
+      "case": "hs-iphone",
+      "status": "unresolved",
+      "measurementsMs": {
+        "drive": 416,
+        "av": 621,
+        "request": 812,
+        "bloom": 408
+      },
+      "limitMs": 400,
+      "note": "Prior emulated iPhone paint failure retained; not certified as passed.",
+      "evidencePath": ".gnc-local/v2311-validation/browser-iphone-shell-31.json",
+      "evidenceSha256": "90a5e7ca737c9223268d4eb7b4272b4e01e0cd0b202b7bf218916d7dc34eed6e"
+    },
+    {
+      "case": "av-iphone",
+      "status": "unresolved",
+      "username": "toby_brown",
+      "actualRows": 3214,
+      "initialWindowMs": 7431,
+      "fullHydrationMs": 66166,
+      "limitMs": 1500,
+      "evidence": {
+        "path": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+        "sha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051",
+        "retained": true
+      },
+      "note": "Annette iPhone not completed. Android representative snapshot passed; no cross-browser timing claim.",
+      "evidencePath": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+      "evidenceSha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051"
+    }
+  ],
+  "passes": [
+    {
+      "case": "manager",
+      "title": "v2.3.11 canonical Manager access editor updates a role baseline and a user override @v2311-frontend-smoke",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-mobile-remainder-19.json",
+      "reportStatsStartTime": "2026-10-19T19:32:18.02Z",
+      "resultStartTime": "2026-10-19T19:32:27.052Z",
+      "durationMs": 5669,
+      "metrics": []
+    },
+    {
+      "case": "manager",
+      "title": "v2.3.11 canonical Manager access editor updates a role baseline and a user override @v2311-frontend-smoke",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/browser-mobile-remainder-19.json",
+      "reportStatsStartTime": "2026-10-19T19:32:18.02Z",
+      "resultStartTime": "2026-10-19T19:33:09.761Z",
+      "durationMs": 12277,
+      "metrics": []
+    },
+    {
+      "case": "hs",
+      "title": "v2.3.11 confirmed H/S receipt updates canonical fields and paints status across inventory surfaces @v2311-frontend-smoke",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-manager-hs-bloom-desktop-15.json",
+      "reportStatsStartTime": "2026-10-19T19:09:32.615Z",
+      "resultStartTime": "2026-10-19T19:09:47.2Z",
+      "durationMs": 5082,
+      "metrics": []
+    },
+    {
+      "case": "hs",
+      "title": "v2.3.11 confirmed H/S receipt updates canonical fields and paints status across inventory surfaces @v2311-frontend-smoke",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-mobile-remainder-19.json",
+      "reportStatsStartTime": "2026-10-19T19:32:18.02Z",
+      "resultStartTime": "2026-10-19T19:32:32.736Z",
+      "durationMs": 5042,
+      "metrics": []
+    },
+    {
+      "case": "bloom",
+      "title": "v2.3.11 Drive Bloom tray preserves all six inventory metrics before and after opening Actions @v2311-frontend-smoke",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-bloom-all-reset-20.json",
+      "reportStatsStartTime": "2026-10-19T19:34:05.37Z",
+      "resultStartTime": "2026-10-19T19:34:07.281Z",
+      "durationMs": 6719,
+      "metrics": []
+    },
+    {
+      "case": "bloom",
+      "title": "v2.3.11 Drive Bloom tray preserves all six inventory metrics before and after opening Actions @v2311-frontend-smoke",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-bloom-all-reset-20.json",
+      "reportStatsStartTime": "2026-10-19T19:34:05.37Z",
+      "resultStartTime": "2026-10-19T19:34:15.867Z",
+      "durationMs": 6550,
+      "metrics": []
+    },
+    {
+      "case": "bloom",
+      "title": "v2.3.11 Drive Bloom tray preserves all six inventory metrics before and after opening Actions @v2311-frontend-smoke",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/browser-bloom-all-reset-20.json",
+      "reportStatsStartTime": "2026-10-19T19:34:05.37Z",
+      "resultStartTime": "2026-10-19T19:34:23.716Z",
+      "durationMs": 17971,
+      "metrics": []
+    },
+    {
+      "case": "itemDetail",
+      "title": "v2311 Item Detail uses shared AV options and saves a note without spec or caliper",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-desktop-diagnostics-13.json",
+      "reportStatsStartTime": "2026-10-19T19:04:05.645Z",
+      "resultStartTime": "2026-10-19T19:04:07.908Z",
+      "durationMs": 6639,
+      "metrics": []
+    },
+    {
+      "case": "itemDetail",
+      "title": "v2311 Item Detail uses shared AV options and saves a note without spec or caliper",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-mobile-remainder-19.json",
+      "reportStatsStartTime": "2026-10-19T19:32:18.02Z",
+      "resultStartTime": "2026-10-19T19:32:19.956Z",
+      "durationMs": 6817,
+      "metrics": []
+    },
+    {
+      "case": "itemDetail",
+      "title": "v2311 Item Detail uses shared AV options and saves a note without spec or caliper",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/browser-mobile-remainder-19.json",
+      "reportStatsStartTime": "2026-10-19T19:32:18.02Z",
+      "resultStartTime": "2026-10-19T19:32:39.382Z",
+      "durationMs": 26223,
+      "metrics": []
+    },
+    {
+      "case": "eval2",
+      "title": "Eval #2 shared snapshot reopens without loading flash and keeps MORE open through updates",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-final-2.json",
+      "reportStatsStartTime": "2026-10-19T18:31:58.767Z",
+      "resultStartTime": "2026-10-19T18:32:00.099Z",
+      "durationMs": 10089,
+      "metrics": [
+        {
+          "name": "eval-report2-shared-cache-open",
+          "warmOpenMs": 1.199999988079071,
+          "warmOpenDomMs": 116.60000002384186,
+          "initialCardCount": 1,
+          "datasetLoads": 0,
+          "observedDatasetLoads": [],
+          "settingsLoads": 0,
+          "sourceRows": 10001,
+          "reportRows": 10,
+          "drawerStayedOpen": true,
+          "loadingFlashSeen": false,
+          "filterResultsMatch": true
+        }
+      ]
+    },
+    {
+      "case": "eval2",
+      "title": "Eval #2 shared snapshot reopens without loading flash and keeps MORE open through updates",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-paint-fixes-11.json",
+      "reportStatsStartTime": "2026-10-19T18:58:32.726Z",
+      "resultStartTime": "2026-10-19T18:58:33.991Z",
+      "durationMs": 7748,
+      "metrics": [
+        {
+          "name": "eval-report2-shared-cache-open",
+          "warmOpenMs": 0.5,
+          "warmOpenDomMs": 54.39999997615814,
+          "initialCardCount": 1,
+          "datasetLoads": 0,
+          "observedDatasetLoads": [
+            "customerRepMap"
+          ],
+          "settingsLoads": 0,
+          "sourceRows": 10001,
+          "reportRows": 10,
+          "drawerStayedOpen": true,
+          "loadingFlashSeen": false,
+          "filterResultsMatch": true
+        }
+      ]
+    },
+    {
+      "case": "eval2",
+      "title": "Eval #2 shared snapshot reopens without loading flash and keeps MORE open through updates",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-9.json",
+      "reportStatsStartTime": "2026-10-19T18:48:18.98Z",
+      "resultStartTime": "2026-10-19T18:50:26.293Z",
+      "durationMs": 10031,
+      "metrics": [
+        {
+          "name": "eval-report2-shared-cache-open",
+          "warmOpenMs": 2,
+          "warmOpenDomMs": 275,
+          "initialCardCount": 1,
+          "datasetLoads": 0,
+          "observedDatasetLoads": [],
+          "settingsLoads": 0,
+          "sourceRows": 10001,
+          "reportRows": 10,
+          "drawerStayedOpen": true,
+          "loadingFlashSeen": false,
+          "filterResultsMatch": true
+        }
+      ]
+    },
+    {
+      "case": "completeTag",
+      "title": "Complete Tag saves and removes the row from the active Suspend view",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-hs-paint-desktop-12.json",
+      "reportStatsStartTime": "2026-10-19T18:59:43.646Z",
+      "resultStartTime": "2026-10-19T18:59:45.187Z",
+      "durationMs": 4758,
+      "metrics": [
+        {
+          "name": "v2311-optimistic-completion.json",
+          "started": 2746.7999999821186,
+          "domMs": 18.80000001192093,
+          "paintMs": 21.30000001192093,
+          "rows": 1000,
+          "environment": "v2311-desktop-chromium",
+          "cache": "warm",
+          "backendAcknowledgmentHeld": true
+        }
+      ]
+    },
+    {
+      "case": "completeTag",
+      "title": "Complete Tag saves and removes the row from the active Suspend view",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-paint-fixes-11.json",
+      "reportStatsStartTime": "2026-10-19T18:58:32.726Z",
+      "resultStartTime": "2026-10-19T18:58:42.038Z",
+      "durationMs": 6484,
+      "metrics": [
+        {
+          "name": "v2311-optimistic-completion.json",
+          "started": 2932.699999988079,
+          "domMs": 20,
+          "paintMs": 22.200000017881393,
+          "rows": 1000,
+          "environment": "v2311-android-chromium",
+          "cache": "warm",
+          "backendAcknowledgmentHeld": true
+        }
+      ]
+    },
+    {
+      "case": "moveUp",
+      "title": "Move Up commits live stock before Priority inquiry and does not queue the move as an inquiry",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-3.json",
+      "reportStatsStartTime": "2026-10-19T18:34:08.56Z",
+      "resultStartTime": "2026-10-19T18:34:09.844Z",
+      "durationMs": 4754,
+      "metrics": []
+    },
+    {
+      "case": "moveUp",
+      "title": "Move Up commits live stock before Priority inquiry and does not queue the move as an inquiry",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-9.json",
+      "reportStatsStartTime": "2026-10-19T18:48:18.98Z",
+      "resultStartTime": "2026-10-19T18:49:04.34Z",
+      "durationMs": 3880,
+      "metrics": []
+    },
+    {
+      "case": "moveUp",
+      "title": "Move Up commits live stock before Priority inquiry and does not queue the move as an inquiry",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-9.json",
+      "reportStatsStartTime": "2026-10-19T18:48:18.98Z",
+      "resultStartTime": "2026-10-19T18:50:36.702Z",
+      "durationMs": 10497,
+      "metrics": []
+    },
+    {
+      "case": "targetedSnapshot",
+      "title": "targeted item snapshot authorizes Reclass without promoting the global master across source contexts",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-3.json",
+      "reportStatsStartTime": "2026-10-19T18:34:08.56Z",
+      "resultStartTime": "2026-10-19T18:34:14.787Z",
+      "durationMs": 50974,
+      "metrics": []
+    },
+    {
+      "case": "targetedSnapshot",
+      "title": "targeted item snapshot authorizes Reclass without promoting the global master across source contexts",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-9.json",
+      "reportStatsStartTime": "2026-10-19T18:48:18.98Z",
+      "resultStartTime": "2026-10-19T18:49:08.436Z",
+      "durationMs": 29951,
+      "metrics": []
+    },
+    {
+      "case": "targetedSnapshot",
+      "title": "targeted item snapshot authorizes Reclass without promoting the global master across source contexts",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-9.json",
+      "reportStatsStartTime": "2026-10-19T18:48:18.98Z",
+      "resultStartTime": "2026-10-19T18:50:47.209Z",
+      "durationMs": 45387,
+      "metrics": []
+    },
+    {
+      "case": "sendAsReview",
+      "title": "Send as Review preserves a targeted 34-unit F1 proposal without applying stock or sending real email",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-3.json",
+      "reportStatsStartTime": "2026-10-19T18:34:08.56Z",
+      "resultStartTime": "2026-10-19T18:35:05.789Z",
+      "durationMs": 15556,
+      "metrics": []
+    },
+    {
+      "case": "sendAsReview",
+      "title": "Send as Review preserves a targeted 34-unit F1 proposal without applying stock or sending real email",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-9.json",
+      "reportStatsStartTime": "2026-10-19T18:48:18.98Z",
+      "resultStartTime": "2026-10-19T18:49:38.397Z",
+      "durationMs": 9818,
+      "metrics": []
+    },
+    {
+      "case": "sendAsReview",
+      "title": "Send as Review preserves a targeted 34-unit F1 proposal without applying stock or sending real email",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/browser-remaining-9.json",
+      "reportStatsStartTime": "2026-10-19T18:48:18.98Z",
+      "resultStartTime": "2026-10-19T18:51:32.608Z",
+      "durationMs": 17079,
+      "metrics": []
+    },
+    {
+      "case": "inquiryLayout",
+      "title": "Inquiry report keeps H/S, Priority and dates compact with connected Item Spec borders @v2311-frontend-smoke",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/inquiry-browser-final-3.json",
+      "reportStatsStartTime": "2026-10-19T18:33:32.38Z",
+      "resultStartTime": "2026-10-19T18:33:33.594Z",
+      "durationMs": 548,
+      "metrics": []
+    },
+    {
+      "case": "inquiryLayout",
+      "title": "Inquiry report keeps H/S, Priority and dates compact with connected Item Spec borders @v2311-frontend-smoke",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/inquiry-browser-final-3.json",
+      "reportStatsStartTime": "2026-10-19T18:33:32.38Z",
+      "resultStartTime": "2026-10-19T18:33:34.907Z",
+      "durationMs": 776,
+      "metrics": []
+    },
+    {
+      "case": "inquiryLayout",
+      "title": "Inquiry report keeps H/S, Priority and dates compact with connected Item Spec borders @v2311-frontend-smoke",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/inquiry-browser-final-3.json",
+      "reportStatsStartTime": "2026-10-19T18:33:32.38Z",
+      "resultStartTime": "2026-10-19T18:33:36.529Z",
+      "durationMs": 3700,
+      "metrics": []
+    },
+    {
+      "case": "manager",
+      "title": "v2.3.11 canonical Manager access editor updates a role baseline and a user override @v2311-frontend-smoke",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-desktop-reset-17.json",
+      "reportStatsStartTime": "2026-10-19T19:28:32.985Z",
+      "resultStartTime": "2026-10-19T19:28:35.017Z",
+      "durationMs": 6679,
+      "metrics": []
+    },
+    {
+      "case": "request",
+      "title": "Request picker shows and searches all 103 mapped customers for Annette",
+      "project": "v2311-desktop-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-request-projection-29.json",
+      "reportStatsStartTime": "2026-10-19T19:55:39.966Z",
+      "resultStartTime": "2026-10-19T19:55:41.292Z",
+      "durationMs": 16854,
+      "metrics": [],
+      "evidenceNotes": "103 customer options rendered; picker search, apostrophe-safe customer choice, retention on read error/revision drift, and blocked unauthorized write assertions passed."
+    },
+    {
+      "case": "request",
+      "title": "Request picker shows and searches all 103 mapped customers for Annette",
+      "project": "v2311-android-chromium",
+      "reportFile": ".gnc-local/v2311-validation/browser-request-mobile-30.json",
+      "reportStatsStartTime": "2026-10-19T19:56:36.247Z",
+      "resultStartTime": "2026-10-19T19:56:37.614Z",
+      "durationMs": 18584,
+      "metrics": [],
+      "evidenceNotes": "103 customer options rendered; picker search, apostrophe-safe customer choice, retention on read error/revision drift, and blocked unauthorized write assertions passed."
+    },
+    {
+      "case": "request",
+      "title": "Request picker shows and searches all 103 mapped customers for Annette",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/browser-request-mobile-30.json",
+      "reportStatsStartTime": "2026-10-19T19:56:36.247Z",
+      "resultStartTime": "2026-10-19T19:56:57.157Z",
+      "durationMs": 20000,
+      "metrics": [],
+      "evidenceNotes": "103 customer options rendered; picker search, apostrophe-safe customer choice, retention on read error/revision drift, and blocked unauthorized write assertions passed."
+    },
+    {
+      "case": "completeTag",
+      "title": "Complete Tag saves and removes the row from the active Suspend view",
+      "project": "v2311-iphone-webkit",
+      "reportFile": ".gnc-local/v2311-validation/browser-iphone-reset2-34.json",
+      "reportSha256": "045c1e3a152c9a355b4d5c7b2bb1f4653dbeed2fa81e2c79dcc5443e59c59911",
+      "reportStatsStartTime": "2026-10-19T20:14:40.523Z",
+      "resultStartTime": "2026-10-19T20:14:42.114Z",
+      "durationMs": 7109,
+      "metrics": [
+        {
+          "name": "v2311-optimistic-completion.json",
+          "domMs": 12,
+          "paintMs": 105,
+          "rows": 1000,
+          "mountedRows": 100,
+          "environment": "v2311-iphone-webkit",
+          "cache": "warm",
+          "trace": "off",
+          "backendAcknowledgmentHeld": true,
+          "summaryModalOpened": false,
+          "detailModalOpened": false,
+          "promptModalOpened": false,
+          "rowRemoved": true,
+          "backingCountAfter": 999,
+          "displayCountAfter": "99+"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": ".gnc-local/v2311-validation/browser-mobile-remainder-19.json",
+      "sha256": "881b020eb42a13a309030b0136bdf8426523f819e8f9de20ef687b59d71e4f3f",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-manager-hs-bloom-desktop-15.json",
+      "sha256": "12fe9de82faeded435adfe047fc270ccec047fc1f099dd8bec992ed533cdddae",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-bloom-all-reset-20.json",
+      "sha256": "c41dffaac804c1f1ba11679f20d788d0b35a7870c20d5e6a8c5a5aefafba59fb",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-desktop-diagnostics-13.json",
+      "sha256": "b7d6a19527b4b76a14ca85fb2ed4ed3d9d423df9d58da13373f0c270e5462b7d",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-final-2.json",
+      "sha256": "697cad8b5da52607b70c442d68474afab5abee298b14364542a3df49c1f10ded",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-paint-fixes-11.json",
+      "sha256": "c0330d10dda7e66459c4f62ea525d3257166f1e21c2515b741d326d48b519354",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-remaining-9.json",
+      "sha256": "d56769527f6ee3ed097b99951e9c304332e46589bba6a8402b0625187a18798a",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-hs-paint-desktop-12.json",
+      "sha256": "a89c1dfa29a11f69e736702b9d369be3373a400613bc4e50e2a88a6cad43f1ce",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-remaining-3.json",
+      "sha256": "ab1df4d60ff702f6ea8c12ca1e65226874bfae068641f3edb167c9bb072a1d9e",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/inquiry-browser-final-3.json",
+      "sha256": "69d516051a13127d8371f4afba845bcf23600f83af00d35872d085357a85fe1a",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-desktop-reset-17.json",
+      "sha256": "4ec841b0fc11e4853cb6ed467217795b8f912de36c3742d39c0b69c8e7d50b78",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-request-projection-29.json",
+      "sha256": "95b03b1c075a19626b8e931b8339e42900f7df26dcfab371066b97e9287dbdf7",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-request-mobile-30.json",
+      "sha256": "a1d1f46bff32d4c53dbcb374a8260a6c717d6214bb7a3de4de2d784e761bdaee",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/browser-iphone-reset2-34.json",
+      "sha256": "045c1e3a152c9a355b4d5c7b2bb1f4653dbeed2fa81e2c79dcc5443e59c59911",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/v2311-validation/snapshot-2reps-android-final7.json",
+      "sha256": "d99d4270fda2d227b61325649942a82d3a75025c59ec532f26ee9ce6cb41b58e",
+      "retained": true
+    }
+  ],
+  "acceptance": "Latest user instruction explicitly runs only Complete Tag and directs Step1 publication after it passes; unresolved historical timing failures remain disclosed."
+}

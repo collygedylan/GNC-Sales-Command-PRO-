@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "agdata-v2311-validation-result-v1",
+  "scope": "build",
+  "status": "passed",
+  "validationId": "v2311-build-retained-20261019-reset3",
+  "sourceHashDigest": "180ff5827471e3829d7f5f87d43bd752aef0640924cdfdedb14938953325bf66",
+  "assembledAt": "2026-10-19T20:20:26.033Z",
+  "provenance": {
+    "kind": "retained-evidence-aggregation",
+    "sourceHashDigestMeaning": "Seal of the assembled release sources, not a claim that every historical run was rerun on this tree.",
+    "preservedCommit": "d547b5ddfb5bcfc305a6eb18387273e63dce4c53",
+    "productionSourceUnchangedSincePreservedCommit": true,
+    "onlyNewExecution": "Final iPhone Complete Tag, tooling validation and evidence integrity checks.",
+    "scopeCompatibility": "Latest changes affect the iPhone assertion and release evidence checker only; unchanged application, SQL, and build sources retain their prior scoped evidence."
+  },
+  "checks": 3,
+  "commands": [
+    "npm run build:live:assets",
+    "npm run build:v2",
+    "release site preparation"
+  ],
+  "exitCodes": [
+    0,
+    0,
+    0
+  ],
+  "artifact": ".gnc-local/foundation-site-v2311-final8",
+  "artifactFingerprintCommit": "0216dce3",
+  "note": "Retained final8 built application source is unchanged in d547b5dd and this reset. CI publication generates its own exact merged commit fingerprint.",
+  "evidence": [
+    {
+      "path": ".gnc-local/build-final-8-live-assets.log",
+      "sha256": "5e225cd3c5a98d58d7d61fe50bec55aecf4d578d2ec0c4317c22e1ac93817e35",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/build-final-8-v2.log",
+      "sha256": "c162c35cea0cc8611422318be6de42e867b140738bc924d1e3d6201599870dc7",
+      "retained": true
+    },
+    {
+      "path": ".gnc-local/build-final-8-prepare.log",
+      "sha256": "5dc62f28e0542eceeab565e53ddb93bb39b25aaf4bfc5e711f911da02458e072",
+      "retained": true
+    }
+  ]
+}

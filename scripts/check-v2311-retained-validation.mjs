@@ -122,7 +122,7 @@ export function verifyV2311RetainedValidation({ rootDir = rootDefault } = {}) {
   const actual = computeV2311SourceHashes({ rootDir });
   const receiptHashes = receipt.validatedSourceHashes && typeof receipt.validatedSourceHashes === 'object'
     ? Object.fromEntries(Object.entries(receipt.validatedSourceHashes).sort(([left], [right]) => left.localeCompare(right))) : null;
-  if (!receiptHashes || JSON.stringify(actual) !== JSON.stringify(receiptHashes)) throw Error('V2311_SOURCE_SEAL_MISMATCH');
+  if (!receiptHashes || computeV2311SourceHashDigest(actual) !== computeV2311SourceHashDigest(receiptHashes)) throw Error('V2311_SOURCE_SEAL_MISMATCH');
   const requiredSources = [
     'assets/user-access-control.js', 'supabase/functions/app-api/index.ts',
     'supabase/migrations/20261019163128_canonical_user_access_control_v1.sql',
@@ -155,6 +155,33 @@ export function verifyV2311RetainedValidation({ rootDir = rootDefault } = {}) {
     || artifacts.browser.fixtureAuthentication !== true || artifacts.browser.realAuthenticationVerified !== false
     || artifacts.browser.optimisticMaxMs !== receipt.browser.optimisticMaxMs
     || artifacts.browser.eval2MaxMs !== receipt.browser.eval2MaxMs) throw Error('V2311_BROWSER_ARTIFACT_ISOLATION');
+  const completeTagIphone = artifacts.browser.completeTagIphone;
+  const completeTagSummary = receipt.browser?.completeTagIphone;
+  if (!completeTagIphone || !completeTagSummary
+    || completeTagIphone.status !== 'passed' || completeTagSummary.status !== 'passed'
+    || completeTagIphone.project !== 'v2311-iphone-webkit' || completeTagSummary.project !== completeTagIphone.project
+    || completeTagIphone.rows !== 1000 || completeTagSummary.rows !== completeTagIphone.rows
+    || !(Number.isFinite(completeTagIphone.domMs) && completeTagIphone.domMs >= 0 && completeTagIphone.domMs < 50)
+    || completeTagSummary.domMs !== completeTagIphone.domMs
+    || !(Number.isFinite(completeTagIphone.paintMs) && completeTagIphone.paintMs >= 0 && completeTagIphone.paintMs < 350)
+    || completeTagSummary.paintMs !== completeTagIphone.paintMs
+    || completeTagIphone.noModalOpened !== true || completeTagSummary.noModalOpened !== true
+    || completeTagIphone.rowRemoved !== true || completeTagSummary.rowRemoved !== true
+    || completeTagIphone.backingCountAfter !== 999 || completeTagSummary.backingCountAfter !== 999
+    || completeTagIphone.displayCountAfter !== '99+' || completeTagSummary.displayCountAfter !== '99+'
+    || completeTagIphone.backendAcknowledgmentHeld !== true || completeTagSummary.backendAcknowledgmentHeld !== true
+    || completeTagIphone.trace !== 'off' || completeTagSummary.trace !== 'off') {
+    throw Error('V2311_IPHONE_COMPLETE_TAG_GATE');
+  }
+  const unresolved = artifacts.browser.knownUnresolved;
+  const requiredKnownFailures = ['hs-iphone', 'av-iphone'];
+  if (!Array.isArray(unresolved) || !Array.isArray(receipt.browser?.knownUnresolved)
+    || requiredKnownFailures.some(key => {
+      const artifactEntry = unresolved.find(entry => entry.case === key);
+      const receiptEntry = receipt.browser.knownUnresolved.find(entry => entry.case === key);
+      return !artifactEntry || !receiptEntry || artifactEntry.status !== 'unresolved'
+        || receiptEntry.status !== 'unresolved' || artifactEntry.evidencePath !== receiptEntry.evidencePath;
+    })) throw Error('V2311_KNOWN_BROWSER_FAILURES_NOT_RETAINED');
   for (const username of ['annette_hancock', 'toby_brown']) {
     const result = artifacts.browser.salesReps?.find(row => row.username === username);
     const summary = receipt.browser?.salesReps?.find(row => row.username === username);
@@ -173,7 +200,12 @@ export function verifyV2311RetainedValidation({ rootDir = rootDefault } = {}) {
   const protectedChanges = Object.keys(actual).filter(f => /^(components\/|hooks\/|services\/|v2\/src\/)/.test(f)
     && !['v2/src/services/api.ts', 'services/database-contracts.generated.ts'].includes(f));
   if (protectedChanges.length) throw Error('V2311_RETAINED_REACT_SCOPE_CHANGED');
-  return { baseline: BASE, retainedReactPassed: 158, retainedNodePassed: 3550, scoped: receipt.validation, changedPaths: Object.keys(actual) };
+  return {
+    baseline: BASE, retainedReactPassed: 158, retainedNodePassed: 3550,
+    scoped: receipt.validation, changedPaths: Object.keys(actual),
+    completeTagIphone: { ...completeTagIphone },
+    knownUnresolved: receipt.knownUnresolved || [],
+  };
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
