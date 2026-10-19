@@ -154,6 +154,7 @@ jobs:
         run: node "$PGLITE_TEST" --pglite-root "$RUNNER_TEMP/gnc-handover-pglite"
 
   edge-functions:
+    if: needs.discover.outputs.edge != '{"include":[]}'
     needs: discover
     runs-on: ubuntu-latest
     timeout-minutes: 12

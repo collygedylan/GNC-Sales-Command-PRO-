@@ -2,9 +2,9 @@
   "schemaVersion": "agdata-v2312-validation-result-v1",
   "scope": "tooling",
   "status": "passed",
-  "validationId": "v2312-tooling-d881a6af91cb",
+  "validationId": "v2312-tooling-0e3b6c16846b",
   "checks": 3,
-  "sourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751",
+  "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a",
   "provenance": {
     "kind": "retained-baseline-plus-current-touched-scope",
     "preservedCommit": "c228f1e1b665238d5fd61a2a93d4633cd7cd4d16",
@@ -27,7 +27,7 @@
       },
       {
         "path": ".github/workflows/release-database.yml",
-        "sha256": "42a009eaa367c73da44b78fa619c7a4ee58d233e9b3fcefd642ee9228abbd3e8"
+        "sha256": "fc02f681ff6f2c7466c1fa1e6e4fe030eec363fe5ce00d977f5f5d0b2c2c48ae"
       }
     ],
     "currentCommands": [
@@ -56,14 +56,14 @@
         }
       },
       {
-        "command": "Parse release-database.yml and assert locked dependency setup precedes backend matrix discovery",
+        "command": "Parse release-database.yml and assert locked dependencies and explicit empty Edge matrix skip before backend matrix discovery",
         "exitCode": 0,
         "sourcePaths": [
           ".github/workflows/release-database.yml"
         ],
         "evidence": {
-          "path": ".gnc-local/v2312-ci-wiring-fix.log",
-          "sha256": "ef6f81b0a99df3ba6f106aec6296343ce8a41352c3982a448cb4df3d67837940"
+          "path": ".gnc-local/v2312-ci-wiring-fix-2.log",
+          "sha256": "57a28d58eee735e49bfef0684bad5e3fa347be57ed782810feff7639c06b16c0"
         }
       }
     ],
@@ -80,7 +80,7 @@
       "fullCommandsRerun": false
     },
     "noFullRerunClaimed": true,
-    "currentSourceHashDigest": "d881a6af91cb77f322d36221561d2711505f1e9166dfa12ee61e6cd4d5a36751"
+    "currentSourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a"
   },
   "evidence": [
     {
@@ -96,8 +96,8 @@
       "sha256": "ea0856ad81c83859601af427114f45416fe14a1438981f56d34be8e788836e51"
     },
     {
-      "path": ".gnc-local/v2312-ci-wiring-fix.log",
-      "sha256": "ef6f81b0a99df3ba6f106aec6296343ce8a41352c3982a448cb4df3d67837940"
+      "path": ".gnc-local/v2312-ci-wiring-fix-2.log",
+      "sha256": "57a28d58eee735e49bfef0684bad5e3fa347be57ed782810feff7639c06b16c0"
     }
   ]
 }
