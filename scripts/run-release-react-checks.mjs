@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyV235RetainedValidation } from './check-v235-retained-validation.mjs';
 import { verifyV236RetainedValidation } from './check-v236-retained-validation.mjs';
 import { verifyV236AvRetainedValidation } from './check-v236-av-retained-validation.mjs';
+import { verifyV237RetainedValidation } from './check-v237-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const focusedFile = 'tests/bunch-queue-view.test.tsx';
@@ -17,6 +18,12 @@ export function runReleaseReactChecks({
 } = {}) {
   const { version } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
   const vitest = path.join(rootDir, 'node_modules', 'vitest', 'vitest.mjs');
+  if (version === '2.3.7') {
+    const evidence = verifyV237RetainedValidation({ rootDir });
+    if (!evidence.canRetainFocusedBunchReact) throw new Error('V237_BUNCH_REACT_RETENTION_SOURCE_MISMATCH');
+    print(`Retaining ${evidence.retainedReactPassed} baseline React tests plus ${evidence.retainedBunchReactPassed} focused Bunch tests; Bunch component/service hashes match the validated baseline, so no React tests rerun.`);
+    return 0;
+  }
   const args = ['2.3.5', '2.3.6'].includes(version)
     ? ['run', '--config', 'vite.v2.config.ts', focusedFile]
     : ['run', '--config', 'vite.v2.config.ts', ...argv];

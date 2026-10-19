@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "agdata-v237-retained-validation-v1",
+  "release": "AgData v2.3.7",
+  "base": "d794001fa44d728af6dffa47a3cc143b055aa143",
+  "baselineCiRun": 39226551039,
+  "baselinePagesRun": 39226748483,
+  "retainedNode": 3550,
+  "retainedReact": 158,
+  "retainedBunchShellPassed": 2,
+  "retainedBunchReactPassed": 16,
+  "baselineReceipt": "docs/releases/v2.3.6-retained-validation.json",
+  "authorization": "Authorized AgData v2.3.7 AV hydration correction; targeted AV checks only; do not rerun full Node, React, or SQL suites.",
+  "validatedSourceHashes": {
+    "assets/av-derived-rows.js": "54f5584dbbec011025e0d3f0c497a326a062119d19d0519b1ea58e9c841a6bf8",
+    "tests/av-derived-rows.test.mjs": "7a0b58f14832f54071c9906e98f4556667404df9e499f39fe7c3d078fb1c10a4",
+    "assets/ops-precision-pilot.js": "eed8101cbbae6e64abb584891114da30b9774c67b38e162d48afcf522e684297",
+    "index.html": "431097139175e5b69bbb6971f1c8f8118512dac18922a5554aa0ea18f5c2ade7",
+    "manifest.json": "9ff5aec909e7d1702472e2b7093a0f6e6dbb92f3f4623074df331f24b7d86006",
+    "package-lock.json": "c7f63343c9862c7954bd732ae13166a5fbdcaecfbe38bece45a51566cda91eb4",
+    "package.json": "0258203223cf6483dd34f1ae2777204efb5e2eff19636e503f3d623d37eb9fcc",
+    "scripts/build-live-shell.mjs": "10c4cb5c315f8f94553a03b5265e87f0be6a9ea56522fa11583f3ce26a5161aa",
+    "sw.js": "01511f7447703b79111106db0498c0f6111f17b07619ec644c387965673dd0eb",
+    "v2/public/manifest.webmanifest": "738721870f71370f38345244370a40ce47596ce095660d8802d064bc69ec0d82",
+    "v2/src/services/api.ts": "68016797dff69e254470316eed881f991230be0408d16906ab116c3e9b189a1d",
+    "playwright.av-live-hydration.config.ts": "0f5f816d661410aff4ac8bba4691ee155febf7b13c076b0404985e1eb9079ec1",
+    "tests/av-live-current-season.test.mjs": "4a2258d645bb82d3afd9b43a1d387d80b24ddb01e06b906215142f77d19ee723",
+    "tests/av-live-hydration.e2e.spec.ts": "3944faef513894f292cffbd02808ae1c2e7adb3de082dbeb8aa523c52c7ef8d7",
+    "tests/av-native-cache-hydration.test.mjs": "e960f7e78192c9d53223f7ffc5b1b645afa288fdaf65012fcafcf9bd1dec55ae",
+    "tests/av-sales-stock-visibility.test.mjs": "106c1413cb4f08f3dbe17333789b4fbf06cd17aa6d2b57f5ffb04fc3b2a0ed4f",
+    "scripts/check-v237-retained-validation.mjs": "42a285503bc55910e45bd270f77335f0029e0d67204bc53840a3290f2fb64d6b",
+    "scripts/run-release-unit-checks.mjs": "f121c34cf68ed6f6319250f9330b96a36391564eb0a7cbdedff6ddeaecce7502",
+    "scripts/run-release-react-checks.mjs": "fef98c7cd504c0fdd6b55764a20314bf274672cae304c0ce8f2e90de3d1154bc"
+  },
+  "retainedBunchSourceHashes": {
+    "assets/bunch-queue-shell.js": "dc944df99d3b9fa2620c2243f5483807ffb5554f3c4b9693a913dc332c45ac4f",
+    "components/bunch-queue/QueueView.tsx": "8a707d0514023012f49a7a8c91b000952102d30996f7b53555262a2904c41457",
+    "components/bunch-queue/WorkCard.tsx": "9433e9f67e52c50f822d44dedca5a6fdcbbfc09087c002e3a8103cf6aadcc120",
+    "components/bunch-queue/bunch-queue.css": "c9d0daf914ee86a3597d0f69c788db07eb65c70a0d5365388d1569f1410ad9b5",
+    "services/bunchQueue.ts": "a59c764a2ae6d2c92fc9eb4c9d49848fd51a6029304402f4ea28f8d7c44fc3d0",
+    "tests/bunch-queue-shell.test.mjs": "d609590a48d6032e560363b504e875bd48086df075e525920a82a6cd1729becb",
+    "tests/bunch-queue-view.test.tsx": "0af8880ef0adc3812b46e42ae32de0d0116a5b0e6aa77db1003ae64f9fc6ae30"
+  },
+  "focusedNodeFiles": [
+    "tests/av-derived-rows.test.mjs",
+    "tests/av-live-current-season.test.mjs",
+    "tests/av-native-cache-hydration.test.mjs",
+    "tests/av-sales-stock-visibility.test.mjs"
+  ],
+  "focusedReactFile": "tests/bunch-queue-view.test.tsx",
+  "reactDisposition": "Retain 16 focused Bunch React tests only while the component, service, stylesheet and view-test hashes match the base commit.",
+  "productionRead": {
+    "capturedAt": "2026-10-19T10:24:19.492171Z",
+    "masterRows": 9501,
+    "ownReserveRows": 702,
+    "currentSeason": "F1",
+    "maxSalesYear": 27,
+    "currentSeasonRows": 3450,
+    "positiveOpenStockRows": 3147,
+    "additionalOwnReserveRows": 89,
+    "visibleRows": 3236,
+    "visibleItemcodes": 1981
+  },
+  "targetedValidation": {
+    "node": {
+      "passed": 45,
+      "failed": 0,
+      "durationMs": 1666.452
+    },
+    "syntax": {
+      "inlineScripts": 8,
+      "shellAssets": 13
+    },
+    "lint": "passed",
+    "browser": {
+      "result": "blocked",
+      "issue": "AV-first-page-render-latency",
+      "attempts": 8,
+      "thresholdMs": 1500,
+      "finalIphone": {
+        "uiReadyMs": 7489,
+        "firstPageDomReadyMs": 6941,
+        "firstPageCards": 100,
+        "visibleRows": 3236,
+        "visibleItemcodes": 1981,
+        "masterRows": 9501,
+        "reserveRows": 702,
+        "pageErrors": 0,
+        "blockedMutations": 0
+      },
+      "retainedEarlierSource": {
+        "desktopUiReadyMs": 698,
+        "androidUiReadyMs": 373,
+        "note": "Passed earlier source; not a final all-environment pass"
+      }
+    },
+    "liveBrianAuthVerified": false,
+    "browserData": "read-only sanitized production snapshot with fixture Brian authentication; all mutation routes blocked"
+  },
+  "protectedScope": {
+    "codeGsChanged": false,
+    "backendChanged": false,
+    "backfillChanged": false,
+    "automation": "PAUSED"
+  },
+  "deliveryStatus": "HALTED_NOT_DELIVERY_READY"
+}

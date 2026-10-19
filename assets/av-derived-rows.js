@@ -5,15 +5,36 @@
   const entries = new Map();
   const jobs = new Map();
   let nextJobId = 0;
+  const scheduledTasks = new Map();
+  let nextTaskId = 0;
+  const taskChannel = typeof root.MessageChannel === 'function' ? new root.MessageChannel() : null;
+  if (taskChannel) taskChannel.port1.onmessage = event => {
+    const callback = scheduledTasks.get(event.data);
+    scheduledTasks.delete(event.data);
+    if (callback) callback();
+  };
 
   function schedule(callback) {
+    // Yield between bounded slices without the browser's nested-timer clamp.
+    // Pending messages remain cancellable when identity or source changes.
+    if (taskChannel) {
+      const id = ++nextTaskId;
+      scheduledTasks.set(id, callback);
+      taskChannel.port2.postMessage(id);
+      return id;
+    }
     return root.setTimeout(callback, 0);
+  }
+
+  function cancelScheduled(id) {
+    if (taskChannel) scheduledTasks.delete(id);
+    else root.clearTimeout(id);
   }
 
   function removeJob(key, job, value = null) {
     if (jobs.get(key) !== job) return;
     jobs.delete(key);
-    if (job.timer != null) root.clearTimeout(job.timer);
+    if (job.timer != null) cancelScheduled(job.timer);
     job.resolve(value);
   }
 
@@ -58,6 +79,7 @@
 
     const job = { id: ++nextJobId, key, scope, sourceKey, rows, mapRow, output: [], cursor: 0,
       chunkSize: Math.max(16, Math.min(512, Math.floor(Number(input.chunkSize) || 192))),
+      maxSliceMs: Math.max(0, Number(input.maxSliceMs) || 0),
       isCurrent: typeof input.isCurrent === 'function' ? input.isCurrent : () => true,
       finalize: typeof input.finalize === 'function' ? input.finalize : value => value,
       onSlice: typeof input.onSlice === 'function' ? input.onSlice : null,
@@ -71,11 +93,14 @@
         if (!job.isCurrent()) { removeJob(key, job); return; }
         const start = job.cursor;
         const end = Math.min(job.rows.length, start + job.chunkSize);
+        const clock = job.maxSliceMs && typeof root.performance?.now === 'function' ? root.performance : null;
+        const started = clock ? clock.now() : 0;
         for (; job.cursor < end; job.cursor += 1) {
+          if (clock && job.cursor > start && clock.now() - started >= job.maxSliceMs) break;
           const mapped = job.mapRow(job.rows[job.cursor], job.cursor);
           if (mapped !== null && mapped !== undefined) job.output.push(mapped);
         }
-        if (job.onSlice) job.onSlice(start, end);
+        if (job.onSlice) job.onSlice(start, job.cursor);
         if (job.cursor < job.rows.length) {
           job.timer = schedule(runSlice);
           return;
@@ -87,7 +112,7 @@
         removeJob(key, job, completeRows);
       } catch (error) {
         if (jobs.get(key) === job) jobs.delete(key);
-        if (job.timer != null) root.clearTimeout(job.timer);
+        if (job.timer != null) cancelScheduled(job.timer);
         job.reject?.(error);
       }
     };

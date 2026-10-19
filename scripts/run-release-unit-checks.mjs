@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import { verifyV235RetainedValidation } from './check-v235-retained-validation.mjs';
 import { verifyV236RetainedValidation } from './check-v236-retained-validation.mjs';
 import { verifyV236AvRetainedValidation } from './check-v236-av-retained-validation.mjs';
+import { verifyV237RetainedValidation } from './check-v237-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
@@ -31,6 +32,14 @@ export function runReleaseUnitChecks({
     return 0;
   }
   const packageManifest = JSON.parse(readPackage(rootDir));
+  if (packageManifest.version === '2.3.7') {
+    const evidence = verifyV237RetainedValidation({ rootDir });
+    print(`Retaining ${evidence.retainedNodePassed} baseline Node tests plus ${evidence.retainedBunchShellPassed} unchanged Bunch shell tests; running only focused AV unit checks.`);
+    if (shard && Number(shard[1]) !== 1) return 0;
+    const result = spawn(process.execPath, ['--test', ...evidence.focusedNodeFiles], { cwd: rootDir, stdio: 'inherit', env: process.env });
+    if (result.error) throw result.error;
+    return result.status ?? 1;
+  }
   if (packageManifest.version === '2.3.6' && fs.existsSync(path.join(rootDir, 'docs/releases/v2.3.6-av-retained-validation.json'))) {
     const evidence = verifyV236AvRetainedValidation({ rootDir });
     print(`Retaining ${evidence.retainedNodePassed} baseline Node tests from ${evidence.baseline}; running only AV Sales Rep visibility and Bunch shell regressions.`);
