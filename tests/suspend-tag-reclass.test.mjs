@@ -46,7 +46,7 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
     isSuspendTagHydratedInventoryRowStale: () => false,
     findDockSuspendDcRequestSourceRow: () => source,
   });
-  vm.runInContext(['getDockSuspendDcRequestSourceUid', 'getMasterInventoryExactKey', 'findLinkedMasterRow', 'getDockSuspendDcRequestLinkedMasterRow',
+  vm.runInContext(['isDockSuspendDcRequestMirrorRow', 'getDockSuspendDcRequestSourceUid', 'getMasterInventoryExactKey', 'findLinkedMasterRow', 'getDockSuspendDcRequestLinkedMasterRow',
     'getSuspendTagInventoryIdentity', 'matchesSuspendTagInventoryIdentity', 'getOperationalCardInventoryRow',
     'isArgosInventoryTransactionEligible', 'buildArgosInventoryTransactionRailHtml', 'buildArgosInventoryTransactionRailPlaceholderHtml', 'buildSuspendTagReclassActionHtml', 'buildSuspendTagActions'].map(extract).join('\n'), context);
   return { context, item, source, master };

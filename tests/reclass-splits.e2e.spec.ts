@@ -46,7 +46,7 @@ function confirmedHoldReceipt(row: Record<string, any>, reason: string, revision
 // writes remain rejected by the existing fixture; no real inventory/email is used.
 async function fixture(page: Page, baseURL: string, project: string,
   scope: { season: string; salesYear: string } = { season: 'F1', salesYear: '27' },
-  inventoryRows = 1, sourceQuantity = 25) {
+  inventoryRows = 1, sourceQuantity = 25, verifyGlobalFullSnapshot = true) {
   const lotcode = `${scope.salesYear}.${scope.season}`;
   // The backend fixture must return the same row as the mounted Drive card.
   // Background inventory hydration can replace manually mounted rows.
@@ -115,7 +115,7 @@ async function fixture(page: Page, baseURL: string, project: string,
   });
   let verifiedFullSnapshot: { revision: string; scope: string; permission: string; complete: boolean; rowCount: number;
     uniqueIdCount: number; uniqueCommonNameCount: number; requiredFieldsPresent: boolean } | null = null;
-  if (inventoryRows >= 1200) {
+  if (inventoryRows >= 1200 && verifyGlobalFullSnapshot) {
     const failedRequests: Array<{ method: string; url: string; failure: string }> = [];
     const responseDiagnostics: Array<Record<string, unknown>> = [];
     const failedRequestHandler = (request: import('@playwright/test').Request) => {
@@ -297,7 +297,7 @@ async function fixture(page: Page, baseURL: string, project: string,
     expect(verifiedFullSnapshot.requiredFieldsPresent).toBe(true);
   }
   const mount = async () => {
-    const preserveVerifiedInventory = inventoryRows >= 1200;
+    const preserveVerifiedInventory = !!verifiedFullSnapshot;
     if (preserveVerifiedInventory) {
       const mounted = await renderVerifiedDriveLayoutCard(page, { theme: 'light', knownQuantities: true },
         'drive-layout-synthetic-1-no-photo', verifiedFullSnapshot!, inventoryRows, sourceQuantity);
@@ -395,7 +395,7 @@ async function fixture(page: Page, baseURL: string, project: string,
   return { control, calls, createReplies, open, mount, confirmInventoryRevision, failNext: () => { rejectNext = true; }, conflict: () => { deliveryStatus = 'conflict'; }, setCreateReply: (replyFactory: (body: Record<string, any>) => unknown) => { createReply = replyFactory; } };
 }
 
-async function expectReclassModalHiddenWithDiagnostics(page: Page, f: Awaited<ReturnType<typeof fixture>>, moveRequests: Array<Record<string, any>>) {
+async function expectReclassModalHiddenWithDiagnostics(page: Page, f: Awaited<ReturnType<typeof fixture>>, moveRequests: Array<Record<string, any>>, context = '') {
   try {
     await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
   } catch (error) {
@@ -410,7 +410,13 @@ async function expectReclassModalHiddenWithDiagnostics(page: Page, f: Awaited<Re
       const proposals = getArgosReclassRowProposalMap('drive-layout-synthetic-1-no-photo', false) || {};
       const draftErrors = Array.from(document.querySelectorAll('#argos-inventory-transaction-modal [aria-invalid="true"], #argos-inventory-transaction-modal [role="alert"], #argos-inventory-transaction-modal .field-error, #argos-inventory-transaction-modal .argos-reclass-error'))
         .map(node => String(node.textContent || node.getAttribute('aria-label') || '').trim().slice(0, 240)).filter(Boolean).slice(0, 12);
-      return { modalVisible: !!document.getElementById('argos-inventory-transaction-modal')?.getClientRects().length,
+      return { sourceView: String(state?.sourceView || ''), globalMaster: { fullLoaded: getDatasetState('master').fullLoaded === true,
+          revision: String(getDatasetState('master').liveVerifiedRevision || ''), scope: String(getDatasetState('master').liveVerifiedScope || ''),
+          permission: String(getDatasetState('master').liveVerifiedPermission || '') },
+        inquiryGroup: state?.verifiedInquiryGroup ? { revision: String(state.verifiedInquiryGroup.revision || ''),
+          sourceSignature: String(state.verifiedInquiryGroup.sourceSignature || ''), scope: String(state.verifiedInquiryGroup.scope || ''),
+          permission: String(state.verifiedInquiryGroup.permission || '') } : null,
+        modalVisible: !!document.getElementById('argos-inventory-transaction-modal')?.getClientRects().length,
         toastText: String(toast?.innerText || '').slice(0, 500), applyText: String(apply?.textContent || ''), applyDisabled: !!apply?.disabled,
         submitting: !!state?.submitting, pendingMove: pending ? { uncertain: !!pending.uncertain, inFlight: !!pending.inFlight,
           commandIdPresent: !!pending.command?.commandId, movedUidCount: Array.isArray(pending.movedUids) ? pending.movedUids.length : 0 } : null,
@@ -426,7 +432,7 @@ async function expectReclassModalHiddenWithDiagnostics(page: Page, f: Awaited<Re
     const source = f.control.master.find((row: any) => row.unique_id === 'drive-layout-synthetic-1-no-photo');
     const submitProbe = await page.evaluate(() => window.eval('window.__reclassSubmitProbe || null'));
     await test.info().attach('reclass-final-submit-failure-diagnostics.json', { contentType: 'application/json', body: JSON.stringify({
-      error: error instanceof Error ? error.message.slice(0, 1200) : String(error).slice(0, 1200), browserState,
+      context, error: error instanceof Error ? error.message.slice(0, 1200) : String(error).slice(0, 1200), browserState,
       submitProbe,
       createRequestCount: f.calls.length, createReplies: f.createReplies,
       moveRequestCount: moveRequests.length, moveOperations: moveRequests.map(request => String(request.operation || '')),
@@ -800,6 +806,123 @@ async function populate(page: Page, action: 'move_up' | 'move_down' = 'move_up')
   return { row, move };
 }
 
+async function openTargetedReclassFromMountedDriveCard(page: Page) {
+  await page.locator('#drive-content .app-drive-card-reclass .app-card-bottom-btn').click();
+  await expect(page.locator('#argos-inventory-transaction-modal')).toBeVisible({ timeout: 30_000 });
+  const row = page.locator('[data-reclass-row-card="drive-layout-synthetic-1-no-photo"]');
+  await expect(row).toBeVisible();
+  if (await row.locator('.argos-reclass-row-toggle').getAttribute('aria-expanded') !== 'true') {
+    await row.locator('.argos-reclass-row-toggle').click();
+  }
+  await expect(row.locator('[data-reclass-row-hydrated="true"]')).toBeVisible();
+  return row;
+}
+
+async function installReclassEventToPaintProbe(page: Page) {
+  await page.evaluate(() => {
+    const root = window as any;
+    const probe: any = { starts: {}, paints: {}, pending: {} };
+    const modal = () => document.getElementById('argos-inventory-transaction-modal');
+    const visible = (element: Element | null) => !!element && !!(element as HTMLElement).getClientRects().length
+      && (element as HTMLElement).getAttribute('aria-hidden') !== 'true';
+    const mark = (stage: string) => {
+      if (probe.starts[stage] == null || probe.paints[stage] != null || probe.pending[stage]) return;
+      const ready = stage === 'open' ? visible(modal())
+        : stage === 'details' ? visible(modal()?.querySelector('[data-reclass-row-hydrated="true"]') || null)
+        : stage === 'expand' ? probe.expandRow?.getAttribute('aria-expanded') === 'true'
+        : stage === 'submit-pending' ? !!document.getElementById('argos-inventory-transaction-apply')?.hasAttribute('disabled')
+        : stage === 'submit-feedback' ? (!!document.getElementById('argos-inventory-transaction-apply')?.hasAttribute('disabled') || !visible(modal()))
+        : stage === 'submit-closed' ? !visible(modal()) : false;
+      if (!ready) return;
+      probe.pending[stage] = true;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const stillReady = stage === 'open' ? visible(modal())
+          : stage === 'details' ? visible(modal()?.querySelector('[data-reclass-row-hydrated="true"]') || null)
+          : stage === 'expand' ? probe.expandRow?.getAttribute('aria-expanded') === 'true'
+          : stage === 'submit-pending' ? !!document.getElementById('argos-inventory-transaction-apply')?.hasAttribute('disabled')
+          : stage === 'submit-feedback' ? (!!document.getElementById('argos-inventory-transaction-apply')?.hasAttribute('disabled') || !visible(modal()))
+          : stage === 'submit-closed' ? !visible(modal()) : false;
+        if (stillReady) probe.paints[stage] = performance.now() - probe.starts[stage];
+        probe.pending[stage] = false;
+      }));
+    };
+    const begin = (stage: string) => {
+      delete probe.paints[stage]; delete probe.pending[stage];
+      probe.starts[stage] = performance.now();
+      if (stage === 'open') {
+        delete probe.paints.details; delete probe.pending.details;
+        // If the modal supplies its expanded/hydrated row immediately, detail
+        // readiness is part of this open action. A later real row-toggle event
+        // resets the origin below when hydration is lazy until expansion.
+        probe.starts.details = probe.starts.open;
+      }
+      if (stage === 'submit') {
+        delete probe.paints['submit-pending']; delete probe.pending['submit-pending'];
+        delete probe.paints['submit-feedback']; delete probe.pending['submit-feedback'];
+        delete probe.paints['submit-closed']; delete probe.pending['submit-closed'];
+        probe.starts['submit-pending'] = probe.starts.submit;
+        probe.starts['submit-feedback'] = probe.starts.submit;
+        probe.starts['submit-closed'] = probe.starts.submit;
+      }
+      mark(stage);
+      if (stage === 'open') mark('details');
+    };
+    document.addEventListener('click', event => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target) return;
+      const stage = target.closest('#drive-content .app-drive-card-reclass .app-card-bottom-btn') ? 'open'
+        : target.closest('#argos-inventory-transaction-modal .argos-reclass-row-toggle') ? 'expand'
+        : target.closest('#argos-inventory-transaction-apply') ? 'submit' : '';
+      if (!stage) return;
+      if (stage === 'expand') {
+        // aria-expanded belongs to the toggle button, not the surrounding row.
+        // Start both measurements on this trusted user action: one ends when
+        // the expansion state paints, the other when its hydrated detail paints.
+        probe.expandRow = target.closest('.argos-reclass-row-toggle');
+        begin('details');
+      }
+      begin(stage);
+    }, true);
+    const observer = new MutationObserver(() => {
+      mark('open'); mark('details'); mark('expand'); mark('submit-pending'); mark('submit-feedback'); mark('submit-closed');
+    });
+    observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true,
+      attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'aria-expanded', 'disabled', 'data-reclass-row-hydrated'] });
+    root.__v239ReclassEventToPaintProbe = {
+      begin,
+      snapshot: () => ({ starts: { ...probe.starts }, paints: { ...probe.paints } }),
+      dispose: () => observer.disconnect(),
+    };
+  });
+}
+
+async function readReclassEventToPaintProbe(page: Page) {
+  return page.evaluate(() => {
+    const root = window as any;
+    const probe = root.__v239ReclassEventToPaintProbe;
+    return probe?.snapshot?.() || null;
+  });
+}
+
+async function disposeReclassEventToPaintProbe(page: Page) {
+  await page.evaluate(() => {
+    const root = window as any;
+    root.__v239ReclassEventToPaintProbe?.dispose?.();
+    delete root.__v239ReclassEventToPaintProbe;
+  });
+}
+
+async function expectGlobalMasterIsNotFull(page: Page) {
+  const proof = await page.evaluate(() => window.eval(`(() => {
+    const state = getDatasetState('master');
+    return { fullLoaded: state.fullLoaded === true, rowCompleteness: String(state.rowCompleteness || ''),
+      fieldCoverage: String(state.fieldCoverage || ''), revision: String(state.liveVerifiedRevision || '') };
+  })()`));
+  expect(proof.fullLoaded, 'this regression must not be hidden by a global full-master proof').toBe(false);
+  expect(proof.fieldCoverage).not.toBe('full');
+  return proof;
+}
+
 test('closing a pending inquiry and reopening preserves the new inquiry draft when stale work completes', { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name, { season: 'F1', salesYear: '27' }, 1, 100);
   const moveRequests = await installLiveMoveEndpoint(page, baseURL!, f.control);
@@ -1011,7 +1134,7 @@ for (const scope of [{ season: 'S1', salesYear: '27' }, { season: 'F1', salesYea
       return reply;
     });
     await page.locator('#argos-inventory-transaction-apply').click();
-    await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
+    await expectReclassModalHiddenWithDiagnostics(page, f, moveRequests);
     await expect(page.locator('#toast-notification')).toContainText('Live edits are confirmed');
     expect(f.calls).toHaveLength(1);
     expect(f.calls[0].workflowPolicyVersion).toBe('reclass-action-workflow-v7-editable-fields-20261009');
@@ -1591,4 +1714,200 @@ test('Take off hold YES queues the inquiry and retains confirmed photos and spec
   expect(await page.evaluate(() => window.eval(`(() => {const row=fullInventory.find(row=>row.UNIQUE_ID==='drive-layout-synthetic-1-no-photo');return {hold:String(row.HOLDSTOPCODE || ''),photo:row.PHOTO_LINK,spec:row.SPEC,onHand:Number(row.PTRONHAND)};})()`)))
     .toEqual({hold:'',photo,spec:'keep specs',onHand:25});
   expect(f.control.blockedMutations).toEqual([]);
+});
+
+test('targeted item snapshot authorizes Reclass without promoting the global master across source contexts', { tag: ['@local-e2e', '@reclass-splits'] }, async ({ page, baseURL }, info) => {
+  test.setTimeout(180_000);
+  const f = await fixture(page, baseURL!, info.project.name, { season: 'S1', salesYear: '27' }, 10_001, 1000, false);
+  // Keep synthetic targeted-read revisions aligned with the move-receipt
+  // revisions (600 -> receipt 601 -> next snapshot 601).
+  f.control.datasetRevision = 600;
+  const moveRequests = await installLiveMoveEndpoint(page, baseURL!, f.control);
+  const masterCount = await page.evaluate(() => window.eval('fullInventory.length'));
+  expect(masterCount).toBeLessThan(10_001);
+  await expectGlobalMasterIsNotFull(page);
+
+  // The visible fixture card is Drive-mounted. The same modal entry function
+  // is then exercised with each production source-view identifier; this is a
+  // modal source-context matrix, not five independently mounted module flows.
+  const missingOpenTimingTargets = await installOpenStageTiming(page);
+  await installReclassEventToPaintProbe(page);
+  const sourceViews = ['drive', 'eval-report-2', 'sales-inventory', 'request', 'suspend-tag'];
+  const timing: Array<{ sourceView: string; modalOpenMs: number; detailsReadyMs: number; expansionMs: number; submitPendingMs: number; submitFeedbackMs: number; receiptAndCloseMs: number }> = [];
+  for (const [index, sourceView] of sourceViews.entries()) {
+    if (index === 0) {
+      // First iteration clicks the real rendered Drive card and performs a cold
+      // item-scoped read against a 10,001-row fixture.
+      await openTargetedReclassFromMountedDriveCard(page);
+      const openStages = await takeOpenStageTiming(page);
+      console.log(`[V239_RECLASS_OPEN_STAGES] ${JSON.stringify({ environment: info.project.name, missingOpenTimingTargets, openStages })}`);
+      await test.info().attach('reclass-open-stage-timing.json', { contentType: 'application/json', body: JSON.stringify({
+        environment: info.project.name, missingOpenTimingTargets, openStages,
+      }, null, 2) });
+      const probe = await readReclassEventToPaintProbe(page);
+      const modalOpenMs = Number(probe?.paints?.open);
+      const detailsReadyMs = Number(probe?.paints?.details);
+      const expansionMs = Number(probe?.paints?.expand || 0);
+      timing.push({ sourceView, modalOpenMs, detailsReadyMs, expansionMs, submitPendingMs: 0, submitFeedbackMs: 0, receiptAndCloseMs: 0 });
+      console.log(`[V239_RECLASS_UI_PAINT] ${JSON.stringify({ environment: info.project.name, sourceView, modalOpenMs, detailsReadyMs, expansionMs })}`);
+      await test.info().attach('reclass-initial-event-to-paint.json', { contentType: 'application/json', body: JSON.stringify({
+        environment: info.project.name, modalOpenMs, detailsReadyMs, expansionMs,
+        harnessRoundTripsExcluded: true,
+      }, null, 2) });
+      expect(modalOpenMs, 'cold targeted Item Inquiry should stay within the approved interactive UI budget').toBeLessThanOrEqual(400);
+      expect(detailsReadyMs, 'targeted item detail must paint within the approved interactive UI budget').toBeLessThanOrEqual(400);
+      if (expansionMs) expect(expansionMs, 'row expansion must paint within the approved interactive UI budget').toBeLessThanOrEqual(400);
+    } else {
+      await page.evaluate(source => window.eval(`(() => {
+        window.__v239ReclassEventToPaintProbe?.begin?.('open');
+        closeArgosInventoryTransactionModal();
+        openArgosInventoryTransactionModal(${JSON.stringify('drive-layout-synthetic-1-no-photo')}, 'reclass', ${JSON.stringify(source)});
+        return true;
+      })()`), sourceView);
+      await expect(page.locator('#argos-inventory-transaction-modal')).toBeVisible({ timeout: 30_000 });
+      timing.push({ sourceView, modalOpenMs: 0, detailsReadyMs: 0, expansionMs: 0, submitPendingMs: 0, submitFeedbackMs: 0, receiptAndCloseMs: 0 });
+    }
+    const row = page.locator('[data-reclass-row-card="drive-layout-synthetic-1-no-photo"]');
+    await expect(row).toBeVisible();
+    if (await row.locator('.argos-reclass-row-toggle').getAttribute('aria-expanded') !== 'true') await row.locator('.argos-reclass-row-toggle').click();
+    await expect(row.locator('[data-reclass-row-hydrated="true"]')).toBeVisible();
+    const state = await page.evaluate(() => window.eval(`(() => {
+      const context = getProductionLiveSyncContext();
+      const item = argosInventoryTransactionState;
+      return { sourceView: String(item?.sourceView || ''), uniqueId: String(item?.snapshot?.uniqueId || ''),
+        locations: Number(item?.inquiryModel?.locationRows?.length || 0),
+        locationIds: (item?.inquiryModel?.locationRows || []).map(entry => String(entry?.unique_id || '')).sort(),
+        scope: String(context.scope || ''),
+        permission: String(context.dataPermissionVersion || ''),
+        group: item?.verifiedInquiryGroup ? { scope: String(item.verifiedInquiryGroup.scope || ''),
+          readScope: String(item.verifiedInquiryGroup.readScope || ''), permission: String(item.verifiedInquiryGroup.permission || ''),
+          revision: String(item.verifiedInquiryGroup.revision || ''), identityKey: String(item.verifiedInquiryGroup.identityKey || ''),
+          sourceState: String(item.verifiedInquiryGroup.sourceState || ''), sourceSignature: String(item.verifiedInquiryGroup.sourceSignature || '') } : null };
+    })()`));
+    expect(state.sourceView).toBe(sourceView);
+    expect(state.uniqueId).toBe('drive-layout-synthetic-1-no-photo');
+    const expectedLocationIds = f.control.master.filter((candidate: any) =>
+      String(candidate.itemcode || candidate.ITEMCODE || '').trim().toUpperCase() === 'LAYOUT.001-NO-PHOTO')
+      .map((candidate: any) => String(candidate.unique_id || candidate.UNIQUE_ID || '')).sort();
+    expect(state.locationIds).toEqual(expectedLocationIds);
+    expect(state.locations).toBe(expectedLocationIds.length);
+    expect(state.scope).toBeTruthy(); expect(state.permission).toBeTruthy();
+    expect(state.group).toEqual(expect.objectContaining({ scope: state.scope, readScope: expect.any(String),
+      permission: state.permission, revision: expect.stringMatching(/^[1-9]\d*$/), identityKey: expect.any(String),
+      sourceState: expect.any(String), sourceSignature: expect.any(String) }));
+    expect(state.group.readScope).toBeTruthy(); expect(state.group.identityKey).toBeTruthy();
+    expect(state.group.sourceState).toBeTruthy(); expect(state.group.sourceSignature).toBeTruthy();
+    await expectGlobalMasterIsNotFull(page);
+    await expect(page.locator('#toast-notification')).not.toContainText(/inventory and permissions are not verified|could not be verified/i);
+
+    await row.locator('[data-reclass-v3-action="move_up"]').click();
+    const move = row.locator('[data-reclass-move-action="move_up"]');
+    await move.getByLabel('Move Up quantity 1', { exact: true }).fill('34');
+    await move.getByLabel('Move Up destination 1', { exact: true }).selectOption('F1');
+    const sourceProof = await page.evaluate(() => window.eval(`(() => {
+      const state = argosInventoryTransactionState;
+      const context = getProductionLiveSyncContext();
+      return { globalFull: getDatasetState('master').fullLoaded === true,
+        scope: String(context.scope || ''), permission: String(context.dataPermissionVersion || ''),
+        rowCount: Number(state?.inquiryModel?.locationRows?.length || 0),
+        locationIds: (state?.inquiryModel?.locationRows || []).map(entry => String(entry?.unique_id || '')).sort(),
+        revision: String(state?.verifiedInquiryGroup?.revision || ''),
+        sourceQuantity: Number(String(state?.snapshot?.ptrAvailable || state?.snapshot?.ptrOnHand || '0').replace(/,/g, '')) };
+    })()`));
+    expect(sourceProof.globalFull).toBe(false);
+    expect(sourceProof.scope).toBe(state.scope);
+    expect(sourceProof.permission).toBe(state.permission);
+    expect(sourceProof.locationIds).toEqual(expectedLocationIds);
+    expect(sourceProof.rowCount).toBe(expectedLocationIds.length);
+    expect(sourceProof.sourceQuantity).toBeGreaterThan(0);
+
+    if (index === 0) {
+      // A draft must survive loss of its cached proof; submission then obtains
+      // a fresh targeted read without promoting the global master snapshot.
+      await page.evaluate(() => window.eval(`(() => {
+        if (!argosInventoryTransactionState) throw new Error('Reclass draft state is missing.');
+        argosInventoryTransactionState.verifiedInquiryGroup = null;
+        return true;
+      })()`));
+      await expect(move.getByLabel('Move Up quantity 1', { exact: true })).toHaveValue('34');
+      await expect(move.getByLabel('Move Up destination 1', { exact: true })).toHaveValue('F1');
+      await expectGlobalMasterIsNotFull(page);
+    }
+
+    await page.locator('#argos-inventory-transaction-apply').click();
+    await expectReclassModalHiddenWithDiagnostics(page, f, moveRequests, sourceView);
+    await page.waitForFunction(() => Number.isFinite(Number((window as any).__v239ReclassEventToPaintProbe?.snapshot?.()?.paints?.['submit-feedback'])), null, { timeout: 5000 });
+    const submitProbe = await readReclassEventToPaintProbe(page);
+    const submitPendingMs = Number(submitProbe?.paints?.['submit-pending']);
+    const submitFeedbackMs = Number(submitProbe?.paints?.['submit-feedback']);
+    const receiptAndCloseMs = Number(submitProbe?.paints?.['submit-closed']);
+    timing[timing.length - 1].submitPendingMs = submitPendingMs;
+    timing[timing.length - 1].submitFeedbackMs = submitFeedbackMs;
+    timing[timing.length - 1].receiptAndCloseMs = receiptAndCloseMs;
+    console.log(`[V239_RECLASS_SUBMIT_PAINT] ${JSON.stringify({ environment: info.project.name, sourceView, submitPendingMs: Number.isFinite(submitPendingMs) ? submitPendingMs : null, submitFeedbackMs, receiptAndCloseMs: Number.isFinite(receiptAndCloseMs) ? receiptAndCloseMs : null })}`);
+    expect(Number.isFinite(submitFeedbackMs), `${sourceView} submit must paint pending or completed feedback`).toBe(true);
+    expect(submitFeedbackMs, `${sourceView} submit feedback should paint within the approved interactive UI budget`).toBeLessThanOrEqual(400);
+    const request = moveRequests[moveRequests.length - 1];
+    expect(request.expectedRevision).toBe(Number(sourceProof.revision));
+    expect(request.moves).toEqual([expect.objectContaining({
+      source: expect.objectContaining({ uniqueId: 'drive-layout-synthetic-1-no-photo', identity: expect.objectContaining({
+        itemcode: 'LAYOUT.001-NO-PHOTO', lotcode: '27.S1', season: 'S1',
+      }) }),
+      lines: [{ direction: 'move_up', destinationSeason: 'F1', quantity: 34 }],
+    })]);
+    expect(moveRequests).toHaveLength(index + 1);
+    await expectGlobalMasterIsNotFull(page);
+  }
+  await test.info().attach('reclass-targeted-snapshot-timing.json', { contentType: 'application/json', body: JSON.stringify({
+    environment: info.project.name, fixtureSourceRows: f.control.master.length, globalRowsBefore: masterCount,
+    operation: 'cold click-to-open and apply from a targeted item snapshot', cache: 'global master remains browse-only',
+    sourceViews: timing, sourceContextMatrixMounted: false,
+  }, null, 2) });
+  await disposeReclassEventToPaintProbe(page);
+});
+
+test('Send as Review preserves a targeted 34-unit F1 proposal without applying stock or sending real email', { tag: ['@local-e2e', '@reclass-splits'] }, async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!, info.project.name, { season: 'S1', salesYear: '27' }, 10_001, 1000, false);
+  const moveRequests = await installLiveMoveEndpoint(page, baseURL!, f.control);
+  const reviewRequests: Record<string, any>[] = [];
+  await page.route('**/functions/v1/app-api', async route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const body = route.request().postDataJSON();
+    if (body.action !== 'eval_work' || body.operation !== 'create') return route.fallback();
+    reviewRequests.push(structuredClone(body));
+    return route.fulfill({ status: 200, contentType: 'application/json',
+      headers: { 'access-control-allow-origin': new URL(baseURL!).origin, 'access-control-allow-credentials': 'true' },
+      body: JSON.stringify({ ok: true, data: { id: 'synthetic-targeted-reclass-review', status: 'assigned' } }) });
+  });
+  await expectGlobalMasterIsNotFull(page);
+  const row = await openTargetedReclassFromMountedDriveCard(page);
+  await expect(page.locator('#toast-notification')).not.toContainText(/inventory and permissions are not verified|could not be verified/i);
+  await row.locator('[data-reclass-v3-action="move_up"]').click();
+  const move = row.locator('[data-reclass-move-action="move_up"]');
+  await move.getByLabel('Move Up quantity 1', { exact: true }).fill('34');
+  await move.getByLabel('Move Up destination 1', { exact: true }).selectOption('F1');
+  await page.locator('#argos-inventory-transaction-review').click();
+  await expect(page.locator('#eval-work-setup-modal')).toBeVisible();
+  await page.evaluate(() => window.eval(`(() => {
+    evalWorkSetupState.assigneeUsernames = ['josh_vann'];
+    evalWorkSetupState.instructions = 'Verify the 34-unit F1 move proposal.';
+    evalWorkSetupState.completionRecipients = ['qa-reclass@example.test'];
+    syncEvalWorkSetupSummary();
+    return true;
+  })()`));
+  await expect(page.locator('#eval-work-setup-create')).toBeEnabled();
+  await page.locator('#eval-work-setup-create').click();
+  await page.locator('.app-prompt-confirm').click();
+  await expect(page.locator('#eval-work-setup-modal')).toBeHidden();
+
+  expect(reviewRequests).toHaveLength(1);
+  expect(reviewRequests[0].inquiry.rowOverlays).toEqual(expect.arrayContaining([expect.objectContaining({
+    unique_id: 'drive-layout-synthetic-1-no-photo',
+    proposals: expect.arrayContaining([expect.objectContaining({ action: 'move_up', splits: [
+      expect.objectContaining({ destinationSeason: 'F1', quantity: 34 }),
+    ] })]),
+  })]));
+  expect(moveRequests).toHaveLength(0);
+  expect(f.control.blockedMutations).toEqual([]);
+  await expectGlobalMasterIsNotFull(page);
 });

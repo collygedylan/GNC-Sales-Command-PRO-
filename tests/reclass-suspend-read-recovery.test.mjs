@@ -44,6 +44,7 @@ function reclassRowsFixture(options = {}) {
     sourceContext: initialContext,
     fullLoaded: false,
     getSupabaseReadIdentityScope: () => ctx.sourceScope,
+    getArgosReclassLiveEditIdentityKey: () => ctx.sourceScope,
     getProductionLiveSyncContext: () => ctx.sourceContext,
     canUseProductionLiveSync: () => true,
     withProductionLiveSyncSignal: async (_signal, read) => read(options.signal || new AbortController().signal),
@@ -82,7 +83,7 @@ function reclassRowsFixture(options = {}) {
     staleSupabaseReadScopeError: () => Object.assign(new Error('scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' }),
   };
   vm.createContext(ctx);
-  vm.runInContext(extractAppFunction('loadArgosItemInquiryRows'), ctx);
+  vm.runInContext(extractAppFunction('getArgosReclassSourceRowsSignature') + '\n' + extractAppFunction('loadArgosItemInquiryRows'), ctx);
   return { ctx, calls, row };
 }
 

@@ -469,15 +469,17 @@ test('Item Inquiry can paint a complete warm snapshot immediately while live ref
     getDatasetState: () => state,
     getProductionLiveSyncContext: () => ({ scope: 'context-scope-a', dataPermissionVersion: 'perm-7' }),
     getSupabaseReadIdentityScope: () => 'read-owner-a',
+    getArgosReclassLiveEditIdentityKey: () => 'profile-a/admin/login-a',
     getItemInquiryItemCode: () => 'ITEM-1',
     getItemInquiryRows: () => [row],
+    masterInventoryByItemCode: new Map([['ITEM-1', [row]]]),
     getItemInquiryRowKey: value => value.unique_id,
     isConfirmedInventoryReadRevisionCurrent: () => true,
     isRequestLikeItem: () => false, isDockLikeItem: () => false, isSalesOfficeLikeItem: () => false,
     compareItemInquiryRows: () => 0
   };
   vm.createContext(ctx);
-  vm.runInContext(`${extractAppFunction('getVerifiedCachedArgosItemInquiryGroup')}`, ctx);
+  vm.runInContext(`${extractAppFunction('getArgosReclassSourceRowsSignature')}\n${extractAppFunction('getVerifiedCachedArgosItemInquiryGroup')}`, ctx);
   const group = ctx.getVerifiedCachedArgosItemInquiryGroup(row);
   assert.equal(group.row, row);
   assert.deepEqual(Array.from(group.rows), [row]);

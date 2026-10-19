@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { discoverTests } from './test-discovery.mjs';
+import { verifyV239RetainedValidation } from './check-v239-retained-validation.mjs';
 
 export function backendTestMatrices({ root } = {}) {
   const repositoryRoot = path.resolve(root || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
@@ -9,6 +10,14 @@ export function backendTestMatrices({ root } = {}) {
   const pglite = discoverTests({ root, group: 'pglite' });
   const entrypoints = discoverTests({ root, group: 'deno-entrypoints' });
   const tests = discoverTests({ root, group: 'deno-tests' });
+
+  if (packageVersion === '2.3.9') {
+    verifyV239RetainedValidation({ rootDir: repositoryRoot });
+    return {
+      pglite: [],
+      edge: { include: [{ suite: 'app-api-static', targets: ['supabase/functions/app-api/index.ts'], tests: [] }] },
+    };
+  }
 
   if (packageVersion === '2.3.8') {
     const requiredPglite = 'supabase/ci/suspend_tag_sender_identity_pglite.mjs';

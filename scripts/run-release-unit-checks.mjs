@@ -8,6 +8,7 @@ import { verifyV236RetainedValidation } from './check-v236-retained-validation.m
 import { verifyV236AvRetainedValidation } from './check-v236-av-retained-validation.mjs';
 import { verifyV237RetainedValidation } from './check-v237-retained-validation.mjs';
 import { verifyV238RetainedValidation } from './check-v238-retained-validation.mjs';
+import { verifyV239RetainedValidation } from './check-v239-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
@@ -27,6 +28,18 @@ export function runReleaseUnitChecks({
   }
   if (shard && (Number(shard[1]) > Number(shard[2]) || Number(shard[2]) > 32)) throw new Error('Usage: invalid unit shard');
   const packageManifest = JSON.parse(readPackage(rootDir));
+  if (packageManifest.version === '2.3.9') {
+    const evidence = verifyV239RetainedValidation({ rootDir });
+    if (argv[0] === '--list') {
+      print(JSON.stringify(evidence.focusedNodeFiles, null, 2));
+      return 0;
+    }
+    print(`Retaining ${evidence.retainedNodePassed} baseline Node tests; running only the focused Reclass verification checks.`);
+    if (shard && Number(shard[1]) !== 1) return 0;
+    const result = spawn(process.execPath, ['--test', ...evidence.focusedNodeFiles], { cwd: rootDir, stdio: 'inherit', env: process.env });
+    if (result.error) throw result.error;
+    return result.status ?? 1;
+  }
   if (packageManifest.version === '2.3.8') {
     const evidence = verifyV238RetainedValidation({ rootDir });
     if (argv[0] === '--list') {

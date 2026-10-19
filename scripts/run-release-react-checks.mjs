@@ -7,6 +7,7 @@ import { verifyV236RetainedValidation } from './check-v236-retained-validation.m
 import { verifyV236AvRetainedValidation } from './check-v236-av-retained-validation.mjs';
 import { verifyV237RetainedValidation } from './check-v237-retained-validation.mjs';
 import { verifyV238RetainedValidation } from './check-v238-retained-validation.mjs';
+import { verifyV239RetainedValidation } from './check-v239-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const focusedFile = 'tests/bunch-queue-view.test.tsx';
@@ -19,6 +20,11 @@ export function runReleaseReactChecks({
 } = {}) {
   const { version } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
   const vitest = path.join(rootDir, 'node_modules', 'vitest', 'vitest.mjs');
+  if (version === '2.3.9') {
+    const evidence = verifyV239RetainedValidation({ rootDir });
+    print(`Retaining ${evidence.retainedReactPassed} baseline React tests; no React source or component contract is changed.`);
+    return 0;
+  }
   if (version === '2.3.8') {
     const evidence = verifyV238RetainedValidation({ rootDir });
     if (!evidence.canRetainBunchReact) throw new Error('V238_REACT_RETENTION_SOURCE_MISMATCH');
