@@ -14,9 +14,14 @@ export type BunchReview = {
   sources: BunchSource[]; assigned_counter_id: string | null; assigned_counter_username: string | null;
   recount_qty: number | null; can_assign: boolean; can_complete: boolean;
 };
-export type BunchQueuePage = { cards: BunchWorkCard[]; total: number; active_count: number; review_count: number; can_review: boolean; counters: BunchPerson[] };
+export type BunchAssigneeOption = BunchPerson & { count: number };
+export type BunchQueuePage = {
+  cards: BunchWorkCard[]; total: number; active_count: number; review_count: number; can_review: boolean; counters: BunchPerson[];
+  /** Counts span all authorized active cards, independent of this page/filter. */
+  assignee_options: BunchAssigneeOption[]; unassigned_count: number;
+};
 export type BunchReviewPage = { reviews: BunchReview[]; total: number; review_count: number; can_review: boolean; counters: BunchPerson[] };
-export type BunchQueueFilter = 'mine' | 'all' | 'completed';
+export type BunchQueueFilter = 'mine' | 'all' | 'completed' | 'unassigned' | `assignee:${string}`;
 export type BunchMutation = {
   operation: 'complete_card' | 'assign_counter' | 'complete_recount';
   payload: Record<string, unknown>; commandId: string; expectedRevision: number; target: string;

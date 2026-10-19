@@ -30,6 +30,48 @@ function storage() {
 afterEach(() => { hosts.splice(0).forEach(node => node.remove()); });
 
 describe('Bunch Notes queue cards', () => {
+  it('opens all server-authorized work and filters assigned users from a complete cached queue without another RPC', async () => {
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const cards = [
+      { ...baseCard, stablecard_id: 'job-1:card-1', card_id: 'card-1', assignees: [{ id: 'worker-1', username: 'alex_worker', display_name: 'Alex Worker' }] },
+      { ...baseCard, stablecard_id: 'job-1:card-2', card_id: 'card-2', assignees: [{ id: 'worker-1', username: 'alex_worker', display_name: 'Alex Worker' }, { id: 'worker-2', username: 'bea_worker', display_name: 'Bea Worker' }] },
+      { ...baseCard, stablecard_id: 'job-1:card-3', card_id: 'card-3', assignees: [] },
+    ];
+    const page = {
+      cards, total: 3, active_count: 3, review_count: 0, can_review: true,
+      counters: [],
+      assignee_options: [
+        { id: 'worker-1', username: 'alex_worker', display_name: 'Alex Worker', count: 2 },
+        { id: 'worker-2', username: 'bea_worker', display_name: 'Bea Worker', count: 1 },
+      ],
+      unassigned_count: 1,
+    };
+    const transport = vi.fn(async () => ({ ok: true, data: page }));
+    const client = createBunchQueueClient({ scopeKey: 'dylan_collyge', transport, storage: storage(), online: () => true });
+    let mounted!: ReturnType<typeof mountBunchQueue>;
+    await act(async () => { mounted = mountBunchQueue(host(), client); await Promise.resolve(); });
+
+    const filter = await screen.findByRole('combobox', { name: 'Bunch Notes filter' }) as HTMLSelectElement;
+    await waitFor(() => expect(transport).toHaveBeenCalledWith(expect.objectContaining({ operation: 'queue', payload: expect.objectContaining({ filter: 'all' }) }), expect.any(AbortSignal)));
+    expect(Array.from(filter.options).slice(0, 4).map(option => option.textContent)).toEqual([
+      'All authorized work', 'My assigned work', 'Assigned: alex_worker (2)', 'Assigned: bea_worker (1)',
+    ]);
+    expect(Array.from(filter.options).some(option => option.textContent === 'Unassigned (1)')).toBe(true);
+    expect(screen.getAllByRole('article')).toHaveLength(3);
+
+    fireEvent.change(filter, { target: { value: 'assignee:worker-2' } });
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByText(/Assigned:.*Bea Worker/)).toBeTruthy();
+    expect(transport).toHaveBeenCalledTimes(1);
+    fireEvent.change(filter, { target: { value: 'unassigned' } });
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByText(/Assigned: Unassigned/)).toBeTruthy();
+    fireEvent.change(filter, { target: { value: 'all' } });
+    expect(screen.getAllByRole('article')).toHaveLength(3);
+    expect(transport).toHaveBeenCalledTimes(1);
+    await act(async () => { mounted.destroy(); client.dispose(); });
+  });
+
   it('shows assigned work and submits actual quantities for every source row', async () => {
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     const transport = vi.fn(async (request: Record<string, unknown>) => {
@@ -58,7 +100,7 @@ describe('Bunch Notes queue cards', () => {
   it('renders cached assignment work and saved quantities while offline', async () => {
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     const saved = storage();
-    saved.setItem('gnc:bunch-queue:v230:worker-offline:mine:0', JSON.stringify(queuePage));
+    saved.setItem('gnc:bunch-queue:v232:worker-offline:all:0', JSON.stringify(queuePage));
     saved.setItem('gnc:bunch-queue:v230:worker-offline:draft:job-1:card-1', JSON.stringify({ 'row-1': '5', 'row-2': '6' }));
     const transport = vi.fn();
     const client = createBunchQueueClient({ scopeKey: 'worker-offline', transport, storage: saved, online: () => false });
@@ -67,6 +109,28 @@ describe('Bunch Notes queue cards', () => {
     expect((await screen.findByRole('status')).textContent).toMatch(/Offline/);
     expect((screen.getByRole('textbox', { name: 'Actual Qty Completed row-1' }) as HTMLInputElement).value).toBe('5');
     expect((screen.getByRole('textbox', { name: 'Actual Qty Completed row-2' }) as HTMLInputElement).value).toBe('6');
+    expect(transport).not.toHaveBeenCalled();
+    await act(async () => { mounted.destroy(); client.dispose(); });
+  });
+
+  it('shows a legacy v230 assigned-work cache offline as partial while retaining drafts and tolerating missing facets', async () => {
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const saved = storage();
+    saved.setItem('gnc:bunch-queue:v230:worker-upgrade-offline:mine:0', JSON.stringify({
+      cards: [{ ...baseCard, can_complete: null }], total: 1, active_count: 1, review_count: 0, can_review: null, counters: [],
+    }));
+    saved.setItem('gnc:bunch-queue:v230:worker-upgrade-offline:draft:job-1:card-1', JSON.stringify({ 'row-1': '6', 'row-2': '8' }));
+    const transport = vi.fn();
+    const client = createBunchQueueClient({ scopeKey: 'worker-upgrade-offline', transport, storage: saved, online: () => false });
+    let mounted!: ReturnType<typeof mountBunchQueue>;
+    await act(async () => { mounted = mountBunchQueue(host(), client); await Promise.resolve(); });
+
+    expect(await screen.findByText(/saved assigned-work snapshot only/i)).toBeTruthy();
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect((screen.getByRole('combobox', { name: 'Bunch Notes filter' }) as HTMLSelectElement).value).toBe('mine');
+    expect(client.getSnapshot()).toMatchObject({ filter: 'mine', loadedFilter: 'mine', page: { assignee_options: [], unassigned_count: 0, cards: [{ can_complete: false }] } });
+    expect(client.draft('job-1:card-1')).toEqual({ 'row-1': '6', 'row-2': '8' });
+    expect(screen.queryByRole('button', { name: 'Complete Work' })).toBeNull();
     expect(transport).not.toHaveBeenCalled();
     await act(async () => { mounted.destroy(); client.dispose(); });
   });

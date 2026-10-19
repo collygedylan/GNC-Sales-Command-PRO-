@@ -38,17 +38,19 @@ insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values
  ('99000000-0000-0000-0000-000000000006','outside-supervisor@example.invalid','{}','{}'),
  ('99000000-0000-0000-0000-000000000007','count-only@example.invalid','{}','{}'),
  ('99000000-0000-0000-0000-000000000008','sales-rep@example.invalid','{}','{}'),
- ('99000000-0000-0000-0000-000000000009','disabled-counter@example.invalid','{}','{}');
+ ('99000000-0000-0000-0000-000000000009','disabled-counter@example.invalid','{}','{}'),
+ ('99000000-0000-0000-0000-000000000010','dylan-college@example.invalid','{}','{}');
 insert into public.profiles(id,username,display_name,role,must_change_password) values
  ('99000000-0000-0000-0000-000000000001','dylan_collyge','Dylan','ADMIN',false),
  ('99000000-0000-0000-0000-000000000002','bn_card_one','Crew One','EVAL',false),
  ('99000000-0000-0000-0000-000000000003','bn_card_two','Crew Two','EVAL',false),
  ('99000000-0000-0000-0000-000000000004','bn_card_none','No Assigned Work','EVAL',false),
  ('99000000-0000-0000-0000-000000000005','sharon_combs','Sharon Review','EVAL',false),
- ('99000000-0000-0000-0000-000000000006','bn_outside_supervisor','Outside Supervisor','SUPERVISOR',false),
+ ('99000000-0000-0000-0000-000000000006','bn_outside_supervisor','Outside Supervisor','Senior Inventory Manager',false),
  ('99000000-0000-0000-0000-000000000007','bn_count_only','Count Only','EVAL',false),
  ('99000000-0000-0000-0000-000000000008','bn_sales_rep','Sales Rep','SALESREP',false),
- ('99000000-0000-0000-0000-000000000009','bn_disabled','Disabled Counter','EVAL',false);
+ ('99000000-0000-0000-0000-000000000009','bn_disabled','Disabled Counter','EVAL',false),
+ ('99000000-0000-0000-0000-000000000010','dylan_college','Dylan College','EVAL',false);
 update public.profiles set disabled_at=now() where id='99000000-0000-0000-0000-000000000009';
 select set_config('request.jwt.claims','{"role":"service_role"}',true),set_config('request.jwt.claim.role','service_role',true);
 insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,blockalpha,locationcode,lotcode,ptronhand,ptravailable,season,ptrreviewed)
@@ -57,7 +59,9 @@ insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,bl
  ('BN-CARD-SIBLING','CARD-I','Card Plant','#4','CARD','C.88.001','CARD-LOT-SIBLING','8','8','27.Y','0'),
  ('BN-CARD-C','CARD-J','Setup Plant','#1','CARD','C.88.002','CARD-LOT-C','5','5','27.Y','0'),
  ('BN-CARD-WORKFLOW','CARD-W','Workflow Plant','#2','CARD','C.88.003','CARD-LOT-W','5','5','27.Y','0'),
- ('BN-CARD-WORKFLOW-OTHER','CARD-W-OTHER','Other Workflow Plant','#2','CARD','C.88.003','CARD-LOT-W-OTHER','7','7','27.Y','0');
+ ('BN-CARD-WORKFLOW-OTHER','CARD-W-OTHER','Other Workflow Plant','#2','CARD','C.88.003','CARD-LOT-W-OTHER','7','7','27.Y','0'),
+ ('BN-CARD-WORKFLOW-UNASSIGNED','CARD-W-UNASSIGNED','Unassigned Workflow Plant','#2','CARD','C.88.003','CARD-LOT-W-UNASSIGNED','3','3','27.Y','0'),
+ ('BN-CARD-WORKFLOW-UNASSIGNED-2','CARD-W-UNASSIGNED-2','Second Unassigned Workflow Plant','#2','CARD','C.88.003','CARD-LOT-W-UNASSIGNED-2','4','4','27.Y','0');
 insert into public.core_employees(id,profile_id,name,emp_number,department,role)
 values('99100000-0000-4000-8000-000000000002','99000000-0000-0000-0000-000000000002','Crew One','BN-COUNT-ONE','Kiers & Counters','Counter'),
  ('99100000-0000-4000-8000-000000000003','99000000-0000-0000-0000-000000000003','Crew Two','BN-COUNT-TWO','Kiers & Counters','Counter'),
@@ -77,6 +81,7 @@ declare
  w1 uuid:='99000000-0000-0000-0000-000000000002';
  w2 uuid:='99000000-0000-0000-0000-000000000003';
  other uuid:='99000000-0000-0000-0000-000000000004';
+ dylan_alias uuid:='99000000-0000-0000-0000-000000000010';
  card_a uuid:='aa000000-0000-4000-8000-000000000001';
  card_b uuid:='aa000000-0000-4000-8000-000000000002';
  setup_card uuid:='aa000000-0000-4000-8000-000000000003';
@@ -88,7 +93,25 @@ declare
  invalid_row_rejected boolean;
  perf_started timestamptz; perf_elapsed_ms numeric;
  manual_preview jsonb; publish_result jsonb; invalid_body jsonb; legacy_body jsonb; legacy_draft jsonb; perf_body jsonb; perf_draft jsonb; perf_replay jsonb; perf_revision jsonb; perf_batch uuid; perf_command uuid; perf_revision_command uuid;
+ case_actor public.profiles;
 begin
+ case_actor:=jsonb_populate_record(null::public.profiles,jsonb_build_object('id',gen_random_uuid(),'username',' Dylan_College ','role','EVAL'));
+ perform pg_temp.bn_card_check(bunch_note_private.workflow_can_review(case_actor),'mixed-case Dylan_College username grants supervisor access after trimming and lowercasing');
+ case_actor.username:='DYLAN_COLLYGE';
+ perform pg_temp.bn_card_check(bunch_note_private.workflow_can_review(case_actor),'mixed-case Dylan_Collyge username grants supervisor access after lowercasing');
+ case_actor.username:=' SHARON_COMBS ';
+ perform pg_temp.bn_card_check(bunch_note_private.workflow_can_review(case_actor),'mixed-case Sharon Combs username grants supervisor access after trimming and lowercasing');
+ case_actor.username:='ordinary_counter';
+ case_actor.role:=' Admin ';
+ perform pg_temp.bn_card_check(bunch_note_private.workflow_can_review(case_actor),'normalized Admin role grants supervisor access');
+ case_actor.role:='Supervisor';
+ perform pg_temp.bn_card_check(bunch_note_private.workflow_can_review(case_actor),'normalized Supervisor role grants supervisor access');
+ case_actor.role:='Senior Inventory Manager';
+ perform pg_temp.bn_card_check(bunch_note_private.workflow_can_review(case_actor),'normalized Senior Inventory Manager role grants supervisor access');
+ case_actor.role:='Counter Manager';
+ perform pg_temp.bn_card_check(not coalesce(bunch_note_private.workflow_can_review(case_actor),false),'an unrelated exact-role mismatch cannot obtain supervisor access from a profile role substring');
+ case_actor.role:='EVAL';
+ perform pg_temp.bn_card_check(not coalesce(bunch_note_private.workflow_can_review(case_actor),false),'an ordinary evaluator profile remains outside supervisor permissions');
  select jsonb_agg(to_jsonb(m) order by unique_id) into inventory_before from public.ph_master_inventory m;
  select * into ta from bunch_note_private.options where kind='ta' order by label limit 1;
  perform pg_temp.bn_card_check(ta.id is not null,'TA action fixture exists');
@@ -406,14 +429,20 @@ declare
  counter_only uuid:='99000000-0000-0000-0000-000000000007';
  sales_rep uuid:='99000000-0000-0000-0000-000000000008';
  disabled_counter uuid:='99000000-0000-0000-0000-000000000009';
+ dylan_alias uuid:='99000000-0000-0000-0000-000000000010';
  sharon uuid:='99000000-0000-0000-0000-000000000005';
  outside_supervisor uuid:='99000000-0000-0000-0000-000000000006';
  target_card_id uuid:='aa000000-0000-4000-8000-000000000004';
  other_card_id uuid:='aa000000-0000-4000-8000-000000000005';
+ unassigned_card_id uuid:='aa000000-0000-4000-8000-000000000007';
+ unassigned_card_id_two uuid:='aa000000-0000-4000-8000-000000000008';
  body jsonb; draft jsonb; preview jsonb; result jsonb; replay jsonb; review bunch_note_private.count_reviews; delivery jsonb; ta bunch_note_private.options;
  target_batch_id uuid; target_job_id uuid; target_note_id uuid; card_revision bigint; review_revision bigint;
  complete_command uuid:='bb000000-0000-4000-8000-000000000201';
+ disabled_recipient_command uuid:='bb000000-0000-4000-8000-000000000208';
  actuals jsonb:='{"BN-CARD-WORKFLOW":3}'::jsonb;
+ unassigned_actuals jsonb:='{"BN-CARD-WORKFLOW-UNASSIGNED":3}'::jsonb;
+ unassigned_actuals_two jsonb:='{"BN-CARD-WORKFLOW-UNASSIGNED-2":5}'::jsonb;
  rejected boolean:=false;
  review_active_before bigint;
  prior_job_updated_at timestamptz;
@@ -422,13 +451,19 @@ begin
  select * into ta from bunch_note_private.options where kind='ta' order by label limit 1;
  body:=jsonb_build_object('block','CARD','recipient_ids','[]'::jsonb,'locations',jsonb_build_array(
   jsonb_build_object('location','C.88.003','purposes','Count variance workflow','instructions','Record the completed movement quantity',
-   'row_ids',jsonb_build_array('BN-CARD-WORKFLOW','BN-CARD-WORKFLOW-OTHER'),'cards',jsonb_build_array(
+    'row_ids',jsonb_build_array('BN-CARD-WORKFLOW','BN-CARD-WORKFLOW-OTHER','BN-CARD-WORKFLOW-UNASSIGNED','BN-CARD-WORKFLOW-UNASSIGNED-2'),'cards',jsonb_build_array(
     jsonb_build_object('id',target_card_id,'kind','inventory','location_code','C.88.003','itemcode','CARD-W','commonname','Workflow Plant','contsize','#2',
      'row_ids',jsonb_build_array('BN-CARD-WORKFLOW'),'owner_id',w1,'owner_ids',jsonb_build_array(w1,w2),
       'workflow_action','move','destination_location','C.88.004','notes','Move and reconcile'),
      jsonb_build_object('id',other_card_id,'kind','inventory','location_code','C.88.003','itemcode','CARD-W-OTHER','commonname','Other Workflow Plant','contsize','#2',
       'row_ids',jsonb_build_array('BN-CARD-WORKFLOW-OTHER'),'owner_id',w2,'owner_ids',jsonb_build_array(w2),
        'workflow_action','ta','notes','Other assigned card'),
+      jsonb_build_object('id',unassigned_card_id,'kind','inventory','location_code','C.88.003','itemcode','CARD-W-UNASSIGNED','commonname','Unassigned Workflow Plant','contsize','#2',
+       'row_ids',jsonb_build_array('BN-CARD-WORKFLOW-UNASSIGNED'),'owner_id',null,'owner_ids','[]'::jsonb,
+       'workflow_action','ta','notes','Unassigned supervisor-visible card'),
+      jsonb_build_object('id',unassigned_card_id_two,'kind','inventory','location_code','C.88.003','itemcode','CARD-W-UNASSIGNED-2','commonname','Second Unassigned Workflow Plant','contsize','#2',
+       'row_ids',jsonb_build_array('BN-CARD-WORKFLOW-UNASSIGNED-2'),'owner_id',null,'owner_ids','[]'::jsonb,
+       'workflow_action','ta','notes','Second unassigned supervisor-visible card'),
       jsonb_build_object('id','aa000000-0000-4000-8000-000000000006'::uuid,'kind','shared','location_code','C.88.003',
        'row_ids','[]'::jsonb,'owner_id',w1)),
     'actions',jsonb_build_array(
@@ -462,6 +497,8 @@ begin
   from bunch_note_private.jobs j join bunch_note_private.bunch_notes n on n.job_id=j.id
   join bunch_note_private.bunch_note_work_cards wc on wc.bunch_note_id=n.id
   where j.id=target_job_id and wc.card_id=target_card_id;
+ insert into bunch_note_private.bunch_note_card_assignees(bunch_note_id,card_id,user_id,created_by)
+  values(target_note_id,target_card_id,disabled_counter,d);
  delete from bunch_note_private.bunch_note_card_assignees where bunch_note_id=target_note_id and card_id=target_card_id and user_id=w1;
  perform pg_temp.bn_card_check(target_job_id is not null and target_note_id is not null and card_revision=1,
   'publish materializes an assigned work card with its initial card revision');
@@ -480,9 +517,36 @@ begin
  perform pg_temp.bn_card_check((select jsonb_array_length((public.bunch_note_workflow_command_v1(other,'queue',
    jsonb_build_object('filter','mine','limit',100,'offset',0))->'cards'))=0),
    'unassigned worker cannot discover assigned card or source inventory');
- perform pg_temp.bn_card_check((select jsonb_array_length((public.bunch_note_workflow_command_v1(outside_supervisor,'queue',
-   jsonb_build_object('filter','all','limit',100,'offset',0))->'cards'))=0),
-   'supervisors outside Kiers & Counters do not receive global Bunch review visibility');
+  perform pg_temp.bn_card_check((select jsonb_array_length((public.bunch_note_workflow_command_v1(outside_supervisor,'queue',
+    jsonb_build_object('filter','all','limit',100,'offset',0))->'cards'))>0),
+    'active Senior Inventory Managers receive global Bunch review visibility from their authoritative profile role');
+  result:=public.bunch_note_workflow_command_v1(d,'queue',jsonb_build_object('filter','all','limit',100,'offset',0));
+  perform pg_temp.bn_card_check(result->>'can_review'='true'
+    and exists(select 1 from jsonb_array_elements(result->'cards') c where c->>'card_id'=unassigned_card_id::text
+      and jsonb_typeof(c->'can_complete')='boolean' and c->>'can_complete'='true')
+    and exists(select 1 from jsonb_array_elements(result->'cards') c where c->>'card_id'=target_card_id::text
+      and c->'assignees' @> jsonb_build_array(jsonb_build_object('id',disabled_counter)))
+    and not exists(select 1 from jsonb_array_elements(result->'cards') c where jsonb_typeof(c->'can_complete')<>'boolean'),
+    'supervisor queue returns non-null JSON booleans and allows supervisor management of unassigned cards');
+  perform pg_temp.bn_card_check(result->>'unassigned_count'='2'
+    and jsonb_typeof(result->'assignee_options')='array'
+    and result->'assignee_options' @> jsonb_build_array(jsonb_build_object('id',w1,'count',1))
+    and result->'assignee_options' @> jsonb_build_array(jsonb_build_object('id',w2,'count',2))
+    and result->'assignee_options' @> jsonb_build_array(jsonb_build_object('id',disabled_counter,'count',1)),
+    'authorized open cards provide global assigned-user facets, including disabled legacy assignees, and unassigned counts');
+  result:=public.bunch_note_workflow_command_v1(d,'queue',jsonb_build_object('filter','assignee:'||w1::text,'limit',100,'offset',0));
+  perform pg_temp.bn_card_check((result->>'total')::integer=1
+    and result->'cards'->0->'assignees' @> jsonb_build_array(jsonb_build_object('id',w1)),
+    'assignee UUID filter returns only cards assigned to the selected worker');
+  result:=public.bunch_note_workflow_command_v1(d,'queue',jsonb_build_object('filter','unassigned','limit',100,'offset',0));
+  perform pg_temp.bn_card_check((result->>'total')::integer=2
+    and exists(select 1 from jsonb_array_elements(result->'cards') c where c->>'card_id'=unassigned_card_id::text)
+    and exists(select 1 from jsonb_array_elements(result->'cards') c where c->>'card_id'=unassigned_card_id_two::text),
+    'unassigned filter returns only open cards without a legacy owner or relational assignee');
+  result:=public.bunch_note_workflow_command_v1(dylan_alias,'queue',jsonb_build_object('filter','all','limit',100,'offset',0));
+  perform pg_temp.bn_card_check(result->>'can_review'='true' and (result->>'total')::integer=4
+    and exists(select 1 from jsonb_array_elements(result->'cards') c where c->>'card_id'=target_card_id::text),
+    'case-insensitive Dylan College identity alias receives supervisor access from the server profile');
  rejected:=false;
  begin
   perform public.bunch_note_workflow_command_v1(other,'complete_card',jsonb_build_object('job_id',target_job_id,'card_id',target_card_id,
@@ -493,6 +557,25 @@ begin
  end;
  perform pg_temp.bn_card_check(rejected and not exists(select 1 from bunch_note_private.card_completions c where c.card_id=target_card_id),
   'unassigned worker cannot complete another user card');
+
+ rejected:=false;
+ begin
+  perform public.bunch_note_workflow_command_v1(w1,'complete_card',jsonb_build_object('job_id',target_job_id,
+    'card_id',target_card_id,'actual_qty_by_row',actuals),disabled_recipient_command,1);
+  raise exception 'Expected disabled recipient eligibility to reject delivery';
+ exception when others then
+  if sqlerrm='BUNCH_NOTE_RECIPIENT_INVALID' then rejected:=true;
+  elsif sqlerrm='Expected disabled recipient eligibility to reject delivery' then raise;
+  else raise; end if;
+ end;
+ perform pg_temp.bn_card_check(rejected
+   and not exists(select 1 from bunch_note_private.workflow_commands where command_id=disabled_recipient_command)
+   and not exists(select 1 from bunch_note_private.card_completions where job_id=target_job_id and card_id=target_card_id)
+   and (select ptravailable='5' from public.ph_master_inventory where unique_id='BN-CARD-WORKFLOW')
+   and (select status='open' and revision=1 from bunch_note_private.bunch_note_work_cards where bunch_note_id=target_note_id and card_id=target_card_id),
+   'disabled legacy assignee remains visible in facets but cannot receive completion delivery; failed command leaves no receipt, completion, or inventory mutation');
+ delete from bunch_note_private.bunch_note_card_assignees
+  where bunch_note_id=target_note_id and card_id=target_card_id and user_id=disabled_counter;
 
   rejected:=false;
   begin
@@ -539,6 +622,23 @@ begin
  result:=public.bunch_note_workflow_command_v1(w2,'queue',jsonb_build_object('filter','completed','limit',100,'offset',0));
  perform pg_temp.bn_card_check((result->>'active_count')::bigint=review_active_before and review_active_before>=1,
   'completed filter retains the authorized active-work badge count while an assigned card remains open');
+ result:=public.bunch_note_workflow_command_v1(dylan_alias,'complete_card',jsonb_build_object('job_id',target_job_id,
+   'card_id',unassigned_card_id,'actual_qty_by_row',unassigned_actuals),
+   'bb000000-0000-4000-8000-000000000205',1);
+ replay:=public.bunch_note_workflow_command_v1(dylan_alias,'complete_card',jsonb_build_object('job_id',target_job_id,
+   'card_id',unassigned_card_id,'actual_qty_by_row',unassigned_actuals),
+   'bb000000-0000-4000-8000-000000000205',1);
+ perform pg_temp.bn_card_check(result=replay
+   and result->'completion'->>'actor_id'=dylan_alias::text
+   and (select status='complete' and revision=2 from bunch_note_private.bunch_note_work_cards where bunch_note_id=target_note_id and card_id=unassigned_card_id)
+   and (select count(*)=1 from bunch_note_private.card_completions where job_id=target_job_id and card_id=unassigned_card_id),
+   'Dylan College alias completes an unassigned supervisor-visible card with an idempotent receipt');
+ result:=public.bunch_note_workflow_command_v1(d,'complete_card',jsonb_build_object('job_id',target_job_id,
+   'card_id',unassigned_card_id_two,'actual_qty_by_row',unassigned_actuals_two),
+   'bb000000-0000-4000-8000-000000000206',1);
+ perform pg_temp.bn_card_check(result->'completion'->>'actor_id'=d::text
+   and (select status='complete' and revision=2 from bunch_note_private.bunch_note_work_cards where bunch_note_id=target_note_id and card_id=unassigned_card_id_two),
+   'admin supervisor completes a second unassigned card through the same workflow path');
  result:=public.bunch_note_workflow_command_v1(w2,'complete_card',jsonb_build_object('job_id',target_job_id,'card_id',other_card_id,
    'actual_qty_by_row','{"BN-CARD-WORKFLOW-OTHER":7}'::jsonb),gen_random_uuid(),1);
  perform pg_temp.bn_card_check(result->'job'->>'status'='open'
@@ -550,6 +650,14 @@ begin
   'the final inventory card preserves progress and leaves unrelated unscoped work open');
 
  select r.* into review from bunch_note_private.count_reviews r where r.job_id=target_job_id and r.card_id=target_card_id;
+ result:=public.bunch_note_workflow_command_v1(dylan_alias,'list_discrepancies',jsonb_build_object('limit',100,'offset',0));
+ perform pg_temp.bn_card_check(result->>'can_review'='true' and (result->>'total')::integer=2
+   and jsonb_typeof(result->'reviews'->0->'can_assign')='boolean'
+   and jsonb_typeof(result->'reviews'->0->'can_complete')='boolean'
+   and result->'reviews'->0->>'can_assign'='true' and result->'reviews'->0->>'can_complete'='true'
+   and exists(select 1 from jsonb_array_elements(result->'reviews') r where r->>'card_id'=unassigned_card_id_two::text
+     and jsonb_typeof(r->'can_complete')='boolean' and r->>'can_complete'='true'),
+   'Dylan College alias sees and manages all Count Review items with strict JSON boolean capabilities');
  result:=public.bunch_note_workflow_command_v1(sharon,'list_discrepancies',jsonb_build_object('limit',100,'offset',0));
   perform pg_temp.bn_card_check(result->>'can_review'='true'
    and result->'counters'->0->>'username'='sharon_combs'
@@ -641,6 +749,18 @@ begin
   'base64',encode(convert_to('%PDF-1.4'||repeat('w',200),'UTF8'),'base64'))));
  perform pg_temp.bn_card_check((select p.pdfs->0->>'filename'='completed-work.pdf' from bunch_note_private.previews p where p.id=target_note_id),
   'authorized delivery worker freezes the completed-work PDF bytes before sending');
+ select r.* into review from bunch_note_private.count_reviews r where r.job_id=target_job_id and r.card_id=unassigned_card_id_two;
+ result:=public.bunch_note_workflow_command_v1(dylan_alias,'complete_recount',jsonb_build_object('review_id',review.id,
+   'recount_qty_by_row','{"BN-CARD-WORKFLOW-UNASSIGNED-2":4}'::jsonb),
+   'bb000000-0000-4000-8000-000000000207',review.revision);
+ replay:=public.bunch_note_workflow_command_v1(dylan_alias,'complete_recount',jsonb_build_object('review_id',review.id,
+   'recount_qty_by_row','{"BN-CARD-WORKFLOW-UNASSIGNED-2":4}'::jsonb),
+   'bb000000-0000-4000-8000-000000000207',review.revision);
+ perform pg_temp.bn_card_check(result=replay and result->'review'->>'status'='resolved'
+   and result->'review'->>'recount_qty'='4'
+   and (select status='resolved' and recount_qty_by_row->>'BN-CARD-WORKFLOW-UNASSIGNED-2'='4'
+     from bunch_note_private.count_reviews where id=review.id),
+   'Dylan College alias resolves an unassigned Count Review through an idempotent supervisor command');
 end $$;
 
 select plan(1);

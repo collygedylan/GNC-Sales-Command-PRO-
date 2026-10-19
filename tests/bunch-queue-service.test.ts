@@ -36,6 +36,109 @@ describe('Bunch Notes work queue contracts', () => {
     expect(() => parseBunchQueue({ ...queue, cards: [card, card] })).toThrow(/Duplicate Bunch Notes cards/);
   });
 
+  it('fails closed for nullable SQL permission predicates while retaining the authorized card', () => {
+    const parsed = parseBunchQueue({ ...queue, cards: [{ ...card, can_complete: null }], can_review: null });
+    expect(parsed.cards).toHaveLength(1);
+    expect(parsed.cards[0].can_complete).toBe(false);
+    expect(parsed.can_review).toBe(false);
+    expect(() => parseBunchQueue({ ...queue, can_review: 'true' })).toThrow('Invalid Bunch Notes permission.');
+    expect(parseBunchReviews({ reviews: [{ ...review, can_assign: null, can_complete: null }], total: 1, review_count: 1, can_review: null, counters: [] }).reviews[0]).toMatchObject({ can_assign: false, can_complete: false });
+  });
+
+  it('uses a legacy assigned-work cache as a partial offline fallback without treating it as all work', () => {
+    const saved = memoryStorage();
+    saved.setItem('gnc:bunch-queue:v230:worker-upgrade:mine:0', JSON.stringify({
+      cards: [{ ...card, can_complete: null }], total: 1, active_count: 1, review_count: 0, can_review: null, counters: [],
+    }));
+    const transport = vi.fn();
+    const client = createBunchQueueClient({ scopeKey: 'worker-upgrade', transport, storage: saved, online: () => false });
+    expect(client.getSnapshot()).toMatchObject({ filter: 'mine', loadedFilter: 'mine', offline: true, page: { cards: [{ card_id: 'card-1', can_complete: false }], assignee_options: [], unassigned_count: 0 } });
+    void client.load('mine', 0);
+    expect(client.getSnapshot()).toMatchObject({ filter: 'mine', loadedFilter: 'mine', offline: true });
+    expect(transport).not.toHaveBeenCalled();
+    client.dispose();
+  });
+
+  it('refreshes a legacy mine fallback from the all-authorized queue by default when online', async () => {
+    const saved = memoryStorage();
+    saved.setItem('gnc:bunch-queue:v230:worker-upgrade-online:mine:0', JSON.stringify(queue));
+    const fullPage = { ...queue, assignee_options: [{ id: 'worker-1', username: 'worker', display_name: 'Worker One', count: 1 }], unassigned_count: 0 };
+    const transport = vi.fn().mockResolvedValue({ ok: true, data: fullPage });
+    const client = createBunchQueueClient({ scopeKey: 'worker-upgrade-online', transport, storage: saved, online: () => true });
+    expect(client.getSnapshot()).toMatchObject({ filter: 'mine', loadedFilter: 'mine' });
+    await client.load('all', 0);
+    expect(transport).toHaveBeenCalledWith(expect.objectContaining({ operation: 'queue', payload: { filter: 'all', offset: 0, limit: 100 } }), expect.any(AbortSignal));
+    expect(client.getSnapshot()).toMatchObject({ filter: 'all', loadedFilter: 'all', page: { assignee_options: [{ id: 'worker-1', count: 1 }] } });
+    client.dispose();
+  });
+
+  it('keeps the legacy partial page visible when the default all-authorized refresh fails', async () => {
+    const saved = memoryStorage();
+    saved.setItem('gnc:bunch-queue:v230:worker-refresh-failure:mine:0', JSON.stringify(queue));
+    const client = createBunchQueueClient({ scopeKey: 'worker-refresh-failure', transport: vi.fn().mockRejectedValue(new Error('network unavailable')), storage: saved, online: () => true });
+    await client.load('all', 0);
+    expect(client.getSnapshot()).toMatchObject({
+      filter: 'all', loadedFilter: 'mine', page: { cards: [{ card_id: 'card-1' }], total: 1 },
+      error: 'network unavailable',
+    });
+    client.dispose();
+  });
+
+  it('retains same-user legacy Count Review snapshots for offline upgrade access', async () => {
+    const saved = memoryStorage();
+    saved.setItem('gnc:bunch-queue:v230:reviewer-upgrade:permission-v2:reviews:0', JSON.stringify({
+      reviews: [{ ...review, can_assign: null, can_complete: null }], total: 1, review_count: 1, can_review: true, counters: [],
+    }));
+    const transport = vi.fn();
+    const client = createBunchQueueClient({ scopeKey: 'reviewer-upgrade', cacheScopeKey: 'reviewer-upgrade:permission-v2', transport, storage: saved, online: () => false });
+    await client.load('all', 0, true);
+    expect(client.getSnapshot()).toMatchObject({ offline: true, reviews: { reviews: [{ id: 'review-1', can_assign: false, can_complete: false }], total: 1 } });
+    expect(transport).not.toHaveBeenCalled();
+    client.dispose();
+  });
+
+  it('does not hydrate Count Review from a legacy cache outside the current permission scope', async () => {
+    const saved = memoryStorage();
+    saved.setItem('gnc:bunch-queue:v230:reviewer-upgrade:reviews:0', JSON.stringify({ reviews: [review], total: 1, review_count: 1, can_review: true, counters: [] }));
+    const client = createBunchQueueClient({ scopeKey: 'reviewer-upgrade', cacheScopeKey: 'reviewer-upgrade:permission-v2', transport: vi.fn(), storage: saved, online: () => false });
+    await client.load('all', 0, true);
+    expect(client.getSnapshot().reviews).toBeNull();
+    client.dispose();
+  });
+
+  it('invalidates an in-flight server filter when a cached assigned filter is selected', async () => {
+    const cards = [
+      { ...card, stablecard_id: 'job-1:card-1', card_id: 'card-1', assignees: [{ id: 'worker-1', username: 'worker_1', display_name: 'Worker One' }] },
+      { ...card, stablecard_id: 'job-1:card-2', card_id: 'card-2', assignees: [{ id: 'worker-2', username: 'worker_2', display_name: 'Worker Two' }] },
+    ];
+    const allPage = { ...queue, cards, total: 2, active_count: 2, assignee_options: [{ id: 'worker-1', username: 'worker_1', display_name: 'Worker One', count: 1 }, { id: 'worker-2', username: 'worker_2', display_name: 'Worker Two', count: 1 }], unassigned_count: 0 };
+    let resolveMine: (value: unknown) => void = () => undefined;
+    const mineResponse = new Promise<unknown>(resolve => { resolveMine = resolve; });
+    const transport = vi.fn((request: Record<string, unknown>) => request.operation === 'queue' && (request.payload as Record<string, unknown>).filter === 'mine'
+      ? mineResponse
+      : Promise.resolve({ ok: true, data: allPage }));
+    const client = createBunchQueueClient({ scopeKey: 'supervisor', transport, storage: memoryStorage(), online: () => true });
+    await client.load('all', 0);
+    const pendingMine = client.load('mine', 0);
+    client.setFilter('assignee:worker-2');
+    resolveMine({ ok: true, data: { ...queue, cards: [cards[0]], total: 1 } });
+    await pendingMine;
+    expect(client.getSnapshot()).toMatchObject({ filter: 'assignee:worker-2', loadedFilter: 'all', loading: false, page: { cards: [{ card_id: 'card-1' }, { card_id: 'card-2' }] } });
+    client.dispose();
+  });
+
+  it('keeps retained outbox recovery warnings visible while applying local assignee filters', async () => {
+    const saved = memoryStorage();
+    saved.setItem('gnc:bunch-queue:v230:supervisor-outbox:outbox', '{malformed');
+    const client = createBunchQueueClient({ scopeKey: 'supervisor-outbox', transport: vi.fn().mockResolvedValue({ ok: true, data: { ...queue, assignee_options: [{ id: 'worker-1', username: 'worker', display_name: 'Worker One', count: 1 }], unassigned_count: 0 } }), storage: saved, online: () => true });
+    await client.load('all', 0);
+    const warning = client.getSnapshot().error;
+    client.setFilter('assignee:worker-1');
+    expect(client.getSnapshot().error).toBe(warning);
+    expect(warning).toMatch(/retained on this device/);
+    client.dispose();
+  });
+
   it('validates whole actual quantities while preserving explicit zero', () => {
     expect(actualQuantity('0')).toBe(0);
     expect(actualQuantity(' 12 ')).toBe(12);

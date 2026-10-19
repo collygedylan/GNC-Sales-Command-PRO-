@@ -826,5 +826,9 @@
   {
     "source": "supabase/migrations/20261018183204_bunch_note_queue_execution_and_recounts.sql",
     "destination": "20261018183204_bunch_note_queue_execution_and_recounts.sql"
+  },
+  {
+    "source": "supabase/migrations/20261019003759_bunch_note_supervisor_assignee_facets_v1.sql",
+    "destination": "20261019003759_bunch_note_supervisor_assignee_facets_v1.sql"
   }
 ]

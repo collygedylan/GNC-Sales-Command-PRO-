@@ -584,13 +584,13 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 207);
+  assert.equal(manifest.length, 208);
   assert.deepEqual(manifest.at(-1), {
-    source: 'supabase/migrations/20261018183204_bunch_note_queue_execution_and_recounts.sql',
-    destination: '20261018183204_bunch_note_queue_execution_and_recounts.sql'
+    source: 'supabase/migrations/20261019003759_bunch_note_supervisor_assignee_facets_v1.sql',
+    destination: '20261019003759_bunch_note_supervisor_assignee_facets_v1.sql'
   });
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
-  assert.deepEqual(manifest.slice(-25).map(entry => entry.source), [
+  assert.deepEqual(manifest.slice(-26).map(entry => entry.source), [
     'supabase/migrations/20261011032352_aura_voice_soc_reads.sql',
     'supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql',
     'supabase/migrations/20261011193000_historical_requests_price_fallback.sql',
@@ -616,6 +616,7 @@ test('historical migration order manifest preserves original inputs and appends 
     'supabase/migrations/20261017203000_bunch_note_multi_assignment_routing.sql',
     'supabase/migrations/20261018014347_bunch_note_blueprint_header_pdf_delivery.sql',
     'supabase/migrations/20261018183204_bunch_note_queue_execution_and_recounts.sql',
+    'supabase/migrations/20261019003759_bunch_note_supervisor_assignee_facets_v1.sql',
   ]);
   const sources = new Set(manifest.map(entry => entry.source));
   for (const name of ["20261008190038_reclass_sheared_action_v5.sql","20261009053029_reclass_smart_priority_hold_shield_v6.sql","20261009202507_prompt25_editable_field_shield_and_hold_clear.sql","20261010024830_customer_rep_mapping_management.sql","20261010152556_customer_rep_mapping_finalize_timeout_55s.sql","20261010165013_historical_requests_financial_dashboard.sql","20261011170000_request_mapping_salesrep_identity.sql","20261011193000_historical_requests_price_fallback.sql"]) {

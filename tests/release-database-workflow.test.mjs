@@ -246,11 +246,11 @@ test('Edge Function CI resolves pinned npm imports used by the push sender', () 
 test('historical regression fixture uses the explicit migration order manifest and dynamic SQL tests', () => {
   const root = repositoryRoot;
   const manifest = readHistoricalMigrationManifest({ root });
-  assert.equal(manifest.length, 207);
-  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 207);
+  assert.equal(manifest.length, 208);
+  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 208);
   assert.deepEqual(manifest.at(-1), {
-    source: 'supabase/migrations/20261018183204_bunch_note_queue_execution_and_recounts.sql',
-    destination: '20261018183204_bunch_note_queue_execution_and_recounts.sql'
+    source: 'supabase/migrations/20261019003759_bunch_note_supervisor_assignee_facets_v1.sql',
+    destination: '20261019003759_bunch_note_supervisor_assignee_facets_v1.sql'
   });
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
   for (const entry of manifest) assert.ok(fs.existsSync(new URL('../' + entry.source, import.meta.url)), entry.source);
