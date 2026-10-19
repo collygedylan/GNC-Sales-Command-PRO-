@@ -149,6 +149,77 @@ test('a stale SOC worker resumes only when its persisted extraction source match
   assert.equal(harness.status().recoveryCount, 1);
 });
 
+test('an abandoned uncheckpointed stage is recorded failed and independent later stages still run', () => {
+  const harness = createHarness();
+  harness.setRunningStatus(['drive', 'soc', 'reserves']);
+  const status = harness.status();
+  status.currentStage = 'drive';
+  status.currentStageLabel = 'Drive Around';
+  status.stageStartedStage = 'drive';
+  status.stageStartedAt = new Date(Date.parse('2026-10-08T18:00:00.000Z') - 5 * 60 * 1000).toISOString();
+  status.updatedAt = status.stageStartedAt;
+  harness.setProperty('MANUAL_SYNC_STATUS', JSON.stringify(status));
+  const calls = [];
+  harness.setStageRunner(stage => { calls.push(stage); return { filesProcessed: 1, failedFiles: 0 }; });
+
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+
+  const finalStatus = harness.status();
+  assert.deepEqual(calls, ['soc', 'reserves']);
+  assert.equal(finalStatus.active, false);
+  assert.equal(finalStatus.currentStage, 'failed');
+  assert.equal(finalStatus.stageFailureCount, 1);
+  assert.equal(finalStatus.stageResults[0].key, 'drive');
+  assert.equal(finalStatus.stageResults[0].errorCode, 'MANUAL_SYNC_STAGE_ABANDONED');
+  assert.deepEqual(finalStatus.completedStages, ['soc', 'reserves']);
+  assert.equal(finalStatus.errorCode, 'MANUAL_SYNC_STAGE_FAILURES');
+});
+
+test('exhausted checkpoint recovery advances without clearing the saved extraction cursor', () => {
+  const harness = createHarness();
+  harness.setRunningStatus(['soc', 'reserves']);
+  const staleAt = new Date(Date.parse('2026-10-08T18:00:00.000Z') - 5 * 60 * 1000).toISOString();
+  const status = harness.status();
+  status.currentStage = 'soc';
+  status.currentStageLabel = 'SOC';
+  status.stageStartedStage = 'soc';
+  status.stageRecoveryCount = 1;
+  status.updatedAt = staleAt;
+  harness.setProperty('MANUAL_SYNC_STATUS', JSON.stringify(status));
+  const checkpoint = {
+    tableName: 'ph_soc_master', fileId: 'source-1', fileName: 'SOC.xlsx',
+    modifiedAt: '2026-10-13T07:00:00.000Z', size: 1234, tempSheetId: 'converted-1',
+    phase: 'reading', rowsRead: 500, updatedAt: staleAt, runId: 'daily-run-1', stage: 'soc', attempt: 1,
+  };
+  harness.setProperty('IMPORT_EXTRACTION_CHECKPOINT_V1', JSON.stringify(checkpoint));
+  const calls = [];
+  harness.setStageRunner(stage => { calls.push(stage); return { filesProcessed: 1, failedFiles: 0 }; });
+
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+
+  const finalStatus = harness.status();
+  assert.deepEqual(calls, ['reserves']);
+  assert.equal(finalStatus.stageResults[0].errorCode, 'MANUAL_SYNC_CHECKPOINT_RECOVERY_EXHAUSTED');
+  assert.equal(finalStatus.currentStage, 'failed');
+  assert.equal(harness.properties.get('IMPORT_EXTRACTION_CHECKPOINT_V1'), JSON.stringify(checkpoint));
+});
+
+test('status reads report a stale view without deactivating or clearing an active run', () => {
+  const harness = createHarness();
+  harness.setRunningStatus(['drive', 'soc']);
+  const status = harness.status();
+  status.currentStage = 'drive';
+  status.updatedAt = new Date(Date.parse('2026-10-08T18:00:00.000Z') - 13 * 60 * 1000).toISOString();
+  harness.setProperty('MANUAL_SYNC_STATUS', JSON.stringify(status));
+
+  const view = vm.runInContext('getManualSyncStatusForClient_()', harness.context);
+
+  assert.equal(view.stale, true);
+  assert.equal(view.active, true);
+  assert.equal(harness.status().active, true);
+  assert.equal(harness.triggers.length, 0);
+});
+
 test('a preparation deferral schedules the same stage without advancing the cursor', () => {
   const harness = createHarness();
   harness.setRunningStatus(['soc', 'reserves']);
@@ -292,7 +363,7 @@ test('a Drive stage with successful files and a classified rejected file is part
   assert.equal(harness.events.some(event => event.table === 'manual_sync'), false);
 });
 
-test('stage-level errors and non-source codes cannot be masked by source-coded file failures', () => {
+test('stage-level errors remain visible while independent later stages continue', () => {
   const cases = [
     { error: 'unexpected stage-level infrastructure failure' },
     { errorCode: 'IMPORT_DATABASE_XX000' },
@@ -311,48 +382,60 @@ test('stage-level errors and non-source codes cannot be masked by source-coded f
       return { filesProcessed: 1, failedFiles: 0 };
     });
 
-    assert.throws(
-      () => harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 }),
-      /did not finish|failed/i,
-      'an additional stage-level failure must stay fatal',
-    );
+    harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
     const status = harness.status();
-    assert.deepEqual(calls, ['drive']);
-    assert.deepEqual(status.stageResults.map(result => result.outcome), ['failed', 'skipped', 'skipped']);
+    assert.deepEqual(calls, ['drive', 'soc', 'reserves']);
+    assert.deepEqual(status.stageResults.map(result => result.outcome), ['failed', 'succeeded', 'succeeded']);
     assert.equal(status.active, false);
+    assert.equal(status.stageIndex, 3);
+    assert.equal(status.stageFailureCount, 1);
+    assert.equal(status.currentStage, 'failed');
+    assert.equal(status.errorCode, 'MANUAL_SYNC_STAGE_FAILURES');
     assert.equal(harness.events.some(event => event.table === 'manual_sync'), false);
   }
 });
 
-test('database and processor-lock failures stop the chain and mark every later stage skipped', () => {
-  for (const failure of [
-    { errorCode: 'IMPORT_DATABASE_XX000', message: 'Supabase upsert failed for ph_master_inventory (500): {"code":"XX000"}' },
-    { errorCode: 'DATASET_IMPORT_LOCK_FAILED', message: 'DATASET_IMPORT_LOCK_FAILED' },
-  ]) {
-    const harness = createHarness();
-    harness.setRunningStatus();
-    const calls = [];
-    harness.setStageRunner(stage => {
-      calls.push(stage);
-      if (stage === 'drive') throw new Error(failure.message);
-      return { filesProcessed: 1, failedFiles: 0 };
-    });
+test('an uncertain database stage is recorded without retry while later stages proceed', () => {
+  const harness = createHarness();
+  harness.setRunningStatus();
+  const calls = [];
+  harness.setStageRunner(stage => {
+    calls.push(stage);
+    if (stage === 'drive') throw new Error('Supabase upsert failed for ph_master_inventory (500): {"code":"XX000"}');
+    return { filesProcessed: 1, failedFiles: 0 };
+  });
 
-    assert.throws(
-      () => harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 }),
-      /did not finish|failed/i,
-      'fatal failures preserve the runner’s throw behavior',
-    );
-    const status = harness.status();
-    assert.deepEqual(calls, ['drive']);
-    assert.equal(status.active, false);
-    assert.equal(status.currentStage, 'drive', 'fatal status preserves the stage that failed');
-    assert.equal(status.errorCode, failure.errorCode);
-    assert.deepEqual(status.stageResults.map(result => result.outcome), ['failed', 'skipped', 'skipped']);
-    assert.deepEqual(status.stageResults.slice(1).map(result => result.reasonCode), [
-      'MANUAL_SYNC_ABORTED_AFTER_FATAL_FAILURE',
-      'MANUAL_SYNC_ABORTED_AFTER_FATAL_FAILURE',
-    ]);
-    assert.equal(harness.events.some(event => event.table === 'manual_sync'), false);
-  }
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  const status = harness.status();
+  assert.deepEqual(calls, ['drive', 'soc', 'reserves']);
+  assert.equal(status.active, false);
+  assert.equal(status.currentStage, 'failed');
+  assert.equal(status.errorCode, 'MANUAL_SYNC_STAGE_FAILURES');
+  assert.equal(status.stageResults[0].errorCode, 'IMPORT_DATABASE_XX000');
+  assert.deepEqual(status.stageResults.map(result => result.outcome), ['failed', 'succeeded', 'succeeded']);
+  assert.deepEqual(status.completedStages, ['soc', 'reserves']);
+  assert.equal(harness.events.some(event => event.table === 'manual_sync'), false);
+});
+
+test('processor-lock failure remains fatal and preserves later stages as skipped', () => {
+  const harness = createHarness();
+  harness.setRunningStatus();
+  const calls = [];
+  harness.setStageRunner(stage => {
+    calls.push(stage);
+    if (stage === 'drive') throw new Error('DATASET_IMPORT_LOCK_FAILED');
+    return { filesProcessed: 1, failedFiles: 0 };
+  });
+
+  assert.throws(
+    () => harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 }),
+    /did not finish|failed/i,
+  );
+  const status = harness.status();
+  assert.deepEqual(calls, ['drive']);
+  assert.equal(status.active, false);
+  assert.equal(status.currentStage, 'drive');
+  assert.equal(status.errorCode, 'DATASET_IMPORT_LOCK_FAILED');
+  assert.deepEqual(status.stageResults.map(result => result.outcome), ['failed', 'skipped', 'skipped']);
+  assert.equal(harness.events.some(event => event.table === 'manual_sync'), false);
 });

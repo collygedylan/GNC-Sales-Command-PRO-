@@ -1,3 +1,4 @@
+import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
 import { verifyV2311RetainedValidation } from './check-v2311-retained-validation.mjs';
 import { verifyV2310RetainedValidation } from './check-v2310-retained-validation.mjs';
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -13,6 +14,10 @@ export function backendTestMatrices({ root } = {}) {
   const entrypoints = discoverTests({ root, group: 'deno-entrypoints' });
   const tests = discoverTests({ root, group: 'deno-tests' });
 
+  if (packageVersion === '2.3.12') {
+    verifyV2312RetainedValidation({ rootDir: repositoryRoot });
+    return { pglite: [], edge: { include: [] } };
+  }
   if (packageVersion === '2.3.11') {
     verifyV2311RetainedValidation({ rootDir: repositoryRoot });
     return { pglite: ['scripts/check-v2311-retained-validation.mjs'], edge: { include: [

@@ -147,6 +147,119 @@ test('exact route mappings and embedded timestamp dates are preserved', () => {
   assert.equal(invoke(ctx, 'resolveDriveAroundCanonicalDate_', file()).canonicalDate, '2026-10-15');
 });
 
+test('live routed source selection skips TEMP and Excel lock files and orders the newest valid file first', () => {
+  const { ctx } = harness();
+  const route = ctx.getImportHistoryRoute_('drive');
+  const withModifiedAt = (id, name, modifiedAt) => {
+    const base = routedFile(id, name);
+    return { ...base, getLastUpdated: () => new Date(modifiedAt) };
+  };
+  const files = [
+    withModifiedAt('temp-id', 'TEMP_DriveAroundMC-10-10320620261019103206.xlsx', '2026-10-19T19:05:00.000Z'),
+    withModifiedAt('lock-id', '~$DriveAroundMC-10-10320620261019103206.xlsx', '2026-10-19T19:04:00.000Z'),
+    withModifiedAt('older-id', 'DriveAroundMC-10-10320620261019103206.xlsx', '2026-10-19T19:01:17.152Z'),
+    withModifiedAt('newer-id', 'DriveAroundMC-10-10320620261019103206.xlsx', '2026-10-19T19:01:54.672Z'),
+    withModifiedAt('z-tie-id', 'DriveAroundMC-10-10320620261019103206.xlsx', '2026-10-19T19:01:54.672Z'),
+  ];
+  ctx.getDriveFolderByIdWithRetry_ = id => ({ id });
+  ctx.listDriveFilesWithRetry_ = () => iterator(files);
+  ctx.isDriveAroundHistoricalFileSupported_ = name => /\.xlsx$/i.test(name);
+
+  const selected = ctx.listRoutedDropFiles_(route);
+  assert.deepEqual(Array.from(selected, file => file.getId()), ['z-tie-id', 'newer-id', 'older-id']);
+  assert.equal(ctx.isLiveImportTemporaryFile_('TEMP_DriveAround.xlsx'), true);
+  assert.equal(ctx.isLiveImportTemporaryFile_('~$DriveAround.xlsx'), true);
+  assert.equal(ctx.isLiveImportTemporaryFile_('DriveAround.xlsx'), false);
+});
+
+test('operational routed import pins the latest source without starting paused historical backfill', () => {
+  const { ctx, properties } = harness();
+  const route = ctx.getImportHistoryRoute_('drive');
+  let modifiedAt = Date.parse('2026-10-19T19:01:54.672Z');
+  const newest = { ...routedFile('newest-id', 'DriveAroundMC-10-10320620261019103206.xlsx'),
+    getLastUpdated: () => new Date(modifiedAt) };
+  properties.set('IMPORT_HISTORY_BACKFILL_PAUSED_V1', 'true');
+  let listCalls = 0;
+  let startCalls = 0;
+  let stateReads = 0;
+  let selectedId = '';
+  ctx.withDatasetImportProcessorLock_ = work => work();
+  ctx.listRoutedDropFiles_ = () => (++listCalls === 1 ? [newest] : []);
+  ctx.readImportHistoryBackfillState_ = () => { stateReads++; return null; };
+  ctx.startImportHistoryBackfill = () => { startCalls++; throw new Error('historical backfill must stay paused'); };
+  ctx.processSnapshotBatchFolderLocked_ = (_drop, _archive, _table, _builder, options) => {
+    selectedId = options.historyFileId;
+    modifiedAt = Date.parse('2026-10-19T20:01:54.672Z'); // Simulate archive/move changing Drive's modification time.
+    return { filesProcessed: 1, failedFiles: 0, fatalFailure: false };
+  };
+
+  const result = ctx.runRoutedDropImport_('drive');
+  assert.equal(result.filesProcessed, 1);
+  assert.equal(selectedId, 'newest-id');
+  assert.equal(startCalls, 0);
+  assert.equal(stateReads, 0);
+  assert.equal(properties.get('IMPORT_HISTORY_BACKFILL_PAUSED_V1'), 'true');
+  const watermark = JSON.parse(properties.get('MANUAL_SYNC_LIVE_SOURCE_WATERMARK_V1_DRIVE'));
+  assert.deepEqual(watermark, { fileId: 'newest-id', modifiedAt: Date.parse('2026-10-19T19:01:54.672Z') });
+});
+
+test('live source watermark prevents replaying already-published older files', () => {
+  const { ctx, properties } = harness();
+  const route = ctx.getImportHistoryRoute_('soc');
+  const oldFile = { ...routedFile('older-id', 'SOC-10OpenOrders-12250920261019122509.xlsx'),
+    getLastUpdated: () => new Date('2026-10-19T19:00:49.551Z') };
+  const published = { ...routedFile('published-id', 'SOC-10OpenOrders-12250920261019122509.xlsx'),
+    getLastUpdated: () => new Date('2026-10-19T19:01:00.000Z') };
+  const sameTimestampLowerId = { ...routedFile('a-tie-id', 'SOC-10OpenOrders-12250920261019122509.xlsx'),
+    getLastUpdated: () => new Date('2026-10-19T19:01:00.000Z') };
+  const sameTimestampHigherId = { ...routedFile('z-tie-id', 'SOC-10OpenOrders-12250920261019122509.xlsx'),
+    getLastUpdated: () => new Date('2026-10-19T19:01:00.000Z') };
+  properties.set('MANUAL_SYNC_LIVE_SOURCE_WATERMARK_V1_SOC', JSON.stringify({
+    fileId: 'published-id', modifiedAt: published.getLastUpdated().getTime()
+  }));
+  ctx.getDriveFolderByIdWithRetry_ = id => ({ id });
+  ctx.listDriveFilesWithRetry_ = () => iterator([oldFile, published, sameTimestampLowerId, sameTimestampHigherId]);
+  ctx.isDriveAroundHistoricalFileSupported_ = name => /^SOC-/i.test(name);
+
+  const files = ctx.listRoutedDropFiles_(route, 'soc');
+  assert.deepEqual(Array.from(files, candidate => candidate.getId()), ['z-tie-id']);
+});
+
+test('active matching stage keeps its checkpointed source ahead of a newer drop', () => {
+  const { ctx } = harness();
+  const route = ctx.getImportHistoryRoute_('soc');
+  const pinned = { ...routedFile('pinned-id', 'SOC-10OpenOrders-12250920261019122509.xlsx'),
+    getLastUpdated: () => new Date('2026-10-19T19:00:49.551Z') };
+  const newer = { ...routedFile('newer-id', 'SOC-10OpenOrders-12250920261019122509.xlsx'),
+    getLastUpdated: () => new Date('2026-10-19T19:01:54.672Z') };
+  ctx.getDriveFolderByIdWithRetry_ = id => ({ id });
+  ctx.listDriveFilesWithRetry_ = () => iterator([newer, pinned]);
+  ctx.isDriveAroundHistoricalFileSupported_ = name => /^SOC-/i.test(name);
+  ctx.loadManualSyncStatus_ = () => ({ active: true, runId: 'run-2', currentStage: 'soc' });
+  const identity = ctx.getImportSourceIdentity_(pinned, route.tableName);
+  ctx.saveImportExtractionCheckpoint_(Object.assign(identity, { runId: 'run-1', stage: 'soc' }), 'pinned-id', 'reading', 321, false);
+
+  const files = ctx.listRoutedDropFiles_(route, 'soc');
+  assert.deepEqual(Array.from(files, candidate => candidate.getId()), ['pinned-id', 'newer-id']);
+});
+
+test('failed live publication does not advance the source watermark', () => {
+  const { ctx, properties } = harness();
+  const newest = { ...routedFile('failed-source', 'SOC-10OpenOrders-12250920261019122509.xlsx'),
+    getLastUpdated: () => new Date('2026-10-19T19:01:00.000Z') };
+  ctx.withDatasetImportProcessorLock_ = work => work();
+  ctx.listRoutedDropFiles_ = () => [newest];
+  ctx.processLatestFileOnlyFolderLocked_ = (_drop, _archive, _table, _builder, options) => {
+    assert.equal(options.historyFileId, 'failed-source');
+    return { filesProcessed: 0, failedFiles: 1, fatalFailure: true, errorCode: 'IMPORT_DATABASE_XX000' };
+  };
+
+  const result = ctx.runRoutedDropImport_('soc');
+  assert.equal(result.filesProcessed, 0);
+  assert.equal(result.failedFiles, 1);
+  assert.equal(properties.has('MANUAL_SYNC_LIVE_SOURCE_WATERMARK_V1_SOC'), false);
+});
+
 test('history captures every column and zero/false/blank values without writing live tables', () => {
   const { ctx, calls } = harness();
   const matrix = [['ITEMCODE', 'holdstopcode', 'locationnote', 'duplicate', 'duplicate'],

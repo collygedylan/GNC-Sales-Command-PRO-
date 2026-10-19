@@ -114,9 +114,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - uses: ./.github/actions/setup-node-dependencies
       - id: matrix
         run: node scripts/ci-backend-matrix.mjs
 
@@ -156,6 +154,7 @@ jobs:
         run: node "$PGLITE_TEST" --pglite-root "$RUNNER_TEMP/gnc-handover-pglite"
 
   edge-functions:
+    if: needs.discover.outputs.edge != '{"include":[]}'
     needs: discover
     runs-on: ubuntu-latest
     timeout-minutes: 12

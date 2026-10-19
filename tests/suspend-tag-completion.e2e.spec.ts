@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
-// @test-group: @suspend-tag,suspend
+// @test-group: @suspend-tag,suspend,@v2312-ui
 
 import { confirmedDriveEvidence, driveEvidenceColumns } from '../services/driveEvidence.ts';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './fixtures/inventory-list-read-fixture.mjs';
@@ -742,6 +742,108 @@ test('Complete Tag saves and removes the row from the active Suspend view', {"ta
   } finally { release(); }
   await expect.poll(() => app.requests.map(request => request.body.operation)).toEqual(['close']);
   await expect.poll(()=>app.backendRows.find(candidate=>candidate.UNIQUE_ID===uniqueId)?.SUSPEND_TAG_STATUS).toBe('completed');
+  app.assertClean();
+});
+
+test('v2312 Suspend metric rerender keeps a warm 100-card window painted within 1200 ms @v2312-ui', { tag: ['@v2312-ui'] }, async ({ page, baseURL }, info) => {
+  const rows = Array.from({ length: 1000 }, (_, index) => ({
+    ...fixtures[index % fixtures.length],
+    UNIQUE_ID: `browser-suspend-${index + 1}`,
+    MASTER_UNIQUE_ID: `master-browser-suspend-${index + 1}`,
+    ITEMCODE: `BROWSER-ONLY-SUSPEND-${index + 1}`,
+    LOCATIONCODE: `B.${String(index + 1).padStart(2, '0')}.000`,
+    S_LTS: String(100 + index),
+    PTRAVAILABLE: String(30 + index),
+    PTRONHAND: String(40 + index),
+  }));
+  const app = await harness(page, baseURL!, rows, { native: true, search: '&shellv=AgData%20v2.3.12' });
+  await app.showStatus('active');
+  await expect(app.card(rows[0])).toBeVisible();
+  const cards = page.locator('#request-content [data-request-uid]');
+  await expect.poll(() => cards.count(), { timeout: 30000 }).toBe(100);
+  const firstOpenStock = page.locator('#request-content [data-request-uid="dock_suspend_dc_browser-suspend-1"] [data-inventory-card-metric="open-stock"] .app-card-qty-value');
+  await expect(firstOpenStock).toHaveText('100');
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  });
+
+  await page.evaluate(() => {
+    const win = window as Window & { __suspendMetricPerfResult?: Record<string, unknown> };
+    const container = document.getElementById('request-content');
+    const target = container?.querySelector<HTMLElement>('[data-request-uid="dock_suspend_dc_browser-suspend-1"] [data-inventory-card-metric="open-stock"] .app-card-qty-value');
+    if (!container || !target) throw new Error('SUSPEND_METRIC_TARGET_NOT_MOUNTED');
+    const work = window.eval(`(() => {
+      const samples = {};
+      for (const name of ['generateCard', 'renderRequest', 'buildSuspendTagRenderPlan', 'getScopedRequestItems', 'repairVisibleDockSuspendDcPlanstartCardTones', 'decorateRequestRows']) {
+        const original = window[name];
+        if (typeof original !== 'function') continue;
+        samples[name] = { calls: 0, ms: 0 };
+        window[name] = function (...args) {
+          const started = performance.now();
+          try { return original.apply(this, args); }
+          finally { samples[name].calls += 1; samples[name].ms += performance.now() - started; }
+        };
+      }
+      return samples;
+    })()`);
+    const probe: Record<string, unknown> = { startedAt: performance.now(), domMs: null, paintMs: null, before: target.textContent?.trim() || '', work };
+    win.__suspendMetricPerfResult = probe;
+    const observer = new MutationObserver(() => {
+      const current = container.querySelector<HTMLElement>('[data-request-uid="dock_suspend_dc_browser-suspend-1"] [data-inventory-card-metric="open-stock"] .app-card-qty-value');
+      if (!current || current.textContent?.trim() !== '101') return;
+      observer.disconnect();
+      probe.domMs = performance.now() - Number(probe.startedAt);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const rect = current.getBoundingClientRect();
+        probe.paintMs = performance.now() - Number(probe.startedAt);
+        probe.value = current.textContent?.trim() || '';
+        probe.visible = rect.width > 0 && rect.height > 0;
+        probe.whiteSpace = getComputedStyle(current).whiteSpace;
+        probe.scrollWidth = current.scrollWidth;
+        probe.clientWidth = current.clientWidth;
+        probe.mounted = container.querySelectorAll('[data-request-uid]').length;
+        probe.sourceRows = (window as Window & { __suspendCompletionFixtureRows?: unknown[] }).__suspendCompletionFixtureRows?.length || 0;
+        const numericMetrics = Array.from(container.querySelectorAll<HTMLElement>('[data-inventory-card-metric] .app-card-qty-value'))
+          .filter(value => /^-?\d[\d,]*(?:\.\d+)?%?$/.test(value.textContent?.trim() || ''));
+        probe.numericMetricCells = numericMetrics.length;
+        probe.numericValuesNowrap = numericMetrics.every(value => getComputedStyle(value).whiteSpace === 'nowrap');
+        probe.numericValuesFit = numericMetrics.every(value => value.scrollWidth <= value.clientWidth + 1);
+      }));
+    });
+    observer.observe(container, { childList: true, subtree: true, characterData: true });
+    window.eval(`(() => {
+      const queueRow = window.__suspendCompletionFixtureRows?.[0];
+      const state = queueRow ? getQueueCardInventoryState(queueRow, 'request') : null;
+      if (!state || state.status !== 'ready' || !state.row) {
+        throw new Error('SUSPEND_METRIC_VERIFIED_QUEUE_ROW_NOT_READY:' + String(state?.status || 'missing'));
+      }
+      // Mutate the revision- and identity-verified master row cached by the
+      // real master_identity_batch hydrator, then exercise the real renderer.
+      state.row.S_LTS = '101'; state.row.s_lts = '101';
+      // Match the native hydrator onChange invalidation before rendering.
+      queueCardInventoryRenderVersion += 1;
+      markViewDirty('request');
+      renderRequest();
+    })()`);
+  });
+  await page.waitForFunction(() => {
+    const paintMs = (window as Window & { __suspendMetricPerfResult?: { paintMs?: number } }).__suspendMetricPerfResult?.paintMs;
+    return typeof paintMs === 'number' && Number.isFinite(paintMs);
+  }, null, { timeout: 15000 });
+  const result = await page.evaluate(() => (window as Window & { __suspendMetricPerfResult?: Record<string, unknown> }).__suspendMetricPerfResult);
+  await info.attach('v2312-suspend-metric-render.json', { body: JSON.stringify({ ...result, project: info.project.name, cache: 'warm after initial 100-card page', fixtureAuth: true, realAuth: false, fixture: 'synthetic authenticated read-only harness' }), contentType: 'application/json' });
+  expect(result?.sourceRows).toBe(1000);
+  expect(result?.mounted).toBe(100);
+  expect(result?.value).toBe('101');
+  expect(result?.visible).toBe(true);
+  expect(result?.whiteSpace).toBe('nowrap');
+  expect(Number(result?.numericMetricCells)).toBeGreaterThan(0);
+  expect(result?.numericValuesNowrap).toBe(true);
+  expect(result?.numericValuesFit).toBe(true);
+  // Explicit user waiver: only this synthetic local rendering check is below 1,200 ms.
+  expect(result?.paintMs).toBeLessThan(1200);
+  await expect(cards).toHaveCount(100);
   app.assertClean();
 });
 

@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "agdata-v2312-scoped-validation-v1",
+  "release": "AgData v2.3.12",
+  "base": "b4990af247236f6ae673236b8229ea5af92333d5",
+  "assembledAt": "2026-10-19T21:37:29.252Z",
+  "validatedSourceHashes": {
+    ".github/workflows/release-database.yml": "fc02f681ff6f2c7466c1fa1e6e4fe030eec363fe5ce00d977f5f5d0b2c2c48ae",
+    "Code.gs": "79fa36976165c7a2b786546d297c0236a05ff21733a12e9a90c9c6cc77b1fa6b",
+    "assets/ops-precision-pilot.css": "0a6b366ac803df92d90ecfebd66dfc58e2929fbf5d74b0482d47483e557c78a6",
+    "assets/ops-precision-pilot.js": "27605eb4ae2fe59a90c1d90808f2c2d37e5250f4c4dbd418219203c4f8a9b6c1",
+    "index.html": "67aafd90111d1a1467722ae502ebb7aabd2909507c90be0ceac2bce433aa0278",
+    "manifest.json": "8c5f0f0715d71b6d064f177bbddc897c2e65fc650ecdec22ed0869345b6e3739",
+    "package-lock.json": "30632114cd21a904f93b04263a9cddfac58fa9e2bc98ebb0f62abd47d60056e5",
+    "package.json": "2382acaa4f954f79866361782a22beea17433a7970153ee39f1f9d317940e140",
+    "playwright.v2312-scoped.config.ts": "7beb137639cd8e3f64177c0881ceb939333fc179870de16b4e32055eb38f8044",
+    "scripts/apps-script-function-patch.mjs": "4e8cb2f435df3afde0f608aac839c38fc0055cbac914aa58c33823748443924a",
+    "scripts/build-live-shell.mjs": "b4fffca8207a50d6170262b4e73b30a6638834efffb4e7b958b4b470ffa1f0d9",
+    "scripts/check-v2312-retained-validation.mjs": "f274532385ffb54beae9f8d3e3e82f40b8891eca16378345b3834a90b15eb80f",
+    "scripts/ci-backend-matrix.mjs": "4bcda0eb33c49d2a23e9383773c154b3d90dbef6af64c39096ac96e186493f88",
+    "scripts/run-release-react-checks.mjs": "8f8fc3b749688d5e35f0c295c36c156cb537161e1c7b4971137be8febe6ecf4f",
+    "scripts/run-release-unit-checks.mjs": "ec1c103ebbe22d1cbe585068bdbfc778891f418015cd7fbad7683b589bc70420",
+    "sw.js": "bdfdfd5c128237e98ea12fe329a1440f8215c013c14691a0d257ba284cf12716",
+    "tests/apps-script-function-patch.test.mjs": "132df958e8e0c25cdfde45e30110658a05dc69db9134bfa8afc6b6554fca4f73",
+    "tests/daily-data-sync.test.mjs": "83ba61fdd7aab2b2ad6e39d62805ca04f47dddf5b25be678b453e268f6c1a067",
+    "tests/import-history-routing.test.mjs": "a8deefbd369b8c8124700b3ff77286b2b37254faba941702427bdfd7024077df",
+    "tests/manual-sync-ui.test.mjs": "dd6a696753f9d51cb19db395d8100aa7d9fba00407aa0417922fcaa8500224cd",
+    "tests/suspend-tag-card-layout.test.mjs": "3c6930981ab530ef821043410eefad7818e9be2d226a00f0fddbc787a8e7b40f",
+    "tests/suspend-tag-compaction.e2e.spec.ts": "6c9532daf06ee92d9f33c39648acdb68b99519b844de36be1ac1821450e3f8fc",
+    "tests/suspend-tag-completion.e2e.spec.ts": "1864f6a91a0445de620f69326f78d0619c832125931ba867ad43ff92aefcdf72",
+    "tests/suspend-tag-import.test.mjs": "0b424d864d6b7d32e60cf6e95c789ee704f08b1e377e94f2e9f8994eb438edc3",
+    "tests/v2312-live-sync-ui.e2e.spec.ts": "d00be78ef616b8a3406c3ca25ac67427c79e500e7da64bc8e3c9e833d370ca65",
+    "v2/public/manifest.webmanifest": "0373c5f8cd67367eff02168f93e762944bdebbb4389c01efc7a9871c65b8811e",
+    "v2/src/services/api.ts": "ffe8171ff9794c360a22a2d629ce6a73e1bcc2339748a84a3d86dbc7e1ddde37"
+  },
+  "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "validation": {
+    "node": {
+      "artifactPath": "docs/releases/v2.3.12-validation/node.json",
+      "artifactSha256": "d20fe628e4b74a7a65ef5fcdbee632e507f33569f14ab7e202a551a818e50d50",
+      "validationId": "v2312-node-0e3b6c16846b",
+      "status": "passed",
+      "checks": 72,
+      "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a"
+    },
+    "browser": {
+      "artifactPath": "docs/releases/v2.3.12-validation/browser.json",
+      "artifactSha256": "a91885b1a4c3eafd5106ad82d50babd0039f1cfdd630253a753c7a170a3800f1",
+      "validationId": "v2312-browser-0e3b6c16846b",
+      "status": "passed",
+      "checks": 12,
+      "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a"
+    },
+    "tooling": {
+      "artifactPath": "docs/releases/v2.3.12-validation/tooling.json",
+      "artifactSha256": "1bcd32db3a89efc7d9a037be9ab9726337da730d6ad616f17d74225f95767f8c",
+      "validationId": "v2312-tooling-0e3b6c16846b",
+      "status": "passed",
+      "checks": 3,
+      "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a"
+    },
+    "build": {
+      "artifactPath": "docs/releases/v2.3.12-validation/build.json",
+      "artifactSha256": "3426c480b0e7e4e96a6210a3fb8889656bd9fbd3ff5a0200806cadfe51bd40e3",
+      "validationId": "v2312-build-0e3b6c16846b",
+      "status": "passed",
+      "checks": 2,
+      "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a"
+    }
+  },
+  "knownUnresolved": [
+    {
+      "case": "hs-iphone",
+      "status": "unresolved",
+      "measurementsMs": {
+        "drive": 416,
+        "av": 621,
+        "request": 812,
+        "bloom": 408
+      },
+      "limitMs": 400,
+      "note": "Prior emulated iPhone paint failure retained; not certified as passed.",
+      "evidencePath": ".gnc-local/v2311-validation/browser-iphone-shell-31.json",
+      "evidenceSha256": "90a5e7ca737c9223268d4eb7b4272b4e01e0cd0b202b7bf218916d7dc34eed6e"
+    },
+    {
+      "case": "av-iphone",
+      "status": "unresolved",
+      "username": "toby_brown",
+      "actualRows": 3214,
+      "initialWindowMs": 7431,
+      "fullHydrationMs": 66166,
+      "limitMs": 1500,
+      "evidence": {
+        "path": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+        "sha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051",
+        "retained": true
+      },
+      "note": "Annette iPhone not completed. Android representative snapshot passed; no cross-browser timing claim.",
+      "evidencePath": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+      "evidenceSha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051"
+    }
+  ],
+  "provenance": {
+    "fullSuitesRerun": false,
+    "retainedNodePassed": 3550,
+    "retainedReactPassed": 158,
+    "retainedV2311FocusedReported": 229,
+    "retainedV2311FocusedVerified": 174,
+    "retainedV2311FocusedDelegatedWithoutRawLogs": 55
+  }
+}

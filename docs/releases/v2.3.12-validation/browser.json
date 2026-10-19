@@ -1,0 +1,633 @@
+{
+  "schemaVersion": "agdata-v2312-validation-result-v1",
+  "scope": "browser",
+  "status": "passed",
+  "validationId": "v2312-browser-0e3b6c16846b",
+  "checks": 12,
+  "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "fixtureAuthentication": true,
+  "realAuthenticationVerified": false,
+  "passedCases": [
+    {
+      "case": "compact",
+      "project": "v2312-desktop-chromium",
+      "title": "compact Suspend keeps aligned parties and single-line metrics at narrow and wide widths",
+      "status": "passed",
+      "report": ".gnc-local/v2312-browser-3.json",
+      "when": 1792442545191
+    },
+    {
+      "case": "manualSync",
+      "project": "v2312-desktop-chromium",
+      "title": "manual sync status displays a failed stage and advances through the ten-stage queue",
+      "status": "passed",
+      "report": ".gnc-local/v2312-browser-3.json",
+      "when": 1792442545191
+    },
+    {
+      "case": "logout",
+      "project": "v2312-desktop-chromium",
+      "title": "drawer logout does not flash empty-credential validation, while a deliberate empty login still validates",
+      "status": "passed",
+      "report": ".gnc-local/v2312-browser-logout-2.json",
+      "when": 1792442599628
+    },
+    {
+      "case": "compact",
+      "project": "v2312-android-chromium",
+      "title": "compact Suspend keeps aligned parties and single-line metrics at narrow and wide widths",
+      "status": "passed",
+      "report": ".gnc-local/v2312-browser-mobile-1.json",
+      "when": 1792442614529
+    },
+    {
+      "case": "manualSync",
+      "project": "v2312-android-chromium",
+      "title": "manual sync status displays a failed stage and advances through the ten-stage queue",
+      "status": "passed",
+      "report": ".gnc-local/v2312-browser-mobile-1.json",
+      "when": 1792442614529
+    },
+    {
+      "case": "logout",
+      "project": "v2312-android-chromium",
+      "title": "drawer logout does not flash empty-credential validation, while a deliberate empty login still validates",
+      "status": "passed",
+      "report": ".gnc-local/v2312-browser-mobile-1.json",
+      "when": 1792442614529
+    },
+    {
+      "case": "compact",
+      "project": "v2312-iphone-webkit",
+      "title": "compact Suspend keeps aligned parties and single-line metrics at narrow and wide widths",
+      "status": "passed",
+      "report": ".gnc-local/v2312-browser-iphone-2.json",
+      "when": 1792443711165
+    },
+    {
+      "case": "manualSync",
+      "project": "v2312-iphone-webkit",
+      "title": "manual sync status displays a failed stage and advances through the ten-stage queue",
+      "status": "passed",
+      "report": ".gnc-local/v2312-browser-iphone-2.json",
+      "when": 1792443711165
+    },
+    {
+      "case": "logout",
+      "project": "v2312-iphone-webkit",
+      "title": "drawer logout does not flash empty-credential validation, while a deliberate empty login still validates",
+      "status": "passed",
+      "report": ".gnc-local/v2312-browser-iphone-2.json",
+      "when": 1792443711165
+    }
+  ],
+  "appRenderMeasurements": [
+    {
+      "startedAt": 4222,
+      "domMs": 742.6999999880791,
+      "paintMs": 779.8000000119209,
+      "before": "100",
+      "value": "101",
+      "visible": true,
+      "whiteSpace": "nowrap",
+      "scrollWidth": 36,
+      "clientWidth": 36,
+      "mounted": 100,
+      "sourceRows": 1000,
+      "numericMetricCells": 400,
+      "numericValuesNowrap": true,
+      "numericValuesFit": true,
+      "project": "v2312-desktop-chromium",
+      "cache": "warm after initial 100-card page",
+      "fixtureAuth": true,
+      "realAuth": false,
+      "fixture": "synthetic authenticated read-only harness",
+      "attempt": "reset1",
+      "testStatus": "passed",
+      "report": ".gnc-local/v2312-browser-render-reset1.json"
+    },
+    {
+      "startedAt": 3878.4000000059605,
+      "domMs": 760.4000000059605,
+      "paintMs": 962.1999999880791,
+      "before": "100",
+      "value": "101",
+      "visible": true,
+      "whiteSpace": "nowrap",
+      "scrollWidth": 36,
+      "clientWidth": 36,
+      "mounted": 100,
+      "sourceRows": 1000,
+      "numericMetricCells": 400,
+      "numericValuesNowrap": true,
+      "numericValuesFit": true,
+      "project": "v2312-android-chromium",
+      "cache": "warm after initial 100-card page",
+      "fixtureAuth": true,
+      "realAuth": false,
+      "fixture": "synthetic authenticated read-only harness",
+      "attempt": "reset1",
+      "testStatus": "passed",
+      "report": ".gnc-local/v2312-browser-render-reset1.json"
+    },
+    {
+      "startedAt": 5766,
+      "domMs": 749,
+      "paintMs": 1092,
+      "before": "100",
+      "work": {
+        "generateCard": {
+          "calls": 100,
+          "ms": 507
+        },
+        "renderRequest": {
+          "calls": 1,
+          "ms": 144
+        },
+        "buildSuspendTagRenderPlan": {
+          "calls": 1,
+          "ms": 50
+        },
+        "getScopedRequestItems": {
+          "calls": 1,
+          "ms": 0
+        },
+        "repairVisibleDockSuspendDcPlanstartCardTones": {
+          "calls": 1,
+          "ms": 4
+        },
+        "decorateRequestRows": {
+          "calls": 0,
+          "ms": 0
+        }
+      },
+      "value": "101",
+      "visible": true,
+      "whiteSpace": "nowrap",
+      "scrollWidth": 36,
+      "clientWidth": 36,
+      "mounted": 100,
+      "sourceRows": 1000,
+      "numericMetricCells": 400,
+      "numericValuesNowrap": true,
+      "numericValuesFit": true,
+      "project": "v2312-iphone-webkit",
+      "cache": "warm after initial 100-card page",
+      "fixtureAuth": true,
+      "realAuth": false,
+      "fixture": "synthetic authenticated read-only harness",
+      "attempt": "reset5",
+      "testStatus": "passed",
+      "report": ".gnc-local/v2312-browser-render-reset5.json"
+    }
+  ],
+  "appRenderPriorFailedMeasurements": [
+    {
+      "startedAt": 6674,
+      "domMs": 1061,
+      "paintMs": 1537,
+      "before": "100",
+      "value": "101",
+      "visible": true,
+      "whiteSpace": "nowrap",
+      "scrollWidth": 36,
+      "clientWidth": 36,
+      "mounted": 100,
+      "sourceRows": 1000,
+      "numericMetricCells": 400,
+      "numericValuesNowrap": true,
+      "numericValuesFit": true,
+      "project": "v2312-iphone-webkit",
+      "cache": "warm after initial 100-card page",
+      "fixtureAuth": true,
+      "realAuth": false,
+      "fixture": "synthetic authenticated read-only harness",
+      "attempt": "reset1",
+      "testStatus": "failed",
+      "report": ".gnc-local/v2312-browser-render-reset1.json"
+    },
+    {
+      "startedAt": 6454,
+      "domMs": 1099,
+      "paintMs": 1599,
+      "before": "100",
+      "value": "101",
+      "visible": true,
+      "whiteSpace": "nowrap",
+      "scrollWidth": 36,
+      "clientWidth": 36,
+      "mounted": 100,
+      "sourceRows": 1000,
+      "numericMetricCells": 400,
+      "numericValuesNowrap": true,
+      "numericValuesFit": true,
+      "project": "v2312-iphone-webkit",
+      "cache": "warm after initial 100-card page",
+      "fixtureAuth": true,
+      "realAuth": false,
+      "fixture": "synthetic authenticated read-only harness",
+      "attempt": "reset2",
+      "testStatus": "failed",
+      "report": ".gnc-local/v2312-browser-render-reset2.json"
+    },
+    {
+      "startedAt": 6892,
+      "domMs": 1074,
+      "paintMs": 1643,
+      "before": "100",
+      "work": {
+        "generateCard": {
+          "calls": 100,
+          "ms": 572
+        },
+        "renderRequest": {
+          "calls": 2,
+          "ms": 227
+        },
+        "buildSuspendTagRenderPlan": {
+          "calls": 2,
+          "ms": 74
+        },
+        "getScopedRequestItems": {
+          "calls": 5,
+          "ms": 1
+        },
+        "repairVisibleDockSuspendDcPlanstartCardTones": {
+          "calls": 2,
+          "ms": 43
+        },
+        "decorateRequestRows": {
+          "calls": 0,
+          "ms": 0
+        }
+      },
+      "value": "101",
+      "visible": true,
+      "whiteSpace": "nowrap",
+      "scrollWidth": 36,
+      "clientWidth": 36,
+      "mounted": 100,
+      "sourceRows": 1000,
+      "numericMetricCells": 400,
+      "numericValuesNowrap": true,
+      "numericValuesFit": true,
+      "project": "v2312-iphone-webkit",
+      "cache": "warm after initial 100-card page",
+      "fixtureAuth": true,
+      "realAuth": false,
+      "fixture": "synthetic authenticated read-only harness",
+      "attempt": "reset3",
+      "testStatus": "failed",
+      "report": ".gnc-local/v2312-browser-render-reset3.json"
+    },
+    {
+      "startedAt": 6487,
+      "domMs": 1071,
+      "paintMs": 1422,
+      "before": "100",
+      "work": {
+        "generateCard": {
+          "calls": 100,
+          "ms": 564
+        },
+        "renderRequest": {
+          "calls": 1,
+          "ms": 130
+        },
+        "buildSuspendTagRenderPlan": {
+          "calls": 1,
+          "ms": 43
+        },
+        "getScopedRequestItems": {
+          "calls": 1,
+          "ms": 0
+        },
+        "repairVisibleDockSuspendDcPlanstartCardTones": {
+          "calls": 1,
+          "ms": 4
+        },
+        "decorateRequestRows": {
+          "calls": 0,
+          "ms": 0
+        }
+      },
+      "value": "101",
+      "visible": true,
+      "whiteSpace": "nowrap",
+      "scrollWidth": 36,
+      "clientWidth": 36,
+      "mounted": 100,
+      "sourceRows": 1000,
+      "numericMetricCells": 400,
+      "numericValuesNowrap": true,
+      "numericValuesFit": true,
+      "project": "v2312-iphone-webkit",
+      "cache": "warm after initial 100-card page",
+      "fixtureAuth": true,
+      "realAuth": false,
+      "fixture": "synthetic authenticated read-only harness",
+      "attempt": "reset4",
+      "testStatus": "failed",
+      "report": ".gnc-local/v2312-browser-render-reset4.json"
+    }
+  ],
+  "renderReports": [
+    {
+      "path": ".gnc-local/v2312-browser-render-reset1.json",
+      "sha256": "d408a3c6b2901b5a5df2d388f058380ee283970b4fa707cd1aba3236b8c13d0f",
+      "attempt": "reset1",
+      "stats": {
+        "startTime": "2026-10-19T21:11:45.545Z",
+        "duration": 25346.032000000003,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset2.json",
+      "sha256": "48abdaf8c9df84176ea3cd9503304b2429d049901ada4109daad8a3ec899147f",
+      "attempt": "reset2",
+      "stats": {
+        "startTime": "2026-10-19T21:18:28.091Z",
+        "duration": 11886.14,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset3.json",
+      "sha256": "1c9450e92123b0ad90236f30b3ccbc7fcda5f7232fdc59aa9ad5e09c6db4ce36",
+      "attempt": "reset3",
+      "stats": {
+        "startTime": "2026-10-19T21:19:53.090Z",
+        "duration": 12812.626,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset4.json",
+      "sha256": "1c88196e003342100a8c9c2e10a19e2a73b2fed9db330f0cdb342d34cf3b70a0",
+      "attempt": "reset4",
+      "stats": {
+        "startTime": "2026-10-19T21:22:20.427Z",
+        "duration": 11713.859,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset5.json",
+      "sha256": "25db0ba6075f28925bd0a7f5b2214d0401ca6cd9658e7e0ccac25fbe245eaaec",
+      "attempt": "reset5",
+      "stats": {
+        "startTime": "2026-10-19T21:23:18.369Z",
+        "duration": 9660.568000000001,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  ],
+  "renderAttempts": [
+    {
+      "attempt": "reset2",
+      "project": "v2312-iphone-webkit",
+      "status": "failed",
+      "paintMs": 1599,
+      "report": ".gnc-local/v2312-browser-render-reset2.json",
+      "log": ".gnc-local/v2312-browser-render-reset2.log"
+    },
+    {
+      "attempt": "reset3",
+      "project": "v2312-iphone-webkit",
+      "status": "failed",
+      "paintMs": 1643,
+      "report": ".gnc-local/v2312-browser-render-reset3.json",
+      "log": ".gnc-local/v2312-browser-render-reset3.log"
+    },
+    {
+      "attempt": "reset4",
+      "project": "v2312-iphone-webkit",
+      "status": "failed",
+      "paintMs": 1422,
+      "report": ".gnc-local/v2312-browser-render-reset4.json",
+      "log": ".gnc-local/v2312-browser-render-reset4.log"
+    },
+    {
+      "attempt": "reset5",
+      "project": "v2312-iphone-webkit",
+      "status": "passed",
+      "paintMs": 1092,
+      "report": ".gnc-local/v2312-browser-render-reset5.json",
+      "log": ".gnc-local/v2312-browser-render-reset5.log"
+    }
+  ],
+  "selectedFinalRenderAttempt": 5,
+  "timingWaiver": {
+    "scope": "synthetic local app-render fixture only",
+    "thresholdExclusiveMs": 1200,
+    "fixtureAuthentication": true,
+    "realAuthenticationVerified": false,
+    "productionThresholdChanged": false
+  },
+  "evidence": [
+    {
+      "path": ".gnc-local/v2312-browser-3.json",
+      "sha256": "e48c98d6b1aa1fe693bae0a38483a870ddc9277072a0a9096376ad97e6c3df11",
+      "startTime": "2026-10-19T20:42:25.191Z",
+      "stats": {
+        "startTime": "2026-10-19T20:42:25.191Z",
+        "duration": 19692.749,
+        "expected": 2,
+        "skipped": 6,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-logout-2.json",
+      "sha256": "f48383f0cd27417f2ae95a5d00cc9577f7c4818924455f1647f9d8aee84c2939",
+      "startTime": "2026-10-19T20:43:19.628Z",
+      "stats": {
+        "startTime": "2026-10-19T20:43:19.628Z",
+        "duration": 8027.853,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-mobile-1.json",
+      "sha256": "d5add79020d050fc9540455f244009efac845689c0fad76d7c57a52f7149a5c1",
+      "startTime": "2026-10-19T20:43:34.529Z",
+      "stats": {
+        "startTime": "2026-10-19T20:43:34.529Z",
+        "duration": 20618.328999999998,
+        "expected": 3,
+        "skipped": 2,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-iphone-2.json",
+      "sha256": "27b178ad0520fab46ed4943c4b8b455266c747165ce83d888a0a1bb1b976ea37",
+      "startTime": "2026-10-19T21:01:51.165Z",
+      "stats": {
+        "startTime": "2026-10-19T21:01:51.165Z",
+        "duration": 14723.335000000001,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset1.json",
+      "sha256": "d408a3c6b2901b5a5df2d388f058380ee283970b4fa707cd1aba3236b8c13d0f",
+      "attempt": "reset1",
+      "stats": {
+        "startTime": "2026-10-19T21:11:45.545Z",
+        "duration": 25346.032000000003,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset2.json",
+      "sha256": "48abdaf8c9df84176ea3cd9503304b2429d049901ada4109daad8a3ec899147f",
+      "attempt": "reset2",
+      "stats": {
+        "startTime": "2026-10-19T21:18:28.091Z",
+        "duration": 11886.14,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset3.json",
+      "sha256": "1c9450e92123b0ad90236f30b3ccbc7fcda5f7232fdc59aa9ad5e09c6db4ce36",
+      "attempt": "reset3",
+      "stats": {
+        "startTime": "2026-10-19T21:19:53.090Z",
+        "duration": 12812.626,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset4.json",
+      "sha256": "1c88196e003342100a8c9c2e10a19e2a73b2fed9db330f0cdb342d34cf3b70a0",
+      "attempt": "reset4",
+      "stats": {
+        "startTime": "2026-10-19T21:22:20.427Z",
+        "duration": 11713.859,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset5.json",
+      "sha256": "25db0ba6075f28925bd0a7f5b2214d0401ca6cd9658e7e0ccac25fbe245eaaec",
+      "attempt": "reset5",
+      "stats": {
+        "startTime": "2026-10-19T21:23:18.369Z",
+        "duration": 9660.568000000001,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "path": ".gnc-local/v2312-browser-3.log",
+      "sha256": "53eea4dc0c447be54e08ac10deef3237ada9f8b856973860dba43d5d632131d7"
+    },
+    {
+      "path": ".gnc-local/v2312-browser-logout-2.log",
+      "sha256": "635651779d3c067887555cdddc2909f9ae3c5b71912460911603f78ceedd18bb"
+    },
+    {
+      "path": ".gnc-local/v2312-browser-mobile-1.log",
+      "sha256": "23bfe298d6bd6e3d7226bc3735c026118c948f76dd533546921e92ed6643b57e"
+    },
+    {
+      "path": ".gnc-local/v2312-browser-iphone-2.log",
+      "sha256": "0ef2e3e1947adcbc6d400e7dbe7ece2d4261b37a5b7ead904de91c1a56b08b09"
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset1.log",
+      "sha256": "80c6eab61e73f52cd27c8c30e8721e86dfb1b97172653e9658c76c85fba48fbb"
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset2.log",
+      "sha256": "4e550604dfe951aedb01cd4f447d1d29b78e67bdf53334d6b10e3947698ad4da"
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset3.log",
+      "sha256": "0e0e533819f171d60d824970b60aadd7bf36b1eea6894ee79b479ac758a1fc9e"
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset4.log",
+      "sha256": "e79680855714f784526ad05a16da527d340112c5ae66f77e120643fc9b74f84c"
+    },
+    {
+      "path": ".gnc-local/v2312-browser-render-reset5.log",
+      "sha256": "772dba911edbe2ee26666d18037c2c885e5749ac0c80187fe35f7279e40f3f3c"
+    }
+  ],
+  "knownUnresolved": [
+    {
+      "case": "hs-iphone",
+      "status": "unresolved",
+      "measurementsMs": {
+        "drive": 416,
+        "av": 621,
+        "request": 812,
+        "bloom": 408
+      },
+      "limitMs": 400,
+      "note": "Prior emulated iPhone paint failure retained; not certified as passed.",
+      "evidencePath": ".gnc-local/v2311-validation/browser-iphone-shell-31.json",
+      "evidenceSha256": "90a5e7ca737c9223268d4eb7b4272b4e01e0cd0b202b7bf218916d7dc34eed6e"
+    },
+    {
+      "case": "av-iphone",
+      "status": "unresolved",
+      "username": "toby_brown",
+      "actualRows": 3214,
+      "initialWindowMs": 7431,
+      "fullHydrationMs": 66166,
+      "limitMs": 1500,
+      "evidence": {
+        "path": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+        "sha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051",
+        "retained": true
+      },
+      "note": "Annette iPhone not completed. Android representative snapshot passed; no cross-browser timing claim.",
+      "evidencePath": ".gnc-local/v2310-live-av-e2e-failure-20261019T195438050Z.json",
+      "evidenceSha256": "b54a32bf7dbe0431b81b8fe604ad0d8c283930c54a278415cf398ae61c658051"
+    }
+  ]
+}

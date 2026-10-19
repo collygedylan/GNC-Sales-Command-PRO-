@@ -1,0 +1,118 @@
+{
+  "schemaVersion": "agdata-v2312-validation-result-v1",
+  "scope": "build",
+  "status": "passed",
+  "validationId": "v2312-build-0e3b6c16846b",
+  "checks": 2,
+  "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a",
+  "commands": [
+    {
+      "command": "LIVE_SITE_DIR=.gnc-local/foundation-site-v2312-reset1 node scripts/build-live-shell.mjs",
+      "exitCode": 0,
+      "sourcePaths": [
+        "index.html"
+      ],
+      "logPath": ".gnc-local/v2312-shell-reset5.log",
+      "logSha256": "9d83d3813c9eb9e2b9405248d90fe7e78d4d3229ac69f1e9c450fc746486b3f0"
+    },
+    {
+      "command": "DEPLOYMENT_SITE_DIR=.gnc-local/foundation-site-v2312-reset1 DEPLOYMENT_COMMIT=c228f1e1 node scripts/write-deployment-fingerprint.mjs",
+      "exitCode": 0,
+      "sourcePaths": [
+        "index.html"
+      ],
+      "logPath": ".gnc-local/v2312-site-fingerprint-final.log",
+      "logSha256": "57a0af9c2e04459b5169303f867da3dba870bbf135d5fc38c0f66da270972d9c"
+    }
+  ],
+  "exitCodes": [
+    0,
+    0
+  ],
+  "artifact": {
+    "path": ".gnc-local/foundation-site-v2312-reset1/index.html",
+    "sha256": "1a13777c5bcb46e377103f1fe3a06027fa895b2be9a1c8bd58df0d603e061cd3"
+  },
+  "provenance": {
+    "kind": "retained-baseline-plus-current-touched-scope",
+    "preservedCommit": "c228f1e1b665238d5fd61a2a93d4633cd7cd4d16",
+    "sourceChanges": [
+      {
+        "path": "index.html",
+        "sha256": "67aafd90111d1a1467722ae502ebb7aabd2909507c90be0ceac2bce433aa0278"
+      }
+    ],
+    "currentCommands": [
+      {
+        "command": "LIVE_SITE_DIR=.gnc-local/foundation-site-v2312-reset1 node scripts/build-live-shell.mjs",
+        "exitCode": 0,
+        "sourcePaths": [
+          "index.html"
+        ],
+        "evidence": {
+          "path": ".gnc-local/v2312-shell-reset5.log",
+          "sha256": "9d83d3813c9eb9e2b9405248d90fe7e78d4d3229ac69f1e9c450fc746486b3f0"
+        }
+      },
+      {
+        "command": "DEPLOYMENT_SITE_DIR=.gnc-local/foundation-site-v2312-reset1 DEPLOYMENT_COMMIT=c228f1e1 node scripts/write-deployment-fingerprint.mjs",
+        "exitCode": 0,
+        "sourcePaths": [
+          "index.html"
+        ],
+        "evidence": {
+          "path": ".gnc-local/v2312-site-fingerprint-final.log",
+          "sha256": "57a0af9c2e04459b5169303f867da3dba870bbf135d5fc38c0f66da270972d9c"
+        }
+      }
+    ],
+    "retainedBaseline": {
+      "commit": "c228f1e1b665238d5fd61a2a93d4633cd7cd4d16",
+      "summary": "Full assets, v2, and release-site build retained at c228; only the changed index shell was freshly rebuilt and fingerprinted.",
+      "checks": 3,
+      "evidence": [
+        {
+          "path": ".gnc-local/v2312-build-1.log",
+          "sha256": "b0ef0a4f1c8ae28c31fcd44b099a679d06bc15af4755fc9a2613b21b5a68bfc0"
+        },
+        {
+          "path": ".gnc-local/v2312-shell-2.log",
+          "sha256": "a4d48bd65343c631c1769327bdb21589df091cbf56f0f3bd390752da0d0db112"
+        },
+        {
+          "path": ".gnc-local/v2312-shell-3.log",
+          "sha256": "a4d48bd65343c631c1769327bdb21589df091cbf56f0f3bd390752da0d0db112"
+        }
+      ],
+      "fullCommandsRerun": false
+    },
+    "noFullRerunClaimed": true,
+    "currentSourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a"
+  },
+  "evidence": [
+    {
+      "path": ".gnc-local/v2312-build-1.log",
+      "sha256": "b0ef0a4f1c8ae28c31fcd44b099a679d06bc15af4755fc9a2613b21b5a68bfc0"
+    },
+    {
+      "path": ".gnc-local/v2312-shell-2.log",
+      "sha256": "a4d48bd65343c631c1769327bdb21589df091cbf56f0f3bd390752da0d0db112"
+    },
+    {
+      "path": ".gnc-local/v2312-shell-3.log",
+      "sha256": "a4d48bd65343c631c1769327bdb21589df091cbf56f0f3bd390752da0d0db112"
+    },
+    {
+      "path": ".gnc-local/v2312-shell-reset5.log",
+      "sha256": "9d83d3813c9eb9e2b9405248d90fe7e78d4d3229ac69f1e9c450fc746486b3f0"
+    },
+    {
+      "path": ".gnc-local/v2312-site-fingerprint-final.log",
+      "sha256": "57a0af9c2e04459b5169303f867da3dba870bbf135d5fc38c0f66da270972d9c"
+    },
+    {
+      "path": ".gnc-local/foundation-site-v2312-reset1/index.html",
+      "sha256": "1a13777c5bcb46e377103f1fe3a06027fa895b2be9a1c8bd58df0d603e061cd3"
+    }
+  ]
+}

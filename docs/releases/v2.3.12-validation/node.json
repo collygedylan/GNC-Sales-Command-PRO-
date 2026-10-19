@@ -1,0 +1,324 @@
+{
+  "schemaVersion": "agdata-v2312-validation-result-v1",
+  "scope": "node",
+  "status": "passed",
+  "validationId": "v2312-node-0e3b6c16846b",
+  "checks": 72,
+  "sourceHashDigest": "0e3b6c16846b725919289e82a7a240e12241eb51058c171ad393d3b6d651448a",
+  "provenance": {
+    "kind": "scoped-retained-and-focused-evidence",
+    "focusedUniqueChecks": 72,
+    "accounting": {
+      "originalCaseSet": 66,
+      "correctedPriorFailures": 4,
+      "additionalUniqueCases": 6
+    },
+    "retainedBaseline": {
+      "nodePassed": 3550,
+      "reactPassed": 158,
+      "fullSuitesRerun": false
+    },
+    "retainedV2311Focused": {
+      "reportedPassed": 229,
+      "verifiedPassed": 174,
+      "delegatedReportedPassed": 55,
+      "delegatedRawLogsAvailable": false
+    }
+  },
+  "failedHistory": [
+    {
+      "issue": "focused-node-fixtures",
+      "attempt": 1,
+      "pass": 62,
+      "fail": 4,
+      "evidence": ".gnc-local/v2312-focused-node-1.log",
+      "sha256": "c4ee47b8eebfbd0eea5eceef132bbe46c70bb3e8949ca7354b6d6f0a3d906045"
+    },
+    {
+      "issue": "frontend-node-fixtures",
+      "attempt": 2,
+      "pass": 2,
+      "fail": 0,
+      "evidence": ".gnc-local/v2312-frontend-node-2.log",
+      "sha256": "33bb366783a35c1d1f75ea09140197ef79792377093d9f10706d10be60904f17"
+    },
+    {
+      "issue": "routing-realm-and-ordering-fixtures",
+      "attempt": 2,
+      "pass": 2,
+      "fail": 0,
+      "evidence": ".gnc-local/v2312-routing-node-2.log",
+      "sha256": "75ee385fcf2ee3848b8f599486e5d2dd3f4571cec49e27511908e8f2efb82105"
+    },
+    {
+      "issue": "routing-checkpoint-and-failure-watermark",
+      "attempt": 1,
+      "pass": 2,
+      "fail": 0,
+      "evidence": ".gnc-local/v2312-routing-new.log",
+      "sha256": "9358809ec4cb8f604c6371ecc7e8569df4ca620dba853c48cc5fba93e8ce8a6d"
+    },
+    {
+      "issue": "suspend-metric-geometry",
+      "attempt": 1,
+      "fail": 1,
+      "evidence": ".gnc-local/v2312-browser-1.log",
+      "cause": "Existing higher-specificity six-column rule overrode mobile grid.",
+      "sha256": "358e4f1058e3bdcf331e548c299ecf0a09db6647c8e42beeb1a9c25bcf6f607c"
+    },
+    {
+      "issue": "suspend-metric-geometry",
+      "attempt": 2,
+      "fail": 1,
+      "evidence": ".gnc-local/v2312-browser-2.log",
+      "cause": "Desktop numeric values still used normal whitespace.",
+      "sha256": "06a0ba5f7f24be252dd89c00aa39b97adc2cf6a0f353cafe3ba2883874119186"
+    },
+    {
+      "issue": "suspend-metric-geometry",
+      "attempt": 3,
+      "pass": 1,
+      "evidence": ".gnc-local/v2312-browser-3.json",
+      "sha256": "e48c98d6b1aa1fe693bae0a38483a870ddc9277072a0a9096376ad97e6c3df11"
+    },
+    {
+      "issue": "logout-fixture-selector",
+      "attempt": 1,
+      "fail": 1,
+      "evidence": ".gnc-local/v2312-browser-3.json",
+      "cause": "Toast child selector absent; corrected to actual toast container.",
+      "sha256": "e48c98d6b1aa1fe693bae0a38483a870ddc9277072a0a9096376ad97e6c3df11"
+    },
+    {
+      "issue": "logout-fixture-selector",
+      "attempt": 2,
+      "pass": 1,
+      "evidence": ".gnc-local/v2312-browser-logout-2.json",
+      "sha256": "f48383f0cd27417f2ae95a5d00cc9577f7c4818924455f1647f9d8aee84c2939"
+    },
+    {
+      "issue": "iphone-static-clone-timing",
+      "attempt": 1,
+      "fail": 1,
+      "evidence": ".gnc-local/v2312-browser-mobile-1.json",
+      "measuredMs": 465,
+      "limitMs": 400,
+      "cause": "Nonrepresentative static clone fixture omitted production shell/style/chunk renderer; retained failure, replacing with actual app renderer measurement.",
+      "sha256": "d5add79020d050fc9540455f244009efac845689c0fad76d7c57a52f7149a5c1"
+    },
+    {
+      "issue": "protected-code-proof",
+      "attempt": 1,
+      "fail": 1,
+      "cause": "Pre-existing duplicate protected function callSupabaseRpc_; guard now compares ordered bodies and counts."
+    },
+    {
+      "issue": "protected-code-proof",
+      "attempt": 2,
+      "pass": 1,
+      "evidence": ".gnc-local/v2312-apps-script-protection.json",
+      "sha256": "0d9295a54a5d58cbecadef121c20c43713115fb41f34cf89e65097d9263f92db"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "attempt": 1,
+      "fail": 1,
+      "cause": "Navigation during initial fixture injection.",
+      "evidence": ".gnc-local/v2312-browser-render-1.log",
+      "sha256": "784f3827c7f85d11d2065baa30031a29e41abf82a100c25d176472188f2697b6"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "attempt": 2,
+      "fail": 1,
+      "cause": "Stale built manifest v2.3.10 triggered shell recovery.",
+      "evidence": ".gnc-local/v2312-browser-render-2.log",
+      "sha256": "fe8aceed7386f19042f6c708cf7ea24f4cc26c47a7577c12cf06483d1a0d76fc"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "attempt": 3,
+      "fail": 1,
+      "cause": "Ambiguous repeated inventory identities and unverified raw fixture projection rendered unknown metrics.",
+      "evidence": ".gnc-local/v2312-browser-render-3.log",
+      "sha256": "324cc72fae2f205b62967e244f945250f3d01ad435ceb557c038ab797a354a4d"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "attempt": 4,
+      "fail": 1,
+      "cause": "Authoritative queue identity cache is separate from fullInventory; metric rendered but wrong fixture update store.",
+      "evidence": ".gnc-local/v2312-browser-render-4.log",
+      "sha256": "f3b6411ea9911b7065d205c13defa642464091a7b0ec44a32b8bf82dc59f31ec"
+    },
+    {
+      "issue": "iphone-static-style-repaint",
+      "attempt": 1,
+      "fail": 1,
+      "cause": "Immediate innerText after replacing stylesheet read empty before WebKit repaint; screenshot showed SPEC intact.",
+      "evidence": ".gnc-local/v2312-browser-iphone-final.log",
+      "sha256": "e6ec49266409899a3039c386ecf32363135b7e3810f8259baedb92026201e45e"
+    },
+    {
+      "issue": "iphone-static-style-repaint",
+      "attempt": 2,
+      "pass": 3,
+      "evidence": ".gnc-local/v2312-browser-iphone-2.json",
+      "sha256": "27b178ad0520fab46ed4943c4b8b455266c747165ce83d888a0a1bb1b976ea37"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "attempt": 5,
+      "fail": 1,
+      "cause": "Changed verified queue identity cache row without its render-version invalidation; rendered signature stayed unchanged.",
+      "evidence": ".gnc-local/v2312-browser-render-5.json",
+      "sha256": "276d1923e4203338556f034d1239fee0fed6b689b818deddbde5ef170c88b7f9"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "attempt": 6,
+      "fail": 1,
+      "cause": "Intended test patch did not match CRLF source, so render invalidation was not inserted; this unsuccessful attempt is retained.",
+      "evidence": ".gnc-local/v2312-browser-render-6.json",
+      "sha256": "d2f78521abab95c10dc10ffe367d734d1cecef51c9cfbb2f60b79ab64a9c4620"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "attempt": 7,
+      "fail": 1,
+      "cause": "Actual app metric update rendered, but the served _site/assets/ops-precision-pilot.css remained stale; source/static-layout stylesheet had the current nowrap rule.",
+      "evidence": ".gnc-local/v2312-browser-render-7.json",
+      "sha256": "1c7cb5c812adaefadc54dc347ff2a283d39342301be25134eaae3971be376959"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "reset": 1,
+      "attempt": 1,
+      "pass": 2,
+      "fail": 1,
+      "cause": "Fresh assets verified. Desktop/Android passed; iPhone WebKit DOM 1061 ms, paint 1537 ms exceeded strict <1200 ms. All numeric nowrap/fit assertions passed.",
+      "evidence": ".gnc-local/v2312-browser-render-reset1.json",
+      "sha256": "d408a3c6b2901b5a5df2d388f058380ee283970b4fa707cd1aba3236b8c13d0f"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "reset": 1,
+      "attempt": 2,
+      "fail": 1,
+      "cause": "Skip retained iOS legacy swipe cleanup; still DOM1099/paint1599. Geometry passed. Expanding diagnostic timing in same case.",
+      "evidence": ".gnc-local/v2312-browser-render-reset2.json",
+      "sha256": "48abdaf8c9df84176ea3cd9503304b2429d049901ada4109daad8a3ec899147f"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "reset": 1,
+      "attempt": 3,
+      "fail": 1,
+      "cause": "Diagnostic run: 100 generateCard calls cost572ms; two request renders227ms; DOM1074/paint1643. No geometry failures.",
+      "evidence": ".gnc-local/v2312-browser-render-reset3.json",
+      "sha256": "1c9450e92123b0ad90236f30b3ccbc7fcda5f7232fdc59aa9ad5e09c6db4ce36"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "reset": 1,
+      "attempt": 4,
+      "fail": 1,
+      "cause": "Same-output markup skip + unchanged tone no-op removed duplicate render; DOM1071/paint1422. Tone work4ms, generateCard564ms, one render130ms. Remaining retained250ms completion delay targeted next.",
+      "evidence": ".gnc-local/v2312-browser-render-reset4.json",
+      "sha256": "1c88196e003342100a8c9c2e10a19e2a73b2fed9db330f0cdb342d34cf3b70a0"
+    },
+    {
+      "issue": "suspend-real-renderer",
+      "reset": 1,
+      "attempt": 5,
+      "pass": 1,
+      "cause": "Retained iPhone completion deadline1ms eliminates idle250ms. DOM749/paint1092; 1000source100mounted400numericcells nowrap/fit pass.",
+      "evidence": ".gnc-local/v2312-browser-render-reset5.json",
+      "sha256": "25db0ba6075f28925bd0a7f5b2214d0401ca6cd9658e7e0ccac25fbe245eaaec"
+    },
+    {
+      "issue": "backend-unit-discovery-dependency-setup",
+      "attempt": 1,
+      "fail": 1,
+      "cause": "Backend unit discover failed because the release-database job had no installed Node dependencies for the checker import. Workflow now uses the locked dependency setup; YAML dependency ordering was validated, while exact-head CI rerun status remains separate.",
+      "evidence": ".gnc-local/v2312-ci-discover-failure-1.log",
+      "sha256": "54777123fa51a669443e58a5407d5c50603c4fefc4c5607c2e4417cc3ab0e217"
+    },
+    {
+      "issue": "backend-unit-empty-matrix-gate",
+      "attempt": 1,
+      "fail": 1,
+      "cause": "Exact-head CI 39328145495 failed only the reusable backend-unit empty Edge matrix gate after discovery succeeded; all actual selected jobs passed. Workflow now skips that reusable job when the discovered Edge matrix is empty; CI rerun is still pending and mobile run 39328145391 status was not verified in this update.",
+      "head": "4f39f444",
+      "runId": 39328145495,
+      "mobileRunId": 39328145391,
+      "evidence": ".gnc-local/v2312-ci-failure-2.log",
+      "sha256": "ddd70789ae6103e62c07b3ca9ed5272215e7c2a6bc4e29b02302d9827fe692d2",
+      "summaryEvidence": ".gnc-local/v2312-ci-run-summary-2.log",
+      "summarySha256": "f332ced94c9f19948297399fbc993d33a9164de92991b8d1e356b8445a09d065",
+      "workflowValidation": ".gnc-local/v2312-ci-wiring-fix-2.log",
+      "workflowValidationSha256": "57a28d58eee735e49bfef0684bad5e3fa347be57ed782810feff7639c06b16c0"
+    }
+  ],
+  "initialSuiteLog": {
+    "path": ".gnc-local/v2312-focused-node-1.log",
+    "sha256": "c4ee47b8eebfbd0eea5eceef132bbe46c70bb3e8949ca7354b6d6f0a3d906045"
+  },
+  "focusedPassingLogs": [
+    {
+      "path": ".gnc-local/v2312-frontend-node-2.log",
+      "sha256": "33bb366783a35c1d1f75ea09140197ef79792377093d9f10706d10be60904f17",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0
+    },
+    {
+      "path": ".gnc-local/v2312-routing-node-2.log",
+      "sha256": "75ee385fcf2ee3848b8f599486e5d2dd3f4571cec49e27511908e8f2efb82105",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0
+    },
+    {
+      "path": ".gnc-local/v2312-routing-new.log",
+      "sha256": "9358809ec4cb8f604c6371ecc7e8569df4ca620dba853c48cc5fba93e8ce8a6d",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0
+    },
+    {
+      "path": ".gnc-local/v2312-timeout-node-1.log",
+      "sha256": "8514796672652ef2a923a0041a341cfa8c3b2ab054208d0d015b72774626ecfc",
+      "tests": 16,
+      "passed": 16,
+      "failed": 0
+    },
+    {
+      "path": ".gnc-local/v2312-routing-final.log",
+      "sha256": "f05a4a605b6226313aaebe86aaca3c18fed5370953e74d6325bd13acb505798c",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    {
+      "path": ".gnc-local/v2312-snapshot-budget-node-2.log",
+      "sha256": "65bc6771569932f14e3096c9a566b1fb65014fddee993928fb542d51a45a579e",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0
+    }
+  ],
+  "appsScriptProtection": {
+    "passed": true,
+    "protectedFunctionCount": 827,
+    "protectedFunctionDefinitionCount": 828,
+    "protectedSourceDigest": "49b69e1d08454af71ecb1c9f19340fec8673e12300c6980c236dc64952a7efd1",
+    "patchFunctionsDigest": "27cd0b6cca51c50bcbd58fa9a3f17edc0840daab18d874173bd0ea3e5417a7b9",
+    "evidence": {
+      "path": ".gnc-local/v2312-apps-script-protection-final.json",
+      "sha256": "2d52cd94544db44b8760d9e186e83dfc6733397eb0e3e3e6079964f94489c7ff"
+    }
+  },
+  "productionWrites": false,
+  "realEmailsSent": false
+}

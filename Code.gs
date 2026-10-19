@@ -1287,6 +1287,33 @@ function parseImportHistoryFilenameTimestamp_(name) {
     && date.getUTCHours() === parts[3] && date.getUTCMinutes() === parts[4] && date.getUTCSeconds() === parts[5] ? value : null;
 }
 
+function readManualSyncLiveSourceWatermark_(dataset) {
+  const safeDataset = String(dataset || '').trim().toUpperCase();
+  if (!/^[A-Z0-9_]+$/.test(safeDataset)) throw new Error('MANUAL_SYNC_LIVE_WATERMARK_DATASET_INVALID');
+  const key = 'MANUAL_SYNC_LIVE_SOURCE_WATERMARK_V1_' + safeDataset;
+  const raw = PropertiesService.getScriptProperties().getProperty(key);
+  if (!raw) return null;
+  let watermark;
+  try { watermark = JSON.parse(raw); } catch (ignored) { throw new Error('MANUAL_SYNC_LIVE_WATERMARK_INVALID'); }
+  if (!watermark || typeof watermark !== 'object' || Array.isArray(watermark)
+      || !String(watermark.fileId || '').trim() || !Number.isFinite(Number(watermark.modifiedAt))) {
+    throw new Error('MANUAL_SYNC_LIVE_WATERMARK_INVALID');
+  }
+  return { fileId: String(watermark.fileId), modifiedAt: Number(watermark.modifiedAt) };
+}
+
+function saveManualSyncLiveSourceWatermark_(dataset, sourceIdentity) {
+  const safeDataset = String(dataset || '').trim().toUpperCase();
+  if (!/^[A-Z0-9_]+$/.test(safeDataset)) throw new Error('MANUAL_SYNC_LIVE_WATERMARK_DATASET_INVALID');
+  const fileId = String(sourceIdentity && sourceIdentity.fileId || '').trim();
+  const modifiedAt = Number(sourceIdentity && sourceIdentity.modifiedAt);
+  if (!fileId || !Number.isFinite(modifiedAt) || modifiedAt < 0) throw new Error('MANUAL_SYNC_LIVE_WATERMARK_SOURCE_INVALID');
+  PropertiesService.getScriptProperties().setProperty(
+    'MANUAL_SYNC_LIVE_SOURCE_WATERMARK_V1_' + safeDataset,
+    JSON.stringify({ fileId: fileId, modifiedAt: modifiedAt })
+  );
+}
+
 function getImportHistoryReportDate_(file) {
   const timestamp = parseImportHistoryFilenameTimestamp_(file.getName());
   if (timestamp) return timestamp.slice(0, 4) + '-' + timestamp.slice(4, 6) + '-' + timestamp.slice(6, 8);
@@ -1383,46 +1410,78 @@ function persistImportedFileHistory_(dataset, file, rawData, startedAt, expected
   return result;
 }
 
-function listRoutedDropFiles_(route) {
+function isLiveImportTemporaryFile_(name) {
+  const fileName = String(name || '').trim();
+  return fileName.startsWith('TEMP_') || fileName.startsWith('~$');
+}
+
+function listRoutedDropFiles_(route, dataset) {
   const folder = getDriveFolderByIdWithRetry_(route.dropFolderId, 'Routed import source');
   const iterator = listDriveFilesWithRetry_(folder, 'Routed import source');
+  const watermark = dataset ? readManualSyncLiveSourceWatermark_(dataset) : null;
   const files = [];
   while (iterator.hasNext()) {
     const file = iterator.next();
-    if (!String(file.getName()).startsWith('TEMP_') && isDriveAroundHistoricalFileSupported_(file.getName(), file.getMimeType())) files.push(file);
+    if (isLiveImportTemporaryFile_(file.getName()) || !isDriveAroundHistoricalFileSupported_(file.getName(), file.getMimeType())) continue;
+    const fileId = String(file.getId() || '');
+    const modifiedAt = Number(file.getLastUpdated().getTime());
+    if (watermark && (modifiedAt < watermark.modifiedAt || (modifiedAt === watermark.modifiedAt && fileId <= watermark.fileId))) continue;
+    files.push(file);
   }
-  return files.sort(function(a, b) {
-    const key = function(file) { return parseImportHistoryFilenameTimestamp_(file.getName())
-      || Utilities.formatDate(file.getLastUpdated(), DRIVE_AROUND_CANONICAL_TIMEZONE, 'yyyyMMddHHmmss'); };
-    return key(a).localeCompare(key(b)) || String(a.getId()).localeCompare(String(b.getId()));
+  files.sort(function(a, b) {
+    const modifiedDiff = b.getLastUpdated().getTime() - a.getLastUpdated().getTime();
+    if (modifiedDiff !== 0) return modifiedDiff;
+    const leftId = String(a.getId() || '');
+    const rightId = String(b.getId() || '');
+    return leftId === rightId ? 0 : (leftId > rightId ? -1 : 1);
   });
+  if (dataset && (dataset === 'soc' || dataset === 'reserves')
+      && typeof loadManualSyncStatus_ === 'function' && typeof readImportExtractionCheckpoint_ === 'function'
+      && typeof getImportSourceIdentity_ === 'function' && typeof importSourceIdentityMatches_ === 'function') {
+    const status = loadManualSyncStatus_();
+    const checkpoint = readImportExtractionCheckpoint_();
+    const activeStage = status && status.active === true && String(status.currentStage || '') === dataset
+      && checkpoint && String(checkpoint.stage || '') === dataset
+      && String(checkpoint.tableName || '') === route.tableName;
+    if (activeStage) {
+      const checkpointIndex = files.findIndex(function(file) {
+        return String(file.getId() || '') === String(checkpoint.fileId || '')
+          && importSourceIdentityMatches_(getImportSourceIdentity_(file, route.tableName), checkpoint);
+      });
+      if (checkpointIndex > 0) files.unshift(files.splice(checkpointIndex, 1)[0]);
+    }
+  }
+  return files;
 }
 
 function assertRoutedPendingSourceSelection_(dataset, expectedIdentity) {
   const route = getImportHistoryRoute_(dataset);
-  const selected = listRoutedDropFiles_(route)[0];
+  const selected = listRoutedDropFiles_(route, dataset)[0];
   if (!selected || !importSourceIdentityMatches_(expectedIdentity, getImportSourceIdentity_(selected, route.tableName))) {
     throw createImportPrewriteDeferralError_('IMPORT_SOURCE_SELECTION_CHANGED', 'source_selection');
   }
 }
 
 function runRoutedDropImport_(dataset) {
-  // Launch the one-time archive backfill on the first scheduled live sync.
-  // A trigger-creation failure must not interrupt a current live import.
-  try { if (!readImportHistoryBackfillState_()) startImportHistoryBackfill(); }
-  catch (error) { console.warn('[IMPORT HISTORY] BACKFILL_SCHEDULING_FAILED'); }
   return withDatasetImportProcessorLock_(function() {
     const route = getImportHistoryRoute_(dataset);
-    const files = listRoutedDropFiles_(route);
-    // One complete source per invocation bounds Google execution time. The
-    // existing manual-sync continuation resumes the next oldest file, so the
-    // newest source becomes the final live snapshot and none is skipped.
+    const files = listRoutedDropFiles_(route, dataset);
+    // Select the newest valid source for this live stage. Historical replay is
+    // independently scheduled and must never be started by an operational sync.
     if (!files.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0 };
-    const options = { deltaMode: true, historyDataset: dataset, historyFileId: String(files[0].getId()) };
+    const sourceFile = files[0];
+    const sourceWatermark = {
+      fileId: String(sourceFile.getId() || ''),
+      modifiedAt: Number(sourceFile.getLastUpdated().getTime())
+    };
+    const options = { deltaMode: true, historyDataset: dataset, historyFileId: sourceWatermark.fileId };
     const result = dataset === 'drive'
       ? processSnapshotBatchFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildMasterPayload, options)
       : processLatestFileOnlyFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildStandardPayload, options);
-    if (!result.failedFiles && !result.fatalFailure && result.filesProcessed > 0 && listRoutedDropFiles_(route).length) result.continuationPending = true;
+    if (!result.failedFiles && !result.fatalFailure && result.filesProcessed > 0) {
+      saveManualSyncLiveSourceWatermark_(dataset, sourceWatermark);
+      if (listRoutedDropFiles_(route, dataset).length) result.continuationPending = true;
+    }
     return result;
   });
 }
@@ -2267,7 +2326,11 @@ function getManualSyncStatusForClient_() {
   if (!status) return null;
   if (isManualSyncStatusStale_(status)) {
     const stageLabel = String(status.currentStageLabel || status.currentStage || 'manual sync');
-    return sanitizeManualSyncStatusForClient_(markManualSyncStatusStale_(status, `${stageLabel} did not update before the safety timeout.`));
+    const staleView = Object.assign({}, status, {
+      stale: true,
+      message: `${stageLabel} has not reported recently; its scheduled worker will reconcile the stage without clearing source state.`
+    });
+    return sanitizeManualSyncStatusForClient_(staleView);
   }
   return sanitizeManualSyncStatusForClient_(status);
 }
@@ -2350,6 +2413,7 @@ function createManualSyncQueuedStatus_(options) {
     completedStages: [],
     stageResults: [],
     sourceFailureCount: 0,
+    stageFailureCount: 0,
     startedAt: timestamp,
     updatedAt: timestamp,
     finishedAt: '',
@@ -2576,6 +2640,7 @@ function sanitizeManualSyncStatusForClient_(status) {
   const next = JSON.parse(JSON.stringify(status));
   next.runId = String(next.runId || '').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 40);
   next.sourceFailureCount = Math.max(0, Number(next.sourceFailureCount) || 0);
+  next.stageFailureCount = Math.max(0, Number(next.stageFailureCount) || 0);
   next.stageResults = (Array.isArray(next.stageResults) ? next.stageResults : []).map(function(result) {
     return {
       key: String(result && result.key || '').replace(/[^a-z0-9_]+/gi, '').slice(0, 64),
@@ -2735,28 +2800,62 @@ function runQueuedManualSyncStage_(options) {
       console.log('[MANUAL SYNC] No queued manual sync found.');
       return;
     }
+    status.stageFailureCount = Math.max(0, Number(status.stageFailureCount) || 0);
+    const stageOrder = Array.isArray(status.stageOrder) && status.stageOrder.length
+      ? status.stageOrder
+      : MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
     const recoveryCheckpoint = readImportExtractionCheckpoint_();
     const checkpointMatchesStage = recoveryCheckpoint
-      && String(recoveryCheckpoint.runId || '') === String(status.runId || '')
       && String(recoveryCheckpoint.stage || '') === String(status.currentStage || '') && (
       (status.currentStage === 'soc' && getSiteSplitLegacyTableName_(recoveryCheckpoint.tableName) === 'ph_soc_master') ||
       (status.currentStage === 'reserves' && getSiteSplitLegacyTableName_(recoveryCheckpoint.tableName) === 'ph_reserves')
     );
-    const stageStartedAtMs = parseManualSyncTimestampMs_(status.stageStartedAt || status.updatedAt || status.startedAt);
-    const stageWatchdogElapsed = stageStartedAtMs > 0 && Date.now() - stageStartedAtMs >= MANUAL_SYNC_STAGE_WATCHDOG_MS_;
+    const stageIndex = Number(status.stageIndex || 0);
+    const stageKey = String(status.currentStage || '');
+    const stageActivityAtMs = parseManualSyncTimestampMs_(status.updatedAt || status.stageStartedAt || status.startedAt);
+    const stageWatchdogElapsed = stageActivityAtMs > 0 && Date.now() - stageActivityAtMs >= MANUAL_SYNC_STAGE_WATCHDOG_MS_;
+    const recordAbandonedStage = function(errorCode) {
+      const stageDef = MANUAL_SYNC_STAGE_DEFINITIONS[stageKey];
+      if (stageOrder[stageIndex] !== stageKey || !stageDef) return false;
+      if (!Array.isArray(status.stageResults)) status.stageResults = [];
+      if (!Array.isArray(status.completedStages)) status.completedStages = [];
+      const completedAt = new Date().toISOString();
+      status.stageResults.push({
+        key: stageKey,
+        label: stageDef.label,
+        filesProcessed: 0,
+        tempFilesRemoved: 0,
+        failedFiles: 1,
+        skippedFiles: 0,
+        outcome: 'failed',
+        reasonCode: '',
+        errorCode: errorCode,
+        completedAt: completedAt
+      });
+      status.stageFailureCount += 1;
+      status.stageIndex = stageIndex + 1;
+      status.updatedAt = completedAt;
+      status.message = `${stageDef.label} ended without a worker result; its source state is retained. Continuing to the next independent stage.`;
+      saveManualSyncStatus_(status);
+      console.warn(`[MANUAL SYNC][${status.runId || 'unknown'}][${stageKey}] ${errorCode}; advancing while retaining source state.`);
+      return true;
+    };
     if (checkpointMatchesStage && stageWatchdogElapsed) {
       if (Math.max(0, Number(status.stageRecoveryCount) || 0) >= 1) {
-        markManualSyncStatusStale_(status, `${status.currentStageLabel || status.currentStage} did not recover after its single checkpointed retry.`);
-        return;
+        recordAbandonedStage('MANUAL_SYNC_CHECKPOINT_RECOVERY_EXHAUSTED');
+      } else {
+        status.stageRecoveryCount = Math.max(0, Number(status.stageRecoveryCount) || 0) + 1;
+        status.recoveryCount = Math.max(0, Number(status.recoveryCount) || 0) + 1;
+        status.stageStartedAt = new Date().toISOString();
+        status.stageStartedStage = status.currentStage;
+        status.updatedAt = status.stageStartedAt;
+        status.message = `${status.currentStageLabel || status.currentStage} is resuming its saved source extraction.`;
+        saveManualSyncStatus_(status);
+        console.warn(`[MANUAL SYNC][${status.runId || 'unknown'}] Resuming checkpointed ${status.currentStage} source extraction (${status.stageRecoveryCount}/1).`);
       }
-      status.stageRecoveryCount = Math.max(0, Number(status.stageRecoveryCount) || 0) + 1;
-      status.recoveryCount = Math.max(0, Number(status.recoveryCount) || 0) + 1;
-      status.stageStartedAt = new Date().toISOString();
-      status.stageStartedStage = status.currentStage;
-      status.updatedAt = status.stageStartedAt;
-      status.message = `${status.currentStageLabel || status.currentStage} is resuming its saved source extraction.`;
-      saveManualSyncStatus_(status);
-      console.warn(`[MANUAL SYNC][${status.runId || 'unknown'}] Resuming checkpointed ${status.currentStage} source extraction (${status.stageRecoveryCount}/1).`);
+    } else if (stageWatchdogElapsed && stageKey !== 'queued' && stageKey !== 'complete'
+        && stageKey !== 'failed' && stageKey !== 'stale_failed') {
+      recordAbandonedStage('MANUAL_SYNC_STAGE_ABANDONED');
     }
     if (isManualSyncStatusStale_(status)) {
       const staleStageLabel = String(status.currentStageLabel || status.currentStage || 'manual sync');
@@ -2765,12 +2864,21 @@ function runQueuedManualSyncStage_(options) {
       return;
     }
 
-    const stageOrder = Array.isArray(status.stageOrder) && status.stageOrder.length
-      ? status.stageOrder
-      : MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
-    const stageIndex = Number(status.stageIndex || 0);
-
-    if (stageIndex >= stageOrder.length) {
+    if (Number(status.stageIndex || 0) >= stageOrder.length) {
+      if (Number(status.stageFailureCount) > 0 || Number(status.sourceFailureCount) > 0) {
+        const nowIso = new Date().toISOString();
+        status.active = false;
+        status.currentStage = 'failed';
+        status.currentStageLabel = 'Stage Failures';
+        status.updatedAt = nowIso;
+        status.finishedAt = nowIso;
+        status.errorCode = 'MANUAL_SYNC_STAGE_FAILURES';
+        status.error = `Manual sync reached all ${stageOrder.length} stages with ${Number(status.stageFailureCount) || 0} failed stage${Number(status.stageFailureCount) === 1 ? '' : 's'} and ${Number(status.sourceFailureCount) || 0} invalid source file${Number(status.sourceFailureCount) === 1 ? '' : 's'}. Failed sources remain available for review and retry.`;
+        status.message = status.error;
+        saveManualSyncStatus_(status);
+        removeManualSyncStageTriggers_();
+        return;
+      }
       status.active = false;
       status.currentStage = 'complete';
       status.currentStageLabel = 'Complete';
@@ -2810,15 +2918,30 @@ function runQueuedManualSyncStage_(options) {
       try {
         stageResult = withDatasetImportProcessorLock_(function() { return stageDef.run(); }, lock) || {};
       } catch (stageError) {
-        if (!isImportPreparationDeferredError_(stageError)) throw stageError;
-        status.preparationRetryCount = Math.max(0, Number(status.preparationRetryCount) || 0) + 1;
-        if (status.preparationRetryCount > 3) throw new Error('IMPORT_PREPARATION_RETRIES_EXHAUSTED');
-        status.currentPhase = String(stageError.phase || 'preparation').replace(/[^a-z0-9_]+/gi, '').slice(0, 40);
-        status.updatedAt = new Date().toISOString();
-        status.message = `${stageDef.label} preparation deferred; retry ${status.preparationRetryCount}/3 is queued.`;
-        saveManualSyncStatus_(status);
-        scheduleManualSyncStageTrigger_();
-        break;
+        if (isImportPreparationDeferredError_(stageError)) {
+          status.preparationRetryCount = Math.max(0, Number(status.preparationRetryCount) || 0) + 1;
+          if (status.preparationRetryCount <= 3) {
+            status.currentPhase = String(stageError.phase || 'preparation').replace(/[^a-z0-9_]+/gi, '').slice(0, 40);
+            status.updatedAt = new Date().toISOString();
+            status.message = `${stageDef.label} preparation deferred; retry ${status.preparationRetryCount}/3 is queued.`;
+            saveManualSyncStatus_(status);
+            scheduleManualSyncStageTrigger_();
+            break;
+          }
+          const exhausted = new Error('IMPORT_PREPARATION_RETRIES_EXHAUSTED');
+          exhausted.errorCode = 'IMPORT_PREPARATION_RETRIES_EXHAUSTED';
+          stageError = exhausted;
+        }
+        const stageErrorCode = getSafeImportFailureCode_(stageError);
+        if (stageErrorCode === 'DATASET_IMPORT_LOCK_FAILED') throw stageError;
+        console.error(`[MANUAL SYNC][${status.runId || 'unknown'}][${stageKey}] Stage failed; later stages will continue. ${stageErrorCode}`);
+        stageResult = {
+          filesProcessed: 0,
+          failedFiles: 1,
+          error: 'Stage execution failed.',
+          errorCode: stageErrorCode,
+          failedFileErrors: [{ error: 'Stage execution failed.', errorCode: stageErrorCode }]
+        };
       }
       status.preparationRetryCount = 0;
       if (stageResult.continuationPending === true) {
@@ -2862,17 +2985,10 @@ function runQueuedManualSyncStage_(options) {
         completedAt: completedAt
       });
 
-      if (stageHasFailure && !recoverableSourceFailure) {
-        status.updatedAt = completedAt;
-        status.errorCode = sanitizeManualSyncErrorCode_(stageResult.errorCode || stageResult.error_code || (failedFileErrors[0] && failedFileErrors[0].errorCode), 'MANUAL_SYNC_STAGE_FAILED');
-        status.error = buildManualSyncStageFailureMessage_(stageDef, stageResult, status.errorCode);
-        status.message = status.error;
-        saveManualSyncStatus_(status);
-        throw new Error(status.error);
-      }
-
       if (recoverableSourceFailure) {
         status.sourceFailureCount = Math.max(0, Number(status.sourceFailureCount) || 0) + Math.max(failedFiles, failedFileErrors.length);
+      } else if (stageHasFailure) {
+        status.stageFailureCount = Math.max(0, Number(status.stageFailureCount) || 0) + 1;
       } else {
         status.completedStages.push(stageKey);
       }
@@ -2888,6 +3004,9 @@ function runQueuedManualSyncStage_(options) {
         ? `; ${failedFiles} invalid source file${failedFiles === 1 ? '' : 's'} left in the drop folder` +
           (Number(stageResult.skippedFiles) > 0 ? `; ${Number(stageResult.skippedFiles)} related file${Number(stageResult.skippedFiles) === 1 ? '' : 's'} held for review` : '')
         : '';
+      const stageFailureSummary = stageHasFailure && !recoverableSourceFailure
+        ? `; ${sanitizeManualSyncErrorCode_(stageResult.errorCode || stageResult.error_code || (failedFileErrors[0] && failedFileErrors[0].errorCode), 'MANUAL_SYNC_STAGE_FAILED')} recorded for review`
+        : '';
       const tempSummary = tempFilesRemoved > 0
         ? `, ${tempFilesRemoved} temp file${tempFilesRemoved === 1 ? '' : 's'} cleared`
         : '';
@@ -2896,11 +3015,15 @@ function runQueuedManualSyncStage_(options) {
       if (!hasMoreStages) {
         status.active = false;
         status.finishedAt = completedAt;
-        if (Number(status.sourceFailureCount) > 0) {
+      if (Number(status.sourceFailureCount) > 0 || Number(status.stageFailureCount) > 0) {
           status.currentStage = 'failed';
-          status.currentStageLabel = 'Source Validation';
-          status.errorCode = 'MANUAL_SYNC_SOURCE_FAILURES';
-          status.error = `Manual sync finished with ${Number(status.sourceFailureCount)} invalid source file${Number(status.sourceFailureCount) === 1 ? '' : 's'}. Failed files remain available for review and retry.`;
+          const sourceFailureCount = Number(status.sourceFailureCount) || 0;
+          const stageFailureCount = Number(status.stageFailureCount) || 0;
+          status.currentStageLabel = sourceFailureCount > 0 && stageFailureCount === 0 ? 'Source Validation' : 'Stage Failures';
+          status.errorCode = sourceFailureCount > 0 && stageFailureCount === 0
+            ? 'MANUAL_SYNC_SOURCE_FAILURES'
+            : 'MANUAL_SYNC_STAGE_FAILURES';
+          status.error = `Manual sync reached all ${stageOrder.length} stages with ${stageFailureCount} failed stage${stageFailureCount === 1 ? '' : 's'} and ${sourceFailureCount} invalid source file${sourceFailureCount === 1 ? '' : 's'}. Failed sources remain available for review and retry.`;
           status.message = status.error;
           saveManualSyncStatus_(status);
           removeManualSyncStageTriggers_();
@@ -2920,8 +3043,8 @@ function runQueuedManualSyncStage_(options) {
       const elapsedMs = Date.now() - invocationStartedAt;
       const shouldContinueInline = elapsedMs < nextStageStartCutoffMs && elapsedMs < executionBudgetMs;
       status.message = shouldContinueInline
-        ? `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${tempSummary}. Continuing to ${nextStageDef ? nextStageDef.label : nextStageKey}...`
-        : `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${tempSummary}. Queueing ${nextStageDef ? nextStageDef.label : nextStageKey}...`;
+        ? `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${stageFailureSummary}${tempSummary}. Continuing to ${nextStageDef ? nextStageDef.label : nextStageKey}...`
+        : `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${stageFailureSummary}${tempSummary}. Queueing ${nextStageDef ? nextStageDef.label : nextStageKey}...`;
       saveManualSyncStatus_(status);
       console.log(`[MANUAL SYNC][${status.runId}] ${status.message}`);
 
@@ -5777,9 +5900,7 @@ function processFolderLocked_(dropFolderId, processedFolderId, tableName, payloa
   while (files.hasNext()) {
     const file = files.next();
     const fileName = file.getName();
-    if (fileName.startsWith('TEMP_')) {
-      tempFilesRemoved++;
-      trashDriveFileWithRetry_(file, `${tableName} temp file ${fileName}`);
+    if (isLiveImportTemporaryFile_(fileName)) {
       continue;
     }
 
@@ -6029,6 +6150,7 @@ function processCustomerRepMapSnapshotLocked_() {
       const fileId = String(file.getId() || '').trim();
       if (!fileId || seenFileIds.has(fileId)) continue;
       seenFileIds.add(fileId);
+      if (isLiveImportTemporaryFile_(file.getName())) continue;
       pendingFiles.push({ file: file, folderId: sourceFolder.id });
     }
   });
@@ -6185,14 +6307,12 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   const deltaMode = !!(options && options.deltaMode);
   const files = listDriveFilesWithRetry_(dropFolder, `${tableName} drop folder`);
   const pendingFiles = [];
-  const tempFiles = [];
   let tempFilesRemoved = 0;
 
   while (files.hasNext()) {
     const file = files.next();
     const fileName = file.getName();
-    if (fileName.startsWith('TEMP_')) {
-      tempFiles.push(file);
+    if (isLiveImportTemporaryFile_(fileName)) {
       continue;
     }
     pendingFiles.push(file);
@@ -6201,12 +6321,6 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   const rejectionMarkerState = pruneImportSourceRejectionMarkers_(tableName, pendingFiles);
 
   if (!pendingFiles.length) {
-    tempFiles.forEach(function(file) {
-      tempFilesRemoved++;
-      trashDriveFileWithRetry_(file, `${tableName} temp file ${file.getName()}`);
-    });
-    const oldCheckpoint = readImportExtractionCheckpoint_();
-    if (oldCheckpoint && oldCheckpoint.tableName === tableName) clearImportExtractionCheckpoint_(oldCheckpoint);
     console.log(`[SKIP] No files found for ${tableName}.`);
     return {
       tableName: tableName,
@@ -6257,17 +6371,6 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     stage: String(activeStatus && activeStatus.active ? activeStatus.currentStage : getSiteSplitLegacyTableName_(tableName)),
     attempt: sameAttempt ? Number(priorCheckpoint.attempt || 1) + 1 : 1
   }) : null;
-  const deterministicTempName = buildImportTempSheetName_(sourceIdentity || {});
-  const checkpoint = readImportExtractionCheckpoint_();
-  tempFiles.forEach(function(file) {
-    const isCurrentCheckpoint = checkpoint && sourceIdentity
-      && importSourceIdentityMatches_(sourceIdentity, checkpoint)
-      && String(file.getId()) === String(checkpoint.tempSheetId);
-    const isCurrentDeterministic = sourceIdentity && String(file.getName()) === deterministicTempName;
-    if (isCurrentCheckpoint || isCurrentDeterministic) return;
-    tempFilesRemoved++;
-    trashDriveFileWithRetry_(file, `${tableName} stale temp file ${file.getName()}`);
-  });
   const olderFiles = pendingFiles.slice(1);
   const newestFileName = newestFile.getName();
   let skippedFilesArchived = 0;
@@ -6841,9 +6944,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
   while (files.hasNext()) {
     const file = files.next();
     const fileName = file.getName();
-    if (fileName.startsWith('TEMP_')) {
-      tempFilesRemoved++;
-      trashDriveFileWithRetry_(file, `${tableName} temp file ${fileName}`);
+    if (isLiveImportTemporaryFile_(fileName)) {
       continue;
     }
     pendingFiles.push(file);
@@ -6891,6 +6992,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
   const canonicalPhMasterBulk = isCanonicalPhMasterBulkSnapshot_(tableName, processedFolderId);
   let canonicalPhMasterPublished = false;
   let masterBulkPayload = null;
+  let writePhaseStarted = false;
 
   console.log(`[START] Processing snapshot batch: ${pendingFiles.length} file(s) -> Table: ${tableName}`);
 
@@ -6899,9 +7001,11 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       const fileName = file.getName();
       console.log(`[PARSE] ${fileName}`);
       try {
+        assertImportTimeBudget_('snapshot_source_parse', 65000);
         const sourceIdentity = canonicalPhMasterBulk ? getImportSourceIdentity_(file, tableName) : null;
         if (canonicalPhMasterBulk && !sourceIdentity) throw new Error('MASTER_BULK_SOURCE_IDENTITY_UNAVAILABLE');
         const rawData = extractDataFromFile(file, dropFolderId);
+        assertImportTimeBudget_('snapshot_parse_finalization', 65000);
         if (!rawData || rawData.length < 2) {
           throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No data rows were found in ${fileName}.`);
         }
@@ -7019,8 +7123,10 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
 
     if (canonicalPhMasterBulk) revalidateCanonicalMasterSnapshotSources_(parsedFiles);
     if (options && options.historyDataset) assertRoutedPendingSourceSelection_(options.historyDataset, parsedFiles[0].sourceIdentity);
+    assertImportTimeBudget_('snapshot_publication', 65000);
     revisionFence = beginDatasetImportFenceIfNeeded_(tableName,
       canonicalPhMasterBulk ? true : (upserts.length || deletes.length));
+    writePhaseStarted = true;
     if (canonicalPhMasterBulk) {
       if (!revisionFence || !revisionFence.runId) throw new Error('MASTER_BULK_IMPORT_FENCE_UNAVAILABLE');
       const bulkResult = callMasterBulkSnapshotImport_(masterBulkPayload, revisionFence.runId);
@@ -7087,6 +7193,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     }
     importSucceeded = true;
   } catch (err) {
+    if (isImportPreparationDeferredError_(err) && !writePhaseStarted) throw err;
     failDatasetImportFence_(revisionFence);
     if (err && err.errorCode === 'IMPORT_HISTORY_CONTINUATION_PENDING') return importHistoryContinuationResult_(tableName, err);
     const errorMessage = err && err.message ? err.message : String(err);
@@ -8564,6 +8671,7 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
   let unsupportedFiles = 0;
   while (iterator.hasNext()) {
     const file = iterator.next();
+    if (isLiveImportTemporaryFile_(file.getName())) continue;
     if (file.getMimeType() === 'application/pdf' || /\.pdf$/i.test(file.getName())) files.push(file);
     else unsupportedFiles++;
   }
@@ -8971,11 +9079,7 @@ function syncTransactionsKeyedFolder_(sourceFolderId, processedFolderId) {
   while (iterator.hasNext()) {
     const file = iterator.next();
     const fileName = String(file.getName() || '').trim();
-    if (fileName.startsWith('TEMP_')) {
-      tempFilesRemoved++;
-      trashDriveFileWithRetry_(file, `Transactions Keyed temp file ${fileName}`);
-      continue;
-    }
+    if (isLiveImportTemporaryFile_(fileName)) continue;
     if (!isTransactionsKeyedFileSupported_(file)) {
       unsupportedFiles++;
       continue;
@@ -9393,11 +9497,7 @@ function syncPikesOrdersFolder_(sourceFolderId, processedFolderId, options) {
   while (iterator.hasNext()) {
     const file = iterator.next();
     const fileName = String(file.getName() || '').trim();
-    if (fileName.startsWith('TEMP_')) {
-      tempFilesRemoved++;
-      trashDriveFileWithRetry_(file, `${sourceLabel} Orders temp file ${fileName}`);
-      continue;
-    }
+    if (isLiveImportTemporaryFile_(fileName)) continue;
     if (!isPikesOrderFileSupported_(file)) {
       unsupportedFiles++;
       continue;
