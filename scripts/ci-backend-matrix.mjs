@@ -1,3 +1,4 @@
+import { verifyV2310RetainedValidation } from './check-v2310-retained-validation.mjs';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -11,6 +12,10 @@ export function backendTestMatrices({ root } = {}) {
   const entrypoints = discoverTests({ root, group: 'deno-entrypoints' });
   const tests = discoverTests({ root, group: 'deno-tests' });
 
+  if (packageVersion === '2.3.10') {
+    verifyV2310RetainedValidation({ rootDir: repositoryRoot });
+    return { pglite: [], edge: { include: [{ suite: 'app-api-static', targets: ['supabase/functions/app-api/index.ts'], tests: [] }] } };
+  }
   if (packageVersion === '2.3.9') {
     verifyV239RetainedValidation({ rootDir: repositoryRoot });
     return {

@@ -204,7 +204,14 @@
         // still request their normal complete source adapters.
         const pagedReport = context.pagedReportSurface && !requestedSurfaces.some(id => id.startsWith('dialog:'));
         const reportAdapter = { eval1:'reportEval1', eval2:'reportEval2', ncr:'reportNcr', 'assigned-items':'reportAssigned', 'season-priority':'reportSeason', approval:'reportApproval' }[context.pagedReportSurface];
-        const entries = [pagedReport ? data([], reportAdapter ? ['settings', reportAdapter] : []) : requestBunchNotes ? data([], ['bunchQueue'])
+        const avOpen = viewId === 'av';
+        const avTab = String(context.avTab || 'open').trim().toLowerCase();
+        const avBucket = String(context.avSalesBucket || 'current').trim().toLowerCase();
+        const avDatasets = avOpen ? ['avOpen', 'master', 'reserves'] : null;
+        if (avOpen && (context.avRepCustomerFilterData === true || avTab === 'reserves'
+            || avBucket === 'customer' || avBucket === 'customer-open')) avDatasets.push('customerRepMap');
+        if (avOpen && avBucket === 'hot-price') avDatasets.push('avHotPriceKeys');
+        const entries = [pagedReport ? data([], reportAdapter ? ['settings', reportAdapter] : []) : avOpen ? data(avDatasets, ['settings']) : requestBunchNotes ? data([], ['bunchQueue'])
             : requestArchived ? data([], [])
             : requestPending ? data(['requests'])
             : requestSuspendTag ? data([])

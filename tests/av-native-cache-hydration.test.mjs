@@ -150,11 +150,31 @@ test(`AV page rendering keeps bounded progress and preserves interaction pacing 
   const delays = [];
   const batches = [];
   const generatedPerFrame = [];
+  const continuationGeneratedPerFrame = [];
   const publicationOptions = [];
   const selectionRefreshes = [];
   let generated = 0;
   let now = 1;
-  const container = { classList: { add() {} }, style: {}, insertAdjacentHTML() {} };
+  const generatedRows = [];
+  const loadMoreButton = {
+    disabled: false,
+    isConnected: true,
+    listeners: {},
+    addEventListener(type, callback) { this.listeners[type] = callback; },
+    insertAdjacentHTML(_position, html) {
+      const ids = html.split(',').filter(value => /^row-\d+$/.test(value));
+      generatedRows.push(...ids);
+    },
+    remove() { this.isConnected = false; },
+  };
+  const container = {
+    classList: { add() {} }, style: {}, dataset: {}, _avCardWindow: null,
+    querySelector(selector) { return selector === '[data-av-load-more]' && loadMoreButton.isConnected ? loadMoreButton : null; },
+    insertAdjacentHTML(_position, html) {
+      const ids = html.split(',').filter(value => /^row-\d+$/.test(value));
+      generatedRows.push(...ids);
+    },
+  };
   const context = {
     avRenderChunkToken: 0, CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 560, IOS_CHUNK_FRAME_BUDGET_MS: 3,
     beginInternalPerfMeasure: () => now, clearChunkRenderTimersByKey() {},
@@ -164,38 +184,74 @@ test(`AV page rendering keeps bounded progress and preserves interaction pacing 
     window: { matchMedia: () => ({ matches: false }) }, Date, Math, Array,
     getContainerRenderSignature: () => '', incrementInternalPerfCounter() {},
     recordInternalPerfDuration() {}, setContainerRenderSignature() {},
+    getCurrentVisibleViewId: () => 'av', IntersectionObserver: undefined,
     getChunkRenderPacing: target => ({ batchTarget: target, timeBudget: 5.5, frameDelayMs: interacting ? 24 : 0, liveGestureActive: false, interactionSlowMode: interacting }),
-    performance: { now: () => now }, generateCard: row => { now += 7; generated += 1; return `${row},`; },
-    setContainerHtml: (_container, html, options) => { batches.push(html.split(',').filter(Boolean).length); publicationOptions.push(options); },
+    performance: { now: () => now }, generateCard: row => { now += 7; generated += 1; return `${row.DOM_ID},`; },
+    setContainerHtml: (_container, html, options) => {
+      const ids = html.split(',').filter(value => /^row-\d+$/.test(value));
+      batches.push(ids.length);
+      generatedRows.push(...ids);
+      publicationOptions.push(options);
+    },
     captureProductionRefreshAnchor: () => null, restoreProductionRefreshAnchor() {},
     refreshCartButtons: rows => selectionRefreshes.push(rows),
-    appendHtmlFragment: (_container, html) => batches.push(html.split(',').filter(Boolean).length),
+    appendHtmlFragment: (_container, html) => {
+      const ids = html.split(',').filter(value => /^row-\d+$/.test(value));
+      batches.push(ids.length);
+      generatedRows.push(...ids);
+    },
     requestAnimationFrame: callback => frames.push(callback),
     shouldHoldFollowupChunkFramesForInteraction: () => false,
     isUserInLiveTouchScrollGesture: () => false,
     scheduleChunkRenderTimeout: (_key, callback, delay) => { delays.push(delay); frames.push(callback); },
+    scheduleDeferredCardPhotoHydration() {},
   };
   vm.createContext(context);
-  vm.runInContext(appFunction('renderAVOpenCardsChunked'), context);
-  context.renderAVOpenCardsChunked(container, {}, Array.from({ length: 100 }, (_, index) => index), 'av', 'Current Season');
+  vm.runInContext(appFunction('getAvCardWindowEnd') + '\n' + appFunction('installAvCardWindowContinuation') + '\n' + appFunction('renderAVOpenCardsChunked'), context);
+  context.renderAVOpenCardsChunked(container, {}, Array.from({ length: 100 }, (_, index) => ({ DOM_ID: `row-${index}` })), 'av', 'Current Season');
   let turns = 0;
   while (frames.length && turns++ < 250) {
     const before = generated;
     frames.shift()();
     generatedPerFrame.push(generated - before);
   }
-  assert.equal(batches[0], atomic ? 100 : interacting ? 1 : 4, 'a complete native cohort should publish once after bounded preparation');
-  if (atomic) assert.equal(batches.length, 1, 'avoid repeated layout of the growing full live page');
+  assert.equal(generatedRows.length, 20, 'initial rendering must stop at the first bounded card window');
+  assert.equal(container.dataset.avWindowCount, '20');
+  assert.ok(loadMoreButton.listeners.click, 'a continuation control must be installed after the first window');
+  assert.equal(batches[0], atomic ? 20 : interacting ? 1 : 4, 'the initial window publishes only after bounded preparation');
+  if (atomic) assert.equal(batches.length, 1, 'avoid repeated layout of the growing live page');
   if (atomic) {
     assert.ok(generatedPerFrame.some(size => size === 12));
     assert.equal(publicationOptions[0]?.preserveLiveNodes, true);
     assert.equal(selectionRefreshes.length, 1, 'selection is reconciled at publication, not captured at preparation time');
   }
-  assert.equal(batches.reduce((sum, size) => sum + size, 0), 100);
   assert.ok(generatedPerFrame.every(size => size <= 12), 'the renderer must remain bounded');
   if (interacting) assert.ok(delays.length > 0 && delays.every(delay => delay === 24));
   else if (atomic) assert.ok(delays.length > 0 && delays.every(delay => delay === 0), 'detached HTML preparation should yield without waiting for a visual frame');
   else assert.deepEqual(delays, [], 'visible incremental rendering should continue on the next animation frame');
+
+  const loadNextWindow = () => {
+    loadMoreButton.listeners.click();
+    let continuationTurns = 0;
+    while (frames.length && continuationTurns++ < 100) {
+      const before = generated;
+      frames.shift()();
+      continuationGeneratedPerFrame.push(generated - before);
+    }
+    assert.ok(continuationTurns < 100, 'continuation must finish without an unbounded frame loop');
+  };
+  while (container._avCardWindow?.index < 100 && turns++ < 500) {
+    loadNextWindow();
+    assert.equal(Number(container.dataset.avWindowCount) % 20, 0, 'continuation advances by complete bounded windows');
+    if (container._avCardWindow?.index < 100) assert.equal(loadMoreButton.isConnected, true);
+  }
+  assert.equal(container.dataset.avWindowCount, '100');
+  assert.equal(loadMoreButton.isConnected, false, 'the continuation control is removed after the final window');
+  assert.equal(generatedRows.length, 100);
+  assert.equal(new Set(generatedRows).size, 100, 'continuation must neither duplicate nor skip card rows');
+  assert.deepEqual(generatedRows, Array.from({ length: 100 }, (_, index) => `row-${index}`));
+  assert.ok(continuationGeneratedPerFrame.every(size => size <= 4), 'each Show More frame must prepare at most four rich cards');
+  assert.ok(selectionRefreshes.some(rows => rows.length === 100), 'selection state is refreshed as the visible window grows');
 });
 }
 
