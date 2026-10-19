@@ -1,0 +1,24 @@
+{
+  "release": "AgData v2.3.6",
+  "base": "5d89883c4031e6c56e3134bc7fbb6bd18b4fbc92",
+  "baselineCiRun": 39200170986,
+  "baselinePagesRun": 39200394092,
+  "retainedNode": 3550,
+  "retainedReact": 158,
+  "baselineReceipt": "docs/releases/v2.3.6-retained-validation.json",
+  "focusedReactFile": "tests/bunch-queue-view.test.tsx",
+  "authorization": "Explicit user request: AV Sales Rep visibility correction and retained Bunch detail workflow; targeted unit/browser validation only, no full Node/React/SQL reruns.",
+  "validatedSourceHashes": {
+    "index.html": "21ed2171b02a28ac304a660bd40c0243d4da6637dbb042b8b180b0523518d81e",
+    "sw.js": "28bf8552746ca0c82fa48ba8609c88a7e1bf9c90414b3cb8fb8eb78478cefbc6",
+    "tests/av-sales-stock-visibility.test.mjs": "106c1413cb4f08f3dbe17333789b4fbf06cd17aa6d2b57f5ffb04fc3b2a0ed4f",
+    "tests/av-sales-stock-visibility.e2e.spec.ts": "eb80839bb7224178c2c887acc42212aaf9030589a83b92196d468f970f6f3d98",
+    "assets/bunch-queue-shell.js": "dc944df99d3b9fa2620c2243f5483807ffb5554f3c4b9693a913dc332c45ac4f",
+    "tests/bunch-queue-shell.test.mjs": "d609590a48d6032e560363b504e875bd48086df075e525920a82a6cd1729becb",
+    "tests/bunch-queue.e2e.spec.ts": "6a912af42e4bacaf5c17afe95e37f86bab80d275611285512c77504fe9be9e2f"
+  },
+  "focusedNodeFiles": [
+    "tests/av-sales-stock-visibility.test.mjs",
+    "tests/bunch-queue-shell.test.mjs"
+  ]
+}

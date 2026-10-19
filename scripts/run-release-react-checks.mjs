@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyV235RetainedValidation } from './check-v235-retained-validation.mjs';
 import { verifyV236RetainedValidation } from './check-v236-retained-validation.mjs';
+import { verifyV236AvRetainedValidation } from './check-v236-av-retained-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const focusedFile = 'tests/bunch-queue-view.test.tsx';
@@ -26,7 +27,8 @@ export function runReleaseReactChecks({
     return 0;
   }
   if (version === '2.3.6') {
-    const evidence = verifyV236RetainedValidation({ rootDir });
+    const evidence = fs.existsSync(path.join(rootDir, 'docs/releases/v2.3.6-av-retained-validation.json'))
+      ? verifyV236AvRetainedValidation({ rootDir }) : verifyV236RetainedValidation({ rootDir });
     print(`Retaining ${evidence.retainedReactPassed} baseline React tests; running only ${focusedFile}.`);
   }
 

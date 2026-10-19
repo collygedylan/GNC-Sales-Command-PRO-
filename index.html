@@ -3863,6 +3863,26 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
                 display:none !important;
             }
         }
+        @media (max-width:720px),(pointer:coarse){
+            /* The AV customer chooser lives inside the compact Filters disclosure.
+               Keep its options in that panel's scroll flow: a fixed descendant is
+               clipped/stacked by the disclosure's overflow and backdrop-filter. */
+            #view-av #av-top-filters.av-top-inline .mobile-browse-filter-panel
+            [data-av-filter-shell="customer"].av-filter-shell--open > .task-top-control-panel.av-excel-filter-panel--floating{
+                position:static !important;
+                inset:auto !important;
+                width:100% !important;
+                min-width:0 !important;
+                max-width:none !important;
+                height:auto !important;
+                min-height:0 !important;
+                max-height:min(38vh,22rem) !important;
+                margin:.375rem 0 0 !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                z-index:auto !important;
+            }
+        }
         #drive-season-filters.drive-top-inline .drive-filter-reset-row,
         #view-av #av-top-filters.av-top-inline .av-filter-reset-row{
             display:flex !important;
@@ -37120,7 +37140,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (key === 'avOpen') key = 'master';
             const definition = DATASET_DEFINITIONS[key];
             if (!definition) throw new Error(`Unknown live dataset: ${key}`);
-            const projection = key === 'master' && requestedMode === 'full' ? 'full' : 'browse';
+            const projection = requestedMode === 'full' ? 'full' : 'browse';
             // Navigation and direct ensures share the same bounded Eval2 snapshot reader.
             const pageConcurrency = key === 'master' && projection === 'full'
                 && typeof getCurrentVisibleViewId === 'function'
@@ -37189,7 +37209,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const pendingMasterFullHydrations = new Map();
 
         function getProductionCoreLiveProjection(key, viewId, context = {}) {
-            if (key !== 'master') return 'browse';
+            const coreKey = key === 'avOpen' ? 'master' : key;
+            if (viewId === 'av' && activeAVTab === 'open' && shouldUseRepAvOpenDataset()
+                && (coreKey === 'master' || coreKey === 'reserves')) return 'full';
+            if (coreKey !== 'master') return 'browse';
             if (pendingMasterFullHydrations.has(JSON.stringify([getSupabaseReadIdentityScope(), viewId]))) return 'full';
             const surfaces = Array.isArray(context.surfaces) ? context.surfaces : [];
             // These foreground workflows consume full source rows while open.
@@ -43583,10 +43606,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (shouldUseRepAvOpenDataset()) {
                     const required = [{ key: 'avOpen', mode: 'full' }];
                     const background = [];
-                    if (shouldPrepareAvRepCustomerFilterData()) {
-                        required.push({ key: 'reserves', mode: 'full' });
-                        background.push({ key: 'customerRepMap', mode: 'full' });
-                    }
+                    // Rep AV visibility depends on both the complete seasonal
+                    // inventory and the rep's complete reserve itemcode set.
+                    // Loading reserves only after opening the customer filter
+                    // makes the default Current Season count/export incomplete.
+                    required.push({ key: 'reserves', mode: 'full' });
+                    if (shouldPrepareAvRepCustomerFilterData()) background.push({ key: 'customerRepMap', mode: 'full' });
                     return withEvalInventoryEditRequestsForRowView({ required, background, label: 'Loading verified AV season rows...' });
                 }
                 return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading verified AV season rows from Drive Mode rows...' });
@@ -88858,8 +88883,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function getAvOpenRowsForView() {
             const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
             const avRows = Array.isArray(avOpenInventory) ? avOpenInventory : [];
-            if (shouldUseRepAvOpenDataset() && avRows.length) {
-                return applyAvOpenSalesWindowScope(applyRepU3VisibilityScope(avRows)).filter((item) => !isShiftDesigItemRow(item));
+            if (shouldUseRepAvOpenDataset()) {
+                const sourceRows = selectAvSalesInventorySourceRows();
+                return applyAvOpenSalesWindowScope(applyRepU3VisibilityScope(sourceRows)).filter((item) => !isShiftDesigItemRow(item));
             }
             const masterReady = masterRows.length > 0 && (
                 isDatasetLoaded('master', 'full')
@@ -89030,12 +89056,21 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function selectAvSalesInventorySourceRows() {
             const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
             const avRows = Array.isArray(avOpenInventory) ? avOpenInventory : [];
-            if (shouldUseRepAvOpenDataset() && avRows.length) return avRows;
             const masterReady = masterRows.length > 0 && (
                 isDatasetLoaded('master', 'full')
                 || masterRows.length > avRows.length
                 || !avRows.length
             );
+            if (shouldUseRepAvOpenDataset()) {
+                const masterComplete = isDatasetLoaded('master', 'full');
+                const avOpenComplete = isDatasetLoaded('avOpen', 'full');
+                if (avOpenComplete) return avRows;
+                if (masterComplete) return masterRows;
+                // Before either full snapshot completes, use whichever preview
+                // has more rows. The view loading gate keeps that preview from
+                // being presented as a final count or export cohort.
+                return masterRows.length > avRows.length ? masterRows : (avRows.length ? avRows : masterRows);
+            }
             return masterReady ? masterRows : (avRows.length ? avRows : masterRows);
         }
 
@@ -89047,13 +89082,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return applyRepU3VisibilityScope(salesWindowRows);
         }
 
-        function itemMatchesAvSalesBucket(item = null, bucket = activeAvSalesBucket, reserveRows = []) {
+        function itemMatchesAvSalesBucket(item = null, bucket = activeAvSalesBucket, reserveRows = [], hasOpenStockOverride = false, hasReserveOverride = false) {
             const safeBucket = normalizeAvSalesBucket(bucket);
             if (safeBucket === 'hot-price') return true;
             if (safeBucket === 'hold') return itemHasAvHoldCode(item);
             if (safeBucket === 'stop') return itemHasAvStopCode(item);
-            if (safeBucket === 'customer') return reserveRows.length > 0;
-            if (safeBucket === 'customer-open') return reserveRows.length > 0 || shouldIncludeMasterItemInAvOpenStock(item);
+            if (safeBucket === 'customer') return reserveRows.length > 0 || hasReserveOverride;
+            if (safeBucket === 'customer-open') return reserveRows.length > 0 || hasReserveOverride
+                || hasOpenStockOverride || shouldIncludeMasterItemInAvOpenStock(item);
             if (safeBucket === 'next-up') return itemMatchesAvNextUpBucket(item);
             if (safeBucket === 'summer-sales') return itemMatchesAvSummerSalesBucket(item);
             if (safeBucket === 'u2') return itemMatchesAvU2Bucket(item);
@@ -89066,12 +89102,30 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const safeBucket = normalizeAvSalesBucket(bucket);
             const reserveRows = getAvSalesReserveDemandRows(safeBucket);
             const reserveSeasonIndex = buildAvReserveSeasonIndex(reserveRows);
+            const repReserveItemCodes = shouldUseRepAvOpenDataset()
+                ? new Set(reserveRows.map((row) => getAvSalesItemCode(row)).filter(Boolean))
+                : null;
             const seen = new Set();
             const hotPriceIndex = safeBucket === 'hot-price' ? buildAvHotPriceIndex() : null;
             const sourceRows = safeBucket === 'hot-price'
                 ? (Array.isArray(fullInventory) ? fullInventory : [])
                 : getAvSalesInventorySourceRows({ skipSalesWindow: true });
-            const requireOpenOrReserve = isAvCustomerSalesBucket(safeBucket);
+            const requireOpenOrReserve = isAvCustomerSalesBucket(safeBucket) || shouldUseRepAvOpenDataset();
+            const openStockItemSeasons = new Set();
+            if (repReserveItemCodes) {
+                sourceRows.forEach((row) => {
+                    if (!row || !shouldIncludeMasterItemInAvOpenStock(row)) return;
+                    const itemCode = getAvSalesItemCode(row);
+                    const season = getAvSalesSeasonValue(row);
+                    const allowShiftRow = safeBucket === 'next-up' && season === 'S1';
+                    if (shouldHideU3InventoryRowForRep(row)
+                        || !itemMatchesAvOpenSalesWindow(row)
+                        || !AV_FILTER_SEASON_OPTIONS.includes(season)
+                        || (!allowShiftRow && isShiftDesigItemRow(row))
+                        || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return;
+                    if (itemCode && season) openStockItemSeasons.add(`${itemCode}|||${season}`);
+                });
+            }
             const preparedEpoch = resolvedViewStateEpoch;
             const rawGroups = {
                 all: { members: new Set(), genus: new Set(), sizes: new Set() },
@@ -89091,9 +89145,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if ((!allowShiftRow && isShiftDesigItemRow(row)) || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return null;
                 if (!AV_FILTER_SEASON_OPTIONS.includes(season)) return null;
                 const matchedReserveRows = getAvReserveRowsForSalesItem(row, reserveSeasonIndex);
-                const hasOpenStock = shouldIncludeMasterItemInAvOpenStock(row);
-                if (requireOpenOrReserve && !hasOpenStock && !matchedReserveRows.length) return null;
-                if (!itemMatchesAvSalesBucket(row, safeBucket, matchedReserveRows)) return null;
+                const itemCode = getAvSalesItemCode(row);
+                const itemSeasonKey = `${itemCode}|||${season}`;
+                const hasOpenStock = shouldIncludeMasterItemInAvOpenStock(row)
+                    || (requireOpenOrReserve && openStockItemSeasons.has(itemSeasonKey));
+                const hasReserve = repReserveItemCodes
+                    ? repReserveItemCodes.has(itemCode)
+                    : matchedReserveRows.length > 0;
+                if (requireOpenOrReserve && !hasOpenStock && !hasReserve) return null;
+                if (!itemMatchesAvSalesBucket(row, safeBucket, matchedReserveRows, hasOpenStock, hasReserve)) return null;
                 const uniqueKey = getAvReserveLocationUniqueKey(row) || String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.DOM_ID, `${getAvSalesItemCode(row)}|${firstNonEmptyValue(row && row.LOCATIONCODE, '')}|${firstNonEmptyValue(row && row.LOTCODE, '')}`));
                 if (uniqueKey && seen.has(uniqueKey)) return null;
                 if (uniqueKey) seen.add(uniqueKey);
