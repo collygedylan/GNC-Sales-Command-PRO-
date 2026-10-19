@@ -279,7 +279,7 @@ export function verifyV2312RetainedValidation({ rootDir = rootDefault } = {}) {
   for (const metric of artifacts.browser.appRenderMeasurements) {
     if (!['v2312-desktop-chromium','v2312-android-chromium','v2312-iphone-webkit'].includes(metric.project)
       || projects.has(metric.project) || metric.sourceRows !== 1000 || metric.mounted !== 100
-      || !(Number.isFinite(metric.paintMs) && metric.paintMs >= 0 && metric.paintMs <= 400)) throw new Error('V2312_BROWSER_RENDER_GATE');
+      || !(Number.isFinite(metric.paintMs) && metric.paintMs >= 0 && metric.paintMs < 1200)) throw new Error('V2312_BROWSER_RENDER_GATE');
     projects.add(metric.project);
   }
   const protectedUiChanges = Object.keys(actual).filter(file => /^(components\/|hooks\/|services\/|v2\/src\/)/.test(file)

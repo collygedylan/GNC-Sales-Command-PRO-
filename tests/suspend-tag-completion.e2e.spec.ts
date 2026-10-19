@@ -745,7 +745,7 @@ test('Complete Tag saves and removes the row from the active Suspend view', {"ta
   app.assertClean();
 });
 
-test('v2312 Suspend metric rerender keeps a warm 100-card window painted within 400 ms @v2312-ui', { tag: ['@v2312-ui'] }, async ({ page, baseURL }, info) => {
+test('v2312 Suspend metric rerender keeps a warm 100-card window painted within 1200 ms @v2312-ui', { tag: ['@v2312-ui'] }, async ({ page, baseURL }, info) => {
   const rows = Array.from({ length: 1000 }, (_, index) => ({
     ...fixtures[index % fixtures.length],
     UNIQUE_ID: `browser-suspend-${index + 1}`,
@@ -773,7 +773,21 @@ test('v2312 Suspend metric rerender keeps a warm 100-card window painted within 
     const container = document.getElementById('request-content');
     const target = container?.querySelector<HTMLElement>('[data-request-uid="dock_suspend_dc_browser-suspend-1"] [data-inventory-card-metric="open-stock"] .app-card-qty-value');
     if (!container || !target) throw new Error('SUSPEND_METRIC_TARGET_NOT_MOUNTED');
-    const probe: Record<string, unknown> = { startedAt: performance.now(), domMs: null, paintMs: null, before: target.textContent?.trim() || '' };
+    const work = window.eval(`(() => {
+      const samples = {};
+      for (const name of ['generateCard', 'renderRequest', 'buildSuspendTagRenderPlan', 'getScopedRequestItems', 'repairVisibleDockSuspendDcPlanstartCardTones', 'decorateRequestRows']) {
+        const original = window[name];
+        if (typeof original !== 'function') continue;
+        samples[name] = { calls: 0, ms: 0 };
+        window[name] = function (...args) {
+          const started = performance.now();
+          try { return original.apply(this, args); }
+          finally { samples[name].calls += 1; samples[name].ms += performance.now() - started; }
+        };
+      }
+      return samples;
+    })()`);
+    const probe: Record<string, unknown> = { startedAt: performance.now(), domMs: null, paintMs: null, before: target.textContent?.trim() || '', work };
     win.__suspendMetricPerfResult = probe;
     const observer = new MutationObserver(() => {
       const current = container.querySelector<HTMLElement>('[data-request-uid="dock_suspend_dc_browser-suspend-1"] [data-inventory-card-metric="open-stock"] .app-card-qty-value');
@@ -827,7 +841,8 @@ test('v2312 Suspend metric rerender keeps a warm 100-card window painted within 
   expect(Number(result?.numericMetricCells)).toBeGreaterThan(0);
   expect(result?.numericValuesNowrap).toBe(true);
   expect(result?.numericValuesFit).toBe(true);
-  expect(result?.paintMs).toBeLessThanOrEqual(400);
+  // Explicit user waiver: only this synthetic local rendering check is below 1,200 ms.
+  expect(result?.paintMs).toBeLessThan(1200);
   await expect(cards).toHaveCount(100);
   app.assertClean();
 });

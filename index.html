@@ -116595,6 +116595,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (parentSurface && !targets.includes(parentSurface)) targets.push(parentSurface);
             targets.forEach((target) => {
                 if (!target || !target.classList) return;
+                const desiredToneClasses = new Set([info.className, info.legacyClassName]);
+                const toneClassesMatch = toneClasses.every((className) => (
+                    target.classList.contains(className) === desiredToneClasses.has(className)
+                ));
+                const toneDataMatches = target.dataset
+                    && target.dataset.planstartValue === info.value
+                    && target.dataset.planstartTone === info.tone
+                    && target.dataset.planstartValid === (info.valid ? 'true' : 'false');
+                const desiredToneClassesPresent = target.classList.contains(info.className)
+                    && target.classList.contains(info.legacyClassName);
+                if (toneClassesMatch && toneDataMatches && desiredToneClassesPresent) return;
                 toneClasses.forEach((className) => target.classList.remove(className));
                 target.classList.add(info.className, info.legacyClassName);
                 if (target.dataset) {
@@ -120239,7 +120250,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                             scheduleDeferredCardPhotoHydration(cardContainer);
                         }
                         repairVisibleDockSuspendDcPlanstartCardTones(rootContainer);
-                        decorateRequestRows();
+                        // A retained Suspend snapshot is already atomically
+                        // published and has no Pending swipe rows. On iPhone,
+                        // avoid the Pending-only swipe cleanup/layout audit in
+                        // this metric refresh; initial navigation still runs it.
+                        if (retainCards && isIOSDevice()) {
+                            closeAllRequestSwipes();
+                            releaseRequestSwipeMoveListener();
+                        } else decorateRequestRows();
                         syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
                     },
                     // Retained pages are staged off-DOM, but their completed
@@ -120247,7 +120265,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     // immediately after the latest chunk finishes instead of
                     // routing the atomic apply through touch-idle decoration.
                     onCompleteAfterInteractive: !retainCards,
-                    ...(retainCards ? { completionDeadlineMs: 250, completionDeadlineDrainAll: true } : {}),
+                    ...(retainCards ? { completionDeadlineMs: isIOSDevice() ? 1 : 250, completionDeadlineDrainAll: true } : {}),
                     onCompleteDelayMs: 140
                 }));
             if (stage && cardContainer.__suspendPageStage === stage) {
@@ -150655,12 +150673,23 @@ C.14.043 C.15.000
 
             const isChecked=selectedItems.has(item.DOM_ID)?'checked':'';
             const isAvCatalogCard = sourceView === 'av' || sourceView === 'av-photo';
-            const cardDesignChipsHtml = isAvCatalogCard ? '' : buildInventoryCardFieldChipsHtml(item);
+            const isDocksRequestCard = String(sourceView || '').trim().toLowerCase() === 'request' && (
+                item.DOCK_SUSPEND_DC_REQUEST === true
+                || String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase() === 'ph_soc_master'
+                || String(firstNonEmptyValue(item.REQUEST_SOURCE, item.request_source, '') || '').trim().toLowerCase() === 'docks'
+            );
+            const isSuspendTagRequestCard = String(sourceView || '').trim().toLowerCase() === 'request'
+                && activeReqTab === 'suspend-tag'
+                && (isDockSuspendDcRequestMirrorRow(item) || isDocksRequestCard);
+            // Suspend cards build their own six-metric strip and detail chips below.
+            // These legacy generic chips are not referenced by the request-card branch.
+            const skipLegacyInventoryChips = isAvCatalogCard || isSuspendTagRequestCard;
+            const cardDesignChipsHtml = skipLegacyInventoryChips ? '' : buildInventoryCardFieldChipsHtml(item);
             const cardDesignChipRowHtml = cardDesignChipsHtml ? `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">${cardDesignChipsHtml}</div>` : '';
-            const cardQuantityStackHtml = isAvCatalogCard ? '' : buildInventoryQuantityChipsHtml(item, { layout: 'stacked' });
-            const cardFieldChipsHtml = isAvCatalogCard ? '' : `${buildInventoryQuantityChipsHtml(item)}${cardDesignChipsHtml}`;
-            const compactCardFieldChipsHtml = isAvCatalogCard ? '' : `${buildInventoryQuantityChipsHtml(item, { compact: true })}${buildInventoryCardFieldChipsHtml(item, { compact: true })}`;
-            const avCardFieldChipsHtml = isAvCatalogCard ? '' : buildInventoryCardFieldChipsHtml(item, { hideFieldTagColor: true });
+            const cardQuantityStackHtml = skipLegacyInventoryChips ? '' : buildInventoryQuantityChipsHtml(item, { layout: 'stacked' });
+            const cardFieldChipsHtml = skipLegacyInventoryChips ? '' : `${buildInventoryQuantityChipsHtml(item)}${cardDesignChipsHtml}`;
+            const compactCardFieldChipsHtml = skipLegacyInventoryChips ? '' : `${buildInventoryQuantityChipsHtml(item, { compact: true })}${buildInventoryCardFieldChipsHtml(item, { compact: true })}`;
+            const avCardFieldChipsHtml = skipLegacyInventoryChips ? '' : buildInventoryCardFieldChipsHtml(item, { hideFieldTagColor: true });
             const safeUidJs=esc(item.UNIQUE_ID);
             const safeDockIssueSourceUidJs=esc(firstNonEmptyValue(item.DOCK_ISSUE_SOURCE_UID, item.UNIQUE_ID, item.unique_id, ''));
             const inventoryEditActionHtml = '';
@@ -150682,14 +150711,6 @@ C.14.043 C.15.000
             const isSeasonSalesNoteCard = isSeasonSalesNoteCardItem(item);
             const seasonCardShellClass = isSeasonSalesNoteCard ? 'app-smart-card--season' : '';
             const inventoryCardToneClass = isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'bg-white border-gray-200';
-            const isDocksRequestCard = String(sourceView || '').trim().toLowerCase() === 'request' && (
-                item.DOCK_SUSPEND_DC_REQUEST === true
-                || String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase() === 'ph_soc_master'
-                || String(firstNonEmptyValue(item.REQUEST_SOURCE, item.request_source, '') || '').trim().toLowerCase() === 'docks'
-            );
-            const isSuspendTagRequestCard = String(sourceView || '').trim().toLowerCase() === 'request'
-                && activeReqTab === 'suspend-tag'
-                && (isDockSuspendDcRequestMirrorRow(item) || isDocksRequestCard);
             const suspendTagPlanstartInfo = isSuspendTagRequestCard ? getDockSuspendDcRequestPlanstartInfo(item) : null;
             const suspendTagPlanstartToneClass = suspendTagPlanstartInfo ? suspendTagPlanstartInfo.className : '';
             const suspendTagLegacyPlanstartToneClass = suspendTagPlanstartInfo ? suspendTagPlanstartInfo.legacyClassName : '';

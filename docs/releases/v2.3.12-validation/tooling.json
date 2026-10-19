@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "agdata-v2312-validation-result-v1",
+  "scope": "tooling",
+  "status": "passed",
+  "validationId": "v2312-tooling-4b480bebe4d5",
+  "checks": 2,
+  "sourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54",
+  "provenance": {
+    "kind": "retained-baseline-plus-current-touched-scope",
+    "preservedCommit": "c228f1e1b665238d5fd61a2a93d4633cd7cd4d16",
+    "sourceChanges": [
+      {
+        "path": "index.html",
+        "sha256": "67aafd90111d1a1467722ae502ebb7aabd2909507c90be0ceac2bce433aa0278"
+      },
+      {
+        "path": "playwright.v2312-scoped.config.ts",
+        "sha256": "7beb137639cd8e3f64177c0881ceb939333fc179870de16b4e32055eb38f8044"
+      },
+      {
+        "path": "scripts/check-v2312-retained-validation.mjs",
+        "sha256": "f274532385ffb54beae9f8d3e3e82f40b8891eca16378345b3834a90b15eb80f"
+      },
+      {
+        "path": "tests/suspend-tag-completion.e2e.spec.ts",
+        "sha256": "1864f6a91a0445de620f69326f78d0619c832125931ba867ad43ff92aefcdf72"
+      }
+    ],
+    "currentCommands": [
+      {
+        "command": "node node_modules/eslint/bin/eslint.js playwright.v2312-scoped.config.ts scripts/check-v2312-retained-validation.mjs tests/suspend-tag-completion.e2e.spec.ts",
+        "exitCode": 0,
+        "sourcePaths": [
+          "playwright.v2312-scoped.config.ts",
+          "scripts/check-v2312-retained-validation.mjs",
+          "tests/suspend-tag-completion.e2e.spec.ts"
+        ],
+        "evidence": {
+          "path": ".gnc-local/v2312-reset-final-tooling.log",
+          "sha256": "ea0856ad81c83859601af427114f45416fe14a1438981f56d34be8e788836e51"
+        }
+      },
+      {
+        "command": "node scripts/check-inline-scripts.mjs",
+        "exitCode": 0,
+        "sourcePaths": [
+          "index.html"
+        ],
+        "evidence": {
+          "path": ".gnc-local/v2312-reset-final-tooling.log",
+          "sha256": "ea0856ad81c83859601af427114f45416fe14a1438981f56d34be8e788836e51"
+        }
+      }
+    ],
+    "retainedBaseline": {
+      "commit": "c228f1e1b665238d5fd61a2a93d4633cd7cd4d16",
+      "summary": "Full tooling baseline retained at c228; current changed files received fresh targeted ESLint and inline-script parsing.",
+      "checks": 1,
+      "evidence": [
+        {
+          "path": ".gnc-local/v2312-tooling-1.log",
+          "sha256": "4d68e3b0d748f55d1bd3a0eb1649d9c4160950e432da54223bca698705a9d3ce"
+        }
+      ],
+      "fullCommandsRerun": false
+    },
+    "noFullRerunClaimed": true,
+    "currentSourceHashDigest": "4b480bebe4d516d01152b17dfdf0aa2638cd3d9d255f1e4fbe455db2f331ca54"
+  },
+  "evidence": [
+    {
+      "path": ".gnc-local/v2312-tooling-1.log",
+      "sha256": "4d68e3b0d748f55d1bd3a0eb1649d9c4160950e432da54223bca698705a9d3ce"
+    },
+    {
+      "path": ".gnc-local/v2312-reset-final-tooling.log",
+      "sha256": "ea0856ad81c83859601af427114f45416fe14a1438981f56d34be8e788836e51"
+    },
+    {
+      "path": ".gnc-local/v2312-reset-final-tooling.log",
+      "sha256": "ea0856ad81c83859601af427114f45416fe14a1438981f56d34be8e788836e51"
+    }
+  ]
+}
