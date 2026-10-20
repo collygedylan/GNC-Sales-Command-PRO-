@@ -314,9 +314,13 @@ test('backend workflow guards current-main Supabase deployment without Apps Scri
   assert.match(workflow.jobs['deploy-supabase'].if, /backend-changed == 'true'/);
   const authorizeSource = JSON.stringify(workflow.jobs['authorize-backend']);
   assert.match(authorizeSource, /EXPECTED_COMMIT/);
-  assert.match(authorizeSource, /supabase\/\*\|database\/\*/);
-  assert.match(workflow.jobs['authorize-backend'].steps.find(step => step.id === 'scope').run,
-    /--no-renames[\s\S]*--diff-filter=ACMRD[\s\S]*> "\$diff_file"/);
+  const scope = workflow.jobs['authorize-backend'].steps.find(step => step.id === 'scope');
+  assert.equal(scope.env.RELEASE_COMMIT, '${{ github.sha }}');
+  assert.match(scope.run, /changedReleasePaths\(\{ before: parent, after: commit \}\)/);
+  assert.match(scope.run, /classifyReleasePaths\(paths\)/);
+  for (const guard of ['RELEASE_MIGRATION_INPUT_INVALID', 'EDGE_FUNCTION_SELECTION_INVALID', 'available.has(name)']) {
+    assert.ok(scope.run.includes(guard), guard);
+  }
   assert.doesNotMatch(authorizeSource, /<\(/, 'path comparison errors must propagate instead of hiding in process substitution');
   assert.doesNotMatch(JSON.stringify(workflow.jobs['deploy-supabase']), /APPS_SCRIPT_(?:SCRIPT_ID|CLASPRC_JSON|DEPLOYMENT_ID|SCRIPT_ID)/);
   assert.doesNotMatch(JSON.stringify(workflow.jobs), /sync-codegs-to-apps-script\.js|apps-script-recovery-evidence\.json/);

@@ -6,6 +6,7 @@ import yaml from 'js-yaml';
 import { migrationBody, migrationContractQuery, auraLlmFreeTierMigrationName, releaseDatabaseMigrations } from '../scripts/apply-item-low-stock-migration.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
+import { classifyReleasePaths } from '../scripts/release-scope.mjs';
 const read = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 
 test('AURA quota migration is atomic, private, and checked before release', () => {
@@ -28,11 +29,13 @@ test('AURA quota migration is atomic, private, and checked before release', () =
 test('AURA router deploy follows its migration in the independent backend workflow', () => {
   const workflow = yaml.safeLoad(read('.github/workflows/apps-script-sync.yml'));
   const steps = workflow.jobs['deploy-supabase'].steps;
-  const schema = steps.findIndex(step => step.name?.includes('Apply backend release migrations'));
-  const router = steps.findIndex(step => step.run?.includes('supabase functions deploy aura-llm-router'));
+  const schema = steps.findIndex(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs');
+  const router = steps.findIndex(step => step.name === 'Deploy changed Edge Functions');
   assert.ok(schema >= 0 && router > schema);
   assert.equal(workflow.jobs['publish-pages'], undefined);
-  assert.match(steps[router].run, /deploy aura-llm-router --use-api --project-ref/);
+  assert.match(steps[router].run, /supabase functions deploy "\$function_name" --use-api --project-ref/);
+  assert.equal(steps[router].env.RELEASE_EDGE_FUNCTIONS,"${{ needs.authorize-backend.outputs['edge-functions'] }}");
+  assert.deepEqual(classifyReleasePaths(['supabase/functions/aura-llm-router/index.ts']).edgeFunctions, ['aura-llm-router']);
   assert.doesNotMatch(steps[router].run, /GEMINI_API_KEY\s*=/);
   assert.match(read('supabase/config.toml'), /\[functions\.aura-llm-router\][\s\S]*?verify_jwt = false/);
 });

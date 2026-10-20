@@ -338,6 +338,24 @@ jobs:
             browsers: webkit
             shard: 1
             total: 1
+          - suite: nightly-regressions
+            config: playwright.nightly-regressions.config.ts
+            project: chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: nightly-regressions
+            config: playwright.nightly-regressions.config.ts
+            project: firefox
+            browsers: firefox
+            shard: 1
+            total: 1
+          - suite: nightly-regressions
+            config: playwright.nightly-regressions.config.ts
+            project: webkit
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: footer
             config: playwright.footer.config.ts
             project: footer-android-chromium

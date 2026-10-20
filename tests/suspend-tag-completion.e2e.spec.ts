@@ -135,7 +135,17 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   // Complete the initial snapshot's bounded identity lookups before measuring
   // a warm reopen; do not race the seed publication and its follow-up reads.
   await page.waitForLoadState('networkidle');
-  await page.evaluate(async () => { await document.fonts.ready; });
+  await page.evaluate(() => window.eval(`(async () => {
+    let timer;
+    try { return await Promise.race([getProductionLiveSyncCoordinator().check('visible-view'),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Initial authenticated Suspend cohort did not settle')), 30000); })]); }
+    finally { clearTimeout(timer); }
+  })()`));
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+  await page.waitForLoadState('networkidle');
   if (process.env.V2314_PROFILE === '1') await page.evaluate(() => window.eval(`(() => {
     window.__v2314Profile = {};
     for (const name of ['renderRequest','getScopedRequestItems','getRequestTabQueueCounts','buildSuspendTagRenderPlan',
@@ -197,6 +207,8 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
       const readinessStart = performance.now();
       let priorReadySignature = '';
       let stableReadyFrames = 0;
+      const readiness = window.__releaseSmokeWarmReadiness = { current: null, transitions: [] };
+      let priorDiagnostic = '';
       while (stableReadyFrames < 2) {
         const context = getProductionLiveSyncContext();
         const proof = hasCurrentProductionLiveSyncProof(context);
@@ -207,6 +219,23 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
           && cardCount === 37
           && cachedPage?.sourceRows.length === 37
           && cachedPage?.rows.size === 37;
+        const preparation = dockSuspendDcRequestMirrorRowsPreparation;
+        const diagnostic = {
+          elapsedMs: performance.now() - readinessStart, proof, pageReady, cardCount,
+          sourceRows: cachedPage?.sourceRows.length ?? null, renderedRows: cachedPage?.rows.size ?? null,
+          mirrorsPending: isDockSuspendDcRequestMirrorPreparationPending(),
+          mirrorCursor: preparation?.cursor ?? null, mirrorSourceRows: preparation?.sourceRows.length ?? null,
+          status: getProductionLiveSyncCoordinator().getStatus(),
+          documentHidden: document.hidden, visibilityState: document.visibilityState,
+          masterRows: fullInventory.length, currentView: getCurrentVisibleViewId(),
+        };
+        readiness.current = diagnostic;
+        const diagnosticKey = JSON.stringify({ ...diagnostic, elapsedMs: 0 });
+        if (diagnosticKey !== priorDiagnostic) {
+          readiness.transitions.push(diagnostic);
+          if (readiness.transitions.length > 30) readiness.transitions.shift();
+          priorDiagnostic = diagnosticKey;
+        }
         if (proof && pageReady) {
           const readySignature = JSON.stringify([
             productionVerifiedViewKey(context),
@@ -220,7 +249,7 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
           priorReadySignature = '';
         }
         if (performance.now() - readinessStart > 15000) {
-          throw new Error('Warm authenticated Suspend page or source mirrors did not settle');
+          throw new Error('Warm authenticated Suspend page or source mirrors did not settle: ' + JSON.stringify(readiness.current));
         }
         await new Promise(resolve => requestAnimationFrame(resolve));
       }
@@ -249,6 +278,11 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
       window.__v2314MeasuredProfile = window.__v2314Profile;
       return renderMs;
     })()`);
+  }).catch(async (error: unknown) => {
+    await info.attach('release-smoke-warm-readiness-diagnostic', { contentType: 'application/json',
+      body: Buffer.from(JSON.stringify(await page.evaluate(() => (window as unknown as { __releaseSmokeWarmReadiness?: unknown })
+        .__releaseSmokeWarmReadiness).catch(() => null))) });
+    throw error;
   }) as number;
   if (profiler) {
     const cpu = await profiler.send('Profiler.stop');
@@ -983,16 +1017,24 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         requestSuspendTagContSizeFilter = 'all';
         requestSuspendTagDockFilter = 'all';
         requestSuspendTagStatusFilter = 'active';
-        window.__suspendFixtureFetchAbortContext = 'suspend-fixture-request-view-transition';
-        showOnlyPrimaryView('request');
-        window.__suspendFixtureFetchAbortContext = '';
-        if (window.__suspendCompletionMasterRows.length) {
-          productionLiveSyncVerifiedView = productionVerifiedViewKey(getProductionLiveSyncContext());
-        }
-        invalidateResolvedViewStateCaches();
-        renderRequest();
       })()`);
     }, { rows: nextRows, masterRows: options.masterRows || [] });
+    if (options.masterRows?.length) {
+      // Seed publication can schedule a Home render and telemetry. Complete
+      // that work before the fixture's first deliberate view transition.
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.waitForLoadState('networkidle');
+    }
+    await page.evaluate(() => window.eval(`(() => {
+      window.__suspendFixtureFetchAbortContext = 'suspend-fixture-request-view-transition';
+      showOnlyPrimaryView('request');
+      window.__suspendFixtureFetchAbortContext = '';
+      if (window.__suspendCompletionMasterRows.length) {
+        productionLiveSyncVerifiedView = productionVerifiedViewKey(getProductionLiveSyncContext());
+      }
+      invalidateResolvedViewStateCaches();
+      renderRequest();
+    })()`));
     await expect(page.locator('#view-request')).toBeVisible();
   };
   await page.goto('/?post_deploy_access_canary=1&suspend_tag_canary=1' + (options.search || ''), { waitUntil: 'load' });
@@ -2311,6 +2353,10 @@ test('published snapshot stays available and Drive completes every Common Name a
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Seeded request cohort did not settle before cold Drive hydration')), 30000); })]); }
     finally { clearTimeout(timer); }
   })()`));
+  // Cohort completion schedules its render. Let that render's sampled health
+  // request finish before the deliberate cold reset cancels session work.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForLoadState('networkidle');
   const result = await page.evaluate(async () => window.eval(`(async () => {
     const hydrationStarted = performance.now();
     const hydrationProgress = window.__releaseSmokeHydrationProgress = [];

@@ -20,6 +20,16 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
 const plain = value => JSON.parse(JSON.stringify(value));
 
+function activeBrowserCommands() {
+  const directory = path.join(root, '.github/workflows');
+  const scripts = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).scripts;
+  let commands = readdirSync(directory).filter(file => /\.ya?ml$/.test(file))
+    .map(file => readFileSync(path.join(directory, file), 'utf8')).join('\n');
+  const usedScripts = new Set([...commands.matchAll(/npm run ([\w:-]+)/g)].map(match => match[1]));
+  commands += '\n' + [...usedScripts].map(name => scripts[name] || '').join('\n');
+  return commands;
+}
+
 // Evaluate the real checked-in config objects, without launching Playwright or
 // starting any server. Isolated env values cannot inherit a production target.
 function configLoader(extraEnv = {}) {
@@ -30,7 +40,7 @@ function configLoader(extraEnv = {}) {
     const module = { exports: {} };
     cache.set(fullPath, module);
     const { outputText } = ts.transpileModule(readFileSync(fullPath, 'utf8'), {
-      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
       fileName: fullPath,
     });
     const localRequire = specifier => specifier.startsWith('.')
@@ -40,7 +50,10 @@ function configLoader(extraEnv = {}) {
       require: localRequire, module, exports: module.exports, URL,
       process: { env: {
         CI: '1', SUPABASE_LOCAL_URL: 'http://127.0.0.1:54321',
+        CANARY_BASE_URL: 'http://127.0.0.1:43144',
         SUPABASE_LOCAL_ANON_KEY: 'fixture-only', SUPABASE_LOCAL_SERVICE_ROLE_KEY: 'fixture-only',
+        RELEASE_SMOKE_SITE_DIR: path.join(root, '.gnc-local', 'coverage-sealed-site'),
+        RELEASE_SMOKE_OUTPUT_DIR: path.join(root, '.gnc-local', 'coverage-smoke-output'),
         ...extraEnv,
       } },
     }, { filename: fullPath });
@@ -49,18 +62,20 @@ function configLoader(extraEnv = {}) {
   return name => load(name).default;
 }
 
-test('every CI Playwright config permits two retries while local runs remain immediate', () => {
-  const configs = readdirSync(root).filter(name => /^playwright(?:\.[\w-]+)?\.config\.ts$/.test(name)
-    && name !== 'playwright.local.config.ts');
-  configs.push('v2/tests/playwright.partner.config.ts');
+test('nightly CI browser configs permit two retries while sealed release smoke and local runs have zero retries', () => {
+  // Historical one-off configs may be tied to archived artifacts. CI policy
+  // applies to active workflow entrypoints and the permanent sealed smoke.
+  const configs = [...new Set([...activeBrowserCommands().matchAll(/(?:v2\/tests\/)?playwright(?:\.[\w-]+)?\.config\.ts/g)]
+    .map(match => match[0]).concat('playwright.release-smoke.config.ts'))];
   for (const CI of ['true', undefined]) {
     const load = configLoader({ CI, CANARY_BASE_URL: 'http://127.0.0.1:43144' });
     for (const name of configs) {
       const config = load(name);
-      assert.equal(config.retries, CI ? 2 : 0, name);
+      const retries = CI && name !== 'playwright.release-smoke.config.ts' ? 2 : 0;
+      assert.equal(config.retries, retries, name);
       assert.notEqual(config.failOnFlakyTests, true, name);
       for (const project of config.projects || []) {
-        assert.equal(project.retries ?? config.retries, CI ? 2 : 0, `${name}: ${project.name}`);
+        assert.equal(project.retries ?? config.retries, retries, `${name}: ${project.name}`);
       }
     }
   }
@@ -144,12 +159,7 @@ const selected = config => allSpecs.filter(file => {
 });
 
 test('every discovered browser spec belongs to an active workflow suite', () => {
-  const directory = path.join(root, '.github/workflows');
-  const scripts = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).scripts;
-  let commands = readdirSync(directory).filter(file => /\.ya?ml$/.test(file))
-    .map(file => readFileSync(path.join(directory, file), 'utf8')).join('\n');
-  const usedScripts = new Set([...commands.matchAll(/npm run ([\w:-]+)/g)].map(match => match[1]));
-  commands += '\n' + [...usedScripts].map(name => scripts[name] || '').join('\n');
+  const commands = activeBrowserCommands();
   const configs = new Set([...commands.matchAll(/(?:v2\/tests\/)?playwright(?:\.[\w-]+)?\.config\.ts/g)].map(match => match[0]));
   const load = configLoader({ CANARY_BASE_URL: 'http://127.0.0.1:43144' });
   const executed = new Set([...configs].flatMap(file => selected(load(file))));
@@ -260,7 +270,11 @@ test('functional, timing and database lanes cover original and newly tagged brow
   // Compiled-only tests can join a release lane without joining the source-only
   // local server. New conventionally named/tagged specs need no filename edit.
   const discoveredReleaseFiles = selected({ ...base, grep: /@local-e2e|@release-functional|@release-timing/ });
-  assert.deepEqual([...union].sort(), discoveredReleaseFiles);
+  const dedicatedConfigs = new Set([...activeBrowserCommands().matchAll(/(?:v2\/tests\/)?playwright(?:\.[\w-]+)?\.config\.ts/g)].map(match => match[0]));
+  const dedicatedFiles = new Set([...dedicatedConfigs].flatMap(file => selected(load(file))));
+  const dedicatedOnly = discoveredReleaseFiles.filter(file => !union.includes(file) && dedicatedFiles.has(file));
+  assert.deepEqual([...union, ...dedicatedOnly].sort(), discoveredReleaseFiles,
+    'source regressions outside the core lanes must be registered in a dedicated active browser suite');
   assert.ok(functionalFiles.length > 0);
   assert.equal(String(functional.testMatch), String(base.testMatch));
 });
@@ -324,7 +338,7 @@ test('hosted request and access canaries also gate the sealed candidate with unc
 
 for (const [name, spec, projects] of compiledSuites) {
   test(`compiled ${name} suite keeps its required file and browser coverage outside source lanes`, () => {
-    const load = configLoader();
+    const load = configLoader({ CANARY_BASE_URL: undefined });
     const config = load(`playwright.${name}.config.ts`);
     const files = selected(config);
     const baseline = name === 'home-role' ? ['tests/assigned-items-filters.e2e.spec.ts', 'tests/home-native-startup.e2e.spec.ts', `tests/${spec}.e2e.spec.ts`, 'tests/verified-loading.e2e.spec.ts'] : [`tests/${spec}.e2e.spec.ts`];
@@ -565,6 +579,7 @@ test('compiled matrix partitions preserve every declared browser project and sui
   const workflow = require('js-yaml').load(readFileSync(path.join(root, '.github/workflows/release-validation.yml'), 'utf8'));
   const entries = workflow.jobs.compiled.strategy.matrix.include.filter(row => row.suite !== 'command-center');
   const expected = ["playwright.sw-isolation.config.ts","v2/tests/playwright.partner.config.ts","playwright.release-canary.config.ts","playwright.footer.config.ts","playwright.home-role.config.ts","playwright.season-sales-office.config.ts","playwright.season-priority.config.ts","playwright.suspend-tag.config.ts","playwright.docks-filter.config.ts","playwright.task-av-blanks.config.ts","playwright.session-recovery.config.ts","playwright.review-assignedto.config.ts","playwright.verified-data-cache.config.ts","playwright.request-reliability.config.ts","playwright.request-photo.config.ts","playwright.bunch-note.config.ts","playwright.reclass-splits.config.ts","playwright.sales-mobile.config.ts","playwright.module-mobile.config.ts","playwright.production-schedule.config.ts","playwright.hl-order.config.ts","playwright.hl-restock.config.ts","playwright.stable-background-refresh.config.ts"];
+  expected.push('playwright.nightly-regressions.config.ts');
   assert.deepEqual([...new Set(entries.map(row => row.config))].sort(), expected.sort());
   const load = configLoader();
   for (const file of expected) {

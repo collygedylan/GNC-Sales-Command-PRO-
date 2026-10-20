@@ -128,3 +128,49 @@ test('smoke cancellation exceptions require the same allowlisted read body, an a
   }
   assert.equal(isProvenReleaseSmokeReadCancellation({ ...resource, idempotencyKey: 'a-write-command' }, [evidence]), false);
 });
+
+
+test('only the exact Eval Work list read may consume proven background cancellation evidence', () => {
+  const resource = { method: 'POST', url: `${RELEASE_SMOKE_SUPABASE_ORIGIN}/functions/v1/app-api`,
+    body: JSON.stringify({ action: 'eval_work', operation: 'list' }), idempotencyKey: '', failure: 'Load request cancelled' };
+  const proof = { ...resource, signalAborted: true, reasonName: 'AbortError', context: '',
+    abortStack: 'invalidateBackground assets/live-sync-coordinator.js' };
+  const evidence = [proof];
+  assert.equal(isProvenReleaseSmokeReadCancellation(resource, evidence), true);
+  assert.equal(evidence.length, 0);
+  for (const body of [
+    { action: 'eval_work', operation: 'create' }, { action: 'eval_work', operation: 'update' },
+    { action: 'eval_work', operation: 'delete' }, { action: 'eval_work', operation: 'complete' },
+    { action: 'eval_work', operation: 'list', payload: {} }, { action: 'eval_work', operation: 'list', status: 'all' },
+    { action: 'eval_work', operation: 'lsit' }, { action: 'eval_work' },
+  ]) {
+    const invalid = { ...resource, body: JSON.stringify(body) };
+    assert.equal(isProvenReleaseSmokeReadCancellation(invalid, [{ ...proof, body: invalid.body }]), false);
+  }
+  assert.equal(isProvenReleaseSmokeReadCancellation(resource, [{ ...proof, signalAborted: false }]), false);
+  assert.equal(isProvenReleaseSmokeReadCancellation(resource, [{ ...proof, abortStack: 'unrelated AbortError' }]), false);
+  assert.equal(isProvenReleaseSmokeReadCancellation({ ...resource, idempotencyKey: 'command' }, [proof]), false);
+});
+
+
+test('cancellation policy matches explicit background read contracts and rejects their mutation or extra-key variants', () => {
+  const bodies = [
+    { action: 'user_access', operation: 'resolve' },
+    { action: 'shear_location_work', operation: 'list', status: 'active' },
+    ...['sales_credit', 'request_history'].map(action => ({ action, operation: 'compatibility', payload: { status: 'all', cursor: null, limit: 100 } })),
+    { action: 'navigation_preferences', operation: 'get', payload: {} },
+    ...['reserves', 'notes', 'hot_prices', 'settings'].map(dataset => ({ action: 'av_read', dataset, query: '' })),
+  ];
+  for (const body of bodies) {
+    const resource = { method: 'POST', url: `${RELEASE_SMOKE_SUPABASE_ORIGIN}/functions/v1/app-api`,
+      body: JSON.stringify(body), idempotencyKey: '', failure: 'net::ERR_ABORTED' };
+    const proof = { ...resource, signalAborted: true, reasonName: 'AbortError', context: '',
+      abortStack: 'invalidateBackground assets/live-sync-coordinator.js' };
+    assert.equal(isProvenReleaseSmokeReadCancellation(resource, [proof]), true, JSON.stringify(body));
+    for (const changed of [{ ...body, injected: true }, { ...body, operation: 'create' }, { ...body, operation: 'update' }]) {
+      const invalid = { ...resource, body: JSON.stringify(changed) };
+      assert.equal(isProvenReleaseSmokeReadCancellation(invalid, [{ ...proof, body: invalid.body }]), false, JSON.stringify(changed));
+    }
+    assert.equal(isProvenReleaseSmokeReadCancellation(resource, [{ ...proof, signalAborted: false }]), false);
+  }
+});

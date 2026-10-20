@@ -25,9 +25,11 @@ test('Gemini router executes only fixed typed caller-scoped reads and service-pr
 test('Gemini readiness remains outside the backend deployment gate', () => {
   const workflow = yaml.safeLoad(read('.github/workflows/apps-script-sync.yml'));
   const steps = workflow.jobs['deploy-supabase'].steps;
-  const deploy = steps.findIndex(step => step.run?.includes('functions deploy aura-llm-router'));
+  const deploy = steps.findIndex(step => step.name === 'Deploy changed Edge Functions');
   const provider = steps.findIndex(step => step.run?.includes('aura-provider-readiness.mjs'));
   assert.ok(deploy >= 0 && provider > deploy);
+  assert.match(steps[deploy].run, /supabase functions deploy "\$function_name" --use-api --project-ref/);
+  assert.equal(steps[deploy].env.RELEASE_EDGE_FUNCTIONS,"${{ needs.authorize-backend.outputs['edge-functions'] }}");
   assert.equal(steps[provider].if, '${{ false }}');
   assert.equal(workflow.jobs['publish-pages'], undefined);
   assert.match(steps[provider].env.SUPABASE_SERVICE_ROLE_KEY, /secrets\.SUPABASE_SERVICE_ROLE_KEY/);

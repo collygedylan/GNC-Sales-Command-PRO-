@@ -8,6 +8,7 @@ import { startIsolatedDatabase, collectDatabaseEvidence, excludedServices } from
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
 import { backendTestMatrices } from '../scripts/ci-backend-matrix.mjs';
+import { classifyReleasePaths } from '../scripts/release-scope.mjs';
 import vm from 'node:vm';
 
 const workflow = fs.readFileSync(new URL('../.github/workflows/release-database.yml', import.meta.url), 'utf8');
@@ -153,19 +154,23 @@ test('backend schema gate requires every selected integration job and rejects sk
   const script = run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
   const names = ['schema-path-scope', 'discover', 'integration', 'edge-functions', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions'];
   const results = Object.fromEntries(names.map(name => [name, { result: 'success' }]));
-  const execute = (scope = 'true', requireScope = 'true') => vm.runInNewContext(script, {
-    process: { env: { SCOPE: scope, REQUIRE_SCHEMA_SCOPE: requireScope, RESULTS: JSON.stringify(results) } },
+  const execute = (scope = 'true', requireScope = 'true', edgeScope = '{"include":[{"suite":"changed"}]}') => vm.runInNewContext(script, {
+    process: { env: { SCOPE: scope, REQUIRE_SCHEMA_SCOPE: requireScope, EDGE_SCOPE: edgeScope, RESULTS: JSON.stringify(results) }, exit() {} },
     console: { log() {} },
   });
   assert.doesNotThrow(() => execute());
   assert.doesNotThrow(() => execute('false', 'false'), 'unmatched paths are an intentional no-op for targeted/manual diagnostics');
   assert.throws(() => execute('false', 'true'), /BACKEND_SCHEMA_SCOPE_REQUIRED/);
   assert.throws(() => execute('', 'false'), /BACKEND_SCHEMA_SCOPE_REQUIRED/);
-  for (const name of ['schema-path-scope', 'discover', 'edge-functions']) {
+  for (const name of ['schema-path-scope', 'discover']) {
     results[name] = { result: 'failure' };
     assert.throws(() => execute('false', 'false'), new RegExp(`BACKEND_SCHEMA_GATE_FAILED_${name}`));
     results[name] = { result: 'success' };
   }
+  results['edge-functions'] = { result: 'skipped' };
+  assert.doesNotThrow(() => execute('true', 'true', '{"include":[]}'), 'an empty Edge selection is an intentional skip');
+  assert.throws(() => execute(), /BACKEND_SCHEMA_GATE_FAILED_edge-functions/);
+  results['edge-functions'] = { result: 'success' };
   for (const name of names) {
     for (const result of ['failure', 'skipped', 'cancelled']) {
       results[name] = { result };
@@ -193,12 +198,19 @@ test('backend production mutations require current-main validation and every con
   }
 });
 
-test('backend dispatch scope includes changes to the migration runner and its own workflow', () => {
+test('backend dispatch classifies exact deploy paths while migration runner and workflow tooling stay independent', () => {
   const sync = yaml.load(fs.readFileSync(new URL('../.github/workflows/apps-script-sync.yml', import.meta.url), 'utf8'));
   const scope = sync.jobs['authorize-backend'].steps.find(step => step.id === 'scope');
   assert.ok(scope);
-  assert.match(scope.run, /scripts\/apply-item-low-stock-migration\.mjs/);
-  assert.match(scope.run, /\.github\/workflows\/apps-script-sync\.yml/);
+  assert.equal(scope.env.RELEASE_COMMIT, '${{ github.sha }}');
+  assert.match(scope.run, /changedReleasePaths\(\{ before: parent, after: commit \}\)/);
+  assert.match(scope.run, /classifyReleasePaths\(paths\)/);
+  const tooling = classifyReleasePaths(['scripts/apply-item-low-stock-migration.mjs', '.github/workflows/apps-script-sync.yml']);
+  assert.equal(tooling.toolingOnly, true);
+  assert.equal(tooling.deploy.supabase, false);
+  const backend = classifyReleasePaths(['supabase/migrations/exact.sql', 'supabase/functions/app-api/index.ts']);
+  assert.deepEqual(backend.migrations, ['supabase/migrations/exact.sql']);
+  assert.deepEqual(backend.edgeFunctions, ['app-api']);
 });
 
 test('disposable live dataset database checks exclude workflow-only and application paths', () => {
@@ -331,7 +343,9 @@ test('Edge graph prefetch retries only bounded transient failures before one che
   assert.equal(cache.shell, 'bash');
   assert.match(cache.run, /process\.env\.EDGE_TARGETS/);
   assert.match(cache.run, /process\.env\.EDGE_TESTS/);
-  assert.match(cache.run, /for attempt in 1 2 3/);
+  assert.match(cache.run, /for attempt in 1 2; do/);
+  assert.match(cache.run, /\[ "\$attempt" -lt 2 \]/);
+  assert.match(cache.run, /exhausted two transient-failure attempts/);
   assert.match(cache.run, /sleep "\$delay"/);
   assert.match(cache.run, /429\[\[:space:\]\]\+Too Many Requests/);
   assert.match(cache.run, /5\[0-9\]\{2\}/);

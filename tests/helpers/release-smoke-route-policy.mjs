@@ -66,7 +66,22 @@ export function isProvenReleaseSmokeReadCancellation(resource, evidence = []) {
         && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
         && Number.isInteger(body.params.offset) && body.params.offset >= 0
       || body.operation === 'master_identity_batch' && keys(body.params, ['queueIdentities']) && Array.isArray(body.params.queueIdentities))
-      || body.action === 'dataset_read' && keys(body, ['action', 'dataset', 'params']) && datasets.has(body.dataset) && paged(body.params);
+      || body.action === 'dataset_read' && keys(body, ['action', 'dataset', 'params']) && datasets.has(body.dataset) && paged(body.params)
+      // Mirror the fixture's existing, fully specified background read routes.
+      // No wildcard list/get operation can classify an unknown action as safe.
+      || ['eval_work', 'user_access'].includes(body.action)
+        && body.operation === (body.action === 'eval_work' ? 'list' : 'resolve')
+        && Object.keys(body).sort().join(',') === 'action,operation'
+      || body.action === 'shear_location_work' && body.operation === 'list' && body.status === 'active'
+        && Object.keys(body).sort().join(',') === 'action,operation,status'
+      || ['sales_credit', 'request_history'].includes(body.action) && body.operation === 'compatibility'
+        && Object.keys(body).sort().join(',') === 'action,operation,payload'
+        && keys(body.payload, ['status', 'cursor', 'limit']) && Object.keys(body.payload).length === 3
+        && body.payload.status === 'all' && body.payload.cursor === null && body.payload.limit === 100
+      || body.action === 'navigation_preferences' && body.operation === 'get' && keys(body, ['action', 'operation', 'payload'])
+        && Object.keys(body).length === 3 && keys(body.payload, [])
+      || body.action === 'av_read' && ['reserves', 'notes', 'hot_prices', 'settings'].includes(body.dataset)
+        && keys(body, ['action', 'dataset', 'query']) && (body.query === undefined || typeof body.query === 'string');
   }
   if (!knownRead) return false;
   const index = evidence.findIndex(entry => entry.url === resource.url && entry.method === resource.method && entry.body === resource.body
