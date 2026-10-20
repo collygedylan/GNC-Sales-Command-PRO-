@@ -62,7 +62,7 @@ jobs:
       !cancelled() && github.ref == 'refs/heads/main' &&
       needs.authorize-main.result == 'success' && needs.validation.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     permissions:
       contents: write
       actions: read
@@ -168,6 +168,55 @@ jobs:
             }
             if (!deployRun || deployRun.status !== 'completed' || deployRun.conclusion !== 'success') {
               throw new Error('SCOPED_BACKEND_PUBLICATION_TIMEOUT');
+            }
+            const scriptFunctions = receipt.appsScriptChangedFunctions;
+            if (!Array.isArray(scriptFunctions) || scriptFunctions.some(name => typeof name !== 'string' || !name)) {
+              throw new Error('SCOPED_APPS_SCRIPT_RECEIPT_INVALID');
+            }
+            if (scriptFunctions.length > 0) {
+              const { data: scriptWorkflow } = await github.rest.actions.getWorkflow({
+                owner, repo, workflow_id: 'apps-script-deploy.yml',
+              });
+              if (scriptWorkflow.path !== '.github/workflows/apps-script-deploy.yml' || scriptWorkflow.state !== 'active') {
+                throw new Error('SCOPED_APPS_SCRIPT_WORKFLOW_INVALID');
+              }
+              const scriptDeadline = Date.now() + 15 * 60 * 1000;
+              let scriptRun;
+              while (Date.now() < scriptDeadline) {
+                const { data } = await github.rest.actions.listWorkflowRuns({
+                  owner, repo, workflow_id: scriptWorkflow.id, head_sha: context.sha,
+                  event: 'workflow_run', per_page: 100,
+                });
+                const candidates = (data.workflow_runs || []).filter(run =>
+                  run.workflow_id === scriptWorkflow.id && run.path === scriptWorkflow.path &&
+                  run.head_branch === 'main' && run.head_sha === context.sha &&
+                  run.event === 'workflow_run' && run.head_repository?.full_name === repository);
+                scriptRun = candidates.sort((a, b) => b.run_number - a.run_number)[0];
+                if (scriptRun?.status === 'completed') {
+                  if (scriptRun.conclusion !== 'success') {
+                    throw new Error(`SCOPED_APPS_SCRIPT_PUBLICATION_FAILED:${scriptRun.conclusion}`);
+                  }
+                  const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+                    owner, repo, run_id: scriptRun.id, per_page: 100,
+                  });
+                  const publishJobs = (jobs.jobs || []).filter(job => job.name === 'deploy-apps-script');
+                  const publishSteps = publishJobs.length === 1
+                    ? (publishJobs[0].steps || []).filter(step => step.name === 'Publish the guarded production Apps Script version')
+                    : [];
+                  if (publishJobs.length !== 1 || publishJobs[0].status !== 'completed' ||
+                      publishJobs[0].conclusion !== 'success' || publishJobs[0].head_sha !== context.sha ||
+                      publishSteps.length !== 1 || publishSteps[0].status !== 'completed' ||
+                      publishSteps[0].conclusion !== 'success') {
+                    throw new Error('SCOPED_APPS_SCRIPT_PUBLISH_STEP_NOT_SUCCESSFUL');
+                  }
+                  break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 15_000));
+              }
+              if (!scriptRun || scriptRun.status !== 'completed' || scriptRun.conclusion !== 'success') {
+                throw new Error('SCOPED_APPS_SCRIPT_PUBLICATION_TIMEOUT');
+              }
+              core.info(`Exact guarded Apps Script publication succeeded for ${context.sha} (run ${scriptRun.id}).`);
             }
             const { data: main } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
             if (main.object.sha !== context.sha) throw new Error('FRONTEND_MAIN_SUPERSEDED_DURING_BACKEND_WAIT');

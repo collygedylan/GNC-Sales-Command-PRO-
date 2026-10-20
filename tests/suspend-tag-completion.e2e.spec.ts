@@ -367,7 +367,8 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   await info.attach('release-smoke-console-resource-diagnostics', {
     contentType: 'application/json',
     body: Buffer.from(JSON.stringify({ consoleErrors: app.consoleErrorDetails, failedResources: app.failedResources,
-      chatParticipantReads: app.chatParticipantReads })),
+      chatParticipantReads: app.chatParticipantReads, syntheticHealthTelemetry: app.healthTelemetryReceipts,
+      healthTelemetryRequests: app.healthTelemetryRequests })),
   });
   app.assertClean();
 });
@@ -403,6 +404,8 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const consoleErrorDetails: Array<{ text: string; location: { url: string; lineNumber: number; columnNumber: number } }> = [];
   const failedResources: Array<{ url: string; resourceType: string; failure: string }> = [];
   const chatParticipantReads: Array<{ url: string; authorization: string; status: number }> = [];
+  const healthTelemetryReceipts: Array<{ payload: Record<string, unknown>; apiKeyPresent: boolean; syntheticIdentity: boolean; authorizationMatchesPublicKey: boolean; status: number }> = [];
+  const healthTelemetryRequests: Array<{ url: string; method: string; authorizationAllowed: boolean; apiKeyPresent: boolean; payload: unknown }> = [];
   const settingsReads: Array<{ url: string; status: number | null; authorization: string }> = [];
   const fixtureImage404s = new Set<string>();
   const http404Resources: Array<{ url: string; resourceType: string }> = [];
@@ -453,6 +456,17 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   page.on('requestfailed', request => failedResources.push({
     url: request.url(), resourceType: request.resourceType(), failure: request.failure()?.errorText || 'unknown',
   }));
+  page.on('request', request => {
+    if (request.url().includes('/rest/v1/rpc/report_app_health_event')) {
+      let payload: unknown = null;
+      try { payload = request.postDataJSON(); } catch (_) {}
+      const authorization = request.headers()['authorization'] || '';
+      const apiKey = request.headers()['apikey'] || '';
+      healthTelemetryRequests.push({ url: request.url(), method: request.method(),
+        authorizationAllowed: authorization === 'Bearer browser-only-no-real-session' || (apiKey.length > 0 && authorization === `Bearer ${apiKey}`),
+        apiKeyPresent: Boolean(apiKey), payload });
+    }
+  });
   page.on('response', response => {
     const request = response.request();
     if (response.status() === 404) http404Resources.push({ url: response.url(), resourceType: request.resourceType() });
@@ -474,6 +488,49 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     }
     if (request.method() === 'GET' && request.resourceType() === 'image' && fixtureImageUrls.has(url.href)) {
       return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>' });
+    }
+    // Keep browser health telemetry synthetic: validate and record the exact
+    // sanitized RPC envelope locally, then acknowledge it without contacting
+    // Supabase or emitting real telemetry.
+    if (request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      && url.pathname === '/rest/v1/rpc/report_app_health_event') {
+      const authorization = request.headers()['authorization'] || '';
+      const apiKey = request.headers()['apikey'] || '';
+      let payload: Record<string, unknown> | null = null;
+      try {
+        const parsed: unknown = request.postDataJSON();
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) payload = parsed as Record<string, unknown>;
+      } catch (_) {}
+      const expectedKeys = 'app_build,area,duration_ms,event_name,metadata,sample_rate,sanitized_code,severity';
+      const metadata = payload?.metadata;
+      const localSyntheticAuth = authorization === 'Bearer browser-only-no-real-session'
+        || (apiKey.length > 0 && authorization === `Bearer ${apiKey}`);
+      const validTelemetry = localSyntheticAuth && apiKey.length > 0
+        && !!payload && Object.keys(payload).sort().join(',') === expectedKeys
+        && typeof payload.event_name === 'string' && payload.event_name.length > 0 && payload.event_name.length <= 120
+        && typeof payload.area === 'string' && payload.area.length > 0 && payload.area.length <= 80
+        && ['info', 'warning', 'error', 'critical'].includes(String(payload.severity))
+        && typeof payload.sanitized_code === 'string' && /^[A-Z0-9_-]{1,160}$/i.test(payload.sanitized_code)
+        && (payload.duration_ms === null || typeof payload.duration_ms === 'number' && Number.isFinite(payload.duration_ms) && payload.duration_ms >= 0)
+        && typeof payload.sample_rate === 'number' && Number.isFinite(payload.sample_rate) && payload.sample_rate >= 0 && payload.sample_rate <= 1
+        && typeof payload.app_build === 'string'
+        && !!metadata && typeof metadata === 'object' && !Array.isArray(metadata);
+      if (!validTelemetry || !payload) {
+        unexpectedMutations.push(`POST:${url.pathname}:invalid-synthetic-telemetry-envelope`);
+        return route.abort('blockedbyclient');
+      }
+      healthTelemetryReceipts.push({ payload, apiKeyPresent: true,
+        syntheticIdentity: authorization === 'Bearer browser-only-no-real-session',
+        authorizationMatchesPublicKey: authorization === `Bearer ${apiKey}` });
+      return route.fulfill({ status: 200, headers: { ...corsHeaders, 'content-type': 'application/json' }, body: 'null' });
+    }
+    if (request.method() === 'GET' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      && url.pathname === '/rest/v1/ph_department_calendar_events'
+      && url.search === '?select=*&order=start_at.asc&limit=1000&offset=0'
+      && Boolean(request.headers()['apikey'])
+      && (request.headers()['authorization'] === 'Bearer browser-only-no-real-session'
+        || request.headers()['authorization'] === `Bearer ${request.headers()['apikey']}`)) {
+      return fulfill(route, []);
     }
     if (request.method() === 'GET' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
       && url.pathname === '/rest/v1/ph_chat_participants'
@@ -705,7 +762,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       }
     }
     if (!['GET', 'HEAD'].includes(request.method())) {
-      const safeReadOrTelemetry = ['/rest/v1/rpc/report_app_health_event', '/rest/v1/rpc/get_app_user_directory'];
+      const safeReadOrTelemetry = ['/rest/v1/rpc/get_app_user_directory'];
       if (!safeReadOrTelemetry.includes(url.pathname)) {
         const body = request.postData() || '';
         unexpectedMutations.push(`${request.method()}:${url.pathname}:${body.slice(0, 200)}`);
@@ -799,6 +856,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     await expect(page.locator('#view-request')).toBeVisible();
   };
   await page.goto('/?post_deploy_access_canary=1&suspend_tag_canary=1' + (options.search || ''), { waitUntil: 'load' });
+  if (options.masterRows?.length) await page.waitForLoadState('networkidle');
   await seed();
   if (options.native) {
     await page.evaluate(() => window.eval(`(() => {
@@ -869,6 +927,13 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     expect(knownPhoto404Errors.length, 'only the routed fixture image may fail with a 404').toBeLessThanOrEqual(expectedPhoto404Count);
     expect(http404Resources.filter(resource => resource.url !== knownFixtureImageUrl || resource.resourceType !== 'image'), 'unexpected 404s retain resource URL and type').toEqual([]);
     expect(unexpectedConsoleErrors, 'release smoke must not emit unexpected browser console errors').toEqual([]);
+    expect(healthTelemetryReceipts.every(receipt => receipt.apiKeyPresent
+      && (receipt.syntheticIdentity || receipt.authorizationMatchesPublicKey)),
+      'health telemetry must be acknowledged only by the local synthetic fixture and never reach Supabase').toBe(true);
+    expect(healthTelemetryRequests.every(request => request.method === 'POST' && request.authorizationAllowed && request.apiKeyPresent),
+      'health telemetry requests must carry a synthetic session or matching public anon key').toBe(true);
+    expect(healthTelemetryReceipts.length, 'every captured health event must receive a validated local acknowledgment')
+      .toBe(healthTelemetryRequests.length);
     // The local shell logo is requested during initial document paint and can
     // be cancelled when the app replaces its startup surface. Classify only
     // that exact image cancellation; all other aborted reads remain failures.
@@ -881,7 +946,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     });
     expect(unexpectedFailedResources, 'unexpected aborted reads/assets retain URL and resource type evidence').toEqual([]);
   };
-  return { requests, replies, receipts, backendRows, inventoryLookupCalls, settingsReads, publishedReadPages, failedResources, consoleErrorDetails, chatParticipantReads, card, done, activate, legacyComplete, beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, assertClean };
+  return { requests, replies, receipts, backendRows, inventoryLookupCalls, settingsReads, publishedReadPages, failedResources, consoleErrorDetails, chatParticipantReads, healthTelemetryRequests, healthTelemetryReceipts, card, done, activate, legacyComplete, beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, assertClean };
 }
 
 async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', value: string) {
@@ -2045,7 +2110,8 @@ test('published snapshot stays available and Drive completes every Common Name a
     fullInventory = []; rebuildMasterInventoryIndexes();
     Object.assign(getDatasetState('master'), { initialLoaded: false, fullLoaded: false, rowCompleteness: 'unknown', liveVerifiedScope: '' });
     activeDriveTab = 'name'; driveViewLevel = 0; selectedDriveName = '';
-    showOnlyPrimaryView('drive'); resetProductionLiveSync();
+    resetProductionLiveSync();
+    showOnlyPrimaryView('drive');
     const loaded = await getProductionLiveSyncCoordinator().check('visible-view');
     renderDrive();
     return { loaded, rows: fullInventory.length, names: new Set(fullInventory.map(row => row.COMMONNAME)).size,

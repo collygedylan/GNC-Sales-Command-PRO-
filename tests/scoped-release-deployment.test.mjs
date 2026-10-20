@@ -73,7 +73,10 @@ test('scoped Pages release waits for the exact merged backend before publishing'
     'scopedValidationReceipt', 'deployment?.migrations', 'sourceHashes', 'SCOPED_BACKEND_MIGRATION_RECEIPT_INVALID',
     'SCOPED_BACKEND_MIGRATION_RECEIPT_MISMATCH', 'apps-script-sync.yml',
     'head_sha === context.sha', "event === 'workflow_dispatch'", 'Apply backend migrations and deploy Edge Functions',
-    'deployRun.conclusion !== \'success\'',
+    'deployRun.conclusion !== \'success\'', 'appsScriptChangedFunctions', 'apps-script-deploy.yml',
+    "event === 'workflow_run'", "job.name === 'deploy-apps-script'",
+    "Publish the guarded production Apps Script version", 'SCOPED_APPS_SCRIPT_PUBLICATION_TIMEOUT',
   ]) assert.ok(script.includes(marker), marker);
   assert.match(script, /Date\.now\(\)\s*\+\s*10\s*\*\s*60\s*\*\s*1000/);
+  assert.match(script, /Date\.now\(\)\s*\+\s*15\s*\*\s*60\s*\*\s*1000/);
 });

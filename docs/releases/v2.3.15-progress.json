@@ -443,6 +443,21 @@
       "cumulativeUnresolvedLkgAttempts": 4,
       "cap": 8,
       "productionWrites": false
+    },
+    {
+      "at": "2026-10-20T17:21:47.640Z",
+      "attempt": 3,
+      "cap": 8,
+      "status": "failed",
+      "report": ".gnc-local/release-smoke/agdata-v2-3-15/ad4b21ea0168/20261020170853004/report.json",
+      "passed": 4,
+      "failed": 5,
+      "functionalStatus": "All latest37 source UID/order/layout/metrics and timing assertions passed; published LKG hydration and Rosy details assertions passed. Remaining errors are aborted fixture telemetry and revision cancellation classification.",
+      "cause": [
+        "Fixture explicitly aborts report_app_health_event, causing resource console errors",
+        "WebKit records revision-read cancellation needing causal classification"
+      ],
+      "productionWrites": false
     }
   ],
   "availabilitySqlValidation": {
@@ -473,13 +488,16 @@
     "backendBeforeDependentPages": true,
     "validation": {
       "passedBeforeFinalGenericCondition": 5,
-      "finalTouchedMatrixPassed": 1
+      "finalTouchedMatrixPassed": 1,
+      "finalAppsScriptGatePassed": 1,
+      "finalAppsScriptGateLog": ".gnc-local/v2315-pages-backend-appscript-gate-focused.log"
     },
     "attemptHistory": [
       "two stale helper/gate marker assertions corrected",
       "one whitespace-sensitive marker corrected",
       "all5 scoped deployment checks passed",
       "generic receipt condition applied; only touched matrix check rerun1/1"
-    ]
+    ],
+    "exactAppsScriptBeforeDependentPages": true
   }
 }
