@@ -636,6 +636,12 @@
       "correction": "Allow guarded workflow_dispatch alongside workflow_run, and explicitly dispatch the scoped script publication after successful backend deployment"
     },
     "productionFrontend": "prior v2.3.13 remains live pending publication",
-    "backfillChanged": false
+    "backfillChanged": false,
+    "frontendRun": {
+      "runId": 39471962506,
+      "status": "cancelled",
+      "reason": "Replaced by corrected guarded publication handoff; no frontend publication occurred"
+    },
+    "backendClassifier": "Receipt-declared migrations and functions require exact-commit backend validation and idempotent publication"
   }
 }

@@ -32,6 +32,17 @@ test('scoped backend publication requires verified receipts and deploys only der
   assert.match(apply, /scopedReceipt\s*\?\s*normalizeScopedMigrationPaths/);
 });
 
+test('scoped backend classifier includes receipt-declared migrations and Edge Functions', () => {
+  const workflow = YAML.parse(read('.github/workflows/apps-script-sync.yml'));
+  const scope = workflow.jobs['authorize-backend'].steps.find(step => step.name === 'Require changed Supabase or database paths');
+  assert.ok(scope);
+  assert.match(scope.run, /scoped_receipt=.*scopedValidationReceipt/);
+  assert.match(scope.run, /deployment\.migrations \| type\).*array/);
+  assert.match(scope.run, /deployment\.edgeFunctions \| type\).*array/);
+  assert.match(scope.run, /backend_changed=true/);
+  assert.match(scope.run, /Fail closed into the retained-contract gate/);
+});
+
 test('database gate requires source-sealed disposable evidence for scoped releases', () => {
   const workflow = YAML.parse(read('.github/workflows/release-database.yml'));
   assert.ok(workflow.jobs['schema-gate'].needs.includes('scoped-retained-contracts'));

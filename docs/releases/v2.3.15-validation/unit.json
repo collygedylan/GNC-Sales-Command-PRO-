@@ -1,11 +1,11 @@
 {
   "status": "passed",
-  "capturedAt": "2026-10-20T18:14:47.292Z",
-  "sourceDigest": "74dbd9e64490c88a2a11746933739d23c627ef1a19f107f4c39b2629531d234c",
+  "capturedAt": "2026-10-20T18:16:58.514Z",
+  "sourceDigest": "a306988f5d97a1c608c029d85b8c938d7587c410971cfaf7b7701ffe4c00c7e1",
   "productionWrites": false,
   "realEmailsSent": false,
   "kind": "unit",
-  "passed": 117,
+  "passed": 118,
   "failed": 0,
   "scope": "Passing focused executions; baseline suites retained without rerun",
   "logs": [
@@ -127,6 +127,12 @@
       "path": "docs/releases/v2.3.15-validation/raw/v2315-publication-handoff-focused.log",
       "sha256": "aa8cf1706fca1795e5fbb2d8f72138ef794d67df493f81fda4c07c9617b06fbf",
       "passed": 2,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/v2315-scoped-backend-classifier-focused.log",
+      "sha256": "5dcbf8318206fe2d435fb737b5e814103bce8810323610fcdfc5c4b0c819a3fe",
+      "passed": 1,
       "failed": 0
     }
   ]

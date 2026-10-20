@@ -72,8 +72,19 @@ jobs:
               supabase/*|database/*|scripts/apply-item-low-stock-migration.mjs|.github/workflows/apps-script-sync.yml) backend_changed=true ;;
             esac
           done
+          scoped_receipt="$(jq -r '.scopedValidationReceipt // empty' package.json)"
+          scoped=false
+          if [[ -n "$scoped_receipt" ]]; then
+            scoped=true
+            if [[ ! "$scoped_receipt" =~ ^docs/releases/[a-z0-9.-]+-retained-validation\.json$ ]] || [[ ! -f "$scoped_receipt" ]]; then
+              # Fail closed into the retained-contract gate for malformed scoped metadata.
+              backend_changed=true
+            elif jq -e '((.deployment.migrations | type) == "array" and (.deployment.migrations | length) > 0) or ((.deployment.edgeFunctions | type) == "array" and (.deployment.edgeFunctions | length) > 0)' "$scoped_receipt" >/dev/null; then
+              backend_changed=true
+            fi
+          fi
           echo "backend-changed=$backend_changed" >> "$GITHUB_OUTPUT"
-          echo "scoped=$(test -n "$(jq -r '.scopedValidationReceipt // empty' package.json)" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "scoped=$scoped" >> "$GITHUB_OUTPUT"
           echo "v2313=$(test "$(jq -r .version package.json)" = 2.3.13 && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "v2311=$(test "$(jq -r .version package.json)" = 2.3.11 && echo true || echo false)" >> "$GITHUB_OUTPUT"
           if [[ "$(jq -r '.version' package.json)" == '2.3.8' ]]; then
