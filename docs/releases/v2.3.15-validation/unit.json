@@ -1,0 +1,115 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T17:49:51.485Z",
+  "sourceDigest": "9d0742a027e0ab8219fe3c44663716c263ef48a5103a76f57994ca88acc050f6",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "kind": "unit",
+  "passed": 107,
+  "failed": 0,
+  "scope": "Passing focused executions; baseline suites retained without rerun",
+  "logs": [
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/reclass-email-current.log",
+      "sha256": "443bbae33b1106f8a176b4679ebad52d94b96a1f8a17dbed235f89f3ced9a93d",
+      "passed": 62,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/reclass-recipient-policy.log",
+      "sha256": "7f3d8c638ad663223700525a28d9b2140d5c5d5a647b265592db96276798acc2",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/apps-script-scope-lkg.log",
+      "sha256": "680c63e40e98654492ab69eaba2f658f0d23c0eecac3310e351e9606e9371bb5",
+      "passed": 7,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/warehouse-export-resilience.log",
+      "sha256": "b93055624877705b64666d04f7f47007d0831bf9c4f0428e574cd1d7b0753491",
+      "passed": 4,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/session-shell-final.log",
+      "sha256": "5295cfd7f93068627d2351846c5be3925fae5b2b18273cc9f2b814ee112172dd",
+      "passed": 4,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/render-gate-policy.log",
+      "sha256": "0ec2f7734ce7db4b4859debe7034eb4db104fdabd055fda7d1963c975c328f01",
+      "passed": 12,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/row-detail-immediate-fallback-focused.log",
+      "sha256": "9fb3c78047edd424f81131513f60b9f6990aa4cd3a2618a300ae33bec9dbef9e",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/reclass-published-lkg-focused.log",
+      "sha256": "c66bc85a351cd0c30f4f15d58be9e3d8ebc5d957891c4c7cc9267334610a79f4",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/rosy-location-total.log",
+      "sha256": "1393a627cd6320f1fb17eda01403286a3843a354c2af49e0969b8eeb5d1eb416",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/availability-regression-focused.log",
+      "sha256": "bb7b8ee17808f5de4ca326fd53088749146ef00351b5df6b2a5dc8530ba6f515",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/availability-av-harness-recheck.log",
+      "sha256": "4166f5454616aa1ce3aa36ad38ac4d54014677e1a5e7d0198dbd764ff6fb1964",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/availability-token-recheck.log",
+      "sha256": "4f447acf2bbf88fcf943e4f2b52861adbdbc9a459b8050c53030817f0db3fdb1",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/v2315-lkg-runner-test.log",
+      "sha256": "04bcdeb8323961532de2d7b84e00e67a4b6c210cccad83728f2e6db69593ef58",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/v2315-scoped-matrix-focused.log",
+      "sha256": "a9f8de74bf7573e9735ecefcdccad1fdcb86f0092fb526f43dfba5b4226967d9",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/v2315-pages-backend-gate-focused.log",
+      "sha256": "5e8fddc48b9af3f13e56f4311bfb83f065f9e17c02cf9065482ea77df593b798",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/v2315-pages-backend-appscript-gate-focused.log",
+      "sha256": "782a28b310678670888823bc45f0325274d41352ec9e99a41ccc7837488f5b7f",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/release-smoke-project-concurrency.log",
+      "sha256": "72a74d0164e36d7755e1892edee7ecf7fe8d8eb3849f3c5904d1a7520866cb9c",
+      "passed": 1,
+      "failed": 0
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T17:49:51.485Z",
+  "sourceDigest": "9d0742a027e0ab8219fe3c44663716c263ef48a5103a76f57994ca88acc050f6",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "kind": "tooling",
+  "checks": [
+    "Changed-file ESLint",
+    "Inline script parse",
+    "TypeScript",
+    "Generated RPC contracts",
+    "Database boundaries",
+    "Test discovery"
+  ],
+  "log": {
+    "path": "docs/releases/v2.3.15-validation/raw/release-tooling-availability-final.log",
+    "sha256": "4d68e3b0d748f55d1bd3a0eb1649d9c4160950e432da54223bca698705a9d3ce"
+  }
+}

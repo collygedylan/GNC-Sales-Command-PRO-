@@ -1,0 +1,36 @@
+{
+  "startedAt": "2026-10-20T13:28:19.3Z",
+  "capturedAt": "2026-10-20T13:29:28.231Z",
+  "disposable": true,
+  "nativePostgres": true,
+  "migrationsReplayed": 94,
+  "assertions": 11,
+  "passed": true,
+  "sourceFileName": "SOC-10 Open Orders-06251820261020062518.xlsx",
+  "sourceSha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e",
+  "fixtureSha256": "0138fc75b7bb43cb7c5fff139bcbc827ea2099c6a7aeefe440ca1b37b0b7e864",
+  "flaggedDcPhysicalRows": 37,
+  "distinctSourceIdentityDigests": 37,
+  "productionWrites": false,
+  "emailsSent": false,
+  "command": "node .gnc-local/run-v2314-suspend-contract.mjs -> isolated Supabase workspace -> supabase test db",
+  "log": ".gnc-local/v2314-suspend-physical-contract.log",
+  "logSha256": "3f2d5a78963ee69c82b934cf2b29ad311cce413a77d3c850ccf0d410c5442502",
+  "result": [
+    "Tests=11",
+    "All tests successful.",
+    "Result: PASS"
+  ],
+  "attempts": 3,
+  "metadataQuery": {
+    "query": "SELECT filename,last_updated FROM public.ph_soc_master ORDER BY last_updated DESC NULLS LAST,unique_id ASC LIMIT 1",
+    "rows": 756,
+    "filenames": 1,
+    "firstUpdated": "2026-10-20T13:25:17.587Z",
+    "lastUpdated": "2026-10-20T13:25:17.587Z",
+    "distinctUpdateTimestamps": 1,
+    "explainAnalyzeMs": 1.044,
+    "explainCapturedAt": "2026-10-20T13:28:07Z",
+    "productionQueryReadOnly": true
+  }
+}
