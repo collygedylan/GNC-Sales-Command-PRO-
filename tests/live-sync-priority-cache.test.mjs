@@ -581,6 +581,7 @@ test('an obsolete Eval refresh cannot restore its old account cache after a fail
     const read = new Promise((_, reject) => { rejectRead = reject; });
     const ctx = {
         managerEvalReport2LoadState: {}, managerEvalReport2Cache: { privateRows: ['account-a'] }, managerEvalReport2CacheKey: 'old',
+        getManagerEvalReport2CacheKeyValue: () => 'source-a',
         useManagerReportPages: () => false,
         canViewManagerEvalReports2: () => true, getSupabaseReadIdentityScope: () => owner,
         getDatasetLoadSignature: () => 'source-a', ensureDatasetLoaded: () => read,

@@ -67,7 +67,7 @@ function emailHarness() {
     resolveOperationalEmailHeaders_: to=>({to}),resolveAutomatedEmailSenderAddress_:()=> 'app@example.test',
     sendGmailApiMessage_: options=>{sent.push(options);return {ok:true,gmailMessageId:'gmail-1',threadId:'thread-1',recipients:[options.toList]};},
   });
-  vm.runInContext(['encodeMimeHeaderWord_','encodeMimeBody_','buildSuspendTagApprovalEmail_','handleSignedSuspendTagDelivery_','buildMimeEmail_','formatMimeMailbox_'].map(scriptFunction).join('\n'),ctx);
+  vm.runInContext(['normalizeEmailAddress_','isLikelyEmailAddress_','flattenEmailValues_','dedupeEmailAddresses_','encodeMimeHeaderWord_','encodeMimeBody_','buildSuspendTagApprovalEmail_','handleSignedSuspendTagDelivery_','buildMimeEmail_','formatMimeMailbox_'].map(scriptFunction).join('\n'),ctx);
   return {ctx,sent,tablePayloads,props,receipts,releases:()=>releases};
 }
 test('Email Rep packages the frozen customer, consignee, ordered quantity and all photos together',()=>{
@@ -118,7 +118,7 @@ test('decision email replies in the original thread, to the recorded completer, 
 function workerHarness(options={}) {
   const calls=[],fetches=[];const key='synthetic-service-key';let handler;
   const event={event_id:'event',lease_token:'lease',event_key:'suspend-request:1',event_type:'suspend_tag_approval_requested',payload:{approval_id:approval.id},...options.event};
-  const client={rpc:async(name,args)=>{calls.push({name,args});if(name==='claim_request_delivery_events') return {data:[event]};if(name==='prepare_suspend_tag_delivery_v1') return {data:options.suppressed?{suppressed:true}:{approval:options.approval || approval,thread:{threadId:'original-thread',messageId:'<original@test>'}}};return {data:{}};}};
+  const client={rpc:async(name,args)=>{calls.push({name,args});if(name==='claim_request_delivery_events') return {data:[event]};if(name==='prepare_suspend_tag_delivery_v1') return {data:options.suppressed?{suppressed:true}:{approval:options.approval || approval,deliveryRecipients:[event.event_type==='suspend_tag_approval_decided'?approval.submitter_email:approval.rep_email],thread:{threadId:'original-thread',messageId:'<original@test>'}}};return {data:{}};}};
   const ctx=vm.createContext({console:{error(){}},Request,Response,TextEncoder,AbortController,setTimeout,clearTimeout,btoa,crypto:webcrypto,
     Deno:{env:{get:name=>({SUPABASE_URL:'https://db.example.test',SUPABASE_SERVICE_ROLE_KEY:key,REQUEST_DELIVERY_CRON_SECRET:'cron',APPS_SCRIPT_WEB_APP_URL:'https://script.example.test'})[name]}},
     createClient:()=>client,serve:fn=>handler=fn,withObservedRequest:(_,__,fn)=>fn(),

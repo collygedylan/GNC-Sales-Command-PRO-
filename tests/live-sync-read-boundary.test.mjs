@@ -14,6 +14,9 @@ const evalSecurityHelpers = html.slice(evalSecurityStart, evalSecurityEnd);
 const inventoryContractContext = {};
 vm.runInNewContext(readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), inventoryContractContext);
 const inventoryContract = inventoryContractContext.AgMetricInventoryList;
+const liveSyncContext = {};
+vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8'), liveSyncContext);
+const liveSync = liveSyncContext.AgMetricLiveSync;
 test('the inventory list contract script loads before inline live-sync consumers', () => {
     const contractScript = html.indexOf('src="./assets/inventory-list-contract.js');
     const coordinatorScript = html.indexOf('src="./assets/live-sync-coordinator.js');
@@ -86,13 +89,23 @@ test('AV page keys use ordered membership while visible card signatures retain c
 
 function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = false } = {}) {
     const generated = [], batches = [], frames = [], footers = [];
-    const container = { classList: { add() {} }, style: {}, signature: '',
-        insertAdjacentHTML: (_position, markup) => footers.push(markup) };
+    let loadMoreButton = null;
+    const container = { classList: { add() {} }, style: {}, dataset: {}, signature: '',
+        querySelector: () => loadMoreButton,
+        insertAdjacentHTML: (_position, markup) => {
+            footers.push(markup);
+            if (markup.includes('data-av-load-more')) loadMoreButton = {
+                isConnected: true, disabled: false, click: null,
+                addEventListener: (_event, callback) => { loadMoreButton.click = callback; },
+                insertAdjacentHTML: (_position, html) => batches.push(html),
+                remove: () => { loadMoreButton.isConnected = false; },
+            };
+        } };
     const crumb = {};
     const ctx = {
         avRenderChunkToken: 0, CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 1000,
         CLIENT_BROWSE_PAGE_SIZE: 100, canUseProductionLiveSync: () => false, shouldUseRepAvOpenDataset: () => false,
-        installAvCardWindowContinuation() {},
+        getCurrentVisibleViewId: () => 'av', refreshCartButtons() {}, scheduleDeferredCardPhotoHydration() {},
         IOS_CHUNK_FRAME_BUDGET_MS: 4, IOS_CHUNK_SYNC_ROW_LIMIT: 48,
         window: { innerHeight: 800, matchMedia: () => ({ matches: false }) },
         document: { documentElement: { clientHeight: 800 } }, performance: { now: () => 0 },
@@ -119,14 +132,16 @@ function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = f
     };
     vm.createContext(ctx);
     vm.runInContext(extractAppFunction('shouldUseChunkedAVOpenRender')
-        + extractAppFunction('getAvCardWindowEnd') + extractAppFunction('renderAVOpenCardsChunked'), ctx);
+        + extractAppFunction('getAvCardWindowEnd') + extractAppFunction('installAvCardWindowContinuation')
+        + extractAppFunction('renderAVOpenCardsChunked'), ctx);
     const rows = Array.from({ length: total }, (_value, id) => ({ id }));
     const start = () => ctx.renderAVOpenCardsChunked(container, crumb, rows, 'av', 'AV rows', '<footer/>', { firstPreviewCardSync });
     const flush = () => {
         let callbacks = 0;
-        while (frames.length) {
+        while (frames.length || loadMoreButton?.isConnected) {
             assert.ok(callbacks++ < 1000, 'chunk queue must finish');
-            frames.shift()();
+            if (frames.length) frames.shift()();
+            else loadMoreButton.click();
         }
     };
     return { ctx, rows, generated, batches, footers, container, crumb, start, flush, flushOne: () => frames.shift()?.() };
@@ -159,8 +174,10 @@ test('AV paginated cards render in bounded batches while preserving every row an
             fixture.flush();
             assert.deepEqual(fixture.generated.map(row => row.id), fixture.rows.map(row => row.id));
             assert.deepEqual(fixture.generated.map(row => row.rowIndex), fixture.rows.map(row => row.id));
-            assert.ok(fixture.batches.every(markup => (markup.match(/<card>/g) || []).length <= (ios ? 8 : 12)));
-            assert.deepEqual(fixture.footers, ['<footer/>']);
+            assert.ok(fixture.batches.every(markup => (markup.match(/<card>/g) || []).length <= 20), 'continuation appends at most one bounded 20-card window');
+            assert.equal(fixture.footers.length, 1);
+            assert.ok(fixture.footers[0].endsWith('<footer/>'));
+            assert.equal(fixture.footers[0].includes('data-av-load-more'), total > 20);
             assert.equal(fixture.crumb.innerText, 'AV rows');
             assert.ok(fixture.container.signature);
         }
@@ -237,7 +254,7 @@ function dashboardMetadataFixture() {
     const stateStart = html.indexOf('let dashboardSyncMetadataSummaries =');
     const stateEnd = html.indexOf('let pendingRequestArchiveFlushTimer', stateStart);
     const signalStart = html.indexOf('async function withProductionLiveSyncSignal(');
-    const metadataStart = html.indexOf('function collectDashboardSyncSource(');
+    const metadataStart = html.indexOf('function dashboardFilenameTimestamp(');
     const metadataEnd = html.indexOf('function updateDashboardSyncSummary()', metadataStart);
     assert.ok(stateStart > 0 && stateEnd > stateStart && metadataEnd > metadataStart);
     vm.runInContext(html.slice(stateStart, stateEnd)
@@ -800,7 +817,8 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
 });
 
 test('foreground full-master consumers keep live refreshes full without widening ordinary browse views', () => {
-    const ctx = { Array, JSON, pendingMasterFullHydrations: new Map(), getSupabaseReadIdentityScope: () => 'owner' };
+    const ctx = { Array, JSON, activeAVTab: 'open', shouldUseRepAvOpenDataset: () => false,
+        pendingMasterFullHydrations: new Map(), getSupabaseReadIdentityScope: () => 'owner' };
     vm.createContext(ctx);
     vm.runInContext(extractAppFunction('getProductionCoreLiveProjection'), ctx);
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'production-workflow'), 'full');
@@ -822,6 +840,7 @@ test('full row hydration pins its projection across refreshes and clears after s
     for (const outcome of ['success', 'failure', 'account-change', 'navigation-change']) {
         const gate = deferred(), map = new Map();
         const ctx = { Array, JSON, String, console, pendingMasterFullHydrations: map, owner: 'owner-a', view: 'drive', ready: false,
+            activeAVTab: 'open', shouldUseRepAvOpenDataset: () => false,
             isMasterFullProjectionReady: () => ctx.ready,
             getSupabaseReadIdentityScope: () => ctx.owner, getCurrentVisibleViewId: () => ctx.view, showToast() {},
             ensureDatasetLoaded: async () => { await gate.promise; if (outcome === 'failure') return false; ctx.ready = true; return true; } };
@@ -931,6 +950,7 @@ test('an explicit full coordinator read does not turn later ordinary refreshes i
         getCurrentAppSeasonSettings: () => ({ seasonCode: 'F1', salesYear: 27 }),
         getProductionLiveSyncCoordinator: () => ({ ensure: async adapter => { projections.push(adapter.projection); return true; } }),
         canUseProductionLiveSync: () => true, RETIRED_DATASET_KEYS: new Set()
+        , getProductionLiveSyncContext: () => ({ scope: 'owner', dataPermissionVersion: 'policy', adapters: [] })
     };
     vm.createContext(ctx);
     vm.runInContext(html.slice(adapterStart, adapterEnd), ctx);
@@ -954,8 +974,8 @@ test('detail hydration applies only to compact master rows, never Request or oth
     assert.equal(ctx.needsMasterDetailHydration({ UNIQUE_ID: 'unknown-source' }), false);
     full = true;
     assert.equal(ctx.needsMasterDetailHydration({ SOURCE_TABLE: 'ph_master_inventory' }), false);
-    assert.match(extractAppFunction('openDetail'), /needsMasterDetailHydration\(resolveDetailItemBySource\(uid, resolvedSourceView, openOptions\)\)/);
-    assert.match(extractAppFunction('openInventoryEditRequestModal'), /needsMasterDetailHydration\(findInventoryEditMockItemByUid\(uid\)\)/);
+    assert.match(extractAppFunction('openDetail'), /const detailListItem =[\s\S]*resolveDetailItemBySource\(uid, resolvedSourceView, openOptions\);[\s\S]*needsMasterDetailHydration\(detailListItem\)/);
+    assert.match(extractAppFunction('openInventoryEditRequestModal'), /const compactEditItem =[\s\S]*findInventoryEditMockItemByUid\(uid\)[\s\S]*needsMasterDetailHydration\(compactEditItem\)/);
 });
 
 test('master detail hydration selects exactly one full row inside a stable permission and revision fence', async () => {
@@ -1063,7 +1083,7 @@ test('master detail hydration discards a lookup when its source revision changes
         supabaseRpc: async () => ({ permissionVersion: 'access-v1', sources: new Map([['ph_master_inventory', { state: 'ready', revision: String(revision++) }]]) }),
         fetchInventoryReadPage: async () => ({ total: 1, rows: [{ unique_id: 'uid-1' }], projection: 'full', fieldCoverage: 'full', columns: inventoryContract.physicalColumns }),
         formatFetchedRows: rows => rows.map(row => ({ UNIQUE_ID: row.unique_id })),
-        window: { AgMetricLiveSync: { snapshot: value => value }, AgMetricInventoryList: inventoryContract },
+        window: { AgMetricLiveSync: { ...liveSync, snapshot: value => value }, AgMetricInventoryList: inventoryContract },
         staleSupabaseReadScopeError: () => Object.assign(new Error('scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' })
     };
     vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx); vm.runInContext(extractAppFunction('loadExactMasterDetailRow'), ctx);
@@ -1305,7 +1325,7 @@ test('same-role policy changes reload and apply authoritative permissions before
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('foreground'), false);
     assert.equal(ctx.calls.length, 0);
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('live-permissions'), true);
-    assert.deepEqual(ctx.calls, ['bridge', 'canonical', 'capabilities', 'access', 'master-scope', 'apply', 'protected'], 'same-role permission refresh keeps same-account cache ownership');
+    assert.deepEqual(ctx.calls, ['bridge', 'canonical', 'capabilities', 'access', 'master-scope', 'apply', 'protected', 'master-scope', 'apply', 'protected'], 'fresh denials apply before draft restoration and final same-account UI refresh');
 });
 
 test('division changes refresh capability scope even without a role change', async () => {
@@ -1361,7 +1381,7 @@ test('live permission signal arriving during a foreground check performs a full 
     const policy = ctx.refreshNativeRoleAndCapabilities('live-permissions');
     gate.resolve();
     assert.equal(await foreground, false); assert.equal(await policy, true);
-    assert.deepEqual(ctx.calls, ['bridge', 'canonical', 'capabilities', 'access', 'master-scope', 'apply', 'protected']);
+    assert.deepEqual(ctx.calls, ['bridge', 'canonical', 'capabilities', 'access', 'master-scope', 'apply', 'protected', 'master-scope', 'apply', 'protected']);
 });
 
 test('permission-change coordinator callback returns the permission refresh promise', () => {
@@ -1479,7 +1499,7 @@ test('a failed feature-permission read retains the draft privately for a later s
     assert.equal(ctx.accessControlAdminState.editor.reason, 'unsaved reason');
 });
 
-test('permission overlay obscures and disables the old app, retries centrally, and restores prior inert state', () => {
+test('background permission refresh removes a legacy overlay and restores prior inert state without blocking the app', () => {
     const ctx = draftFixture(); const signals = [];
     const existing = [{ inert: false, isConnected: true }, { inert: true, isConnected: true }];
     let overlay = null;
@@ -1492,14 +1512,16 @@ test('permission overlay obscures and disables the old app, retries centrally, a
             return { style: {}, setAttribute() {}, querySelector: (selector) => selector === 'button' ? button : status, remove: () => { existing.splice(existing.indexOf(overlay), 1); overlay = null; } };
         }
     };
+    for (const phase of ['checking', 'failed', '']) {
+        ctx.setProductionPermissionCheckState(phase);
+        assert.equal(existing[0].inert, false); assert.equal(existing[1].inert, true); assert.equal(overlay, null);
+    }
+    overlay = { remove: () => { overlay = null; } };
+    existing[0].inert = true;
+    vm.runInContext('productionPermissionCheckElements = [{ element: document.body.children[0], inert: false }]', ctx);
     ctx.setProductionPermissionCheckState('checking');
-    assert.equal(existing[0].inert, true); assert.match(overlay.style.cssText, /inset:0/);
-    assert.equal(overlay.querySelector('button').disabled, true);
-    ctx.setProductionPermissionCheckState('failed');
-    assert.equal(overlay.querySelector('button').disabled, false);
-    overlay.querySelector('button').onclick(); assert.deepEqual(signals, [['permissions-retry', 0]]);
-    ctx.setProductionPermissionCheckState('');
-    assert.equal(existing[0].inert, false); assert.equal(existing[1].inert, true); assert.equal(overlay, null);
+    assert.equal(existing[0].inert, false); assert.equal(overlay, null);
+    assert.deepEqual(signals, [], 'cleanup never manufactures a permission retry or authorization result');
 });
 
 test('native Codex live updates do not start the redundant fifteen-second timer', () => {
@@ -1724,7 +1746,7 @@ test('only AV Open opts into the primary preview subset and its tab belongs to c
     assert.equal(open.adapters[0].id, 'core:master');
     ctx.activeAVTab = 'reserves'; const reserves = ctx.getProductionLiveSyncContext();
     assert.equal(reserves.previewAdapterIds, undefined); assert.notEqual(reserves.viewKey, open.viewKey);
-    ctx.activeAVTab = 'open'; ctx.surfaces = ['dialog:request']; assert.equal(ctx.getProductionLiveSyncContext().previewAdapterIds, undefined);
+    ctx.activeAVTab = 'open'; ctx.surfaces = ['dialog:request']; assert.deepEqual(Array.from(ctx.getProductionLiveSyncContext().previewAdapterIds), ['core:master']);
     ctx.view = 'drive'; ctx.surfaces = []; assert.equal(ctx.getProductionLiveSyncContext().previewAdapterIds, undefined);
 });
 
@@ -1825,7 +1847,7 @@ test('revision reads gate status refreshes only for current identity and matchin
 test('SIGNED_OUT watcher invalidates pending native recovery before clearing the session', () => {
     const calls = []; let callback;
     const ctx = { window: {}, nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true, nativeAuthAccessToken: 'old',
-        currentUser: 'alice',
+        currentUser: 'alice', hasExplicitLogoutMarker: () => false,
         getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
         invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
     disposeAuraWidget: () => calls.push('dispose-aura'),
@@ -2236,7 +2258,7 @@ test('native account switch clears old app identity before restoring the new SDK
     const calls = []; let callback; let deferredAuthCallback;
     const ctx = { window: {}, nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true,
         nativeAuthAccessToken: 'token-a', nativeAuthProfileRestorePending: false,
-        currentUser: 'alice',
+        currentUser: 'alice', hasExplicitLogoutMarker: () => false,
         getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
         invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
         disposeAuraWidget() {}, closeBloomscapesPendingOrders() {},

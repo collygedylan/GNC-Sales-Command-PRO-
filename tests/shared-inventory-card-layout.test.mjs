@@ -58,17 +58,23 @@ test('operational metadata precedes Dock/Drop/Qty/Spec chips in the shared card 
   dom.window.close();
 });
 
-test('compact Suspend variant moves order fields into the header while leaving shared Docks layout unchanged', () => {
+test('compact Suspend publishes the current order strip below its header rail while leaving shared Docks layout unchanged', () => {
   const c=vm.createContext({esc:value=>String(value ?? ''),firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim()!==''),getDockStopOrDropValue:row=>row.STOPNUMBER});
   vm.runInContext(extract('buildSharedInventoryCardLayout'),c);
+  c.item = { DOCK_NUM:'Dock 30', STOPNUMBER:'4' };
+  c.requestConsignee = 'Consignee'; c.suspendSalesRep = 'Sales Rep';
+  c.getDockDisplayQty = () => 0; c.formatDockDisplayQty = String;
+  const stripStart = html.indexOf('                const suspendOrderField =');
+  const stripEnd = html.indexOf('                const suspendHoldstopCode =', stripStart);
+  vm.runInContext(html.slice(stripStart, stripEnd) + '\nthis.orderStripHtml = suspendOrderStripHtml;', c);
   const dom=new JSDOM(c.buildSharedInventoryCardLayout({COMMONNAME:'Tree',DOCK_NUM:'Dock 30',STOPNUMBER:'4',LOCATIONCODE:'I.12.000'}, {
     operational:true,compactSuspend:true,quantity:0,spec:'Full',planstartValue:'10/19/2026',actionsHtml:'<div class="app-drive-card-reclass"><button>Reclass</button></div>',
-    operationalMetaHtml:'<div class="app-operational-card-meta">Consignee, Sales Rep</div>', detailsHtml:'<div>SpecFull</div>'
+    orderStripHtml:c.orderStripHtml, operationalMetaHtml:'<div class="app-operational-card-meta">Consignee, Sales Rep</div>', detailsHtml:'<div>SpecFull</div>'
   }));
-  const root=dom.window.document,location=root.querySelector('.app-drive-card-meta'),fields=root.querySelector('.app-operational-card-header-fields');
-  assert.equal(location.nextElementSibling,fields);
-  assert.deepEqual([...fields.querySelectorAll('.app-operational-card-header-field')].map(node=>node.textContent),['Dock30','Drop4','Qty0']);
-  assert.equal(fields.nextElementSibling,root.querySelector('.app-operational-card-meta'));
+  const root=dom.window.document,fields=root.querySelector('.app-suspend-tag-order-strip');
+  assert.equal(root.querySelector('.app-drive-card-details').firstElementChild,fields);
+  assert.deepEqual([...fields.querySelectorAll('.app-suspend-tag-order-field')].map(node=>node.textContent),['Dock30','Drop4','Qty0','ConsigneeConsignee','Sales RepSales Rep']);
+  assert.equal(root.querySelector('.app-drive-card-header .app-suspend-tag-order-strip'),null);
   const headerRow=root.querySelector('.app-suspend-tag-header-row');
   const textColumn=headerRow?.querySelector(':scope > .app-suspend-tag-text-column');
   const reclassRail=headerRow?.querySelector(':scope > .app-drive-card-reclass');
@@ -78,7 +84,7 @@ test('compact Suspend variant moves order fields into the header while leaving s
   assert.equal(root.querySelector('.app-drive-card-header .app-operational-planstart-date'),null);
   assert.match(root.querySelector('.app-drive-card-details').textContent,/SpecFull/);
   dom.window.close();
-  const zeroDock=new JSDOM(c.buildSharedInventoryCardLayout({DOCK_NUM:0}, {operational:true,compactSuspend:true}));
+  const zeroDock=new JSDOM(c.buildSharedInventoryCardLayout({DOCK_NUM:0}, {operational:true}));
   assert.equal(zeroDock.window.document.querySelector('.app-operational-card-header-field strong').textContent,'0');
   zeroDock.window.close();
 });
@@ -119,6 +125,7 @@ test('operational metrics require a verified exact inventory row',()=>{
   let verified=true;
   const c=vm.createContext({getDatasetState:()=>({rowCompleteness:'complete',initialLoaded:true}),nativeAuthSessionActive:false,nativeAuthProfile:null,getCardLocationOnHandValue:()=>verified?'0':null,fullInventory:[{ITEMCODE:'0001',LOCATIONCODE:'A1',LOTCODE:'L1',PTRONHAND:0}],isSameDockSuspendDcRequestCardDataLocation:(a,b)=>['ITEMCODE','LOCATIONCODE','LOTCODE'].every(k=>a[k]===b[k]),getSuspendTagInventoryIdentity:row=>row,matchesSuspendTagInventoryIdentity:()=>true,getSuspendTagHydratedInventoryRow:()=>null,findDockSuspendDcRequestSourceRow:()=>null});
   c.masterInventoryByItemCode=new Map([['0001',c.fullInventory]]);
+  c.isDockSuspendDcRequestMirrorRow = () => false;
   c.getItemInquiryItemCode=row=>row.ITEMCODE;
   vm.runInContext(extract('getOperationalCardInventoryRow'),c);
   assert.equal(c.getOperationalCardInventoryRow({ITEMCODE:'0001',LOCATIONCODE:'A1',LOTCODE:'L1'}).PTRONHAND,0);
@@ -141,7 +148,7 @@ test('Docks operational metrics render N/A for missing values without changing o
   assert.deepEqual([...docks.window.document.querySelectorAll('.app-card-qty-value')].map(node=>node.textContent),Array(6).fill('N/A'));
   docks.window.close();
   const other=new JSDOM(c.buildInventoryQuantityChipsHtml({}, {layout:'row',sourceView:'other',preserveUnknown:true}));
-  assert.ok([...other.window.document.querySelectorAll('.app-card-qty-value')].some(node=>node.textContent==='Unknown'));
+  assert.deepEqual([...other.window.document.querySelectorAll('.app-card-qty-value')].map(node=>node.textContent), Array(6).fill('--'));
   other.window.close();
 });
 

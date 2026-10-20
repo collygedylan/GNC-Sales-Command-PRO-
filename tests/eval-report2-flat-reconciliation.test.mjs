@@ -93,8 +93,8 @@ test('direct and assignment recipient contracts are server-owned', () => {
   assert.match(migration, /p\.disabled_at is null/);
   assert.match(migration, /p\.locked_until is null or p\.locked_until <= now\(\)/);
   assert.match(migration, /u\.email_confirmed_at is not null/);
-  assert.match(codeGs, /get_eval_report2_direct_inquiry_recipients_v1/);
-  assert.match(codeGs, /expectedCount = actorKey === 'jd_jones' \? 4 : 3/);
+  assert.match(codeGs, /callSupabaseRpc_\('get_reclass_delivery_recipients_v1', \{ p_actor_username: actorUsername \}\)/);
+  assert.match(codeGs, /!recipients\.length \|\| recipients\.length > 3 \|\| recipients\.some\(function\(email\) \{ return !isLikelyEmailAddress_\(email\); \}\)/);
   assert.match(migration, /assignmentRecipients/);
   assert.match(migration, /array_append\(usernames, 'jd_jones'\)/);
 });

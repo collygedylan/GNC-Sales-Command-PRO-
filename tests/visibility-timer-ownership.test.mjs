@@ -38,7 +38,7 @@ test('service-worker registration resolving while hidden does not create a recur
   assert.equal(cleared[0], timers[0]);
   assert.equal(ctx.window.__swUpdateIntervalId, null);
 
-  assert.match(html, /startShellUpdateInterval\(\);\s*\}\)\.catch\(err => console\.error\('Service Worker Error:'/,
+  assert.match(html, /startShellUpdateInterval\(\);\s*\}\)\.catch\(err => logShellDiagnostics\('service-worker-startup-failed',/,
     'registration continuation uses the visibility-aware helper');
   assert.match(html, /if \(document\.hidden\) \{\s*setTimeout\(tryApplyShellUpdateSilently, 600\);\s*stopShellUpdateInterval\(\);/);
   assert.match(html, /\} else \{\s*startShellUpdateInterval\('interval-resume'\);/);

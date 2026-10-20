@@ -3,13 +3,15 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { hasAnyCanonicalUserAccessFlag } from '../supabase/functions/_shared/canonical-user-access.ts';
 import { captureInventoryLocationRevision, enrichInventoryLocationRows } from '../supabase/functions/_shared/inventory-location-on-hand.ts';
 
 const source = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const errorHelperStart = source.indexOf('function databaseFailureResponse(');
 const errorHelperEnd = source.indexOf('\nfunction ensureServerConfig(', errorHelperStart);
 assert.ok(errorHelperStart >= 0 && errorHelperEnd > errorHelperStart, 'database error mapping should be present');
-const errorHelper = source.slice(errorHelperStart, errorHelperEnd);
+const canonicalHelpers = source.slice(source.indexOf('const CANONICAL_DATASET_READ_FLAGS:'), source.indexOf('// This read boundary deliberately accepts dataset'));
+const errorHelper = canonicalHelpers + source.slice(errorHelperStart, errorHelperEnd);
 const start = source.indexOf('// This read boundary deliberately accepts dataset and typed filter names');
 const end = source.indexOf('function hasTableWriteAccess(', start);
 assert.ok(start >= 0 && end > start, 'dataset read and productivity handlers should be present');
@@ -18,7 +20,7 @@ const productivityStart = source.indexOf('async function handleAppendProductivit
 assert.ok(datasetEnd > start && productivityStart > datasetEnd && productivityStart < end);
 const block = source.slice(start, datasetEnd) + source.slice(productivityStart, end);
 
-function harness({ readable = true, masterReadable = false, sourceState = 'ready', writable = true, role = 'admin', username = 'dylan_collyge', rows = [{ unique_id: 'one' }], count = 1, dbError = null, writeError = null } = {}) {
+function harness({ readable = true, masterReadable = false, sourceState = 'ready', publishedReadable = false, writable = true, role = 'admin', username = 'dylan_collyge', rows = [{ unique_id: 'one' }], count = 1, dbError = null, writeError = null } = {}) {
   const queries = [];
   const tables = [];
   const transpiled = ts.transpileModule(`function errorResponse(message, status = 400, extra = {}) { return { status, body: { error: message, ...extra } }; }\n${errorHelper}\n${block}\nthis.datasetReadTest = handleDatasetRead; this.productivityWriteTest = handleAppendProductivityHistory;`, {
@@ -26,6 +28,7 @@ function harness({ readable = true, masterReadable = false, sourceState = 'ready
   }).outputText;
   const context = vm.createContext({
     Error,
+    hasAnyCanonicalUserAccessFlag,
     captureInventoryLocationRevision,
     enrichInventoryLocationRows,
     locationCalls: [],
@@ -88,6 +91,7 @@ function harness({ readable = true, masterReadable = false, sourceState = 'ready
     supabase: {
       async rpc(name, args) {
         context.locationCalls.push({ name, args });
+        if (sourceState !== 'ready' && !publishedReadable) return { data: null, error: { message: 'LOC_ON_HAND_SOURCE_NOT_READY' } };
         return { data: { inventoryRevision: '12', rows: args.p_pairs.map(pair => ({ ...pair, loc_on_hand: 2000, loc_on_hand_revision: '12' })) }, error: null };
       },
       from(table) {
@@ -241,14 +245,17 @@ test('request aggregate enrichment keeps permissions and rejects an inventory re
   assert.equal(changed.body.retryable, false);
 });
 
-test('Request totals pause during a master import without reading rows or raising a totals RPC exception', async () => {
+test('Request totals require a ready or attested published source before reading rows', async () => {
   const h = harness({ masterReadable: true, sourceState: 'importing' });
   const response = await h.context.datasetReadTest(h.session(), { dataset: 'active_request', params: {} });
   assert.equal(response.status, 423);
   assert.equal(response.body.code, 'LOC_ON_HAND_SOURCE_NOT_READY');
   assert.equal(response.body.retryable, false);
   assert.deepEqual(h.tables, []);
-  assert.equal(h.context.locationCalls.length, 0);
+  assert.equal(h.context.locationCalls.length, 1, 'only the read-only readiness probe may run');
+  assert.deepEqual(Array.from(h.context.locationCalls[0].args.p_pairs), []);
+  const published = harness({ masterReadable: true, sourceState: 'interrupted', publishedReadable: true });
+  assert.equal((await published.context.datasetReadTest(published.session(), { dataset: 'active_request', params: {} })).status, 200);
 });
 
 test('default projections are explicit current columns and Request signatures are a valid subset', () => {
@@ -394,6 +401,7 @@ test('inventory source_freshness uses only the authorized minimal metadata proje
   }).outputText;
   const calls = [];
   const context = vm.createContext({
+    canonicalInventoryReadAllowed: access => { assert.equal(access, null); return false; },
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     jsonValue: value => value,
     jsonObject: value => {
@@ -434,7 +442,7 @@ test('inventory source_freshness uses only the authorized minimal metadata proje
 });
 
 test('app-api dispatch exposes only the named dataset and productivity actions', () => {
-  assert.match(source, /action === "dataset_read"\) return await handleDatasetRead\(session, payload, req\)/);
+  assert.match(source, /action === "dataset_read"\) return await handleDatasetRead\(session, payload, req, canonicalAccessForRequest\)/);
   assert.match(source, /action === "append_productivity_history"\) return await handleAppendProductivityHistory\(session, payload\)/);
   assert.doesNotMatch(source, /dataset_read[\s\S]{0,500}payload\.query/);
 });

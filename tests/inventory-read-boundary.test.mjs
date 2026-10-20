@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { hasAnyCanonicalUserAccessFlag } from '../supabase/functions/_shared/canonical-user-access.ts';
 import { captureInventoryLocationRevision, enrichInventoryLocationRows } from '../supabase/functions/_shared/inventory-location-on-hand.ts';
 import {
   INVENTORY_MASTER_BROWSE_FIELDS as MASTER_BROWSE_FIELDS,
@@ -141,12 +142,14 @@ function appApiHarness({ moduleAllowed = true, sourceState = 'ready', sourceRevi
   const end = edgeSource.indexOf('const AURA_V2_OPERATIONS', start);
   assert.ok(start >= 0 && end > start, 'inventory read handler block should exist');
   const helpers = edgeSource.slice(edgeSource.indexOf('async function captureReadyInventoryLocationRevision('), edgeSource.indexOf('function ensureServerConfig('));
-  const transpiled = ts.transpileModule(`${helpers}\n${edgeSource.slice(start, end)}\nthis.inventoryReadTest = handleInventoryRead;`, {
+  const canonicalHelpers = edgeSource.slice(edgeSource.indexOf('const CANONICAL_DATASET_READ_FLAGS:'), edgeSource.indexOf('// This read boundary deliberately accepts dataset'));
+  const transpiled = ts.transpileModule(`${canonicalHelpers}\n${helpers}\n${edgeSource.slice(start, end)}\nthis.inventoryReadTest = handleInventoryRead;`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
   }).outputText;
   const queries = [];
   const context = vm.createContext({
     Error,
+    hasAnyCanonicalUserAccessFlag,
     inventoryReadRows: [],
     locationCalls: [],
     identityCalls: [],
@@ -191,6 +194,7 @@ function appApiHarness({ moduleAllowed = true, sourceState = 'ready', sourceRevi
         }
         assert.equal(name, 'inventory_location_on_hand_read_v1');
         context.locationCalls.push(args);
+        if (sourceState !== 'ready') return { data: null, error: { message: 'LOC_ON_HAND_SOURCE_NOT_READY' } };
         return { data: { inventoryRevision: '12', rows: args.p_pairs.map(pair => ({ ...pair, loc_on_hand: 2000, loc_on_hand_revision: '12' })) }, error: null };
       },
       from(table) {
@@ -393,7 +397,7 @@ test('master identity batch enforces access and bounds, returns full rows plus f
   assert.equal(unfenced.context.locationCalls[0].p_pairs.length, 0, 'unmatched identities are not sent for LOC_ON_HAND enrichment');
 });
 
-test('import readiness short-circuits inventory rows and totals before invoking the database RPC', async () => {
+test('unattested import readiness permits only an empty revision probe before blocking rows and totals', async () => {
   const actor = { actor: { id: 'profile-1', username: 'reader', role: 'admin' } };
   for (const sourceState of ['importing', 'interrupted', null]) {
     const { handler, queries, context } = appApiHarness({ sourceState });
@@ -402,7 +406,8 @@ test('import readiness short-circuits inventory rows and totals before invoking 
     assert.equal(response.body.code, 'LOC_ON_HAND_SOURCE_NOT_READY');
     assert.equal(response.body.retryable, false);
     assert.equal(response.body.retryAfterMs, 30000);
-    assert.equal(context.locationCalls.length, 0, 'non-ready sources must not invoke the exception-raising RPC');
+    assert.equal(context.locationCalls.length, sourceState === null ? 0 : 1, 'valid fenced revisions require the authoritative read-only readiness probe');
+    assert.ok(context.locationCalls.every(call => call.p_pairs.length === 0), 'no physical pair totals may be requested');
     assert.equal(queries.length, 0, 'non-ready sources must not query partial inventory rows');
   }
 });
@@ -511,7 +516,7 @@ test('production browser and Apps Script inventory reads use app-api or the avai
   assert.match(html, /supabaseRpc\('hl_order_inventory_availability', \{ p_itemcodes: batch \}/);
   assert.match(appsScript, /callSupabaseRpc_\('hl_order_inventory_availability'/);
   assert.doesNotMatch(appsScript, /\/rest\/v1\/ph_master_inventory/);
-  assert.match(edgeSource, /action === "inventory_read"[\s\S]*?handleInventoryRead\(session, payload\)/);
+  assert.match(edgeSource, /action === "inventory_read"[\s\S]*?handleInventoryRead\(session, payload, canonicalAccessForRequest\)/);
   for (const operation of ['master_page', 'master_delta', 'po_detail', 'recount_queue', 'ncr_queue', 'not_on_inventory_queue', 'verify_row', 'schema_capabilities']) {
     assert.ok(edgeSource.includes(`operation === "${operation}"`) || edgeSource.includes(`"${operation}"`), `${operation} should be an explicit app-api operation`);
   }

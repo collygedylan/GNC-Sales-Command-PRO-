@@ -15,8 +15,11 @@ function recoveryHarness({ storageBlocked = false, offline = false, href = 'http
   const events = [];
   const root = {
     AbortController, document: { addEventListener() {} }, addEventListener() {},
-    navigator: { onLine: !offline, serviceWorker: { getRegistrations: async () => [{ unregister: async () => events.push('unregister') }] } },
-    caches: { keys: async () => ['old-shell', 'old-assets'], delete: async key => events.push(`delete:${key}`) },
+    navigator: { onLine: !offline, serviceWorker: { getRegistrations: async () => [
+      { scope: 'https://app.test/', active: { scriptURL: 'https://app.test/sw.js?v=old' }, unregister: async () => events.push('unregister') },
+      { scope: 'https://app.test/other/', active: { scriptURL: 'https://app.test/other/sw.js' }, unregister: async () => assert.fail('unrelated worker removed') },
+    ] } },
+    caches: { keys: async () => ['ag-data-v4.3-rebuild-old-shell', 'ag-data-v4.3-rebuild-old-assets', 'unrelated-cache'], delete: async key => events.push(`delete:${key}`) },
     sessionStorage: { getItem: key => { if (storageBlocked) throw new Error('blocked'); return storage.get(key); }, setItem: (key, value) => { if (storageBlocked) throw new Error('blocked'); storage.set(key, value); } },
     // Recovery must not remove credentials, saved requests, or unsent photos.
     indexedDB: { deleteDatabase() { assert.fail('draft storage deleted'); } },
@@ -42,9 +45,9 @@ test('verified shell mismatch unregisters and clears assets before a single cach
   const h = recoveryHarness();
   const first = h.root.recoverShellVersionMismatch('V2026.10.01.002', 'V2026.10.01.003');
   const duplicate = h.root.recoverShellVersionMismatch('V2026.10.01.002', 'V2026.10.01.003');
-  assert.equal(first, duplicate);
+  assert.equal(await duplicate, false, 'an in-flight recovery suppresses a second reload');
   assert.equal(await first, true);
-  assert.deepEqual(h.events, ['unregister', 'delete:old-shell', 'delete:old-assets', 'url', ['reload', true]]);
+  assert.deepEqual(h.events, ['unregister', 'delete:ag-data-v4.3-rebuild-old-shell', 'delete:ag-data-v4.3-rebuild-old-assets', 'url', ['reload', true]]);
   const url = new URL(h.root.location.href);
   assert.equal(url.searchParams.get('shellv'), 'V2026.10.01.003');
   assert.equal(url.searchParams.get('view'), 'home');

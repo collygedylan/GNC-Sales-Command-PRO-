@@ -20,6 +20,7 @@ function accessHarness({ preferences, overrides = {} } = {}) {
   const context = vm.createContext({
     window: { ...(preferences === undefined ? {} : { GncNavigationPreferences: preferences }), SalesWorkspace: { isView: () => false } },
     currentUser: 'worker',
+    canonicalFeaturePermission: () => null,
     isEvalSensitiveDataRestricted: () => false,
     canUseHistoricalRequests: () => true,
     BunchNote: { author: () => true },
@@ -111,6 +112,8 @@ test('configuration, refresh, footer updates, and preference editor tolerate abs
   const source = sliceBetween('let navigationPreferencesAccount =', 'function scheduleViewActivationWork(');
   const context = vm.createContext({
     window: {}, currentUser: 'worker', navigationPreferencesAccount: '',
+    configureCanonicalUserAccess() {},
+    renderCanonicalUserAccessEditor() {},
     document: { getElementById: () => element(), querySelectorAll: () => [] },
     GncMobileWorkspace: { shell() {} }, getCurrentVisibleViewId: () => 'home', getRoleAccessState: () => ({}),
     canShowFooterViewButton: () => false, isSalesShellAccess: () => false,

@@ -4,7 +4,7 @@ Use the least expensive available model and reasoning effort suited to the speci
 
 ## Defaults and escalation
 
-The project `.codex/config.toml` selects **GPT-6 Luna / low** for new sessions and delegated work by default. Standard speed is inherited; routine work must not opt into Fast mode. The owner chooses explicit model and effort values for each useful delegated task:
+The project `.codex/config.toml` selects **GPT-6 Luna / medium** for new sessions and delegated work by default. Standard speed is inherited; routine work must not opt into Fast mode. The owner chooses explicit model and effort values for each useful delegated task:
 
 | Work | Model and effort |
 | --- | --- |

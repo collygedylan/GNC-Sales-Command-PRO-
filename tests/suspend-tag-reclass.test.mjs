@@ -22,6 +22,7 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
   const item = { UNIQUE_ID: 'dock_suspend_dc_soc-row', MASTER_ID: 'master-row', suspend: 'SUSPEND', suspend_to: 'DC' };
   const context = vm.createContext({
     String, Object, Array, Set, Map, Date,
+    window: {}, activeReqTab: 'suspend-tag', suspendTagCardActionDelegationBound: false,
     esc: value => String(value ?? ''), escJsAttrValue: value => String(value ?? '').replaceAll("'", '&#39;'),
     firstNonEmptyValue: (...values) => values.find(value => value !== '' && value != null),
     owner: 'account-1', currentUser: 'operator-1', currentRole: 'user', suspendTagCompletionActions: new Set(),
@@ -35,6 +36,7 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
     masterInventoryById: new Map([[master.UNIQUE_ID, master]]),
     masterInventoryByExactKey: new Map([['SKU-1__A1__27.U3__PH', master]]),
     masterInventoryByItemCode: new Map([['SKU-1', [master]]]),
+    masterInventoryByNormalizedItemLocation: new Map(),
     fullInventory: [master],
     getMasterInventorySourceCode: row => row.SOURCE || '',
     normalizeMasterInventorySourceCode: value => ['DOCK','DOCKS','SOC'].includes(String(value || '').trim().toUpperCase()) ? '' : String(value || '').trim().toUpperCase(),
@@ -48,7 +50,7 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
   });
   vm.runInContext(['isDockSuspendDcRequestMirrorRow', 'getDockSuspendDcRequestSourceUid', 'getMasterInventoryExactKey', 'findLinkedMasterRow', 'getDockSuspendDcRequestLinkedMasterRow',
     'getSuspendTagInventoryIdentity', 'matchesSuspendTagInventoryIdentity', 'getOperationalCardInventoryRow',
-    'isArgosInventoryTransactionEligible', 'buildArgosInventoryTransactionRailHtml', 'buildArgosInventoryTransactionRailPlaceholderHtml', 'buildSuspendTagReclassActionHtml', 'buildSuspendTagActions'].map(extract).join('\n'), context);
+    'isArgosInventoryTransactionEligible', 'buildArgosInventoryTransactionRailHtml', 'buildArgosInventoryTransactionRailPlaceholderHtml', 'buildSuspendTagReclassActionHtml', 'initializeSuspendTagCardActionDelegation', 'buildSuspendTagActions'].map(extract).join('\n'), context);
   return { context, item, source, master };
 }
 
@@ -58,7 +60,7 @@ function coldReclassHarness(t, { warmFullCache = false } = {}) {
   t.after(() => dom.window.close());
   const callbacks = [], reads = [];
   Object.assign(h.context, {
-    document: dom.window.document, owner: 'account-1', permission: 'permission-1',
+    window: dom.window, document: dom.window.document, owner: 'account-1', permission: 'permission-1',
     productionLiveSyncNavigation: new AbortController(),
     canUseProductionLiveSync: () => true, isSuspendTagWriteSurface: () => true,
     getSupabaseReadIdentityScope: () => h.context.owner,
@@ -212,6 +214,9 @@ test('Suspend Tag card renders shared Reclass button and its activation does not
   let opened = null;
   context.openArgosInventoryTransactionModal = (...args) => { opened = args; return false; };
   const dom = new JSDOM(`<article id="card">${context.buildSuspendTagReclassActionHtml(item, 'onpointerdown="event.stopPropagation()"')}${context.buildSuspendTagActions(item)}</article>`, { runScripts: 'dangerously' });
+  context.window = dom.window;
+  context.document = dom.window.document;
+  context.initializeSuspendTagCardActionDelegation();
   dom.window.openArgosInventoryTransactionModal = context.openArgosInventoryTransactionModal;
   let cardClicks = 0;
   dom.window.document.querySelector('#card').addEventListener('click', () => { cardClicks += 1; });
@@ -276,15 +281,18 @@ function modalHarness() {
   const { context, master } = actionHarness();
   const dom = new JSDOM('<div id="argos-inventory-transaction-modal" class="hidden"></div><button id="argos-inventory-transaction-apply" disabled></button>');
   const modal = dom.window.document.getElementById('argos-inventory-transaction-modal');
-  const calls = [], toasts = [];
+  const calls = [], toasts = [], frames = [];
   let resolveRead;
   Object.assign(context, {
-    AbortController, document: dom.window.document,
+    AbortController, document: dom.window.document, permission: 'permission-a',
+    getProductionLiveSyncContext: () => ({ scope: context.owner, dataPermissionVersion: context.permission }),
+    requestAnimationFrame: callback => { frames.push(callback); },
     argosInquiryOpenRevision: 0, argosInquiryReadController: null, argosInventoryTransactionState: null,
     owner: 'account-a', view: 'request', requestSuspendTagDockFilter: 'dock-2',
     findItemByUniqueId: uid => uid === master.UNIQUE_ID ? master : null,
     // These tests cover the cold, access-checked Suspend Tag hydration path.
     getVerifiedCachedArgosItemInquiryGroup: () => null,
+    getItemInquiryRows: () => [master],
     // The modal VM fixture has no editable controls; production captures a
     // baseline so silent hydration cannot overwrite later user input.
     captureArgosInventoryTransactionDraftBaseline: () => [],
@@ -296,7 +304,10 @@ function modalHarness() {
     loadArgosItemInquiryRows: (row, options) => { calls.push({ row, options }); return new Promise(resolve => { resolveRead = resolve; }); },
     ensureArgosInventoryTransactionModal: () => modal,
     getArgosInventorySourceSnapshot: row => ({ uniqueId: row.UNIQUE_ID }),
-    buildItemInquiryViewModel: (row, rows) => ({ row, rows }),
+    buildItemInquiryViewModel: (row, rows) => ({ row, rows,
+      locationRows: rows.map(item => ({ unique_id: item.UNIQUE_ID, values: { priority: item.PRIORITY || '' } })) }),
+    getArgosReclassV3HoldProposal: () => null, getArgosReclassV3ActionCountForEntry: () => 0,
+    getArgosReclassTemporaryOverlayMap: () => new Map(),
     renderArgosInventoryTransactionSource: () => '',
     renderArgosReclassInquiryEditor: () => '',
     resetArgosReclassMultiActionState: () => {},
@@ -310,17 +321,22 @@ function modalHarness() {
     toggleArgosInventoryTransactionHoldActionPicker: () => {},
     getDriveSearchTerm: () => { throw new Error('Suspend Tag must not capture Drive context'); },
   });
-  vm.runInContext(extract('openArgosInventoryTransactionModal') + '\n' + extract('closeArgosInventoryTransactionModal'), context);
-  return { context, master, modal, dom, calls, toasts, resolve: value => resolveRead(value) };
+  vm.runInContext(['getReadableCachedArgosItemInquiryGroup', 'hasUnsavedArgosInventoryTransactionDraft',
+    'getArgosItemInquiryRenderSignature', 'shouldApplyArgosItemInquiryRefresh',
+    'openArgosInventoryTransactionModal', 'closeArgosInventoryTransactionModal'].map(extract).join('\n'), context);
+  return { context, master, modal, dom, calls, toasts, flushPaint: () => { while (frames.length) frames.shift()(); }, resolve: value => resolveRead(value) };
 }
 
 test('Suspend Tag modal uses the hydrated inventory group and closes without altering filters or view', async () => {
   const h = modalHarness();
   h.context.openArgosInventoryTransactionModal('master-row', 'reclass', 'suspend-tag');
+  assert.equal(h.calls.length, 0, 'the loaded row opens before the exact read starts');
+  assert.equal(h.context.argosInventoryTransactionState.item, h.master);
+  assert.equal(h.modal.classList.contains('hidden'), false);
+  h.flushPaint();
   assert.equal(h.calls.length, 1);
   assert.equal(h.calls[0].row, h.master);
   assert.ok(h.calls[0].options.signal instanceof AbortSignal);
-  assert.equal(h.context.argosInventoryTransactionState, null);
   const fresh = { ...h.master, PRIORITY: '1' };
   const rows = [fresh, { ...fresh, UNIQUE_ID: 'master-sibling', LOCATIONCODE: 'B2' }];
   h.resolve({ row: fresh, rows });
@@ -357,20 +373,24 @@ test('stale activation and permission changes cannot open the Suspend Tag Reclas
   h.dom.window.close();
 });
 
-test('late inventory reads are discarded after identity, view, revision, or access changes', async () => {
+test('late inventory reads cannot replace the open row after identity, view, revision, or access changes', async () => {
   for (const change of [
     ctx => { ctx.owner = 'account-b'; },
     ctx => { ctx.view = 'drive'; },
     ctx => { ctx.argosInquiryOpenRevision += 1; },
-    ctx => { ctx.canCurrentUserViewDockSuspendDcRequests = () => false; },
+    ctx => { ctx.canCurrentUserViewDockSuspendDcRequests = () => false; ctx.permission = 'permission-revoked'; },
   ]) {
     const h = modalHarness();
     h.context.openArgosInventoryTransactionModal('master-row', 'reclass', 'suspend-tag');
+    const openedState = h.context.argosInventoryTransactionState;
+    h.flushPaint();
     change(h.context);
-    h.resolve({ row: h.master, rows: [h.master] });
+    const fresh = { ...h.master, PRIORITY: '2' };
+    h.resolve({ row: fresh, rows: [fresh], scope: 'account-a', permission: 'permission-a' });
     await new Promise(setImmediate);
-    assert.equal(h.context.argosInventoryTransactionState, null);
-    assert.equal(h.modal.classList.contains('hidden'), true);
+    assert.equal(h.context.argosInventoryTransactionState, openedState);
+    assert.equal(openedState.item, h.master, 'a stale read cannot install its returned row');
+    assert.equal(openedState.verifiedInquiryGroup, null, 'a stale read cannot install proof');
     h.dom.window.close();
   }
 });

@@ -156,6 +156,8 @@ test('Warehouse Assigned Items export converts the keyed Supabase result into co
   vm.runInContext(`
     __selectedColumns = '';
     __writtenValues = null;
+    readWarehouseAssignmentExportRevision_ = function() { return 'fixture-revision-1'; };
+    PropertiesService = { getScriptProperties: function() { return { getProperty: function() { return ''; }, setProperty: function() {} }; } };
     callSupabaseRpc_ = function(name, args) {
       if (name !== 'get_eval_item_low_stock_targets_v1') throw new Error('Unexpected RPC');
       return args.p_itemcodes.map(itemcode_normalized => ({ itemcode_normalized, mean_quantity: 12,

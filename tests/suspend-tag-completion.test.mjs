@@ -54,9 +54,9 @@ function harness(options = {}) {
     isDockSuspendDcRequestRowAnyStatus: () => true,
     staleSupabaseReadScopeError: () => new Error('stale scope'),
     withProductionLiveSyncSignal: async (_, read) => read(ctx.productionLiveSyncNavigation.signal),
-    window: { AgMetricLiveSync: { snapshot: value => value } },
-    supabaseRpc: async () => ({ permissionVersion: ctx.permission,
-      sources: new Map([['ph_soc_master', { state: 'ready', revision: 'dataset-1' }]]) }),
+    window: {},
+    supabaseRpc: async () => ({ contractVersion: 1, permissionVersion: ctx.permission,
+      sources: [{ key: 'ph_soc_master', state: 'ready', revision: '1' }] }),
     remoteRow: { unique_id: 'soc-1', last_updated: revision, suspend_tag_version: 0, suspend_tag_status: 'pending' },
     requireCurrentSuspendTagWriteProof: () => options.proof !== false,
     getDockSuspendDcRequestSourceUid: (item) => item?.DOCK_SUSPEND_SOURCE_UID || item?.UNIQUE_ID?.replace(/^dock_suspend_dc_/, '') || '',
@@ -96,6 +96,8 @@ function harness(options = {}) {
     invalidateResolvedViewStateCaches() {},
   };
   vm.createContext(ctx);
+  vm.runInContext(readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8'), ctx);
+  ctx.window.AgMetricLiveSync = ctx.AgMetricLiveSync;
   ctx.window.localStorage = ctx.localStorage;
   vm.runInContext(readFileSync(new URL('../assets/queue-completion-state.js', import.meta.url), 'utf8'), ctx);
   const completions = between('let queueCompletionState = null;', 'function trackOptimisticCompletedRows(');
@@ -481,9 +483,9 @@ test('native writes reject locked, stale, unauthorized and changing source snaps
     h => { h.ctx.remoteRow.last_updated = 'changed'; },
     h => { h.ctx.remoteRow.unique_id = 'other-row'; },
     h => { h.ctx.allowed = false; },
-    h => { h.ctx.supabaseRpc = async () => ({ permissionVersion: 'wrong', sources: new Map([['ph_soc_master', { state: 'ready', revision: 'a' }]]) }); },
-    h => { h.ctx.supabaseRpc = async () => ({ permissionVersion: h.ctx.permission, sources: new Map([['ph_soc_master', { state: 'importing', revision: 'a' }]]) }); },
-    h => { let i = 0; h.ctx.supabaseRpc = async () => ({ permissionVersion: h.ctx.permission, sources: new Map([['ph_soc_master', { state: 'ready', revision: String(i++) }]]) }); },
+    h => { h.ctx.supabaseRpc = async () => ({ contractVersion: 1, permissionVersion: 'wrong', sources: [{ key: 'ph_soc_master', state: 'ready', revision: '1' }] }); },
+    h => { h.ctx.supabaseRpc = async () => ({ contractVersion: 1, permissionVersion: h.ctx.permission, sources: [{ key: 'ph_soc_master', state: 'importing', revision: '1' }] }); },
+    h => { let i = 1; h.ctx.supabaseRpc = async () => ({ contractVersion: 1, permissionVersion: h.ctx.permission, sources: [{ key: 'ph_soc_master', state: 'ready', revision: String(i++) }] }); },
   ];
   for (const configure of scenarios) {
     const h = harness({ live: true, proof: false }); configure(h);

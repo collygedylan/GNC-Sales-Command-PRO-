@@ -142,7 +142,7 @@ test('only active inventory readers get the AV current-season settings dependenc
   const branch = `async function invoke(session, payload) { const action = 'av_read'; const req = { headers: new Headers([['x-request-id', 'test-request']]) }; ${block} }`;
   const code = ts.transpileModule(`${roleHelpers}\n${tableConstants}\n${readGate}\n${branch}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText.replace(/export\s+/g, '');
   const calls = [];
-  const context = vm.createContext({ Headers, supabase: {},
+  const context = vm.createContext({ Headers, supabase: {}, canonicalAccessForRequest: null,
     resolveActiveSessionProfile: async session => ({ username: session.username, role: session.role }),
     readAvPage: async ({ payload, canRead }) => {
       const source = { settings: 'ph_app_settings', reserves: 'ph_reserves', notes: 'ph_av_notes', hot_prices: 'ph_cav_import' }[payload.dataset];

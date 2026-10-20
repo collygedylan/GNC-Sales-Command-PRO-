@@ -115,7 +115,7 @@ test('Drive Mode keeps one eight-action V3 editor and routes only Drive through 
   assert.match(app, /driveReclassApi\('create'/);
   assert.match(app, /driveReclassApi\('status'/);
   assert.match(app, /driveReclassApi\('retry'/);
-  assert.match(app, /if \(isArgosEvalReport2Inquiry\(\)\)/);
+  assert.match(app, /const recipients = isArgosEvalReport2Inquiry\(\)\s*\? getArgosEvalReport2RecipientEmails\(\) : getDefaultArgosInventoryTransactionRecipients\(\)/);
 });
 
 test('Apps Script rejects public Drive enqueue and renders requested changes without PROPOSED', () => {

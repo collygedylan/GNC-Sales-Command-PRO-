@@ -26,6 +26,11 @@ function createRepAvContext() {
     Array, Map, Number, String, Object, Set, WeakMap, Intl,
     activeAvSalesBucket: 'current', activeAvPhotoMode: 'all', activeAVTab: 'open', activeAvOpenTab: 'name',
     AV_FILTER_SEASON_OPTIONS: ['F1', 'S1', 'U1', 'U2'],
+    AV_OPEN_ALLOWED_SEASONS: ['F1', 'S1', 'U1', 'U2'],
+    avDerivationMutationEpoch: 1,
+    getAvPhotoMode: () => 'all',
+    getAvConfiguredCurrentSeasonCode: () => 'F1', getAvConfiguredCurrentSalesYearCode: () => 27,
+    getAvNextUpSeasonTarget: () => ({ season: 'S1' }), normalizeNcrSeasonCode: value => String(value || '').toUpperCase(),
     normalizeAvSalesBucket: value => String(value || 'current').trim().toLowerCase(),
     selectedAvSalesRepName: '', selectedAvRepCustomerKey: '', selectedAvResRep: '',
     fullInventory: sourceRows, avOpenInventory: sourceRows, reservesInventory: [
@@ -79,7 +84,7 @@ test('rep AV current-season visibility includes open stock and own itemcode rese
       && String(row.itemcode || '').trim().toUpperCase() === key);
   };
   vm.createContext(context);
-  vm.runInContext(extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesRowsDerivation'), context);
+  vm.runInContext(extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesWindowPredicates') + extractAppFunction('createAvSalesRowsDerivation'), context);
 
   const derivation = context.createAvSalesRowsDerivation('current');
   const visible = derivation.finalize(derivation.sourceRows.map(derivation.mapRow).filter(Boolean));
@@ -100,7 +105,7 @@ test('a selected rep customer narrows reserve-only items but keeps positive open
       && row.customername.toLowerCase().replace(/\s+/g, '-') === context.selectedAvRepCustomerKey);
   };
   vm.createContext(context);
-  vm.runInContext(extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesRowsDerivation'), context);
+  vm.runInContext(extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesWindowPredicates') + extractAppFunction('createAvSalesRowsDerivation'), context);
 
   const derivation = context.createAvSalesRowsDerivation('customer-open');
   const visible = derivation.finalize(derivation.sourceRows.map(derivation.mapRow).filter(Boolean));

@@ -19,6 +19,7 @@ test('Suspend Tag editor retains current permissions without a standalone face b
   const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1' }, opened = [];
   const ctx = {
     String, Object, Array, esc: String, escJsAttrValue: String,
+    initializeSuspendTagCardActionDelegation() {},
     suspendTagCompletionActions: new Set(), getSupabaseReadIdentityScope: () => 'fixture-owner',
     getSuspendTagStatus: () => status, getDockSuspendDcRequestLinkedMasterRow: () => null,
     findDockSuspendDcRequestSourceRow: () => null, buildArgosInventoryTransactionRailHtml: () => '',
@@ -111,6 +112,7 @@ test('Suspend Tag quantity chips use exact hydrated inventory fields independent
     PTRONHAND:89, PTRREVIEWED:27, PTRAVAILABLE:62, S_LTS:61, LOC_PHOTO_MATCH:14 };
   const ctx = {
     String, Object, Array, Map,
+    activeReqTab: 'suspend-tag',
     escapeHtml:value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'),
     firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim()!=='')??'',
     getDatasetState:()=>({rowCompleteness:'partial',initialLoaded:true}), nativeAuthSessionActive:false, nativeAuthProfile:null,
@@ -131,7 +133,7 @@ test('Suspend Tag quantity chips use exact hydrated inventory fields independent
   const dom = new JSDOM(ctx.buildInventoryQuantityChipsHtml(hydrated,{layout:'row',sourceView:'request',locationMetricItem:hydrated,preserveUnknown:true}));
   const metrics = Object.fromEntries([...dom.window.document.querySelectorAll('[data-inventory-card-metric]')]
     .map(node=>[node.getAttribute('data-inventory-card-metric'),node.querySelector('.app-card-qty-value').textContent]));
-  assert.deepEqual(metrics, { 'on-hand':'89', review:'27', available:'62', 'open-stock':'61', 'loc-photo-match':'14', 'loc-on-hand':'Unknown' });
+  assert.deepEqual(metrics, { 'on-hand':'89', review:'27', available:'62', 'open-stock':'61', 'loc-photo-match':'14', 'loc-on-hand':'--' });
   const cardDataStart = html.indexOf('        function buildDockSuspendDcRequestCardDataHtml(');
   const cardDataEnd = html.indexOf('\n        function ', cardDataStart + 20);
   assert.doesNotMatch(html.slice(cardDataStart, cardDataEnd), /LOC PHOTO MATCH:/,

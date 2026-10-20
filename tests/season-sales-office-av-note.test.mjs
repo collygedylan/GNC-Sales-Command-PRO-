@@ -43,6 +43,7 @@ function harness(options = {}) {
   const master = { UNIQUE_ID: 'master-1', ITEMCODE: 'TEST-1', AV_NOTE: 'NEW CAV NOTE', PTRAVAILABLE: 42, APP_TAB_ASSIGNMENT: 'season' };
   const ctx = {
     Object, String, Array, Number, Date, Promise,
+    window: {},
     navigator: { onLine: true },
     crypto: { randomUUID: () => `test-${calls.length}` },
     firstNonEmptyValue: (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim() !== '') ?? '',

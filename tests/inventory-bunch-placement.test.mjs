@@ -29,6 +29,7 @@ test('Inv Bunch Notes authors in Inventory and assigned work has a Que category'
 test('moving assigned work into Inventory preserves active-worker access without author rights or extra module access', () => {
   const context = vm.createContext({
     currentUser: 'worker', nativeAuthSessionActive: true,
+    canonicalFeaturePermission: () => null,
     nativeAuthProfile: { id: 'worker-id', username: 'worker', must_change_password: false },
     window: { SalesWorkspace: { isView: () => false } },
     getRoleAccessState: () => ({ allowedViews: new Set() }),

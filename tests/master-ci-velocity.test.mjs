@@ -28,6 +28,7 @@ test('release-mode gated suites retain independent execution after classificatio
   assert.match(build.with['cache-from'], /type=gha.*version=2/);
   assert.match(build.with['cache-to'], /mode=max/);
   const docker = read('Dockerfile.ci');
+  assert.match(docker, /FROM docker\.io\/library\/node:22-bookworm-slim@sha256:[a-f0-9]{64} AS dependencies/);
   assert.ok(docker.indexOf('COPY package.json package-lock.json') < docker.indexOf('RUN npm ci'));
   assert.ok(docker.indexOf('RUN npm ci') < docker.indexOf('COPY . .'));
   assert.match(read('Dockerfile.ci.dockerignore'), /\*\*\/\.env\*/);

@@ -42,7 +42,7 @@ test('direct Suspend rerender projects asynchronously hydrated inventory photo a
     syncDockSuspendDcRequestQuantityAliases: () => {},
   };
   vm.createContext(context);
-  vm.runInContext(extract('buildDockSuspendDcRequestCardDisplayItem'), context);
+  vm.runInContext(extract('syncDockSuspendCardMasterSummaryFields') + extract('buildDockSuspendDcRequestCardDisplayItem'), context);
 
   const firstRender = context.buildDockSuspendDcRequestCardDisplayItem(mirror, 'request');
   assert.equal(firstRender.REQ_PHOTO_LINK, undefined, 'before the deferred identity batch resolves, request has no photo');

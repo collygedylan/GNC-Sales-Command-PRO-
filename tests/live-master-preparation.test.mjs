@@ -121,6 +121,11 @@ function createHarness({ onYield = () => {}, clockStep = 0 } = {}) {
   const context = vm.createContext({
     appAccessSnapshotState: { snapshot: { dataPermissionVersion: permission } },
     getSupabaseReadIdentityScope: () => identity,
+    getInventoryCardItemLocationKey: row => {
+      const item = String(row?.ITEMCODE || row?.itemcode || row?.ITEM || '').trim().toUpperCase();
+      const location = String(row?.LOCATIONCODE || row?.locationcode || row?.LOCATION || '').trim().toUpperCase();
+      return item && location ? JSON.stringify([item, location]) : '';
+    },
     getCurrentAppSeasonSettings: () => season,
     formatFetchedRows: (rows) => rows.map((row) => ({ ...row, ITEMCODE: row?.ITEMCODE || row?.UNIQUE_ID, SOURCE_TABLE: 'ph_master_inventory', normalized: true })),
     buildSearchIndex: (row) => { row._searchCandidates = [row.UNIQUE_ID]; return row; },

@@ -39,6 +39,28 @@ function csv(completion = '', quantity = '10', completionHeader = 'DATE_COMPLETE
 }
 const build = (ctx, data, existing = [], table = 'ph_soc_master') => invoke(ctx, 'buildStandardPayload', data, table, existing, '2026-09-08T17:00:00Z', 'synthetic.csv');
 
+// Canonical master imports require the complete positional ERP export.
+// SOC fixtures intentionally retain their independent source contract.
+function approvedMasterCsv(partial) {
+  const headers = [
+    'warehouseid','plantgroupcode','itemcode','qualitycode','contsize','commonname','lotcode','locationcode',
+    'source','desigitem','desigcust','desigloc','priority','ptronhand','ptrreviewed','ptravailable',
+    'holdstopcode','holdstopbegindate','holdstopreason','hsreasonbegin','season_supply','season_oh','season_demand',
+    's_lts','oversellpercentage','itemspec','locationnote','locationnotedate','suspend','suspend_to',
+    'specialpuller','pulltagnote1','pulltagnote2','fieldtagcolor','salesnote','inventorynote','locationptn1',
+    'locationptn2','prisetby','priupdated','bypassloc','largeptrqty','maxorderquantity','lochold','listprice',
+    'ext_ptronhand','varietycode','genusname','botanicalname','reversecommon','sortnamevariety','containersort',
+    'saleyear','season','blockalpha','blocknumber','bay','pullerresponsibility','grower','si_lts','a_lts','ai_lts',
+    'season_available','holdstopenddate','salesnote','fnsalesnote','warehousename','mcstatus','hz','intercopo',
+    'insurancegroup','brand','printedcontainercode','salesnotebegindate','equiv_unit','ext_equiv_unit',
+  ];
+  const normalize = value => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return [headers, ...partial.slice(1).map(row => {
+    const values = Object.fromEntries(partial[0].map((key, index) => [normalize(key), row[index]]));
+    return headers.map(key => values[normalize(key)] ?? ({ warehouseid: 'PH', plantgroupcode: '140_TEST', qualitycode: 'A', source: 'PH' }[key] || ''));
+  })];
+}
+
 function processSnapshot(ctx, data, existing = [], modifiedAt = '2026-09-08T17:00:00.000Z', tableName = 'ph_soc_master') {
   const events = [];
   let read = false;
@@ -223,7 +245,7 @@ test('snapshot import defers before source parsing when less than the protected 
     ['ITEMCODE', 'LOCATIONCODE', 'COMMONNAME', 'CONTSIZE', 'LOTCODE', 'SOURCE', 'PRIORITY', 'HOLDSTOPCODE', 'HOLDSTOPREASON'],
     ['SYNTHETIC-ITEM', 'TEST.LOC', 'Synthetic Plant', '#3', '27.F1', 'PH', '2', 'H', 'Synthetic hold'],
   ];
-  const file = latestFile('budget-preparse', 'budget-preparse.csv', data, '2026-09-08T17:00:00.000Z');
+  const file = latestFile('budget-preparse', 'budget-preparse.csv', approvedMasterCsv(data), '2026-09-08T17:00:00.000Z');
 
   const { events, error } = processMasterSnapshotBatch(ctx, [file], [], null, { captureError: true });
 
@@ -242,7 +264,7 @@ test('snapshot import defers before publication without opening a fence or mutat
     ['ITEMCODE', 'LOCATIONCODE', 'COMMONNAME', 'CONTSIZE', 'LOTCODE', 'SOURCE', 'PRIORITY', 'HOLDSTOPCODE', 'HOLDSTOPREASON'],
     ['SYNTHETIC-ITEM', 'TEST.LOC', 'Synthetic Plant', '#3', '27.F1', 'PH', '2', 'H', 'Synthetic hold'],
   ];
-  const file = latestFile('budget-publication', 'budget-publication.csv', data, '2026-09-08T17:00:00.000Z');
+  const file = latestFile('budget-publication', 'budget-publication.csv', approvedMasterCsv(data), '2026-09-08T17:00:00.000Z');
 
   const { events, error } = processMasterSnapshotBatch(ctx, [file], [], null, { captureError: true });
 
@@ -542,7 +564,7 @@ test('master batch skips empty files but imports and archives a valid replacemen
   validData[1].push('Synthetic Plant');
   const files = [
     { data: [], getName: () => 'empty.csv', getLastUpdated: () => new Date('2026-09-08T17:00:00Z') },
-    { data: validData, getName: () => 'replacement.csv', getLastUpdated: () => new Date('2026-09-09T17:00:00Z') },
+    { data: approvedMasterCsv(validData), getName: () => 'replacement.csv', getLastUpdated: () => new Date('2026-09-09T17:00:00Z') },
   ];
   const { result, events } = processMasterSnapshotBatch(context(), files);
 
@@ -566,7 +588,7 @@ test('a nonempty unrecognized master file prevents applying a partial snapshot',
   validData[0].push('COMMONNAME');
   validData[1].push('Synthetic Plant');
   const files = [
-    { data: validData, getName: () => 'valid.csv', getLastUpdated: () => new Date('2026-09-08T17:00:00Z') },
+    { data: approvedMasterCsv(validData), getName: () => 'valid.csv', getLastUpdated: () => new Date('2026-09-08T17:00:00Z') },
     { data: invalidNonempty, getName: () => 'unrecognized.csv', getLastUpdated: () => new Date('2026-09-09T17:00:00Z') },
   ];
   const { result, events } = processMasterSnapshotBatch(context(), files);
@@ -580,7 +602,7 @@ test('a nonempty unrecognized master file prevents applying a partial snapshot',
   assert.equal(events.some(event => ['upsert', 'delete', 'bulk-rpc', 'archive', 'table-event'].includes(event.type)), false);
 });
 
-test('canonical master bulk payload keeps raw hold fields and per-file item6 masks while latest duplicate wins', () => {
+test('canonical master bulk payload keeps raw hold fields and the approved item6 mask while latest duplicate wins', () => {
   const first = [
     ['ITEMCODE', 'LOCATIONCODE', 'COMMONNAME', 'CONTSIZE', 'LOTCODE', 'SOURCE', 'PRIORITY', 'HOLDSTOPCODE', 'HOLDSTOPREASON', 'LOCATION_NOTE', 'SUSPEND'],
     ['SYNTHETIC-ITEM', 'TEST.LOC', 'Earlier Synthetic Plant', '#3', '27.F1', 'PH', '2', 'H', 'Synthetic hold', '', 'SUSPEND'],
@@ -590,17 +612,18 @@ test('canonical master bulk payload keeps raw hold fields and per-file item6 mas
     ['SYNTHETIC-ITEM', 'TEST.LOC', 'Latest Synthetic Plant', '#3', '27.F1', 'PH', '2', 'S', 'Latest synthetic hold'],
   ];
   const { result, events } = processMasterSnapshotBatch(context(), [
-    latestFile('first', 'first.csv', first, '2026-09-08T17:00:00.000Z'),
-    latestFile('second', 'second.csv', second, '2026-09-09T17:00:00.000Z'),
+    latestFile('first', 'first.csv', approvedMasterCsv(first), '2026-09-08T17:00:00.000Z'),
+    latestFile('second', 'second.csv', approvedMasterCsv(second), '2026-09-09T17:00:00.000Z'),
   ]);
   const rows = events.find(event => event.type === 'bulk-rpc').payload.p_rows;
   assert.equal(rows.length, 1, 'cross-file duplicate identity is merged into one row');
   assert.equal(rows[0].values.commonname, 'Latest Synthetic Plant');
   assert.equal(rows[0].values.holdstopcode, 'S');
   assert.equal(rows[0].values.holdstopreason, 'Latest synthetic hold');
-  assert.equal(Object.hasOwn(rows[0].values, 'locationnote'), false, 'a header absent from the winning file remains absent');
+  assert.equal(Object.hasOwn(rows[0].values, 'locationnote'), true);
+  assert.equal(rows[0].values.locationnote, null, 'the winning complete export retains its explicit blank source note as canonical null');
   assert.equal(Object.hasOwn(rows[0].values, 'assignedto'), false, 'the database owns assignedto preservation/derivation');
-  assert.deepEqual(plain(rows[0].rawFields), []);
+  assert.deepEqual(plain(rows[0].rawFields).sort(), ['locationnote', 'locationptn1', 'desigitem', 'desigcust', 'desigloc', 'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend'].sort());
   assert.equal(result.filesProcessed, 2);
   assert.deepEqual(events.filter(event => event.type === 'archive').map(event => event.name), ['first.csv', 'second.csv']);
 });
@@ -612,7 +635,7 @@ test('canonical master bulk response retry reuses identical request identity and
   ];
   let attempts = 0;
   let firstPayload;
-  const { result, events } = processMasterSnapshotBatch(context(), [latestFile('retry-file', 'retry.csv', data, '2026-09-08T17:00:00.000Z')], [], (payload) => {
+  const { result, events } = processMasterSnapshotBatch(context(), [latestFile('retry-file', 'retry.csv', approvedMasterCsv(data), '2026-09-08T17:00:00.000Z')], [], (payload) => {
     attempts += 1;
     if (attempts === 1) {
       firstPayload = plain(payload);
@@ -645,7 +668,7 @@ test('canonical master bulk response identity mismatch leaves source pending and
   const data = csv();
   data[0].push('COMMONNAME');
   data[1].push('Synthetic Plant');
-  const { result, events } = processMasterSnapshotBatch(context(), [latestFile('bad-response', 'pending.csv', data, '2026-09-08T17:00:00.000Z')], [], payload => ({
+  const { result, events } = processMasterSnapshotBatch(context(), [latestFile('bad-response', 'pending.csv', approvedMasterCsv(data), '2026-09-08T17:00:00.000Z')], [], payload => ({
     published: true,
     runId: payload.p_run_id,
     requestId: payload.p_request_id,
@@ -666,7 +689,7 @@ test('canonical master source changed during bulk RPC stays pending and reports 
   data[0].push('COMMONNAME');
   data[1].push('Synthetic Plant');
   const { result, events } = processMasterSnapshotBatch(context(), [
-    latestFile('changed-during-rpc', 'pending-after-publish.csv', data, '2026-09-08T17:00:00.000Z'),
+    latestFile('changed-during-rpc', 'pending-after-publish.csv', approvedMasterCsv(data), '2026-09-08T17:00:00.000Z'),
   ], [], null, { mutateSourceDuringRpc: true });
 
   assert.equal(result.fatalFailure, true);

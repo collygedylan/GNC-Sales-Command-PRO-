@@ -13,7 +13,7 @@ function section(start, end) {
   assert.ok(b >= 0, `missing ${end}`);
   return html.slice(a, b);
 }
-const inline = section('const checkLatestShellAndReload = async', 'navigator.serviceWorker.register(');
+const inline = section('const checkLatestShellAndReload = async', 'const safeRegisterShellWorker =');
 const runtime = section('async function fetchLatestShellManifestInfo(', 'async function forceShellBuildReload(');
 const held = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { resolve, promise }; };
 

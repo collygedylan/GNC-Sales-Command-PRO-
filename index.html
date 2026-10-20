@@ -30258,6 +30258,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function clearInMemorySessionIdentity() {
+            destroyHistoricalRequestsIsland();
             resetDashboardSyncMetadataForPermissionChange();
             requestSubmissionGeneration += 1;
             clearTimeout(requestSubmissionRetryTimer);

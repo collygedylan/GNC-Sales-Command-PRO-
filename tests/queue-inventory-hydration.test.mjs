@@ -15,15 +15,18 @@ const identity = { itemCode:'43800101',locationCode:' c.9.0 ',lotCode:'27.F1',so
 function productionQueueHydrationHarness({ authorized = true, rows = [], complete = true, rpcRows = null } = {}) {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const signal = new AbortController().signal;
+  const authorizationScope = JSON.stringify(['actor', 'dylan', 'ADMIN', 'login']);
   const context = {
     setTimeout: () => 1, clearTimeout() {}, Date, Map, Set, AbortController,
     getQueueCardInventoryContext: null,
     canUseProductionLiveSync: () => authorized,
-    getProductionLiveSyncContext: () => ({ scope: 'authorized-scope', dataPermissionVersion: 'permission-v3' }),
+    nativeAuthProfile: { id: 'actor' }, currentUser: 'dylan', currentRole: 'ADMIN', getCurrentLoginCacheScopeKey: () => 'login',
+    appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'permission-v3' } },
+    getProductionLiveSyncContext: () => ({ scope: authorizationScope, dataPermissionVersion: 'permission-v3' }),
     getSupabaseReadIdentityScope: () => 'authorized-scope',
     productionLiveSyncNavigation: { signal },
     getDatasetState: () => ({ initialLoaded: complete, rowCompleteness: complete ? 'complete' : 'partial',
-      liveVerifiedScope: 'authorized-scope', liveVerifiedPermission: 'permission-v3', liveVerifiedRevision: complete ? '42' : '' }),
+      liveVerifiedScope: authorizationScope, liveVerifiedPermission: 'permission-v3', liveVerifiedRevision: complete ? '42' : '' }),
     masterInventoryById: new Map(rows.map(value => [value.unique_id, value])),
     fullInventory: rows,
     isDockSuspendDcRequestMirrorRow: () => false,

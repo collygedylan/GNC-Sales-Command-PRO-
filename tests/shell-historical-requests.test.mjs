@@ -80,8 +80,27 @@ test('shared history navigation destroys private financial memory on logout and 
   assert.match(html, /view: 'historical-requests', label: 'Historical Requests'/);
   assert.match(html, /if \(!\['historical-requests', 'request-history'\]\.includes\(nextViewId\)\) destroyHistoricalRequestsIsland\(\)/);
   assert.match(html, /window\.ensureHistoricalRequestsIsland = ensureHistoricalRequestsIsland/);
+  const clearStart = html.indexOf('        function clearInMemorySessionIdentity(');
+  const clearEnd = html.indexOf('\n        function ', clearStart + 20);
+  assert.match(html.slice(clearStart, clearEnd), /destroyHistoricalRequestsIsland\(\)/,
+    'shared identity cleanup destroys private financial memory');
   for (const match of html.matchAll(/nativeAuthProfile = null;/g)) {
     const before = html.slice(match.index - 110, match.index);
-    assert.ok(before.endsWith('let ') || before.includes('destroyHistoricalRequestsIsland();'), 'profile resets clear private financial memory');
+    const followingCleanup = html.slice(match.index + match[0].length).split(/\b(?:await|return|throw)\b|\n\s*\}/, 1)[0];
+    assert.ok(before.endsWith('let ') || before.includes('destroyHistoricalRequestsIsland();')
+      || followingCleanup.includes('clearInMemorySessionIdentity();'), 'profile resets synchronously clear private financial memory');
   }
+});
+
+test('actual identity cleanup destroys historical memory before other account state is reset', () => {
+  const start = html.indexOf('        function clearInMemorySessionIdentity(');
+  const end = html.indexOf('        const APP_SESSION_RECORD_STORAGE_KEY', start);
+  const calls = [];
+  const context = vm.createContext({
+    destroyHistoricalRequestsIsland: () => calls.push('destroy-history'),
+    resetDashboardSyncMetadataForPermissionChange: () => { calls.push('reset-other-state'); throw new Error('stop after cleanup'); },
+  });
+  vm.runInContext(html.slice(start, end), context);
+  assert.throws(() => context.clearInMemorySessionIdentity(), /stop after cleanup/);
+  assert.deepEqual(calls, ['destroy-history', 'reset-other-state']);
 });

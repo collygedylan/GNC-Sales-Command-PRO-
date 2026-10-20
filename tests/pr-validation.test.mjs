@@ -84,7 +84,7 @@ test('all selected unit and lint lanes are required and skipped jobs fail closed
 
 test('standard PR and Pages paths cannot opt into browser or performance validation', () => {
   assert.equal(monitor.jobs.validation.uses, './.github/workflows/pr-validation.yml');
-  assert.equal(pages.jobs.validation.with['run-nightly-suites'], false);
+  assert.equal(pages.jobs['frontend-validation'].with['run-nightly-suites'], false);
   assert.equal(nightly.on.schedule[0].cron, '30 1,2 * * *');
   assert.equal(monitor.jobs.validation.with['run-frontend-tests'], "${{ needs.changes.outputs.frontend == 'true' }}");
 });

@@ -264,6 +264,8 @@ test('AV cards skip generic chip markup discarded by the early AV template retur
     let designCalls = 0;
     vm.runInNewContext(source.slice(start, end), {
       item: { DOM_ID: 'row-1' }, sourceView, selectedItems: new Set(),
+      activeReqTab: 'pending', isDockSuspendDcRequestMirrorRow: () => false,
+      firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
       buildInventoryQuantityChipsHtml: () => { quantityCalls++; return 'quantity'; },
       buildInventoryCardFieldChipsHtml: () => { designCalls++; return 'design'; },
     });

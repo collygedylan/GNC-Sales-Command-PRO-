@@ -81,6 +81,6 @@ test('stale, unauthorized, detached, and legacy preparations never suppress reco
 test('status scheduling retains independent pending renders and preparation recovery', () => {
   const coordinator = source('getProductionLiveSyncCoordinator');
   assert.match(coordinator, /const waitingForDisplay = isProductionDisplayWaitingForRender\(getCurrentVisibleViewId\(\)\)/);
-  assert.match(coordinator, /status\.state === 'Up to date' && \(waitingForDisplay \|\| driveCommonNameNeedsPreparation\(\)\s*\|\| \(productionLiveSyncRenderPending && !productionLiveSyncActiveRender && !hasProductionLiveSyncDraft\(\)\)\)/);
+  assert.match(coordinator, /\['Up to date', 'Published data'\]\.includes\(status\.state\) && \(waitingForDisplay \|\| driveCommonNameNeedsPreparation\(\)\s*\|\| \(productionLiveSyncRenderPending && !productionLiveSyncActiveRender && !hasProductionLiveSyncDraft\(\)\)\)/);
   assert.match(coordinator, /cancelScheduledUiRenderByPrefix\(`view-switch-render:\$\{getCurrentVisibleViewId\(\)\}`\);\s*scheduleProductionLiveSyncRender\(true\)/);
 });

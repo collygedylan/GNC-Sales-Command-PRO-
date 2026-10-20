@@ -30,7 +30,7 @@ function resolveMappedPayload(context) {
 }
 
 function requestFixture() {
-  const context=vm.createContext({document:{getElementById:()=>({value:'Custom Customer'})}});
+  const context=vm.createContext({window:{},document:{getElementById:()=>({value:'Custom Customer'})}});
   vm.runInContext(requestMappingSetup+'\n'+requestMappingFunctions(),context);
   context.customerRepMapRows=[row,{...row,unique_id:'map-2',customeridentityid:'00013',consigneeid:'00008'},
     {...row,unique_id:'inactive',consigneestatus:'I'}, {...row,unique_id:'unassigned',salesrepid:''},

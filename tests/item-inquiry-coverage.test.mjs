@@ -34,10 +34,14 @@ test('Sunday is server-derived, verified and never replaces Sharon', () => {
   assert.doesNotMatch(migration, /array_remove[\s\S]*sharon/);
 });
 
-test('signed delivery freezes the server-stamped recipient list across retries', () => {
+test('signed delivery validates its coverage envelope and resolves the current authorized recipients', () => {
   assert.match(worker, /contractVersion \|\| ''\) === 'item-inquiry-coverage-v1'/);
   assert.match(worker, /deliverReclassInquiryPayload_\(reclassPayload, messageIdHeader, frozenRecipients\)/);
-  assert.match(worker, /Array\.isArray\(frozenRecipientEmails\)[\s\S]*dedupeEmailAddresses_\(frozenRecipientEmails\)/);
+  const delivery = worker.slice(worker.indexOf('function deliverReclassInquiryPayload_('), worker.indexOf('function handleReclassInquiryEmail_('));
+  assert.match(delivery, /const recipients = getReclassInquiryEmailRecipients_\(safePayload\)/);
+  assert.match(delivery, /if \(!recipients\.length\) throw new Error\('RECLASS_VALIDATION:RECIPIENT_REQUIRED'\)/);
+  assert.match(delivery, /toArray: recipients/);
+  assert.doesNotMatch(delivery, /dedupeEmailAddresses_\(frozenRecipientEmails\)/);
 });
 
 test('Managers has a responsive Here/Gone control and global coverage explanation', () => {

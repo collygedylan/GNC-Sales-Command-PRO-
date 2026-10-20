@@ -66,6 +66,7 @@ test('reserve cache hydration discards an IndexedDB read that finishes after acc
     let release, applied = 0;
     const ctx = {
         currentUser: 'account-a', reservesInventory: [],
+        canUseProductionLiveSync: () => false,
         getSupabaseReadIdentityScope: () => ctx.currentUser,
         getPersistentInventoryCacheOwner: () => ctx.currentUser,
         getUserScopedDatasetCacheKey: () => `reserves:${ctx.currentUser}`,
@@ -111,6 +112,7 @@ test('inventory snapshots use distinct account, role, division and permission na
 test('cache warming starts a new owner read and discards the previous account result', async () => {
     const pending = new Map(), applied = [];
     const ctx = { currentUser: 'account-a', cacheWarmPromise: null, cacheWarmOwner: '',
+        canUseProductionLiveSync: () => false,
         loginPrefetchPromise: null, loginPrefetchMode: '',
         getSupabaseReadIdentityScope: () => ctx.currentUser,
         getCurrentLoginCacheScopeKey: () => ctx.currentUser,

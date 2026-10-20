@@ -70,6 +70,7 @@ test('direct Eval2 full-snapshot ensures use bounded master-page concurrency', a
     getCurrentVisibleViewId:() => 'managers', activeHomeTab:'eval2', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
     getProductionLiveSyncCoordinator:() => ({ensure:value => { adapter = value; return Promise.resolve(true); }}),
     canUseProductionLiveSync:() => true,
+    getProductionLiveSyncContext:() => ({ adapters: [] }),
     withProductionLiveSyncSignal:(_signal, operation) => operation({aborted:false}),
     fetchAllInventoryReadRows:async (_operation, _params, options) => {
       pageConcurrency.push(options.pageConcurrency);

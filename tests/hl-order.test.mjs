@@ -563,12 +563,12 @@ test('Drive matches ignore display filters while retaining base access and appro
 test('HL normal Drive quantity cards preserve unknown verified values while retaining numeric zero', () => {
   const ctx = quantityRuntime();
   const unknown = ctx.buildInventoryQuantityChipsHtml({ ptravailable: null, ptronhand: null, ptrreviewed: null, s_lts: null }, { layout: 'row', compact: true, preserveUnknown: true });
-  assert.match(unknown, /app-card-qty-label">Available<\/span>.*?app-card-qty-value[^>]*>Unknown<\/span>/);
-  assert.match(unknown, /app-card-qty-label">Open Stock<\/span>.*?app-card-qty-value[^>]*>Unknown<\/span>/);
+  assert.match(unknown, /app-card-qty-label">Available<\/span>.*?app-card-qty-value[^>]*>--<\/span>/);
+  assert.match(unknown, /app-card-qty-label">Open Stock<\/span>.*?app-card-qty-value[^>]*>--<\/span>/);
   const zero = ctx.buildInventoryQuantityChipsHtml({ ptravailable: '0', ptronhand: '0', ptrreviewed: '0', s_lts: '0' }, { layout: 'row', compact: true, preserveUnknown: true });
   assert.match(zero, /app-card-qty-label">Available<\/span>.*?app-card-qty-value[^>]*>0<\/span>/);
   assert.match(zero, /data-inventory-card-metric="available"[\s\S]*?app-card-qty-value[^>]*>0<\/span>/);
-  assert.match(zero, /data-inventory-card-metric="loc-on-hand"[\s\S]*?app-card-qty-value[^>]*>Unknown<\/span>/);
+  assert.match(zero, /data-inventory-card-metric="loc-on-hand"[\s\S]*?app-card-qty-value[^>]*>--<\/span>/);
 });
 
 test('HL dirty inputs remain protected after blur until explicitly saved or reset', () => {
