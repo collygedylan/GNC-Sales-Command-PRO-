@@ -1,0 +1,279 @@
+{
+  "release": "AgData v2.3.13",
+  "base": "1fa247e779838d20ec5090f5d95559a0bf0be864",
+  "schemaVersion": "agdata-v2313-scoped-validation-v1",
+  "sourceHashes": {
+    ".github/workflows/apps-script-sync.yml": "df6258743e85d90bc7e94c98cea7c56a1d761bf1cde0a9e096dbdbf0ab6415fb",
+    ".github/workflows/release-database.yml": "b048d7be8a045a07478bf163218a75c0c27ea67c17d1bac5db1d7c4c0042bf5e",
+    "Code.gs": "addd3f437ebf1248b4815121d188c8a808b47e9323b233f846ffd3882a61854f",
+    "assets/ops-precision-pilot.js": "a85ffc46ba00e7c99ab8a6df59be44a5012e2d31f32daf773002b3ac180ba4d5",
+    "docs/releases/v2.3.13-checkpoint.md": "46f1e4c8d9bbf8f1cf4c58acaa9c540c53e066502e53b50aa08ade6280e2fb16",
+    "index.html": "7338fd462eb96278a0930b5b0b8ec7863b6a4c0cf41cda029130976ff9f34092",
+    "manifest.json": "c66f0e368c2a3389ad18496958f332355c78386e1225740425dfc7844689060f",
+    "package-lock.json": "2637b4695934aceac9372d4e5fc923487d8c33003d0f220375cd143125222ebf",
+    "package.json": "b674493cec7dc1ad359186db8d42b9fc45e6d19c43c41774ad34a7d1f0e3c071",
+    "scripts/apply-item-low-stock-migration.mjs": "70a4d1e6eca609ca2cb08f42b80a12a7eb3adf342224a62bd3f9c3b173f114f8",
+    "scripts/apps-script-function-patch.mjs": "511c1b3f60784e030ec7dffdaea2e1ebb362f29a3a2ad3103783f61968aaac33",
+    "scripts/build-live-shell.mjs": "98afb6bb69930728b08b08ca87d0ca025647cd105553fefff26fd9c518bd398e",
+    "scripts/check-v2313-retained-validation.mjs": "ee82a161d513acced61ec5fbf0274509af93e6d88946b5949f26c9936ddf0224",
+    "scripts/ci-backend-matrix.mjs": "8c211b71ab8ee818dc3676a9ca31318aca39eacde7e7249b3a1893e236b4f42a",
+    "scripts/run-release-react-checks.mjs": "9ec28a7a828b53efbc2751dcaea65bfa24bf7622b9b1a90a8b14cfe1ef4fc5a8",
+    "scripts/run-release-unit-checks.mjs": "999ee517118eac2a884940f3740e93210c0fd5bbb58de9782f4ca0d5b724b42d",
+    "scripts/verify-v2313-database.mjs": "aa265253b76c8aae184e4f8e6070ae76c6a8ddedf24528dcdd5cb19259b05560",
+    "services/database-contracts.generated.ts": "29bfa832de755973eee9b0f5c08ff77555091d6cffd0b8c9a2473a834d25325d",
+    "supabase/functions/_shared/database.types.ts": "f3ef4503d60dce658191146b53d7501a7525183df2cd8ccc8ae3d94c0354650f",
+    "supabase/migrations/20261019225625_master_snapshot_chunked_staging_v1.sql": "5ae183557064fc7ca874aa820540834001cd3ebd696712aa75977c03a279ca84",
+    "supabase/migrations/20261019234222_identity_batch_not_ready_retry_sqlstate.sql": "11e57da1ababeb31dfa2c8f7de9219ae842ea30ec7ea39b37f143c8b1149f3f9",
+    "supabase/tests/bulk_context_index_plan_test.sql": "06c21d5223c5f0586300b0f2a9807da960db4959a96abebeaa3d59f65a9c216d",
+    "supabase/tests/inventory_master_identity_batch_test.sql": "0f84380009cf50b210f614b18ea68eb5d5be71dc0696083c512868aa51572585",
+    "supabase/tests/master_snapshot_chunked_staging_v1_test.sql": "f3662caf691a93e34f6d61ef241c8cfff75e7e7c276f8ca0ba6029ce60221300",
+    "sw.js": "48a7a5ca1d88a16dd346bfd7ea2bbb421cb6ca8d3ce38377f37462c85dc53293",
+    "tests/master-snapshot-chunk-import.test.mjs": "9852f1b31ca9800aff81b4c31b4261257577a4f8c9ef90f335f6d144628d9b2c",
+    "tests/suspend-tag-import.test.mjs": "b87bdaeeddb961f58c3cf42b78942590c4b41500905bcbd393b38137e260a334",
+    "tests/v2313-release-contract.test.mjs": "4129ae8139a4293dd57b08a7629f9054b40d331d3688847cd3ba94d420afa7d1",
+    "v2/public/manifest.webmanifest": "b74d4528ca2ec3c1b7668e3bdd594f617a98dd3a4648598056df3cc9f6052f6a",
+    "v2/src/services/api.ts": "5ee1c53b718ae08e685cbb45bbb0124d393149db905cd22787335aadc76fa1fe"
+  },
+  "sourceDigest": "2eb5bbc6f2457ba8d2e80927858ecc70a586ec0d28ccb01bfdaae3a64dd16736",
+  "evidenceHashes": {
+    "docs/releases/v2.3.13-validation/worker.json": "be2bf3c85f25bc8bf9245125a4ad12841b4f6ab0c5c28f034f1913c466e1962b",
+    "docs/releases/v2.3.13-validation/database.json": "ffc1d4b9d9e94f27386feba8232ebd2a3a019c7907157e47e0216ca978fabf7b",
+    "docs/releases/v2.3.13-validation/storm.json": "7d14f241176066a0ceb68b9bff84ee2a97725c354af3b52cb837f76dfced550f",
+    "docs/releases/v2.3.13-validation/tooling.json": "a76b32864aab36d6b6e56ec0328f27e32d0ab2d1a456493fd8672b18eee9ccf7"
+  },
+  "appsScriptProtection": {
+    "patchNames": [
+      "getMasterBulkSnapshotStageConfig_",
+      "masterBulkSnapshotStageCheckpointKey_",
+      "masterBulkSnapshotSyncTimestampKey_",
+      "getOrCreateMasterBulkSnapshotSyncTimestamp_",
+      "clearMasterBulkSnapshotSyncTimestamp_",
+      "assertNoPublishedMasterBulkSnapshotAwaitingArchive_",
+      "markMasterBulkSnapshotPublished_",
+      "cleanupOrphanedMasterBulkSnapshotStages_",
+      "masterBulkSnapshotSourceManifest_",
+      "readMasterBulkSnapshotStageCheckpoint_",
+      "saveMasterBulkSnapshotStageCheckpoint_",
+      "clearMasterBulkSnapshotStageCheckpoint_",
+      "masterBulkStageResponseObject_",
+      "validateMasterBulkStageState_",
+      "callMasterBulkStageRpc_",
+      "masterBulkStageContinuationError_",
+      "masterBulkStageContinuationResult_",
+      "shouldContinueMasterBulkStage_",
+      "validateMasterBulkPublishedReplay_",
+      "validateMasterBulkStageFinalize_",
+      "callMasterBulkSnapshotImport_",
+      "buildMasterBulkSnapshotPayload_",
+      "processSnapshotBatchFolderLocked_",
+      "assertDriveAroundSourceContract_"
+    ],
+    "protectedFunctions": 841,
+    "protectedDigest": "1279491f0d9ec4b53e0ea758f6261ed84e5b550fa1726749aa1ee3b69d412ed7"
+  },
+  "historicalBackfill": "untouched",
+  "automation": "PAUSED",
+  "retainedValidation": {
+    "worker": {
+      "path": ".gnc-local/v2313-worker-focused-attempt4.log",
+      "sha256": "1eee9062fb0b9e992770089643fb2db569a90cad8238f443c1d717d2572d4048",
+      "tests": 10,
+      "passed": 10,
+      "failed": 0,
+      "retainedDriveAssertions": 7,
+      "excludedDeferredErpAssertions": 3
+    },
+    "canonical": {
+      "path": ".gnc-local/v2313-canonical-final.log",
+      "sha256": "db91a1003552a3ceefc470a563d84dab7c7a5557f94ee662cbfb1f041882ebaf",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0
+    },
+    "releaseContract": {
+      "path": ".gnc-local/v2313-release-attempt1.log",
+      "sha256": "f386c91530234277a9844a932cb0c28dcb084275d3631ca54d035eb59f7f744d",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "retainedUnchangedAssertions": 2,
+      "updatedSchemaGate": {
+        "path": ".gnc-local/v2313-final-schema-gate-contract.log",
+        "sha256": "b2bceccd5d28978595a8877503603a63e4f40f6e3389c5338d1d5296c8f0df9d",
+        "tests": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      "approvedTimingBudget": {
+        "path": ".gnc-local/v2313-final-timing-contract.log",
+        "sha256": "7c68b45e541ee17a179ea3fd4fd9ce08515099b16c13646e15f86af5a003df84",
+        "tests": 1,
+        "passed": 1,
+        "failed": 0
+      }
+    },
+    "retainedSocReservesPipeline": true,
+    "failureHistory": {
+      "worker": {
+        "at": "2026-10-20T00:51:02.956Z",
+        "passed": 10,
+        "failed": 0,
+        "log": ".gnc-local/v2313-worker-focused-attempt4.log",
+        "attempt": 1,
+        "cap": 8,
+        "diagnosisPending": false,
+        "history": [
+          {
+            "at": "2026-10-19T23:14:12.644Z",
+            "passed": 1,
+            "failed": 4,
+            "log": ".gnc-local/v2313-worker-attempt1.log",
+            "attempt": 1,
+            "cap": 8,
+            "diagnosisPending": true
+          },
+          {
+            "attempt": 2,
+            "failed": 4,
+            "diagnosis": "Canonical fixture used a legacy processed-folder identity; receipt fixtures did not yet match canonical path."
+          },
+          {
+            "attempt": 3,
+            "passed": 3,
+            "failed": 1,
+            "diagnosis": "Transient createdNow marker persisted in continuation checkpoint; removed before save."
+          },
+          {
+            "scope": "unified ERP worker",
+            "attempt": 1,
+            "passed": 8,
+            "failed": 2,
+            "log": ".gnc-local/v2313-worker-focused-attempt1.log"
+          },
+          {
+            "scope": "unified ERP worker",
+            "attempt": 2,
+            "passed": 9,
+            "failed": 1,
+            "log": ".gnc-local/v2313-worker-focused-attempt2.log"
+          },
+          {
+            "scope": "unified ERP worker",
+            "attempt": 3,
+            "passed": 9,
+            "failed": 1,
+            "log": ".gnc-local/v2313-worker-focused-attempt3.log"
+          },
+          {
+            "scope": "unified ERP worker",
+            "attempt": 4,
+            "passed": 10,
+            "failed": 0,
+            "log": ".gnc-local/v2313-worker-focused-attempt4.log"
+          }
+        ],
+        "resolved": true
+      },
+      "canonical": {
+        "at": "2026-10-19T23:14:12.674Z",
+        "passed": 4,
+        "failed": 0,
+        "log": ".gnc-local/v2313-canonical-attempt1.log",
+        "finalLog": ".gnc-local/v2313-canonical-final.log"
+      },
+      "release": {
+        "at": "2026-10-19T23:14:12.688Z",
+        "passed": 3,
+        "failed": 0,
+        "log": ".gnc-local/v2313-release-attempt1.log"
+      },
+      "database": {
+        "attempt": 4,
+        "cap": 8,
+        "status": "failed",
+        "log": ".gnc-local/v2313-database-attempt4.log",
+        "history": [
+          {
+            "attempt": 1,
+            "cap": 8,
+            "status": "failed",
+            "log": ".gnc-local/v2313-database-attempt1.log",
+            "diagnosis": "Stage publication update invalidated a later contiguous cleanup text anchor; migration transaction rolled back in disposable instance.",
+            "error": "MASTER_SNAPSHOT_CHUNK_ROW_CLEANUP_ANCHOR_INVALID"
+          },
+          {
+            "attempt": 2,
+            "cap": 8,
+            "status": "failed",
+            "log": ".gnc-local/v2313-database-attempt2.log",
+            "fixtureRows": 9504,
+            "focusedAssertions": 34,
+            "schemaReplay": "passed",
+            "assertionsPassed": 7,
+            "diagnosis": "Fixture to_jsonb untyped string constants caused PostgreSQL polymorphic-type error; migration replay succeeded.",
+            "error": "could not determine polymorphic type because input has type unknown"
+          },
+          {
+            "attempt": 3,
+            "cap": 8,
+            "status": "failed",
+            "log": ".gnc-local/v2313-database-attempt3.log",
+            "fixtureRows": 9504,
+            "focusedAssertions": 34,
+            "schemaReplay": "passed",
+            "assertionsPassed": 7,
+            "diagnosis": "Wide fixture includes protected source fields but rawFields omitted their required mask. Production finalizer correctly rejected the invalid fixture.",
+            "error": "BULK_MASTER_IMPORT_ITEM6_MASK_INVALID"
+          }
+        ],
+        "fixtureRows": 9504,
+        "focusedAssertions": 34,
+        "schemaReplay": "passed",
+        "assertionsPassed": 7,
+        "diagnosis": "Fixture bypassed existing 100-row committed assignment reconciliation and invoked legacy all-row finish inside one transaction, exhausting disposable max_locks_per_transaction. Correct to actual worker lifecycle, retain strict staging/finalize gates.",
+        "error": "out of shared memory during legacy assignment reconciliation"
+      },
+      "rootLint": {
+        "passed": true,
+        "log": ".gnc-local/v2313-lint-attempt1.log",
+        "files": [
+          "scripts/check-v2313-retained-validation.mjs",
+          "scripts/verify-v2313-database.mjs",
+          "tests/v2313-release-contract.test.mjs",
+          "scripts/apps-script-function-patch.mjs"
+        ]
+      },
+      "issues": [
+        {
+          "id": "readonly-baseline-catalog-name",
+          "attempts": [
+            {
+              "at": "2026-10-19T22:56:25.527Z",
+              "outcome": "failed",
+              "code": "42P01",
+              "cause": "Read-only probe referenced nonexistent app_dataset_state; corrected to existing app_dataset_revisions from retained evidence."
+            }
+          ],
+          "resolved": true
+        }
+      ],
+      "browserAccess": {
+        "at": "2026-10-19T23:02:42.558Z",
+        "available": false,
+        "attempts": 2,
+        "error": "Browser tools could not initialize: failed to write kernel assets, OS path not found",
+        "uiSuitesRun": false,
+        "impact": "Cannot claim signed-in Home UI timestamp verified without browser access"
+      }
+    },
+    "storm": {
+      "assertions": 38,
+      "outputLog": ".gnc-local/v2313-storm-sql-output.log",
+      "outputLogSha256": "79aa8a1451a475e2aa87ceae0f3868669c7103a8ac247c9fb1dfa3a940021b47",
+      "inputHashes": {
+        "migration": "11e57da1ababeb31dfa2c8f7de9219ae842ea30ec7ea39b37f143c8b1149f3f9",
+        "test": "0f84380009cf50b210f614b18ea68eb5d5be71dc0696083c512868aa51572585"
+      }
+    }
+  }
+}

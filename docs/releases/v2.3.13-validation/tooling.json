@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T01:55:59.746Z",
+  "sourceDigest": "2eb5bbc6f2457ba8d2e80927858ecc70a586ec0d28ccb01bfdaae3a64dd16736",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "log": ".gnc-local/v2313-final-tooling-attempt1.log",
+  "logSha256": "ea0856ad81c83859601af427114f45416fe14a1438981f56d34be8e788836e51",
+  "result": {
+    "passed": true,
+    "capturedAt": "2026-10-20T01:55:59.746Z",
+    "log": ".gnc-local/v2313-final-tooling-attempt1.log",
+    "scope": "Changed-file lint, inline parsing, TypeScript, generated RPC contracts and database boundaries; no UI/browser or broad unit suites",
+    "delta": {
+      "log": ".gnc-local/v2313-final-tooling-delta.log",
+      "passed": true,
+      "files": [
+        "scripts/check-v2313-retained-validation.mjs",
+        "scripts/verify-v2313-database.mjs",
+        "tests/v2313-release-contract.test.mjs"
+      ]
+    }
+  }
+}

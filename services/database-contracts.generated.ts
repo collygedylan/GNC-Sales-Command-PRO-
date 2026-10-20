@@ -76211,6 +76211,539 @@ export const contracts: RuntimeContracts<Database> = {
         }
       }
     },
+    "role_access_baselines": {
+      "row": {
+        "object": {
+          "permissions": {
+            "schema": "json"
+          },
+          "revision": {
+            "schema": "number"
+          },
+          "role": {
+            "schema": "string"
+          },
+          "updated_at": {
+            "schema": "string"
+          },
+          "updated_by_profile_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "insert": {
+        "object": {
+          "permissions": {
+            "schema": "json"
+          },
+          "revision": {
+            "schema": "number",
+            "optional": true
+          },
+          "role": {
+            "schema": "string"
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "updated_by_profile_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          }
+        }
+      },
+      "update": {
+        "object": {
+          "permissions": {
+            "schema": "json",
+            "optional": true
+          },
+          "revision": {
+            "schema": "number",
+            "optional": true
+          },
+          "role": {
+            "schema": "string",
+            "optional": true
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "updated_by_profile_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          }
+        }
+      }
+    },
+    "user_access_control": {
+      "row": {
+        "object": {
+          "active": {
+            "schema": "boolean"
+          },
+          "canonical_role": {
+            "schema": "string"
+          },
+          "created_at": {
+            "schema": "string"
+          },
+          "display_name": {
+            "schema": "string"
+          },
+          "email": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "id": {
+            "schema": "string"
+          },
+          "permission_overrides": {
+            "schema": "json"
+          },
+          "profile_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "revision": {
+            "schema": "number"
+          },
+          "salesrep_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "salesrep_match_names": {
+            "schema": {
+              "array": "string"
+            }
+          },
+          "updated_at": {
+            "schema": "string"
+          },
+          "username": {
+            "schema": "string"
+          }
+        }
+      },
+      "insert": {
+        "object": {
+          "active": {
+            "schema": "boolean",
+            "optional": true
+          },
+          "canonical_role": {
+            "schema": "string",
+            "optional": true
+          },
+          "created_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "display_name": {
+            "schema": "string",
+            "optional": true
+          },
+          "email": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "id": {
+            "schema": "string",
+            "optional": true
+          },
+          "permission_overrides": {
+            "schema": "json",
+            "optional": true
+          },
+          "profile_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "revision": {
+            "schema": "number",
+            "optional": true
+          },
+          "salesrep_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "salesrep_match_names": {
+            "schema": {
+              "array": "string"
+            },
+            "optional": true
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "username": {
+            "schema": "string"
+          }
+        }
+      },
+      "update": {
+        "object": {
+          "active": {
+            "schema": "boolean",
+            "optional": true
+          },
+          "canonical_role": {
+            "schema": "string",
+            "optional": true
+          },
+          "created_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "display_name": {
+            "schema": "string",
+            "optional": true
+          },
+          "email": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "id": {
+            "schema": "string",
+            "optional": true
+          },
+          "permission_overrides": {
+            "schema": "json",
+            "optional": true
+          },
+          "profile_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "revision": {
+            "schema": "number",
+            "optional": true
+          },
+          "salesrep_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "salesrep_match_names": {
+            "schema": {
+              "array": "string"
+            },
+            "optional": true
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "username": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      }
+    },
+    "user_access_control_audit": {
+      "row": {
+        "object": {
+          "actor_profile_id": {
+            "schema": "string"
+          },
+          "command_id": {
+            "schema": "string"
+          },
+          "created_at": {
+            "schema": "string"
+          },
+          "id": {
+            "schema": "number"
+          },
+          "next_value": {
+            "schema": "json"
+          },
+          "previous_value": {
+            "schema": {
+              "oneOf": [
+                "json",
+                "null"
+              ]
+            }
+          },
+          "revision": {
+            "schema": "number"
+          },
+          "target_key": {
+            "schema": "string"
+          },
+          "target_type": {
+            "schema": "string"
+          }
+        }
+      },
+      "insert": {
+        "object": {
+          "actor_profile_id": {
+            "schema": "string"
+          },
+          "command_id": {
+            "schema": "string"
+          },
+          "created_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "id": {
+            "schema": "never",
+            "optional": true
+          },
+          "next_value": {
+            "schema": "json"
+          },
+          "previous_value": {
+            "schema": {
+              "oneOf": [
+                "json",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "revision": {
+            "schema": "number"
+          },
+          "target_key": {
+            "schema": "string"
+          },
+          "target_type": {
+            "schema": "string"
+          }
+        }
+      },
+      "update": {
+        "object": {
+          "actor_profile_id": {
+            "schema": "string",
+            "optional": true
+          },
+          "command_id": {
+            "schema": "string",
+            "optional": true
+          },
+          "created_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "id": {
+            "schema": "never",
+            "optional": true
+          },
+          "next_value": {
+            "schema": "json",
+            "optional": true
+          },
+          "previous_value": {
+            "schema": {
+              "oneOf": [
+                "json",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "revision": {
+            "schema": "number",
+            "optional": true
+          },
+          "target_key": {
+            "schema": "string",
+            "optional": true
+          },
+          "target_type": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      }
+    },
+    "user_access_control_commands": {
+      "row": {
+        "object": {
+          "actor_profile_id": {
+            "schema": "string"
+          },
+          "command_id": {
+            "schema": "string"
+          },
+          "created_at": {
+            "schema": "string"
+          },
+          "operation": {
+            "schema": "string"
+          },
+          "request_hash": {
+            "schema": "string"
+          },
+          "response": {
+            "schema": "json"
+          }
+        }
+      },
+      "insert": {
+        "object": {
+          "actor_profile_id": {
+            "schema": "string"
+          },
+          "command_id": {
+            "schema": "string"
+          },
+          "created_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "operation": {
+            "schema": "string"
+          },
+          "request_hash": {
+            "schema": "string"
+          },
+          "response": {
+            "schema": "json"
+          }
+        }
+      },
+      "update": {
+        "object": {
+          "actor_profile_id": {
+            "schema": "string",
+            "optional": true
+          },
+          "command_id": {
+            "schema": "string",
+            "optional": true
+          },
+          "created_at": {
+            "schema": "string",
+            "optional": true
+          },
+          "operation": {
+            "schema": "string",
+            "optional": true
+          },
+          "request_hash": {
+            "schema": "string",
+            "optional": true
+          },
+          "response": {
+            "schema": "json",
+            "optional": true
+          }
+        }
+      }
+    },
+    "user_access_control_state": {
+      "row": {
+        "object": {
+          "revision": {
+            "schema": "number"
+          },
+          "singleton": {
+            "schema": "boolean"
+          },
+          "updated_at": {
+            "schema": "string"
+          }
+        }
+      },
+      "insert": {
+        "object": {
+          "revision": {
+            "schema": "number",
+            "optional": true
+          },
+          "singleton": {
+            "schema": "boolean",
+            "optional": true
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      },
+      "update": {
+        "object": {
+          "revision": {
+            "schema": "number",
+            "optional": true
+          },
+          "singleton": {
+            "schema": "boolean",
+            "optional": true
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      }
+    },
     "user_preferences": {
       "row": {
         "object": {
@@ -84962,6 +85495,46 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "append_master_snapshot_stage_chunk_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_chunk_index": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_request_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_rows": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_run_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "append_request_options_v1": {
       "oneOf": [
         {
@@ -85253,12 +85826,7 @@ export const contracts: RuntimeContracts<Database> = {
             "p_receipt_encoding": {
               "schema": {
                 "oneOf": [
-                  {
-                    "oneOf": [
-                      "string",
-                      "null"
-                    ]
-                  },
+                  "string",
                   "null"
                 ]
               },
@@ -86431,6 +86999,62 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "begin_master_snapshot_stage_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_expected_chunks": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_rows": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_request_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_run_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_digest": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_manifest": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "bloomscapes_pending_command": {
       "oneOf": [
         {
@@ -86887,6 +87511,31 @@ export const contracts: RuntimeContracts<Database> = {
                 ]
               },
               "optional": true
+            }
+          }
+        }
+      ]
+    },
+    "cleanup_master_snapshot_staging_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_limit": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_older_than": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
             }
           }
         }
@@ -87700,6 +88349,38 @@ export const contracts: RuntimeContracts<Database> = {
               }
             },
             "p_file_version_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "finalize_master_snapshot_stage_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_request_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_run_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_digest": {
               "schema": {
                 "oneOf": [
                   "string",
@@ -89776,6 +90457,30 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "prepare_inventory_reclass_move_delivery_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_event_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_lease_token": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "prepare_manager_order_import_v2": {
       "oneOf": [
         {
@@ -89939,30 +90644,6 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "prepare_suspend_tag_delivery_v1": {
-      "oneOf": [
-        {
-          "object": {
-            "p_event_id": {
-              "schema": {
-                "oneOf": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "p_lease_token": {
-              "schema": {
-                "oneOf": [
-                  "string",
-                  "null"
-                ]
-              }
-            }
-          }
-        }
-      ]
-    },
-    "prepare_inventory_reclass_move_delivery_v1": {
       "oneOf": [
         {
           "object": {
@@ -93017,56 +93698,6 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
-    "user_access_command_v1": {
-      "oneOf": [
-        {
-          "object": {
-            "p_actor_profile_id": {
-              "schema": {
-                "oneOf": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "p_operation": {
-              "schema": {
-                "oneOf": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "p_payload": {
-              "schema": {
-                "oneOf": [
-                  "json",
-                  "null"
-                ]
-              }
-            },
-            "p_expected_revision": {
-              "schema": {
-                "oneOf": [
-                  "number",
-                  "null"
-                ]
-              },
-              "optional": true
-            },
-            "p_command_id": {
-              "schema": {
-                "oneOf": [
-                  "string",
-                  "null"
-                ]
-              },
-              "optional": true
-            }
-          }
-        }
-      ]
-    },
     "update_location_work_job_v1": {
       "oneOf": [
         {
@@ -93128,6 +93759,64 @@ export const contracts: RuntimeContracts<Database> = {
               }
             }
           }
+        }
+      ]
+    },
+    "user_access_command_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_profile_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
+    "user_access_inventory_read_allowed_v1": {
+      "oneOf": [
+        {
+          "object": {}
         }
       ]
     },
@@ -93419,6 +94108,11 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "append_master_snapshot_stage_chunk_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "append_request_options_v1": {
       "oneOf": [
         "json"
@@ -93640,6 +94334,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "begin_import_history_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "begin_master_snapshot_stage_v1": {
       "oneOf": [
         "json"
       ]
@@ -94855,6 +95554,16 @@ export const contracts: RuntimeContracts<Database> = {
                 ]
               }
             },
+            "null"
+          ]
+        }
+      ]
+    },
+    "cleanup_master_snapshot_staging_v1": {
+      "oneOf": [
+        {
+          "oneOf": [
+            "number",
             "null"
           ]
         }
@@ -98553,6 +99262,11 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "finalize_master_snapshot_stage_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "finalize_pikes_order_import": {
       "oneOf": [
         "json"
@@ -99788,6 +100502,11 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "prepare_inventory_reclass_move_delivery_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "prepare_manager_order_import_v2": {
       "oneOf": [
         "json"
@@ -99920,11 +100639,6 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "prepare_suspend_tag_delivery_v1": {
-      "oneOf": [
-        "json"
-      ]
-    },
-    "prepare_inventory_reclass_move_delivery_v1": {
       "oneOf": [
         "json"
       ]
@@ -105841,11 +106555,6 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
-    "user_access_command_v1": {
-      "oneOf": [
-        "json"
-      ]
-    },
     "update_location_work_job_v1": {
       "oneOf": [
         {
@@ -106062,6 +106771,21 @@ export const contracts: RuntimeContracts<Database> = {
     "upsert_my_push_subscription": {
       "oneOf": [
         "json"
+      ]
+    },
+    "user_access_command_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "user_access_inventory_read_allowed_v1": {
+      "oneOf": [
+        {
+          "oneOf": [
+            "boolean",
+            "null"
+          ]
+        }
       ]
     },
     "v2_classify_hold_reason": {

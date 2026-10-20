@@ -15048,6 +15048,198 @@ export type Database = {
         }
         Relationships: []
       }
+      role_access_baselines: {
+        Row: {
+          permissions: Json
+          revision: number
+          role: string
+          updated_at: string
+          updated_by_profile_id: string | null
+        }
+        Insert: {
+          permissions: Json
+          revision?: number
+          role: string
+          updated_at?: string
+          updated_by_profile_id?: string | null
+        }
+        Update: {
+          permissions?: Json
+          revision?: number
+          role?: string
+          updated_at?: string
+          updated_by_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_access_baselines_updated_by_profile_id_fkey"
+            columns: ["updated_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_access_control: {
+        Row: {
+          active: boolean
+          canonical_role: string
+          created_at: string
+          display_name: string
+          email: string | null
+          id: string
+          permission_overrides: Json
+          profile_id: string | null
+          revision: number
+          salesrep_id: string | null
+          salesrep_match_names: string[]
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          active?: boolean
+          canonical_role?: string
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          id?: string
+          permission_overrides?: Json
+          profile_id?: string | null
+          revision?: number
+          salesrep_id?: string | null
+          salesrep_match_names?: string[]
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          active?: boolean
+          canonical_role?: string
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          id?: string
+          permission_overrides?: Json
+          profile_id?: string | null
+          revision?: number
+          salesrep_id?: string | null
+          salesrep_match_names?: string[]
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_access_control_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_access_control_audit: {
+        Row: {
+          actor_profile_id: string
+          command_id: string
+          created_at: string
+          id: number
+          next_value: Json
+          previous_value: Json | null
+          revision: number
+          target_key: string
+          target_type: string
+        }
+        Insert: {
+          actor_profile_id: string
+          command_id: string
+          created_at?: string
+          id?: never
+          next_value: Json
+          previous_value?: Json | null
+          revision: number
+          target_key: string
+          target_type: string
+        }
+        Update: {
+          actor_profile_id?: string
+          command_id?: string
+          created_at?: string
+          id?: never
+          next_value?: Json
+          previous_value?: Json | null
+          revision?: number
+          target_key?: string
+          target_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_access_control_audit_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_access_control_audit_command_id_fkey"
+            columns: ["command_id"]
+            isOneToOne: true
+            referencedRelation: "user_access_control_commands"
+            referencedColumns: ["command_id"]
+          },
+        ]
+      }
+      user_access_control_commands: {
+        Row: {
+          actor_profile_id: string
+          command_id: string
+          created_at: string
+          operation: string
+          request_hash: string
+          response: Json
+        }
+        Insert: {
+          actor_profile_id: string
+          command_id: string
+          created_at?: string
+          operation: string
+          request_hash: string
+          response: Json
+        }
+        Update: {
+          actor_profile_id?: string
+          command_id?: string
+          created_at?: string
+          operation?: string
+          request_hash?: string
+          response?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_access_control_commands_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_access_control_state: {
+        Row: {
+          revision: number
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          revision?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          revision?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           aura_voice_preference: string
@@ -16430,6 +16622,15 @@ export type Database = {
         Args: { p_batch_id: string; p_rows: Json }
         Returns: Json
       }
+      append_master_snapshot_stage_chunk_v1: {
+        Args: {
+          p_chunk_index: number
+          p_request_id: string
+          p_rows: Json
+          p_run_id: string
+        }
+        Returns: Json
+      }
       append_request_options_v1: {
         Args: {
           p_client_batch_id: string
@@ -16491,7 +16692,7 @@ export type Database = {
           p_command_id: string
           p_expected_revision: number
           p_moves: Json
-          p_receipt_encoding?: string | null
+          p_receipt_encoding?: string
         }
         Returns: Json
       }
@@ -16700,6 +16901,17 @@ export type Database = {
           p_source_hash: string
           p_source_timestamp: string
           p_source_version: string
+        }
+        Returns: Json
+      }
+      begin_master_snapshot_stage_v1: {
+        Args: {
+          p_expected_chunks: number
+          p_expected_rows: number
+          p_request_id: string
+          p_run_id: string
+          p_source_digest: string
+          p_source_manifest: Json
         }
         Returns: Json
       }
@@ -16941,6 +17153,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      cleanup_master_snapshot_staging_v1: {
+        Args: { p_limit?: number; p_older_than: string }
+        Returns: number
       }
       complete_password_change_profile: {
         Args: {
@@ -17537,6 +17753,14 @@ export type Database = {
         }
         Returns: Json
       }
+      finalize_master_snapshot_stage_v1: {
+        Args: {
+          p_request_id: string
+          p_run_id: string
+          p_source_digest: string
+        }
+        Returns: Json
+      }
       finalize_pikes_order_import: {
         Args: {
           p_content_sha256: string
@@ -18000,6 +18224,10 @@ export type Database = {
         }
         Returns: Json
       }
+      prepare_inventory_reclass_move_delivery_v1: {
+        Args: { p_event_id: string; p_lease_token: string }
+        Returns: Json
+      }
       prepare_manager_order_import_v2: {
         Args: {
           p_batch_id: string
@@ -18047,10 +18275,6 @@ export type Database = {
         Returns: Json
       }
       prepare_suspend_tag_delivery_v1: {
-        Args: { p_event_id: string; p_lease_token: string }
-        Returns: Json
-      }
-      prepare_inventory_reclass_move_delivery_v1: {
         Args: { p_event_id: string; p_lease_token: string }
         Returns: Json
       }
@@ -19320,16 +19544,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      user_access_command_v1: {
-        Args: {
-          p_actor_profile_id: string
-          p_operation: string
-          p_payload: Json
-          p_expected_revision?: number
-          p_command_id?: string
-        }
-        Returns: Json
-      }
       update_location_work_job_v1: {
         Args: {
           p_actor_username: string
@@ -19372,6 +19586,17 @@ export type Database = {
         Args: { subscription: Json }
         Returns: Json
       }
+      user_access_command_v1: {
+        Args: {
+          p_actor_profile_id: string
+          p_command_id?: string
+          p_expected_revision?: number
+          p_operation: string
+          p_payload?: Json
+        }
+        Returns: Json
+      }
+      user_access_inventory_read_allowed_v1: { Args: never; Returns: boolean }
       v2_classify_hold_reason: { Args: { p_reason: string }; Returns: string }
       v2_crop_roll_completion_key_rows: {
         Args: { row_data: Json }

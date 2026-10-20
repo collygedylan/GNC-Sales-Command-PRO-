@@ -1,0 +1,64 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-19T23:44:59.187Z",
+  "sourceDigest": "2eb5bbc6f2457ba8d2e80927858ecc70a586ec0d28ccb01bfdaae3a64dd16736",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "nativePostgres": true,
+  "migrationsReplayed": 94,
+  "assertions": 38,
+  "testFile": "supabase/tests/inventory_master_identity_batch_test.sql",
+  "migrationFile": "supabase/migrations/20261019234222_identity_batch_not_ready_retry_sqlstate.sql",
+  "inputHashes": {
+    "migration": "11e57da1ababeb31dfa2c8f7de9219ae842ea30ec7ea39b37f143c8b1149f3f9",
+    "test": "0f84380009cf50b210f614b18ea68eb5d5be71dc0696083c512868aa51572585"
+  },
+  "outputLog": ".gnc-local/v2313-storm-sql-output.log",
+  "outputLogSha256": "79aa8a1451a475e2aa87ceae0f3868669c7103a8ac247c9fb1dfa3a940021b47",
+  "failureHistory": {
+    "attempt": 4,
+    "cap": 8,
+    "status": "failed",
+    "log": ".gnc-local/v2313-database-attempt4.log",
+    "history": [
+      {
+        "attempt": 1,
+        "cap": 8,
+        "status": "failed",
+        "log": ".gnc-local/v2313-database-attempt1.log",
+        "diagnosis": "Stage publication update invalidated a later contiguous cleanup text anchor; migration transaction rolled back in disposable instance.",
+        "error": "MASTER_SNAPSHOT_CHUNK_ROW_CLEANUP_ANCHOR_INVALID"
+      },
+      {
+        "attempt": 2,
+        "cap": 8,
+        "status": "failed",
+        "log": ".gnc-local/v2313-database-attempt2.log",
+        "fixtureRows": 9504,
+        "focusedAssertions": 34,
+        "schemaReplay": "passed",
+        "assertionsPassed": 7,
+        "diagnosis": "Fixture to_jsonb untyped string constants caused PostgreSQL polymorphic-type error; migration replay succeeded.",
+        "error": "could not determine polymorphic type because input has type unknown"
+      },
+      {
+        "attempt": 3,
+        "cap": 8,
+        "status": "failed",
+        "log": ".gnc-local/v2313-database-attempt3.log",
+        "fixtureRows": 9504,
+        "focusedAssertions": 34,
+        "schemaReplay": "passed",
+        "assertionsPassed": 7,
+        "diagnosis": "Wide fixture includes protected source fields but rawFields omitted their required mask. Production finalizer correctly rejected the invalid fixture.",
+        "error": "BULK_MASTER_IMPORT_ITEM6_MASK_INVALID"
+      }
+    ],
+    "fixtureRows": 9504,
+    "focusedAssertions": 34,
+    "schemaReplay": "passed",
+    "assertionsPassed": 7,
+    "diagnosis": "Fixture bypassed existing 100-row committed assignment reconciliation and invoked legacy all-row finish inside one transaction, exhausting disposable max_locks_per_transaction. Correct to actual worker lifecycle, retain strict staging/finalize gates.",
+    "error": "out of shared memory during legacy assignment reconciliation"
+  }
+}
