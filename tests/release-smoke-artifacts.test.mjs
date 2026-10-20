@@ -38,6 +38,16 @@ test('published Drive fixture bootstraps Home without opening an unrelated privi
     'the measured cold Drive case still clears master inventory before its real transition');
 });
 
+test('initial Suspend identity parity is sampled after the existing authenticated cohort settles', () => {
+  const spec = fs.readFileSync(new URL('./suspend-tag-completion.e2e.spec.ts', import.meta.url), 'utf8');
+  const cohort = spec.indexOf('Initial authenticated Suspend cohort did not settle');
+  const count = spec.indexOf('await expect(cards).toHaveCount(37, { timeout: 15000 })');
+  const parity = spec.indexOf("await info.attach('latest-suspend-source-uid-parity'");
+  assert.ok(cohort > 0 && cohort < count && count < parity);
+  assert.match(spec, /expect\(uidParity\.actualIds\)\.toEqual\(expectedCardIds\)/);
+  assert.match(spec, /expect\.soft\(renderMs,[^\n]+\.toBeLessThanOrEqual\(2000\)/);
+});
+
 test('smoke preflight rejects incomplete support assets before launching browsers', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'release-assets-'));
   try {

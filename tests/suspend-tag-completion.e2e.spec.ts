@@ -110,6 +110,24 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
     }
   });
   const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });
+  // Finish the existing initial cohort before sampling settled source parity;
+  // a count observed during first hydration can be replaced by its next stage.
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(() => window.eval(`(async () => {
+    let timer;
+    try { return await Promise.race([getProductionLiveSyncCoordinator().check('visible-view'),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Initial authenticated Suspend cohort did not settle')), 30000); })]); }
+    finally { clearTimeout(timer); }
+  })()`)).catch(async error => {
+    await info.attach('release-smoke-initial-cohort-diagnostic', { contentType: 'application/json',
+      body: Buffer.from(JSON.stringify(await app.readBootstrapDiagnostic())) });
+    throw error;
+  });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+  await page.waitForLoadState('networkidle');
   const cards = page.locator('#request-content article[data-request-uid^="dock_suspend_dc_"]');
   await expect(cards).toHaveCount(37, { timeout: 15000 }).catch(async error => {
     await info.attach('release-smoke-initial-suspend-diagnostic', { contentType: 'application/json',
@@ -137,20 +155,6 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   expect(uidParity.stableConsecutiveFrames, 'the complete source UID list must stabilize for two animation frames').toBeGreaterThanOrEqual(2);
   expect(uidParity.actualIds).toEqual(expectedCardIds);
   await expect(cards).toHaveCount(37);
-  // Complete the initial snapshot's bounded identity lookups before measuring
-  // a warm reopen; do not race the seed publication and its follow-up reads.
-  await page.waitForLoadState('networkidle');
-  await page.evaluate(() => window.eval(`(async () => {
-    let timer;
-    try { return await Promise.race([getProductionLiveSyncCoordinator().check('visible-view'),
-      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Initial authenticated Suspend cohort did not settle')), 30000); })]); }
-    finally { clearTimeout(timer); }
-  })()`));
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  });
-  await page.waitForLoadState('networkidle');
   if (process.env.V2314_PROFILE === '1') await page.evaluate(() => window.eval(`(() => {
     window.__v2314Profile = {};
     for (const name of ['renderRequest','getScopedRequestItems','getRequestTabQueueCounts','buildSuspendTagRenderPlan',
