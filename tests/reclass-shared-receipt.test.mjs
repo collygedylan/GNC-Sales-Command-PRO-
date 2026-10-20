@@ -13,6 +13,7 @@ test('confirmed reclass receipt updates shared inventory and removes an obsolete
     firstNonEmptyValue: (...values) => values.find(v => v !== '' && v != null),
     formatFetchedRows: rows => rows.map(row => ({ ...row, UNIQUE_ID: row.unique_id })),
     findItemByUniqueId: () => ({ DOM_ID:'source-dom' }),
+    getCanonicalMasterInventoryRowByUniqueId: () => ({ DOM_ID:'source-dom' }),
     upsertRealtimeRow: (rows, row) => { const i=rows.findIndex(x=>x.UNIQUE_ID===row.UNIQUE_ID); if(i<0)rows.push(row);else rows[i]=row; },
     removeRealtimeRow: (rows, uid) => { const i=rows.findIndex(x=>x.UNIQUE_ID===uid);if(i>=0)rows.splice(i,1); },
     shouldIncludeMasterItemInAvSeasonView: row => row.SEASON === 'F1',

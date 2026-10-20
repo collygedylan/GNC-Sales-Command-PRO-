@@ -155,6 +155,7 @@ test('a malformed success receipt remains uncertain until status confirms the co
     getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
     getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
     applyArgosInventoryTransactionReturnedRow: row => { applied.push(row.unique_id); return row; },
+    publishArgosInventoryTransactionReturnedRows() {},
     confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
     retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null };
   vm.createContext(ctx);
@@ -628,6 +629,7 @@ test('unknown Reclass move outcomes keep the optimistic worksheet and retry the 
     getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
     getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
     applyArgosInventoryTransactionReturnedRow: row => { applied.push(row.unique_id); return row; },
+    publishArgosInventoryTransactionReturnedRows() {},
     confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
     retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove: (_state, _identity) => persists.push(_state),
     readPendingArgosInventoryReclassMove: () => null,
@@ -665,6 +667,7 @@ test('pending move retry reuses the original validated inquiry draft after optim
     getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
     getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
     applyArgosInventoryTransactionReturnedRow: row => row, confirmedArgosReclassLiveEditRevisions: new Map(),
+    publishArgosInventoryTransactionReturnedRows() {},
     invalidateArgosReclassLiveEditCaches() {}, retireConfirmedArgosReclassMoveProposals() {},
     persistPendingArgosInventoryReclassMove: state => persisted.push(state?.pendingReclassMove?.inquiryPayload || null),
     readPendingArgosInventoryReclassMove: () => null };
@@ -732,6 +735,7 @@ test('a new stock command is not dispatched when its recovery record cannot be p
     getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
     getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
     confirmedArgosReclassLiveEditRevisions: new Map(), applyArgosInventoryTransactionReturnedRow: row => row,
+    publishArgosInventoryTransactionReturnedRows() {},
     invalidateArgosReclassLiveEditCaches() {}, retireConfirmedArgosReclassMoveProposals() {},
     persistPendingArgosInventoryReclassMove: () => false };
   vm.createContext(ctx);
@@ -773,6 +777,7 @@ test('lost responses finalize committed pending or conflicted import receipts wi
       getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
       getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }),
       applyArgosInventoryTransactionReturnedRow: row => { applied.push(row.unique_id); return row; },
+      publishArgosInventoryTransactionReturnedRows() {},
       confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
       retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null };
     vm.createContext(ctx);
@@ -803,6 +808,7 @@ test('recovering an older committed receipt never overwrites newer stock or lowe
     getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'permission' }),
     confirmedArgosReclassLiveEditRevisions: revisions,
     applyArgosInventoryTransactionReturnedRow: row => { appliedRows.push(row.unique_id); return row; },
+    publishArgosInventoryTransactionReturnedRows() {},
     invalidateArgosReclassLiveEditCaches: reason => { invalidations.push(reason); },
     retireConfirmedArgosReclassMoveProposals: (_state, movedUids) => { retired.push([...movedUids]); },
     persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null, setArgosReclassMoveInputsLocked() {},

@@ -89,7 +89,7 @@ test('global alerts are dismissible, swipeable, deduplicated, and sync details a
   assert.match(html, /deltaY <= -46 \|\| velocity <= -0\.42/);
   assert.match(html, /data-toast-dismiss aria-label="Dismiss notification"/);
   assert.match(html, /fingerprint === toastLastFingerprint && now - toastLastShownAt < dedupeWindowMs/);
-  assert.match(html, /if \(isPrivilegedManagerUser\(\)\)[\s\S]*showToast\('Sync Error', detailedMessage/);
+  assert.match(html, /if \(isPrivilegedManagerUser\(\)\) \{\s*manualSyncTerminalErrorRunId = terminalRunId;\s*showToast\('Data Update Delayed', `\$\{detailedMessage\} You can continue using the last completed data\.`, false, \{ fingerprint: syncFingerprint, duration: 6000 \}\);\s*\} else \{\s*showToast\('Data Update Delayed', 'Some data may be delayed\. You can continue working\.', true/);
   assert.match(html, /showToast\('Data Update Delayed', 'Some data may be delayed\. You can continue working\.'/);
   assert.match(css, /#toast-notification\.show[\s\S]*pointer-events: auto !important/);
   assert.match(css, /#toast-notification\.toast-dismissing/);
@@ -134,7 +134,8 @@ test('HL PO failures retain files and expose sanitized parse reason codes', () =
   }
   assert.match(appsScriptBackend, /failedFiles\.push\(\{ name: fileName, error: errorMessage, errorCode: errorCode \}\)/);
   assert.match(appsScriptBackend, /Keeping \$\{fileName\} in source folder for correction\/retry/);
-  assert.match(appsScriptBackend, /status\.errorCode = sanitizeManualSyncErrorCode_\(stageResult\.errorCode \|\| stageResult\.error_code \|\| \(failedFileErrors\[0\] && failedFileErrors\[0\]\.errorCode\), 'MANUAL_SYNC_STAGE_FAILED'\)/);
+  assert.match(appsScriptBackend, /status\.stageResults\.push\(\{[\s\S]*?errorCode: stageHasFailure\s*\? sanitizeManualSyncErrorCode_\(stageResult\.errorCode \|\| stageResult\.error_code \|\| \(failedFileErrors\[0\] && failedFileErrors\[0\]\.errorCode\), 'MANUAL_SYNC_STAGE_FAILED'\)\s*: ''/);
+  assert.match(appsScriptBackend, /status\.errorCode = sanitizeManualSyncErrorCode_\(status\.errorCode \|\| getSafeImportFailureCode_\(err\), 'MANUAL_SYNC_STAGE_FAILED'\)/);
   assert.match(appsScriptBackend, /failedFileErrors\.map\(function\(entry\)[\s\S]*return \{ errorCode: sanitizeManualSyncErrorCode_/);
   assert.doesNotMatch(appsScriptBackend, /status\.error = buildManualSyncStageFailureMessage_[\s\S]*failedFileErrors\[0\]\.error/);
 });

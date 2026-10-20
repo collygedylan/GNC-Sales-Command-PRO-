@@ -484,6 +484,7 @@ test('a detached Suspend stage cannot publish after its root disconnects', () =>
   const container = { dataset: {}, isConnected: true, querySelector: () => ({}) };
   const root = { isConnected: true };
   const ctx = vm.createContext({
+    isIOSDevice: () => false,
     renderMarkupChunkedByKey: (...args) => { renderTarget = args[1]; renderOptions = args[6]; return true; },
     generateCard: () => '<card>', getPendingRequestChunkRenderOptions: value => value,
     isDockSuspendDcRequestMirrorPreparationPending: () => false,
@@ -521,6 +522,7 @@ test('identical in-flight Suspend plans reuse their bounded stage until publicat
   };
   const footerCalls = [];
   const ctx = vm.createContext({
+    isIOSDevice: () => false,
     renderMarkupChunkedByKey: (...args) => {
       renderCalls += 1;
       chunkRenderTokensByKey['request-main'] += 1;
@@ -564,6 +566,7 @@ test('request render pre-bump preserves an identical pending Suspend stage only'
   const tokens = { 'request-main': 0 };
   const container = { dataset: {}, isConnected: true, querySelector: () => ({}) };
   const ctx = vm.createContext({
+    isIOSDevice: () => false,
     chunkRenderTokensByKey: tokens,
     renderMarkupChunkedByKey: (...args) => {
       renderCalls += 1;
@@ -629,6 +632,7 @@ test('an identical Suspend plan restarts when its prior chunk token was cancelle
   const chunkRenderTokensByKey = { 'request-main': 0 };
   const container = { dataset: {}, isConnected: true, querySelector: () => ({}) };
   const ctx = vm.createContext({
+    isIOSDevice: () => false,
     renderMarkupChunkedByKey: () => { renderCalls += 1; chunkRenderTokensByKey['request-main'] += 1; return true; },
     generateCard: () => '<card>', getPendingRequestChunkRenderOptions: value => value,
     isDockSuspendDcRequestMirrorPreparationPending: () => false,

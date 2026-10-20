@@ -53177,12 +53177,25 @@ let avTopControlsRenderToken = 0;
             } else if (uid && typeof shouldIncludeMasterItemInAvSeasonView === 'function') {
                 removeRealtimeRow(avOpenInventory, uid);
             }
-            if (typeof rebuildMasterInventoryIndexes === 'function') rebuildMasterInventoryIndexes();
-            if (typeof refreshRealtimeDetailLookupIndexes === 'function') refreshRealtimeDetailLookupIndexes(sourceTable);
-            const changedKeys = getDatasetKeysForTable(sourceTable);
-            propagateCommittedEdit(sourceTable, formatted, changedKeys, getVisibleAffectedViewIds(changedKeys), { delay: 0, typingDelay: 120, prefix: 'argos-' });
-            refreshLiveLocMatchQuantityPreviews();
+            if (options.deferPublication !== true) publishArgosInventoryTransactionReturnedRows([formatted]);
             return formatted;
+        }
+
+        function publishArgosInventoryTransactionReturnedRows(rows = []) {
+            // A movement receipt can contain both source and destination rows.
+            // Rebuild their shared indexes once before publishing either row.
+            // This also reconciles any successful upserts when a later row fails.
+            if (typeof rebuildMasterInventoryIndexes === 'function') rebuildMasterInventoryIndexes();
+            const tables = new Set(rows.map(row => row.SOURCE_TABLE));
+            if (typeof refreshRealtimeDetailLookupIndexes === 'function') {
+                tables.forEach(table => refreshRealtimeDetailLookupIndexes(table));
+            }
+            rows.forEach(row => {
+                const sourceTable = row.SOURCE_TABLE;
+                const changedKeys = getDatasetKeysForTable(sourceTable);
+                propagateCommittedEdit(sourceTable, row, changedKeys, getVisibleAffectedViewIds(changedKeys), { delay: 0, typingDelay: 120, prefix: 'argos-' });
+            });
+            refreshLiveLocMatchQuantityPreviews();
         }
 
         const confirmedArgosReclassLiveEditRevisions = new Map();
@@ -53837,8 +53850,16 @@ let avTopControlsRenderToken = 0;
                 const receiptRevision = BigInt(receipt.revision);
                 const staleReceipt = receiptRevision < knownRevision;
                 if (!staleReceipt) {
-                    const appliedRows = receipt.rows.map((entry) => applyArgosInventoryTransactionReturnedRow(entry.row, entry.row.unique_id)).filter(Boolean);
-                    if (appliedRows.length !== receipt.rows.length) throw Object.assign(new Error('The inventory receipt needs reconciliation.'), { code: 'INVENTORY_RECLASS_RECEIPT_APPLY_FAILED' });
+                    const appliedRows = [];
+                    try {
+                        receipt.rows.forEach(entry => {
+                            const applied = applyArgosInventoryTransactionReturnedRow(entry.row, entry.row.unique_id, { deferPublication: true });
+                            if (!applied) throw Object.assign(new Error('The inventory receipt needs reconciliation.'), { code: 'INVENTORY_RECLASS_RECEIPT_APPLY_FAILED' });
+                            appliedRows.push(applied);
+                        });
+                    } finally {
+                        publishArgosInventoryTransactionReturnedRows(appliedRows);
+                    }
                 }
                 const nextRevision = receiptRevision > knownRevision ? receiptRevision : knownRevision;
                 if (nextRevision > previousRevision) confirmedArgosReclassLiveEditRevisions.set(identityKey, nextRevision.toString());
@@ -120796,9 +120817,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 ? 'Loading Suspend Tag rows…'
                 : (requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all'
                     ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.');
-            const renderRow = typeof createSuspendTagPageRenderRow === 'function'
-                ? createSuspendTagPageRenderRow(cardContainer, safePlan)
-                : item => generateCard(item, 'request', 'status-red');
+            // An unchanged DOM signature skips row generation. Defer the
+            // guarded markup factory until a row is actually needed so that
+            // a skipped render cannot replace a populated cache with an empty
+            // page after an unrelated authorization or dataset epoch changed.
+            let pageRenderRow = null;
+            const renderRow = (item, index) => {
+                if (!pageRenderRow) pageRenderRow = typeof createSuspendTagPageRenderRow === 'function'
+                    ? createSuspendTagPageRenderRow(cardContainer, safePlan)
+                    : row => generateCard(row, 'request', 'status-red');
+                return pageRenderRow(item, index);
+            };
             const didSchedule = renderMarkupChunkedByKey('request-main', renderTarget, crumb, safePlan.rows, crumbText,
                 renderRow, getPendingRequestChunkRenderOptions({
                     _backgroundStage: !!retainCards,

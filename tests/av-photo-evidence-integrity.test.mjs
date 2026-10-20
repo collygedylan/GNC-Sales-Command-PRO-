@@ -477,7 +477,8 @@ test('incremental card painting recalculates stock changes without a timestamp c
 
 test('authoritative snapshot and row commits refresh quantity readouts after updating stock', () => {
   assert.match(source('getProductionLiveSyncCoordinator'), /processAndLoadData\(payload\);\s*refreshLiveLocMatchQuantityPreviews\(\)/);
-  assert.match(source('applyArgosInventoryTransactionReturnedRow'), /upsertRealtimeRow\(fullInventory,[\s\S]*refreshLiveLocMatchQuantityPreviews\(\)/);
+  assert.match(source('applyArgosInventoryTransactionReturnedRow'), /upsertRealtimeRow\(fullInventory,[\s\S]*options\.deferPublication !== true\) publishArgosInventoryTransactionReturnedRows\(\[formatted\]\)/);
+  assert.match(source('publishArgosInventoryTransactionReturnedRows'), /rebuildMasterInventoryIndexes\(\)[\s\S]*propagateCommittedEdit\([\s\S]*refreshLiveLocMatchQuantityPreviews\(\)/);
 });
 
 test('Manager detail refresh patches its live quantity while preserving the open draft', () => {

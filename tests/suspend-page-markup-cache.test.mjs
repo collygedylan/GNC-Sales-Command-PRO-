@@ -8,6 +8,8 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const start = html.indexOf('        function createSuspendTagPageRenderRow(');
 const end = html.indexOf('        function renderSuspendTagPagedCards(', start);
 const source = html.slice(start, end);
+const rendererEnd = html.indexOf('        function shouldBumpRequestMainBeforeRender(', end);
+const rendererSource = html.slice(end, rendererEnd);
 
 function fixture() {
   let generated = 0;
@@ -36,9 +38,71 @@ function fixture() {
     const render = ctx.createSuspendTagPageRenderRow(container, plan);
     return rows.map((row, index) => render(row, index));
   };
-  return { ctx, authorization, inventory, master, revisions, plan, rows, draw,
+  return { ctx, authorization, inventory, master, revisions, plan, rows, container, draw,
     generated: () => generated };
 }
+
+function skippedRenderFixture() {
+  const f = fixture();
+  f.draw();
+  const factory = f.ctx.createSuspendTagPageRenderRow;
+  const before = factory.pages.get(f.container);
+  let factoryCalls = 0;
+  let renderRow;
+  Object.assign(f.ctx, {
+    createSuspendTagPageRenderRow: (...args) => { factoryCalls++; return factory(...args); },
+    // An identical published DOM signature causes the shared chunk renderer
+    // to return before generating rows. Preserve that observable contract.
+    renderMarkupChunkedByKey: (...args) => { renderRow = args[5]; return false; },
+    getPendingRequestChunkRenderOptions: options => options,
+    syncRequestBrowseFooter() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all',
+  });
+  // The production function resolves its own static pages property through
+  // the global binding, so the counting wrapper must retain that WeakMap.
+  f.ctx.createSuspendTagPageRenderRow.pages = factory.pages;
+  vm.runInContext(rendererSource, f.ctx);
+  return { ...f, factory, before, factoryCalls: () => factoryCalls,
+    skippedRender: () => f.ctx.renderSuspendTagPagedCards(f.container, {}, {}, null, 'Suspend Tag', f.plan),
+    renderRow: (...args) => renderRow(...args) };
+}
+
+test('a no-op Suspend redraw preserves populated markup until actual generation checks current authorization', () => {
+  const f = skippedRenderFixture();
+  const beforeRows = [...f.before.rows.entries()];
+  f.ctx.resolvedViewStateEpoch++;
+  assert.equal(f.skippedRender(), false);
+  assert.equal(f.factoryCalls(), 0, 'a skipped chunk render must not eagerly replace the populated page');
+  assert.equal(f.factory.pages.get(f.container), f.before);
+  assert.deepEqual([...f.before.rows.entries()], beforeRows);
+  assert.equal(f.generated(), 2);
+
+  // The callback may run later; construct its factory against the identity
+  // and proof at generation time rather than those from render scheduling.
+  f.authorization.scope = f.master.liveVerifiedScope = 'session-b';
+  f.authorization.permission = f.master.liveVerifiedPermission = 'perm-b';
+  f.inventory.revision = f.master.liveVerifiedRevision = '13';
+  assert.equal(f.renderRow(f.rows[0], 0), 'a:first:3');
+  assert.equal(f.renderRow(f.rows[1], 1), 'b:second:4');
+  assert.equal(f.factoryCalls(), 1, 'one actual page generation shares one currently authorized factory');
+  const current = f.factory.pages.get(f.container);
+  assert.notEqual(current, f.before);
+  assert.match(current.key, /session-b/);
+  assert.match(current.key, /perm-b/);
+  assert.equal(current.rows.size, 2);
+});
+
+test('deferred Suspend generation rechecks revoked proof before using prior cached rows', () => {
+  const f = skippedRenderFixture();
+  assert.equal(f.skippedRender(), false);
+  assert.equal(f.factory.pages.get(f.container), f.before);
+  f.inventory.signal.aborted = true;
+  assert.equal(f.renderRow(f.rows[0], 0), 'a:first:3');
+  assert.equal(f.renderRow(f.rows[0], 0), 'a:first:4');
+  assert.equal(f.factoryCalls(), 1);
+  assert.equal(f.factory.pages.has(f.container), false, 'revoked proof must delete the old cache at real generation');
+});
 
 test('verified Suspend page reuses markup while returning every physical row', () => {
   const f = fixture();

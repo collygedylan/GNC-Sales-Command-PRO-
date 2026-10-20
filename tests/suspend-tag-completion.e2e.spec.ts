@@ -9,6 +9,7 @@ import { inquiryEditableFields } from '../services/reclassEditableFields.ts';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './fixtures/inventory-list-read-fixture.mjs';
 import { createPreindexedMasterPageFixture } from './fixtures/preindexed-master-page-fixture.mjs';
 import { classifyReleaseSmokeRoute, isProvenReleaseSmokeReadCancellation } from './helpers/release-smoke-route-policy.mjs';
+import { readReleaseSmokeSocPage } from './helpers/release-smoke-soc-read.mjs';
 
 
 type FixtureRow = Record<string, string | number>;
@@ -110,7 +111,11 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   });
   const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });
   const cards = page.locator('#request-content article[data-request-uid^="dock_suspend_dc_"]');
-  await expect(cards).toHaveCount(37, { timeout: 15000 });
+  await expect(cards).toHaveCount(37, { timeout: 15000 }).catch(async error => {
+    await info.attach('release-smoke-initial-suspend-diagnostic', { contentType: 'application/json',
+      body: Buffer.from(JSON.stringify(await app.readBootstrapDiagnostic())) });
+    throw error;
+  });
   const expectedCardIds = expectedSourceIds.map(id => `dock_suspend_dc_${id}`).sort();
   let priorCardIds: string[] = [];
   let stableCardFrames = 0;
@@ -207,6 +212,7 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
       const readinessStart = performance.now();
       let priorReadySignature = '';
       let stableReadyFrames = 0;
+      let warmupComplete = false;
       const readiness = window.__releaseSmokeWarmReadiness = { current: null, transitions: [] };
       let priorDiagnostic = '';
       while (stableReadyFrames < 2) {
@@ -235,6 +241,32 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
           readiness.transitions.push(diagnostic);
           if (readiness.transitions.length > 30) readiness.transitions.shift();
           priorDiagnostic = diagnosticKey;
+        }
+        // An unchanged DOM signature can skip row generation after an auth or
+        // dataset cache key changed. Warm the real renderer exactly once and
+        // measure that work too; waiting cannot populate its empty row cache.
+        if (!warmupComplete && proof && !diagnostic.mirrorsPending
+            && cardCount === 37 && cachedPage?.sourceRows.length === 37) {
+          const expectedIds = Array.from(document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]'))
+            .map(card => card.getAttribute('data-request-uid')).sort();
+          const warmupStart = performance.now();
+          setContainerHtml(container, '');
+          renderRequest();
+          while (document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length !== 37
+              && performance.now() - warmupStart < 5000) {
+            await new Promise(resolve => requestAnimationFrame(resolve));
+          }
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const actualIds = Array.from(document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]'))
+            .map(card => card.getAttribute('data-request-uid')).sort();
+          const warmup = window.__releaseSmokeWarmup = { durationMs: performance.now() - warmupStart, expectedIds, actualIds };
+          if (warmup.durationMs > 2000 || JSON.stringify(actualIds) !== JSON.stringify(expectedIds)) {
+            throw new Error('Measured authenticated Suspend warmup exceeded 2000 ms or lost source parity: ' + JSON.stringify(warmup));
+          }
+          warmupComplete = true;
+          stableReadyFrames = 0;
+          priorReadySignature = '';
+          continue;
         }
         if (proof && pageReady) {
           const readySignature = JSON.stringify([
@@ -282,8 +314,13 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
     await info.attach('release-smoke-warm-readiness-diagnostic', { contentType: 'application/json',
       body: Buffer.from(JSON.stringify(await page.evaluate(() => (window as unknown as { __releaseSmokeWarmReadiness?: unknown })
         .__releaseSmokeWarmReadiness).catch(() => null))) });
+    await info.attach('release-smoke-measured-suspend-warmup', { contentType: 'application/json',
+      body: Buffer.from(JSON.stringify(await page.evaluate(() => (window as unknown as { __releaseSmokeWarmup?: unknown })
+        .__releaseSmokeWarmup).catch(() => null))) });
     throw error;
   }) as number;
+  await info.attach('release-smoke-measured-suspend-warmup', { contentType: 'application/json',
+    body: Buffer.from(JSON.stringify(await page.evaluate(() => (window as unknown as { __releaseSmokeWarmup?: unknown }).__releaseSmokeWarmup))) });
   if (profiler) {
     const cpu = await profiler.send('Profiler.stop');
     await info.attach('v2314-cpu-profile', { contentType: 'application/json', body: Buffer.from(JSON.stringify(cpu)) });
@@ -451,6 +488,46 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const consoleErrors: string[] = [];
   const consoleErrorDetails: Array<{ text: string; location: { url: string; lineNumber: number; columnNumber: number } }> = [];
   const failedResources: Array<{ url: string; method: string; resourceType: string; failure: string; body: string; idempotencyKey: string }> = [];
+  const bootstrapStartedAt = Date.now();
+  const bootstrapNetwork: Array<{ phase: string; atMs: number; url: string; body: string }> = [];
+  const recordBootstrapRequest = (phase: string, request: { url(): string; method(): string; postData(): string | null }) => {
+    if (request.method() !== 'POST' || !request.url().startsWith('https://kzrnyjsosryejjejliii.supabase.co/')) return;
+    bootstrapNetwork.push({ phase, atMs: Date.now() - bootstrapStartedAt,
+      url: new URL(request.url()).pathname, body: (request.postData() || '').slice(0, 700) });
+    if (bootstrapNetwork.length > 160) bootstrapNetwork.shift();
+  };
+  page.on('request', request => recordBootstrapRequest('start', request));
+  page.on('requestfinished', request => recordBootstrapRequest('finished', request));
+  page.on('requestfailed', request => recordBootstrapRequest('failed', request));
+  const readBootstrapDiagnostic = async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const state = await Promise.race([page.evaluate(() => window.eval(`(() => {
+        const coordinator = getProductionLiveSyncCoordinator();
+        const container = document.getElementById('request-suspend-tag-card-list');
+        const cachedPage = container && createSuspendTagPageRenderRow.pages?.get(container);
+        const preparation = dockSuspendDcRequestMirrorRowsPreparation;
+        return { phases: window.__suspendBootstrapPhases, atMs: performance.now(),
+          documentHidden: document.hidden, visibilityState: document.visibilityState,
+          view: getCurrentVisibleViewId(), tab: activeReqTab, masterRows: fullInventory.length,
+          sourceRows: getDockSuspendDcSourceRows().length,
+          socRawRows: socRawSourceRows.length, suspendTagRawRows: suspendTagRawSourceRows.length,
+          suspendTagRows: suspendTagInventory.length, sourceFreshness: getCurrentSuspendTagSourceFreshness(),
+          sourceWatermark: getLatestSocImportFileWatermark(socRawSourceRows, getCurrentSuspendTagSourceFreshness()),
+          context: getProductionLiveSyncContext(),
+          cardCount: document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length,
+          mirrorsPending: isDockSuspendDcRequestMirrorPreparationPending(),
+          mirrorCursor: preparation?.cursor, mirrorSourceRows: preparation?.sourceRows.length,
+          chunkToken: chunkRenderTokensByKey['request-main'],
+          stage: container?.__suspendPageStage && { signature: container.__suspendPageStage.signature,
+            token: container.__suspendPageStage.token, generation: container.__suspendPageStage.generation },
+          cachedSourceRows: cachedPage?.sourceRows.length, cachedRenderedRows: cachedPage?.rows.size,
+          status: coordinator.getStatus(), background: coordinator.getBackgroundStatus(), statistics: coordinator.getStatistics() };
+      })()`)), new Promise(resolve => { timer = setTimeout(() => resolve({ unavailable: 'Page diagnostic did not execute within 2000 ms' }), 2000); })]);
+      return { state, network: bootstrapNetwork.slice() };
+    } catch (error) { return { error: String(error), network: bootstrapNetwork.slice() }; }
+    finally { if (timer) clearTimeout(timer); }
+  };
   const chatParticipantReads: Array<{ url: string; authorization: string; status: number }> = [];
   const customerConsigneeReads: Array<{ url: string; authorizationAllowed: boolean; status: number }> = [];
   const healthTelemetryReceipts: Array<{ payload: Record<string, unknown>; apiKeyPresent: boolean; syntheticIdentity: boolean; authorizationMatchesPublicKey: boolean; status: number }> = [];
@@ -913,6 +990,9 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         blockedReadOnlyAppApiCalls.push(`${body.action}:${body.operation || body.dataset}`);
         if (body.action === 'dataset_read') {
           const params = body.params as Record<string, any>;
+          if (options.masterRows?.length && ['soc', 'suspend_tag'].includes(body.dataset)) {
+            return fulfill(route, { ok: true, data: readReleaseSmokeSocPage(backendRows, body.dataset, params) });
+          }
           if ((options.native || options.masterRows?.length) && body.dataset === 'suspend_tag') {
             const source = backendRows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])));
             const rows = source.slice(params.offset, params.offset + params.limit);
@@ -951,6 +1031,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       (window as any).__suspendCompletionFixtureRows = data.rows;
       (window as any).__suspendCompletionMasterRows = data.masterRows;
       window.eval(`(() => {
+        window.__suspendBootstrapPhases = [{ phase: 'seed-start', atMs: performance.now() }];
         if (!installMutationBlockedAccessCanaryIdentity(fixtureUsername, 'Isolated Suspend Done Test', 'ADMIN')) {
           throw new Error('SUSPEND_DONE_CANARY_IDENTITY_UNAVAILABLE');
         }
@@ -1004,6 +1085,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
           _fromCache: true, _verifiedLiveSync: !!window.__suspendCompletionMasterRows.length,
           _locOnHandReceiptScope: getSupabaseReadIdentityScope(), _locOnHandReceiptPermission: snapshotContext.dataPermissionVersion,
           _locOnHandReceiptRevision: '8277' });
+        window.__suspendBootstrapPhases.push({ phase: 'seed-published', atMs: performance.now() });
         if (window.__suspendCompletionMasterRows.length) Object.assign(getDatasetState('master'), {
           initialLoaded: true, fullLoaded: true, fieldCoverage: 'full', rowCompleteness: 'complete',
           liveVerifiedScope: snapshotContext.scope, liveVerifiedPermission: snapshotContext.dataPermissionVersion,
@@ -1027,6 +1109,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     }
     await page.evaluate(() => window.eval(`(() => {
       window.__suspendFixtureFetchAbortContext = 'suspend-fixture-request-view-transition';
+      window.__suspendBootstrapPhases.push({ phase: 'request-transition-start', atMs: performance.now() });
       showOnlyPrimaryView('request');
       window.__suspendFixtureFetchAbortContext = '';
       if (window.__suspendCompletionMasterRows.length) {
@@ -1034,6 +1117,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       }
       invalidateResolvedViewStateCaches();
       renderRequest();
+      window.__suspendBootstrapPhases.push({ phase: 'request-render-returned', atMs: performance.now() });
     })()`));
     await expect(page.locator('#view-request')).toBeVisible();
   };
@@ -1176,7 +1260,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     permissionRefreshResponses, injectedPermissionRefreshConsoleErrors, normalPermissionReads, userAccessResolveReads,
     enableTransientPermissionFailures, publishedReadPages, failedResources, consoleErrorDetails, chatParticipantReads,
     customerConsigneeReads, healthTelemetryRequests, healthTelemetryReceipts, card, done, activate, legacyComplete,
-    beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, readFetchAbortEvidence, assertClean };
+    beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, readFetchAbortEvidence, readBootstrapDiagnostic, assertClean };
 }
 
 async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', value: string) {
@@ -2352,7 +2436,11 @@ test('published snapshot stays available and Drive completes every Common Name a
     try { return await Promise.race([getProductionLiveSyncCoordinator().check('visible-view'),
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Seeded request cohort did not settle before cold Drive hydration')), 30000); })]); }
     finally { clearTimeout(timer); }
-  })()`));
+  })()`)).catch(async error => {
+    await info.attach('release-smoke-seeded-cohort-diagnostic', { contentType: 'application/json',
+      body: Buffer.from(JSON.stringify(await app.readBootstrapDiagnostic())) });
+    throw error;
+  });
   // Cohort completion schedules its render. Let that render's sampled health
   // request finish before the deliberate cold reset cancels session work.
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
