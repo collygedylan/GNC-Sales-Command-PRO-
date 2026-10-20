@@ -154,6 +154,11 @@ test('database validation workspace includes discovered pgTAP tests and excludes
 test('canonical schema validation includes only its self-contained schema-contract tests', () => {
   const expected = discoverTests({ root, group: 'sql-canonical' });
   assert.ok(expected.includes('supabase/tests/canonical_schema_contract_test.sql'));
+  assert.ok(expected.includes('supabase/tests/user_access_control_v1_test.sql'),
+    'canonical access assertions require the current access-control migration chain');
+  assert.equal(discoverTests({ root, group: 'sql-isolated-supabase' })
+    .includes('supabase/tests/user_access_control_v1_test.sql'), false,
+  'canonical access assertions must not run against the archived schema fixture');
   assert.ok(expected.length > 0);
   const workspace = createDatabaseWorkspace({ root, includeTests: true, testGroup: 'sql-canonical', discoverTests });
   try {

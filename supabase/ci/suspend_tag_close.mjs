@@ -17,7 +17,14 @@ try {
   const editor = (await db.query("select id from profiles where username='dylan_collyge'")).rows[0];
   assert.ok(editor, 'approval fixture provides the editor profile');
   const sessionId = randomUUID();
-  await db.query("update profiles set disabled_at=null,locked_until=null,must_change_password=false where id=$1", [editor.id]);
+  // The preceding approval fixture deliberately revokes Dan. This independent
+  // positive close lifecycle needs its editor, assigned Rep and decision team
+  // active; keep their stored roles and all production authorization checks.
+  const participants = ['dylan_collyge', 'dan_mccuistion', 'megan_kelly', 'jd_jones', 'toby_brown'];
+  const restored = await db.query(`update profiles set disabled_at=null,locked_until=null,must_change_password=false
+    where username=any($1::text[]) returning username`, [participants]);
+  assert.deepEqual(new Set(restored.rows.map(row => row.username)), new Set(participants),
+    'approval fixture provides every required active close participant');
   await db.query('insert into auth.sessions(id,user_id,not_after) values($1,$2,null)', [sessionId, editor.id]);
 
   const actor = async (username = 'dylan_collyge', role = 'service_role') => {

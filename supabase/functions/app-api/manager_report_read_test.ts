@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { AppSessionClaims } from "../_shared/app-auth.ts";
+import { CANONICAL_USER_ACCESS_FLAGS, type CanonicalUserAccessFlag } from "../_shared/canonical-user-access.ts";
 
 Deno.env.set("SUPABASE_URL", "http://127.0.0.1:54321");
 Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
@@ -20,6 +21,8 @@ async function mockDatabase<T>(options: {
   accountActive?: boolean;
   rpcData?: unknown;
   rpcError?: { message: string; code?: string; status?: number };
+  canonicalPermissions?: Partial<Record<CanonicalUserAccessFlag, boolean>>;
+  canonicalError?: boolean;
 }, action: (calls: Call[]) => Promise<T>): Promise<T> {
   const originalFetch = globalThis.fetch;
   const calls: Call[] = [];
@@ -34,6 +37,16 @@ async function mockDatabase<T>(options: {
     }));
     if (url.pathname === "/rest/v1/profiles") return json(options.profile === undefined ? activeProfile : options.profile);
     if (url.pathname === "/rest/v1/rpc/app_account_active_v1") return json(options.accountActive !== false);
+    if (url.pathname === "/rest/v1/rpc/user_access_command_v1") {
+      if (options.canonicalError) return json({ message: "USER_ACCESS_RESOLVE_FAILED", code: "P0001" }, 400);
+      return json({ ok: true, data: {
+        revision: 7,
+        effective_permissions: {
+          ...Object.fromEntries(CANONICAL_USER_ACCESS_FLAGS.map(flag => [flag, true])),
+          ...options.canonicalPermissions,
+        },
+      } });
+    }
     if (url.pathname === "/rest/v1/app_dataset_revisions") return json({ revision: 9, state: "ready" });
     if (url.pathname === "/rest/v1/ph_master_inventory") return Promise.resolve(new Response(JSON.stringify([{
       unique_id: "ncr-row-1", itemcode: "001973.030.1", locationcode: "I.12.000",
@@ -82,6 +95,37 @@ Deno.test("manager report capabilities intersect backend surfaces with active ac
     assertEquals(body.data.operations, ["groups", "rows", "metadata", "detail"]);
     const rpc = calls.find(call => call.path.endsWith("manager_report_read_v2"));
     assertEquals(rpc?.body, { p_payload: { actorUsername: "dylan_collyge", operation: "capabilities" } });
+    assertEquals(calls.find(call => call.path.endsWith("user_access_command_v1"))?.body, {
+      p_actor_profile_id: activeProfile.id, p_operation: "resolve", p_payload: {},
+    });
+  });
+});
+
+Deno.test("manager report canonical denial excludes Eval2 capabilities and blocks its rows", async () => {
+  await mockDatabase({ canonicalPermissions: { can_access_eval_reports_2: false } }, async calls => {
+    const response = await handleManagerReportReadAction(session, { action: "report_read_v2", query: { operation: "capabilities" } });
+    assertEquals(response.status, 200);
+    assertEquals((await response.json()).data.surfaces, ["eval1", "ncr"]);
+    const reportReadsBeforeDenial = calls.filter(call => call.path.endsWith("manager_report_read_v2")).length;
+    assertEquals(reportReadsBeforeDenial, 1);
+    const denied = await handleManagerReportReadAction(session, { action: "report_read_v2", query: {
+      surface: "eval2", operation: "rows",
+    } });
+    assertEquals(denied.status, 403);
+    assertEquals((await denied.json()).code, "MANAGER_REPORT_FORBIDDEN");
+    assertEquals(calls.filter(call => call.path.endsWith("manager_report_read_v2")).length, reportReadsBeforeDenial);
+  });
+});
+
+Deno.test("manager report capabilities fail closed when canonical access cannot resolve", async () => {
+  await mockDatabase({ canonicalError: true }, async calls => {
+    const response = await handleManagerReportReadAction(session, { action: "report_read_v2", query: { operation: "capabilities" } });
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), { ok: true, data: {
+      version: "manager-report-read-v2", surfaces: [], approvalTabs: [], operations: [],
+    } });
+    assertEquals(calls.filter(call => call.path.endsWith("user_access_command_v1")).length, 1);
+    assertEquals(calls.some(call => call.path.endsWith("manager_report_read_v2")), false);
   });
 });
 

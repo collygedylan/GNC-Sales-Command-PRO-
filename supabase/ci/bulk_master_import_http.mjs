@@ -10,12 +10,27 @@ import { inspectDisposableSupabaseWorkspace } from '../../scripts/disposable-sup
 import { packageBin, runNode } from '../../scripts/tooling-process.mjs';
 
 const ROW_COUNT = 9539;
+// The positional ERP export includes SALESNOTE twice; retain both positions.
+const APPROVED_MASTER_SOURCE_HEADERS = Object.freeze([
+  'warehouseid','plantgroupcode','itemcode','qualitycode','contsize','commonname','lotcode','locationcode',
+  'source','desigitem','desigcust','desigloc','priority','ptronhand','ptrreviewed','ptravailable',
+  'holdstopcode','holdstopbegindate','holdstopreason','hsreasonbegin','season_supply','season_oh','season_demand',
+  's_lts','oversellpercentage','itemspec','locationnote','locationnotedate','suspend','suspend_to',
+  'specialpuller','pulltagnote1','pulltagnote2','fieldtagcolor','salesnote','inventorynote','locationptn1',
+  'locationptn2','prisetby','priupdated','bypassloc','largeptrqty','maxorderquantity','lochold','listprice',
+  'ext_ptronhand','varietycode','genusname','botanicalname','reversecommon','sortnamevariety','containersort',
+  'saleyear','season','blockalpha','blocknumber','bay','pullerresponsibility','grower','si_lts','a_lts','ai_lts',
+  'season_available','holdstopenddate','salesnote','fnsalesnote','warehousename','mcstatus','hz','intercopo',
+  'insurancegroup','brand','printedcontainercode','salesnotebegindate','equiv_unit','ext_equiv_unit',
+]);
 // This fixture contains production-shape aggregates only; all generated row values are synthetic.
 const ITEM6_FIELDS = Object.freeze([
   'locationnote', 'locationptn1', 'desigitem', 'desigcust', 'desigloc',
   'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend',
 ]);
 const META_FIELDS = new Set(['unique_id', 'assignedto', 'last_updated', 'filename', 'concat']);
+// EXT_EQUIV_UNIT is retained by staging for raw audit, without a live column.
+const SOURCE_ONLY_FIELDS = new Set(['ext_equiv_unit']);
 const NUMERIC_TEXT_FIELDS = new Set([
   'quantityordered', 'quantityshipped', 'listprice', 'unitprice', 'retailprice',
   'ptravailable', 'ptronhand', 'ptrreviewed', 'season_supply', 's_lts', 'a_lts',
@@ -34,7 +49,8 @@ const REQUIRED_SOURCE_FIELDS = Object.freeze([
 ]);
 const HANDOVER_TRANSITION_KEY = 'kayla_knepp_to_nelly_aguilar_20261002';
 const HANDOVER_SUCCESSOR_ID = '961b0a0f-11a6-4db5-b066-582f772ab8e7';
-const EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT = 28;
+// Includes the staging migration's aa000_validate_master_insert_statement.
+const EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT = 29;
 
 function appScriptContext() {
   const code = readFileSync(new URL('../../Code.gs', import.meta.url), 'utf8');
@@ -97,7 +113,6 @@ function syntheticColumnValue(column, rowIndex, length, variant, type) {
 
 function sourceRowsFromProductionShape({ shape, columns, rowCount = ROW_COUNT, variant = 0, syncTime = null }) {
   const ctx = appScriptContext();
-  const allowed = new Set(vm.runInContext('Array.from(ALLOWED_DB_COLUMNS)', ctx));
   const columnTypes = new Map(columns.map(column => [column.column_name, column.data_type]));
   const shapeByColumn = new Map(shape.map(item => [item.column_name, item]));
   const targetLengthFor = (column, rowIndex) => {
@@ -111,10 +126,10 @@ function sourceRowsFromProductionShape({ shape, columns, rowCount = ROW_COUNT, v
     const previousRank = Math.floor(((rowIndex - 1) * extra) / count);
     return Math.max(1, base + (rank > previousRank ? 1 : 0));
   };
-  const sourceColumns = columns.map(column => column.column_name)
-    .filter(column => allowed.has(column) && !META_FIELDS.has(column));
-  const headers = Array.from(new Set([...sourceColumns, ...REQUIRED_SOURCE_FIELDS]));
-  for (const field of headers) assert.ok(columnTypes.has(field), `synthetic import field is a real column: ${field}`);
+  const headers = APPROVED_MASTER_SOURCE_HEADERS;
+  assert.equal(headers.length, 76, 'the fixture retains every positional source column');
+  for (const field of headers) assert.ok(columnTypes.has(field) || SOURCE_ONLY_FIELDS.has(field),
+    `synthetic import field is a real column or an explicit raw source field: ${field}`);
   const rawData = [headers.map(name => name.toUpperCase())];
   for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
     const values = headers.map(column => {
@@ -131,15 +146,32 @@ function sourceRowsFromProductionShape({ shape, columns, rowCount = ROW_COUNT, v
   const rows = JSON.parse(JSON.stringify(payload.rows));
   assert.equal(rows.length, rowCount, 'the GAS importer must produce the requested complete identity set');
   assert.ok(rows.every(row => row.values.unique_id.startsWith('GNC_BULK_BENCH_')));
-  assert.ok(rows.every(row => row.rawFields.every(field => ITEM6_FIELDS.includes(field))));
+  const expectedFields = [...new Set([...headers, 'unique_id', 'last_updated', 'filename', 'concat'])].sort();
+  for (const row of rows) {
+    assert.deepEqual(Object.keys(row.values).sort(), expectedFields,
+      'the importer emits exactly the source fields and four canonical metadata fields');
+    assert.deepEqual([...row.rawFields].sort(), [...ITEM6_FIELDS].sort(),
+      'the complete export retains every Item6 raw-field acknowledgment');
+  }
   assert.equal(new Set(rows.map(row => row.values.unique_id)).size, rowCount);
   return { rows, sourceDigest: payload.sourceDigest, context: ctx };
+}
+
+function legacyBulkSource(source) {
+  // The legacy direct RPC accepts physical columns only. The current GAS
+  // staging path retains EXT_EQUIV_UNIT separately in its raw audit payload.
+  const rows = source.rows.map(row => ({ ...row, values: Object.fromEntries(
+    Object.entries(row.values).filter(([field]) => field !== 'ext_equiv_unit'),
+  ) }));
+  const canonicalRows = vm.runInContext('canonicalizeMasterBulkPayloadValue_', source.context)(rows);
+  return { ...source, rows, sourceDigest: createHash('sha256').update(JSON.stringify(canonicalRows)).digest('hex') };
 }
 
 export function syntheticBulkMasterSnapshot({ rowCount = ROW_COUNT, variant = 0, columns: suppliedColumns = null } = {}) {
   const shape = JSON.parse(readFileSync(new URL('../../tests/fixtures/bulk-master-import-shape.json', import.meta.url), 'utf8'));
   const allowed = new Set(vm.runInContext('Array.from(ALLOWED_DB_COLUMNS)', appScriptContext()));
-  const columns = suppliedColumns || [...new Set([...shape.map(item => item.column_name), ...allowed])]
+  const columns = suppliedColumns || [...new Set([...shape.map(item => item.column_name), ...allowed,
+    ...APPROVED_MASTER_SOURCE_HEADERS.filter(field => !SOURCE_ONLY_FIELDS.has(field))])]
     .filter(column_name => !META_FIELDS.has(column_name)).map(column_name => ({ column_name, data_type: 'text' }));
   return sourceRowsFromProductionShape({ shape, columns, rowCount, variant });
 }
@@ -263,10 +295,10 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     tableColumns = await query(`select column_name, data_type from information_schema.columns
       where table_schema='public' and table_name='ph_master_inventory' order by ordinal_position`);
     assert.equal(tableColumns.length, 213, 'the disposable schema includes all 213 production master columns');
-    initial = sourceRowsFromProductionShape({ shape, columns: tableColumns });
+    initial = legacyBulkSource(sourceRowsFromProductionShape({ shape, columns: tableColumns }));
     masterImportFieldCount = Object.keys(initial.rows[0].values).length;
-    assert.equal(masterImportFieldCount, 171,
-      'the importer exercises all 171 production fields it currently emits');
+    assert.equal(masterImportFieldCount, 78,
+      'legacy direct RPC receives the 79-field source payload minus only raw-only EXT_EQUIV_UNIT');
     sourceByteCount = Buffer.byteLength(JSON.stringify(initial.rows));
     const triggerState = await queryValue(`select count(*)::int as total,
         count(*) filter (where tgenabled <> 'D')::int as enabled,
@@ -511,6 +543,16 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     const denied = await rpc('bulk_import_master_snapshot_v1', initialRequest, values.ANON_KEY);
     assert.ok([401, 403, 404].includes(denied.status), 'anon must not execute the service-only RPC');
 
+    const rawOnlyRequestId = randomUUID();
+    requestIds.push(rawOnlyRequestId);
+    const rawOnlyColumn = await rpc('bulk_import_master_snapshot_v1', { ...initialRequest,
+      p_request_id: rawOnlyRequestId,
+      p_rows: initialRequest.p_rows.map((row, index) => index === 0
+        ? { ...row, values: { ...row.values, ext_equiv_unit: null } } : row),
+    });
+    assert.notEqual(rawOnlyColumn.status, 200, 'raw-only staging fields cannot become legacy live columns');
+    assert.match(errorText(rawOnlyColumn.body), /BULK_MASTER_IMPORT_COLUMN_INVALID/);
+
     const first = await measuredBulk(initialRequest, 'initial 9,539-row insert');
     console.log(`[bulk-master-http] insert RPC ${Math.round(first.elapsedMs)}ms`);
     assert.deepEqual(first.result, {
@@ -544,7 +586,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
       holdstopcode: 'APP_HOLD', holdstopreason: 'Synthetic app hold', locationnote: 'Synthetic app location note',
     });
 
-    const changed = sourceRowsFromProductionShape({ shape, columns: tableColumns, variant: 1 });
+    const changed = legacyBulkSource(sourceRowsFromProductionShape({ shape, columns: tableColumns, variant: 1 }));
     const changedRun = await begin();
     const changedRequest = bulkPayload(changedRun, changed);
     const changedResult = await measuredBulk(changedRequest, 'changed 9,539-row snapshot');
@@ -558,7 +600,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     assert.deepEqual(protectedAfter, protectedBefore, 'imported source values cannot overwrite live app hold/location fields');
     await finish(changedRun);
 
-    const unchanged = sourceRowsFromProductionShape({ shape, columns: tableColumns, variant: 1, syncTime: '2026-10-14T12:02:00.000Z' });
+    const unchanged = legacyBulkSource(sourceRowsFromProductionShape({ shape, columns: tableColumns, variant: 1, syncTime: '2026-10-14T12:02:00.000Z' }));
     const unchangedRun = await begin();
     const unchangedRequest = bulkPayload(unchangedRun, unchanged);
     const unchangedResult = await measuredBulk(unchangedRequest, 'unchanged 9,539-row snapshot with fresh sync metadata');
@@ -574,7 +616,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     assert.match(errorText(noFence.body), /MASTER_PRIORITY_HOLD_IMPORT_TOKEN_INVALID/);
 
     const atomicRun = await begin();
-    const atomicSource = sourceRowsFromProductionShape({ shape, columns: tableColumns, rowCount: 2, variant: 2 });
+    const atomicSource = legacyBulkSource(sourceRowsFromProductionShape({ shape, columns: tableColumns, rowCount: 2, variant: 2 }));
     atomicSource.rows[0].values.commonname = 'Changed before intentional atomic failure';
     atomicSource.rows[0].values.concat = 'changed-hash';
     const newRow = { ...atomicSource.rows[1], values: { ...atomicSource.rows[1].values } };
@@ -634,7 +676,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
       total: EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
       enabled: EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
     }, 'all production triggers remain enabled for the legacy bootstrap RPC');
-    const legacyBootstrap = sourceRowsFromProductionShape({ shape, columns: tableColumns, variant: 2 });
+    const legacyBootstrap = legacyBulkSource(sourceRowsFromProductionShape({ shape, columns: tableColumns, variant: 2 }));
     const legacyRun = await begin();
     const legacyRequest = bulkPayload(legacyRun, legacyBootstrap);
     const legacyResult = await measuredBulk(legacyRequest, 'first full 9,539-row snapshot over legacy existing rows');
@@ -650,7 +692,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     'legacy bootstrap updates cannot overwrite live app hold/location fields');
     await finish(legacyRun);
 
-    console.log(`[bulk-master-http] ${ROW_COUNT} rows, ${tableColumns.length} production columns, ${masterImportFieldCount} importer fields, ${masterProductionTriggerCount} enabled production triggers including due handover, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB request; insert ${Math.round(first.elapsedMs)}ms, changed ${Math.round(changedResult.elapsedMs)}ms, unchanged ${Math.round(unchangedResult.elapsedMs)}ms, exact replay ${Math.round(replayElapsedMs)}ms, legacy bootstrap ${Math.round(legacyResult.elapsedMs)}ms; local disposable Docker/Postgres, shared OS cache (cold-cache state not controlled).`);
+    console.log(`[bulk-master-http] legacy direct RPC regression: ${ROW_COUNT} rows, ${tableColumns.length} production columns, ${masterImportFieldCount} physical importer fields, ${masterProductionTriggerCount} enabled production triggers including due handover, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB request; insert ${Math.round(first.elapsedMs)}ms, changed ${Math.round(changedResult.elapsedMs)}ms, unchanged ${Math.round(unchangedResult.elapsedMs)}ms, exact replay ${Math.round(replayElapsedMs)}ms, legacy bootstrap ${Math.round(legacyResult.elapsedMs)}ms; local disposable Docker/Postgres, shared OS cache (cold-cache state not controlled).`);
   } catch (error) {
     testFailure = error;
     testFailed = true;
