@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "capturedAt": "2026-10-20T19:26:18.648Z",
+  "capturedAt": "2026-10-20T19:28:08.547Z",
   "sourceDigest": "2a85c95e5aab4eeb44f7971f2e553c5f32f24b7571299955eddcebace99227c0",
   "productionWrites": false,
   "realEmailsSent": false,
@@ -11,42 +11,49 @@
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-loaded-data-access-focused-final.log",
       "sha256": "e9c0350e8125bd0914130b6fe36446047db743f8a4c9d2417fa1ed2619a7f62a",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
       "passed": 3,
       "failed": 0
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-access-snapshot-vm-focused.log",
       "sha256": "bf83bf89a4ea5a7bb60074104014eeba40372d4af2e3d1846ec0541bd24abd15",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
       "passed": 4,
       "failed": 0
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-permission-refresh-regression-final.log",
       "sha256": "ae1c942bd1680de90aca2bfabb97e4648b4b964fff7337d079c93f236fe8692b",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
       "passed": 7,
       "failed": 0
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-display-recovery-focused.log",
       "sha256": "2a89031e5d9676662b71e799d0b350de9b5e54f863681cbcf1d594c57f9106be",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
       "passed": 14,
       "failed": 0
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-auth-epoch-coalescing.log",
       "sha256": "f70be7553f68313ac0a903e4f862ffbebc019f67ac823b355bf0f4d4040ac45c",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
       "passed": 1,
       "failed": 0
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-confirmed-access-change.log",
       "sha256": "51f0c441293348e02349e9952edd479a413014ab2d77e40a3b475099d0745e23",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
       "passed": 5,
       "failed": 0
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-session-shell-resilience.log",
       "sha256": "ad0048c9577b04cfa42ffcfd6e06d0a7453288c20ee185a99425c2373d14b233",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
       "passed": 8,
       "failed": 0,
       "evidenceType": "captured tool result summary, not original raw output"
@@ -56,11 +63,13 @@
   "priorFailures": [
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-loaded-data-access-focused.log",
-      "sha256": "f4b41ad9a712b8ada4f1d8ee7a2221531858900e3b99548fd89494e60b61ecac"
+      "sha256": "f4b41ad9a712b8ada4f1d8ee7a2221531858900e3b99548fd89494e60b61ecac",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-permission-refresh-regression.log",
-      "sha256": "affffb938cb48f28ce47c058a2e1cd2448962704dcf6ebca359d997bc6f94027"
+      "sha256": "affffb938cb48f28ce47c058a2e1cd2448962704dcf6ebca359d997bc6f94027",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     }
   ]
 }

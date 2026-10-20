@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "capturedAt": "2026-10-20T19:26:18.648Z",
+  "capturedAt": "2026-10-20T19:28:08.547Z",
   "sourceDigest": "2a85c95e5aab4eeb44f7971f2e553c5f32f24b7571299955eddcebace99227c0",
   "productionWrites": false,
   "realEmailsSent": false,
@@ -14,43 +14,53 @@
   "logs": [
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-tooling.log",
-      "sha256": "a6f2581c5633a0444346e1b2788b4f08e800f8e82846bf996b1d3383a2905e3b"
+      "sha256": "a6f2581c5633a0444346e1b2788b4f08e800f8e82846bf996b1d3383a2905e3b",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-live-sync-read-boundary-eslint.log",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-live-sync-read-boundary-eslint-auth-epoch.log",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-smoke-fixture-eslint.log",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-typecheck.log",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-build-shell.log",
-      "sha256": "7c8a25f8256a0f74f9c76cf4590a9c46e0ba0d6f8a723227df6ec4d2ea0d91c4"
+      "sha256": "7c8a25f8256a0f74f9c76cf4590a9c46e0ba0d6f8a723227df6ec4d2ea0d91c4",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-build-v2.log",
-      "sha256": "d755664d8f4836135d3b3c3591a51b727667ff9f1096e1fedf7942021385fe74"
+      "sha256": "d755664d8f4836135d3b3c3591a51b727667ff9f1096e1fedf7942021385fe74",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-confirmed-access-change-eslint.log",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-inline-confirmed-access.log",
-      "sha256": "4d68e3b0d748f55d1bd3a0eb1649d9c4160950e432da54223bca698705a9d3ce"
+      "sha256": "4d68e3b0d748f55d1bd3a0eb1649d9c4160950e432da54223bca698705a9d3ce",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-build-confirmed-access.log",
-      "sha256": "ac9d8093a7922c67ad41bf5e4cb8378e26f16f224a926869b134d23a4c0ea93e"
+      "sha256": "ac9d8093a7922c67ad41bf5e4cb8378e26f16f224a926869b134d23a4c0ea93e",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     }
   ],
   "history": "First lint run found one duplicate fixture property; corrected and only that file was linted again."

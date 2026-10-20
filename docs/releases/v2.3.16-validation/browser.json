@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "capturedAt": "2026-10-20T19:26:18.648Z",
+  "capturedAt": "2026-10-20T19:28:08.547Z",
   "sourceDigest": "2a85c95e5aab4eeb44f7971f2e553c5f32f24b7571299955eddcebace99227c0",
   "productionWrites": false,
   "realEmailsSent": false,
@@ -287,15 +287,18 @@
     "durationMs": 49995,
     "report": {
       "path": "docs/releases/v2.3.16-validation/raw/targeted-refresh-report.json",
-      "sha256": "122bd33f14788d89b8ce159a4c31bf4a9c894562eaae0cf8f933850720f43cd3"
+      "sha256": "122bd33f14788d89b8ce159a4c31bf4a9c894562eaae0cf8f933850720f43cd3",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     "results": {
       "path": "docs/releases/v2.3.16-validation/raw/targeted-refresh-results.json",
-      "sha256": "86c991d0caab199ae227595263f761e0e3830d91cfcc587634be515bb2aa94b9"
+      "sha256": "86c991d0caab199ae227595263f761e0e3830d91cfcc587634be515bb2aa94b9",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     "log": {
       "path": "docs/releases/v2.3.16-validation/raw/targeted-refresh-playwright.log",
-      "sha256": "64e90da74b20f2a02f620e04ad9584710bdaf864b5367519b4a712fd4471ef8d"
+      "sha256": "64e90da74b20f2a02f620e04ad9584710bdaf864b5367519b4a712fd4471ef8d",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     }
   },
   "artifact": {
@@ -307,15 +310,18 @@
   "durationMs": 59432,
   "report": {
     "path": "docs/releases/v2.3.16-validation/raw/browser-report.json",
-    "sha256": "4dbd8d5cb1ff051b2e17c278b49b1091316bc82f9d3ced65154e06de4bbfe3a5"
+    "sha256": "4dbd8d5cb1ff051b2e17c278b49b1091316bc82f9d3ced65154e06de4bbfe3a5",
+    "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
   },
   "results": {
     "path": "docs/releases/v2.3.16-validation/raw/browser-results.json",
-    "sha256": "59e3e492ec1f9ef2a168088ce7d07c8150cf64c71f50fc6f2246f5c2a55783b5"
+    "sha256": "59e3e492ec1f9ef2a168088ce7d07c8150cf64c71f50fc6f2246f5c2a55783b5",
+    "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
   },
   "log": {
     "path": "docs/releases/v2.3.16-validation/raw/browser-playwright.log",
-    "sha256": "c089720adde3b71b4f002e6ea88bcd93f75d093ed67d2d93f60236017493a2ea"
+    "sha256": "c089720adde3b71b4f002e6ea88bcd93f75d093ed67d2d93f60236017493a2ea",
+    "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
   },
   "environment": "Windows shared host; Desktop Chromium, Pixel 7 Chromium, iPhone 13 WebKit; captured production rows, synthetic verified session; warm render; trace off",
   "liveAuthentication": false,
@@ -324,15 +330,18 @@
     "cause": "The test fixture classified the newly active read-only user_access:resolve request as an unexpected mutation; strict authenticated fixture route added.",
     "report": {
       "path": "docs/releases/v2.3.16-validation/raw/browser-attempt1-report.json",
-      "sha256": "b6655ee54b19201e59e782393d1bdb70e4cdfe00ee0c8ef27fae5230dce123dc"
+      "sha256": "b6655ee54b19201e59e782393d1bdb70e4cdfe00ee0c8ef27fae5230dce123dc",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     "results": {
       "path": "docs/releases/v2.3.16-validation/raw/browser-attempt1-results.json",
-      "sha256": "e429450457126b0125ad6913392e71cda5ed0f56d48ffe93e3efcc26ebd86135"
+      "sha256": "e429450457126b0125ad6913392e71cda5ed0f56d48ffe93e3efcc26ebd86135",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     "log": {
       "path": "docs/releases/v2.3.16-validation/raw/browser-attempt1-playwright.log",
-      "sha256": "95b06d4b71e9aba9291dbc3d6d2e9d1cdda4163c6c306bec1733452e9a649dd1"
+      "sha256": "95b06d4b71e9aba9291dbc3d6d2e9d1cdda4163c6c306bec1733452e9a649dd1",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     }
   }
 }
