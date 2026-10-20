@@ -47944,8 +47944,43 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             try {
                 const cached = JSON.parse(localStorage.getItem(getAppAccessCacheKey(usernameKey)) || 'null');
                 const snapshot = normalizeAppAccessSnapshot(cached && cached.snapshot, usernameKey);
-                if (nativeAuthSessionActive && (!nativeAuthProfile?.id || cached?.profileId !== nativeAuthProfile.id)) return null;
-                return snapshot ? { snapshot, profileId: cached.profileId || '', loadedAt: Number(cached.loadedAt || 0) || 0 } : null;
+                let profileId = String(cached?.profileId || '').trim();
+                let adoptedLegacyProfileBinding = cached?.adoptedLegacyProfileBinding === true;
+                if (nativeAuthSessionActive) {
+                    const profile = nativeAuthProfile;
+                    const activeProfileId = String(profile?.id || '').trim();
+                    const lockedUntil = profile?.locked_until ? Date.parse(profile.locked_until) : 0;
+                    if (!activeProfileId || String(nativeAuthSessionUserId || '').trim() !== activeProfileId
+                        || profile.disabled_at != null || profile.must_change_password === true
+                        || (profile.locked_until && (!Number.isFinite(lockedUntil) || lockedUntil > Date.now()))) return null;
+                    if (profileId && profileId !== activeProfileId) return null;
+                    if (!profileId || adoptedLegacyProfileBinding) {
+                        const rawSnapshot = Array.isArray(cached?.snapshot)
+                            ? cached.snapshot.find((entry) => entry && typeof entry === 'object') : cached?.snapshot;
+                        const cachedUsername = getRequestCapabilityUsernameKey(rawSnapshot?.username || '');
+                        const profileUsername = getRequestCapabilityUsernameKey(profile.username || '');
+                        const currentUsername = getRequestCapabilityUsernameKey(currentUser || '');
+                        const snapshotRole = normalizeRoleAccessToken(snapshot?.role || '');
+                        const profileRole = normalizeRoleAccessToken(profile.role || '');
+                        const currentRoleToken = normalizeRoleAccessToken(currentRole || '');
+                        if (!snapshot || !cachedUsername || cachedUsername !== profileUsername || cachedUsername !== usernameKey
+                            || cachedUsername !== currentUsername || !snapshotRole || snapshotRole !== profileRole
+                            || snapshotRole !== currentRoleToken) return null;
+                    }
+                    if (!profileId) {
+                        // Bind only this verified legacy owner. The adopted record remains stale display state
+                        // until the authenticated permission RPC succeeds; it is never fresh write proof.
+                        profileId = activeProfileId;
+                        adoptedLegacyProfileBinding = true;
+                        try {
+                            localStorage.setItem(getAppAccessCacheKey(usernameKey), JSON.stringify({
+                                ...cached, profileId, stale: true, adoptedLegacyProfileBinding: true
+                            }));
+                        } catch (_) { /* In-memory adoption remains safe if storage is unavailable. */ }
+                    }
+                }
+                return snapshot ? { snapshot, profileId, loadedAt: Number(cached.loadedAt || 0) || 0,
+                    stale: cached.stale === true || adoptedLegacyProfileBinding, adoptedLegacyProfileBinding } : null;
             } catch (error) {
                 return null;
             }
@@ -62898,12 +62933,14 @@ function toggleDriveQuickRequestItem(domId) {
             const snapshotRole = normalizeRoleAccessToken(snapshot?.role || snapshotState?.snapshot?.role || '');
             const currentRoleToken = normalizeRoleAccessToken(currentRole || '');
             const profileRoleToken = normalizeRoleAccessToken(profile?.role || '');
+            const lockedUntil = profile?.locked_until ? Date.parse(profile.locked_until) : 0;
             return nativeAuthSessionActive === true
                 && !!profileId && sessionUserId === profileId
                 && !!username && profileUsername === username && snapshotUsername === username
                 && !!snapshot && !!snapshotState?.profileId && String(snapshotState.profileId) === profileId
                 && !!snapshotRole && snapshotRole === currentRoleToken && snapshotRole === profileRoleToken
-                && profile.disabled_at == null && profile.must_change_password !== true;
+                && profile.disabled_at == null && profile.must_change_password !== true
+                && (!profile.locked_until || (Number.isFinite(lockedUntil) && lockedUntil <= Date.now()));
         }
 
         function showNativeSessionRestorePending(error = null) {

@@ -2329,11 +2329,18 @@ test('published snapshot stays available and Drive completes every Common Name a
     const profileId = String(nativeAuthProfile?.id || '');
     const before = { rowCount: fullInventory.length, visibleText: document.getElementById('drive-content')?.textContent || '',
       user: currentUser, role: currentRole };
+    const legacyAccessSnapshot = appAccessSnapshotState?.snapshot || null;
+    const legacyAccessLoadedAt = Number(appAccessSnapshotState?.loadedAt || 0) || Date.now() - 1000;
+    if (!profileId || !legacyAccessSnapshot || legacyAccessSnapshot.username !== getRequestCapabilityUsernameKey(currentUser)) {
+      throw new Error('LEGACY_ACCESS_CACHE_FIXTURE_NOT_BOUND_TO_ACTIVE_IDENTITY');
+    }
     nativeAuthSessionActive = true;
     nativeAuthSessionUserId = profileId;
     nativeAuthProfile = { ...nativeAuthProfile, id: profileId, username: currentUser, role: currentRole,
       disabled_at: null, must_change_password: false };
-    appAccessSnapshotState.profileId = profileId;
+    localStorage.setItem(getAppAccessCacheKey(currentUser), JSON.stringify({ snapshot: legacyAccessSnapshot, loadedAt: legacyAccessLoadedAt }));
+    appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '', profileId: '' };
+    appAccessSnapshotLoadPromise = null;
     nativeAuthProfileRestorePending = false;
     getNativeAuthSession = async () => ({ user: { id: profileId }, access_token: 'browser-only-no-real-session' });
     window.GncDatabase.readProfile = async (_client, id) => ({ data: { ...nativeAuthProfile, id }, error: null });
@@ -2350,6 +2357,10 @@ test('published snapshot stays available and Drive completes every Common Name a
       driveAllowed: canAccessView('drive'), requestAllowed: canAccessView('request'), docksAllowed: canAccessView('docks'),
       appAccess: { status: appAccessSnapshotState.status, stale: appAccessSnapshotState.stale,
         owner: appAccessSnapshotState.profileId, permissionVersion: appAccessSnapshotState.snapshot?.dataPermissionVersion || '' },
+      legacyCacheAdopted: appAccessSnapshotState.profileId === profileId
+        && appAccessSnapshotState.snapshot?.username === getRequestCapabilityUsernameKey(currentUser)
+        && appAccessSnapshotState.stale === true,
+      legacyCacheLoadedAt: appAccessSnapshotState.loadedAt,
       capabilities: { status: requestCapabilityState.status, stale: requestCapabilityState.stale,
         username: requestCapabilityState.username } };
   })()`));
@@ -2374,6 +2385,8 @@ test('published snapshot stays available and Drive completes every Common Name a
   expect(accessRefresh.requestAllowed).toBe(true);
   expect(accessRefresh.docksAllowed).toBe(true);
   expect(accessRefresh.appAccess).toMatchObject({ status: 'ready', stale: true, owner: accessRefresh.profileId });
+  expect(accessRefresh.legacyCacheAdopted).toBe(true);
+  expect(accessRefresh.legacyCacheLoadedAt).toBeGreaterThan(0);
   expect(app.permissionRefreshFailures.map(failure => failure.endpoint).sort()).toEqual([
     'get_my_app_permissions_v1', 'get_request_capabilities', 'user_access:resolve',
   ]);

@@ -1124,6 +1124,89 @@ function appAccessSnapshotVm({ username = 'brian_hatfield', profileId = 'profile
     return ctx;
 }
 
+function legacyAppAccessCacheVm({ envelope = null, username = 'brian_hatfield', currentRole = 'Sales Rep',
+    profile = null, sessionUserId = 'profile-a', rpc = async () => { throw Object.assign(new Error('temporary network failure'), { status: 503 }); } } = {}) {
+    const normalizedUser = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const stored = new Map();
+    if (envelope) stored.set(`access:${normalizedUser(username)}`, JSON.stringify(envelope));
+    const localStorage = {
+        getItem: key => stored.get(key) || null,
+        setItem: (key, value) => stored.set(key, value),
+        removeItem: key => stored.delete(key)
+    };
+    const ctx = {
+        Promise, String, Object, Number, Date, Error, Array, JSON, Math, navigator: { onLine: true }, localStorage,
+        APP_ACCESS_CONTRACT_VERSION: 'app-access-v1', currentUser: username, currentRole,
+        nativeAuthProfile: profile || { id: 'profile-a', username: 'Brian_Hatfield', role: 'Sales Rep', disabled_at: null, must_change_password: false },
+        nativeAuthSessionActive: true, nativeAuthSessionUserId: sessionUserId,
+        productionLiveSyncReadAuthEpoch: 2, appAccessSnapshotLoadPromise: null,
+        appAccessSnapshotState: { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '', profileId: '', authEpoch: 0 },
+        getRequestCapabilityUsernameKey: normalizedUser, getAppAccessCacheKey: value => `access:${normalizedUser(value)}`,
+        firstNonEmptyValue: (...values) => values.find(value => value != null && value !== ''),
+        normalizeRoleAccessToken: value => String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, ''),
+        supabaseRpc: rpc, reportSemanticHealthEvent() {}, activeHomeTab: '', MANAGER_ACCESS_CONTROL_VIEW: 'manager-access',
+        getRoleAccessState: () => null, setTimeout: () => 0
+    };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('getSupabaseReadErrorCode'), ctx);
+    vm.runInContext(extractAppFunction('isSupabaseReadTerminalDenial'), ctx);
+    vm.runInContext(extractAppFunction('normalizeAppAccessSnapshot'), ctx);
+    vm.runInContext(extractAppFunction('readCachedAppAccessSnapshot'), ctx);
+    vm.runInContext(extractAppFunction('initializeAppAccessSnapshot'), ctx);
+    vm.runInContext(extractAppFunction('getAppAccessSnapshot'), ctx);
+    vm.runInContext(extractAppFunction('hasRetainedAuthenticatedAppAccess'), ctx);
+    return { ctx, stored, localStorage };
+}
+
+test('v2.3.15 legacy access cache is adopted only for the matching enabled authenticated profile and stays display-only', async () => {
+    const gate = deferred();
+    const legacySnapshot = { contractVersion: 'app-access-v1', enforcementMode: 'enforced', username: 'Brian_Hatfield',
+        role: 'Sales Rep', dataPermissionVersion: 'legacy-v2315', permissions: [] };
+    const { ctx, stored } = legacyAppAccessCacheVm({ envelope: { snapshot: legacySnapshot, loadedAt: 123 }, rpc: () => gate.promise });
+    const adopted = ctx.readCachedAppAccessSnapshot('brian_hatfield');
+    assert.equal(adopted.profileId, 'profile-a');
+    assert.equal(adopted.stale, true, 'the adoption result is stale even before any refresh starts');
+    const pending = ctx.initializeAppAccessSnapshot({ force: true, reason: 'legacy-cache-upgrade' });
+    await settle();
+    assert.equal(ctx.appAccessSnapshotState.status, 'loading');
+    assert.equal(ctx.appAccessSnapshotState.stale, true);
+    assert.equal(ctx.appAccessSnapshotState.profileId, 'profile-a');
+    assert.equal(ctx.appAccessSnapshotState.snapshot.dataPermissionVersion, 'legacy-v2315');
+    const adoptedEnvelope = JSON.parse(stored.get('access:brian_hatfield'));
+    assert.equal(adoptedEnvelope.profileId, 'profile-a', 'legacy ownership is stamped only after binding to the active session subject');
+    assert.equal(adoptedEnvelope.stale, true);
+    assert.equal(adoptedEnvelope.adoptedLegacyProfileBinding, true);
+    assert.equal(ctx.hasRetainedAuthenticatedAppAccess(), true, 'verified same-account ownership can keep the already-loaded workspace visible');
+    gate.reject(Object.assign(new Error('temporary network failure'), { status: 503 }));
+    const settled = await pending;
+    assert.equal(settled.dataPermissionVersion, 'legacy-v2315');
+    assert.equal(ctx.appAccessSnapshotState.status, 'ready');
+    assert.equal(ctx.appAccessSnapshotState.stale, true, 'a transient permission failure never makes adopted cache fresh');
+    assert.equal(ctx.appAccessSnapshotState.profileId, 'profile-a');
+    assert.equal(ctx.hasRetainedAuthenticatedAppAccess(), true);
+});
+
+test('legacy access cache adoption rejects mismatched username, role, session subject, explicit owner, disabled, and password-change-required profiles', () => {
+    const baseEnvelope = { snapshot: { contractVersion: 'app-access-v1', enforcementMode: 'enforced', username: 'Brian_Hatfield',
+        role: 'Sales Rep', dataPermissionVersion: 'legacy-v2315', permissions: [] }, loadedAt: 123 };
+    const cases = [
+        ['wrong cached username', { envelope: { ...baseEnvelope, snapshot: { ...baseEnvelope.snapshot, username: 'someone_else' } } }],
+        ['wrong active profile username', { profile: { id: 'profile-a', username: 'someone_else', role: 'Sales Rep', disabled_at: null, must_change_password: false } }],
+        ['wrong current role', { currentRole: 'Manager' }],
+        ['previously adopted cache after role change', { currentRole: 'Manager', envelope: { ...baseEnvelope, profileId: 'profile-a', adoptedLegacyProfileBinding: true } }],
+        ['wrong session subject', { sessionUserId: 'profile-other' }],
+        ['mismatched explicit profile ID', { envelope: { ...baseEnvelope, profileId: 'profile-other' } }],
+        ['disabled profile', { profile: { id: 'profile-a', username: 'Brian_Hatfield', role: 'Sales Rep', disabled_at: '2026-10-19', must_change_password: false } }],
+        ['password-change-required profile', { profile: { id: 'profile-a', username: 'Brian_Hatfield', role: 'Sales Rep', disabled_at: null, must_change_password: true } }]
+    ];
+    for (const [label, overrides] of cases) {
+        const envelope = overrides.envelope || baseEnvelope;
+        const { ctx, stored } = legacyAppAccessCacheVm({ envelope, ...overrides });
+        assert.equal(ctx.readCachedAppAccessSnapshot('brian_hatfield'), null, `${label} must not adopt the cache`);
+        assert.equal(JSON.parse(stored.get('access:brian_hatfield')).profileId || '', overrides.envelope?.profileId || '', `${label} is not rewritten or rebound`);
+    }
+});
+
 test('same-profile in-memory access snapshot stays available while refresh is pending and after transient failure', async () => {
     const gate = deferred();
     const memorySnapshot = { username: 'brian_hatfield', dataPermissionVersion: 'memory-v1', role: 'Sales Rep' };
