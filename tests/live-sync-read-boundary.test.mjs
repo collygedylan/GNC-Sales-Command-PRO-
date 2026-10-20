@@ -1077,13 +1077,14 @@ function permissionFixture(options = {}) {
     const ctx = { String, Promise, Error, console: { warn() {} }, calls,
         NATIVE_AUTH_ENABLED: true, nativeAuthSessionActive: true, nativeRoleRefreshPromise: null,
         nativeAuthProfile: { id: 'account-a' }, captureProductionPermissionDrafts() {}, restoreProductionPermissionDrafts: async () => {},
-        setProductionPermissionCheckState: (state) => { ctx.mask = state; }, getCurrentVisibleViewId: () => 'home',
+        setProductionPermissionCheckState: () => {}, getCurrentVisibleViewId: () => 'home',
         currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan', currentRole: 'Admin', currentUserDivision: '10', currentUserLanguage: 'English',
-        loadNativeAuthProfile: async () => ({ username: 'dylan_collyge', role: 'Admin', division: options.division || '10' }),
+        loadNativeAuthProfile: async () => ({ username: 'dylan_collyge', role: options.role || 'Admin', division: options.division || '10' }),
         normalizeRoleAccessToken: (value) => String(value).toLowerCase(), normalizeAppUserLanguage: (value) => value,
         localStorage: { setItem() {} }, persistAppSessionRecord() {}, ensureNativeAppSessionBridge: async () => {},
         clearRoleScopedClientCaches: () => { calls.push('clear'); ctx.appAccessSnapshotState = {}; ctx.requestCapabilityState = {}; },
         configureCanonicalUserAccess: async () => { calls.push('canonical'); },
+        applyCurrentUserMasterInventoryScope: () => { calls.push('master-scope'); },
         initializeAppAccessSnapshot: async () => { calls.push('access'); ctx.appAccessSnapshotState = options.failure ? { status: 'error' } : { status: 'ready', stale: false, snapshot: {} }; },
         initializeRequestCapabilities: async () => { calls.push('capabilities'); ctx.requestCapabilityState = { status: 'ready', stale: false, capabilities: {} }; },
         ensureAssignableAppUsers: async () => {}, ensureFlyerAssignableUsers: async () => {},
@@ -1093,26 +1094,128 @@ function permissionFixture(options = {}) {
     return ctx;
 }
 
+function appAccessSnapshotVm({ username = 'brian_hatfield', profileId = 'profile-a', snapshot = null,
+    diskSnapshot = null, rpc = async () => null } = {}) {
+    const calls = { cacheReads: 0, persisted: 0, health: [] };
+    const normalizedUser = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const ctx = {
+        Promise, String, Object, Number, Date, Error, navigator: { onLine: true },
+        currentUser: username, currentRole: 'Sales Rep', nativeAuthProfile: { id: profileId }, nativeAuthSessionActive: true,
+        productionLiveSyncReadAuthEpoch: 4, appAccessSnapshotLoadPromise: null,
+        appAccessSnapshotState: { status: 'error', snapshot, stale: !!snapshot, errorCode: 'PREVIOUS_REFRESH_FAILED',
+            loadedAt: 123, username: normalizedUser(username), profileId },
+        getRequestCapabilityUsernameKey: normalizedUser, getAppAccessCacheKey: user => `access:${normalizedUser(user)}`,
+        readCachedAppAccessSnapshot: () => { calls.cacheReads++; return diskSnapshot ? { snapshot: diskSnapshot, profileId, loadedAt: 456 } : null; },
+        normalizeAppAccessSnapshot: (value, expected) => value && normalizedUser(value.username) === expected ? value : null,
+        persistAppAccessSnapshot: () => { calls.persisted++; },
+        supabaseRpc: rpc, calls, reportSemanticHealthEvent: (...args) => calls.health.push(args),
+        activeHomeTab: '', MANAGER_ACCESS_CONTROL_VIEW: 'manager-access',
+        getRoleAccessState: () => null, setTimeout, localStorage: { getItem: () => null, setItem() {} }
+    };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('getSupabaseReadErrorCode'), ctx);
+    vm.runInContext(extractAppFunction('isSupabaseReadTerminalDenial'), ctx);
+    vm.runInContext(extractAppFunction('initializeAppAccessSnapshot'), ctx);
+    return ctx;
+}
+
+test('same-profile in-memory access snapshot stays available while refresh is pending and after transient failure', async () => {
+    const gate = deferred();
+    const memorySnapshot = { username: 'brian_hatfield', dataPermissionVersion: 'memory-v1', role: 'Sales Rep' };
+    const diskSnapshot = { username: 'brian_hatfield', dataPermissionVersion: 'disk-v0', role: 'Sales Rep' };
+    const ctx = appAccessSnapshotVm({ snapshot: memorySnapshot, diskSnapshot, rpc: () => gate.promise });
+    const pending = ctx.initializeAppAccessSnapshot({ force: true, reason: 'test-refresh' });
+    await settle();
+    assert.equal(ctx.appAccessSnapshotState.status, 'loading');
+    assert.equal(ctx.appAccessSnapshotState.snapshot.dataPermissionVersion, 'memory-v1', 'same-profile memory beats persisted cache during the RPC');
+    assert.equal(ctx.appAccessSnapshotState.profileId, 'profile-a');
+    assert.equal(ctx.appAccessSnapshotState.stale, true);
+    assert.equal(ctx.calls.cacheReads, 0, 'the matching in-memory snapshot is preferred without consulting disk');
+    gate.reject(new Error('temporary network failure'));
+    const result = await pending;
+    assert.equal(result.dataPermissionVersion, 'memory-v1');
+    assert.equal(ctx.appAccessSnapshotState.status, 'ready');
+    assert.equal(ctx.appAccessSnapshotState.stale, true, 'transient failure retains the snapshot as stale display state');
+    assert.equal(ctx.appAccessSnapshotState.profileId, 'profile-a');
+    assert.equal(ctx.calls.persisted, 0);
+});
+
+test('an actual access RPC 403 drops the retained snapshot', async () => {
+    const memorySnapshot = { username: 'brian_hatfield', dataPermissionVersion: 'memory-v1', role: 'Sales Rep' };
+    const ctx = appAccessSnapshotVm({ snapshot: memorySnapshot,
+        rpc: async () => { throw Object.assign(new Error('Forbidden'), { status: 403, code: '42501' }); } });
+    assert.equal(await ctx.initializeAppAccessSnapshot({ force: true }), null);
+    assert.equal(ctx.appAccessSnapshotState.status, 'error');
+    assert.equal(ctx.appAccessSnapshotState.snapshot, null);
+    assert.equal(ctx.appAccessSnapshotState.stale, false);
+    assert.equal(ctx.appAccessSnapshotState.profileId, 'profile-a');
+    assert.equal(ctx.calls.health.length, 1);
+});
+
+test('a late access snapshot response after an account switch cannot overwrite the new account state', async () => {
+    const gate = deferred();
+    const ctx = appAccessSnapshotVm({ snapshot: { username: 'brian_hatfield', dataPermissionVersion: 'memory-v1' }, rpc: () => gate.promise });
+    const pending = ctx.initializeAppAccessSnapshot({ force: true });
+    await settle();
+    const nextAccountState = { status: 'ready', snapshot: { username: 'sharon_combs', dataPermissionVersion: 'sharon-v1' },
+        stale: false, errorCode: '', loadedAt: 789, username: 'sharon_combs', profileId: 'profile-b' };
+    ctx.currentUser = 'sharon_combs';
+    ctx.nativeAuthProfile = { id: 'profile-b' };
+    ctx.productionLiveSyncReadAuthEpoch++;
+    ctx.appAccessSnapshotState = nextAccountState;
+    ctx.appAccessSnapshotLoadPromise = null;
+    gate.resolve({ username: 'brian_hatfield', dataPermissionVersion: 'late-brian-v2' });
+    assert.equal(await pending, null);
+    assert.equal(ctx.appAccessSnapshotState, nextAccountState, 'the late response cannot replace the current owner’s state');
+    assert.equal(ctx.appAccessSnapshotState.profileId, 'profile-b');
+    assert.equal(ctx.calls.persisted, 0, 'discarded responses are not persisted');
+});
+
+test('same-account forced permission refreshes coalesce into one authenticated RPC', async () => {
+    const gate = deferred(); let rpcCalls = 0;
+    const ctx = appAccessSnapshotVm({ snapshot: { username: 'brian_hatfield', dataPermissionVersion: 'memory-v1' },
+        rpc: () => { rpcCalls++; return gate.promise; } });
+    const first = ctx.initializeAppAccessSnapshot({ force: true, reason: 'first' });
+    const second = ctx.initializeAppAccessSnapshot({ force: true, reason: 'second' });
+    await settle();
+    assert.equal(rpcCalls, 1, 'overlapping same-profile forced refreshes share the active request');
+    assert.equal(ctx.appAccessSnapshotState.profileId, 'profile-a');
+    gate.resolve({ username: 'brian_hatfield', dataPermissionVersion: 'access-v2', role: 'Sales Rep' });
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+    assert.equal(firstResult.dataPermissionVersion, 'access-v2');
+    assert.equal(secondResult.dataPermissionVersion, 'access-v2');
+    assert.equal(ctx.appAccessSnapshotState.stale, false);
+    assert.equal(ctx.calls.persisted, 1);
+});
+
 test('same-role policy changes reload and apply authoritative permissions before returning', async () => {
     const ctx = permissionFixture();
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('foreground'), false);
     assert.equal(ctx.calls.length, 0);
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('live-permissions'), true);
-    assert.deepEqual(ctx.calls, ['clear', 'canonical', 'capabilities', 'access', 'apply']);
+    assert.deepEqual(ctx.calls, ['canonical', 'capabilities', 'access', 'master-scope', 'apply'], 'same-role permission refresh keeps same-account cache ownership');
 });
 
 test('division changes refresh capability scope even without a role change', async () => {
     const ctx = permissionFixture({ division: '20' });
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('foreground'), true);
     assert.equal(ctx.currentUserDivision, '20');
+    assert.ok(ctx.calls.includes('clear'), 'a confirmed division change clears role-scoped caches');
     assert.ok(ctx.calls.includes('apply'));
+});
+
+test('confirmed role changes still clear role-scoped caches', async () => {
+    const ctx = permissionFixture({ role: 'Manager' });
+    assert.equal(await ctx.refreshNativeRoleAndCapabilities('foreground'), true);
+    assert.ok(ctx.calls.includes('clear'));
+    assert.ok(ctx.calls.includes('master-scope'));
 });
 
 test('a failed updated policy check rejects instead of granting fallback access', async () => {
     const ctx = permissionFixture({ failure: true });
     await assert.rejects(ctx.refreshNativeRoleAndCapabilities('live-permissions'), /permissions could not be verified/);
     assert.ok(!ctx.calls.includes('apply'));
-    assert.equal(ctx.mask, 'failed');
+    assert.equal(ctx.mask, undefined, 'a failed background permission refresh does not add a blocking screen curtain');
 });
 
 test('live permission signal arriving during a foreground check performs a full refresh afterwards', async () => {
@@ -1123,16 +1226,17 @@ test('live permission signal arriving during a foreground check performs a full 
     const policy = ctx.refreshNativeRoleAndCapabilities('live-permissions');
     gate.resolve();
     assert.equal(await foreground, false); assert.equal(await policy, true);
-    assert.deepEqual(ctx.calls, ['clear', 'canonical', 'capabilities', 'access', 'apply']);
+    assert.deepEqual(ctx.calls, ['canonical', 'capabilities', 'access', 'master-scope', 'apply']);
 });
 
 test('permission-change coordinator callback returns the permission refresh promise', () => {
-    const code = html.match(/onPermissionChange: (\(\) => \{[^\n]+\}),/)[1];
+    const code = html.match(/onPermissionChange: (\(\) => refreshNativeRoleAndCapabilities\('live-permissions'\)),/)[1];
     const promise = Promise.resolve(true); const groups = new Set(['prior']); const ctx = { productionDisplayGroups: groups, refreshNativeRoleAndCapabilities: () => promise,
         resetDashboardSyncMetadataForPermissionChange: () => { ctx.reset = true; } };
     vm.createContext(ctx); vm.runInContext(`this.callback = ${code}`, ctx);
     assert.equal(ctx.callback(), promise);
-    assert.equal(ctx.reset, true);
+    assert.deepEqual(Array.from(ctx.productionDisplayGroups), ['prior'], 'a pending permission refresh does not eagerly clear same-account display');
+    assert.equal(ctx.reset, undefined, 'display clearing waits for confirmed identity/access changes or server denial');
 });
 
 test('footer refresh skips static and navigation-only screens but renders data-backed Managers tabs', () => {

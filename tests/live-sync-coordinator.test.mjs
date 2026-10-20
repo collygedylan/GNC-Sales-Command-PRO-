@@ -862,6 +862,49 @@ test('a new visit can retain its same-account display synchronously before any l
     coordinator.reset();
 });
 
+test('pending access refresh retains same-scope rows for display only, never as current proof', async () => {
+    let sourceState = 'ready', retained = 0, stages = 0;
+    const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'],
+        stage: async () => { stages++; return ['verified']; }, commit() {} };
+    const context = { scope: 'account-a:role-a:login-a', dataPermissionVersion: 'access-v1',
+        dataPermissionSnapshotFresh: true, viewKey: 'drive', progressive: true, visible: true, online: true, adapters: [adapter] };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        retainAppliedDisplay: (_ctx, entries) => { retained++; assert.deepEqual(entries[0].value, ['verified']); },
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'access-v1',
+            sources: keys.map(key => ({ key, state: sourceState, revision: '1' })) }) });
+    assert.equal(await coordinator.check(), true);
+    context.dataPermissionVersion = '';
+    context.dataPermissionSnapshotFresh = false;
+    sourceState = 'interrupted';
+    assert.equal(await coordinator.check(), false, 'pending access and interrupted source are not current read proof');
+    assert.equal(retained, 1, 'the same-account last verified rows remain displayed during access refresh');
+    const readsBeforeEnsure = coordinator.getStatistics().revisionReads;
+    assert.equal(await coordinator.ensure(adapter), false, 'a display-only row cannot satisfy an ensure/read request');
+    assert.equal(coordinator.getStatistics().revisionReads, readsBeforeEnsure + 1, 'ensure still performs a current server revision check');
+    assert.equal(stages, 1, 'display retention does not stage or authorize another data read');
+    coordinator.reset();
+});
+
+test('stale permission hashes retain display until confirmed, then reject a changed access scope', async () => {
+    let sourceState = 'ready', retained = 0;
+    const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => ['verified'], commit() {} };
+    const context = { scope: 'account-a:role-a:login-a', dataPermissionVersion: 'access-v1',
+        dataPermissionSnapshotFresh: true, viewKey: 'drive', progressive: true, visible: true, online: true, adapters: [adapter] };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        retainAppliedDisplay: () => { retained++; },
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'access-v1',
+            sources: keys.map(key => ({ key, state: sourceState, revision: '1' })) }) });
+    assert.equal(await coordinator.check(), true);
+    context.dataPermissionVersion = 'access-v2';
+    context.dataPermissionSnapshotFresh = false;
+    sourceState = 'importing';
+    assert.equal(coordinator.retainDisplay(), true, 'an unconfirmed cached hash is not a revocation');
+    assert.equal(retained, 1);
+    context.dataPermissionSnapshotFresh = true;
+    assert.equal(coordinator.retainDisplay(), false, 'a confirmed permission change cannot reuse the old display');
+    coordinator.reset();
+});
+
 test('cached display permission mismatch and logout never preview stale rows', async () => {
     const shown = [];
     const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => [], commit() {} };

@@ -82,6 +82,53 @@ function restoreFunctionSource() {
   return html.slice(start, end);
 }
 
+function pendingSessionFunctionSource() {
+  const start = html.indexOf('function hasRetainedAuthenticatedAppAccess()');
+  const end = html.indexOf('async function clearRevokedNativeAuthSession(', start);
+  assert.ok(start >= 0 && end > start, 'identity-bound pending-session helpers are present');
+  return html.slice(start, end);
+}
+
+function passkeyFunctionSource() {
+  const start = html.indexOf('async function signInWithAppPasskey(');
+  const end = html.indexOf('async function registerAppPasskey(', start);
+  assert.ok(start >= 0 && end > start, 'passkey sign-in preserves same-account workspace state');
+  return html.slice(start, end);
+}
+
+function pendingSessionHarness({ sameIdentity = true, retainedSnapshot = true } = {}) {
+  const classes = new Map();
+  const ids = ['app-wrapper', 'login-inputs', 'loading-spinner', 'loading-text',
+    'native-session-restore-retry', 'native-session-restore-signin'];
+  for (const id of ids) classes.set(id, new Set(id === 'app-wrapper' || id === 'loading-spinner' ? ['hidden'] : []));
+  const elements = Object.fromEntries(ids.map(id => [id, {
+    id, innerText: '', disabled: false,
+    classList: {
+      add: token => classes.get(id).add(token),
+      remove: token => classes.get(id).delete(token),
+      toggle: (token, force) => {
+        const enable = force === undefined ? !classes.get(id).has(token) : !!force;
+        if (enable) classes.get(id).add(token); else classes.get(id).delete(token);
+        return enable;
+      },
+      contains: token => classes.get(id).has(token),
+    },
+  }]));
+  const profile = { id: 'profile-1', username: 'field_user', role: 'Sales Rep', disabled_at: null, must_change_password: false };
+  const snapshot = retainedSnapshot ? { username: 'field_user', role: 'Sales Rep', dataPermissionVersion: 'perm-v1' } : null;
+  const state = retainedSnapshot ? { username: 'field_user', profileId: 'profile-1', snapshot, status: 'error', stale: true, loadedAt: 1 } : { username: 'field_user', profileId: 'profile-1', snapshot: null, status: 'error', stale: true, loadedAt: 0 };
+  const context = vm.createContext({
+    window: { GncLoginTrace: { finish() {} } },
+    document: { hidden: false, getElementById: id => elements[id] || null },
+    nativeAuthSessionActive: true, nativeAuthSessionUserId: sameIdentity ? 'profile-1' : 'different-profile', nativeAuthProfile: profile,
+    nativeAuthProfileRestorePending: false, currentUser: 'field_user', currentRole: 'Sales Rep', appAccessSnapshotState: state,
+    getAppAccessSnapshot: () => snapshot, normalizeRoleAccessToken: value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, ''),
+    setBootingSession() {}, logShellDiagnostics() {},
+  });
+  vm.runInContext(pendingSessionFunctionSource(), context, { filename: 'index.html:pending-session-access' });
+  return { context, classes, elements };
+}
+
 test('transient startup verification retains the authenticated session and offers a safe retry', async () => {
   const profile = { id: 'profile-1', username: 'field_user', display_name: 'Field User', role: 'Sales Rep', division: '10', language: 'English' };
   const calls = [];
@@ -145,4 +192,101 @@ test('a confirmed revoked Supabase session uses local sign-out and never opens t
   const restored = await vm.runInContext('restoreNativeAuthSessionOnStartup()', context);
   assert.equal(restored, false);
   assert.deepEqual(calls, [['revoked-cleanup', 401]]);
+});
+
+test('transient verification keeps the same authenticated user’s retained shell visible', () => {
+  const h = pendingSessionHarness();
+  assert.equal(vm.runInContext('hasRetainedAuthenticatedAppAccess()', h.context), true);
+  assert.equal(vm.runInContext("showNativeSessionRestorePending(new Error('network timeout'))", h.context), true);
+  assert.equal(h.classes.get('app-wrapper').has('hidden'), false);
+  assert.equal(h.classes.get('loading-spinner').has('hidden'), true);
+  assert.equal(h.classes.get('native-session-restore-retry').has('hidden'), false);
+  assert.match(h.elements['loading-text'].innerText, /loaded workspace remains available/i);
+  assert.equal(vm.runInContext('nativeAuthProfileRestorePending', h.context), true);
+});
+
+test('pending verification hides the shell when identity or retained access does not match', () => {
+  for (const options of [{ sameIdentity: false }, { retainedSnapshot: false }]) {
+    const h = pendingSessionHarness(options);
+    assert.equal(vm.runInContext('hasRetainedAuthenticatedAppAccess()', h.context), false);
+    assert.equal(vm.runInContext("showNativeSessionRestorePending(new Error('network timeout'))", h.context), true);
+    assert.equal(h.classes.get('app-wrapper').has('hidden'), true);
+    assert.equal(h.classes.get('loading-spinner').has('hidden'), false);
+  }
+});
+
+test('passkey refresh preserves the current account workspace without teardown', async () => {
+  const calls = [];
+  const profile = { id: 'profile-1', username: 'field_user', role: 'Sales Rep' };
+  const client = { auth: { signInWithPasskey: async () => ({ data: { session: {
+    user: { id: 'profile-1' }, access_token: 'refreshed-token',
+  } }, error: null }) } };
+  const context = vm.createContext({
+    window: { GncLoginTrace: { measure: (_label, fn) => fn(), finish() {} }, BunchQueueShell: { reset: () => calls.push('queue-reset') } },
+    document: {}, navigator: {},
+    getSupabaseBrowserClient: () => client, startLoginNetworkTrace() {},
+    nativeAuthProfile: profile, nativeAuthSessionUserId: 'profile-1', nativeAuthSessionActive: true,
+    nativeAuthAccessToken: 'previous-token', nativeAuthReadRequired: false, nativeAuthProfileRestorePending: false,
+    currentUser: 'field_user', currentUserDisplay: 'Field User', currentRole: 'Sales Rep', currentUserDivision: '10', currentUserLanguage: 'English', safeRole: 'SALESREP',
+    invalidateNativeAuthRecovery() {}, inventoryFieldCountingMode: true,
+    destroyFieldCountingIsland: () => calls.push('field-counting-destroyed'),
+    destroyHistoricalRequestsIsland: () => calls.push('history-destroyed'),
+    loadNativeAuthProfile: async () => ({ ...profile, display_name: 'Field User' }),
+    ensureNativeAppSessionBridge: async () => null,
+    normalizeAppUserLanguage: value => value,
+    beginInitialAppLoad: () => calls.push('initial-load'), finalizeLogin: async () => calls.push('finalize'),
+    isNativeAuthSessionRevoked: () => false, isTransientNativeAuthReadFailure: () => false,
+    clearRevokedNativeAuthSession: async () => calls.push('revoked-cleanup'),
+    showNativeSessionRestorePending: () => calls.push('visible-pending'), showToast: (_title, message) => calls.push(['toast', message]),
+  });
+  vm.runInContext(passkeyFunctionSource(), context, { filename: 'index.html:signInWithAppPasskey' });
+  await vm.runInContext('signInWithAppPasskey()', context);
+  assert.equal(vm.runInContext('nativeAuthProfile?.id || null', context), profile.id, JSON.stringify(calls));
+  assert.equal(vm.runInContext('nativeAuthSessionUserId', context), profile.id);
+  assert.equal(vm.runInContext('nativeAuthAccessToken', context), 'refreshed-token');
+  assert.equal(vm.runInContext('inventoryFieldCountingMode', context), true);
+  assert.deepEqual(calls, ['initial-load', 'finalize']);
+});
+
+test('passkey account switch tears down the previous account workspace before loading the new identity', async () => {
+  const calls = [];
+  const profile = { id: 'profile-2', username: 'other_user', role: 'Sales Rep' };
+  const client = { auth: { signInWithPasskey: async () => ({ data: { session: {
+    user: { id: 'profile-2' }, access_token: 'new-account-token',
+  } }, error: null }) } };
+  const context = vm.createContext({
+    window: { GncLoginTrace: { measure: (_label, fn) => fn(), finish() {} }, BunchNote: { reset: () => calls.push('bunch-reset') },
+      BunchQueueShell: { reset: () => calls.push('queue-reset') }, SalesWorkspace: { reset: () => calls.push('sales-reset') },
+      GncNavigationPreferences: { reset: () => calls.push('navigation-reset') } },
+    BunchNote: { reset: () => calls.push('bunch-reset') },
+    SalesWorkspace: { reset: () => calls.push('sales-reset') },
+    GncNavigationPreferences: { reset: () => calls.push('navigation-reset') },
+    document: {}, navigator: {},
+    getSupabaseBrowserClient: () => client, startLoginNetworkTrace() {},
+    nativeAuthProfile: { id: 'profile-1', username: 'field_user', role: 'Sales Rep' }, nativeAuthSessionUserId: 'profile-1', nativeAuthSessionActive: true,
+    nativeAuthAccessToken: 'previous-token', nativeAuthReadRequired: false, nativeAuthProfileRestorePending: false,
+    currentUser: 'field_user', currentUserDisplay: 'Field User', currentRole: 'Sales Rep', currentUserDivision: '10', currentUserLanguage: 'English', safeRole: 'SALESREP',
+    invalidateNativeAuthRecovery() {}, inventoryFieldCountingMode: true,
+    destroyFieldCountingIsland: () => calls.push('field-counting-destroyed'),
+    destroyHistoricalRequestsIsland: () => calls.push('history-destroyed'),
+    loadNativeAuthProfile: async () => ({ ...profile, display_name: 'Other User' }),
+    ensureNativeAppSessionBridge: async () => null,
+    normalizeAppUserLanguage: value => value,
+    beginInitialAppLoad: () => calls.push('initial-load'), finalizeLogin: async () => calls.push('finalize'),
+    isNativeAuthSessionRevoked: () => false, isTransientNativeAuthReadFailure: () => false,
+    clearRevokedNativeAuthSession: async () => calls.push('revoked-cleanup'),
+    showNativeSessionRestorePending: () => calls.push('visible-pending'), showToast: (_title, message) => calls.push(['toast', message]),
+    navigationPreferencesAccount: 'field_user',
+  });
+  vm.runInContext(passkeyFunctionSource(), context, { filename: 'index.html:signInWithAppPasskey' });
+  context.__nextProfile = profile;
+  vm.runInContext("loadNativeAuthProfile = async () => { nativeAuthProfile = { ...__nextProfile, display_name: 'Other User' }; return nativeAuthProfile; }", context);
+  await vm.runInContext('signInWithAppPasskey()', context);
+  assert.equal(vm.runInContext('nativeAuthProfile?.id || null', context), profile.id, JSON.stringify(calls));
+  assert.equal(vm.runInContext('nativeAuthSessionUserId', context), profile.id);
+  assert.equal(vm.runInContext('currentUser', context), 'other_user');
+  assert.equal(vm.runInContext('inventoryFieldCountingMode', context), false);
+  for (const expected of ['field-counting-destroyed', 'history-destroyed', 'bunch-reset', 'queue-reset', 'sales-reset', 'navigation-reset', 'initial-load', 'finalize']) {
+    assert.ok(calls.includes(expected), `account switch performs ${expected}`);
+  }
 });

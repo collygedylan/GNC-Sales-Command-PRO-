@@ -413,6 +413,8 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const healthTelemetryReceipts: Array<{ payload: Record<string, unknown>; apiKeyPresent: boolean; syntheticIdentity: boolean; authorizationMatchesPublicKey: boolean; status: number }> = [];
   const healthTelemetryRequests: Array<{ url: string; method: string; authorizationAllowed: boolean; apiKeyPresent: boolean; payload: unknown }> = [];
   const settingsReads: Array<{ url: string; status: number | null; authorization: string }> = [];
+  const permissionRefreshFailures: Array<{ endpoint: string; status: number }> = [];
+  let failPermissionRefresh = false;
   const fixtureImage404s = new Set<string>();
   const http404Resources: Array<{ url: string; resourceType: string }> = [];
   const knownFixtureImageUrl = 'https://example.test/photo.jpg';
@@ -519,6 +521,20 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: corsHeaders });
+    if (request.method() === 'POST' && url.origin === origin && url.pathname === '/__fixture/access-refresh-transient-failure') {
+      failPermissionRefresh = true;
+      return fulfill(route, { ok: true });
+    }
+    if (failPermissionRefresh && request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      && url.pathname === '/rest/v1/rpc/get_my_app_permissions_v1') {
+      permissionRefreshFailures.push({ endpoint: 'get_my_app_permissions_v1', status: 503 });
+      return fulfill(route, { code: 'SYNTHETIC_TRANSIENT_PERMISSION_READ', message: 'Temporary permission service interruption' }, 503);
+    }
+    if (failPermissionRefresh && request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      && url.pathname === '/rest/v1/rpc/get_request_capabilities') {
+      permissionRefreshFailures.push({ endpoint: 'get_request_capabilities', status: 503 });
+      return fulfill(route, { code: 'SYNTHETIC_TRANSIENT_PERMISSION_READ', message: 'Temporary capability service interruption' }, 503);
+    }
     // A real HTTP image failure dispatches the browser's error event consistently;
     // an intercepted cancellation can leave WebKit's deferred image unsettled.
     if (request.method() === 'GET' && url.href === knownFixtureImageUrl && request.resourceType() === 'image') {
@@ -658,6 +674,11 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     }
     if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
+      if (failPermissionRefresh && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && body.action === 'user_access' && body.operation === 'resolve') {
+        permissionRefreshFailures.push({ endpoint: 'user_access:resolve', status: 503 });
+        return fulfill(route, { ok: false, status: 503, error: 'Temporary permission service interruption' }, 503);
+      }
       if ((options.native || options.masterRows?.length) && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && body.action === 'eval_work' && body.operation === 'list'
         && Object.keys(body).sort().join(',') === 'action,operation'
@@ -811,7 +832,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       }
     }
     if (!['GET', 'HEAD'].includes(request.method())) {
-      const safeReadOrTelemetry = ['/rest/v1/rpc/get_app_user_directory'];
+      const safeReadOrTelemetry = ['/rest/v1/rpc/get_app_user_directory', '/rest/v1/rpc/get_my_app_permissions_v1', '/rest/v1/rpc/get_request_capabilities'];
       if (!safeReadOrTelemetry.includes(url.pathname)) {
         const body = request.postData() || '';
         unexpectedMutations.push(`${request.method()}:${url.pathname}:${body.slice(0, 200)}`);
@@ -841,9 +862,10 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         if (window.__suspendCompletionMasterRows.length) {
           nativeAuthSessionActive = true;
           nativeAuthProfile = { id: 'synthetic-suspend-master-snapshot', username: 'dylan_collyge', role: 'ADMIN', active: true };
+          nativeAuthSessionUserId = nativeAuthProfile.id;
           nativeAuthAccessToken = 'synthetic-not-a-real-token';
           appAccessSnapshotState = {
-            status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser,
+            status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser, profileId: nativeAuthProfile.id,
             snapshot: normalizeAppAccessSnapshot({
               contractVersion: APP_ACCESS_CONTRACT_VERSION, enforcementMode: 'enforced',
               username: currentUser, role: currentRole, dataPermissionVersion: 'suspend-fixture-access-1',
@@ -913,9 +935,10 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     await page.evaluate(() => window.eval(`(() => {
       nativeAuthSessionActive = true;
       nativeAuthProfile = { id: 'synthetic-suspend-live-sync', username: 'dylan_collyge', role: 'ADMIN', active: true };
+      nativeAuthSessionUserId = nativeAuthProfile.id;
       nativeAuthAccessToken = 'synthetic-not-a-real-token';
       appAccessSnapshotState = {
-        status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser,
+        status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser, profileId: nativeAuthProfile.id,
         snapshot: normalizeAppAccessSnapshot({
           contractVersion: APP_ACCESS_CONTRACT_VERSION, enforcementMode: 'enforced',
           username: currentUser, role: currentRole, dataPermissionVersion: 'suspend-fixture-access-1',
@@ -1012,7 +1035,14 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     });
     expect(unexpectedFailedResources, 'unexpected aborted reads/assets retain URL and resource type evidence').toEqual([]);
   };
-  return { requests, replies, receipts, backendRows, inventoryLookupCalls, settingsReads, publishedReadPages, failedResources, consoleErrorDetails, chatParticipantReads, customerConsigneeReads, healthTelemetryRequests, healthTelemetryReceipts, card, done, activate, legacyComplete, beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, readFetchAbortEvidence, assertClean };
+  const enableTransientPermissionFailures = async () => page.evaluate(async () => {
+    const response = await fetch('/__fixture/access-refresh-transient-failure', { method: 'POST' });
+    return response.ok;
+  });
+  return { requests, replies, receipts, backendRows, inventoryLookupCalls, settingsReads, permissionRefreshFailures,
+    enableTransientPermissionFailures, publishedReadPages, failedResources, consoleErrorDetails, chatParticipantReads,
+    customerConsigneeReads, healthTelemetryRequests, healthTelemetryReceipts, card, done, activate, legacyComplete,
+    beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, readFetchAbortEvidence, assertClean };
 }
 
 async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', value: string) {
@@ -2215,6 +2245,55 @@ test('published snapshot stays available and Drive completes every Common Name a
   expect(result.names).toBeGreaterThan(75);
   expect(result.state).toBe('Published data');
   expect(result.writeProof).toBe(false);
+  expect(await app.enableTransientPermissionFailures()).toBe(true);
+  const accessRefresh = await page.evaluate(async () => window.eval(`(async () => {
+    const profileId = String(nativeAuthProfile?.id || '');
+    const before = { rowCount: fullInventory.length, visibleText: document.getElementById('drive-content')?.textContent || '',
+      user: currentUser, role: currentRole };
+    nativeAuthSessionActive = true;
+    nativeAuthSessionUserId = profileId;
+    nativeAuthProfile = { ...nativeAuthProfile, id: profileId, username: currentUser, role: currentRole,
+      disabled_at: null, must_change_password: false };
+    appAccessSnapshotState.profileId = profileId;
+    nativeAuthProfileRestorePending = false;
+    getNativeAuthSession = async () => ({ user: { id: profileId }, access_token: 'browser-only-no-real-session' });
+    window.GncDatabase.readProfile = async (_client, id) => ({ data: { ...nativeAuthProfile, id }, error: null });
+    ensureNativeAppSessionBridge = async () => null;
+    let refreshError = '';
+    try { await refreshNativeRoleAndCapabilities('live-permissions'); }
+    catch (error) { refreshError = String(error?.message || error); }
+    return { refreshError, wrapperHidden: document.getElementById('app-wrapper')?.classList.contains('hidden') || false,
+      loginCurtainVisible: !!document.getElementById('live-permission-check'),
+      inertElements: document.querySelectorAll('[inert]').length,
+      rowCount: fullInventory.length, visibleText: document.getElementById('drive-content')?.textContent || '',
+      user: currentUser, role: currentRole, profileId: nativeAuthProfile?.id || '', sessionUserId: nativeAuthSessionUserId,
+      retainedAccess: hasRetainedAuthenticatedAppAccess(), managerAllowed: canAccessView('managers'),
+      driveAllowed: canAccessView('drive'), requestAllowed: canAccessView('request'), docksAllowed: canAccessView('docks'),
+      appAccess: { status: appAccessSnapshotState.status, stale: appAccessSnapshotState.stale,
+        owner: appAccessSnapshotState.profileId, permissionVersion: appAccessSnapshotState.snapshot?.dataPermissionVersion || '' },
+      capabilities: { status: requestCapabilityState.status, stale: requestCapabilityState.stale,
+        username: requestCapabilityState.username } };
+  })()`));
+  await info.attach('published-lkg-transient-permission-refresh', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+    accessRefresh, permissionRefreshFailures: app.permissionRefreshFailures,
+  })) });
+  expect(accessRefresh.refreshError).toMatch(/permissions could not be verified|refresh is paused/i);
+  expect(accessRefresh.wrapperHidden).toBe(false);
+  expect(accessRefresh.loginCurtainVisible).toBe(false);
+  expect(accessRefresh.inertElements).toBe(0);
+  expect(accessRefresh.rowCount).toBe(result.rows);
+  expect(accessRefresh.visibleText).toBeTruthy();
+  expect(accessRefresh.user).toBe('dylan_collyge');
+  expect(accessRefresh.profileId).toBe(accessRefresh.sessionUserId);
+  expect(accessRefresh.retainedAccess).toBe(true);
+  expect(accessRefresh.managerAllowed).toBe(true);
+  expect(accessRefresh.driveAllowed).toBe(true);
+  expect(accessRefresh.requestAllowed).toBe(true);
+  expect(accessRefresh.docksAllowed).toBe(true);
+  expect(accessRefresh.appAccess).toMatchObject({ status: 'ready', stale: true, owner: accessRefresh.profileId });
+  expect(app.permissionRefreshFailures.map(failure => failure.endpoint).sort()).toEqual([
+    'get_my_app_permissions_v1', 'get_request_capabilities', 'user_access:resolve',
+  ]);
   await expect(page.locator('#drive-content')).toHaveAttribute('data-drive-commonname-state', 'complete');
   await expect(page.locator('#drive-content')).not.toContainText('Load Failed');
   await expect(page.locator('#drive-content')).not.toContainText('Data could not be verified');
