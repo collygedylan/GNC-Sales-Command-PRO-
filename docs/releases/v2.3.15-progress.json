@@ -407,6 +407,42 @@
         "Android DOM/source UID identity unresolved"
       ],
       "productionWrites": false
+    },
+    {
+      "at": "2026-10-20T17:08:35.136Z",
+      "attempt": 2,
+      "status": "failed",
+      "report": ".gnc-local/release-smoke/agdata-v2-3-15/b88a3582ec61/20261020170012939/report.json",
+      "passedContracts": "All37 sourceUIDs/order/layout/metrics and <=2000ms passed across3profiles",
+      "renderMs": [
+        173,
+        248.9,
+        1978
+      ],
+      "cause": [
+        "background chat read missing fixture",
+        "LKG settings reads use app-api av_read",
+        "new failedResource check incorrectly treated logo cancellation as failure"
+      ],
+      "productionWrites": false
+    },
+    {
+      "at": "2026-10-20T17:08:35.137Z",
+      "scope": "LKG targeted diagnostic",
+      "status": "failed_then_corrected",
+      "history": [
+        "anchored grep selected no tests; corrected selector",
+        "perpagefull9,487rowfixturevalidation took3551ms/page; bounded page fixture corrected",
+        "numeric formatted LocOnHand195 returned as string; assertion nowchecks exactnumerictext195"
+      ],
+      "logs": [
+        ".gnc-local/release-lkg-desktop-targeted.log",
+        ".gnc-local/release-lkg-desktop-targeted2.log",
+        ".gnc-local/release-lkg-desktop-targeted3.log"
+      ],
+      "cumulativeUnresolvedLkgAttempts": 4,
+      "cap": 8,
+      "productionWrites": false
     }
   ],
   "availabilitySqlValidation": {

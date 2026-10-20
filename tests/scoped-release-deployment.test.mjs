@@ -70,7 +70,8 @@ test('scoped Pages release waits for the exact merged backend before publishing'
   assert.ok(gate >= 0 && publish > gate);
   const script = steps[gate].with.script;
   for (const marker of [
-    'scopedValidationReceipt', 'deployment?.migrations', 'apps-script-sync.yml',
+    'scopedValidationReceipt', 'deployment?.migrations', 'sourceHashes', 'SCOPED_BACKEND_MIGRATION_RECEIPT_INVALID',
+    'SCOPED_BACKEND_MIGRATION_RECEIPT_MISMATCH', 'apps-script-sync.yml',
     'head_sha === context.sha', "event === 'workflow_dispatch'", 'Apply backend migrations and deploy Edge Functions',
     'deployRun.conclusion !== \'success\'',
   ]) assert.ok(script.includes(marker), marker);

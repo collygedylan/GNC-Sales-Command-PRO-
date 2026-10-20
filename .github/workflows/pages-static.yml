@@ -111,7 +111,20 @@ jobs:
               return;
             }
             const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
-            if (!Array.isArray(receipt.deployment?.migrations) || receipt.deployment.migrations.length === 0) {
+            const sourceHashes = receipt.sourceHashes;
+            if (!sourceHashes || typeof sourceHashes !== 'object' || Array.isArray(sourceHashes) ||
+                !Array.isArray(receipt.deployment?.migrations)) {
+              throw new Error('SCOPED_BACKEND_MIGRATION_RECEIPT_INVALID');
+            }
+            const sourceMigrations = Object.keys(sourceHashes)
+              .filter(file => /^supabase\/migrations\/[^/]+\.sql$/i.test(file)).sort();
+            const receiptMigrations = [...receipt.deployment.migrations].sort();
+            if (receiptMigrations.some(file => typeof file !== 'string' ||
+                !/^supabase\/migrations\/[^/]+\.sql$/i.test(file)) ||
+                JSON.stringify(sourceMigrations) !== JSON.stringify(receiptMigrations)) {
+              throw new Error('SCOPED_BACKEND_MIGRATION_RECEIPT_MISMATCH');
+            }
+            if (receiptMigrations.length === 0) {
               core.info('Scoped release has no database migrations; Pages publication is independent.');
               return;
             }
