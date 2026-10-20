@@ -413,7 +413,9 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const healthTelemetryReceipts: Array<{ payload: Record<string, unknown>; apiKeyPresent: boolean; syntheticIdentity: boolean; authorizationMatchesPublicKey: boolean; status: number }> = [];
   const healthTelemetryRequests: Array<{ url: string; method: string; authorizationAllowed: boolean; apiKeyPresent: boolean; payload: unknown }> = [];
   const settingsReads: Array<{ url: string; status: number | null; authorization: string }> = [];
-  const permissionRefreshFailures: Array<{ endpoint: string; status: number }> = [];
+  const permissionRefreshFailures: Array<{ endpoint: string; url: string; status: number }> = [];
+  const permissionRefreshResponses: Array<{ url: string; status: number }> = [];
+  const injectedPermissionRefreshConsoleErrors: string[] = [];
   let failPermissionRefresh = false;
   const fixtureImage404s = new Set<string>();
   const http404Resources: Array<{ url: string; resourceType: string }> = [];
@@ -509,6 +511,10 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   });
   page.on('response', response => {
     const request = response.request();
+    if (response.status() === 503 && failPermissionRefresh
+      && permissionRefreshFailures.some(failure => failure.url === response.url() && failure.status === 503)) {
+      permissionRefreshResponses.push({ url: response.url(), status: response.status() });
+    }
     if (response.status() === 404) http404Resources.push({ url: response.url(), resourceType: request.resourceType() });
     if (response.url() === knownFixtureImageUrl && request.resourceType() === 'image' && response.status() === 404) {
       fixtureImage404s.add(response.url());
@@ -527,12 +533,12 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     }
     if (failPermissionRefresh && request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
       && url.pathname === '/rest/v1/rpc/get_my_app_permissions_v1') {
-      permissionRefreshFailures.push({ endpoint: 'get_my_app_permissions_v1', status: 503 });
+      permissionRefreshFailures.push({ endpoint: 'get_my_app_permissions_v1', url: request.url(), status: 503 });
       return fulfill(route, { code: 'SYNTHETIC_TRANSIENT_PERMISSION_READ', message: 'Temporary permission service interruption' }, 503);
     }
     if (failPermissionRefresh && request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
       && url.pathname === '/rest/v1/rpc/get_request_capabilities') {
-      permissionRefreshFailures.push({ endpoint: 'get_request_capabilities', status: 503 });
+      permissionRefreshFailures.push({ endpoint: 'get_request_capabilities', url: request.url(), status: 503 });
       return fulfill(route, { code: 'SYNTHETIC_TRANSIENT_PERMISSION_READ', message: 'Temporary capability service interruption' }, 503);
     }
     // A real HTTP image failure dispatches the browser's error event consistently;
@@ -676,7 +682,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       const body = request.postDataJSON() || {};
       if (failPermissionRefresh && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && body.action === 'user_access' && body.operation === 'resolve') {
-        permissionRefreshFailures.push({ endpoint: 'user_access:resolve', status: 503 });
+        permissionRefreshFailures.push({ endpoint: 'user_access:resolve', url: request.url(), status: 503 });
         return fulfill(route, { ok: false, status: 503, error: 'Temporary permission service interruption' }, 503);
       }
       if ((options.native || options.masterRows?.length) && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
@@ -1001,10 +1007,31 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     const onlyKnownFixtureReturned404 = http404Resources.every(resource => resource.url === knownFixtureImageUrl && resource.resourceType === 'image');
     const knownPhoto404Errors = onlyKnownFixtureReturned404
       ? consoleErrors.filter(error => /failed to load resource:.*\b404\b/i.test(error)) : [];
-    const unexpectedConsoleErrors = consoleErrors.filter(error => !(/failed to load resource:.*\b404\b/i.test(error) && onlyKnownFixtureReturned404));
+    const matchedInjected503Indexes = new Set<number>();
+    consoleErrorDetails.forEach((detail, index) => {
+      const isCanonicalHttp503 = /^Failed to load resource: the server responded with a status of 503\b/i.test(detail.text);
+      const exactObservedRoute = failPermissionRefresh && isCanonicalHttp503
+        && permissionRefreshResponses.some(response => response.status === 503
+          && response.url === detail.location.url
+          && permissionRefreshFailures.some(failure => failure.url === response.url && failure.status === 503));
+      if (exactObservedRoute) {
+        matchedInjected503Indexes.add(index);
+        injectedPermissionRefreshConsoleErrors.push(detail.text);
+      }
+    });
+    const unexpectedConsoleErrors = consoleErrors.filter((error, index) => !matchedInjected503Indexes.has(index)
+      && !(/failed to load resource:.*\b404\b/i.test(error) && onlyKnownFixtureReturned404));
     expect(knownPhoto404Errors.length, 'only the routed fixture image may fail with a 404').toBeLessThanOrEqual(expectedPhoto404Count);
     expect(http404Resources.filter(resource => resource.url !== knownFixtureImageUrl || resource.resourceType !== 'image'), 'unexpected 404s retain resource URL and type').toEqual([]);
     expect(unexpectedConsoleErrors, 'release smoke must not emit unexpected browser console errors').toEqual([]);
+    expect(permissionRefreshFailures.every(failure => failure.status === 503
+      && new URL(failure.url).hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      && ['/rest/v1/rpc/get_my_app_permissions_v1', '/rest/v1/rpc/get_request_capabilities', '/functions/v1/app-api'].includes(new URL(failure.url).pathname)),
+    'only the three scoped synthetic permission reads may be failed').toBe(true);
+    expect(permissionRefreshResponses.every(response => response.status === 503
+      && permissionRefreshFailures.some(failure => failure.url === response.url && failure.status === response.status)),
+    'classified 503 responses must match an exact routed permission-read URL').toBe(true);
+    expect(injectedPermissionRefreshConsoleErrors.length).toBeLessThanOrEqual(permissionRefreshResponses.length);
     expect(healthTelemetryReceipts.every(receipt => receipt.apiKeyPresent
       && (receipt.syntheticIdentity || receipt.authorizationMatchesPublicKey)),
       'health telemetry must be acknowledged only by the local synthetic fixture and never reach Supabase').toBe(true);
@@ -1040,6 +1067,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     return response.ok;
   });
   return { requests, replies, receipts, backendRows, inventoryLookupCalls, settingsReads, permissionRefreshFailures,
+    permissionRefreshResponses, injectedPermissionRefreshConsoleErrors,
     enableTransientPermissionFailures, publishedReadPages, failedResources, consoleErrorDetails, chatParticipantReads,
     customerConsigneeReads, healthTelemetryRequests, healthTelemetryReceipts, card, done, activate, legacyComplete,
     beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, readFetchAbortEvidence, assertClean };
@@ -2276,6 +2304,8 @@ test('published snapshot stays available and Drive completes every Common Name a
   })()`));
   await info.attach('published-lkg-transient-permission-refresh', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
     accessRefresh, permissionRefreshFailures: app.permissionRefreshFailures,
+    permissionRefreshResponses: app.permissionRefreshResponses,
+    injectedPermissionRefreshConsoleErrors: app.injectedPermissionRefreshConsoleErrors,
   })) });
   expect(accessRefresh.refreshError).toMatch(/permissions could not be verified|refresh is paused/i);
   expect(accessRefresh.wrapperHidden).toBe(false);
@@ -2312,6 +2342,7 @@ test('published snapshot stays available and Drive completes every Common Name a
   expect(details.view).toBe('detail');
   expect(details.openMs).toBeLessThanOrEqual(2000);
   await expect(page.locator('#toast-notification')).not.toContainText('Row Details Unavailable');
+  await expect(page.locator('#drive-content')).toHaveAttribute('data-drive-commonname-state', 'complete');
   await info.attach('published-snapshot-availability', { contentType: 'application/json', body: Buffer.from(JSON.stringify({ ...result, details })) });
   await app.assertClean();
 });
