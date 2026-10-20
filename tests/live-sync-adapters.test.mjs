@@ -670,6 +670,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261020150827_v2315_reclass_email_report_policy.sql',
       '20261020161833_published_lkg_read_proof_v1.sql',
       '20261020204855_reclass_server_revision_and_failed_stage_lease_v1.sql',
+      '20261020233500_reclass_rep_scope_preservation_v1.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain

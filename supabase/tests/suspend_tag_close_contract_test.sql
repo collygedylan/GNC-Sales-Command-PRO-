@@ -52,9 +52,13 @@ select ok((select position('if p_operation=''close'' then' in prosrc)>0
   and position('sync_photo_link:=nullif(s.dock_photo_link' in prosrc)>0
   from pg_proc where oid='suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure),
   'close returns canonical inventory without rewriting it and unrelated saves preserve newer master evidence');
-select ok((select position('a.status=''pending'' and suspend_tag_private.eligible(s.suspend,s.suspend_to)' in prosrc)>0
-  and position('w.current_approval_id=a.id' in prosrc)>0
-  from pg_proc where oid='public.prepare_suspend_tag_delivery_v1(uuid,uuid)'::regprocedure),
+select ok((select position('a.status=''pending''andsuspend_tag_private.eligible(s.suspend,s.suspend_to)' in source_sql)>0
+  and position('w.current_approval_id=a.id' in source_sql)>0
+  and position('s.last_updatedisnotdistinctfroma.source_revision' in source_sql)>0
+  and position('setstatus=''suppressed''' in source_sql)>0
+  and position('returnjsonb_build_object(''suppressed'',true)' in source_sql)>0
+  from (select regexp_replace(prosrc,'[[:space:]]+','','g') source_sql
+    from pg_proc where oid='public.prepare_suspend_tag_delivery_v1(uuid,uuid)'::regprocedure) delivery_sql),
   'late approval delivery callbacks are suppressed after close supersedes their approval');
 select ok(not has_table_privilege('authenticated','public.ph_soc_master','update'),
   'closing does not restore direct authenticated SOC update privileges');

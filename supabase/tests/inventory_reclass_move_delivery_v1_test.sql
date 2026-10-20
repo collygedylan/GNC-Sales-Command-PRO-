@@ -47,11 +47,18 @@ select ok(position('receipt.result->>''status'' <> ''applied''' in regexp_replac
 select ok(position('private.reclass_delivery_recipients_v1(actor_username)' in regexp_replace(lower(pg_get_functiondef(
   'public.apply_inventory_reclass_moves_with_delivery_v1(uuid,text,bigint,jsonb,text)'::regprocedure)),'[[:space:]]+',' ','g'))>0,
   'durable Reclass notification resolves the server-owned Dylan, Megan, and submitting actor policy');
-select ok(position('private.reclass_delivery_recipients_v1(actor_username)' in regexp_replace(lower(pg_get_functiondef(
-  'public.enqueue_drive_reclass_inquiry_v7(jsonb)'::regprocedure)),'[[:space:]]+',' ','g'))>0
-  and position('recipientpolicy' in regexp_replace(lower(pg_get_functiondef(
-    'public.enqueue_drive_reclass_inquiry_v7(jsonb)'::regprocedure)),'[[:space:]]+',' ','g'))>0,
-  'Drive, Item Inquiry, and Eval Report 2 proposals use the same fixed recipient policy');
+select ok((select position('result:=private.enqueue_drive_reclass_inquiry_v7_rep_impl(p_payload);' in wrapper_sql)>0
+  and position('ifauth.role()isdistinctfrom''service_role''then' in wrapper_sql)>0
+  and position('set_config(''gnc.sales_rep_operation_actor'',actor.id::text,true)' in wrapper_sql)>0
+  and position('private.reclass_delivery_recipients_v1(actor_username)' in canonical_sql)>0
+  and position('recipientpolicy' in canonical_sql)>0
+  and has_function_privilege('service_role','public.enqueue_drive_reclass_inquiry_v7(jsonb)','execute')
+  and not has_function_privilege('authenticated','public.enqueue_drive_reclass_inquiry_v7(jsonb)','execute')
+  and not has_function_privilege('service_role','private.enqueue_drive_reclass_inquiry_v7_rep_impl(jsonb)','execute')
+  from (select
+    regexp_replace(lower(pg_get_functiondef('public.enqueue_drive_reclass_inquiry_v7(jsonb)'::regprocedure)),'[[:space:]]+','','g') wrapper_sql,
+    regexp_replace(lower(pg_get_functiondef('private.enqueue_drive_reclass_inquiry_v7_rep_impl(jsonb)'::regprocedure)),'[[:space:]]+','','g') canonical_sql) contract),
+  'the service-only scoped V7 entry delegates every proposal to the canonical fixed recipient policy');
 
 select * from finish();
 rollback;

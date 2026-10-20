@@ -114,6 +114,17 @@ select ok((select bool_and(tgqual is not null) from pg_trigger
     and tgname=any(array['trigger_inventory_changes','sync_season_sales_av_note_reset','trigger_new_assignment']::text[])),
   'existing broad update handlers use OLD/NEW guards instead of UPDATE OF column lists');
 
+-- The current server policy resolves Dylan, Megan, and the authenticated actor.
+-- Seed only synthetic confirmed addresses inside this rollback-only fixture.
+create temporary table reclass_move_fixed_recipients(username text primary key,id uuid not null,email text not null) on commit drop;
+insert into reclass_move_fixed_recipients values
+  ('dylan_collyge',gen_random_uuid(),'reclass-move-dylan-'||gen_random_uuid()::text||'@example.invalid'),
+  ('megan_kelly',gen_random_uuid(),'reclass-move-megan-'||gen_random_uuid()::text||'@example.invalid');
+insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
+select id,email,now(),'{}'::jsonb,'{}'::jsonb from reclass_move_fixed_recipients;
+insert into public.profiles(id,username,display_name,role,must_change_password,disabled_at,locked_until)
+select id,username,username,'ADMIN',false,null,null from reclass_move_fixed_recipients;
+
 create temporary table reclass_move_actor(id uuid primary key) on commit drop;
 insert into reclass_move_actor values(gen_random_uuid());
 insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
@@ -362,7 +373,8 @@ select ok((select o.payload->>'contractVersion'='inventory-reclass-move-complete
     and o.payload->>'actorProfileId'=(select id::text from reclass_move_actor)
     and o.payload->>'actorEmail'=(select lower(u.email) from auth.users u where u.id=(select id from reclass_move_actor))
     and o.payload->'deliveryRecipients' @> jsonb_build_array((select lower(u.email) from auth.users u where u.id=(select id from reclass_move_actor)))
-    and jsonb_array_length(o.payload->'deliveryRecipients')=6
+    and o.payload->'deliveryRecipients' @> (select jsonb_agg(lower(email)) from reclass_move_fixed_recipients)
+    and jsonb_array_length(o.payload->'deliveryRecipients')=3
     and jsonb_array_length(o.payload->'moves')=3
   from public.ph_request_delivery_outbox o cross join reclass_move_delivery_results d
   where o.event_id=(d.first_result->>'deliveryEventId')::uuid),

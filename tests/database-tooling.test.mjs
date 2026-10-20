@@ -156,6 +156,9 @@ test('canonical schema validation includes only its self-contained schema-contra
   assert.ok(expected.includes('supabase/tests/canonical_schema_contract_test.sql'));
   assert.ok(expected.includes('supabase/tests/user_access_control_v1_test.sql'),
     'canonical access assertions require the current access-control migration chain');
+  const committed = discoverTests({ root, group: 'sql-canonical-committed' });
+  assert.ok(committed.includes('supabase/tests/master_snapshot_chunked_staging_v1_test.sql'));
+  assert.ok(committed.every(file => !expected.includes(file)), 'committed fixtures never contaminate the normal SQL workspace');
   assert.equal(discoverTests({ root, group: 'sql-isolated-supabase' })
     .includes('supabase/tests/user_access_control_v1_test.sql'), false,
   'canonical access assertions must not run against the archived schema fixture');
@@ -177,6 +180,57 @@ test('canonical HTTP drivers are discovered from runtime annotations instead of 
     '// @test-runtime: canonical-http\nprocess.exit(0);\n');
   writeFileSync(path.join(fixtureRoot, 'supabase', 'ci', 'helper.mjs'), 'export const helper = true;\n');
   assert.deepEqual(discoverTests({ root: fixtureRoot, group: 'canonical-http' }), ['supabase/ci/mapped-request-http.mjs']);
+});
+
+test('committed canonical SQL always executes after HTTP and resets before every subsequent SQL cohort', () => {
+  const committed = discoverTests({ root, group: 'sql-canonical-committed' });
+  assert.ok(committed.length > 0, 'the real staging fixture must execute, not only synthetic examples');
+  const runCheck = ({ mode = 'all', files, failCommitted = false } = {}) => {
+    const events = [];
+    const productionWorkspace = { root: 'C:/tmp/gnc-committed-production', migrationCount: 4, dispose() { events.push('dispose-production'); } };
+    const sandboxWorkspace = { root: 'C:/tmp/gnc-committed-sandbox', migrationCount: 1, testCount: 1, lintSchemas: ['public'], dispose() {} };
+    const options = {
+      root, mode, environment: {}, execute: () => 'supabase/tests/canonical_schema_contract_test.sql\0',
+      preflight: () => {}, resolveCli: () => 'supabase-fixture',
+      discoverCanonicalHttpTests: () => ['supabase/ci/mock-http.mjs'],
+      runHttpTests: () => events.push('http'),
+      createProductionWorkspace: () => productionWorkspace, createSandboxWorkspace: () => sandboxWorkspace,
+      runLintWithTempContext: ({ action }) => action(), runRollback: () => {},
+      executeNode: args => {
+        const workspaceRoot = args[2];
+        const command = args.slice(3);
+        if (workspaceRoot === productionWorkspace.root) {
+          if (command[0] === 'test' && command[1] === 'db' && command.length > 2) {
+            assert.equal(command.length, 3, 'each committed fixture runs alone');
+            assert.equal(path.isAbsolute(command[2]), true, 'CLI receives the absolute repository SQL path');
+            events.push(`committed:${command[2]}`);
+            if (failCommitted) throw new Error('committed fixture failed');
+          } else events.push(command.join(' '));
+        }
+        if (command[0] === 'status') return 'API_URL="http://127.0.0.1:54321"\n';
+        if (command[0] === 'gen') return readFileSync(path.join(root, workspaceRoot === sandboxWorkspace.root
+          ? 'v2/src/services/sandbox.database.types.ts' : 'supabase/functions/_shared/database.types.ts'), 'utf8');
+        return '';
+      },
+    };
+    if (files) options.discoverCanonicalCommittedTests = () => files;
+    if (failCommitted) {
+      assert.throws(() => runDatabaseCheck(options), /committed fixture failed/);
+      assert.ok(events.includes('stop --no-backup') && events.includes('dispose-production'));
+      assert.equal(events.includes('test db'), false, 'a failed committed fixture fails the gate before normal SQL');
+    } else {
+      const result = runDatabaseCheck(options);
+      assert.equal(result.committedSqlTests, (files || committed).length);
+      const relevant = events.filter(event => event === 'http' || event.startsWith('committed:')
+        || event === 'db reset --local --no-seed' || event === 'test db');
+      assert.deepEqual(relevant, ['http', ...(files || committed).flatMap(file =>
+        [`committed:${path.resolve(root, file)}`, 'db reset --local --no-seed']), 'test db']);
+    }
+  };
+  runCheck();
+  runCheck({ mode: 'staged' });
+  runCheck({ files: ['supabase/tests/first_committed_test.sql', 'supabase/tests/second_committed_test.sql'] });
+  runCheck({ failCommitted: true });
 });
 
 test('sandbox workspace layers discovered migrations and tests after the schema-only capture', () => {

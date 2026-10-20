@@ -105,6 +105,20 @@ test('runtime SQL discovery never replays migration DDL as a test', t => {
   assert.deepEqual(discoverTests({ root, group: 'sql-canonical' }), ['supabase/tests/canonical_test.sql']);
 });
 
+test('commit-bearing canonical SQL has a separate primary runtime from rollback-isolated tests', t => {
+  const root = mkdtempSync(path.join(tmpdir(), 'gnc-test-canonical-committed-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'supabase/tests'), { recursive: true });
+  const committed = 'supabase/tests/committed_test.sql';
+  const normal = 'supabase/tests/normal_test.sql';
+  writeFileSync(path.join(root, committed), '-- @test-runtime: canonical-committed\nselect plan(1);\n');
+  writeFileSync(path.join(root, normal), '-- @test-runtime: canonical\nselect plan(1);\n');
+  assert.deepEqual(discoverTests({ root, group: 'sql-canonical-committed' }), [committed]);
+  assert.deepEqual(discoverTests({ root, group: 'sql-canonical' }), [normal]);
+  assert.deepEqual(discoverAllTests({ root })['sql-canonical-committed'], [committed]);
+  assert.equal(auditTestDiscovery({ root, requiredGroups: ['sql-canonical', 'sql-canonical-committed'] }).total, 2);
+});
+
 test('sandbox SQL pgTAP discovery is scoped to sandbox tests and must be nonempty', t => {
   const root = mkdtempSync(path.join(tmpdir(), 'gnc-test-sandbox-pgtap-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -207,13 +221,14 @@ test('isolated PostgreSQL runtime tests are discovered separately from PGlite an
 
 test('database fixtures are assigned one discovered execution environment', () => {
   const groups = discoverAllTests();
-  for (const group of ['sql-isolated-supabase', 'sql-isolated-acceptance', 'live-dataset-revision-sql', 'sql-secondary-harness', 'bloomscapes-pgtap', 'suspend-tag-pgtap', 'postgres-concurrency', 'sql-canonical', 'sandbox-pgtap']) assert.ok(groups[group].length > 0, group);
+  for (const group of ['sql-isolated-supabase', 'sql-isolated-acceptance', 'live-dataset-revision-sql', 'sql-secondary-harness', 'bloomscapes-pgtap', 'suspend-tag-pgtap', 'postgres-concurrency', 'sql-canonical', 'sql-canonical-committed', 'sandbox-pgtap']) assert.ok(groups[group].length > 0, group);
   assert.ok(groups['sandbox-pgtap'].every(file => file.startsWith('supabase/sandbox/tests/')));
   assert.ok(groups['live-dataset-revision-sql'].includes('supabase/tests/live_dataset_revisions_test.sql'));
   assert.ok(!groups['sql-isolated-supabase'].some(file => file.startsWith('supabase/tests/live_dataset_revisions_')));
   const classifiedSql = new Set([
     ...groups['sql-isolated-supabase'], ...groups['sql-isolated-acceptance'],
     ...groups['live-dataset-revision-sql'], ...groups['bloomscapes-pgtap'], ...groups['suspend-tag-pgtap'], ...groups['sql-canonical'],
+    ...groups['sql-canonical-committed'],
   ]);
   assert.deepEqual(groups['sql-pgtap'].filter(file => !classifiedSql.has(file)), []);
   for (const file of groups['sql-secondary-harness']) {

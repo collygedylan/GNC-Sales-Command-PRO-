@@ -39,9 +39,17 @@ select ok(lower(pg_get_functiondef('public.prepare_inventory_reclass_move_delive
   and lower(pg_get_functiondef('public.prepare_inventory_reclass_move_delivery_v1(uuid,uuid)'::regprocedure)) like '%private.reclass_delivery_recipients_v1(actor_username)%'
   and lower(pg_get_functiondef('public.prepare_inventory_reclass_move_delivery_v1(uuid,uuid)'::regprocedure)) like '%appliedrows%',
   'leased delivery preparation refreshes canonical recipients and receipt-backed applied rows');
-select ok(lower(pg_get_functiondef('public.enqueue_drive_reclass_inquiry_v7(jsonb)'::regprocedure)) like '%recipientpolicy%'
-  and lower(pg_get_functiondef('public.enqueue_drive_reclass_inquiry_v7(jsonb)'::regprocedure)) like '%private.reclass_delivery_recipients_v1(actor_username)%',
-  'all V7 Reclass inquiry proposals use the immutable server recipient policy');
+select ok((select position('result:=private.enqueue_drive_reclass_inquiry_v7_rep_impl(p_payload);' in wrapper_sql)>0
+  and position('ifauth.role()isdistinctfrom''service_role''then' in wrapper_sql)>0
+  and position('set_config(''gnc.sales_rep_operation_actor'',actor.id::text,true)' in wrapper_sql)>0
+  and position('recipientpolicy' in canonical_sql)>0
+  and position('private.reclass_delivery_recipients_v1(actor_username)' in canonical_sql)>0
+  and position('drive_reclass_token_ownership_conflict' in canonical_sql)>0
+  and position('drive_reclass_token_conflict' in canonical_sql)>0
+  from (select
+    regexp_replace(lower(pg_get_functiondef('public.enqueue_drive_reclass_inquiry_v7(jsonb)'::regprocedure)),'[[:space:]]+','','g') wrapper_sql,
+    regexp_replace(lower(pg_get_functiondef('private.enqueue_drive_reclass_inquiry_v7_rep_impl(jsonb)'::regprocedure)),'[[:space:]]+','','g') canonical_sql) contract),
+  'the scoped V7 entry delegates to the immutable recipient policy with token ownership and retry identity guards');
 
 select * from finish();
 rollback;

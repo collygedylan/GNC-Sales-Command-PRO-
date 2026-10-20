@@ -62,6 +62,7 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
   runApiPerformance = ({ root: runRoot, workspaceRoot, executeNode: runChild }) =>
     runChild(['scripts/run-performance-api.mjs', workspaceRoot], { root: runRoot }),
   discoverCanonicalHttpTests = ({ root: discoverRoot }) => discoverTests({ root: discoverRoot, group: 'canonical-http' }),
+  discoverCanonicalCommittedTests = ({ root: discoverRoot }) => discoverTests({ root: discoverRoot, group: 'sql-canonical-committed' }),
   runHttpTests = ({ root: runRoot, workspaceRoot, tests, executeNode: runChild }) => {
     for (const file of tests) runChild([file, workspaceRoot], { root: runRoot });
   },
@@ -76,6 +77,7 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
   const apiBenchmarkRequested = environment.PERFORMANCE_API_BENCHMARK === 'true';
   const sqlBenchmarkRequested = environment.DATABASE_PERFORMANCE_BENCHMARK === 'true';
   const canonicalHttpTests = discoverCanonicalHttpTests({ root });
+  const committedSqlTests = discoverCanonicalCommittedTests({ root });
   if (apiBenchmarkRequested && mode !== 'all') throw new Error('PERFORMANCE_API_BENCHMARK_REQUIRES_ALL_MODE');
   if (apiBenchmarkRequested && !sqlBenchmarkRequested) throw new Error('PERFORMANCE_API_BENCHMARK_REQUIRES_SQL_BENCHMARK');
   if (sqlBenchmarkRequested && mode !== 'all') throw new Error('DATABASE_PERFORMANCE_BENCHMARK_REQUIRES_ALL_MODE');
@@ -108,6 +110,12 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
       if (apiBenchmarkRequested) runApiPerformance({ root, workspaceRoot: workspace.root, cli, executeNode });
     }
     if (canonicalHttpTests.length) runHttpTests({ root, workspaceRoot: workspace.root, tests: canonicalHttpTests, executeNode });
+    for (const [index, file] of committedSqlTests.entries()) {
+      // These tests deliberately commit transactions. Keep each fixture alone,
+      // then rebuild the schema before the next fixture or normal pgTAP cohort.
+      if (index > 0) runCli(['db', 'reset', '--local', '--no-seed']);
+      runCli(['test', 'db', path.resolve(root, file)]);
+    }
     runCli(['db', 'reset', '--local', '--no-seed']);
     strictLint(workspace, runCli);
     runCli(['test', 'db']);
@@ -126,7 +134,8 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
       dedicatedPostgresTests = result.results.reduce((count, item) => count + item.files.length, 0);
     }
     return { stagedFiles, migrations: workspace.migrationCount, sqlTests: discoverTests({ root, group: 'sql-canonical' }).length,
-      rollbackTests: rollbackFilesToRun.length, dedicatedPostgresTests, canonicalHttpTests: canonicalHttpTests.length };
+      rollbackTests: rollbackFilesToRun.length, dedicatedPostgresTests, canonicalHttpTests: canonicalHttpTests.length,
+      committedSqlTests: committedSqlTests.length };
   } });
 
   let historicalResult = { migrationCount: 0, sqlTests: 0 };
@@ -163,7 +172,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       throw new Error('Usage: node scripts/database-check.mjs --staged|--all');
     }
     const result = runDatabaseCheck({ mode: process.argv[2] === '--all' ? 'all' : 'staged' });
-    console.log(`[database-check] validated ${result.stagedFiles.length} staged DB paths, ${result.migrations} active migrations, ${result.sqlTests} canonical SQL tests, ${result.canonicalHttpTests} canonical HTTP drivers, ${result.rollbackTests} rollback canaries, ${result.dedicatedPostgresTests} dedicated PostgreSQL SQL tests, ${result.historicalSqlTests} historical SQL tests, and ${result.sandboxSqlTests} sandbox SQL tests.`);
+    console.log(`[database-check] validated ${result.stagedFiles.length} staged DB paths, ${result.migrations} active migrations, ${result.sqlTests} canonical SQL tests, ${result.committedSqlTests} isolated committing SQL tests, ${result.canonicalHttpTests} canonical HTTP drivers, ${result.rollbackTests} rollback canaries, ${result.dedicatedPostgresTests} dedicated PostgreSQL SQL tests, ${result.historicalSqlTests} historical SQL tests, and ${result.sandboxSqlTests} sandbox SQL tests.`);
   } catch (error) {
     console.error(`[database-check] ${error.message}`);
     process.exitCode = 1;

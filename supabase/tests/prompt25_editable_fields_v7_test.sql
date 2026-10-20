@@ -36,6 +36,14 @@ insert into public.profiles(id,username,display_name,role,must_change_password,d
 select id,'dylan_collyge','Dylan Collyge','ADMIN',false,null,null from p25_v7_actor
 on conflict(id) do update set username=excluded.username,display_name=excluded.display_name,role=excluded.role,
   must_change_password=false,disabled_at=null,locked_until=null;
+-- Canonical delivery always includes Megan and Dylan/the submitting actor.
+-- Keep the confirmed synthetic recipient inside this rollback transaction.
+create temporary table p25_v7_fixed_recipient(id uuid not null) on commit drop;
+insert into p25_v7_fixed_recipient values(gen_random_uuid());
+insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
+select id,'p25-v7-megan@example.invalid',now(),'{}'::jsonb,'{}'::jsonb from p25_v7_fixed_recipient;
+insert into public.profiles(id,username,display_name,role,must_change_password,disabled_at,locked_until)
+select id,'megan_kelly','Megan Kelly','ADMIN',false,null,null from p25_v7_fixed_recipient;
 insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
 values('a7000000-0000-4000-8000-000000000071','p25-v7-active-csr@example.invalid',now(),'{}'::jsonb,'{}'::jsonb),
   ('a7000000-0000-4000-8000-000000000072','p25-v7-disabled-csr@example.invalid',now(),'{}'::jsonb,'{}'::jsonb)
@@ -235,16 +243,20 @@ insert into p25_v7_recipient_result select public.enqueue_drive_reclass_inquiry_
   pg_temp.p25_v7_move_payload('p25-v7-item-inquiry-token-0001') || jsonb_build_object(
     'sourceContext',jsonb_build_object('sourceMode','item-inquiry'),
     'recipientEmails',jsonb_build_array('p25-v7-active-csr@example.invalid')));
-select is((select o.payload #> '{reclassPayload,recipientEmails}' from public.ph_request_delivery_outbox o
+select is((select jsonb_agg(email order by email) from public.ph_request_delivery_outbox o,
+  jsonb_array_elements_text(o.payload #> '{reclassPayload,recipientEmails}') recipients(email)
   where o.event_key='reclass-inquiry:'||left(encode(extensions.digest('p25-v7-item-inquiry-token-0001','sha256'),'hex'),40)),
-  '["p25-v7-active-csr@example.invalid"]'::jsonb,
-  'item-inquiry accepts an active CSR recipient despite password-change and temporary-lock flags');
-select throws_ok($$select public.enqueue_drive_reclass_inquiry_v7(
+  '["p25-v7-admin@example.invalid","p25-v7-megan@example.invalid"]'::jsonb,
+  'item-inquiry ignores client-added CSR recipients and routes exactly to Dylan and Megan');
+insert into p25_v7_recipient_result select public.enqueue_drive_reclass_inquiry_v7(
   pg_temp.p25_v7_move_payload('p25-v7-disabled-recipient-token-0001') || jsonb_build_object(
     'sourceContext',jsonb_build_object('sourceMode','item-inquiry'),
-    'recipientEmails',jsonb_build_array('p25-v7-disabled-csr@example.invalid'))
-)$$,'42501','DRIVE_RECLASS_V7_RECIPIENTS_FORBIDDEN',
-  'a disabled profile is not accepted from the item-inquiry recipient directory');
+    'recipientEmails',jsonb_build_array('p25-v7-disabled-csr@example.invalid')));
+select is((select jsonb_agg(email order by email) from public.ph_request_delivery_outbox o,
+  jsonb_array_elements_text(o.payload #> '{reclassPayload,recipientEmails}') recipients(email)
+  where o.event_key='reclass-inquiry:'||left(encode(extensions.digest('p25-v7-disabled-recipient-token-0001','sha256'),'hex'),40)),
+  '["p25-v7-admin@example.invalid","p25-v7-megan@example.invalid"]'::jsonb,
+  'a client-added disabled CSR cannot replace or join the server-owned report recipients');
 
 select * from finish();
 rollback;

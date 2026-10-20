@@ -1,4 +1,4 @@
--- @test-runtime: canonical
+-- @test-runtime: canonical-committed
 create extension if not exists pgtap with schema extensions;
 select plan(77);
 

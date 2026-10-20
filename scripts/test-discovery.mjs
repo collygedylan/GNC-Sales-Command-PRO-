@@ -14,6 +14,7 @@ const RUNTIME_GROUPS = Object.freeze({
   'sql-isolated-acceptance': 'isolated-acceptance',
   'live-dataset-revision-sql': 'live-dataset-revision-sql',
   'sql-canonical': 'canonical',
+  'sql-canonical-committed': 'canonical-committed',
   'canonical-http': 'canonical-http',
   'sandbox-pgtap': 'sandbox-pgtap',
   'local-auth-smoke': 'local-auth-smoke',

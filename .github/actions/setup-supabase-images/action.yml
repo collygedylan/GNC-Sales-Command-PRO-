@@ -10,6 +10,6 @@ runs:
       id: images
       with:
         path: ${{ runner.temp }}/gnc-supabase-images
-        key: supabase-images-v1-${{ runner.os }}-${{ runner.arch }}-cli2.111.0-${{ hashFiles('supabase/config.toml') }}
+        key: supabase-images-v2-${{ runner.os }}-${{ runner.arch }}-cli2.111.0-${{ hashFiles('supabase/config.toml', 'scripts/ci-supabase-image-cache.mjs') }}
     - shell: bash
       run: node scripts/ci-supabase-image-cache.mjs restore

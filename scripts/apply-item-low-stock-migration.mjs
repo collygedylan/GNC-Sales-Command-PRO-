@@ -89,7 +89,8 @@ export const masterIdentityBatchRetrySqlstateMigrationName = '20261019234222_ide
 export const reclassEmailReportPolicyMigrationName = '20261020150827_v2315_reclass_email_report_policy.sql';
 export const publishedLkgReadProofMigrationName = '20261020161833_published_lkg_read_proof_v1.sql';
 export const reclassServerRevisionMigrationName = '20261020204855_reclass_server_revision_and_failed_stage_lease_v1.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName]);
+export const reclassRepScopeMigrationName = '20261020233500_reclass_rep_scope_preservation_v1.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName]);
 
 export function normalizeScopedMigrationPaths(migrationPaths) {
   if (!Array.isArray(migrationPaths) || migrationPaths.length === 0) {
@@ -282,7 +283,55 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
   return { installed: result?.rows?.[0]?.installed === true };
 }
 
+// The current V7 body may be behind the service-only Sales Rep scope wrapper.
+// Follow only the exact secure delegation; an unrelated private function is
+// never sufficient evidence that the public entry point uses the contract.
+const reclassV7ImplementationOid = `case when exists (
+  select 1 from pg_proc wrapper where wrapper.oid=to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)')
+    and wrapper.prosecdef and wrapper.proconfig @> array['search_path=""']
+    and position('result:=private.enqueue_drive_reclass_inquiry_v7_rep_impl(p_payload);' in wrapper.prosrc)>0
+    and has_function_privilege('service_role',wrapper.oid,'execute')
+    and not has_function_privilege('authenticated',wrapper.oid,'execute')
+    and not has_function_privilege('anon',wrapper.oid,'execute'))
+  then to_regprocedure('private.enqueue_drive_reclass_inquiry_v7_rep_impl(jsonb)')
+  else to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)') end`;
+
 export function migrationContractQuery(name) {
+  if (name === reclassRepScopeMigrationName) return `select
+    exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)')
+      and p.prosecdef and p.proconfig @> array['search_path=""']
+      and position('result:=private.enqueue_drive_reclass_inquiry_v7_rep_impl(p_payload);' in p.prosrc)>0
+      and position('auth.role() is distinct from ''service_role''' in p.prosrc)>0
+      and position('actor_count<>1' in p.prosrc)>0
+      and position('DRIVE_RECLASS_PROFILE_NOT_ACTIVE' in p.prosrc)>0
+      and position('navigation_module_allowed_v1' in p.prosrc)>0
+      and position('app_access_user_overrides' in p.prosrc)>0
+      and position('SALES_REP_OPERATION_FORBIDDEN' in p.prosrc)>0
+      and position('fieldEdits' in p.prosrc)>0
+      and position('exception when others then' in p.prosrc)>0
+      and position('set_config(''gnc.sales_rep_operation_actor'',previous_scope,true)' in p.prosrc)>0
+      and has_function_privilege('service_role',p.oid,'execute')
+      and not has_function_privilege('authenticated',p.oid,'execute')
+      and not has_function_privilege('anon',p.oid,'execute'))
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.enqueue_drive_reclass_inquiry_v7_rep_impl(jsonb)')
+      and p.prosecdef and p.proconfig @> array['search_path=""']
+      and position('reclass-dylan-megan-submitter-v1' in p.prosrc)>0
+      and position('reclass_delivery_recipients_v1' in p.prosrc)>0
+      and position('lock_ph_master_inventory_for_reclass_lkg_v1(true)' in p.prosrc)>0
+      and position('clear_current_ph_inventory_reclass_lkg_context_v1' in p.prosrc)>0
+      and not has_function_privilege('service_role',p.oid,'execute')
+      and not has_function_privilege('authenticated',p.oid,'execute')
+      and not has_function_privilege('anon',p.oid,'execute'))
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.sales_rep_operation_scope_v1(uuid)')
+      and not p.prosecdef and p.proconfig @> array['search_path=""']
+      and position('gnc.sales_rep_operation_actor' in p.prosrc)>0
+      and not has_function_privilege('service_role',p.oid,'execute')
+      and not has_function_privilege('authenticated',p.oid,'execute')
+      and not has_function_privilege('anon',p.oid,'execute'))
+    and (select count(*)=2 from pg_proc p where p.oid in (
+      to_regprocedure('public.enqueue_drive_reclass_inquiry_v1(jsonb)'),
+      to_regprocedure('public.enqueue_drive_reclass_inquiry_v6(jsonb)'))
+      and position('sales_rep_operation_scope_v1' in p.prosrc)>0) as installed`;
   if (name === reclassServerRevisionMigrationName) return `select
     exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.apply_inventory_reclass_moves_with_delivery_v1(uuid,text,bigint,jsonb,text)')
       and p.prosecdef and p.pronargdefaults=3 and p.proconfig @> array['search_path=""']
@@ -342,7 +391,7 @@ export function migrationContractQuery(name) {
       and position('lock_ph_master_inventory_for_reclass_lkg_v1(true)' in p.prosrc)>0)
     and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.apply_inventory_reclass_moves_v1(uuid,text,bigint,jsonb)')
       and position('lock_ph_master_inventory_for_reclass_lkg_v1(true)' in p.prosrc)>0)
-    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)')
+    and exists(select 1 from pg_proc p where p.oid=${reclassV7ImplementationOid}
       and position('lock_ph_master_inventory_for_reclass_lkg_v1(true)' in p.prosrc)>0
       and position('clear_current_ph_inventory_reclass_lkg_context_v1' in p.prosrc)>0) as installed`;
   if (name === reclassEmailReportPolicyMigrationName) return `select
@@ -355,7 +404,7 @@ export function migrationContractQuery(name) {
       and position('reclass_delivery_recipients_v1' in p.prosrc)>0)
     and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.apply_inventory_reclass_moves_with_delivery_v1(uuid,text,bigint,jsonb,text)')
       and p.prosecdef and position('reclass_delivery_recipients_v1' in p.prosrc)>0)
-    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)')
+    and exists(select 1 from pg_proc p where p.oid=${reclassV7ImplementationOid}
       and p.prosecdef and position('reclass_delivery_recipients_v1' in p.prosrc)>0)
     as installed`;
 
