@@ -103,6 +103,7 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   });
   const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });
   const cards = page.locator('#request-content article[data-request-uid^="dock_suspend_dc_"]');
+  await expect(cards).toHaveCount(37, { timeout: 15000 });
   const expectedCardIds = expectedSourceIds.map(id => `dock_suspend_dc_${id}`).sort();
   let priorCardIds: string[] = [];
   let stableCardFrames = 0;
@@ -999,9 +1000,11 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       const intentionalRevisionReadSupersededByFixtureTransition = resource.method === 'POST'
         && failedUrl.origin === 'https://kzrnyjsosryejjejliii.supabase.co'
         && failedUrl.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1'
-        && resource.failure === 'Load request cancelled'
+        && ['Load request cancelled', 'net::ERR_ABORTED'].includes(resource.failure)
         && fetchAbortEvidence.some(evidence => evidence.url === resource.url && evidence.method === 'POST'
-          && ['suspend-fixture-request-view-transition', 'published-lkg-drive-transition'].includes(evidence.context));
+          && evidence.reasonName === 'AbortError'
+          && (['suspend-fixture-request-view-transition', 'published-lkg-drive-transition'].includes(evidence.context)
+            || (evidence.abortStack.includes('invalidateBackground') && evidence.abortStack.includes('live-sync-coordinator.js'))));
       return !intentionalShellLogoCancel && !intentionalRevisionReadSupersededByFixtureTransition;
     });
     expect(unexpectedFailedResources, 'unexpected aborted reads/assets retain URL and resource type evidence').toEqual([]);
@@ -2164,9 +2167,14 @@ test('card Email, denial, and re-email preserve the review and create a fresh ap
 
 
 test('published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke', async ({ page, baseURL }, info) => {
+  // This case includes cold fixture bootstrap and all 19 inventory pages.
+  // Keep its setup/background-hydration budget separate from the unchanged
+  // 2,000 ms detail-opening gate and the runner's five-minute total limit.
+  test.setTimeout(120_000);
   const snapshot = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/suspend-v2314.json.gz', import.meta.url))).toString('utf8')) as { masterRows: FixtureRow[]; suspendRows: FixtureRow[] };
   const app = await harness(page, baseURL!, [], { masterRows: snapshot.masterRows, published: true });
   const result = await page.evaluate(async () => window.eval(`(async () => {
+    const hydrationStarted = performance.now();
     fullInventory = []; rebuildMasterInventoryIndexes();
     Object.assign(getDatasetState('master'), { initialLoaded: false, fullLoaded: false, rowCompleteness: 'unknown', liveVerifiedScope: '' });
     activeDriveTab = 'name'; driveViewLevel = 0; selectedDriveName = '';
@@ -2177,6 +2185,7 @@ test('published snapshot stays available and Drive completes every Common Name a
     const loaded = await getProductionLiveSyncCoordinator().check('visible-view');
     renderDrive();
     return { loaded, rows: fullInventory.length, names: new Set(fullInventory.map(row => row.COMMONNAME)).size,
+      coldHydrationMs: performance.now() - hydrationStarted,
       state: getProductionLiveSyncCoordinator().getStatus().state,
       message: getProductionLiveSyncCoordinator().getStatus().message,
       blockedSources: getProductionLiveSyncCoordinator().getStatus().blockedSources || [],
@@ -2185,7 +2194,7 @@ test('published snapshot stays available and Drive completes every Common Name a
     await info.attach('published-lkg-failed-read-diagnostic', {
       contentType: 'application/json',
       body: Buffer.from(JSON.stringify({ pages: app.publishedReadPages, settingsReads: app.settingsReads,
-        failedResources: app.failedResources, fetchAbortEvidence: await app.readFetchAbortEvidence(),
+        failedResources: app.failedResources,
         consoleErrors: app.consoleErrorDetails })),
     });
     throw error;

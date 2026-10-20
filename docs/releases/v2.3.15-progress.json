@@ -475,6 +475,27 @@
       ],
       "correction": "Three viewport projects remain parallel; cases within each profile now sequential to avoid multiple WebKit pages competing for frames. Test timeout and render ceilings unchanged.",
       "productionWrites": false
+    },
+    {
+      "at": "2026-10-20T17:39:45.700Z",
+      "attempt": 5,
+      "cap": 8,
+      "status": "failed",
+      "report": ".gnc-local/release-smoke/agdata-v2-3-15/d8e1b4d848d0/20261020173539888/report.json",
+      "passed": 5,
+      "failed": 4,
+      "cause": [
+        "Desktop/Android had no console errors, but intentional coordinator invalidateBackground AbortErrors were misclassified",
+        "iPhone UID comparison accepted stable empty list before count readiness",
+        "iPhone 19-page cold hydration exceeded60s combined setup limit; failure diagnostics queried closed page"
+      ],
+      "correction": [
+        "Classify only exactrevisionRPC with observed AbortSignal and coordinator invalidateBackground stack",
+        "Wait for exact37cards before UID frame stability",
+        "Separate120s fullcoldhydration setup allowance from unchanged2000ms UI and300s total gate; record actual coldHydrationMs",
+        "Attach node-owned diagnostic before any closed-page access"
+      ],
+      "productionWrites": false
     }
   ],
   "availabilitySqlValidation": {
