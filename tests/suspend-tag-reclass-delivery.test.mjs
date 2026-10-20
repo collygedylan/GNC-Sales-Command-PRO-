@@ -119,6 +119,7 @@ function submitHarness(failCreate = false) {
     GncDatabase: { validateReclassEditableFieldProposals: value => value },
     document: dom.window.document,
     argosInventoryTransactionState: state,
+    ensureArgosReclassSubmissionVerification: async () => {},
     RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'v6',
     RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION: 'v7',
     getArgosReclassLiveEditIdentityKey: () => 'actor-session',

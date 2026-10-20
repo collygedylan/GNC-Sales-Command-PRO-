@@ -114,6 +114,17 @@ export async function runReleaseSmoke({ env = process.env, print = console.log }
           lastCardLayout: layoutAttachment ? JSON.parse(attachmentJson(layoutAttachment)) : null,
         };
       });
+      const reclassEvidence = results.flatMap(row => row.attachments
+        .filter(attachment => attachment.name === 'release-smoke-reclass-evidence')
+        .map(attachment => ({ project: row.project, ...JSON.parse(attachmentJson(attachment)) })));
+      const reclassValid = reclassEvidence.length === 3
+        && new Set(reclassEvidence.map(item => item.username)).size === 3
+        && ['dylan_collyge', 'megan_kelly', 'jd_jones'].every(username => reclassEvidence.some(item => item.username === username))
+        && reclassEvidence.every(item => report.browserProjects.includes(item.project)
+          && item.masterRows >= 9000 && item.immediate === true && item.openMs >= 0 && item.openMs <= 2000
+          && item.submitMs >= 0 && item.submitMs <= 2000 && item.lateHydrationPreservedDraft === true
+          && item.simulatedAtomicMove === true && item.simulatedLiveFields === true && item.reportStatus === 'queued'
+          && item.productionWrites === false && item.realEmailsSent === false);
       const expectedMetrics = ['on-hand', 'review', 'available', 'open-stock', 'loc-photo-match', 'loc-on-hand'];
       const evidenceValid = browserMetrics.length === 3 && browserMetrics.every(({ project, metrics, lastCardLayout }) =>
         report.browserProjects.includes(project) && metrics?.cards === 37 && metrics.expectedCards === 37
@@ -122,12 +133,13 @@ export async function runReleaseSmoke({ env = process.env, print = console.log }
         && lastCardLayout?.inViewport === true && lastCardLayout.cardOverflow === false && lastCardLayout.completeTagVisible === true
         && expectedMetrics.every(id => lastCardLayout.metrics?.some(metric => metric.id === id
           && metric.label && metric.value && metric.labelSingleLine === true && metric.valueSingleLine === true)));
-      if (!evidenceValid) {
+      if (!evidenceValid || !reclassValid) {
         report.playwright.status = 'evidence-invalid';
-        report.playwright.validationError = 'RELEASE_SMOKE_METRIC_OR_LAST_CARD_EVIDENCE_INVALID';
+        report.playwright.validationError = !reclassValid ? 'RELEASE_SMOKE_RECLASS_EVIDENCE_INVALID' : 'RELEASE_SMOKE_METRIC_OR_LAST_CARD_EVIDENCE_INVALID';
       } else {
         report.playwright.tests = results.map(({ attachments: _attachments, ...row }) => row);
         report.playwright.browserEvidence = browserMetrics;
+        report.playwright.reclassEvidence = reclassEvidence;
         report.playwright.resultsSha256 = sha256(bytes);
       }
     }

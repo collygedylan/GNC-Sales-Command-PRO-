@@ -8,7 +8,7 @@ export interface ReclassMoveLine {
 
 export interface ReclassMoveCommand {
   commandId: string;
-  expectedRevision: number;
+  expectedRevision: number | null;
   moves: Array<{
     source: { uniqueId: string; identity: Record<string, string | null> };
     lines: ReclassMoveLine[];
@@ -58,8 +58,10 @@ export function normalizeReclassMoveCommand(payload: JsonRecord): ReclassMoveCom
   if (payload.action !== 'inventory_reclass_move') throw new Error('INVENTORY_RECLASS_ACTION_INVALID');
   const commandId = requiredText(payload.commandId, 'INVENTORY_RECLASS_COMMAND_INVALID', 180);
   if (!/^[A-Za-z0-9:_.-]{12,180}$/.test(commandId)) throw new Error('INVENTORY_RECLASS_COMMAND_INVALID');
-  const expectedRevision = payload.expectedRevision;
-  if (typeof expectedRevision !== 'number' || !Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+  // The displayed dataset watermark is advisory. SQL binds this command to its
+  // current revision under the live-edit lock and still compares every source.
+  const expectedRevision = payload.expectedRevision ?? null;
+  if (expectedRevision !== null && (typeof expectedRevision !== 'number' || !Number.isSafeInteger(expectedRevision) || expectedRevision < 1)) {
     throw new Error('INVENTORY_RECLASS_REVISION_INVALID');
   }
   const normalizeMove = (sourceValue: unknown, linesValue: unknown) => {

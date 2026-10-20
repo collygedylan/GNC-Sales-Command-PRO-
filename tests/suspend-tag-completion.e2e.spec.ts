@@ -4,6 +4,8 @@ import { gunzipSync } from 'node:zlib';
 // @test-group: @suspend-tag,suspend,@v2312-ui,@v2314-parity,@release-smoke
 
 import { confirmedDriveEvidence, driveEvidenceColumns } from '../services/driveEvidence.ts';
+import { normalizeReclassMoveCommand } from '../services/reclassMove.ts';
+import { inquiryEditableFields } from '../services/reclassEditableFields.ts';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './fixtures/inventory-list-read-fixture.mjs';
 import { createPreindexedMasterPageFixture } from './fixtures/preindexed-master-page-fixture.mjs';
 import { classifyReleaseSmokeRoute } from './helpers/release-smoke-route-policy.mjs';
@@ -399,8 +401,12 @@ test('release smoke uses an isolated synthetic session and does not authorize pr
  * Only identity/data-loading boundaries are supplied. Backend state lives in
  * this test process across refresh/reload; no customer record is ever changed.
  */
-async function harness(page: Page, baseURL: string, rows = fixtures, options: { search?: string; expired?: boolean; inventoryUnavailable?: boolean; native?: boolean; published?: boolean; masterRows?: FixtureRow[] } = {}) {
+async function harness(page: Page, baseURL: string, rows = fixtures, options: { search?: string; expired?: boolean; inventoryUnavailable?: boolean; native?: boolean; published?: boolean; masterRows?: FixtureRow[]; username?: string } = {}) {
+  const fixtureUsername = options.username || 'dylan_collyge';
   const origin = new URL(baseURL).origin;
+  await page.addInitScript(username => {
+    (window as unknown as { fixtureUsername: string }).fixtureUsername = username;
+  }, fixtureUsername);
   const backendRows = structuredClone(rows);
   const receipts = new Map<string, Record<string, unknown>>();
   const requests: CompletionRequest[] = [];
@@ -554,7 +560,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       if (endpoint === 'get_my_app_permissions_v1') {
         return fulfill(route, {
           contract_version: 'app-access-v1', enforcement_mode: 'enforced', policy_version: 1, policy_revision: 1,
-          data_permission_version: 'suspend-fixture-access-1', username: 'dylan_collyge', role: 'ADMIN',
+          data_permission_version: 'suspend-fixture-access-1', username: fixtureUsername, role: 'ADMIN',
           permissions: [
             { permission_key: 'module.drive.view', kind: 'module', module_key: 'drive', allowed: true },
             { permission_key: 'module.request.view', kind: 'module', module_key: 'request', allowed: true },
@@ -562,7 +568,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         });
       }
       return fulfill(route, {
-        contract_version: 2, username: 'dylan_collyge', scope: 'global',
+        contract_version: 2, username: fixtureUsername, scope: 'global',
         can_create_general: true, can_create_av: true, can_view_queue: true,
         can_take_photo: true, can_edit: true, can_complete: true, can_archive: true,
       });
@@ -631,7 +637,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     }
     if (request.method() === 'GET' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
       && url.pathname === '/rest/v1/ph_chat_participants'
-      && url.searchParams.get('select') === '*' && url.searchParams.get('username') === 'eq.dylan_collyge'
+      && url.searchParams.get('select') === '*' && url.searchParams.get('username') === `eq.${fixtureUsername}`
       && url.searchParams.get('is_archived') === 'eq.false' && url.searchParams.get('order') === 'joined_at.desc'
       && [...url.searchParams.keys()].sort().join(',') === 'is_archived,order,select,username') {
       const authorization = request.headers()['authorization'] || '';
@@ -723,7 +729,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         ].map(permission => [permission, true]));
         return fulfill(route, { ok: true, data: {
           revision: 1,
-          profile: { id: 'synthetic-suspend-master-snapshot', username: 'dylan_collyge', display_name: 'Isolated Suspend Done Test', role: 'ADMIN', email: '', salesrep_id: null, salesrep_match_names: [] },
+          profile: { id: 'synthetic-suspend-master-snapshot', username: fixtureUsername, display_name: 'Isolated Suspend Done Test', role: 'ADMIN', email: '', salesrep_id: null, salesrep_match_names: [] },
           baseline: { role: 'admin', permissions, revision: 1 },
           permission_overrides: {}, effective_permissions: permissions,
           data_hydration_policy: { use_shared_instant_snapshot: true, av_season_rule: 'CURRENT_SEASON_F1_LE_27', av_visibility_rule: 'ALL_ELIGIBLE_ROWS' },
@@ -757,6 +763,14 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         && Number.isInteger(body.params.offset) && body.params.offset >= 0 && body.params.limit <= 500
         && Object.keys(body.params).every(key => ['dataset', 'projection', 'limit', 'offset'].includes(key))) {
         return fulfill(route, { ok: true, data: readPublishedMasterPage(body.params) });
+      }
+      if (options.published && options.masterRows?.length && body.action === 'inventory_read' && body.operation === 'master_page'
+        && body.params?.dataset === 'lookup' && body.params?.projection === 'full'
+        && typeof body.params.itemCode === 'string' && body.params.limit === 500 && Number.isInteger(body.params.offset)
+        && Object.keys(body.params).sort().join(',') === 'dataset,itemCode,limit,offset,projection') {
+        const rows = options.masterRows.filter(row => String(row.ITEMCODE ?? row.itemcode) === body.params.itemCode)
+          .map(row => inventoryReadFixture.fromFixtureShape(row));
+        return fulfill(route, { ok: true, data: inventoryReadFixture.readMasterPage(rows, body.params) });
       }
       if (options.published && options.masterRows?.length && body.action === 'inventory_read' && body.operation === 'master_page'
         && body.params?.dataset === 'lookup' && body.params?.projection === 'full'
@@ -819,7 +833,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         && Object.keys(body).every(key => ['action', 'operation', 'payload'].includes(key))
         && body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
         && Object.keys(body.payload).length === 0) {
-        return fulfill(route, { ok: true, data: { username: 'dylan_collyge', views: [], shortcuts: null, footerRevision: 0, accessRevision: 0 } });
+        return fulfill(route, { ok: true, data: { username: fixtureUsername, views: [], shortcuts: null, footerRevision: 0, accessRevision: 0 } });
       }
       const avRead = url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && body.action === 'av_read'
@@ -901,18 +915,18 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       (window as any).__suspendCompletionFixtureRows = data.rows;
       (window as any).__suspendCompletionMasterRows = data.masterRows;
       window.eval(`(() => {
-        if (!installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Isolated Suspend Done Test', 'ADMIN')) {
+        if (!installMutationBlockedAccessCanaryIdentity(fixtureUsername, 'Isolated Suspend Done Test', 'ADMIN')) {
           throw new Error('SUSPEND_DONE_CANARY_IDENTITY_UNAVAILABLE');
         }
         // Synthetic identity only: real fetchWithTimeout/supabaseRpc still run.
         getNativeAuthRequestHeaders = async () => window.__suspendTestAuthReady ? ({ Authorization: 'Bearer browser-only-no-real-session', apikey: 'browser-only' }) : null;
         requestCapabilityState = {
-          status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: 'dylan_collyge',
-          capabilities: { username: 'dylan_collyge', scope: 'global', canViewQueue: true, canTakePhoto: true, canEdit: true, canComplete: true, canArchive: true }
+          status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: fixtureUsername,
+          capabilities: { username: fixtureUsername, scope: 'global', canViewQueue: true, canTakePhoto: true, canEdit: true, canComplete: true, canArchive: true }
         };
         if (window.__suspendCompletionMasterRows.length) {
           nativeAuthSessionActive = true;
-          nativeAuthProfile = { id: 'synthetic-suspend-master-snapshot', username: 'dylan_collyge', role: 'ADMIN', active: true };
+          nativeAuthProfile = { id: 'synthetic-suspend-master-snapshot', username: fixtureUsername, role: 'ADMIN', active: true };
           nativeAuthSessionUserId = nativeAuthProfile.id;
           nativeAuthAccessToken = 'synthetic-not-a-real-token';
           appAccessSnapshotState = {
@@ -985,7 +999,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   if (options.native) {
     await page.evaluate(() => window.eval(`(() => {
       nativeAuthSessionActive = true;
-      nativeAuthProfile = { id: 'synthetic-suspend-live-sync', username: 'dylan_collyge', role: 'ADMIN', active: true };
+      nativeAuthProfile = { id: 'synthetic-suspend-live-sync', username: fixtureUsername, role: 'ADMIN', active: true };
       nativeAuthSessionUserId = nativeAuthProfile.id;
       nativeAuthAccessToken = 'synthetic-not-a-real-token';
       appAccessSnapshotState = {
@@ -2287,7 +2301,10 @@ test('published snapshot stays available and Drive completes every Common Name a
   // 2,000 ms detail-opening gate and the runner's five-minute total limit.
   test.setTimeout(120_000);
   const snapshot = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/suspend-v2314.json.gz', import.meta.url))).toString('utf8')) as { masterRows: FixtureRow[]; suspendRows: FixtureRow[] };
-  const app = await harness(page, baseURL!, [], { masterRows: snapshot.masterRows, published: true });
+  const fixtureUsername = ({ 'desktop-chromium': 'dylan_collyge', 'android-chromium': 'megan_kelly',
+    'iphone-webkit': 'jd_jones' } as Record<string, string>)[info.project.name];
+  expect(fixtureUsername).toBeTruthy();
+  const app = await harness(page, baseURL!, [], { masterRows: snapshot.masterRows, published: true, username: fixtureUsername });
   const result = await page.evaluate(async () => window.eval(`(async () => {
     const hydrationStarted = performance.now();
     fullInventory = []; rebuildMasterInventoryIndexes();
@@ -2380,7 +2397,7 @@ test('published snapshot stays available and Drive completes every Common Name a
   expect(accessRefresh.inertElements).toBe(0);
   expect(accessRefresh.rowCount).toBe(result.rows);
   expect(accessRefresh.visibleText).toBeTruthy();
-  expect(accessRefresh.user).toBe('dylan_collyge');
+  expect(accessRefresh.user).toBe(fixtureUsername);
   expect(accessRefresh.profileId).toBe(accessRefresh.sessionUserId);
   expect(accessRefresh.retainedAccess).toBe(true);
   expect(accessRefresh.managerAllowed).toBe(true);
@@ -2413,5 +2430,129 @@ test('published snapshot stays available and Drive completes every Common Name a
   await expect(page.locator('#toast-notification')).not.toContainText('Row Details Unavailable');
   await expect(page.locator('#drive-content')).toHaveAttribute('data-drive-commonname-state', 'complete');
   await info.attach('published-snapshot-availability', { contentType: 'application/json', body: Buffer.from(JSON.stringify({ ...result, details })) });
+  const reclassRequests: Record<string, unknown>[] = [];
+  const sourceFixture = snapshot.masterRows.find(row => String(row.UNIQUE_ID ?? row.unique_id) === details.uid);
+  expect(sourceFixture).toBeTruthy();
+  let authoritative = inventoryReadFixture.fromFixtureShape(sourceFixture!);
+  const responseTime = '2026-10-20T20:00:00.000Z';
+  let releaseHydration: () => void = () => {};
+  const hydrationGate = new Promise<void>(resolve => { releaseHydration = resolve; });
+  let exactHydrationRequests = 0;
+  await page.route('**/functions/v1/app-api', async route => {
+    const request = route.request();
+    if (request.method() !== 'POST') return route.fallback();
+    const body = request.postDataJSON() as Record<string, unknown>;
+    const params = body.params as Record<string, unknown> | undefined;
+    if (body.action === 'inventory_read' && body.operation === 'master_page'
+      && params?.dataset === 'lookup' && params.projection === 'full' && params.itemCode === authoritative.itemcode) {
+      expect(Object.keys(params).sort()).toEqual(['dataset', 'itemCode', 'limit', 'offset', 'projection']);
+      expect(params.limit).toBe(500);
+      exactHydrationRequests++;
+      await hydrationGate;
+      const rows = snapshot.masterRows.filter(row => String(row.ITEMCODE ?? row.itemcode) === params.itemCode)
+        .map(row => inventoryReadFixture.fromFixtureShape(row));
+      return route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*', 'content-type': 'application/json' },
+        body: JSON.stringify({ ok: true, data: inventoryReadFixture.readMasterPage(rows, params) }) });
+    }
+    if (!['inventory_reclass_move', 'drive_reclass_inquiry'].includes(String(body.action))) return route.fallback();
+    expect(request.headers()['authorization']).toBe('Bearer browser-only-no-real-session');
+    const reply = (data: unknown) => route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*',
+      'access-control-allow-headers': '*', 'content-type': 'application/json' }, body: JSON.stringify(data) });
+    if (body.action === 'drive_reclass_inquiry' && body.operation === 'status') {
+      expect(Object.keys(body).sort()).toEqual(['action', 'idempotencyToken', 'operation']);
+      return reply({ ok: true, status: 'queued', jobId: 'synthetic-reclass-queued' });
+    }
+    reclassRequests.push(structuredClone(body));
+    if (body.action === 'inventory_reclass_move') {
+      const { receiptEncoding: _receiptEncoding, ...input } = body;
+      const command = normalizeReclassMoveCommand(input);
+      expect(command.expectedRevision).toBeNull();
+      expect(command.moves).toHaveLength(1);
+      expect(command.moves[0].source.uniqueId).toBe(details.uid);
+      expect(command.moves[0].lines).toEqual([{ direction: 'move_up', destinationSeason: 'U1', quantity: 1 }]);
+      for (const [field, value] of Object.entries(command.moves[0].source.identity)) expect(authoritative[field] ?? null).toBe(value);
+      authoritative = { ...authoritative, ptronhand: String(Number(authoritative.ptronhand) - 1),
+        ptravailable: String(Number(authoritative.ptravailable) - 1), last_updated: responseTime };
+      const target = { ...authoritative, unique_id: 'synthetic-reclass-target', season: 'U1',
+        lotcode: String(authoritative.lotcode).replace(/[^.]+$/, 'U1'), ptronhand: '1', ptravailable: '1' };
+      return reply({ ok: true, data: { ok: true, commandId: command.commandId, requestId: 'synthetic-reclass-move',
+        revision: '8278', status: 'applied', importStatus: 'pending',
+        rows: [authoritative, target].map(row => ({ table: 'ph_master_inventory', row })),
+        movements: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 1,
+          sourceUniqueId: details.uid, destinationUniqueId: target.unique_id }] } });
+    }
+    expect(body.operation).toBe('create');
+    const inquiry = body as unknown as { rowOverlays: Array<{ unique_id: string; fieldEdits: Array<{ field: string; value: string }> }>;
+      transaction: { holdStopProposals: Array<{ action: string; reason: string }> } };
+    expect(inquiry.transaction.holdStopProposals).toEqual(expect.arrayContaining([expect.objectContaining({ action: 'hold', reason: 'synthetic stock check' })]));
+    const edits = inquiry.rowOverlays.find(row => row.unique_id === details.uid)!.fieldEdits;
+    expect(edits).toEqual(expect.arrayContaining([expect.objectContaining({ field: 'locationnote', value: 'Synthetic location draft' }),
+      expect.objectContaining({ field: 'salesnote', value: 'Synthetic sales draft' })]));
+    const before = Object.fromEntries(inquiryEditableFields.map(field => [field, authoritative[field] ?? null]));
+    for (const edit of edits) authoritative[edit.field] = edit.value;
+    Object.assign(authoritative, { holdstopcode: 'H', holdstopreason: 'synthetic stock check', last_updated: responseTime,
+      av_rule_last_clear_reason: 'hold_requested', av_rule_last_cleared_at: responseTime });
+    const evidence = Object.fromEntries(driveEvidenceColumns.map(field => [field, authoritative[field] ?? null]));
+    return reply({ ok: true, status: 'queued', jobId: 'synthetic-reclass-queued', workflowPolicyVersion: body.workflowPolicyVersion,
+      inventoryRevision: '8279', liveEdits: [{ unique_id: details.uid, priority: authoritative.priority ?? null,
+        holdstopcode: 'H', holdstopreason: 'synthetic stock check', av_rule_last_clear_reason: 'hold_requested',
+        av_rule_last_cleared_at: responseTime, last_updated: responseTime, evidence }],
+      inventoryFields: [{ unique_id: details.uid, before,
+        after: Object.fromEntries(inquiryEditableFields.map(field => [field, authoritative[field] ?? null])),
+        changedFields: edits.map(edit => edit.field),
+        stamps: { prisetby: fixtureUsername, priupdated: responseTime, locationnotedate: responseTime, evaldate: responseTime } }] });
+  });
+  const open = await page.evaluate(async uid => window.eval(`(async () => {
+    // Keep same-account cached rows while both freshness markers are pending.
+    Object.assign(getDatasetState('master'), { fullLoaded: false, rowCompleteness: 'partial', liveVerifiedRevision: '' });
+    productionLiveSyncVerifiedView = '';
+    const started = performance.now();
+    openArgosInventoryTransactionModal(${JSON.stringify(uid)}, 'reclass', 'drive');
+    const immediate = !document.getElementById('argos-inventory-transaction-modal').classList.contains('hidden');
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return { immediate, openMs: performance.now() - started, username: currentUser };
+  })()`), details.uid);
+  expect(open.immediate).toBe(true);
+  expect(open.username).toBe(fixtureUsername);
+  expect(open.openMs).toBeLessThanOrEqual(2000);
+  const modal = page.locator('#argos-inventory-transaction-modal');
+  const sourceCard = modal.locator(`[data-reclass-row-card="${details.uid}"]`);
+  if (await sourceCard.getAttribute('data-reclass-row-expanded') !== 'true') await app.activate(sourceCard.locator('.argos-reclass-row-toggle'));
+  await expect(page.locator('#argos-inventory-transaction-review')).toBeVisible();
+  await app.activate(sourceCard.locator('[data-reclass-v3-action="move_up"]'));
+  await sourceCard.getByLabel('Move Up quantity 1', { exact: true }).fill('1');
+  await sourceCard.getByLabel('Move Up destination 1', { exact: true }).selectOption('U1');
+  await app.activate(sourceCard.locator('[data-reclass-v3-action="hold"]'));
+  await sourceCard.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('synthetic stock check');
+  await app.activate(sourceCard.locator('[data-reclass-location-details] > summary'));
+  await sourceCard.locator('[data-reclass-temporary-field="locationnote"]').fill('Synthetic location draft');
+  await sourceCard.locator('[data-reclass-temporary-field="salesnote"]').fill('Synthetic sales draft');
+  await expect.poll(() => exactHydrationRequests).toBe(1);
+  const hydrationResponse = page.waitForResponse(response => {
+    if (response.request().method() !== 'POST') return false;
+    const body = response.request().postDataJSON();
+    return body?.action === 'inventory_read' && body.operation === 'master_page'
+      && body.params?.itemCode === authoritative.itemcode && body.params?.dataset === 'lookup';
+  });
+  releaseHydration();
+  await hydrationResponse;
+  await expect(sourceCard.getByLabel('Move Up quantity 1', { exact: true })).toHaveValue('1');
+  await expect(sourceCard.locator('[data-reclass-temporary-field="locationnote"]')).toHaveValue('Synthetic location draft');
+  await expect(sourceCard.locator('[data-reclass-temporary-field="salesnote"]')).toHaveValue('Synthetic sales draft');
+  const submitStarted = Date.now();
+  await app.activate(page.locator('#argos-inventory-transaction-apply'));
+  await expect(modal).toBeHidden({ timeout: 2000 });
+  const submitMs = Date.now() - submitStarted;
+  expect(submitMs).toBeLessThanOrEqual(2000);
+  expect(reclassRequests.map(body => body.action)).toEqual(['inventory_reclass_move', 'drive_reclass_inquiry']);
+  expect(authoritative.holdstopcode).toBe('H');
+  expect(authoritative.locationnote).toBe('Synthetic location draft');
+  expect(authoritative.salesnote).toBe('Synthetic sales draft');
+  await info.attach('release-smoke-reclass-evidence', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+    profile: info.project.name, username: fixtureUsername, masterRows: snapshot.masterRows.length,
+    cache: 'same-account partial cached rows with interrupted import and stale permissions',
+    ...open, submitMs, simulatedAtomicMove: true, simulatedLiveFields: true, lateHydrationPreservedDraft: true, reportStatus: 'queued',
+    productionWrites: false, realEmailsSent: false,
+  })) });
   await app.assertClean();
 });

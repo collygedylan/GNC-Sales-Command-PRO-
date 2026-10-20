@@ -99,7 +99,7 @@ test('a caller-supplied inquiry row cannot inherit proof from an unrelated full 
   assert.equal(f.context.getVerifiedCachedArgosItemInquiryGroup(f.physical), null);
 });
 
-test('unverified native cache silently verifies the same rows inline and preserves the draft', async () => {
+test('unverified native cache submits displayed row identity without a blocking read and preserves the draft', async () => {
   const f = fixture();
   const state = f.makeState({ row: { ...f.physical }, rows: [{ ...f.physical }] });
   state.verifiedInquiryGroup = null;
@@ -107,10 +107,10 @@ test('unverified native cache silently verifies the same rows inline and preserv
   const model = state.inquiryModel;
   const originalPayload = JSON.stringify(f.payload);
   await f.context.ensureArgosReclassSubmissionVerification(state);
-  assert.equal(f.runtime.reads, 1);
+  assert.equal(f.runtime.reads, 0);
   assert.equal(state.inquiryModel, model);
   assert.equal(JSON.stringify(f.payload), originalPayload);
-  assert.equal(f.context.buildInventoryReclassMoveCommand(f.payload, state).expectedRevision, 41);
+  assert.equal(f.context.buildInventoryReclassMoveCommand(f.payload, state).expectedRevision, null);
   assert.equal(f.master.liveVerifiedRevision, undefined);
 });
 
@@ -118,8 +118,7 @@ test('bracketed published last-good inventory can submit against its exact revis
   const f = fixture();
   f.runtime.sourceState = 'interrupted';
   f.runtime.publishedReadable = true;
-  const state = f.makeState({ row: { ...f.physical }, rows: [{ ...f.physical }] });
-  state.verifiedInquiryGroup = null;
+  const state = f.makeState(await f.context.loadArgosItemInquiryRows(f.physical));
   state.verificationIdentityKey = f.runtime.identity;
   await f.context.ensureArgosReclassSubmissionVerification(state);
   assert.equal(state.verifiedInquiryGroup.sourceState, 'interrupted');
@@ -132,24 +131,28 @@ test('bracketed published last-good inventory can submit against its exact revis
   assert.equal(f.master.liveVerifiedRevision, undefined, 'the targeted LKG read does not bless the global cache');
 });
 
-test('an importing source with a readable published baseline is display-only until the staged import is terminal', async () => {
+test('an importing source never blocks submitting a loaded row to server identity checks', async () => {
   const f = fixture();
   f.runtime.sourceState = 'importing';
   f.runtime.publishedReadable = true;
   const state = f.makeState({ row: { ...f.physical }, rows: [{ ...f.physical }] });
   state.verifiedInquiryGroup = null;
   state.verificationIdentityKey = f.runtime.identity;
-  await assert.rejects(f.context.ensureArgosReclassSubmissionVerification(state), /verification is temporarily unavailable/);
+  await f.context.ensureArgosReclassSubmissionVerification(state);
   assert.equal(state.verifiedInquiryGroup, null);
-  assert.equal(f.runtime.reads, 1);
+  assert.equal(f.runtime.reads, 0);
+  assert.equal(f.context.buildInventoryReclassMoveCommand(f.payload, state).expectedRevision, null);
 });
 
-test('inline verification rejects changed stock without rebasing or discarding entered quantities', async () => {
+test('submission preserves original stock identity and draft quantities for server conflict detection', async () => {
   const f = fixture();
   const state = f.makeState({ row: { ...f.physical }, rows: [{ ...f.physical }] });
   state.verifiedInquiryGroup = null;
   f.physical.ptronhand = '200';
-  await assert.rejects(f.context.ensureArgosReclassSubmissionVerification(state), /Inventory changed since this draft opened/);
+  await f.context.ensureArgosReclassSubmissionVerification(state);
+  const command = f.context.buildInventoryReclassMoveCommand(f.payload, state);
+  assert.equal(command.moves[0].source.identity.ptronhand, '234');
+  assert.equal(f.runtime.reads, 0);
   assert.equal(state.inquiryModel.locationRows[0].sourceRow.ptronhand, '234');
   assert.equal(f.payload.rowOverlays[0].proposals[0].splits[0].quantity, 34);
   assert.equal(state.verifiedInquiryGroup, null);
@@ -157,19 +160,31 @@ test('inline verification rejects changed stock without rebasing or discarding e
 
 for (const [name, change] of [
   ['account', f => { f.runtime.identity = 'profile-b/admin/login-b'; }],
-  ['read scope', f => { f.runtime.readScope = 'owner-b'; }],
-  ['permission', f => { f.live.dataPermissionVersion = 'permission-8'; }],
   ['session', f => { f.runtime.canUse = false; }],
-  ['newer confirmed revision', f => { f.runtime.minRevision = 42; }],
-  ['source quantity', (f, state) => { state.inquiryModel.locationRows[0].sourceRow.__reclassIdentityRaw.ptronhand = '1'; }],
 ]) {
-  test(`proof cannot authorize a move after a changed ${name}`, async () => {
+  test(`a changed ${name} cannot submit an old draft`, async () => {
     const f = fixture();
     const state = f.makeState(await f.context.loadArgosItemInquiryRows(f.physical));
-    // A newer global cache must never override invalid proof for the displayed item.
-    Object.assign(f.master, { liveVerifiedRevision: '99', liveVerifiedScope: f.live.scope, liveVerifiedPermission: f.live.dataPermissionVersion });
     change(f, state);
-    assert.throws(() => f.context.buildInventoryReclassMoveCommand(f.payload, state), /verification is temporarily unavailable/);
+    assert.throws(() => f.context.buildInventoryReclassMoveCommand(f.payload, state), /access changed|original account/);
+    await assert.rejects(f.context.ensureArgosReclassSubmissionVerification(state), /access changed|original account/);
+  });
+}
+
+for (const [name, change] of [
+  ['read scope', f => { f.runtime.readScope = 'owner-b'; }],
+  ['permission refresh', f => { f.live.dataPermissionVersion = 'permission-8'; }],
+  ['newer inventory revision', f => { f.runtime.minRevision = 42; }],
+  ['source signature', (f, state) => { state.inquiryModel.locationRows[0].sourceRow.__reclassIdentityRaw.ptronhand = '1'; }],
+]) {
+  test(`changed ${name} drops the cache revision hint while preserving atomic server checks`, async () => {
+    const f = fixture();
+    const state = f.makeState(await f.context.loadArgosItemInquiryRows(f.physical));
+    change(f, state);
+    const command = f.context.buildInventoryReclassMoveCommand(f.payload, state);
+    assert.equal(command.expectedRevision, null);
+    assert.equal(command.moves[0].source.uniqueId, f.physical.unique_id);
+    assert.equal(f.runtime.reads, 1, 'submission adds no freshness read');
   });
 }
 
@@ -212,13 +227,15 @@ test('an uncertain command keeps its original revision and is never reverified o
   assert.equal(f.runtime.reads, 0);
 });
 
-test('shared modal and submit retain item proof and verify before a new move dispatch', () => {
+test('shared modal retains optional row proof and checks account ownership before every submit', () => {
   const open = appFunction('openArgosInventoryTransactionModal');
   assert.match(open, /verifiedInquiryGroup: verifiedGroup \|\| null/);
   assert.match(open, /openedState\.verifiedInquiryGroup = freshGroup/);
   const submit = appFunction('submitArgosInventoryTransaction');
   assert.ok(submit.indexOf('await ensureArgosReclassSubmissionVerification(submitState)')
     < submit.indexOf('await applyArgosInventoryReclassMoveCommand('));
-  assert.match(submit, /if \(!hasPendingMove\) \{\s*await ensureArgosReclassSubmissionVerification/);
+  assert.ok(submit.indexOf('await ensureArgosReclassSubmissionVerification(submitState)')
+    < submit.indexOf('await postArgosInventoryTransactionPayload('));
+  assert.doesNotMatch(appFunction('ensureArgosReclassSubmissionVerification'), /await loadArgosItemInquiryRows|dataPermissionVersion/);
   assert.doesNotMatch(html, /Current inventory and permissions are not verified\. Refresh the worksheet and try again\./);
 });

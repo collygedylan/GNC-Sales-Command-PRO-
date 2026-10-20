@@ -99,6 +99,34 @@ test('Pages baseline discovery never short-circuits to the supplied parent befor
   assert.doesNotMatch(source, /MANUAL_BASE|manualBase\s*\|\|/);
 });
 
+test('baseline stops at the newest publication without crossing GitHub filtered-run search limits', async () => {
+  const calls = [];
+  const runs = Array.from({ length: 100 }, (_, index) => ({
+    id: 200 - index, run_number: 200 - index, path: '.github/workflows/pages-static.yml',
+    head_branch: 'main', head_sha: (index === 1 ? 'b' : 'c').repeat(40),
+    head_repository: { full_name: 'example/app' }, conclusion: 'success',
+  }));
+  const api = async endpoint => {
+    calls.push(endpoint);
+    if (endpoint.endsWith('/actions/workflows/pages-static.yml')) return {
+      id: 7, path: '.github/workflows/pages-static.yml', state: 'active',
+    };
+    if (endpoint.includes('/actions/workflows/7/runs')) {
+      const query = new URLSearchParams(endpoint.split('?')[1]);
+      assert.equal(query.get('status'), 'success');
+      assert.equal(query.get('page'), null, 'a verified newest publication must not require older pages');
+      return { total_count: 1112, workflow_runs: runs };
+    }
+    if (endpoint.includes('/actions/runs/200/jobs')) return { total_count: 0, jobs: [] };
+    assert.match(endpoint, /\/actions\/runs\/199\/jobs/);
+    return { total_count: 1, jobs: [{ id: 1, status: 'completed', conclusion: 'success',
+      name: 'deploy', head_sha: 'b'.repeat(40) }] };
+  };
+  assert.equal(await findLastSuccessfulDeploymentBaseline({ repository: 'example/app', currentRunId: 99,
+    currentSha: 'a'.repeat(40), api }), 'b'.repeat(40));
+  assert.equal(calls.length, 4);
+});
+
 test('changed paths use the complete before-to-after commit range', () => {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gnc-release-scope-'));
   const git = (...args) => execFileSync('git', args, { cwd: rootDir, stdio: 'ignore' });

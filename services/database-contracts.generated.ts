@@ -85813,7 +85813,8 @@ export const contracts: RuntimeContracts<Database> = {
                   "number",
                   "null"
                 ]
-              }
+              },
+              "optional": true
             },
             "p_moves": {
               "schema": {
@@ -85821,7 +85822,8 @@ export const contracts: RuntimeContracts<Database> = {
                   "json",
                   "null"
                 ]
-              }
+              },
+              "optional": true
             },
             "p_receipt_encoding": {
               "schema": {

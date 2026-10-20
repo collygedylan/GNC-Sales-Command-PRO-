@@ -228,6 +228,7 @@ test('accepted Reclass submit is retained for its owner but cannot close or repa
   const sideEffects = [];
   const context = {
     argosInventoryTransactionState: currentState,
+    ensureArgosReclassSubmissionVerification: async () => {},
     getArgosReclassLiveEditIdentityKey: () => identity,
     getCurrentReclassDeliveryActor: () => 'account_a',
     buildArgosInventoryTransactionPayload: () => ({ workflowPolicyVersion: 'v6', idempotencyToken: 'token-a', source: { unique_id: 'row-a' } }),
@@ -277,6 +278,7 @@ test('accepted same-account Reclass receipt still reconciles when its original m
   const sideEffects = [];
   const context = {
     argosInventoryTransactionState: originalState,
+    ensureArgosReclassSubmissionVerification: async () => {},
     getArgosReclassLiveEditIdentityKey: () => 'same-account-session',
     getCurrentReclassDeliveryActor: () => 'account_a',
     buildArgosInventoryTransactionPayload: () => ({ workflowPolicyVersion: 'v6', idempotencyToken: 'token-a', source: { unique_id: 'row-a' } }),
@@ -314,6 +316,7 @@ test('identity changes during recipient selection prevent posting the old Reclas
   const state = { sourceView: 'drive', submitting: false };
   const context = {
     argosInventoryTransactionState: state,
+    ensureArgosReclassSubmissionVerification: async () => {},
     getArgosReclassLiveEditIdentityKey: () => identity,
     getCurrentReclassDeliveryActor: () => 'account_a',
     buildArgosInventoryTransactionPayload: () => ({ source: { unique_id: 'row-a' } }),

@@ -451,7 +451,7 @@ test('Reclass UI builds source-bound split movement commands at the current veri
   const command = ctx.buildInventoryReclassMoveCommand({ rowOverlays: [{ unique_id: 'source-uid', proposals: [
     { action: 'move_up', splits: [{ destinationSeason: 'U1', quantity: 12 }, { destinationSeason: 'U2', quantity: 8 }] }
   ] }] }, { inquiryModel: { locationRows: [entry] } });
-  assert.equal(command.expectedRevision, 41);
+  assert.equal(command.expectedRevision, null, 'a global cache never gates or supplies proof for an unrelated displayed draft');
   assert.equal(command.moves[0].source.identity.ptronhand, '50.00', 'live identity uses the untouched row values');
   assert.equal(command.moves[0].source.identity.ptravailable, null);
   assert.deepEqual(JSON.parse(JSON.stringify(command.moves[0].lines)), [
@@ -520,6 +520,8 @@ test('silent warm refresh leaves edits, pending moves, and focused controls inta
   assert.equal(ctx.shouldApplyArgosItemInquiryRefresh(state, modal, inquiryEl, model), false,
     'an unchanged payload does not replace modal DOM');
   const changedModel = { locationRows: [{ unique_id: 'source-uid', values: { ptronhand: '49' } }] };
+  assert.equal(ctx.shouldApplyArgosItemInquiryRefresh({ ...state, submitting: true }, modal, inquiryEl, changedModel), false,
+    'background hydration never replaces a submitting worksheet');
   assert.equal(ctx.shouldApplyArgosItemInquiryRefresh({ ...state, pendingReclassMove: { uncertain: true } }, modal, inquiryEl, changedModel), false,
     'a pending recovered move remains fenced');
   control.value = '5';

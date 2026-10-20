@@ -16690,8 +16690,8 @@ export type Database = {
         Args: {
           p_actor_id: string
           p_command_id: string
-          p_expected_revision: number
-          p_moves: Json
+            p_expected_revision?: number
+            p_moves?: Json
           p_receipt_encoding?: string
         }
         Returns: Json

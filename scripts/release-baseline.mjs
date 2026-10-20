@@ -1,7 +1,7 @@
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { listGitHubApiItems } from './github-api-pagination.mjs';
+import { iterateGitHubApiPages, listGitHubApiItems } from './github-api-pagination.mjs';
 import { fetchGitHubJson } from './lib/github-json-transport.mjs';
 
 const WORKFLOW_PATH = '.github/workflows/pages-static.yml';
@@ -14,17 +14,22 @@ export async function findLastSuccessfulDeploymentBaseline({ repository, current
   if (!Number.isSafeInteger(workflow?.id) || workflow.path !== WORKFLOW_PATH || workflow.state !== 'active') {
     throw new Error('RELEASE_BASELINE_WORKFLOW_INVALID');
   }
-  const runs = await listGitHubApiItems({ api,
-    endpoint: `repos/${repository}/actions/workflows/${workflow.id}/runs?branch=main&status=success`, field: 'workflow_runs' });
-  const candidates = runs.filter(run => run.id !== currentRunId && run.path === WORKFLOW_PATH
-    && run.head_branch === 'main' && run.head_sha !== currentSha && run.conclusion === 'success'
-    && run.head_repository?.full_name?.toLowerCase() === repository.toLowerCase())
-    .sort((a, b) => b.run_number - a.run_number);
-  for (const run of candidates) {
-    const jobs = await listGitHubApiItems({ api,
-      endpoint: `repos/${repository}/actions/runs/${run.id}/jobs`, field: 'jobs' });
-    if (jobs.some(job => job.status === 'completed' && job.conclusion === 'success'
-      && ['deploy', 'backend-publication'].includes(job.name) && job.head_sha === run.head_sha)) return run.head_sha;
+  // Inspect newest pages first: GitHub caps filtered run searches at 1,000
+  // results even when total_count is higher. Older runs are unnecessary once
+  // a successful publication has been verified.
+  for await (const runs of iterateGitHubApiPages({ api,
+    endpoint: `repos/${repository}/actions/workflows/${workflow.id}/runs?branch=main&status=success`,
+    field: 'workflow_runs' })) {
+    const candidates = runs.filter(run => run.id !== currentRunId && run.path === WORKFLOW_PATH
+      && run.head_branch === 'main' && run.head_sha !== currentSha && run.conclusion === 'success'
+      && run.head_repository?.full_name?.toLowerCase() === repository.toLowerCase())
+      .sort((a, b) => b.run_number - a.run_number);
+    for (const run of candidates) {
+      const jobs = await listGitHubApiItems({ api,
+        endpoint: `repos/${repository}/actions/runs/${run.id}/jobs`, field: 'jobs' });
+      if (jobs.some(job => job.status === 'completed' && job.conclusion === 'success'
+        && ['deploy', 'backend-publication'].includes(job.name) && job.head_sha === run.head_sha)) return run.head_sha;
+    }
   }
   return '';
 }

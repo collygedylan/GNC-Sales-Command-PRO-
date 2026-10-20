@@ -8,6 +8,12 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').rep
 const contractContext = {};
 vm.runInNewContext(readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), contractContext);
 const inventoryContract = contractContext.AgMetricInventoryList;
+const liveSyncContext = {};
+vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8'), liveSyncContext);
+// Keep production readiness/token semantics; these fixtures already provide
+// normalized Map metadata so only their wire-to-snapshot adapter is synthetic.
+const fixtureLiveSync = { ...liveSyncContext.AgMetricLiveSync, snapshot: value => value };
+
 
 function extractAppFunction(name) {
   const match = html.match(new RegExp(`(?:async )?function ${name}\\(`));
@@ -77,7 +83,7 @@ function reclassRowsFixture(options = {}) {
     },
     formatFetchedRows: rows => rows.map(value => ({ ...value, UNIQUE_ID: value.unique_id, ITEMCODE: value.itemcode })),
     window: {
-      AgMetricLiveSync: { snapshot: value => value },
+      AgMetricLiveSync: fixtureLiveSync,
       AgMetricInventoryList: inventoryContract,
     },
     staleSupabaseReadScopeError: () => Object.assign(new Error('scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' }),
@@ -189,16 +195,15 @@ test('explicit Reclass retry clears only the current account inventory read cool
   ]);
 });
 
-test('Reclass modal uses a verified group override, fences late retries, and leaves writes to the existing submit flow', () => {
+test('Reclass opens loaded rows immediately, refreshes in the background and leaves writes to submit', () => {
   const source = extractAppFunction('openArgosInventoryTransactionModal');
   assert.match(source, /loadArgosItemInquiryRows\(item, \{ signal: controller\.signal \}\)/);
   assert.match(source, /clearSupabaseReadFailuresForVisibleContext\(\{ adapters: \[\{ sourceKeys: \['ph_master_inventory'\] \}\] \}\)/);
-  assert.match(source, /owner === getSupabaseReadIdentityScope\(\).*view === getCurrentVisibleViewId\(\).*openRevision === argosInquiryOpenRevision/);
-  assert.match(source, /__verifiedInquiryGroup: group/);
-  assert.match(source, /verifiedGroup\?\.rows \|\| getItemInquiryRows\(item\)/);
-  assert.match(source, /Item Inquiry Unavailable/);
-  assert.match(source, /REQUEST_ABORTED.*DATASET_READ_SCOPE_CHANGED/);
-  assert.doesNotMatch(source, /ensureMasterFullProjection\('editing Item Inquiry fields'\)/);
+  assert.match(source, /owner !== getSupabaseReadIdentityScope\(\).*view !== getCurrentVisibleViewId\(\)/);
+  assert.match(source, /\(verifiedGroup \|\| displayGroup\)\?\.rows \|\| getItemInquiryRows\(item\)/);
+  assert.ok(source.indexOf("modal.classList.remove('hidden')") < source.indexOf('void loadArgosItemInquiryRows('));
+  assert.doesNotMatch(source, /Loading Item Inquiry|Item Inquiry Unavailable|ensureMasterFullProjection/);
+  assert.match(source, /shouldApplyArgosItemInquiryRefresh/);
   assert.match(extractAppFunction('submitArgosInventoryTransaction'), /postArgosInventoryTransactionPayload\(inquiryPayload\)/);
 });
 
@@ -235,7 +240,7 @@ function suspendTagPhotoFixture(options = {}) {
     isDockSuspendDcRequestRowAnyStatus: () => options.eligible !== false,
     getDockSuspendCompletionRevision: value => String(value?.last_updated || value?.LAST_UPDATED || ''),
     withProductionLiveSyncSignal: async (externalSignal, operation) => operation(externalSignal || navigation.signal),
-    window: { AgMetricLiveSync: { snapshot: value => value } },
+    window: { AgMetricLiveSync: fixtureLiveSync },
     supabaseRpc: async (name, params, rpcOptions) => {
       calls.push({ type: 'revision', name, params, options: rpcOptions });
       const revision = options.revisions?.shift() || 'revision-4';

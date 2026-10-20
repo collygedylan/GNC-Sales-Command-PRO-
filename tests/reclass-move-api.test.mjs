@@ -23,7 +23,7 @@ test('Reclass API binds the authenticated actor and forwards the bounded atomic 
   assert.equal(calls[0].params.p_actor_id, actor.id);
   assert.equal(calls[0].params.p_command_id, command.commandId);
   assert.deepEqual(calls[0].params.p_moves[0].source, source);
-  assert.equal(calls[0].params.p_receipt_encoding, null);
+  assert.equal(Object.hasOwn(calls[0].params, 'p_receipt_encoding'), false);
   await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile: actor,
     payload: { ...command, actorId: 'attacker' } }), /PAYLOAD_INVALID/);
 });

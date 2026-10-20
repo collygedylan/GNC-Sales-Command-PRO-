@@ -75,7 +75,8 @@ test('Reclass detail opens from same-scope full cached rows as display-only and 
   const opener = functionBody(html, 'openArgosInventoryTransactionModal');
   assert.match(opener, /const displayGroup = options\.__displayInquiryGroup \|\|/);
   assert.match(opener, /verifiedInquiryGroup: verifiedGroup \|\| null/);
-  assert.match(opener, /openedState\.verifiedInquiryGroup = freshGroup\.sourceState === 'ready' \? freshGroup : null/);
+  assert.match(opener, /openedState\.verifiedInquiryGroup = freshGroup/);
+  assert.doesNotMatch(functionBody(html, 'ensureArgosReclassSubmissionVerification'), /loadArgosItemInquiryRows|dataPermissionVersion/);
   const proof = functionBody(html, 'getArgosReclassVerifiedInquiryRevision');
   assert.match(proof, /group\.sourceState === 'ready'/);
   assert.match(proof, /group\.sourceState === 'interrupted' && group\.sourceBracketed === true/);

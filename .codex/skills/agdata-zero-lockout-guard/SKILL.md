@@ -18,6 +18,8 @@ Do not introduce the following lockout gates:
 
 Open Row Details and Reclass immediately from the displayed card. Refresh the exact row in the background without overwriting dirty fields, selected rows or drafts. Retain valid same-account loaded data through legacy cache upgrades and purge stale v2.1.x Service Worker caches on boot without clearing unrelated current user work.
 
+Reclass submission must not await a client cache revision or permission refresh. Bind the draft to its original authenticated account and let the atomic server operation verify current authorization and exact source identity; genuine source conflicts retain the draft for correction.
+
 Preserve an authenticated session through transient refresh failures. Explicit Log Out / Use another account and confirmed server-side role revocation remain real access boundaries. Never expose another account's cache, ignore a confirmed revocation, weaken RLS, fabricate a valid server session or permit unauthorized writes. Retaining visible authorized data does not authorize new backend actions.
 
 Cover refresh failure, interrupted imports, account changes, confirmed revocation, modal drafts and cache-upgrade behavior in the appropriate focused tests. Apply the release governor for changed rendering. This skill describes required behavior; it does not certify the current runtime without evidence.

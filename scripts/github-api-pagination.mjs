@@ -17,7 +17,7 @@ function numberedEndpoint(endpoint, page, perPage) {
 
 // Job envelopes include every step. A 100-job response can exceed GitHub's
 // upstream response deadline; smaller pages retain the same 2,000-item ceiling.
-export async function listGitHubApiItems({ api, endpoint, field, perPage = field === 'jobs' ? 25 : 100,
+export async function* iterateGitHubApiPages({ api, endpoint, field, perPage = field === 'jobs' ? 25 : 100,
   maxPages = field === 'jobs' ? 80 : 20, maxItems = 2000 }) {
   if (typeof api !== 'function' || typeof field !== 'string' || !/^[a-z][a-z0-9_]*$/.test(field)
     || !Number.isSafeInteger(perPage) || perPage < 1 || perPage > 100
@@ -50,7 +50,14 @@ export async function listGitHubApiItems({ api, endpoint, field, perPage = field
       ids.add(item.id);
       collected.push(item);
     }
-    if (collected.length === expectedTotal) return collected;
+    yield items;
+    if (collected.length === expectedTotal) return;
   }
   throw new GitHubPaginationError('PAGE_LIMIT');
+}
+
+export async function listGitHubApiItems(options) {
+  const items = [];
+  for await (const page of iterateGitHubApiPages(options)) items.push(...page);
+  return items;
 }
