@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "agdata-scoped-validation-v1",
+  "release": "AgData v2.3.16",
+  "base": "b14377472c095124426eaf4fbc897e4a7e84e761",
+  "evidencePathPrefix": "docs/releases/v2.3.16-validation/",
+  "sourceDigest": "2a85c95e5aab4eeb44f7971f2e553c5f32f24b7571299955eddcebace99227c0",
+  "sourceHashes": {
+    "assets/live-sync-coordinator.js": "265c5618c7c72cc95a36aa6c9dca85ec0f2bb5935fffc49b077a76af15398ab3",
+    "assets/ops-precision-pilot.js": "8ada8b0a207fbda2fe9e83d8186082a7f684504f991602d943bc994d89511864",
+    "index.html": "84b2ce89219673e2d4228922b61af9231e6847337161bb039db0fba59c8c1390",
+    "manifest.json": "91a5b4fcfbd6a1c87db5d81c9349ccd8dbfb0b8d856b46dce4b29c0a00fc897c",
+    "package-lock.json": "5a5cbbe8c26d11463d3d9b2b88841d85927b8e7d66fa22157adf75a8ce0f9d3d",
+    "package.json": "f88cdf71eca4c8c46487b12d26aad49817d92f73d6cf97f41dd82fcbc330cf9a",
+    "scripts/build-live-shell.mjs": "a0198ac00afbc0973277dd26ad9acc6667c4d6abcf42df49c84c22157372903b",
+    "sw.js": "7d6b051f619dd48f09a61b04c412d9349784682d0c095afa5787e6f8106b597e",
+    "tests/live-sync-coordinator.test.mjs": "d9c1b1020f4dec717222c99ec89ec855077232f9bea03a62360592c5c6734d12",
+    "tests/live-sync-read-boundary.test.mjs": "d3caa7f7321f2dcc7ffe73ddd68e0e1f6b204311661353b92daa0973670a6f9a",
+    "tests/release-drive-av-recovery.test.mjs": "c8e777c2fffe5a3dd46f3c56a30a8f2e3740e3ad590eb3595738c88b4e30eea1",
+    "tests/session-shell-resilience.test.mjs": "643dfa6bebf82eafac1047e1f7fa445f7021c8a1830223143eeaf0c8b8e681b2",
+    "tests/suspend-tag-completion.e2e.spec.ts": "02e4a574d48827dc319be265ee5fc8a01aea020e51ec400a42e74ec1b27a61f6",
+    "v2/public/manifest.webmanifest": "04e1495f75bbcb464b763e0f4d909e9a1f68c41ac8f68ba148cc3e70ecc95128",
+    "v2/src/services/api.ts": "20703afd689132324f60a62b0e2264bdfbe27aa0b28cbb5a15b4747e5ba97e29"
+  },
+  "dependencySeal": {
+    "lockfiles": [
+      "package-lock.json"
+    ],
+    "lockfileHashes": {
+      "package-lock.json": "5a5cbbe8c26d11463d3d9b2b88841d85927b8e7d66fa22157adf75a8ce0f9d3d"
+    },
+    "manifestDigest": "c674166ff7e8cd9f9a7d672c5552653891f469ea2c6b64220f9a44458ae440c6"
+  },
+  "requiredRetainedReceipts": [
+    "docs/releases/v2.3.15-retained-validation.json"
+  ],
+  "retainedReceipts": {
+    "docs/releases/v2.3.15-retained-validation.json": "f6924e3d8cc4a22db431dcab8f185026c3ad81b2968dab2158a6e502a49ca6d8"
+  },
+  "appsScriptChangedFunctions": [],
+  "requiredKinds": [],
+  "testedMigrationHashes": {},
+  "deployment": {
+    "edgeFunctions": [],
+    "migrations": []
+  },
+  "evidenceHashes": {
+    "docs/releases/v2.3.16-validation/unit.json": "b20dd25b483d9dd3da79f1a90c5eb5ce428ab4fb5d34255c5bd30947a97bf41e",
+    "docs/releases/v2.3.16-validation/tooling.json": "262cbbaf104e8b622c11d12f6af9791d2ac750f56a253b775feea950e92336c3",
+    "docs/releases/v2.3.16-validation/browser.json": "c81971d2eb69b61b908a4d742aae526ec3c8e2a49300bf1c62fd26552b981095"
+  },
+  "browserContract": {
+    "projects": [
+      "desktop-chromium",
+      "android-chromium",
+      "iphone-webkit"
+    ],
+    "metricIds": [
+      "on-hand",
+      "review",
+      "available",
+      "open-stock",
+      "loc-photo-match",
+      "loc-on-hand"
+    ],
+    "renderMsMaximum": 400,
+    "expectedCards": 37,
+    "minimumMasterRows": 9000,
+    "requireSorted": true,
+    "requireMetrics": true,
+    "requireNoProductionWrites": true,
+    "requireLastCard": true,
+    "requireCompleteControl": true,
+    "requireNoOverflow": true
+  }
+}

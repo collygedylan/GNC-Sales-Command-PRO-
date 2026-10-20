@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "gnc-release-smoke-v1",
+  "status": "failed",
+  "startedAt": "2026-10-20T19:14:42.110Z",
+  "release": "AgData v2.3.16",
+  "commit": "1a5d6f69b7b9cb3317baff15e018cd08fc81906f",
+  "artifactDigest": "64f8054abbea4d642fed09aa47081202f63cc3158c25215533caa8bdcb7cc36c",
+  "sourceDigest": "0ef107f147d3768900a6d2395c4f8516606fc0af59f6a3db239c17c92ca5fd30",
+  "siteDigest": "5f3825407d6bd46329b69fcf79b291af58cf7f538a21b55c530fd025cb0c5bc9",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "browserProjects": [
+    "desktop-chromium",
+    "android-chromium",
+    "iphone-webkit"
+  ],
+  "playwright": {
+    "status": "failed",
+    "resultsPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\agdata-v2-3-16\\1a5d6f69b7b9\\20261020191442110\\results.json",
+    "logPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\agdata-v2-3-16\\1a5d6f69b7b9\\20261020191442110\\playwright.log",
+    "exitCode": 1,
+    "error": null
+  },
+  "completedAt": "2026-10-20T19:15:58.524Z",
+  "durationMs": 76414
+}

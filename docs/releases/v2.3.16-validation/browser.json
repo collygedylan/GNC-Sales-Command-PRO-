@@ -1,0 +1,338 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T19:26:18.648Z",
+  "sourceDigest": "2a85c95e5aab4eeb44f7971f2e553c5f32f24b7571299955eddcebace99227c0",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "kind": "browser",
+  "browserEvidence": [
+    {
+      "project": "desktop-chromium",
+      "metrics": {
+        "environment": "desktop-chromium",
+        "masterRows": 9487,
+        "cards": 37,
+        "expectedCards": 37,
+        "renderMs": 88.39999997615814,
+        "sorted": true,
+        "metricsVerified": true,
+        "cache": "warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off",
+        "capturedAt": "2026-10-20T13:18:14.031Z",
+        "source": {
+          "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+          "sha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e"
+        },
+        "liveAuthentication": false,
+        "productionWrites": false
+      },
+      "lastCardLayout": {
+        "cardOverflow": false,
+        "inViewport": true,
+        "metrics": [
+          {
+            "id": "on-hand",
+            "label": "On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "available",
+            "label": "Available",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "open-stock",
+            "label": "Open Stock",
+            "value": "81",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-photo-match",
+            "label": "Loc Photo Match",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-on-hand",
+            "label": "Loc On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          }
+        ],
+        "completeTagVisible": true
+      }
+    },
+    {
+      "project": "android-chromium",
+      "metrics": {
+        "environment": "android-chromium",
+        "masterRows": 9487,
+        "cards": 37,
+        "expectedCards": 37,
+        "renderMs": 142.39999997615814,
+        "sorted": true,
+        "metricsVerified": true,
+        "cache": "warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off",
+        "capturedAt": "2026-10-20T13:18:14.031Z",
+        "source": {
+          "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+          "sha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e"
+        },
+        "liveAuthentication": false,
+        "productionWrites": false
+      },
+      "lastCardLayout": {
+        "cardOverflow": false,
+        "inViewport": true,
+        "metrics": [
+          {
+            "id": "on-hand",
+            "label": "On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "available",
+            "label": "Available",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "open-stock",
+            "label": "Open Stock",
+            "value": "81",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-photo-match",
+            "label": "Loc Photo Match",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-on-hand",
+            "label": "Loc On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          }
+        ],
+        "completeTagVisible": true
+      }
+    },
+    {
+      "project": "iphone-webkit",
+      "metrics": {
+        "environment": "iphone-webkit",
+        "masterRows": 9487,
+        "cards": 37,
+        "expectedCards": 37,
+        "renderMs": 387,
+        "sorted": true,
+        "metricsVerified": true,
+        "cache": "warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off",
+        "capturedAt": "2026-10-20T13:18:14.031Z",
+        "source": {
+          "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+          "sha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e"
+        },
+        "liveAuthentication": false,
+        "productionWrites": false
+      },
+      "lastCardLayout": {
+        "cardOverflow": false,
+        "inViewport": true,
+        "metrics": [
+          {
+            "id": "on-hand",
+            "label": "On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "available",
+            "label": "Available",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "open-stock",
+            "label": "Open Stock",
+            "value": "81",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-photo-match",
+            "label": "Loc Photo Match",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-on-hand",
+            "label": "Loc On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          }
+        ],
+        "completeTagVisible": true
+      }
+    }
+  ],
+  "tests": [
+    {
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed"
+    },
+    {
+      "title": "release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed"
+    },
+    {
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "project": "android-chromium",
+      "status": "passed"
+    },
+    {
+      "title": "release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke",
+      "project": "android-chromium",
+      "status": "passed"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "android-chromium",
+      "status": "passed"
+    },
+    {
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "project": "iphone-webkit",
+      "status": "passed"
+    },
+    {
+      "title": "release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke",
+      "project": "iphone-webkit",
+      "status": "passed"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "iphone-webkit",
+      "status": "passed"
+    }
+  ],
+  "validationComposition": "Nine cases passed at 4bd9954b. After the confirmed-role-change-only correction, the affected permission-refresh case passed again on all three profiles at 15f90a50cb21e3d1129718125554e0716e5ecb8c. The six unchanged render/session cases and their original measurements are retained; the confirmed role-change branch has five focused VM checks. This is composed evidence, not a nine-case rerun at the final commit.",
+  "finalTargetedRefresh": {
+    "commit": "15f90a50cb21e3d1129718125554e0716e5ecb8c",
+    "artifactDigest": "5c238dda200878fdd550b2fc542433b928820cf2a9c59a077e9f9838d8f75eb0",
+    "sourceDigest": "3a4a27c5f284e08be4feae5255e84a978bc564a49e268f5a0730fbc8d7a91172",
+    "siteDigest": "fd2b5cca97d0bb409aa09eaf67a4bd52414a234f9d98e44c63257005239fd80c",
+    "tests": [
+      {
+        "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+        "project": "desktop-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+        "project": "android-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+        "project": "iphone-webkit",
+        "status": "passed"
+      }
+    ],
+    "durationMs": 49995,
+    "report": {
+      "path": "docs/releases/v2.3.16-validation/raw/targeted-refresh-report.json",
+      "sha256": "122bd33f14788d89b8ce159a4c31bf4a9c894562eaae0cf8f933850720f43cd3"
+    },
+    "results": {
+      "path": "docs/releases/v2.3.16-validation/raw/targeted-refresh-results.json",
+      "sha256": "86c991d0caab199ae227595263f761e0e3830d91cfcc587634be515bb2aa94b9"
+    },
+    "log": {
+      "path": "docs/releases/v2.3.16-validation/raw/targeted-refresh-playwright.log",
+      "sha256": "64e90da74b20f2a02f620e04ad9584710bdaf864b5367519b4a712fd4471ef8d"
+    }
+  },
+  "artifact": {
+    "commit": "4bd9954bf01d45f2d0806b37bf41ba46f2b8c795",
+    "digest": "44517b044c1997f720937fec5f2917f73bf5db570d9915e59c97755091867b38",
+    "sourceDigest": "bf410d9a1cc61cffd154ae90dc8c0c17302e1e675c410c50361372aa259b47f8",
+    "siteDigest": "b82f111813050859b6becd4bc7b557447cee11cf7bb02e47b91a9fdd64fcf33a"
+  },
+  "durationMs": 59432,
+  "report": {
+    "path": "docs/releases/v2.3.16-validation/raw/browser-report.json",
+    "sha256": "4dbd8d5cb1ff051b2e17c278b49b1091316bc82f9d3ced65154e06de4bbfe3a5"
+  },
+  "results": {
+    "path": "docs/releases/v2.3.16-validation/raw/browser-results.json",
+    "sha256": "59e3e492ec1f9ef2a168088ce7d07c8150cf64c71f50fc6f2246f5c2a55783b5"
+  },
+  "log": {
+    "path": "docs/releases/v2.3.16-validation/raw/browser-playwright.log",
+    "sha256": "c089720adde3b71b4f002e6ea88bcd93f75d093ed67d2d93f60236017493a2ea"
+  },
+  "environment": "Windows shared host; Desktop Chromium, Pixel 7 Chromium, iPhone 13 WebKit; captured production rows, synthetic verified session; warm render; trace off",
+  "liveAuthentication": false,
+  "injectedFailures": "Only local fixture permission reads return 503 to prove retained display; unexpected console errors remain failures",
+  "priorFailure": {
+    "cause": "The test fixture classified the newly active read-only user_access:resolve request as an unexpected mutation; strict authenticated fixture route added.",
+    "report": {
+      "path": "docs/releases/v2.3.16-validation/raw/browser-attempt1-report.json",
+      "sha256": "b6655ee54b19201e59e782393d1bdb70e4cdfe00ee0c8ef27fae5230dce123dc"
+    },
+    "results": {
+      "path": "docs/releases/v2.3.16-validation/raw/browser-attempt1-results.json",
+      "sha256": "e429450457126b0125ad6913392e71cda5ed0f56d48ffe93e3efcc26ebd86135"
+    },
+    "log": {
+      "path": "docs/releases/v2.3.16-validation/raw/browser-attempt1-playwright.log",
+      "sha256": "95b06d4b71e9aba9291dbc3d6d2e9d1cdda4163c6c306bec1733452e9a649dd1"
+    }
+  }
+}
