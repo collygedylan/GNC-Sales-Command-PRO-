@@ -13,11 +13,13 @@ function context(properties = new Map()) {
       getProperty: key => properties.has(String(key)) ? properties.get(String(key)) : null,
       setProperty: (key, value) => { properties.set(String(key), String(value)); },
       deleteProperty: key => { properties.delete(String(key)); },
+      getProperties: () => Object.fromEntries(properties.entries()),
     }) },
     Utilities: {
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest: (algorithm, value) => Array.from(createHash(algorithm).update(value, 'utf8').digest()),
       base64EncodeWebSafe: bytes => Buffer.from(bytes).toString('base64url'),
+      getUuid: () => '20000000-0000-4000-8000-000000000001',
       sleep: () => {},
     },
   });
@@ -144,29 +146,63 @@ function processMasterSnapshotBatch(ctx, files, existing = [], bulkRpcHandler = 
   };
   ctx.emitTableSyncLiveEvent_ = table => events.push({ type: 'table-event', table });
   ctx.reconcileSeasonSalesOfficeAfterImport_ = () => {};
+  const stagedChunks = new Map();
+  const manifestDigest = 'c'.repeat(64);
+  let stageExpectedChunks = 0;
   ctx.callSupabaseRpc_ = (name, payload) => {
-    if (name === 'bulk_import_master_snapshot_v1') {
-      events.push({ type: 'bulk-rpc', payload: plain(payload) });
-      if (bulkRpcHandler) {
-        const response = bulkRpcHandler(payload, events);
-        sourceChangedDuringRpc = true;
-        return response;
-      }
-      sourceChangedDuringRpc = true;
+    if (name === 'cleanup_master_snapshot_staging_v1') return 0;
+    if (name === 'begin_master_snapshot_stage_v1') {
+      stageExpectedChunks = payload.p_expected_chunks;
+      events.push({ type: 'stage-begin', payload: plain(payload) });
       return {
-        published: true,
-        runId: payload.p_run_id,
-        requestId: payload.p_request_id,
-        sourceDigest: payload.p_source_digest,
-        sourceRows: payload.p_rows.length,
-        inserted: payload.p_rows.length,
-        updated: 0,
-        deleted: existing.length,
-        unchanged: 0,
+        status: 'staging', runId: payload.p_run_id, requestId: payload.p_request_id,
+        sourceDigest: payload.p_source_digest, sourceManifestDigest: manifestDigest,
+        sourceCount: payload.p_source_manifest.length, chunkSize: 500,
+        expectedRows: payload.p_expected_rows, expectedChunks: payload.p_expected_chunks,
+        chunksReceived: 0, rowsReceived: 0,
+        missingChunkIndexes: Array.from({ length: payload.p_expected_chunks }, (_, index) => index),
+        nextChunkIndex: payload.p_expected_chunks ? 0 : null, rebound: false, replayed: false,
       };
     }
+    if (name === 'append_master_snapshot_stage_chunk_v1') {
+      const replayed = stagedChunks.has(payload.p_chunk_index);
+      if (replayed) assert.deepEqual(plain(stagedChunks.get(payload.p_chunk_index)), plain(payload.p_rows));
+      else stagedChunks.set(payload.p_chunk_index, plain(payload.p_rows));
+      const chunksReceived = stagedChunks.size;
+      const rowsReceived = Array.from(stagedChunks.values()).reduce((total, rows) => total + rows.length, 0);
+      const missingChunkIndexes = [];
+      for (let index = 0; index < stageExpectedChunks; index++) if (!stagedChunks.has(index)) missingChunkIndexes.push(index);
+      events.push({ type: 'stage-chunk', payload: plain(payload) });
+      return {
+        status: 'staging', runId: payload.p_run_id, requestId: payload.p_request_id,
+        chunkIndex: payload.p_chunk_index, rowCount: payload.p_rows.length, accepted: true, replayed,
+        chunksReceived, rowsReceived, missingChunkIndexes,
+        nextChunkIndex: missingChunkIndexes.length ? missingChunkIndexes[0] : null,
+      };
+    }
+    if (name === 'finalize_master_snapshot_stage_v1') {
+      const rows = Array.from(stagedChunks.keys()).sort((a, b) => a - b).flatMap(index => stagedChunks.get(index));
+      const legacyPayload = {
+        p_run_id: payload.p_run_id, p_request_id: payload.p_request_id,
+        p_rows: rows, p_source_digest: payload.p_source_digest,
+      };
+      events.push({ type: 'bulk-rpc', payload: plain(legacyPayload) });
+      let receipt;
+      if (bulkRpcHandler) receipt = bulkRpcHandler(legacyPayload, events);
+      else receipt = {
+        published: true, runId: payload.p_run_id, requestId: payload.p_request_id,
+        sourceDigest: payload.p_source_digest, sourceRows: rows.length,
+        inserted: rows.length, updated: 0, deleted: existing.length, unchanged: 0,
+      };
+      if (receipt) sourceChangedDuringRpc = true;
+      return Object.assign({}, receipt, {
+        status: 'published', replayed: false,
+        publicationRunId: receipt && receipt.runId,
+        sourceManifestDigest: manifestDigest,
+      });
+    }
     events.push({ type: 'rpc', name, payload: plain(payload) });
-    return { status: 'complete', resolved: 0 };
+    return { status: 'completed', ok: true, resolved: 0 };
   };
   const processedFolderId = vm.runInContext('FOLDERS.MASTER_PROCESSED', ctx);
   let result;

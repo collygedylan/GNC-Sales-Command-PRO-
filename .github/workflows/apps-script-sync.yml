@@ -27,6 +27,7 @@ jobs:
       backend-changed: ${{ steps.scope.outputs.backend-changed }}
       v238: ${{ steps.scope.outputs.v238 }}
       v2311: ${{ steps.scope.outputs.v2311 }}
+      v2313: ${{ steps.scope.outputs.v2313 }}
     steps:
       - name: Check out current main history
         uses: actions/checkout@v4
@@ -71,6 +72,7 @@ jobs:
             esac
           done
           echo "backend-changed=$backend_changed" >> "$GITHUB_OUTPUT"
+          echo "v2313=$(test "$(jq -r .version package.json)" = 2.3.13 && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "v2311=$(test "$(jq -r .version package.json)" = 2.3.11 && echo true || echo false)" >> "$GITHUB_OUTPUT"
           if [[ "$(jq -r '.version' package.json)" == '2.3.8' ]]; then
             echo 'v238=true' >> "$GITHUB_OUTPUT"
@@ -91,23 +93,23 @@ jobs:
 
   pending-order-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true'
     uses: ./.github/workflows/bloomscapes-pending-tests.yml
 
   suspend-tag-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true'
     uses: ./.github/workflows/suspend-tag-tests.yml
 
   live-dataset-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true'
     uses: ./.github/workflows/live-dataset-revisions.yml
 
   v238-retained-contracts:
     name: Verify scoped database contract receipts
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && (needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true')
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && (needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true' || needs.authorize-backend.outputs.v2313 == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -121,6 +123,12 @@ jobs:
           node --input-type=module <<'NODE'
           import { verifyV2311RetainedValidation } from './scripts/check-v2311-retained-validation.mjs';
           import fs from 'node:fs';
+          import { verifyV2313RetainedValidation } from './scripts/check-v2313-retained-validation.mjs';
+          if (JSON.parse(fs.readFileSync('package.json', 'utf8')).version === '2.3.13') {
+            verifyV2313RetainedValidation();
+            console.log('PASS v2.3.13 native PostgreSQL staging and atomic publication evidence');
+            process.exit(0);
+          }
           if (JSON.parse(fs.readFileSync('package.json', 'utf8')).version === '2.3.11') {
             verifyV2311RetainedValidation();
             console.log('PASS v2.3.11 exact source-sealed disposable SQL and delivery contracts');
@@ -136,7 +144,7 @@ jobs:
   deploy-supabase:
     name: Apply backend migrations and deploy Edge Functions
     needs: [authorize-backend, backend-validation, pending-order-contract, suspend-tag-contract, live-dataset-contract, v238-retained-contracts]
-    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && (((needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true') && needs.v238-retained-contracts.result == 'success' && needs.pending-order-contract.result == 'skipped' && needs.suspend-tag-contract.result == 'skipped' && needs.live-dataset-contract.result == 'skipped') || (needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.v238-retained-contracts.result == 'skipped' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'))
+    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && (((needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true' || needs.authorize-backend.outputs.v2313 == 'true') && needs.v238-retained-contracts.result == 'success' && needs.pending-order-contract.result == 'skipped' && needs.suspend-tag-contract.result == 'skipped' && needs.live-dataset-contract.result == 'skipped') || (needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.v238-retained-contracts.result == 'skipped' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -176,6 +184,7 @@ jobs:
 
       - name: Apply backend release migrations and synchronize reminder Vault credentials
         env:
+          V2313_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v2313 }}
           GH_TOKEN: ${{ github.token }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -183,6 +192,7 @@ jobs:
         run: node scripts/apply-item-low-stock-migration.mjs
 
       - name: Configure Production Schedule dispatch and deploy backend functions
+        if: needs.authorize-backend.outputs.v2313 != 'true'
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -236,6 +246,7 @@ jobs:
           fi
 
       - name: Verify deployed Aura authorization
+        if: needs.authorize-backend.outputs.v2313 != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: node scripts/aura-query-production-smoke.mjs

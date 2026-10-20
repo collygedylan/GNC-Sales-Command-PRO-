@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, private, extensions, pg_temp;
-select plan(21);
+select plan(24);
 
 -- Reproduce the production planner state: compile a generic plan while the
 -- context is empty, then insert a production-sized request. The statement
@@ -103,7 +103,19 @@ insert into app_sync_private.ph_master_bulk_import_context_v1(
     '{"path":"lineage"}',array[]::text[],repeat('c',64)),
   ('b9030000-0000-4000-8000-000000000001','b9030000-0000-4000-8000-000000000005',
     pg_backend_pid(),txid_current(),'bulk-context-alias-source','bulk-context-alias-source-canonical',
-    '{"path":"alias"}',array[]::text[],repeat('d',64));
+    '{"path":"alias"}',array[]::text[],repeat('d',64)),
+  ('b9030000-0000-4000-8000-000000000001','b9030000-0000-4000-8000-000000000006',
+    pg_backend_pid(),txid_current(),'bulk-context-source-wins','bulk-context-source-canonical',
+    '{"path":"source-wins"}',array[]::text[],repeat('e',64)),
+  ('b9030000-0000-4000-8000-000000000001','b9030000-0000-4000-8000-000000000007',
+    pg_backend_pid(),txid_current(),'bulk-context-canonical-loser','bulk-context-source-wins',
+    '{"path":"canonical-loses"}',array[]::text[],repeat('f',64)),
+  ('b9030000-0000-4000-8000-000000000001','b9030000-0000-4000-8000-000000000008',
+    pg_backend_pid()+1,txid_current(),'bulk-context-wrong-pid','bulk-context-wrong-pid',
+    '{"path":"wrong-pid"}',array[]::text[],repeat('1',64)),
+  ('b9030000-0000-4000-8000-000000000001','b9030000-0000-4000-8000-000000000009',
+    pg_backend_pid(),txid_current()+1,'bulk-context-wrong-xid','bulk-context-wrong-xid',
+    '{"path":"wrong-xid"}',array[]::text[],repeat('2',64));
 
 do $body$
 declare v_plan jsonb;
@@ -226,6 +238,18 @@ select is((select (private.ph_master_bulk_context_v1(
   'b9030000-0000-4000-8000-000000000001','bulk-context-alias'
  )).raw_values->>'path'),'alias',
  'item6 alias identity still resolves its imported context row');
+select is((select (private.ph_master_bulk_context_v1(
+  'b9030000-0000-4000-8000-000000000001','bulk-context-source-wins'
+ )).raw_values->>'path'),'source-wins',
+ 'a direct source identity takes precedence over a competing canonical identity');
+select ok((private.ph_master_bulk_context_v1(
+  'b9030000-0000-4000-8000-000000000001','bulk-context-wrong-pid'
+ )).source_unique_id is null,
+ 'context rows from another backend PID are not visible to the current import');
+select ok((private.ph_master_bulk_context_v1(
+  'b9030000-0000-4000-8000-000000000001','bulk-context-wrong-xid'
+ )).source_unique_id is null,
+ 'context rows from another transaction ID are not visible to the current import');
 select ok((private.ph_master_bulk_context_v1(
   'b9030000-0000-4000-8000-000000000099','bulk-context-plan-9539'
  )).source_unique_id is null,

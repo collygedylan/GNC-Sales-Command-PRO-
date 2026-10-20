@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(37);
+select plan(38);
 
 select ok(has_function_privilege('service_role','public.inventory_master_identity_batch_read_v1(uuid,jsonb,text)','execute')
   and not has_function_privilege('authenticated','public.inventory_master_identity_batch_read_v1(uuid,jsonb,text)','execute')
@@ -44,6 +44,12 @@ on conflict(unique_id) do update set itemcode=excluded.itemcode,locationcode=exc
 insert into public.app_dataset_revisions(key,revision,state)
 values('ph_master_inventory',8101,'ready') on conflict(key) do update set revision=8101,state='ready';
 
+update public.app_dataset_revisions set state='importing' where key='ph_master_inventory';
+select throws_ok($$select public.inventory_master_identity_batch_read_v1('9f8b0000-0000-4000-8000-000000000381',
+  '[{"masterUid":"MIB-UID","lotCode":"LOT-UID"}]'::jsonb,'8101')$$,
+  '55000','MASTER_IDENTITY_SOURCE_NOT_READY','a non-ready source is rejected without serialization-retry SQLSTATE');
+update public.app_dataset_revisions set state='ready' where key='ph_master_inventory';
+
 create temporary table identity_result as
 select public.inventory_master_identity_batch_read_v1('9f8b0000-0000-4000-8000-000000000381',
   jsonb_build_array(
@@ -78,7 +84,7 @@ select is((public.inventory_master_identity_batch_read_v1('9f8b0000-0000-4000-80
   '[{"masterUid":"MIB-FOREMAN","lotCode":"LOT-F"}]'::jsonb,'8101')#>>'{rows,0,matchCount}'),'0','Foreman priority restrictions also apply to explicit UIDs');
 
 select throws_ok($$select public.inventory_master_identity_batch_read_v1('9f8b0000-0000-4000-8000-000000000381','[{"masterUid":"MIB-UID","lotCode":"LOT-UID"}]'::jsonb,'8100')$$,
-  '40001','MASTER_IDENTITY_REVISION_CHANGED','stale expected revision is rejected');
+  '55000','MASTER_IDENTITY_REVISION_CHANGED','stale expected revision is rejected without serialization-retry SQLSTATE');
 select throws_ok($$select public.inventory_master_identity_batch_read_v1('9f8b0000-0000-4000-8000-000000000399','[]'::jsonb,null)$$,
   '42501','MASTER_IDENTITY_ACTOR_FORBIDDEN','missing actor is rejected');
 select throws_ok($$select public.inventory_master_identity_batch_read_v1('9f8b0000-0000-4000-8000-000000000381','[]'::jsonb,null)$$,

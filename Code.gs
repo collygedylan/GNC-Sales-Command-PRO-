@@ -932,6 +932,14 @@ function callDatasetImportFenceRpc_(name, payload) {
 }
 function getDatasetImportFenceSources_(sourceTables) {
   const keys = Array.isArray(sourceTables) ? sourceTables.slice() : [sourceTables];
+  if (keys.some(function(key) {
+    const logical = getSiteSplitLegacyTableName_(key);
+    return logical === 'ph_soc_master' || logical === 'ph_reserves';
+  })) {
+    // SOC and reserve finalization also refreshes the authorized customer/rep
+    // projection. Fence that derived dependency with the source snapshot.
+    keys.push('ph_customer_consignee_sales_reps');
+  }
   if (keys.some(function(key) { return key === 'ph_master_inventory' || key === 'ph_cav_import'; })) {
     // Existing import-triggered reconciliation changes these read dependencies
     // across multiple HTTP transactions, so their views share the same fence.
@@ -1474,7 +1482,12 @@ function runRoutedDropImport_(dataset) {
       fileId: String(sourceFile.getId() || ''),
       modifiedAt: Number(sourceFile.getLastUpdated().getTime())
     };
-    const options = { deltaMode: true, historyDataset: dataset, historyFileId: sourceWatermark.fileId };
+    const options = {
+      deltaMode: true,
+      historyDataset: dataset,
+      historyFileId: sourceWatermark.fileId,
+      chunkedSnapshot: dataset === 'soc' || dataset === 'reserves'
+    };
     const result = dataset === 'drive'
       ? processSnapshotBatchFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildMasterPayload, options)
       : processLatestFileOnlyFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildStandardPayload, options);
@@ -1484,6 +1497,413 @@ function runRoutedDropImport_(dataset) {
     }
     return result;
   });
+}
+
+function erpSnapshotStageContinuationError_(stagedRows, totalRows) {
+  const error = new Error('ERP_SNAPSHOT_STAGE_CONTINUATION_PENDING');
+  error.errorCode = 'ERP_SNAPSHOT_STAGE_CONTINUATION_PENDING';
+  error.stagedRows = Math.max(0, Number(stagedRows) || 0);
+  error.totalRows = Math.max(0, Number(totalRows) || 0);
+  return error;
+}
+
+function erpSnapshotStageContinuationResult_(tableName, error) {
+  return {
+    tableName: tableName, filesProcessed: 0, failedFiles: 0, failedFileNames: [], failedFileErrors: [],
+    stagedRows: error.stagedRows || 0, totalRows: error.totalRows || 0, continuationPending: true
+  };
+}
+
+function erpSnapshotStageTarget_(tableName) {
+  const logical = getSiteSplitLegacyTableName_(tableName);
+  if (logical !== 'ph_soc_master' && logical !== 'ph_reserves') throw new Error('ERP_SNAPSHOT_TARGET_INVALID');
+  return logical;
+}
+
+function erpSnapshotStageManifest_(identity) {
+  if (!identity || !String(identity.fileId || '').trim() || !String(identity.modifiedAt || '').trim()
+      || !Number.isSafeInteger(Number(identity.size)) || Number(identity.size) < 0) {
+    throw new Error('ERP_SNAPSHOT_SOURCE_IDENTITY_UNAVAILABLE');
+  }
+  return [{ fileId: String(identity.fileId), modifiedAt: String(identity.modifiedAt), size: Number(identity.size) }];
+}
+
+function assertErpSnapshotSourceContract_(rawData, tableName) {
+  if (!Array.isArray(rawData) || !Array.isArray(rawData[0])) throw new Error('ERP_SNAPSHOT_SOURCE_HEADER_INVALID');
+  const target = erpSnapshotStageTarget_(tableName);
+  const actual = rawData[0].map(function(header) { return normalizePayloadColumnKey_(header); });
+  const expected = SOC_HISTORY_LEGACY_COLUMNS.map(function(header) { return normalizePayloadColumnKey_(header); });
+  if (actual.length !== expected.length || actual.some(function(header, index) { return header !== expected[index]; })) {
+    throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', target.toUpperCase() + ' source must match the approved 81-column export.');
+  }
+  if (target === 'ph_soc_master') {
+    const invoices = actual.filter(function(header) { return header === 'invoicedate'; }).length;
+    if (invoices !== 1) throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', 'SOC report must contain exactly one INVOICEDATE column.');
+  }
+  return target;
+}
+
+function assertDriveAroundSourceContract_(rawData, tableName) {
+  if (getSiteSplitLegacyTableName_(tableName) !== 'ph_master_inventory') return true;
+  if (!Array.isArray(rawData) || !Array.isArray(rawData[0])) {
+    throw new Error('DRIVE_SNAPSHOT_SOURCE_HEADER_INVALID');
+  }
+  const expected = [
+    'warehouseid','plantgroupcode','itemcode','qualitycode','contsize','commonname','lotcode','locationcode',
+    'source','desigitem','desigcust','desigloc','priority','ptronhand','ptrreviewed','ptravailable',
+    'holdstopcode','holdstopbegindate','holdstopreason','hsreasonbegin','season_supply','season_oh','season_demand',
+    's_lts','oversellpercentage','itemspec','locationnote','locationnotedate','suspend','suspend_to',
+    'specialpuller','pulltagnote1','pulltagnote2','fieldtagcolor','salesnote','inventorynote','locationptn1',
+    'locationptn2','prisetby','priupdated','bypassloc','largeptrqty','maxorderquantity','lochold','listprice',
+    'ext_ptronhand','varietycode','genusname','botanicalname','reversecommon','sortnamevariety','containersort',
+    'saleyear','season','blockalpha','blocknumber','bay','pullerresponsibility','grower','si_lts','a_lts','ai_lts',
+    'season_available','holdstopenddate','salesnote','fnsalesnote','warehousename','mcstatus','hz','intercopo',
+    'insurancegroup','brand','printedcontainercode','salesnotebegindate','equiv_unit','ext_equiv_unit'
+  ];
+  const actual = rawData[0].map(function(header) { return normalizePayloadColumnKey_(header); });
+  if (actual.length !== 76 || actual.some(function(header, index) { return header !== expected[index]; })) {
+    throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER',
+      'Drive Around source must match the approved 76-position export.');
+  }
+  return true;
+}
+
+function erpSnapshotStageCheckpointKey_(targetTable, manifest, sourceDigest) {
+  const identity = JSON.stringify({ targetTable: String(targetTable || ''), manifest: manifest,
+    sourceDigest: String(sourceDigest || '').toLowerCase() });
+  return 'ERP_SNAPSHOT_STAGE_CHECKPOINT_V1_' + masterBulkSha256Hex_(identity);
+}
+
+function erpSnapshotStageTimestampKey_(targetTable, manifest) {
+  return 'ERP_SNAPSHOT_STAGE_SYNC_TIME_V1_' + masterBulkSha256Hex_(JSON.stringify({
+    targetTable: String(targetTable || ''), manifest: manifest
+  }));
+}
+
+function getOrCreateErpSnapshotStageTimestamp_(targetTable, manifest, candidateTimestamp) {
+  const key = erpSnapshotStageTimestampKey_(targetTable, manifest);
+  const properties = PropertiesService.getScriptProperties();
+  const existing = properties.getProperty(key);
+  if (existing) {
+    const parsed = new Date(existing);
+    if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== existing) {
+      throw new Error('ERP_SNAPSHOT_SYNC_TIMESTAMP_INVALID');
+    }
+    return { key: key, value: existing };
+  }
+  const candidate = new Date(candidateTimestamp);
+  if (!Number.isFinite(candidate.getTime())) throw new Error('ERP_SNAPSHOT_SYNC_TIMESTAMP_INVALID');
+  const value = candidate.toISOString();
+  properties.setProperty(key, value);
+  return { key: key, value: value };
+}
+
+function clearErpSnapshotStageTimestamp_(key, expectedTimestamp) {
+  const safeKey = String(key || '');
+  if (safeKey.indexOf('ERP_SNAPSHOT_STAGE_SYNC_TIME_V1_') !== 0) throw new Error('ERP_SNAPSHOT_SYNC_TIMESTAMP_KEY_INVALID');
+  const properties = PropertiesService.getScriptProperties();
+  const current = properties.getProperty(safeKey);
+  if (current == null) return;
+  if (String(current) !== String(expectedTimestamp || '')) throw new Error('ERP_SNAPSHOT_SYNC_TIMESTAMP_CHANGED');
+  properties.deleteProperty(safeKey);
+}
+
+function readErpSnapshotStageCheckpoint_(storageKey, targetTable, manifest, sourceDigest, expectedRows) {
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(storageKey);
+  if (!raw) {
+    const checkpoint = {
+      requestId: Utilities.getUuid(), storageKey: storageKey, targetTable: targetTable,
+      manifest: manifest, sourceDigest: sourceDigest, expectedRows: expectedRows,
+      expectedChunks: Math.ceil(expectedRows / 500), sourceManifestDigest: '', phase: 'staging'
+    };
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkpoint.requestId)) {
+      throw new Error('ERP_SNAPSHOT_REQUEST_ID_INVALID');
+    }
+    properties.setProperty(storageKey, JSON.stringify(checkpoint));
+    checkpoint.createdNow = true;
+    return checkpoint;
+  }
+  let checkpoint;
+  try { checkpoint = JSON.parse(raw); } catch (ignored) { throw new Error('ERP_SNAPSHOT_CHECKPOINT_INVALID'); }
+  if (!checkpoint || typeof checkpoint !== 'object' || Array.isArray(checkpoint)
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(checkpoint.requestId || ''))
+      || checkpoint.targetTable !== targetTable || JSON.stringify(checkpoint.manifest) !== JSON.stringify(manifest)
+      || String(checkpoint.sourceDigest || '').toLowerCase() !== String(sourceDigest || '').toLowerCase()
+      || Number(checkpoint.expectedRows) !== expectedRows || Number(checkpoint.expectedChunks) !== Math.ceil(expectedRows / 500)
+      || !['staging', 'published_pending_postprocess', 'ready_to_archive'].includes(checkpoint.phase)) {
+    throw new Error('ERP_SNAPSHOT_CHECKPOINT_MISMATCH');
+  }
+  checkpoint.storageKey = storageKey;
+  return checkpoint;
+}
+
+function saveErpSnapshotStageCheckpoint_(checkpoint) {
+  if (!checkpoint || String(checkpoint.storageKey || '').indexOf('ERP_SNAPSHOT_STAGE_CHECKPOINT_V1_') !== 0) {
+    throw new Error('ERP_SNAPSHOT_CHECKPOINT_KEY_INVALID');
+  }
+  PropertiesService.getScriptProperties().setProperty(checkpoint.storageKey, JSON.stringify(checkpoint));
+}
+
+function clearErpSnapshotStageCheckpoint_(storageKey, requestId) {
+  const safeKey = String(storageKey || '');
+  if (safeKey.indexOf('ERP_SNAPSHOT_STAGE_CHECKPOINT_V1_') !== 0) throw new Error('ERP_SNAPSHOT_CHECKPOINT_KEY_INVALID');
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(safeKey);
+  if (!raw) return;
+  let checkpoint;
+  try { checkpoint = JSON.parse(raw); } catch (ignored) { throw new Error('ERP_SNAPSHOT_CHECKPOINT_INVALID'); }
+  if (!checkpoint || String(checkpoint.requestId || '') !== String(requestId || '')) throw new Error('ERP_SNAPSHOT_CHECKPOINT_CHANGED');
+  properties.deleteProperty(safeKey);
+}
+
+function erpSnapshotStageResponseObject_(response) {
+  return Array.isArray(response) && response.length === 1 ? response[0] : response;
+}
+
+function validateErpSnapshotStageProgress_(response, expected, requiredStatus) {
+  const value = erpSnapshotStageResponseObject_(response);
+  if (!value || value.status !== requiredStatus || String(value.requestId || '') !== expected.requestId
+      || String(value.runId || '') !== expected.runId || String(value.targetTable || '') !== expected.targetTable
+      || String(value.sourceDigest || '').toLowerCase() !== expected.sourceDigest.toLowerCase()
+      || !/^[0-9a-f]{64}$/i.test(String(value.sourceManifestDigest || ''))
+      || value.expectedRows !== expected.expectedRows || value.expectedChunks !== expected.expectedChunks
+      || value.chunkSize !== 500 || !Number.isSafeInteger(value.chunksReceived)
+      || value.chunksReceived < 0 || value.chunksReceived > expected.expectedChunks
+      || !Number.isSafeInteger(value.rowsReceived) || value.rowsReceived < 0 || value.rowsReceived > expected.expectedRows
+      || !Array.isArray(value.missingChunkIndexes)) throw new Error('ERP_SNAPSHOT_PROGRESS_INVALID');
+  const missing = value.missingChunkIndexes;
+  const seen = new Set();
+  let missingRows = 0;
+  missing.forEach(function(index) {
+    if (!Number.isSafeInteger(index) || index < 0 || index >= expected.expectedChunks || seen.has(index)) {
+      throw new Error('ERP_SNAPSHOT_MISSING_CHUNKS_INVALID');
+    }
+    seen.add(index);
+    missingRows += Math.min(500, expected.expectedRows - index * 500);
+  });
+  if (missing.length !== expected.expectedChunks - value.chunksReceived
+      || value.rowsReceived !== expected.expectedRows - missingRows
+      || value.nextChunkIndex !== (missing.length ? missing[0] : null)) throw new Error('ERP_SNAPSHOT_PROGRESS_TOTAL_INVALID');
+  if (requiredStatus === 'published' && (missing.length || value.chunksReceived !== expected.expectedChunks
+      || value.rowsReceived !== expected.expectedRows || value.replayed !== true)) throw new Error('ERP_SNAPSHOT_REPLAY_PROGRESS_INVALID');
+  expected.sourceManifestDigest = String(value.sourceManifestDigest).toLowerCase();
+  return value;
+}
+
+function validateErpSnapshotStageReceipt_(response, expected) {
+  const value = erpSnapshotStageResponseObject_(response);
+  if (!value || value.status !== 'published' || String(value.requestId || '') !== expected.requestId
+      || String(value.runId || '') !== expected.runId || String(value.targetTable || '') !== expected.targetTable
+      || String(value.sourceDigest || '').toLowerCase() !== expected.sourceDigest.toLowerCase()
+      || String(value.sourceManifestDigest || '').toLowerCase() !== expected.sourceManifestDigest
+      || String(value.publicationRunId || '') !== String(value.replayed ? value.publicationRunId : expected.runId)
+      || !Number.isSafeInteger(value.sourceRows) || value.sourceRows !== expected.expectedRows
+      || !Number.isSafeInteger(value.inserted) || value.inserted < 0
+      || !Number.isSafeInteger(value.updated) || value.updated < 0
+      || !Number.isSafeInteger(value.unchanged) || value.unchanged < 0
+      || !Number.isSafeInteger(value.deleted) || value.deleted < 0
+      || value.inserted + value.updated + value.unchanged !== expected.expectedRows
+      || !Number.isSafeInteger(value.revision) && typeof value.revision !== 'string') {
+    throw new Error('ERP_SNAPSHOT_RECEIPT_INVALID');
+  }
+  return value;
+}
+
+function erpSnapshotFileInFolder_(file, folderId) {
+  if (!file || typeof file.getParents !== 'function') return false;
+  const parents = file.getParents();
+  while (parents.hasNext()) if (String(parents.next().getId() || '') === String(folderId || '')) return true;
+  return false;
+}
+
+function recoverReadyErpSnapshotArchive_(checkpoint, dropFolderId, processedFolderId) {
+  const manifest = checkpoint && checkpoint.manifest;
+  const source = Array.isArray(manifest) && manifest.length === 1 ? manifest[0] : null;
+  if (!source || !String(source.fileId || '').trim()) throw new Error('ERP_SNAPSHOT_ARCHIVE_SOURCE_INVALID');
+  const file = DriveApp.getFileById(String(source.fileId));
+  if (file.isTrashed() || Number(file.getSize()) !== Number(source.size)) throw new Error('ERP_SNAPSHOT_ARCHIVE_SOURCE_CHANGED');
+  const modifiedAt = file.getLastUpdated().toISOString();
+  if (modifiedAt !== String(source.modifiedAt || '')) throw new Error('ERP_SNAPSHOT_ARCHIVE_SOURCE_CHANGED');
+  if (erpSnapshotFileInFolder_(file, processedFolderId)) {
+    // The source was already moved before an Apps Script checkpoint clear failed.
+  } else if (erpSnapshotFileInFolder_(file, dropFolderId)) {
+    moveDriveFileToFolderWithRetry_(file,
+      getDriveFolderByIdWithRetry_(processedFolderId, 'ERP snapshot archive recovery'),
+      'ERP snapshot published source archive recovery');
+  } else {
+    throw new Error('ERP_SNAPSHOT_ARCHIVE_LOCATION_UNVERIFIED');
+  }
+  clearErpSnapshotStageCheckpoint_(checkpoint.storageKey, checkpoint.requestId);
+  clearErpSnapshotStageTimestamp_(erpSnapshotStageTimestampKey_(checkpoint.targetTable, manifest),
+    checkpoint.syncTimestamp);
+}
+
+function assertNoPublishedErpSnapshotAwaitingArchive_(currentKey, dropFolderId, processedFolderId) {
+  const properties = PropertiesService.getScriptProperties().getProperties();
+  const prefix = 'ERP_SNAPSHOT_STAGE_CHECKPOINT_V1_';
+  Object.keys(properties || {}).forEach(function(key) {
+    if (key.indexOf(prefix) !== 0 || key === currentKey) return;
+    let checkpoint;
+    try { checkpoint = JSON.parse(properties[key]); } catch (ignored) { throw new Error('ERP_SNAPSHOT_CHECKPOINT_INVALID'); }
+    if (checkpoint && checkpoint.phase === 'ready_to_archive') {
+      checkpoint.storageKey = key;
+      recoverReadyErpSnapshotArchive_(checkpoint, dropFolderId, processedFolderId);
+    } else if (checkpoint && checkpoint.phase === 'published_pending_postprocess') {
+      throw new Error('ERP_SNAPSHOT_PUBLISHED_ARCHIVE_RECOVERY_REQUIRED');
+    }
+  });
+}
+
+function markErpSnapshotStagePublished_(checkpoint, receipt, phase) {
+  if (!checkpoint || !receipt || receipt.status !== 'published'
+      || String(receipt.requestId || '') !== String(checkpoint.requestId || '')
+      || !['published_pending_postprocess', 'ready_to_archive'].includes(phase)) {
+    throw new Error('ERP_SNAPSHOT_PUBLISHED_RECEIPT_INVALID');
+  }
+  checkpoint.phase = phase;
+  checkpoint.publishedReceipt = {
+    requestId: String(receipt.requestId), runId: String(receipt.runId), publicationRunId: String(receipt.publicationRunId),
+    targetTable: String(receipt.targetTable), sourceDigest: String(receipt.sourceDigest),
+    sourceManifestDigest: String(receipt.sourceManifestDigest), sourceRows: Number(receipt.sourceRows),
+    inserted: Number(receipt.inserted), updated: Number(receipt.updated), unchanged: Number(receipt.unchanged),
+    deleted: Number(receipt.deleted), revision: String(receipt.revision)
+  };
+  checkpoint.syncTimestamp = String(checkpoint.syncTimestamp || '');
+  saveErpSnapshotStageCheckpoint_(checkpoint);
+}
+
+function validateErpSnapshotPublishedReplay_(beginValue, expected) {
+  if (!beginValue || beginValue.status !== 'published' || beginValue.replayed !== true
+      || String(beginValue.requestId || '') !== expected.requestId || String(beginValue.runId || '') !== expected.runId
+      || String(beginValue.targetTable || '') !== expected.targetTable
+      || String(beginValue.sourceDigest || '').toLowerCase() !== expected.sourceDigest.toLowerCase()
+      || String(beginValue.sourceManifestDigest || '').toLowerCase() !== expected.sourceManifestDigest) {
+    throw new Error('ERP_SNAPSHOT_PUBLISHED_REPLAY_INVALID');
+  }
+  const receipt = erpSnapshotStageResponseObject_(beginValue.publishedResponse);
+  if (!receipt || receipt.status !== 'published' || String(receipt.runId || '') !== String(beginValue.publicationRunId || '')
+      || String(receipt.publicationRunId || '') !== String(beginValue.publicationRunId || '')) {
+    throw new Error('ERP_SNAPSHOT_PUBLISHED_REPLAY_RECEIPT_INVALID');
+  }
+  const validated = validateErpSnapshotStageReceipt_(receipt, Object.assign({}, expected, {
+    runId: String(beginValue.publicationRunId || '')
+  }));
+  return Object.assign({}, validated, { runId: expected.runId, replayed: true });
+}
+
+function callErpSnapshotStageImport_(tableName, sourceIdentity, rows, runId, syncTimestamp, dropFolderId, processedFolderId) {
+  const targetTable = erpSnapshotStageTarget_(tableName);
+  const config = { chunkSize: 500, invocationBudgetMs: 180000 };
+  const manifest = erpSnapshotStageManifest_(sourceIdentity);
+  const sourceDigest = masterBulkSha256Hex_(JSON.stringify(canonicalizeMasterBulkPayloadValue_(rows)));
+  const checkpointKey = erpSnapshotStageCheckpointKey_(targetTable, manifest, sourceDigest);
+  assertNoPublishedErpSnapshotAwaitingArchive_(checkpointKey, dropFolderId, processedFolderId);
+  const stored = readErpSnapshotStageCheckpoint_(checkpointKey, targetTable, manifest, sourceDigest, rows.length);
+  delete stored.createdNow;
+  if (stored.syncTimestamp && String(stored.syncTimestamp) !== String(syncTimestamp || '')) {
+    throw new Error('ERP_SNAPSHOT_CHECKPOINT_TIMESTAMP_MISMATCH');
+  }
+  if (!stored.syncTimestamp) {
+    stored.syncTimestamp = String(syncTimestamp || '');
+    if (!Number.isFinite(Date.parse(stored.syncTimestamp))) throw new Error('ERP_SNAPSHOT_SYNC_TIMESTAMP_INVALID');
+    saveErpSnapshotStageCheckpoint_(stored);
+  }
+  const expected = {
+    requestId: String(stored.requestId), runId: String(runId || ''), targetTable: targetTable,
+    sourceDigest: sourceDigest, sourceManifestDigest: String(stored.sourceManifestDigest || '').toLowerCase(),
+    expectedRows: rows.length, expectedChunks: Math.ceil(rows.length / config.chunkSize), checkpointKey: checkpointKey
+  };
+  const startedAt = Date.now();
+  const beforeAttempt = function() {
+    assertRoutedPendingSourceSelection_(erpSnapshotDatasetForTarget_(tableName), sourceIdentity);
+    revalidateImportSourceIdentity_(sourceIdentity, tableName);
+  };
+  const rpc = function(label, name, payload) {
+    return withRetry_(label, 3, 750, function() {
+      beforeAttempt();
+      return callSupabaseRpc_(name, payload);
+    }, function(error) {
+      const message = String(error && error.message || error || '').toLowerCase();
+      return message.includes('timeout') || message.includes('timed out') || message.includes('network')
+        || message.includes('connection') || /\((429|500|502|503|504)\)/.test(message);
+    });
+  };
+  const begun = rpc('Begin ERP snapshot stage', 'begin_erp_snapshot_stage_v1', {
+    p_run_id: expected.runId, p_request_id: expected.requestId, p_target_table: expected.targetTable,
+    p_source_manifest: manifest, p_source_digest: expected.sourceDigest,
+    p_expected_rows: expected.expectedRows, p_expected_chunks: expected.expectedChunks
+  });
+  const beginValue = erpSnapshotStageResponseObject_(begun);
+  if (beginValue && beginValue.status === 'published') {
+    if (!expected.sourceManifestDigest && /^[0-9a-f]{64}$/i.test(String(beginValue.sourceManifestDigest || ''))) {
+      expected.sourceManifestDigest = String(beginValue.sourceManifestDigest).toLowerCase();
+      stored.sourceManifestDigest = expected.sourceManifestDigest;
+      saveErpSnapshotStageCheckpoint_(stored);
+    }
+    validateErpSnapshotStageProgress_(begun, expected, 'published');
+    const replayed = validateErpSnapshotPublishedReplay_(beginValue, expected);
+    markErpSnapshotStagePublished_(stored, replayed, 'published_pending_postprocess');
+    return { receipt: replayed, checkpoint: stored };
+  }
+  const initial = validateErpSnapshotStageProgress_(begun, expected, 'staging');
+  if (expected.sourceManifestDigest && expected.sourceManifestDigest !== initial.sourceManifestDigest) {
+    throw new Error('ERP_SNAPSHOT_MANIFEST_DIGEST_CHANGED');
+  }
+  if (!expected.sourceManifestDigest) {
+    expected.sourceManifestDigest = initial.sourceManifestDigest;
+    stored.sourceManifestDigest = expected.sourceManifestDigest;
+    saveErpSnapshotStageCheckpoint_(stored);
+  }
+  let stagedRows = initial.rowsReceived;
+  const pendingIndexes = initial.missingChunkIndexes.slice();
+  for (let index = 0; index < pendingIndexes.length; index++) {
+    if (Date.now() - startedAt >= config.invocationBudgetMs
+        || manualSyncInvocationDeadlineMs_ > 0 && manualSyncInvocationDeadlineMs_ - Date.now() < 65000) {
+      throw erpSnapshotStageContinuationError_(stagedRows, expected.expectedRows);
+    }
+    assertImportTimeBudget_('erp_snapshot_stage_chunk', 65000);
+    const chunkIndex = pendingIndexes[index];
+    const chunk = rows.slice(chunkIndex * config.chunkSize, Math.min(rows.length, (chunkIndex + 1) * config.chunkSize));
+    const response = rpc('Append ERP snapshot stage chunk', 'append_erp_snapshot_stage_chunk_v1', {
+      p_run_id: expected.runId, p_request_id: expected.requestId, p_target_table: expected.targetTable,
+      p_chunk_index: chunkIndex, p_rows: chunk
+    });
+    const staged = erpSnapshotStageResponseObject_(response);
+    if (!staged || staged.status !== 'staging' || staged.accepted !== true
+        || String(staged.requestId || '') !== expected.requestId || String(staged.runId || '') !== expected.runId
+        || String(staged.targetTable || '') !== expected.targetTable || staged.chunkIndex !== chunkIndex
+        || staged.rowCount !== chunk.length || !Array.isArray(staged.missingChunkIndexes)
+        || staged.missingChunkIndexes.indexOf(chunkIndex) !== -1) throw new Error('ERP_SNAPSHOT_CHUNK_RESPONSE_INVALID');
+    const state = validateErpSnapshotStageProgress_({
+      status: staged.status, requestId: staged.requestId, runId: staged.runId, targetTable: staged.targetTable,
+      sourceDigest: expected.sourceDigest, sourceManifestDigest: staged.sourceManifestDigest,
+      expectedRows: expected.expectedRows, expectedChunks: expected.expectedChunks, chunkSize: config.chunkSize,
+      chunksReceived: staged.chunksReceived, rowsReceived: staged.rowsReceived,
+      missingChunkIndexes: staged.missingChunkIndexes, nextChunkIndex: staged.nextChunkIndex
+    }, expected, 'staging');
+    stagedRows = state.rowsReceived;
+  }
+  if (stagedRows !== expected.expectedRows) throw new Error('ERP_SNAPSHOT_STAGE_INCOMPLETE');
+  if (Date.now() - startedAt >= config.invocationBudgetMs
+      || manualSyncInvocationDeadlineMs_ > 0 && manualSyncInvocationDeadlineMs_ - Date.now() < 65000) {
+    throw erpSnapshotStageContinuationError_(stagedRows, expected.expectedRows);
+  }
+  assertImportTimeBudget_('erp_snapshot_stage_finalize', 65000);
+  const finalized = rpc('Finalize ERP snapshot stage', 'finalize_erp_snapshot_stage_v1', {
+    p_run_id: expected.runId, p_request_id: expected.requestId,
+    p_target_table: expected.targetTable, p_source_digest: expected.sourceDigest
+  });
+  const receipt = validateErpSnapshotStageReceipt_(finalized, expected);
+  markErpSnapshotStagePublished_(stored, receipt, 'published_pending_postprocess');
+  return { receipt: receipt, checkpoint: stored };
+}
+
+function erpSnapshotDatasetForTarget_(tableName) {
+  const logical = getSiteSplitLegacyTableName_(tableName);
+  if (logical === 'ph_soc_master') return 'soc';
+  if (logical === 'ph_reserves') return 'reserves';
+  throw new Error('ERP_SNAPSHOT_HISTORY_DATASET_INVALID');
 }
 
 function readImportHistoryBackfillState_() {
@@ -6385,6 +6805,9 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   let fatalErrorCode = '';
   let revisionFence = null;
   let writePhaseStarted = false;
+  const chunkedSnapshot = !!(options && options.chunkedSnapshot);
+  let erpStageTimestampKey = '';
+  let erpStageTimestamp = '';
 
   console.log(
     `[START] Processing latest file only: ${newestFileName} -> Table: ${tableName}` +
@@ -6392,7 +6815,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   );
 
   try {
-    const syncStartTime = new Date().toISOString();
+    let syncStartTime = new Date().toISOString();
     const importOptions = Object.assign({}, options || {}, checkpointingEnabled ? {
       importTableName: tableName,
       importCheckpointContext: { runId: checkpointIdentity && checkpointIdentity.runId, stage: checkpointIdentity && checkpointIdentity.stage, attempt: checkpointIdentity && checkpointIdentity.attempt }
@@ -6401,11 +6824,22 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     if (!rawData || rawData.length < 1) {
       throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No readable rows were found in ${newestFileName}.`);
     }
+    let erpStageManifest = null;
+    if (chunkedSnapshot) {
+      erpSnapshotStageTarget_(tableName);
+      assertErpSnapshotSourceContract_(rawData, tableName);
+      if (!sourceIdentity) throw new Error('ERP_SNAPSHOT_SOURCE_IDENTITY_UNAVAILABLE');
+      erpStageManifest = erpSnapshotStageManifest_(sourceIdentity);
+      const timestamp = getOrCreateErpSnapshotStageTimestamp_(erpSnapshotStageTarget_(tableName), erpStageManifest, syncStartTime);
+      erpStageTimestampKey = timestamp.key;
+      erpStageTimestamp = timestamp.value;
+      syncStartTime = erpStageTimestamp;
+    }
     const selectColumns = (options && typeof options.selectColumnsBuilder === 'function')
       ? options.selectColumnsBuilder(rawData, tableName)
       : getPayloadSelectColumns_(tableName, rawData);
     setManualSyncImportPhase_(tableName, 'existing_rows', 0, 0);
-    const existingRows = fetchAllSupabaseData(tableName, selectColumns, getSupabaseFetchOptionsForTable_(tableName));
+    const existingRows = chunkedSnapshot ? [] : fetchAllSupabaseData(tableName, selectColumns, getSupabaseFetchOptionsForTable_(tableName));
     assertImportTimeBudget_('existing_rows', IMPORT_READ_FINALIZATION_RESERVE_MS_);
     setManualSyncImportPhase_(tableName, 'validation', rawData.length, rawData.length);
     const results = payloadBuilderFunc(rawData, tableName, existingRows, syncStartTime, newestFileName);
@@ -6414,7 +6848,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     totalRows = Number(results && results.totalRows) || 0;
     syncDiagnostics = results && results.stats ? results.stats : createDeltaSyncStats_();
     throwIfSnapshotSourceInvalid_(syncDiagnostics, totalRows, newestFileName, tableName);
-    const deletes = deltaMode ? combineSnapshotDeleteIds_(existingRows, seenIds) : [];
+    const deletes = deltaMode && !chunkedSnapshot ? combineSnapshotDeleteIds_(existingRows, seenIds) : [];
     syncDiagnostics.deletedRows = deletes.length;
     upsertCount = upserts.length;
     deleteCount = deletes.length;
@@ -6431,35 +6865,68 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     }
     setManualSyncImportPhase_(tableName, 'prepared', rawData.length, rawData.length);
     writePhaseStarted = true;
-    revisionFence = beginDatasetImportFenceIfNeeded_(tableName, upserts.length || deletes.length);
+    revisionFence = beginDatasetImportFenceIfNeeded_(tableName, chunkedSnapshot || upserts.length > 0 || deletes.length > 0);
     setManualSyncImportPhase_(tableName, 'writing', 0, upserts.length + deletes.length);
-    if (upserts.length > 0) pushToSupabase(tableName, upserts);
-    if (deltaMode && deletes.length > 0) deleteFromSupabase(tableName, deletes);
-    if (options && typeof options.afterCommit === 'function') {
-      setManualSyncImportPhase_(tableName, 'reconciliation', upserts.length + deletes.length, upserts.length + deletes.length);
-      options.afterCommit({
-        tableName: tableName,
-        fileName: newestFileName,
-        syncStartTime: syncStartTime,
-        upsertCount: upsertCount,
-        deleteCount: deleteCount,
-        totalRows: totalRows
-      });
-    }
-
-    // Reconfirm the pinned Drive file after database writes and immediately
-    // before publication/archive. A changed source must remain pending for a
-    // canonical replay; writePhaseStarted ensures this fails the fence.
-    if (sourceIdentity) revalidateImportSourceIdentity_(sourceIdentity, tableName);
-    if (options && options.historyDataset) {
-      persistImportedFileHistory_(options.historyDataset, newestFile, rawData, 0, sourceIdentity);
+    if (chunkedSnapshot) {
+      if (!revisionFence || !revisionFence.runId) throw new Error('ERP_SNAPSHOT_IMPORT_FENCE_UNAVAILABLE');
+      const stageResult = callErpSnapshotStageImport_(tableName, sourceIdentity, upserts, revisionFence.runId,
+        syncStartTime, dropFolderId, processedFolderId);
+      const receipt = stageResult.receipt;
+      upsertCount = receipt.inserted + receipt.updated;
+      deleteCount = receipt.deleted;
+      syncDiagnostics.insertedRows = receipt.inserted;
+      syncDiagnostics.changedRows = receipt.updated;
+      syncDiagnostics.unchangedRows = receipt.unchanged;
+      syncDiagnostics.deletedRows = receipt.deleted;
+      setManualSyncImportPhase_(tableName, 'publication', totalRows, totalRows);
+      // The finalizer atomically finishes the server run. Clear the Apps
+      // Script fence context before writing history outside that transaction.
+      closeDatasetImportFence_(revisionFence, true);
+      revisionFence = null;
+      if (options && typeof options.afterCommit === 'function') {
+        setManualSyncImportPhase_(tableName, 'reconciliation', upsertCount + deleteCount, upsertCount + deleteCount);
+        options.afterCommit({ tableName: tableName, fileName: newestFileName, syncStartTime: syncStartTime,
+          upsertCount: upsertCount, deleteCount: deleteCount, totalRows: totalRows });
+      }
+      if (options && options.historyDataset) {
+        persistImportedFileHistory_(options.historyDataset, newestFile, rawData, 0, sourceIdentity);
+      }
       if (sourceIdentity) revalidateImportSourceIdentity_(sourceIdentity, tableName);
+      markErpSnapshotStagePublished_(stageResult.checkpoint, receipt, 'ready_to_archive');
+      setManualSyncImportPhase_(tableName, 'archiving', totalRows, totalRows);
+      moveDriveFileToFolderWithRetry_(newestFile, processedFolder, `${tableName} processed file ${newestFileName}`);
+      clearErpSnapshotStageCheckpoint_(stageResult.checkpoint.storageKey, stageResult.checkpoint.requestId);
+      clearErpSnapshotStageTimestamp_(erpStageTimestampKey, erpStageTimestamp);
+      importSucceeded = true;
+    } else {
+      if (upserts.length > 0) pushToSupabase(tableName, upserts);
+      if (deltaMode && deletes.length > 0) deleteFromSupabase(tableName, deletes);
+      if (options && typeof options.afterCommit === 'function') {
+        setManualSyncImportPhase_(tableName, 'reconciliation', upserts.length + deletes.length, upserts.length + deletes.length);
+        options.afterCommit({
+          tableName: tableName,
+          fileName: newestFileName,
+          syncStartTime: syncStartTime,
+          upsertCount: upsertCount,
+          deleteCount: deleteCount,
+          totalRows: totalRows
+        });
+      }
+
+      // Reconfirm the pinned Drive file after database writes and immediately
+      // before publication/archive. A changed source must remain pending for a
+      // canonical replay; writePhaseStarted ensures this fails the fence.
+      if (sourceIdentity) revalidateImportSourceIdentity_(sourceIdentity, tableName);
+      if (options && options.historyDataset) {
+        persistImportedFileHistory_(options.historyDataset, newestFile, rawData, 0, sourceIdentity);
+        if (sourceIdentity) revalidateImportSourceIdentity_(sourceIdentity, tableName);
+      }
+      setManualSyncImportPhase_(tableName, 'publication', totalRows, totalRows);
+      closeDatasetImportFence_(revisionFence, true);
+      setManualSyncImportPhase_(tableName, 'archiving', totalRows, totalRows);
+      moveDriveFileToFolderWithRetry_(newestFile, processedFolder, `${tableName} processed file ${newestFileName}`);
+      importSucceeded = true;
     }
-    setManualSyncImportPhase_(tableName, 'publication', totalRows, totalRows);
-    closeDatasetImportFence_(revisionFence, true);
-    setManualSyncImportPhase_(tableName, 'archiving', totalRows, totalRows);
-    moveDriveFileToFolderWithRetry_(newestFile, processedFolder, `${tableName} processed file ${newestFileName}`);
-    importSucceeded = true;
   } catch (err) {
     // Deferral is safe only before the import fence and any database writes.
     // Once the write phase begins, preserve the failed fence and let the next
@@ -6470,6 +6937,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     }
     failDatasetImportFence_(revisionFence);
     if (err && err.errorCode === 'IMPORT_HISTORY_CONTINUATION_PENDING') return importHistoryContinuationResult_(tableName, err);
+    if (err && err.errorCode === 'ERP_SNAPSHOT_STAGE_CONTINUATION_PENDING') return erpSnapshotStageContinuationResult_(tableName, err);
     const errorMessage = err && err.message ? err.message : String(err);
     upsertCount = 0;
     deleteCount = 0;
@@ -6659,10 +7127,454 @@ function masterBulkRequestUuid_(runId, sourceDigest) {
   return value.slice(0, 8) + '-' + value.slice(8, 12) + '-' + value.slice(12, 16) + '-' + value.slice(16, 20) + '-' + value.slice(20, 32);
 }
 
+function getMasterBulkSnapshotStageConfig_() {
+  return {
+    chunkSize: 500,
+    checkpointPrefix: 'MASTER_BULK_SNAPSHOT_STAGE_CHECKPOINT_V1_',
+    invocationBudgetMs: 180000
+  };
+}
+
+function masterBulkSnapshotStageCheckpointKey_(manifest, sourceDigest) {
+  const config = getMasterBulkSnapshotStageConfig_();
+  const identity = JSON.stringify({ manifest: manifest, sourceDigest: String(sourceDigest || '').toLowerCase() });
+  return config.checkpointPrefix + masterBulkSha256Hex_(identity);
+}
+
+function masterBulkSnapshotSyncTimestampKey_(manifest) {
+  return 'MASTER_BULK_SNAPSHOT_STAGE_SYNC_TIME_V1_' + masterBulkSha256Hex_(JSON.stringify(manifest || []));
+}
+
+function getOrCreateMasterBulkSnapshotSyncTimestamp_(manifest, candidateTimestamp) {
+  const key = masterBulkSnapshotSyncTimestampKey_(manifest);
+  const properties = PropertiesService.getScriptProperties();
+  const existing = properties.getProperty(key);
+  if (existing) {
+    const parsed = new Date(existing);
+    if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== existing) {
+      throw new Error('MASTER_BULK_STAGE_SYNC_TIMESTAMP_INVALID');
+    }
+    return { key: key, value: existing };
+  }
+  const candidate = new Date(candidateTimestamp);
+  if (!Number.isFinite(candidate.getTime())) throw new Error('MASTER_BULK_STAGE_SYNC_TIMESTAMP_INVALID');
+  const value = candidate.toISOString();
+  properties.setProperty(key, value);
+  return { key: key, value: value };
+}
+
+function clearMasterBulkSnapshotSyncTimestamp_(key, expectedTimestamp) {
+  const safeKey = String(key || '');
+  const prefix = 'MASTER_BULK_SNAPSHOT_STAGE_SYNC_TIME_V1_';
+  if (!safeKey || safeKey.indexOf(prefix) !== 0) throw new Error('MASTER_BULK_STAGE_SYNC_TIMESTAMP_KEY_INVALID');
+  const properties = PropertiesService.getScriptProperties();
+  const current = properties.getProperty(safeKey);
+  if (current == null) return;
+  if (String(current) !== String(expectedTimestamp || '')) throw new Error('MASTER_BULK_STAGE_SYNC_TIMESTAMP_CHANGED');
+  properties.deleteProperty(safeKey);
+}
+
+function assertNoPublishedMasterBulkSnapshotAwaitingArchive_(currentCheckpointKey) {
+  const properties = PropertiesService.getScriptProperties();
+  const all = properties.getProperties();
+  const prefix = getMasterBulkSnapshotStageConfig_().checkpointPrefix;
+  Object.keys(all || {}).forEach(function(key) {
+    if (key.indexOf(prefix) !== 0) return;
+    let checkpoint;
+    try { checkpoint = JSON.parse(all[key]); } catch (ignored) { throw new Error('MASTER_BULK_STAGE_CHECKPOINT_INVALID'); }
+    if (!checkpoint || typeof checkpoint !== 'object' || Array.isArray(checkpoint)) {
+      throw new Error('MASTER_BULK_STAGE_CHECKPOINT_INVALID');
+    }
+    if ((checkpoint.phase === 'published_pending_postprocess' || checkpoint.phase === 'ready_to_archive')
+        && key !== currentCheckpointKey) {
+      throw new Error('MASTER_BULK_PUBLISHED_ARCHIVE_RECOVERY_REQUIRED');
+    }
+  });
+}
+
+function markMasterBulkSnapshotPublished_(checkpointKey, requestId, receipt, phase) {
+  const safeKey = String(checkpointKey || '');
+  const prefix = getMasterBulkSnapshotStageConfig_().checkpointPrefix;
+  if (!safeKey || safeKey.indexOf(prefix) !== 0) throw new Error('MASTER_BULK_STAGE_CHECKPOINT_KEY_INVALID');
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(safeKey);
+  if (!raw) throw new Error('MASTER_BULK_STAGE_CHECKPOINT_MISSING');
+  let checkpoint;
+  try { checkpoint = JSON.parse(raw); } catch (ignored) { throw new Error('MASTER_BULK_STAGE_CHECKPOINT_INVALID'); }
+  if (!checkpoint || String(checkpoint.requestId || '') !== String(requestId || '')
+      || !receipt || receipt.published !== true || String(receipt.requestId || '') !== String(requestId || '')) {
+    throw new Error('MASTER_BULK_STAGE_PUBLISHED_RECEIPT_INVALID');
+  }
+  if (phase !== 'published_pending_postprocess' && phase !== 'ready_to_archive') {
+    throw new Error('MASTER_BULK_STAGE_PHASE_INVALID');
+  }
+  checkpoint.phase = phase;
+  checkpoint.publishedReceipt = {
+    runId: String(receipt.runId || ''),
+    requestId: String(receipt.requestId || ''),
+    sourceDigest: String(receipt.sourceDigest || ''),
+    sourceRows: Number(receipt.sourceRows),
+    inserted: Number(receipt.inserted),
+    updated: Number(receipt.updated),
+    deleted: Number(receipt.deleted),
+    unchanged: Number(receipt.unchanged),
+    publicationRunId: String(receipt.publicationRunId || receipt.runId || '')
+  };
+  properties.setProperty(safeKey, JSON.stringify(checkpoint));
+}
+
+function cleanupOrphanedMasterBulkSnapshotStages_() {
+  const olderThan = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const result = callSupabaseRpc_('cleanup_master_snapshot_staging_v1', {
+      p_older_than: olderThan,
+      p_limit: 20
+    });
+    const count = Array.isArray(result) && result.length === 1 ? result[0] : result;
+    if (!Number.isSafeInteger(count) || count < 0 || count > 20) {
+      console.warn('[MASTER SNAPSHOT] Orphan staging cleanup returned an unrecognized count.');
+    }
+  } catch (error) {
+    console.warn('[MASTER SNAPSHOT] Bounded orphan staging cleanup was skipped; import will continue safely.');
+  }
+}
+
+function masterBulkSnapshotSourceManifest_(parsedFiles) {
+  const manifest = (parsedFiles || []).map(function(entry) {
+    const identity = entry && entry.sourceIdentity;
+    if (!identity || !String(identity.fileId || '').trim() || !String(identity.modifiedAt || '').trim()
+        || !Number.isSafeInteger(Number(identity.size)) || Number(identity.size) < 0) {
+      throw new Error('MASTER_BULK_SOURCE_IDENTITY_UNAVAILABLE');
+    }
+    return {
+      fileId: String(identity.fileId),
+      modifiedAt: String(identity.modifiedAt),
+      size: Number(identity.size)
+    };
+  });
+  if (!manifest.length) throw new Error('MASTER_BULK_SOURCE_MANIFEST_EMPTY');
+  return manifest;
+}
+
+function readMasterBulkSnapshotStageCheckpoint_(manifest, bulkPayload) {
+  const config = getMasterBulkSnapshotStageConfig_();
+  const storageKey = masterBulkSnapshotStageCheckpointKey_(manifest, bulkPayload.sourceDigest);
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(storageKey);
+  if (!raw) {
+    const checkpoint = {
+      requestId: Utilities.getUuid(),
+      storageKey: storageKey,
+      manifest: manifest,
+      sourceDigest: bulkPayload.sourceDigest,
+      expectedRows: bulkPayload.rows.length,
+      expectedChunks: Math.ceil(bulkPayload.rows.length / config.chunkSize),
+      sourceManifestDigest: ''
+    };
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkpoint.requestId)) {
+      throw new Error('MASTER_BULK_STAGE_REQUEST_ID_INVALID');
+    }
+    properties.setProperty(storageKey, JSON.stringify(checkpoint));
+    checkpoint.createdNow = true;
+    return checkpoint;
+  }
+
+  let checkpoint;
+  try { checkpoint = JSON.parse(raw); } catch (ignored) { throw new Error('MASTER_BULK_STAGE_CHECKPOINT_INVALID'); }
+  if (!checkpoint || typeof checkpoint !== 'object' || Array.isArray(checkpoint)
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(checkpoint.requestId || ''))
+      || JSON.stringify(checkpoint.manifest) !== JSON.stringify(manifest)
+      || String(checkpoint.sourceDigest || '').toLowerCase() !== String(bulkPayload.sourceDigest || '').toLowerCase()
+      || Number(checkpoint.expectedRows) !== bulkPayload.rows.length
+      || Number(checkpoint.expectedChunks) !== Math.ceil(bulkPayload.rows.length / config.chunkSize)
+      || checkpoint.sourceManifestDigest != null && checkpoint.sourceManifestDigest !== ''
+        && !/^[0-9a-f]{64}$/i.test(String(checkpoint.sourceManifestDigest))) {
+    // Never replace an unfinished or corrupt checkpoint with a different snapshot.
+    throw new Error('MASTER_BULK_STAGE_CHECKPOINT_MISMATCH');
+  }
+  checkpoint.storageKey = storageKey;
+  return checkpoint;
+}
+
+function saveMasterBulkSnapshotStageCheckpoint_(checkpoint) {
+  if (!checkpoint || !checkpoint.storageKey) throw new Error('MASTER_BULK_STAGE_CHECKPOINT_KEY_INVALID');
+  PropertiesService.getScriptProperties().setProperty(checkpoint.storageKey, JSON.stringify(checkpoint));
+}
+
+function clearMasterBulkSnapshotStageCheckpoint_(storageKey, requestId) {
+  const safeKey = String(storageKey || '');
+  if (!safeKey || safeKey.indexOf(getMasterBulkSnapshotStageConfig_().checkpointPrefix) !== 0) {
+    throw new Error('MASTER_BULK_STAGE_CHECKPOINT_KEY_INVALID');
+  }
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(safeKey);
+  if (!raw) return;
+  let checkpoint;
+  try { checkpoint = JSON.parse(raw); } catch (ignored) { throw new Error('MASTER_BULK_STAGE_CHECKPOINT_INVALID'); }
+  if (!checkpoint || String(checkpoint.requestId || '') !== String(requestId || '')) {
+    throw new Error('MASTER_BULK_STAGE_CHECKPOINT_CHANGED');
+  }
+  properties.deleteProperty(safeKey);
+}
+
+function masterBulkStageResponseObject_(response) {
+  return Array.isArray(response) && response.length === 1 ? response[0] : response;
+}
+
+function validateMasterBulkStageState_(response, expected, status) {
+  const config = getMasterBulkSnapshotStageConfig_();
+  const value = masterBulkStageResponseObject_(response);
+  if (!value || value.status !== status
+      || String(value.requestId || '') !== String(expected.requestId || '')
+      || String(value.runId || '') !== String(expected.runId || '')
+      || String(value.sourceDigest || '') !== String(expected.sourceDigest || '')
+      || !/^[0-9a-f]{64}$/i.test(String(value.sourceManifestDigest || ''))
+      || !Number.isSafeInteger(value.sourceCount) || value.sourceCount !== expected.sourceCount
+      || value.chunkSize !== config.chunkSize
+      || value.expectedRows !== expected.expectedRows || value.expectedChunks !== expected.expectedChunks
+      || !Number.isSafeInteger(value.chunksReceived) || value.chunksReceived < 0 || value.chunksReceived > expected.expectedChunks
+      || !Number.isSafeInteger(value.rowsReceived) || value.rowsReceived < 0 || value.rowsReceived > expected.expectedRows
+      || !Array.isArray(value.missingChunkIndexes)) {
+    throw new Error('MASTER_BULK_STAGE_RESPONSE_INVALID');
+  }
+  const missing = value.missingChunkIndexes;
+  const seen = new Set();
+  let missingRows = 0;
+  missing.forEach(function(index) {
+    if (!Number.isSafeInteger(index) || index < 0 || index >= expected.expectedChunks || seen.has(index)) {
+      throw new Error('MASTER_BULK_STAGE_MISSING_CHUNKS_INVALID');
+    }
+    seen.add(index);
+    missingRows += Math.min(config.chunkSize, expected.expectedRows - index * config.chunkSize);
+  });
+  if (missing.length !== expected.expectedChunks - value.chunksReceived
+      || value.rowsReceived !== expected.expectedRows - missingRows
+      || value.nextChunkIndex !== (missing.length ? missing[0] : null)) {
+    throw new Error('MASTER_BULK_STAGE_PROGRESS_INVALID');
+  }
+  if (status === 'published' && (missing.length || value.chunksReceived !== expected.expectedChunks
+      || value.rowsReceived !== expected.expectedRows || value.replayed !== true)) {
+    throw new Error('MASTER_BULK_STAGE_PUBLISHED_STATE_INVALID');
+  }
+  return value;
+}
+
+function callMasterBulkStageRpc_(label, name, payload, beforeAttempt) {
+  return withRetry_(label, 3, 750, function() {
+    if (typeof beforeAttempt === 'function') beforeAttempt();
+    return callSupabaseRpc_(name, payload);
+  }, function(error) {
+    const message = String(error && error.message || error || '').toLowerCase();
+    return message.includes('timeout') || message.includes('timed out') || message.includes('network')
+      || message.includes('connection') || /\((429|500|502|503|504)\)/.test(message);
+  });
+}
+
+function masterBulkStageContinuationError_(stagedRows, totalRows) {
+  const error = new Error('MASTER_BULK_STAGE_CONTINUATION_PENDING');
+  error.errorCode = 'MASTER_BULK_STAGE_CONTINUATION_PENDING';
+  error.stagedRows = Math.max(0, Number(stagedRows) || 0);
+  error.totalRows = Math.max(0, Number(totalRows) || 0);
+  return error;
+}
+
+function masterBulkStageContinuationResult_(tableName, error) {
+  return {
+    tableName: tableName, filesProcessed: 0, failedFiles: 0, failedFileNames: [], failedFileErrors: [],
+    stagedRows: error.stagedRows || 0, totalRows: error.totalRows || 0, continuationPending: true
+  };
+}
+
+function shouldContinueMasterBulkStage_(startedAt) {
+  return Date.now() - startedAt >= getMasterBulkSnapshotStageConfig_().invocationBudgetMs
+    || manualSyncInvocationDeadlineMs_ > 0 && manualSyncInvocationDeadlineMs_ - Date.now() < 65000;
+}
+
+function validateMasterBulkPublishedReplay_(response, expected) {
+  const value = masterBulkStageResponseObject_(response);
+  if (!value || value.status !== 'published' || value.replayed !== true
+      || String(value.requestId || '') !== String(expected.requestId || '')
+      || String(value.runId || '') !== String(expected.runId || '')
+      || String(value.sourceDigest || '') !== String(expected.sourceDigest || '')
+      || String(value.sourceManifestDigest || '') !== String(expected.sourceManifestDigest || '')
+      || !String(value.publicationRunId || '').trim()) {
+    throw new Error('MASTER_BULK_STAGE_PUBLISHED_REPLAY_INVALID');
+  }
+  const receipt = validateMasterBulkSnapshotResponse_(value.publishedResponse, value.publicationRunId,
+    expected.requestId, expected.sourceDigest, expected.expectedRows);
+  return {
+    published: true,
+    runId: expected.runId,
+    requestId: expected.requestId,
+    sourceDigest: expected.sourceDigest,
+    sourceRows: receipt.sourceRows,
+    inserted: receipt.inserted,
+    updated: receipt.updated,
+    deleted: receipt.deleted,
+    unchanged: receipt.unchanged,
+    publicationRunId: value.publicationRunId,
+    replayed: true,
+    checkpointKey: expected.checkpointKey
+  };
+}
+
+function validateMasterBulkStageFinalize_(response, expected) {
+  const value = masterBulkStageResponseObject_(response);
+  if (!value || value.status !== 'published' || value.replayed !== true && value.replayed !== false
+      || String(value.requestId || '') !== String(expected.requestId || '')
+      || String(value.runId || '') !== String(expected.runId || '')
+      || String(value.publicationRunId || '') !== String(value.replayed ? value.publicationRunId : expected.runId)
+      || String(value.sourceDigest || '') !== String(expected.sourceDigest || '')
+      || String(value.sourceManifestDigest || '') !== String(expected.sourceManifestDigest || '')) {
+    throw new Error('MASTER_BULK_STAGE_FINALIZE_IDENTITY_INVALID');
+  }
+  const receipt = validateMasterBulkSnapshotResponse_(value, expected.runId, expected.requestId,
+    expected.sourceDigest, expected.expectedRows);
+  return Object.assign({}, receipt, {
+    publicationRunId: value.publicationRunId,
+    replayed: value.replayed,
+    checkpointKey: expected.checkpointKey
+  });
+}
+
+function callMasterBulkSnapshotImport_(bulkPayload, parsedFiles, runId) {
+  const config = getMasterBulkSnapshotStageConfig_();
+  const startedAt = Date.now();
+  revalidateCanonicalMasterSnapshotSources_(parsedFiles);
+  const manifest = masterBulkSnapshotSourceManifest_(parsedFiles);
+  const checkpointKey = masterBulkSnapshotStageCheckpointKey_(manifest, bulkPayload.sourceDigest);
+  assertNoPublishedMasterBulkSnapshotAwaitingArchive_(checkpointKey);
+  const checkpoint = readMasterBulkSnapshotStageCheckpoint_(manifest, bulkPayload);
+  const createdCheckpointNow = checkpoint.createdNow === true;
+  delete checkpoint.createdNow;
+  if (createdCheckpointNow) cleanupOrphanedMasterBulkSnapshotStages_();
+  const expected = {
+    requestId: checkpoint.requestId,
+    runId: String(runId || ''),
+    sourceDigest: bulkPayload.sourceDigest,
+    sourceManifestDigest: checkpoint.sourceManifestDigest,
+    sourceCount: manifest.length,
+    expectedRows: bulkPayload.rows.length,
+    expectedChunks: Math.ceil(bulkPayload.rows.length / config.chunkSize),
+    checkpointKey: checkpoint.storageKey
+  };
+
+  const begun = callMasterBulkStageRpc_('Begin staged master snapshot', 'begin_master_snapshot_stage_v1', {
+    p_run_id: expected.runId,
+    p_request_id: expected.requestId,
+    p_source_manifest: manifest,
+    p_source_digest: expected.sourceDigest,
+    p_expected_rows: expected.expectedRows,
+    p_expected_chunks: expected.expectedChunks
+  }, function() { revalidateCanonicalMasterSnapshotSources_(parsedFiles); });
+  const beginValue = masterBulkStageResponseObject_(begun);
+  if (beginValue && beginValue.status === 'published') {
+    if (!expected.sourceManifestDigest && /^[0-9a-f]{64}$/i.test(String(beginValue.sourceManifestDigest || ''))) {
+      checkpoint.sourceManifestDigest = String(beginValue.sourceManifestDigest).toLowerCase();
+      expected.sourceManifestDigest = checkpoint.sourceManifestDigest;
+      saveMasterBulkSnapshotStageCheckpoint_(checkpoint);
+    }
+    validateMasterBulkStageState_(begun, expected, 'published');
+    const replayed = validateMasterBulkPublishedReplay_(begun, expected);
+    markMasterBulkSnapshotPublished_(expected.checkpointKey, expected.requestId, replayed, 'published_pending_postprocess');
+    return replayed;
+  }
+  const beginState = validateMasterBulkStageState_(begun, expected, 'staging');
+  if (expected.sourceManifestDigest && beginState.sourceManifestDigest.toLowerCase() !== expected.sourceManifestDigest.toLowerCase()) {
+    throw new Error('MASTER_BULK_STAGE_MANIFEST_DIGEST_CHANGED');
+  }
+  if (!checkpoint.sourceManifestDigest) {
+    checkpoint.sourceManifestDigest = beginState.sourceManifestDigest.toLowerCase();
+    expected.sourceManifestDigest = checkpoint.sourceManifestDigest;
+    saveMasterBulkSnapshotStageCheckpoint_(checkpoint);
+  }
+
+  let missing = beginState.missingChunkIndexes.slice();
+  const pendingIndexes = missing.slice();
+  let stagedRows = beginState.rowsReceived;
+  for (let missingIndex = 0; missingIndex < pendingIndexes.length; missingIndex++) {
+    const chunkIndex = pendingIndexes[missingIndex];
+    const chunkRows = bulkPayload.rows.slice(chunkIndex * config.chunkSize,
+      Math.min(bulkPayload.rows.length, (chunkIndex + 1) * config.chunkSize));
+    if (shouldContinueMasterBulkStage_(startedAt)) throw masterBulkStageContinuationError_(stagedRows, expected.expectedRows);
+    assertImportTimeBudget_('master_snapshot_stage_chunk', 65000);
+    const stagedResponse = callMasterBulkStageRpc_('Append staged master snapshot chunk', 'append_master_snapshot_stage_chunk_v1', {
+      p_run_id: expected.runId,
+      p_request_id: expected.requestId,
+      p_chunk_index: chunkIndex,
+      p_rows: chunkRows
+    }, function() { revalidateCanonicalMasterSnapshotSources_(parsedFiles); });
+    const staged = masterBulkStageResponseObject_(stagedResponse);
+    if (!staged || staged.status !== 'staging'
+        || String(staged.requestId || '') !== expected.requestId || String(staged.runId || '') !== expected.runId
+        || staged.chunkIndex !== chunkIndex || staged.rowCount !== chunkRows.length || staged.accepted !== true
+        || !Array.isArray(staged.missingChunkIndexes)
+        || staged.missingChunkIndexes.indexOf(chunkIndex) !== -1) {
+      throw new Error('MASTER_BULK_STAGE_CHUNK_RESPONSE_INVALID');
+    }
+    const state = validateMasterBulkStageState_({
+      status: staged.status, requestId: staged.requestId, runId: staged.runId,
+      sourceDigest: expected.sourceDigest, sourceManifestDigest: expected.sourceManifestDigest,
+      sourceCount: expected.sourceCount, chunkSize: config.chunkSize,
+      expectedRows: expected.expectedRows, expectedChunks: expected.expectedChunks,
+      chunksReceived: staged.chunksReceived, rowsReceived: staged.rowsReceived,
+      missingChunkIndexes: staged.missingChunkIndexes, nextChunkIndex: staged.nextChunkIndex
+    }, expected, 'staging');
+    missing = state.missingChunkIndexes.slice();
+    stagedRows = state.rowsReceived;
+  }
+
+  if (missing.length || stagedRows !== expected.expectedRows) throw new Error('MASTER_BULK_STAGE_INCOMPLETE');
+  if (shouldContinueMasterBulkStage_(startedAt)) throw masterBulkStageContinuationError_(stagedRows, expected.expectedRows);
+  assertImportTimeBudget_('master_snapshot_stage_finalize', 65000);
+  const finalized = callMasterBulkStageRpc_('Finalize staged master snapshot', 'finalize_master_snapshot_stage_v1', {
+    p_run_id: expected.runId,
+    p_request_id: expected.requestId,
+    p_source_digest: expected.sourceDigest
+  }, function() { revalidateCanonicalMasterSnapshotSources_(parsedFiles); });
+  const result = validateMasterBulkStageFinalize_(finalized, expected);
+  markMasterBulkSnapshotPublished_(expected.checkpointKey, expected.requestId, result, 'published_pending_postprocess');
+  return result;
+}
+
 function buildMasterBulkSnapshotPayload_(tableName, parsedFiles, payloadBuilderFunc, syncStartTime) {
   const combinedStats = createDeltaSyncStats_();
   const rowsById = new Map();
   parsedFiles.forEach(function(entry) {
+    const rawHeaders = Array.isArray(entry && entry.rawData) && Array.isArray(entry.rawData[0])
+      ? entry.rawData[0]
+      : [];
+    assertDriveAroundSourceContract_(entry && entry.rawData, tableName);
+    const sourceColumns = new Set(collectAllowedPayloadColumnsFromHeaders_(rawHeaders, [
+      'unique_id', 'last_updated', 'filename', 'concat'
+    ]));
+    const sourceOnlyIndexes = {};
+    rawHeaders.forEach(function(header, index) {
+      const key = normalizePayloadColumnKey_(header);
+      if (tableName === 'ph_master_inventory' && (key === 'hsreasonbegin' || key === 'ext_equiv_unit')) {
+        sourceColumns.add(key);
+        sourceOnlyIndexes[key] = index;
+      }
+    });
+    const sourceOnlyById = new Map();
+    if (Object.keys(sourceOnlyIndexes).length && Array.isArray(entry.rawData)) {
+      const sourceContext = getMasterPayloadContext_(entry.rawData, {
+        siteScoped: isSiteSplitPhysicalTable_(tableName),
+        targetSite: getSiteCodeFromSiteSplitTableName_(tableName)
+      });
+      const idTracker = {};
+      for (let rowIndex = 1; rowIndex < entry.rawData.length; rowIndex++) {
+        const row = entry.rawData[rowIndex] || [];
+        const identity = getMasterRowIdentity_(row, sourceContext, idTracker);
+        if (!identity.valid) continue;
+        const values = {};
+        Object.keys(sourceOnlyIndexes).forEach(function(key) {
+          const value = String(row[sourceOnlyIndexes[key]] || '').trim();
+          values[key] = value === '' || value === 'NULL' ? null : value;
+        });
+        sourceOnlyById.set(identity.uniqueId, values);
+      }
+    }
     const results = payloadBuilderFunc(entry.rawData, tableName, [], syncStartTime, entry.fileName);
     const fileStats = results && results.stats ? results.stats : createDeltaSyncStats_();
     throwIfSnapshotSourceInvalid_(fileStats, results && results.totalRows, entry.fileName, tableName);
@@ -6672,9 +7584,11 @@ function buildMasterBulkSnapshotPayload_(tableName, parsedFiles, payloadBuilderF
       if (!uniqueId) return;
       const values = {};
       Object.keys(sourceRow).forEach(function(key) {
-        if (key === 'assignedto') return;
+        if (key === 'assignedto' || !sourceColumns.has(key)) return;
         values[key] = sourceRow[key];
       });
+      const sourceOnlyValues = sourceOnlyById.get(uniqueId);
+      if (sourceOnlyValues) Object.assign(values, sourceOnlyValues);
       const rawFields = getMasterItem6RawFieldMask_(sourceRow);
       rowsById.set(uniqueId, { values: canonicalizeMasterBulkPayloadValue_(values), rawFields: rawFields });
     });
@@ -6707,24 +7621,6 @@ function validateMasterBulkSnapshotResponse_(response, runId, requestId, sourceD
     throw new Error('MASTER_BULK_IMPORT_RESPONSE_TOTAL_INVALID');
   }
   return value;
-}
-
-function callMasterBulkSnapshotImport_(bulkPayload, runId) {
-  const requestId = masterBulkRequestUuid_(runId, bulkPayload.sourceDigest);
-  const rpcPayload = {
-    p_run_id: runId,
-    p_request_id: requestId,
-    p_rows: bulkPayload.rows,
-    p_source_digest: bulkPayload.sourceDigest
-  };
-  const response = withRetry_('Bulk master snapshot import', 3, 750, function() {
-    return callSupabaseRpc_('bulk_import_master_snapshot_v1', rpcPayload);
-  }, function(error) {
-    const message = String(error && error.message || error || '').toLowerCase();
-    return message.includes('timeout') || message.includes('timed out') || message.includes('network')
-      || message.includes('connection') || /\((429|500|502|503|504)\)/.test(message);
-  });
-  return validateMasterBulkSnapshotResponse_(response, runId, requestId, bulkPayload.sourceDigest, bulkPayload.rows.length);
 }
 
 function isCanonicalPhMasterBulkSnapshot_(tableName, processedFolderId) {
@@ -6977,7 +7873,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     if (!pinned) throw createImportPrewriteDeferralError_('IMPORT_SOURCE_SELECTION_CHANGED', 'source_selection');
     pendingFiles.splice(0, pendingFiles.length, pinned);
   }
-  const syncStartTime = new Date().toISOString();
+  let syncStartTime = new Date().toISOString();
   const parsedFiles = [];
   const failedFiles = [];
   const failedFileObjects = new Set();
@@ -6991,6 +7887,9 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
   let evalReport2Reconciliation = null;
   const canonicalPhMasterBulk = isCanonicalPhMasterBulkSnapshot_(tableName, processedFolderId);
   let canonicalPhMasterPublished = false;
+  let canonicalPhMasterRequestId = '';
+  let canonicalPhMasterCheckpointKey = '';
+  let canonicalPhMasterSyncTimestampKey = '';
   let masterBulkPayload = null;
   let writePhaseStarted = false;
 
@@ -7067,7 +7966,12 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
 
     if (isMasterInventoryTable_(tableName)) {
       if (canonicalPhMasterBulk) {
+        const snapshotManifest = masterBulkSnapshotSourceManifest_(parsedFiles);
+        const stableTimestamp = getOrCreateMasterBulkSnapshotSyncTimestamp_(snapshotManifest, syncStartTime);
+        syncStartTime = stableTimestamp.value;
+        canonicalPhMasterSyncTimestampKey = stableTimestamp.key;
         masterBulkPayload = buildMasterBulkSnapshotPayload_(tableName, parsedFiles, payloadBuilderFunc, syncStartTime);
+        masterBulkPayload.snapshotSyncTimestamp = syncStartTime;
         mergeDeltaSyncStats_(combinedStats, masterBulkPayload.combinedStats);
         upserts = masterBulkPayload.rows;
       } else {
@@ -7129,8 +8033,11 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     writePhaseStarted = true;
     if (canonicalPhMasterBulk) {
       if (!revisionFence || !revisionFence.runId) throw new Error('MASTER_BULK_IMPORT_FENCE_UNAVAILABLE');
-      const bulkResult = callMasterBulkSnapshotImport_(masterBulkPayload, revisionFence.runId);
+      const bulkResult = callMasterBulkSnapshotImport_(masterBulkPayload, parsedFiles, revisionFence.runId);
       canonicalPhMasterPublished = true;
+      canonicalPhMasterRequestId = String(bulkResult.requestId || '');
+      canonicalPhMasterCheckpointKey = String(bulkResult.checkpointKey || '');
+      masterBulkPayload.publicationReceipt = bulkResult;
       upsertCount = bulkResult.inserted + bulkResult.updated;
       deleteCount = bulkResult.deleted;
       combinedStats.insertedRows = bulkResult.inserted;
@@ -7180,6 +8087,10 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
         throw publishedSourceError;
       }
     } : null);
+    if (canonicalPhMasterBulk && canonicalPhMasterPublished) {
+      markMasterBulkSnapshotPublished_(canonicalPhMasterCheckpointKey, canonicalPhMasterRequestId,
+        masterBulkPayload && masterBulkPayload.publicationReceipt, 'ready_to_archive');
+    }
     let namingSummary = null;
     if (isMasterInventoryTable_(tableName) && String(processedFolderId || '') === String(FOLDERS.MASTER_PROCESSED || '')) {
       namingSummary = moveAndNormalizeDriveAroundProcessedFiles_(parsedFiles, processedFolder, { nowIso: syncStartTime });
@@ -7191,10 +8102,15 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
         moveDriveFileToFolderWithRetry_(entry.file, processedFolder, `${tableName} processed snapshot file ${entry.fileName}`);
       });
     }
+    if (canonicalPhMasterBulk && canonicalPhMasterPublished && masterBulkPayload) {
+      clearMasterBulkSnapshotStageCheckpoint_(canonicalPhMasterCheckpointKey, canonicalPhMasterRequestId);
+      clearMasterBulkSnapshotSyncTimestamp_(canonicalPhMasterSyncTimestampKey, syncStartTime);
+    }
     importSucceeded = true;
   } catch (err) {
     if (isImportPreparationDeferredError_(err) && !writePhaseStarted) throw err;
     failDatasetImportFence_(revisionFence);
+    if (err && err.errorCode === 'MASTER_BULK_STAGE_CONTINUATION_PENDING') return masterBulkStageContinuationResult_(tableName, err);
     if (err && err.errorCode === 'IMPORT_HISTORY_CONTINUATION_PENDING') return importHistoryContinuationResult_(tableName, err);
     const errorMessage = err && err.message ? err.message : String(err);
     const caughtErrorCode = getSafeImportFailureCode_(err);

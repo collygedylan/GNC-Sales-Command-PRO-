@@ -1,3 +1,4 @@
+import { verifyV2313RetainedValidation } from './check-v2313-retained-validation.mjs';
 import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
 import { verifyV2311RetainedValidation } from './check-v2311-retained-validation.mjs';
 import { verifyV2310RetainedValidation } from './check-v2310-retained-validation.mjs';
@@ -31,6 +32,11 @@ export function runReleaseUnitChecks({
   }
   if (shard && (Number(shard[1]) > Number(shard[2]) || Number(shard[2]) > 32)) throw new Error('Usage: invalid unit shard');
   const packageManifest = JSON.parse(readPackage(rootDir));
+  if (packageManifest.version === '2.3.13') {
+    verifyV2313RetainedValidation({ rootDir });
+    print(argv[0] === '--list' ? '[]' : 'Verified source-sealed v2.3.13 ingestion checks; retaining unchanged UI validation.');
+    return 0;
+  }
   if (packageManifest.version === '2.3.12') {
     verifyV2312RetainedValidation({ rootDir });
     print(argv[0] === '--list' ? '[]' : 'Retaining source-sealed v2.3.12 focused validation and unchanged baseline.');
