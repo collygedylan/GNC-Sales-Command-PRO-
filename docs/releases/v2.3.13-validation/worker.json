@@ -1,0 +1,115 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T00:51:02.956Z",
+  "sourceDigest": "2eb5bbc6f2457ba8d2e80927858ecc70a586ec0d28ccb01bfdaae3a64dd16736",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "tests": {
+    "path": ".gnc-local/v2313-worker-focused-attempt4.log",
+    "sha256": "1eee9062fb0b9e992770089643fb2db569a90cad8238f443c1d717d2572d4048",
+    "tests": 10,
+    "passed": 10,
+    "failed": 0,
+    "retainedDriveAssertions": 7,
+    "excludedDeferredErpAssertions": 3
+  },
+  "canonical": {
+    "path": ".gnc-local/v2313-canonical-final.log",
+    "sha256": "db91a1003552a3ceefc470a563d84dab7c7a5557f94ee662cbfb1f041882ebaf",
+    "tests": 4,
+    "passed": 4,
+    "failed": 0
+  },
+  "releaseContract": {
+    "path": ".gnc-local/v2313-release-attempt1.log",
+    "sha256": "f386c91530234277a9844a932cb0c28dcb084275d3631ca54d035eb59f7f744d",
+    "tests": 3,
+    "passed": 3,
+    "failed": 0,
+    "retainedUnchangedAssertions": 2,
+    "updatedSchemaGate": {
+      "path": ".gnc-local/v2313-final-schema-gate-contract.log",
+      "sha256": "b2bceccd5d28978595a8877503603a63e4f40f6e3389c5338d1d5296c8f0df9d",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "approvedTimingBudget": {
+      "path": ".gnc-local/v2313-final-timing-contract.log",
+      "sha256": "7c68b45e541ee17a179ea3fd4fd9ce08515099b16c13646e15f86af5a003df84",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0
+    }
+  },
+  "failureHistory": {
+    "worker": [
+      {
+        "at": "2026-10-19T23:14:12.644Z",
+        "passed": 1,
+        "failed": 4,
+        "log": ".gnc-local/v2313-worker-attempt1.log",
+        "attempt": 1,
+        "cap": 8,
+        "diagnosisPending": true
+      },
+      {
+        "attempt": 2,
+        "failed": 4,
+        "diagnosis": "Canonical fixture used a legacy processed-folder identity; receipt fixtures did not yet match canonical path."
+      },
+      {
+        "attempt": 3,
+        "passed": 3,
+        "failed": 1,
+        "diagnosis": "Transient createdNow marker persisted in continuation checkpoint; removed before save."
+      },
+      {
+        "scope": "unified ERP worker",
+        "attempt": 1,
+        "passed": 8,
+        "failed": 2,
+        "log": ".gnc-local/v2313-worker-focused-attempt1.log"
+      },
+      {
+        "scope": "unified ERP worker",
+        "attempt": 2,
+        "passed": 9,
+        "failed": 1,
+        "log": ".gnc-local/v2313-worker-focused-attempt2.log"
+      },
+      {
+        "scope": "unified ERP worker",
+        "attempt": 3,
+        "passed": 9,
+        "failed": 1,
+        "log": ".gnc-local/v2313-worker-focused-attempt3.log"
+      },
+      {
+        "scope": "unified ERP worker",
+        "attempt": 4,
+        "passed": 10,
+        "failed": 0,
+        "log": ".gnc-local/v2313-worker-focused-attempt4.log"
+      }
+    ],
+    "canonical": {
+      "at": "2026-10-19T23:14:12.674Z",
+      "passed": 4,
+      "failed": 0,
+      "log": ".gnc-local/v2313-canonical-attempt1.log",
+      "finalLog": ".gnc-local/v2313-canonical-final.log"
+    },
+    "release": {
+      "at": "2026-10-19T23:14:12.688Z",
+      "passed": 3,
+      "failed": 0,
+      "log": ".gnc-local/v2313-release-attempt1.log"
+    }
+  },
+  "scope": [
+    "tests/master-snapshot-chunk-import.test.mjs",
+    "selected canonical snapshot tests",
+    "tests/v2313-release-contract.test.mjs"
+  ]
+}

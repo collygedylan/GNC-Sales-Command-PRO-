@@ -262,6 +262,8 @@ jobs:
             if (scope !== 'false' || process.env.REQUIRE_SCHEMA_SCOPE === 'true') throw new Error('BACKEND_SCHEMA_SCOPE_REQUIRED');
             console.log('No database paths changed; schema integration jobs were intentionally skipped.');
           } else if (process.env.V2313 === 'true') {
+            required.splice(required.indexOf('edge-functions'), 1);
+            required.push('integration');
             if (jobs.integration?.result !== 'success') throw new Error('V2313_INGESTION_EVIDENCE_REQUIRED');
             for (const name of ['edge-functions', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions']) {
               if (jobs[name]?.result !== 'skipped') throw new Error(`V2313_UNEXPECTED_UNAFFECTED_JOB_${name}`);

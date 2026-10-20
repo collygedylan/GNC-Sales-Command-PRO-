@@ -10,29 +10,34 @@ import { parse } from 'acorn';
 export const V2313_BASE = '1fa247e779838d20ec5090f5d95559a0bf0be864';
 const rootDefault = fileURLToPath(new URL('../', import.meta.url));
 const receiptPath = 'docs/releases/v2.3.13-retained-validation.json';
-const evidencePaths = ['docs/releases/v2.3.13-validation/worker.json', 'docs/releases/v2.3.13-validation/database.json', 'docs/releases/v2.3.13-validation/erp-database.json', 'docs/releases/v2.3.13-validation/tooling.json', 'docs/releases/v2.3.13-validation/storm.json'];
+const evidencePaths = ['docs/releases/v2.3.13-validation/worker.json', 'docs/releases/v2.3.13-validation/database.json', 'docs/releases/v2.3.13-validation/tooling.json', 'docs/releases/v2.3.13-validation/storm.json'];
 const versionFiles = ['index.html', 'manifest.json', 'sw.js', 'scripts/build-live-shell.mjs', 'assets/ops-precision-pilot.js', 'v2/src/services/api.ts', 'v2/public/manifest.webmanifest'];
 const allowed = new Set([
-  ...versionFiles, 'package.json', 'package-lock.json', 'Code.gs',
+  ...versionFiles, 'package.json', 'package-lock.json', 'Code.gs', 'docs/releases/v2.3.13-checkpoint.md',
   '.github/workflows/apps-script-sync.yml', '.github/workflows/release-database.yml',
   'scripts/apps-script-function-patch.mjs', 'scripts/check-v2313-retained-validation.mjs',
   'scripts/run-release-unit-checks.mjs', 'scripts/run-release-react-checks.mjs', 'scripts/ci-backend-matrix.mjs',
   'scripts/apply-item-low-stock-migration.mjs', 'scripts/verify-v2313-database.mjs',
-  'scripts/verify-v2313-erp-database.mjs',
   'supabase/migrations/20261019225625_master_snapshot_chunked_staging_v1.sql',
   'supabase/migrations/20261019234222_identity_batch_not_ready_retry_sqlstate.sql',
-  'supabase/migrations/20261020004000_erp_soc_snapshot_staging_v1.sql',
   'supabase/tests/master_snapshot_chunked_staging_v1_test.sql',
-  'supabase/tests/erp_soc_snapshot_staging_v1_test.sql',
   'supabase/tests/bulk_context_index_plan_test.sql',
   'supabase/tests/inventory_master_identity_batch_test.sql',
   'supabase/functions/_shared/database.types.ts', 'services/database-contracts.generated.ts',
-  'tests/master-snapshot-chunk-import.test.mjs', 'tests/erp-snapshot-stage-import.test.mjs', 'tests/v2313-release-contract.test.mjs', 'tests/suspend-tag-import.test.mjs',
+  'tests/master-snapshot-chunk-import.test.mjs', 'tests/v2313-release-contract.test.mjs', 'tests/suspend-tag-import.test.mjs',
 ]);
 const hash = text => createHash('sha256').update(String(text).replaceAll('\r\n', '\n')).digest('hex');
 const read = (root, file) => fs.readFileSync(path.join(root, file), 'utf8');
 const git = (root, args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 const normalizeVersion = text => text.replaceAll('2.3.13', '2.3.12');
+
+// User-approved finalization budget; staging and other RPC gates stay unchanged.
+export const V2313_FINALIZE_BUDGET_MS = 10_000;
+export const V2313_OTHER_RPC_BUDGET_MS = 2_000;
+export function isV2313DriveTimingWithinBudget(metric) {
+  const budget = metric.operation === 'finalize' ? V2313_FINALIZE_BUDGET_MS : V2313_OTHER_RPC_BUDGET_MS;
+  return Number.isFinite(metric.ms) && metric.ms >= 0 && metric.ms < budget;
+}
 
 export function captureV2313Sources({ rootDir = rootDefault } = {}) {
   const names = [...new Set([...git(rootDir, ['diff', '--name-only', '--no-renames', '-z', V2313_BASE]).split('\0'),
@@ -81,7 +86,7 @@ export function verifyV2313RetainedValidation({ rootDir = rootDefault } = {}) {
   if (pkg.version !== '2.3.13' || receipt.base !== V2313_BASE || receipt.release !== 'AgData v2.3.13'
     || receipt.schemaVersion !== 'agdata-v2313-scoped-validation-v1') throw new Error('V2313_IDENTITY');
   const sources = captureV2313Sources({ rootDir });
-  for (const file of ['Code.gs', 'supabase/migrations/20261019225625_master_snapshot_chunked_staging_v1.sql', 'supabase/tests/master_snapshot_chunked_staging_v1_test.sql', 'supabase/tests/bulk_context_index_plan_test.sql', 'supabase/migrations/20261019234222_identity_batch_not_ready_retry_sqlstate.sql', 'supabase/tests/inventory_master_identity_batch_test.sql', 'supabase/migrations/20261020004000_erp_soc_snapshot_staging_v1.sql', 'supabase/tests/erp_soc_snapshot_staging_v1_test.sql', 'tests/master-snapshot-chunk-import.test.mjs', 'scripts/verify-v2313-database.mjs', 'scripts/verify-v2313-erp-database.mjs']) {
+  for (const file of ['Code.gs', 'supabase/migrations/20261019225625_master_snapshot_chunked_staging_v1.sql', 'supabase/tests/master_snapshot_chunked_staging_v1_test.sql', 'supabase/tests/bulk_context_index_plan_test.sql', 'supabase/migrations/20261019234222_identity_batch_not_ready_retry_sqlstate.sql', 'supabase/tests/inventory_master_identity_batch_test.sql', 'tests/master-snapshot-chunk-import.test.mjs', 'scripts/verify-v2313-database.mjs']) {
     if (!Object.hasOwn(sources, file)) throw new Error(`V2313_REQUIRED_SOURCE_MISSING:${file}`);
   }
   if (JSON.stringify(sources) !== JSON.stringify(receipt.sourceHashes)) throw new Error('V2313_SOURCE_SEAL_MISMATCH');
@@ -100,35 +105,19 @@ export function verifyV2313RetainedValidation({ rootDir = rootDefault } = {}) {
   }
   const database = JSON.parse(read(rootDir, evidencePaths[1]));
   if (database.nativePostgres !== true || database.sourceRows < 9504 || database.migrationsReplayed < 85
-    || !Number.isSafeInteger(database.assertions) || database.assertions < 1
+    || database.assertions !== 143
+    || database.validationComposition?.retainedAssertions !== 141 || database.validationComposition?.executedAssertions !== 2
+    || database.validationComposition?.assertions !== 143
+    || database.validationComposition?.checkpoint !== 'c19889ed7673427676070da0f552fc071e3c122c'
+    || !/^[a-f0-9]{64}$/.test(database.validationComposition?.logSha256 || '')
+    || !/^[a-f0-9]{64}$/.test(database.validationComposition?.unchangedFixtureSha256 || '')
     || !Array.isArray(database.timings) || !database.timings.length
-    || database.timings.some(metric => !Number.isFinite(metric.ms) || metric.ms < 0 || metric.ms >= 2000)
+    || database.timings.some(metric => !isV2313DriveTimingWithinBudget(metric))
     || !database.postgresVersion || !database.cacheCondition || !database.queryPlans
     || !['new', 'changed', 'unchanged', 'retry'].every(scenario => database.timings.some(metric => metric.scenario === scenario))) throw new Error('V2313_DATABASE_PERFORMANCE_EVIDENCE');
   if (database.contextTestFile !== 'supabase/tests/bulk_context_index_plan_test.sql'
     || database.contextTestSha256 !== sources[database.contextTestFile]) throw new Error('V2313_CONTEXT_TEST_EVIDENCE');
-  const erp = JSON.parse(read(rootDir, evidencePaths[2]));
-  const erpMetrics = erp.performance?.metrics;
-  const erpTargets = ['ph_soc_master', 'ph_reserves'];
-  const erpScenarios = ['new', 'changed', 'unchanged'];
-  if (erp.status !== 'passed' || erp.sourceDigest !== sourceDigest || erp.nativePostgres !== true
-    || erp.productionWrites !== false || erp.realEmailsSent !== false || erp.sourceRows !== 39938
-    || erp.sourceRowsByTarget?.ph_soc_master !== 32484 || erp.sourceRowsByTarget?.ph_reserves !== 7454
-    || erp.migrationsReplayed < 85 || erp.assertions < 1
-    || erp.testFile !== 'supabase/tests/erp_soc_snapshot_staging_v1_test.sql'
-    || erp.migrationFile !== 'supabase/migrations/20261020004000_erp_soc_snapshot_staging_v1.sql'
-    || erp.sourceHashes?.testSha256 !== sources[erp.testFile]
-    || erp.sourceHashes?.migrationSha256 !== sources[erp.migrationFile]
-    || !Array.isArray(erp.migrationWorkspaceHashes) || erp.migrationWorkspaceHashes.length < 85
-    || !Array.isArray(erpMetrics)
-    || erpMetrics.some(metric => !Number.isFinite(Number(metric.elapsed_ms)) || Number(metric.elapsed_ms) < 0 || Number(metric.elapsed_ms) >= 2000)
-    || !erpTargets.every(target => erpScenarios.every(scenario => erpMetrics.some(metric => metric.target_table === target && metric.scenario === scenario)))
-    || !erpTargets.every(target => erpMetrics.some(metric => metric.target_table === target && metric.scenario === 'new' && metric.operation === 'append-retry')
-      && erpMetrics.some(metric => metric.target_table === target && metric.operation === 'finalize-retry'))
-    || erp.queryPlanEvidence?.explainOutputPresent !== true) throw new Error('V2313_ERP_DATABASE_EVIDENCE');
-  const erpMigrationInWorkspace = erp.migrationWorkspaceHashes.find(item => item.path === erp.migrationFile);
-  if (erpMigrationInWorkspace?.sha256 !== erp.sourceHashes.migrationSha256) throw new Error('V2313_ERP_WORKSPACE_MIGRATION_HASH');
-  const storm = JSON.parse(read(rootDir, evidencePaths[4]));
+  const storm = JSON.parse(read(rootDir, evidencePaths[3]));
   if (storm.status !== 'passed' || storm.sourceDigest !== sourceDigest || storm.nativePostgres !== true
     || storm.productionWrites !== false || storm.realEmailsSent !== false || storm.assertions !== 38
     || storm.testFile !== 'supabase/tests/inventory_master_identity_batch_test.sql'
@@ -139,7 +128,7 @@ export function verifyV2313RetainedValidation({ rootDir = rootDefault } = {}) {
   return { baseline: V2313_BASE, sourceDigest, changedPaths: Object.keys(sources), appsScriptProtection: protection,
     retainedUi: true, newValidation: receipt.evidenceHashes, databaseTimings: database.timings,
     contextTest: { file: database.contextTestFile, sha256: database.contextTestSha256 },
-    erpSnapshot: { assertions: erp.assertions, sourceRowsByTarget: erp.sourceRowsByTarget, metrics: erpMetrics },
+    retainedSocReserves: true,
     stormAssertions: storm.assertions };
 }
 

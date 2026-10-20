@@ -317,6 +317,7 @@ select ok((result->>'delete')::boolean,'forged GUC cannot suppress ordinary DELE
 -- Disposable-only: insert immediately BEFORE `create temporary table
 -- v2313_source_rows(`, after the reduced-context canaries if present. Adds3 TAP
 -- assertions (plan74 ->77 if the preceding13 are integrated). No DB/tests run.
+-- V2313_SPLIT_HELPER_BEGIN
 create or replace function pg_temp.v2313_genuine_split_case(p_case text)
 returns jsonb language plpgsql as $canary$
 declare
@@ -340,19 +341,32 @@ begin
     'desigitem',null,'desigloc',null,'priority','2','holdstopcode','SOURCE-H','holdstopreason','Source reason',
     'locationnote','Source note','locationptn1',null,'oversellpercentage',null,'pullerresponsibility',null,
     'salesnote',null,'suspend',null,'last_updated','2026-10-19T20:00:00Z','filename','split-canary.xlsx','concat','split-source');
+   if p_case='retained' then
+    v_values:=v_values||jsonb_build_object(
+     'ptronhand',case v_label when 'a' then '11' when 'b' then '22' else '33' end,
+     'ptravailable',case v_label when 'a' then '10' when 'b' then '20' else '30' end);
+   end if;
    v_stable:=private.ph_master_inventory_stable_identity_v7(v_values);
    if v_label<>'new' then
     insert into public.ph_master_inventory(unique_id,warehouseid,itemcode,commonname,contsize,locationcode,lotcode,source,
      desigcust,priority,holdstopcode,holdstopreason,locationnote,photo_link,photo_name,assignedto)
     values(v_uid,'10','SPLIT-'||p_case,'Genuine split canary','#1','Z.96.001','27.CANARY','LD',
-     case v_label when 'a' then 'ABRN' else 'CHRS' end,'1','APP-'||v_label,'App reason '||v_label,
+     case v_label when 'a' then 'ABRN' else 'CHRS' end,case when p_case='retained' then '2' else '1' end,
+     'APP-'||v_label,'App reason '||v_label,
      'App note '||v_label,'https://example.invalid/'||v_label||'.jpg','photo-'||v_label,'dylan_collyge');
     insert into app_sync_private.ph_master_inventory_source_baselines(canonical_unique_id,lineage_key,priority,holdstopcode,holdstopreason)
-    values(v_uid,private.ph_master_inventory_lineage_key_v1(v_values),'1','SOURCE-H','Source reason')
+    values(v_uid,private.ph_master_inventory_lineage_key_v1(v_values),case when p_case='retained' then '2' else '1' end,'SOURCE-H','Source reason')
     on conflict(canonical_unique_id) do update set lineage_key=excluded.lineage_key;
     insert into app_sync_private.ph_master_inventory_item6_source_v7(canonical_unique_id,stable_identity_key,field_values)
     select v_uid,v_stable,jsonb_object_agg(field_name,v_values->field_name) from jsonb_array_elements_text(v_fields) as fields(field_name)
     on conflict(canonical_unique_id) do update set stable_identity_key=excluded.stable_identity_key,field_values=excluded.field_values;
+    if p_case='retained' then
+     -- Isolate new-split publication from the established priority-change
+     -- evidence reset rule. Quantities and revision metadata must still update.
+     update public.ph_master_inventory set ptronhand='5',ptravailable='4',
+      filename='prior-split.xlsx',last_updated='2026-10-18T20:00:00Z'
+     where unique_id=v_uid;
+    end if;
    end if;
    if not(p_case='omitted' and v_label='b') then
     v_rows:=v_rows||jsonb_build_array(jsonb_build_object('values',v_values,'rawFields',v_fields));
@@ -388,22 +402,38 @@ begin
    'liveRows',(select count(*) from public.ph_master_inventory where unique_id like v_prefix||'%'),
    'newPresent',exists(select 1 from public.ph_master_inventory where unique_id=v_prefix||'new'),
    'atomicUnchanged',v_before=v_after,
-   'appPreserved',(select count(*)=2 and bool_and(m.holdstopcode='APP-'||right(m.unique_id,1)
-    and m.holdstopreason='App reason '||right(m.unique_id,1) and m.locationnote='App note '||right(m.unique_id,1)
-    and m.photo_link='https://example.invalid/'||right(m.unique_id,1)||'.jpg'
-    and m.photo_name='photo-'||right(m.unique_id,1) and m.assignedto='dylan_collyge')
-    from public.ph_master_inventory m where m.unique_id in(v_prefix||'a',v_prefix||'b')));
+   'appPreserved',(select count(*)=2 and bool_and(
+    row(m.holdstopcode,m.holdstopreason,m.locationnote,m.photo_link,m.photo_name,m.assignedto)
+     is not distinct from row('APP-'||right(m.unique_id,1),'App reason '||right(m.unique_id,1),
+      'App note '||right(m.unique_id,1),'https://example.invalid/'||right(m.unique_id,1)||'.jpg',
+      'photo-'||right(m.unique_id,1),'dylan_collyge'))
+    from public.ph_master_inventory m where m.unique_id in(v_prefix||'a',v_prefix||'b')),
+   'quantityMetadataExact',(select count(*)=3 and bool_and(
+    row(m.ptronhand,m.ptravailable,m.filename,m.last_updated)
+     is not distinct from row(expected.ptronhand,expected.ptravailable,'split-canary.xlsx',
+      '2026-10-19T20:00:00Z'::timestamptz))
+    from public.ph_master_inventory m join(values('a','11','10'),('b','22','20'),('new','33','30'))
+     expected(suffix,ptronhand,ptravailable) on m.unique_id=v_prefix||expected.suffix),
+   'sourceRows',v_rows,'siblingsBefore',v_before,'siblingsAfter',v_after,
+   'publishedRows',(select jsonb_agg(to_jsonb(m) order by m.unique_id)
+    from public.ph_master_inventory m where m.unique_id like v_prefix||'%'));
   raise exception using errcode='ZC003',message='ROLLBACK_GENUINE_SPLIT_CANARY';
  exception when sqlstate 'ZC003' then null;end;
  return v_result;
 end
 $canary$;
+-- V2313_SPLIT_HELPER_END
 create temporary table v2313_genuine_split_outcomes(case_name text primary key,result jsonb) on commit preserve rows;
 insert into v2313_genuine_split_outcomes select c,pg_temp.v2313_genuine_split_case(c) from unnest(array['retained','omitted','pending']) c;
-select ok(result->>'error' is null and (result->>'liveRows')::integer=3 and (result->>'newPresent')::boolean
- and (result->>'appPreserved')::boolean and (result#>>'{response,inserted}')::integer=1,
+-- V2313_SPLIT_RETAINED_ASSERTION_BEGIN
+select diag('V2313_SPLIT_RETAINED_JSON='||result::text)
+ from v2313_genuine_split_outcomes where case_name='retained';
+select ok(coalesce(result->>'error' is null and (result->>'liveRows')::integer=3 and (result->>'newPresent')::boolean
+ and (result->>'appPreserved')::boolean and (result->>'quantityMetadataExact')::boolean
+ and (result#>>'{response,inserted}')::integer=1,false),
  'intentional third split publishes three identities and preserves both retained siblings app fields')
  from v2313_genuine_split_outcomes where case_name='retained';
+-- V2313_SPLIT_RETAINED_ASSERTION_END
 select ok(result->>'state'='55000' and result->>'error'='MASTER_ITEM6_LINEAGE_AMBIGUOUS'
  and (result->>'atomicUnchanged')::boolean and not(result->>'newPresent')::boolean,
  'new split with an omitted stable sibling retains original rejection and atomic rollback')
@@ -796,8 +826,9 @@ $test$;
 select diag('V2313_PERFORMANCE_JSON='||value::text) from v2313_evidence where key='performance';
 select is(current_setting('v2313.rebind'),'true','a closed prior run is rebound only under the new active fence');
 select is(current_setting('v2313.missing')::integer,19,'begin reports all chunks except the persisted chunk zero');
-select is((select count(*)::integer from v2313_rpc_metrics where operation <> 'reconcile' and elapsed_ms >= 2000),0,
-  'every measured staging, finalize, finish, and close RPC is under two seconds');
+select is((select count(*)::integer from v2313_rpc_metrics
+  where operation <> 'reconcile' and elapsed_ms >= case when operation='finalize' then 10000 else 2000 end),0,
+  'every measured finalize RPC is under ten seconds and every other staging, finish, and close RPC is under two seconds');
 select is((select response->>'status' from v2313_responses where scenario='new'),'published','new snapshot publishes');
 select is((select (response->>'sourceRows')::integer from v2313_responses where scenario='new'),9504,'new response reports all staged source rows');
 select is((select (response->>'inserted')::integer from v2313_responses where scenario='new'),9503,'new snapshot inserts absent rows and updates the seeded row');

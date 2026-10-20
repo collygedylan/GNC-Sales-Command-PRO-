@@ -1,0 +1,3171 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T01:51:56.664Z",
+  "sourceDigest": "2eb5bbc6f2457ba8d2e80927858ecc70a586ec0d28ccb01bfdaae3a64dd16736",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "nativePostgres": true,
+  "sourceRows": 9504,
+  "sourceBytes": 37479867,
+  "sourceFieldCount": 79,
+  "sourceHeaderPositions": 76,
+  "mappedSourceFields": 74,
+  "rawOnlySourceFields": 1,
+  "targetColumnCount": 213,
+  "chunkSize": 500,
+  "chunkCount": 20,
+  "targetRowCount": 9504,
+  "migrationsReplayed": 94,
+  "assertions": 143,
+  "validationComposition": {
+    "checkpoint": "c19889ed7673427676070da0f552fc071e3c122c",
+    "assertions": 143,
+    "retainedAssertions": 141,
+    "executedAssertions": 2,
+    "log": ".gnc-local/v2313-database/failure-1792459423355.log",
+    "logSha256": "8cfec9aae14fdb66d264364602af3e3c073dc6e8d0463eb9bd5ada009b284a54",
+    "priorFailedAssertions": [
+      31,
+      36
+    ],
+    "migrationSha256": "5ae183557064fc7ca874aa820540834001cd3ebd696712aa75977c03a279ca84",
+    "testSha256": "a9afd7eb667dbf6334044b0a48a4180de824b4f48b01050cf1b75ee1fd96bb32",
+    "performanceReused": true,
+    "benchmarkRerun": false,
+    "finalizationBudgetMs": 10000,
+    "otherRpcBudgetMs": 2000,
+    "unchangedFixtureSha256": "cc5d696233f9c94bd225413e892f571530bab55d94239059bdce52e031ccc832"
+  },
+  "timings": [
+    {
+      "ms": 206.262,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 0
+    },
+    {
+      "ms": 159.318,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 1
+    },
+    {
+      "ms": 151.401,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 2
+    },
+    {
+      "ms": 171.129,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 3
+    },
+    {
+      "ms": 208.812,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 4
+    },
+    {
+      "ms": 171.377,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 5
+    },
+    {
+      "ms": 149.128,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 6
+    },
+    {
+      "ms": 154.447,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 7
+    },
+    {
+      "ms": 167.08,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 8
+    },
+    {
+      "ms": 178.658,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 9
+    },
+    {
+      "ms": 191.044,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 10
+    },
+    {
+      "ms": 165.671,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 11
+    },
+    {
+      "ms": 218.898,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 12
+    },
+    {
+      "ms": 203.562,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 13
+    },
+    {
+      "ms": 190.021,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 14
+    },
+    {
+      "ms": 170.288,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 15
+    },
+    {
+      "ms": 193.785,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 16
+    },
+    {
+      "ms": 177.825,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 17
+    },
+    {
+      "ms": 178.043,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 18
+    },
+    {
+      "ms": 11.426,
+      "scenario": "changed",
+      "operation": "append",
+      "item_index": 19
+    },
+    {
+      "ms": 1.179,
+      "scenario": "changed",
+      "operation": "begin",
+      "item_index": 0
+    },
+    {
+      "ms": 1284.57,
+      "scenario": "changed",
+      "operation": "finalize",
+      "item_index": 0
+    },
+    {
+      "ms": 28.614,
+      "scenario": "changed",
+      "operation": "finish",
+      "item_index": 0
+    },
+    {
+      "ms": 89.713,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 0
+    },
+    {
+      "ms": 61.607,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 1
+    },
+    {
+      "ms": 21.161,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 2
+    },
+    {
+      "ms": 27.215,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 3
+    },
+    {
+      "ms": 18.631,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 4
+    },
+    {
+      "ms": 20.524,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 5
+    },
+    {
+      "ms": 18.504,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 6
+    },
+    {
+      "ms": 14.325,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 7
+    },
+    {
+      "ms": 14.419,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 8
+    },
+    {
+      "ms": 15.213,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 9
+    },
+    {
+      "ms": 15.252,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 10
+    },
+    {
+      "ms": 16.01,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 11
+    },
+    {
+      "ms": 17.911,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 12
+    },
+    {
+      "ms": 18.199,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 13
+    },
+    {
+      "ms": 16.909,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 14
+    },
+    {
+      "ms": 18.035,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 15
+    },
+    {
+      "ms": 20.984,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 16
+    },
+    {
+      "ms": 21.466,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 17
+    },
+    {
+      "ms": 23.624,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 18
+    },
+    {
+      "ms": 26.958,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 19
+    },
+    {
+      "ms": 24.734,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 20
+    },
+    {
+      "ms": 16.85,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 21
+    },
+    {
+      "ms": 23.536,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 22
+    },
+    {
+      "ms": 18.696,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 23
+    },
+    {
+      "ms": 27.88,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 24
+    },
+    {
+      "ms": 28.241,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 25
+    },
+    {
+      "ms": 42.849,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 26
+    },
+    {
+      "ms": 38.845,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 27
+    },
+    {
+      "ms": 54.108,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 28
+    },
+    {
+      "ms": 26.033,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 29
+    },
+    {
+      "ms": 18.195,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 30
+    },
+    {
+      "ms": 18.037,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 31
+    },
+    {
+      "ms": 16.506,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 32
+    },
+    {
+      "ms": 21.524,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 33
+    },
+    {
+      "ms": 16.353,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 34
+    },
+    {
+      "ms": 26.154,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 35
+    },
+    {
+      "ms": 23.354,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 36
+    },
+    {
+      "ms": 18.9,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 37
+    },
+    {
+      "ms": 39.678,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 38
+    },
+    {
+      "ms": 22.999,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 39
+    },
+    {
+      "ms": 19.557,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 40
+    },
+    {
+      "ms": 16.595,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 41
+    },
+    {
+      "ms": 18.078,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 42
+    },
+    {
+      "ms": 18.289,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 43
+    },
+    {
+      "ms": 18.662,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 44
+    },
+    {
+      "ms": 14.539,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 45
+    },
+    {
+      "ms": 15.583,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 46
+    },
+    {
+      "ms": 16.026,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 47
+    },
+    {
+      "ms": 15.707,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 48
+    },
+    {
+      "ms": 34.848,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 49
+    },
+    {
+      "ms": 26.7,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 50
+    },
+    {
+      "ms": 19.176,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 51
+    },
+    {
+      "ms": 17.902,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 52
+    },
+    {
+      "ms": 19.539,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 53
+    },
+    {
+      "ms": 15.172,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 54
+    },
+    {
+      "ms": 14.31,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 55
+    },
+    {
+      "ms": 38.535,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 56
+    },
+    {
+      "ms": 30.42,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 57
+    },
+    {
+      "ms": 24.377,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 58
+    },
+    {
+      "ms": 21.049,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 59
+    },
+    {
+      "ms": 19.697,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 60
+    },
+    {
+      "ms": 20.987,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 61
+    },
+    {
+      "ms": 18.884,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 62
+    },
+    {
+      "ms": 25.869,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 63
+    },
+    {
+      "ms": 24.386,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 64
+    },
+    {
+      "ms": 18.056,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 65
+    },
+    {
+      "ms": 15.726,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 66
+    },
+    {
+      "ms": 19.121,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 67
+    },
+    {
+      "ms": 18.786,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 68
+    },
+    {
+      "ms": 17.04,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 69
+    },
+    {
+      "ms": 13.007,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 70
+    },
+    {
+      "ms": 13.147,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 71
+    },
+    {
+      "ms": 13.122,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 72
+    },
+    {
+      "ms": 23.384,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 73
+    },
+    {
+      "ms": 15.342,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 74
+    },
+    {
+      "ms": 25.023,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 75
+    },
+    {
+      "ms": 17.856,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 76
+    },
+    {
+      "ms": 16.731,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 77
+    },
+    {
+      "ms": 17.412,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 78
+    },
+    {
+      "ms": 17.192,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 79
+    },
+    {
+      "ms": 13.374,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 80
+    },
+    {
+      "ms": 24.471,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 81
+    },
+    {
+      "ms": 14.427,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 82
+    },
+    {
+      "ms": 20.015,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 83
+    },
+    {
+      "ms": 20.356,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 84
+    },
+    {
+      "ms": 34.017,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 85
+    },
+    {
+      "ms": 35.034,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 86
+    },
+    {
+      "ms": 30.017,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 87
+    },
+    {
+      "ms": 26.62,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 88
+    },
+    {
+      "ms": 17.883,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 89
+    },
+    {
+      "ms": 20.747,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 90
+    },
+    {
+      "ms": 41.059,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 91
+    },
+    {
+      "ms": 21.684,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 92
+    },
+    {
+      "ms": 19.665,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 93
+    },
+    {
+      "ms": 15.455,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 94
+    },
+    {
+      "ms": 0.807,
+      "scenario": "changed",
+      "operation": "reconcile",
+      "item_index": 95
+    },
+    {
+      "ms": 1.613,
+      "scenario": "changed-replay",
+      "operation": "begin+finalize",
+      "item_index": 0
+    },
+    {
+      "ms": 34.658,
+      "scenario": "changed-replay",
+      "operation": "finish",
+      "item_index": 0
+    },
+    {
+      "ms": 72.744,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 0
+    },
+    {
+      "ms": 36.274,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 1
+    },
+    {
+      "ms": 25.655,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 2
+    },
+    {
+      "ms": 29.889,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 3
+    },
+    {
+      "ms": 35.56,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 4
+    },
+    {
+      "ms": 19.698,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 5
+    },
+    {
+      "ms": 18.895,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 6
+    },
+    {
+      "ms": 18.256,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 7
+    },
+    {
+      "ms": 22.201,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 8
+    },
+    {
+      "ms": 15.155,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 9
+    },
+    {
+      "ms": 15.439,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 10
+    },
+    {
+      "ms": 12.921,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 11
+    },
+    {
+      "ms": 15.757,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 12
+    },
+    {
+      "ms": 14.399,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 13
+    },
+    {
+      "ms": 13.748,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 14
+    },
+    {
+      "ms": 18.021,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 15
+    },
+    {
+      "ms": 23.798,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 16
+    },
+    {
+      "ms": 17.936,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 17
+    },
+    {
+      "ms": 25.851,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 18
+    },
+    {
+      "ms": 18.043,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 19
+    },
+    {
+      "ms": 14.759,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 20
+    },
+    {
+      "ms": 16.649,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 21
+    },
+    {
+      "ms": 15.668,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 22
+    },
+    {
+      "ms": 17.753,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 23
+    },
+    {
+      "ms": 19.08,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 24
+    },
+    {
+      "ms": 15.057,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 25
+    },
+    {
+      "ms": 17.188,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 26
+    },
+    {
+      "ms": 24.846,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 27
+    },
+    {
+      "ms": 18.393,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 28
+    },
+    {
+      "ms": 26.997,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 29
+    },
+    {
+      "ms": 29.325,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 30
+    },
+    {
+      "ms": 21.131,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 31
+    },
+    {
+      "ms": 21.108,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 32
+    },
+    {
+      "ms": 21.313,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 33
+    },
+    {
+      "ms": 20.727,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 34
+    },
+    {
+      "ms": 14.837,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 35
+    },
+    {
+      "ms": 14.2,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 36
+    },
+    {
+      "ms": 17.134,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 37
+    },
+    {
+      "ms": 19.122,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 38
+    },
+    {
+      "ms": 19.812,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 39
+    },
+    {
+      "ms": 17.951,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 40
+    },
+    {
+      "ms": 36.556,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 41
+    },
+    {
+      "ms": 57.341,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 42
+    },
+    {
+      "ms": 43.831,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 43
+    },
+    {
+      "ms": 30.93,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 44
+    },
+    {
+      "ms": 24.169,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 45
+    },
+    {
+      "ms": 41.237,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 46
+    },
+    {
+      "ms": 19.242,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 47
+    },
+    {
+      "ms": 24.306,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 48
+    },
+    {
+      "ms": 19.775,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 49
+    },
+    {
+      "ms": 38.912,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 50
+    },
+    {
+      "ms": 18.367,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 51
+    },
+    {
+      "ms": 18.033,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 52
+    },
+    {
+      "ms": 19.249,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 53
+    },
+    {
+      "ms": 14.025,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 54
+    },
+    {
+      "ms": 20.301,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 55
+    },
+    {
+      "ms": 25.043,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 56
+    },
+    {
+      "ms": 20.301,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 57
+    },
+    {
+      "ms": 30.949,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 58
+    },
+    {
+      "ms": 20.46,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 59
+    },
+    {
+      "ms": 15.759,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 60
+    },
+    {
+      "ms": 14.991,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 61
+    },
+    {
+      "ms": 12.933,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 62
+    },
+    {
+      "ms": 13.629,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 63
+    },
+    {
+      "ms": 13.342,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 64
+    },
+    {
+      "ms": 34.262,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 65
+    },
+    {
+      "ms": 37.946,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 66
+    },
+    {
+      "ms": 26.358,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 67
+    },
+    {
+      "ms": 26.73,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 68
+    },
+    {
+      "ms": 28.719,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 69
+    },
+    {
+      "ms": 36.701,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 70
+    },
+    {
+      "ms": 25.491,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 71
+    },
+    {
+      "ms": 27.983,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 72
+    },
+    {
+      "ms": 18.881,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 73
+    },
+    {
+      "ms": 18.23,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 74
+    },
+    {
+      "ms": 23.193,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 75
+    },
+    {
+      "ms": 22.142,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 76
+    },
+    {
+      "ms": 24.07,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 77
+    },
+    {
+      "ms": 42.705,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 78
+    },
+    {
+      "ms": 52.352,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 79
+    },
+    {
+      "ms": 45.868,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 80
+    },
+    {
+      "ms": 36.691,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 81
+    },
+    {
+      "ms": 26.537,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 82
+    },
+    {
+      "ms": 37.37,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 83
+    },
+    {
+      "ms": 24.074,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 84
+    },
+    {
+      "ms": 14.84,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 85
+    },
+    {
+      "ms": 17.646,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 86
+    },
+    {
+      "ms": 18.628,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 87
+    },
+    {
+      "ms": 16.379,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 88
+    },
+    {
+      "ms": 18.489,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 89
+    },
+    {
+      "ms": 17.848,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 90
+    },
+    {
+      "ms": 52.13,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 91
+    },
+    {
+      "ms": 27.039,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 92
+    },
+    {
+      "ms": 17.36,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 93
+    },
+    {
+      "ms": 16.944,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 94
+    },
+    {
+      "ms": 0.8,
+      "scenario": "changed-replay",
+      "operation": "reconcile",
+      "item_index": 95
+    },
+    {
+      "ms": 148.569,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 0
+    },
+    {
+      "ms": 151.562,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 1
+    },
+    {
+      "ms": 182.416,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 2
+    },
+    {
+      "ms": 201.679,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 3
+    },
+    {
+      "ms": 191.92,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 4
+    },
+    {
+      "ms": 191.32,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 5
+    },
+    {
+      "ms": 182.06,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 6
+    },
+    {
+      "ms": 174.936,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 7
+    },
+    {
+      "ms": 186.213,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 8
+    },
+    {
+      "ms": 170.804,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 9
+    },
+    {
+      "ms": 174.448,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 10
+    },
+    {
+      "ms": 215.501,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 11
+    },
+    {
+      "ms": 177.285,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 12
+    },
+    {
+      "ms": 166.844,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 13
+    },
+    {
+      "ms": 240.8,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 14
+    },
+    {
+      "ms": 171.11,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 15
+    },
+    {
+      "ms": 161.019,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 16
+    },
+    {
+      "ms": 178.006,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 17
+    },
+    {
+      "ms": 183.717,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 18
+    },
+    {
+      "ms": 16.407,
+      "scenario": "new",
+      "operation": "append",
+      "item_index": 19
+    },
+    {
+      "ms": 27.423,
+      "scenario": "new",
+      "operation": "append-retry",
+      "item_index": 0
+    },
+    {
+      "ms": 1.089,
+      "scenario": "new",
+      "operation": "begin",
+      "item_index": 0
+    },
+    {
+      "ms": 1.215,
+      "scenario": "new",
+      "operation": "begin-rebind",
+      "item_index": 0
+    },
+    {
+      "ms": 5733.899,
+      "scenario": "new",
+      "operation": "finalize",
+      "item_index": 0
+    },
+    {
+      "ms": 30.628,
+      "scenario": "new",
+      "operation": "finish",
+      "item_index": 0
+    },
+    {
+      "ms": 111.516,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 0
+    },
+    {
+      "ms": 19.218,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 1
+    },
+    {
+      "ms": 20.143,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 2
+    },
+    {
+      "ms": 21.997,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 3
+    },
+    {
+      "ms": 18.718,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 4
+    },
+    {
+      "ms": 20.141,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 5
+    },
+    {
+      "ms": 28.12,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 6
+    },
+    {
+      "ms": 28.139,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 7
+    },
+    {
+      "ms": 17.419,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 8
+    },
+    {
+      "ms": 17.983,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 9
+    },
+    {
+      "ms": 20.117,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 10
+    },
+    {
+      "ms": 20.469,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 11
+    },
+    {
+      "ms": 18.778,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 12
+    },
+    {
+      "ms": 13.991,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 13
+    },
+    {
+      "ms": 21.15,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 14
+    },
+    {
+      "ms": 71.463,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 15
+    },
+    {
+      "ms": 50.206,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 16
+    },
+    {
+      "ms": 42.74,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 17
+    },
+    {
+      "ms": 37.147,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 18
+    },
+    {
+      "ms": 32.176,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 19
+    },
+    {
+      "ms": 24.813,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 20
+    },
+    {
+      "ms": 22.22,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 21
+    },
+    {
+      "ms": 18.964,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 22
+    },
+    {
+      "ms": 21.347,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 23
+    },
+    {
+      "ms": 19.387,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 24
+    },
+    {
+      "ms": 19.58,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 25
+    },
+    {
+      "ms": 13.864,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 26
+    },
+    {
+      "ms": 13.328,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 27
+    },
+    {
+      "ms": 14.109,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 28
+    },
+    {
+      "ms": 19.714,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 29
+    },
+    {
+      "ms": 16.989,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 30
+    },
+    {
+      "ms": 13.382,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 31
+    },
+    {
+      "ms": 19.867,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 32
+    },
+    {
+      "ms": 14.363,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 33
+    },
+    {
+      "ms": 41.908,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 34
+    },
+    {
+      "ms": 31.463,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 35
+    },
+    {
+      "ms": 31.876,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 36
+    },
+    {
+      "ms": 25.869,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 37
+    },
+    {
+      "ms": 23.827,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 38
+    },
+    {
+      "ms": 20.808,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 39
+    },
+    {
+      "ms": 21.858,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 40
+    },
+    {
+      "ms": 33.139,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 41
+    },
+    {
+      "ms": 41.142,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 42
+    },
+    {
+      "ms": 49.559,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 43
+    },
+    {
+      "ms": 25.746,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 44
+    },
+    {
+      "ms": 40.387,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 45
+    },
+    {
+      "ms": 37.591,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 46
+    },
+    {
+      "ms": 18.968,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 47
+    },
+    {
+      "ms": 25.114,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 48
+    },
+    {
+      "ms": 36.288,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 49
+    },
+    {
+      "ms": 26.196,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 50
+    },
+    {
+      "ms": 33.719,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 51
+    },
+    {
+      "ms": 32.1,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 52
+    },
+    {
+      "ms": 37.358,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 53
+    },
+    {
+      "ms": 17.747,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 54
+    },
+    {
+      "ms": 19.074,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 55
+    },
+    {
+      "ms": 41.928,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 56
+    },
+    {
+      "ms": 51.45,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 57
+    },
+    {
+      "ms": 25.202,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 58
+    },
+    {
+      "ms": 20.201,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 59
+    },
+    {
+      "ms": 21.987,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 60
+    },
+    {
+      "ms": 17.336,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 61
+    },
+    {
+      "ms": 18.811,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 62
+    },
+    {
+      "ms": 19.219,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 63
+    },
+    {
+      "ms": 25.005,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 64
+    },
+    {
+      "ms": 25.25,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 65
+    },
+    {
+      "ms": 27.705,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 66
+    },
+    {
+      "ms": 28.958,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 67
+    },
+    {
+      "ms": 27.897,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 68
+    },
+    {
+      "ms": 56.876,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 69
+    },
+    {
+      "ms": 39.075,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 70
+    },
+    {
+      "ms": 26.186,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 71
+    },
+    {
+      "ms": 17.316,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 72
+    },
+    {
+      "ms": 18.091,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 73
+    },
+    {
+      "ms": 19.857,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 74
+    },
+    {
+      "ms": 19.424,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 75
+    },
+    {
+      "ms": 22.25,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 76
+    },
+    {
+      "ms": 14.876,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 77
+    },
+    {
+      "ms": 17.356,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 78
+    },
+    {
+      "ms": 32.585,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 79
+    },
+    {
+      "ms": 23.933,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 80
+    },
+    {
+      "ms": 23.766,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 81
+    },
+    {
+      "ms": 17.057,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 82
+    },
+    {
+      "ms": 41.115,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 83
+    },
+    {
+      "ms": 39.217,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 84
+    },
+    {
+      "ms": 22.636,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 85
+    },
+    {
+      "ms": 21.82,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 86
+    },
+    {
+      "ms": 20.976,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 87
+    },
+    {
+      "ms": 19.916,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 88
+    },
+    {
+      "ms": 23.313,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 89
+    },
+    {
+      "ms": 17.707,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 90
+    },
+    {
+      "ms": 18.882,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 91
+    },
+    {
+      "ms": 14.693,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 92
+    },
+    {
+      "ms": 15.849,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 93
+    },
+    {
+      "ms": 18.443,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 94
+    },
+    {
+      "ms": 2.588,
+      "scenario": "new",
+      "operation": "reconcile",
+      "item_index": 95
+    },
+    {
+      "ms": 0.909,
+      "scenario": "partial",
+      "operation": "fail",
+      "item_index": 0
+    },
+    {
+      "ms": 1.41,
+      "scenario": "retry",
+      "operation": "finalize",
+      "item_index": 0
+    },
+    {
+      "ms": 163.963,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 0
+    },
+    {
+      "ms": 230.462,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 1
+    },
+    {
+      "ms": 197.804,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 2
+    },
+    {
+      "ms": 171.132,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 3
+    },
+    {
+      "ms": 188.936,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 4
+    },
+    {
+      "ms": 184.876,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 5
+    },
+    {
+      "ms": 173.958,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 6
+    },
+    {
+      "ms": 321.575,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 7
+    },
+    {
+      "ms": 203.539,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 8
+    },
+    {
+      "ms": 170.362,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 9
+    },
+    {
+      "ms": 171.2,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 10
+    },
+    {
+      "ms": 166.561,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 11
+    },
+    {
+      "ms": 188.549,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 12
+    },
+    {
+      "ms": 179.527,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 13
+    },
+    {
+      "ms": 169.141,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 14
+    },
+    {
+      "ms": 173.201,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 15
+    },
+    {
+      "ms": 156.725,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 16
+    },
+    {
+      "ms": 204.859,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 17
+    },
+    {
+      "ms": 162.019,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 18
+    },
+    {
+      "ms": 6.982,
+      "scenario": "unchanged",
+      "operation": "append",
+      "item_index": 19
+    },
+    {
+      "ms": 1.083,
+      "scenario": "unchanged",
+      "operation": "begin",
+      "item_index": 0
+    },
+    {
+      "ms": 1024.393,
+      "scenario": "unchanged",
+      "operation": "finalize",
+      "item_index": 0
+    },
+    {
+      "ms": 33.316,
+      "scenario": "unchanged",
+      "operation": "finish",
+      "item_index": 0
+    },
+    {
+      "ms": 108.548,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 0
+    },
+    {
+      "ms": 15.308,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 1
+    },
+    {
+      "ms": 14.181,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 2
+    },
+    {
+      "ms": 18.775,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 3
+    },
+    {
+      "ms": 21.496,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 4
+    },
+    {
+      "ms": 30.325,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 5
+    },
+    {
+      "ms": 19.611,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 6
+    },
+    {
+      "ms": 14.397,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 7
+    },
+    {
+      "ms": 16.792,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 8
+    },
+    {
+      "ms": 21.175,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 9
+    },
+    {
+      "ms": 29.099,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 10
+    },
+    {
+      "ms": 22.137,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 11
+    },
+    {
+      "ms": 16.317,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 12
+    },
+    {
+      "ms": 16.779,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 13
+    },
+    {
+      "ms": 18.48,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 14
+    },
+    {
+      "ms": 19.191,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 15
+    },
+    {
+      "ms": 16.894,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 16
+    },
+    {
+      "ms": 17.418,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 17
+    },
+    {
+      "ms": 17.399,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 18
+    },
+    {
+      "ms": 14.309,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 19
+    },
+    {
+      "ms": 17.156,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 20
+    },
+    {
+      "ms": 16.448,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 21
+    },
+    {
+      "ms": 16.987,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 22
+    },
+    {
+      "ms": 25.536,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 23
+    },
+    {
+      "ms": 25.668,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 24
+    },
+    {
+      "ms": 19.827,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 25
+    },
+    {
+      "ms": 18.293,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 26
+    },
+    {
+      "ms": 22.32,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 27
+    },
+    {
+      "ms": 16.993,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 28
+    },
+    {
+      "ms": 15.673,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 29
+    },
+    {
+      "ms": 24.278,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 30
+    },
+    {
+      "ms": 22.471,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 31
+    },
+    {
+      "ms": 19.865,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 32
+    },
+    {
+      "ms": 26.626,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 33
+    },
+    {
+      "ms": 32.147,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 34
+    },
+    {
+      "ms": 21.859,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 35
+    },
+    {
+      "ms": 19.336,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 36
+    },
+    {
+      "ms": 19.462,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 37
+    },
+    {
+      "ms": 18.836,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 38
+    },
+    {
+      "ms": 19.504,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 39
+    },
+    {
+      "ms": 16.078,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 40
+    },
+    {
+      "ms": 13.708,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 41
+    },
+    {
+      "ms": 16.523,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 42
+    },
+    {
+      "ms": 15.792,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 43
+    },
+    {
+      "ms": 16.626,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 44
+    },
+    {
+      "ms": 24.329,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 45
+    },
+    {
+      "ms": 17.628,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 46
+    },
+    {
+      "ms": 18.523,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 47
+    },
+    {
+      "ms": 20.236,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 48
+    },
+    {
+      "ms": 15.643,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 49
+    },
+    {
+      "ms": 15.918,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 50
+    },
+    {
+      "ms": 15.985,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 51
+    },
+    {
+      "ms": 15.954,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 52
+    },
+    {
+      "ms": 15.85,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 53
+    },
+    {
+      "ms": 17.454,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 54
+    },
+    {
+      "ms": 16.654,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 55
+    },
+    {
+      "ms": 15.842,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 56
+    },
+    {
+      "ms": 15.716,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 57
+    },
+    {
+      "ms": 15.31,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 58
+    },
+    {
+      "ms": 19.131,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 59
+    },
+    {
+      "ms": 21.422,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 60
+    },
+    {
+      "ms": 23.769,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 61
+    },
+    {
+      "ms": 20.133,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 62
+    },
+    {
+      "ms": 38.687,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 63
+    },
+    {
+      "ms": 22.397,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 64
+    },
+    {
+      "ms": 16.026,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 65
+    },
+    {
+      "ms": 23.677,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 66
+    },
+    {
+      "ms": 19.746,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 67
+    },
+    {
+      "ms": 22.937,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 68
+    },
+    {
+      "ms": 15.183,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 69
+    },
+    {
+      "ms": 20.621,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 70
+    },
+    {
+      "ms": 14.723,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 71
+    },
+    {
+      "ms": 17.71,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 72
+    },
+    {
+      "ms": 22.816,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 73
+    },
+    {
+      "ms": 25.781,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 74
+    },
+    {
+      "ms": 16.735,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 75
+    },
+    {
+      "ms": 19.583,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 76
+    },
+    {
+      "ms": 20.336,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 77
+    },
+    {
+      "ms": 18.762,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 78
+    },
+    {
+      "ms": 22.169,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 79
+    },
+    {
+      "ms": 17.284,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 80
+    },
+    {
+      "ms": 19.572,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 81
+    },
+    {
+      "ms": 17.954,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 82
+    },
+    {
+      "ms": 15.674,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 83
+    },
+    {
+      "ms": 16.241,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 84
+    },
+    {
+      "ms": 16.182,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 85
+    },
+    {
+      "ms": 25.406,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 86
+    },
+    {
+      "ms": 28.25,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 87
+    },
+    {
+      "ms": 24.016,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 88
+    },
+    {
+      "ms": 18.851,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 89
+    },
+    {
+      "ms": 16.646,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 90
+    },
+    {
+      "ms": 20.511,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 91
+    },
+    {
+      "ms": 22.643,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 92
+    },
+    {
+      "ms": 23.797,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 93
+    },
+    {
+      "ms": 35.745,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 94
+    },
+    {
+      "ms": 1.332,
+      "scenario": "unchanged",
+      "operation": "reconcile",
+      "item_index": 95
+    }
+  ],
+  "postgresVersion": "PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
+  "cacheCondition": "first full publication followed by warm unchanged/changed/retry passes; OS cache uncontrolled",
+  "queryPlans": {
+    "stage_lookup": [
+      {
+        "Plan": {
+          "Alias": "ph_master_snapshot_stage_rows_v1",
+          "Node Type": "Index Scan",
+          "Plan Rows": 1,
+          "Index Cond": "((request_id = 'b3200000-0000-4000-8000-000000000001'::uuid) AND (unique_id = 'v2313-00001'::text))",
+          "Index Name": "ph_master_snapshot_stage_rows_uidx",
+          "Plan Width": 4,
+          "Total Cost": 8.3,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Startup Cost": 0.28,
+          "Async Capable": false,
+          "Relation Name": "ph_master_snapshot_stage_rows_v1",
+          "Parallel Aware": false,
+          "Scan Direction": "Forward",
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Actual Total Time": 0.029,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 3,
+          "Shared Read Blocks": 0,
+          "Actual Startup Time": 0.027,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Rows Removed by Index Recheck": 0
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [],
+        "Planning Time": 0.121,
+        "Execution Time": 0.061
+      }
+    ],
+    "target_unique_id": [
+      {
+        "Plan": {
+          "Alias": "ph_master_inventory",
+          "Node Type": "Index Only Scan",
+          "Plan Rows": 1,
+          "Index Cond": "(unique_id = 'v2313-00001'::text)",
+          "Index Name": "idx_ph_ok_master_inventory_unique_id",
+          "Plan Width": 32,
+          "Total Cost": 8.29,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Heap Fetches": 1,
+          "Startup Cost": 0.28,
+          "Async Capable": false,
+          "Relation Name": "ph_master_inventory",
+          "Parallel Aware": false,
+          "Scan Direction": "Forward",
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Actual Total Time": 0.01,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 3,
+          "Shared Read Blocks": 0,
+          "Actual Startup Time": 0.009,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Rows Removed by Index Recheck": 0
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [],
+        "Planning Time": 0.117,
+        "Execution Time": 0.026
+      }
+    ]
+  },
+  "inputHashes": {
+    "migration": "5ae183557064fc7ca874aa820540834001cd3ebd696712aa75977c03a279ca84",
+    "test": "f3662caf691a93e34f6d61ef241c8cfff75e7e7c276f8ca0ba6029ce60221300",
+    "contextTest": "06c21d5223c5f0586300b0f2a9807da960db4959a96abebeaa3d59f65a9c216d"
+  },
+  "contextTestFile": "supabase/tests/bulk_context_index_plan_test.sql",
+  "contextTestSha256": "06c21d5223c5f0586300b0f2a9807da960db4959a96abebeaa3d59f65a9c216d",
+  "runner": {
+    "testFile": "supabase/tests/master_snapshot_chunked_staging_v1_test.sql",
+    "migrationFile": "supabase/migrations/20261019225625_master_snapshot_chunked_staging_v1.sql",
+    "environment": "Native PostgreSQL in isolated local Supabase Docker stack; no HTTP, Auth, Edge, or delivery workers started"
+  },
+  "failureHistory": {
+    "prior": {
+      "attempt": 4,
+      "cap": 8,
+      "status": "failed",
+      "log": ".gnc-local/v2313-database-attempt4.log",
+      "history": [
+        {
+          "attempt": 1,
+          "cap": 8,
+          "status": "failed",
+          "log": ".gnc-local/v2313-database-attempt1.log",
+          "diagnosis": "Stage publication update invalidated a later contiguous cleanup text anchor; migration transaction rolled back in disposable instance.",
+          "error": "MASTER_SNAPSHOT_CHUNK_ROW_CLEANUP_ANCHOR_INVALID"
+        },
+        {
+          "attempt": 2,
+          "cap": 8,
+          "status": "failed",
+          "log": ".gnc-local/v2313-database-attempt2.log",
+          "fixtureRows": 9504,
+          "focusedAssertions": 34,
+          "schemaReplay": "passed",
+          "assertionsPassed": 7,
+          "diagnosis": "Fixture to_jsonb untyped string constants caused PostgreSQL polymorphic-type error; migration replay succeeded.",
+          "error": "could not determine polymorphic type because input has type unknown"
+        },
+        {
+          "attempt": 3,
+          "cap": 8,
+          "status": "failed",
+          "log": ".gnc-local/v2313-database-attempt3.log",
+          "fixtureRows": 9504,
+          "focusedAssertions": 34,
+          "schemaReplay": "passed",
+          "assertionsPassed": 7,
+          "diagnosis": "Wide fixture includes protected source fields but rawFields omitted their required mask. Production finalizer correctly rejected the invalid fixture.",
+          "error": "BULK_MASTER_IMPORT_ITEM6_MASK_INVALID"
+        }
+      ],
+      "fixtureRows": 9504,
+      "focusedAssertions": 34,
+      "schemaReplay": "passed",
+      "assertionsPassed": 7,
+      "diagnosis": "Fixture bypassed existing 100-row committed assignment reconciliation and invoked legacy all-row finish inside one transaction, exhausting disposable max_locks_per_transaction. Correct to actual worker lifecycle, retain strict staging/finalize gates.",
+      "error": "out of shared memory during legacy assignment reconciliation"
+    },
+    "unifiedAttempts": [
+      {
+        "attempt": 1,
+        "at": "2026-10-20T00:30:52.167Z",
+        "passed": 43,
+        "total": 47,
+        "scope": "Drive narrow76",
+        "newFinalizeMs": 9171.049,
+        "unchangedFinalizeMs": 1083.914,
+        "changedFinalizeMs": 1465.517,
+        "retryMs": 1.624,
+        "log": ".gnc-local/v2313-database-76-attempt1.log",
+        "issue": "Newinsertperrowcost;ambiguousfixturewarehousemismatchafterdroppingnon-sourcewarehousei"
+      },
+      {
+        "attempt": 2,
+        "at": "2026-10-20T00:39:38.808Z",
+        "passed": 112,
+        "total": 113,
+        "log": ".gnc-local/v2313-database-76-attempt2.log",
+        "newFinalizeMs": 8758.574,
+        "changedFinalizeMs": 1534.563,
+        "unchangedFinalizeMs": 1090.034,
+        "retryMs": 1.072,
+        "diagnosis": "Per-row private proof queries retained most new-row overhead; use statement proof plus separate verified-new INSERT; preserve alias/duplicate slow paths."
+      },
+      {
+        "attempt": 3,
+        "recordedAt": "2026-10-20T00:43:21.099Z",
+        "passed": false,
+        "assertionsPassed": 114,
+        "assertionsRun": 115,
+        "planned": 116,
+        "issue": "new snapshot finalization above 2000ms; quoted GUC canary syntax error",
+        "newFinalizeMs": 6000.334,
+        "changedFinalizeMs": 1447.909,
+        "unchangedFinalizeMs": 1155.044,
+        "retryFinalizeMs": 0.641,
+        "log": ".gnc-local/v2313-database-76-attempt3.log",
+        "performance": ".gnc-local/v2313-76-attempt3-performance.json"
+      },
+      {
+        "attempt": 4,
+        "recordedAt": "2026-10-20T00:48:16.619Z",
+        "passed": false,
+        "assertionsPassed": 122,
+        "assertionsRun": 123,
+        "planned": 124,
+        "issue": "new snapshot finalization above 2000ms; quoted GUC canary syntax still single-dollar due JS replacement expansion",
+        "newFinalizeMs": 6073.317,
+        "changedFinalizeMs": 1502.503,
+        "unchangedFinalizeMs": 1518.088,
+        "retryFinalizeMs": 0.507,
+        "log": ".gnc-local/v2313-database-76-attempt4.log",
+        "performance": ".gnc-local/v2313-76-attempt4-performance.json"
+      },
+      {
+        "attempt": 5,
+        "recordedAt": "2026-10-20T01:02:54.748Z",
+        "passed": false,
+        "assertionsPassed": 126,
+        "assertionsRun": 127,
+        "issue": "new snapshot finalization above 2000ms",
+        "newFinalizeMs": 5344.397,
+        "changedFinalizeMs": 1449.29,
+        "unchangedFinalizeMs": 1458.067,
+        "retryFinalizeMs": 1.09,
+        "log": ".gnc-local/v2313-database-76-attempt5.log",
+        "performance": ".gnc-local/v2313-76-attempt5-performance.json"
+      },
+      {
+        "attempt": 6,
+        "startedAt": "2026-10-20T01:05:51.463Z",
+        "scope": "Drive reduced context plus disposable-only TOAST4096 diagnostic",
+        "log": ".gnc-local/v2313-storage-profile-run.log",
+        "productionChanges": false,
+        "finishedAt": "2026-10-20T01:08:15.272Z",
+        "passed": false,
+        "issue": "disposable context probe UPDATE denied to postgres finalizer owner; new finalization not reached"
+      },
+      {
+        "attempt": 7,
+        "startedAt": "2026-10-20T01:11:24.836Z",
+        "scope": "Drive reduced context plus disposable-only TOAST4096 diagnostic after fixture permission correction",
+        "log": ".gnc-local/v2313-storage-profile-attempt7-run.log",
+        "productionChanges": false,
+        "finishedAt": "2026-10-20T01:14:07.061Z",
+        "passed": false,
+        "issue": "new snapshot finalization5370.407ms exceeds2000ms; disposableTOAST4096 doesnotresolvefloor;13context/race/cropcanariespassed",
+        "newFinalizeMs": 5370.407,
+        "profile": ".gnc-local/v2313-storage-attempt7-profile.log"
+      },
+      {
+        "attempt": 8,
+        "startedAt": "2026-10-20T01:21:52.443Z",
+        "scope": "Final Drive protection/race/genuine-split/full-volume validation; default storage settings",
+        "log": ".gnc-local/v2313-database-76-attempt8.log",
+        "productionChanges": false,
+        "finishedAt": "2026-10-20T01:26:25.658Z",
+        "passed": false,
+        "assertionsPassed": 141,
+        "assertionsRun": 143,
+        "protectionAssertions": 66,
+        "targetedAssertionsPassed": 75,
+        "targetedAssertionsRun": 77,
+        "failedAssertions": [
+          {
+            "number": 31,
+            "description": "intentional third split publishes three identities and preserves both retained siblings app fields",
+            "result": "test result was NULL; unresolved"
+          },
+          {
+            "number": 36,
+            "description": "every measured staging, finalize, finish, and close RPC is under two seconds",
+            "result": "new finalize 5733.899ms exceeds strict 2000ms"
+          }
+        ],
+        "finalizeTimings": [
+          {
+            "ms": 1284.57,
+            "scenario": "changed",
+            "operation": "finalize",
+            "item_index": 0
+          },
+          {
+            "ms": 5733.899,
+            "scenario": "new",
+            "operation": "finalize",
+            "item_index": 0
+          },
+          {
+            "ms": 1.41,
+            "scenario": "retry",
+            "operation": "finalize",
+            "item_index": 0
+          },
+          {
+            "ms": 1024.393,
+            "scenario": "unchanged",
+            "operation": "finalize",
+            "item_index": 0
+          }
+        ],
+        "performance": ".gnc-local/v2313-76-attempt8-performance.json",
+        "fullFailure": ".gnc-local/v2313-database/failure-1792459423355.log"
+      }
+    ],
+    "resets": [
+      {
+        "at": "2026-10-20T00:20:31.863Z",
+        "authorized": true,
+        "attempt": 0,
+        "cap": 8,
+        "scope": "User clarified76mappedDriveAroundsourcecolumns+snapshotmetadata only; retain213targetcolumns andliveerrorfix. Priorfailuresretained."
+      },
+      {
+        "at": "2026-10-20T00:27:19.088Z",
+        "authorized": true,
+        "attempt": 0,
+        "cap": 8,
+        "scope": "Unified exact-column DriveAround76/SOC81/Reserves81; latest user attachment; preserve all prior evidence"
+      },
+      {
+        "at": "2026-10-20T01:47:07.022Z",
+        "authorized": true,
+        "attempt": 0,
+        "cap": 8,
+        "checkpoint": "c19889ed7673427676070da0f552fc071e3c122c",
+        "scope": "Final split-preservation correction; retain141 passing assertions; Drive finalization<10000ms; retain existing SOC/Reserves pipeline per explicit user answer"
+      }
+    ],
+    "finalUnblock": {
+      "baseline": "c19889ed7673427676070da0f552fc071e3c122c",
+      "approvedFinalizeBudgetMs": 10000,
+      "strictLessThan": true,
+      "retainAssertions": 141,
+      "deferSocRewrite": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "startedAt": "2026-10-20T01:50:23.466Z",
+          "scope": "Only retained-split assertion and revised timing gate; 141 checkpoint checks retained; native schema replay and type generation",
+          "log": ".gnc-local/v2313-final-unblock-attempt1.log",
+          "finishedAt": "2026-10-20T01:52:57.541Z",
+          "passed": true,
+          "newAssertionsPassed": 2,
+          "retainedAssertions": 141,
+          "combinedAssertions": 143,
+          "migrationsReplayed": 94,
+          "evidence": ".gnc-local/v2313-database/evidence.json"
+        }
+      ],
+      "sqlStatus": "passed",
+      "retentionProof": {
+        "failedFirst": "Original timing assertion was on one line; scoped comparison anchor assumed a newline",
+        "resolved": true,
+        "attempts": 2,
+        "unchangedFixtureSha256": "cc5d696233f9c94bd225413e892f571530bab55d94239059bdce52e031ccc832"
+      },
+      "tooling": {
+        "passed": true,
+        "capturedAt": "2026-10-20T01:55:59.746Z",
+        "log": ".gnc-local/v2313-final-tooling-attempt1.log",
+        "scope": "Changed-file lint, inline parsing, TypeScript, generated RPC contracts and database boundaries; no UI/browser or broad unit suites",
+        "delta": {
+          "log": ".gnc-local/v2313-final-tooling-delta.log",
+          "passed": true,
+          "files": [
+            "scripts/check-v2313-retained-validation.mjs",
+            "scripts/verify-v2313-database.mjs",
+            "tests/v2313-release-contract.test.mjs"
+          ]
+        }
+      }
+    }
+  }
+}
