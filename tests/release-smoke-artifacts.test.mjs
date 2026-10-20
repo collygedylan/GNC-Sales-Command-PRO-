@@ -7,7 +7,7 @@ import path from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { assertReleaseAssetReferences } from '../scripts/run-release-smoke.mjs';
 import { createPreindexedMasterPageFixture } from './fixtures/preindexed-master-page-fixture.mjs';
-import { classifyReleaseSmokeRoute, RELEASE_SMOKE_SUPABASE_ORIGIN } from './helpers/release-smoke-route-policy.mjs';
+import { classifyReleaseSmokeRoute, isProvenReleaseSmokeReadCancellation, RELEASE_SMOKE_SUPABASE_ORIGIN } from './helpers/release-smoke-route-policy.mjs';
 import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 test('smoke runs viewport projects concurrently without overlapping cases in one profile', () => {
@@ -93,4 +93,32 @@ test('release smoke route allowlist rejects unknown API routes and mutations', (
   ]) assert.equal(classifyReleaseSmokeRoute(request).allowed, false, `${request.method} ${request.url} must fail closed`);
   assert.equal(classifyReleaseSmokeRoute({ method: 'GET', url: 'https://example.test/photo.jpg', origin: site,
     resourceType: 'image', fixtureImageUrls: new Set(['https://example.test/photo.jpg']) }).allowed, true);
+});
+
+
+test('smoke cancellation exceptions require the same allowlisted read body, an aborted signal and lifecycle evidence', () => {
+  const body = JSON.stringify({ action: 'inventory_read', operation: 'master_page',
+    params: { dataset: 'lookup', projection: 'full', itemCode: 'ITEM-1', limit: 500, offset: 0 } });
+  const resource = { method: 'POST', url: `${RELEASE_SMOKE_SUPABASE_ORIGIN}/functions/v1/app-api`, body,
+    idempotencyKey: '', failure: 'net::ERR_ABORTED' };
+  const evidence = { ...resource, signalAborted: true, reasonName: 'AbortError', context: '',
+    abortStack: 'invalidateBackground assets/live-sync-coordinator.js' };
+  assert.equal(isProvenReleaseSmokeReadCancellation(resource, [evidence]), true);
+  const once = [evidence];
+  assert.equal(isProvenReleaseSmokeReadCancellation(resource, once), true);
+  assert.equal(isProvenReleaseSmokeReadCancellation(resource, once), false, 'one abort cannot hide a second failed request');
+  for (const changed of [
+    { signalAborted: false }, { reasonName: 'TimeoutError' }, { body: body + ' ' }, { abortStack: 'unknown cancellation' }, { abortStack: undefined },
+  ]) assert.equal(isProvenReleaseSmokeReadCancellation(resource, [{ ...evidence, ...changed }]), false);
+  for (const payload of [
+    { action: 'inventory_reclass_move', operation: 'status' },
+    { action: 'drive_reclass_inquiry', operation: 'create' },
+    { action: 'dataset_read', dataset: 'unknown', params: { limit: 500, offset: 0 } },
+    { action: 'inventory_read', operation: 'master_pgae', params: {} },
+    { action: 'inventory_read', operation: 'master_page', params: { dataset: 'lookup', projection: 'full', limit: 500, offset: 0, injected: true } },
+  ]) {
+    const bad = { ...resource, body: JSON.stringify(payload) };
+    assert.equal(isProvenReleaseSmokeReadCancellation(bad, [{ ...evidence, body: bad.body }]), false);
+  }
+  assert.equal(isProvenReleaseSmokeReadCancellation({ ...resource, idempotencyKey: 'a-write-command' }, [evidence]), false);
 });

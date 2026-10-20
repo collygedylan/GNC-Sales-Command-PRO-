@@ -42,3 +42,38 @@ export function classifyReleaseSmokeRoute({ method, url, origin, resourceType = 
   }
   return { allowed: false, reason: 'external-route-blocked' };
 }
+
+
+/** Only a recognized read cancelled by its actual lifecycle signal can be omitted from network failures. */
+export function isProvenReleaseSmokeReadCancellation(resource, evidence = []) {
+  if (resource.method !== 'POST' || resource.idempotencyKey || !['Load request cancelled', 'net::ERR_ABORTED'].includes(resource.failure)) return false;
+  let url, body;
+  try { url = new URL(resource.url); body = JSON.parse(resource.body); } catch { return false; }
+  if (url.origin !== RELEASE_SMOKE_SUPABASE_ORIGIN || !body || typeof body !== 'object' || Array.isArray(body)) return false;
+  const keys = (value, allowed) => value && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).every(key => allowed.includes(key));
+  const paged = params => keys(params, ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'])
+    && Number.isInteger(params.limit) && params.limit >= 1 && params.limit <= 500 && Number.isInteger(params.offset) && params.offset >= 0;
+  const datasets = new Set(['request_queue', 'active_request', 'soc', 'suspend_tag', 'cav', 'reserves', 'sales_office',
+    'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history', 'inventory_edits', 'shear']);
+  let knownRead = url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1'
+    && Object.keys(body).join(',') === 'p_dataset_keys' && Array.isArray(body.p_dataset_keys);
+  if (url.pathname === '/functions/v1/app-api') {
+    knownRead = body.action === 'inventory_read' && keys(body, ['action', 'operation', 'params']) && (
+      body.operation === 'source_freshness' && keys(body.params, [])
+      || body.operation === 'master_page' && keys(body.params, ['dataset', 'projection', 'limit', 'offset', 'uniqueId', 'itemCode', 'locationCode'])
+        && ['master', 'avOpen', 'lookup'].includes(body.params.dataset) && ['initial', 'browse', 'full'].includes(body.params.projection)
+        && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
+        && Number.isInteger(body.params.offset) && body.params.offset >= 0
+      || body.operation === 'master_identity_batch' && keys(body.params, ['queueIdentities']) && Array.isArray(body.params.queueIdentities))
+      || body.action === 'dataset_read' && keys(body, ['action', 'dataset', 'params']) && datasets.has(body.dataset) && paged(body.params);
+  }
+  if (!knownRead) return false;
+  const index = evidence.findIndex(entry => entry.url === resource.url && entry.method === resource.method && entry.body === resource.body
+    && entry.signalAborted === true && entry.reasonName === 'AbortError'
+    && (['suspend-fixture-request-view-transition', 'published-lkg-drive-transition'].includes(entry.context)
+      || typeof entry.abortStack === 'string' && entry.abortStack.includes('invalidateBackground') && entry.abortStack.includes('live-sync-coordinator.js')));
+  if (index < 0) return false;
+  evidence.splice(index, 1); // One observed aborted signal can explain only one failed fetch.
+  return true;
+}

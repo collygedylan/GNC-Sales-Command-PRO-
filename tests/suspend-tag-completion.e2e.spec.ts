@@ -8,7 +8,7 @@ import { normalizeReclassMoveCommand } from '../services/reclassMove.ts';
 import { inquiryEditableFields } from '../services/reclassEditableFields.ts';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './fixtures/inventory-list-read-fixture.mjs';
 import { createPreindexedMasterPageFixture } from './fixtures/preindexed-master-page-fixture.mjs';
-import { classifyReleaseSmokeRoute } from './helpers/release-smoke-route-policy.mjs';
+import { classifyReleaseSmokeRoute, isProvenReleaseSmokeReadCancellation } from './helpers/release-smoke-route-policy.mjs';
 
 
 type FixtureRow = Record<string, string | number>;
@@ -416,7 +416,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
   const consoleErrorDetails: Array<{ text: string; location: { url: string; lineNumber: number; columnNumber: number } }> = [];
-  const failedResources: Array<{ url: string; method: string; resourceType: string; failure: string }> = [];
+  const failedResources: Array<{ url: string; method: string; resourceType: string; failure: string; body: string; idempotencyKey: string }> = [];
   const chatParticipantReads: Array<{ url: string; authorization: string; status: number }> = [];
   const customerConsigneeReads: Array<{ url: string; authorizationAllowed: boolean; status: number }> = [];
   const healthTelemetryReceipts: Array<{ payload: Record<string, unknown>; apiKeyPresent: boolean; syntheticIdentity: boolean; authorizationMatchesPublicKey: boolean; status: number }> = [];
@@ -461,7 +461,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     'content-type': 'application/json',
   };
   await page.addInitScript(() => {
-    type AbortEntry = { url: string; method: string; context: string; reasonName: string; reasonCode: string; reasonMessage: string; abortStack: string; requestStack: string };
+    type AbortEntry = { url: string; method: string; body: string; signalAborted: boolean; context: string; reasonName: string; reasonCode: string; reasonMessage: string; abortStack: string; requestStack: string };
     type FixtureWindow = Window & { __suspendFixtureFetchAbortContext?: string; __suspendFixtureFetchAborts?: AbortEntry[] };
     const fixtureWindow = window as FixtureWindow;
     const originalFetch = window.fetch.bind(window);
@@ -472,14 +472,15 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       const signal = init?.signal || request?.signal || null;
       const parsedUrl = (() => { try { return new URL(url, window.location.href); } catch (_) { return null; } })();
       const watched = parsedUrl?.origin === 'https://kzrnyjsosryejjejliii.supabase.co'
-        && parsedUrl.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1' && method === 'POST';
+        && ['/rest/v1/rpc/get_my_dataset_revisions_v1', '/functions/v1/app-api'].includes(parsedUrl.pathname) && method === 'POST';
       if (watched && signal) {
         const requestStack = new Error('fixture fetch start').stack || '';
         const recordAbort = () => {
           const rawReason: unknown = signal.reason;
           const reason = rawReason && typeof rawReason === 'object' ? rawReason as Record<string, unknown> : {};
           const entry: AbortEntry = {
-            url, method, context: fixtureWindow.__suspendFixtureFetchAbortContext || '',
+            url, method, body: typeof init?.body === 'string' ? init.body : '', signalAborted: signal.aborted,
+            context: fixtureWindow.__suspendFixtureFetchAbortContext || '',
             reasonName: String(reason.name || ''), reasonCode: String(reason.code || ''),
             reasonMessage: String(reason.message || (typeof rawReason === 'string' ? rawReason : '')),
             abortStack: String(reason.stack || new Error('fixture fetch signal aborted').stack || ''), requestStack,
@@ -501,6 +502,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   });
   page.on('requestfailed', request => failedResources.push({
     url: request.url(), method: request.method(), resourceType: request.resourceType(), failure: request.failure()?.errorText || 'unknown',
+    body: request.postData() || '', idempotencyKey: request.headers()['idempotency-key'] || '',
   }));
   page.on('request', request => {
     if (request.url().includes('/rest/v1/rpc/report_app_health_event')) {
@@ -1113,20 +1115,14 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     // be cancelled when the app replaces its startup surface. Classify only
     // that exact image cancellation; all other aborted reads remain failures.
     const fetchAbortEvidence = await readFetchAbortEvidence();
+    const cancellationEvidence = fetchAbortEvidence.slice();
     const unexpectedFailedResources = failedResources.filter(resource => {
       const failedUrl = new URL(resource.url);
       const intentionalShellLogoCancel = failedUrl.origin === origin
         && failedUrl.pathname === '/assets/branding/ag-data-solutions-logo-v2026080925.png'
         && resource.resourceType === 'image' && resource.failure === 'net::ERR_ABORTED';
-      const intentionalRevisionReadSupersededByFixtureTransition = resource.method === 'POST'
-        && failedUrl.origin === 'https://kzrnyjsosryejjejliii.supabase.co'
-        && failedUrl.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1'
-        && ['Load request cancelled', 'net::ERR_ABORTED'].includes(resource.failure)
-        && fetchAbortEvidence.some(evidence => evidence.url === resource.url && evidence.method === 'POST'
-          && evidence.reasonName === 'AbortError'
-          && (['suspend-fixture-request-view-transition', 'published-lkg-drive-transition'].includes(evidence.context)
-            || (evidence.abortStack.includes('invalidateBackground') && evidence.abortStack.includes('live-sync-coordinator.js'))));
-      return !intentionalShellLogoCancel && !intentionalRevisionReadSupersededByFixtureTransition;
+      const intentionalReadCancellation = isProvenReleaseSmokeReadCancellation(resource, cancellationEvidence);
+      return !intentionalShellLogoCancel && !intentionalReadCancellation;
     });
     expect(unexpectedFailedResources, 'unexpected aborted reads/assets retain URL and resource type evidence').toEqual([]);
   };
@@ -2524,7 +2520,9 @@ test('published snapshot stays available and Drive completes every Common Name a
   await sourceCard.getByLabel('Move Up destination 1', { exact: true }).selectOption('U1');
   await app.activate(sourceCard.locator('[data-reclass-v3-action="hold"]'));
   await sourceCard.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('synthetic stock check');
-  await app.activate(sourceCard.locator('[data-reclass-location-details] > summary'));
+  if (!await sourceCard.locator('[data-reclass-location-details]').evaluate(element => element.hasAttribute('open'))) {
+    await app.activate(sourceCard.locator('[data-reclass-location-details] > summary'));
+  }
   await sourceCard.locator('[data-reclass-temporary-field="locationnote"]').fill('Synthetic location draft');
   await sourceCard.locator('[data-reclass-temporary-field="salesnote"]').fill('Synthetic sales draft');
   await expect.poll(() => exactHydrationRequests).toBe(1);
