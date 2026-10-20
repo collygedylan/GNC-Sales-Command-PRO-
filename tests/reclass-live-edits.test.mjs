@@ -65,6 +65,7 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
   const fullInventory = [currentRow];
   const masterInventoryById = new Map([[String(currentRow?.UNIQUE_ID || '').trim(), currentRow]]);
   const avOpenInventory = [];
+  const work = { indexRebuilds: 0 };
   const context = {
     nativeAuthProfile: { id: 'user-1' },
     currentUser: 'user-1', currentRole: 'MANAGER',
@@ -93,7 +94,11 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
     },
     shouldIncludeMasterItemInAvSeasonView: () => true,
     normalizeRowPhotoFields: row => row,
-    rebuildMasterInventoryIndexes: () => {},
+    rebuildMasterInventoryIndexes: () => {
+      work.indexRebuilds += 1;
+      masterInventoryById.clear();
+      fullInventory.forEach(row => masterInventoryById.set(String(row.UNIQUE_ID || ''), row));
+    },
     refreshRealtimeDetailLookupIndexes: () => {},
     getDatasetKeysForTable: () => ['master'],
     getVisibleAffectedViewIds: () => ['drive'],
@@ -110,7 +115,7 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
   };
   vm.createContext(context);
   vm.runInContext(`${html.slice(returnedRowStart, returnedRowEnd)}; ${html.slice(start, end)}; this.apply = applyConfirmedArgosReclassLiveEdits; this.acceptRead = isConfirmedInventoryReadRevisionCurrent; this.identityKey = getArgosReclassLiveEditIdentityKey();`, context);
-  return { apply: context.apply, acceptRead: context.acceptRead, appliedRows, avOpenInventory, dirtyViews, fullInventory, identityKey: context.identityKey, masterState };
+  return { apply: context.apply, acceptRead: context.acceptRead, appliedRows, avOpenInventory, dirtyViews, fullInventory, identityKey: context.identityKey, masterState, work };
 }
 
 const valid = {
@@ -199,6 +204,50 @@ test('stale revision, timestamp, or account never overwrites a newer local row',
   assert.equal(ordered.apply(confirmed, ordered.identityKey).applied, 1);
   const older = { ...confirmed, inventoryRevision: '9' };
   assert.equal(ordered.apply(older, ordered.identityKey).stale, true);
+});
+
+test('the same exact confirmed receipt reconciles once across status and submit consumers', () => {
+  const fixture = loadConfirmedApplyFixture({ UNIQUE_ID: 'row-1', PRIORITY: '3', LAST_UPDATED: '2026-10-09T12:00:00.000Z' });
+  const receipt = { inventoryRevision: '10', liveEdits: [liveEdit({ unique_id: 'row-1', priority: '2' })] };
+  const first = fixture.apply(receipt, fixture.identityKey);
+  const dirtyCount = fixture.dirtyViews.length;
+  const second = fixture.apply(receipt, fixture.identityKey);
+  assert.equal(first.applied, 1);
+  assert.deepEqual(second, first);
+  assert.equal(fixture.appliedRows.length, 1);
+  assert.equal(fixture.work.indexRebuilds, 1);
+  assert.equal(fixture.dirtyViews.length, dirtyCount, 'duplicate consumption does not invalidate all inventory views again');
+  assert.equal(fixture.apply(receipt, 'another-account').stale, true);
+  fixture.masterState.liveVerifiedRevision = '11';
+  assert.equal(fixture.apply(receipt, fixture.identityKey).stale, true, 'newer revision fences run before memo reuse');
+});
+
+test('equal timestamps with different authoritative evidence or field stamps still reconcile', () => {
+  const fixture = loadConfirmedApplyFixture({ UNIQUE_ID: 'row-1', PRIORITY: '3', LAST_UPDATED: '2026-10-09T12:00:00.000Z' });
+  const before = Object.fromEntries(['locationnote', 'locationptn1', 'desigitem', 'desigcust', 'desigloc',
+    'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend'].map(key => [key, null]));
+  const receipt = { inventoryRevision: '10', workflowPolicyVersion: 'reclass-action-workflow-v7-editable-fields-20261009',
+    liveEdits: [liveEdit({ unique_id: 'row-1', priority: '2', evidence: { spec: 'first spec' } })],
+    inventoryFields: [{ unique_id: 'row-1', before, after: { ...before, locationnote: 'Confirmed note' }, changedFields: ['locationnote'],
+      stamps: { prisetby: 'JD', priupdated: '2026-10-09T12:34:56.789Z', locationnotedate: '2026-10-09T12:34:56.789Z', evaldate: '2026-10-09' } }] };
+  fixture.apply(receipt, fixture.identityKey);
+  receipt.liveEdits[0].evidence.spec = 'second spec';
+  receipt.inventoryFields[0].stamps.prisetby = 'MK';
+  const changed = fixture.apply(receipt, fixture.identityKey);
+  assert.equal(changed.applied, 1);
+  assert.equal(fixture.work.indexRebuilds, 2);
+  assert.equal(fixture.fullInventory[0].SPEC, 'second spec');
+  assert.equal(fixture.fullInventory[0].PRISETBY, 'MK');
+});
+
+test('an intervening cache change at the same revision invalidates the receipt memo', () => {
+  const fixture = loadConfirmedApplyFixture({ UNIQUE_ID: 'row-1', PRIORITY: '3', LAST_UPDATED: '2026-10-09T12:00:00.000Z' });
+  const receipt = { inventoryRevision: '10', liveEdits: [liveEdit({ unique_id: 'row-1', priority: '2', evidence: { spec: 'Confirmed spec' } })] };
+  fixture.apply(receipt, fixture.identityKey);
+  fixture.fullInventory[0].SPEC = fixture.fullInventory[0].spec = 'Unrelated cache value';
+  fixture.apply(receipt, fixture.identityKey);
+  assert.equal(fixture.work.indexRebuilds, 2);
+  assert.equal(fixture.fullInventory[0].SPEC, 'Confirmed spec');
 });
 
 test('a malformed receipt from a different account cannot invalidate the current account cache', () => {

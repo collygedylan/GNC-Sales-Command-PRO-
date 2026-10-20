@@ -2301,8 +2301,25 @@ test('published snapshot stays available and Drive completes every Common Name a
     'iphone-webkit': 'jd_jones' } as Record<string, string>)[info.project.name];
   expect(fixtureUsername).toBeTruthy();
   const app = await harness(page, baseURL!, [], { masterRows: snapshot.masterRows, published: true, username: fixtureUsername });
+  // The seed starts a real request-view cohort. Let its owned work settle
+  // before resetting identity and starting the separate cold Drive cohort.
+  await page.bringToFront();
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(() => window.eval(`(async () => {
+    let timer;
+    try { return await Promise.race([getProductionLiveSyncCoordinator().check('visible-view'),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Seeded request cohort did not settle before cold Drive hydration')), 30000); })]); }
+    finally { clearTimeout(timer); }
+  })()`));
   const result = await page.evaluate(async () => window.eval(`(async () => {
     const hydrationStarted = performance.now();
+    const hydrationProgress = window.__releaseSmokeHydrationProgress = [];
+    const originalPrepare = prepareProductionMasterSnapshot;
+    prepareProductionMasterSnapshot = async function(rows, options) {
+      hydrationProgress.push({ phase: 'prepare-start', rows: rows.length, atMs: performance.now() - hydrationStarted });
+      try { return await originalPrepare(rows, options); }
+      finally { hydrationProgress.push({ phase: 'prepare-end', rows: rows.length, atMs: performance.now() - hydrationStarted }); }
+    };
     fullInventory = []; rebuildMasterInventoryIndexes();
     Object.assign(getDatasetState('master'), { initialLoaded: false, fullLoaded: false, rowCompleteness: 'unknown', liveVerifiedScope: '' });
     activeDriveTab = 'name'; driveViewLevel = 0; selectedDriveName = '';
@@ -2310,7 +2327,10 @@ test('published snapshot stays available and Drive completes every Common Name a
     resetProductionLiveSync();
     showOnlyPrimaryView('drive');
     window.__suspendFixtureFetchAbortContext = '';
-    const loaded = await getProductionLiveSyncCoordinator().check('visible-view');
+    let timeout;
+    const loaded = await Promise.race([getProductionLiveSyncCoordinator().check('visible-view'),
+      new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Published Drive hydration did not settle within 60 seconds')), 60000); })
+    ]).finally(() => { clearTimeout(timeout); prepareProductionMasterSnapshot = originalPrepare; });
     renderDrive();
     return { loaded, rows: fullInventory.length, names: new Set(fullInventory.map(row => row.COMMONNAME)).size,
       coldHydrationMs: performance.now() - hydrationStarted,
@@ -2322,8 +2342,9 @@ test('published snapshot stays available and Drive completes every Common Name a
     await info.attach('published-lkg-failed-read-diagnostic', {
       contentType: 'application/json',
       body: Buffer.from(JSON.stringify({ pages: app.publishedReadPages, settingsReads: app.settingsReads,
-        failedResources: app.failedResources,
-        consoleErrors: app.consoleErrorDetails })),
+        failedResources: app.failedResources, consoleErrors: app.consoleErrorDetails,
+        progress: await page.evaluate(() => window.eval(`({ phases: window.__releaseSmokeHydrationProgress || [],
+          rows: fullInventory.length, view: getCurrentVisibleViewId(), status: getProductionLiveSyncCoordinator().getStatus() })`)).catch(() => null) })),
     });
     throw error;
   });
@@ -2508,6 +2529,8 @@ test('published snapshot stays available and Drive completes every Common Name a
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     return { immediate, openMs: performance.now() - started, username: currentUser };
   })()`), details.uid);
+  await info.attach('release-smoke-reclass-open-phase', { contentType: 'application/json',
+    body: Buffer.from(JSON.stringify({ project: info.project.name, username: fixtureUsername, ...open })) });
   expect(open.immediate).toBe(true);
   expect(open.username).toBe(fixtureUsername);
   expect(open.openMs).toBeLessThanOrEqual(2000);
@@ -2537,11 +2560,61 @@ test('published snapshot stays available and Drive completes every Common Name a
   await expect(sourceCard.getByLabel('Move Up quantity 1', { exact: true })).toHaveValue('1');
   await expect(sourceCard.locator('[data-reclass-temporary-field="locationnote"]')).toHaveValue('Synthetic location draft');
   await expect(sourceCard.locator('[data-reclass-temporary-field="salesnote"]')).toHaveValue('Synthetic sales draft');
-  const submitStarted = Date.now();
-  await app.activate(page.locator('#argos-inventory-transaction-apply'));
-  await expect(modal).toBeHidden({ timeout: 2000 });
-  const submitMs = Date.now() - submitStarted;
+  await page.evaluate(() => {
+    type RequestPhase = { action: string; operation: string; startedMs: number; responseMs?: number; status?: number; error?: string };
+    type SubmitTiming = { startedAt: number | null; feedbackMs: number | null; hiddenMs: number | null; submitMs: number | null; requests: RequestPhase[] };
+    const target = window as unknown as { __releaseSmokeSubmitTiming: SubmitTiming };
+    const timing: SubmitTiming = { startedAt: null, feedbackMs: null, hiddenMs: null, submitMs: null, requests: [] };
+    target.__releaseSmokeSubmitTiming = timing;
+    const modal = document.getElementById('argos-inventory-transaction-modal')!;
+    const button = document.getElementById('argos-inventory-transaction-apply') as HTMLButtonElement;
+    button.addEventListener('click', () => { timing.startedAt = performance.now(); }, { capture: true, once: true });
+    const observer = new MutationObserver(() => {
+      if (timing.startedAt === null) return;
+      if (button.disabled && timing.feedbackMs === null) timing.feedbackMs = performance.now() - timing.startedAt;
+      if (modal.classList.contains('hidden') && timing.hiddenMs === null) {
+        timing.hiddenMs = performance.now() - timing.startedAt;
+        observer.disconnect();
+        requestAnimationFrame(() => requestAnimationFrame(() => { timing.submitMs = performance.now() - timing.startedAt!; }));
+      }
+    });
+    observer.observe(modal, { attributes: true, subtree: true, attributeFilter: ['class', 'disabled'] });
+    const fetch = window.fetch.bind(window);
+    window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      let body: Record<string, unknown> = {};
+      try { if (typeof init?.body === 'string') body = JSON.parse(init.body); } catch (_) {}
+      if (timing.startedAt === null || !['inventory_reclass_move', 'drive_reclass_inquiry'].includes(String(body.action))) return fetch(input, init);
+      const phase: RequestPhase = { action: String(body.action), operation: String(body.operation || 'submit'),
+        startedMs: performance.now() - timing.startedAt };
+      timing.requests.push(phase);
+      return fetch(input, init).then(response => {
+        phase.responseMs = performance.now() - timing.startedAt!; phase.status = response.status; return response;
+      }, error => { phase.error = String(error?.message || error); throw error; });
+    }) as typeof window.fetch;
+  });
+  const submitCommandStarted = Date.now();
+  let submitObservationError = '';
+  try {
+    await app.activate(page.locator('#argos-inventory-transaction-apply'));
+    // Observation may outlive the strict measured gate, so failures retain the
+    // actual event-to-paint sample instead of a two-second polling timeout.
+    await page.waitForFunction(() => (window as unknown as { __releaseSmokeSubmitTiming?: { submitMs: number | null } })
+      .__releaseSmokeSubmitTiming?.submitMs != null, null, { timeout: 15000 });
+  } catch (error) { submitObservationError = String(error); }
+  const submitTiming = await page.evaluate(() => (window as unknown as { __releaseSmokeSubmitTiming: {
+    startedAt: number | null; feedbackMs: number | null; hiddenMs: number | null; submitMs: number | null;
+    requests: Array<{ action: string; operation: string; startedMs: number; responseMs?: number; status?: number; error?: string }>;
+  } }).__releaseSmokeSubmitTiming);
+  await info.attach('release-smoke-reclass-submit-phases', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+    project: info.project.name, username: fixtureUsername, commandWallMs: Date.now() - submitCommandStarted,
+    observationError: submitObservationError, ...submitTiming, commandBodies: reclassRequests, failedResources: app.failedResources,
+  })) });
+  expect(submitObservationError).toBe('');
+  expect(submitTiming.startedAt).not.toBeNull();
+  expect(submitTiming.submitMs).not.toBeNull();
+  const submitMs = Number(submitTiming.submitMs);
   expect(submitMs).toBeLessThanOrEqual(2000);
+  await expect(modal).toBeHidden();
   expect(reclassRequests.map(body => body.action)).toEqual(['inventory_reclass_move', 'drive_reclass_inquiry']);
   expect(authoritative.holdstopcode).toBe('H');
   expect(authoritative.locationnote).toBe('Synthetic location draft');

@@ -72,7 +72,9 @@ export function isProvenReleaseSmokeReadCancellation(resource, evidence = []) {
   const index = evidence.findIndex(entry => entry.url === resource.url && entry.method === resource.method && entry.body === resource.body
     && entry.signalAborted === true && entry.reasonName === 'AbortError'
     && (['suspend-fixture-request-view-transition', 'published-lkg-drive-transition'].includes(entry.context)
-      || typeof entry.abortStack === 'string' && entry.abortStack.includes('invalidateBackground') && entry.abortStack.includes('live-sync-coordinator.js')));
+      || typeof entry.abortStack === 'string' && entry.abortStack.includes('live-sync-coordinator.js')
+        && (entry.abortStack.includes('invalidateBackground')
+          || entry.abortStack.includes('abortSupabaseReadsBeforeGeneration') && entry.abortStack.includes('onStageStart'))));
   if (index < 0) return false;
   evidence.splice(index, 1); // One observed aborted signal can explain only one failed fetch.
   return true;

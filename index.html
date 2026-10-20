@@ -53186,6 +53186,7 @@ let avTopControlsRenderToken = 0;
         }
 
         const confirmedArgosReclassLiveEditRevisions = new Map();
+        const confirmedArgosReclassLiveEditReceipts = new WeakMap();
 
         function getCanonicalMasterInventoryRowByUniqueId(uid = '') {
             const normalizedUid = String(uid || '').trim();
@@ -53289,6 +53290,22 @@ let avTopControlsRenderToken = 0;
             if (BigInt(knownRevision) > BigInt(confirmed.inventoryRevision)) {
                 return { applied: 0, stale: true };
             }
+            const receiptSignature = JSON.stringify(confirmed);
+            const fieldRows = new Map((confirmed.inventoryFields || []).map((entry) => [entry.unique_id, entry]));
+            const currentRowsSignature = () => JSON.stringify(confirmed.liveEdits.map((edit) => {
+                const current = getCanonicalMasterInventoryRowByUniqueId(edit.unique_id);
+                if (!current) return null;
+                const fields = fieldRows.get(edit.unique_id);
+                const keys = ['priority', 'holdstopcode', 'holdstopreason', ...window.GncDatabase.driveEvidenceColumns,
+                    ...Object.keys(fields && fields.after || {}), ...Object.keys(fields && fields.stamps || {})];
+                return keys.map((key) => current[key.toUpperCase()] ?? current[key] ?? null);
+            }));
+            const previousReceipt = confirmedArgosReclassLiveEditReceipts.get(result);
+            if (previousReceipt && previousReceipt.identityKey === identityKey
+                && previousReceipt.receiptSignature === receiptSignature
+                && previousReceipt.rowsSignature === currentRowsSignature()) {
+                return { ...previousReceipt.summary };
+            }
             confirmedArgosReclassLiveEditRevisions.set(identityKey, confirmed.inventoryRevision);
             while (confirmedArgosReclassLiveEditRevisions.size > 32) {
                 confirmedArgosReclassLiveEditRevisions.delete(confirmedArgosReclassLiveEditRevisions.keys().next().value);
@@ -53336,6 +53353,9 @@ let avTopControlsRenderToken = 0;
             });
             invalidateArgosReclassLiveEditCaches(stale ? 'reclass-live-edit-cache-incomplete' : 'reclass-live-edit-confirmed', {
                 preserveMasterProof: !stale && applied > 0,
+            });
+            if (!stale) confirmedArgosReclassLiveEditReceipts.set(result, {
+                identityKey, receiptSignature, rowsSignature: currentRowsSignature(), summary: { applied, stale },
             });
             return { applied, stale };
         }

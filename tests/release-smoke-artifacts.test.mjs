@@ -104,6 +104,12 @@ test('smoke cancellation exceptions require the same allowlisted read body, an a
   const evidence = { ...resource, signalAborted: true, reasonName: 'AbortError', context: '',
     abortStack: 'invalidateBackground assets/live-sync-coordinator.js' };
   assert.equal(isProvenReleaseSmokeReadCancellation(resource, [evidence]), true);
+  assert.equal(isProvenReleaseSmokeReadCancellation(resource, [{ ...evidence,
+    abortStack: 'abortSupabaseReadsBeforeGeneration onStageStart assets/live-sync-coordinator.js cycle' }]), true);
+  for (const abortStack of ['abortSupabaseReadsBeforeGeneration unknown.js', 'onStageStart live-sync-coordinator.js',
+    'abortSupabaseReadsBeforeGeneration live-sync-coordinator.js']) {
+    assert.equal(isProvenReleaseSmokeReadCancellation(resource, [{ ...evidence, abortStack }]), false);
+  }
   const once = [evidence];
   assert.equal(isProvenReleaseSmokeReadCancellation(resource, once), true);
   assert.equal(isProvenReleaseSmokeReadCancellation(resource, once), false, 'one abort cannot hide a second failed request');
