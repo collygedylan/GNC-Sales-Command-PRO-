@@ -10521,7 +10521,15 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 try { localStorage.setItem('gnc_role_v3', nextRole); } catch (error) {}
                 // A revision notification alone is not a role change. Keep the
                 // current account's access and display while replacement reads run.
-                if (roleChanged || divisionChanged) clearRoleScopedClientCaches(profile.username || currentUser);
+                if (roleChanged || divisionChanged) {
+                    clearRoleScopedClientCaches(profile.username || currentUser);
+                    // The profile response is authoritative for identity scope.
+                    // Reapply its role/division immediately so stale DOM cannot
+                    // remain visible while bridge and permission requests wait.
+                    applyCurrentUserMasterInventoryScope();
+                    applyRolePermissions();
+                    refreshProtectedSections();
+                }
                 persistAppSessionRecord(null);
                 await ensureNativeAppSessionBridge(true).catch(() => null);
                 await Promise.allSettled([
@@ -10533,9 +10541,20 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                     ...(typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad() ? [] : [ensureAssignableAppUsers(true), ensureFlyerAssignableUsers(true)])
                 ]);
                 if (String(currentUser || '').trim().toLowerCase() !== username) throw new Error('Account changed while refreshing permissions.');
-                if (permissionChanged && (appAccessSnapshotState.status !== 'ready' || appAccessSnapshotState.stale
-                    || !appAccessSnapshotState.snapshot || requestCapabilityState.status !== 'ready'
-                    || requestCapabilityState.stale || !requestCapabilityState.capabilities)) {
+                const freshAccessState = appAccessSnapshotState || {};
+                const freshAccessConfirmed = freshAccessState.status === 'ready' && !freshAccessState.stale
+                    && !!freshAccessState.snapshot && freshAccessState.username === username
+                    && (!nativeAuthSessionActive || String(freshAccessState.profileId || '') === String(nativeAuthProfile?.id || ''));
+                const freshCapabilitiesConfirmed = requestCapabilityState.status === 'ready'
+                    && !requestCapabilityState.stale && !!requestCapabilityState.capabilities;
+                if (permissionChanged && freshAccessConfirmed) {
+                    // Apply any newly confirmed denial/revocation even if the
+                    // independent request-capability fetch failed.
+                    applyCurrentUserMasterInventoryScope();
+                    applyRolePermissions();
+                    refreshProtectedSections();
+                }
+                if (permissionChanged && (!freshAccessConfirmed || !freshCapabilitiesConfirmed)) {
                     throw new Error('Updated permissions could not be verified. Data refresh is paused.');
                 }
                 if (permissionChanged) await restoreProductionPermissionDrafts();

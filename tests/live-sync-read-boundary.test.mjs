@@ -1079,16 +1079,21 @@ function permissionFixture(options = {}) {
         nativeAuthProfile: { id: 'account-a' }, captureProductionPermissionDrafts() {}, restoreProductionPermissionDrafts: async () => {},
         setProductionPermissionCheckState: () => {}, getCurrentVisibleViewId: () => 'home',
         currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan', currentRole: 'Admin', currentUserDivision: '10', currentUserLanguage: 'English',
-        loadNativeAuthProfile: async () => ({ username: 'dylan_collyge', role: options.role || 'Admin', division: options.division || '10' }),
+        loadNativeAuthProfile: async () => ({ id: 'account-a', username: 'dylan_collyge', role: options.role || 'Admin', division: options.division || '10' }),
         normalizeRoleAccessToken: (value) => String(value).toLowerCase(), normalizeAppUserLanguage: (value) => value,
-        localStorage: { setItem() {} }, persistAppSessionRecord() {}, ensureNativeAppSessionBridge: async () => {},
+        localStorage: { setItem() {} }, persistAppSessionRecord() {}, ensureNativeAppSessionBridge: async () => { calls.push('bridge'); return null; },
         clearRoleScopedClientCaches: () => { calls.push('clear'); ctx.appAccessSnapshotState = {}; ctx.requestCapabilityState = {}; },
         configureCanonicalUserAccess: async () => { calls.push('canonical'); },
-        applyCurrentUserMasterInventoryScope: () => { calls.push('master-scope'); },
-        initializeAppAccessSnapshot: async () => { calls.push('access'); ctx.appAccessSnapshotState = options.failure ? { status: 'error' } : { status: 'ready', stale: false, snapshot: {} }; },
-        initializeRequestCapabilities: async () => { calls.push('capabilities'); ctx.requestCapabilityState = { status: 'ready', stale: false, capabilities: {} }; },
+        initializeAppAccessSnapshot: async () => { calls.push('access'); ctx.appAccessSnapshotState = options.failure
+            ? { status: 'error', username: 'dylan_collyge', profileId: 'account-a' }
+            : { status: 'ready', stale: false, snapshot: options.accessSnapshot || {}, username: 'dylan_collyge', profileId: 'account-a' }; },
+        initializeRequestCapabilities: async () => { calls.push('capabilities'); ctx.requestCapabilityState = options.capabilityFailure
+            ? { status: 'error', stale: true, capabilities: null }
+            : { status: 'ready', stale: false, capabilities: {} }; },
         ensureAssignableAppUsers: async () => {}, ensureFlyerAssignableUsers: async () => {},
-        applyRolePermissions: () => { calls.push('apply'); }, refreshProtectedSections() {}, markViewDirty() {}, renderHome() {}, reportSemanticHealthEvent() {}
+        applyCurrentUserMasterInventoryScope: () => { calls.push('master-scope'); },
+        applyRolePermissions: () => { calls.push('apply'); ctx.renderedRole = ctx.currentRole; ctx.renderedAccess = ctx.appAccessSnapshotState.snapshot?.marker; },
+        refreshProtectedSections: () => { calls.push('protected'); }, markViewDirty() {}, renderHome() {}, reportSemanticHealthEvent() {}
     };
     vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
     return ctx;
@@ -1217,7 +1222,7 @@ test('same-role policy changes reload and apply authoritative permissions before
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('foreground'), false);
     assert.equal(ctx.calls.length, 0);
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('live-permissions'), true);
-    assert.deepEqual(ctx.calls, ['canonical', 'capabilities', 'access', 'master-scope', 'apply'], 'same-role permission refresh keeps same-account cache ownership');
+    assert.deepEqual(ctx.calls, ['bridge', 'canonical', 'capabilities', 'access', 'master-scope', 'apply', 'protected'], 'same-role permission refresh keeps same-account cache ownership');
 });
 
 test('division changes refresh capability scope even without a role change', async () => {
@@ -1235,6 +1240,29 @@ test('confirmed role changes still clear role-scoped caches', async () => {
     assert.ok(ctx.calls.includes('master-scope'));
 });
 
+test('a confirmed role downgrade updates the retained DOM before bridge or permission requests resolve', async () => {
+    const ctx = permissionFixture({ role: 'Sales Rep' }); const bridgeGate = deferred();
+    ctx.renderedRole = 'Admin';
+    ctx.ensureNativeAppSessionBridge = () => { ctx.calls.push('bridge'); return bridgeGate.promise; };
+    const pending = ctx.refreshNativeRoleAndCapabilities('foreground');
+    await settle();
+    assert.equal(ctx.currentRole, 'Sales Rep');
+    assert.equal(ctx.renderedRole, 'Sales Rep', 'old admin UI is replaced as soon as the profile downgrade is confirmed');
+    assert.deepEqual(ctx.calls.slice(0, 4), ['clear', 'master-scope', 'apply', 'protected']);
+    assert.equal(ctx.calls[4], 'bridge', 'the bridge wait begins only after restrictive role UI is applied');
+    bridgeGate.resolve(null);
+    assert.equal(await pending, true);
+});
+
+test('fresh access denial applies even when the separate request-capability refresh fails', async () => {
+    const ctx = permissionFixture({ capabilityFailure: true, accessSnapshot: { marker: 'confirmed-denied' } });
+    await assert.rejects(ctx.refreshNativeRoleAndCapabilities('live-permissions'), /permissions could not be verified/);
+    assert.equal(ctx.renderedAccess, 'confirmed-denied', 'the fresh access decision is rendered before refresh failure is reported');
+    assert.ok(ctx.calls.includes('master-scope'));
+    assert.ok(ctx.calls.includes('apply'));
+    assert.ok(ctx.calls.includes('protected'));
+});
+
 test('a failed updated policy check rejects instead of granting fallback access', async () => {
     const ctx = permissionFixture({ failure: true });
     await assert.rejects(ctx.refreshNativeRoleAndCapabilities('live-permissions'), /permissions could not be verified/);
@@ -1250,7 +1278,7 @@ test('live permission signal arriving during a foreground check performs a full 
     const policy = ctx.refreshNativeRoleAndCapabilities('live-permissions');
     gate.resolve();
     assert.equal(await foreground, false); assert.equal(await policy, true);
-    assert.deepEqual(ctx.calls, ['canonical', 'capabilities', 'access', 'master-scope', 'apply']);
+    assert.deepEqual(ctx.calls, ['bridge', 'canonical', 'capabilities', 'access', 'master-scope', 'apply', 'protected']);
 });
 
 test('permission-change coordinator callback returns the permission refresh promise', () => {
