@@ -185,12 +185,13 @@ jobs:
               while (Date.now() < scriptDeadline) {
                 const { data } = await github.rest.actions.listWorkflowRuns({
                   owner, repo, workflow_id: scriptWorkflow.id, head_sha: context.sha,
-                  event: 'workflow_run', per_page: 100,
+                  per_page: 100,
                 });
                 const candidates = (data.workflow_runs || []).filter(run =>
                   run.workflow_id === scriptWorkflow.id && run.path === scriptWorkflow.path &&
                   run.head_branch === 'main' && run.head_sha === context.sha &&
-                  run.event === 'workflow_run' && run.head_repository?.full_name === repository);
+                  ['workflow_run', 'workflow_dispatch'].includes(run.event) &&
+                  run.head_repository?.full_name === repository);
                 scriptRun = candidates.sort((a, b) => b.run_number - a.run_number)[0];
                 if (scriptRun?.status === 'completed') {
                   if (scriptRun.conclusion !== 'success') {

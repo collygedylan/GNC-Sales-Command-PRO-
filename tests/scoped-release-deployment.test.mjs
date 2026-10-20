@@ -74,9 +74,19 @@ test('scoped Pages release waits for the exact merged backend before publishing'
     'SCOPED_BACKEND_MIGRATION_RECEIPT_MISMATCH', 'apps-script-sync.yml',
     'head_sha === context.sha', "event === 'workflow_dispatch'", 'Apply backend migrations and deploy Edge Functions',
     'deployRun.conclusion !== \'success\'', 'appsScriptChangedFunctions', 'apps-script-deploy.yml',
-    "event === 'workflow_run'", "job.name === 'deploy-apps-script'",
+    "['workflow_run', 'workflow_dispatch'].includes(run.event)", "job.name === 'deploy-apps-script'",
     "Publish the guarded production Apps Script version", 'SCOPED_APPS_SCRIPT_PUBLICATION_TIMEOUT',
   ]) assert.ok(script.includes(marker), marker);
+  assert.doesNotMatch(script, /workflow_id: scriptWorkflow\.id, head_sha: context\.sha,\s*event:/);
   assert.match(script, /Date\.now\(\)\s*\+\s*10\s*\*\s*60\s*\*\s*1000/);
   assert.match(script, /Date\.now\(\)\s*\+\s*15\s*\*\s*60\s*\*\s*1000/);
+});
+
+test('scoped Apps Script releases dispatch exact backend, Apps Script, and Pages handoffs', () => {
+  const source = read('.github/workflows/publish-candidate.yml');
+  assert.match(source, /const scopedAppsScriptRelease = Boolean\(packageConfig\.scopedValidationReceipt &&[\s\S]*?packageConfig\.appsScriptPatchFunctions\.length > 0\)/);
+  const backendWait = source.indexOf("await waitForSuccessfulWorkflow('apps-script-sync.yml', backendDispatch)", source.indexOf('} else if (scopedAppsScriptRelease)'));
+  const scriptDispatch = source.indexOf("await dispatchOnce('apps-script-deploy.yml')", backendWait);
+  const pagesDispatch = source.indexOf("await dispatchOnce('pages-static.yml')", scriptDispatch);
+  assert.ok(backendWait >= 0 && scriptDispatch > backendWait && pagesDispatch > scriptDispatch);
 });

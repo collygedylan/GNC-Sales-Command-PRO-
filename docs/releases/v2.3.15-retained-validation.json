@@ -3,10 +3,11 @@
   "release": "AgData v2.3.15",
   "base": "ebe5547b11fb415ef83b3f2891973776c5b4d682",
   "evidencePathPrefix": "docs/releases/v2.3.15-validation/",
-  "sourceDigest": "8fdbd44d43778d58ddc068b46cf1920154d649bc139a53b697c3ad8f9ebde605",
+  "sourceDigest": "74dbd9e64490c88a2a11746933739d23c627ef1a19f107f4c39b2629531d234c",
   "sourceHashes": {
     ".github/workflows/apps-script-sync.yml": "fc5c22be9f886a149aa03c693b5197f426f8f126152e995d503ec3244c80042c",
-    ".github/workflows/pages-static.yml": "ea8a0677326f962a115e30f4d442418d8f263fd2d44fc4442b4d8086a1cea927",
+    ".github/workflows/pages-static.yml": "841967c6c7d551def6e518f2ce21cf5753cb1df1ffb0ef871f189d1c51a7862a",
+    ".github/workflows/publish-candidate.yml": "2d2ae09c3d75485749c97336b23f4b04c293ad6c75f37a0aff67ae399136ecbd",
     ".github/workflows/release-database.yml": "22e165d456dcd2a35e97f4c55378cf74c3311900afc5aa0df6baaf78c5731f44",
     "AGENTS.md": "47dce751fe8879aa3737d2d56dce1e3db0a53676c06fd16bb9fae4d9c5008eac",
     "Code.gs": "d646060a4d7bcbf266243092f65f9d7c5429adcd355008807800f3fb081bb5d6",
@@ -17,7 +18,7 @@
     "assets/queue-inventory-hydration.js": "318392b4152f59f74edc462b8749b98114c76c2b35f155d215de4b9422229f19",
     "docs/releases/v2.3.14-validation/checkpoint.json": "ea24815dc13cc11a68be531251f695cb6c095b96867cd84039d830c6a2ca331f",
     "docs/releases/v2.3.14-validation/reset2-checkpoint.json": "ce08a4ec64e766f3ad3749fa9a961afd30585542fda92d45f924bc7db2d66717",
-    "docs/releases/v2.3.15-progress.json": "222843a7c3214909aca66ea47bcfc2bc4b5afc6db997f62e4cf0877f044f89eb",
+    "docs/releases/v2.3.15-progress.json": "dcd7c1eed35a948112397db6b54fd5684f7a04cbda02b2edc886a9a3d30e8464",
     "index.html": "ee87cee366902645cc8df32a3f24fc77cbd844177f886af73de1c8b6fcbd76c9",
     "manifest.json": "38dee74be6daab0c9b70c7d1a4137e43196e5d61170d0d9248cc0a3d7eddf291",
     "package-lock.json": "9501a350d936db37983922dc3bd179a779050d9e95773d627692b13fa03c84dd",
@@ -68,7 +69,7 @@
     "tests/request-list-performance.e2e.spec.ts": "84c5e081fd9cc4ddbf89f25cfc4f4a223587b64876d25db59b0cd180a268bd77",
     "tests/request-list-rendering.test.mjs": "3450afe776649fcb2d3ace408ba59a45aa5fc758aea3784920943d73eb8c773c",
     "tests/request-queue-display-hydration.test.mjs": "c5df29daa47a5351374b2da3d65b6a460647574693fcb78bc35d8668c8e8573e",
-    "tests/scoped-release-deployment.test.mjs": "88e48fa80922ab0bdb30720d20c1d6df09130cb90aec4092e576454ca63eb9e6",
+    "tests/scoped-release-deployment.test.mjs": "45feeee485d681153d387da1df1b30494c484da5d8b95ec23d1e51a132993332",
     "tests/season-sales-note-master-candidate-index.test.mjs": "4ef5fa702833df739e0c6610f40472f09fbdfcc8d7c83ab4f67e8c71fa7ee0b8",
     "tests/session-shell-resilience.test.mjs": "f404cdac5e4473ed8c66ea09b7d8696c30f01f87e52e9c137193dbe87306ebd4",
     "tests/suspend-page-markup-cache.test.mjs": "1d5b9fe95bdd85e16d1298b2384614251dabba36e2022621c7067d2d9274d9d6",
@@ -113,10 +114,10 @@
     "exportWarehouseAssignedItemsToSheet_"
   ],
   "evidenceHashes": {
-    "docs/releases/v2.3.15-validation/unit.json": "6199325c3a63b72dde8a3dadb548a5ddf7877290a6de8a86e0e3356db6e5c94e",
-    "docs/releases/v2.3.15-validation/tooling.json": "9c026424fabfa1e76ee3f63d169247ecb54a70170384d16749d6b9653b432f3d",
-    "docs/releases/v2.3.15-validation/browser.json": "9be6f7e55291512818761b854dfef6adcfd444c8749859ed94327af26fba822f",
-    "docs/releases/v2.3.15-validation/database.json": "c832f62ac4589ebe7055f13beac6b912418a5dab494aefe5b1711655377412e0"
+    "docs/releases/v2.3.15-validation/unit.json": "86908507d8190cf35e09edec41a368e76b39b8ad930b456a03a5387c33243eb3",
+    "docs/releases/v2.3.15-validation/tooling.json": "e57d74fcc17fbd14eeee2b3497fbe2ade3879c28f0d8e66e6b9c8b5e41a1371c",
+    "docs/releases/v2.3.15-validation/browser.json": "cf2e6cb8465eb71b2de8532cd676f9ededee10eafcfa9c642d0d8b2f66ef0d00",
+    "docs/releases/v2.3.15-validation/database.json": "3cddcda7af08fbc57e220fbe1c806dd50bff4fecf3c9085787fa629c6e2ef763"
   },
   "requiredKinds": [
     "database"

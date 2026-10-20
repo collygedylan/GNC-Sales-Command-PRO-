@@ -140,7 +140,10 @@ jobs:
               owner, repo, path: 'package.json', ref: pr.merge_commit_sha,
             });
             const packageBytes = Buffer.from(packageResponse.data.content, 'base64');
-            const releaseVersion = JSON.parse(packageBytes.toString('utf8')).version;
+            const packageConfig = JSON.parse(packageBytes.toString('utf8'));
+            const releaseVersion = packageConfig.version;
+            const scopedAppsScriptRelease = Boolean(packageConfig.scopedValidationReceipt &&
+              Array.isArray(packageConfig.appsScriptPatchFunctions) && packageConfig.appsScriptPatchFunctions.length > 0);
             if (releaseVersion === '2.3.11') {
               // This frontend requires the canonical access-control schema and
               // RPCs. Keep Pages unpublished until that exact merge is deployed.
@@ -149,6 +152,15 @@ jobs:
               core.notice(`Backend publication succeeded for ${pr.merge_commit_sha} (run ${backendRun.id}); dispatching Pages.`);
               await dispatchOnce('pages-static.yml');
               core.notice(`Dispatched frontend publication for PR #${pull_number}, merge ${pr.merge_commit_sha}.`);
+            } else if (scopedAppsScriptRelease) {
+              // The scoped Pages workflow is already queued after backend dispatch;
+              // explicitly publish the allowlisted Apps Script functions before its gate completes.
+              const backendDispatch = await dispatchOnce('apps-script-sync.yml');
+              const backendRun = await waitForSuccessfulWorkflow('apps-script-sync.yml', backendDispatch);
+              core.notice(`Backend publication succeeded for ${pr.merge_commit_sha} (run ${backendRun.id}); dispatching guarded Apps Script and Pages.`);
+              await dispatchOnce('apps-script-deploy.yml');
+              await dispatchOnce('pages-static.yml');
+              core.notice(`Dispatched Apps Script and frontend publication for PR #${pull_number}, merge ${pr.merge_commit_sha}.`);
             } else {
               // Existing releases retain their independent publication order.
               await dispatchOnce('pages-static.yml');
