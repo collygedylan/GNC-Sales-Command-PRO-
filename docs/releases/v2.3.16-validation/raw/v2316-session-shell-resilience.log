@@ -1,0 +1,14 @@
+CAPTURED TOOL OUTPUT SUMMARY (not a rerun)
+Source: prior recorded terminal result for `node --test tests/session-shell-resilience.test.mjs`.
+Result: tests 8; pass 8; fail 0; cancelled 0; skipped 0; todo 0.
+Runtime reported: approximately 0.29 seconds.
+Captured test cases:
+1. stale shell recovery removes only AgData shell state and preserves user/auth caches — pass
+2. service-worker registration helper tolerates undefined test stubs without console errors — pass
+3. transient startup verification retains the authenticated session and offers a safe retry — pass
+4. a confirmed revoked Supabase session uses local sign-out and never opens the app shell — pass
+5. transient verification keeps the same authenticated user’s retained shell visible — pass
+6. pending verification hides the shell when identity or retained access does not match — pass
+7. passkey refresh preserves the current account workspace without teardown — pass
+8. passkey account switch tears down the previous account workspace before loading the new identity — pass
+This file records the captured summary only; it is not the original raw TAP transcript.

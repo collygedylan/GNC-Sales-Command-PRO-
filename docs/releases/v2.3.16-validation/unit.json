@@ -1,0 +1,99 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T19:41:53.890Z",
+  "sourceDigest": "485d9723db4a2d232cc0a6243e93a5bb148052e8c3c2e72bed2fbc0e9f27fe53",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "kind": "unit",
+  "passed": 45,
+  "failed": 0,
+  "logs": [
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-loaded-data-access-focused-final.log",
+      "sha256": "1428e062276244843d2c91712999d0f5a760e00e4eb72ca0d2f675cd997c746d",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-access-snapshot-vm-focused.log",
+      "sha256": "ee3a3943413c3780903d98fa3af1d208ed4e4dde82a0635d2aee248f8635f4bc",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
+      "passed": 4,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-permission-refresh-regression-final.log",
+      "sha256": "3479e9dc0caa74b6ac3ec3ee16f695f55abd4ba3340a5c8e71498ad537c148c5",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
+      "passed": 7,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-display-recovery-focused.log",
+      "sha256": "1c920541ed1c20134ad0eb0e61a48bc47d6c8620e58bb2a04e551fa1f981ddae",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
+      "passed": 14,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-auth-epoch-coalescing.log",
+      "sha256": "bdd11f9ca100a708af1ca148452eea0150c2895b75a77d0e0d128bcd14c77013",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-confirmed-access-change.log",
+      "sha256": "d76bf63edbbf94459088e56dd59f4e6ee5e29e5be6deac30f598375f3035f843",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
+      "passed": 5,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-legacy-cache-adoption.log",
+      "sha256": "03506e59d8af29a1d21e03870a047dc6e9b39661b8021b93d03deb3b38293602",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
+      "passed": 2,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-portable-evidence.log",
+      "sha256": "42456b39644a9d46423349e07fcc4a3743588349411e3ca86ea2c66700f5cea3",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-session-shell-resilience.log",
+      "sha256": "ddc2f4dce4d0a6c02984396aac8b3686846e91d2819cdae37de26e365d24eca3",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)",
+      "passed": 8,
+      "failed": 0,
+      "evidenceType": "captured tool result summary, not original raw output"
+    }
+  ],
+  "scope": "Focused access/session/recovery checks; unaffected baseline retained",
+  "priorFailures": [
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-loaded-data-access-focused.log",
+      "sha256": "c1ca644a01a0820368f045a3ff2d48b89b0f9787e5979135bdb209b7735c66db",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-permission-refresh-regression.log",
+      "sha256": "4b8a84154478ef9adf3f2776160d8525262628d54e17bc503019921aa512271b",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-legacy-cache-adoption-attempt1.log",
+      "sha256": "a2b2b8ecdb3f64dd6476f9e882e00eeb863878f010ed3799172c2b223a3083b4",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    }
+  ],
+  "retainedIntermediatePass": {
+    "path": "docs/releases/v2.3.16-validation/raw/v2316-legacy-cache-adoption-attempt2.log",
+    "sha256": "0d61c404d4573a2e188b05d2ea393408b261d44d4adc6fd6f62c6c5bf0fc51f6",
+    "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+  }
+}

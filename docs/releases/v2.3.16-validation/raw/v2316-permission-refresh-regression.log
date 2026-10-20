@@ -1,0 +1,34 @@
+✔ same-account forced permission refreshes coalesce into one authenticated RPC (9.661ms)
+✔ same-role policy changes reload and apply authoritative permissions before returning (2.0727ms)
+✔ division changes refresh capability scope even without a role change (0.8251ms)
+✔ confirmed role changes still clear role-scoped caches (0.7214ms)
+✖ a failed updated policy check rejects instead of granting fallback access (1.8465ms)
+✔ live permission signal arriving during a foreground check performs a full refresh afterwards (1.0081ms)
+✔ permission-change coordinator callback returns the permission refresh promise (1.8925ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 6
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 293.3559
+
+✖ failing tests:
+
+test at tests\live-sync-read-boundary.test.mjs:1214:1
+✖ a failed updated policy check rejects instead of granting fallback access (1.8465ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  '' !== 'failed'
+  
+      at TestContext.<anonymous> (file:///C:/Users/dylan/Projects/GNC/worktrees/bunch-card-entry-v234/tests/live-sync-read-boundary.test.mjs:1218:12)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: 'failed',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

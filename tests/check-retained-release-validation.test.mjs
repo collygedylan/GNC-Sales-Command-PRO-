@@ -104,7 +104,7 @@ test('scoped release verifier excludes receipt/evidence while validating source 
   } finally { state.dispose(); }
 });
 
-test('scoped file seals normalize text newlines while preserving binary bytes', () => {
+test('scoped file seals normalize text and retained log newlines while preserving binary bytes', () => {
   assert.equal(hashScopedFile('src/app.js', Buffer.from('const x = 1;\r\n')),
     hashScopedFile('src/app.js', Buffer.from('const x = 1;\n')));
   assert.equal(hashScopedFile('Code.gs', Buffer.from('function main(){\r\n  return true;\r\n}\r\n')),
@@ -117,6 +117,8 @@ test('scoped file seals normalize text newlines while preserving binary bytes', 
   }
   assert.equal(hashScopedFile('supabase/migrations/change.sql', Buffer.from('select 1;\r\n')),
     hashScopedFile('supabase/migrations/change.sql', Buffer.from('select 1;\n')));
+  assert.equal(hashScopedFile('docs/releases/v2.3.15-validation/raw/previous-check.log', Buffer.from('check passed\r\n')),
+    hashScopedFile('docs/releases/v2.3.15-validation/raw/previous-check.log', Buffer.from('check passed\n')));
   assert.notEqual(hashScopedFile('assets/payload.bin', Buffer.from([0, 13, 10, 255])),
     hashScopedFile('assets/payload.bin', Buffer.from([0, 10, 255])));
 });

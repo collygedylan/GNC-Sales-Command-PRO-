@@ -1,0 +1,12 @@
+✔ same-profile in-memory access snapshot stays available while refresh is pending and after transient failure (12.3842ms)
+✔ an actual access RPC 403 drops the retained snapshot (5.9474ms)
+✔ a late access snapshot response after an account switch cannot overwrite the new account state (6.127ms)
+✔ permission-change coordinator callback returns the permission refresh promise (3.1215ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 323.3212

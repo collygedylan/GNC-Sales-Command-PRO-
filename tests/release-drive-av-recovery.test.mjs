@@ -22,6 +22,7 @@ function recoveryRuntime() {
     VIEW_LOAD_UI: { drive: { container: 'drive-content' }, av: { container: 'av-content' } },
     viewTerminalReadDenials: new Map(), avReadNoticeTimes: new Map(),
     getSupabaseReadIdentityScope: () => 'identity-a',
+    hasProgressiveViewData: () => false,
     isSupabaseReadTerminalDenial: error => Number(error?.status) === 403 || error?.code === 'AV_READ_FORBIDDEN',
     notifySupabaseReadAccessDenied: (label, error) => notices.push([label, error?.status]),
     showToast: (...args) => notices.push(args),
@@ -53,7 +54,7 @@ test('cached Drive failure preserves same-identity content and marks its view di
   r.context.showAvReadUnavailableState(Object.assign(new Error('temporary service error'), { status: 503 }), true, 'drive');
   assert.equal(r.written.length, 0, 'cached content is not replaced by an error panel');
   assert.deepEqual(r.dirty, ['drive']);
-  assert.match(String(r.notices[0]?.[1]), /last verified rows are still shown/);
+  assert.equal(r.notices.length, 0, 'background failure does not show a lockout toast');
 });
 
 test('Drive and AV retain native-session recovery guidance without exposing raw error details', () => {
@@ -68,13 +69,20 @@ test('Drive and AV retain native-session recovery guidance without exposing raw 
   }
 });
 
-test('cached native-session failure keeps verified rows and supplies sign-in recovery guidance', () => {
+test('cached native-session failure keeps authorized rows without a blocking recovery notice', () => {
   const r = recoveryRuntime();
   r.context.showAvReadUnavailableState(r.context.nativeSessionRecoveryError(), true, 'drive');
   assert.equal(r.written.length, 0);
   assert.deepEqual(r.dirty, ['drive']);
-  assert.match(r.notices[0][1], /session could not be restored/);
-  assert.match(r.notices[0][1], /last verified rows are still shown/);
+  assert.equal(r.notices.length, 0);
+});
+
+test('loaded rows remain visible when the verification display marker is absent', () => {
+  const r = recoveryRuntime();
+  r.context.hasProgressiveViewData = () => true;
+  assert.equal(r.context.showAvReadUnavailableState(new Error('temporary refresh failure'), false, 'drive'), false);
+  assert.equal(r.written.length, 0);
+  assert.equal(r.notices.length, 0);
 });
 
 test('coordinator message-only recovery errors retain the canonical session guidance', () => {

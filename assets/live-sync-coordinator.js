@@ -149,15 +149,29 @@
         }
         function retainDisplay(ctx = context()) {
             if (!ctx?.progressive || ctx.visible === false || !ctx.scope || scope !== ctx.scope
-                || !ctx.dataPermissionVersion || permission !== String(ctx.dataPermissionVersion)
                 || !options.retainAppliedDisplay) return false;
             const entries = (ctx.adapters || []).map(adapter => {
                 const previous = appliedFor(adapter);
-                return isTrustedApplied(previous, adapter, ctx) ? { adapter, value: previous.value } : null;
+                return isDisplayRetainable(previous, adapter, ctx) ? { adapter, value: previous.value } : null;
             });
             if (!entries.length || !entries.every(Boolean)) return false;
             options.retainAppliedDisplay(ctx, entries);
             return true;
+        }
+        function hasFreshPermissionSnapshot(ctx) {
+            if (Object.prototype.hasOwnProperty.call(ctx || {}, 'dataPermissionSnapshotFresh'))
+                return ctx.dataPermissionSnapshotFresh === true;
+            return !!String(ctx?.dataPermissionVersion || '');
+        }
+        function isDisplayRetainable(entry, adapter, ctx) {
+            if (!entry || entry.cacheKey !== adapter.cacheKey || entry.scope !== String(ctx?.scope || '')
+                || !entry.permissionVersion) return false;
+            const currentVersion = String(ctx?.dataPermissionVersion || '');
+            // A pending/stale access refresh is not evidence of revocation. Keep
+            // the same-identity display while the server revalidates it, but do
+            // not use this display-only path as a read/write authorization proof.
+            if (!hasFreshPermissionSnapshot(ctx) || !currentVersion) return true;
+            return currentVersion === entry.permissionVersion;
         }
         function identity(ctx) {
             const parts = [ctx.scope, ctx.dataPermissionVersion || '', ctx.viewKey,
@@ -512,8 +526,10 @@
                 return false;
             }
             const accessSnapshotPermissionVersion = String(ctx.dataPermissionVersion || '');
+            const accessSnapshotFresh = hasFreshPermissionSnapshot(ctx);
             if ((permission && permission !== before.permissionVersion)
-                || (accessSnapshotPermissionVersion && accessSnapshotPermissionVersion !== before.permissionVersion)) {
+                || (accessSnapshotFresh && accessSnapshotPermissionVersion
+                    && accessSnapshotPermissionVersion !== before.permissionVersion)) {
                 applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
                 await options.onPermissionChange?.(before.permissionVersion);
                 if (!current()) return discard();
@@ -522,7 +538,7 @@
                 // when their canonical permission hashes disagree, including
                 // the first cycle before the coordinator has seen a hash.
                 const refreshedContext = options.getContext();
-                if (accessSnapshotPermissionVersion
+                if (accessSnapshotFresh && accessSnapshotPermissionVersion
                     && String(refreshedContext?.dataPermissionVersion || '') !== before.permissionVersion) {
                     emit('Needs attention', 'Access permissions changed while this screen was loading. Refresh access, then retry.');
                     return false;
@@ -763,7 +779,9 @@
             const appliedEntry = appliedFor(adapter);
             const hasCurrentPermissionSnapshot = Object.prototype.hasOwnProperty.call(ctx, 'dataPermissionVersion');
             if (appliedEntry && appliedEntry.scope === String(ctx.scope)
-                && hasCurrentPermissionSnapshot && !isTrustedApplied(appliedEntry, adapter, ctx)) {
+                && hasCurrentPermissionSnapshot && hasFreshPermissionSnapshot(ctx)
+                && String(ctx.dataPermissionVersion || '')
+                && !isTrustedApplied(appliedEntry, adapter, ctx)) {
                 applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
                 try { Promise.resolve(options.onPermissionChange?.(String(ctx.dataPermissionVersion || ''), { reason: 'access-snapshot-changed' })).catch(() => {}); } catch (_) {}
             }

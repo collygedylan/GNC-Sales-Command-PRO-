@@ -1,0 +1,7 @@
+Parsed 8 inline scripts and 13 shell assets.
+
+C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\live-sync-read-boundary.test.mjs
+  1112:75  error  Duplicate key 'currentRole'  no-dupe-keys
+
+✖ 1 problem (1 error, 0 warnings)
+

@@ -1,0 +1,5 @@
+Focused lint and inline parser checks passed.
+Commands:
+- npx eslint tests/live-sync-read-boundary.test.mjs
+- node scripts/check-inline-scripts.mjs
+Output: Parsed 8 inline scripts and 13 shell assets.

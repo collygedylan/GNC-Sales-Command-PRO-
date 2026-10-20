@@ -1,0 +1,11 @@
+✔ a real authorization denial clears retained data and remains a hard failure (5.2266ms)
+✔ pending access refresh retains same-scope rows for display only, never as current proof (1.4581ms)
+✔ stale permission hashes retain display until confirmed, then reject a changed access scope (0.3559ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 203.12

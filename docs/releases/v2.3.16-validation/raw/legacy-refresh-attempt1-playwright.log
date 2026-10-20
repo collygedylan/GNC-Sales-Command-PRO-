@@ -1,0 +1,40 @@
+[WebServer] (node:37148) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 3 tests using 3 workers
+
+(node:7700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9620) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24292) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2281:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (35.7s)
+  ok 2 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2281:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (36.7s)
+  x  3 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:2281:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (2.1m)
+
+
+  1) [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:2281:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke 
+
+    Test timeout of 120000ms exceeded.
+
+    Error: page.evaluate: Test timeout of 120000ms exceeded.
+
+      2286 |   const snapshot = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/suspend-v2314.json.gz', import.meta.url))).toString('utf8')) as { masterRows: FixtureRow[]; suspendRows: FixtureRow[] };
+      2287 |   const app = await harness(page, baseURL!, [], { masterRows: snapshot.masterRows, published: true });
+    > 2288 |   const result = await page.evaluate(async () => window.eval(`(async () => {
+           |                             ^
+      2289 |     const hydrationStarted = performance.now();
+      2290 |     fullInventory = []; rebuildMasterInventoryIndexes();
+      2291 |     Object.assign(getDatasetState('master'), { initialLoaded: false, fullLoaded: false, rowCompleteness: 'unknown', liveVerifiedScope: '' });
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:2288:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\c025b43b9bbf\20261020193334439\artifacts\suspend-tag-completion.e2e-c287e-rupted-import-release-smoke-iphone-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\c025b43b9bbf\20261020193334439\artifacts\suspend-tag-completion.e2e-c287e-rupted-import-release-smoke-iphone-webkit\error-context.md
+
+  1 failed
+    [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:2281:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke 
+  2 passed (2.4m)

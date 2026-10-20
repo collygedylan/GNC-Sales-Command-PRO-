@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.15",
+  "version": "2.3.16",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -134,19 +134,6 @@
     "vitest": "4.1.10"
   },
   "appsScriptRelease": "AgData v2.2.1",
-  "appsScriptPatchFunctions": [
-    "getReclassInquiryEmailRecipients_",
-    "buildReclassInquiryReportText_",
-    "buildReclassInquiryEmailHtml_",
-    "buildReclassInquiryCompactReportHtml_",
-    "deliverReclassInquiryPayload_",
-    "handleSignedInventoryReclassMoveDelivery_",
-    "buildCompletedInventoryReclassReportModel_",
-    "buildCompletedInventoryReclassMoveText_",
-    "buildCompletedInventoryReclassMoveHtml_",
-    "syncWarehouseAssignedItemsSheet_",
-    "readWarehouseAssignmentExportRevision_",
-    "exportWarehouseAssignedItemsToSheet_"
-  ],
-  "scopedValidationReceipt": "docs/releases/v2.3.15-retained-validation.json"
+  "appsScriptPatchFunctions": [],
+  "scopedValidationReceipt": "docs/releases/v2.3.16-retained-validation.json"
 }

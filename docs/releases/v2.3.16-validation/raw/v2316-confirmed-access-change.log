@@ -1,0 +1,13 @@
+✔ division changes refresh capability scope even without a role change (4.8025ms)
+✔ confirmed role changes still clear role-scoped caches (1.0274ms)
+✔ a confirmed role downgrade updates the retained DOM before bridge or permission requests resolve (2.0219ms)
+✔ fresh access denial applies even when the separate request-capability refresh fails (1.0875ms)
+✔ a failed updated policy check rejects instead of granting fallback access (0.8378ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 290.8889
