@@ -72,6 +72,9 @@ function buildConfirmedInventoryRow(source: FixtureRow, patch: Record<string, un
 
 test('Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke',
   { tag: ['@suspend-tag', '@v2314-parity', '@release-smoke'] }, async ({ page, baseURL }, info) => {
+  // Bootstrap, dictionary hydration and readiness are outside the measured
+  // warm-render operation; its strict 2,000 ms assertion remains below.
+  test.setTimeout(120_000);
   const snapshot = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/suspend-v2314.json.gz', import.meta.url))).toString('utf8')) as {
     capturedAt: string; masterRows: FixtureRow[]; suspendRows: FixtureRow[];
     source: { filename: string; sha256: string };

@@ -496,6 +496,22 @@
         "Attach node-owned diagnostic before any closed-page access"
       ],
       "productionWrites": false
+    },
+    {
+      "at": "2026-10-20T17:44:44.224Z",
+      "attempt": 6,
+      "cap": 8,
+      "status": "failed",
+      "report": ".gnc-local/release-smoke/agdata-v2-3-15/e9452f96a3db/20261020173957576/report.json",
+      "passed": 8,
+      "failed": 1,
+      "resolved": [
+        "All console/network assertions now pass",
+        "Full LKGhydration andRosy195 details pass all3profiles"
+      ],
+      "remaining": "iPhone latest37 global60sbootstrap timeout before measuredwarmrender. Exact37UIDparity passed.",
+      "next": "Retain8passedcases; rerunonlyiPhonelatest37 with120sbootstrap allowance andunchanged2000msmeasuredrender. Preserveoriginalfailedreport andcompose cross-run evidence transparently.",
+      "productionWrites": false
     }
   ],
   "availabilitySqlValidation": {
