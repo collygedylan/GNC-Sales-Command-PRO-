@@ -24,6 +24,7 @@ on conflict(policy_id,profile_id,permission_key) do update set allowed=true,acce
 create temporary table v2315_delivery_call(result jsonb) on commit drop;
 create temporary table v2315_delivery_event(event_id uuid,lease_token uuid) on commit drop;
 create temporary table v2315_delivery_prepared(payload jsonb) on commit drop;
+create temporary table v2315_delivery_context_checks(check_name text primary key,passed boolean) on commit drop;
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select set_config('request.jwt.claim.role','service_role',true);
 select plan(13);
@@ -78,8 +79,8 @@ begin
     ('f2315100-0000-4000-8000-000000000011','f2315100-0000-4000-8000-000000000001','{}',repeat('a',64),repeat('b',64),1,1,repeat('c',64),'published','f2315100-0000-4000-8000-000000000001','{"published":true}',now()-interval '2 hours'),
     ('f2315100-0000-4000-8000-000000000013','f2315100-0000-4000-8000-000000000003','{}',repeat('d',64),repeat('e',64),1,1,repeat('f',64),'staging',null,null,now()-interval '1 minute');
   update public.app_dataset_revisions set state='interrupted' where key='ph_master_inventory';
-  perform ok(coalesce((app_sync_private.published_snapshot_read_proof('ph_master_inventory',inventory_revision)->>'mutationAllowed')::boolean,false),
-    'the failed canonical staged baseline is eligible for revision-locked Reclass mutation');
+  insert into v2315_delivery_context_checks values('failed_canonical_proof',
+    coalesce((app_sync_private.published_snapshot_read_proof('ph_master_inventory',inventory_revision)->>'mutationAllowed')::boolean,false));
   select jsonb_build_array(jsonb_build_object(
     'source',jsonb_build_object('uniqueId',m.unique_id,'identity',jsonb_build_object(
       'unique_id',m.unique_id,'itemcode',m.itemcode,'contsize',m.contsize,'locationcode',m.locationcode,
@@ -97,9 +98,16 @@ begin
      or (select ptravailable from public.ph_master_inventory where unique_id=source_uid)<>'7' then
     raise exception 'movement quantity mutation differs from the existing atomic Reclass semantics';
   end if;
-  perform throws_ok(format($sql$update public.ph_master_inventory set itemcode=itemcode where unique_id=%L$sql$,source_uid),
-    '55000','MASTER_SNAPSHOT_NOT_READY',
-    'the private Reclass context is consumed by the approved stock mutation and cannot authorize a second direct write');
+  begin
+    execute format($sql$update public.ph_master_inventory set itemcode=itemcode where unique_id=%L$sql$,source_uid);
+    insert into v2315_delivery_context_checks values('context_cleared_after_apply',false);
+  exception when sqlstate '55000' then
+    if sqlerrm='MASTER_SNAPSHOT_NOT_READY' then
+      insert into v2315_delivery_context_checks values('context_cleared_after_apply',true);
+    else
+      raise;
+    end if;
+  end;
   select * into event_value from public.ph_request_delivery_outbox where event_id=(result_value->>'deliveryEventId')::uuid;
   if event_value.event_id is null then raise exception 'same-transaction completion event was not created'; end if;
   -- Deliberately corrupt cached delivery fields; prepare must re-derive canonical values from receipt/profile.
@@ -117,6 +125,10 @@ begin
 end
 $test$;
 
+select ok((select passed from v2315_delivery_context_checks where check_name='failed_canonical_proof'),
+  'the failed canonical staged baseline is eligible for revision-locked Reclass mutation');
+select ok((select passed from v2315_delivery_context_checks where check_name='context_cleared_after_apply'),
+  'the private Reclass context is consumed by the approved stock mutation and cannot authorize a second direct write');
 select ok((select (result->>'duplicate')='false' and (result->>'emailQueued')='true'
   and jsonb_array_length(result->'rows')=2 from v2315_delivery_call),
   'applied movement returns one queued completion event and full post-move source/target rows');
