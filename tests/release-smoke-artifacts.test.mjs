@@ -29,6 +29,15 @@ test('warm synthetic access snapshots bind the current auth epoch without bypass
   assert.match(spec, /expect\(accessRefresh\.legacyCacheAdopted\)\.toBe\(true\)/);
 });
 
+test('published Drive fixture bootstraps Home without opening an unrelated privileged Request tab', () => {
+  const spec = fs.readFileSync(new URL('./suspend-tag-completion.e2e.spec.ts', import.meta.url), 'utf8');
+  assert.match(spec, /const initialView = options\.published \? 'home' : 'request'/);
+  assert.match(spec, /if \(seedView === 'request'\) \{[\s\S]*invalidateResolvedViewStateCaches\(\);[\s\S]*renderRequest\(\)/);
+  assert.match(spec, /await expect\(page\.locator\('#view-' \+ initialView\)\)\.toBeVisible\(\)/);
+  assert.match(spec, /fullInventory = \[\]; rebuildMasterInventoryIndexes\(\);[\s\S]*showOnlyPrimaryView\('drive'\)/,
+    'the measured cold Drive case still clears master inventory before its real transition');
+});
+
 test('smoke preflight rejects incomplete support assets before launching browsers', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'release-assets-'));
   try {

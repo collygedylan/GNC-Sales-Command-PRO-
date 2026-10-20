@@ -1133,24 +1133,33 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       await page.waitForLoadState('networkidle');
       markBootstrapPhase('home-network-settled');
     }
-    markBootstrapPhase('request-transition-evaluate-start');
-    await page.evaluate(() => window.eval(`(() => {
-      window.__suspendFixtureFetchAbortContext = 'suspend-fixture-request-view-transition';
-      window.__suspendBootstrapPhase('request-transition-start');
-      showOnlyPrimaryView('request');
-      window.__suspendBootstrapPhase('request-transition-returned');
-      window.__suspendFixtureFetchAbortContext = '';
-      if (window.__suspendCompletionMasterRows.length) {
-        productionLiveSyncVerifiedView = productionVerifiedViewKey(getProductionLiveSyncContext());
-      }
-      invalidateResolvedViewStateCaches();
-      window.__suspendBootstrapPhase('request-render-start');
-      renderRequest();
-      window.__suspendBootstrapPhase('request-render-returned');
-    })()`));
-    markBootstrapPhase('request-transition-evaluate-returned');
-    await expect(page.locator('#view-request')).toBeVisible();
-    markBootstrapPhase('request-view-visible');
+    // The published Drive case has no Suspend rows. JD does not own that
+    // unrelated tab; entering it falls back to Eval Work and starts a full
+    // inventory cohort before the case's explicit cold Drive transition.
+    const initialView = options.published ? 'home' : 'request';
+    markBootstrapPhase(initialView + '-transition-evaluate-start');
+    await page.evaluate(seedView => {
+      window.eval(`(() => {
+        const seedView = ${JSON.stringify(seedView)};
+        window.__suspendFixtureFetchAbortContext = seedView === 'request' ? 'suspend-fixture-request-view-transition' : '';
+        window.__suspendBootstrapPhase(seedView + '-transition-start');
+        showOnlyPrimaryView(seedView);
+        window.__suspendBootstrapPhase(seedView + '-transition-returned');
+        window.__suspendFixtureFetchAbortContext = '';
+        if (seedView === 'request') {
+          if (window.__suspendCompletionMasterRows.length) {
+            productionLiveSyncVerifiedView = productionVerifiedViewKey(getProductionLiveSyncContext());
+          }
+          invalidateResolvedViewStateCaches();
+          window.__suspendBootstrapPhase('request-render-start');
+          renderRequest();
+          window.__suspendBootstrapPhase('request-render-returned');
+        }
+      })()`);
+    }, initialView);
+    markBootstrapPhase(initialView + '-transition-evaluate-returned');
+    await expect(page.locator('#view-' + initialView)).toBeVisible();
+    markBootstrapPhase(initialView + '-view-visible');
   };
   markBootstrapPhase('goto-start');
   await page.goto('/?post_deploy_access_canary=1&suspend_tag_canary=1' + (options.search || ''), { waitUntil: 'load' });
@@ -2465,14 +2474,14 @@ test('published snapshot stays available and Drive completes every Common Name a
     'iphone-webkit': 'jd_jones' } as Record<string, string>)[info.project.name];
   expect(fixtureUsername).toBeTruthy();
   const app = await harness(page, baseURL!, [], { masterRows: snapshot.masterRows, published: true, username: fixtureUsername });
-  // The seed starts a real request-view cohort. Let its owned work settle
+  // The seed starts a real Home cohort. Let its owned work settle
   // before resetting identity and starting the separate cold Drive cohort.
   await page.bringToFront();
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => window.eval(`(async () => {
     let timer;
     try { return await Promise.race([getProductionLiveSyncCoordinator().check('visible-view'),
-      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Seeded request cohort did not settle before cold Drive hydration')), 30000); })]); }
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Seeded Home cohort did not settle before cold Drive hydration')), 30000); })]); }
     finally { clearTimeout(timer); }
   })()`)).catch(async error => {
     await info.attach('release-smoke-seeded-cohort-diagnostic', { contentType: 'application/json',
