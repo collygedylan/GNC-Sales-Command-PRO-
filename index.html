@@ -3,23 +3,23 @@
 <head>
     <script src="./assets/location-code.js"></script>
     <script src="./assets/bunch-note.js"></script>
-    <script src="./assets/bunch-queue-shell.js?v=AgData%20v2.3.13"></script>
+    <script src="./assets/bunch-queue-shell.js?v=AgData%20v2.3.15"></script>
     <script src="./assets/sales-workspace.js"></script>
     <script src="./assets/mobile-workspace.js"></script>
-    <script src="./assets/navigation-preferences.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/user-access-control.js?v=AgData%20v2.3.13"></script>
+    <script src="./assets/navigation-preferences.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/user-access-control.js?v=AgData%20v2.3.15"></script>
     <link rel="stylesheet" href="./assets/bunch-note.css">
-    <link rel="stylesheet" href="./assets/bunch-queue.css?v=AgData%20v2.3.13">
+    <link rel="stylesheet" href="./assets/bunch-queue.css?v=AgData%20v2.3.15">
     <link rel="stylesheet" href="./assets/bunch-note-cards.css">
     <link rel="stylesheet" href="./assets/sales-workspace.css">
     <link rel="stylesheet" href="./assets/mobile-workspace.css">
     <link rel="stylesheet" href="./assets/navigation-preferences.css">
     <link rel="stylesheet" href="./assets/user-access-control.css">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#f4fbf7">
-    <link rel="stylesheet" href="./assets/theme-tokens.css?v=AgData%20v2.3.13">
+    <link rel="stylesheet" href="./assets/theme-tokens.css?v=AgData%20v2.3.15">
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/branding/ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/branding/ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/branding/ag-data-solutions-icon-v2026080925-180.png">
@@ -57,8 +57,8 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#050806' : '#f4fbf7');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=AgData%20v2.3.13" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
-    <noscript><link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=AgData%20v2.3.13"></noscript>
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=AgData%20v2.3.15" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=AgData%20v2.3.15"></noscript>
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
     <noscript><link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2"></noscript>
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
@@ -228,6 +228,61 @@
         return true;
     };
 
+    function isOwnedShellRegistration(registration) {
+        try {
+            const appScope = new URL('./', root.location.href);
+            const expectedScript = new URL('./sw.js', root.location.href);
+            const scope = new URL(registration?.scope || '');
+            if (scope.origin !== appScope.origin || scope.href !== appScope.href) return false;
+            const worker = registration.active || registration.waiting || registration.installing;
+            const script = new URL(worker?.scriptURL || '');
+            return script.origin === expectedScript.origin && script.pathname === expectedScript.pathname;
+        } catch (_) { return false; }
+    }
+
+    root.clearOwnedShellControllerState = async targetBuild => {
+        const safeTarget = String(targetBuild || '').trim();
+        const prefix = 'ag-data-v4.3-rebuild-';
+        try {
+            const serviceWorker = root.navigator?.serviceWorker;
+            if (typeof serviceWorker?.getRegistrations === 'function') {
+                const registrations = await serviceWorker.getRegistrations();
+                await Promise.allSettled(registrations.filter(isOwnedShellRegistration)
+                    .map(registration => registration.unregister()));
+            }
+        } catch (_) {}
+        try {
+            if (typeof root.caches?.keys === 'function' && typeof root.caches?.delete === 'function') {
+                const keys = await root.caches.keys();
+                const obsoleteShellCaches = keys.filter(key => key.startsWith(prefix)
+                    && (!safeTarget || !key.includes(safeTarget)));
+                await Promise.allSettled(obsoleteShellCaches.map(key => root.caches.delete(key)));
+            }
+        } catch (_) {}
+        root.__swReg = null;
+        return true;
+    };
+
+    root.registerGncServiceWorkerSafely = async (serviceWorker, scriptUrl, options, handlers = {}) => {
+        const unavailable = reason => {
+            try { handlers.onUnavailable?.(reason); } catch (_) {}
+            return null;
+        };
+        if (typeof serviceWorker?.register !== 'function') return unavailable('registration-api-unavailable');
+        try {
+            const registrationPromise = serviceWorker.register(scriptUrl, options);
+            if (!registrationPromise || typeof registrationPromise.then !== 'function') {
+                return unavailable('registration-promise-unavailable');
+            }
+            const registration = await registrationPromise;
+            if (!registration || typeof registration !== 'object') return unavailable('registration-result-unavailable');
+            return registration;
+        } catch (error) {
+            try { handlers.onError?.(error); } catch (_) {}
+            return null;
+        }
+    };
+
     // Available before the application runtime, including when an old runtime fails.
     // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
     let shellRecovery = null;
@@ -237,7 +292,7 @@
         const target = String(targetBuild || '').trim();
         if (!current || current === target || !isShellRelease(target)
             || root.navigator?.onLine === false) return Promise.resolve(false);
-        if (shellRecovery) return shellRecovery;
+        if (shellRecovery) return Promise.resolve(false);
         const marker = `${current}:${target}`;
         const next = new URL(root.location.href);
         if (next.searchParams.get('shellrecovered') === marker) return Promise.resolve(false);
@@ -247,15 +302,7 @@
         } catch (_) { /* The URL also bounds recovery when storage is disabled. */ }
         shellRecovery = (async () => {
             suspendNavigation();
-            try {
-                const registrations = await root.navigator.serviceWorker?.getRegistrations() || [];
-                await Promise.allSettled(registrations.map(registration => registration.unregister()));
-            } catch (_) {}
-            try {
-                const keys = await root.caches?.keys() || [];
-                await Promise.allSettled(keys.map(key => root.caches.delete(key)));
-            } catch (_) {}
-            root.__swReg = null;
+            await root.clearOwnedShellControllerState(target);
             next.searchParams.set('shellv', target);
             next.searchParams.set('shellts', String(Date.now()));
             next.searchParams.set('shellrecovered', marker);
@@ -272,8 +319,8 @@
 </script>
     <script>
       // Public release label; increment independently of the shell cache/build ID.
-      window.__APP_RELEASE_VERSION__ = 'AgData v2.3.13';
-      window.__APP_SHELL_VERSION__ = 'AgData v2.3.13';
+      window.__APP_RELEASE_VERSION__ = 'AgData v2.3.15';
+      window.__APP_SHELL_VERSION__ = 'AgData v2.3.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -393,8 +440,8 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=AgData%20v2.3.13" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
-    <noscript><link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=AgData%20v2.3.13"></noscript>
+    <link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=AgData%20v2.3.15" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=AgData%20v2.3.15"></noscript>
     
     
     
@@ -693,11 +740,11 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
   outline: 3px solid color-mix(in srgb, var(--login-focus) 38%, transparent) !important;
   outline-offset: 2px !important;
 }</style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=AgData%20v2.3.13" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
-    <noscript><link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=AgData%20v2.3.13"></noscript>
-    <link rel="stylesheet" href="./assets/production-schedule.css?v=AgData%20v2.3.13">
-    <link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=AgData%20v2.3.13" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
-    <noscript><link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=AgData%20v2.3.13"></noscript>
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=AgData%20v2.3.15" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=AgData%20v2.3.15"></noscript>
+    <link rel="stylesheet" href="./assets/production-schedule.css?v=AgData%20v2.3.15">
+    <link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=AgData%20v2.3.15" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=AgData%20v2.3.15"></noscript>
     
     
 
@@ -803,6 +850,8 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                     <div class="login-progress-track"><div id="login-progress-bar" class="login-progress-bar"></div></div>
                     <div id="login-progress-label" class="login-progress-label">Starting…</div>
                 </div>
+                <button id="native-session-restore-retry" type="button" class="login-primary-button hidden" onclick="retryNativeAuthRestoreOnForeground()">Retry session verification</button>
+                <button id="native-session-restore-signin" type="button" class="login-secondary-button hidden" onclick="startNativeSessionReauthentication()">Sign in again</button>
             </div>
             <button id="login-diagnostics-download" type="button" class="login-secondary-button hidden" onclick="window.GncLoginTrace?.download(); return false;">Download login diagnostics</button>
         </div>
@@ -817,26 +866,26 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/inventory-list-contract.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/queue-inventory-hydration.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/login-network-trace.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/live-sync-registry.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/manager-source-live-events.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/customer-mapping-live-events.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/live-sync-adapters.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/live-sync-coordinator.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/av-derived-rows.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/bounded-snapshot-cache.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/stable-view-dom.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/company-directory-cache.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/queue-completion-state.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/request-submission.js?v=AgData%20v2.3.13&mapping=20261014"></script>
-    <script src="./assets/ops-precision-pilot.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/production-schedule.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/eval-reports-engine.js?v=AgData%20v2.3.13"></script>
-    <script src="./assets/report-pages-live.js?v=AgData%20v2.3.13"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=AgData%20v2.3.13"></script>
+    <script src="./assets/drive-demand-detail.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/inventory-list-contract.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/queue-inventory-hydration.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/login-network-trace.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/live-sync-registry.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/manager-source-live-events.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/customer-mapping-live-events.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/live-sync-adapters.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/live-sync-coordinator.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/av-derived-rows.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/bounded-snapshot-cache.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/stable-view-dom.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/company-directory-cache.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/queue-completion-state.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/request-submission.js?v=AgData%20v2.3.15&mapping=20261014"></script>
+    <script src="./assets/ops-precision-pilot.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/production-schedule.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/eval-reports-engine.js?v=AgData%20v2.3.15"></script>
+    <script src="./assets/report-pages-live.js?v=AgData%20v2.3.15"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=AgData%20v2.3.15"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -1606,7 +1655,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                         <div class="nav-header-meta-row">
  <div id="aura-standby-control"></div>
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v2.3.13').trim() || 'AgData v2.3.13';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v2.3.15').trim() || 'AgData v2.3.15';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3085,7 +3134,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
     bootTiming.state = 'loading';
     bootTiming.scriptLoadStartMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
     const runtime = document.createElement('script');
-    runtime.src = './assets/live-app-runtime-v2026082010.min.js?v=AgData%20v2.3.13';
+    runtime.src = './assets/live-app-runtime-v2026082010.min.js?v=AgData%20v2.3.15';
     runtime.defer = true;
     runtime.onerror = failed;
     runtime.onload = () => {
@@ -3154,8 +3203,12 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
             const requestedDecision = ['approve', 'deny'].includes(suspendTagApprovalDecisionPending) ? suspendTagApprovalDecisionPending : '';
             suspendTagApprovalDecisionPending = '';
             let decision = '';
-            const controller = navigator.serviceWorker && (navigator.serviceWorker.controller
-                || (await navigator.serviceWorker.getRegistration('./').catch(() => null))?.active);
+            const serviceWorker = navigator.serviceWorker;
+            let registration = null;
+            try {
+                if (typeof serviceWorker?.getRegistration === 'function') registration = await serviceWorker.getRegistration('./');
+            } catch (_) {}
+            const controller = serviceWorker?.controller || registration?.active;
             if (controller && typeof MessageChannel !== 'undefined') {
                 decision = await new Promise(resolve => {
                     const channel = new MessageChannel();
@@ -3168,7 +3221,8 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
         }
         // Authentication may restore after either source or deferred runtime startup.
         resumeSuspendTagApproval().catch(console.warn);
-        if ('serviceWorker' in navigator) {
+        const shellServiceWorker = navigator.serviceWorker;
+        if (shellServiceWorker && typeof shellServiceWorker.addEventListener === 'function') {
             const shellBuild = String(window.__APP_SHELL_BUILD__ || window.__APP_SHELL_VERSION__ || '').trim() || 'local-shell';
             const shellVersion = String(window.__APP_SHELL_VERSION__ || ((typeof APP_VERSION === 'string' && APP_VERSION.trim()) ? APP_VERSION.trim() : shellBuild)).trim() || shellBuild;
             const shellRefreshStorageKey = 'gnc_app_shell_refresh_v1';
@@ -3424,13 +3478,19 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                 }, 1000 * 60 * 5);
                 return true;
             }
-            navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(shellBuild), { scope: './', updateViaCache: 'none' }).then(async (reg) => {
-                console.log('Service Worker Registered');
+            const safeRegisterShellWorker = window.registerGncServiceWorkerSafely;
+            Promise.resolve(typeof safeRegisterShellWorker === 'function'
+                ? safeRegisterShellWorker(shellServiceWorker, './sw.js?v=' + encodeURIComponent(shellBuild), { scope: './', updateViaCache: 'none' }, {
+                    onUnavailable: reason => logShellDiagnostics('service-worker-registration-unavailable', { reason }),
+                    onError: error => logShellDiagnostics('service-worker-registration-failed', { message: String(error && error.message || error || '') })
+                })
+                : Promise.resolve(null)).then(async (reg) => {
+                if (!reg) return;
                 window.__swReg = reg;
-                reg.addEventListener('updatefound', () => {
+                if (typeof reg.addEventListener === 'function') reg.addEventListener('updatefound', () => {
                     const installing = reg.installing;
                     if (!installing) return;
-                    installing.addEventListener('statechange', () => {
+                    if (typeof installing.addEventListener === 'function') installing.addEventListener('statechange', () => {
                         if (installing.state === 'installed' && navigator.serviceWorker.controller) markShellUpdateReady(reg);
                     });
                 });
@@ -3439,7 +3499,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                 checkLatestShellAndReload('startup', true).catch(() => {});
                 if (typeof window.scheduleCellularPushEnrollment === 'function') window.scheduleCellularPushEnrollment('sw-register', 500);
                 startShellUpdateInterval();
-            }).catch(err => console.error('Service Worker Error:', err));
+            }).catch(err => logShellDiagnostics('service-worker-startup-failed', { message: String(err && err.message || err || '') }));
 
             navigator.serviceWorker.addEventListener('message', (event) => {
                 const data = event && event.data ? event.data : {};
