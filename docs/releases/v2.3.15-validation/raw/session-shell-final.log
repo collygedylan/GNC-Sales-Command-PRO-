@@ -1,0 +1,12 @@
+✔ stale shell recovery removes only AgData shell state and preserves user/auth caches (3.8027ms)
+✔ service-worker registration helper tolerates undefined test stubs without console errors (0.7871ms)
+✔ transient startup verification retains the authenticated session and offers a safe retry (4.9421ms)
+✔ a confirmed revoked Supabase session uses local sign-out and never opens the app shell (1.5519ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 303.2964

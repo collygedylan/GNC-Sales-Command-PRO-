@@ -1,0 +1,11 @@
+✔ master detail hydration selects exactly one full row inside a stable permission and revision fence (12.0814ms)
+✔ same-role policy changes reload and apply authoritative permissions before returning (2.5432ms)
+✔ live permission signal arriving during a foreground check performs a full refresh afterwards (1.8868ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 469.1723
