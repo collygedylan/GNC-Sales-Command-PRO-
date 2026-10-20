@@ -47964,8 +47964,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const isCurrentAccount = () => getRequestCapabilityUsernameKey(currentUser) === usernameKey
                 && String(nativeAuthProfile?.id || '') === profileId && productionLiveSyncReadAuthEpoch === authEpoch;
             if (appAccessSnapshotLoadPromise && appAccessSnapshotState.username === usernameKey
-                && appAccessSnapshotState.profileId === profileId) return appAccessSnapshotLoadPromise;
-            if (!force && appAccessSnapshotState.username === usernameKey && appAccessSnapshotState.snapshot && appAccessSnapshotState.status === 'ready' && !appAccessSnapshotState.stale) {
+                && appAccessSnapshotState.profileId === profileId && appAccessSnapshotState.authEpoch === authEpoch) return appAccessSnapshotLoadPromise;
+            if (!force && appAccessSnapshotState.username === usernameKey && appAccessSnapshotState.profileId === profileId
+                && appAccessSnapshotState.authEpoch === authEpoch && appAccessSnapshotState.snapshot
+                && appAccessSnapshotState.status === 'ready' && !appAccessSnapshotState.stale) {
                 return appAccessSnapshotState.snapshot;
             }
             const memorySnapshot = appAccessSnapshotState.username === usernameKey && appAccessSnapshotState.profileId === profileId
@@ -47974,7 +47976,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const cached = memorySnapshot || readCachedAppAccessSnapshot(usernameKey);
             appAccessSnapshotState = {
                 status: 'loading', snapshot: cached ? cached.snapshot : null, stale: !!cached,
-                errorCode: '', loadedAt: cached ? cached.loadedAt : 0, username: usernameKey, profileId
+                errorCode: '', loadedAt: cached ? cached.loadedAt : 0, username: usernameKey, profileId, authEpoch
             };
             appAccessSnapshotLoadPromise = (async () => {
                 if (navigator.onLine === false) throw new Error('APP_ACCESS_OFFLINE');
@@ -47983,7 +47985,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const snapshot = normalizeAppAccessSnapshot(result, usernameKey);
                 if (!snapshot) throw new Error('APP_ACCESS_RESPONSE_INVALID');
                 const loadedAt = Date.now();
-                appAccessSnapshotState = { status: 'ready', snapshot, stale: false, errorCode: '', loadedAt, username: usernameKey, profileId };
+                appAccessSnapshotState = { status: 'ready', snapshot, stale: false, errorCode: '', loadedAt, username: usernameKey, profileId, authEpoch };
                 persistAppAccessSnapshot(snapshot, loadedAt);
                 return snapshot;
             })().catch((error) => {
@@ -47992,7 +47994,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const retained = !isSupabaseReadTerminalDenial(error) ? cached : null;
                 appAccessSnapshotState = {
                     status: retained ? 'ready' : 'error', snapshot: retained ? retained.snapshot : null,
-                    stale: !!retained, errorCode, loadedAt: retained ? retained.loadedAt : 0, username: usernameKey, profileId
+                    stale: !!retained, errorCode, loadedAt: retained ? retained.loadedAt : 0, username: usernameKey, profileId, authEpoch
                 };
                 reportSemanticHealthEvent('app_access_snapshot_load_failed', 'access_control', 'APP_ACCESS_LOAD_FAILED', {
                     reason: String(safeOptions.reason || '').slice(0, 60)

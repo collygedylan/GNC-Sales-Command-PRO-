@@ -413,6 +413,8 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const healthTelemetryReceipts: Array<{ payload: Record<string, unknown>; apiKeyPresent: boolean; syntheticIdentity: boolean; authorizationMatchesPublicKey: boolean; status: number }> = [];
   const healthTelemetryRequests: Array<{ url: string; method: string; authorizationAllowed: boolean; apiKeyPresent: boolean; payload: unknown }> = [];
   const settingsReads: Array<{ url: string; status: number | null; authorization: string }> = [];
+  const normalPermissionReads: Array<{ endpoint: string; url: string; status: number; authenticatedFixture: boolean }> = [];
+  const userAccessResolveReads: Array<{ url: string; status: number; authenticatedFixture: boolean }> = [];
   const permissionRefreshFailures: Array<{ endpoint: string; url: string; status: number }> = [];
   const permissionRefreshResponses: Array<{ url: string; status: number }> = [];
   const injectedPermissionRefreshConsoleErrors: string[] = [];
@@ -540,6 +542,28 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       && url.pathname === '/rest/v1/rpc/get_request_capabilities') {
       permissionRefreshFailures.push({ endpoint: 'get_request_capabilities', url: request.url(), status: 503 });
       return fulfill(route, { code: 'SYNTHETIC_TRANSIENT_PERMISSION_READ', message: 'Temporary capability service interruption' }, 503);
+    }
+    if (options.masterRows?.length && request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      && ['/rest/v1/rpc/get_my_app_permissions_v1', '/rest/v1/rpc/get_request_capabilities'].includes(url.pathname)
+      && Object.keys(request.postDataJSON() || {}).length === 0
+      && request.headers()['authorization'] === 'Bearer browser-only-no-real-session') {
+      const endpoint = url.pathname.endsWith('/get_my_app_permissions_v1') ? 'get_my_app_permissions_v1' : 'get_request_capabilities';
+      normalPermissionReads.push({ endpoint, url: request.url(), status: 200, authenticatedFixture: true });
+      if (endpoint === 'get_my_app_permissions_v1') {
+        return fulfill(route, {
+          contract_version: 'app-access-v1', enforcement_mode: 'enforced', policy_version: 1, policy_revision: 1,
+          data_permission_version: 'suspend-fixture-access-1', username: 'dylan_collyge', role: 'ADMIN',
+          permissions: [
+            { permission_key: 'module.drive.view', kind: 'module', module_key: 'drive', allowed: true },
+            { permission_key: 'module.request.view', kind: 'module', module_key: 'request', allowed: true },
+          ],
+        });
+      }
+      return fulfill(route, {
+        contract_version: 2, username: 'dylan_collyge', scope: 'global',
+        can_create_general: true, can_create_av: true, can_view_queue: true,
+        can_take_photo: true, can_edit: true, can_complete: true, can_archive: true,
+      });
     }
     // A real HTTP image failure dispatches the browser's error event consistently;
     // an intercepted cancellation can leave WebKit's deferred image unsettled.
@@ -684,6 +708,25 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         && body.action === 'user_access' && body.operation === 'resolve') {
         permissionRefreshFailures.push({ endpoint: 'user_access:resolve', url: request.url(), status: 503 });
         return fulfill(route, { ok: false, status: 503, error: 'Temporary permission service interruption' }, 503);
+      }
+      if (options.masterRows?.length && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && Object.keys(body).sort().join(',') === 'action,operation'
+        && body.action === 'user_access' && body.operation === 'resolve'
+        && request.headers()['authorization'] === 'Bearer browser-only-no-real-session') {
+        userAccessResolveReads.push({ url: request.url(), status: 200, authenticatedFixture: true });
+        const permissions = Object.fromEntries([
+          'can_access_drive_mode', 'can_access_av', 'can_access_que', 'can_access_manager_tab',
+          'can_manage_user_access', 'can_access_eval_reports_2', 'can_submit_reclass',
+          'can_complete_suspend_tag', 'can_approve_deny_suspend',
+        ].map(permission => [permission, true]));
+        return fulfill(route, { ok: true, data: {
+          revision: 1,
+          profile: { id: 'synthetic-suspend-master-snapshot', username: 'dylan_collyge', display_name: 'Isolated Suspend Done Test', role: 'ADMIN', email: '', salesrep_id: null, salesrep_match_names: [] },
+          baseline: { role: 'admin', permissions, revision: 1 },
+          permission_overrides: {}, effective_permissions: permissions,
+          data_hydration_policy: { use_shared_instant_snapshot: true, av_season_rule: 'CURRENT_SEASON_F1_LE_27', av_visibility_rule: 'ALL_ELIGIBLE_ROWS' },
+          resolved_at: new Date().toISOString(),
+        } });
       }
       if ((options.native || options.masterRows?.length) && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && body.action === 'eval_work' && body.operation === 'list'
@@ -1032,6 +1075,14 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       && permissionRefreshFailures.some(failure => failure.url === response.url && failure.status === response.status)),
     'classified 503 responses must match an exact routed permission-read URL').toBe(true);
     expect(injectedPermissionRefreshConsoleErrors.length).toBeLessThanOrEqual(permissionRefreshResponses.length);
+    expect(userAccessResolveReads.every(read => read.status === 200 && read.authenticatedFixture
+      && new URL(read.url).hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      && new URL(read.url).pathname === '/functions/v1/app-api'),
+    'only the exact synthetic authenticated self-permission resolve may be served by the fixture').toBe(true);
+    expect(normalPermissionReads.every(read => read.status === 200 && read.authenticatedFixture
+      && new URL(read.url).hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      && ['/rest/v1/rpc/get_my_app_permissions_v1', '/rest/v1/rpc/get_request_capabilities'].includes(new URL(read.url).pathname)),
+    'only exact authenticated empty-body permission reads may be served by the fixture').toBe(true);
     expect(healthTelemetryReceipts.every(receipt => receipt.apiKeyPresent
       && (receipt.syntheticIdentity || receipt.authorizationMatchesPublicKey)),
       'health telemetry must be acknowledged only by the local synthetic fixture and never reach Supabase').toBe(true);
@@ -1067,7 +1118,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     return response.ok;
   });
   return { requests, replies, receipts, backendRows, inventoryLookupCalls, settingsReads, permissionRefreshFailures,
-    permissionRefreshResponses, injectedPermissionRefreshConsoleErrors,
+    permissionRefreshResponses, injectedPermissionRefreshConsoleErrors, normalPermissionReads, userAccessResolveReads,
     enableTransientPermissionFailures, publishedReadPages, failedResources, consoleErrorDetails, chatParticipantReads,
     customerConsigneeReads, healthTelemetryRequests, healthTelemetryReceipts, card, done, activate, legacyComplete,
     beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, readFetchAbortEvidence, assertClean };
@@ -2306,6 +2357,8 @@ test('published snapshot stays available and Drive completes every Common Name a
     accessRefresh, permissionRefreshFailures: app.permissionRefreshFailures,
     permissionRefreshResponses: app.permissionRefreshResponses,
     injectedPermissionRefreshConsoleErrors: app.injectedPermissionRefreshConsoleErrors,
+    normalPermissionReads: app.normalPermissionReads,
+    userAccessResolveReads: app.userAccessResolveReads,
   })) });
   expect(accessRefresh.refreshError).toMatch(/permissions could not be verified|refresh is paused/i);
   expect(accessRefresh.wrapperHidden).toBe(false);

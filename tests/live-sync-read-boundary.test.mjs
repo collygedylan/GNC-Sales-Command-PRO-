@@ -1188,6 +1188,30 @@ test('same-account forced permission refreshes coalesce into one authenticated R
     assert.equal(ctx.calls.persisted, 1);
 });
 
+test('a same-profile auth epoch change starts a new refresh and stale completion cannot clear it', async () => {
+    const firstGate = deferred(), secondGate = deferred(); let rpcCalls = 0;
+    const ctx = appAccessSnapshotVm({ snapshot: { username: 'brian_hatfield', dataPermissionVersion: 'memory-v1' },
+        rpc: () => (++rpcCalls === 1 ? firstGate.promise : secondGate.promise) });
+    const oldRequest = ctx.initializeAppAccessSnapshot({ force: true, reason: 'before-token-refresh' });
+    await settle();
+    assert.equal(ctx.appAccessSnapshotState.authEpoch, 4);
+    ctx.productionLiveSyncReadAuthEpoch = 5;
+    const currentRequest = ctx.initializeAppAccessSnapshot({ force: true, reason: 'after-token-refresh' });
+    await settle();
+    assert.equal(rpcCalls, 2, 'same username/profile at a new auth epoch must not coalesce the old JWT request');
+    assert.equal(ctx.appAccessSnapshotState.authEpoch, 5);
+    const currentPromise = ctx.appAccessSnapshotLoadPromise;
+    firstGate.resolve({ username: 'brian_hatfield', dataPermissionVersion: 'old-token-response' });
+    assert.equal(await oldRequest, null, 'the stale epoch response is discarded');
+    assert.equal(ctx.appAccessSnapshotLoadPromise, currentPromise, 'the old finally block cannot clear the current request');
+    assert.equal(ctx.appAccessSnapshotState.authEpoch, 5);
+    secondGate.resolve({ username: 'brian_hatfield', dataPermissionVersion: 'new-token-response', role: 'Sales Rep' });
+    const result = await currentRequest;
+    assert.equal(result.dataPermissionVersion, 'new-token-response');
+    assert.equal(ctx.appAccessSnapshotState.authEpoch, 5);
+    assert.equal(ctx.appAccessSnapshotState.stale, false);
+});
+
 test('same-role policy changes reload and apply authoritative permissions before returning', async () => {
     const ctx = permissionFixture();
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('foreground'), false);
