@@ -1,0 +1,401 @@
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	﻿2026-10-20T18:01:11.1435123Z Current runner version: '2.337.0'
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1463485Z ##[group]Runner Image Provisioner
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1464461Z Hosted Compute Agent
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1465068Z Version: 20261015.610
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1465801Z Commit: 267fdb4e8bbec4ab5ea31367f3a00d5c480c7656
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1466566Z Build Date: 2026-10-14T17:06:54Z
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1467262Z Worker ID: {f410efc2-8a07-457b-866e-3e04a840410a}
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1468098Z Region: westus2
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1468707Z Cloud: Azure
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1469309Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1470841Z ##[group]Operating System
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1471489Z Ubuntu
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1472585Z 24.04.5
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1473155Z LTS
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1473727Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1474307Z ##[group]Runner Image
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1474915Z Image: ubuntu-24.04
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1475576Z Version: 20261018.339.1
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1476884Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261018.339/images/ubuntu/Ubuntu2404-Readme.md
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1478529Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261018.339
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1479506Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1480783Z ##[group]GITHUB_TOKEN Permissions
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1483309Z Contents: read
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1484079Z Metadata: read
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1484653Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1486971Z Secret source: Actions
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1487982Z Cache mode: write
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.1488794Z Prepare workflow directory
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.2081506Z Prepare all required actions
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.2130977Z Getting action download info
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.5846375Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.7012842Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:11.8049205Z Download action repository 'denoland/setup-deno@v2' (SHA:22d081ff2d3a40755e97629de92e3bcbfa7cf2ed)
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.0035337Z Download action repository 'actions/cache@v4' (SHA:0057852bfaa89a56745cba8c7296529d2fc39830)
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.1952476Z Uses: collygedylan/GNC-Sales-Command-PRO-/.github/workflows/release-database.yml@refs/pull/502/merge (fae401fd905c64792728d008f6df46eab64d7f2b)
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.1957451Z ##[group] Inputs
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.1958376Z   run-schema-tests: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.1958915Z   run-browser-tests: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.1959438Z   run-performance-tests: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.1959982Z   run-all-schema-tests: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.1960487Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.1961551Z Complete job name: validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2740367Z ##[group]Run actions/checkout@v4
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2741253Z with:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2741764Z   repository: collygedylan/GNC-Sales-Command-PRO-
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2745815Z   token: ***
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2746268Z   ssh-strict: true
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2746699Z   ssh-user: git
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2747137Z   persist-credentials: true
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2747621Z   clean: true
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2748058Z   sparse-checkout-cone-mode: true
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2748583Z   fetch-depth: 1
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2748999Z   fetch-tags: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2749431Z   show-progress: true
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2749870Z   lfs: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2750272Z   submodules: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2750713Z   set-safe-directory: true
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2751215Z   allow-unsafe-pr-checkout: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2751983Z env:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2752666Z   EDGE_TARGETS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/index.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2753518Z   EDGE_TESTS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/suspend-tag-read_test.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.2754222Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.3844152Z Syncing repository: collygedylan/GNC-Sales-Command-PRO-
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.3846922Z ##[group]Getting Git version info
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.3848252Z Working directory is '/home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-'
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.3850066Z [command]/usr/bin/git version
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.3937003Z git version 2.55.0
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.3964292Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.3977422Z Temporarily overriding HOME='/home/runner/work/_temp/2f70f5ef-3c92-4333-8105-6a2610a8a1b3' before making global git config changes
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.3979447Z Adding repository directory to the temporary git global config as a safe directory
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.3983370Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4045425Z Deleting the contents of '/home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-'
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4051803Z ##[group]Initializing the repository
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4058142Z [command]/usr/bin/git init /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4178573Z hint: Using 'master' as the name for the initial branch. This default branch name
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4181380Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4183982Z hint: to use in all of your new repositories, which will suppress this warning,
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4185526Z hint: call:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4186116Z hint:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4186861Z hint: 	git config --global init.defaultBranch <name>
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4187641Z hint:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4188362Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4189495Z hint: 'development'. The just-created branch can be renamed via this command:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4190411Z hint:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4190940Z hint: 	git branch -m <name>
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4191584Z hint:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4192673Z hint: Disable this message with "git config set advice.defaultBranchName false"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4194184Z Initialized empty Git repository in /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-/.git/
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4204273Z [command]/usr/bin/git remote add origin https://github.com/collygedylan/GNC-Sales-Command-PRO-
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4259654Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4260524Z ##[group]Disabling automatic garbage collection
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4370115Z [command]/usr/bin/git config --local gc.auto 0
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4376695Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4377557Z ##[group]Setting up auth
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4378399Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4380683Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4787695Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.4835521Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.5107917Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.5158585Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.5416336Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.5468508Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.5470036Z ##[group]Fetching the repository
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:12.5480802Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +fae401fd905c64792728d008f6df46eab64d7f2b:refs/remotes/pull/502/merge
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.4224273Z From https://github.com/collygedylan/GNC-Sales-Command-PRO-
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.4225346Z  * [new ref]         fae401fd905c64792728d008f6df46eab64d7f2b -> pull/502/merge
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.4247688Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.4248638Z ##[group]Determining the checkout info
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.4249705Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.4250488Z [command]/usr/bin/git sparse-checkout disable
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.4310776Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.4359512Z ##[group]Checking out the ref
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.4364872Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/502/merge
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6597907Z Note: switching to 'refs/remotes/pull/502/merge'.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6598764Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6599246Z You are in 'detached HEAD' state. You can look around, make experimental
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6600348Z changes and commit them, and you can discard any commits you make in this
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6601443Z state without impacting any branches by switching back to a branch.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6602389Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6602861Z If you want to create a new branch to retain commits you create, you may
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6603928Z do so (now or later) by using -c with the switch command. Example:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6604515Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6604790Z   git switch -c <new-branch-name>
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6605210Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6605510Z Or undo this operation with:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6605875Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6606135Z   git switch -
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6606434Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6606948Z Turn off this advice by setting config variable advice.detachedHead to false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6607612Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6608393Z HEAD is now at fae401f Merge 99d30780497db6a8fe22a7872648a34226fbcfba into ebe5547b11fb415ef83b3f2891973776c5b4d682
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6620357Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6677984Z [command]/usr/bin/git log -1 --format=%H
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.6713240Z fae401fd905c64792728d008f6df46eab64d7f2b
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7008413Z ##[group]Run actions/setup-node@v4
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7008795Z with:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7009055Z   node-version: 22
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7009353Z   always-auth: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7009632Z   check-latest: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7012439Z   token: ***
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7012705Z env:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7013057Z   EDGE_TARGETS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/index.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7013568Z   EDGE_TESTS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/suspend-tag-read_test.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.7014010Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.8589189Z Found in cache @ /opt/hostedtoolcache/node/22.23.3/x64
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.8593587Z (node:2301) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.8594816Z (Use `node --trace-deprecation ...` to show where the warning was created)
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:14.8597034Z ##[group]Environment details
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.2910706Z node: v22.23.3
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.2911478Z npm: 10.9.9
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.2911814Z yarn: 1.22.22
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.2913390Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.3102874Z ##[group]Run denoland/setup-deno@v2
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.3103253Z with:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.3103471Z   deno-version: v2.9.6
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.3103726Z   deno-binary-name: deno
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.3103971Z   cache: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.3104189Z env:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.3104481Z   EDGE_TARGETS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/index.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.3104955Z   EDGE_TESTS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/suspend-tag-read_test.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.3105347Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.6157932Z Going to install stable version 2.9.6.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:15.6162678Z Downloading Deno from https://github.com/denoland/deno/releases/download/v2.9.6/deno-x86_64-unknown-linux-gnu.zip.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:17.2068212Z [command]/usr/bin/unzip -o -q /home/runner/work/_temp/212f4185-61e3-45af-8dd1-aaf87233561e
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:17.9843137Z Cached Deno to /opt/hostedtoolcache/deno/2.9.6/x64.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:17.9853659Z Installation complete.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0848443Z ##[group]Run actions/cache/restore@v4
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0849126Z with:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0849479Z   path: ~/.cache/deno
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	node_modules
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	supabase/functions/**/node_modules
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0850288Z   key: deno-modules-v1-Linux-X64-2.9.6-a4c61ca1bb9d3b08b7351584506280046e2e87672d9b53a7f4c94f3b5cf4b605-app-api
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0850985Z   enableCrossOsArchive: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0851300Z   fail-on-cache-miss: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0851583Z   lookup-only: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0851829Z env:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0852452Z   EDGE_TARGETS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/index.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0853096Z   EDGE_TESTS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/suspend-tag-read_test.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.0853554Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.2006723Z (node:2359) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.2008612Z (Use `node --trace-deprecation ...` to show where the warning was created)
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5190486Z Cache not found for input keys: deno-modules-v1-Linux-X64-2.9.6-a4c61ca1bb9d3b08b7351584506280046e2e87672d9b53a7f4c94f3b5cf4b605-app-api
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5310258Z ##[group]Run set -euo pipefail
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5310716Z ^[[36;1mset -euo pipefail^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5311401Z ^[[36;1mmapfile -t entrypoints < <(node -e 'for (const file of JSON.parse(process.env.EDGE_TARGETS)) console.log(file)')^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5312718Z ^[[36;1mmapfile -t tests < <(node -e 'for (const file of JSON.parse(process.env.EDGE_TESTS)) console.log(file)')^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5313523Z ^[[36;1mcache_log="$RUNNER_TEMP/deno-dependency-prefetch.log"^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5315036Z ^[[36;1mtransient_pattern='\b429[[:space:]]+Too Many Requests\b|\b5[0-9]{2}[[:space:]]+[A-Za-z][A-Za-z ]*\b|connection reset by peer|connection refused|connection timed out|timed out|unexpected EOF|temporary failure in name resolution|DNS error|failed to connect|network is unreachable|TLS handshake timeout'^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5316443Z ^[[36;1mfor attempt in 1 2; do^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5317042Z ^[[36;1m  if deno cache --node-modules-dir=auto "${entrypoints[@]}" "${tests[@]}" >"$cache_log" 2>&1; then^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5317722Z ^[[36;1m    echo "Deno dependency graph cached on attempt $attempt."^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5318144Z ^[[36;1m    break^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5318385Z ^[[36;1m  else^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5318623Z ^[[36;1m    status=$?^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5318874Z ^[[36;1m  fi^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5319184Z ^[[36;1m  if grep -Eiq "$transient_pattern" "$cache_log"; then^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5319596Z ^[[36;1m    if [ "$attempt" -lt 2 ]; then^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5319940Z ^[[36;1m      delay=$((attempt * 4))^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5320576Z ^[[36;1m      echo "Transient Deno module fetch failure; retrying cache prefetch in ${delay}s (attempt $((attempt + 1))/2)."^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5321233Z ^[[36;1m      sleep "$delay"^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5321518Z ^[[36;1m      continue^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5321772Z ^[[36;1m    fi^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5322300Z ^[[36;1m    cat "$cache_log" >&2^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5322971Z ^[[36;1m    echo 'Deno dependency prefetch exhausted two transient-failure attempts.' >&2^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5323499Z ^[[36;1m    exit "$status"^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5323766Z ^[[36;1m  fi^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5323990Z ^[[36;1m  cat "$cache_log" >&2^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5324400Z ^[[36;1m  echo 'Deno dependency prefetch failed for a non-retryable error.' >&2^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5324841Z ^[[36;1m  exit "$status"^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5325088Z ^[[36;1mdone^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5507429Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5507938Z env:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5508310Z   EDGE_TARGETS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/index.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5508943Z   EDGE_TESTS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/suspend-tag-read_test.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:18.5509480Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2667655Z Deno dependency graph cached on attempt 1.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2764581Z ##[group]Run actions/cache/save@v4
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2765305Z with:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2765828Z   path: ~/.cache/deno
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	node_modules
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	supabase/functions/**/node_modules
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2766995Z   key: deno-modules-v1-Linux-X64-2.9.6-a4c61ca1bb9d3b08b7351584506280046e2e87672d9b53a7f4c94f3b5cf4b605-app-api
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2768026Z   enableCrossOsArchive: false
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2768500Z env:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2768939Z   EDGE_TARGETS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/index.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2769702Z   EDGE_TESTS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/suspend-tag-read_test.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.2770340Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.3940882Z (node:2425) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.3942750Z (Use `node --trace-deprecation ...` to show where the warning was created)
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:23.4245891Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO- --files-from manifest.txt --use-compress-program zstdmt
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:29.2552707Z (node:2425) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:30.2434660Z Sent 1104415 of 336648735 (0.3%), 1.1 MBs/sec
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.2438835Z Sent 1104415 of 336648735 (0.3%), 0.5 MBs/sec
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.4962973Z Sent 336648735 of 336648735 (100.0%), 142.3 MBs/sec
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.6980750Z Cache saved with key: deno-modules-v1-Linux-X64-2.9.6-a4c61ca1bb9d3b08b7351584506280046e2e87672d9b53a7f4c94f3b5cf4b605-app-api
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7121163Z ##[group]Run set -euo pipefail
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7121568Z ^[[36;1mset -euo pipefail^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7122495Z ^[[36;1mmapfile -t entrypoints < <(node -e 'for (const file of JSON.parse(process.env.EDGE_TARGETS)) console.log(file)')^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7123383Z ^[[36;1mmapfile -t tests < <(node -e 'for (const file of JSON.parse(process.env.EDGE_TESTS)) console.log(file)')^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7124057Z ^[[36;1mdeno check --node-modules-dir=auto "${entrypoints[@]}"^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7124461Z ^[[36;1mif [ "${#tests[@]}" -gt 0 ]; then^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7124911Z ^[[36;1m  deno test --node-modules-dir=auto --allow-env --allow-net "${tests[@]}"^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7125353Z ^[[36;1mfi^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7181761Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7182512Z env:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7182864Z   EDGE_TARGETS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/index.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7183479Z   EDGE_TESTS: [
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	  "supabase/functions/app-api/suspend-tag-read_test.ts"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.7183962Z ##[endgroup]
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:31.8619468Z ^[[0m^[[32mCheck^[[0m supabase/functions/app-api/index.ts
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0707929Z ^[[0m^[[1mTS18047 ^[[0m[ERROR]: 'revisionResult.data' is possibly 'null'.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0709190Z         sourceRevision = String(revisionResult.data.revision);
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0710128Z ^[[0m^[[31m                                ~~~~~~~~~~~~~~~~~~~^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0711786Z     at ^[[0m^[[36mfile:///home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-/supabase/functions/app-api/index.ts^[[0m:^[[0m^[[33m3118^[[0m:^[[0m^[[33m33^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0713111Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0713976Z ^[[0m^[[1mTS18047 ^[[0m[ERROR]: 'afterRevision.data' is possibly 'null'.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0714999Z         if (String(afterRevision.data.revision) !== sourceRevision) {
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0715905Z ^[[0m^[[31m                   ~~~~~~~~~~~~~~~~~~^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0717904Z     at ^[[0m^[[36mfile:///home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-/supabase/functions/app-api/index.ts^[[0m:^[[0m^[[33m3151^[[0m:^[[0m^[[33m20^[[0m
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0719064Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0719273Z Found 2 errors.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0719470Z 
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.0776974Z ^[[0m^[[1m^[[31merror^[[0m: Type checking failed.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.1613310Z ##[error]Process completed with exit code 1.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.1710202Z Post job cleanup.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.3000957Z Caching is not enabled. Caching is skipped.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.3238702Z Post job cleanup.
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4183492Z [command]/usr/bin/git version
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4235697Z git version 2.55.0
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4282753Z Temporarily overriding HOME='/home/runner/work/_temp/8ce6a9b5-8703-49e4-84c0-3ec9eabf8841' before making global git config changes
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4285081Z Adding repository directory to the temporary git global config as a safe directory
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4289876Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4338606Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4380779Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4685914Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4720499Z http.https://github.com/.extraheader
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4736665Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.4787025Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.5159906Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.5211432Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.5652753Z Cleaning up orphan processes
+validation / backend-unit / edge-functions (app-api, supabase/functions/app-api/index.ts, supabase/functions/app-api/suspend-...	UNKNOWN STEP	2026-10-20T18:01:41.6111039Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache/restore@v4, actions/cache/save@v4, actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+validation / pr-gate	UNKNOWN STEP	﻿2026-10-20T18:01:48.2536137Z Current runner version: '2.337.0'
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2589187Z ##[group]Runner Image Provisioner
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2590112Z Hosted Compute Agent
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2590751Z Version: 20261012.601
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2591457Z Commit: f3dc54e1fb89da6852db922499a0233137369e1d
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2592479Z Build Date: 2026-10-12T17:48:21Z
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2593212Z Worker ID: {f1ad7131-f9bc-47a6-86a9-4fe2e84cc688}
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2593986Z Region: northcentralus
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2594599Z Cloud: Azure
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2595197Z ##[endgroup]
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2596764Z ##[group]Operating System
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2597410Z Ubuntu
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2597951Z 24.04.5
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2598586Z LTS
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2599171Z ##[endgroup]
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2599843Z ##[group]Runner Image
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2600466Z Image: ubuntu-24.04
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2601037Z Version: 20261012.334.1
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2602813Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261012.334/images/ubuntu/Ubuntu2404-Readme.md
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2604466Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261012.334
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2605462Z ##[endgroup]
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2606793Z ##[group]GITHUB_TOKEN Permissions
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2609104Z Actions: read
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2609712Z Contents: read
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2610397Z Metadata: read
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2611055Z PullRequests: read
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2611689Z ##[endgroup]
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2614086Z Secret source: Actions
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2615138Z Cache mode: write
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2616196Z Prepare workflow directory
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.2957453Z Prepare all required actions
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3063092Z Uses: collygedylan/GNC-Sales-Command-PRO-/.github/workflows/pr-validation.yml@refs/pull/502/merge (fae401fd905c64792728d008f6df46eab64d7f2b)
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3068258Z ##[group] Inputs
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3069514Z   run-frontend-tests: true
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3070261Z   run-backend-tests: true
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3070945Z ##[endgroup]
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3071604Z Complete job name: validation / pr-gate
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3948470Z ##[group]Run node --input-type=module <<'NODE'
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3949391Z ^[[36;1mnode --input-type=module <<'NODE'^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3950406Z ^[[36;1mconst jobs = JSON.parse(process.env.PR_JOB_RESULTS);^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3951360Z ^[[36;1mconst required = ['lint', 'unit', 'contracts'];^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3952610Z ^[[36;1mif (process.env.RUN_FRONTEND_TESTS === 'true') required.push('react');^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3953759Z ^[[36;1mif (process.env.RUN_BACKEND_TESTS === 'true') required.push('backend-unit');^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3954710Z ^[[36;1mfor (const name of required) {^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3955761Z ^[[36;1m  if (jobs[name]?.result !== 'success') throw new Error(`PR_GATE_FAILED_${name}`);^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3956680Z ^[[36;1m}^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3957768Z ^[[36;1mconsole.log('All selected PR unit and lint checks passed; publication is verified separately on main.');^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.3958854Z ^[[36;1mNODE^[[0m
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.4755942Z shell: /usr/bin/bash -e {0}
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.4757583Z env:
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.4760125Z   PR_JOB_RESULTS: {
+validation / pr-gate	UNKNOWN STEP	  "lint": {
+validation / pr-gate	UNKNOWN STEP	    "result": "success",
+validation / pr-gate	UNKNOWN STEP	    "outputs": {}
+validation / pr-gate	UNKNOWN STEP	  },
+validation / pr-gate	UNKNOWN STEP	  "unit": {
+validation / pr-gate	UNKNOWN STEP	    "result": "success",
+validation / pr-gate	UNKNOWN STEP	    "outputs": {}
+validation / pr-gate	UNKNOWN STEP	  },
+validation / pr-gate	UNKNOWN STEP	  "react": {
+validation / pr-gate	UNKNOWN STEP	    "result": "success",
+validation / pr-gate	UNKNOWN STEP	    "outputs": {}
+validation / pr-gate	UNKNOWN STEP	  },
+validation / pr-gate	UNKNOWN STEP	  "contracts": {
+validation / pr-gate	UNKNOWN STEP	    "result": "success",
+validation / pr-gate	UNKNOWN STEP	    "outputs": {}
+validation / pr-gate	UNKNOWN STEP	  },
+validation / pr-gate	UNKNOWN STEP	  "backend-unit": {
+validation / pr-gate	UNKNOWN STEP	    "result": "failure",
+validation / pr-gate	UNKNOWN STEP	    "outputs": {}
+validation / pr-gate	UNKNOWN STEP	  }
+validation / pr-gate	UNKNOWN STEP	}
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.4763262Z   RUN_FRONTEND_TESTS: true
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.4764066Z   RUN_BACKEND_TESTS: true
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.4764823Z ##[endgroup]
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6517607Z file:///home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-/[eval1]:6
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6518839Z   if (jobs[name]?.result !== 'success') throw new Error(`PR_GATE_FAILED_${name}`);
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6519714Z                                               ^
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6520130Z 
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6520778Z Error: PR_GATE_FAILED_backend-unit
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6521725Z     at file:///home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-/[eval1]:6:47
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6523019Z     at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6524076Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6525299Z     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:282:26)
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6526484Z     at async ModuleLoader.executeModuleJob (node:internal/modules/esm/loader:278:20)
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6527637Z     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6528283Z 
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6528537Z Node.js v22.23.3
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6544968Z ##[error]Process completed with exit code 1.
+validation / pr-gate	UNKNOWN STEP	2026-10-20T18:01:48.6706924Z Cleaning up orphan processes

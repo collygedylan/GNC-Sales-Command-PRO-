@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "agdata-scoped-validation-v1",
+  "release": "AgData v2.3.15",
+  "base": "ebe5547b11fb415ef83b3f2891973776c5b4d682",
+  "evidencePathPrefix": "docs/releases/v2.3.15-validation/",
+  "sourceDigest": "8fdbd44d43778d58ddc068b46cf1920154d649bc139a53b697c3ad8f9ebde605",
+  "sourceHashes": {
+    ".github/workflows/apps-script-sync.yml": "fc5c22be9f886a149aa03c693b5197f426f8f126152e995d503ec3244c80042c",
+    ".github/workflows/pages-static.yml": "ea8a0677326f962a115e30f4d442418d8f263fd2d44fc4442b4d8086a1cea927",
+    ".github/workflows/release-database.yml": "22e165d456dcd2a35e97f4c55378cf74c3311900afc5aa0df6baaf78c5731f44",
+    "AGENTS.md": "47dce751fe8879aa3737d2d56dce1e3db0a53676c06fd16bb9fae4d9c5008eac",
+    "Code.gs": "d646060a4d7bcbf266243092f65f9d7c5429adcd355008807800f3fb081bb5d6",
+    "assets/app-lifecycle.js": "9cbad48e88e07881a00ed753558ff59670dc3027cbbc073db2f3bb9fe8a04164",
+    "assets/live-sync-coordinator.js": "f9fc08a3b00afb504daae8cc7725f7dfa310e8b6433fe153f5abeadd5816e5fb",
+    "assets/ops-precision-pilot.css": "95b1f88359f8e44e6c10b14bf95fa78ddf9e4226eb25cf7849013a7c05b2ec72",
+    "assets/ops-precision-pilot.js": "71ef1792efa1f0554978fcefe0f91a3b2637564b9a2da6ba7444c571bb1a2180",
+    "assets/queue-inventory-hydration.js": "318392b4152f59f74edc462b8749b98114c76c2b35f155d215de4b9422229f19",
+    "docs/releases/v2.3.14-validation/checkpoint.json": "ea24815dc13cc11a68be531251f695cb6c095b96867cd84039d830c6a2ca331f",
+    "docs/releases/v2.3.14-validation/reset2-checkpoint.json": "ce08a4ec64e766f3ad3749fa9a961afd30585542fda92d45f924bc7db2d66717",
+    "docs/releases/v2.3.15-progress.json": "222843a7c3214909aca66ea47bcfc2bc4b5afc6db997f62e4cf0877f044f89eb",
+    "index.html": "ee87cee366902645cc8df32a3f24fc77cbd844177f886af73de1c8b6fcbd76c9",
+    "manifest.json": "38dee74be6daab0c9b70c7d1a4137e43196e5d61170d0d9248cc0a3d7eddf291",
+    "package-lock.json": "9501a350d936db37983922dc3bd179a779050d9e95773d627692b13fa03c84dd",
+    "package.json": "890e0e126f0119d0d4ff1c434d38639ec2ec2c95651158b52753da014e05e6ee",
+    "playwright.release-smoke.config.ts": "646d8115394494351fa2d9a3a4f11badc4ab9ac8a31bf29b9bf6d799cf50e5c3",
+    "playwright.suspend-parity.config.ts": "a25cddd19cb92eb5989af9a2696ec395ae3cf63d4bffe8119f752c1ffa0fe69a",
+    "scripts/apply-item-low-stock-migration.mjs": "0d8c752b87d8e16dcaa944f977f7610e5e01b3387f49252469624d17c645bb98",
+    "scripts/apps-script-function-patch.mjs": "e67b62a22db19de653aa49c12c28cac969777bf7d3b3b09282de970292f2daa1",
+    "scripts/build-live-shell.mjs": "3b40603cafbe644d92c71e00e37a73e9b2c9263678d569c49394d4c1a657de84",
+    "scripts/check-retained-release-validation.mjs": "f152b0b45d7ad1c47c3be0aaef6a31f42597132c42eb38898ddcc3b884a279c5",
+    "scripts/check-v2314-retained-validation.mjs": "37240ed0f2b4638c2148c3ae8a1ae3e80c4acacab2e8b81e1ad23f63c5107727",
+    "scripts/ci-backend-matrix.mjs": "0c20280e703adf149d36249d32688dcdbd69d0fd6f748712e250d005e9956889",
+    "scripts/run-release-react-checks.mjs": "9852b7e98899751fe9e328b268aca239051836772b7c6b97b46cfaa7bcfaa7ad",
+    "scripts/run-release-smoke.mjs": "ddc3d7a507c943a07bf56bf62f6a8226660d8d9f5a95b1410d28d8bbdf342687",
+    "scripts/run-release-unit-checks.mjs": "8ce85e4327f92753411075192744f4288c454ff957949fa6149b3f39f200092f",
+    "supabase/functions/_shared/production-workflow.ts": "ad8a3e6fa5ecf147e487f2e1a3acb69e9645fec5fe272180c4db6bfeaeaa7da1",
+    "supabase/functions/app-api/index.ts": "7206c49ce10e9742a5f4cbb12e515474713e9432ba07cc597cacdc7e573b146e",
+    "supabase/functions/app-api/suspend-tag-read.ts": "6d097ac743fff11b71c1a162e74d55a1dc5ea64888279bfbf2014025ada6b240",
+    "supabase/functions/app-api/suspend-tag-read_test.ts": "5d82b67c44c86d759842080b37f333906c008cc5a808ae0bf7988f5728f4477d",
+    "supabase/functions/request-delivery-worker/index.ts": "19b2906e4d514b7a766626b01b66ae7df5f98f43459b9a82f6d6b5fd9df6fa78",
+    "supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql": "68492a2aea7598bda632cc632ee20326191f6b32aba14ba5e7962aec3d40b651",
+    "supabase/migrations/20261020161833_published_lkg_read_proof_v1.sql": "794a5c327967eeaa673387c16ea60bb6f431c98ef1956e203f8731c472e1f8ed",
+    "supabase/tests/inventory_reclass_move_delivery_v1_test.sql": "fdb39d39479ee16985bc23962fecc47c124e1232c6e01e2771c2e98e11d71c60",
+    "supabase/tests/published_lkg_read_proof_test.sql": "377a5755988cac943d1486c0bf3fea6cfea888e0a626540e96543319063e04b6",
+    "supabase/tests/v2314_suspend_physical_rows_test.sql": "63d211d1d2d9384f2a05f6228d947cf0408aae6fc43bd6f92ab4a0c9ce92b1b8",
+    "supabase/tests/v2315_reclass_email_delivery_test.sql": "4f65e8c3510e894bb291a03c389721af26d97a2e942520b0a7e2737347af75d6",
+    "supabase/tests/v2315_reclass_email_runtime_test.sql": "37af8869ee22578541652332e443d4bc01224644b585c55cd2ff3d2e16eefa26",
+    "sw.js": "841283627bd1b4a2d35fbf26e86ab89c14c7f62828044fdd80cefa2007988cf2",
+    "tests/apps-script-function-patch.test.mjs": "b5c618a106fee12ea3c87c65ed305b351710cf317148d0ffe18dc31f40010231",
+    "tests/av-hydration.e2e.spec.ts": "19716822b4908575acfa83b193c83ef0cf1f2ab65be19b171ca301fe89a2658d",
+    "tests/check-retained-release-validation.test.mjs": "27a3e4915478fe68844dff2f3f3ac92921ae856df68d95b8d67f3a1b0f338560",
+    "tests/dashboard-sync-latest-file.test.mjs": "d8b702b2a86ba613edf947ad52e47815223ca89f9637cf023ca9ec05ee91d2b4",
+    "tests/fixtures/suspend-v2314.json.gz": "2bc1662b21b00f857a5997f3900d48d5a719266b09892a341af02d6e940d84d4",
+    "tests/frontend-ui-timing.test.mjs": "647c140244cf6264e8b2a909b9298b1175e60606bdfc86759d7111000c682187",
+    "tests/helpers/frontend-ui-timing.mjs": "1bffc10873cefe74551ed6ab6d4e7e5a3ba7e9e2d604f78d7504866545e7801c",
+    "tests/inventory-card-location-on-hand.test.mjs": "066db9a9dff9ea89d3dc064a16b269cde274db2a961e3d64b2c265affbc4e0ab",
+    "tests/item-low-stock-migration-runner.test.mjs": "532c28b8e9eba23cd783c2bb0e1f9f26f86c78fe0ff8da43631f620fe7e15025",
+    "tests/live-sync-coordinator.test.mjs": "84df8cb2512e96d7c8f7a30e0c88cf37f59feeb512f103aa0c0fe37b91f03b40",
+    "tests/live-sync-read-boundary.test.mjs": "d3d7b1a348e25b914843a9781951bf300df5e55e69e32fc35284887ae7147ec3",
+    "tests/published-lkg-action-entry.test.mjs": "67e5752fb9fdfc0062f85f250d85c30959653145ad747763abeda16deacfab5b",
+    "tests/queue-inventory-hydration.test.mjs": "2dc9facbe8ac78ddefd699e3d74846c32b5786b53edd7def6a0496ccf7b9d841",
+    "tests/reclass-completion-delivery.test.mjs": "35b06a823d36ce3ae40ae480b97fb9f1709eb3b5d640f39a3f8128042d5ff3cf",
+    "tests/reclass-inquiry.test.mjs": "8e319f53144d09aee755e685d84cca45d3479b3e7322b24dcde0454042444968",
+    "tests/reclass-recipient-policy.test.mjs": "43950a2c570d6338b369aa6d3c311d4093be1f92d51cf025381fdc6e8ebdde79",
+    "tests/reclass-snapshot-verification.test.mjs": "1e13b8dd8b791915ad3f78433e98866f005d8e5dbf21b38caa27d1b7d06655f0",
+    "tests/reclass-splits.e2e.spec.ts": "a09faf49e5e0ec96276dee6ba38829375356e3daedfc62b5c93470061bb33af1",
+    "tests/release-smoke-artifacts.test.mjs": "2ea2bf21436af3dce7c0f640b014a8dd932162544eff94512080e89a01033ad3",
+    "tests/request-list-performance.e2e.spec.ts": "84c5e081fd9cc4ddbf89f25cfc4f4a223587b64876d25db59b0cd180a268bd77",
+    "tests/request-list-rendering.test.mjs": "3450afe776649fcb2d3ace408ba59a45aa5fc758aea3784920943d73eb8c773c",
+    "tests/request-queue-display-hydration.test.mjs": "c5df29daa47a5351374b2da3d65b6a460647574693fcb78bc35d8668c8e8573e",
+    "tests/scoped-release-deployment.test.mjs": "88e48fa80922ab0bdb30720d20c1d6df09130cb90aec4092e576454ca63eb9e6",
+    "tests/season-sales-note-master-candidate-index.test.mjs": "4ef5fa702833df739e0c6610f40472f09fbdfcc8d7c83ab4f67e8c71fa7ee0b8",
+    "tests/session-shell-resilience.test.mjs": "f404cdac5e4473ed8c66ea09b7d8696c30f01f87e52e9c137193dbe87306ebd4",
+    "tests/suspend-page-markup-cache.test.mjs": "1d5b9fe95bdd85e16d1298b2384614251dabba36e2022621c7067d2d9274d9d6",
+    "tests/suspend-tag-card-layout.test.mjs": "a4c4e6413a30b85c4d4872e9887b09b0e676d34acac70de0c3fa7cb49f9aab92",
+    "tests/suspend-tag-completion.e2e.spec.ts": "49686f065535c6be20b3e959322d644167c1ee39b696af152e0b1f3731655dfa",
+    "tests/suspend-tag-dataset.test.mjs": "68e67714f208edcf36a99d0818fd9160f76930870b482c5981da760542e272f8",
+    "tests/suspend-tag-latest-file.test.mjs": "2ae7087f0756708278520fddc29199d46121e2605fd841a5604ce4a07fb519a0",
+    "tests/suspend-tag-master-hydration.test.mjs": "7694d4423efa7b9436ae157763b66cdd8b7dedba8857befac60b6cf214b39e63",
+    "tests/suspend-tag-subset.test.mjs": "6a65f52d553f3ffc2ac4d62b0b53ca1a5ba3b1fc0a07c5501995f6c8afced1ee",
+    "tests/v2311-frontend-smoke.e2e.spec.ts": "f0357abe2058b58cb7e6962e301d81ea7f3035e79ea1ee0c617772be97bdc5f2",
+    "tests/warehouse-export-resilience.test.mjs": "1cb6e8e758ec0fc2df5f21737014db9be4ea68265ccf0a746aea32210ca9fa9f",
+    "v2/public/manifest.webmanifest": "05a99d96fcf74278efa7adcaefb9d267f732cd155e799c3d874aab24914fc56c",
+    "v2/src/services/api.ts": "3350cc89782d0578b30afb800e88b9348c567904ae2da7e5fe861b8bfcd0fc3d"
+  },
+  "dependencySeal": {
+    "lockfiles": [
+      "package-lock.json"
+    ],
+    "lockfileHashes": {
+      "package-lock.json": "9501a350d936db37983922dc3bd179a779050d9e95773d627692b13fa03c84dd"
+    },
+    "manifestDigest": "c674166ff7e8cd9f9a7d672c5552653891f469ea2c6b64220f9a44458ae440c6"
+  },
+  "requiredRetainedReceipts": [
+    "docs/releases/v2.3.13-retained-validation.json"
+  ],
+  "retainedReceipts": {
+    "docs/releases/v2.3.13-retained-validation.json": "043e792b4b48b439050e697564c67cb0b1ccda3ee4569eb2f2e6eb9f66c386e4"
+  },
+  "appsScriptChangedFunctions": [
+    "getReclassInquiryEmailRecipients_",
+    "buildReclassInquiryReportText_",
+    "buildReclassInquiryEmailHtml_",
+    "buildReclassInquiryCompactReportHtml_",
+    "deliverReclassInquiryPayload_",
+    "handleSignedInventoryReclassMoveDelivery_",
+    "buildCompletedInventoryReclassReportModel_",
+    "buildCompletedInventoryReclassMoveText_",
+    "buildCompletedInventoryReclassMoveHtml_",
+    "syncWarehouseAssignedItemsSheet_",
+    "readWarehouseAssignmentExportRevision_",
+    "exportWarehouseAssignedItemsToSheet_"
+  ],
+  "evidenceHashes": {
+    "docs/releases/v2.3.15-validation/unit.json": "6199325c3a63b72dde8a3dadb548a5ddf7877290a6de8a86e0e3356db6e5c94e",
+    "docs/releases/v2.3.15-validation/tooling.json": "9c026424fabfa1e76ee3f63d169247ecb54a70170384d16749d6b9653b432f3d",
+    "docs/releases/v2.3.15-validation/browser.json": "9be6f7e55291512818761b854dfef6adcfd444c8749859ed94327af26fba822f",
+    "docs/releases/v2.3.15-validation/database.json": "c832f62ac4589ebe7055f13beac6b912418a5dab494aefe5b1711655377412e0"
+  },
+  "requiredKinds": [
+    "database"
+  ],
+  "testedMigrationHashes": {
+    "supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql": "68492a2aea7598bda632cc632ee20326191f6b32aba14ba5e7962aec3d40b651",
+    "supabase/migrations/20261020161833_published_lkg_read_proof_v1.sql": "794a5c327967eeaa673387c16ea60bb6f431c98ef1956e203f8731c472e1f8ed"
+  },
+  "deployment": {
+    "edgeFunctions": [
+      "app-api",
+      "request-delivery-worker"
+    ],
+    "migrations": [
+      "supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql",
+      "supabase/migrations/20261020161833_published_lkg_read_proof_v1.sql"
+    ]
+  },
+  "browserContract": {
+    "projects": [
+      "desktop-chromium",
+      "android-chromium",
+      "iphone-webkit"
+    ],
+    "metricIds": [
+      "on-hand",
+      "review",
+      "available",
+      "open-stock",
+      "loc-photo-match",
+      "loc-on-hand"
+    ],
+    "renderMsMaximum": 2000,
+    "expectedCards": 37,
+    "minimumMasterRows": 9000,
+    "requireSorted": true,
+    "requireMetrics": true,
+    "requireNoProductionWrites": true,
+    "requireLastCard": true,
+    "requireCompleteControl": true,
+    "requireNoOverflow": true
+  }
+}

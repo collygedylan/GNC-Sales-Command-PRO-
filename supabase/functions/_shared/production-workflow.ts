@@ -143,7 +143,7 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
   const { data, error } = await supabase.rpc('apply_inventory_reclass_moves_with_delivery_v1', {
     p_actor_id: String(actorProfile.id), p_command_id: command.commandId,
     p_expected_revision: command.expectedRevision, p_moves: jsonValue(command.moves),
-    p_receipt_encoding: compactReceipt ? 'master-null-elision-v1' : null,
+    ...(compactReceipt ? { p_receipt_encoding: 'master-null-elision-v1' } : {}),
   });
   if (error) throw error;
   return data;

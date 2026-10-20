@@ -48,6 +48,7 @@ function productionQueueHydrationHarness({ authorized = true, rows = [], complet
 test('queue inventory canonicalizes ERP item/location without collapsing lots or arbitrary identifiers', () => {
   const q=harness();
   assert.equal(q.normalizeItem('004380.010.1'),q.normalizeItem('43800101'));
+  assert.notEqual(q.normalizeItem('001'),q.normalizeItem('1'),'short numeric catalog identifiers keep their leading-zero identity');
   assert.equal(q.normalizeLocation(' c.9.0 '),'C.09.000');
   assert.notEqual(q.normalizeItem('SKU.1'),q.normalizeItem('SKU1'));
   assert.ok(q.matches(row(),identity));
@@ -65,7 +66,29 @@ test('queue index resolves exact rows, rejects ambiguous identities, and preserv
   assert.equal(index.resolve(identity).row.ptronhand,0);
   assert.equal(index.resolve(identity).row.s_lts,null);
   assert.equal(q.createIndex([first,row({unique_id:'master-3'})]).resolve(identity).status,'ambiguous');
-  assert.equal(index.resolve({...identity,lotCode:'missing'}).status,'missing');
+  assert.equal(index.resolve({...identity,lotCode:'missing'}).status,'ambiguous',
+    'an item/location with multiple physical lots cannot be guessed when the requested lot is absent');
+});
+
+test('queue display hydration uses a unique normalized item-location fallback but keeps repeated physical lots ambiguous', () => {
+  const q = harness();
+  const master = row({ locationcode:' c.9.0 ', lotcode:'27.F1', source:'DRIVE', ptronhand:90,
+    ptrreviewed:25, ptravailable:65, s_lts:57, loc_match_qty:42, priority:10, holdstop:'H',
+    holdstopreason:'light roots; thin body' });
+  const socWithoutExactLot = { ...identity, lotCode:'27.F3', source:'SOC' };
+  const resolved = q.createIndex([master]).resolve(socWithoutExactLot);
+  assert.equal(resolved.status, 'ready');
+  assert.equal(resolved.row, master);
+  assert.equal(resolved.row.loc_match_qty, 42);
+  assert.equal(resolved.row.priority, 10);
+  assert.equal(resolved.row.holdstopreason, 'light roots; thin body');
+
+  const repeatedPhysicalLots = q.createIndex([master, row({ unique_id:'master-2', lotcode:'27.F2', source:'DRIVE' })]);
+  assert.equal(repeatedPhysicalLots.resolve(socWithoutExactLot).status, 'ambiguous',
+    'item-location fallback must not discard or select among multiple physical master rows');
+
+  assert.equal(q.createIndex([master]).resolve({ ...socWithoutExactLot, masterUid:'missing-master-id' }).status, 'missing',
+    'an explicit but stale master identity never falls back to another physical line');
 });
 
 test('queue hydration batches card reads, shares duplicates, and reports unresolved states explicitly', async () => {

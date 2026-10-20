@@ -1,0 +1,32 @@
+Error: node.exe failed (1).
+Connecting to local database...
+psql:/Users/dylan/AppData/Local/Temp/gnc-db-workspace-AGjUBA/supabase/tests/published_lkg_read_proof_test.sql:4: NOTICE:  extension "pgtap" already exists, skipping
+psql:/Users/dylan/AppData/Local/Temp/gnc-db-workspace-AGjUBA/supabase/tests/v2315_reclass_email_runtime_test.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+error running container: exit 1
+
+/Users/dylan/AppData/Local/Temp/gnc-db-workspace-AGjUBA/supabase/tests/published_lkg_read_proof_test.sql ..... ok
+/Users/dylan/AppData/Local/Temp/gnc-db-workspace-AGjUBA/supabase/tests/v2315_reclass_email_runtime_test.sql .. 
+Failed 2/13 subtests 
+
+Test Summary Report
+-------------------
+/Users/dylan/AppData/Local/Temp/gnc-db-workspace-AGjUBA/supabase/tests/v2315_reclass_email_runtime_test.sql (Wstat: 0 Tests: 11 Failed: 0)
+  Parse errors: Tests out of sequence.  Found (8) but expected (6)
+                Tests out of sequence.  Found (9) but expected (7)
+                Tests out of sequence.  Found (10) but expected (8)
+                Tests out of sequence.  Found (11) but expected (9)
+                Tests out of sequence.  Found (12) but expected (10)
+Displayed the first 5 of 7 TAP syntax errors.
+Re-run prove with the -p option to see them all.
+Files=2, Tests=27,  0 wallclock secs ( 0.02 usr  0.01 sys +  0.01 cusr  0.02 csys =  0.06 CPU)
+Result: FAIL
+
+    at run (file:///C:/Users/dylan/Projects/GNC/worktrees/bunch-card-entry-v234/scripts/tooling-process.mjs:22:19)
+    at runNode (file:///C:/Users/dylan/Projects/GNC/worktrees/bunch-card-entry-v234/scripts/tooling-process.mjs:28:43)
+    at runCli (file:///C:/Users/dylan/Projects/GNC/worktrees/bunch-card-entry-v234/scripts/database-workspace-runner.mjs:39:20)
+    at action (file:///C:/Users/dylan/Projects/GNC/worktrees/bunch-card-entry-v234/.gnc-local/v2315-run-lkg-context.mjs:13:23)
+    at withDisposableSupabase (file:///C:/Users/dylan/Projects/GNC/worktrees/bunch-card-entry-v234/scripts/database-workspace-runner.mjs:60:14)
+    at file:///C:/Users/dylan/Projects/GNC/worktrees/bunch-card-entry-v234/.gnc-local/v2315-run-lkg-context.mjs:12:12
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)

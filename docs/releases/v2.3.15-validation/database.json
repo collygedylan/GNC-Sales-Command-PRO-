@@ -1,0 +1,38 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T18:03:51.396Z",
+  "sourceDigest": "8fdbd44d43778d58ddc068b46cf1920154d649bc139a53b697c3ad8f9ebde605",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "kind": "database",
+  "disposable": true,
+  "nativePostgres": true,
+  "assertions": 29,
+  "failed": 0,
+  "errors": 0,
+  "migrationsReplayed": 96,
+  "scope": "16 publication-proof assertions passed before a TAP-only reporting correction; 13 Reclass runtime assertions passed after moving assertions outside DO. Migration bytes unchanged across these executions.",
+  "proofRun": {
+    "path": "docs/releases/v2.3.15-validation/raw/focused-sql-tap-attempt3.log",
+    "sha256": "281d964cf69e2f39269450ea00b4ddc1ee1058695be1ae84b0e0694733575884"
+  },
+  "reclassRun": {
+    "path": "docs/releases/v2.3.15-validation/raw/focused-sql-output.log",
+    "sha256": "8eb998ec05181cd52cc56899f008cdad5b42354100ec87c56c0e76b866227b91"
+  },
+  "historicalBackfillChanged": false,
+  "retainedSuspendContract": {
+    "assertions": 11,
+    "migrationsReplayed": 94,
+    "status": "passed",
+    "scope": "Unchanged latest-SOC physical-row contract",
+    "evidence": {
+      "path": "docs/releases/v2.3.15-validation/raw/v2314-suspend-physical-contract-evidence.json",
+      "sha256": "a040f069ff39c7493a965e7ad7fbe672b3a67207e828689f77c30a38ee3bbdc1"
+    },
+    "log": {
+      "path": "docs/releases/v2.3.15-validation/raw/v2314-suspend-physical-contract.log",
+      "sha256": "3f2d5a78963ee69c82b934cf2b29ad311cce413a77d3c850ccf0d410c5442502"
+    }
+  }
+}

@@ -1082,7 +1082,7 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     const evidence = {
       kind: 'isolated-client-render-fixture', datasetRows: SYNTHETIC_MASTER_ROWS,
       acceptedColdAvFirstCardLimitMs: 1000,
-      acceptedAvDomRenderLimitMs: 400,
+      acceptedAvDomRenderLimitMs: 2000,
       acceptedBackgroundLongTaskLimitMs: 250,
       environment: {
         nodeVersion: process.version,

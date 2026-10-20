@@ -1,0 +1,15 @@
+✔ live ERP patch preserves paused historical source and adds only its temporary-file classifier (11.1169ms)
+✔ scoped email publication preserves remote-only history functions and schedule byte-for-byte (0.8659ms)
+✔ email patch fails closed for missing functions, duplicate names and backfill allowlisting (0.448ms)
+✔ remote code race guard detects source edits while ignoring server metadata and ordering (9.3801ms)
+✔ scoped publisher advances one version with guarded remote backfill and manifest intact (4.3535ms)
+✔ remote edits or withdrawn authorization stop scoped publication before the next mutation (0.4304ms)
+✔ only the authorized Reclass email handler and completed-report helper may be added without changing remote backfill (2.1426ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 197.1508

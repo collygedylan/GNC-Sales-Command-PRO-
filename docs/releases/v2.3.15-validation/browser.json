@@ -1,0 +1,352 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T18:03:51.396Z",
+  "sourceDigest": "8fdbd44d43778d58ddc068b46cf1920154d649bc139a53b697c3ad8f9ebde605",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "kind": "browser",
+  "browserEvidence": [
+    {
+      "project": "desktop-chromium",
+      "metrics": {
+        "environment": "desktop-chromium",
+        "masterRows": 9487,
+        "cards": 37,
+        "expectedCards": 37,
+        "renderMs": 185.80000001192093,
+        "sorted": true,
+        "metricsVerified": true,
+        "cache": "warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off",
+        "capturedAt": "2026-10-20T13:18:14.031Z",
+        "source": {
+          "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+          "sha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e"
+        },
+        "liveAuthentication": false,
+        "productionWrites": false
+      },
+      "lastCardLayout": {
+        "cardOverflow": false,
+        "inViewport": true,
+        "metrics": [
+          {
+            "id": "on-hand",
+            "label": "On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "available",
+            "label": "Available",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "open-stock",
+            "label": "Open Stock",
+            "value": "81",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-photo-match",
+            "label": "Loc Photo Match",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-on-hand",
+            "label": "Loc On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          }
+        ],
+        "completeTagVisible": true
+      }
+    },
+    {
+      "project": "android-chromium",
+      "metrics": {
+        "environment": "android-chromium",
+        "masterRows": 9487,
+        "cards": 37,
+        "expectedCards": 37,
+        "renderMs": 369,
+        "sorted": true,
+        "metricsVerified": true,
+        "cache": "warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off",
+        "capturedAt": "2026-10-20T13:18:14.031Z",
+        "source": {
+          "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+          "sha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e"
+        },
+        "liveAuthentication": false,
+        "productionWrites": false
+      },
+      "lastCardLayout": {
+        "cardOverflow": false,
+        "inViewport": true,
+        "metrics": [
+          {
+            "id": "on-hand",
+            "label": "On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "available",
+            "label": "Available",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "open-stock",
+            "label": "Open Stock",
+            "value": "81",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-photo-match",
+            "label": "Loc Photo Match",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-on-hand",
+            "label": "Loc On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          }
+        ],
+        "completeTagVisible": true
+      }
+    },
+    {
+      "project": "iphone-webkit",
+      "metrics": {
+        "environment": "iphone-webkit",
+        "masterRows": 9487,
+        "cards": 37,
+        "expectedCards": 37,
+        "renderMs": 918,
+        "sorted": true,
+        "metricsVerified": true,
+        "cache": "warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off",
+        "capturedAt": "2026-10-20T13:18:14.031Z",
+        "source": {
+          "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+          "sha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e"
+        },
+        "liveAuthentication": false,
+        "productionWrites": false
+      },
+      "lastCardLayout": {
+        "cardOverflow": false,
+        "inViewport": true,
+        "metrics": [
+          {
+            "id": "on-hand",
+            "label": "On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "available",
+            "label": "Available",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "open-stock",
+            "label": "Open Stock",
+            "value": "81",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-photo-match",
+            "label": "Loc Photo Match",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-on-hand",
+            "label": "Loc On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          }
+        ],
+        "completeTagVisible": true
+      }
+    }
+  ],
+  "tests": [
+    {
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "project": "android-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "project": "iphone-webkit",
+      "status": "passed",
+      "run": "fresh-iphone-only"
+    },
+    {
+      "title": "release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke",
+      "project": "android-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "android-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke",
+      "project": "iphone-webkit",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "iphone-webkit",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    }
+  ],
+  "artifact": {
+    "commit": "e9452f96a3db5943b1d75b2560ce7600c77cc22d",
+    "digest": "f6b3051ba02c92405f50bb3c54e9b0611257e6a18ba1ad01481280c7644a9bf3",
+    "sourceDigest": "0b889e2f3cc8a318ab7222cc3f6b88869f0032abec32f0745836dd1a84539e4f",
+    "siteDigest": "8722a9f8e3ea423c1355489227a1453a5080638767f7f33dc67096583f19ef2f"
+  },
+  "durationMs": 155222,
+  "durationAccounting": {
+    "method": "sum-of-independent-runs",
+    "notSingleWallClockRun": true,
+    "totalDurationMs": 155222,
+    "baselineDurationMs": 127875,
+    "freshIphoneDurationMs": 27347
+  },
+  "composition": {
+    "mode": "cross-run",
+    "baselineStatus": "failed",
+    "baselinePasses": 8,
+    "baselineFailures": 1,
+    "freshIphonePasses": 1,
+    "sourceCodeUnchanged": true,
+    "testSourceCommit": "8649f1c41523402e23064c6cb574c3561af5bf4d",
+    "testSourceDeltaValidated": true,
+    "originalFailurePreserved": true
+  },
+  "rawRuns": {
+    "baseline": {
+      "report": {
+        "path": "docs/releases/v2.3.15-validation/raw/browser-baseline-report.json",
+        "sha256": "521277f9d0ea9501b892e030b537292b649c5b975786b4ccc67b3d148bc0cb33"
+      },
+      "results": {
+        "path": "docs/releases/v2.3.15-validation/raw/browser-baseline-results.json",
+        "sha256": "02a65a7502acb51d2bfce4d6900a02393d3f66b8a271680afd31acc1b5efede7"
+      },
+      "log": {
+        "path": "docs/releases/v2.3.15-validation/raw/browser-baseline-playwright.log",
+        "sha256": "3ff08278be4c11c8b63ffcd290cab280ce129330bba02b5e6a589c1c167a8e4d"
+      },
+      "sourceDigest": "1d59c5c50609612cf57259ab3febe769a30eada47049a0ee230257a3f91d7bb9",
+      "status": "failed",
+      "passes": 8,
+      "failures": 1,
+      "durationMs": 127875
+    },
+    "freshIphone": {
+      "report": {
+        "path": "docs/releases/v2.3.15-validation/raw/browser-fresh-iphone-report.json",
+        "sha256": "42b84300a7926f31060bf599e8435a4a0b6ace6405c839d4b2932f077887e7a6"
+      },
+      "results": {
+        "path": "docs/releases/v2.3.15-validation/raw/browser-fresh-iphone-results.json",
+        "sha256": "93550af61fbd21dfd155c4f25dc3bd4dda7ac59c66a0db713ba0eab29c1e17a0"
+      },
+      "log": {
+        "path": "docs/releases/v2.3.15-validation/raw/browser-fresh-iphone-playwright.log",
+        "sha256": "80da36a0871b4c9a139ec2668d9e3eb91c6791be1a2d4f1271af1a04caf2b620"
+      },
+      "sourceDigest": "0b889e2f3cc8a318ab7222cc3f6b88869f0032abec32f0745836dd1a84539e4f",
+      "status": "passed",
+      "passes": 1,
+      "failures": 0,
+      "durationMs": 27347
+    }
+  },
+  "provenance": {
+    "path": "docs/releases/v2.3.15-validation/raw/browser-cross-run-provenance.json",
+    "sha256": "614815c4ea5a77230b95187e23740e83a5f9966236f9b42e2462426cd1e7558c"
+  },
+  "report": {
+    "path": "docs/releases/v2.3.15-validation/raw/browser-composed-report.json",
+    "sha256": "62625909880927bf6b0e25331cb94cbf239d8283355da438af8f277aad663cda"
+  },
+  "results": {
+    "path": "docs/releases/v2.3.15-validation/raw/browser-composed-results.json",
+    "sha256": "3a9034f02c174b7f3bbe288cc0799187ad0aa66d53d411a6e5e1a9c41e0d9e42"
+  },
+  "environment": "Windows shared host; desktop Chromium, Pixel 7 Chromium and iPhone 13 WebKit emulation; routed captured production data; synthetic session; trace off; warm render",
+  "liveAuthentication": false
+}

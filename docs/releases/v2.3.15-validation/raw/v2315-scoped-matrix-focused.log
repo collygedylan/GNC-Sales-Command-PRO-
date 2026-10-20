@@ -1,0 +1,9 @@
+✔ source-sealed scoped backend matrix checks only derived affected Edge Functions and touched tests (14.9928ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 412.2222

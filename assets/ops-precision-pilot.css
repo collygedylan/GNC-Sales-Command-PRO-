@@ -10092,7 +10092,17 @@ body.ops-precision-pilot #view-av #av-top-filters.av-top-inline .task-top-contro
 }
 
 /* Suspend quantities stay legible on narrow cards: three columns by two rows. */
-body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-value {
+/* Scope offscreen work to standalone Suspend articles. Request swipe rows and
+   opened detail panels retain their existing iPhone flow rules. Remember each
+   measured height so revisiting a card does not replace it with a fixed height. */
+@supports (content-visibility: auto) {
+  body.ios-device.viewport-phone.current-view-request #view-request #request-content #request-suspend-tag-card-list > article.app-suspend-tag-compact-card {
+    content-visibility: auto !important;
+    contain: layout style paint !important;
+    contain-intrinsic-size: auto 380px !important;
+  }
+}
+body.ops-precision-pilot #request-content .app-suspend-tag-compact-card :is(.app-card-qty-label, .app-card-qty-value) {
   white-space: nowrap !important;
   overflow-wrap: normal !important;
 }

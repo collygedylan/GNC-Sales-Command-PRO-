@@ -1,0 +1,12 @@
+✔ Warehouse unchanged export performs one bounded metadata read and skips all row/Sheet work (32.4873ms)
+✔ Warehouse refreshing source defers only the export without changing import state or throwing (0.9414ms)
+✔ Warehouse failed Sheet write retains old cells and never records a successful export (0.7995ms)
+✔ Warehouse successful export writes complete values before trimming stale cells and records revision (0.6068ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 462.2911

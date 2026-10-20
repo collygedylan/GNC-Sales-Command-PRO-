@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "gnc-release-smoke-partial-v1",
+  "status": "passed",
+  "startedAt": "2026-10-20T17:45:25.553Z",
+  "release": "AgData v2.3.15",
+  "artifactCommit": "e9452f96a3db5943b1d75b2560ce7600c77cc22d",
+  "commit": "8649f1c41523402e23064c6cb574c3561af5bf4d",
+  "artifactDigest": "f6b3051ba02c92405f50bb3c54e9b0611257e6a18ba1ad01481280c7644a9bf3",
+  "sourceDigest": "0b889e2f3cc8a318ab7222cc3f6b88869f0032abec32f0745836dd1a84539e4f",
+  "siteDigest": "8722a9f8e3ea423c1355489227a1453a5080638767f7f33dc67096583f19ef2f",
+  "site": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-site-v2315-e9452f96a3db",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "scope": "Only remaining iPhone latest37 case; unchanged8passedcases retained separately",
+  "playwright": {
+    "resultsPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\iphone-targeted-1792518325554\\results.json",
+    "logPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\iphone-targeted-1792518325554\\playwright.log",
+    "exitCode": 0
+  },
+  "completedAt": "2026-10-20T17:45:52.900Z",
+  "durationMs": 27347
+}

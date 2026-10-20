@@ -1,0 +1,48 @@
+[WebServer] (node:1384) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 9 tests using 3 workers
+
+(node:38528) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17144) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38036) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 2 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag (31.6s)
+  ok 1 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag (33.0s)
+  ok 4 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:378:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag (4.9s)
+  ok 5 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:378:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag (3.8s)
+  ok 6 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2169:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (31.9s)
+  ok 7 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2169:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (32.2s)
+  x  3 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag (1.2m)
+(node:44840) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 8 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:378:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag (2.8s)
+  ok 9 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:2169:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (48.3s)
+
+
+  1) [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag 
+
+    Test timeout of 60000ms exceeded.
+
+    Error: page.evaluate: Test timeout of 60000ms exceeded.
+
+      183 |     ? await page.context().newCDPSession(page) : null;
+      184 |   if (profiler) { await profiler.send('Profiler.enable'); await profiler.send('Profiler.start'); }
+    > 185 |   const renderMs = await page.evaluate(async () => {
+          |                               ^
+      186 |     return window.eval(`(async () => {
+      187 |       // Wait until the real authenticated snapshot, Suspend source mirrors,
+      188 |       // and the naturally rendered first page have all settled. A transiently
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:185:31
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-15\e9452f96a3db\20261020173957576\artifacts\suspend-tag-completion.e2e-991b8--v2314-parity-release-smoke-iphone-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-15\e9452f96a3db\20261020173957576\artifacts\suspend-tag-completion.e2e-991b8--v2314-parity-release-smoke-iphone-webkit\error-context.md
+
+  1 failed
+    [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag 
+  8 passed (2.1m)

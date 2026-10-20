@@ -1,3 +1,4 @@
+import { verifyScopedRetainedValidation } from './check-retained-release-validation.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -86,7 +87,31 @@ export const canonicalUserAccessMigrationName = '20261019163128_canonical_user_a
 export const inventoryReclassMoveDeliveryMigrationName = '20261019172019_inventory_reclass_move_delivery_v1.sql';
 export const masterSnapshotChunkedStagingMigrationName = '20261019225625_master_snapshot_chunked_staging_v1.sql';
 export const masterIdentityBatchRetrySqlstateMigrationName = '20261019234222_identity_batch_not_ready_retry_sqlstate.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName]);
+export const reclassEmailReportPolicyMigrationName = '20261020150827_v2315_reclass_email_report_policy.sql';
+export const publishedLkgReadProofMigrationName = '20261020161833_published_lkg_read_proof_v1.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName]);
+
+export function normalizeScopedMigrationPaths(receiptMigrations) {
+  if (!Array.isArray(receiptMigrations) || receiptMigrations.length === 0) {
+    throw new Error('LOW_STOCK_SCOPED_MIGRATIONS_INVALID');
+  }
+  const normalized = [];
+  const seen = new Set();
+  for (const entry of receiptMigrations) {
+    if (typeof entry !== 'string' || !entry.trim()) throw new Error('LOW_STOCK_SCOPED_MIGRATIONS_INVALID');
+    const repoPath = entry.trim().replaceAll('\\', '/');
+    const basename = path.posix.basename(repoPath);
+    if (!releaseDatabaseMigrations.includes(basename)) throw new Error('LOW_STOCK_SCOPED_MIGRATION_NOT_ALLOWLISTED');
+    const directory = baselineIncludedMigrations.has(basename) ? 'archive_migrations' : 'migrations';
+    if (repoPath !== basename && repoPath !== `supabase/${directory}/${basename}`) {
+      throw new Error('LOW_STOCK_SCOPED_MIGRATION_PATH_INVALID');
+    }
+    if (seen.has(basename)) throw new Error('LOW_STOCK_SCOPED_MIGRATION_DUPLICATE');
+    seen.add(basename);
+    normalized.push(basename);
+  }
+  return normalized;
+}
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -248,6 +273,61 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === publishedLkgReadProofMigrationName) return `select
+    exists(select 1 from pg_proc p where p.oid=to_regprocedure('app_sync_private.published_snapshot_read_proof(text,bigint)')
+      and p.prosecdef and p.provolatile='s' and p.proconfig @> array['search_path=""']
+      and position('publishedReadable' in p.prosrc)>0 and position('publishedRevision' in p.prosrc)>0
+      and position('mutationAllowed' in p.prosrc)>0)
+    and not has_function_privilege('anon','app_sync_private.published_snapshot_read_proof(text,bigint)','execute')
+    and not has_function_privilege('authenticated','app_sync_private.published_snapshot_read_proof(text,bigint)','execute')
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('app_sync_private.snapshot(text[])')
+      and position('published_snapshot_read_proof' in p.prosrc)>0 and position('publishedAt' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.inventory_master_identity_batch_read_v1(uuid,jsonb,text)')
+      and position('published_snapshot_read_proof' in p.prosrc)>0 and position('publishedRevision' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.inventory_location_on_hand_read_v1(uuid,jsonb,text)')
+      and position('published_snapshot_read_proof' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.lock_ph_master_inventory_for_reclass_lkg_v1(boolean)')
+      and p.prosecdef and p.proconfig @> array['search_path=""']
+      and not has_function_privilege('authenticated',p.oid,'execute')
+      and position('for update' in lower(p.prosrc))>0 and position('mutationAllowed' in p.prosrc)>0)
+    and not has_function_privilege('service_role','private.lock_ph_master_inventory_for_reclass_lkg_v1(boolean)','execute')
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.reclass_lkg_write_context_active_v1()')
+      and p.prosecdef and p.proconfig @> array['search_path=""']
+      and not has_function_privilege('authenticated',p.oid,'execute')
+      and not has_function_privilege('service_role',p.oid,'execute')
+      and position('published_snapshot_read_proof' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.clear_current_ph_inventory_reclass_lkg_context_v1()')
+      and p.prosecdef and not has_function_privilege('authenticated',p.oid,'execute')
+      and not has_function_privilege('service_role',p.oid,'execute'))
+    and has_table_privilege('authenticated','private.ph_inventory_reclass_lkg_context_v1','select') is false
+    and has_table_privilege('service_role','private.ph_inventory_reclass_lkg_context_v1','insert') is false
+    and exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgfoid=to_regprocedure('private.sync_inventory_row_assignment_statement_v1()')
+      and not t.tgisinternal)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.sync_inventory_row_assignment_statement_v1()')
+      and p.prosecdef and position('reclass_lkg_write_context_active_v1' in p.prosrc)>0
+      and position('MASTER_SNAPSHOT_NOT_READY' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.apply_inventory_reclass_move_v1(uuid,text,bigint,text,jsonb,jsonb)')
+      and position('lock_ph_master_inventory_for_reclass_lkg_v1(true)' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.apply_inventory_reclass_moves_v1(uuid,text,bigint,jsonb)')
+      and position('lock_ph_master_inventory_for_reclass_lkg_v1(true)' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)')
+      and position('lock_ph_master_inventory_for_reclass_lkg_v1(true)' in p.prosrc)>0
+      and position('clear_current_ph_inventory_reclass_lkg_context_v1' in p.prosrc)>0) as installed`;
+  if (name === reclassEmailReportPolicyMigrationName) return `select
+    exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.reclass_delivery_recipients_v1(text)')
+      and p.prosecdef and p.proconfig @> array['search_path=""']
+      and position('dylan_collyge' in p.prosrc)>0 and position('megan_kelly' in p.prosrc)>0)
+    and not has_function_privilege('authenticated','private.reclass_delivery_recipients_v1(text)','execute')
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.prepare_inventory_reclass_move_delivery_v1(uuid,uuid)')
+      and p.prosecdef and position('appliedRows' in p.prosrc)>0
+      and position('reclass_delivery_recipients_v1' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.apply_inventory_reclass_moves_with_delivery_v1(uuid,text,bigint,jsonb,text)')
+      and p.prosecdef and position('reclass_delivery_recipients_v1' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)')
+      and p.prosecdef and position('reclass_delivery_recipients_v1' in p.prosrc)>0)
+    as installed`;
+
   if (name === masterIdentityBatchRetrySqlstateMigrationName) return `select
     exists(select 1 from pg_proc p
       where p.oid=to_regprocedure('public.inventory_master_identity_batch_read_v1(uuid,jsonb,text)')
@@ -1391,13 +1471,17 @@ async function main(args = process.argv.slice(2)) {
       const probe = await runReadOnlySchemaDiagnostic({ client, onPhase: next => { phase = next; } });
       console.log(`LOW_STOCK_SCHEMA_DIAGNOSTIC status=ok installed=${probe.installed}`);
     } else {
-      for (const targetMigrationName of releaseDatabaseMigrations) {
+      const scopedReceipt = process.env.SCOPED_RELEASE_DEPLOY === 'true' ? verifyScopedRetainedValidation() : null;
+      const selectedMigrations = scopedReceipt
+        ? normalizeScopedMigrationPaths(scopedReceipt.deployment.migrations)
+        : releaseDatabaseMigrations;
+      for (const targetMigrationName of selectedMigrations) {
         const sourceDirectory = baselineIncludedMigrations.has(targetMigrationName) ? 'archive_migrations' : 'migrations';
         const source = fs.readFileSync(new URL(`../supabase/${sourceDirectory}/${targetMigrationName}`, import.meta.url), 'utf8');
         const applied = await applyItemLowStockMigration({ client, source, targetMigrationName, onPhase: next => { phase = next; } });
         console.log(`${targetMigrationName}: ${applied.status}.`);
       }
-      if (process.env.V2313_SCOPED_DEPLOY === 'true') {
+      if (scopedReceipt || process.env.V2313_SCOPED_DEPLOY === 'true') {
         console.log('Targeted ingestion release: existing reminder Vault configuration preserved.');
       } else if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_URL) {
         await upsertVaultSecret({ client, name: 'hr_calendar_project_url', value: process.env.SUPABASE_URL, description: 'Supabase project URL used by the scheduled HR calendar reminder dispatcher.' });

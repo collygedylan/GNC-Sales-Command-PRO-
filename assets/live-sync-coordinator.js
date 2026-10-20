@@ -16,8 +16,14 @@
         keys.forEach((key) => { if (!sources.has(key)) sources.set(key, { key, revision: '0', state: 'unavailable' }); });
         return { sources, permissionVersion: String(value.permissionVersion), serverTime: value.serverTime };
     }
+    function publishedReadable(source) {
+        return !!source && ['importing', 'interrupted'].includes(source.state)
+            && source.publishedReadable === true && typeof source.publishedRevision === 'string'
+            && source.publishedRevision.length > 0 && Number.isFinite(Date.parse(source.publishedAt));
+    }
+    function readable(source) { return source?.state === 'ready' || publishedReadable(source); }
     function signature(meta, keys) {
-        return JSON.stringify([meta.permissionVersion, ...unique(keys).map((key) => [key, meta.sources.get(key)?.revision, meta.sources.get(key)?.state])]);
+        return JSON.stringify([meta.permissionVersion, ...unique(keys).map((key) => [key, meta.sources.get(key)?.revision, meta.sources.get(key)?.state, ...(publishedReadable(meta.sources.get(key)) ? [meta.sources.get(key).publishedRevision] : [])])]);
     }
     function createCoordinator(options) {
         const now = options.now || Date.now;
@@ -523,7 +529,7 @@
                 }
             }
             permission = before.permissionVersion;
-            const blocked = adapters.filter((adapter) => adapter.sourceKeys.some((key) => before.sources.get(key).state !== 'ready'));
+            const blocked = adapters.filter((adapter) => adapter.sourceKeys.some((key) => !readable(before.sources.get(key))));
             if (blocked.length) {
                 const states = blocked.flatMap(adapter => adapter.sourceKeys.map(key => before.sources.get(key).state));
                 const retained = lastVerifiedAt ? ' Keeping the last verified data.' : ' No complete snapshot has been verified in this session yet.';
@@ -628,7 +634,13 @@
                 verifiedAtByIdentity.set(contextKey, lastVerifiedAt);
             }
             if (!background && sourceGate?.halfOpenInFlight && sourceGateMatches(ctx)) clearSourceGate();
-            emit('Up to date');
+            const publishedSources = keys.filter(key => publishedReadable(before.sources.get(key)));
+            if (publishedSources.length) {
+                emit('Published data', 'Showing the last completed data. The latest import is recovering.', {
+                    publishedSources, dataReadable: true, readOnlySnapshot: true,
+                    publishedAt: publishedSources.map(key => before.sources.get(key).publishedAt).sort()[0]
+                });
+            } else emit('Up to date');
             return true;
         }
         function scheduleBackground() {
@@ -793,5 +805,6 @@
             suspendSourceReads: (error, sourceKeys) => suspendDirectSourceRead(error, sourceKeys),
             getStatus: () => ({ ...currentStatus }), getBackgroundStatus: () => ({ ...backgroundStatus }), getStatistics: () => ({ ...statistics }) });
     }
-    return Object.freeze({ createCoordinator, snapshot, signature });
+    return Object.freeze({ createCoordinator, snapshot, signature, isPublishedReadable: publishedReadable, isReadableSource: readable,
+        readSourceToken: source => JSON.stringify([source?.revision, source?.state, ...(publishedReadable(source) ? [source.publishedRevision] : [])]) });
 });

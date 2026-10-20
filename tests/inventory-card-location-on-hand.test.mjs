@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { parse } from 'acorn';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const hydrationSource = fs.readFileSync(new URL('../assets/queue-inventory-hydration.js', import.meta.url), 'utf8');
 const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
 const source = scripts.find(script => script.includes('function getCardLocationOnHandValue('));
 assert.ok(source, 'live inventory-card helper script is present');
@@ -15,6 +16,7 @@ const names = new Set([
   'getMasterInventoryExactKey', 'getInventoryCardItemLocationKey', 'addInventoryCardLocationOnHand',
   'getCardLocationOnHandValue', 'isDatasetLoaded', 'getItemInquiryItemCode',
   'getCardLocationOnHandServerAggregate', 'clearAcceptedLocOnHandAggregates', 'invalidateLocOnHandAggregateRows', 'acceptCardLocationOnHandSourceReceipt', 'stampCardLocationOnHandReceipt', 'clearCardLocationOnHandReceipt',
+  'getQueueCardInventoryAuthorizationContext',
   'normalizeNcrInheritanceKeyPart', 'createMasterInventoryIndexMaps', 'addMasterInventoryRowToIndexes',
   'buildMasterInventoryIndexMaps', 'installMasterInventoryIndexMaps', 'rebuildMasterInventoryIndexes',
   'applyRowSyncSnapshot', 'syncMasterFieldsToRow', 'requestInventoryRead',
@@ -38,6 +40,8 @@ function setup(rows) {
     masterInventoryById: new Map(), masterInventoryByExactKey: new Map(), masterInventoryByItemCode: new Map(),
     masterInventoryByItemLocationOnHand: new Map(),
     nativeAuthSessionActive: false, nativeAuthProfile: null,
+    currentUser: '', currentRole: '', currentUserDivision: '',
+    getCurrentLoginCacheScopeKey: () => 'login-scope',
     getDatasetState: () => state,
     getSupabaseReadIdentityScope: () => 'actor-a',
     appAccessSnapshotState: { snapshot: { dataPermissionVersion:'permissions-1' } },
@@ -62,6 +66,7 @@ function setup(rows) {
     syncRowDataAcrossViews() {},
     invalidateInventoryDomIdLookup: () => { indexInvalidations.count += 1; },
   });
+  vm.runInContext(hydrationSource, context);
   vm.runInContext(`let masterInventoryByItemLocationOnHand = new Map(); let acceptedLocOnHandAggregateReceipt = { scope:'', permission:'', revision:'', valid:false };\n${code}`, context);
   context.rebuildMasterInventoryIndexes();
   return { context, state, indexInvalidations };
@@ -94,6 +99,17 @@ test('location aggregation ignores sales year and preserves zero without an item
   assert.equal(context.getCardLocationOnHandValue({ ITEMCODE: '0001' }), null);
 });
 
+test('Suspend and Drive location totals canonicalize dotted item codes and padded location tokens', () => {
+  const { context } = setup([
+    { UNIQUE_ID:'physical-a', ITEMCODE:'004380.010.1', LOCATIONCODE:'C.09.000', PTRONHAND:90, SOURCE:'MASTER' },
+    { UNIQUE_ID:'physical-b', ITEMCODE:'43800101', LOCATIONCODE:' c.9.0 ', PTRONHAND:15, SOURCE:'MASTER' },
+    { UNIQUE_ID:'other-location', ITEMCODE:'004380.010.1', LOCATIONCODE:'C.09.001', PTRONHAND:20, SOURCE:'MASTER' }
+  ]);
+  assert.equal(context.getInventoryCardItemLocationKey(context.fullInventory[0]),
+    context.getInventoryCardItemLocationKey(context.fullInventory[1]));
+  assert.equal(context.getCardLocationOnHandValue({ ITEMCODE:'43800101', location_code:' c.9.0 ' }), '105');
+});
+
 test('comma quantities parse, while a blank or invalid member makes the scope Unknown', () => {
   const fixture = setup(rows());
   const { context } = fixture;
@@ -119,15 +135,17 @@ test('location total uses complete browse rows and their own authorized master r
   state.fieldCoverage = 'browse';
   assert.equal(context.getCardLocationOnHandValue(target), '5,000', 'complete browse projection has every quantity needed');
   context.nativeAuthSessionActive = true;
-  context.nativeAuthProfile = { id: 'fixture-profile' };
-  state.liveVerifiedScope = 'actor-a';
+  context.nativeAuthProfile = { id: 'fixture-profile', username: 'rep' };
+  context.currentUser = 'rep';
+  context.currentRole = 'Sales Rep';
+  state.liveVerifiedScope = JSON.stringify(['fixture-profile', 'rep', 'Sales Rep', 'login-scope']);
   state.liveVerifiedPermission = 'permissions-1';
   state.liveVerifiedRevision = '12';
   context.hasCurrentProductionLiveSyncProof = () => false;
   assert.equal(context.getCardLocationOnHandValue(target), '5,000', 'unrelated side adapters do not hide a verified master aggregate');
   state.liveVerifiedScope = 'another-actor';
   assert.equal(context.getCardLocationOnHandValue(target), null, 'another account receipt cannot be reused');
-  state.liveVerifiedScope = 'actor-a';
+  state.liveVerifiedScope = JSON.stringify(['fixture-profile', 'rep', 'Sales Rep', 'login-scope']);
   state.liveVerifiedPermission = 'old-permissions';
   assert.equal(context.getCardLocationOnHandValue(target), null, 'changed permissions require another master receipt');
   state.liveVerifiedPermission = 'permissions-1';
@@ -314,8 +332,12 @@ test('Blue Point location totals survive absent row receipts and unrelated adapt
     { UNIQUE_ID:'blue-l', ITEMCODE:'000152.050.1', LOCATIONCODE:'L.05.000', LOTCODE:'25.F1', PTRONHAND:1, LOC_ON_HAND:1, SOURCE:'MASTER' },
   ]);
   const { context, state } = fixture;
-  context.nativeAuthSessionActive = true; context.nativeAuthProfile = {id:'fixture-profile'};
-  Object.assign(state, {liveVerifiedScope:'actor-a',liveVerifiedPermission:'permissions-1',liveVerifiedRevision:'12'});
+  context.nativeAuthSessionActive = true; context.nativeAuthProfile = {id:'fixture-profile', username:'rep'};
+  context.currentUser = 'rep'; context.currentRole = 'Sales Rep';
+  Object.assign(state, {
+    liveVerifiedScope:JSON.stringify(['fixture-profile', 'rep', 'Sales Rep', 'login-scope']),
+    liveVerifiedPermission:'permissions-1', liveVerifiedRevision:'12'
+  });
   context.hasCurrentProductionLiveSyncProof = () => false;
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '88');
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[1]), '1');
@@ -323,4 +345,64 @@ test('Blue Point location totals survive absent row receipts and unrelated adapt
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null);
   state.rowCompleteness = 'complete'; state.liveVerifiedPermission = 'stale';
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null);
+});
+
+test('location metrics use the exact queue authorization scope without rebuilding live adapter context', () => {
+  const fixture = setup(rows());
+  const { context, state } = fixture;
+  context.nativeAuthSessionActive = true;
+  context.nativeAuthProfile = { id: 'profile-a', username: 'rep' };
+  context.currentUser = 'rep';
+  context.currentRole = 'Sales Rep';
+  const liveScope = JSON.stringify(['profile-a', 'rep', 'Sales Rep', 'login-scope']);
+  Object.assign(state, {
+    liveVerifiedScope: liveScope,
+    liveVerifiedPermission: 'permissions-1',
+    liveVerifiedRevision: '12',
+  });
+  context.getProductionLiveSyncContext = () => {
+    throw new Error('card metrics must not rebuild the full production adapter graph');
+  };
+
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '5,000',
+    'the existing scope, permission, and revision proof still authorizes the complete master index');
+
+  const accepted = context.acceptCardLocationOnHandSourceReceipt('actor-a', 'permissions-1', '12');
+  assert.equal(accepted, true);
+  const aggregateRow = {
+    ...context.fullInventory[0],
+    LOC_ON_HAND: 7000,
+    LOC_ON_HAND_ITEMCODE: '001',
+    LOC_ON_HAND_LOCATIONCODE: 'A.01.001',
+    LOC_ON_HAND_REVISION: '12',
+    LOC_ON_HAND_RECEIPT_SCOPE: 'actor-a',
+    LOC_ON_HAND_RECEIPT_PERMISSION: 'permissions-1',
+    LOC_ON_HAND_RECEIPT_REVISION: '12',
+  };
+  assert.equal(context.getCardLocationOnHandValue(aggregateRow), '7,000',
+    'accepted server aggregates remain available without an adapter graph rebuild');
+
+  context.appAccessSnapshotState.snapshot.dataPermissionVersion = 'permissions-2';
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null,
+    'a permission change invalidates the previous master proof');
+});
+
+
+test('Rosy Muhly location total remains 195 from a same-account complete display cache during refresh', () => {
+  const rows = [
+    { UNIQUE_ID: 'rosy-f1', ITEMCODE: '010539.030.1', LOCATIONCODE: 'F.16.000', LOTCODE: '27.F1', PTRONHAND: 195 },
+    { UNIQUE_ID: 'other-location', ITEMCODE: '010539.030.1', LOCATIONCODE: 'F.17.000', LOTCODE: '27.F1', PTRONHAND: 99 },
+  ];
+  const { context, state } = setup(rows);
+  context.nativeAuthSessionActive = true;
+  context.nativeAuthProfile = { id: 'fixture-profile', username: 'rep' };
+  context.currentUser = 'rep'; context.currentRole = 'Sales Rep';
+  state.rowCompleteness = 'unknown'; state.initialLoaded = false;
+  context.productionDisplayMasterReceipt = { rows: context.fullInventory, readScope: 'actor-a', permission: 'permissions-1' };
+  assert.equal(context.getCardLocationOnHandValue(rows[0]), '195');
+  context.productionDisplayMasterReceipt.permission = 'other-permissions';
+  assert.equal(context.getCardLocationOnHandValue(rows[0]), null);
+  context.productionDisplayMasterReceipt.permission = 'permissions-1';
+  context.productionDisplayMasterReceipt.rows = rows.slice(0, 1);
+  assert.equal(context.getCardLocationOnHandValue(rows[0]), null, 'partial replacement cannot borrow complete display proof');
 });

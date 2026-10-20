@@ -42,7 +42,7 @@ function fixture() {
 
 const rows = (count) => Array.from({ length: count }, (_, i) => ({ UNIQUE_ID: `request-${i}`, LOCATIONCODE: String(i).padStart(5, '0'), label: `Row ${i}` }));
 
-test('reused Suspend collators preserve dock, stop, location, and Unicode name ordering', () => {
+test('Suspend list sorts natural location first, then item, lot, dock and drop', () => {
   const ctx = vm.createContext({
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') || '',
     getRequestSuspendTagDockFilterOptionForItem: row => ({ value: row.dock, label: row.dock })
@@ -52,15 +52,19 @@ test('reused Suspend collators preserve dock, stop, location, and Unicode name o
   }
   const collators = { text: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
     location: new Intl.Collator(undefined, { numeric: true }).compare };
-  const data = Array.from({ length: 120 }, (_, id) => ({
-    id, dock: ['Dock 2', 'Dock 10', 'no-dock'][id % 3], STOPNUMBER: ['', '2', '10'][id % 3],
-    LOCATIONCODE: ['A.2', 'A.10', 'B.2.1', 'A.2.1', 'A-2'][id % 5],
-    COMMONNAME: ['Érable 2', 'érable 10', 'Oak 3', 'Oak 12'][id % 4]
-  }));
+  const data = [
+    { id:'drop-10', LOCATIONCODE:'C.09.000', ITEMCODE:'004380.010.1', LOTCODE:'27.F1', dock:'Dock 10', drop:'Drop 10' },
+    { id:'location-b', LOCATIONCODE:'B.04.000', ITEMCODE:'009373.031.1', LOTCODE:'27.F1', dock:'Dock 2', drop:'Drop 2' },
+    { id:'location-0', LOCATIONCODE:'0.00.111', ITEMCODE:'000001.001.1', LOTCODE:'26.F1', dock:'Dock 10', drop:'Drop 10' },
+    { id:'drop-2', LOCATIONCODE:'C.09.000', ITEMCODE:'004380.010.1', LOTCODE:'27.F1', dock:'Dock 2', drop:'Drop 2' },
+    { id:'item-secondary', LOCATIONCODE:'C.09.000', ITEMCODE:'005666.021.1', LOTCODE:'27.F1', dock:'Dock 1', drop:'Drop 1' },
+    { id:'lot-secondary', LOCATIONCODE:'C.09.000', ITEMCODE:'004380.010.1', LOTCODE:'27.F2', dock:'Dock 1', drop:'Drop 1' }
+  ];
   const original = data.slice().sort((a, b) => ctx.compareRequestSuspendTagRows(a, b));
   const optimized = data.slice().sort((a, b) => ctx.compareRequestSuspendTagRows(a, b, collators));
   assert.deepEqual(optimized.map(row => row.id), original.map(row => row.id));
   assert.deepEqual(ctx.sortRequestSuspendTagRows(data, collators).map(row => row.id), optimized.map(row => row.id));
+  assert.deepEqual(optimized.map(row => row.id), ['location-0','location-b','drop-2','drop-10','lot-secondary','item-secondary']);
 });
 
 test('Pending computes rich card signatures for only its 100-row page at production scale', () => {
@@ -280,6 +284,7 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
   const ctx = vm.createContext({
     renderMarkupChunkedByKey: (...args) => { calls.push('render'); renderOptions = args[6]; calls.push(`crumb:${args[4]}`); return true; },
     generateCard: () => '<card>',
+    isIOSDevice: () => false,
     isDockSuspendDcRequestMirrorPreparationPending: () => false,
     getPendingRequestChunkRenderOptions: options => options,
     repairVisibleDockSuspendDcPlanstartCardTones: () => calls.push('tones'),
@@ -294,8 +299,35 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
   assert.equal(ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag Filter', plan), true);
   assert.deepEqual(calls, ['render', 'crumb:Suspend Tag Filter', `footer:${plan.footerMarkup}`]);
   assert.equal(renderOptions.onCompleteAfterInteractive, true);
+  assert.equal(renderOptions.completionDeadlineMs, 100, 'an empty initial list drains its bounded page promptly after first paint');
+  assert.equal(renderOptions.completionDeadlineDrainAll, true, 'the bounded initial page cannot wait on one-card-per-frame pacing');
   renderOptions.onComplete();
   assert.deepEqual(calls, ['render', 'crumb:Suspend Tag Filter', `footer:${plan.footerMarkup}`, 'tones', 'decorate', `footer:${plan.footerMarkup}`]);
+});
+
+test('initial iPhone Suspend completion skips Pending swipe decoration', () => {
+  let renderOptions;
+  const calls = [];
+  const ctx = vm.createContext({
+    renderMarkupChunkedByKey: (...args) => { renderOptions = args[6]; return true; },
+    isIOSDevice: () => true,
+    generateCard: () => '<card>',
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    getPendingRequestChunkRenderOptions: options => options,
+    repairVisibleDockSuspendDcPlanstartCardTones: () => calls.push('tones'),
+    decorateRequestRows: () => calls.push('pending-decoration'),
+    closeAllRequestSwipes: () => calls.push('close-swipes'),
+    releaseRequestSwipeMoveListener: () => calls.push('release-listener'),
+    syncRequestBrowseFooter: () => calls.push('footer'),
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all'
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', {
+    rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'verified-page', footerMarkup: ''
+  });
+  renderOptions.onComplete();
+  assert.deepEqual(calls, ['footer', 'tones', 'close-swipes', 'release-listener', 'footer']);
 });
 
 test('retained Suspend cards publish completed stages without touch-idle deferral', () => {
@@ -310,6 +342,7 @@ test('retained Suspend cards publish completed stages without touch-idle deferra
   };
   const ctx = vm.createContext({
     renderMarkupChunkedByKey: (...args) => { renderTarget = args[1]; renderOptions = args[6]; return true; },
+    isIOSDevice: () => false,
     generateCard: () => '<card>', getPendingRequestChunkRenderOptions: options => options,
     isDockSuspendDcRequestMirrorPreparationPending: () => false,
     repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
@@ -330,13 +363,42 @@ test('retained Suspend cards publish completed stages without touch-idle deferra
   assert.equal(renderOptions._backgroundStage, true);
   assert.equal(renderOptions.onCompleteAfterInteractive, false);
   assert.equal(renderOptions.completionDeadlineMs, 250, 'retained Suspend snapshots need a bounded completion deadline');
-  assert.equal(renderOptions.completionDeadlineDrainAll, true, 'only retained Suspend stages opt into an atomic deadline drain');
+  assert.equal(renderOptions.completionDeadlineDrainAll, true, 'retained Suspend stages preserve atomic publication at the bounded deadline');
   renderTarget.dataset = { renderSignature: 'revision-2' };
   renderOptions.onComplete();
   assert.deepEqual(calls, ['apply', 'hydrate:true']);
   assert.equal(container.__suspendPagePublicationReceipt.generation, container.__suspendPageGeneration);
   assert.equal(container.__suspendPagePublicationReceipt.renderSignature, 'revision-2');
   assert.ok(Number.isFinite(container.__suspendPagePublicationReceipt.durationMs));
+});
+
+test('Suspend first batch covers its bounded page while shared Pending default stays two rows', () => {
+  const initialRows = [];
+  const ctx = vm.createContext({
+    getQueueCardInventoryState() {},
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    getPendingRequestChunkRenderOptions: options => options,
+    renderMarkupChunkedByKey: (_key, _target, _crumb, _rows, _text, _renderRow, options) => {
+      initialRows.push(options.initialRows);
+      return true;
+    },
+    syncRequestBrowseFooter() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
+    document: {}
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  for (const count of [37, 100]) {
+    ctx.renderSuspendTagPagedCards({ dataset: {}, querySelector: () => null }, {}, null, null, 'Suspend Tag', {
+      rows: rows(count), renderSignature: `suspend-${count}`, footerMarkup: ''
+    });
+  }
+  assert.deepEqual(initialRows, [37, 40]);
+
+  const pendingCtx = vm.createContext({ getRequestChunkRenderOptions: options => options });
+  vm.runInContext(source('getPendingRequestChunkRenderOptions'), pendingCtx);
+  assert.equal(pendingCtx.getPendingRequestChunkRenderOptions({}).initialRows, 2,
+    'the shared Pending first-paint default remains unchanged');
 });
 
 test('chunk deadline drains only opted-in bounded Suspend pages despite live-gesture pacing', () => {

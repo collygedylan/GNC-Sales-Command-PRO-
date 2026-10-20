@@ -301,7 +301,7 @@ test('owner-keyed release remains authoritative after observing initially-busy m
   h.w.getDockSuspendDcRequestSourceUid = item => item?.DOCK_SUSPEND_SOURCE_UID || '';
   h.w.findDockSuspendDcRequestMirrorRowByUniqueId = uid => uid === requestId ? { UNIQUE_ID: requestId, DOCK_SUSPEND_SOURCE_UID: sourceUid } : null;
   h.w.eval(`
-const SUSPEND_TAG_WRITE_ACTION_NAMES = new Set(['openDockSuspendDcNotFoundRecount', 'markDockSuspendDcRequestHandled']);
+const SUSPEND_TAG_WRITE_ACTION_NAMES = new Set(['markDockSuspendDcRequestHandled']);
 const suspendTagWriteControlState = new WeakMap();
 ${extract('isSuspendTagWriteControl')}
 ${extract('getSuspendTagWriteActionKey')}
@@ -403,7 +403,7 @@ test('late-mounted markup clears only its matching released owner-keyed busy mar
   h.w.suspendTagCompletionActions.delete(`${scope}|${sourceUid}`);
   h.card.querySelector('.app-suspend-tag-actions').append(stagedEmail);
   h.w.eval(`
-const SUSPEND_TAG_WRITE_ACTION_NAMES = new Set(['openDockSuspendDcNotFoundRecount', 'markDockSuspendDcRequestHandled']);
+const SUSPEND_TAG_WRITE_ACTION_NAMES = new Set(['markDockSuspendDcRequestHandled']);
 const suspendTagWriteControlState = new WeakMap();
 ${extract('isSuspendTagWriteControl')}
 ${extract('getSuspendTagWriteActionKey')}
@@ -430,7 +430,7 @@ test('late-mounted busy markup stays disabled when its row or owner proof is una
     if (mismatch === 'missing-row') h.w.findDockSuspendDcRequestMirrorRowByUniqueId = () => null;
     else h.w.getSupabaseReadIdentityScope = () => 'different-account';
     h.w.eval(`
-const SUSPEND_TAG_WRITE_ACTION_NAMES = new Set(['openDockSuspendDcNotFoundRecount', 'markDockSuspendDcRequestHandled']);
+const SUSPEND_TAG_WRITE_ACTION_NAMES = new Set(['markDockSuspendDcRequestHandled']);
 const suspendTagWriteControlState = new WeakMap();
 ${extract('isSuspendTagWriteControl')}
 ${extract('getSuspendTagWriteActionKey')}

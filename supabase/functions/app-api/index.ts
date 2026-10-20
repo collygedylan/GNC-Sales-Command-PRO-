@@ -25,7 +25,7 @@ import {
 import { createDatabaseRestBridge, legacyDatabaseTableAliases } from "../../../services/databaseRest.ts";
 import { jsonObject, jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
 import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs";
-import { suspendTagRowsFromResult } from "./suspend-tag-read.ts";
+import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
 import { createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
 import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
@@ -384,10 +384,12 @@ async function captureReadyInventoryLocationRevision(actorId: string): Promise<s
   const { data, error } = await supabase.from("app_dataset_revisions")
     .select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
   if (error) throw new Error("LOC_ON_HAND_SOURCE_UNAVAILABLE");
-  if (!data || data.state !== "ready" || !/^[1-9]\d*$/.test(String(data.revision ?? ""))) {
+  if (!data || !/^[1-9]\d*$/.test(String(data.revision ?? ""))) {
     throw new Error("LOC_ON_HAND_SOURCE_NOT_READY");
   }
-  // The RPC remains authoritative if a new import starts after this preflight.
+  // Do not decide readiness from the fence row alone. The read-only RPC also
+  // accepts an attested last-published snapshot while a staged atomic import
+  // is interrupted, but still compares this exact revision before returning.
   return captureInventoryLocationRevision(supabase, actorId);
 }
 
@@ -953,11 +955,28 @@ async function handleDatasetRead(
     const includeLocationTotals = parsed.projection === "default" && ["request_queue", "active_request"].includes(dataset)
       && hasTableReadAccess(role, "ph_master_inventory", username);
     const inventoryRevision = includeLocationTotals ? await captureReadyInventoryLocationRevision(String(actor.id || "")) : null;
-    const response = await databaseBridge.fetchTable(SUPABASE_URL, source.table, query.toString(), {
-      method: "GET", headers: { ...buildRestHeaders("GET", source.table), Prefer: "count=exact" },
-    }, 30_000, "app-api.dataset-read");
+    const sourceFreshnessPromise = dataset === "suspend_tag" && parsed.offset === 0
+      ? databaseBridge.fetchTable(SUPABASE_URL, source.table, suspendSourceFreshnessQuery(), {
+        method: "GET", headers: buildRestHeaders("GET", source.table),
+      }, 30_000, "app-api.suspend-tag-source-freshness")
+      : Promise.resolve(null);
+    const [response, sourceFreshnessResponse] = await Promise.all([
+      databaseBridge.fetchTable(SUPABASE_URL, source.table, query.toString(), {
+        method: "GET", headers: { ...buildRestHeaders("GET", source.table), Prefer: "count=exact" },
+      }, 30_000, "app-api.dataset-read"),
+      sourceFreshnessPromise,
+    ]);
     const responseData = await readResponsePayload(response);
     if (!response.ok) return databaseFailureResponse("Dataset read failed.", responseData, "DATASET_READ_UNAVAILABLE");
+    let sourceFreshness: ReturnType<typeof suspendSourceFreshnessFromRows> | undefined;
+    if (sourceFreshnessResponse) {
+      const freshnessData = await readResponsePayload(sourceFreshnessResponse);
+      if (!sourceFreshnessResponse.ok) {
+        return databaseFailureResponse("Suspend Tag source freshness is unavailable.", freshnessData, "SUSPEND_TAG_SOURCE_FRESHNESS_UNAVAILABLE");
+      }
+      try { sourceFreshness = suspendSourceFreshnessFromRows(freshnessData); }
+      catch { return errorResponse("Suspend Tag source freshness is invalid.", 503, { code: "SUSPEND_TAG_SOURCE_FRESHNESS_INVALID" }); }
+    }
     const checkedData = jsonValue(responseData);
     if (!Array.isArray(checkedData) || checkedData.some((row) => !row || typeof row !== "object" || Array.isArray(row))) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
     const data: Array<Record<string, Json | undefined>> = checkedData.map((row) => jsonObject(row));
@@ -977,6 +996,7 @@ async function handleDatasetRead(
     const rows = inventoryRevision === null ? data
       : await enrichInventoryLocationRows(supabase, String(actor.id || ""), data, inventoryRevision);
     return jsonResponse({ ok: true, data: { rows, total, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < total,
+      ...(sourceFreshnessResponse ? { sourceFreshness } : {}),
       ...(inventoryRevision === null ? {} : { inventoryRevision }) } });
   } catch (error) {
     const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
@@ -3094,8 +3114,9 @@ export async function handleManagerReportReadAction(
         if (!sourceRevision) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
       } else {
         const revisionResult = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
-        if (revisionResult.error || revisionResult.data?.state !== "ready") throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        if (revisionResult.error || !revisionResult.data || !/^[1-9]\d*$/.test(String(revisionResult.data.revision ?? ""))) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
         sourceRevision = String(revisionResult.data.revision);
+        if (sourceRevision !== inventoryRevision) throw new Error("MANAGER_REPORT_SOURCE_REVISION_CHANGED");
       }
       if (query.sourceRevision != null && String(query.sourceRevision) !== sourceRevision) {
         return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
@@ -3126,7 +3147,7 @@ export async function handleManagerReportReadAction(
         outboxSummary = afterSummary as Record<string, unknown>;
       } else {
         const afterRevision = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
-        if (afterRevision.error || afterRevision.data?.state !== "ready") throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        if (afterRevision.error || !afterRevision.data || !/^[1-9]\d*$/.test(String(afterRevision.data.revision ?? ""))) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
         if (String(afterRevision.data.revision) !== sourceRevision) {
           return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
         }

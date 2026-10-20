@@ -54,6 +54,7 @@ function appsScriptHarness(verifiedPayload) {
   };
   const context = vm.createContext({
     Date, JSON, String, Number, Array, Error, Object, isFinite,
+    firstNonEmptyRequestValue_: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
     Utilities: { DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest: (_algorithm, text) => [...createHash('sha256').update(String(text), 'utf8').digest()] },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
@@ -77,6 +78,18 @@ function appsScriptHarness(verifiedPayload) {
     isLikelyEmailAddress_: value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '')),
     resolveOperationalEmailHeaders_: values => ({ to: [...values] }),
     resolveAutomatedEmailSenderAddress_: () => 'automation@example.com',
+    MimeType: { PDF: 'application/pdf' },
+    HtmlService: { createHtmlOutput: htmlOutput => ({ getBlob: () => ({ htmlOutput, getAs(type) { return { type, htmlOutput, filename: '', setName(name) { this.filename = name; return this; } }; } }) }) },
+    buildCompletedInventoryReclassReportModel_: (receipt, now) => {
+      state.reportInput = receipt;
+      return { identity: { commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', itemspec: '18 inch' },
+        actorDisplay: receipt.actorDisplayName, requestActionLabel: 'Reclass Move Completed', completedRevision: receipt.revision,
+        completedMoveSummary: receipt.moves };
+    },
+    buildReclassInquiryEmailSubject_: model => `${model.identity.contsize} ${model.identity.commonname} Reclass - Move Completed`,
+    buildReclassInquiryCompactReportHtml_: model => '<html>GNC PH Reclass Item Inquiry ITEM SPEC H/S Priority Loc Note Available ' + model.identity.itemspec + '</html>',
+    buildReclassInquiryReportText_: () => 'GNC PH Reclass Item Inquiry completed report',
+    buildReclassInquiryEmailHtml_: () => '<div>GNC PH Reclass Item Inquiry completed report</div>',
     escapeEmailHtml_: value => String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
     sendGmailApiMessage_: options => {
@@ -97,15 +110,18 @@ function appsScriptHarness(verifiedPayload) {
 
 const verified = {
   contractVersion: 'inventory-reclass-move-completed-v1', commandId, requestId, actorProfileId: uuid,
-  actorUsername: 'dylan_collyge', actorDisplayName: 'Dylan <Ops>', actorEmail: 'actor@example.test', revision: '42',
-  deliveryRecipients: ['actor@example.test', 'required-1@example.test', 'required-2@example.test',
-    'required-3@example.test', 'required-4@example.test', 'required-5@example.test'],
+  actorUsername: 'tester', actorDisplayName: 'Dylan <Ops>', actorEmail: 'actor@example.test', revision: '42',
+  deliveryRecipients: ['actor@example.test', 'dylan@example.test', 'megan@example.test'],
+  appliedRows: [
+    { table: 'ph_master_inventory', row: { unique_id: 'source-1', itemcode: '006138.051.1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', season: 'F1', lotcode: '27.F1', locationcode: 'D.08.001', ptronhand: '8', ptravailable: '6', itemspec: '18 inch', holdstopcode: 'H', holdstopreason: 'test', priority: '1', locationnote: 'retied', salesnote: 'confirm' } },
+    { table: 'ph_master_inventory', row: { unique_id: 'dest-1', itemcode: '006138.051.1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', season: 'U1', lotcode: '27.U1', locationcode: 'D.08.001', ptronhand: '2', ptravailable: '2', itemspec: '18 inch', holdstopcode: null, holdstopreason: null, priority: '1', locationnote: 'retied', salesnote: 'confirm' } },
+  ],
   moves: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 2,
-    source: { commonname: 'Rose <script>', contsize: '5DP', itemcode: '006138.051.1', season: 'F1', lotcode: '27.F1', locationcode: 'D.08.001' },
-    destination: { commonname: 'Rose <script>', contsize: '5DP', itemcode: '006138.051.1', season: 'U1', lotcode: '27.U1', locationcode: 'D.08.001' } }],
+    source: { unique_id: 'source-1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', itemcode: '006138.051.1', season: 'F1', lotcode: '27.F1', locationcode: 'D.08.001' },
+    destination: { unique_id: 'dest-1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', itemcode: '006138.051.1', season: 'U1', lotcode: '27.U1', locationcode: 'D.08.001' } }],
 };
 
-test('Apps Script sends only the frozen verified recipients and recovers duplicate delivery without a second send', () => {
+test('Apps Script sends the canonical three recipients, attaches the full report, omits UUID from the subject, and recovers without a second send', () => {
   const { context, state } = appsScriptHarness(verified);
   const delivery = { eventId: '41df62a1-46d5-4d89-9e90-98f28f4647a8', eventKey,
     eventType: 'inventory_reclass_move_completed', leaseToken: '51df62a1-46d5-4d89-9e90-98f28f4647a8',
@@ -115,13 +131,63 @@ test('Apps Script sends only the frozen verified recipients and recovers duplica
   assert.equal(state.sends.length, 1);
   assert.deepEqual(state.sends[0].toArray, verified.deliveryRecipients);
   assert.deepEqual(state.sends[0].requiredRecipientEmails, verified.deliveryRecipients);
-  assert.match(state.sends[0].htmlBody, /Rose &lt;script&gt;/);
-  assert.doesNotMatch(state.sends[0].htmlBody, /<script>/);
+  assert.match(state.sends[0].htmlBody, /GNC PH Reclass Item Inquiry/);
+  assert.equal(state.sends[0].attachments.length, 1);
+  assert.equal(state.sends[0].attachments[0].type, 'application/pdf');
+  assert.match(state.sends[0].attachments[0].filename, /GNC_PH_Reclass_Completed_Cobalt_and_Gold_St_Johns_Wort\.pdf/);
+  assert.match(state.sends[0].attachments[0].htmlOutput, /ITEM SPEC H\/S Priority Loc Note Available/);
+  assert.doesNotMatch(state.sends[0].subject, new RegExp(commandId));
+  assert.equal(state.reportInput.appliedRows.length, 2);
   assert.equal(state.rpcCalls.length, 1);
   assert.equal(state.rpcCalls[0].route, 'rpc/prepare_inventory_reclass_move_delivery_v1');
   const replay = context.handleSignedInventoryReclassMoveDelivery_(delivery);
   assert.equal(replay.gmailMessageId, first.gmailMessageId);
   assert.equal(state.sends.length, 1, 'stable message ID receipt prevents a second send');
+});
+
+test('completed report model uses authoritative post-move rows and a separately labeled applied-move summary', () => {
+  const backend = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+  const start = backend.indexOf('function buildCompletedInventoryReclassReportModel_(');
+  const end = backend.indexOf('\nfunction ', start + 1);
+  assert.ok(start >= 0 && end > start);
+  const rows = [
+    { unique_id: 'source-1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', itemcode: '006138.051.1',
+      season: 'F1', lotcode: '27.F1', locationcode: 'D.08.001', ptronhand: '8', ptravailable: '6', itemspec: '18 inch',
+      holdstopcode: 'H', holdstopreason: 'test', priority: '1', locationnote: 'retied', salesnote: 'confirm' },
+    { unique_id: 'dest-1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', itemcode: '006138.051.1',
+      season: 'U1', lotcode: '27.U1', locationcode: 'D.08.001', ptronhand: '2', ptravailable: '2', itemspec: '18 inch' },
+  ];
+  const captured = {};
+  const fields = ['commonname', 'contsize', 'itemcode', 'season', 'lotcode', 'locationcode', 'ptronhand', 'ptravailable', 'itemspec', 'holdstopcode', 'holdstopreason', 'priority', 'locationnote', 'salesnote']
+    .map(key => ({ key, aliases: [key] }));
+  const context = vm.createContext({
+    Date, Array, Map, String, Number, Object, Error,
+    RECLASS_INQUIRY_ROW_FIELDS_: fields,
+    firstNonEmptyRequestValue_: (...values) => values.find(value => value != null && String(value).trim()) || '',
+    normalizeInventoryTransactionText_: value => String(value == null ? '' : value).trim(),
+    getInventoryTransactionRowUid_: row => row && row.unique_id,
+    getReclassInquiryExactValue_: (row, aliases) => { for (const alias of aliases) if (row && row[alias] != null) return row[alias]; return ''; },
+    buildReclassInquiryReportModel_: (_source, authoritativeRows, reportRows, payload) => {
+      captured.authoritativeRows = authoritativeRows;
+      captured.reportRows = reportRows;
+      captured.payload = payload;
+      return { identity: { commonname: _source.commonname, contsize: _source.contsize, itemspec: _source.itemspec }, actorDisplay: payload.actor.display };
+    },
+  });
+  vm.runInContext(backend.slice(start, end), context);
+  const model = context.buildCompletedInventoryReclassReportModel_({
+    actorUsername: 'tester', actorDisplayName: 'Tester', revision: '42',
+    appliedRows: rows.map(row => ({ table: 'ph_master_inventory', row })),
+    moves: [{ direction: 'move_up', quantity: 2, source: { unique_id: 'source-1' }, destination: { unique_id: 'dest-1' } }],
+  }, new Date('2026-10-20T12:00:00Z'));
+  assert.equal(captured.authoritativeRows[0].ptronhand, '8');
+  assert.equal(captured.reportRows[0].values.itemspec, '18 inch');
+  assert.equal(captured.reportRows[0].values.holdstopcode, 'H');
+  assert.equal(captured.reportRows[0].values.priority, '1');
+  assert.equal(captured.reportRows[0].values.locationnote, 'retied');
+  assert.equal(model.completedRevision, '42');
+  assert.equal(model.completedMoveSummary[0].quantity, 2);
+  assert.equal(model.requestActionLabel, 'Reclass Move Completed');
 });
 
 test('Apps Script rejects event, actor, request, recipient, and malformed movement mismatches before Gmail', () => {

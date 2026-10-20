@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "gnc-composed-playwright-evidence-v1",
+  "composition": "cross-run; baseline failed report preserved unchanged; exact iPhone case passed in a separate run",
+  "results": [
+    {
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "project": "android-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "project": "iphone-webkit",
+      "status": "passed",
+      "run": "fresh-iphone-only"
+    },
+    {
+      "title": "release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke",
+      "project": "android-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "android-chromium",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke",
+      "project": "iphone-webkit",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "iphone-webkit",
+      "status": "passed",
+      "run": "retained-full-matrix"
+    }
+  ],
+  "priorBaselineFailure": {
+    "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+    "project": "iphone-webkit",
+    "status": "timedOut",
+    "reason": "60-second Playwright page.evaluate timeout before render measurement; superseded only by separate exact iPhone retry"
+  }
+}

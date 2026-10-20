@@ -8,12 +8,31 @@ import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName,
   perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, releaseDatabaseMigrations, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
+  publishedLkgReadProofMigrationName, normalizeScopedMigrationPaths,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
 import { perennialPreviewSql, runPerennialAssignmentPreview, getPerennialPreviewFailure } from '../scripts/preview-perennial-assignment.mjs';
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
+
+test('published LKG read proof migration is scoped, registered, and rejects untrusted receipt paths', () => {
+  assert.ok(releaseDatabaseMigrations.includes(publishedLkgReadProofMigrationName));
+  assert.equal(publishedLkgReadProofMigrationName, '20261020161833_published_lkg_read_proof_v1.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([`supabase/migrations/${publishedLkgReadProofMigrationName}`]),
+    [publishedLkgReadProofMigrationName]);
+  assert.throws(() => normalizeScopedMigrationPaths([`../migrations/${publishedLkgReadProofMigrationName}`]),
+    /LOW_STOCK_SCOPED_MIGRATION_PATH_INVALID/);
+  assert.throws(() => normalizeScopedMigrationPaths(['supabase/migrations/20261020161833_unlisted.sql']),
+    /LOW_STOCK_SCOPED_MIGRATION_NOT_ALLOWLISTED/);
+  const sql = fs.readFileSync(new URL(`../supabase/migrations/${publishedLkgReadProofMigrationName}`, import.meta.url), 'utf8');
+  assert.match(sql, /published_snapshot_read_proof\(text,\s*bigint\)/i);
+  assert.match(sql, /mutationAllowed/);
+  const contract = migrationContractQuery(publishedLkgReadProofMigrationName);
+  assert.match(contract, /published_snapshot_read_proof/);
+  assert.match(contract, /app_sync_private\.snapshot/);
+  assert.match(contract, /lock_ph_master_inventory_for_reclass_lkg_v1/);
+});
 test('v2.2.1 Bunch Notes migration is selected and loadable by the production migration runner', () => {
   assert.ok(releaseDatabaseMigrations.includes(bunchNoteBlueprintHeaderPdfDeliveryMigrationName));
   assert.equal(bunchNoteBlueprintHeaderPdfDeliveryMigrationName, '20261018014347_bunch_note_blueprint_header_pdf_delivery.sql');

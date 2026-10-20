@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-10-20T18:03:51.396Z",
+  "sourceDigest": "8fdbd44d43778d58ddc068b46cf1920154d649bc139a53b697c3ad8f9ebde605",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "kind": "tooling",
+  "checks": [
+    "Changed-file ESLint",
+    "Inline script parse",
+    "TypeScript",
+    "Generated RPC contracts",
+    "Database boundaries",
+    "Test discovery"
+  ],
+  "log": {
+    "path": "docs/releases/v2.3.15-validation/raw/release-tooling-availability-final.log",
+    "sha256": "4d68e3b0d748f55d1bd3a0eb1649d9c4160950e432da54223bca698705a9d3ce"
+  },
+  "edgeTypeCheck": {
+    "path": "docs/releases/v2.3.15-validation/raw/v2315-appapi-null-guard-check.log",
+    "sha256": "7a050a92f4e77eaa95504b6c12d66fc194195ed5db193d1685b4dd35099c0fb0"
+  },
+  "edgeFocusedTests": {
+    "passed": 3,
+    "failed": 0,
+    "log": {
+      "path": "docs/releases/v2.3.15-validation/raw/v2315-suspend-tag-read-test.log",
+      "sha256": "c6d086abc0e6a8298e5968b02c9816edbc1fdcf168eb3e662c7f4f0f0179f87e"
+    }
+  }
+}

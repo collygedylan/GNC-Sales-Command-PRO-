@@ -1,0 +1,74 @@
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/releases/v2.3.11-retained-validation.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/releases/v2.3.11-retained-validation.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/releases/v2.3.11-retained-validation.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/releases/v2.3.11-retained-validation.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/releases/v2.3.11-retained-validation.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/releases/v2.3.11-retained-validation.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Code.gs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+✔ scoped release verifier excludes receipt/evidence while validating source and deployment seals (1080.8849ms)
+✔ scoped file seals normalize text newlines while preserving binary bytes (0.2159ms)
+✔ scoped release verifier rejects tampered source and mismatched deployment receipt (939.3172ms)
+✔ scoped release verifier rejects omitted disposable database evidence for SQL changes (1134.0803ms)
+✔ scoped release verifier rejects Code.gs protected edits outside the allowlist (1459.0731ms)
+✔ scoped release verifier rejects relaxed or incomplete browser release gates (2137.0778ms)
+✔ scoped release verifier requires a Code.gs allowlist and resolves changed shared imports (2533.6645ms)
+✔ all configured iPhone simulators receive the frontend allowance independent of name, host, or DPR (1.2145ms)
+✔ all non-iPhone device configurations receive the global 2000ms frontend gate (0.1394ms)
+✔ the assertion uses an inclusive 2000ms boundary for every project, rejecting nonfinite values (11.6828ms)
+✔ the AV cold-load exception does not relax cached or rendering gates (0.6972ms)
+✔ representative queue render waiver is inclusive at 2000ms and leaves other UI gates intact (0.9106ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9569.9606

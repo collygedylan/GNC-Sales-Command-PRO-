@@ -1,0 +1,272 @@
+{
+  "schemaVersion": "gnc-cross-run-smoke-provenance-v1",
+  "composition": "cross-run",
+  "artifactCommit": "e9452f96a3db5943b1d75b2560ce7600c77cc22d",
+  "testSourceCommit": "8649f1c41523402e23064c6cb574c3561af5bf4d",
+  "compiledArtifactUnchanged": true,
+  "testSourceDeltaValidated": true,
+  "baselineRun": {
+    "report": "baseline-report.json",
+    "results": "baseline-results.json",
+    "log": "baseline-playwright.log",
+    "reportSha256": "521277f9d0ea9501b892e030b537292b649c5b975786b4ccc67b3d148bc0cb33",
+    "resultsSha256": "02a65a7502acb51d2bfce4d6900a02393d3f66b8a271680afd31acc1b5efede7",
+    "logSha256": "3ff08278be4c11c8b63ffcd290cab280ce129330bba02b5e6a589c1c167a8e4d",
+    "sourceDigest": "1d59c5c50609612cf57259ab3febe769a30eada47049a0ee230257a3f91d7bb9",
+    "status": "failed",
+    "passes": 8,
+    "failures": 1,
+    "durationMs": 127875,
+    "replacedFailure": {
+      "project": "iphone-webkit",
+      "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+      "status": "timedOut"
+    }
+  },
+  "freshIphoneRun": {
+    "report": "fresh-iphone-report.json",
+    "results": "fresh-iphone-results.json",
+    "log": "fresh-iphone-playwright.log",
+    "reportSha256": "42b84300a7926f31060bf599e8435a4a0b6ace6405c839d4b2932f077887e7a6",
+    "resultsSha256": "93550af61fbd21dfd155c4f25dc3bd4dda7ac59c66a0db713ba0eab29c1e17a0",
+    "logSha256": "80da36a0871b4c9a139ec2668d9e3eb91c6791be1a2d4f1271af1a04caf2b620",
+    "artifactCommit": "e9452f96a3db5943b1d75b2560ce7600c77cc22d",
+    "testSourceCommit": "8649f1c41523402e23064c6cb574c3561af5bf4d",
+    "sourceDigest": "0b889e2f3cc8a318ab7222cc3f6b88869f0032abec32f0745836dd1a84539e4f",
+    "status": "passed",
+    "passes": 1,
+    "failures": 0,
+    "durationMs": 27347
+  },
+  "siteDigest": "8722a9f8e3ea423c1355489227a1453a5080638767f7f33dc67096583f19ef2f",
+  "artifactDigest": "f6b3051ba02c92405f50bb3c54e9b0611257e6a18ba1ad01481280c7644a9bf3",
+  "durationAccounting": {
+    "method": "sum-of-independent-runs",
+    "totalDurationMs": 155222,
+    "baselineDurationMs": 127875,
+    "freshIphoneDurationMs": 27347,
+    "notSingleWallClockRun": true
+  },
+  "changedFiles": [
+    "docs/releases/v2.3.15-progress.json",
+    "tests/suspend-tag-completion.e2e.spec.ts"
+  ],
+  "testEvidence": {
+    "path": "tests/suspend-tag-completion.e2e.spec.ts",
+    "canonicalComparison": "TypeScript printer without comments, removing only test.setTimeout(120_000)",
+    "baselineSha256": "7c17e3c64e4e8ec44cd76786963aa65cd662177482769e2ad6bf8b01dda51d37",
+    "testCommitSha256": "962f9b4c498669502a170ba30dc6b206d117c37279167f8da03f7e429158c464"
+  },
+  "projectEvidence": [
+    {
+      "project": "desktop-chromium",
+      "metrics": {
+        "environment": "desktop-chromium",
+        "masterRows": 9487,
+        "cards": 37,
+        "expectedCards": 37,
+        "renderMs": 185.80000001192093,
+        "sorted": true,
+        "metricsVerified": true,
+        "cache": "warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off",
+        "capturedAt": "2026-10-20T13:18:14.031Z",
+        "source": {
+          "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+          "sha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e"
+        },
+        "liveAuthentication": false,
+        "productionWrites": false
+      },
+      "lastCardLayout": {
+        "cardOverflow": false,
+        "inViewport": true,
+        "metrics": [
+          {
+            "id": "on-hand",
+            "label": "On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "available",
+            "label": "Available",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "open-stock",
+            "label": "Open Stock",
+            "value": "81",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-photo-match",
+            "label": "Loc Photo Match",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-on-hand",
+            "label": "Loc On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          }
+        ],
+        "completeTagVisible": true
+      },
+      "run": "retained-full-matrix"
+    },
+    {
+      "project": "android-chromium",
+      "metrics": {
+        "environment": "android-chromium",
+        "masterRows": 9487,
+        "cards": 37,
+        "expectedCards": 37,
+        "renderMs": 369,
+        "sorted": true,
+        "metricsVerified": true,
+        "cache": "warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off",
+        "capturedAt": "2026-10-20T13:18:14.031Z",
+        "source": {
+          "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+          "sha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e"
+        },
+        "liveAuthentication": false,
+        "productionWrites": false
+      },
+      "lastCardLayout": {
+        "cardOverflow": false,
+        "inViewport": true,
+        "metrics": [
+          {
+            "id": "on-hand",
+            "label": "On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "available",
+            "label": "Available",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "open-stock",
+            "label": "Open Stock",
+            "value": "81",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-photo-match",
+            "label": "Loc Photo Match",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-on-hand",
+            "label": "Loc On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          }
+        ],
+        "completeTagVisible": true
+      },
+      "run": "retained-full-matrix"
+    },
+    {
+      "project": "iphone-webkit",
+      "metrics": {
+        "environment": "iphone-webkit",
+        "masterRows": 9487,
+        "cards": 37,
+        "expectedCards": 37,
+        "renderMs": 918,
+        "sorted": true,
+        "metricsVerified": true,
+        "cache": "warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off",
+        "capturedAt": "2026-10-20T13:18:14.031Z",
+        "source": {
+          "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+          "sha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e"
+        },
+        "liveAuthentication": false,
+        "productionWrites": false
+      },
+      "lastCardLayout": {
+        "cardOverflow": false,
+        "inViewport": true,
+        "metrics": [
+          {
+            "id": "on-hand",
+            "label": "On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "available",
+            "label": "Available",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "open-stock",
+            "label": "Open Stock",
+            "value": "81",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-photo-match",
+            "label": "Loc Photo Match",
+            "value": "N/A",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          },
+          {
+            "id": "loc-on-hand",
+            "label": "Loc On Hand",
+            "value": "86",
+            "labelSingleLine": true,
+            "valueSingleLine": true
+          }
+        ],
+        "completeTagVisible": true
+      },
+      "run": "fresh-iphone-only"
+    }
+  ]
+}

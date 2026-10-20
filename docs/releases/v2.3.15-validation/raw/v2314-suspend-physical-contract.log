@@ -1,0 +1,4 @@
+/Users/dylan/AppData/Local/Temp/gnc-db-workspace-j3Byt6/supabase/tests/v2314-suspend-physical-contract.sql .. ok
+All tests successful.
+Files=1, Tests=11,  0 wallclock secs ( 0.01 usr  0.02 sys +  0.00 cusr  0.01 csys =  0.04 CPU)
+Result: PASS
