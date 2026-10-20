@@ -1,7 +1,7 @@
 {
   "status": "passed",
-  "capturedAt": "2026-10-20T17:49:51.485Z",
-  "sourceDigest": "9d0742a027e0ab8219fe3c44663716c263ef48a5103a76f57994ca88acc050f6",
+  "capturedAt": "2026-10-20T17:58:51.664Z",
+  "sourceDigest": "ab7a8d8c8ca14ecf613974e6fe36f02acb5f6f12e67b2228870f14be1047adcc",
   "productionWrites": false,
   "realEmailsSent": false,
   "kind": "database",

@@ -107,6 +107,14 @@ test('scoped release verifier excludes receipt/evidence while validating source 
 test('scoped file seals normalize text newlines while preserving binary bytes', () => {
   assert.equal(hashScopedFile('src/app.js', Buffer.from('const x = 1;\r\n')),
     hashScopedFile('src/app.js', Buffer.from('const x = 1;\n')));
+  assert.equal(hashScopedFile('Code.gs', Buffer.from('function main(){\r\n  return true;\r\n}\r\n')),
+    hashScopedFile('Code.gs', Buffer.from('function main(){\n  return true;\n}\n')));
+  assert.equal(hashScopedFile('v2/public/manifest.webmanifest', Buffer.from('{\r\n  "name": "AgData"\r\n}\r\n')),
+    hashScopedFile('v2/public/manifest.webmanifest', Buffer.from('{\n  "name": "AgData"\n}\n')));
+  for (const file of ['deno.lock', 'scripts/certs/root.crt', 'services/types/runtime.mts', 'scripts/sync.py',
+    '.env.example', '.gitattributes', 'supabase/.gitignore', 'Dockerfile.ci.dockerignore']) {
+    assert.equal(hashScopedFile(file, Buffer.from('text\r\n')), hashScopedFile(file, Buffer.from('text\n')), file);
+  }
   assert.equal(hashScopedFile('supabase/migrations/change.sql', Buffer.from('select 1;\r\n')),
     hashScopedFile('supabase/migrations/change.sql', Buffer.from('select 1;\n')));
   assert.notEqual(hashScopedFile('assets/payload.bin', Buffer.from([0, 13, 10, 255])),

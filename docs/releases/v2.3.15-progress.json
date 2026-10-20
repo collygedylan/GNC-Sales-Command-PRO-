@@ -553,5 +553,35 @@
       "generic receipt condition applied; only touched matrix check rerun1/1"
     ],
     "exactAppsScriptBeforeDependentPages": true
-  }
+  },
+  "finalScopedBrowserValidation": {
+    "status": "passed",
+    "composition": "retained 8 full-matrix passes plus fresh iPhone latest37 pass",
+    "report": "docs/releases/v2.3.15-validation/raw/browser-composed-report.json",
+    "renderMs": {
+      "desktop": 185.8,
+      "android": 369,
+      "iphone": 918
+    },
+    "productionWrites": false,
+    "originalFailurePreserved": true
+  },
+  "releaseSealAttemptHistory": [
+    {
+      "at": "2026-10-20T17:55:51.187Z",
+      "attempt": 1,
+      "cap": 8,
+      "status": "failed",
+      "runId": 39469689095,
+      "head": "ec9350868c5032b40a5e0afd1f13cbce886ddb1a",
+      "cause": "SCOPED_SOURCE_SEAL_MISMATCH: .gs and .webmanifest were omitted from CRLF/LF text canonicalization; whole-source audit additionally found 14 known textual dotfiles/Python/lock/certificate/declaration files with CRLF/LF-only differences",
+      "productionChanged": false,
+      "passingChecksRetained": [
+        "lint",
+        "contracts"
+      ],
+      "log": "docs/releases/v2.3.15-validation/raw/ci-attempt1-failures.log",
+      "correction": "Canonicalize recognized text formats; retain byte-exact binary seals and recheck all 1627 source paths against Git blobs before resealing"
+    }
+  ]
 }

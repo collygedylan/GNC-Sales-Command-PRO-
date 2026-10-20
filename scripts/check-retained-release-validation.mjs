@@ -10,8 +10,11 @@ import { generatedBuildOutput } from './local-validation-evidence.mjs';
 const rootDefault = fileURLToPath(new URL('../', import.meta.url));
 const hash = value => createHash('sha256').update(value).digest('hex');
 const textHash = value => hash(Buffer.from(String(value).replaceAll('\r\n', '\n')));
-const textExtensions = new Set(['.cjs', '.css', '.csv', '.html', '.js', '.json', '.jsx', '.md', '.mjs', '.ps1', '.sql', '.svg', '.toml', '.ts', '.tsx', '.txt', '.xml', '.yaml', '.yml']);
+const textExtensions = new Set(['.cjs', '.crt', '.css', '.csv', '.gs', '.html', '.js', '.json', '.jsx', '.lock', '.md', '.mjs', '.mts', '.ps1', '.py', '.sql', '.svg', '.toml', '.ts', '.tsx', '.txt', '.webmanifest', '.xml', '.yaml', '.yml']);
+const textBasenames = new Set(['.env.example', '.gitattributes', '.gitignore', '.gitkeep', '.nojekyll']);
 export const hashScopedFile = (file, bytes) => textExtensions.has(path.extname(file).toLowerCase())
+  || textBasenames.has(path.basename(file).toLowerCase())
+  || /^dockerfile\./i.test(path.basename(file))
   ? textHash(Buffer.from(bytes).toString('utf8'))
   : hash(bytes);
 const read = (root, file) => fs.readFileSync(path.join(root, file), 'utf8');

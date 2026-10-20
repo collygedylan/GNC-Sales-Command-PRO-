@@ -1,11 +1,11 @@
 {
   "status": "passed",
-  "capturedAt": "2026-10-20T17:49:51.485Z",
-  "sourceDigest": "9d0742a027e0ab8219fe3c44663716c263ef48a5103a76f57994ca88acc050f6",
+  "capturedAt": "2026-10-20T17:58:51.664Z",
+  "sourceDigest": "ab7a8d8c8ca14ecf613974e6fe36f02acb5f6f12e67b2228870f14be1047adcc",
   "productionWrites": false,
   "realEmailsSent": false,
   "kind": "unit",
-  "passed": 107,
+  "passed": 115,
   "failed": 0,
   "scope": "Passing focused executions; baseline suites retained without rerun",
   "logs": [
@@ -108,6 +108,18 @@
     {
       "path": "docs/releases/v2.3.15-validation/raw/release-smoke-project-concurrency.log",
       "sha256": "72a74d0164e36d7755e1892edee7ecf7fe8d8eb3849f3c5904d1a7520866cb9c",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/scoped-seal-line-endings.log",
+      "sha256": "374dcf5d4855af8ce5eff393e6d4b748833824ebe28f82061a679b30560d43b7",
+      "passed": 7,
+      "failed": 0
+    },
+    {
+      "path": "docs/releases/v2.3.15-validation/raw/scoped-seal-expanded.log",
+      "sha256": "95264f67d442b72af9be82dbe171da62d4f5674b37338cb89e3a7ac26f1b3fc8",
       "passed": 1,
       "failed": 0
     }

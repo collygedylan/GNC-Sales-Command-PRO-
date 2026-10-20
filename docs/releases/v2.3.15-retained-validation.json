@@ -3,13 +3,13 @@
   "release": "AgData v2.3.15",
   "base": "ebe5547b11fb415ef83b3f2891973776c5b4d682",
   "evidencePathPrefix": "docs/releases/v2.3.15-validation/",
-  "sourceDigest": "9d0742a027e0ab8219fe3c44663716c263ef48a5103a76f57994ca88acc050f6",
+  "sourceDigest": "ab7a8d8c8ca14ecf613974e6fe36f02acb5f6f12e67b2228870f14be1047adcc",
   "sourceHashes": {
     ".github/workflows/apps-script-sync.yml": "fc5c22be9f886a149aa03c693b5197f426f8f126152e995d503ec3244c80042c",
     ".github/workflows/pages-static.yml": "ea8a0677326f962a115e30f4d442418d8f263fd2d44fc4442b4d8086a1cea927",
     ".github/workflows/release-database.yml": "22e165d456dcd2a35e97f4c55378cf74c3311900afc5aa0df6baaf78c5731f44",
     "AGENTS.md": "47dce751fe8879aa3737d2d56dce1e3db0a53676c06fd16bb9fae4d9c5008eac",
-    "Code.gs": "2eaecba23601de5dd2e7b30d97dee06c6ca725fc75eee49aef35eb1419be8712",
+    "Code.gs": "d646060a4d7bcbf266243092f65f9d7c5429adcd355008807800f3fb081bb5d6",
     "assets/app-lifecycle.js": "9cbad48e88e07881a00ed753558ff59670dc3027cbbc073db2f3bb9fe8a04164",
     "assets/live-sync-coordinator.js": "f9fc08a3b00afb504daae8cc7725f7dfa310e8b6433fe153f5abeadd5816e5fb",
     "assets/ops-precision-pilot.css": "95b1f88359f8e44e6c10b14bf95fa78ddf9e4226eb25cf7849013a7c05b2ec72",
@@ -17,7 +17,7 @@
     "assets/queue-inventory-hydration.js": "318392b4152f59f74edc462b8749b98114c76c2b35f155d215de4b9422229f19",
     "docs/releases/v2.3.14-validation/checkpoint.json": "ea24815dc13cc11a68be531251f695cb6c095b96867cd84039d830c6a2ca331f",
     "docs/releases/v2.3.14-validation/reset2-checkpoint.json": "ce08a4ec64e766f3ad3749fa9a961afd30585542fda92d45f924bc7db2d66717",
-    "docs/releases/v2.3.15-progress.json": "32049d7e74861ba749abe11c08691169662ea12ee9b77029d1b2656678d346db",
+    "docs/releases/v2.3.15-progress.json": "e75e5be06fba02b4d4c64fbffbfa64eabb85be868eb5d548448c96df6d19d801",
     "index.html": "ee87cee366902645cc8df32a3f24fc77cbd844177f886af73de1c8b6fcbd76c9",
     "manifest.json": "38dee74be6daab0c9b70c7d1a4137e43196e5d61170d0d9248cc0a3d7eddf291",
     "package-lock.json": "9501a350d936db37983922dc3bd179a779050d9e95773d627692b13fa03c84dd",
@@ -27,7 +27,7 @@
     "scripts/apply-item-low-stock-migration.mjs": "0d8c752b87d8e16dcaa944f977f7610e5e01b3387f49252469624d17c645bb98",
     "scripts/apps-script-function-patch.mjs": "e67b62a22db19de653aa49c12c28cac969777bf7d3b3b09282de970292f2daa1",
     "scripts/build-live-shell.mjs": "3b40603cafbe644d92c71e00e37a73e9b2c9263678d569c49394d4c1a657de84",
-    "scripts/check-retained-release-validation.mjs": "e4cec6e9ef096b1052a30c75329864b945725f0c4cdb67ea01a33930d44186e4",
+    "scripts/check-retained-release-validation.mjs": "f152b0b45d7ad1c47c3be0aaef6a31f42597132c42eb38898ddcc3b884a279c5",
     "scripts/check-v2314-retained-validation.mjs": "37240ed0f2b4638c2148c3ae8a1ae3e80c4acacab2e8b81e1ad23f63c5107727",
     "scripts/ci-backend-matrix.mjs": "0c20280e703adf149d36249d32688dcdbd69d0fd6f748712e250d005e9956889",
     "scripts/run-release-react-checks.mjs": "9852b7e98899751fe9e328b268aca239051836772b7c6b97b46cfaa7bcfaa7ad",
@@ -48,7 +48,7 @@
     "sw.js": "841283627bd1b4a2d35fbf26e86ab89c14c7f62828044fdd80cefa2007988cf2",
     "tests/apps-script-function-patch.test.mjs": "b5c618a106fee12ea3c87c65ed305b351710cf317148d0ffe18dc31f40010231",
     "tests/av-hydration.e2e.spec.ts": "19716822b4908575acfa83b193c83ef0cf1f2ab65be19b171ca301fe89a2658d",
-    "tests/check-retained-release-validation.test.mjs": "15903f79ea337a2f678cdf1c41b1b5aef4585af8ff809cc453c54c927603a37e",
+    "tests/check-retained-release-validation.test.mjs": "27a3e4915478fe68844dff2f3f3ac92921ae856df68d95b8d67f3a1b0f338560",
     "tests/dashboard-sync-latest-file.test.mjs": "d8b702b2a86ba613edf947ad52e47815223ca89f9637cf023ca9ec05ee91d2b4",
     "tests/fixtures/suspend-v2314.json.gz": "2bc1662b21b00f857a5997f3900d48d5a719266b09892a341af02d6e940d84d4",
     "tests/frontend-ui-timing.test.mjs": "647c140244cf6264e8b2a909b9298b1175e60606bdfc86759d7111000c682187",
@@ -80,7 +80,7 @@
     "tests/suspend-tag-subset.test.mjs": "6a65f52d553f3ffc2ac4d62b0b53ca1a5ba3b1fc0a07c5501995f6c8afced1ee",
     "tests/v2311-frontend-smoke.e2e.spec.ts": "f0357abe2058b58cb7e6962e301d81ea7f3035e79ea1ee0c617772be97bdc5f2",
     "tests/warehouse-export-resilience.test.mjs": "1cb6e8e758ec0fc2df5f21737014db9be4ea68265ccf0a746aea32210ca9fa9f",
-    "v2/public/manifest.webmanifest": "6ff73b784638a4b692e03c95e075fc16f689900162d6cbc1c53c7b1b4a5ae2d8",
+    "v2/public/manifest.webmanifest": "05a99d96fcf74278efa7adcaefb9d267f732cd155e799c3d874aab24914fc56c",
     "v2/src/services/api.ts": "3350cc89782d0578b30afb800e88b9348c567904ae2da7e5fe861b8bfcd0fc3d"
   },
   "dependencySeal": {
@@ -113,10 +113,10 @@
     "exportWarehouseAssignedItemsToSheet_"
   ],
   "evidenceHashes": {
-    "docs/releases/v2.3.15-validation/unit.json": "883f15acca955305a7b2fca6f0d6924ca3e46fb999e3f714a4f49e012bc71433",
-    "docs/releases/v2.3.15-validation/tooling.json": "b2820fe2e359ea83b0f06e46e16a8b5f6f1b759c15d74ecaf25683046e401a4c",
-    "docs/releases/v2.3.15-validation/browser.json": "d852e3281436507a4a42cf990fa370526de30f4930fe35f30d29dfe521e28772",
-    "docs/releases/v2.3.15-validation/database.json": "84336dcd2eff87a4772c72cf65e1c14d0f468899028b9373954999aeeda8c8f0"
+    "docs/releases/v2.3.15-validation/unit.json": "926e12a1bc13a1e9167b561e54e174c16c100dd4af461d327f91a92132c0f163",
+    "docs/releases/v2.3.15-validation/tooling.json": "1772d50885112965e0845a5ebf563f0da676cf4dfb7d66f1e40d4bb5e0b6eddc",
+    "docs/releases/v2.3.15-validation/browser.json": "9d1522aa84612bed995b0ac9b42c0e3f852762385235da7bdb1aa3fa7bf8b9c3",
+    "docs/releases/v2.3.15-validation/database.json": "9538da6481b0647ad98afb59dcd4aa46865264b398673df49a3bdc4c4efe45f7"
   },
   "requiredKinds": [
     "database"
