@@ -76,6 +76,7 @@ function loadServerModel() {
     JSON,
     console,
     firstNonEmptyRequestValue_: firstNonEmptyValue,
+    getReclassInquiryEmailRecipients_: () => ['actor@example.invalid', 'dylan@example.invalid', 'megan@example.invalid'],
     normalizeInventoryTransactionText_: (value) => String(value ?? '').trim(),
     normalizeInventoryTransactionCompareText_: (value) => String(value ?? '').trim().toUpperCase(),
     getInventoryTransactionRowUid_: (row) => String(firstNonEmptyValue(row?.unique_id, row?.UNIQUE_ID, '')).trim(),
@@ -360,19 +361,19 @@ test('Reclass identity validation uses the defined production comparison helper'
   assert.doesNotMatch(overlayHandler, /normalizeInventoryTransactionComparable_/);
 });
 
-test('Drive Reclass skips the picker while Eval Reports #2 keeps its established recipient branch', () => {
+test('Reclass recipient payloads stay client supplied only as presentation hints while the server owns routing', () => {
   const start = html.indexOf('async function applyArgosInventoryTransactionEmailRecipients');
   const end = html.indexOf('function generateArgosInventoryTransactionId', start);
   const recipientHandler = html.slice(start, end);
-  assert.match(recipientHandler, /isArgosEvalReport2Inquiry\(\)/);
   assert.match(recipientHandler, /sourceMode === 'drive'/);
   assert.match(recipientHandler, /delete safePayload\.actor/);
   assert.match(recipientHandler, /delete safePayload\.recipientEmails/);
   assert.match(recipientHandler, /delete safePayload\.emailRecipients/);
-  assert.match(recipientHandler, /openGroupedBloomNcrRecipientModal/);
+  assert.match(recipientHandler, /getDefaultArgosInventoryTransactionRecipients\(\)/);
+  assert.doesNotMatch(recipientHandler, /openGroupedBloomNcrRecipientModal/);
 });
 
-test('Reclass server accepts frozen protected Drive recipients and keeps legacy parsing for non-Drive events', () => {
+test('Reclass server validates protected Drive delivery and resolves every source from the canonical recipient RPC', () => {
   const helperStart = code.indexOf('function getReclassInquiryEmailRecipients_');
   const helperEnd = code.indexOf('function getInventoryTransactionEmailRowValue_', helperStart);
   const helper = code.slice(helperStart, helperEnd);
@@ -382,8 +383,9 @@ test('Reclass server accepts frozen protected Drive recipients and keeps legacy 
   assert.match(helper, /sourceMode[\s\S]*=== 'drive'/);
   assert.match(helper, /drive-reclass-protected-v1/);
   assert.match(helper, /DRIVE_AUTH_REQUIRED/);
-  assert.match(helper, /safePayload\.recipientEmails/);
-  assert.match(helper, /safePayload\.recipients/);
+  assert.match(helper, /get_reclass_delivery_recipients_v1/);
+  assert.match(helper, /safePayload\.actor/);
+  assert.doesNotMatch(helper, /dedupeEmailAddresses_\(\[\s*safePayload\.recipientEmails/);
   assert.match(handler, /getReclassInquiryEmailRecipients_\(safePayload\)/);
   assert.doesNotMatch(handler, /getInventoryTransactionEmailRecipients_/);
 });
@@ -1108,7 +1110,7 @@ test('protected Reclass delivery uses the originating item for every action and 
     assert.equal(result.subject, '#3 Sea Green Juniper Reclass', requested.join(' + '));
     assert.equal(mails.length, 1);
     assert.equal(mails[0].subject, result.subject);
-    assert.deepEqual(Array.from(mails[0].toArray), payload.recipientEmails);
+    assert.deepEqual(Array.from(mails[0].toArray), ['actor@example.invalid', 'dylan@example.invalid', 'megan@example.invalid']);
     assert.equal(mails[0].messageIdHeader, delivery.messageIdHeader);
     assert.equal(mails[0].attachments.length, 1);
     assert.match(mails[0].attachments[0].name, /^GNC_PH_Reclass_.*Sea_Green_Juniper\.pdf$/);
@@ -1575,7 +1577,7 @@ test('V7 Reclass PDF prints frozen editable fields in the main row and preserves
   assert.match(clearHtml, /\[blank\]/);
 });
 
-test('V7 queued delivery renders the protected payload and uses its frozen recipient list', () => {
+test('V7 queued delivery renders the protected payload and refreshes legacy outbox recipients from the canonical policy', () => {
   const server = loadServerModel();
   const row = {
     unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1',
@@ -1592,7 +1594,7 @@ test('V7 queued delivery renders the protected payload and uses its frozen recip
   server.fetchReclassInquiryItemRows_ = () => { throw new Error('V7 delivery must use frozen rows'); };
   server.validateInventoryTransactionSourceIdentity_ = (frozen, source) => assert.equal(frozen.unique_id, source.unique_id);
   server.dedupeEmailAddresses_ = (values) => values;
-  server.getReclassInquiryEmailRecipients_ = () => { throw new Error('V7 delivery must use frozen recipients'); };
+  server.getReclassInquiryEmailRecipients_ = () => ['dylan@example.invalid', 'megan@example.invalid', 'tester@example.invalid'];
   server.isGmailAdvancedServiceAvailable_ = () => true;
   server.resolveAutomatedEmailSenderAddress_ = () => 'app@example.invalid';
   server.sendGmailApiMessage_ = (message) => { sent.push(message); return { id: 'gmail-message' }; };
@@ -1611,7 +1613,7 @@ test('V7 queued delivery renders the protected payload and uses its frozen recip
   };
   const result = server.deliverReclassInquiryPayload_(payload, '<thread-1@example.invalid>', ['frozen@example.invalid']);
   assert.equal(sent.length, 1);
-  assert.equal(sent[0].toList, 'frozen@example.invalid');
+  assert.equal(sent[0].toList, 'dylan@example.invalid,megan@example.invalid,tester@example.invalid');
   assert.equal(sent[0].messageIdHeader, '<thread-1@example.invalid>');
   assert.equal(result.policyVersion, server.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_);
   assert.match(sent[0].attachments[0].htmlOutput, /Confirmed/);

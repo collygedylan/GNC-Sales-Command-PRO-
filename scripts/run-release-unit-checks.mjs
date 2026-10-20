@@ -1,3 +1,4 @@
+import { verifyScopedRetainedValidation } from './check-retained-release-validation.mjs';
 import { verifyV2314RetainedValidation } from './check-v2314-retained-validation.mjs';
 import { verifyV2313RetainedValidation } from './check-v2313-retained-validation.mjs';
 import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
@@ -33,6 +34,11 @@ export function runReleaseUnitChecks({
   }
   if (shard && (Number(shard[1]) > Number(shard[2]) || Number(shard[2]) > 32)) throw new Error('Usage: invalid unit shard');
   const packageManifest = JSON.parse(readPackage(rootDir));
+  if (packageManifest.scopedValidationReceipt) {
+    verifyScopedRetainedValidation({ rootDir });
+    print(argv[0] === '--list' ? '[]' : 'Verified source-sealed focused release checks and retained baseline; unchanged suites not rerun.');
+    return 0;
+  }
   if (packageManifest.version === '2.3.14') {
     verifyV2314RetainedValidation({ rootDir });
     print(argv[0] === '--list' ? '[]' : 'Verified source-sealed v2.3.14 Suspend parity and hydration checks; unaffected suites retained.');

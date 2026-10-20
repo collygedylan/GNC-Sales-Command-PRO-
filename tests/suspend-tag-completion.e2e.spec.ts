@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-// @test-group: @suspend-tag,suspend,@v2312-ui,@v2314-parity
+// @test-group: @suspend-tag,suspend,@v2312-ui,@v2314-parity,@release-smoke
 
 import { confirmedDriveEvidence, driveEvidenceColumns } from '../services/driveEvidence.ts';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './fixtures/inventory-list-read-fixture.mjs';
@@ -70,8 +70,8 @@ function buildConfirmedInventoryRow(source: FixtureRow, patch: Record<string, un
   return confirmedDriveEvidence({ ok: true, canonicalConfirmed: true, row });
 }
 
-test('Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity',
-  { tag: ['@suspend-tag', '@v2314-parity'] }, async ({ page, baseURL }, info) => {
+test('Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke',
+  { tag: ['@suspend-tag', '@v2314-parity', '@release-smoke'] }, async ({ page, baseURL }, info) => {
   const snapshot = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/suspend-v2314.json.gz', import.meta.url))).toString('utf8')) as {
     capturedAt: string; masterRows: FixtureRow[]; suspendRows: FixtureRow[];
     source: { filename: string; sha256: string };
@@ -158,11 +158,37 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   if (profiler) { await profiler.send('Profiler.enable'); await profiler.send('Profiler.start'); }
   const renderMs = await page.evaluate(async () => {
     return window.eval(`(async () => {
-      // Foreground revalidation can revoke proof between Playwright calls.
-      // Observe the real guard and render in the same task once it is ready.
+      // Wait until the real authenticated snapshot, Suspend source mirrors,
+      // and the naturally rendered first page have all settled. A transiently
+      // verified but still-preparing mirror is not a warm-page measurement.
       const readinessStart = performance.now();
-      while (!hasCurrentProductionLiveSyncProof(getProductionLiveSyncContext())) {
-        if (performance.now() - readinessStart > 10000) throw new Error('Warm snapshot did not become verified');
+      let priorReadySignature = '';
+      let stableReadyFrames = 0;
+      while (stableReadyFrames < 2) {
+        const context = getProductionLiveSyncContext();
+        const proof = hasCurrentProductionLiveSyncProof(context);
+        const container = document.getElementById('request-suspend-tag-card-list');
+        const cachedPage = container && createSuspendTagPageRenderRow.pages?.get(container);
+        const cardCount = document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length;
+        const pageReady = !isDockSuspendDcRequestMirrorPreparationPending()
+          && cardCount === 37
+          && cachedPage?.sourceRows.length === 37
+          && cachedPage?.rows.size === 37;
+        if (proof && pageReady) {
+          const readySignature = JSON.stringify([
+            productionVerifiedViewKey(context),
+            ['master', 'avOpen', 'suspendTag', 'soc', 'customerRepMap'].map(getDatasetLoadSignature),
+            cachedPage.key, cachedPage.rows.size, cardCount,
+          ]);
+          stableReadyFrames = readySignature === priorReadySignature ? stableReadyFrames + 1 : 0;
+          priorReadySignature = readySignature;
+        } else {
+          stableReadyFrames = 0;
+          priorReadySignature = '';
+        }
+        if (performance.now() - readinessStart > 15000) {
+          throw new Error('Warm authenticated Suspend page or source mirrors did not settle');
+        }
         await new Promise(resolve => requestAnimationFrame(resolve));
       }
       const proofBefore = productionVerifiedViewKey(getProductionLiveSyncContext());
@@ -203,7 +229,7 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));
   if (process.env.V2314_PROFILE === '1') console.log('V2314_CACHE', await page.evaluate(() => (window as unknown as {__v2314CacheEvents: unknown}).__v2314CacheEvents));
   if (process.env.V2314_PROFILE === '1') console.log('V2314_SCHEDULED', await page.evaluate(() => (window as unknown as {__v2314Scheduled: unknown}).__v2314Scheduled));
-  expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);
+  expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThan(400);
   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));
   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));
   const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());
@@ -236,6 +262,48 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
     await expect(card.locator('[data-inventory-card-metric="loc-photo-match"]')).toContainText('N/A');
     await expect(card.locator('[data-inventory-card-metric="loc-on-hand"]')).toContainText(/23,?655/);
   }
+  const lastVisibleRow = rowById.get(order.at(-1) || '');
+  expect(lastVisibleRow, 'the ordered last card must map to a captured source row').toBeDefined();
+  if (lastVisibleRow) {
+    const lastCard = app.card(lastVisibleRow);
+    await lastCard.scrollIntoViewIfNeeded();
+    await expect(lastCard).toBeVisible();
+    await expect(lastCard.getByRole('button', { name: 'Complete Tag', exact: true })).toBeVisible();
+    const finalCardLayout = {
+      ...await lastCard.evaluate(card => {
+      const metrics = [...card.querySelectorAll<HTMLElement>('[data-inventory-card-metric]')];
+      const rect = card.getBoundingClientRect();
+      return {
+        cardOverflow: card.scrollWidth > card.clientWidth + 1,
+        inViewport: rect.bottom > 0 && rect.top < window.innerHeight,
+        metrics: metrics.map(metric => {
+          const label = metric.querySelector<HTMLElement>('.app-card-qty-label');
+          const value = metric.querySelector<HTMLElement>('.app-card-qty-value');
+          return {
+            id: metric.dataset.inventoryCardMetric,
+            label: label?.textContent?.trim() || '',
+            value: value?.textContent?.trim() || '',
+            labelSingleLine: !!label && getComputedStyle(label).whiteSpace === 'nowrap'
+              && label.scrollHeight <= label.clientHeight + 1,
+            valueSingleLine: !!value && getComputedStyle(value).whiteSpace === 'nowrap'
+              && value.scrollHeight <= value.clientHeight + 1,
+          };
+        }),
+      };
+      }),
+      completeTagVisible: await lastCard.getByRole('button', { name: 'Complete Tag', exact: true }).isVisible(),
+    };
+    expect(finalCardLayout.inViewport).toBe(true);
+    expect(finalCardLayout.cardOverflow).toBe(false);
+    expect(finalCardLayout.completeTagVisible).toBe(true);
+    expect(finalCardLayout.metrics.map(metric => metric.id)).toEqual(expect.arrayContaining([
+      'on-hand', 'review', 'available', 'open-stock', 'loc-photo-match', 'loc-on-hand',
+    ]));
+    expect(finalCardLayout.metrics.every(metric => metric.label && metric.value && metric.labelSingleLine && metric.valueSingleLine)).toBe(true);
+    await info.attach('release-smoke-last-card-layout', {
+      body: Buffer.from(JSON.stringify(finalCardLayout)), contentType: 'application/json',
+    });
+  }
   const sharedTotals = await page.evaluate(() => window.eval(`({
     littleLime: getCardLocationOnHandValue(fullInventory.find(row => row.ITEMCODE === '009373.031.1' && row.LOCATIONCODE === 'F.14.000' && row.LOTCODE === '27.F1')),
     liriope: getCardLocationOnHandValue(fullInventory.find(row => row.ITEMCODE === '004380.010.1' && row.LOCATIONCODE === 'C.09.000' && row.LOTCODE === '27.F1'))
@@ -247,7 +315,7 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
     {LAST_UPDATED:'2026-10-20T02:24:45.602Z',FILENAME:'DriveAroundMC-10-16251320260916042513.xlsx'}
   ],'Drive')`));
   expect(driveSummary.files).toEqual(['DriveAroundMC-10-10320620261019103206.xlsx']);
-  await info.attach('v2314-metrics', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+  await info.attach('release-smoke-render-evidence', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
     environment: info.project.name, masterRows: snapshot.masterRows.length, cards: 37, expectedCards: 37,
     renderMs, sorted: true, metricsVerified: true, cache: 'warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off',
     capturedAt: snapshot.capturedAt, source: snapshot.source, liveAuthentication: false, productionWrites: false,
@@ -255,6 +323,21 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   expect(app.requests).toEqual([]);
   app.assertClean();
 });
+
+test('release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke',
+  { tag: ['@suspend-tag', '@release-smoke'] }, async ({ page, baseURL }) => {
+    const app = await harness(page, baseURL!, [fixtures[0]], { masterRows: [{ ...fixtures[0], UNIQUE_ID: 'synthetic-auth-master-row' }] });
+    const auth = await page.evaluate(() => window.eval(`(async () => ({
+      headers: await getNativeAuthRequestHeaders(),
+      fixtureReady: window.__suspendTestAuthReady === true,
+      tokenLooksSynthetic: String(nativeAuthAccessToken || '').includes('synthetic-not-a-real-token')
+    }))()`));
+    expect(auth.fixtureReady).toBe(true);
+    expect(auth.headers).toEqual({ Authorization: 'Bearer browser-only-no-real-session', apikey: 'browser-only' });
+    expect(auth.tokenLooksSynthetic).toBe(true);
+    expect(app.requests).toEqual([]);
+    app.assertClean();
+  });
 
 /** Runs the built app's real renderer, confirmation, transport and cache logic.
  * Only identity/data-loading boundaries are supplied. Backend state lives in
@@ -268,6 +351,8 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const unexpectedMutations: string[] = [];
   const blockedReadOnlyAppApiCalls: string[] = [];
   const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  let expectedFixtureImageFailure = 0;
   const runtimeResponses: string[] = [];
   const inventoryLookupCalls: Array<{ params: Record<string, unknown>; status: number }> = [];
   const replies: Reply[] = [];
@@ -281,6 +366,16 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   };
   const fulfill = (route: Route, body: unknown, status = 200) => route.fulfill({ status, headers: corsHeaders, body: JSON.stringify(body) });
   page.on('pageerror', (error) => pageErrors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() !== 'error') return;
+    // This controlled 404 exercises the app's missing-photo fallback. Ignore
+    // only its generic browser resource error; all other console errors fail.
+    if (expectedFixtureImageFailure > 0 && /failed to load resource/i.test(message.text())) {
+      expectedFixtureImageFailure--;
+      return;
+    }
+    consoleErrors.push(message.text());
+  });
   page.on('response', (response) => {
     if (/\/assets\/live-app-runtime[^/]*\.js/.test(new URL(response.url()).pathname)) runtimeResponses.push(response.url());
   });
@@ -291,6 +386,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     // A real HTTP image failure dispatches the browser's error event consistently;
     // an intercepted cancellation can leave WebKit's deferred image unsettled.
     if (request.method() === 'GET' && url.href === 'https://example.test/photo.jpg') {
+      expectedFixtureImageFailure++;
       return route.fulfill({ status: 404, contentType: 'image/jpeg', body: '' });
     }
     if ((options.native || options.masterRows?.length) && url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1' && request.method() === 'POST') {
@@ -491,7 +587,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   await page.routeWebSocket('**/*', (socket) => socket.close());
 
   const seed = async (nextRows: FixtureRow[] = backendRows) => {
-    await page.waitForFunction(() => typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
+    await page.waitForFunction(() => (window as any).__gncAppRuntimeExecuted !== false && typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
     await page.evaluate((data) => {
       (window as any).__suspendCompletionFixtureRows = data.rows;
       (window as any).__suspendCompletionMasterRows = data.masterRows;
@@ -632,6 +728,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+    expect(consoleErrors, 'release smoke must not emit browser console errors').toEqual([]);
   };
   return { requests, replies, receipts, backendRows, inventoryLookupCalls, card, done, activate, legacyComplete, beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, assertClean };
 }

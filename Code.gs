@@ -14681,38 +14681,77 @@ function getReclassInquiryEmailRecipients_(payload) {
   const safePayload = payload && typeof payload === 'object' ? payload : {};
   const sourceContext = safePayload.sourceContext && typeof safePayload.sourceContext === 'object'
     ? safePayload.sourceContext : {};
-  if (String(sourceContext.sourceMode || '').trim().toLowerCase() === 'drive') {
+  const sourceMode = String(sourceContext.sourceMode || '').trim().toLowerCase();
+  if (sourceMode === 'drive') {
     const protectedDelivery = safePayload.protectedDelivery && typeof safePayload.protectedDelivery === 'object'
       ? safePayload.protectedDelivery : {};
     if (String(protectedDelivery.contractVersion || '') !== 'drive-reclass-protected-v1') {
       throw new Error('RECLASS_VALIDATION:DRIVE_AUTH_REQUIRED');
     }
-    return dedupeEmailAddresses_(safePayload.recipientEmails);
   }
-  if (String(sourceContext.sourceMode || '').trim().toLowerCase() === 'eval-report-2') {
-    const actor = safePayload.actor && typeof safePayload.actor === 'object' ? safePayload.actor : {};
-    const actorUsername = String(firstNonEmptyRequestValue_(actor.username, actor.user, '') || '').trim();
-    let authoritative;
-    try {
-      authoritative = callSupabaseRpc_('get_eval_report2_direct_inquiry_recipients_v1', {
-        p_actor_username: actorUsername
-      });
-    } catch (error) {
-      console.error('[EVAL REPORTS #2] DIRECT_INQUIRY_RECIPIENTS_UNAVAILABLE');
-      throw new Error('RECLASS_VALIDATION:EVAL_REPORT2_RECIPIENTS_UNAVAILABLE');
+  const actor = safePayload.actor && typeof safePayload.actor === 'object' ? safePayload.actor : {};
+  const actorUsername = String(firstNonEmptyRequestValue_(actor.username, actor.user, safePayload.actorUsername, '') || '').trim();
+  if (!actorUsername) throw new Error('RECLASS_VALIDATION:ACTOR_REQUIRED');
+  let authoritative;
+  try {
+    authoritative = callSupabaseRpc_('get_reclass_delivery_recipients_v1', { p_actor_username: actorUsername });
+  } catch (error) {
+    console.error('[RECLASS] VERIFIED_RECIPIENTS_UNAVAILABLE');
+    throw new Error('RECLASS_VALIDATION:RECIPIENTS_UNAVAILABLE');
+  }
+  const recipients = dedupeEmailAddresses_(authoritative);
+  const actorKey = actorUsername.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  if (!recipients.length || recipients.length > 3 || recipients.some(function(email) { return !isLikelyEmailAddress_(email); })) {
+    throw new Error('RECLASS_VALIDATION:RECIPIENTS_UNAVAILABLE');
+  }
+  return recipients;
+}
+
+function buildCompletedInventoryReclassReportModel_(verified, now) {
+  const receipt = verified && typeof verified === 'object' ? verified : {};
+  const rawRows = Array.isArray(receipt.appliedRows) ? receipt.appliedRows : [];
+  const appliedRows = rawRows.map(function(entry) {
+    return entry && entry.row && typeof entry.row === 'object' ? entry.row : entry;
+  }).filter(function(row) { return row && typeof row === 'object'; });
+  const moves = Array.isArray(receipt.moves) ? receipt.moves : [];
+  if (!appliedRows.length || !moves.length) throw new Error('INVENTORY_RECLASS_MOVE_REPORT_ROWS_MISSING');
+  const rowsByUid = new Map();
+  appliedRows.forEach(function(row) {
+    const uid = normalizeInventoryTransactionText_(getInventoryTransactionRowUid_(row));
+    if (!uid || rowsByUid.has(uid)) throw new Error('INVENTORY_RECLASS_MOVE_REPORT_ROWS_INVALID');
+    rowsByUid.set(uid, row);
+  });
+  const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(moves[0].source && moves[0].source.unique_id, moves[0].source && moves[0].source.uniqueId));
+  const sourceRow = rowsByUid.get(sourceUid);
+  if (!sourceRow) throw new Error('INVENTORY_RECLASS_MOVE_REPORT_SOURCE_MISSING');
+  const reportRows = appliedRows.map(function(row) {
+    const values = {};
+    RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) {
+      values[field.key] = getReclassInquiryExactValue_(row, field.aliases, '');
+    });
+    return { unique_id: getInventoryTransactionRowUid_(row), values: values, actionValues: {}, changedFields: [], actions: [], included: false };
+  });
+  const completedMoves = moves.map(function(move) {
+    const source = move && move.source || {};
+    const destination = move && move.destination || {};
+    if (!['move_up', 'move_down'].includes(String(move && move.direction || ''))
+      || !Number.isFinite(Number(move && move.quantity)) || Number(move.quantity) <= 0
+      || !rowsByUid.has(normalizeInventoryTransactionText_(source.unique_id || source.uniqueId))
+      || !rowsByUid.has(normalizeInventoryTransactionText_(destination.unique_id || destination.uniqueId))) {
+      throw new Error('INVENTORY_RECLASS_MOVE_REPORT_MOVE_INVALID');
     }
-    const recipients = dedupeEmailAddresses_(authoritative);
-    const actorKey = actorUsername.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-    const expectedCount = actorKey === 'jd_jones' ? 4 : 3;
-    if (recipients.length !== expectedCount) throw new Error('RECLASS_VALIDATION:EVAL_REPORT2_RECIPIENTS_UNAVAILABLE');
-    return recipients;
-  }
-  return dedupeEmailAddresses_([
-    safePayload.recipientEmails,
-    safePayload.emailRecipients,
-    safePayload.internalRecipients,
-    safePayload.recipients
-  ]);
+    return { direction: move.direction, quantity: Number(move.quantity), source: source, destination: destination };
+  });
+  const submittedAt = now instanceof Date ? now : new Date();
+  const model = buildReclassInquiryReportModel_(sourceRow, appliedRows, reportRows, {
+    actor: { display: firstNonEmptyRequestValue_(receipt.actorDisplayName, receipt.actorUsername, 'AgData user'), username: receipt.actorUsername || '' },
+    transaction: { requestActions: [], holdStopProposals: [], scope: {} }
+  }, submittedAt);
+  model.isCompletedMoveReport = true;
+  model.completedMoveSummary = completedMoves;
+  model.completedRevision = String(receipt.revision || '');
+  model.requestActionLabel = 'Reclass Move Completed';
+  return model;
 }
 
 function getInventoryTransactionEmailRowValue_(row, fields, fallback) {
@@ -16460,7 +16499,7 @@ function buildReclassInquiryReportText_(model) {
   const editSummary = safeModel.editSummary || {};
   const body = [
     'GNC PH Reclass Item Inquiry',
-    'Submitted: ' + String(safeModel.submittedAt || ''),
+    (safeModel.isCompletedMoveReport ? 'Completed: ' : 'Submitted: ') + String(safeModel.submittedAt || ''),
     'Submitted By: ' + String(safeModel.actorDisplay || ''),
     'Request: ' + String(safeModel.requestActionLabel || 'Reclass Item Inquiry'),
     'Item: ' + String(identity.commonname || ''),
@@ -16469,9 +16508,10 @@ function buildReclassInquiryReportText_(model) {
     'Edited Rows: ' + String(editSummary.rowCount || 0),
     'Edited Fields: ' + String(editSummary.fieldCount || 0),
     buildSeasonPriorityDecisionText_(safeModel),
-    buildProtectedLiveEditDecisionText_(safeModel)
+    buildProtectedLiveEditDecisionText_(safeModel),
+    safeModel.isCompletedMoveReport ? buildCompletedInventoryReclassMoveText_(safeModel) : ''
   ];
-  const splitMoveText = buildReclassInquirySplitMoveText_(safeModel);
+  const splitMoveText = safeModel.isCompletedMoveReport ? '' : buildReclassInquirySplitMoveText_(safeModel);
   if (splitMoveText) body.push(splitMoveText);
   body.push('', 'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.');
   return body.join('\n');
@@ -16507,15 +16547,44 @@ function buildReclassInquiryEmailHtml_(model) {
   return buildPhoneSizedEmailHtml_([
     '<div style="font-family:Arial,sans-serif;padding:20px;color:#1f2937;">',
     '<h2 style="margin:0 0 14px;color:#007a4d;">GNC PH Reclass Item Inquiry</h2>',
-    '<p><strong>Sent By:</strong> ' + escapeEmailHtml_(safeModel.actorDisplay || '') + '<br><strong>Submitted:</strong> ' + escapeEmailHtml_(safeModel.submittedAt || '') + '</p>',
+    '<p><strong>' + (safeModel.isCompletedMoveReport ? 'Completed By:' : 'Sent By:') + '</strong> ' + escapeEmailHtml_(safeModel.actorDisplay || '') + '<br><strong>' + (safeModel.isCompletedMoveReport ? 'Completed:' : 'Submitted:') + '</strong> ' + escapeEmailHtml_(safeModel.submittedAt || '') + (safeModel.completedRevision ? '<br><strong>Inventory revision:</strong> ' + escapeEmailHtml_(safeModel.completedRevision) : '') + '</p>',
     '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || 'Reclass Item Inquiry') + '</p>',
     '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
-    buildReclassInquirySplitMoveHtml_(safeModel),
+    safeModel.isCompletedMoveReport ? buildCompletedInventoryReclassMoveHtml_(safeModel) : buildReclassInquirySplitMoveHtml_(safeModel),
     safeModel.transaction && safeModel.transaction.seasonPriority ? '<p style="white-space:pre-line;overflow-wrap:anywhere;">' + escapeEmailHtml_(buildSeasonPriorityDecisionText_(safeModel)) + '</p>' : '',
-    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:2px solid #111827;color:#111827;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.</p>',
+    '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:2px solid #111827;color:#111827;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every ' + (safeModel.isCompletedMoveReport ? 'post-move inventory row and applied move.' : 'current row. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.') + '</p>',
     '</div>'
   ].join(''));
+}
+
+function buildCompletedInventoryReclassMoveText_(model) {
+  const lines = ['Applied Reclass moves (inventory quantities below reflect the completed transaction):'];
+  (Array.isArray(model && model.completedMoveSummary) ? model.completedMoveSummary : []).forEach(function(move, index) {
+    function label(row) {
+      row = row || {};
+      return [row.commonname, row.contsize, row.itemcode, row.season, row.lotcode, row.locationcode].filter(Boolean).join(' · ');
+    }
+    lines.push('Move ' + (index + 1) + ' (' + (move.direction === 'move_up' ? 'up' : 'down') + ') ' + move.quantity,
+      'Source: ' + label(move.source), 'Destination: ' + label(move.destination));
+  });
+  return lines.join('\n');
+}
+
+function buildCompletedInventoryReclassMoveHtml_(model) {
+  const esc = escapeEmailHtml_;
+  const rows = (Array.isArray(model && model.completedMoveSummary) ? model.completedMoveSummary : []).map(function(move, index) {
+    function label(row) {
+      row = row || {};
+      return [row.commonname, row.contsize, row.itemcode, row.season, row.lotcode, row.locationcode].filter(Boolean).join(' · ');
+    }
+    return '<tr><td>' + esc('Move ' + (index + 1) + ' (' + (move.direction === 'move_up' ? 'up' : 'down') + ')')
+      + '</td><td>' + esc(move.quantity) + '</td><td>' + esc(label(move.source)) + '</td><td>' + esc(label(move.destination)) + '</td></tr>';
+  }).join('');
+  return '<section style="margin:14px 0;padding:12px;border:1px solid #94a3b8;border-radius:8px;overflow-wrap:anywhere;">'
+    + '<strong>Applied Reclass moves (inventory quantities reflect the completed transaction)</strong>'
+    + '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%"><thead><tr><th align="left">Move</th><th align="left">Qty</th><th align="left">Source</th><th align="left">Destination</th></tr></thead><tbody>'
+    + rows + '</tbody></table></section>';
 }
 
 function getReclassInquirySplitMoveEntries_(model) {
@@ -16725,13 +16794,15 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
     : '';
   const liveEditSummary = safeModel.liveEditSummary && typeof safeModel.liveEditSummary === 'object' ? safeModel.liveEditSummary : null;
   const hasConfirmedV7Changes = Number(safeModel.v7ChangedFieldCount) > 0 || !!(liveEditSummary && Number(liveEditSummary.rowCount) > 0);
-  const proposalLegend = safeModel.isV7
+  const proposalLegend = safeModel.isCompletedMoveReport
+    ? 'The Reclass move below was applied atomically. Inventory quantities, ITEM SPEC, Hold / Stop, Priority, and notes shown in the location table are the authoritative post-move values.'
+    : (safeModel.isV7
     ? (hasConfirmedV7Changes
       ? 'Confirmed editable inventory fields and priority / Hold / Stop values were applied to inventory. Yellow, boxed quantity and season movement values are inquiry proposals; inventory quantities were not changed.'
       : 'Yellow, boxed quantity and season movement values are inquiry proposals. No live inventory fields were changed.')
     : (liveEditSummary && Number(liveEditSummary.rowCount) > 0
     ? 'Confirmed priority / Hold / Stop values were applied to inventory. Yellow, boxed movement values are inquiry proposals; inventory quantities were not changed.'
-    : 'Yellow, boxed values are requested changes and remain visible on black-and-white printers. Report only; no inventory was changed.');
+    : 'Yellow, boxed values are requested changes and remain visible on black-and-white printers. Report only; no inventory was changed.'));
   const evidenceRows = Array.isArray(safeModel.evaluationResultsRows)
     ? safeModel.evaluationResultsRows
     : (safeModel.evaluationResults && typeof safeModel.evaluationResults === 'object' ? [safeModel.evaluationResults] : []);
@@ -16751,13 +16822,14 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
             }).join('') + '</div>' : '') + '</section>';
       }).join('')
     : '';
+  const completedMoveHtml = safeModel.isCompletedMoveReport ? buildCompletedInventoryReclassMoveHtml_(safeModel) : '';
   // Repeat only the banner in the outer header; the nested grid owns its column header.
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
     '@page{size:Letter landscape;margin:.16in .34in .34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:7pt;line-height:1.15}.page-title-cell{padding:0;border:0}.page-header{padding:3px 8px;border:2px solid #000;background:#fff176;color:#000;font:800 10pt Arial,Helvetica,sans-serif;text-align:center}.report-summary-cell{padding:3px 0;border:0}.report-summary-row{break-inside:auto;page-break-inside:auto}.meta{margin:0 0 5px;font-size:8pt}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px;break-inside:avoid;page-break-inside:avoid}.original-oh{display:block;font-size:7pt}.row-stamps{display:block;margin-top:2px;font-size:5.5pt;line-height:1.1;overflow-wrap:anywhere}.inventory-field-value{overflow-wrap:anywhere;word-break:break-word}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:2px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:6.5pt;text-align:left}td{font-size:6.5pt;white-space:pre-line}.edited-cell{background:#fff176!important}.inventory-field-value s{color:#333}.report-frame>tbody>tr{break-inside:auto;page-break-inside:auto}.report-grid-cell,.supplemental-temporary-cell{padding:0;border:0;white-space:normal}.report-grid-cell>.section-title{break-after:avoid;page-break-after:avoid}.location-table th,.location-table td{padding:0.5px 2px;line-height:1.05;height:auto;min-height:0}.location-table tr{break-inside:avoid;page-break-inside:avoid}.location-table .proposal-box{margin:0.5px 0;padding:0.5px 2px}.location-table .row-stamps{margin-top:0.5px;line-height:1.05}.location-table .scope-note{margin-top:0.5px;padding-top:0.5px}' +
     '.location-table .movement-cell .proposal-box,.location-table .movement-cell strong{white-space:nowrap;overflow-wrap:normal;word-break:normal}.location-table th,.location-table .code-cell,.location-table .code-cell .proposal-box,.location-table .code-cell strong{white-space:nowrap;overflow-wrap:normal;word-break:normal}.location-table .note-cell{white-space:normal;overflow-wrap:break-word;word-break:normal}.location-table .code-cell .inventory-field-value{white-space:normal;overflow-wrap:break-word;word-break:normal}.report-audit{margin-top:4px;padding:4px 6px;border:1px solid #000;font-size:6.5pt;line-height:1.3;white-space:normal;overflow-wrap:break-word}.identity-cell:nth-last-child(-n+3){border-bottom:1px solid #000}.identity-cell:last-child{grid-column:1/-1;border-right:0;border-bottom:0}' +
     '</style></head><body><table class="report-frame"><thead><tr class="page-title-row"><th class="page-title-cell" colspan="1"><div class="page-header">' + esc(pageHeaderText) + '</div></th></tr></thead><tbody>' +
-    '<tr class="report-summary-row"><td class="report-summary-cell"><div class="meta"><strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + '</div><div class="proposal-legend"><span>' + esc(proposalLegend) + '</span></div><div class="identity">' + identityCells + '</div>' + evidenceHtml + '</td></tr>' +
-    '<tr class="report-grid-row"><td class="report-grid-cell"><div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr class="column-heading-row">' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + auditHtml + '</td></tr>' +
+    '<tr class="report-summary-row"><td class="report-summary-cell"><div class="meta"><strong>' + (safeModel.isCompletedMoveReport ? 'Completed:' : 'Submitted:') + '</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + (safeModel.completedRevision ? ' &nbsp; <strong>Inventory revision:</strong> ' + esc(safeModel.completedRevision) : '') + '</div><div class="proposal-legend"><span>' + esc(proposalLegend) + '</span></div><div class="identity">' + identityCells + '</div>' + evidenceHtml + '</td></tr>' +
+    '<tr class="report-grid-row"><td class="report-grid-cell"><div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr class="column-heading-row">' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + auditHtml + completedMoveHtml + '</td></tr>' +
     (supplementalTemporaryHtml ? '<tr class="supplemental-temporary-row"><td class="supplemental-temporary-cell">' + supplementalTemporaryHtml + '</td></tr>' : '') + '</tbody></table></body></html>';
 }
 
@@ -17088,9 +17160,10 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
       })
     }) : safePayload;
     const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, reportPayload, now);
-    const recipients = Array.isArray(frozenRecipientEmails)
-      ? dedupeEmailAddresses_(frozenRecipientEmails)
-      : getReclassInquiryEmailRecipients_(safePayload);
+    // Outbox recipient fields are historical snapshots, not authority. Resolve
+    // the current fixed Dylan/Megan plus submitting-user policy at delivery so
+    // older queued events cannot retain unrelated recipients indefinitely.
+    const recipients = getReclassInquiryEmailRecipients_(safePayload);
     if (!recipients.length) throw new Error('RECLASS_VALIDATION:RECIPIENT_REQUIRED');
     const commonName = String(model.identity.commonname || 'Inventory').replace(/\s+/g, ' ').trim();
     const subject = buildReclassInquiryEmailSubject_(model);
@@ -21844,12 +21917,13 @@ function handleSignedInventoryReclassMoveDelivery_(delivery) {
     const rawRecipients = verified.deliveryRecipients;
     const actorEmail = normalizeEmailAddress_(verified.actorEmail);
     if (!Array.isArray(moves) || moves.length < 1 || moves.length > 100
-      || !Array.isArray(rawRecipients) || rawRecipients.length < 1 || rawRecipients.length > 8
+      || !Array.isArray(rawRecipients) || rawRecipients.length < 1 || rawRecipients.length > 3
+      || !Array.isArray(verified.appliedRows) || verified.appliedRows.length < 1
       || !actorEmail || rawRecipients.some(function(email) { return typeof email !== 'string' || !isLikelyEmailAddress_(email); })) {
       throw new Error('INVENTORY_RECLASS_MOVE_DELIVERY_INVALID');
     }
     const recipients = dedupeEmailAddresses_(rawRecipients);
-    if (recipients.length !== rawRecipients.length || recipients.indexOf(actorEmail) < 0) {
+    if (recipients.length !== rawRecipients.length || recipients.indexOf(actorEmail) < 0 || recipients.length > 3) {
       throw new Error('INVENTORY_RECLASS_MOVE_RECIPIENTS_INVALID');
     }
     const routed = resolveOperationalEmailHeaders_(recipients, [], []).to;
@@ -21857,43 +21931,27 @@ function handleSignedInventoryReclassMoveDelivery_(delivery) {
       throw new Error('INVENTORY_RECLASS_MOVE_RECIPIENT_CHANGED');
     }
 
-    function clean(value, max) {
-      return String(value == null ? '' : value).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+    const actorDisplay = String(firstNonEmptyRequestValue_(verified.actorDisplayName, verified.actorUsername, 'AgData user') || 'AgData user')
+      .replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+    const reportModel = buildCompletedInventoryReclassReportModel_(verified, new Date());
+    const subject = (buildReclassInquiryEmailSubject_(reportModel) + ' - Move Completed').replace(/[\r\n]+/g, ' ').slice(0, 220);
+    let pdfBlob;
+    try {
+      pdfBlob = HtmlService.createHtmlOutput(buildReclassInquiryCompactReportHtml_(reportModel, true))
+        .getBlob().getAs(MimeType.PDF);
+      const safeName = String(reportModel.identity.commonname || 'Inventory').replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 60) || 'Item';
+      pdfBlob.setName('GNC_PH_Reclass_Completed_' + safeName + '.pdf');
+    } catch (pdfError) {
+      throw new Error('INVENTORY_RECLASS_MOVE_PDF_BUILD_FAILED');
     }
-    function renderMove(move, index) {
-      if (!move || typeof move !== 'object' || !['move_up', 'move_down'].includes(String(move.direction || ''))
-        || !move.source || !move.destination || !Number.isFinite(Number(move.quantity)) || Number(move.quantity) <= 0) {
-        throw new Error('INVENTORY_RECLASS_MOVE_ROW_INVALID');
-      }
-      const source = move.source;
-      const destination = move.destination;
-      const sourceText = [source.commonname, source.contsize, source.itemcode, source.season, source.lotcode, source.locationcode]
-        .map(function(value) { return clean(value, 180); }).filter(Boolean).join(' · ');
-      const destinationText = [destination.commonname, destination.contsize, destination.itemcode, destination.season, destination.lotcode, destination.locationcode]
-        .map(function(value) { return clean(value, 180); }).filter(Boolean).join(' · ');
-      return { label: 'Move ' + (index + 1) + ' (' + (move.direction === 'move_up' ? 'up' : 'down') + ')',
-        quantity: clean(move.quantity, 32), source: sourceText, destination: destinationText };
-    }
-    const rows = moves.map(renderMove);
-    const actorDisplay = clean(verified.actorDisplayName || verified.actorUsername, 120) || 'AgData user';
-    const subject = ('GNC PH Reclass move completed - ' + actorDisplay + ' - ' + commandId).replace(/[\r\n]+/g, ' ').slice(0, 220);
-    const textLines = ['GNC PH Reclass move completed', 'Completed by: ' + actorDisplay, 'Command: ' + commandId, 'Revision: ' + clean(verified.revision, 32), ''];
-    rows.forEach(function(row) {
-      textLines.push(row.label + ': ' + row.quantity, 'Source: ' + row.source, 'Destination: ' + row.destination, '');
-    });
-    const html = '<div style="font-family:Arial,sans-serif"><h2>GNC PH Reclass move completed</h2><p><strong>Completed by:</strong> '
-      + escapeEmailHtml_(actorDisplay) + '<br><strong>Command:</strong> ' + escapeEmailHtml_(commandId)
-      + '<br><strong>Revision:</strong> ' + escapeEmailHtml_(clean(verified.revision, 32)) + '</p><table cellpadding="6" cellspacing="0" style="border-collapse:collapse">'
-      + '<thead><tr><th align="left">Move</th><th align="left">Qty</th><th align="left">Source</th><th align="left">Destination</th></tr></thead><tbody>'
-      + rows.map(function(row) { return '<tr><td>' + escapeEmailHtml_(row.label) + '</td><td>' + escapeEmailHtml_(row.quantity)
-        + '</td><td>' + escapeEmailHtml_(row.source) + '</td><td>' + escapeEmailHtml_(row.destination) + '</td></tr>'; }).join('')
-      + '</tbody></table></div>';
+    const textBody = buildReclassInquiryReportText_(reportModel);
+    const htmlBody = buildReclassInquiryEmailHtml_(reportModel);
     props.setProperty(intentKey, new Date().toISOString());
     let result;
     try {
       result = sendGmailApiMessage_({ toList: recipients.join(','), toArray: recipients, requiredRecipientEmails: recipients,
         fromName: 'GNC PH Reclass', fromAddress: resolveAutomatedEmailSenderAddress_(), subject: subject,
-        textBody: textLines.join('\n'), htmlBody: html, messageIdHeader: messageIdHeader });
+        textBody: textBody, htmlBody: htmlBody, attachments: [pdfBlob], messageIdHeader: messageIdHeader });
     } catch (error) {
       const status = Number(error && (error.code || (error.details && error.details.code)));
       if ([400, 401, 403, 404, 429].indexOf(status) >= 0) props.deleteProperty(intentKey);

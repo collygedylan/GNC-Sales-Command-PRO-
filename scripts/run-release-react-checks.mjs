@@ -1,3 +1,5 @@
+import { verifyScopedRetainedValidation } from './check-retained-release-validation.mjs';
+import { execFileSync } from 'node:child_process';
 import { verifyV2314RetainedValidation } from './check-v2314-retained-validation.mjs';
 import { verifyV2313RetainedValidation } from './check-v2313-retained-validation.mjs';
 import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
@@ -23,7 +25,20 @@ export function runReleaseReactChecks({
   spawn = spawnSync,
   print = console.log,
 } = {}) {
-  const { version } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
+  const { version, scopedValidationReceipt } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
+  if (scopedValidationReceipt) {
+    const receipt = verifyScopedRetainedValidation({ rootDir });
+    const candidates = receipt.changedPaths.filter(file => /^(components|hooks|services|v2\/src)\//.test(file) || /\.test\.tsx$/.test(file));
+    for (const file of candidates) {
+      // A release-label refresh does not change the v2 API implementation.
+      if (file !== 'v2/src/services/api.ts') throw new Error(`SCOPED_REACT_SOURCE_CHANGED:${file}`);
+      const baseline = execFileSync('git', ['show', `${receipt.base}:${file}`], { cwd: rootDir, encoding: 'utf8' });
+      const normalize = source => source.replaceAll(/AgData v\d+\.\d+\.\d+/g, 'AgData RELEASE').replaceAll('\r\n', '\n');
+      if (normalize(baseline) !== normalize(fs.readFileSync(path.join(rootDir, file), 'utf8'))) throw new Error('SCOPED_REACT_API_SOURCE_CHANGED');
+    }
+    print('Verified unchanged React sources against the retained baseline and scoped release receipt.');
+    return 0;
+  }
   const vitest = path.join(rootDir, 'node_modules', 'vitest', 'vitest.mjs');
   if (version === '2.3.14') {
     verifyV2314RetainedValidation({ rootDir });

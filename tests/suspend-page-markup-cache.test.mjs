@@ -40,7 +40,7 @@ function fixture() {
     generated: () => generated };
 }
 
-test('verified iPhone Suspend page reuses markup while returning every physical row', () => {
+test('verified Suspend page reuses markup while returning every physical row', () => {
   const f = fixture();
   const first = f.draw();
   assert.deepEqual(f.draw(), first);
@@ -87,11 +87,11 @@ test('revoked, incomplete and preparing snapshots never restore cached markup', 
   }
 });
 
-test('non-iPhone and oversized pages keep the existing uncached renderer', () => {
+test('verified desktop pages reuse markup and oversized pages remain bounded', () => {
   const f = fixture();
   f.ctx.isIOSDevice = () => false;
   f.draw(); f.draw();
-  assert.equal(f.generated(), 4);
+  assert.equal(f.generated(), 2);
   f.ctx.isIOSDevice = () => true;
   f.plan.rows = Array.from({ length: 101 }, (_, index) => ({ UNIQUE_ID: String(index) }));
   const render = f.ctx.createSuspendTagPageRenderRow({}, f.plan);

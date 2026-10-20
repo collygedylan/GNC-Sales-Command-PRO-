@@ -391,9 +391,15 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           const payload = asJsonRecord(prepared);
           const recipients = Array.isArray(payload.deliveryRecipients) ? payload.deliveryRecipients : [];
           const moves = Array.isArray(payload.moves) ? payload.moves : [];
-          if (payload.contractVersion !== "inventory-reclass-move-completed-v1" || recipients.length < 1 || recipients.length > 8
+          const appliedRows = Array.isArray(payload.appliedRows) ? payload.appliedRows : [];
+          const actorEmail = String(payload.actorEmail || "").trim().toLowerCase();
+          if (payload.contractVersion !== "inventory-reclass-move-completed-v1" || recipients.length < 1 || recipients.length > 3
             || recipients.some(email => typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-            || moves.length < 1 || moves.length > 100) throw new Error("INVENTORY_RECLASS_MOVE_DELIVERY_INVALID");
+            || new Set(recipients.map(email => String(email).trim().toLowerCase())).size !== recipients.length
+            || !actorEmail || !recipients.some(email => String(email).trim().toLowerCase() === actorEmail)
+            || moves.length < 1 || moves.length > 100 || appliedRows.length < 1 || appliedRows.length > 200) {
+            throw new Error("INVENTORY_RECLASS_MOVE_DELIVERY_INVALID");
+          }
           event.payload = payload;
           const result = await callAppsScript(event, [], null);
           if (!result.gmailMessageId || result.messageIdHeader !== await stableMessageId(String(event.event_key || event.event_id))) {
