@@ -1,0 +1,314 @@
+[WebServer] (node:27852) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 9 tests using 3 workers
+
+(node:32948) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25080) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29080) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag (20.1s)
+(node:35216) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  2 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag (20.7s)
+(node:33876) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  4 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag (2.0s)
+(node:34828) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  5 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag (2.1s)
+(node:43684) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  3 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag (31.2s)
+(node:44780) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  8 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag (4.7s)
+(node:5084) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  6 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2230:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (14.8s)
+  x  7 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2230:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (15.8s)
+  x  9 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:2230:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (33.4s)
+
+
+  1) [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag 
+
+    Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "POST:/functions/v1/app-api:{\"action\":\"user_access\",\"operation\":\"resolve\"}",
+    + ]
+
+      1001 |   });
+      1002 |   const assertClean = async () => {
+    > 1003 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+           |                                                                                                                      ^
+      1004 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
+      1005 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+      1006 |     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+        at Object.assertClean (C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:1003:118)
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:378:13
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-991b8--v2314-parity-release-smoke-desktop-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-991b8--v2314-parity-release-smoke-desktop-chromium\error-context.md
+
+  2) [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag 
+
+    Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "POST:/functions/v1/app-api:{\"action\":\"user_access\",\"operation\":\"resolve\"}",
+    + ]
+
+      1001 |   });
+      1002 |   const assertClean = async () => {
+    > 1003 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+           |                                                                                                                      ^
+      1004 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
+      1005 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+      1006 |     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+        at Object.assertClean (C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:1003:118)
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:393:15
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-6ba4e-uction-writes-release-smoke-desktop-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-6ba4e-uction-writes-release-smoke-desktop-chromium\error-context.md
+
+  3) [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2230:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke 
+
+    Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "POST:/functions/v1/app-api:{\"action\":\"user_access\",\"operation\":\"resolve\"}",
+    + ]
+
+      1001 |   });
+      1002 |   const assertClean = async () => {
+    > 1003 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+           |                                                                                                                      ^
+      1004 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
+      1005 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+      1006 |     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+        at Object.assertClean (C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:1003:118)
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:2347:13
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-c287e-rupted-import-release-smoke-desktop-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-c287e-rupted-import-release-smoke-desktop-chromium\error-context.md
+
+  4) [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag 
+
+    Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "POST:/functions/v1/app-api:{\"action\":\"user_access\",\"operation\":\"resolve\"}",
+    + ]
+
+      1001 |   });
+      1002 |   const assertClean = async () => {
+    > 1003 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+           |                                                                                                                      ^
+      1004 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
+      1005 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+      1006 |     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+        at Object.assertClean (C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:1003:118)
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:378:13
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-991b8--v2314-parity-release-smoke-android-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-991b8--v2314-parity-release-smoke-android-chromium\error-context.md
+
+  5) [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag 
+
+    Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "POST:/functions/v1/app-api:{\"action\":\"user_access\",\"operation\":\"resolve\"}",
+    + ]
+
+      1001 |   });
+      1002 |   const assertClean = async () => {
+    > 1003 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+           |                                                                                                                      ^
+      1004 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
+      1005 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+      1006 |     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+        at Object.assertClean (C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:1003:118)
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:393:15
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-6ba4e-uction-writes-release-smoke-android-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-6ba4e-uction-writes-release-smoke-android-chromium\error-context.md
+
+  6) [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2230:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke 
+
+    Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "POST:/functions/v1/app-api:{\"action\":\"user_access\",\"operation\":\"resolve\"}",
+    + ]
+
+      1001 |   });
+      1002 |   const assertClean = async () => {
+    > 1003 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+           |                                                                                                                      ^
+      1004 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
+      1005 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+      1006 |     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+        at Object.assertClean (C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:1003:118)
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:2347:13
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-c287e-rupted-import-release-smoke-android-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-c287e-rupted-import-release-smoke-android-chromium\error-context.md
+
+  7) [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag 
+
+    Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "POST:/functions/v1/app-api:{\"action\":\"user_access\",\"operation\":\"resolve\"}",
+    + ]
+
+      1001 |   });
+      1002 |   const assertClean = async () => {
+    > 1003 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+           |                                                                                                                      ^
+      1004 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
+      1005 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+      1006 |     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+        at Object.assertClean (C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:1003:118)
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:378:13
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-991b8--v2314-parity-release-smoke-iphone-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-991b8--v2314-parity-release-smoke-iphone-webkit\error-context.md
+
+  8) [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag 
+
+    Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "POST:/functions/v1/app-api:{\"action\":\"user_access\",\"operation\":\"resolve\"}",
+    + ]
+
+      1001 |   });
+      1002 |   const assertClean = async () => {
+    > 1003 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+           |                                                                                                                      ^
+      1004 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
+      1005 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+      1006 |     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+        at Object.assertClean (C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:1003:118)
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:393:15
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-6ba4e-uction-writes-release-smoke-iphone-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-6ba4e-uction-writes-release-smoke-iphone-webkit\error-context.md
+
+  9) [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:2230:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke 
+
+    Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "POST:/functions/v1/app-api:{\"action\":\"user_access\",\"operation\":\"resolve\"}",
+    + ]
+
+      1001 |   });
+      1002 |   const assertClean = async () => {
+    > 1003 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+           |                                                                                                                      ^
+      1004 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
+      1005 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
+      1006 |     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+        at Object.assertClean (C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:1003:118)
+        at C:\Users\dylan\Projects\GNC\worktrees\bunch-card-entry-v234\tests\suspend-tag-completion.e2e.spec.ts:2347:13
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-c287e-rupted-import-release-smoke-iphone-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: .gnc-local\release-smoke\agdata-v2-3-16\1a5d6f69b7b9\20261020191442110\artifacts\suspend-tag-completion.e2e-c287e-rupted-import-release-smoke-iphone-webkit\error-context.md
+
+  9 failed
+    [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag 
+    [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag 
+    [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2230:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke 
+    [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag 
+    [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag 
+    [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2230:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke 
+    [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag 
+    [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag 
+    [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:2230:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke 

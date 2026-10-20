@@ -1,0 +1,22 @@
+[WebServer] (node:43580) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 9 tests using 3 workers
+
+(node:44520) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28460) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23824) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 2 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag (11.2s)
+  ok 3 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag (11.9s)
+  ok 4 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag (1.8s)
+  ok 5 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag (1.8s)
+  ok 1 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:73:1 › Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke @suspend-tag (14.9s)
+  ok 8 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:381:1 › release smoke uses an isolated synthetic session and does not authorize production writes @release-smoke @suspend-tag (2.9s)
+  ok 6 [desktop-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2281:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (15.3s)
+  ok 7 [android-chromium] › tests\suspend-tag-completion.e2e.spec.ts:2281:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (14.8s)
+  ok 9 [iphone-webkit] › tests\suspend-tag-completion.e2e.spec.ts:2281:1 › published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke (36.6s)
+
+  9 passed (56.5s)

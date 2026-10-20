@@ -1,0 +1,28 @@
+vite v8.2.1 building client environment for production...
+transforming...
+✓ 2003 modules transformed.
+rendering chunks...
+computing gzip size...
+v2/dist/.vite/manifest.json                           1.26 kB │ gzip:   0.36 kB
+v2/dist/index.html                                    1.58 kB │ gzip:   0.76 kB
+v2/dist/assets/index-C6yYEw_8.css                    75.41 kB │ gzip:  13.95 kB
+v2/dist/assets/workbox-window.prod.es5-Bd17z0YL.js    5.71 kB │ gzip:   2.25 kB │ map:    13.50 kB
+v2/dist/assets/RequestQueue-qAD5fpw4.js               6.13 kB │ gzip:   2.24 kB │ map:    18.57 kB
+v2/dist/assets/DriveInventory-C3Ue7m13.js            11.54 kB │ gzip:   4.19 kB │ map:    41.42 kB
+v2/dist/assets/index-lJkLoj5a.js                    791.35 kB │ gzip: 223.96 kB │ map: 3,905.29 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.67s
+
+PWA v1.3.0
+mode      generateSW
+precache  8 entries (871.31 KiB)
+files generated
+  dist/sw.js.map
+  dist/sw.js
+  dist/workbox-250e2fb9.js.map
+  dist/workbox-250e2fb9.js

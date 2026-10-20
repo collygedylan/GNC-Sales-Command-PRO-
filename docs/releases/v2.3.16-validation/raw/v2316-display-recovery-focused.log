@@ -1,0 +1,22 @@
+✔ opening Docks and Suspend recount dialogs is not blocked by whole-view freshness (34.1818ms)
+✔ Suspend mutation still requires an exact permitted row and compare-and-set payload (4.0783ms)
+✔ readable published snapshots have stable tokens distinct from Up-to-date authorization (0.2586ms)
+✔ Reclass inquiry reads accept stable readable snapshots while mutation checks remain separate (2.0175ms)
+✔ Reclass detail opens from same-scope full cached rows as display-only and cannot reuse them as mutation proof (1.6267ms)
+✔ Inventory Edit opens from the authorized current master card and refreshes its summary without resetting entered controls (0.7972ms)
+✔ cold Drive authorization failure gives an actionable access message and manual retry (21.6521ms)
+✔ cached Drive failure preserves same-identity content and marks its view dirty as stale (2.2858ms)
+✔ Drive and AV retain native-session recovery guidance without exposing raw error details (8.4888ms)
+✔ cached native-session failure keeps authorized rows without a blocking recovery notice (1.2905ms)
+✔ loaded rows remain visible when the verification display marker is absent (1.7992ms)
+✔ coordinator message-only recovery errors retain the canonical session guidance (1.1401ms)
+✔ Drive retains the settings side adapter in the shared cohort (0.1485ms)
+✔ Drive and AV recovery pass coordinator errors through the denial classifier (1.2107ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 297.2295

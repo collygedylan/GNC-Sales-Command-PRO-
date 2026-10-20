@@ -1,0 +1,15 @@
+✔ same-account forced permission refreshes coalesce into one authenticated RPC (10.1761ms)
+✔ same-role policy changes reload and apply authoritative permissions before returning (2.7847ms)
+✔ division changes refresh capability scope even without a role change (0.8442ms)
+✔ confirmed role changes still clear role-scoped caches (0.7363ms)
+✔ a failed updated policy check rejects instead of granting fallback access (1.0848ms)
+✔ live permission signal arriving during a foreground check performs a full refresh afterwards (0.9233ms)
+✔ permission-change coordinator callback returns the permission refresh promise (2.0235ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 298.6502
