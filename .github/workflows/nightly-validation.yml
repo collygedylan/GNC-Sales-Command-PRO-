@@ -1,4 +1,4 @@
-name: Nightly browser validation
+name: Nightly Validation
 
 on:
   schedule:
@@ -13,7 +13,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: nightly-browser-validation-${{ github.ref }}
+  group: nightly-validation-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -64,6 +64,27 @@ jobs:
       run-browser-tests: true
       run-performance-tests: true
       run-all-schema-tests: true
+
+  pending-order-contract:
+    needs: central-time-gate
+    if: github.ref == 'refs/heads/main' && needs.central-time-gate.outputs.should_run == 'true'
+    uses: ./.github/workflows/bloomscapes-pending-tests.yml
+    with:
+      run-nightly-suites: true
+
+  suspend-tag-contract:
+    needs: central-time-gate
+    if: github.ref == 'refs/heads/main' && needs.central-time-gate.outputs.should_run == 'true'
+    uses: ./.github/workflows/suspend-tag-tests.yml
+    with:
+      run-nightly-suites: true
+
+  live-dataset-contract:
+    needs: central-time-gate
+    if: github.ref == 'refs/heads/main' && needs.central-time-gate.outputs.should_run == 'true'
+    uses: ./.github/workflows/live-dataset-revisions.yml
+    with:
+      run-nightly-suites: true
 
   current-live-release:
     needs: central-time-gate
@@ -156,6 +177,9 @@ jobs:
       - central-time-gate
       - expanded-validation
       - backend-diagnostics
+      - pending-order-contract
+      - suspend-tag-contract
+      - live-dataset-contract
       - current-live-release
       - post-deployment-canary
     if: always() && github.ref == 'refs/heads/main' && needs.central-time-gate.outputs.should_run == 'true'
@@ -174,6 +198,9 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           EXPANDED_VALIDATION_RESULT: ${{ needs.expanded-validation.result }}
           BACKEND_DIAGNOSTICS_RESULT: ${{ needs.backend-diagnostics.result }}
+          PENDING_ORDER_CONTRACT_RESULT: ${{ needs.pending-order-contract.result }}
+          SUSPEND_TAG_CONTRACT_RESULT: ${{ needs.suspend-tag-contract.result }}
+          LIVE_DATASET_CONTRACT_RESULT: ${{ needs.live-dataset-contract.result }}
           CURRENT_LIVE_RELEASE_RESULT: ${{ needs.current-live-release.result }}
           POST_DEPLOYMENT_CANARY_RESULT: ${{ needs.post-deployment-canary.result }}
         run: |
@@ -202,6 +229,9 @@ jobs:
             const topLevel = [
               ['Expanded validation (repository tests, layout/browser snapshots, performance benchmarks)', process.env.EXPANDED_VALIDATION_RESULT],
               ['Backend diagnostics (database/browser/performance suites)', process.env.BACKEND_DIAGNOSTICS_RESULT],
+              ['Pending-order transaction contracts', process.env.PENDING_ORDER_CONTRACT_RESULT],
+              ['Suspend Tag transaction contracts', process.env.SUSPEND_TAG_CONTRACT_RESULT],
+              ['Live dataset transaction contracts', process.env.LIVE_DATASET_CONTRACT_RESULT],
               ['Current live release verification', process.env.CURRENT_LIVE_RELEASE_RESULT],
               ['Post-deployment canary matrix', process.env.POST_DEPLOYMENT_CANARY_RESULT],
             ];

@@ -10,7 +10,7 @@ const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'ut
 const pr = yaml.load(read('.github/workflows/pr-validation.yml'));
 const monitor = yaml.load(read('.github/workflows/performance-monitor.yml'));
 const pages = yaml.load(read('.github/workflows/pages-static.yml'));
-const nightly = yaml.load(read('.github/workflows/nightly-browser-validation.yml'));
+const nightly = yaml.load(read('.github/workflows/nightly-validation.yml'));
 const database = yaml.load(read('.github/workflows/release-database.yml'));
 
 test('reusable PR validation defaults to frontend and backend unit coverage only', () => {

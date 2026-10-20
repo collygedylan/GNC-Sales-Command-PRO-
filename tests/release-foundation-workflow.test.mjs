@@ -7,7 +7,7 @@ import yaml from 'js-yaml';
 const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 const workflow = yaml.load(read('.github/workflows/release-validation.yml'));
 test('foundation remains a sealed-artifact diagnostic in the scheduled nightly suite', () => {
-  const nightly = yaml.load(read('.github/workflows/nightly-browser-validation.yml'));
+  const nightly = yaml.load(read('.github/workflows/nightly-validation.yml'));
   const job = workflow.jobs.foundation;
   assert.ok(job.needs.includes('build'));
   assert.ok(job.needs.includes('release-mode'));

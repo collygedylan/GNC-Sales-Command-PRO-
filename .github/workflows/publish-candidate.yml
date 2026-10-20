@@ -7,7 +7,9 @@ on:
 
 # GITHUB_TOKEN merges do not trigger the Pages push workflow. This trusted
 # default-branch handler sends the confirmed merge and its first parent to the
-# unified release coordinator.
+# unified build -> scoped backend -> Pages publication coordinator.
+# Full release matrices run in nightly-validation.yml; PR merge authorization
+# still requires the exact scoped PR validation above.
 concurrency:
   group: publish-validated-candidate
   cancel-in-progress: false
@@ -27,7 +29,7 @@ jobs:
     timeout-minutes: 10
     steps:
       # Never check out or execute PR files in this privileged workflow.
-      - name: Complete the approved merge and dispatch independent release workflows
+      - name: Complete the approved merge and dispatch direct release publication
         uses: actions/github-script@v7
         with:
           script: |

@@ -23,7 +23,7 @@ test('root agent instructions persist the workspace and implementation policies'
 });
 
 test('nightly retains daily and manual diagnostics and opts into full database coverage', () => {
-  const nightly = workflow('nightly-browser-validation.yml');
+  const nightly = workflow('nightly-validation.yml');
   assert.equal(nightly.on.schedule[0].cron, '30 1,2 * * *');
   assert.ok(Object.hasOwn(nightly.on, 'workflow_dispatch'));
   assert.match(nightly.jobs['central-time-gate'].steps[0].run, /TZ=America\/Chicago date \+%H/);

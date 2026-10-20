@@ -1,6 +1,11 @@
 name: Private pending-order transaction tests
 on:
   workflow_call:
+    inputs:
+      run-nightly-suites:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,9 +30,16 @@ jobs:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           CURRENT_SHA: ${{ github.sha }}
+          RUN_NIGHTLY_SUITES: ${{ inputs.run-nightly-suites }}
+          NIGHTLY_CALLER_ALLOWED: ${{ github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation' }}
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "$RUN_NIGHTLY_SUITES" == "true" ]]; then
+            [[ "$NIGHTLY_CALLER_ALLOWED" == "true" ]] || { echo 'NIGHTLY_CALLER_REQUIRED' >&2; exit 1; }
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           case "$EVENT_NAME" in
             pull_request) base="$PR_BASE_SHA"; head="$PR_HEAD_SHA" ;;
             workflow_dispatch) base="${CURRENT_SHA}^1"; head="$CURRENT_SHA" ;;

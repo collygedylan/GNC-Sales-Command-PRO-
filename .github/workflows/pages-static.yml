@@ -101,14 +101,14 @@ jobs:
               return safe;
             } catch { return false; }
           };
-          const initialScope = classifyReleasePaths(paths, { packageMetadataOnly: packageMetadataSafe(before) });
           const isAncestor = (ancestor, descendant) => {
             try { execFileSync('git', ['merge-base', '--is-ancestor', ancestor, descendant]); return true; }
             catch { return false; }
           };
-          const recoveryBase = selectReleaseRecoveryBase({ scope: initialScope, manualBase: process.env.MANUAL_BASE,
+          const recoveryBase = selectReleaseRecoveryBase({ manualBase: process.env.MANUAL_BASE,
             lastSuccessfulBase: process.env.LAST_SUCCESSFUL_BASE, isAncestor });
-          if (!initialScope.toolingOnly && recoveryBase && !/^0+$/.test(recoveryBase) && recoveryBase !== commit) {
+          // Every main push recovers pending runtime changes from the last actual publication.
+          if (recoveryBase && !/^0+$/.test(recoveryBase) && recoveryBase !== commit) {
             execFileSync('git', ['merge-base', '--is-ancestor', recoveryBase, commit]);
             before = recoveryBase;
             paths = changedReleasePaths({ before, after: commit });
@@ -127,46 +127,26 @@ jobs:
           console.log(`Changed ${paths.length} paths; frontend=${scope.deploy.frontend}, supabase=${scope.deploy.supabase}, apps-script=${scope.deploy.appsScript}, tooling-only=${scope.toolingOnly}.`);
           NODE
 
-  frontend-validation:
+  frontend-build:
     if: needs.scope.outputs.frontend == 'true'
     needs: [authorize-main, scope]
     uses: ./.github/workflows/release-validation.yml
     with:
       fast-pr: true
       run-nightly-suites: false
-      run-frontend-tests: true
+      run-frontend-tests: false
       run-backend-tests: false
       run-schema-tests: false
       production-health: false
     secrets: inherit
 
-  node-validation:
-    if: needs.scope.outputs.frontend != 'true' && needs.scope.outputs['tooling-only'] != 'true'
-    needs: [authorize-main, scope]
-    uses: ./.github/workflows/pr-validation.yml
-    with:
-      run-frontend-tests: false
-      run-backend-tests: false
-
-  tooling-validation:
-    if: needs.scope.outputs['tooling-only'] == 'true'
-    needs: [authorize-main, scope]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-node-dependencies
-      - name: Run focused release tooling checks without building or deploying
-        run: node scripts/run-tooling-release-checks.mjs
-
   backend-publication:
     if: >-
-      !cancelled() && needs.scope.result == 'success' &&
-      ((needs.scope.outputs.frontend == 'true' && needs.frontend-validation.result == 'success') ||
-       (needs.scope.outputs.frontend != 'true' && needs.scope.outputs['tooling-only'] == 'true' && needs.tooling-validation.result == 'success') ||
-       (needs.scope.outputs.frontend != 'true' && needs.scope.outputs['tooling-only'] != 'true' && needs.node-validation.result == 'success')) &&
+      !cancelled() && needs.authorize-main.result == 'success' && needs.scope.result == 'success' &&
+      ((needs.scope.outputs.frontend == 'true' && needs.frontend-build.result == 'success') ||
+       (needs.scope.outputs.frontend != 'true' && needs.frontend-build.result == 'skipped')) &&
       (needs.scope.outputs.supabase == 'true' || needs.scope.outputs['apps-script'] == 'true')
-    needs: [authorize-main, scope, frontend-validation, node-validation, tooling-validation]
+    needs: [authorize-main, scope, frontend-build]
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -307,10 +287,10 @@ jobs:
             throw new Error('BACKEND_PUBLICATION_TIMEOUT');
 
   deploy:
-    needs: [authorize-main, scope, frontend-validation, node-validation, tooling-validation, backend-publication]
+    needs: [authorize-main, scope, frontend-build, backend-publication]
     if: >-
       !cancelled() && github.ref == 'refs/heads/main' && needs.scope.outputs.frontend == 'true' &&
-      needs.authorize-main.result == 'success' && needs.frontend-validation.result == 'success' &&
+      needs.authorize-main.result == 'success' && needs.frontend-build.result == 'success' &&
       (((needs.scope.outputs.supabase == 'true' || needs.scope.outputs['apps-script'] == 'true') &&
         needs.backend-publication.result == 'success') ||
        (needs.scope.outputs.supabase != 'true' && needs.scope.outputs['apps-script'] != 'true' &&
@@ -333,17 +313,17 @@ jobs:
           node-version: 22
       - uses: ./.github/actions/download-release
         with:
-          digest: ${{ needs.frontend-validation.outputs.digest }}
+          digest: ${{ needs.frontend-build.outputs.digest }}
           run-id: ${{ github.run_id }}
-          artifact-id: ${{ needs.frontend-validation.outputs.site-id }}
+          artifact-id: ${{ needs.frontend-build.outputs.site-id }}
           token: ${{ github.token }}
           commit: ${{ github.sha }}
       - name: Reject a stale main commit immediately before publication
         uses: actions/github-script@v7
         env:
           EXPECTED_COMMIT: ${{ inputs.expected-commit }}
-          VALIDATED_RUN_ID: ${{ needs.frontend-validation.outputs.run-id }}
-          VALIDATED_ATTEMPT: ${{ needs.frontend-validation.outputs.attempt }}
+          VALIDATED_RUN_ID: ${{ needs.frontend-build.outputs.run-id }}
+          VALIDATED_ATTEMPT: ${{ needs.frontend-build.outputs.attempt }}
         with:
           script: |
             const expected = process.env.EXPECTED_COMMIT || context.sha;

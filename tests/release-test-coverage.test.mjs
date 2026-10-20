@@ -20,6 +20,17 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
 const plain = value => JSON.parse(JSON.stringify(value));
 
+test('the REP scope repair remains registered in the canonical deployment allowlist', () => {
+  const installer = readFileSync(path.join(root, 'scripts/apply-item-low-stock-migration.mjs'), 'utf8');
+  assert.match(installer, /export const reclassRepScopeMigrationName = '20261020233500_reclass_rep_scope_preservation_v1\.sql'/);
+  const allowlist = installer.match(/export const releaseDatabaseMigrations = Object\.freeze\(\[([\s\S]*?)\]\);/);
+  assert.ok(allowlist, 'the installer must retain its explicit deployable migration list');
+  assert.match(allowlist[1], /\breclassRepScopeMigrationName\b/);
+  assert.match(installer, /if \(name === reclassRepScopeMigrationName\) return `select/);
+  assert.match(readFileSync(path.join(root, 'supabase/migrations/20261020233500_reclass_rep_scope_preservation_v1.sql'), 'utf8'),
+    /RECLASS_REP_PUBLIC_SECURITY_CHANGED/);
+});
+
 function activeBrowserCommands() {
   const directory = path.join(root, '.github/workflows');
   const scripts = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).scripts;

@@ -12,7 +12,7 @@ on:
         type: boolean
         default: false
       run-nightly-suites:
-        description: Run the expanded browser and performance matrices for the scheduled diagnostic workflow.
+        description: Run the full frontend, backend, browser, and performance checks from Nightly Validation.
         type: boolean
         default: false
       run-schema-tests:
@@ -93,6 +93,7 @@ jobs:
         run: echo 'HOTFIX_VALIDATION_SELECTED'
 
   lint:
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -106,6 +107,7 @@ jobs:
       - run: npm run check:tooling
 
   unit:
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main'
     strategy:
       fail-fast: true
       matrix:
@@ -121,7 +123,7 @@ jobs:
 
   react:
     needs: release-mode
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -133,7 +135,7 @@ jobs:
 
   contracts:
     needs: release-mode
-    if: needs.release-mode.outputs.hotfix != 'true'
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && needs.release-mode.outputs.hotfix != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -148,7 +150,7 @@ jobs:
 
   database:
     needs: release-mode
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-backend-tests
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && needs.release-mode.outputs.hotfix != 'true' && inputs.run-backend-tests
     uses: ./.github/workflows/release-database.yml
     with:
       run-schema-tests: ${{ inputs.run-schema-tests }}
@@ -1014,17 +1016,18 @@ jobs:
           const jobs = JSON.parse(process.env.RELEASE_JOB_RESULTS);
           const hotfix = process.env.HOTFIX === 'true';
           if (jobs['release-mode']?.result !== 'success') throw new Error('RELEASE_GATE_FAILED_release-mode');
-          const required = hotfix ? ['lint','unit','build'] : ['lint','unit','contracts','build'];
-          if (!hotfix && process.env.RUN_FRONTEND_TESTS === 'true') {
+          const nightly = process.env.RUN_NIGHTLY_SUITES === 'true';
+          const required = nightly ? (hotfix ? ['lint','unit','build'] : ['lint','unit','contracts','build']) : ['build'];
+          if (nightly && !hotfix && process.env.RUN_FRONTEND_TESTS === 'true') {
             required.push('react');
             if (process.env.RUN_NIGHTLY_SUITES === 'true') required.push('fast-browser','foundation','functional','compiled','timing','performance','lighthouse');
           }
-          if (!hotfix && process.env.RUN_BACKEND_TESTS === 'true') required.push('database');
+          if (nightly && !hotfix && process.env.RUN_BACKEND_TESTS === 'true') required.push('database');
           for (const name of required) {
             if (jobs[name]?.result !== 'success') throw new Error(`RELEASE_GATE_FAILED_${name}`);
           }
           if (!/^[a-f0-9]{64}$/.test(jobs.build.outputs.digest || '')) throw new Error('RELEASE_DIGEST_MISSING');
-          console.log('Every required lane passed for the sealed release.');
+          console.log(nightly ? 'Every selected nightly lane passed.' : 'Exact-commit static artifact built and sealed for publication.');
           NODE
       - name: Record the passing immutable candidate
         env:
@@ -1047,7 +1050,7 @@ jobs:
             digest:process.env.RELEASE_DIGEST,
             hotfix,
             browserMode:hotfix ? 'hotfix-minimal' : process.env.RUN_NIGHTLY_SUITES === 'true' ? 'full' : 'none',
-            testScope:{frontend:!hotfix && process.env.RUN_FRONTEND_TESTS === 'true', backend:!hotfix && process.env.RUN_BACKEND_TESTS === 'true', schema:!hotfix && process.env.RUN_SCHEMA_TESTS === 'true'}
+            testScope:{frontend:!hotfix && process.env.RUN_NIGHTLY_SUITES === 'true' && process.env.RUN_FRONTEND_TESTS === 'true', backend:!hotfix && process.env.RUN_NIGHTLY_SUITES === 'true' && process.env.RUN_BACKEND_TESTS === 'true', schema:!hotfix && process.env.RUN_NIGHTLY_SUITES === 'true' && process.env.RUN_SCHEMA_TESTS === 'true'}
           }));
           NODE
       - uses: actions/checkout@v4

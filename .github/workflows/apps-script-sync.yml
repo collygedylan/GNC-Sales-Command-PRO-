@@ -109,36 +109,10 @@ jobs:
           console.log(`Backend scope: changed=${backendChanged}, migrations=${migrations.length}, Edge Functions=${edgeFunctions.length}.`);
           NODE
 
-  backend-validation:
-    name: Validate backend schema and transactions before deployment
-    needs: authorize-backend
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
-    uses: ./.github/workflows/release-database.yml
-    with:
-      run-schema-tests: true
-      run-browser-tests: false
-      run-performance-tests: false
-      run-all-schema-tests: true
-
-  pending-order-contract:
-    needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
-    uses: ./.github/workflows/bloomscapes-pending-tests.yml
-
-  suspend-tag-contract:
-    needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
-    uses: ./.github/workflows/suspend-tag-tests.yml
-
-  live-dataset-contract:
-    needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
-    uses: ./.github/workflows/live-dataset-revisions.yml
-
   deploy-supabase:
     name: Apply backend migrations and deploy Edge Functions
-    needs: [authorize-backend, backend-validation, pending-order-contract, suspend-tag-contract, live-dataset-contract]
-    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'
+    needs: authorize-backend
+    if: needs.authorize-backend.result == 'success' && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:

@@ -35,8 +35,8 @@ test('deployment fingerprint normalization rejects ambiguous identifiers', () =>
 
 test('Pages workflow publishes and gates the production deployment fingerprint', () => {
   const workflow = readReleaseWorkflowSources('.github/workflows/pages-static.yml').text;
-  const nightly = readReleaseWorkflowSources('.github/workflows/nightly-browser-validation.yml').text;
-  const nightlyJobs = yaml.load(fs.readFileSync(new URL('../.github/workflows/nightly-browser-validation.yml', import.meta.url), 'utf8')).jobs;
+  const nightly = readReleaseWorkflowSources('.github/workflows/nightly-validation.yml').text;
+  const nightlyJobs = yaml.load(fs.readFileSync(new URL('../.github/workflows/nightly-validation.yml', import.meta.url), 'utf8')).jobs;
   const jobDependencies = job => new Set(Array.isArray(job.needs) ? job.needs : [job.needs]);
   const canaryNeeds = jobDependencies(nightlyJobs['post-deployment-canary']);
   const canary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');

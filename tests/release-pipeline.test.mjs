@@ -12,7 +12,7 @@ const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'ut
 const pages = yaml.load(read('.github/workflows/pages-static.yml'));
 const validation = yaml.load(read('.github/workflows/release-validation.yml'));
 const performance = yaml.load(read('.github/workflows/performance-monitor.yml'));
-const nightly = yaml.load(read('.github/workflows/nightly-browser-validation.yml'));
+const nightly = yaml.load(read('.github/workflows/nightly-validation.yml'));
 const prValidation = yaml.load(read('.github/workflows/pr-validation.yml'));
 const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
