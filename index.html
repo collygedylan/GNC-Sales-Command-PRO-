@@ -18948,18 +18948,20 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!itemCode || !locationCode || itemCode !== aggregateItemCode || locationCode !== aggregateLocationCode || !/^[1-9]\d*$/.test(revision)) return { present: true, value: unknown };
             const receiptScope = String(firstNonEmptyValue(item.LOC_ON_HAND_RECEIPT_SCOPE, item.loc_on_hand_receipt_scope, '') || '');
             const receiptPermission = String(firstNonEmptyValue(item.LOC_ON_HAND_RECEIPT_PERMISSION, item.loc_on_hand_receipt_permission, '') || '');
-            const currentScope = getSupabaseReadIdentityScope();
-            const currentPermission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+            const nativeModeActive = nativeAuthSessionActive === true || !!nativeAuthProfile?.id;
+            const authorization = nativeModeActive
+                ? (options.authorization || getQueueCardInventoryAuthorizationContext()) : null;
+            if (nativeModeActive && (!authorization?.scope || !authorization?.permission || !authorization?.readScope)) {
+                return { present: true, value: unknown };
+            }
+            const currentScope = authorization?.readScope || getSupabaseReadIdentityScope();
+            const currentPermission = authorization?.permission
+                || String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
             const receiptRevision = String(firstNonEmptyValue(item.LOC_ON_HAND_RECEIPT_REVISION, item.loc_on_hand_receipt_revision, '') || '').trim();
             const accepted = acceptedLocOnHandAggregateReceipt;
             if (!receiptScope || receiptScope !== currentScope || !receiptPermission || receiptPermission !== currentPermission
                 || !accepted || accepted.valid !== true || receiptScope !== accepted.scope || receiptPermission !== accepted.permission
                 || revision !== receiptRevision || revision !== accepted.revision) return { present: true, value: unknown };
-            if (nativeAuthSessionActive === true || !!nativeAuthProfile?.id) {
-                if (!canUseProductionLiveSync()) return { present: true, value: unknown };
-                const context = getProductionLiveSyncContext();
-                if (!context.scope || !context.dataPermissionVersion) return { present: true, value: unknown };
-            }
             const raw = hasAggregate ? item.LOC_ON_HAND : item.loc_on_hand;
             const parsed = parseAppNumber(raw);
             return { present: true, verified: true, value: parsed == null ? (raw === null ? null : unknown) : parsed };
@@ -18988,7 +18990,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getCardLocationOnHandValue(item = null) {
             const state = getDatasetState('master');
-            const serverAggregate = getCardLocationOnHandServerAggregate(item);
+            const nativeModeActive = nativeAuthSessionActive === true || !!nativeAuthProfile?.id;
+            const authorization = nativeModeActive ? getQueueCardInventoryAuthorizationContext() : null;
+            const serverAggregate = getCardLocationOnHandServerAggregate(item, { authorization });
             if (serverAggregate.verified === true) {
                 if (serverAggregate.value == null) return null;
                 return Number(serverAggregate.value.toFixed(6)).toLocaleString('en-US', { maximumFractionDigits: 6 });
@@ -18996,15 +19000,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             // Browse projections include On Hand for every row. Full *field*
             // coverage is not required to sum a complete inventory snapshot.
             if (!item || state.rowCompleteness !== 'complete' || !state.initialLoaded) return null;
-            const nativeModeActive = nativeAuthSessionActive === true || !!nativeAuthProfile?.id;
             if (nativeModeActive) {
-                if (!canUseProductionLiveSync()) return null;
-                const context = getProductionLiveSyncContext();
+                if (!authorization?.scope || !authorization?.permission) return null;
                 // The master receipt is authoritative even while an unrelated
                 // side adapter is still loading or the current view changes.
-                if (!context.scope || !context.dataPermissionVersion
-                    || state.liveVerifiedScope !== context.scope
-                    || state.liveVerifiedPermission !== context.dataPermissionVersion
+                if (state.liveVerifiedScope !== authorization.scope
+                    || state.liveVerifiedPermission !== authorization.permission
                     || !/^[1-9]\d*$/.test(String(state.liveVerifiedRevision || ''))) return null;
             }
             const key = getInventoryCardItemLocationKey(item);
@@ -120325,6 +120326,58 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
         }
 
+        function createSuspendTagPageRenderRow(cardContainer, plan) {
+            const render = item => generateCard(item, 'request', 'status-red');
+            if (!isIOSDevice() || !cardContainer || !plan?.renderSignature
+                || !Array.isArray(plan.rows) || plan.rows.length > 100
+                // Master cards register status overlays as part of generation.
+                // Only SOC mirrors have the side-effect-free display branch.
+                || plan.rows.some(row => String(row.SOURCE_TABLE || row.source_table || '') !== 'ph_soc_master')) return render;
+            const pages = createSuspendTagPageRenderRow.pages ||= new WeakMap();
+            const authorization = getQueueCardInventoryAuthorizationContext();
+            const inventory = getQueueCardInventoryContext();
+            const master = getDatasetState('master');
+            // Reuse only a verified page owned by the current authenticated
+            // identity. A partial/revoked snapshot must rebuild its unknown
+            // states rather than restoring markup from an earlier receipt.
+            if (!authorization || !inventory || inventory.signal?.aborted
+                || isDockSuspendDcRequestMirrorPreparationPending()
+                || !master.initialLoaded || master.rowCompleteness !== 'complete'
+                || master.liveVerifiedScope !== authorization.scope
+                || master.liveVerifiedPermission !== authorization.permission
+                || String(master.liveVerifiedRevision) !== String(inventory.revision)
+                || !/^[1-9]\d*$/.test(String(inventory.revision))) {
+                pages.delete(cardContainer);
+                return render;
+            }
+            const cacheKey = JSON.stringify([
+                plan.renderSignature, authorization.scope, authorization.readScope,
+                authorization.permission, inventory.revision, productionLiveSyncReadAuthEpoch,
+                resolvedViewStateEpoch, queueCardInventoryRenderVersion,
+                ['master', 'avOpen', 'suspendTag', 'soc', 'customerRepMap'].map(getDatasetLoadSignature),
+                new Date().toDateString(),
+                // Completion/version, selection and photo metrics are in the
+                // plan signature; include the complete visible row payloads
+                // too so optimistic edits to other displayed notes invalidate.
+                plan.rows
+            ]);
+            let page = pages.get(cardContainer);
+            if (!page || page.key !== cacheKey || page.masterRows !== fullInventory
+                || page.avRows !== avOpenInventory || page.sourceRows.length !== plan.rows.length
+                || page.sourceRows.some((row, index) => row !== plan.rows[index])) {
+                page = { key: cacheKey, rows: new Map(), sourceRows: plan.rows.slice(),
+                    masterRows: fullInventory, avRows: avOpenInventory };
+                pages.set(cardContainer, page);
+            }
+            // Keep at most the current bounded page per live container. The
+            // renderer still inserts fresh DOM, wires actions and hydrates
+            // photos through its normal publication/cancellation path.
+            return (item, index) => {
+                if (!page.rows.has(index)) page.rows.set(index, render(item));
+                return page.rows.get(index);
+            };
+        }
+
         function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
             const safePlan = plan && typeof plan === 'object' ? plan : {};
             const renderSignature = String(safePlan.renderSignature || '');
@@ -120364,8 +120417,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 ? 'Loading Suspend Tag rows…'
                 : (requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all'
                     ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.');
+            const renderRow = typeof createSuspendTagPageRenderRow === 'function'
+                ? createSuspendTagPageRenderRow(cardContainer, safePlan)
+                : item => generateCard(item, 'request', 'status-red');
             const didSchedule = renderMarkupChunkedByKey('request-main', renderTarget, crumb, safePlan.rows, crumbText,
-                (item) => generateCard(item, 'request', 'status-red'), getPendingRequestChunkRenderOptions({
+                renderRow, getPendingRequestChunkRenderOptions({
                     _backgroundStage: !!retainCards,
                     // A small Suspend page fits one bounded DOM publication.
                     // Avoid repeated layout of two-card intermediate snapshots.

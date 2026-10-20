@@ -81,6 +81,21 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   expect(snapshot.masterRows).toHaveLength(9487);
   const olderControlRows = snapshot.suspendRows.filter(row => row.SUSPEND === 'SUSPEND').slice(0,3).map((row, index) => ({ ...row,
     UNIQUE_ID: 'isolated-older-source-' + index, FILENAME: 'SOC-10 Open Orders-12250920261019122509.xlsx', LAST_UPDATED: '2026-10-19T22:00:00.000Z' }));
+  if (process.env.V2314_PROFILE === '1') await page.addInitScript(() => {
+    const target = window as unknown as { __v2314TimingPhase?: string; __v2314Scheduled?: Array<{ type: string; label: string; ms: number }> };
+    for (const type of ['requestAnimationFrame', 'setTimeout'] as const) {
+      const original = window[type].bind(window);
+      const instrument = (callback: FrameRequestCallback | TimerHandler, ...args: number[]) => {
+        if (typeof callback !== 'function') return original(callback as never, ...args);
+        return original(((...values: number[]) => {
+          const start = performance.now();
+          try { return callback(...values); }
+          finally { if (target.__v2314TimingPhase === 'frame') (target.__v2314Scheduled ||= []).push({ type, label: callback.toString().slice(0, 180), ms: performance.now()-start }); }
+        }) as never, ...args);
+      };
+      Object.assign(window, { [type]: instrument });
+    }
+  });
   const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });
   const cards = page.locator('#request-content article[data-request-uid^="dock_suspend_dc_"]');
   await expect(cards).toHaveCount(37);
@@ -95,13 +110,46 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
       'getLatestSocSuspendTagSourceRows','getDockSuspendDcRequestMirrorRows','decorateRequestRows','renderMarkupChunkedByKey',
       'getCardLocationOnHandValue','syncMasterFieldsToRequestRow','findMasterInventoryItem','findMasterInventoryExactRow',
       'findDockSuspendDcRequestSourceRow','getProductionLiveSyncContext','getQueueCardInventoryRow',
-      'getDockSuspendTagValidDriveOptionRows','getDockSuspendTagDriveOptionRowsCandidateIndex']) {
+      'getDockSuspendTagValidDriveOptionRows','getDockSuspendTagDriveOptionRowsCandidateIndex',
+      'syncRequestRenderChrome','ensureRequestSuspendTagRenderShell','updateRequestSuspendTagFiltersInPlace',
+      'getRowPhotoLink','getRowPhotoDateLabel','getItemDisplayValue','formatLocPhotoMatchQtyValue',
+      'findSeasonSalesNoteMasterCandidateForCard','setContainerHtml','setContainerHtmlWithSignature',
+      'getQueueCardInventoryAuthorizationContext','getQueueCardInventoryContext','getCardLocationOnHandServerAggregate',
+      'normalizeRowPhotoFields','scheduleDeferredCardPhotoHydration','tuneNativeImagePerformance',
+      'auditIosPhoneRequestFlow','clearIosPhoneRequestFlowState','repairIosPhoneAndroidFlowGap',
+      'syncStickyRailOffset','getCurrentLoginCacheScopeKey','getSupabaseReadIdentityScope',
+      'createSuspendTagPageRenderRow']) {
       if (typeof window[name] !== 'function') continue;
       const original = window[name];
       window[name] = function(...args) {
         const start = performance.now();
         try { return original.apply(this,args); }
-        finally { const result = window.__v2314Profile[name] ||= { calls: 0, ms: 0 }; result.calls++; result.ms += performance.now()-start; }
+        finally { const key = name + ':' + (window.__v2314TimingPhase || 'other'); const result = window.__v2314Profile[key] ||= { calls: 0, ms: 0 }; result.calls++; result.ms += performance.now()-start; }
+      };
+      Object.assign(window[name], original);
+      if (name === 'createSuspendTagPageRenderRow') {
+        const timed = window[name];
+        window[name] = function(...args) {
+          const previous = window[name].pages?.get(args[0]);
+          const result = timed.apply(this,args);
+          const next = window[name].pages?.get(args[0]);
+          const oldKey = previous ? JSON.parse(previous.key) : [];
+          const newKey = next ? JSON.parse(next.key) : [];
+          (window.__v2314CacheEvents ||= []).push({ phase: window.__v2314TimingPhase,
+            reused: previous === next, existed: !!previous, stored: !!next,
+            changedKeyParts: newKey.flatMap((part,index) => JSON.stringify(part) === JSON.stringify(oldKey[index]) ? [] : [index]),
+            changedRowRefs: previous?.sourceRows.filter((row,index) => row !== args[1].rows[index]).length });
+          return result;
+        };
+        Object.assign(window[name], timed);
+      }
+    }
+    for (const [owner, name] of [[Element.prototype, 'getBoundingClientRect'], [window, 'getComputedStyle']]) {
+      const original = owner[name];
+      owner[name] = function(...args) {
+        const start = performance.now();
+        try { return original.apply(this,args); }
+        finally { const key = name + ':' + (window.__v2314TimingPhase || 'other'); const result = window.__v2314Profile[key] ||= { calls: 0, ms: 0 }; result.calls++; result.ms += performance.now()-start; }
       };
     }
   })()`));
@@ -123,14 +171,17 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
       // signatures/chunk work, and global invalidation is a cold data reset.
       setContainerHtml(document.getElementById('request-suspend-tag-card-list'), '');
       const start = performance.now();
+      window.__v2314TimingPhase = 'sync';
       renderRequest();
       const phases = [{ ms: performance.now()-start, cards: document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length, phase: 'synchronous' }];
+      window.__v2314TimingPhase = 'frame';
       do {
         await new Promise(resolve => requestAnimationFrame(() => resolve()));
         const count = document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length;
         if (phases.at(-1).cards !== count) phases.push({ ms: performance.now()-start, cards: count, phase: 'frame' });
       } while (document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length !== 37 && performance.now()-start < 5000);
       const renderMs = performance.now() - start;
+      window.__v2314TimingPhase = 'done';
       window.__v2314Proof = {
         before: proofBefore, after: productionVerifiedViewKey(getProductionLiveSyncContext()),
         verifiedAfter: hasCurrentProductionLiveSyncProof(getProductionLiveSyncContext()),
@@ -150,6 +201,8 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
     await page.evaluate(() => (window as unknown as { __v2314Proof: unknown }).__v2314Proof),
   )) });
   if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));
+  if (process.env.V2314_PROFILE === '1') console.log('V2314_CACHE', await page.evaluate(() => (window as unknown as {__v2314CacheEvents: unknown}).__v2314CacheEvents));
+  if (process.env.V2314_PROFILE === '1') console.log('V2314_SCHEDULED', await page.evaluate(() => (window as unknown as {__v2314Scheduled: unknown}).__v2314Scheduled));
   expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);
   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));
   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));
