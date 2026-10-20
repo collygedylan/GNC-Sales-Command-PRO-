@@ -10,7 +10,7 @@ import { generatedBuildOutput } from './local-validation-evidence.mjs';
 const rootDefault = fileURLToPath(new URL('../', import.meta.url));
 const hash = value => createHash('sha256').update(value).digest('hex');
 const textHash = value => hash(Buffer.from(String(value).replaceAll('\r\n', '\n')));
-const textExtensions = new Set(['.cjs', '.crt', '.css', '.csv', '.gs', '.html', '.js', '.json', '.jsx', '.lock', '.md', '.mjs', '.mts', '.ps1', '.py', '.sql', '.svg', '.toml', '.ts', '.tsx', '.txt', '.webmanifest', '.xml', '.yaml', '.yml']);
+const textExtensions = new Set(['.cjs', '.crt', '.css', '.csv', '.gs', '.html', '.js', '.json', '.jsx', '.lock', '.log', '.md', '.mjs', '.mts', '.ps1', '.py', '.sql', '.svg', '.toml', '.ts', '.tsx', '.txt', '.webmanifest', '.xml', '.yaml', '.yml']);
 const textBasenames = new Set(['.env.example', '.gitattributes', '.gitignore', '.gitkeep', '.nojekyll']);
 export const hashScopedFile = (file, bytes) => textExtensions.has(path.extname(file).toLowerCase())
   || textBasenames.has(path.basename(file).toLowerCase())
