@@ -76,6 +76,11 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
     capturedAt: string; masterRows: FixtureRow[]; suspendRows: FixtureRow[];
     source: { filename: string; sha256: string };
   };
+  const expectedSourceIds = snapshot.suspendRows
+    .filter(row => String(row.SUSPEND || '').trim().toUpperCase() === 'SUSPEND'
+      && String(row.SUSPENDTO || row.SUSPEND_TO || '').trim().toUpperCase() === 'DC'
+      && !String(row.DATE_COMPLETED || '').trim())
+    .map(row => String(row.UNIQUE_ID || '').trim()).sort();
   expect(snapshot.suspendRows).toHaveLength(67);
   expect(new Set(snapshot.suspendRows.map(row => row.UNIQUE_ID)).size).toBe(67);
   expect(snapshot.masterRows).toHaveLength(9487);
@@ -98,6 +103,26 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   });
   const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });
   const cards = page.locator('#request-content article[data-request-uid^="dock_suspend_dc_"]');
+  const expectedCardIds = expectedSourceIds.map(id => `dock_suspend_dc_${id}`).sort();
+  let priorCardIds: string[] = [];
+  let stableCardFrames = 0;
+  let actualCardIds: string[] = [];
+  for (let attempt = 0; attempt < 40 && stableCardFrames < 2; attempt++) {
+    actualCardIds = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid') || '').sort());
+    stableCardFrames = JSON.stringify(actualCardIds) === JSON.stringify(priorCardIds) ? stableCardFrames + 1 : 0;
+    priorCardIds = actualCardIds;
+    if (stableCardFrames < 2) await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(undefined))));
+  }
+  const uidParity = {
+    expectedSourceIds,
+    expectedCount: expectedCardIds.length, actualCount: actualCardIds.length,
+    actualIds: actualCardIds, missingIds: expectedCardIds.filter(id => !actualCardIds.includes(id)),
+    unexpectedIds: actualCardIds.filter(id => !expectedCardIds.includes(id)), stableConsecutiveFrames: stableCardFrames,
+  };
+  await info.attach('latest-suspend-source-uid-parity', { contentType: 'application/json', body: Buffer.from(JSON.stringify(uidParity)) });
+  expect(expectedSourceIds, 'the captured latest SOC file must contain 37 marked physical DC source rows').toHaveLength(37);
+  expect(uidParity.stableConsecutiveFrames, 'the complete source UID list must stabilize for two animation frames').toBeGreaterThanOrEqual(2);
+  expect(uidParity.actualIds).toEqual(expectedCardIds);
   await expect(cards).toHaveCount(37);
   // Complete the initial snapshot's bounded identity lookups before measuring
   // a warm reopen; do not race the seed publication and its follow-up reads.
@@ -230,7 +255,25 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   if (process.env.V2314_PROFILE === '1') console.log('V2314_CACHE', await page.evaluate(() => (window as unknown as {__v2314CacheEvents: unknown}).__v2314CacheEvents));
   if (process.env.V2314_PROFILE === '1') console.log('V2314_SCHEDULED', await page.evaluate(() => (window as unknown as {__v2314Scheduled: unknown}).__v2314Scheduled));
   expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(2000);
-  const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));
+  let order = (await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid') || '')));
+  let stableOrderFrames = 0;
+  let priorOrder = order;
+  for (let attempt = 0; attempt < 40 && stableOrderFrames < 2; attempt++) {
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(undefined))));
+    order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid') || ''));
+    stableOrderFrames = JSON.stringify(order) === JSON.stringify(priorOrder) ? stableOrderFrames + 1 : 0;
+    priorOrder = order;
+  }
+  const measuredUidParity = {
+    expectedCount: expectedSourceIds.length, actualCount: order.length,
+    actualOrder: order, actualIds: [...order].sort(),
+    missingIds: expectedSourceIds.map(id => `dock_suspend_dc_${id}`).filter(id => !order.includes(id)),
+    unexpectedIds: order.filter(id => !expectedSourceIds.some(sourceId => id === `dock_suspend_dc_${sourceId}`)),
+    stableConsecutiveFrames: stableOrderFrames,
+  };
+  await info.attach('measured-render-suspend-uid-parity', { contentType: 'application/json', body: Buffer.from(JSON.stringify(measuredUidParity)) });
+  expect(measuredUidParity.stableConsecutiveFrames, 'the measured full card order must stabilize across two animation frames').toBeGreaterThanOrEqual(2);
+  expect(measuredUidParity.actualIds).toEqual(expectedSourceIds.map(id => `dock_suspend_dc_${id}`).sort());
   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));
   const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());
   expect(locations).toEqual([...locations].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })));
@@ -352,7 +395,19 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const blockedReadOnlyAppApiCalls: string[] = [];
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
-  let expectedFixtureImageFailure = 0;
+  const failedResources: Array<{ url: string; resourceType: string; failure: string }> = [];
+  const settingsReads: Array<{ url: string; status: number | null; authorization: string }> = [];
+  const fixtureImage404s = new Set<string>();
+  const http404Resources: Array<{ url: string; resourceType: string }> = [];
+  const knownFixtureImageUrl = 'https://example.test/photo.jpg';
+  const fixtureImageUrls = new Set<string>([knownFixtureImageUrl]);
+  for (const row of [...rows, ...(options.masterRows || [])]) {
+    const candidate = String(row.DOCK_PHOTO_LINK || row.dock_photo_link || row.PHOTO_LINK || row.photo_link || row.ROW_PHOTO_LINK || row.row_photo_link || '').trim();
+    try {
+      const parsed = new URL(candidate);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') fixtureImageUrls.add(parsed.href);
+    } catch (_) {}
+  }
   const runtimeResponses: string[] = [];
   const inventoryLookupCalls: Array<{ params: Record<string, unknown>; status: number }> = [];
   const replies: Reply[] = [];
@@ -368,13 +423,17 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('console', (message) => {
     if (message.type() !== 'error') return;
-    // This controlled 404 exercises the app's missing-photo fallback. Ignore
-    // only its generic browser resource error; all other console errors fail.
-    if (expectedFixtureImageFailure > 0 && /failed to load resource/i.test(message.text())) {
-      expectedFixtureImageFailure--;
-      return;
-    }
     consoleErrors.push(message.text());
+  });
+  page.on('requestfailed', request => failedResources.push({
+    url: request.url(), resourceType: request.resourceType(), failure: request.failure()?.errorText || 'unknown',
+  }));
+  page.on('response', response => {
+    const request = response.request();
+    if (response.status() === 404) http404Resources.push({ url: response.url(), resourceType: request.resourceType() });
+    if (response.url() === knownFixtureImageUrl && request.resourceType() === 'image' && response.status() === 404) {
+      fixtureImage404s.add(response.url());
+    }
   });
   page.on('response', (response) => {
     if (/\/assets\/live-app-runtime[^/]*\.js/.test(new URL(response.url()).pathname)) runtimeResponses.push(response.url());
@@ -385,9 +444,22 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: corsHeaders });
     // A real HTTP image failure dispatches the browser's error event consistently;
     // an intercepted cancellation can leave WebKit's deferred image unsettled.
-    if (request.method() === 'GET' && url.href === 'https://example.test/photo.jpg') {
-      expectedFixtureImageFailure++;
+    if (request.method() === 'GET' && url.href === knownFixtureImageUrl && request.resourceType() === 'image') {
       return route.fulfill({ status: 404, contentType: 'image/jpeg', body: '' });
+    }
+    if (request.method() === 'GET' && request.resourceType() === 'image' && fixtureImageUrls.has(url.href)) {
+      return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>' });
+    }
+    if (options.published && request.method() === 'GET' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      && url.pathname === '/rest/v1/ph_app_settings') {
+      const authorization = request.headers()['authorization'] || '';
+      const validFixtureRead = url.searchParams.get('key') === 'eq.current_season_salesyear'
+        && url.searchParams.get('select') === 'key,value,updated_by,updated_at'
+        && authorization === 'Bearer browser-only-no-real-session';
+      settingsReads.push({ url: request.url(), status: validFixtureRead ? 200 : null, authorization });
+      if (validFixtureRead) return fulfill(route, [{ key: 'current_season_salesyear', value: { seasonCode: 'F1', salesYear: 27, revision: 1 },
+        updated_by: 'release-smoke-fixture', updated_at: '2026-10-20T02:26:00.000Z' }]);
+      return route.abort('blockedbyclient');
     }
     if ((options.native || options.masterRows?.length) && url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1' && request.method() === 'POST') {
       const body = request.postDataJSON();
@@ -743,9 +815,17 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
-    expect(consoleErrors, 'release smoke must not emit browser console errors').toEqual([]);
+    const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;
+    const onlyKnownFixtureReturned404 = http404Resources.every(resource => resource.url === knownFixtureImageUrl && resource.resourceType === 'image');
+    const knownPhoto404Errors = onlyKnownFixtureReturned404
+      ? consoleErrors.filter(error => /failed to load resource:.*\b404\b/i.test(error)) : [];
+    const unexpectedConsoleErrors = consoleErrors.filter(error => !(/failed to load resource:.*\b404\b/i.test(error) && onlyKnownFixtureReturned404));
+    expect(knownPhoto404Errors.length, 'only the routed fixture image may fail with a 404').toBeLessThanOrEqual(expectedPhoto404Count);
+    expect(http404Resources.filter(resource => resource.url !== knownFixtureImageUrl || resource.resourceType !== 'image'), 'unexpected 404s retain resource URL and type').toEqual([]);
+    expect(unexpectedConsoleErrors, 'release smoke must not emit unexpected browser console errors').toEqual([]);
+    expect(failedResources, 'unexpected aborted reads/assets retain URL and resource type evidence').toEqual([]);
   };
-  return { requests, replies, receipts, backendRows, inventoryLookupCalls, card, done, activate, legacyComplete, beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, assertClean };
+  return { requests, replies, receipts, backendRows, inventoryLookupCalls, settingsReads, failedResources, card, done, activate, legacyComplete, beginLegacyCompletion, seed, refresh, nativeRefresh, showStatus, assertClean };
 }
 
 async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', value: string) {
@@ -1913,8 +1993,18 @@ test('published snapshot stays available and Drive completes every Common Name a
     const loaded = await getProductionLiveSyncCoordinator().check('visible-view');
     renderDrive();
     return { loaded, rows: fullInventory.length, names: new Set(fullInventory.map(row => row.COMMONNAME)).size,
-      state: getProductionLiveSyncCoordinator().getStatus().state, writeProof: hasCurrentProductionLiveSyncProof() };
+      state: getProductionLiveSyncCoordinator().getStatus().state,
+      message: getProductionLiveSyncCoordinator().getStatus().message,
+      blockedSources: getProductionLiveSyncCoordinator().getStatus().blockedSources || [],
+      writeProof: hasCurrentProductionLiveSyncProof() };
   })()`));
+  await info.attach('published-lkg-initial-read-diagnostic', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+    result, expectedSeasonSettingsKey: 'current_season_salesyear', settingsReads: app.settingsReads,
+    failedResources: app.failedResources,
+  })) });
+  expect(app.settingsReads, 'the interrupted-import read must verify the exact authenticated Current Season settings row').toEqual([
+    expect.objectContaining({ status: 200, authorization: 'Bearer browser-only-no-real-session' }),
+  ]);
   expect(result.loaded).toBe(true);
   expect(result.rows).toBe(snapshot.masterRows.length);
   expect(result.names).toBe(new Set(snapshot.masterRows.map(row => row.COMMONNAME || row.commonname)).size);

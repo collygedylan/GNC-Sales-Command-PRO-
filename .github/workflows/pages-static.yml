@@ -62,7 +62,7 @@ jobs:
       !cancelled() && github.ref == 'refs/heads/main' &&
       needs.authorize-main.result == 'success' && needs.validation.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     permissions:
       contents: write
       actions: read
@@ -99,6 +99,66 @@ jobs:
             }
             const { data: main } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
             if (main.object.sha !== context.sha) throw new Error('FRONTEND_MAIN_SUPERSEDED');
+      - name: Wait for scoped backend migrations and Edge publication
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const receiptPath = pkg.scopedValidationReceipt;
+            if (!receiptPath) {
+              core.info('No source-sealed scoped release receipt; retaining independent Pages publication.');
+              return;
+            }
+            const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+            if (!Array.isArray(receipt.deployment?.migrations) || receipt.deployment.migrations.length === 0) {
+              core.info('Scoped release has no database migrations; Pages publication is independent.');
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const repository = `${owner}/${repo}`;
+            const { data: workflow } = await github.rest.actions.getWorkflow({
+              owner, repo, workflow_id: 'apps-script-sync.yml',
+            });
+            if (workflow.path !== '.github/workflows/apps-script-sync.yml' || workflow.state !== 'active') {
+              throw new Error('SCOPED_BACKEND_WORKFLOW_INVALID');
+            }
+            const deadline = Date.now() + 10 * 60 * 1000;
+            let deployRun;
+            while (Date.now() < deadline) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner, repo, workflow_id: workflow.id, head_sha: context.sha,
+                event: 'workflow_dispatch', per_page: 100,
+              });
+              const candidates = (data.workflow_runs || []).filter(run =>
+                run.workflow_id === workflow.id && run.path === workflow.path &&
+                run.head_branch === 'main' && run.head_sha === context.sha &&
+                run.event === 'workflow_dispatch' && run.head_repository?.full_name === repository);
+              deployRun = candidates.sort((a, b) => b.run_number - a.run_number)[0];
+              if (deployRun?.status === 'completed') {
+                if (deployRun.conclusion !== 'success') {
+                  throw new Error(`SCOPED_BACKEND_PUBLICATION_FAILED:${deployRun.conclusion}`);
+                }
+                const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+                  owner, repo, run_id: deployRun.id, per_page: 100,
+                });
+                const backendJobs = (jobs.jobs || []).filter(job =>
+                  job.name === 'Apply backend migrations and deploy Edge Functions');
+                if (backendJobs.length !== 1 || backendJobs[0].status !== 'completed' ||
+                    backendJobs[0].conclusion !== 'success' || backendJobs[0].head_sha !== context.sha) {
+                  throw new Error('SCOPED_BACKEND_DEPLOY_JOB_NOT_SUCCESSFUL');
+                }
+                break;
+              }
+              await new Promise(resolve => setTimeout(resolve, 15_000));
+            }
+            if (!deployRun || deployRun.status !== 'completed' || deployRun.conclusion !== 'success') {
+              throw new Error('SCOPED_BACKEND_PUBLICATION_TIMEOUT');
+            }
+            const { data: main } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
+            if (main.object.sha !== context.sha) throw new Error('FRONTEND_MAIN_SUPERSEDED_DURING_BACKEND_WAIT');
+            core.info(`Exact scoped backend publication succeeded for ${context.sha} (run ${deployRun.id}).`);
       - name: Write the verified publication descriptor
         env:
           RELEASE_BUILD_COMMIT: ${{ github.sha }}

@@ -1,4 +1,5 @@
 import { verifyV2314RetainedValidation } from './check-v2314-retained-validation.mjs';
+import { verifyScopedRetainedValidation } from './check-retained-release-validation.mjs';
 import { verifyV2313RetainedValidation } from './check-v2313-retained-validation.mjs';
 import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
 import { verifyV2311RetainedValidation } from './check-v2311-retained-validation.mjs';
@@ -8,6 +9,22 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { discoverTests } from './test-discovery.mjs';
 import { verifyV239RetainedValidation } from './check-v239-retained-validation.mjs';
+
+export function scopedEdgeMatrix({ edgeFunctions, changedPaths } = {}) {
+  if (!Array.isArray(edgeFunctions) || !Array.isArray(changedPaths)) {
+    throw new Error('SCOPED_EDGE_MATRIX_INPUT_INVALID');
+  }
+  const changed = new Set(changedPaths);
+  const include = [...new Set(edgeFunctions)].sort().map(name => {
+    if (!/^[a-z0-9-]+$/.test(name) || name === '_shared') throw new Error('SCOPED_EDGE_FUNCTION_INVALID');
+    const prefix = `supabase/functions/${name}/`;
+    const entrypoint = `${prefix}index.ts`;
+    const tests = [...changed].filter(file => file.startsWith(prefix)
+      && /(?:_test|\.test)\.ts$/.test(file)).sort();
+    return { suite: name, targets: [entrypoint], tests };
+  });
+  return { include };
+}
 
 export function backendTestMatrices({ root } = {}) {
   const repositoryRoot = path.resolve(root || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
@@ -66,6 +83,14 @@ export function backendTestMatrices({ root } = {}) {
       tests: [],
     }));
     return { pglite: [requiredPglite], edge: { include: groups } };
+  }
+
+  if (JSON.parse(readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8')).scopedValidationReceipt) {
+    const receipt = verifyScopedRetainedValidation({ rootDir: repositoryRoot });
+    return { pglite: [], edge: scopedEdgeMatrix({
+      edgeFunctions: receipt.deployment.edgeFunctions,
+      changedPaths: receipt.changedPaths,
+    }) };
   }
 
   const groups = new Map();

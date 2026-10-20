@@ -72,7 +72,7 @@
     "cases": [
       {
         "project": "desktop-chromium",
-        "title": "Latest file\u2019s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+        "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
         "status": "failed",
         "durationMs": 19639,
         "errors": [
@@ -115,7 +115,7 @@
       },
       {
         "project": "android-chromium",
-        "title": "Latest file\u2019s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+        "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
         "status": "failed",
         "durationMs": 20240,
         "errors": [
@@ -159,7 +159,7 @@
       },
       {
         "project": "iphone-webkit",
-        "title": "Latest file\u2019s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
+        "title": "Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity @release-smoke",
         "status": "failed",
         "durationMs": 32431,
         "errors": [
@@ -232,17 +232,17 @@
       "file": ".gnc-local/reclass-recipient-policy.log",
       "sha256": "7f3d8c638ad663223700525a28d9b2140d5c5d5a647b265592db96276798acc2",
       "tail": [
-        "\u2714 all Reclass previews contain only Dylan, Megan and the authenticated submitter (27.7143ms)",
-        "\u2714 Drive Reclass delegates recipients and actor identity to the authenticated server (1.102ms)",
-        "\u2714 Reclass fallback defaults do not retain the previous extra recipient list (0.563ms)",
-        "\u2139 tests 3",
-        "\u2139 suites 0",
-        "\u2139 pass 3",
-        "\u2139 fail 0",
-        "\u2139 cancelled 0",
-        "\u2139 skipped 0",
-        "\u2139 todo 0",
-        "\u2139 duration_ms 216.4139",
+        "✔ all Reclass previews contain only Dylan, Megan and the authenticated submitter (27.7143ms)",
+        "✔ Drive Reclass delegates recipients and actor identity to the authenticated server (1.102ms)",
+        "✔ Reclass fallback defaults do not retain the previous extra recipient list (0.563ms)",
+        "ℹ tests 3",
+        "ℹ suites 0",
+        "ℹ pass 3",
+        "ℹ fail 0",
+        "ℹ cancelled 0",
+        "ℹ skipped 0",
+        "ℹ todo 0",
+        "ℹ duration_ms 216.4139",
         ""
       ]
     },
@@ -250,16 +250,16 @@
       "file": ".gnc-local/suspend-page-cache-all-platforms.log",
       "sha256": "b5937b925426e1d56d31e79ab118d9451e9a81f8070a5d2107de76a0f94385a0",
       "tail": [
-        "\u2714 verified Suspend page reuses markup while returning every physical row (3.4793ms)",
-        "\u2714 verified desktop pages reuse markup and oversized pages remain bounded (0.687ms)",
-        "\u2139 tests 2",
-        "\u2139 suites 0",
-        "\u2139 pass 2",
-        "\u2139 fail 0",
-        "\u2139 cancelled 0",
-        "\u2139 skipped 0",
-        "\u2139 todo 0",
-        "\u2139 duration_ms 183.8529",
+        "✔ verified Suspend page reuses markup while returning every physical row (3.4793ms)",
+        "✔ verified desktop pages reuse markup and oversized pages remain bounded (0.687ms)",
+        "ℹ tests 2",
+        "ℹ suites 0",
+        "ℹ pass 2",
+        "ℹ fail 0",
+        "ℹ cancelled 0",
+        "ℹ skipped 0",
+        "ℹ todo 0",
+        "ℹ duration_ms 183.8529",
         ""
       ]
     },
@@ -267,17 +267,17 @@
       "file": ".gnc-local/scoped-release-deployment.log",
       "sha256": "83d3836ff3df5d03493c8ecc92e16fee2dd6ba91e6047e80e8e434a5dc99327e",
       "tail": [
-        "\u2714 Reclass report migration is registered with recipient and immutable report contracts (1.741ms)",
-        "\u2714 scoped backend publication requires verified receipts and deploys only derived function names (13.5289ms)",
-        "\u2714 database gate requires source-sealed disposable evidence for scoped releases (8.4014ms)",
-        "\u2139 tests 3",
-        "\u2139 suites 0",
-        "\u2139 pass 3",
-        "\u2139 fail 0",
-        "\u2139 cancelled 0",
-        "\u2139 skipped 0",
-        "\u2139 todo 0",
-        "\u2139 duration_ms 360.9528",
+        "✔ Reclass report migration is registered with recipient and immutable report contracts (1.741ms)",
+        "✔ scoped backend publication requires verified receipts and deploys only derived function names (13.5289ms)",
+        "✔ database gate requires source-sealed disposable evidence for scoped releases (8.4014ms)",
+        "ℹ tests 3",
+        "ℹ suites 0",
+        "ℹ pass 3",
+        "ℹ fail 0",
+        "ℹ cancelled 0",
+        "ℹ skipped 0",
+        "ℹ todo 0",
+        "ℹ duration_ms 360.9528",
         ""
       ]
     },
@@ -285,15 +285,15 @@
       "file": ".gnc-local/release-smoke-artifacts.log",
       "sha256": "9b8df1bdd8a443d4249fa8e58b92d94796b49da3a48e9ad718516764e04846c9",
       "tail": [
-        "\u2714 smoke preflight rejects incomplete support assets before launching browsers (7.2696ms)",
-        "\u2139 tests 1",
-        "\u2139 suites 0",
-        "\u2139 pass 1",
-        "\u2139 fail 0",
-        "\u2139 cancelled 0",
-        "\u2139 skipped 0",
-        "\u2139 todo 0",
-        "\u2139 duration_ms 158.9042",
+        "✔ smoke preflight rejects incomplete support assets before launching browsers (7.2696ms)",
+        "ℹ tests 1",
+        "ℹ suites 0",
+        "ℹ pass 1",
+        "ℹ fail 0",
+        "ℹ cancelled 0",
+        "ℹ skipped 0",
+        "ℹ todo 0",
+        "ℹ duration_ms 158.9042",
         ""
       ]
     },
@@ -387,5 +387,63 @@
       "failed": 0,
       "cap": 8
     }
+  },
+  "availabilityValidationHistory": [
+    {
+      "at": "2026-10-20T16:51:19.420Z",
+      "checkpoint": "8c98837f12dc6c4b481966b211655302db1a8e32",
+      "issue": "published-availability-and-parallel-release-browser-gate",
+      "attempt": 1,
+      "cap": 8,
+      "status": "failed",
+      "report": ".gnc-local/release-smoke/agdata-v2-3-15/8c98837f12dc/20261020164513316/report.json",
+      "passed": [
+        "three synthetic-session isolation cases",
+        "iPhone latest37 layout/metrics at899ms"
+      ],
+      "failed": [
+        "LKG settings GET missing from routed fixture on3profiles",
+        "desktop blocked external resource console error",
+        "Android DOM/source UID identity unresolved"
+      ],
+      "productionWrites": false
+    }
+  ],
+  "availabilitySqlValidation": {
+    "proofAssertions": 16,
+    "reclassRuntimeAssertions": 13,
+    "migrationsReplayed": 96,
+    "status": "passed",
+    "proofLog": ".gnc-local/v2315-published-lkg-context/focused-sql-tap-attempt3.log",
+    "runtimeLog": ".gnc-local/v2315-published-lkg-context/focused-sql-output.log",
+    "history": [
+      "Docker startup unavailable resolved",
+      "assignment trigger readiness required trusted transaction context",
+      "context lifetime corrected for multiple statements and cleaned on function return",
+      "TAP assertions moved outside DO; no remaining SQL failures"
+    ],
+    "productionWrites": false
+  },
+  "latestScope": {
+    "immediateAuthorizedDetails": true,
+    "backgroundExactRowRefresh": true,
+    "draftPreservation": true,
+    "rosyLocationOnHand": 195,
+    "permissionChecksRetained": true,
+    "compareAndSwapRetained": true
+  },
+  "releaseWiring": {
+    "genericScopedEdgeMatrix": true,
+    "backendBeforeDependentPages": true,
+    "validation": {
+      "passedBeforeFinalGenericCondition": 5,
+      "finalTouchedMatrixPassed": 1
+    },
+    "attemptHistory": [
+      "two stale helper/gate marker assertions corrected",
+      "one whitespace-sensitive marker corrected",
+      "all5 scoped deployment checks passed",
+      "generic receipt condition applied; only touched matrix check rerun1/1"
+    ]
   }
 }
