@@ -3,21 +3,23 @@
   "release": "AgData v2.3.16",
   "base": "b14377472c095124426eaf4fbc897e4a7e84e761",
   "evidencePathPrefix": "docs/releases/v2.3.16-validation/",
-  "sourceDigest": "2a85c95e5aab4eeb44f7971f2e553c5f32f24b7571299955eddcebace99227c0",
+  "sourceDigest": "485d9723db4a2d232cc0a6243e93a5bb148052e8c3c2e72bed2fbc0e9f27fe53",
   "sourceHashes": {
     "assets/live-sync-coordinator.js": "265c5618c7c72cc95a36aa6c9dca85ec0f2bb5935fffc49b077a76af15398ab3",
     "assets/ops-precision-pilot.js": "8ada8b0a207fbda2fe9e83d8186082a7f684504f991602d943bc994d89511864",
-    "index.html": "84b2ce89219673e2d4228922b61af9231e6847337161bb039db0fba59c8c1390",
+    "index.html": "7a4be6d58f9ba299eefc3f00ec0ba22ff08fee31cbe530099ed8331bdae32ed7",
     "manifest.json": "91a5b4fcfbd6a1c87db5d81c9349ccd8dbfb0b8d856b46dce4b29c0a00fc897c",
     "package-lock.json": "5a5cbbe8c26d11463d3d9b2b88841d85927b8e7d66fa22157adf75a8ce0f9d3d",
     "package.json": "f88cdf71eca4c8c46487b12d26aad49817d92f73d6cf97f41dd82fcbc330cf9a",
     "scripts/build-live-shell.mjs": "a0198ac00afbc0973277dd26ad9acc6667c4d6abcf42df49c84c22157372903b",
+    "scripts/check-retained-release-validation.mjs": "86ac4f4301ca06b7e7ef26c68e5b96e84f02ddf3f919201b180ee207a42db61f",
     "sw.js": "7d6b051f619dd48f09a61b04c412d9349784682d0c095afa5787e6f8106b597e",
+    "tests/check-retained-release-validation.test.mjs": "7aa0529c79fec842d82276640a26ca2713a6d5b56948c83b38872cdf1bd4d9eb",
     "tests/live-sync-coordinator.test.mjs": "d9c1b1020f4dec717222c99ec89ec855077232f9bea03a62360592c5c6734d12",
-    "tests/live-sync-read-boundary.test.mjs": "d3caa7f7321f2dcc7ffe73ddd68e0e1f6b204311661353b92daa0973670a6f9a",
+    "tests/live-sync-read-boundary.test.mjs": "00fd773907de38e35370b41b3bbd56abeff69b2a9c64a4f07f9fd7cb911f7d1f",
     "tests/release-drive-av-recovery.test.mjs": "c8e777c2fffe5a3dd46f3c56a30a8f2e3740e3ad590eb3595738c88b4e30eea1",
     "tests/session-shell-resilience.test.mjs": "643dfa6bebf82eafac1047e1f7fa445f7021c8a1830223143eeaf0c8b8e681b2",
-    "tests/suspend-tag-completion.e2e.spec.ts": "02e4a574d48827dc319be265ee5fc8a01aea020e51ec400a42e74ec1b27a61f6",
+    "tests/suspend-tag-completion.e2e.spec.ts": "82c9a995095e0c0207ef5f3d5343e8d714601112ff857b666258938a72e1d5ef",
     "v2/public/manifest.webmanifest": "04e1495f75bbcb464b763e0f4d909e9a1f68c41ac8f68ba148cc3e70ecc95128",
     "v2/src/services/api.ts": "20703afd689132324f60a62b0e2264bdfbe27aa0b28cbb5a15b4747e5ba97e29"
   },
@@ -44,9 +46,9 @@
     "migrations": []
   },
   "evidenceHashes": {
-    "docs/releases/v2.3.16-validation/unit.json": "56243f317c67fafdcf674dfe4827bb65b585f419a42af84c686985ae92846c30",
-    "docs/releases/v2.3.16-validation/tooling.json": "6c37c36e7e16e0b5bdd5df895a1cbb0e743d0199ffccc0575a8dde13532ae1a7",
-    "docs/releases/v2.3.16-validation/browser.json": "7e8f4071a3ae529c0b513b49b7cf0c602f9cc4d5db55a294502726573dca6dd2"
+    "docs/releases/v2.3.16-validation/unit.json": "6998500b815305c9b827730f682249d9243e6918509f7a865719a829995c7777",
+    "docs/releases/v2.3.16-validation/tooling.json": "0300de6b52cd7ec898229dfdf15ae75468bdf4968721c92abdf41a86ba819781",
+    "docs/releases/v2.3.16-validation/browser.json": "4b28276d0e0e5d8cb4542d4a5f68adb51d846324c4dd1fc6904fa761b7ad8fba"
   },
   "browserContract": {
     "projects": [

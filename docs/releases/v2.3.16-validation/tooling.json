@@ -1,7 +1,7 @@
 {
   "status": "passed",
-  "capturedAt": "2026-10-20T19:28:08.547Z",
-  "sourceDigest": "2a85c95e5aab4eeb44f7971f2e553c5f32f24b7571299955eddcebace99227c0",
+  "capturedAt": "2026-10-20T19:41:53.890Z",
+  "sourceDigest": "485d9723db4a2d232cc0a6243e93a5bb148052e8c3c2e72bed2fbc0e9f27fe53",
   "productionWrites": false,
   "realEmailsSent": false,
   "kind": "tooling",
@@ -14,7 +14,7 @@
   "logs": [
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-tooling.log",
-      "sha256": "a6f2581c5633a0444346e1b2788b4f08e800f8e82846bf996b1d3383a2905e3b",
+      "sha256": "5aab77451f00356662d434e009c9a170d53066c8febea2ee4bdf7941d341127e",
       "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
@@ -39,12 +39,12 @@
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-build-shell.log",
-      "sha256": "7c8a25f8256a0f74f9c76cf4590a9c46e0ba0d6f8a723227df6ec4d2ea0d91c4",
+      "sha256": "566110046a189231da27d8d1f5781927e04ddcafbb38f574bbcf4cb25a45786a",
       "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-build-v2.log",
-      "sha256": "d755664d8f4836135d3b3c3591a51b727667ff9f1096e1fedf7942021385fe74",
+      "sha256": "ed4b1e0819f16e13d82d370cce364f389c3b0ee6359c79b6fbe143661ff4a110",
       "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
@@ -54,14 +54,44 @@
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-inline-confirmed-access.log",
-      "sha256": "4d68e3b0d748f55d1bd3a0eb1649d9c4160950e432da54223bca698705a9d3ce",
+      "sha256": "ea0856ad81c83859601af427114f45416fe14a1438981f56d34be8e788836e51",
       "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     {
       "path": "docs/releases/v2.3.16-validation/raw/v2316-build-confirmed-access.log",
       "sha256": "ac9d8093a7922c67ad41bf5e4cb8378e26f16f224a926869b134d23a4c0ea93e",
       "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-legacy-cache-adoption-lint.log",
+      "sha256": "4e1aa09b5b6fd0ff01d63417e988448170485360220e24c355ae86fe26677be4",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-legacy-smoke-fixture-eslint.log",
+      "sha256": "0ed1418b102dd7d00a5da1d72e20153730d770a477804fc4ae70cc348acc991f",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-inline-legacy-cache.log",
+      "sha256": "eccf77e18861d9c2249896707d4727746ad881b34d7be2e268d0ecf7016a7a2f",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-build-legacy-cache.log",
+      "sha256": "e870b3db0ce255e5cfe4dedc614815a87daef89aa6f3fade99a7e818883cf38d",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    {
+      "path": "docs/releases/v2.3.16-validation/raw/v2316-portable-evidence-eslint.log",
+      "sha256": "1f7bdd3988e62eb27d97103d3074fe970c57b71bbe46aba63cee194fb6b14d33",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     }
   ],
-  "history": "First lint run found one duplicate fixture property; corrected and only that file was linted again."
+  "priorCiFailure": {
+    "path": "docs/releases/v2.3.16-validation/raw/v2316-ci-attempt1.log",
+    "sha256": "13900eef99c1c47b8829c6017cd62043f9cf87f61f2caa99489972de6d041cca",
+    "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+  },
+  "history": "First lint run found one duplicate fixture property; corrected and only that file was linted again. The first hosted release check rejected a cross-platform source digest because 31 prior release .log files used raw CRLF bytes on Windows and LF on Linux; .log text normalization and its focused regression correct that defect. Diagnostic evidence is retained."
 }

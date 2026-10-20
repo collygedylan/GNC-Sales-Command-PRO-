@@ -1,0 +1,623 @@
+validation / unit (2)	UNKNOWN STEP	﻿2026-10-20T19:29:26.4962985Z Current runner version: '2.337.0'
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5004481Z ##[group]Runner Image Provisioner
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5005105Z Hosted Compute Agent
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5005590Z Version: 20261015.610
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5006030Z Commit: 267fdb4e8bbec4ab5ea31367f3a00d5c480c7656
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5006532Z Build Date: 2026-10-14T17:06:54Z
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5007002Z Worker ID: {43315216-8215-47c9-be93-f62c05bb62b0}
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5007481Z Region: centralus
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5007949Z Cloud: Azure
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5008302Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5009155Z ##[group]Operating System
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5009618Z Ubuntu
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5009994Z 24.04.5
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5010362Z LTS
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5010746Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5011095Z ##[group]Runner Image
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5011537Z Image: ubuntu-24.04
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5011940Z Version: 20261018.339.1
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5013100Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261018.339/images/ubuntu/Ubuntu2404-Readme.md
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5014031Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261018.339
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5014722Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5015559Z ##[group]GITHUB_TOKEN Permissions
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5017218Z Actions: read
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5017592Z Contents: read
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5018010Z Metadata: read
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5018392Z PullRequests: read
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5018802Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5020387Z Secret source: Actions
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5020988Z Cache mode: write
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5021521Z Prepare workflow directory
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5292292Z Prepare all required actions
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.5339301Z Getting action download info
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.7623892Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9334418Z Uses: collygedylan/GNC-Sales-Command-PRO-/.github/workflows/pr-validation.yml@refs/pull/504/merge (5ae8db9fe9f359b45e8a740cd0e13a889b4c3ca0)
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9337222Z ##[group] Inputs
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9337663Z   run-frontend-tests: true
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9337947Z   run-backend-tests: true
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9338208Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9338459Z Complete job name: validation / unit (2)
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9820028Z ##[group]Run actions/checkout@v4
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9820855Z with:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9821229Z   fetch-depth: 0
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9821658Z   repository: collygedylan/GNC-Sales-Command-PRO-
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9825515Z   token: ***
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9825925Z   ssh-strict: true
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9826281Z   ssh-user: git
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9826658Z   persist-credentials: true
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9827056Z   clean: true
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9827423Z   sparse-checkout-cone-mode: true
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9827859Z   fetch-tags: false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9828226Z   show-progress: true
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9828682Z   lfs: false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9829024Z   submodules: false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9829436Z   set-safe-directory: true
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9829857Z   allow-unsafe-pr-checkout: false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:26.9830408Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0485980Z Syncing repository: collygedylan/GNC-Sales-Command-PRO-
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0487475Z ##[group]Getting Git version info
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0488255Z Working directory is '/home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-'
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0489202Z [command]/usr/bin/git version
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0545992Z git version 2.55.0
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0564702Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0568920Z Temporarily overriding HOME='/home/runner/work/_temp/9f035e09-0224-48a5-ba48-40e00fd00d58' before making global git config changes
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0570312Z Adding repository directory to the temporary git global config as a safe directory
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0572891Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0633597Z Deleting the contents of '/home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-'
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0635124Z ##[group]Initializing the repository
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0636017Z [command]/usr/bin/git init /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0765721Z hint: Using 'master' as the name for the initial branch. This default branch name
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0766591Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0767404Z hint: to use in all of your new repositories, which will suppress this warning,
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0768042Z hint: call:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0768595Z hint:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0769039Z hint: 	git config --global init.defaultBranch <name>
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0769562Z hint:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0770056Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0770862Z hint: 'development'. The just-created branch can be renamed via this command:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0771471Z hint:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0771831Z hint: 	git branch -m <name>
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0772230Z hint:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0772861Z hint: Disable this message with "git config set advice.defaultBranchName false"
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0774027Z Initialized empty Git repository in /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-/.git/
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0778086Z [command]/usr/bin/git remote add origin https://github.com/collygedylan/GNC-Sales-Command-PRO-
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0854616Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0855058Z ##[group]Disabling automatic garbage collection
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0858513Z [command]/usr/bin/git config --local gc.auto 0
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0896286Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0896730Z ##[group]Setting up auth
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0904662Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.0940758Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.1254520Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.1312223Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.1504919Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.1541500Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.1730054Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.1771924Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.1772777Z ##[group]Fetching the repository
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:27.1779746Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/* +5ae8db9fe9f359b45e8a740cd0e13a889b4c3ca0:refs/remotes/pull/504/merge
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8655255Z From https://github.com/collygedylan/GNC-Sales-Command-PRO-
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8656156Z  * [new branch]        agent/fix-ben-request-v2026081709        -> origin/agent/fix-ben-request-v2026081709
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8656795Z  * [new branch]        agent/v2026-08-16-06-containment-fit     -> origin/agent/v2026-08-16-06-containment-fit
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8657405Z  * [new branch]        codex-crop-roll-export-meta              -> origin/codex-crop-roll-export-meta
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8658026Z  * [new branch]        codex-drive-filter-fix-20260615          -> origin/codex-drive-filter-fix-20260615
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8658672Z  * [new branch]        codex/admin-eval-rbac-hotfix             -> origin/codex/admin-eval-rbac-hotfix
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8659354Z  * [new branch]        codex/advanced-bunch-deployment-registration -> origin/codex/advanced-bunch-deployment-registration
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8660518Z  * [new branch]        codex/advanced-bunch-dispatch-scope      -> origin/codex/advanced-bunch-dispatch-scope
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8661168Z  * [new branch]        codex/advanced-bunch-permissions         -> origin/codex/advanced-bunch-permissions
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8661828Z  * [new branch]        codex/app-managed-priority-hold          -> origin/codex/app-managed-priority-hold
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8662667Z  * [new branch]        codex/apps-script-publisher-dependency   -> origin/codex/apps-script-publisher-dependency
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8663364Z  * [new branch]        codex/assigned-items-virtualized         -> origin/codex/assigned-items-virtualized
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8663988Z  * [new branch]        codex/aura-007-release-repair            -> origin/codex/aura-007-release-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8664517Z  * [new branch]        codex/aura-014                           -> origin/codex/aura-014
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8665157Z  * [new branch]        codex/aura-android-speech-008            -> origin/codex/aura-android-speech-008
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8665880Z  * [new branch]        codex/aura-browser-push-to-talk-009      -> origin/codex/aura-browser-push-to-talk-009
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8666392Z  * [new branch]        codex/aura-capture-search-010            -> origin/codex/aura-capture-search-010
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8666993Z  * [new branch]        codex/aura-ci-browser-read-fixtures-001  -> origin/codex/aura-ci-browser-read-fixtures-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8667599Z  * [new branch]        codex/aura-ci-fixture-repair             -> origin/codex/aura-ci-fixture-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8667996Z  * [new branch]        codex/aura-command-center-001            -> origin/codex/aura-command-center-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8668445Z  * [new branch]        codex/aura-command-center-ci-calendar-baseline-001 -> origin/codex/aura-command-center-ci-calendar-baseline-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8668955Z  * [new branch]        codex/aura-command-center-migration-repair-001 -> origin/codex/aura-command-center-migration-repair-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8669394Z  * [new branch]        codex/aura-common-name-priority          -> origin/codex/aura-common-name-priority
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8669955Z  * [new branch]        codex/aura-common-name-transaction-repair -> origin/codex/aura-common-name-transaction-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8670390Z  * [new branch]        codex/aura-drive-location-test-repair    -> origin/codex/aura-drive-location-test-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8670819Z  * [new branch]        codex/aura-drive-test-location-assertion -> origin/codex/aura-drive-test-location-assertion
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8671247Z  * [new branch]        codex/aura-edge-ci-npm-resolution-001    -> origin/codex/aura-edge-ci-npm-resolution-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8671652Z  * [new branch]        codex/aura-enterprise-voice-wake         -> origin/codex/aura-enterprise-voice-wake
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8672025Z  * [new branch]        codex/aura-gemini-router-011             -> origin/codex/aura-gemini-router-011
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8672478Z  * [new branch]        codex/aura-glossary-seed-repair          -> origin/codex/aura-glossary-seed-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8673099Z  * [new branch]        codex/aura-hr-partition-test-repair-001  -> origin/codex/aura-hr-partition-test-repair-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8673485Z  * [new branch]        codex/aura-internal-query                -> origin/codex/aura-internal-query
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8673847Z  * [new branch]        codex/aura-llm-fixture-repair-011        -> origin/codex/aura-llm-fixture-repair-011
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8674234Z  * [new branch]        codex/aura-match-fixture-repair-010      -> origin/codex/aura-match-fixture-repair-010
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8674732Z  * [new branch]        codex/aura-mobile-launcher-clearance     -> origin/codex/aura-mobile-launcher-clearance
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8675518Z  * [new branch]        codex/aura-pg-trgm-session-repair        -> origin/codex/aura-pg-trgm-session-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8676268Z  * [new branch]        codex/aura-readiness-release-bypass      -> origin/codex/aura-readiness-release-bypass
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8677146Z  * [new branch]        codex/aura-realtime-policy-owner-repair-001 -> origin/codex/aura-realtime-policy-owner-repair-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8677752Z  * [new branch]        codex/aura-release-migration-transaction-001 -> origin/codex/aura-release-migration-transaction-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8678477Z  * [new branch]        codex/aura-schedule-import-resume-001    -> origin/codex/aura-schedule-import-resume-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8679117Z  * [new branch]        codex/aura-season-ci-fixture-repair      -> origin/codex/aura-season-ci-fixture-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8679645Z  * [new branch]        codex/aura-season-hands-free-ui          -> origin/codex/aura-season-hands-free-ui
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8680059Z  * [new branch]        codex/aura-season-hands-free-ui-ci-repair -> origin/codex/aura-season-hands-free-ui-ci-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8680480Z  * [new branch]        codex/aura-shared-card-width-repair      -> origin/codex/aura-shared-card-width-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8680883Z  * [new branch]        codex/aura-speech-artifact-repair        -> origin/codex/aura-speech-artifact-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8681271Z  * [new branch]        codex/aura-theme-fixture-styles          -> origin/codex/aura-theme-fixture-styles
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8681656Z  * [new branch]        codex/aura-trigram-bootstrap-repair      -> origin/codex/aura-trigram-bootstrap-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8682014Z  * [new branch]        codex/aura-v2-007                        -> origin/codex/aura-v2-007
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8682343Z  * [new branch]        codex/aura-voice-activation              -> origin/codex/aura-voice-activation
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8682869Z  * [new branch]        codex/automated-deployment-protocol      -> origin/codex/automated-deployment-protocol
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8683273Z  * [new branch]        codex/av-card-priority                   -> origin/codex/av-card-priority
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8683623Z  * [new branch]        codex/av-eval-suspend-v238               -> origin/codex/av-eval-suspend-v238
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8683978Z  * [new branch]        codex/av-live-sales-reps-v2310           -> origin/codex/av-live-sales-reps-v2310
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8684470Z  * [new branch]        codex/av-priority-cards                  -> origin/codex/av-priority-cards
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8684836Z  * [new branch]        codex/av-read-schedule-decouple-004      -> origin/codex/av-read-schedule-decouple-004
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8685208Z  * [new branch]        codex/av-sales-open-stock-v236           -> origin/codex/av-sales-open-stock-v236
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8685575Z  * [new branch]        codex/av-secure-read-gnc-001             -> origin/codex/av-secure-read-gnc-001
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8685939Z  * [new branch]        codex/bloom-picker-optional-qty          -> origin/codex/bloom-picker-optional-qty
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8686324Z  * [new branch]        codex/bloomscapes-pending-orders         -> origin/codex/bloomscapes-pending-orders
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8686708Z  * [new branch]        codex/bulk-postgres-ingestion            -> origin/codex/bulk-postgres-ingestion
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8687071Z  * [new branch]        codex/bunch-blueprint-backend            -> origin/codex/bunch-blueprint-backend
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8687465Z  * [new branch]        codex/bunch-blueprint-compact-suspend    -> origin/codex/bunch-blueprint-compact-suspend
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8687851Z  * [new branch]        codex/bunch-eval-release-v235            -> origin/codex/bunch-eval-release-v235
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8688218Z  * [new branch]        codex/bunch-note-cancel-revision         -> origin/codex/bunch-note-cancel-revision
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8688614Z  * [new branch]        codex/bunch-note-card-db-regressions     -> origin/codex/bunch-note-card-db-regressions
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8689025Z  * [new branch]        codex/bunch-note-card-safe-aliases       -> origin/codex/bunch-note-card-safe-aliases
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8689411Z  * [new branch]        codex/bunch-note-cards-ci-repair         -> origin/codex/bunch-note-cards-ci-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8689898Z  * [new branch]        codex/bunch-note-claim-test-order        -> origin/codex/bunch-note-claim-test-order
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8690270Z  * [new branch]        codex/bunch-note-drive-cards             -> origin/codex/bunch-note-drive-cards
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8690646Z  * [new branch]        codex/bunch-note-dropdown-locators       -> origin/codex/bunch-note-dropdown-locators
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8691053Z  * [new branch]        codex/bunch-note-explicit-lot-selection  -> origin/codex/bunch-note-explicit-lot-selection
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8691474Z  * [new branch]        codex/bunch-note-saved-draft-navigation  -> origin/codex/bunch-note-saved-draft-navigation
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8691844Z  * [new branch]        codex/bunch-que-v230                     -> origin/codex/bunch-que-v230
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8692180Z  * [new branch]        codex/bunch-que-v230-backend             -> origin/codex/bunch-que-v230-backend
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8692672Z  * [new branch]        codex/bunch-request-modal-v236           -> origin/codex/bunch-request-modal-v236
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8693058Z  * [new branch]        codex/bunch-single-column-v233           -> origin/codex/bunch-single-column-v233
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8693449Z  * [new branch]        codex/bunch-supervisor-assignee-v232     -> origin/codex/bunch-supervisor-assignee-v232
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8693846Z  * [new branch]        codex/chromium-reclass-gate-repair       -> origin/codex/chromium-reclass-gate-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8694236Z  * [new branch]        codex/ci-archive-migration-paths         -> origin/codex/ci-archive-migration-paths
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8694587Z  * [new branch]        codex/ci-cache-shards                    -> origin/codex/ci-cache-shards
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8694961Z  * [new branch]        codex/ci-discovery-home-fixture-repair   -> origin/codex/ci-discovery-home-fixture-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8695360Z  * [new branch]        codex/ci-discovery-hooks-db-types        -> origin/codex/ci-discovery-hooks-db-types
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8695754Z  * [new branch]        codex/ci-discovery-po-fixture-repair     -> origin/codex/ci-discovery-po-fixture-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8696270Z  * [new branch]        codex/ci-discovery-suspend-fixture-repair -> origin/codex/ci-discovery-suspend-fixture-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8696648Z  * [new branch]        codex/ci-fixture-fix                     -> origin/codex/ci-fixture-fix
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8696993Z  * [new branch]        codex/ci-inventory-read-fixtures         -> origin/codex/ci-inventory-read-fixtures
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8697374Z  * [new branch]        codex/ci-release-proof-pagination        -> origin/codex/ci-release-proof-pagination
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8697744Z  * [new branch]        codex/ci-retries-cancel-stale            -> origin/codex/ci-retries-cancel-stale
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8698102Z  * [new branch]        codex/ci-validated-merge-gate            -> origin/codex/ci-validated-merge-gate
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8698473Z  * [new branch]        codex/clear-release-regressions          -> origin/codex/clear-release-regressions
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8698847Z  * [new branch]        codex/collation-session-recovery         -> origin/codex/collation-session-recovery
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8699250Z  * [new branch]        codex/compact-av-cards                   -> origin/codex/compact-av-cards
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8699792Z  * [new branch]        codex/compact-av-cards-main              -> origin/codex/compact-av-cards-main
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8700344Z  * [new branch]        codex/compact-drive-cards                -> origin/codex/compact-drive-cards
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8700871Z  * [new branch]        codex/company-directory                  -> origin/codex/company-directory
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8701428Z  * [new branch]        codex/company-directory-ci-dates         -> origin/codex/company-directory-ci-dates
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8702009Z  * [new branch]        codex/cyber-agronomy-theme-008           -> origin/codex/cyber-agronomy-theme-008
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8702958Z  * [new branch]        codex/cyber-agronomy-theme-008-canary    -> origin/codex/cyber-agronomy-theme-008-canary
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8703624Z  * [new branch]        codex/cyber-agronomy-theme-008-canary-race -> origin/codex/cyber-agronomy-theme-008-canary-race
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8704242Z  * [new branch]        codex/cyber-agronomy-theme-008-ci        -> origin/codex/cyber-agronomy-theme-008-ci
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8704822Z  * [new branch]        codex/cyber-agronomy-theme-011           -> origin/codex/cyber-agronomy-theme-011
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8705448Z  * [new branch]        codex/decoupled-frontend-live            -> origin/codex/decoupled-frontend-live
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8706034Z  * [new branch]        codex/deep-code-optimization             -> origin/codex/deep-code-optimization
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8706724Z  * [new branch]        codex/docks-suspend-fixture-repair-20261005 -> origin/codex/docks-suspend-fixture-repair-20261005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8707480Z  * [new branch]        codex/docks-suspend-performance-20261005 -> origin/codex/docks-suspend-performance-20261005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8708175Z  * [new branch]        codex/drive-av-permission-hotfix-20261005 -> origin/codex/drive-av-permission-hotfix-20261005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8708860Z  * [new branch]        codex/drive-av-sync-detail-layout        -> origin/codex/drive-av-sync-detail-layout
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8709566Z  * [new branch]        codex/drive-session-recovery-guidance-20261005 -> origin/codex/drive-session-recovery-guidance-20261005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8710255Z  * [new branch]        codex/drive-staging-v2313                -> origin/codex/drive-staging-v2313
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8710791Z  * [new branch]        codex/drive-sync-recovery                -> origin/codex/drive-sync-recovery
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8711328Z  * [new branch]        codex/drop-folder-history                -> origin/codex/drop-folder-history
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8711938Z  * [new branch]        codex/emergency-hotfix-shell-version     -> origin/codex/emergency-hotfix-shell-version
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8712735Z  * [new branch]        codex/emergency-season-sales-retry       -> origin/codex/emergency-season-sales-retry
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8713540Z  * [new branch]        codex/environment-stabilization          -> origin/codex/environment-stabilization
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8714175Z  * [new branch]        codex/eval-delivery-health-repair-007    -> origin/codex/eval-delivery-health-repair-007
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8714846Z  * [new branch]        codex/faster-modules-perennial-ownership -> origin/codex/faster-modules-perennial-ownership
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8715477Z  * [new branch]        codex/field-counting-reporting           -> origin/codex/field-counting-reporting
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8716054Z  * [new branch]        codex/finish-perennial-release           -> origin/codex/finish-perennial-release
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8716720Z  * [new branch]        codex/fix-eval2-migration-contract       -> origin/codex/fix-eval2-migration-contract
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8717352Z  * [new branch]        codex/fix-iphone-photo-navigation        -> origin/codex/fix-iphone-photo-navigation
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8717950Z  * [new branch]        codex/fix-iphone-refresh-anchor          -> origin/codex/fix-iphone-refresh-anchor
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8718576Z  * [new branch]        codex/fix-low-stock-migration-rollout    -> origin/codex/fix-low-stock-migration-rollout
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8719191Z  * [new branch]        codex/fix-pages-merge-trigger            -> origin/codex/fix-pages-merge-trigger
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8719752Z  * [new branch]        codex/fix-password-hl-cart               -> origin/codex/fix-password-hl-cart
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8720329Z  * [new branch]        codex/fix-release-gate-followups         -> origin/codex/fix-release-gate-followups
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8720961Z  * [new branch]        codex/fix-release-test-fixture-baseline  -> origin/codex/fix-release-test-fixture-baseline
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8721575Z  * [new branch]        codex/fix-report-pages-path              -> origin/codex/fix-report-pages-path
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8722249Z  * [new branch]        codex/fix-request-firefox-ci             -> origin/codex/fix-request-firefox-ci
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8722932Z  * [new branch]        codex/fix-salesrep-name-order            -> origin/codex/fix-salesrep-name-order
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8723502Z  * [new branch]        codex/floor-access-hotfix-003            -> origin/codex/floor-access-hotfix-003
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8724123Z  * [new branch]        codex/floor-hotfix-test-contract-003     -> origin/codex/floor-hotfix-test-contract-003
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8724745Z  * [new branch]        codex/frontend-lag-flashing              -> origin/codex/frontend-lag-flashing
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8725576Z  * [new branch]        codex/frontend-publication-backend-bypass -> origin/codex/frontend-publication-backend-bypass
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8726059Z  * [new branch]        codex/global-ui-hydration                -> origin/codex/global-ui-hydration
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8726425Z  * [new branch]        codex/handover-ci-contracts-005          -> origin/codex/handover-ci-contracts-005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8726791Z  * [new branch]        codex/handover-ci-cron-api-005           -> origin/codex/handover-ci-cron-api-005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8727154Z  * [new branch]        codex/handover-ci-fixture-005            -> origin/codex/handover-ci-fixture-005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8727526Z  * [new branch]        codex/handover-guard-ci-repair-005       -> origin/codex/handover-guard-ci-repair-005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8727963Z  * [new branch]        codex/historical-requests-financial-dashboard -> origin/codex/historical-requests-financial-dashboard
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8728433Z  * [new branch]        codex/hl-cart-status-render-repair-20261005 -> origin/codex/hl-cart-status-render-repair-20261005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8728886Z  * [new branch]        codex/hotfix-customer-mapping-publication -> origin/codex/hotfix-customer-mapping-publication
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8729284Z  * [new branch]        codex/hotfix-daily-data-sync             -> origin/codex/hotfix-daily-data-sync
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8729635Z  * [new branch]        codex/hotfix-eval-loop                   -> origin/codex/hotfix-eval-loop
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8730076Z  * [new branch]        codex/hotfix-login-nav-prefs             -> origin/codex/hotfix-login-nav-prefs
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8730439Z  * [new branch]        codex/hotfix-validation-bypass           -> origin/codex/hotfix-validation-bypass
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8730831Z  * [new branch]        codex/hybrid-assignment-browser-repair   -> origin/codex/hybrid-assignment-browser-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8731255Z  * [new branch]        codex/hybrid-assignment-contract-repair  -> origin/codex/hybrid-assignment-contract-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8731676Z  * [new branch]        codex/hybrid-assignment-fixture-parity   -> origin/codex/hybrid-assignment-fixture-parity
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8732094Z  * [new branch]        codex/hybrid-assignment-handover-audit   -> origin/codex/hybrid-assignment-handover-audit
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8732658Z  * [new branch]        codex/hybrid-exact-row-mobile-repair     -> origin/codex/hybrid-exact-row-mobile-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8733136Z  * [new branch]        codex/hybrid-inventory-assignments       -> origin/codex/hybrid-inventory-assignments
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8733531Z  * [new branch]        codex/hybrid-migration-line-endings      -> origin/codex/hybrid-migration-line-endings
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8733922Z  * [new branch]        codex/hybrid-owner-retry-fixture         -> origin/codex/hybrid-owner-retry-fixture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8734309Z  * [new branch]        codex/hybrid-pikes-snapshot-repair       -> origin/codex/hybrid-pikes-snapshot-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8734694Z  * [new branch]        codex/inv-bunch-notes-placement          -> origin/codex/inv-bunch-notes-placement
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8735065Z  * [new branch]        codex/inventory-batch-fixture            -> origin/codex/inventory-batch-fixture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8735431Z  * [new branch]        codex/inventory-import-recovery          -> origin/codex/inventory-import-recovery
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8735917Z  * [new branch]        codex/inventory-import-recovery-checks   -> origin/codex/inventory-import-recovery-checks
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8736468Z  * [new branch]        codex/inventory-realtime-policy-fixture  -> origin/codex/inventory-realtime-policy-fixture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8737169Z  * [new branch]        codex/inventory-reconciliation-containment -> origin/codex/inventory-reconciliation-containment
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8737854Z  * [new branch]        codex/inventory-recovery-heartbeat       -> origin/codex/inventory-recovery-heartbeat
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8738390Z  * [new branch]        codex/inventory-retry-containment        -> origin/codex/inventory-retry-containment
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8738775Z  * [new branch]        codex/inventory-status-db-fixture        -> origin/codex/inventory-status-db-fixture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8739161Z  * [new branch]        codex/inventory-status-publication       -> origin/codex/inventory-status-publication
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8739541Z  * [new branch]        codex/inventory-status-sync              -> origin/codex/inventory-status-sync
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8739903Z  * [new branch]        codex/inventory-status-sync-ci           -> origin/codex/inventory-status-sync-ci
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8740297Z  * [new branch]        codex/isolate-low-stock-database-probe   -> origin/codex/isolate-low-stock-database-probe
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8740684Z  * [new branch]        codex/item-low-stock-targets             -> origin/codex/item-low-stock-targets
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8741057Z  * [new branch]        codex/lightweight-local-workflow         -> origin/codex/lightweight-local-workflow
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8741434Z  * [new branch]        codex/live-card-mapping-repair           -> origin/codex/live-card-mapping-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8741787Z  * [new branch]        codex/live-erp-sync-v2312                -> origin/codex/live-erp-sync-v2312
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8742133Z  * [new branch]        codex/loc-on-hand-ci-repair              -> origin/codex/loc-on-hand-ci-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8742642Z  * [new branch]        codex/loc-on-hand-low-stock-fixture      -> origin/codex/loc-on-hand-low-stock-fixture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8743135Z  * [new branch]        codex/loc-on-hand-repair                 -> origin/codex/loc-on-hand-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8743490Z  * [new branch]        codex/loc-on-hand-schema-repair          -> origin/codex/loc-on-hand-schema-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8743844Z  * [new branch]        codex/local-validation                   -> origin/codex/local-validation
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8744180Z  * [new branch]        codex/low-stock-ci-fixture               -> origin/codex/low-stock-ci-fixture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8744566Z  * [new branch]        codex/manager-empty-state-ci-repair-002  -> origin/codex/manager-empty-state-ci-repair-002
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8744983Z  * [new branch]        codex/manager-empty-state-hotfix-002     -> origin/codex/manager-empty-state-hotfix-002
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8745420Z  * [new branch]        codex/manager-foundation-contract-repair-002 -> origin/codex/manager-foundation-contract-repair-002
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8745880Z  * [new branch]        codex/manager-foundation-timeout-repair-002 -> origin/codex/manager-foundation-timeout-repair-002
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8746334Z  * [new branch]        codex/manager-functional-timeout-repair-002 -> origin/codex/manager-functional-timeout-repair-002
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8746746Z  * [new branch]        codex/manager-hydration-repair           -> origin/codex/manager-hydration-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8747114Z  * [new branch]        codex/manager-performance-swr            -> origin/codex/manager-performance-swr
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8747495Z  * [new branch]        codex/manager-report-deployment-fix      -> origin/codex/manager-report-deployment-fix
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8747911Z  * [new branch]        codex/manager-report-fixture-projections -> origin/codex/manager-report-fixture-projections
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8748442Z  * [new branch]        codex/manager-report-fixture-schema      -> origin/codex/manager-report-fixture-schema
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8748844Z  * [new branch]        codex/manager-report-location-fixture    -> origin/codex/manager-report-location-fixture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8749241Z  * [new branch]        codex/master-velocity-repairs            -> origin/codex/master-velocity-repairs
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8749594Z  * [new branch]        codex/mobile-overhaul-007                -> origin/codex/mobile-overhaul-007
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8749943Z  * [new branch]        codex/mobile-overhaul-007-ci             -> origin/codex/mobile-overhaul-007-ci
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8750306Z  * [new branch]        codex/nightly-validation-email           -> origin/codex/nightly-validation-email
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8750666Z  * [new branch]        codex/perf-smooth-20260710               -> origin/codex/perf-smooth-20260710
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8751033Z  * [new branch]        codex/performance-diagnostics            -> origin/codex/performance-diagnostics
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8751400Z  * [new branch]        codex/permission-hotfix-012              -> origin/codex/permission-hotfix-012
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8751793Z  * [new branch]        codex/phase1-navigation-role-boundary    -> origin/codex/phase1-navigation-role-boundary
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8752179Z  * [new branch]        codex/phase1-provider-backoff            -> origin/codex/phase1-provider-backoff
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8752671Z  * [new branch]        codex/phase1-publication-repair          -> origin/codex/phase1-publication-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8753086Z  * [new branch]        codex/phase2-aura-memory-grounding       -> origin/codex/phase2-aura-memory-grounding
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8753536Z  * [new branch]        codex/phase3-mobile-history-read-fixture -> origin/codex/phase3-mobile-history-read-fixture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8753991Z  * [new branch]        codex/phase3-phone-buffer-comparison     -> origin/codex/phase3-phone-buffer-comparison
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8754407Z  * [new branch]        codex/phase3-phone-performance-buffer    -> origin/codex/phase3-phone-performance-buffer
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8754822Z  * [new branch]        codex/phase3-request-history-isolation   -> origin/codex/phase3-request-history-isolation
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8755320Z  * [new branch]        codex/phase3-sales-history-fixtures      -> origin/codex/phase3-sales-history-fixtures
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8755712Z  * [new branch]        codex/phase6-bulk-context-recovery       -> origin/codex/phase6-bulk-context-recovery
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8756096Z  * [new branch]        codex/phase6-import-recovery             -> origin/codex/phase6-import-recovery
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8756526Z  * [new branch]        codex/phase7-nightly-realtime-prerequisites -> origin/codex/phase7-nightly-realtime-prerequisites
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8756978Z  * [new branch]        codex/pipeline-policy-nightly-validation -> origin/codex/pipeline-policy-nightly-validation
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8757427Z  * [new branch]        codex/pipeline-speed-optimization        -> origin/codex/pipeline-speed-optimization
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8757837Z  * [new branch]        codex/planstart-advanced-inv-bunch       -> origin/codex/planstart-advanced-inv-bunch
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8758259Z  * [new branch]        codex/postgres-storm-ci-followup-009     -> origin/codex/postgres-storm-ci-followup-009
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8821886Z  * [new branch]        codex/postgres-storm-hotfix-009          -> origin/codex/postgres-storm-hotfix-009
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8823068Z  * [new branch]        codex/preserve-eval2-location-enrichment -> origin/codex/preserve-eval2-location-enrichment
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8823890Z  * [new branch]        codex/production-sales-fixture-repair    -> origin/codex/production-sales-fixture-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8824564Z  * [new branch]        codex/production-schedule-013            -> origin/codex/production-schedule-013
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8825149Z  * [new branch]        codex/prompt1-release-transport-repair   -> origin/codex/prompt1-release-transport-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8826084Z  * [new branch]        codex/prompt2-5-urgent-hotfixes          -> origin/codex/prompt2-5-urgent-hotfixes
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8826693Z  * [new branch]        codex/prompt2-apps-script-verification   -> origin/codex/prompt2-apps-script-verification
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8827306Z  * [new branch]        codex/prompt2-card-queue-overhaul        -> origin/codex/prompt2-card-queue-overhaul
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8827952Z  * [new branch]        codex/prompt2-release-contract-repair    -> origin/codex/prompt2-release-contract-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8828585Z  * [new branch]        codex/pwa-automatic-update               -> origin/codex/pwa-automatic-update
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8829175Z  * [new branch]        codex/pwa-persistence-reclass-semver     -> origin/codex/pwa-persistence-reclass-semver
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8829845Z  * [new branch]        codex/que-hydration-bunch-actions-v231   -> origin/codex/que-hydration-bunch-actions-v231
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8830563Z  * [new branch]        codex/que-hydration-navigation-bunch-notes -> origin/codex/que-hydration-navigation-bunch-notes
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8831254Z  * [new branch]        codex/que-inquiry-layout-pdf             -> origin/codex/que-inquiry-layout-pdf
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8831873Z  * [new branch]        codex/que-isolation-flash-cards          -> origin/codex/que-isolation-flash-cards
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8832472Z  * [new branch]        codex/read-optimization-006              -> origin/codex/read-optimization-006
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8833260Z  * [new branch]        codex/read-optimization-006-ci-repair    -> origin/codex/read-optimization-006-ci-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8833900Z  * [new branch]        codex/realtime-av-hydration              -> origin/codex/realtime-av-hydration
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8834518Z  * [new branch]        codex/reclass-audit-test-count           -> origin/codex/reclass-audit-test-count
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8835159Z  * [new branch]        codex/reclass-browser-fixture-repair     -> origin/codex/reclass-browser-fixture-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8835853Z  * [new branch]        codex/reclass-item-inquiry-ui-refresh    -> origin/codex/reclass-item-inquiry-ui-refresh
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8836714Z  * [new branch]        codex/reclass-live-prerequisites         -> origin/codex/reclass-live-prerequisites
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8837361Z  * [new branch]        codex/reclass-mobile-density             -> origin/codex/reclass-mobile-density
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8837970Z  * [new branch]        codex/reclass-mobile-density-006         -> origin/codex/reclass-mobile-density-006
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8838552Z  * [new branch]        codex/reclass-pwa-version-bump           -> origin/codex/reclass-pwa-version-bump
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8839133Z  * [new branch]        codex/reclass-report-grid-layout         -> origin/codex/reclass-report-grid-layout
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8839514Z  * [new branch]        codex/reclass-report-v2315               -> origin/codex/reclass-report-v2315
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8839903Z  * [new branch]        codex/reclass-shear-email-recipients     -> origin/codex/reclass-shear-email-recipients
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8840330Z  * [new branch]        codex/reclass-snapshot-verification-v239 -> origin/codex/reclass-snapshot-verification-v239
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8840748Z  * [new branch]        codex/reclass-split-move-inquiries       -> origin/codex/reclass-split-move-inquiries
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8841130Z  * [new branch]        codex/reclass-sql-test-repair            -> origin/codex/reclass-sql-test-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8841512Z  * [new branch]        codex/reclass-suspend-read-recovery      -> origin/codex/reclass-suspend-read-recovery
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8841896Z  * [new branch]        codex/reconciliation-baseline            -> origin/codex/reconciliation-baseline
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8842259Z  * [new branch]        codex/recover-004-deployment             -> origin/codex/recover-004-deployment
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8842863Z  * [new branch]        codex/register-eval2-ci-migration        -> origin/codex/register-eval2-ci-migration
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8843494Z  * [new branch]        codex/release-baseline-gate              -> origin/codex/release-baseline-gate
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8843893Z  * [new branch]        codex/repair-apps-script-pages-handoff   -> origin/codex/repair-apps-script-pages-handoff
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8844303Z  * [new branch]        codex/report-path-release-version        -> origin/codex/report-path-release-version
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8844692Z  * [new branch]        codex/repository-spring-cleaning         -> origin/codex/repository-spring-cleaning
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8845075Z  * [new branch]        codex/request-integrity-v20260820        -> origin/codex/request-integrity-v20260820
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8845454Z  * [new branch]        codex/request-suspend-v2026082605        -> origin/codex/request-suspend-v2026082605
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8845857Z  * [new branch]        codex/restore-dynamic-loc-photo-match    -> origin/codex/restore-dynamic-loc-photo-match
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8846261Z  * [new branch]        codex/restore-eval2-cached-loading       -> origin/codex/restore-eval2-cached-loading
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8846668Z  * [new branch]        codex/restore-eval2-shared-threshold     -> origin/codex/restore-eval2-shared-threshold
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8847093Z  * [new branch]        codex/restore-loc-photo-match-ci-fixture -> origin/codex/restore-loc-photo-match-ci-fixture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8847553Z  * [new branch]        codex/restore-loc-photo-match-live-visibility -> origin/codex/restore-loc-photo-match-live-visibility
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8847998Z  * [new branch]        codex/restore-release-browser-checks     -> origin/codex/restore-release-browser-checks
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8848403Z  * [new branch]        codex/resume-production-pipeline         -> origin/codex/resume-production-pipeline
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8848789Z  * [new branch]        codex/reuse-validated-pages-build        -> origin/codex/reuse-validated-pages-build
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8849213Z  * [new branch]        codex/sales-rep-customer-consignee-mapping -> origin/codex/sales-rep-customer-consignee-mapping
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8849640Z  * [new branch]        codex/scheduled-handover-queue-005       -> origin/codex/scheduled-handover-queue-005
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8850109Z  * [new branch]        codex/stability-access-v2311             -> origin/codex/stability-access-v2311
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8850482Z  * [new branch]        codex/stabilize-managers-database        -> origin/codex/stabilize-managers-database
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8850851Z  * [new branch]        codex/structured-bunch-notes             -> origin/codex/structured-bunch-notes
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8851221Z  * [new branch]        codex/structured-bunch-notes-ci          -> origin/codex/structured-bunch-notes-ci
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8851633Z  * [new branch]        codex/structured-bunch-notes-sync-contract -> origin/codex/structured-bunch-notes-sync-contract
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8852068Z  * [new branch]        codex/supabase-deploy-docker-fallback    -> origin/codex/supabase-deploy-docker-fallback
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8852487Z  * [new branch]        codex/supabase-deploy-transient-retry    -> origin/codex/supabase-deploy-transient-retry
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8853036Z  * [new branch]        codex/suspend-tag-approval               -> origin/codex/suspend-tag-approval
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8853399Z  * [new branch]        codex/suspend-tag-card-layout            -> origin/codex/suspend-tag-card-layout
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8853760Z  * [new branch]        codex/suspend-tag-complete               -> origin/codex/suspend-tag-complete
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8854122Z  * [new branch]        codex/suspend-tag-email-contrast         -> origin/codex/suspend-tag-email-contrast
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8854506Z  * [new branch]        codex/suspend-tag-migration-check        -> origin/codex/suspend-tag-migration-check
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8854882Z  * [new branch]        codex/suspend-tag-photo-spec             -> origin/codex/suspend-tag-photo-spec
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8855235Z  * [new branch]        codex/suspend-tag-reclass                -> origin/codex/suspend-tag-reclass
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8855684Z  * [new branch]        codex/suspend-tag-save-reclass           -> origin/codex/suspend-tag-save-reclass
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8856052Z  * [new branch]        codex/suspend-tag-view-updates           -> origin/codex/suspend-tag-view-updates
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8856407Z  * [new branch]        codex/teardown-phase-1                   -> origin/codex/teardown-phase-1
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8856765Z  * [new branch]        codex/v221-migration-registration        -> origin/codex/v221-migration-registration
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8857127Z  * [new branch]        codex/v230-sql-validation                -> origin/codex/v230-sql-validation
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8857475Z  * [new branch]        codex/v2311-publish-repair               -> origin/codex/v2311-publish-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8857855Z  * [new branch]        codex/v2313-deployment-contract-repair   -> origin/codex/v2313-deployment-contract-repair
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8858255Z  * [new branch]        codex/v2315-publication-handoff          -> origin/codex/v2315-publication-handoff
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8858617Z  * [new branch]        codex/v2316-loaded-data-access           -> origin/codex/v2316-loaded-data-access
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8859034Z  * [new branch]        codex/weather-history-item-repair-20260822 -> origin/codex/weather-history-item-repair-20260822
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8859474Z  * [new branch]        copilot/analyze-performance-bottlenecks  -> origin/copilot/analyze-performance-bottlenecks
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8859880Z  * [new branch]        copilot/fix-crumb-undefined-error        -> origin/copilot/fix-crumb-undefined-error
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8860277Z  * [new branch]        copilot/fix-hanging-index-html-issue     -> origin/copilot/fix-hanging-index-html-issue
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8860659Z  * [new branch]        copilot/fix-performance-issues           -> origin/copilot/fix-performance-issues
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8861095Z  * [new branch]        copilot/fix-screen-flash-and-request-row-removal -> origin/copilot/fix-screen-flash-and-request-row-removal
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8861571Z  * [new branch]        copilot/fix-screen-flashing-and-data-sync -> origin/copilot/fix-screen-flashing-and-data-sync
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8862076Z  * [new branch]        copilot/implement-request-workflow       -> origin/copilot/implement-request-workflow
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8862482Z  * [new branch]        copilot/optimize-performance-anti-lag    -> origin/copilot/optimize-performance-anti-lag
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8863053Z  * [new branch]        copilot/optimize-performance-issues      -> origin/copilot/optimize-performance-issues
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8863448Z  * [new branch]        copilot/optimize-touch-performance       -> origin/copilot/optimize-touch-performance
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8863832Z  * [new branch]        copilot/research-functionalities         -> origin/copilot/research-functionalities
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8864225Z  * [new branch]        copilot/research-request-tab-behavior    -> origin/copilot/research-request-tab-behavior
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8864650Z  * [new branch]        copilot/update-index-html-version-number -> origin/copilot/update-index-html-version-number
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8865091Z  * [new branch]        copilot/update-photo-quality-and-debounce -> origin/copilot/update-photo-quality-and-debounce
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8865513Z  * [new branch]        copilot/update-photo-quality-settings    -> origin/copilot/update-photo-quality-settings
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8865920Z  * [new branch]        demo/bloomscapes-agmetric-integration    -> origin/demo/bloomscapes-agmetric-integration
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8866323Z  * [new branch]        deploy/drive-eval-shear-location-v1      -> origin/deploy/drive-eval-shear-location-v1
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8866704Z  * [new branch]        deploy/eval-report2-flat-final           -> origin/deploy/eval-report2-flat-final
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8867066Z  * [new branch]        deploy/eval-report2-flat-v1              -> origin/deploy/eval-report2-flat-v1
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8867513Z  * [new branch]        diagnostics/eval2-recovery-56b           -> origin/diagnostics/eval2-recovery-56b
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8867886Z  * [new branch]        diagnostics/foundation-recovery-663      -> origin/diagnostics/foundation-recovery-663
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8868293Z  * [new branch]        diagnostics/season-priority-recovery-e78 -> origin/diagnostics/season-priority-recovery-e78
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8868711Z  * [new branch]        feature/assigned-items-filters-20260921  -> origin/feature/assigned-items-filters-20260921
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8869077Z  * [new branch]        feature/bunch-note                       -> origin/feature/bunch-note
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8869445Z  * [new branch]        feature/bunch-note-destinations-20260920 -> origin/feature/bunch-note-destinations-20260920
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8869868Z  * [new branch]        feature/bunch-note-drive-cards-20260920  -> origin/feature/bunch-note-drive-cards-20260920
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8870280Z  * [new branch]        feature/bunch-note-phone-steps-20260920  -> origin/feature/bunch-note-phone-steps-20260920
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8870708Z  * [new branch]        feature/bunch-note-recorded-work-20260920 -> origin/feature/bunch-note-recorded-work-20260920
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8871120Z  * [new branch]        feature/compact-filters-20260923         -> origin/feature/compact-filters-20260923
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8871519Z  * [new branch]        feature/credit-efficient-modules-20260925 -> origin/feature/credit-efficient-modules-20260925
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8871932Z  * [new branch]        feature/danny-tree-production-scope      -> origin/feature/danny-tree-production-scope
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8872340Z  * [new branch]        feature/drive-demand-details-20260913    -> origin/feature/drive-demand-details-20260913
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8872809Z  * [new branch]        feature/hl-order                         -> origin/feature/hl-order
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8873132Z  * [new branch]        feature/hl-ordering-system               -> origin/feature/hl-ordering-system
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8873487Z  * [new branch]        feature/hl-po-seasons-20260914           -> origin/feature/hl-po-seasons-20260914
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8873841Z  * [new branch]        feature/hl-restocking-20260912           -> origin/feature/hl-restocking-20260912
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8874322Z  * [new branch]        feature/hl-ship-date-additions-20260911  -> origin/feature/hl-ship-date-additions-20260911
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8874758Z  * [new branch]        feature/home-startup-hl-drive-cards-20260911 -> origin/feature/home-startup-hl-drive-cards-20260911
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8875198Z  * [new branch]        feature/manager-season-priority-20260922 -> origin/feature/manager-season-priority-20260922
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8875585Z  * [new branch]        feature/photo-history-20260904           -> origin/feature/photo-history-20260904
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8875958Z  * [new branch]        feature/protected-releases-20260922      -> origin/feature/protected-releases-20260922
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8876346Z  * [new branch]        feature/queue-view-filters-20260912      -> origin/feature/queue-view-filters-20260912
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8876737Z  * [new branch]        feature/reclass-location-details-v1      -> origin/feature/reclass-location-details-v1
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8877129Z  * [new branch]        feature/release-efficiency-20260922      -> origin/feature/release-efficiency-20260922
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8877525Z  * [new branch]        feature/sales-credit-mobile-20260920     -> origin/feature/sales-credit-mobile-20260920
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8877947Z  * [new branch]        feature/sales-history-docks-credit-20260924 -> origin/feature/sales-history-docks-credit-20260924
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8878329Z  * [new branch]        fix-pages-pipeline                       -> origin/fix-pages-pipeline
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8878701Z  * [new branch]        fix/app-api-login-deploy-mode            -> origin/fix/app-api-login-deploy-mode
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8879087Z  * [new branch]        fix/balanced-home-hl-removal-20260921    -> origin/fix/balanced-home-hl-removal-20260921
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8879590Z  * [new branch]        fix/compact-inventory-20260910           -> origin/fix/compact-inventory-20260910
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8879977Z  * [new branch]        fix/drive-photo-attachments-20260915     -> origin/fix/drive-photo-attachments-20260915
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8880395Z  * [new branch]        fix/drive-reclass-search-recipients-v1   -> origin/fix/drive-reclass-search-recipients-v1
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8880775Z  * [new branch]        fix/eval-auto-load-20260903              -> origin/fix/eval-auto-load-20260903
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8881154Z  * [new branch]        fix/eval2-card-priority-stock-20260924   -> origin/fix/eval2-card-priority-stock-20260924
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8881549Z  * [new branch]        fix/eval2-header-filters-20260909        -> origin/fix/eval2-header-filters-20260909
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8881928Z  * [new branch]        fix/home-role-mobile-visibility          -> origin/fix/home-role-mobile-visibility
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8882313Z  * [new branch]        fix/kayla-request-photo-20260910         -> origin/fix/kayla-request-photo-20260910
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8882792Z  * [new branch]        fix/live-data-pwa                        -> origin/fix/live-data-pwa
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8883134Z  * [new branch]        fix/live-dataset-revisions               -> origin/fix/live-dataset-revisions
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8883503Z  * [new branch]        fix/live-revision-empty-statements       -> origin/fix/live-revision-empty-statements
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8883883Z  * [new branch]        fix/module-tile-theme-20260924           -> origin/fix/module-tile-theme-20260924
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8884231Z  * [new branch]        fix/multi-photo-capture                  -> origin/fix/multi-photo-capture
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8884578Z  * [new branch]        fix/parallel-release-20260909            -> origin/fix/parallel-release-20260909
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8884935Z  * [new branch]        fix/photo-evidence-integrity             -> origin/fix/photo-evidence-integrity
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8885304Z  * [new branch]        fix/photo-history-mail-20260904          -> origin/fix/photo-history-mail-20260904
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8885663Z  * [new branch]        fix/reclass-task-flyer-v1                -> origin/fix/reclass-task-flyer-v1
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8886131Z  * [new branch]        fix/remove-bunch-notes-home-20260921     -> origin/fix/remove-bunch-notes-home-20260921
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8886493Z  * [new branch]        fix/rep-bloom-picker                     -> origin/fix/rep-bloom-picker
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8886862Z  * [new branch]        fix/request-photo-completion-20260910    -> origin/fix/request-photo-completion-20260910
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8887253Z  * [new branch]        fix/request-photo-spec-reuse-v1          -> origin/fix/request-photo-spec-reuse-v1
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8887625Z  * [new branch]        fix/request-reliability-20260910         -> origin/fix/request-reliability-20260910
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8887995Z  * [new branch]        fix/restore-hl-orders-20260911           -> origin/fix/restore-hl-orders-20260911
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8888358Z  * [new branch]        fix/review-assignedto-20260909           -> origin/fix/review-assignedto-20260909
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8888730Z  * [new branch]        fix/season-av-note-shared-reset          -> origin/fix/season-av-note-shared-reset
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8889110Z  * [new branch]        fix/season-sales-av-note-realtime        -> origin/fix/season-sales-av-note-realtime
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8889500Z  * [new branch]        fix/season-sales-av-note-retention       -> origin/fix/season-sales-av-note-retention
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8889887Z  * [new branch]        fix/season-sales-done-lifecycle          -> origin/fix/season-sales-done-lifecycle
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8890276Z  * [new branch]        fix/season-sales-office-hide-blank-av    -> origin/fix/season-sales-office-hide-blank-av
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8890635Z  * [new branch]        fix/soc-uninvoiced                       -> origin/fix/soc-uninvoiced
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8891045Z  * [new branch]        fix/suspend-tag-completion               -> origin/fix/suspend-tag-completion
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8891404Z  * [new branch]        fix/verified-data-cache-20260910         -> origin/fix/verified-data-cache-20260910
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8891791Z  * [new branch]        fix/workspace-release-guard-20260909     -> origin/fix/workspace-release-guard-20260909
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8892140Z  * [new branch]        gh-pages                                 -> origin/gh-pages
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8892468Z  * [new branch]        hardening/shared-lifecycle-20260923      -> origin/hardening/shared-lifecycle-20260923
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8892982Z  * [new branch]        legacy-messy-v1                          -> origin/legacy-messy-v1
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8893258Z  * [new branch]        main                                     -> origin/main
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8893569Z  * [new branch]        migration/gnc-codex-app-20260926         -> origin/migration/gnc-codex-app-20260926
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8893964Z  * [new branch]        release/manager-season-priority-20260923 -> origin/release/manager-season-priority-20260923
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8894336Z  * [new branch]        release/v2026.08.16.15                   -> origin/release/v2026.08.16.15
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8894670Z  * [new branch]        release/v2026.08.17.01-item-inquiry      -> origin/release/v2026.08.17.01-item-inquiry
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8895068Z  * [new branch]        repair/drive-commonname-complete-20260913 -> origin/repair/drive-commonname-complete-20260913
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8895466Z  * [new branch]        repair/hl-bloom-removal-20260914         -> origin/repair/hl-bloom-removal-20260914
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8895836Z  * [new branch]        repair/hl-complete-data-20260916         -> origin/repair/hl-complete-data-20260916
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8896224Z  * [new branch]        repair/hl-fast-loading-release-20260914  -> origin/repair/hl-fast-loading-release-20260914
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8896623Z  * [new branch]        repair/progressive-loading-20260913      -> origin/repair/progressive-loading-20260913
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8897008Z  * [new branch]        repair/queue-request-lag-20260916        -> origin/repair/queue-request-lag-20260916
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8897489Z  * [new branch]        repair/reclass-action-views-20260914     -> origin/repair/reclass-action-views-20260914
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8897869Z  * [new branch]        repair/refresh-flashing-20260915         -> origin/repair/refresh-flashing-20260915
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8898277Z  * [new branch]        repair/request-loading-menu-status-20260922 -> origin/repair/request-loading-menu-status-20260922
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8898715Z  * [new branch]        repair/stable-background-refresh-20260914 -> origin/repair/stable-background-refresh-20260914
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8899112Z  * [new branch]        repair/verified-loading-20260913         -> origin/repair/verified-loading-20260913
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8899460Z  * [new branch]        rollback/sep09-keep-hl                   -> origin/rollback/sep09-keep-hl
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8899781Z  * [new branch]        rollback/sep09-no-hl                     -> origin/rollback/sep09-no-hl
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8900092Z  * [new branch]        rollback/v2026-09-21-05                  -> origin/rollback/v2026-09-21-05
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8900409Z  * [new branch]        staging-teardown                         -> origin/staging-teardown
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8900692Z  * [new tag]           V2026.08.16.13                           -> V2026.08.16.13
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8900962Z  * [new tag]           release-v2026.08.16.07                   -> release-v2026.08.16.07
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8901246Z  * [new tag]           release-v2026.08.16.09                   -> release-v2026.08.16.09
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8901572Z  * [new tag]           release-v2026.08.16.10-backend-cleanup   -> release-v2026.08.16.10-backend-cleanup
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8901942Z  * [new tag]           rollback-pages-pre-cleanup-20260816      -> rollback-pages-pre-cleanup-20260816
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8902305Z  * [new tag]           rollback-pre-cleanup-V2026.08.16.09      -> rollback-pre-cleanup-V2026.08.16.09
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8902887Z  * [new tag]           rollback-v2026.08.16.06                  -> rollback-v2026.08.16.06
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8903189Z  * [new ref]           5ae8db9fe9f359b45e8a740cd0e13a889b4c3ca0 -> pull/504/merge
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8904429Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8904690Z ##[group]Determining the checkout info
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8904959Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8905119Z [command]/usr/bin/git sparse-checkout disable
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8905553Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8906123Z ##[group]Checking out the ref
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:47.8906350Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/504/merge
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0756598Z Note: switching to 'refs/remotes/pull/504/merge'.
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0756892Z 
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0757036Z You are in 'detached HEAD' state. You can look around, make experimental
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0757391Z changes and commit them, and you can discard any commits you make in this
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0757678Z state without impacting any branches by switching back to a branch.
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0757841Z 
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0757973Z If you want to create a new branch to retain commits you create, you may
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0758246Z do so (now or later) by using -c with the switch command. Example:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0758398Z 
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0758476Z   git switch -c <new-branch-name>
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0758593Z 
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0758668Z Or undo this operation with:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0758774Z 
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0758836Z   git switch -
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0758920Z 
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0759060Z Turn off this advice by setting config variable advice.detachedHead to false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0759241Z 
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0759444Z HEAD is now at 5ae8db9f Merge 786805ae5ef6ce2404e3a6086500cd422f45a0b2 into b14377472c095124426eaf4fbc897e4a7e84e761
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0812764Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0864732Z [command]/usr/bin/git log -1 --format=%H
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.0896679Z 5ae8db9fe9f359b45e8a740cd0e13a889b4c3ca0
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.1137537Z Prepare all required actions
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.1137934Z Getting action download info
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.2309595Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.3315640Z Download action repository 'actions/cache@v4' (SHA:0057852bfaa89a56745cba8c7296529d2fc39830)
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5052961Z ##[group]Run ./.github/actions/setup-node-dependencies
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5053172Z with:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5053291Z   node-version: 22
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5053413Z   install-mode: normal
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5053542Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5095353Z ##[start-action display=Run actions/setup-node@v4;id=__self.node]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5190855Z ##[group]Run actions/setup-node@v4
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5191031Z with:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5191150Z   node-version: 22
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5191286Z   cache: npm
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5191419Z   cache-dependency-path: package-lock.json
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5191630Z   always-auth: false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5191756Z   check-latest: false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5193484Z   token: ***
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.5193624Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.6211611Z Found in cache @ /opt/hostedtoolcache/node/22.23.3/x64
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.6215935Z (node:2769) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.6218069Z (Use `node --trace-deprecation ...` to show where the warning was created)
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.6218758Z ##[group]Environment details
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.9305558Z node: v22.23.3
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.9305814Z npm: 10.9.9
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.9305960Z yarn: 1.22.22
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.9306503Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:48.9319817Z [command]/opt/hostedtoolcache/node/22.23.3/x64/bin/npm config get cache
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:49.1738131Z /home/runner/.npm
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:49.3433491Z Cache hit for: node-cache-Linux-x64-npm-4f058401699053b80b0109e73180bf3a298038df7e03f68414e35a22fa50e839
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:49.3500989Z (node:2769) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:50.5371230Z Received 104857600 of 273244130 (38.4%), 99.9 MBs/sec
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.5333006Z Received 269049826 of 273244130 (98.5%), 128.2 MBs/sec
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.5763465Z Received 273244130 of 273244130 (100.0%), 127.4 MBs/sec
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.5764196Z Cache Size: ~261 MB (273244130 B)
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.5875418Z [command]/usr/bin/tar -xf /home/runner/work/_temp/8b2aa508-cc12-4927-ab24-23c2acd23c04/cache.tzst -P -C /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO- --use-compress-program unzstd
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.9623808Z Cache restored successfully
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.9739587Z Cache restored from key: node-cache-Linux-x64-npm-4f058401699053b80b0109e73180bf3a298038df7e03f68414e35a22fa50e839
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.9896789Z ##[end-action id=__self.node;outcome=success;conclusion=success;duration_ms=3480]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.9906020Z ##[start-action display=Identify runner image and validate installation mode;id=__self.platform]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.9937059Z ##[group]Run set -euo pipefail
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.9937336Z ^[[36;1mset -euo pipefail^[[0m
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.9937647Z ^[[36;1mcase "$INSTALL_MODE" in normal|ignore-scripts) ;; *) echo 'Unsupported installation mode'; exit 1 ;; esac^[[0m
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:51.9937985Z ^[[36;1mecho "image=${ImageOS:-$RUNNER_OS}" >> "$GITHUB_OUTPUT"^[[0m
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0100554Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0100787Z env:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0100922Z   INSTALL_MODE: normal
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0101060Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0200011Z ##[end-action id=__self.platform;outcome=success;conclusion=success;duration_ms=29]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0201994Z ##[start-action display=Restore exact node_modules;id=__self.dependencies]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0651233Z ##[group]Run actions/cache/restore@v4
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0651418Z with:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0651549Z   path: node_modules
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0651923Z   key: node-modules-v1-Linux-ubuntu24-X64-node-v22.23.3-normal-e3feeab11006263aaa7d4cd41132d129bb46aa07a3b57c713b8abcce0cc4fd3f
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0652343Z   enableCrossOsArchive: false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0652681Z   fail-on-cache-miss: false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0652872Z   lookup-only: false
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.0653006Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.1431229Z (node:2828) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.1432056Z (Use `node --trace-deprecation ...` to show where the warning was created)
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.3084282Z Cache hit for: node-modules-v1-Linux-ubuntu24-X64-node-v22.23.3-normal-e3feeab11006263aaa7d4cd41132d129bb46aa07a3b57c713b8abcce0cc4fd3f
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:52.3155605Z (node:2828) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:53.4554246Z Received 150994944 of 243809722 (61.9%), 143.4 MBs/sec
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:53.7890983Z Received 243809722 of 243809722 (100.0%), 173.6 MBs/sec
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:53.7891988Z Cache Size: ~233 MB (243809722 B)
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:53.7916962Z [command]/usr/bin/tar -xf /home/runner/work/_temp/62d59d2f-8212-4961-973d-cf7cef211e03/cache.tzst -P -C /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO- --use-compress-program unzstd
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.0830242Z Cache restored successfully
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.0990300Z Cache restored from key: node-modules-v1-Linux-ubuntu24-X64-node-v22.23.3-normal-e3feeab11006263aaa7d4cd41132d129bb46aa07a3b57c713b8abcce0cc4fd3f
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.1267194Z ##[end-action id=__self.dependencies;outcome=success;conclusion=success;duration_ms=4106]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.1271683Z ##[start-action display=Install locked dependencies on cache miss;id=__self.__run]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.1280693Z ##[end-action id=__self.__run;outcome=skipped;conclusion=skipped;duration_ms=0]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.1282291Z ##[start-action display=Save clean dependency tree;id=__self.__actions_cache]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.1286055Z ##[end-action id=__self.__actions_cache;outcome=skipped;conclusion=skipped;duration_ms=0]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.1972328Z ##[group]Run node scripts/run-release-unit-checks.mjs --shard=2/4
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.1972926Z ^[[36;1mnode scripts/run-release-unit-checks.mjs --shard=2/4^[[0m
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.2020146Z shell: /usr/bin/bash -e {0}
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.2020313Z ##[endgroup]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.5694183Z SCOPED_SOURCE_DIGEST_MISMATCH
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.5787276Z ##[error]Process completed with exit code 1.
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.6049358Z Post job cleanup.
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.6053232Z ##[start-action display=Run actions/setup-node@v4;id=__651c9749-050f-4eab-9214-53a636b2b27a.node]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.6055200Z ##[end-action id=__651c9749-050f-4eab-9214-53a636b2b27a.node;outcome=skipped;conclusion=skipped;duration_ms=0]
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.6776760Z Post job cleanup.
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.7381285Z [command]/usr/bin/git version
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.7419789Z git version 2.55.0
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.7449379Z Temporarily overriding HOME='/home/runner/work/_temp/ed8341aa-98db-48e5-ae50-d7282107fa21' before making global git config changes
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.7450006Z Adding repository directory to the temporary git global config as a safe directory
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.7454313Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/GNC-Sales-Command-PRO-/GNC-Sales-Command-PRO-
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.7655870Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.7692463Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.7940950Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.8036009Z http.https://github.com/.extraheader
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.8046721Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.8247377Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.8463032Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.8503339Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.8857605Z Cleaning up orphan processes
+validation / unit (2)	UNKNOWN STEP	2026-10-20T19:29:56.9057835Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache/restore@v4, actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

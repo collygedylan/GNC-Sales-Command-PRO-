@@ -1,0 +1,4 @@
+Command: node scripts/check-inline-scripts.mjs
+Exit code: 0 (captured with final v2316-legacy-cache-adoption focused run).
+Output: Parsed 8 inline scripts and 13 shell assets.
+No tests beyond the two named legacy-cache cases were selected.

@@ -1,0 +1,5 @@
+CAPTURED TOOL RESULT SUMMARY (not raw ESLint output; no rerun performed)
+Command: `npx eslint tests/suspend-tag-completion.e2e.spec.ts`
+Exit code: 0; ESLint reported no errors or warnings.
+The subsequent `git diff --check` also exited 0 (working-copy line-ending normalization warning only).
+Captured after the legacy-cache smoke fixture edit on 2026-10-20.

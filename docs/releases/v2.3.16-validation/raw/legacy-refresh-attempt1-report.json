@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "gnc-targeted-smoke-v1",
+  "status": "failed",
+  "commit": "c025b43b9bbf14a8484fe3f9f0b25cbbe6ca16a2",
+  "startedAt": "2026-10-20T19:33:34.439Z",
+  "artifactDigest": "a091b1062443476170a3cd8a681543d2463598f2a83ab2345053322a389e00e2",
+  "sourceDigest": "cee78b60165fcecd9abd07b0544e2f0d0ee31281f4938866ac98badd8527879f",
+  "siteDigest": "0f09a914a2d3034aba96a110914d0bd0fad8bb61bb6d9396168308b9e93702f2",
+  "siteDir": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-site-v2316-legacy-cache",
+  "productionWrites": false,
+  "realEmailsSent": false,
+  "scope": "Only published snapshot / same-user permission refresh and legacy-cache upgrade cases: confirmed role-change and legacy adoption branches are covered by focused VM checks; six unaffected render/session cases retained from 4bd9954b",
+  "resultsPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\agdata-v2-3-16\\c025b43b9bbf\\20261020193334439\\results.json",
+  "logPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\agdata-v2-3-16\\c025b43b9bbf\\20261020193334439\\playwright.log",
+  "tests": [
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "desktop-chromium",
+      "status": "passed"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "android-chromium",
+      "status": "passed"
+    },
+    {
+      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+      "project": "iphone-webkit",
+      "status": "timedOut"
+    }
+  ],
+  "completedAt": "2026-10-20T19:35:59.873Z",
+  "durationMs": 145434,
+  "exitCode": 1
+}

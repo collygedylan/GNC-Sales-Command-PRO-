@@ -1,0 +1,10 @@
+✔ v2.3.15 legacy access cache is adopted only for the matching enabled authenticated profile and stays display-only (19.3293ms)
+✔ legacy access cache adoption rejects mismatched username, role, session subject, explicit owner, disabled, and password-change-required profiles (121.1963ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 417.2598

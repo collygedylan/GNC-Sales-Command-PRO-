@@ -1,7 +1,7 @@
 {
   "status": "passed",
-  "capturedAt": "2026-10-20T19:28:08.547Z",
-  "sourceDigest": "2a85c95e5aab4eeb44f7971f2e553c5f32f24b7571299955eddcebace99227c0",
+  "capturedAt": "2026-10-20T19:41:53.890Z",
+  "sourceDigest": "485d9723db4a2d232cc0a6243e93a5bb148052e8c3c2e72bed2fbc0e9f27fe53",
   "productionWrites": false,
   "realEmailsSent": false,
   "kind": "browser",
@@ -261,12 +261,29 @@
       "status": "passed"
     }
   ],
-  "validationComposition": "Nine cases passed at 4bd9954b. After the confirmed-role-change-only correction, the affected permission-refresh case passed again on all three profiles at 15f90a50cb21e3d1129718125554e0716e5ecb8c. The six unchanged render/session cases and their original measurements are retained; the confirmed role-change branch has five focused VM checks. This is composed evidence, not a nine-case rerun at the final commit.",
+  "validationComposition": "Nine cases passed at 4bd9954b. After the confirmed-role-change correction, three affected refresh cases passed at 15f90a50. Legacy-cache upgrade coverage ran across all three profiles: Desktop/Android passed at c025b43b; only the failed iPhone case was rerun in isolation against the same sealed artifact at c025b43b9bbf14a8484fe3f9f0b25cbbe6ca16a2, without changing assertions or timeout. The six unchanged render/session cases and their original measurements are retained; confirmed role-change and legacy adoption branches also have focused VM coverage. This is composed evidence, not a nine-case rerun at the final commit.",
+  "confirmedRoleRefresh": {
+    "report": {
+      "path": "docs/releases/v2.3.16-validation/raw/confirmed-role-refresh-report.json",
+      "sha256": "122bd33f14788d89b8ce159a4c31bf4a9c894562eaae0cf8f933850720f43cd3",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    "results": {
+      "path": "docs/releases/v2.3.16-validation/raw/confirmed-role-refresh-results.json",
+      "sha256": "86c991d0caab199ae227595263f761e0e3830d91cfcc587634be515bb2aa94b9",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    "log": {
+      "path": "docs/releases/v2.3.16-validation/raw/confirmed-role-refresh-playwright.log",
+      "sha256": "64e90da74b20f2a02f620e04ad9584710bdaf864b5367519b4a712fd4471ef8d",
+      "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    }
+  },
   "finalTargetedRefresh": {
-    "commit": "15f90a50cb21e3d1129718125554e0716e5ecb8c",
-    "artifactDigest": "5c238dda200878fdd550b2fc542433b928820cf2a9c59a077e9f9838d8f75eb0",
-    "sourceDigest": "3a4a27c5f284e08be4feae5255e84a978bc564a49e268f5a0730fbc8d7a91172",
-    "siteDigest": "fd2b5cca97d0bb409aa09eaf67a4bd52414a234f9d98e44c63257005239fd80c",
+    "commit": "c025b43b9bbf14a8484fe3f9f0b25cbbe6ca16a2",
+    "artifactDigest": "a091b1062443476170a3cd8a681543d2463598f2a83ab2345053322a389e00e2",
+    "sourceDigest": "00c33fd1a052081f5bd21eac9d4c3440632cf280fbb1638382192b4f3bba2fba",
+    "siteDigest": "0f09a914a2d3034aba96a110914d0bd0fad8bb61bb6d9396168308b9e93702f2",
     "tests": [
       {
         "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
@@ -284,21 +301,47 @@
         "status": "passed"
       }
     ],
-    "durationMs": 49995,
+    "rerunTests": [
+      {
+        "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
+        "project": "iphone-webkit",
+        "status": "passed"
+      }
+    ],
+    "durationMs": 48653,
     "report": {
       "path": "docs/releases/v2.3.16-validation/raw/targeted-refresh-report.json",
-      "sha256": "122bd33f14788d89b8ce159a4c31bf4a9c894562eaae0cf8f933850720f43cd3",
+      "sha256": "92450faeaee0642155af7034e3f12769dced3cef2a3d2ed7a559d4cbc57059d7",
       "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     "results": {
       "path": "docs/releases/v2.3.16-validation/raw/targeted-refresh-results.json",
-      "sha256": "86c991d0caab199ae227595263f761e0e3830d91cfcc587634be515bb2aa94b9",
+      "sha256": "30225d58c719b13d1b06ef3d4c6f74c36867d8ffcc7a814f516b838c4192c91e",
       "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
     },
     "log": {
       "path": "docs/releases/v2.3.16-validation/raw/targeted-refresh-playwright.log",
-      "sha256": "64e90da74b20f2a02f620e04ad9584710bdaf864b5367519b4a712fd4471ef8d",
+      "sha256": "b00e2222eb47408e586bef96bf5180ff8dc1406af5d7f9bad4dad1ca6f8cbe33",
       "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+    },
+    "retainedDesktopAndroidAndFailedIphoneAttempt": {
+      "commit": "c025b43b9bbf14a8484fe3f9f0b25cbbe6ca16a2",
+      "diagnosis": "All 19 pages and settings returned successfully; WebKit timed out during post-fetch publication before the legacy adoption branch. Slower concurrent cold loads suggest host contention, not a confirmed production defect. The exact same artifact and assertions are verified in the isolated retry.",
+      "report": {
+        "path": "docs/releases/v2.3.16-validation/raw/legacy-refresh-attempt1-report.json",
+        "sha256": "6ff45fa235df4282bc004b4917d3d6c0c2f26af3f1f5570fb1c3427d353a5a35",
+        "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+      },
+      "results": {
+        "path": "docs/releases/v2.3.16-validation/raw/legacy-refresh-attempt1-results.json",
+        "sha256": "12085e7910deb4cb5843445abb91e9da78a7727754bd57de841b5437f1007cc1",
+        "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+      },
+      "log": {
+        "path": "docs/releases/v2.3.16-validation/raw/legacy-refresh-attempt1-playwright.log",
+        "sha256": "ace9f46859d8437ea41ed664557e53e11be955369a5cf157f75edf6c49b5457a",
+        "hashNormalization": "UTF-8 text with LF line endings (Git portable)"
+      }
     }
   },
   "artifact": {

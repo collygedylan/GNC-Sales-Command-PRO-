@@ -1,35 +1,25 @@
 {
   "schemaVersion": "gnc-targeted-smoke-v1",
   "status": "passed",
-  "commit": "15f90a50cb21e3d1129718125554e0716e5ecb8c",
-  "startedAt": "2026-10-20T19:25:07.196Z",
-  "artifactDigest": "5c238dda200878fdd550b2fc542433b928820cf2a9c59a077e9f9838d8f75eb0",
-  "sourceDigest": "3a4a27c5f284e08be4feae5255e84a978bc564a49e268f5a0730fbc8d7a91172",
-  "siteDigest": "fd2b5cca97d0bb409aa09eaf67a4bd52414a234f9d98e44c63257005239fd80c",
-  "siteDir": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-site-v2316-confirmed-access",
+  "commit": "c025b43b9bbf14a8484fe3f9f0b25cbbe6ca16a2",
+  "startedAt": "2026-10-20T19:40:22.901Z",
+  "artifactDigest": "a091b1062443476170a3cd8a681543d2463598f2a83ab2345053322a389e00e2",
+  "sourceDigest": "00c33fd1a052081f5bd21eac9d4c3440632cf280fbb1638382192b4f3bba2fba",
+  "siteDigest": "0f09a914a2d3034aba96a110914d0bd0fad8bb61bb6d9396168308b9e93702f2",
+  "siteDir": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-site-v2316-legacy-cache",
   "productionWrites": false,
   "realEmailsSent": false,
-  "scope": "Only published snapshot / same-user permission refresh cases: confirmed role-change branch is covered by focused VM checks; six unaffected render/session cases retained from 4bd9954b",
-  "resultsPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\agdata-v2-3-16\\15f90a50cb21\\20261020192507196\\results.json",
-  "logPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\agdata-v2-3-16\\15f90a50cb21\\20261020192507196\\playwright.log",
+  "scope": "Only published snapshot / same-user permission refresh and legacy-cache upgrade cases: confirmed role-change and legacy adoption branches are covered by focused VM checks; six unaffected render/session cases retained from 4bd9954b",
+  "resultsPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\agdata-v2-3-16\\c025b43b9bbf\\20261020194022901\\results.json",
+  "logPath": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\release-smoke\\agdata-v2-3-16\\c025b43b9bbf\\20261020194022901\\playwright.log",
   "tests": [
-    {
-      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
-      "project": "desktop-chromium",
-      "status": "passed"
-    },
-    {
-      "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
-      "project": "android-chromium",
-      "status": "passed"
-    },
     {
       "title": "published snapshot stays available and Drive completes every Common Name after interrupted import @release-smoke",
       "project": "iphone-webkit",
       "status": "passed"
     }
   ],
-  "completedAt": "2026-10-20T19:25:57.191Z",
-  "durationMs": 49995,
+  "completedAt": "2026-10-20T19:41:11.554Z",
+  "durationMs": 48653,
   "exitCode": 0
 }
