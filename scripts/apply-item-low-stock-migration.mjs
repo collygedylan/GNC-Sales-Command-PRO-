@@ -517,8 +517,8 @@ export function migrationContractQuery(name) {
       and not has_function_privilege('anon',p.oid,'execute')
       and not has_function_privilege('authenticated',p.oid,'execute')
       and not has_function_privilege('service_role',p.oid,'execute')
-      and position('c.source_unique_id = p_unique_id' in p.prosrc)>0
-      and position('c.canonical_unique_id = p_unique_id' in p.prosrc)>0
+      and p.prosrc ~ 'c[.]source_unique_id[[:space:]]*=[[:space:]]*p_unique_id'
+      and p.prosrc ~ 'c[.]canonical_unique_id[[:space:]]*=[[:space:]]*p_unique_id'
       and position('ph_master_inventory_import_lineage_seen' in p.prosrc)>0
       and position('ph_master_inventory_item6_alias_seen_v7' in p.prosrc)>0)
       and exists(select 1 from pg_proc p
@@ -630,7 +630,46 @@ export function migrationContractQuery(name) {
         and position('ph_master_inventory_import_run_v1' in p.prosrc)>0
         and position('gnc.master_bulk_crop_roll_deferred' in p.prosrc)>0
         and position('ph_master_bulk_import_context_v1' in p.prosrc)>0
-        and position('v2_crop_roll_drive_row_from_json' in p.prosrc)>0
+        and (
+          position('v2_crop_roll_drive_row_from_json' in p.prosrc)>0
+          or (
+            -- The typed replacement is valid only with the deployed, fenced
+            -- staging contract. A helper name alone cannot certify this path.
+            position('private.ph_master_crop_roll_from_master_v1(master)' in p.prosrc)>0
+            and exists(select 1 from pg_proc mapper
+              where mapper.oid=to_regprocedure('private.ph_master_crop_roll_from_master_v1(public.ph_master_inventory)')
+                and mapper.proowner=p.proowner and mapper.provolatile='s'
+                and mapper.prorettype=to_regtype('public.ph_crop_roll_drive_rows')
+                and mapper.proconfig @> array['search_path=""']
+                and not has_function_privilege('anon',mapper.oid,'execute')
+                and not has_function_privilege('authenticated',mapper.oid,'execute')
+                and not has_function_privilege('service_role',mapper.oid,'execute'))
+            and (select count(*)=3 and coalesce(bool_and(stage.prosecdef and stage.proowner=p.proowner
+              and stage.prorettype='jsonb'::regtype
+              and stage.proconfig @> array['search_path=""','statement_timeout=120s','lock_timeout=15s']
+              and has_function_privilege('service_role',stage.oid,'execute')
+              and not has_function_privilege('anon',stage.oid,'execute')
+              and not has_function_privilege('authenticated',stage.oid,'execute')),false)
+              from pg_proc stage where stage.oid in (
+                to_regprocedure('public.begin_master_snapshot_stage_v1(uuid,uuid,jsonb,text,integer,integer)'),
+                to_regprocedure('public.append_master_snapshot_stage_chunk_v1(uuid,uuid,integer,jsonb)'),
+                to_regprocedure('public.finalize_master_snapshot_stage_v1(uuid,uuid,text)')))
+            and exists(select 1 from pg_proc finalizer
+              where finalizer.oid=to_regprocedure('public.finalize_master_snapshot_stage_v1(uuid,uuid,text)')
+                and position('assert_master_snapshot_stage_fence_v1' in finalizer.prosrc)>0
+                and position('MASTER_SNAPSHOT_STAGE_INCOMPLETE' in finalizer.prosrc)>0
+                and position('source_manifest_digest' in finalizer.prosrc)>0
+                and position('published_response' in finalizer.prosrc)>0
+                and position('private.sync_ph_master_bulk_crop_roll_v1' in finalizer.prosrc)>0)
+            and (select count(*)=3 and coalesce(bool_and(stage_table.relrowsecurity
+              and not has_table_privilege('anon',stage_table.oid,'select,insert,update,delete')
+              and not has_table_privilege('authenticated',stage_table.oid,'select,insert,update,delete')
+              and not has_table_privilege('service_role',stage_table.oid,'select,insert,update,delete')),false)
+              from pg_class stage_table join pg_namespace ns on ns.oid=stage_table.relnamespace
+              where ns.nspname='app_sync_private' and stage_table.relname in (
+                'ph_master_snapshot_stage_v1','ph_master_snapshot_stage_chunks_v1','ph_master_snapshot_stage_rows_v1'))
+          )
+        )
         and position('public.ph_crop_roll_drive_rows' in p.prosrc)>0
         and not has_function_privilege('anon',p.oid,'execute')
         and not has_function_privilege('authenticated',p.oid,'execute')

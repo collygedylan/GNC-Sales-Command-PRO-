@@ -5,6 +5,7 @@ import yaml from 'js-yaml';
 import { verifyV2313AppsScriptProtection, isV2313DriveTimingWithinBudget, V2313_FINALIZE_BUDGET_MS } from '../scripts/check-v2313-retained-validation.mjs';
 import { patchAppsScriptFunctions } from '../scripts/apps-script-function-patch.mjs';
 import { execFileSync } from 'node:child_process';
+import { migrationContractQuery, bulkMasterSnapshotMigrationName, bulkContextIndexPlanMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
 
 test('v2313 deployment selects ingestion evidence and skips unchanged Edge deployment', () => {
   const workflow = yaml.safeLoad(fs.readFileSync('.github/workflows/apps-script-sync.yml', 'utf8'));
@@ -59,4 +60,32 @@ test('v2313 approved finalization budget retains strict boundaries and staging g
   assert.equal(isV2313DriveTimingWithinBudget({ operation: 'append', ms: 321.575 }), true);
   assert.equal(isV2313DriveTimingWithinBudget({ operation: 'finalize', ms: NaN }), false);
   assert.equal(isV2313DriveTimingWithinBudget({ operation: 'finalize', ms: -1 }), false);
+});
+
+
+test('v2313 legacy migration contracts accept only fenced typed crop deployment and indexed context lookups', () => {
+  const bulk = migrationContractQuery(bulkMasterSnapshotMigrationName);
+  const typedStart = bulk.indexOf("position('private.ph_master_crop_roll_from_master_v1(master)' in p.prosrc)>0");
+  assert.ok(typedStart > 0);
+  assert.match(bulk.slice(0, typedStart), /position\('v2_crop_roll_drive_row_from_json' in p\.prosrc\)>0\s+or \(\s+--/);
+  const typed = bulk.slice(typedStart, bulk.indexOf("and position('public.ph_crop_roll_drive_rows'", typedStart));
+  for (const required of [
+    "mapper.proowner=p.proowner", "mapper.provolatile='s'", "mapper.prorettype=to_regtype('public.ph_crop_roll_drive_rows')",
+    "mapper.proconfig @> array['search_path=\"\"']", "not has_function_privilege('service_role',mapper.oid,'execute')",
+    'count(*)=3', 'stage.prosecdef and stage.proowner=p.proowner', "'statement_timeout=120s','lock_timeout=15s'",
+    'public.begin_master_snapshot_stage_v1(uuid,uuid,jsonb,text,integer,integer)',
+    'public.append_master_snapshot_stage_chunk_v1(uuid,uuid,integer,jsonb)',
+    'public.finalize_master_snapshot_stage_v1(uuid,uuid,text)',
+    'assert_master_snapshot_stage_fence_v1', 'MASTER_SNAPSHOT_STAGE_INCOMPLETE',
+    'source_manifest_digest', 'published_response', 'private.sync_ph_master_bulk_crop_roll_v1',
+    'stage_table.relrowsecurity', "not has_table_privilege('service_role',stage_table.oid",
+    'ph_master_snapshot_stage_v1', 'ph_master_snapshot_stage_chunks_v1', 'ph_master_snapshot_stage_rows_v1',
+  ]) assert.ok(typed.includes(required), `typed contract requires ${required}`);
+  const context = migrationContractQuery(bulkContextIndexPlanMigrationName);
+  for (const field of ['source_unique_id', 'canonical_unique_id']) {
+    assert.ok(context.includes(`p.prosrc ~ 'c[.]${field}[[:space:]]*=[[:space:]]*p_unique_id'`));
+  }
+  assert.match(context, /p\.prosecdef and p\.provolatile='v'/);
+  assert.ok(context.includes('ph_master_inventory_import_lineage_seen'));
+  assert.ok(context.includes('ph_master_inventory_item6_alias_seen_v7'));
 });

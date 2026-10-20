@@ -7,12 +7,12 @@
     ".github/workflows/release-database.yml": "b048d7be8a045a07478bf163218a75c0c27ea67c17d1bac5db1d7c4c0042bf5e",
     "Code.gs": "addd3f437ebf1248b4815121d188c8a808b47e9323b233f846ffd3882a61854f",
     "assets/ops-precision-pilot.js": "a85ffc46ba00e7c99ab8a6df59be44a5012e2d31f32daf773002b3ac180ba4d5",
-    "docs/releases/v2.3.13-checkpoint.md": "46f1e4c8d9bbf8f1cf4c58acaa9c540c53e066502e53b50aa08ade6280e2fb16",
+    "docs/releases/v2.3.13-checkpoint.md": "b05ae6a2ceb24b8b1623f232bc1450d7bcd18b89260a6af9eb3f34e444cdc0ea",
     "index.html": "7338fd462eb96278a0930b5b0b8ec7863b6a4c0cf41cda029130976ff9f34092",
     "manifest.json": "c66f0e368c2a3389ad18496958f332355c78386e1225740425dfc7844689060f",
     "package-lock.json": "2637b4695934aceac9372d4e5fc923487d8c33003d0f220375cd143125222ebf",
     "package.json": "b674493cec7dc1ad359186db8d42b9fc45e6d19c43c41774ad34a7d1f0e3c071",
-    "scripts/apply-item-low-stock-migration.mjs": "70a4d1e6eca609ca2cb08f42b80a12a7eb3adf342224a62bd3f9c3b173f114f8",
+    "scripts/apply-item-low-stock-migration.mjs": "67a8ad2ff869789a4c91366d04f488c0de69c22ea63cfcc2455c485676ebad0f",
     "scripts/apps-script-function-patch.mjs": "511c1b3f60784e030ec7dffdaea2e1ebb362f29a3a2ad3103783f61968aaac33",
     "scripts/build-live-shell.mjs": "98afb6bb69930728b08b08ca87d0ca025647cd105553fefff26fd9c518bd398e",
     "scripts/check-v2313-retained-validation.mjs": "ee82a161d513acced61ec5fbf0274509af93e6d88946b5949f26c9936ddf0224",
@@ -30,16 +30,16 @@
     "sw.js": "48a7a5ca1d88a16dd346bfd7ea2bbb421cb6ca8d3ce38377f37462c85dc53293",
     "tests/master-snapshot-chunk-import.test.mjs": "9852f1b31ca9800aff81b4c31b4261257577a4f8c9ef90f335f6d144628d9b2c",
     "tests/suspend-tag-import.test.mjs": "b87bdaeeddb961f58c3cf42b78942590c4b41500905bcbd393b38137e260a334",
-    "tests/v2313-release-contract.test.mjs": "4129ae8139a4293dd57b08a7629f9054b40d331d3688847cd3ba94d420afa7d1",
+    "tests/v2313-release-contract.test.mjs": "8893252958a86561b77bb13e6b71a6f55b1e73cf67883152ff98644b93143f4f",
     "v2/public/manifest.webmanifest": "b74d4528ca2ec3c1b7668e3bdd594f617a98dd3a4648598056df3cc9f6052f6a",
     "v2/src/services/api.ts": "5ee1c53b718ae08e685cbb45bbb0124d393149db905cd22787335aadc76fa1fe"
   },
-  "sourceDigest": "2eb5bbc6f2457ba8d2e80927858ecc70a586ec0d28ccb01bfdaae3a64dd16736",
+  "sourceDigest": "041f0fade59f661b8554624f077cbca64fca68e1450ef2857241eba414283251",
   "evidenceHashes": {
-    "docs/releases/v2.3.13-validation/worker.json": "be2bf3c85f25bc8bf9245125a4ad12841b4f6ab0c5c28f034f1913c466e1962b",
-    "docs/releases/v2.3.13-validation/database.json": "ffc1d4b9d9e94f27386feba8232ebd2a3a019c7907157e47e0216ca978fabf7b",
-    "docs/releases/v2.3.13-validation/storm.json": "7d14f241176066a0ceb68b9bff84ee2a97725c354af3b52cb837f76dfced550f",
-    "docs/releases/v2.3.13-validation/tooling.json": "a76b32864aab36d6b6e56ec0328f27e32d0ab2d1a456493fd8672b18eee9ccf7"
+    "docs/releases/v2.3.13-validation/worker.json": "26c3ea28ac7cd5cd79a6f5ba5a3478a9a35106dc12a08b2073b14402e4a30372",
+    "docs/releases/v2.3.13-validation/database.json": "16d5bb9ebed8d1e1553815690f646d72523a0fd9edc735a224e4f13ea061f1ae",
+    "docs/releases/v2.3.13-validation/storm.json": "b57c6e87ca86c54ce676b32d5c6bcde6cacc78284f6dc13273fac7705acb60b1",
+    "docs/releases/v2.3.13-validation/tooling.json": "926f22b00ac73006689ff372e259c098ff2941fbf5a5b17c82b3d5ba12c85d20"
   },
   "appsScriptProtection": {
     "patchNames": [
@@ -107,6 +107,13 @@
       "approvedTimingBudget": {
         "path": ".gnc-local/v2313-final-timing-contract.log",
         "sha256": "7c68b45e541ee17a179ea3fd4fd9ce08515099b16c13646e15f86af5a003df84",
+        "tests": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      "deploymentContractRepair": {
+        "path": ".gnc-local/v2313-deployment-contract-repair.log",
+        "sha256": "d7b415de489fe2c1daf1650a58fa8a13c56df55b6b1e09c697370d310223eee4",
         "tests": 1,
         "passed": 1,
         "failed": 0
@@ -252,6 +259,26 @@
               "outcome": "failed",
               "code": "42P01",
               "cause": "Read-only probe referenced nonexistent app_dataset_state; corrected to existing app_dataset_revisions from retained evidence."
+            }
+          ],
+          "resolved": true
+        },
+        {
+          "id": "v2313-legacy-deployment-contract-after-typed-finalizer",
+          "attempts": [
+            {
+              "at": "2026-10-20T02:03:46.945515Z",
+              "outcome": "failed",
+              "run": 39356479556,
+              "code": "LOW_STOCK_DATABASE_CONTRACT_MISSING",
+              "cause": "Legacy bulk contract required old crop helper; bulk context contract required exact whitespace. Read-only catalog confirms typed helper and indexed equality installed. No new mutations applied by failing run."
+            },
+            {
+              "at": "2026-10-20T02:07:58.746Z",
+              "outcome": "passed",
+              "focusedTest": ".gnc-local/v2313-deployment-contract-repair.log",
+              "catalogProof": ".gnc-local/v2313-deployment-catalog-proof.json",
+              "lint": ".gnc-local/v2313-deployment-repair-lint.log"
             }
           ],
           "resolved": true
