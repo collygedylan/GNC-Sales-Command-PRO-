@@ -7,6 +7,7 @@ import ts from 'typescript';
 
 const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const appAuth = readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
+const suspendRead = readFileSync(new URL('../supabase/functions/app-api/suspend-tag-read.ts', import.meta.url), 'utf8');
 
 function extractFunction(source, name, exported = false) {
   const marker = `${exported ? 'export ' : ''}function ${name}(`;
@@ -78,7 +79,36 @@ test('Suspend Tag has an exact editor allowlist without broadening ordinary SOC 
     }
   }
   assert.match(appApi, /suspend_tag:\s*\{\s*table: "ph_soc_master", permission: "ph_soc_master"/);
-  assert.match(appApi, /dataset === "suspend_tag" \? !SUSPEND_TAG_EDITORS.has\(username\) : !hasTableReadAccess\(role, source.permission, username\)/);
+  assert.match(appApi, /dataset === "suspend_tag"\s*\? !SUSPEND_TAG_EDITORS\.has\(username\)\s*:\s*!hasTableReadAccess\(role, source\.permission, username\) && !canonicalDatasetAccess/);
   const policy=readFileSync(new URL("../supabase/functions/_shared/suspend-tag.ts",import.meta.url),"utf8");
   assert.match(policy,/new Set\(\['dylan_collyge', 'megan_kelly', 'dan_mccuistion'\]\)/);
+});
+
+test('Suspend Tag first page exposes only bounded latest SOC filename metadata', () => {
+  const freshnessFns = [
+    extractFunction(suspendRead, 'suspendSourceFreshnessQuery', true),
+    extractFunction(suspendRead, 'suspendSourceFreshnessFromRows', true),
+  ];
+  const compiled = ts.transpileModule(`
+    function jsonObject(value) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('JSON_OBJECT_INVALID');
+      return value;
+    }
+    ${freshnessFns.join('\n')}
+    this.query = suspendSourceFreshnessQuery;
+    this.fromRows = suspendSourceFreshnessFromRows;
+  `, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const context = vm.createContext({ URLSearchParams, Date, Number, Error });
+  vm.runInContext(compiled, context);
+  const query = new URLSearchParams(context.query());
+  assert.equal(query.get('select'), 'filename,last_updated');
+  assert.equal(query.get('order'), 'last_updated.desc.nullslast,unique_id.asc');
+  assert.equal(query.get('limit'), '1');
+  assert.deepEqual(JSON.parse(JSON.stringify(context.fromRows([{
+    filename: 'SOC current.xlsx', last_updated: '2026-10-20T12:00:00Z',
+  }]))), { filename: 'SOC current.xlsx', last_updated: '2026-10-20T12:00:00Z' });
+  assert.equal(context.fromRows([]), null);
+  assert.throws(() => context.fromRows([{ filename: '', last_updated: '2026-10-20T12:00:00Z' }]));
+  assert.match(appApi, /dataset === "suspend_tag" && parsed\.offset === 0[\s\S]*suspendSourceFreshnessQuery\(\)/);
+  assert.match(appApi, /const \[response, sourceFreshnessResponse\] = await Promise\.all\(/);
 });

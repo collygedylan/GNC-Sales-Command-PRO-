@@ -1,3 +1,4 @@
+import { verifyV2314RetainedValidation } from './check-v2314-retained-validation.mjs';
 import { verifyV2313RetainedValidation } from './check-v2313-retained-validation.mjs';
 import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
 import { verifyV2311RetainedValidation } from './check-v2311-retained-validation.mjs';
@@ -24,6 +25,11 @@ export function runReleaseReactChecks({
 } = {}) {
   const { version } = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
   const vitest = path.join(rootDir, 'node_modules', 'vitest', 'vitest.mjs');
+  if (version === '2.3.14') {
+    verifyV2314RetainedValidation({ rootDir });
+    print('Verified source-sealed v2.3.14 Suspend parity and hydration checks; unaffected suites retained.');
+    return 0;
+  }
   if (version === '2.3.13') {
     verifyV2313RetainedValidation({ rootDir });
     print('Retaining v2.3.12 UI validation; frontend source matches apart from release markers.');

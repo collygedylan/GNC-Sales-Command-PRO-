@@ -1,0 +1,657 @@
+{
+  "release": "AgData v2.3.14",
+  "status": "blocked_attempt_cap",
+  "base": "ebe5547b11fb415ef83b3f2891973776c5b4d682",
+  "savedAt": "2026-10-20T14:05:05.417319+00:00",
+  "liveSOC": {
+    "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+    "lastImportedAt": "2026-10-20T13:25:17.587Z",
+    "snapshotAt": "2026-10-20T13:31:34.887Z",
+    "rows": 756,
+    "strictActiveDCSuspendTags": 37,
+    "distinctTagIds": 37,
+    "dcBlankRowsExcluded": 30,
+    "productionWrites": false
+  },
+  "confirmedFunctionalChecks": {
+    "physicalCards": 37,
+    "masterRows": 9487,
+    "locationSorted": true,
+    "littleLimePhotoQty": 42,
+    "littleLimeLocOnHand": 254,
+    "liriopeLocOnHand": 23655,
+    "lastCompleteFunctionalRun": 9
+  },
+  "attemptHistory": [
+    {
+      "issue": "disposable-source-identity-contract",
+      "attempts": 3,
+      "status": "resolved",
+      "evidence": "v2314-suspend-physical-contract-evidence.json",
+      "failures": [
+        "auth.users fixture foreign key",
+        "TAP plan assertion count"
+      ],
+      "passedAssertions": 11,
+      "migrations": 94
+    },
+    {
+      "issue": "latest-file-VM-fixture",
+      "status": "resolved",
+      "failedChecks": 3,
+      "resolvedChecks": 4,
+      "cause": "narrow VM lacked new selector globals; compatibility guard when helper absent"
+    },
+    {
+      "issue": "browser-fixture-bootstrap",
+      "status": "resolved",
+      "runs": [
+        1,
+        3,
+        4
+      ],
+      "causes": [
+        "wrong page.evaluate payload and wrong worktree patch placement",
+        "unverified master receipt",
+        "missing verified-view fixture context"
+      ]
+    },
+    {
+      "issue": "photo-option-index",
+      "status": "unit-passed-browser-pending",
+      "checks": 1,
+      "cause": "full19k scan repeated per card; indexed master/AV candidates independently of per-card option arrays"
+    },
+    {
+      "issue": "optional-receipt-encoding-type",
+      "status": "resolved",
+      "checks": "deno check app-api",
+      "cause": "omit absent optional argument to preserve SQL DEFAULT NULL rather than passing invalid typed null"
+    },
+    {
+      "issue": "verified-warm-37-card-browser-gate",
+      "attempts": 8,
+      "cap": 8,
+      "status": "blocked",
+      "runs": [
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "diagnosticMs": [
+        605.8,
+        747.8,
+        3773.7,
+        2970.4,
+        2488.2,
+        1981.5,
+        5039.5,
+        null
+      ],
+      "notes": [
+        "First two only measured first-frame; later runs awaited37DOMcards.",
+        "Runs5-6 traced; traceoff from7.",
+        "Fixture lackedphotoevidence timestamps until7; actualreadonlyrowmetadata restored.",
+        "Blockedreadonlyfixturecalls corrected7-8.",
+        "Run8 built before separateauthscope correction; retained asdiagnostic.",
+        "Run9 timewas5000mscap, not validatedproduction renderlatency.",
+        "Run10 prooftrueinwaitForFunctionthenchangedbeforemeasurement; no timing value."
+      ],
+      "lastError": "Warm snapshot proof changed before render",
+      "androidAndIphoneFinalChecks": "not run after max-failures=1"
+    },
+    {
+      "issue": "master-photo-match42",
+      "status": "resolved",
+      "evidenceRun": 7,
+      "source": "Actual av_rule_photo_updated_at 2026-10-16T16:03:29.828Z read-only captured2026-10-20T13:51:37.298Z; previous fixture projection omittedit.",
+      "codeCorrection": "Verifiedmaster metrics use Drivephotoownership",
+      "liriope": "Photo rule timestamp null; retainN/A, donotderivefreshnessfrominventoryupdatedtimestamp."
+    }
+  ],
+  "browserHistory": [
+    {
+      "run": 1,
+      "report": ".gnc-local\\v2314-browser-attempt1\\v2314-browser-results.json",
+      "sha256": "636b8805df5bd983f14d31ec69fe3e8f65a46870f0a2ee2ec37138067fe906e8",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]')\nExpected: \u001b[32m37\u001b[39m\nReceived: \u001b[31m0\u001b[39m\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]')\u001b[22m\n\u001b[2m    23 \u00d7 locator resolved to 0 elements\u001b[22m\n\u001b[2m       - unexpected value \"0\"\u001b[22m\n\n\n  84 |   const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });\n  85 |   const cards = page.locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]');\n> 86 |   await expect(cards).toHaveCount(37);\n     |                       ^\n  87 |   const renderMs = await page.evaluate(async () => {\n  88 |     return window.eval(`(async () => {\n  89 |       document.getElementById('request-content').replaceChildren();\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:86:23"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            },
+            {
+              "name": "trace",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\trace.zip"
+            }
+          ]
+        },
+        {
+          "project": "android-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]')\nExpected: \u001b[32m37\u001b[39m\nReceived: \u001b[31m0\u001b[39m\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]')\u001b[22m\n\u001b[2m    23 \u00d7 locator resolved to 0 elements\u001b[22m\n\u001b[2m       - unexpected value \"0\"\u001b[22m\n\n\n  84 |   const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });\n  85 |   const cards = page.locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]');\n> 86 |   await expect(cards).toHaveCount(37);\n     |                       ^\n  87 |   const renderMs = await page.evaluate(async () => {\n  88 |     return window.eval(`(async () => {\n  89 |       document.getElementById('request-content').replaceChildren();\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:86:23"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-android-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-android-chromium\\error-context.md"
+            },
+            {
+              "name": "trace",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-android-chromium\\trace.zip"
+            }
+          ]
+        },
+        {
+          "project": "iphone-webkit",
+          "status": "failed",
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]')\nExpected: \u001b[32m37\u001b[39m\nReceived: \u001b[31m0\u001b[39m\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]')\u001b[22m\n\u001b[2m    21 \u00d7 locator resolved to 0 elements\u001b[22m\n\u001b[2m       - unexpected value \"0\"\u001b[22m\n\n\n  84 |   const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });\n  85 |   const cards = page.locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]');\n> 86 |   await expect(cards).toHaveCount(37);\n     |                       ^\n  87 |   const renderMs = await page.evaluate(async () => {\n  88 |     return window.eval(`(async () => {\n  89 |       document.getElementById('request-content').replaceChildren();\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:86:23"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-iphone-webkit\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-iphone-webkit\\error-context.md"
+            },
+            {
+              "name": "trace",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-iphone-webkit\\trace.zip"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "report": ".gnc-local\\v2314-browser-attempt2\\v2314-browser-results.json",
+      "sha256": "37c4aafe13d3e24f61c3735ac1e0435259489f86a0e9785d9b702dddadb41769",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: full 37-card warm render with 9,487 master rows\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m400\u001b[39m\nReceived:    \u001b[31m605.8000000119209\u001b[39m\n\n   96 |   }) as number;\n   97 |   await expect(cards).toHaveCount(37);\n>  98 |   expect(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);\n      |                                                                       ^\n   99 |   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));\n  100 |   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));\n  101 |   const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:98:71"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            },
+            {
+              "name": "trace",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\trace.zip"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "report": ".gnc-local\\v2314-browser-attempt3\\v2314-browser-results.json",
+      "sha256": "eeecc35dceef6964d0bf434bfd1197446cb902aa6cae4dc65018e4b95e1609ec",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: full 37-card warm render with 9,487 master rows\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m400\u001b[39m\nReceived:    \u001b[31m747.8000000119209\u001b[39m\n\n  113 |   await expect(cards).toHaveCount(37);\n  114 |   if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));\n> 115 |   expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);\n      |                                                                            ^\n  116 |   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));\n  117 |   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));\n  118 |   const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:115:76",
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#request-content [data-request-uid=\"dock_suspend_dc_source-e4b2298fc345994806b6c5d2aecd55ee16036b7d8dc58b344f28c75e617aa32f\"]').locator('[data-inventory-card-metric=\"on-hand\"]')\nExpected substring: \u001b[32m\"90\"\u001b[39m\nReceived string:    \u001b[31m\"On Hand--\"\u001b[39m\nTimeout: 10000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#request-content [data-request-uid=\"dock_suspend_dc_source-e4b2298fc345994806b6c5d2aecd55ee16036b7d8dc58b344f28c75e617aa32f\"]').locator('[data-inventory-card-metric=\"on-hand\"]')\u001b[22m\n\u001b[2m    11 \u00d7 locator resolved to <span data-inventory-card-metric=\"on-hand\" class=\"app-card-qty-chip rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 px-1.5 py-1 text-center ui-pill\">\u2026</span>\u001b[22m\n\u001b[2m       - unexpected value \"On Hand--\"\u001b[22m\n\n\n  122 |   for (const row of littleLime) {\n  123 |     const card = app.card(row);\n> 124 |     await expect(card.locator('[data-inventory-card-metric=\"on-hand\"]')).toContainText('90');\n      |                                                                          ^\n  125 |     await expect(card.locator('[data-inventory-card-metric=\"review\"]')).toContainText('25');\n  126 |     await expect(card.locator('[data-inventory-card-metric=\"available\"]')).toContainText('65');\n  127 |     await expect(card.locator('[data-inventory-card-metric=\"open-stock\"]')).toContainText('57');\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:124:74"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            },
+            {
+              "name": "trace",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\trace.zip"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "report": ".gnc-local\\v2314-browser-attempt4\\v2314-browser-results.json",
+      "sha256": "350f6ff2f2507e7d94438d8d9200da20a55dab9f4b5fb0e6d52682eaf835cdee",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]')\nExpected: \u001b[32m37\u001b[39m\nReceived: \u001b[31m0\u001b[39m\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]')\u001b[22m\n\u001b[2m    23 \u00d7 locator resolved to 0 elements\u001b[22m\n\u001b[2m       - unexpected value \"0\"\u001b[22m\n\n\n  84 |   const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });\n  85 |   const cards = page.locator('#request-content article[data-request-uid^=\"dock_suspend_dc_\"]');\n> 86 |   await expect(cards).toHaveCount(37);\n     |                       ^\n  87 |   if (process.env.V2314_PROFILE === '1') await page.evaluate(() => window.eval(`(() => {\n  88 |     window.__v2314Profile = {};\n  89 |     for (const name of ['renderRequest','getScopedRequestItems','getRequestTabQueueCounts','buildSuspendTagRenderPlan',\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:86:23"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            },
+            {
+              "name": "trace",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\trace.zip"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "report": ".gnc-local\\v2314-browser-attempt5\\v2314-browser-results.json",
+      "sha256": "684cc7efb655f6cdfdf1de4ace45c84f03a13c946da4f7078236b7542a3f57b6",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: full 37-card warm render with 9,487 master rows\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m400\u001b[39m\nReceived:    \u001b[31m3773.7000000476837\u001b[39m\n\n  115 |   await expect(cards).toHaveCount(37);\n  116 |   if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));\n> 117 |   expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);\n      |                                                                            ^\n  118 |   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));\n  119 |   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));\n  120 |   const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:117:76",
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#request-content [data-request-uid=\"dock_suspend_dc_source-e4b2298fc345994806b6c5d2aecd55ee16036b7d8dc58b344f28c75e617aa32f\"]').locator('[data-inventory-card-metric=\"loc-photo-match\"]')\nExpected substring: \u001b[32m\"42\"\u001b[39m\nReceived string:    \u001b[31m\"Loc Photo MatchN/A\"\u001b[39m\nTimeout: 10000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#request-content [data-request-uid=\"dock_suspend_dc_source-e4b2298fc345994806b6c5d2aecd55ee16036b7d8dc58b344f28c75e617aa32f\"]').locator('[data-inventory-card-metric=\"loc-photo-match\"]')\u001b[22m\n\u001b[2m    23 \u00d7 locator resolved to <span data-inventory-card-metric=\"loc-photo-match\" class=\"app-card-qty-chip rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 px-1.5 py-1 text-center ui-pill\">\u2026</span>\u001b[22m\n\u001b[2m       - unexpected value \"Loc Photo MatchN/A\"\u001b[22m\n\n\n  130 |     // These are the captured Oct 20 master quantities, newer than the video:\n  131 |     // location total = 90 F1 + 59 S1 + 79 U1 + 26 X; verified photo quantity = round(65 available \u00d7 65% match) = 42.\n> 132 |     await expect(card.locator('[data-inventory-card-metric=\"loc-photo-match\"]')).toContainText('42');\n      |                                                                                  ^\n  133 |     await expect(card.locator('[data-inventory-card-metric=\"loc-on-hand\"]')).toContainText('254');\n  134 |     await expect(card).toContainText('PRI 10');\n  135 |     await expect(card).toContainText('light roots; thin body');\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:132:82"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            },
+            {
+              "name": "trace",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\trace.zip"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 6,
+      "report": ".gnc-local\\v2314-browser-attempt6\\v2314-browser-results.json",
+      "sha256": "baa023e46ac4c7e0e29bd6325a65c19c00498e9015b73bb9a516937e5949e0b4",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: full 37-card warm render with 9,487 master rows\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m400\u001b[39m\nReceived:    \u001b[31m2970.400000035763\u001b[39m\n\n  116 |   await expect(cards).toHaveCount(37);\n  117 |   if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));\n> 118 |   expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);\n      |                                                                            ^\n  119 |   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));\n  120 |   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));\n  121 |   const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:118:76",
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#request-content [data-request-uid=\"dock_suspend_dc_source-e4b2298fc345994806b6c5d2aecd55ee16036b7d8dc58b344f28c75e617aa32f\"]').locator('[data-inventory-card-metric=\"loc-photo-match\"]')\nExpected substring: \u001b[32m\"42\"\u001b[39m\nReceived string:    \u001b[31m\"Loc Photo MatchN/A\"\u001b[39m\nTimeout: 10000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#request-content [data-request-uid=\"dock_suspend_dc_source-e4b2298fc345994806b6c5d2aecd55ee16036b7d8dc58b344f28c75e617aa32f\"]').locator('[data-inventory-card-metric=\"loc-photo-match\"]')\u001b[22m\n\u001b[2m    23 \u00d7 locator resolved to <span data-inventory-card-metric=\"loc-photo-match\" class=\"app-card-qty-chip rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 px-1.5 py-1 text-center ui-pill\">\u2026</span>\u001b[22m\n\u001b[2m       - unexpected value \"Loc Photo MatchN/A\"\u001b[22m\n\n\n  131 |     // These are the captured Oct 20 master quantities, newer than the video:\n  132 |     // location total = 90 F1 + 59 S1 + 79 U1 + 26 X; verified photo quantity = round(65 available \u00d7 65% match) = 42.\n> 133 |     await expect(card.locator('[data-inventory-card-metric=\"loc-photo-match\"]')).toContainText('42');\n      |                                                                                  ^\n  134 |     await expect(card.locator('[data-inventory-card-metric=\"loc-on-hand\"]')).toContainText('254');\n  135 |     await expect(card).toContainText('PRI 10');\n  136 |     await expect(card).toContainText('light roots; thin body');\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:133:82"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            },
+            {
+              "name": "trace",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\trace.zip"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 7,
+      "report": ".gnc-local\\v2314-browser-attempt7\\v2314-browser-results.json",
+      "sha256": "079b3dc34d359a09d650da112c49d61ab9487dfc2828a30c2b56c974f061c639",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: full 37-card warm render with 9,487 master rows\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m400\u001b[39m\nReceived:    \u001b[31m2488.199999988079\u001b[39m\n\n  117 |   await expect(cards).toHaveCount(37);\n  118 |   if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));\n> 119 |   expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);\n      |                                                                            ^\n  120 |   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));\n  121 |   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));\n  122 |   const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:119:76",
+            "Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 10\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"action\\\":\\\"inventory_read\\\",\\\"operation\\\":\\\"master_identity_batch\\\",\\\"params\\\":{\\\"queueIdentities\\\":[{\\\"masterUid\\\":\\\"\\\",\\\"itemCode\\\":\\\"0016670301\\\",\\\"locationCode\\\":\\\"0.00.111\\\",\\\"lotCode\\\":\\\"27.F1\\\",\\\"source\\\":\\\"\\\"},{\\\"masterUid\",\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"action\\\":\\\"inventory_read\\\",\\\"operation\\\":\\\"master_identity_batch\\\",\\\"params\\\":{\\\"queueIdentities\\\":[{\\\"masterUid\\\":\\\"\\\",\\\"itemCode\\\":\\\"0016670301\\\",\\\"locationCode\\\":\\\"0.00.111\\\",\\\"lotCode\\\":\\\"27.F1\\\",\\\"source\\\":\\\"\\\"},{\\\"masterUid\",\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"action\\\":\\\"sales_credit\\\",\\\"operation\\\":\\\"compatibility\\\",\\\"payload\\\":{\\\"status\\\":\\\"all\\\",\\\"cursor\\\":null,\\\"limit\\\":100}}\",\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"action\\\":\\\"inventory_read\\\",\\\"operation\\\":\\\"master_identity_batch\\\",\\\"params\\\":{\\\"queueIdentities\\\":[{\\\"masterUid\\\":\\\"\\\",\\\"itemCode\\\":\\\"0016670301\\\",\\\"locationCode\\\":\\\"0.00.111\\\",\\\"lotCode\\\":\\\"27.F1\\\",\\\"source\\\":\\\"\\\"},{\\\"masterUid\",\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"action\\\":\\\"sales_credit\\\",\\\"operation\\\":\\\"compatibility\\\",\\\"payload\\\":{\\\"status\\\":\\\"all\\\",\\\"cursor\\\":null,\\\"limit\\\":100}}\",\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"action\\\":\\\"inventory_read\\\",\\\"operation\\\":\\\"master_identity_batch\\\",\\\"params\\\":{\\\"queueIdentities\\\":[{\\\"masterUid\\\":\\\"\\\",\\\"itemCode\\\":\\\"0016670301\\\",\\\"locationCode\\\":\\\"0.00.111\\\",\\\"lotCode\\\":\\\"27.F1\\\",\\\"source\\\":\\\"\\\"},{\\\"masterUid\",\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"action\\\":\\\"sales_credit\\\",\\\"operation\\\":\\\"compatibility\\\",\\\"payload\\\":{\\\"status\\\":\\\"all\\\",\\\"cursor\\\":null,\\\"limit\\\":100}}\",\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"action\\\":\\\"inventory_read\\\",\\\"operation\\\":\\\"master_identity_batch\\\",\\\"params\\\":{\\\"queueIdentities\\\":[{\\\"masterUid\\\":\\\"\\\",\\\"itemCode\\\":\\\"0016670301\\\",\\\"locationCode\\\":\\\"0.00.111\\\",\\\"lotCode\\\":\\\"27.F1\\\",\\\"source\\\":\\\"\\\"},{\\\"masterUid\",\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\n  533 |   };\n  534 |   const assertClean = () => {\n> 535 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);\n      |                                                                                                                      ^\n  536 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);\n  537 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);\n  538 |   };\n    at Object.assertClean (C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:535:118)\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:169:7"
+          ],
+          "attachments": [
+            {
+              "name": "v2314-metrics",
+              "path": null
+            },
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 8,
+      "report": ".gnc-local\\v2314-browser-attempt8\\v2314-browser-results.json",
+      "sha256": "3a621cd0e3db522cb4d2730b929c7de1bb68de2dc60efdeb7bb36c403540ae34",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: full 37-card warm render with 9,487 master rows\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m400\u001b[39m\nReceived:    \u001b[31m1981.5\u001b[39m\n\n  120 |   await expect(cards).toHaveCount(37);\n  121 |   if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));\n> 122 |   expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);\n      |                                                                            ^\n  123 |   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));\n  124 |   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));\n  125 |   const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:122:76",
+            "Error: Suspend Tag actions must not bypass the scoped idempotent API with generic writes\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 1\u001b[39m\n\u001b[31m+ Received  + 4\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"status\\\":\\\"active\\\",\\\"action\\\":\\\"shear_location_work\\\",\\\"operation\\\":\\\"list\\\"}\",\u001b[39m\n\u001b[31m+   \"POST:/functions/v1/app-api:{\\\"status\\\":\\\"active\\\",\\\"action\\\":\\\"shear_location_work\\\",\\\"operation\\\":\\\"list\\\"}\",\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\n  537 |   };\n  538 |   const assertClean = () => {\n> 539 |     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);\n      |                                                                                                                      ^\n  540 |     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);\n  541 |     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);\n  542 |   };\n    at Object.assertClean (C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:539:118)\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:172:7"
+          ],
+          "attachments": [
+            {
+              "name": "v2314-metrics",
+              "path": null
+            },
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 9,
+      "report": ".gnc-local\\v2314-browser-attempt9\\v2314-browser-results.json",
+      "sha256": "fec13f4259a41b7f2d235129c2ab1e01e7f851081585ed31b126888652144029",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: full 37-card warm render with 9,487 master rows\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m400\u001b[39m\nReceived:    \u001b[31m5039.5\u001b[39m\n\n  120 |   await expect(cards).toHaveCount(37);\n  121 |   if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));\n> 122 |   expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);\n      |                                                                            ^\n  123 |   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));\n  124 |   const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));\n  125 |   const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:122:76"
+          ],
+          "attachments": [
+            {
+              "name": "v2314-metrics",
+              "path": null
+            },
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 10,
+      "report": ".gnc-local\\v2314-browser-attempt10\\v2314-browser-results.json",
+      "sha256": "307b699c778061c005076ff2eba94a45c788a76f8032e4ca52fb2281b2aad7c9",
+      "cases": [
+        {
+          "project": "desktop-chromium",
+          "status": "failed",
+          "errors": [
+            "Error: page.evaluate: Error: Warm snapshot proof changed before render\n    at eval (eval at <anonymous> (eval at evaluate (:311:30)), <anonymous>:2:85)\n    at eval (eval at <anonymous> (eval at evaluate (:311:30)), <anonymous>:12:7)\n    at eval (<anonymous>)\n    at eval (eval at evaluate (:311:30), <anonymous>:2:19)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at eval (eval at <anonymous> (eval at evaluate (:311:30)), <anonymous>:2:85)\n    at eval (eval at <anonymous> (eval at evaluate (:311:30)), <anonymous>:12:7)\n    at eval (eval at evaluate (:311:30), <anonymous>:2:19)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\tests\\suspend-tag-completion.e2e.spec.ts:109:31"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\test-failed-1.png"
+            },
+            {
+              "name": "error-context",
+              "path": "C:\\Users\\dylan\\Projects\\GNC\\worktrees\\bunch-card-entry-v234\\.gnc-local\\v2314-browser-artifacts\\suspend-tag-completion.e2e-37eb0-rsery-location-v2314-parity-desktop-chromium\\error-context.md"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "backendEvidence": {
+    "release": "AgData v2.3.14",
+    "capturedAt": "2026-10-20T13:50:00Z",
+    "scope": "Backend evidence aggregation only; no tests rerun, no production deployment, no production writes.",
+    "backendChecks": {
+      "node": {
+        "command": "node --test tests/suspend-tag-dataset.test.mjs",
+        "passed": 3,
+        "failed": 0
+      },
+      "denoUnit": {
+        "command": "npx deno test supabase/functions/app-api/suspend-tag-read_test.ts",
+        "passed": 3,
+        "failed": 0
+      },
+      "denoTypecheck": {
+        "command": "npx deno check supabase/functions/app-api/index.ts",
+        "passed": true
+      },
+      "workflowYaml": {
+        "command": "node --input-type=module -e '<parse apps-script-sync.yml and release-database.yml with js-yaml>'",
+        "filesParsed": 2,
+        "jobsParsed": 16,
+        "passed": true
+      },
+      "disposableDatabase": {
+        "command": "node .gnc-local/run-v2314-suspend-contract.mjs",
+        "engine": "native PostgreSQL via isolated Supabase workspace and supabase test db",
+        "migrationsReplayed": 94,
+        "assertions": 11,
+        "passed": true,
+        "attempts": 3,
+        "attemptHistory": [
+          {
+            "attempt": 1,
+            "result": "failed",
+            "cause": "fixture profile omitted required auth.users foreign-key row"
+          },
+          {
+            "attempt": 2,
+            "result": "failed",
+            "cause": "pgTAP plan count did not match; contract assertions had passed"
+          },
+          {
+            "attempt": 3,
+            "result": "passed",
+            "cause": null
+          }
+        ],
+        "productionWrites": false,
+        "emailsSent": false,
+        "evidence": ".gnc-local/v2314-suspend-physical-contract-evidence.json",
+        "rawLog": ".gnc-local/v2314-suspend-physical-contract.log"
+      }
+    },
+    "liveReadOnlyEvidence": {
+      "sourceFilename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+      "sourceSha256": "e2d6e79423adf277f867518526eb6d4de50b5eebd36c19c4eaf33292b919af4e",
+      "capturedSourceTimestamp": "2026-10-20T13:25:17.587Z",
+      "latestSocRows": 756,
+      "latestSocDistinctTimestamps": 1,
+      "latestStrictSuspendDcPhysicalRows": 37,
+      "distinctSourceIdentityDigests": 37,
+      "oldActiveDcRowsAbsentFromLatestSource": 0,
+      "freshnessQuery": "SELECT filename,last_updated FROM public.ph_soc_master ORDER BY last_updated DESC NULLS LAST,unique_id ASC LIMIT 1",
+      "freshnessQueryExplainAnalyzeMs": 1.044,
+      "freshnessQueryReadOnly": true
+    },
+    "operationalSafety": {
+      "codeGsChanged": false,
+      "historicalBackfill": "PAUSED",
+      "15MinuteAutomation": "PAUSED",
+      "productionWrites": false,
+      "completedImportsReplayed": false,
+      "emailsSent": false
+    },
+    "backendWorkflowAudit": {
+      "scopedDeployment": "app-api only; migrations and Apps Script deployment skipped for v2.3.14",
+      "retainedValidationPath": "scripts/check-v2314-retained-validation.mjs",
+      "knownBlocker": "docs/releases/v2.3.14-retained-validation.json and docs/releases/v2.3.14-validation evidence files are absent, so source-sealed GitHub workflow validation cannot pass until root creates the evidence and refreshes source hashes.",
+      "relatedBrowserBlocker": "Existing browser result is not green: 37-card render was 3773.7 ms (expected maximum 400 ms) and Loc Photo Match was N/A rather than 42; retained-validation checker requires at least two browser results at <=400 ms."
+    },
+    "evidenceFiles": [
+      ".gnc-local/v2314-suspend-physical-contract-evidence.json",
+      ".gnc-local/v2314-suspend-physical-contract.log",
+      ".gnc-local/v2314-frontend-evidence.json",
+      ".gnc-local/v2314-browser-results.json",
+      ".gnc-local/v2314-validation-progress.json"
+    ]
+  },
+  "frontendEvidence": {
+    "release": "AgData v2.3.14",
+    "scope": "Frontend evidence aggregation only; no source/test runs performed for this summary.",
+    "state": "Not releasable yet: latest recorded full-card browser publication exceeded the 400 ms gate, and Loc Photo Match assertion remained unresolved in that run.",
+    "baseline": {
+      "commit": "ebe5547b11fb415ef83b3f2891973776c5b4d682",
+      "attempt_counter": "0/8 user-authorized reset",
+      "historical_backfill": "PAUSED",
+      "scheduled_automation": "PAUSED"
+    },
+    "frontend_unit_evidence": [
+      {
+        "command": "node --test tests/suspend-tag-latest-file.test.mjs",
+        "passed": 2,
+        "failed": 0,
+        "source": ".gnc-local/v2314-frontend-evidence.json"
+      },
+      {
+        "command": "node --test --test-name-pattern=\"Suspend queue counts scan source status|Suspend filtered-empty render signature|Suspend render signature changes when canonical queue hydration|Suspend keeps all filter totals\" tests/request-list-rendering.test.mjs",
+        "passed": 4,
+        "failed": 0,
+        "source": "Recorded agent run; the run occurred before patch transfer into the assigned worktree."
+      },
+      {
+        "command": "node --test --test-name-pattern=\"Suspend photo options reject unrelated item and size rows\" tests/request-queue-display-hydration.test.mjs",
+        "passed": 1,
+        "failed": 0,
+        "source": "Final candidate-index implementation in assigned worktree."
+      },
+      {
+        "suite": "Queue inventory hydration",
+        "passed": 10,
+        "failed": 0,
+        "source": "Root handoff; retained focused suite result, underlying output not present in this agent's local log set."
+      },
+      {
+        "suite": "Inventory card Loc On Hand",
+        "passed": 16,
+        "failed": 0,
+        "source": "Root handoff; retained focused suite result, underlying output not present in this agent's local log set."
+      }
+    ],
+    "backend_evidence": {
+      "disposable_database": {
+        "migration_count": 94,
+        "assertions": 11,
+        "passed": true,
+        "source": ".gnc-local/v2314-suspend-physical-contract-evidence.json",
+        "production_writes": false,
+        "emails_sent": false
+      },
+      "source_freshness_read": {
+        "rows": 756,
+        "distinct_filenames": 1,
+        "filename": "SOC-10 Open Orders-06251820261020062518.xlsx",
+        "distinct_last_updated_timestamps": 1,
+        "last_updated": "2026-10-20T13:25:17.587Z",
+        "measured_query_ms": 1.044,
+        "source": "Backend-agent read-only query report"
+      },
+      "latest_marked_dc_rows": 37,
+      "source_candidate_rows": 67
+    },
+    "static_validation": {
+      "command": "npm run check:inline",
+      "result": "Parsed 8 inline scripts and 13 shell assets."
+    },
+    "browser_evidence": {
+      "latest_recorded_run": "desktop-chromium, one v2314 parity case",
+      "status": "failed",
+      "cards_rendered": 37,
+      "master_rows": 9487,
+      "full_warm_publication_ms": 3773.7,
+      "allowed_ms": 400,
+      "loc_photo_match_expected": "42",
+      "loc_photo_match_observed": "N/A",
+      "source": ".gnc-local/v2314-browser-results.json",
+      "note": "Earlier 605.8 ms measurement was first-frame-only, not full publication; do not count it as a passing full-render result. Candidate-index optimization was added after this browser result; no post-change browser timing is recorded here."
+    },
+    "attempt_history_by_issue": {
+      "latest-source-render-fixture-vm": "An initial targeted rendering subset failed 3/4 because narrow VM fixtures lacked the new selector globals. Added a compatibility guard used only when the helper is absent; the same targeted subset then passed 4/4.",
+      "wrong-worktree-transfer": "Latest-source changes were first made in the repo root instead of the assigned worktree. They were transferred into bunch-card-entry-v234, verified there, and removed from the original repo; no changes remain in the original repo.",
+      "drive-option-photo-scan": "A test draft incorrectly expected rows with the same itemcode but a different size to be excluded; corrected the fixture to preserve the existing itemcode OR same-plant-size rule. The expected-red regression then confirmed unrelated rows reached photo validation. The final candidate-index focused test passes 1/1.",
+      "full-card-render-budget": "Recorded desktop full 37-card warm publication was 3773.7 ms versus the inclusive 400 ms gate. A post-result candidate-index cache was implemented and its focused unit check passed, but browser timing has not been remeasured.",
+      "loc-photo-match": "Recorded parity browser case expected 42 and observed N/A; root is investigating. No fix or passing verification is claimed."
+    },
+    "not_run_by_frontend_agent": [
+      "post-index browser timing",
+      "broad test suites",
+      "build",
+      "live database writes",
+      "deployment"
+    ],
+    "working_tree": "Uncommitted shared worktree; root owns integration and release."
+  },
+  "additionalFocusedEvidence": {
+    "masterHydration": {
+      "passed": 4,
+      "includesThreePreviouslyPassed": true
+    },
+    "queueScopeBinding": {
+      "passed": 1,
+      "preservesSeparateReadAndProductionScopes": true
+    },
+    "boundedSuspendRendering": {
+      "passed": 3,
+      "fixtureMissingIsIOSDeviceCorrected": true
+    },
+    "tooling": "Scoped tooling passed; final newly touched ESLint and TypeScript passed before final test-only changes; inline8scripts13assets passed finalsource."
+  },
+  "constraints": {
+    "historicalBackfill": "PAUSED",
+    "automation": "PAUSED",
+    "CodeGs": "unchanged",
+    "productionWritesDuringValidation": false,
+    "realEmailsSent": false
+  },
+  "publication": {
+    "merged": false,
+    "pushed": false,
+    "deployed": false,
+    "codeGsChanged": false,
+    "lastKnownLiveVersion": "AgData v2.3.13"
+  },
+  "requiredToResume": "Explicit reset of eight-attempt verified-warm-browser-gate counter; resolve proof race then obtain <=400ms exactcandidate desktop/mobile checks, source-seal evidence, deploybackend before UI."
+}

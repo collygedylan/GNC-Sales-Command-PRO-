@@ -5,7 +5,10 @@
     function normalizeItem(value) {
         const key = text(value);
         if (/^\d{6}\.\d{3}\.\d$/.test(key)) return key.replace(/\./g, '');
-        return /^\d{1,10}$/.test(key) ? key.padStart(10, '0') : key;
+        // ERP item codes may arrive as the 8/9-digit compact form of the
+        // standard 10-digit code; shorter numeric identifiers are valid and
+        // must not be collapsed by padding (for example `001` vs `1`).
+        return /^\d{8,9}$/.test(key) ? key.padStart(10, '0') : key;
     }
     function normalizeLocation(value) {
         const key = text(value).replace(/\s*\.\s*/g, '.');
@@ -34,8 +37,9 @@
             && (!wanted.source || actual.source === wanted.source);
     }
     const locationLotKey = value => { const i = identity(value); return JSON.stringify([i.itemCode, i.locationCode, i.lotCode]); };
+    const itemLocationKey = value => { const i = identity(value); return JSON.stringify([i.itemCode, i.locationCode]); };
     function createIndex(rows = []) {
-        const ids = new Map(), keys = new Map();
+        const ids = new Map(), keys = new Map(), itemLocations = new Map();
         for (const row of rows) {
             const uid = String(pick(row, 'UNIQUE_ID', 'unique_id')).trim();
             if (!uid || ids.has(uid)) continue;
@@ -43,12 +47,25 @@
             const key = locationLotKey(row);
             if (!keys.has(key)) keys.set(key, []);
             keys.get(key).push(row);
+            const itemLocation = itemLocationKey(row);
+            if (!itemLocations.has(itemLocation)) itemLocations.set(itemLocation, []);
+            itemLocations.get(itemLocation).push(row);
         }
         return { resolve(input) {
             const i = identity(input);
-            const candidates = i.masterUid ? [ids.get(i.masterUid)].filter(Boolean) : keys.get(locationLotKey(i)) || [];
+            if (i.masterUid) {
+                const row = ids.get(i.masterUid);
+                return row && matches(row, i) ? { status:'ready', row } : { status:'missing', row:null };
+            }
+            const candidates = keys.get(locationLotKey(i)) || [];
             const exact = candidates.filter(row => matches(row, i));
-            return { status: exact.length === 1 ? 'ready' : exact.length ? 'ambiguous' : 'missing', row: exact.length === 1 ? exact[0] : null };
+            if (exact.length) return { status: exact.length === 1 ? 'ready' : 'ambiguous', row: exact.length === 1 ? exact[0] : null };
+            // This index is used only to display a verified snapshot on queue
+            // cards. When the source omits or changes lot/source qualifiers,
+            // allow a unique normalized item+location match; never pick one of
+            // multiple physical master rows at that location.
+            const scoped = i.itemCode && i.locationCode ? itemLocations.get(itemLocationKey(i)) || [] : [];
+            return { status: scoped.length === 1 ? 'ready' : scoped.length ? 'ambiguous' : 'missing', row: scoped.length === 1 ? scoped[0] : null };
         } };
     }
     function createHydrator(options) {

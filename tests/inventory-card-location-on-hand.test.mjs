@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { parse } from 'acorn';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const hydrationSource = fs.readFileSync(new URL('../assets/queue-inventory-hydration.js', import.meta.url), 'utf8');
 const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
 const source = scripts.find(script => script.includes('function getCardLocationOnHandValue('));
 assert.ok(source, 'live inventory-card helper script is present');
@@ -62,6 +63,7 @@ function setup(rows) {
     syncRowDataAcrossViews() {},
     invalidateInventoryDomIdLookup: () => { indexInvalidations.count += 1; },
   });
+  vm.runInContext(hydrationSource, context);
   vm.runInContext(`let masterInventoryByItemLocationOnHand = new Map(); let acceptedLocOnHandAggregateReceipt = { scope:'', permission:'', revision:'', valid:false };\n${code}`, context);
   context.rebuildMasterInventoryIndexes();
   return { context, state, indexInvalidations };
@@ -92,6 +94,17 @@ test('location aggregation ignores sales year and preserves zero without an item
   assert.equal(context.getCardLocationOnHandValue({ ITEMCODE: '0001', location_code: ' A.01.001 ' }), '10');
   assert.equal(context.getCardLocationOnHandValue({ ITEMCODE:'0001', LOCATIONCODE: 'Z.01.001' }), '0');
   assert.equal(context.getCardLocationOnHandValue({ ITEMCODE: '0001' }), null);
+});
+
+test('Suspend and Drive location totals canonicalize dotted item codes and padded location tokens', () => {
+  const { context } = setup([
+    { UNIQUE_ID:'physical-a', ITEMCODE:'004380.010.1', LOCATIONCODE:'C.09.000', PTRONHAND:90, SOURCE:'MASTER' },
+    { UNIQUE_ID:'physical-b', ITEMCODE:'43800101', LOCATIONCODE:' c.9.0 ', PTRONHAND:15, SOURCE:'MASTER' },
+    { UNIQUE_ID:'other-location', ITEMCODE:'004380.010.1', LOCATIONCODE:'C.09.001', PTRONHAND:20, SOURCE:'MASTER' }
+  ]);
+  assert.equal(context.getInventoryCardItemLocationKey(context.fullInventory[0]),
+    context.getInventoryCardItemLocationKey(context.fullInventory[1]));
+  assert.equal(context.getCardLocationOnHandValue({ ITEMCODE:'43800101', location_code:' c.9.0 ' }), '105');
 });
 
 test('comma quantities parse, while a blank or invalid member makes the scope Unknown', () => {

@@ -64,6 +64,18 @@ test('on-demand group reads reject a late response after account change', async 
   await assert.rejects(ctx.loadDockSuspendDcRequestGroupRows({ group: 'one', ITEMCODE: 'SKU1' }), /scope changed/);
 });
 
+test('Suspend queue eligibility requires active SUSPEND status and DC assignment', () => {
+  const ctx = vm.createContext({
+    getDockSuspendValue: row => String(row?.SUSPEND ?? '').trim().toUpperCase(),
+    getDockSuspendToValue: row => String(row?.SUSPEND_TO ?? '').trim().toLowerCase()
+  });
+  vm.runInContext(source('isDockSuspendDcRequestSource'), ctx);
+  assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'SUSPEND', SUSPEND_TO:'dc' }), true);
+  assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'', SUSPEND_TO:'dc' }), false);
+  assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'', SUSPEND_TO:'sales' }), false);
+  assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'HOLD', SUSPEND_TO:'dc' }), false);
+});
+
 test('master-only rehydration starts from raw SOC and recomputes assignment/link visibility while preserving SOC-owned values', () => {
   const masters = new Map([['soc-1', { unique_id: 'master-1', APP_TAB_ASSIGNMENT: 'docks' }]]);
   const context = vm.createContext({

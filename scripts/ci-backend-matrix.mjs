@@ -1,3 +1,4 @@
+import { verifyV2314RetainedValidation } from './check-v2314-retained-validation.mjs';
 import { verifyV2313RetainedValidation } from './check-v2313-retained-validation.mjs';
 import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
 import { verifyV2311RetainedValidation } from './check-v2311-retained-validation.mjs';
@@ -15,6 +16,12 @@ export function backendTestMatrices({ root } = {}) {
   const entrypoints = discoverTests({ root, group: 'deno-entrypoints' });
   const tests = discoverTests({ root, group: 'deno-tests' });
 
+  if (packageVersion === '2.3.14') {
+    verifyV2314RetainedValidation({ rootDir: repositoryRoot });
+    return { pglite: ['scripts/check-v2314-retained-validation.mjs'], edge: { include: [
+      { suite: 'suspend-source-freshness', targets: ['supabase/functions/app-api/index.ts', 'supabase/functions/app-api/suspend-tag-read_test.ts'], tests: ['supabase/functions/app-api/suspend-tag-read_test.ts'] },
+    ] } };
+  }
   if (packageVersion === '2.3.13') {
     verifyV2313RetainedValidation({ rootDir: repositoryRoot });
     return { pglite: ['scripts/check-v2313-retained-validation.mjs'], edge: { include: [] } };

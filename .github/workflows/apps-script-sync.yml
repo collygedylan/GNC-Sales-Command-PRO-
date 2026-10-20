@@ -28,6 +28,7 @@ jobs:
       v238: ${{ steps.scope.outputs.v238 }}
       v2311: ${{ steps.scope.outputs.v2311 }}
       v2313: ${{ steps.scope.outputs.v2313 }}
+      v2314: ${{ steps.scope.outputs.v2314 }}
     steps:
       - name: Check out current main history
         uses: actions/checkout@v4
@@ -72,6 +73,7 @@ jobs:
             esac
           done
           echo "backend-changed=$backend_changed" >> "$GITHUB_OUTPUT"
+          echo "v2314=$(test "$(jq -r .version package.json)" = 2.3.14 && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "v2313=$(test "$(jq -r .version package.json)" = 2.3.13 && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "v2311=$(test "$(jq -r .version package.json)" = 2.3.11 && echo true || echo false)" >> "$GITHUB_OUTPUT"
           if [[ "$(jq -r '.version' package.json)" == '2.3.8' ]]; then
@@ -93,23 +95,23 @@ jobs:
 
   pending-order-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.v2314 != 'true'
     uses: ./.github/workflows/bloomscapes-pending-tests.yml
 
   suspend-tag-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.v2314 != 'true'
     uses: ./.github/workflows/suspend-tag-tests.yml
 
   live-dataset-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.v2314 != 'true'
     uses: ./.github/workflows/live-dataset-revisions.yml
 
   v238-retained-contracts:
     name: Verify scoped database contract receipts
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && (needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true' || needs.authorize-backend.outputs.v2313 == 'true')
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && (needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true' || needs.authorize-backend.outputs.v2313 == 'true' || needs.authorize-backend.outputs.v2314 == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -124,6 +126,12 @@ jobs:
           import { verifyV2311RetainedValidation } from './scripts/check-v2311-retained-validation.mjs';
           import fs from 'node:fs';
           import { verifyV2313RetainedValidation } from './scripts/check-v2313-retained-validation.mjs';
+          import { verifyV2314RetainedValidation } from './scripts/check-v2314-retained-validation.mjs';
+          if (JSON.parse(fs.readFileSync('package.json', 'utf8')).version === '2.3.14') {
+            verifyV2314RetainedValidation();
+            console.log('PASS v2.3.14 source-sealed disposable Suspend contract and app-api validation evidence');
+            process.exit(0);
+          }
           if (JSON.parse(fs.readFileSync('package.json', 'utf8')).version === '2.3.13') {
             verifyV2313RetainedValidation();
             console.log('PASS v2.3.13 native PostgreSQL staging and atomic publication evidence');
@@ -144,7 +152,7 @@ jobs:
   deploy-supabase:
     name: Apply backend migrations and deploy Edge Functions
     needs: [authorize-backend, backend-validation, pending-order-contract, suspend-tag-contract, live-dataset-contract, v238-retained-contracts]
-    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && (((needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true' || needs.authorize-backend.outputs.v2313 == 'true') && needs.v238-retained-contracts.result == 'success' && needs.pending-order-contract.result == 'skipped' && needs.suspend-tag-contract.result == 'skipped' && needs.live-dataset-contract.result == 'skipped') || (needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.v238-retained-contracts.result == 'skipped' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'))
+    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && (((needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true' || needs.authorize-backend.outputs.v2313 == 'true' || needs.authorize-backend.outputs.v2314 == 'true') && needs.v238-retained-contracts.result == 'success' && needs.pending-order-contract.result == 'skipped' && needs.suspend-tag-contract.result == 'skipped' && needs.live-dataset-contract.result == 'skipped') || (needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.v2314 != 'true' && needs.v238-retained-contracts.result == 'skipped' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -183,6 +191,7 @@ jobs:
         uses: ./.github/actions/setup-node-dependencies
 
       - name: Apply backend release migrations and synchronize reminder Vault credentials
+        if: needs.authorize-backend.outputs.v2314 != 'true'
         env:
           V2313_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v2313 }}
           GH_TOKEN: ${{ github.token }}
@@ -192,21 +201,20 @@ jobs:
         run: node scripts/apply-item-low-stock-migration.mjs
 
       - name: Configure Production Schedule dispatch and deploy backend functions
-        if: needs.authorize-backend.outputs.v2313 != 'true'
+        if: needs.authorize-backend.outputs.v2313 != 'true' || needs.authorize-backend.outputs.v2314 == 'true'
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
           V238_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v238 }}
           V2311_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v2311 }}
+          V2314_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v2314 }}
         shell: bash
         run: |
           set -euo pipefail
           project_ref="${SUPABASE_URL#https://}"
           project_ref="${project_ref%.supabase.co}"
           [[ "$project_ref" =~ ^[a-z0-9]{20}$ ]] || { echo 'SUPABASE_PROJECT_REF_INVALID'; exit 1; }
-          [[ "$APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID" =~ ^AKfy[a-zA-Z0-9_-]+$ ]] || { echo 'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID_REQUIRED'; exit 1; }
-          web_app_url="https://script.google.com/macros/s/${APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID}/exec"
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
           deploy_with_retry() {
             local attempt output status
@@ -225,7 +233,9 @@ jobs:
               sleep "$((attempt * 5))"
             done
           }
-          if [[ "$V2311_SCOPED_DEPLOY" == 'true' ]]; then
+          if [[ "$V2314_SCOPED_DEPLOY" == 'true' ]]; then
+            deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
+          elif [[ "$V2311_SCOPED_DEPLOY" == 'true' ]]; then
             deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
             deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
           elif [[ "$V238_SCOPED_DEPLOY" == 'true' ]]; then
@@ -233,6 +243,8 @@ jobs:
             deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
             deploy_with_retry supabase functions deploy send-push-alert --use-api --project-ref "$project_ref"
           else
+            [[ "$APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID" =~ ^AKfy[a-zA-Z0-9_-]+$ ]] || { echo 'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID_REQUIRED'; exit 1; }
+            web_app_url="https://script.google.com/macros/s/${APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID}/exec"
             supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
             deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
             deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
@@ -246,7 +258,7 @@ jobs:
           fi
 
       - name: Verify deployed Aura authorization
-        if: needs.authorize-backend.outputs.v2313 != 'true'
+        if: needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.v2314 != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: node scripts/aura-query-production-smoke.mjs

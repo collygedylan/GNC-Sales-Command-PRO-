@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
-// @test-group: @suspend-tag,suspend,@v2312-ui
+import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
+// @test-group: @suspend-tag,suspend,@v2312-ui,@v2314-parity
 
 import { confirmedDriveEvidence, driveEvidenceColumns } from '../services/driveEvidence.ts';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './fixtures/inventory-list-read-fixture.mjs';
@@ -68,11 +70,116 @@ function buildConfirmedInventoryRow(source: FixtureRow, patch: Record<string, un
   return confirmedDriveEvidence({ ok: true, canonicalConfirmed: true, row });
 }
 
+test('Latest file’s 37 marked physical DC tags hydrate current master metrics and sort by nursery location @v2314-parity',
+  { tag: ['@suspend-tag', '@v2314-parity'] }, async ({ page, baseURL }, info) => {
+  const snapshot = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/suspend-v2314.json.gz', import.meta.url))).toString('utf8')) as {
+    capturedAt: string; masterRows: FixtureRow[]; suspendRows: FixtureRow[];
+    source: { filename: string; sha256: string };
+  };
+  expect(snapshot.suspendRows).toHaveLength(67);
+  expect(new Set(snapshot.suspendRows.map(row => row.UNIQUE_ID)).size).toBe(67);
+  expect(snapshot.masterRows).toHaveLength(9487);
+  const olderControlRows = snapshot.suspendRows.filter(row => row.SUSPEND === 'SUSPEND').slice(0,3).map((row, index) => ({ ...row,
+    UNIQUE_ID: 'isolated-older-source-' + index, FILENAME: 'SOC-10 Open Orders-12250920261019122509.xlsx', LAST_UPDATED: '2026-10-19T22:00:00.000Z' }));
+  const app = await harness(page, baseURL!, [...snapshot.suspendRows, ...olderControlRows], { masterRows: snapshot.masterRows });
+  const cards = page.locator('#request-content article[data-request-uid^="dock_suspend_dc_"]');
+  await expect(cards).toHaveCount(37);
+  // Complete the initial snapshot's bounded identity lookups before measuring
+  // a warm reopen; do not race the seed publication and its follow-up reads.
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(async () => { await document.fonts.ready; });
+  await page.waitForFunction(() => window.eval('hasCurrentProductionLiveSyncProof(getProductionLiveSyncContext())'));
+  if (process.env.V2314_PROFILE === '1') await page.evaluate(() => window.eval(`(() => {
+    window.__v2314Profile = {};
+    for (const name of ['renderRequest','getScopedRequestItems','getRequestTabQueueCounts','buildSuspendTagRenderPlan',
+      'generateCard','buildDockSuspendDcRequestCardDisplayItem','getQueueCardInventoryState','getMasterInventoryExactKey',
+      'getLatestSocSuspendTagSourceRows','getDockSuspendDcRequestMirrorRows','decorateRequestRows','renderMarkupChunkedByKey',
+      'getCardLocationOnHandValue','syncMasterFieldsToRequestRow','findMasterInventoryItem','findMasterInventoryExactRow',
+      'findDockSuspendDcRequestSourceRow','getProductionLiveSyncContext','getQueueCardInventoryRow',
+      'getDockSuspendTagValidDriveOptionRows','getDockSuspendTagDriveOptionRowsCandidateIndex']) {
+      if (typeof window[name] !== 'function') continue;
+      const original = window[name];
+      window[name] = function(...args) {
+        const start = performance.now();
+        try { return original.apply(this,args); }
+        finally { const result = window.__v2314Profile[name] ||= { calls: 0, ms: 0 }; result.calls++; result.ms += performance.now()-start; }
+      };
+    }
+  })()`));
+  const renderMs = await page.evaluate(async () => {
+    return window.eval(`(async () => {
+      if (!hasCurrentProductionLiveSyncProof(getProductionLiveSyncContext())) throw new Error('Warm snapshot proof changed before render');
+      // Use the app's clear operation: raw DOM removal leaves stale render
+      // signatures/chunk work, and global invalidation is a cold data reset.
+      setContainerHtml(document.getElementById('request-suspend-tag-card-list'), '');
+      const start = performance.now();
+      renderRequest();
+      do {
+        await new Promise(resolve => requestAnimationFrame(() => resolve()));
+      } while (document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length !== 37 && performance.now()-start < 5000);
+      return performance.now() - start;
+    })()`);
+  }) as number;
+  await expect(cards).toHaveCount(37);
+  if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));
+  expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);
+  const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));
+  const rowById = new Map(snapshot.suspendRows.map(row => [`dock_suspend_dc_${row.UNIQUE_ID}`, row]));
+  const locations = order.map(id => String(rowById.get(id || '')?.LOCATIONCODE || '').trim().toUpperCase());
+  expect(locations).toEqual([...locations].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })));
+  const littleLime = snapshot.suspendRows.filter(row => row.SUSPEND === 'SUSPEND' && row.ITEMCODE === '009373.031.1' && row.LOCATIONCODE === 'F.14.000' && row.LOTCODE === '27.F1');
+  expect(littleLime.length).toBeGreaterThan(0);
+  for (const row of littleLime) {
+    const card = app.card(row);
+    await expect(card.locator('[data-inventory-card-metric="on-hand"]')).toContainText('90');
+    await expect(card.locator('[data-inventory-card-metric="review"]')).toContainText('25');
+    await expect(card.locator('[data-inventory-card-metric="available"]')).toContainText('65');
+    await expect(card.locator('[data-inventory-card-metric="open-stock"]')).toContainText('57');
+    // These are the captured Oct 20 master quantities, newer than the video:
+    // location total = 90 F1 + 59 S1 + 79 U1 + 26 X; verified photo quantity = round(65 available × 65% match) = 42.
+    await expect(card.locator('[data-inventory-card-metric="loc-photo-match"]')).toContainText('42');
+    await expect(card.locator('[data-inventory-card-metric="loc-on-hand"]')).toContainText('254');
+    await expect(card).toContainText('PRI 10');
+    await expect(card).toContainText('light roots; thin body');
+  }
+  const liriope = snapshot.suspendRows.filter(row => row.SUSPEND === 'SUSPEND' && row.ITEMCODE === '004380.010.1' && row.LOCATIONCODE === 'C.09.000' && row.LOTCODE === '27.F1');
+  expect(liriope.length).toBeGreaterThan(1);
+  for (const row of liriope) {
+    const card = app.card(row);
+    await expect(card.locator('[data-inventory-card-metric="on-hand"]')).toContainText('1542');
+    await expect(card.locator('[data-inventory-card-metric="review"]')).toContainText('675');
+    await expect(card.locator('[data-inventory-card-metric="available"]')).toContainText('867');
+    await expect(card.locator('[data-inventory-card-metric="open-stock"]')).toContainText('1090');
+    // The live master has no photo-rule timestamp for this row. Preserve
+    // Drive's unverified result; an inventory update is not photo evidence.
+    await expect(card.locator('[data-inventory-card-metric="loc-photo-match"]')).toContainText('N/A');
+    await expect(card.locator('[data-inventory-card-metric="loc-on-hand"]')).toContainText(/23,?655/);
+  }
+  const sharedTotals = await page.evaluate(() => window.eval(`({
+    littleLime: getCardLocationOnHandValue(fullInventory.find(row => row.ITEMCODE === '009373.031.1' && row.LOCATIONCODE === 'F.14.000' && row.LOTCODE === '27.F1')),
+    liriope: getCardLocationOnHandValue(fullInventory.find(row => row.ITEMCODE === '004380.010.1' && row.LOCATIONCODE === 'C.09.000' && row.LOTCODE === '27.F1'))
+  })`));
+  expect(String(sharedTotals.littleLime).replaceAll(',', '')).toBe('254');
+  expect(String(sharedTotals.liriope).replaceAll(',', '')).toBe('23655');
+  const driveSummary = await page.evaluate(() => window.eval(`collectDashboardSyncSource([
+    {LAST_UPDATED:'2026-10-20T02:24:45.602Z',FILENAME:'DriveAroundMC-10-10320620261019103206.xlsx'},
+    {LAST_UPDATED:'2026-10-20T02:24:45.602Z',FILENAME:'DriveAroundMC-10-16251320260916042513.xlsx'}
+  ],'Drive')`));
+  expect(driveSummary.files).toEqual(['DriveAroundMC-10-10320620261019103206.xlsx']);
+  await info.attach('v2314-metrics', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+    environment: info.project.name, masterRows: snapshot.masterRows.length, cards: 37, expectedCards: 37,
+    renderMs, sorted: true, metricsVerified: true, cache: 'warm complete master snapshot; new card DOM; service worker blocked; fonts ready; trace off',
+    capturedAt: snapshot.capturedAt, source: snapshot.source, liveAuthentication: false, productionWrites: false,
+  })) });
+  expect(app.requests).toEqual([]);
+  app.assertClean();
+});
+
 /** Runs the built app's real renderer, confirmation, transport and cache logic.
  * Only identity/data-loading boundaries are supplied. Backend state lives in
  * this test process across refresh/reload; no customer record is ever changed.
  */
-async function harness(page: Page, baseURL: string, rows = fixtures, options: { search?: string; expired?: boolean; inventoryUnavailable?: boolean; native?: boolean } = {}) {
+async function harness(page: Page, baseURL: string, rows = fixtures, options: { search?: string; expired?: boolean; inventoryUnavailable?: boolean; native?: boolean; masterRows?: FixtureRow[] } = {}) {
   const origin = new URL(baseURL).origin;
   const backendRows = structuredClone(rows);
   const receipts = new Map<string, Record<string, unknown>>();
@@ -105,11 +212,11 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     if (request.method() === 'GET' && url.href === 'https://example.test/photo.jpg') {
       return route.fulfill({ status: 404, contentType: 'image/jpeg', body: '' });
     }
-    if (options.native && url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1' && request.method() === 'POST') {
+    if ((options.native || options.masterRows?.length) && url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1' && request.method() === 'POST') {
       const body = request.postDataJSON();
       if (!Array.isArray(body.p_dataset_keys) || Object.keys(body).some(key => key !== 'p_dataset_keys')) throw new Error('Unexpected revision read');
       return fulfill(route, { contractVersion: 1, permissionVersion: 'suspend-fixture-access-1', serverTime: new Date().toISOString(),
-        sources: body.p_dataset_keys.map((key: string) => ({ key, revision: String(nativeRevision), state: 'ready' })) });
+        sources: body.p_dataset_keys.map((key: string) => ({ key, revision: options.masterRows?.length ? '8277' : String(nativeRevision), state: 'ready' })) });
     }
     if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST' && request.postDataJSON()?.action === 'suspend_tag') {
       const body=request.postDataJSON();
@@ -160,13 +267,13 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     }
     if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
-      if (options.native && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      if ((options.native || options.masterRows?.length) && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && body.action === 'eval_work' && body.operation === 'list'
         && Object.keys(body).sort().join(',') === 'action,operation'
         && !request.headers()['idempotency-key']) {
         return fulfill(route, { ok: true, data: [], manager: true });
       }
-      if (options.native && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+      if ((options.native || options.masterRows?.length) && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && body.action === 'shear_location_work' && body.operation === 'list' && body.status === 'active'
         && Object.keys(body).sort().join(',') === 'action,operation,status'
         && !request.headers()['idempotency-key']) {
@@ -176,10 +283,11 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         inventoryLookupCalls.push({params:body.params,status:503});
         return fulfill(route,{ok:false,status:503,error:'Synthetic full inventory lookup unavailable'},503);
       }
-      if (options.native && !options.inventoryUnavailable && body.action === 'inventory_read' && body.operation === 'master_identity_batch') {
-        const rows=backendRows.map(row=>inventoryReadFixture.fromFixtureShape({ ...row, ...buildConfirmedInventoryRow(row,{}),loc_match_qty:'0' }));
+      if ((options.native || options.masterRows?.length) && !options.inventoryUnavailable && body.action === 'inventory_read' && body.operation === 'master_identity_batch') {
+        const rows=options.masterRows?.length ? options.masterRows
+          : backendRows.map(row=>inventoryReadFixture.fromFixtureShape({ ...row, ...buildConfirmedInventoryRow(row,{}),loc_match_qty:'0' }));
         inventoryLookupCalls.push({params:body.params,status:200});
-        return fulfill(route,{ok:true,data:inventoryIdentityBatchFixture(rows,body.params.queueIdentities,String(nativeRevision))});
+        return fulfill(route,{ok:true,data:inventoryIdentityBatchFixture(rows,body.params.queueIdentities,options.masterRows?.length ? '8277' : String(nativeRevision))});
       }
       if (options.native && !options.inventoryUnavailable && body.action === 'inventory_read' && body.operation === 'master_page'
         && body.params?.dataset === 'lookup' && body.params?.projection === 'full'
@@ -192,7 +300,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
           ...buildConfirmedInventoryRow(row, {}), loc_match_qty: '0' }));
         return fulfill(route, { ok: true, data: inventoryReadFixture.readMasterPage(rows, body.params) });
       }
-      if (options.native && ['sales_credit', 'request_history'].includes(body.action) && body.operation === 'compatibility'
+      if ((options.native || options.masterRows?.length) && ['sales_credit', 'request_history'].includes(body.action) && body.operation === 'compatibility'
         && Object.keys(body).sort().join(',') === 'action,operation,payload'
         && !request.headers()['idempotency-key'] && body.payload?.status === 'all'
         && body.payload?.cursor === null && body.payload?.limit === 100
@@ -269,7 +377,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         blockedReadOnlyAppApiCalls.push(`${body.action}:${body.operation || body.dataset}`);
         if (body.action === 'dataset_read') {
           const params = body.params as Record<string, any>;
-          if (options.native && body.dataset === 'suspend_tag') {
+          if ((options.native || options.masterRows?.length) && body.dataset === 'suspend_tag') {
             const source = backendRows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])));
             const rows = source.slice(params.offset, params.offset + params.limit);
             return fulfill(route, { ok: true, data: { rows, total: source.length, offset: params.offset, limit: params.limit,
@@ -301,7 +409,8 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const seed = async (nextRows: FixtureRow[] = backendRows) => {
     await page.waitForFunction(() => typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
     await page.evaluate((data) => {
-      (window as any).__suspendCompletionFixtureRows = data;
+      (window as any).__suspendCompletionFixtureRows = data.rows;
+      (window as any).__suspendCompletionMasterRows = data.masterRows;
       window.eval(`(() => {
         if (!installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Isolated Suspend Done Test', 'ADMIN')) {
           throw new Error('SUSPEND_DONE_CANARY_IDENTITY_UNAVAILABLE');
@@ -312,6 +421,20 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
           status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: 'dylan_collyge',
           capabilities: { username: 'dylan_collyge', scope: 'global', canViewQueue: true, canTakePhoto: true, canEdit: true, canComplete: true, canArchive: true }
         };
+        if (window.__suspendCompletionMasterRows.length) {
+          nativeAuthSessionActive = true;
+          nativeAuthProfile = { id: 'synthetic-suspend-master-snapshot', username: 'dylan_collyge', role: 'ADMIN', active: true };
+          nativeAuthAccessToken = 'synthetic-not-a-real-token';
+          appAccessSnapshotState = {
+            status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser,
+            snapshot: normalizeAppAccessSnapshot({
+              contractVersion: APP_ACCESS_CONTRACT_VERSION, enforcementMode: 'enforced',
+              username: currentUser, role: currentRole, dataPermissionVersion: 'suspend-fixture-access-1',
+              permissions: [{ permissionKey: 'module.request.view', kind: 'module', moduleKey: 'request', allowed: true }]
+            }, currentUser)
+          };
+          setRoleAccessReadyState(true);
+        }
         // Queue is opened after login's initial Home transition. Preference
         // refresh must recheck access without replaying that startup transition.
         hasAppliedInitialHomeView = true;
@@ -328,7 +451,17 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
           processAndLoadData({ suspendTagData: snapshot, _fromCache: true });
           return true;
         };
-        processAndLoadData({ suspendTagData: structuredClone(window.__suspendCompletionFixtureRows), requestsData: [], data: [], _fromCache: true });
+        const snapshotContext = getProductionLiveSyncContext();
+        processAndLoadData({ suspendTagData: structuredClone(window.__suspendCompletionFixtureRows), requestsData: [],
+          data: structuredClone(window.__suspendCompletionMasterRows), socData: structuredClone(window.__suspendCompletionFixtureRows),
+          _fromCache: true, _verifiedLiveSync: !!window.__suspendCompletionMasterRows.length,
+          _locOnHandReceiptScope: getSupabaseReadIdentityScope(), _locOnHandReceiptPermission: snapshotContext.dataPermissionVersion,
+          _locOnHandReceiptRevision: '8277' });
+        if (window.__suspendCompletionMasterRows.length) Object.assign(getDatasetState('master'), {
+          initialLoaded: true, fullLoaded: true, fieldCoverage: 'full', rowCompleteness: 'complete',
+          liveVerifiedScope: snapshotContext.scope, liveVerifiedPermission: snapshotContext.dataPermissionVersion,
+          liveVerifiedRevision: '8277'
+        });
         document.getElementById('view-login').style.setProperty('display', 'none', 'important');
         document.getElementById('app-wrapper').classList.remove('hidden');
         activeReqTab = 'suspend-tag';
@@ -338,10 +471,13 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         requestSuspendTagDockFilter = 'all';
         requestSuspendTagStatusFilter = 'active';
         showOnlyPrimaryView('request');
+        if (window.__suspendCompletionMasterRows.length) {
+          productionLiveSyncVerifiedView = productionVerifiedViewKey(getProductionLiveSyncContext());
+        }
         invalidateResolvedViewStateCaches();
         renderRequest();
       })()`);
-    }, nextRows);
+    }, { rows: nextRows, masterRows: options.masterRows || [] });
     await expect(page.locator('#view-request')).toBeVisible();
   };
   await page.goto('/?post_deploy_access_canary=1&suspend_tag_canary=1' + (options.search || ''), { waitUntil: 'load' });
