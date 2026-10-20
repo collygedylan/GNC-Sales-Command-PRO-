@@ -32,6 +32,17 @@ test('scoped backend publication requires verified receipts and deploys only der
   assert.match(apply, /scopedReceipt\s*\?\s*normalizeScopedMigrationPaths/);
 });
 
+test('scoped backend classifier includes receipt-declared migrations and Edge Functions', () => {
+  const workflow = YAML.parse(read('.github/workflows/apps-script-sync.yml'));
+  const scope = workflow.jobs['authorize-backend'].steps.find(step => step.name === 'Require changed Supabase or database paths');
+  assert.ok(scope);
+  assert.match(scope.run, /scoped_receipt=.*scopedValidationReceipt/);
+  assert.match(scope.run, /deployment\.migrations \| type\).*array/);
+  assert.match(scope.run, /deployment\.edgeFunctions \| type\).*array/);
+  assert.match(scope.run, /backend_changed=true/);
+  assert.match(scope.run, /Fail closed into the retained-contract gate/);
+});
+
 test('database gate requires source-sealed disposable evidence for scoped releases', () => {
   const workflow = YAML.parse(read('.github/workflows/release-database.yml'));
   assert.ok(workflow.jobs['schema-gate'].needs.includes('scoped-retained-contracts'));
@@ -74,9 +85,19 @@ test('scoped Pages release waits for the exact merged backend before publishing'
     'SCOPED_BACKEND_MIGRATION_RECEIPT_MISMATCH', 'apps-script-sync.yml',
     'head_sha === context.sha', "event === 'workflow_dispatch'", 'Apply backend migrations and deploy Edge Functions',
     'deployRun.conclusion !== \'success\'', 'appsScriptChangedFunctions', 'apps-script-deploy.yml',
-    "event === 'workflow_run'", "job.name === 'deploy-apps-script'",
+    "['workflow_run', 'workflow_dispatch'].includes(run.event)", "job.name === 'deploy-apps-script'",
     "Publish the guarded production Apps Script version", 'SCOPED_APPS_SCRIPT_PUBLICATION_TIMEOUT',
   ]) assert.ok(script.includes(marker), marker);
+  assert.doesNotMatch(script, /workflow_id: scriptWorkflow\.id, head_sha: context\.sha,\s*event:/);
   assert.match(script, /Date\.now\(\)\s*\+\s*10\s*\*\s*60\s*\*\s*1000/);
   assert.match(script, /Date\.now\(\)\s*\+\s*15\s*\*\s*60\s*\*\s*1000/);
+});
+
+test('scoped Apps Script releases dispatch exact backend, Apps Script, and Pages handoffs', () => {
+  const source = read('.github/workflows/publish-candidate.yml');
+  assert.match(source, /const scopedAppsScriptRelease = Boolean\(packageConfig\.scopedValidationReceipt &&[\s\S]*?packageConfig\.appsScriptPatchFunctions\.length > 0\)/);
+  const backendWait = source.indexOf("await waitForSuccessfulWorkflow('apps-script-sync.yml', backendDispatch)", source.indexOf('} else if (scopedAppsScriptRelease)'));
+  const scriptDispatch = source.indexOf("await dispatchOnce('apps-script-deploy.yml')", backendWait);
+  const pagesDispatch = source.indexOf("await dispatchOnce('pages-static.yml')", scriptDispatch);
+  assert.ok(backendWait >= 0 && scriptDispatch > backendWait && pagesDispatch > scriptDispatch);
 });

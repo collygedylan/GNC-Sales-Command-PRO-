@@ -613,5 +613,35 @@
       },
       "productionChanged": false
     }
-  ]
+  ],
+  "publicationHandoff": {
+    "at": "2026-10-20T18:13:47.666Z",
+    "mainCommit": "76c4b877690761f1779ef2668a3d5c1429159884",
+    "pr": 502,
+    "ci": 39471581853,
+    "backend": {
+      "runId": 39471966383,
+      "status": "success",
+      "migrations": [
+        "20261020150827",
+        "20261020161833"
+      ],
+      "liveProbeAt": "2026-10-20T18:11:45.898Z",
+      "publishedReadable": true,
+      "rosyLocOnHand": 195
+    },
+    "appsScript": {
+      "status": "not started",
+      "observed": "No automatic workflow_run after backend completion",
+      "correction": "Allow guarded workflow_dispatch alongside workflow_run, and explicitly dispatch the scoped script publication after successful backend deployment"
+    },
+    "productionFrontend": "prior v2.3.13 remains live pending publication",
+    "backfillChanged": false,
+    "frontendRun": {
+      "runId": 39471962506,
+      "status": "cancelled",
+      "reason": "Replaced by corrected guarded publication handoff; no frontend publication occurred"
+    },
+    "backendClassifier": "Receipt-declared migrations and functions require exact-commit backend validation and idempotent publication"
+  }
 }
