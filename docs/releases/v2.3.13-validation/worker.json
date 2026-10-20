@@ -1,7 +1,7 @@
 {
   "status": "passed",
   "capturedAt": "2026-10-20T00:51:02.956Z",
-  "sourceDigest": "2eb5bbc6f2457ba8d2e80927858ecc70a586ec0d28ccb01bfdaae3a64dd16736",
+  "sourceDigest": "041f0fade59f661b8554624f077cbca64fca68e1450ef2857241eba414283251",
   "productionWrites": false,
   "realEmailsSent": false,
   "tests": {
@@ -37,6 +37,13 @@
     "approvedTimingBudget": {
       "path": ".gnc-local/v2313-final-timing-contract.log",
       "sha256": "7c68b45e541ee17a179ea3fd4fd9ce08515099b16c13646e15f86af5a003df84",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "deploymentContractRepair": {
+      "path": ".gnc-local/v2313-deployment-contract-repair.log",
+      "sha256": "d7b415de489fe2c1daf1650a58fa8a13c56df55b6b1e09c697370d310223eee4",
       "tests": 1,
       "passed": 1,
       "failed": 0
