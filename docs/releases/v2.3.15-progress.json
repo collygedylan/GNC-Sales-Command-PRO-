@@ -458,6 +458,23 @@
         "WebKit records revision-read cancellation needing causal classification"
       ],
       "productionWrites": false
+    },
+    {
+      "at": "2026-10-20T17:33:22.511Z",
+      "attempt": 4,
+      "cap": 8,
+      "status": "failed",
+      "report": ".gnc-local/release-smoke/agdata-v2-3-15/754fdef81d53/20261020172727917/report.json",
+      "passed": 5,
+      "failed": 4,
+      "passedContracts": "All37 layout/metrics/timing; Desktop and Android fullLKG9487rows/1561names and immediateRosy195 details passed",
+      "cause": [
+        "Missing ancillary customer consignee directory route",
+        "Fixture scope reset cancels revision read",
+        "iPhone LKG full hydration timeout while another iPhone case concurrently renders"
+      ],
+      "correction": "Three viewport projects remain parallel; cases within each profile now sequential to avoid multiple WebKit pages competing for frames. Test timeout and render ceilings unchanged.",
+      "productionWrites": false
     }
   ],
   "availabilitySqlValidation": {

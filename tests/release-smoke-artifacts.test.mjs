@@ -6,6 +6,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { assertReleaseAssetReferences } from '../scripts/run-release-smoke.mjs';
 
+test('smoke runs viewport projects concurrently without overlapping cases in one profile', () => {
+  const config = fs.readFileSync(new URL('../playwright.release-smoke.config.ts', import.meta.url), 'utf8');
+  assert.match(config, /fullyParallel: false/);
+  assert.match(config, /workers: 3/);
+  assert.match(config, /retries: 0/);
+  for (const project of ['desktop-chromium', 'android-chromium', 'iphone-webkit']) {
+    assert.ok(config.includes(`name: '${project}'`));
+  }
+});
+
 test('smoke preflight rejects incomplete support assets before launching browsers', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'release-assets-'));
   try {

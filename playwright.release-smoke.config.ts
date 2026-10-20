@@ -9,7 +9,9 @@ export default defineConfig({
   testDir: './tests',
   testMatch: 'suspend-tag-completion.e2e.spec.ts',
   grep: /@release-smoke/,
-  fullyParallel: true,
+  // Run the three viewport projects in parallel, with each profile's cases
+  // sequential so multiple WebKit pages do not contend for animation frames.
+  fullyParallel: false,
   workers: 3,
   retries: 0,
   forbidOnly: true,
