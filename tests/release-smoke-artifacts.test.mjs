@@ -20,6 +20,15 @@ test('smoke runs viewport projects concurrently without overlapping cases in one
   }
 });
 
+test('warm synthetic access snapshots bind the current auth epoch without bypassing the forced permission refresh case', () => {
+  const spec = fs.readFileSync(new URL('./suspend-tag-completion.e2e.spec.ts', import.meta.url), 'utf8');
+  const readyStates = [...spec.matchAll(/appAccessSnapshotState = \{\s*status: 'ready',[\s\S]*?snapshot: normalizeAppAccessSnapshot\(/g)];
+  assert.equal(readyStates.length, 2);
+  for (const [state] of readyStates) assert.match(state, /authEpoch: productionLiveSyncReadAuthEpoch/);
+  assert.match(spec, /appAccessSnapshotState = \{ status: 'idle', snapshot: null,[\s\S]*?refreshNativeRoleAndCapabilities\('live-permissions'\)/);
+  assert.match(spec, /expect\(accessRefresh\.legacyCacheAdopted\)\.toBe\(true\)/);
+});
+
 test('smoke preflight rejects incomplete support assets before launching browsers', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'release-assets-'));
   try {

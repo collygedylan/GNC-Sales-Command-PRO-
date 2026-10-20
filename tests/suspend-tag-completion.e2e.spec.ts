@@ -489,6 +489,16 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const consoleErrorDetails: Array<{ text: string; location: { url: string; lineNumber: number; columnNumber: number } }> = [];
   const failedResources: Array<{ url: string; method: string; resourceType: string; failure: string; body: string; idempotencyKey: string }> = [];
   const bootstrapStartedAt = Date.now();
+  const bootstrapPhaseClocks: Array<{ phase: string; atMs: number }> = [];
+  const bootstrapBeacons: Array<{ receivedAtMs: number; payload: unknown }> = [];
+  const markBootstrapPhase = (phase: string) => bootstrapPhaseClocks.push({ phase, atMs: Date.now() - bootstrapStartedAt });
+  page.on('console', message => {
+    const prefix = '__RELEASE_SMOKE_BOOTSTRAP__ ';
+    if (message.type() !== 'debug' || !message.text().startsWith(prefix)) return;
+    let payload: unknown = message.text().slice(prefix.length);
+    try { payload = JSON.parse(String(payload)); } catch (_) {}
+    bootstrapBeacons.push({ receivedAtMs: Date.now() - bootstrapStartedAt, payload });
+  });
   const bootstrapNetwork: Array<{ phase: string; atMs: number; url: string; body: string }> = [];
   const recordBootstrapRequest = (phase: string, request: { url(): string; method(): string; postData(): string | null }) => {
     if (request.method() !== 'POST' || !request.url().startsWith('https://kzrnyjsosryejjejliii.supabase.co/')) return;
@@ -524,8 +534,8 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
           cachedSourceRows: cachedPage?.sourceRows.length, cachedRenderedRows: cachedPage?.rows.size,
           status: coordinator.getStatus(), background: coordinator.getBackgroundStatus(), statistics: coordinator.getStatistics() };
       })()`)), new Promise(resolve => { timer = setTimeout(() => resolve({ unavailable: 'Page diagnostic did not execute within 2000 ms' }), 2000); })]);
-      return { state, network: bootstrapNetwork.slice() };
-    } catch (error) { return { error: String(error), network: bootstrapNetwork.slice() }; }
+      return { state, network: bootstrapNetwork.slice(), phaseClocks: bootstrapPhaseClocks.slice(), beacons: bootstrapBeacons.slice() };
+    } catch (error) { return { error: String(error), network: bootstrapNetwork.slice(), phaseClocks: bootstrapPhaseClocks.slice(), beacons: bootstrapBeacons.slice() }; }
     finally { if (timer) clearTimeout(timer); }
   };
   const chatParticipantReads: Array<{ url: string; authorization: string; status: number }> = [];
@@ -1026,15 +1036,25 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   await page.routeWebSocket('**/*', (socket) => socket.close());
 
   const seed = async (nextRows: FixtureRow[] = backendRows) => {
+    markBootstrapPhase('seed-runtime-wait-start');
     await page.waitForFunction(() => (window as any).__gncAppRuntimeExecuted !== false && typeof (window as any).installMutationBlockedAccessCanaryIdentity === 'function');
+    markBootstrapPhase('seed-runtime-ready');
     await page.evaluate((data) => {
       (window as any).__suspendCompletionFixtureRows = data.rows;
       (window as any).__suspendCompletionMasterRows = data.masterRows;
       window.eval(`(() => {
-        window.__suspendBootstrapPhases = [{ phase: 'seed-start', atMs: performance.now() }];
+        window.__suspendBootstrapPhases = [];
+        window.__suspendBootstrapPhase = phase => {
+          const entry = { phase, atMs: performance.now(), view: getCurrentVisibleViewId(), tab: activeReqTab,
+            cards: document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length };
+          window.__suspendBootstrapPhases.push(entry);
+          console.debug('__RELEASE_SMOKE_BOOTSTRAP__ ' + JSON.stringify(entry));
+        };
+        window.__suspendBootstrapPhase('seed-start');
         if (!installMutationBlockedAccessCanaryIdentity(fixtureUsername, 'Isolated Suspend Done Test', 'ADMIN')) {
           throw new Error('SUSPEND_DONE_CANARY_IDENTITY_UNAVAILABLE');
         }
+        window.__suspendBootstrapPhase('identity-installed');
         // Synthetic identity only: real fetchWithTimeout/supabaseRpc still run.
         getNativeAuthRequestHeaders = async () => window.__suspendTestAuthReady ? ({ Authorization: 'Bearer browser-only-no-real-session', apikey: 'browser-only' }) : null;
         requestCapabilityState = {
@@ -1048,6 +1068,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
           nativeAuthAccessToken = 'synthetic-not-a-real-token';
           appAccessSnapshotState = {
             status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser, profileId: nativeAuthProfile.id,
+            authEpoch: productionLiveSyncReadAuthEpoch,
             snapshot: normalizeAppAccessSnapshot({
               contractVersion: APP_ACCESS_CONTRACT_VERSION, enforcementMode: 'enforced',
               username: currentUser, role: currentRole, dataPermissionVersion: 'suspend-fixture-access-1',
@@ -1080,12 +1101,13 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
           return true;
         };
         const snapshotContext = getProductionLiveSyncContext();
+        window.__suspendBootstrapPhase('snapshot-publish-start');
         processAndLoadData({ suspendTagData: structuredClone(window.__suspendCompletionFixtureRows), requestsData: [],
           data: structuredClone(window.__suspendCompletionMasterRows), socData: structuredClone(window.__suspendCompletionFixtureRows),
           _fromCache: true, _verifiedLiveSync: !!window.__suspendCompletionMasterRows.length,
           _locOnHandReceiptScope: getSupabaseReadIdentityScope(), _locOnHandReceiptPermission: snapshotContext.dataPermissionVersion,
           _locOnHandReceiptRevision: '8277' });
-        window.__suspendBootstrapPhases.push({ phase: 'seed-published', atMs: performance.now() });
+        window.__suspendBootstrapPhase('seed-published');
         if (window.__suspendCompletionMasterRows.length) Object.assign(getDatasetState('master'), {
           initialLoaded: true, fullLoaded: true, fieldCoverage: 'full', rowCompleteness: 'complete',
           liveVerifiedScope: snapshotContext.scope, liveVerifiedPermission: snapshotContext.dataPermissionVersion,
@@ -1101,28 +1123,40 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         requestSuspendTagStatusFilter = 'active';
       })()`);
     }, { rows: nextRows, masterRows: options.masterRows || [] });
+    markBootstrapPhase('seed-publish-evaluate-returned');
     if (options.masterRows?.length) {
       // Seed publication can schedule a Home render and telemetry. Complete
       // that work before the fixture's first deliberate view transition.
+      markBootstrapPhase('home-paint-settle-start');
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      markBootstrapPhase('home-paint-settle-returned');
       await page.waitForLoadState('networkidle');
+      markBootstrapPhase('home-network-settled');
     }
+    markBootstrapPhase('request-transition-evaluate-start');
     await page.evaluate(() => window.eval(`(() => {
       window.__suspendFixtureFetchAbortContext = 'suspend-fixture-request-view-transition';
-      window.__suspendBootstrapPhases.push({ phase: 'request-transition-start', atMs: performance.now() });
+      window.__suspendBootstrapPhase('request-transition-start');
       showOnlyPrimaryView('request');
+      window.__suspendBootstrapPhase('request-transition-returned');
       window.__suspendFixtureFetchAbortContext = '';
       if (window.__suspendCompletionMasterRows.length) {
         productionLiveSyncVerifiedView = productionVerifiedViewKey(getProductionLiveSyncContext());
       }
       invalidateResolvedViewStateCaches();
+      window.__suspendBootstrapPhase('request-render-start');
       renderRequest();
-      window.__suspendBootstrapPhases.push({ phase: 'request-render-returned', atMs: performance.now() });
+      window.__suspendBootstrapPhase('request-render-returned');
     })()`));
+    markBootstrapPhase('request-transition-evaluate-returned');
     await expect(page.locator('#view-request')).toBeVisible();
+    markBootstrapPhase('request-view-visible');
   };
+  markBootstrapPhase('goto-start');
   await page.goto('/?post_deploy_access_canary=1&suspend_tag_canary=1' + (options.search || ''), { waitUntil: 'load' });
+  markBootstrapPhase('goto-returned');
   if (options.masterRows?.length) await page.waitForLoadState('networkidle');
+  markBootstrapPhase('initial-network-settled');
   await seed();
   if (options.native) {
     await page.evaluate(() => window.eval(`(() => {
@@ -1132,6 +1166,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       nativeAuthAccessToken = 'synthetic-not-a-real-token';
       appAccessSnapshotState = {
         status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser, profileId: nativeAuthProfile.id,
+        authEpoch: productionLiveSyncReadAuthEpoch,
         snapshot: normalizeAppAccessSnapshot({
           contractVersion: APP_ACCESS_CONTRACT_VERSION, enforcementMode: 'enforced',
           username: currentUser, role: currentRole, dataPermissionVersion: 'suspend-fixture-access-1',
@@ -1242,7 +1277,8 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     // that exact image cancellation; all other aborted reads remain failures.
     const fetchAbortEvidence = await readFetchAbortEvidence();
     await test.info().attach('release-smoke-final-resource-diagnostics', { contentType: 'application/json',
-      body: Buffer.from(JSON.stringify({ failedResources, fetchAbortEvidence })) });
+      body: Buffer.from(JSON.stringify({ failedResources, fetchAbortEvidence,
+        phaseClocks: bootstrapPhaseClocks, beacons: bootstrapBeacons })) });
     const cancellationEvidence = fetchAbortEvidence.slice();
     const unexpectedFailedResources = failedResources.filter(resource => {
       const failedUrl = new URL(resource.url);
