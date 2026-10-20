@@ -1,0 +1,8 @@
+Check supabase/functions/app-api/suspend-tag-read_test.ts
+running 3 tests from ./supabase/functions/app-api/suspend-tag-read_test.ts
+Suspend Tag row RPC wrapper preserves its rows array ... ok (588µs)
+Suspend Tag row overlay rejects malformed RPC results ... ok (444µs)
+Suspend Tag freshness reads only the newest filename and timestamp ... ok (448µs)
+
+ok | 3 passed | 0 failed (6ms)
+

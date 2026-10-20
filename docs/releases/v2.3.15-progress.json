@@ -582,6 +582,36 @@
       ],
       "log": "docs/releases/v2.3.15-validation/raw/ci-attempt1-failures.log",
       "correction": "Canonicalize recognized text formats; retain byte-exact binary seals and recheck all 1627 source paths against Git blobs before resealing"
+    },
+    {
+      "at": "2026-10-20T18:02:58.981Z",
+      "status": "resolved",
+      "runId": 39470824299,
+      "head": "99d30780497db6a8fe22a7872648a34226fbcfba",
+      "result": "All four unit shards, React, lint, contracts, and backend discovery passed canonical seals"
+    }
+  ],
+  "edgeTypeAttemptHistory": [
+    {
+      "at": "2026-10-20T18:02:58.992Z",
+      "attempt": 1,
+      "cap": 8,
+      "status": "failed",
+      "runId": 39470824299,
+      "cause": "TS18047: optional-chain regex did not narrow possibly-null data in app-api lines 3118 and 3151",
+      "log": "docs/releases/v2.3.15-validation/raw/ci-edge-type-attempt1.log",
+      "productionChanged": false
+    },
+    {
+      "at": "2026-10-20T18:03:49.337Z",
+      "status": "resolved",
+      "change": "Explicit null guards preserve the existing null rejection behavior and narrow types",
+      "denoCheck": "passed",
+      "focusedDenoTests": {
+        "passed": 3,
+        "failed": 0
+      },
+      "productionChanged": false
     }
   ]
 }

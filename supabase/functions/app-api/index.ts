@@ -3114,7 +3114,7 @@ export async function handleManagerReportReadAction(
         if (!sourceRevision) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
       } else {
         const revisionResult = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
-        if (revisionResult.error || !/^[1-9]\d*$/.test(String(revisionResult.data?.revision ?? ""))) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        if (revisionResult.error || !revisionResult.data || !/^[1-9]\d*$/.test(String(revisionResult.data.revision ?? ""))) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
         sourceRevision = String(revisionResult.data.revision);
         if (sourceRevision !== inventoryRevision) throw new Error("MANAGER_REPORT_SOURCE_REVISION_CHANGED");
       }
@@ -3147,7 +3147,7 @@ export async function handleManagerReportReadAction(
         outboxSummary = afterSummary as Record<string, unknown>;
       } else {
         const afterRevision = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
-        if (afterRevision.error || !/^[1-9]\d*$/.test(String(afterRevision.data?.revision ?? ""))) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        if (afterRevision.error || !afterRevision.data || !/^[1-9]\d*$/.test(String(afterRevision.data.revision ?? ""))) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
         if (String(afterRevision.data.revision) !== sourceRevision) {
           return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
         }

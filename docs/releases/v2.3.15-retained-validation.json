@@ -3,7 +3,7 @@
   "release": "AgData v2.3.15",
   "base": "ebe5547b11fb415ef83b3f2891973776c5b4d682",
   "evidencePathPrefix": "docs/releases/v2.3.15-validation/",
-  "sourceDigest": "ab7a8d8c8ca14ecf613974e6fe36f02acb5f6f12e67b2228870f14be1047adcc",
+  "sourceDigest": "8fdbd44d43778d58ddc068b46cf1920154d649bc139a53b697c3ad8f9ebde605",
   "sourceHashes": {
     ".github/workflows/apps-script-sync.yml": "fc5c22be9f886a149aa03c693b5197f426f8f126152e995d503ec3244c80042c",
     ".github/workflows/pages-static.yml": "ea8a0677326f962a115e30f4d442418d8f263fd2d44fc4442b4d8086a1cea927",
@@ -17,7 +17,7 @@
     "assets/queue-inventory-hydration.js": "318392b4152f59f74edc462b8749b98114c76c2b35f155d215de4b9422229f19",
     "docs/releases/v2.3.14-validation/checkpoint.json": "ea24815dc13cc11a68be531251f695cb6c095b96867cd84039d830c6a2ca331f",
     "docs/releases/v2.3.14-validation/reset2-checkpoint.json": "ce08a4ec64e766f3ad3749fa9a961afd30585542fda92d45f924bc7db2d66717",
-    "docs/releases/v2.3.15-progress.json": "e75e5be06fba02b4d4c64fbffbfa64eabb85be868eb5d548448c96df6d19d801",
+    "docs/releases/v2.3.15-progress.json": "222843a7c3214909aca66ea47bcfc2bc4b5afc6db997f62e4cf0877f044f89eb",
     "index.html": "ee87cee366902645cc8df32a3f24fc77cbd844177f886af73de1c8b6fcbd76c9",
     "manifest.json": "38dee74be6daab0c9b70c7d1a4137e43196e5d61170d0d9248cc0a3d7eddf291",
     "package-lock.json": "9501a350d936db37983922dc3bd179a779050d9e95773d627692b13fa03c84dd",
@@ -34,7 +34,7 @@
     "scripts/run-release-smoke.mjs": "ddc3d7a507c943a07bf56bf62f6a8226660d8d9f5a95b1410d28d8bbdf342687",
     "scripts/run-release-unit-checks.mjs": "8ce85e4327f92753411075192744f4288c454ff957949fa6149b3f39f200092f",
     "supabase/functions/_shared/production-workflow.ts": "ad8a3e6fa5ecf147e487f2e1a3acb69e9645fec5fe272180c4db6bfeaeaa7da1",
-    "supabase/functions/app-api/index.ts": "d119d9dfcd8ae81ac2affbefd821bbf754e7587ae4892526d72398fbb3ce6ae7",
+    "supabase/functions/app-api/index.ts": "7206c49ce10e9742a5f4cbb12e515474713e9432ba07cc597cacdc7e573b146e",
     "supabase/functions/app-api/suspend-tag-read.ts": "6d097ac743fff11b71c1a162e74d55a1dc5ea64888279bfbf2014025ada6b240",
     "supabase/functions/app-api/suspend-tag-read_test.ts": "5d82b67c44c86d759842080b37f333906c008cc5a808ae0bf7988f5728f4477d",
     "supabase/functions/request-delivery-worker/index.ts": "19b2906e4d514b7a766626b01b66ae7df5f98f43459b9a82f6d6b5fd9df6fa78",
@@ -113,10 +113,10 @@
     "exportWarehouseAssignedItemsToSheet_"
   ],
   "evidenceHashes": {
-    "docs/releases/v2.3.15-validation/unit.json": "926e12a1bc13a1e9167b561e54e174c16c100dd4af461d327f91a92132c0f163",
-    "docs/releases/v2.3.15-validation/tooling.json": "1772d50885112965e0845a5ebf563f0da676cf4dfb7d66f1e40d4bb5e0b6eddc",
-    "docs/releases/v2.3.15-validation/browser.json": "9d1522aa84612bed995b0ac9b42c0e3f852762385235da7bdb1aa3fa7bf8b9c3",
-    "docs/releases/v2.3.15-validation/database.json": "9538da6481b0647ad98afb59dcd4aa46865264b398673df49a3bdc4c4efe45f7"
+    "docs/releases/v2.3.15-validation/unit.json": "6199325c3a63b72dde8a3dadb548a5ddf7877290a6de8a86e0e3356db6e5c94e",
+    "docs/releases/v2.3.15-validation/tooling.json": "9c026424fabfa1e76ee3f63d169247ecb54a70170384d16749d6b9653b432f3d",
+    "docs/releases/v2.3.15-validation/browser.json": "9be6f7e55291512818761b854dfef6adcfd444c8749859ed94327af26fba822f",
+    "docs/releases/v2.3.15-validation/database.json": "c832f62ac4589ebe7055f13beac6b912418a5dab494aefe5b1711655377412e0"
   },
   "requiredKinds": [
     "database"
