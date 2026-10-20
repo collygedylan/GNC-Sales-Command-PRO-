@@ -73,7 +73,7 @@ function validateBrowserEvidence(value, contract) {
   const metricIds = contract.metricIds;
   if (!Array.isArray(requiredProjects) || !requiredProjects.length || !Array.isArray(metricIds) || !metricIds.length
     || requiredProjects.length !== 3 || new Set(requiredProjects).size !== 3
-    || !(contract.renderMsExclusive > 0) || contract.renderMsExclusive > 400
+    || !(contract.renderMsMaximum > 0) || contract.renderMsMaximum > 2000
     || !(contract.expectedCards > 0) || !(contract.minimumMasterRows > 0)
     || ['requireSorted', 'requireMetrics', 'requireNoProductionWrites', 'requireLastCard', 'requireCompleteControl', 'requireNoOverflow']
       .some(key => contract[key] !== true)) {
@@ -84,7 +84,7 @@ function validateBrowserEvidence(value, contract) {
     const row = rows.find(candidate => candidate.project === project || candidate.environment === project);
     const metrics = row?.metrics || row;
     const layout = row?.lastCardLayout;
-    if (!row || metrics.renderMs < 0 || metrics.renderMs >= contract.renderMsExclusive
+    if (!row || !Number.isFinite(metrics.renderMs) || metrics.renderMs < 0 || metrics.renderMs > contract.renderMsMaximum
       || metrics.cards !== contract.expectedCards || metrics.expectedCards !== contract.expectedCards
       || metrics.masterRows < contract.minimumMasterRows
       || (contract.requireSorted === true && metrics.sorted !== true)

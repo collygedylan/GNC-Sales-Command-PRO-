@@ -14,7 +14,7 @@ const settle = async () => { for (let i = 0; i < 25; i++) await Promise.resolve(
 function fixture() {
     let revision = '1', state = 'ready', permission = 'role-v1', changedAt = '2026-10-08T00:00:00Z', clock = 1000;
     let rows = [{ id: 'dock-28' }], reads = 0, metadataReads = 0, subscriptions = 0, closes = 0;
-    let fault = null, loadHook = null, metadataHook = null, notify = null, sourceGateReadChecks = false;
+    let fault = null, loadHook = null, metadataHook = null, notify = null, sourceGateReadChecks = false, publication = null;
     const commits = [], statuses = [], permissionChanges = [], timers = new Map(); let timerId = 0;
     const adapter = { id: 'core:soc', cacheKey: 'soc/all', sourceKeys: ['ph_soc_master'],
         stage: async ({ signal } = {}) => { reads++; if (sourceGateReadChecks && coordinator.isSourceReadSuspended()) throw Object.assign(new Error('LOC_SOURCE_READ_SUSPENDED'), { code: 'LOC_SOURCE_READ_SUSPENDED' }); if (fault) throw fault; const captured = structuredClone(rows); if (loadHook) await loadHook(signal); if (signal?.aborted) throw signal.reason || new Error('Stage aborted.'); return captured; },
@@ -26,7 +26,7 @@ function fixture() {
         readRevisions: async (keys, readOptions = {}) => {
             metadataReads++; if (metadataHook) await metadataHook(keys, readOptions);
             const result = { contractVersion: 1, permissionVersion: permission, serverTime: '2026-09-08T00:00:00Z',
-                sources: keys.map((key) => ({ key, revision, state, changedAt })) };
+                sources: keys.map((key) => ({ key, revision, state, changedAt, ...(publication || {}) })) };
             return result;
         },
         onStatus: (value) => statuses.push(value), onPermissionChange: (...args) => permissionChanges.push(args), now: () => clock,
@@ -37,7 +37,7 @@ function fixture() {
     return { coordinator, context, adapter, commits, statuses, permissionChanges, timers,
         get revision() { return revision; }, set revision(value) { revision = value; }, set state(value) { state = value; }, set changedAt(value) { changedAt = value; }, set rows(value) { rows = value; },
         set fault(value) { fault = value; }, set loadHook(value) { loadHook = value; }, set metadataHook(value) { metadataHook = value; }, set sourceGateReadChecks(value) { sourceGateReadChecks = value; },
-        set permission(value) { permission = value; },
+        set permission(value) { permission = value; }, set publication(value) { publication = value; },
         get clock() { return clock; }, set clock(value) { clock = value; },
         get reads() { return reads; }, get metadataReads() { return metadataReads; }, get subscriptions() { return subscriptions; }, get closes() { return closes; },
         notify: () => notify?.(),
@@ -959,3 +959,35 @@ for (const [name, stateKey, args] of [
     assert.deepEqual(calls, [true, false]);
 });
 // @test-group: foundation
+
+
+test('published complete baseline loads on cold entry during a failed atomic import without granting current write proof', async () => {
+    const f = fixture(); f.state = 'interrupted';
+    f.publication = { publishedReadable: true, publishedRevision: 'receipt-1:revision-1', publishedAt: '2026-10-20T02:26:00Z' };
+    assert.equal(await f.coordinator.check(), true);
+    assert.equal(f.reads, 1);
+    assert.equal(f.commits.length, 1);
+    assert.equal(f.coordinator.getStatus().state, 'Published data');
+    assert.equal(f.coordinator.getStatus().readOnlySnapshot, true);
+    assert.equal(f.coordinator.getStatus().dataReadable, true);
+    f.coordinator.reset();
+});
+
+test('an incomplete publication proof cannot authorize a cold row read', async () => {
+    for (const publication of [null, { publishedReadable: true },
+        { publishedReadable: true, publishedRevision: 'receipt', publishedAt: 'invalid' },
+        { publishedReadable: false, publishedRevision: 'receipt', publishedAt: '2026-10-20T02:26:00Z' }]) {
+        const f = fixture(); f.state = 'interrupted'; f.publication = publication;
+        assert.equal(await f.coordinator.check(), false); assert.equal(f.reads, 0); f.coordinator.reset();
+    }
+});
+
+test('published baseline reads discard a changed publication token and retain auth denial protection', async () => {
+    const f = fixture(); f.state = 'interrupted';
+    f.publication = { publishedReadable: true, publishedRevision: 'receipt:1', publishedAt: '2026-10-20T02:26:00Z' };
+    f.loadHook = () => { f.publication = { publishedReadable: true, publishedRevision: 'receipt:2', publishedAt: '2026-10-20T02:27:00Z' }; f.state = 'unavailable'; };
+    assert.equal(await f.coordinator.check(), false); assert.equal(f.commits.length, 0);
+    f.loadHook = null; f.state = 'interrupted'; f.fault = Object.assign(new Error('forbidden'), { status: 403 });
+    assert.equal(await f.coordinator.check(), false); assert.equal(f.commits.length, 0);
+    assert.equal(f.coordinator.getStatus().authorizationDenied, true); f.coordinator.reset();
+});

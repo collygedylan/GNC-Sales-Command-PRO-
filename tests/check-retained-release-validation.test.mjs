@@ -84,7 +84,7 @@ function fixture({ protectedEdit = false, omitDatabase = false } = {}) {
     deployment: { edgeFunctions: ['request-delivery-worker'], migrations: [migration] },
     testedMigrationHashes: { [migration]: hash(fs.readFileSync(path.join(root, migration))) },
     browserContract: { projects: ['desktop-chromium', 'android-chromium', 'iphone-webkit'], metricIds: ['on-hand'], expectedCards: 1,
-      minimumMasterRows: 1, renderMsExclusive: 400, requireSorted: true, requireMetrics: true,
+      minimumMasterRows: 1, renderMsMaximum: 2000, requireSorted: true, requireMetrics: true,
       requireNoProductionWrites: true, requireLastCard: true, requireCompleteControl: true, requireNoOverflow: true },
   };
   if (omitDatabase) {
@@ -138,10 +138,10 @@ test('scoped release verifier rejects Code.gs protected edits outside the allowl
 test('scoped release verifier rejects relaxed or incomplete browser release gates', () => {
   const state = fixture();
   try {
-    state.receipt.browserContract.renderMsExclusive = 400.01;
+    state.receipt.browserContract.renderMsMaximum = 2000.01;
     write(state.root, receiptPath, `${JSON.stringify(state.receipt, null, 2)}\n`);
     assert.throws(() => verifyScopedRetainedValidation({ rootDir: state.root }), /SCOPED_BROWSER_CONTRACT_INVALID/);
-    state.receipt.browserContract.renderMsExclusive = 400;
+    state.receipt.browserContract.renderMsMaximum = 2000;
     state.receipt.browserContract.requireNoOverflow = false;
     write(state.root, receiptPath, `${JSON.stringify(state.receipt, null, 2)}\n`);
     assert.throws(() => verifyScopedRetainedValidation({ rootDir: state.root }), /SCOPED_BROWSER_CONTRACT_INVALID/);

@@ -157,6 +157,61 @@
         return true;
     };
 
+    function isOwnedShellRegistration(registration) {
+        try {
+            const appScope = new URL('./', root.location.href);
+            const expectedScript = new URL('./sw.js', root.location.href);
+            const scope = new URL(registration?.scope || '');
+            if (scope.origin !== appScope.origin || scope.href !== appScope.href) return false;
+            const worker = registration.active || registration.waiting || registration.installing;
+            const script = new URL(worker?.scriptURL || '');
+            return script.origin === expectedScript.origin && script.pathname === expectedScript.pathname;
+        } catch (_) { return false; }
+    }
+
+    root.clearOwnedShellControllerState = async targetBuild => {
+        const safeTarget = String(targetBuild || '').trim();
+        const prefix = 'ag-data-v4.3-rebuild-';
+        try {
+            const serviceWorker = root.navigator?.serviceWorker;
+            if (typeof serviceWorker?.getRegistrations === 'function') {
+                const registrations = await serviceWorker.getRegistrations();
+                await Promise.allSettled(registrations.filter(isOwnedShellRegistration)
+                    .map(registration => registration.unregister()));
+            }
+        } catch (_) {}
+        try {
+            if (typeof root.caches?.keys === 'function' && typeof root.caches?.delete === 'function') {
+                const keys = await root.caches.keys();
+                const obsoleteShellCaches = keys.filter(key => key.startsWith(prefix)
+                    && (!safeTarget || !key.includes(safeTarget)));
+                await Promise.allSettled(obsoleteShellCaches.map(key => root.caches.delete(key)));
+            }
+        } catch (_) {}
+        root.__swReg = null;
+        return true;
+    };
+
+    root.registerGncServiceWorkerSafely = async (serviceWorker, scriptUrl, options, handlers = {}) => {
+        const unavailable = reason => {
+            try { handlers.onUnavailable?.(reason); } catch (_) {}
+            return null;
+        };
+        if (typeof serviceWorker?.register !== 'function') return unavailable('registration-api-unavailable');
+        try {
+            const registrationPromise = serviceWorker.register(scriptUrl, options);
+            if (!registrationPromise || typeof registrationPromise.then !== 'function') {
+                return unavailable('registration-promise-unavailable');
+            }
+            const registration = await registrationPromise;
+            if (!registration || typeof registration !== 'object') return unavailable('registration-result-unavailable');
+            return registration;
+        } catch (error) {
+            try { handlers.onError?.(error); } catch (_) {}
+            return null;
+        }
+    };
+
     // Available before the application runtime, including when an old runtime fails.
     // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
     let shellRecovery = null;
@@ -166,7 +221,7 @@
         const target = String(targetBuild || '').trim();
         if (!current || current === target || !isShellRelease(target)
             || root.navigator?.onLine === false) return Promise.resolve(false);
-        if (shellRecovery) return shellRecovery;
+        if (shellRecovery) return Promise.resolve(false);
         const marker = `${current}:${target}`;
         const next = new URL(root.location.href);
         if (next.searchParams.get('shellrecovered') === marker) return Promise.resolve(false);
@@ -176,15 +231,7 @@
         } catch (_) { /* The URL also bounds recovery when storage is disabled. */ }
         shellRecovery = (async () => {
             suspendNavigation();
-            try {
-                const registrations = await root.navigator.serviceWorker?.getRegistrations() || [];
-                await Promise.allSettled(registrations.map(registration => registration.unregister()));
-            } catch (_) {}
-            try {
-                const keys = await root.caches?.keys() || [];
-                await Promise.allSettled(keys.map(key => root.caches.delete(key)));
-            } catch (_) {}
-            root.__swReg = null;
+            await root.clearOwnedShellControllerState(target);
             next.searchParams.set('shellv', target);
             next.searchParams.set('shellts', String(Date.now()));
             next.searchParams.set('shellrecovered', marker);

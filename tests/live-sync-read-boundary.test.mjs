@@ -91,6 +91,8 @@ function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = f
     const crumb = {};
     const ctx = {
         avRenderChunkToken: 0, CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 1000,
+        CLIENT_BROWSE_PAGE_SIZE: 100, canUseProductionLiveSync: () => false, shouldUseRepAvOpenDataset: () => false,
+        installAvCardWindowContinuation() {},
         IOS_CHUNK_FRAME_BUDGET_MS: 4, IOS_CHUNK_SYNC_ROW_LIMIT: 48,
         window: { innerHeight: 800, matchMedia: () => ({ matches: false }) },
         document: { documentElement: { clientHeight: 800 } }, performance: { now: () => 0 },
@@ -117,7 +119,7 @@ function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = f
     };
     vm.createContext(ctx);
     vm.runInContext(extractAppFunction('shouldUseChunkedAVOpenRender')
-        + extractAppFunction('renderAVOpenCardsChunked'), ctx);
+        + extractAppFunction('getAvCardWindowEnd') + extractAppFunction('renderAVOpenCardsChunked'), ctx);
     const rows = Array.from({ length: total }, (_value, id) => ({ id }));
     const start = () => ctx.renderAVOpenCardsChunked(container, crumb, rows, 'av', 'AV rows', '<footer/>', { firstPreviewCardSync });
     const flush = () => {
@@ -979,7 +981,8 @@ test('master detail hydration selects exactly one full row inside a stable permi
             assert.equal(JSON.stringify(keys), '["ph_master_inventory"]');
             assert.equal(value.permissionVersion, 'access-v1');
             return value;
-        } }, AgMetricInventoryList: inventoryContract },
+        }, isReadableSource: source => source?.state === 'ready',
+        readSourceToken: source => JSON.stringify([source?.revision || '', source?.state || '']) }, AgMetricInventoryList: inventoryContract },
         staleSupabaseReadScopeError: () => Object.assign(new Error('scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' })
     };
     vm.createContext(ctx);
@@ -991,6 +994,61 @@ test('master detail hydration selects exactly one full row inside a stable permi
     assert.ok(calls[1][4]?.signal);
     assert.equal(calls[1][4]?.label, 'Inventory row details');
     assert.equal(calls.length, 3, 'the exact row is bracketed by two revision reads');
+});
+
+test('openDetail opens the authorized current master card immediately and fills only untouched fields after one revision-race retry', async () => {
+    let view = 'drive';
+    const identity = 'account-a';
+    const fallback = { UNIQUE_ID: 'uid-rosy', SOURCE_TABLE: 'ph_master_inventory', ITEMCODE: '010539.030.1', LOCATIONCODE: 'F.16.000', LOTCODE: '27.F1', COMMONNAME: 'Rosy Muhly' };
+    const secondRead = deferred();
+    let exactReads = 0;
+    const renderCalls = [];
+    const ctx = {
+        String, Object, Set, Math, Date,
+        firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') || '',
+        activeItem: null, activeDetailSourceView: '', lastView: 'drive', pendingDetailTapStartedAt: 0,
+        detailHydrationToken: 0, DETAIL_HYDRATION_DELAY_MS: 180,
+        getSupabaseReadIdentityScope: () => identity,
+        getCurrentVisibleViewId: () => view,
+        getProductionLiveSyncContext: () => ({ scope: identity, dataPermissionVersion: 'access-v1' }),
+        isMasterInventoryRowVisibleToCurrentUser: row => row === fallback || String(row?.UNIQUE_ID || '') === 'uid-rosy',
+        needsMasterDetailHydration: row => row?.SOURCE_TABLE === 'ph_master_inventory',
+        resolveDetailItemBySource: () => fallback,
+        loadExactMasterDetailRow: async () => {
+            exactReads += 1;
+            if (exactReads === 1) throw new Error('Inventory changed while opening this row. Reopen it to load a consistent copy.');
+            return secondRead.promise;
+        },
+        beginInternalPerfMeasure: () => 1, recordInternalPerfDuration() {}, beginDirectNavigationActivity() {},
+        rememberDetailReturnPosition() {}, armDetailCameraInputGuard() {}, clearPendingDetailHydration() {},
+        markDetailTransitionActivity() {}, resetDriveCustomerOutreachState() {}, resetDetailOverviewFieldSearch() {},
+        getPrimaryDetailTabForItemContext: () => 'overview', resolveVisibleDetailTab: value => value || 'overview',
+        renderDetailShellView() {}, showPrimaryViewWithScrollPolicy: () => { view = 'detail'; },
+        schedulePrimaryViewChromeRefresh() {}, scheduleDeferredDetailHydration() {}, shouldShowRequestOpenInfoModal: () => false,
+        isTouchConstrainedDevice: () => false, getCurrentPrimaryViewId: () => 'detail',
+        populateDetailSummaryValues: (row) => renderCalls.push(['summary', row.COMMONNAME]),
+        renderDriveDetailOverviewFields: () => renderCalls.push(['overview']), refreshProtectedSections: () => renderCalls.push(['protected']),
+        renderSavedPhotos: () => renderCalls.push(['photos']), scheduleUiRender: (_key, callback) => callback(),
+        hasActiveTextEntryFocus: () => false, showToast: (...args) => renderCalls.push(['toast', ...args]),
+        currentRole: 'Admin', currentUserDivision: '10'
+    };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('mergeExactMasterDetailFieldsPreservingLocalChanges'), ctx);
+    vm.runInContext(extractAppFunction('openDetail'), ctx);
+
+    ctx.openDetail('uid-rosy', 'drive');
+    assert.equal(view, 'detail', 'the card detail shell opens synchronously without waiting for network refresh');
+    assert.equal(ctx.activeItem.UNIQUE_ID, 'uid-rosy');
+    assert.equal(ctx.activeItem.COMMONNAME, 'Rosy Muhly');
+    await settle();
+    assert.equal(exactReads, 2, 'only the explicit source-revision race retries once');
+    ctx.activeItem.COMMONNAME = 'Unsaved draft name';
+    secondRead.resolve({ UNIQUE_ID: 'uid-rosy', SOURCE_TABLE: 'ph_master_inventory', ITEMCODE: '010539.030.1', LOCATIONCODE: 'F.16.000', LOTCODE: '27.F1', COMMONNAME: 'Rosy Muhly (Full)', PTRAVAILABLE: 88 });
+    await settle();
+    assert.equal(ctx.activeItem.COMMONNAME, 'Unsaved draft name', 'a field edited while refresh was pending is preserved');
+    assert.equal(ctx.activeItem.PTRAVAILABLE, 88, 'untouched full-row fields are added from the exact read');
+    assert.ok(renderCalls.some(call => call[0] === 'summary'), 'the expanded detail is refreshed after safe merge');
+    assert.ok(!renderCalls.some(call => call[0] === 'toast' && call[1] === 'Row Details Unavailable'));
 });
 
 test('master detail hydration discards a lookup when its source revision changes mid-read', async () => {
@@ -1025,6 +1083,7 @@ function permissionFixture(options = {}) {
         normalizeRoleAccessToken: (value) => String(value).toLowerCase(), normalizeAppUserLanguage: (value) => value,
         localStorage: { setItem() {} }, persistAppSessionRecord() {}, ensureNativeAppSessionBridge: async () => {},
         clearRoleScopedClientCaches: () => { calls.push('clear'); ctx.appAccessSnapshotState = {}; ctx.requestCapabilityState = {}; },
+        configureCanonicalUserAccess: async () => { calls.push('canonical'); },
         initializeAppAccessSnapshot: async () => { calls.push('access'); ctx.appAccessSnapshotState = options.failure ? { status: 'error' } : { status: 'ready', stale: false, snapshot: {} }; },
         initializeRequestCapabilities: async () => { calls.push('capabilities'); ctx.requestCapabilityState = { status: 'ready', stale: false, capabilities: {} }; },
         ensureAssignableAppUsers: async () => {}, ensureFlyerAssignableUsers: async () => {},
@@ -1039,7 +1098,7 @@ test('same-role policy changes reload and apply authoritative permissions before
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('foreground'), false);
     assert.equal(ctx.calls.length, 0);
     assert.equal(await ctx.refreshNativeRoleAndCapabilities('live-permissions'), true);
-    assert.deepEqual(ctx.calls, ['clear', 'capabilities', 'access', 'apply']);
+    assert.deepEqual(ctx.calls, ['clear', 'canonical', 'capabilities', 'access', 'apply']);
 });
 
 test('division changes refresh capability scope even without a role change', async () => {
@@ -1064,7 +1123,7 @@ test('live permission signal arriving during a foreground check performs a full 
     const policy = ctx.refreshNativeRoleAndCapabilities('live-permissions');
     gate.resolve();
     assert.equal(await foreground, false); assert.equal(await policy, true);
-    assert.deepEqual(ctx.calls, ['clear', 'capabilities', 'access', 'apply']);
+    assert.deepEqual(ctx.calls, ['clear', 'canonical', 'capabilities', 'access', 'apply']);
 });
 
 test('permission-change coordinator callback returns the permission refresh promise', () => {
@@ -1309,7 +1368,7 @@ test('native database helpers never fall through to the prohibited legacy proxy'
 test('progressive disk display accepts an older revision only with the same account, query and permissions', async () => {
     const meta = { contractVersion: 1, scope: 'account-a', adapterId: 'core:master', cacheKey: 'master/all', dataPermissionVersion: 'permission-a', signature: JSON.stringify(['permission-a', ['master', '2', 'ready']]) };
     let saved = { format: 'verified-raw-v1', meta: { ...meta, signature: JSON.stringify(['permission-a', ['master', '1', 'ready']]) },
-        rawRows: Array.from({ length: 1300 }, (_, index) => ({ unique_id: `old-${index}`, commonname: `Plant ${index}` })), rowCount: 1300,
+        rawRows: Array.from({ length: 1300 }, (_, index) => ({ unique_id: `old-${index}`, commonname: `Plant ${index % 432}` })), rowCount: 1300, sourceRowCount: 1300,
         rowCompleteness: 'complete', projection: 'browse', fieldCoverage: 'browse', columns: inventoryContract.columns };
     const ctx = { JSON, Array, Map, getSupabaseReadIdentityScope: () => 'account-a',
         appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'permission-a' } },
@@ -2167,4 +2226,41 @@ test('complete concurrent paging rejects a short continuation page instead of pu
   await assert.rejects(ctx.fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'browse' }, {
     firstPageLimit: 50, limit: 500, pageConcurrency: 2, requireComplete: true
   }), /Inventory page was incomplete/);
+});
+
+
+test('Drive Common Names finishes all 9486 rows after a small preview and keeps complete 432-name proof', async () => {
+  const sourceRows = Array.from({ length: 9486 }, (_, index) => ({ unique_id: `drive-${index}`, commonname: `Plant ${index % 432}` }));
+  const offsets = [];
+  const ctx = {
+    fetchInventoryReadPage: async (_operation, _params, limit, offset) => {
+      offsets.push(offset);
+      return { rows: sourceRows.slice(offset, offset + limit), total: sourceRows.length, hasMore: offset + limit < sourceRows.length,
+        projection: 'browse', fieldCoverage: 'browse', columns: ['unique_id', 'commonname'] };
+    }, yieldToUiFrame: async () => {}, shouldScopeMasterInventoryToCurrentEval: () => false,
+    MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT: 1200,
+    firstNonEmptyValue: (...values) => values.find(value => value != null && value !== '')
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractMasterPagingFunction() + extractAppFunction('countUniqueCacheCommonNames')
+    + extractAppFunction('masterRowsLookPartialForCurrentScope'), ctx);
+  const rows = await ctx.fetchAllInventoryReadRows('master_page', { projection: 'browse' }, { firstPageLimit: 75, limit: 500, requireComplete: true });
+  assert.equal(rows.length, 9486);
+  assert.equal(new Set(rows.map(row => row.commonname)).size, 432);
+  assert.equal(rows.readMeta.rowCompleteness, 'complete');
+  assert.equal(ctx.masterRowsLookPartialForCurrentScope(rows), false);
+  assert.equal(ctx.masterRowsLookPartialForCurrentScope(rows.slice(0, 75)), true);
+  assert.equal(offsets[1], 75);
+  assert.equal(rows.at(-1).unique_id, 'drive-9485');
+});
+
+test('sequential full inventory paging rejects changing source totals', async () => {
+  const ctx = {
+    fetchInventoryReadPage: async (_operation, _params, limit, offset) => ({
+      rows: Array.from({ length: limit }, (_, index) => ({ unique_id: `row-${offset + index}` })),
+      total: offset === 0 ? 1000 : 1001, hasMore: true, projection: 'browse', fieldCoverage: 'browse', columns: ['unique_id']
+    }), yieldToUiFrame: async () => {}
+  };
+  vm.createContext(ctx); vm.runInContext(extractMasterPagingFunction(), ctx);
+  await assert.rejects(ctx.fetchAllInventoryReadRows('master_page', {}, { requireComplete: true }), /Inventory total changed/);
 });

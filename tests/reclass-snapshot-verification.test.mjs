@@ -24,16 +24,27 @@ function fixture() {
   const master = { initialLoaded: true, rowCompleteness: 'partial', fieldCoverage: 'browse', fullLoaded: false };
   const live = { scope: 'native-user-a', dataPermissionVersion: 'permission-7' };
   const runtime = { identity: 'profile-a/admin/login-a', readScope: 'owner-a', revision: 41, minRevision: 0, reads: 0,
-    canUse: true, sourceState: 'ready', beforeRead: null };
+    canUse: true, sourceState: 'ready', publishedReadable: false, beforeRead: null };
   const context = { console, Map, Set, AbortController, nativeAuthSessionActive: true, nativeAuthProfile: { id: 'profile-a' },
     getSupabaseReadIdentityScope: () => runtime.readScope,
     getProductionLiveSyncContext: () => ({ ...live }), canUseProductionLiveSync: () => runtime.canUse,
     getArgosReclassLiveEditIdentityKey: () => runtime.identity,
     isConfirmedInventoryReadRevisionCurrent: revision => Number(revision) >= runtime.minRevision,
     withProductionLiveSyncSignal: async (_signal, callback) => callback(new AbortController().signal),
-    window: { AgMetricLiveSync: { snapshot: value => value } },
+    window: { AgMetricLiveSync: {
+      snapshot: value => value,
+      isPublishedReadable: source => !!source && ['importing', 'interrupted'].includes(source.state)
+        && source.publishedReadable === true && typeof source.publishedRevision === 'string'
+        && source.publishedRevision.length > 0 && Number.isFinite(Date.parse(source.publishedAt)),
+      isReadableSource: source => source?.state === 'ready' || !!source && ['importing', 'interrupted'].includes(source.state)
+        && source.publishedReadable === true && typeof source.publishedRevision === 'string'
+        && source.publishedRevision.length > 0 && Number.isFinite(Date.parse(source.publishedAt)),
+      readSourceToken: source => JSON.stringify([source?.revision || '', source?.state || '', source?.publishedRevision || ''])
+    } },
     supabaseRpc: async () => ({ permissionVersion: live.dataPermissionVersion,
-      sources: new Map([['ph_master_inventory', { state: runtime.sourceState, revision: runtime.revision }]]) }),
+      sources: new Map([['ph_master_inventory', { state: runtime.sourceState, revision: runtime.revision,
+        publishedReadable: runtime.publishedReadable, publishedRevision: runtime.publishedReadable ? `pub-${runtime.revision}` : '',
+        publishedAt: runtime.publishedReadable ? '2026-10-20T12:00:00Z' : '' }]]) }),
     fetchAllInventoryReadRows: async () => { runtime.reads++; await runtime.beforeRead?.();
       const rows = [{ ...physical }]; rows.readMeta = { projection: 'full' }; return rows; },
     validateInventoryReadProjection: meta => assert.equal(meta.projection, 'full'),
@@ -101,6 +112,36 @@ test('unverified native cache silently verifies the same rows inline and preserv
   assert.equal(JSON.stringify(f.payload), originalPayload);
   assert.equal(f.context.buildInventoryReclassMoveCommand(f.payload, state).expectedRevision, 41);
   assert.equal(f.master.liveVerifiedRevision, undefined);
+});
+
+test('bracketed published last-good inventory can submit against its exact revision while a failed import is deferred', async () => {
+  const f = fixture();
+  f.runtime.sourceState = 'interrupted';
+  f.runtime.publishedReadable = true;
+  const state = f.makeState({ row: { ...f.physical }, rows: [{ ...f.physical }] });
+  state.verifiedInquiryGroup = null;
+  state.verificationIdentityKey = f.runtime.identity;
+  await f.context.ensureArgosReclassSubmissionVerification(state);
+  assert.equal(state.verifiedInquiryGroup.sourceState, 'interrupted');
+  assert.equal(state.verifiedInquiryGroup.sourceBracketed, true);
+  assert.equal(state.verifiedInquiryGroup.sourcePublishedReadable, true);
+  assert.ok(state.verifiedInquiryGroup.sourceToken);
+  assert.equal(f.context.buildInventoryReclassMoveCommand(f.payload, state).expectedRevision, 41,
+    'the published read bracket carries the numeric revision required by the server-side row lock/CAS');
+  assert.equal(f.runtime.reads, 1);
+  assert.equal(f.master.liveVerifiedRevision, undefined, 'the targeted LKG read does not bless the global cache');
+});
+
+test('an importing source with a readable published baseline is display-only until the staged import is terminal', async () => {
+  const f = fixture();
+  f.runtime.sourceState = 'importing';
+  f.runtime.publishedReadable = true;
+  const state = f.makeState({ row: { ...f.physical }, rows: [{ ...f.physical }] });
+  state.verifiedInquiryGroup = null;
+  state.verificationIdentityKey = f.runtime.identity;
+  await assert.rejects(f.context.ensureArgosReclassSubmissionVerification(state), /verification is temporarily unavailable/);
+  assert.equal(state.verifiedInquiryGroup, null);
+  assert.equal(f.runtime.reads, 1);
 });
 
 test('inline verification rejects changed stock without rebasing or discarding entered quantities', async () => {

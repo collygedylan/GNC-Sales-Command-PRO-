@@ -384,10 +384,12 @@ async function captureReadyInventoryLocationRevision(actorId: string): Promise<s
   const { data, error } = await supabase.from("app_dataset_revisions")
     .select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
   if (error) throw new Error("LOC_ON_HAND_SOURCE_UNAVAILABLE");
-  if (!data || data.state !== "ready" || !/^[1-9]\d*$/.test(String(data.revision ?? ""))) {
+  if (!data || !/^[1-9]\d*$/.test(String(data.revision ?? ""))) {
     throw new Error("LOC_ON_HAND_SOURCE_NOT_READY");
   }
-  // The RPC remains authoritative if a new import starts after this preflight.
+  // Do not decide readiness from the fence row alone. The read-only RPC also
+  // accepts an attested last-published snapshot while a staged atomic import
+  // is interrupted, but still compares this exact revision before returning.
   return captureInventoryLocationRevision(supabase, actorId);
 }
 
@@ -3112,8 +3114,9 @@ export async function handleManagerReportReadAction(
         if (!sourceRevision) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
       } else {
         const revisionResult = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
-        if (revisionResult.error || revisionResult.data?.state !== "ready") throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        if (revisionResult.error || !/^[1-9]\d*$/.test(String(revisionResult.data?.revision ?? ""))) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
         sourceRevision = String(revisionResult.data.revision);
+        if (sourceRevision !== inventoryRevision) throw new Error("MANAGER_REPORT_SOURCE_REVISION_CHANGED");
       }
       if (query.sourceRevision != null && String(query.sourceRevision) !== sourceRevision) {
         return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
@@ -3144,7 +3147,7 @@ export async function handleManagerReportReadAction(
         outboxSummary = afterSummary as Record<string, unknown>;
       } else {
         const afterRevision = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
-        if (afterRevision.error || afterRevision.data?.state !== "ready") throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        if (afterRevision.error || !/^[1-9]\d*$/.test(String(afterRevision.data?.revision ?? ""))) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
         if (String(afterRevision.data.revision) !== sourceRevision) {
           return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
         }

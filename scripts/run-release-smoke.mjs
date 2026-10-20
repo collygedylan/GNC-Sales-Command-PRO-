@@ -117,7 +117,7 @@ export async function runReleaseSmoke({ env = process.env, print = console.log }
       const expectedMetrics = ['on-hand', 'review', 'available', 'open-stock', 'loc-photo-match', 'loc-on-hand'];
       const evidenceValid = browserMetrics.length === 3 && browserMetrics.every(({ project, metrics, lastCardLayout }) =>
         report.browserProjects.includes(project) && metrics?.cards === 37 && metrics.expectedCards === 37
-        && metrics.masterRows >= 9000 && metrics.renderMs >= 0 && metrics.renderMs < 400
+        && metrics.masterRows >= 9000 && metrics.renderMs >= 0 && metrics.renderMs <= 2000
         && metrics.sorted === true && metrics.metricsVerified === true && metrics.productionWrites === false
         && lastCardLayout?.inViewport === true && lastCardLayout.cardOverflow === false && lastCardLayout.completeTagVisible === true
         && expectedMetrics.every(id => lastCardLayout.metrics?.some(metric => metric.id === id

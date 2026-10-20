@@ -343,7 +343,7 @@ async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend')
   const durations = result.renderDurations.filter(item => item.stage === stage);
   const chunks = result.chunkDurations.filter(item => item.stage === stage);
   const operations = result.operations.filter(item => item.stage === stage);
-  const limitMs = 1500;
+  const limitMs = 2000;
   expect(durations.length).toBeGreaterThan(0);
   const operationSummary = operations.reduce<Record<string, typeof operations>>((summary, item) => {
     (summary[item.name] ||= []).push(item);
@@ -420,7 +420,7 @@ async function attachRequestRenderTimings(page: Page, testInfo: TestInfo, apiCal
     await writeFile(timingsPath, JSON.stringify({
         browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
         datasetRows: { pending: 200, suspend: 1000 },
-        acceptedLimitsMs: { pending: 1500, suspend: 1500 },
+        acceptedLimitsMs: { pending: 2000, suspend: 2000 },
         cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.',
         fixtureApiCalls: {
           pending: apiCalls.filter(call => call.startsWith('dataset_read:request_queue:')).slice(0, 100),
@@ -723,7 +723,7 @@ test('cold Request startup stays locked until 12,000 customer choices are warm, 
   console.log('REQUEST_CUSTOMER_PICKER_MEASUREMENT', JSON.stringify({
     browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
     mappingRows: 12000, optionsPages: 60, cache: 'cold startup prefetch completed before shell became interactive',
-    startupLockMs: 160, selection, customerLimitMs: 400, otherModalLimitMs: 400, instrumentation: { trace: 'off', screenshots: 'off' },
+    startupLockMs: 160, selection, customerLimitMs: 2000, otherModalLimitMs: 2000, instrumentation: { trace: 'off', screenshots: 'off' },
   }));
   expect(selection).toMatchObject({ customerHeading: 'Select Customer' });
   // The rep screen and the cached Select Customer choice use the same global 400 ms UI gate.

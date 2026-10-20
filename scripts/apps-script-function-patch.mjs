@@ -14,6 +14,7 @@ const reclassEmailFunctions = new Set([
   'buildCompletedInventoryReclassMoveHtml_',
 ]);
 const liveImportFunctions = new Set([
+  "syncWarehouseAssignedItemsSheet_", "readWarehouseAssignmentExportRevision_", "exportWarehouseAssignedItemsToSheet_",
   "getMasterBulkSnapshotStageConfig_",
   "masterBulkSnapshotStageCheckpointKey_",
   "masterBulkSnapshotSyncTimestampKey_",
@@ -56,7 +57,7 @@ const liveImportFunctions = new Set([
   "assertRoutedPendingSourceSelection_",
   "processCustomerRepMapSnapshotLocked_",
 ]);
-const additiveFunctions = new Set(["getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkPublishedReplay_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_"]);
+const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkPublishedReplay_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_"]);
 const fail = code => { throw new Error(`APPS_SCRIPT_FUNCTION_PATCH_${code}`); };
 const digest = source => createHash('sha256').update(source).digest('hex');
 

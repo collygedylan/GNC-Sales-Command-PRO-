@@ -386,3 +386,23 @@ test('location metrics use the exact queue authorization scope without rebuildin
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null,
     'a permission change invalidates the previous master proof');
 });
+
+
+test('Rosy Muhly location total remains 195 from a same-account complete display cache during refresh', () => {
+  const rows = [
+    { UNIQUE_ID: 'rosy-f1', ITEMCODE: '010539.030.1', LOCATIONCODE: 'F.16.000', LOTCODE: '27.F1', PTRONHAND: 195 },
+    { UNIQUE_ID: 'other-location', ITEMCODE: '010539.030.1', LOCATIONCODE: 'F.17.000', LOTCODE: '27.F1', PTRONHAND: 99 },
+  ];
+  const { context, state } = setup(rows);
+  context.nativeAuthSessionActive = true;
+  context.nativeAuthProfile = { id: 'fixture-profile', username: 'rep' };
+  context.currentUser = 'rep'; context.currentRole = 'Sales Rep';
+  state.rowCompleteness = 'unknown'; state.initialLoaded = false;
+  context.productionDisplayMasterReceipt = { rows: context.fullInventory, readScope: 'actor-a', permission: 'permissions-1' };
+  assert.equal(context.getCardLocationOnHandValue(rows[0]), '195');
+  context.productionDisplayMasterReceipt.permission = 'other-permissions';
+  assert.equal(context.getCardLocationOnHandValue(rows[0]), null);
+  context.productionDisplayMasterReceipt.permission = 'permissions-1';
+  context.productionDisplayMasterReceipt.rows = rows.slice(0, 1);
+  assert.equal(context.getCardLocationOnHandValue(rows[0]), null, 'partial replacement cannot borrow complete display proof');
+});

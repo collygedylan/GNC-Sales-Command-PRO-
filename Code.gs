@@ -4971,7 +4971,30 @@ function buildWarehouseAssignedItemsPayload(rawData, tableName, existingRows, sy
 }
 
 function syncWarehouseAssignedItemsSheet_(sheetId, folderId, tableName) {
-  return exportWarehouseAssignedItemsToSheet_(sheetId, tableName);
+  // This stage exports effective assignments; it never imports a Drive file.
+  // A delayed optional export must not interrupt the remaining live imports.
+  try { return exportWarehouseAssignedItemsToSheet_(sheetId, tableName); }
+  catch (error) {
+    console.warn('WAREHOUSE_EXPORT_DEFERRED: assignment export will retry on the next operational sync.');
+    return { tableName: String(tableName || WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE), direction: 'supabase_to_sheet',
+      status: 'deferred', deferred: true, warningCode: 'WAREHOUSE_EXPORT_DEFERRED',
+      filesProcessed: 0, failedFiles: 0, upsertCount: 0, deleteCount: 0,
+      message: 'Warehouse assignment export deferred; existing data retained and remaining sync stages continue.' };
+  }
+}
+
+function readWarehouseAssignmentExportRevision_() {
+  const keys = ['ph_master_inventory', 'ph_inventory_row_assignments',
+    'private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'];
+  const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/app_dataset_revisions?select=key,revision,state&key=in.(' + keys.join(',') + ')&order=key.asc', {
+    method: 'get', headers: getSupabaseHeadersForKey_(SUPABASE_KEY), muteHttpExceptions: true
+  });
+  if (response.getResponseCode() !== 200) throw new Error('WAREHOUSE_EXPORT_REVISION_UNAVAILABLE');
+  const rows = JSON.parse(response.getContentText() || '[]');
+  if (!Array.isArray(rows) || rows.length !== keys.length || keys.some(function(key) {
+    return !rows.some(function(row) { return row.key === key && row.state === 'ready' && /^[1-9]\d*$/.test(String(row.revision)); });
+  })) throw new Error('WAREHOUSE_EXPORT_SOURCE_REFRESHING');
+  return JSON.stringify(rows.map(function(row) { return [row.key, String(row.revision)]; }).sort(function(a, b) { return a[0].localeCompare(b[0]); }));
 }
 
 function callSupabaseRpc_(rpcName, payload) {
@@ -5012,6 +5035,16 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const safeSheetId = String(sheetId || WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID).trim();
   const safeTableName = String(tableName || WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE).trim();
   if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items export sheet ID.');
+  const revision = readWarehouseAssignmentExportRevision_();
+  const markerKey = 'WAREHOUSE_EXPORT_REVISION_' + safeSheetId;
+  const marker = JSON.stringify([safeTableName, revision]);
+  const properties = PropertiesService.getScriptProperties();
+  if (properties.getProperty(markerKey) === marker) {
+    return { tableName: safeTableName, direction: 'supabase_to_sheet', status: 'unchanged',
+      filesProcessed: 0, failedFiles: 0, upsertCount: 0, deleteCount: 0, skippedUnchanged: true,
+      message: 'Warehouse assignments unchanged; export skipped.' };
+  }
+
 
   // Reconciliation belongs to the one scheduled maintenance worker. Exporting
   // this sheet must never launch another full-table maintenance pass.
@@ -5027,6 +5060,7 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   });
 
   const lowStockTargets = getAssignedItemLowStockExportTargets_(rows);
+  if (readWarehouseAssignmentExportRevision_() !== revision) throw new Error('WAREHOUSE_EXPORT_SOURCE_CHANGED');
   const spreadsheet = SpreadsheetApp.openById(safeSheetId);
   const sheet = spreadsheet.getSheets()[0];
   const headers = [
@@ -5067,10 +5101,14 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
 
   const existingRows = Math.max(1, sheet.getLastRow());
   const existingColumns = Math.max(headers.length, sheet.getLastColumn());
-  sheet.getRange(1, 1, existingRows, existingColumns).clearContent();
+  // Replace the complete rectangular export before removing old excess cells.
+  // A failed write must never start by blanking the last successful sheet.
   if (values.length) sheet.getRange(1, 1, values.length, headers.length).setValues(values);
+  if (existingRows > values.length) sheet.getRange(values.length + 1, 1, existingRows - values.length, existingColumns).clearContent();
+  if (existingColumns > headers.length) sheet.getRange(1, headers.length + 1, Math.min(existingRows, values.length), existingColumns - headers.length).clearContent();
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  properties.setProperty(markerKey, marker);
 
   emitTableSyncLiveEvent_(safeTableName, {
     direction: 'supabase_to_sheet',
