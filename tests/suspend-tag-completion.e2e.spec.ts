@@ -1241,6 +1241,8 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     // be cancelled when the app replaces its startup surface. Classify only
     // that exact image cancellation; all other aborted reads remain failures.
     const fetchAbortEvidence = await readFetchAbortEvidence();
+    await test.info().attach('release-smoke-final-resource-diagnostics', { contentType: 'application/json',
+      body: Buffer.from(JSON.stringify({ failedResources, fetchAbortEvidence })) });
     const cancellationEvidence = fetchAbortEvidence.slice();
     const unexpectedFailedResources = failedResources.filter(resource => {
       const failedUrl = new URL(resource.url);
