@@ -46961,11 +46961,22 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function findSeasonSalesNoteMasterCandidateForCard(item = null) {
-            if (!item || !Array.isArray(fullInventory) || !fullInventory.length) return null;
+            if (!item) return null;
             const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '') || '').trim().toUpperCase();
             const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, '') || '').trim().toUpperCase();
             const lotCode = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, item.LOT, '') || '').trim().toUpperCase();
             if (!itemCode || !locationCode || !lotCode) return null;
+            const hasMasterItemCodeIndex = typeof masterInventoryByItemCode !== 'undefined' && masterInventoryByItemCode instanceof Map;
+            const indexedCandidates = hasMasterItemCodeIndex
+                ? masterInventoryByItemCode.get(getItemInquiryItemCode(item))
+                : null;
+            // A built index is authoritative for the current master snapshot,
+            // including a key miss. Scan fullInventory only in VM/legacy
+            // contexts which have no index map at all.
+            const candidateRows = hasMasterItemCodeIndex
+                ? (Array.isArray(indexedCandidates) ? indexedCandidates : [])
+                : (Array.isArray(fullInventory) ? fullInventory : []);
+            if (!candidateRows.length) return null;
             const sourceCode = getMasterInventorySourceCode(item);
             const isSeasonAssigned = (row) => {
                 const assignments = [
@@ -46982,7 +46993,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (String(firstNonEmptyValue(row.LOTCODE, row.lotcode, row.LOT, '') || '').trim().toUpperCase() !== lotCode) return false;
                 return isSeasonAssigned(row);
             };
-            const candidates = fullInventory.filter(matchesIdentity);
+            const candidates = candidateRows.filter(matchesIdentity);
             if (sourceCode) return candidates.find((row) => getMasterInventorySourceCode(row) === sourceCode) || null;
             return candidates[0] || null;
         }
@@ -120356,6 +120367,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const didSchedule = renderMarkupChunkedByKey('request-main', renderTarget, crumb, safePlan.rows, crumbText,
                 (item) => generateCard(item, 'request', 'status-red'), getPendingRequestChunkRenderOptions({
                     _backgroundStage: !!retainCards,
+                    // A small Suspend page fits one bounded DOM publication.
+                    // Avoid repeated layout of two-card intermediate snapshots.
+                    initialRows: Math.min(40, Math.max(1, safePlan.rows?.length || 0)),
                     renderSignature,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`,
                     onComplete: () => {
@@ -120382,11 +120396,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                             scheduleDeferredCardPhotoHydration(cardContainer);
                         }
                         repairVisibleDockSuspendDcPlanstartCardTones(rootContainer);
-                        // A retained Suspend snapshot is already atomically
-                        // published and has no Pending swipe rows. On iPhone,
-                        // avoid the Pending-only swipe cleanup/layout audit in
-                        // this metric refresh; initial navigation still runs it.
-                        if (retainCards && isIOSDevice()) {
+                        // Suspend has no Pending swipe rows, including its
+                        // initial page. Keep the shared navigation shell audit,
+                        // but do not scan every new card for Pending swipe
+                        // styles and schedule a second layout audit on iPhone.
+                        if (isIOSDevice()) {
                             closeAllRequestSwipes();
                             releaseRequestSwipeMoveListener();
                         } else decorateRequestRows();
@@ -120397,8 +120411,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     // immediately after the latest chunk finishes instead of
                     // routing the atomic apply through touch-idle decoration.
                     onCompleteAfterInteractive: !retainCards,
-                    // Keep the first two cards as the immediate paint, then
-                    // drain this bounded 100-row page promptly instead of
+                    // Keep larger pages bounded, then drain the remaining
+                    // 100-row page promptly instead of
                     // waiting through paced per-frame chunks on an empty list.
                     // Retained cards keep their slightly longer atomic-swap
                     // window so background updates do not compete with input.

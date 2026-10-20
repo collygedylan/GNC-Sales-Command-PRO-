@@ -88,7 +88,6 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
   // a warm reopen; do not race the seed publication and its follow-up reads.
   await page.waitForLoadState('networkidle');
   await page.evaluate(async () => { await document.fonts.ready; });
-  await page.waitForFunction(() => window.eval('hasCurrentProductionLiveSyncProof(getProductionLiveSyncContext())'));
   if (process.env.V2314_PROFILE === '1') await page.evaluate(() => window.eval(`(() => {
     window.__v2314Profile = {};
     for (const name of ['renderRequest','getScopedRequestItems','getRequestTabQueueCounts','buildSuspendTagRenderPlan',
@@ -106,21 +105,50 @@ test('Latest file’s 37 marked physical DC tags hydrate current master metrics 
       };
     }
   })()`));
+  const profiler = process.env.V2314_PROFILE === '1' && info.project.name === 'desktop-chromium'
+    ? await page.context().newCDPSession(page) : null;
+  if (profiler) { await profiler.send('Profiler.enable'); await profiler.send('Profiler.start'); }
   const renderMs = await page.evaluate(async () => {
     return window.eval(`(async () => {
-      if (!hasCurrentProductionLiveSyncProof(getProductionLiveSyncContext())) throw new Error('Warm snapshot proof changed before render');
+      // Foreground revalidation can revoke proof between Playwright calls.
+      // Observe the real guard and render in the same task once it is ready.
+      const readinessStart = performance.now();
+      while (!hasCurrentProductionLiveSyncProof(getProductionLiveSyncContext())) {
+        if (performance.now() - readinessStart > 10000) throw new Error('Warm snapshot did not become verified');
+        await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+      const proofBefore = productionVerifiedViewKey(getProductionLiveSyncContext());
+      if (window.__v2314Profile) window.__v2314Profile = {};
       // Use the app's clear operation: raw DOM removal leaves stale render
       // signatures/chunk work, and global invalidation is a cold data reset.
       setContainerHtml(document.getElementById('request-suspend-tag-card-list'), '');
       const start = performance.now();
       renderRequest();
+      const phases = [{ ms: performance.now()-start, cards: document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length, phase: 'synchronous' }];
       do {
         await new Promise(resolve => requestAnimationFrame(() => resolve()));
+        const count = document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length;
+        if (phases.at(-1).cards !== count) phases.push({ ms: performance.now()-start, cards: count, phase: 'frame' });
       } while (document.querySelectorAll('#request-content article[data-request-uid^="dock_suspend_dc_"]').length !== 37 && performance.now()-start < 5000);
-      return performance.now() - start;
+      const renderMs = performance.now() - start;
+      window.__v2314Proof = {
+        before: proofBefore, after: productionVerifiedViewKey(getProductionLiveSyncContext()),
+        verifiedAfter: hasCurrentProductionLiveSyncProof(getProductionLiveSyncContext()),
+        phases,
+      };
+      window.__v2314MeasuredProfile = window.__v2314Profile;
+      return renderMs;
     })()`);
   }) as number;
+  if (profiler) {
+    const cpu = await profiler.send('Profiler.stop');
+    await info.attach('v2314-cpu-profile', { contentType: 'application/json', body: Buffer.from(JSON.stringify(cpu)) });
+    await profiler.detach();
+  }
   await expect(cards).toHaveCount(37);
+  await info.attach('v2314-proof', { contentType: 'application/json', body: Buffer.from(JSON.stringify(
+    await page.evaluate(() => (window as unknown as { __v2314Proof: unknown }).__v2314Proof),
+  )) });
   if (process.env.V2314_PROFILE === '1') console.log('V2314_PROFILE', await page.evaluate(() => (window as unknown as {__v2314Profile: unknown}).__v2314Profile));
   expect.soft(renderMs, 'full 37-card warm render with 9,487 master rows').toBeLessThanOrEqual(400);
   const order = await cards.evaluateAll(elements => elements.map(element => element.getAttribute('data-request-uid')));
@@ -380,8 +408,11 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
           if ((options.native || options.masterRows?.length) && body.dataset === 'suspend_tag') {
             const source = backendRows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])));
             const rows = source.slice(params.offset, params.offset + params.limit);
+            const newest = options.masterRows?.length
+              ? [...source].sort((a, b) => String(b.last_updated || '').localeCompare(String(a.last_updated || '')))[0] : null;
             return fulfill(route, { ok: true, data: { rows, total: source.length, offset: params.offset, limit: params.limit,
-              hasMore: params.offset + rows.length < source.length } });
+              hasMore: params.offset + rows.length < source.length,
+              ...(newest && params.offset === 0 ? { sourceFreshness: { filename: newest.filename, last_updated: newest.last_updated } } : {}) } });
           }
           return fulfill(route, { ok: true, data: { rows: [], total: 0, offset: params.offset, limit: params.limit, hasMore: false } });
         }
@@ -433,6 +464,9 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
               permissions: [{ permissionKey: 'module.request.view', kind: 'module', moduleKey: 'request', allowed: true }]
             }, currentUser)
           };
+          // A warm authenticated snapshot includes the permission version
+          // learned with its revision metadata, before its scoped receipts.
+          productionLiveSyncReadPermissionVersion = appAccessSnapshotState.snapshot.dataPermissionVersion;
           setRoleAccessReadyState(true);
         }
         // Queue is opened after login's initial Home transition. Preference
@@ -445,7 +479,10 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
           if (key === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
           state.lastLoadedAt = new Date().toISOString();
         });
-        loadDatasetTargetsWithLimit = async () => {
+        loadDatasetTargetsWithLimit = async (targets = []) => {
+          // The production loader publishes only the requested datasets.
+          // Unrelated background targets must not replay the Suspend snapshot.
+          if (window.__suspendCompletionMasterRows.length && !targets.some(target => target.key === 'suspendTag')) return true;
           const snapshot = structuredClone(window.__suspendCompletionFixtureRows);
           if (window.__suspendCompletionDatasetGate) await window.__suspendCompletionDatasetGate;
           processAndLoadData({ suspendTagData: snapshot, _fromCache: true });

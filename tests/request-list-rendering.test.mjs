@@ -284,6 +284,7 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
   const ctx = vm.createContext({
     renderMarkupChunkedByKey: (...args) => { calls.push('render'); renderOptions = args[6]; calls.push(`crumb:${args[4]}`); return true; },
     generateCard: () => '<card>',
+    isIOSDevice: () => false,
     isDockSuspendDcRequestMirrorPreparationPending: () => false,
     getPendingRequestChunkRenderOptions: options => options,
     repairVisibleDockSuspendDcPlanstartCardTones: () => calls.push('tones'),
@@ -302,6 +303,31 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
   assert.equal(renderOptions.completionDeadlineDrainAll, true, 'the bounded initial page cannot wait on one-card-per-frame pacing');
   renderOptions.onComplete();
   assert.deepEqual(calls, ['render', 'crumb:Suspend Tag Filter', `footer:${plan.footerMarkup}`, 'tones', 'decorate', `footer:${plan.footerMarkup}`]);
+});
+
+test('initial iPhone Suspend completion skips Pending swipe decoration', () => {
+  let renderOptions;
+  const calls = [];
+  const ctx = vm.createContext({
+    renderMarkupChunkedByKey: (...args) => { renderOptions = args[6]; return true; },
+    isIOSDevice: () => true,
+    generateCard: () => '<card>',
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    getPendingRequestChunkRenderOptions: options => options,
+    repairVisibleDockSuspendDcPlanstartCardTones: () => calls.push('tones'),
+    decorateRequestRows: () => calls.push('pending-decoration'),
+    closeAllRequestSwipes: () => calls.push('close-swipes'),
+    releaseRequestSwipeMoveListener: () => calls.push('release-listener'),
+    syncRequestBrowseFooter: () => calls.push('footer'),
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all'
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', {
+    rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'verified-page', footerMarkup: ''
+  });
+  renderOptions.onComplete();
+  assert.deepEqual(calls, ['footer', 'tones', 'close-swipes', 'release-listener', 'footer']);
 });
 
 test('retained Suspend cards publish completed stages without touch-idle deferral', () => {
@@ -344,6 +370,35 @@ test('retained Suspend cards publish completed stages without touch-idle deferra
   assert.equal(container.__suspendPagePublicationReceipt.generation, container.__suspendPageGeneration);
   assert.equal(container.__suspendPagePublicationReceipt.renderSignature, 'revision-2');
   assert.ok(Number.isFinite(container.__suspendPagePublicationReceipt.durationMs));
+});
+
+test('Suspend first batch covers its bounded page while shared Pending default stays two rows', () => {
+  const initialRows = [];
+  const ctx = vm.createContext({
+    getQueueCardInventoryState() {},
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    getPendingRequestChunkRenderOptions: options => options,
+    renderMarkupChunkedByKey: (_key, _target, _crumb, _rows, _text, _renderRow, options) => {
+      initialRows.push(options.initialRows);
+      return true;
+    },
+    syncRequestBrowseFooter() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
+    document: {}
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  for (const count of [37, 100]) {
+    ctx.renderSuspendTagPagedCards({ dataset: {}, querySelector: () => null }, {}, null, null, 'Suspend Tag', {
+      rows: rows(count), renderSignature: `suspend-${count}`, footerMarkup: ''
+    });
+  }
+  assert.deepEqual(initialRows, [37, 40]);
+
+  const pendingCtx = vm.createContext({ getRequestChunkRenderOptions: options => options });
+  vm.runInContext(source('getPendingRequestChunkRenderOptions'), pendingCtx);
+  assert.equal(pendingCtx.getPendingRequestChunkRenderOptions({}).initialRows, 2,
+    'the shared Pending first-paint default remains unchanged');
 });
 
 test('chunk deadline drains only opted-in bounded Suspend pages despite live-gesture pacing', () => {
