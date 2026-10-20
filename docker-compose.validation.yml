@@ -1,0 +1,66 @@
+services:
+  release-smoke:
+    build:
+      context: .
+      dockerfile: Dockerfile.validation
+    init: true
+    working_dir: /workspace
+    environment:
+      CI: "1"
+      HUSKY: "0"
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      RELEASE_SMOKE_SITE_DIR: ${RELEASE_SMOKE_SITE_DIR:?set to a sealed site directory inside the repo, such as .gnc-local/release-site}
+      EXPECTED_RELEASE_COMMIT: ${EXPECTED_RELEASE_COMMIT:?set to the sealed artifact commit}
+      EXPECTED_RELEASE_DIGEST: ${EXPECTED_RELEASE_DIGEST:?set to the sealed artifact manifest digest}
+      RELEASE_SMOKE_SOURCE_DIGEST: ${RELEASE_SMOKE_SOURCE_DIGEST:?set to the source digest for the same commit}
+      GIT_DIR: /git/worktree
+      GIT_COMMON_DIR: /git/common
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+      - type: bind
+        source: ${GIT_WORKTREE_ADMIN_DIR:?set to this linked worktree's .git/worktrees/<name> directory}
+        target: /git/worktree
+        read_only: true
+      - type: bind
+        source: ${GIT_COMMON_DIR:?set to the shared repository .git directory}
+        target: /git/common
+        read_only: true
+      - type: volume
+        source: validation_node_modules
+        target: /workspace/node_modules
+      - type: volume
+        source: validation_npm_cache
+        target: /root/.npm
+      - type: volume
+        source: validation_playwright_cache
+        target: /ms-playwright
+    command: ["node", "scripts/validation/run-release-smoke-container.mjs"]
+
+  # Auxiliary PostgreSQL 15 for lightweight SQL experiments only. The complete
+  # database compatibility path remains Supabase CLI using supabase/config.toml
+  # (currently major_version = 17); see scripts/validation/README.md.
+  postgres15-aux:
+    image: postgres:15-alpine
+    profiles: ["postgres15-aux"]
+    environment:
+      POSTGRES_DB: validation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: validation-only
+    volumes:
+      - ./scripts/validation/postgres15-bootstrap.sql:/docker-entrypoint-initdb.d/001-validation-bootstrap.sql:ro
+    tmpfs:
+      - /var/lib/postgresql/data:rw,noexec,nosuid,size=1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d validation"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+volumes:
+  validation_node_modules:
+    name: validation_node_modules_v1_62_1
+  validation_npm_cache:
+  validation_playwright_cache:
+    name: validation_playwright_cache_v1_62_1

@@ -5,6 +5,8 @@ import { gunzipSync } from 'node:zlib';
 
 import { confirmedDriveEvidence, driveEvidenceColumns } from '../services/driveEvidence.ts';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './fixtures/inventory-list-read-fixture.mjs';
+import { createPreindexedMasterPageFixture } from './fixtures/preindexed-master-page-fixture.mjs';
+import { classifyReleaseSmokeRoute } from './helpers/release-smoke-route-policy.mjs';
 
 
 type FixtureRow = Record<string, string | number>;
@@ -403,6 +405,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const receipts = new Map<string, Record<string, unknown>>();
   const requests: CompletionRequest[] = [];
   const unexpectedMutations: string[] = [];
+  const unexpectedRoutes: string[] = [];
   const blockedReadOnlyAppApiCalls: string[] = [];
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
@@ -430,21 +433,14 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       if (parsed.protocol === 'https:' || parsed.protocol === 'http:') fixtureImageUrls.add(parsed.href);
     } catch (_) {}
   }
-  // Validate the captured source once; page reads then validate/project only
-  // their bounded slice instead of serializing 9,487 rows for every page.
-  const masterReadRows = options.published ? (options.masterRows || []).map(row => inventoryReadFixture.fromFixtureShape(row))
-    .sort((a, b) => String(a.unique_id).localeCompare(String(b.unique_id))) : [];
-  const masterReadById = new Map(masterReadRows.map(row => [String(row.unique_id), row]));
+  // Validate, sort, and project the captured source once; each page request is
+  // served from preindexed bounded rows rather than rescanning 9,487 records.
+  const masterPageFixture = options.published ? createPreindexedMasterPageFixture(options.masterRows || []) : null;
   const publishedReadPages: Array<{ dataset: string; offset: number; rows: number; total: number }> = [];
   const readPublishedMasterPage = (params: Record<string, unknown>) => {
-    const offset = Number(params.offset), limit = Number(params.limit);
-    const rows = params.dataset === 'lookup'
-      ? [masterReadById.get(String(params.uniqueId))].filter(Boolean)
-      : masterReadRows.slice(offset, offset + limit);
-    const page = inventoryReadFixture.readMasterPage(rows, { ...params, offset: 0 });
-    const total = params.dataset === 'lookup' ? page.total : masterReadRows.length;
-    const result = { ...page, offset, total, hasMore: offset + page.rows.length < total };
-    publishedReadPages.push({ dataset: String(params.dataset), offset, rows: result.rows.length, total });
+    if (!masterPageFixture) throw new Error('RELEASE_SMOKE_MASTER_PAGE_FIXTURE_UNAVAILABLE');
+    const result = masterPageFixture.readPage(params);
+    publishedReadPages.push({ dataset: String(params.dataset), offset: result.offset, rows: result.rows.length, total: result.total });
     return result;
   };
   const runtimeResponses: string[] = [];
@@ -528,6 +524,12 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   await page.route('**/*', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    const routeDecision = classifyReleaseSmokeRoute({ method: request.method(), url: request.url(), origin,
+      resourceType: request.resourceType(), headers: request.headers(), fixtureImageUrls });
+    if (!routeDecision.allowed) {
+      unexpectedRoutes.push(`${request.method()}:${url.origin}${url.pathname}:${routeDecision.reason}`);
+      return route.abort('blockedbyclient');
+    }
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: corsHeaders });
     if (request.method() === 'POST' && url.origin === origin && url.pathname === '/__fixture/access-refresh-transient-failure') {
       failPermissionRefresh = true;
@@ -1044,6 +1046,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   });
   const assertClean = async () => {
     expect(unexpectedMutations, 'Suspend Tag actions must not bypass the scoped idempotent API with generic writes').toEqual([]);
+    expect(unexpectedRoutes, 'unknown browser routes must fail closed and be reported').toEqual([]);
     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
     const expectedPhoto404Count = fixtureImage404s.has(knownFixtureImageUrl) ? 1 : 0;

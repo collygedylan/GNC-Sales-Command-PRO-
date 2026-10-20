@@ -1,14 +1,7 @@
-import { verifyV2314RetainedValidation } from './check-v2314-retained-validation.mjs';
-import { verifyScopedRetainedValidation } from './check-retained-release-validation.mjs';
-import { verifyV2313RetainedValidation } from './check-v2313-retained-validation.mjs';
-import { verifyV2312RetainedValidation } from './check-v2312-retained-validation.mjs';
-import { verifyV2311RetainedValidation } from './check-v2311-retained-validation.mjs';
-import { verifyV2310RetainedValidation } from './check-v2310-retained-validation.mjs';
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { discoverTests } from './test-discovery.mjs';
-import { verifyV239RetainedValidation } from './check-v239-retained-validation.mjs';
 
 export function scopedEdgeMatrix({ edgeFunctions, changedPaths } = {}) {
   if (!Array.isArray(edgeFunctions) || !Array.isArray(changedPaths)) {
@@ -27,71 +20,9 @@ export function scopedEdgeMatrix({ edgeFunctions, changedPaths } = {}) {
 }
 
 export function backendTestMatrices({ root } = {}) {
-  const repositoryRoot = path.resolve(root || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
-  const packageVersion = JSON.parse(readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8')).version;
   const pglite = discoverTests({ root, group: 'pglite' });
   const entrypoints = discoverTests({ root, group: 'deno-entrypoints' });
   const tests = discoverTests({ root, group: 'deno-tests' });
-
-  if (packageVersion === '2.3.14') {
-    verifyV2314RetainedValidation({ rootDir: repositoryRoot });
-    return { pglite: ['scripts/check-v2314-retained-validation.mjs'], edge: { include: [
-      { suite: 'suspend-source-freshness', targets: ['supabase/functions/app-api/index.ts', 'supabase/functions/app-api/suspend-tag-read_test.ts'], tests: ['supabase/functions/app-api/suspend-tag-read_test.ts'] },
-    ] } };
-  }
-  if (packageVersion === '2.3.13') {
-    verifyV2313RetainedValidation({ rootDir: repositoryRoot });
-    return { pglite: ['scripts/check-v2313-retained-validation.mjs'], edge: { include: [] } };
-  }
-  if (packageVersion === '2.3.12') {
-    verifyV2312RetainedValidation({ rootDir: repositoryRoot });
-    return { pglite: [], edge: { include: [] } };
-  }
-  if (packageVersion === '2.3.11') {
-    verifyV2311RetainedValidation({ rootDir: repositoryRoot });
-    return { pglite: ['scripts/check-v2311-retained-validation.mjs'], edge: { include: [
-      { suite: 'app-api-static', targets: ['supabase/functions/app-api/index.ts'], tests: [] },
-      { suite: 'delivery-static', targets: ['supabase/functions/request-delivery-worker/index.ts'], tests: [] },
-    ] } };
-  }
-  if (packageVersion === '2.3.10') {
-    verifyV2310RetainedValidation({ rootDir: repositoryRoot });
-    return { pglite: [], edge: { include: [{ suite: 'app-api-static', targets: ['supabase/functions/app-api/index.ts'], tests: [] }] } };
-  }
-  if (packageVersion === '2.3.9') {
-    verifyV239RetainedValidation({ rootDir: repositoryRoot });
-    return {
-      pglite: [],
-      edge: { include: [{ suite: 'app-api-static', targets: ['supabase/functions/app-api/index.ts'], tests: [] }] },
-    };
-  }
-
-  if (packageVersion === '2.3.8') {
-    const requiredPglite = 'supabase/ci/suspend_tag_sender_identity_pglite.mjs';
-    const requiredEntrypoints = [
-      'supabase/functions/app-api/index.ts',
-      'supabase/functions/request-delivery-worker/index.ts',
-      'supabase/functions/send-push-alert/index.ts',
-    ];
-    if (!pglite.includes(requiredPglite)) throw new Error(`V238_REQUIRED_PGLITE_MISSING:${requiredPglite}`);
-    for (const file of requiredEntrypoints) {
-      if (!entrypoints.includes(file)) throw new Error(`V238_REQUIRED_EDGE_ENTRYPOINT_MISSING:${file}`);
-    }
-    const groups = requiredEntrypoints.map(file => ({
-      suite: file.split('/').slice(0, 3).join('/'),
-      targets: [file],
-      tests: [],
-    }));
-    return { pglite: [requiredPglite], edge: { include: groups } };
-  }
-
-  if (JSON.parse(readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8')).scopedValidationReceipt) {
-    const receipt = verifyScopedRetainedValidation({ rootDir: repositoryRoot });
-    return { pglite: [], edge: scopedEdgeMatrix({
-      edgeFunctions: receipt.deployment.edgeFunctions,
-      changedPaths: receipt.changedPaths,
-    }) };
-  }
 
   const groups = new Map();
   for (const file of [...entrypoints, ...tests]) {

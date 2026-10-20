@@ -1,25 +1,27 @@
 name: Deploy static app to Pages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       expected-commit:
-        description: Merged main SHA supplied by the trusted publisher; empty selects this run's main SHA.
+        description: Expected current main commit; empty selects this run's main SHA.
         type: string
         required: false
         default: ''
-      reuse-v230-passing-suites:
-        description: Honor the explicit v2.3.0 authorization to retain already-passing Node and React evidence.
-        type: boolean
+      base-commit:
+        description: Optional previously deployed main commit used to recover all pending scope.
+        type: string
         required: false
-        default: false
+        default: ''
 
 permissions:
   contents: read
   actions: read
   pull-requests: read
 
-# Keep branch publication and hosted verification together; backend runs independently.
+# One current-main coordinator sequences mixed releases and skips deployment for tooling-only changes.
 concurrency:
   group: pages-release-${{ github.ref }}
   cancel-in-progress: false
@@ -43,8 +45,91 @@ jobs:
             const { data: main } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
             if (main.object.sha !== context.sha) throw new Error('FRONTEND_MAIN_SUPERSEDED');
 
-  validation:
+  scope:
     needs: authorize-main
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      frontend: ${{ steps.classify.outputs.frontend }}
+      supabase: ${{ steps.classify.outputs.supabase }}
+      apps-script: ${{ steps.classify.outputs.apps-script }}
+      tooling-only: ${{ steps.classify.outputs.tooling-only }}
+      migrations: ${{ steps.classify.outputs.migrations }}
+      edge-functions: ${{ steps.classify.outputs.edge-functions }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Find the last successful Pages publication for recovery scope
+        id: baseline
+        run: node scripts/release-baseline.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Classify exact changed paths for tests and deployment
+        id: classify
+        env:
+          EVENT_BEFORE: ${{ github.event.before }}
+          MANUAL_BASE: ${{ inputs.base-commit }}
+          LAST_SUCCESSFUL_BASE: ${{ steps.baseline.outputs.commit }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          import { changedReleasePaths, classifyReleasePaths, isSafePackageMetadataChange, selectReleaseRecoveryBase } from './scripts/release-scope.mjs';
+          const commit = process.env.RELEASE_COMMIT;
+          let before = process.env.EVENT_BEFORE || process.env.MANUAL_BASE || '';
+          if (!before || /^0+$/.test(before)) {
+            try { before = execFileSync('git', ['rev-parse', `${commit}^1`], { encoding: 'utf8' }).trim(); }
+            catch { before = '0'.repeat(40); }
+          }
+          let paths = /^0+$/.test(before)
+            ? execFileSync('git', ['diff-tree', '--root', '--no-commit-id', '--name-only', '-r', commit], { encoding: 'utf8' }).trim().split(/\r?\n/).filter(Boolean)
+            : changedReleasePaths({ before, after: commit });
+          const packageMetadataSafe = base => {
+            if (!paths.some(file => file === 'package.json' || file === 'package-lock.json')) return false;
+            try {
+              const readPackage = revision => JSON.parse(execFileSync('git', ['show', `${revision}:package.json`], { encoding: 'utf8' }));
+              let safe = isSafePackageMetadataChange(readPackage(base), readPackage(commit));
+              if (paths.includes('package-lock.json')) {
+                const readLock = revision => execFileSync('git', ['show', `${revision}:package-lock.json`], { encoding: 'utf8' });
+                safe &&= readLock(base) === readLock(commit);
+              }
+              return safe;
+            } catch { return false; }
+          };
+          const initialScope = classifyReleasePaths(paths, { packageMetadataOnly: packageMetadataSafe(before) });
+          const isAncestor = (ancestor, descendant) => {
+            try { execFileSync('git', ['merge-base', '--is-ancestor', ancestor, descendant]); return true; }
+            catch { return false; }
+          };
+          const recoveryBase = selectReleaseRecoveryBase({ scope: initialScope, manualBase: process.env.MANUAL_BASE,
+            lastSuccessfulBase: process.env.LAST_SUCCESSFUL_BASE, isAncestor });
+          if (!initialScope.toolingOnly && recoveryBase && !/^0+$/.test(recoveryBase) && recoveryBase !== commit) {
+            execFileSync('git', ['merge-base', '--is-ancestor', recoveryBase, commit]);
+            before = recoveryBase;
+            paths = changedReleasePaths({ before, after: commit });
+          }
+          const packageMetadataOnly = packageMetadataSafe(before);
+          const scope = classifyReleasePaths(paths, { packageMetadataOnly });
+          appendFileSync(process.env.GITHUB_OUTPUT,
+            `frontend=${scope.deploy.frontend}\nsupabase=${scope.deploy.supabase}\napps-script=${scope.deploy.appsScript}\ntooling-only=${scope.toolingOnly}\nmigrations=${JSON.stringify(scope.migrations)}\n`);
+          let edgeFunctions = scope.edgeFunctions;
+          if (edgeFunctions.includes('*')) {
+            const tracked = execFileSync('git', ['ls-tree', '-r', '--name-only', commit, 'supabase/functions'], { encoding: 'utf8' });
+            edgeFunctions = [...new Set(tracked.split(/\r?\n/).map(file => /^supabase\/functions\/([^/]+)\//.exec(file)?.[1])
+              .filter(name => name && name !== '_shared'))].sort();
+          }
+          appendFileSync(process.env.GITHUB_OUTPUT, `edge-functions=${JSON.stringify(edgeFunctions)}\n`);
+          console.log(`Changed ${paths.length} paths; frontend=${scope.deploy.frontend}, supabase=${scope.deploy.supabase}, apps-script=${scope.deploy.appsScript}, tooling-only=${scope.toolingOnly}.`);
+          NODE
+
+  frontend-validation:
+    if: needs.scope.outputs.frontend == 'true'
+    needs: [authorize-main, scope]
     uses: ./.github/workflows/release-validation.yml
     with:
       fast-pr: true
@@ -53,14 +138,183 @@ jobs:
       run-backend-tests: false
       run-schema-tests: false
       production-health: false
-      reuse-v230-passing-suites: ${{ inputs.reuse-v230-passing-suites }}
     secrets: inherit
 
-  deploy:
-    needs: [authorize-main, validation]
+  node-validation:
+    if: needs.scope.outputs.frontend != 'true' && needs.scope.outputs['tooling-only'] != 'true'
+    needs: [authorize-main, scope]
+    uses: ./.github/workflows/pr-validation.yml
+    with:
+      run-frontend-tests: false
+      run-backend-tests: false
+
+  tooling-validation:
+    if: needs.scope.outputs['tooling-only'] == 'true'
+    needs: [authorize-main, scope]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-dependencies
+      - name: Run focused release tooling checks without building or deploying
+        run: node scripts/run-tooling-release-checks.mjs
+
+  backend-publication:
     if: >-
-      !cancelled() && github.ref == 'refs/heads/main' &&
-      needs.authorize-main.result == 'success' && needs.validation.result == 'success'
+      !cancelled() && needs.scope.result == 'success' &&
+      ((needs.scope.outputs.frontend == 'true' && needs.frontend-validation.result == 'success') ||
+       (needs.scope.outputs.frontend != 'true' && needs.scope.outputs['tooling-only'] == 'true' && needs.tooling-validation.result == 'success') ||
+       (needs.scope.outputs.frontend != 'true' && needs.scope.outputs['tooling-only'] != 'true' && needs.node-validation.result == 'success')) &&
+      (needs.scope.outputs.supabase == 'true' || needs.scope.outputs['apps-script'] == 'true')
+    needs: [authorize-main, scope, frontend-validation, node-validation, tooling-validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Dispatch and verify the exact backend release
+        uses: actions/github-script@v7
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+          COORDINATOR_RUN_ATTEMPT: ${{ github.run_attempt }}
+          REQUIRE_SUPABASE: ${{ needs.scope.outputs.supabase }}
+          REQUIRE_APPS_SCRIPT: ${{ needs.scope.outputs['apps-script'] }}
+          RELEASE_MIGRATIONS: ${{ needs.scope.outputs.migrations }}
+          RELEASE_EDGE_FUNCTIONS: ${{ needs.scope.outputs['edge-functions'] }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = process.env.EXPECTED_COMMIT;
+            const repository = `${owner}/${repo}`;
+            const { data: main } = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+            if (main.object.sha !== sha) throw new Error('BACKEND_MAIN_SUPERSEDED');
+            const { data: workflow } = await github.rest.actions.getWorkflow({ owner, repo, workflow_id: 'apps-script-sync.yml' });
+            if (workflow.path !== '.github/workflows/apps-script-sync.yml' || workflow.state !== 'active') {
+              throw new Error('BACKEND_WORKFLOW_INVALID');
+            }
+            const existing = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner, repo, workflow_id: workflow.id, head_sha: sha, per_page: 100,
+            });
+            let run = existing.filter(candidate => candidate.path === workflow.path && candidate.head_branch === 'main'
+              && candidate.head_sha === sha && candidate.event === 'workflow_dispatch'
+              && candidate.head_repository?.full_name === repository
+              && (candidate.status !== 'completed' || candidate.conclusion === 'success'))
+              .sort((a, b) => b.run_number - a.run_number)[0];
+            if (!run) {
+              await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: workflow.id, ref: 'main',
+                inputs: { 'expected-commit': sha, migrations: process.env.RELEASE_MIGRATIONS,
+                  'edge-functions': process.env.RELEASE_EDGE_FUNCTIONS,
+                  'supabase-changed': process.env.REQUIRE_SUPABASE } });
+              const old = new Set(existing.map(candidate => candidate.id));
+              const deadline = Date.now() + 30 * 60 * 1000;
+              while (Date.now() < deadline && !run) {
+                const candidates = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                  owner, repo, workflow_id: workflow.id, head_sha: sha, per_page: 100,
+                });
+                run = candidates.find(candidate => !old.has(candidate.id) && candidate.path === workflow.path
+                  && candidate.head_branch === 'main' && candidate.head_sha === sha
+                  && candidate.event === 'workflow_dispatch' && candidate.head_repository?.full_name === repository);
+                if (!run) await new Promise(resolve => setTimeout(resolve, 5000));
+              }
+            }
+            const deadline = Date.now() + 30 * 60 * 1000;
+            while (run && Date.now() < deadline) {
+              const { data: current } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: run.id });
+                if (current.id !== run.id || current.workflow_id !== workflow.id || current.path !== workflow.path
+                    || current.event !== 'workflow_dispatch' || current.head_sha !== sha
+                    || current.head_repository?.full_name !== repository || !Number.isSafeInteger(current.run_attempt)
+                    || current.run_attempt < 1) throw new Error('BACKEND_RUN_IDENTITY_MISMATCH');
+              if (current.status === 'completed') {
+                if (current.conclusion !== 'success') throw new Error(`BACKEND_RUN_FAILED:${current.conclusion}`);
+                  const { data: jobs } = await github.rest.actions.listJobsForWorkflowRunAttempt({ owner, repo,
+                    run_id: current.id, attempt_number: current.run_attempt, per_page: 100 });
+                  const deploy = (jobs.jobs || []).filter(job => job.name === 'Apply backend migrations and deploy Edge Functions'
+                    && job.run_id === current.id && job.head_sha === sha && job.status === 'completed');
+                  if (deploy.length !== 1 || (process.env.REQUIRE_SUPABASE === 'true'
+                    ? deploy[0].conclusion !== 'success'
+                    : !['success', 'skipped'].includes(deploy[0].conclusion))) {
+                    throw new Error('BACKEND_DEPLOY_JOB_NOT_SUCCESSFUL');
+                  }
+                if (process.env.REQUIRE_APPS_SCRIPT === 'true') {
+                  const { data: scriptWorkflow } = await github.rest.actions.getWorkflow({ owner, repo, workflow_id: 'apps-script-deploy.yml' });
+                  if (scriptWorkflow.path !== '.github/workflows/apps-script-deploy.yml' || scriptWorkflow.state !== 'active') {
+                    throw new Error('APPS_SCRIPT_WORKFLOW_INVALID');
+                  }
+                  const beforeScriptRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                    owner, repo, workflow_id: scriptWorkflow.id, head_sha: sha, per_page: 100,
+                  });
+                  let scriptRun = beforeScriptRuns.filter(candidate => candidate.workflow_id === scriptWorkflow.id
+                    && candidate.path === scriptWorkflow.path && candidate.head_branch === 'main' && candidate.head_sha === sha
+                    && candidate.event === 'workflow_dispatch' && candidate.head_repository?.full_name === repository
+                    && (candidate.status !== 'completed' || candidate.conclusion === 'success'))
+                    .sort((a, b) => b.run_number - a.run_number)[0];
+                  const oldScriptRuns = new Set(beforeScriptRuns.map(candidate => candidate.id));
+                  if (!scriptRun) {
+                    await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: scriptWorkflow.id, ref: 'main',
+                      inputs: { 'expected-commit': sha, 'backend-run-id': String(current.id),
+                      'backend-run-attempt': String(current.run_attempt), 'coordinator-run-id': String(context.runId),
+                      'coordinator-run-attempt': process.env.COORDINATOR_RUN_ATTEMPT,
+                      'supabase-required': process.env.REQUIRE_SUPABASE,
+                      'script-changed': process.env.REQUIRE_APPS_SCRIPT } });
+                  }
+                  const scriptDeadline = Date.now() + 15 * 60 * 1000;
+                  while (Date.now() < scriptDeadline) {
+                    if (!scriptRun) {
+                      const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                        owner, repo, workflow_id: scriptWorkflow.id, head_sha: sha, per_page: 100,
+                      });
+                      scriptRun = runs.find(candidate => !oldScriptRuns.has(candidate.id)
+                        && candidate.workflow_id === scriptWorkflow.id && candidate.path === scriptWorkflow.path
+                        && candidate.head_branch === 'main' && candidate.head_sha === sha && candidate.event === 'workflow_dispatch'
+                        && candidate.head_repository?.full_name === repository);
+                    }
+                    if (scriptRun) {
+                      const { data: currentScriptRun } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: scriptRun.id });
+                      if (currentScriptRun.id !== scriptRun.id || currentScriptRun.workflow_id !== scriptWorkflow.id
+                        || currentScriptRun.path !== scriptWorkflow.path || currentScriptRun.event !== 'workflow_dispatch'
+                        || currentScriptRun.head_branch !== 'main' || currentScriptRun.head_sha !== sha
+                        || currentScriptRun.head_repository?.full_name !== repository
+                        || !Number.isSafeInteger(currentScriptRun.run_attempt) || currentScriptRun.run_attempt < 1) {
+                        throw new Error('APPS_SCRIPT_RUN_IDENTITY_MISMATCH');
+                      }
+                      scriptRun = currentScriptRun;
+                      if (scriptRun.status === 'completed') break;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                  }
+                  if (!scriptRun || scriptRun.status !== 'completed' || scriptRun.conclusion !== 'success'
+                    || scriptRun.head_sha !== sha || scriptRun.head_repository?.full_name !== repository) {
+                    throw new Error('APPS_SCRIPT_PUBLICATION_NOT_SUCCESSFUL');
+                  }
+                  const { data: scriptJobs } = await github.rest.actions.listJobsForWorkflowRunAttempt({ owner, repo,
+                    run_id: scriptRun.id, attempt_number: scriptRun.run_attempt, per_page: 100 });
+                  const publish = (scriptJobs.jobs || []).filter(job => job.name === 'deploy-apps-script'
+                    && job.run_id === scriptRun.id && job.head_sha === sha);
+                  const publishStep = publish.length === 1 ? (publish[0].steps || []).filter(step => step.name === 'Publish the guarded production Apps Script version') : [];
+                  if (publish.length !== 1 || publish[0].status !== 'completed' || publish[0].conclusion !== 'success'
+                    || publishStep.length !== 1 || publishStep[0].conclusion !== 'success') {
+                    throw new Error('APPS_SCRIPT_PUBLISH_STEP_NOT_SUCCESSFUL');
+                  }
+                }
+                const { data: latestMain } = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+                if (latestMain.object.sha !== sha) throw new Error('BACKEND_MAIN_SUPERSEDED_DURING_DEPLOY');
+                return;
+              }
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              run = current;
+            }
+            throw new Error('BACKEND_PUBLICATION_TIMEOUT');
+
+  deploy:
+    needs: [authorize-main, scope, frontend-validation, node-validation, tooling-validation, backend-publication]
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/main' && needs.scope.outputs.frontend == 'true' &&
+      needs.authorize-main.result == 'success' && needs.frontend-validation.result == 'success' &&
+      (((needs.scope.outputs.supabase == 'true' || needs.scope.outputs['apps-script'] == 'true') &&
+        needs.backend-publication.result == 'success') ||
+       (needs.scope.outputs.supabase != 'true' && needs.scope.outputs['apps-script'] != 'true' &&
+        needs.backend-publication.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -79,17 +333,17 @@ jobs:
           node-version: 22
       - uses: ./.github/actions/download-release
         with:
-          digest: ${{ needs.validation.outputs.digest }}
+          digest: ${{ needs.frontend-validation.outputs.digest }}
           run-id: ${{ github.run_id }}
-          artifact-id: ${{ needs.validation.outputs.site-id }}
+          artifact-id: ${{ needs.frontend-validation.outputs.site-id }}
           token: ${{ github.token }}
           commit: ${{ github.sha }}
       - name: Reject a stale main commit immediately before publication
         uses: actions/github-script@v7
         env:
           EXPECTED_COMMIT: ${{ inputs.expected-commit }}
-          VALIDATED_RUN_ID: ${{ needs.validation.outputs.run-id }}
-          VALIDATED_ATTEMPT: ${{ needs.validation.outputs.attempt }}
+          VALIDATED_RUN_ID: ${{ needs.frontend-validation.outputs.run-id }}
+          VALIDATED_ATTEMPT: ${{ needs.frontend-validation.outputs.attempt }}
         with:
           script: |
             const expected = process.env.EXPECTED_COMMIT || context.sha;
@@ -99,129 +353,6 @@ jobs:
             }
             const { data: main } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
             if (main.object.sha !== context.sha) throw new Error('FRONTEND_MAIN_SUPERSEDED');
-      - name: Wait for scoped backend migrations and Edge publication
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            const receiptPath = pkg.scopedValidationReceipt;
-            if (!receiptPath) {
-              core.info('No source-sealed scoped release receipt; retaining independent Pages publication.');
-              return;
-            }
-            const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
-            const sourceHashes = receipt.sourceHashes;
-            if (!sourceHashes || typeof sourceHashes !== 'object' || Array.isArray(sourceHashes) ||
-                !Array.isArray(receipt.deployment?.migrations)) {
-              throw new Error('SCOPED_BACKEND_MIGRATION_RECEIPT_INVALID');
-            }
-            const sourceMigrations = Object.keys(sourceHashes)
-              .filter(file => /^supabase\/migrations\/[^/]+\.sql$/i.test(file)).sort();
-            const receiptMigrations = [...receipt.deployment.migrations].sort();
-            if (receiptMigrations.some(file => typeof file !== 'string' ||
-                !/^supabase\/migrations\/[^/]+\.sql$/i.test(file)) ||
-                JSON.stringify(sourceMigrations) !== JSON.stringify(receiptMigrations)) {
-              throw new Error('SCOPED_BACKEND_MIGRATION_RECEIPT_MISMATCH');
-            }
-            if (receiptMigrations.length === 0) {
-              core.info('Scoped release has no database migrations; Pages publication is independent.');
-              return;
-            }
-
-            const { owner, repo } = context.repo;
-            const repository = `${owner}/${repo}`;
-            const { data: workflow } = await github.rest.actions.getWorkflow({
-              owner, repo, workflow_id: 'apps-script-sync.yml',
-            });
-            if (workflow.path !== '.github/workflows/apps-script-sync.yml' || workflow.state !== 'active') {
-              throw new Error('SCOPED_BACKEND_WORKFLOW_INVALID');
-            }
-            const deadline = Date.now() + 10 * 60 * 1000;
-            let deployRun;
-            while (Date.now() < deadline) {
-              const { data } = await github.rest.actions.listWorkflowRuns({
-                owner, repo, workflow_id: workflow.id, head_sha: context.sha,
-                event: 'workflow_dispatch', per_page: 100,
-              });
-              const candidates = (data.workflow_runs || []).filter(run =>
-                run.workflow_id === workflow.id && run.path === workflow.path &&
-                run.head_branch === 'main' && run.head_sha === context.sha &&
-                run.event === 'workflow_dispatch' && run.head_repository?.full_name === repository);
-              deployRun = candidates.sort((a, b) => b.run_number - a.run_number)[0];
-              if (deployRun?.status === 'completed') {
-                if (deployRun.conclusion !== 'success') {
-                  throw new Error(`SCOPED_BACKEND_PUBLICATION_FAILED:${deployRun.conclusion}`);
-                }
-                const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
-                  owner, repo, run_id: deployRun.id, per_page: 100,
-                });
-                const backendJobs = (jobs.jobs || []).filter(job =>
-                  job.name === 'Apply backend migrations and deploy Edge Functions');
-                if (backendJobs.length !== 1 || backendJobs[0].status !== 'completed' ||
-                    backendJobs[0].conclusion !== 'success' || backendJobs[0].head_sha !== context.sha) {
-                  throw new Error('SCOPED_BACKEND_DEPLOY_JOB_NOT_SUCCESSFUL');
-                }
-                break;
-              }
-              await new Promise(resolve => setTimeout(resolve, 15_000));
-            }
-            if (!deployRun || deployRun.status !== 'completed' || deployRun.conclusion !== 'success') {
-              throw new Error('SCOPED_BACKEND_PUBLICATION_TIMEOUT');
-            }
-            const scriptFunctions = receipt.appsScriptChangedFunctions;
-            if (!Array.isArray(scriptFunctions) || scriptFunctions.some(name => typeof name !== 'string' || !name)) {
-              throw new Error('SCOPED_APPS_SCRIPT_RECEIPT_INVALID');
-            }
-            if (scriptFunctions.length > 0) {
-              const { data: scriptWorkflow } = await github.rest.actions.getWorkflow({
-                owner, repo, workflow_id: 'apps-script-deploy.yml',
-              });
-              if (scriptWorkflow.path !== '.github/workflows/apps-script-deploy.yml' || scriptWorkflow.state !== 'active') {
-                throw new Error('SCOPED_APPS_SCRIPT_WORKFLOW_INVALID');
-              }
-              const scriptDeadline = Date.now() + 15 * 60 * 1000;
-              let scriptRun;
-              while (Date.now() < scriptDeadline) {
-                const { data } = await github.rest.actions.listWorkflowRuns({
-                  owner, repo, workflow_id: scriptWorkflow.id, head_sha: context.sha,
-                  per_page: 100,
-                });
-                const candidates = (data.workflow_runs || []).filter(run =>
-                  run.workflow_id === scriptWorkflow.id && run.path === scriptWorkflow.path &&
-                  run.head_branch === 'main' && run.head_sha === context.sha &&
-                  ['workflow_run', 'workflow_dispatch'].includes(run.event) &&
-                  run.head_repository?.full_name === repository);
-                scriptRun = candidates.sort((a, b) => b.run_number - a.run_number)[0];
-                if (scriptRun?.status === 'completed') {
-                  if (scriptRun.conclusion !== 'success') {
-                    throw new Error(`SCOPED_APPS_SCRIPT_PUBLICATION_FAILED:${scriptRun.conclusion}`);
-                  }
-                  const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
-                    owner, repo, run_id: scriptRun.id, per_page: 100,
-                  });
-                  const publishJobs = (jobs.jobs || []).filter(job => job.name === 'deploy-apps-script');
-                  const publishSteps = publishJobs.length === 1
-                    ? (publishJobs[0].steps || []).filter(step => step.name === 'Publish the guarded production Apps Script version')
-                    : [];
-                  if (publishJobs.length !== 1 || publishJobs[0].status !== 'completed' ||
-                      publishJobs[0].conclusion !== 'success' || publishJobs[0].head_sha !== context.sha ||
-                      publishSteps.length !== 1 || publishSteps[0].status !== 'completed' ||
-                      publishSteps[0].conclusion !== 'success') {
-                    throw new Error('SCOPED_APPS_SCRIPT_PUBLISH_STEP_NOT_SUCCESSFUL');
-                  }
-                  break;
-                }
-                await new Promise(resolve => setTimeout(resolve, 15_000));
-              }
-              if (!scriptRun || scriptRun.status !== 'completed' || scriptRun.conclusion !== 'success') {
-                throw new Error('SCOPED_APPS_SCRIPT_PUBLICATION_TIMEOUT');
-              }
-              core.info(`Exact guarded Apps Script publication succeeded for ${context.sha} (run ${scriptRun.id}).`);
-            }
-            const { data: main } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
-            if (main.object.sha !== context.sha) throw new Error('FRONTEND_MAIN_SUPERSEDED_DURING_BACKEND_WAIT');
-            core.info(`Exact scoped backend publication succeeded for ${context.sha} (run ${deployRun.id}).`);
       - name: Write the verified publication descriptor
         env:
           RELEASE_BUILD_COMMIT: ${{ github.sha }}

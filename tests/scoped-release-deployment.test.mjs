@@ -16,40 +16,43 @@ test('Reclass report migration is registered with recipient and immutable report
     'apply_inventory_reclass_moves_with_delivery_v1', 'has_function_privilege']) assert.ok(sql.includes(marker));
 });
 
-test('scoped backend publication requires verified receipts and deploys only derived function names', () => {
+test('scoped backend publication requires actual checks and deploys selected functions after SQL', () => {
   const source = read('.github/workflows/apps-script-sync.yml');
   const workflow = YAML.parse(source);
   const job = workflow.jobs['deploy-supabase'];
-  assert.match(job.if, /retained-contracts.result == 'success'/);
+  for (const name of ['backend-validation', 'pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract']) {
+    assert.ok(job.if.includes(`needs.${name}.result == 'success'`));
+  }
   const migration = job.steps.find(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs');
-  assert.equal(migration.env.SCOPED_RELEASE_DEPLOY, '${{ needs.authorize-backend.outputs.scoped }}');
-  assert.equal(migration.if, undefined);
-  const functions = job.steps.find(step => step.name === 'Configure Production Schedule dispatch and deploy backend functions');
-  assert.match(functions.run, /verifyScopedRetainedValidation\(\)\.deployment\.edgeFunctions/);
+  assert.equal(migration.env.RELEASE_MIGRATIONS, '${{ needs.authorize-backend.outputs.migrations }}');
+  assert.equal(migration.if, "needs.authorize-backend.outputs.migrations != '[]'");
+  const functions = job.steps.find(step => step.name === 'Deploy changed Edge Functions');
+  assert.equal(functions.env.RELEASE_EDGE_FUNCTIONS, '${{ needs.authorize-backend.outputs[\'edge-functions\'] }}');
   assert.match(functions.run, /supabase functions deploy "\$function_name"/);
   const apply = read('scripts/apply-item-low-stock-migration.mjs');
-  assert.match(apply, /normalizeScopedMigrationPaths\(scopedReceipt\.deployment\.migrations\)/);
-  assert.match(apply, /scopedReceipt\s*\?\s*normalizeScopedMigrationPaths/);
+  assert.ok(job.steps.indexOf(migration) < job.steps.indexOf(functions));
+  assert.match(apply, /selectReleaseMigrations/);
+  assert.doesNotMatch(apply, /scopedReceipt|verifyScopedRetainedValidation/);
 });
 
-test('scoped backend classifier includes receipt-declared migrations and Edge Functions', () => {
+test('scoped backend classifier validates selected migration and Edge Function inputs', () => {
   const workflow = YAML.parse(read('.github/workflows/apps-script-sync.yml'));
   const scope = workflow.jobs['authorize-backend'].steps.find(step => step.name === 'Require changed Supabase or database paths');
   assert.ok(scope);
-  assert.match(scope.run, /scoped_receipt=.*scopedValidationReceipt/);
-  assert.match(scope.run, /deployment\.migrations \| type\).*array/);
-  assert.match(scope.run, /deployment\.edgeFunctions \| type\).*array/);
-  assert.match(scope.run, /backend_changed=true/);
-  assert.match(scope.run, /Fail closed into the retained-contract gate/);
+  for (const marker of ['changedReleasePaths', 'classifyReleasePaths', 'Array.isArray',
+    'RELEASE_MIGRATION_INPUT_INVALID', 'EDGE_FUNCTION_SELECTION_INVALID', 'available.has(name)']) {
+    assert.ok(scope.run.includes(marker));
+  }
+  assert.doesNotMatch(scope.run, /scopedValidationReceipt|retained/);
 });
 
-test('database gate requires source-sealed disposable evidence for scoped releases', () => {
+test('database gate requires actual selected disposable checks without receipt substitution', () => {
   const workflow = YAML.parse(read('.github/workflows/release-database.yml'));
-  assert.ok(workflow.jobs['schema-gate'].needs.includes('scoped-retained-contracts'));
-  const check = workflow.jobs['scoped-retained-contracts'].steps.find(step => step.run);
-  assert.match(check.run, /verifyScopedRetainedValidation/);
-  assert.match(check.run, /disposable !== true/);
-  assert.match(check.run, /assertions > 0/);
+  assert.equal(workflow.jobs['scoped-retained-contracts'], undefined);
+  const gate = workflow.jobs['schema-gate'];
+  for (const name of ['integration', 'schema-contracts', 'database-and-functions']) assert.ok(gate.needs.includes(name));
+  assert.match(gate.steps[0].run, /jobs\[name\]\?\.result !== 'success'/);
+  assert.match(gate.steps[0].run, /BACKEND_SCHEMA_SCOPE_REQUIRED/);
 });
 
 test('source-sealed scoped backend matrix checks only derived affected Edge Functions and touched tests', () => {
@@ -69,35 +72,30 @@ test('source-sealed scoped backend matrix checks only derived affected Edge Func
     { suite: 'request-delivery-worker', targets: ['supabase/functions/request-delivery-worker/index.ts'], tests: [] },
   ]);
   const source = read('scripts/ci-backend-matrix.mjs');
-  assert.match(source, /if \(JSON\.parse\(readFileSync\(path\.join\(repositoryRoot, 'package\.json'\), 'utf8'\)\)\.scopedValidationReceipt\)/);
+  assert.doesNotMatch(source, /scopedValidationReceipt|verifyScopedRetainedValidation/);
 });
 
-test('scoped Pages release waits for the exact merged backend before publishing', () => {
+test('mixed Pages release waits for exact backend and Apps Script publication', () => {
   const workflow = YAML.parse(read('.github/workflows/pages-static.yml'));
   const deploy = workflow.jobs.deploy;
-  const steps = deploy.steps;
-  const gate = steps.findIndex(step => step.name === 'Wait for scoped backend migrations and Edge publication');
-  const publish = steps.findIndex(step => step.name === 'Deploy verified artifact to Pages');
-  assert.ok(gate >= 0 && publish > gate);
-  const script = steps[gate].with.script;
+  assert.ok(deploy.needs.includes('backend-publication'));
+  assert.match(deploy.if, /needs.backend-publication.result == 'success'/);
+  const script = workflow.jobs['backend-publication'].steps[0].with.script;
   for (const marker of [
-    'scopedValidationReceipt', 'deployment?.migrations', 'sourceHashes', 'SCOPED_BACKEND_MIGRATION_RECEIPT_INVALID',
-    'SCOPED_BACKEND_MIGRATION_RECEIPT_MISMATCH', 'apps-script-sync.yml',
-    'head_sha === context.sha', "event === 'workflow_dispatch'", 'Apply backend migrations and deploy Edge Functions',
-    'deployRun.conclusion !== \'success\'', 'appsScriptChangedFunctions', 'apps-script-deploy.yml',
-    "['workflow_run', 'workflow_dispatch'].includes(run.event)", "job.name === 'deploy-apps-script'",
-    "Publish the guarded production Apps Script version", 'SCOPED_APPS_SCRIPT_PUBLICATION_TIMEOUT',
+    'apps-script-sync.yml', 'BACKEND_MAIN_SUPERSEDED', 'BACKEND_RUN_IDENTITY_MISMATCH',
+    "event === 'workflow_dispatch'", 'Apply backend migrations and deploy Edge Functions',
+    'apps-script-deploy.yml', "job.name === 'deploy-apps-script'",
+    'Publish the guarded production Apps Script version', 'APPS_SCRIPT_PUBLICATION_NOT_SUCCESSFUL',
   ]) assert.ok(script.includes(marker), marker);
-  assert.doesNotMatch(script, /workflow_id: scriptWorkflow\.id, head_sha: context\.sha,\s*event:/);
-  assert.match(script, /Date\.now\(\)\s*\+\s*10\s*\*\s*60\s*\*\s*1000/);
+  assert.doesNotMatch(script, /scopedValidationReceipt/);
   assert.match(script, /Date\.now\(\)\s*\+\s*15\s*\*\s*60\s*\*\s*1000/);
 });
 
-test('scoped Apps Script releases dispatch exact backend, Apps Script, and Pages handoffs', () => {
+test('validated PR publication dispatches the same coordinator as direct pushes and manual releases', () => {
   const source = read('.github/workflows/publish-candidate.yml');
-  assert.match(source, /const scopedAppsScriptRelease = Boolean\(packageConfig\.scopedValidationReceipt &&[\s\S]*?packageConfig\.appsScriptPatchFunctions\.length > 0\)/);
-  const backendWait = source.indexOf("await waitForSuccessfulWorkflow('apps-script-sync.yml', backendDispatch)", source.indexOf('} else if (scopedAppsScriptRelease)'));
-  const scriptDispatch = source.indexOf("await dispatchOnce('apps-script-deploy.yml')", backendWait);
-  const pagesDispatch = source.indexOf("await dispatchOnce('pages-static.yml')", scriptDispatch);
-  assert.ok(backendWait >= 0 && scriptDispatch > backendWait && pagesDispatch > scriptDispatch);
+  assert.match(source, /await dispatchPagesOnce/);
+  assert.doesNotMatch(source, /apps-script-sync.yml|apps-script-deploy.yml|scopedValidationReceipt/);
+  const pages = YAML.parse(read('.github/workflows/pages-static.yml'));
+  assert.deepEqual(pages.on.push.branches, ['main']);
+  assert.ok(pages.on.workflow_dispatch);
 });

@@ -1,4 +1,3 @@
-import { verifyScopedRetainedValidation } from './check-retained-release-validation.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -91,13 +90,13 @@ export const reclassEmailReportPolicyMigrationName = '20261020150827_v2315_recla
 export const publishedLkgReadProofMigrationName = '20261020161833_published_lkg_read_proof_v1.sql';
 export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName]);
 
-export function normalizeScopedMigrationPaths(receiptMigrations) {
-  if (!Array.isArray(receiptMigrations) || receiptMigrations.length === 0) {
+export function normalizeScopedMigrationPaths(migrationPaths) {
+  if (!Array.isArray(migrationPaths) || migrationPaths.length === 0) {
     throw new Error('LOW_STOCK_SCOPED_MIGRATIONS_INVALID');
   }
   const normalized = [];
   const seen = new Set();
-  for (const entry of receiptMigrations) {
+  for (const entry of migrationPaths) {
     if (typeof entry !== 'string' || !entry.trim()) throw new Error('LOW_STOCK_SCOPED_MIGRATIONS_INVALID');
     const repoPath = entry.trim().replaceAll('\\', '/');
     const basename = path.posix.basename(repoPath);
@@ -112,6 +111,16 @@ export function normalizeScopedMigrationPaths(receiptMigrations) {
   }
   return normalized;
 }
+// Selected paths come from the authorized exact-commit release scope, never a receipt file.
+export function selectReleaseMigrations(value = process.env.RELEASE_MIGRATIONS) {
+  if (value === undefined) return releaseDatabaseMigrations;
+  let paths;
+  try { paths = JSON.parse(value); }
+  catch { throw new Error('LOW_STOCK_SCOPED_MIGRATIONS_INVALID'); }
+  if (!Array.isArray(paths)) throw new Error('LOW_STOCK_SCOPED_MIGRATIONS_INVALID');
+  return paths.length ? normalizeScopedMigrationPaths(paths) : [];
+}
+
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -1471,17 +1480,14 @@ async function main(args = process.argv.slice(2)) {
       const probe = await runReadOnlySchemaDiagnostic({ client, onPhase: next => { phase = next; } });
       console.log(`LOW_STOCK_SCHEMA_DIAGNOSTIC status=ok installed=${probe.installed}`);
     } else {
-      const scopedReceipt = process.env.SCOPED_RELEASE_DEPLOY === 'true' ? verifyScopedRetainedValidation() : null;
-      const selectedMigrations = scopedReceipt
-        ? normalizeScopedMigrationPaths(scopedReceipt.deployment.migrations)
-        : releaseDatabaseMigrations;
+      const selectedMigrations = selectReleaseMigrations();
       for (const targetMigrationName of selectedMigrations) {
         const sourceDirectory = baselineIncludedMigrations.has(targetMigrationName) ? 'archive_migrations' : 'migrations';
         const source = fs.readFileSync(new URL(`../supabase/${sourceDirectory}/${targetMigrationName}`, import.meta.url), 'utf8');
         const applied = await applyItemLowStockMigration({ client, source, targetMigrationName, onPhase: next => { phase = next; } });
         console.log(`${targetMigrationName}: ${applied.status}.`);
       }
-      if (scopedReceipt || process.env.V2313_SCOPED_DEPLOY === 'true') {
+      if (process.env.RELEASE_MIGRATIONS !== undefined) {
         console.log('Targeted ingestion release: existing reminder Vault configuration preserved.');
       } else if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_URL) {
         await upsertVaultSecret({ client, name: 'hr_calendar_project_url', value: process.env.SUPABASE_URL, description: 'Supabase project URL used by the scheduled HR calendar reminder dispatcher.' });

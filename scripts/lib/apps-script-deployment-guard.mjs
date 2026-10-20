@@ -9,6 +9,7 @@ const SHA = /^[a-f0-9]{40}$/;
 const VALIDATION_PATH = '.github/workflows/performance-monitor.yml';
 const DEPLOYMENT_PATH = '.github/workflows/apps-script-deploy.yml';
 const BACKEND_PATH = '.github/workflows/apps-script-sync.yml';
+const COORDINATOR_PATH = '.github/workflows/pages-static.yml';
 const BACKEND_DEPLOY_JOB = 'Apply backend migrations and deploy Edge Functions';
 const fail = code => { throw Object.assign(new Error(`APPS_SCRIPT_DEPLOYMENT_${code}`), { code: `APPS_SCRIPT_DEPLOYMENT_${code}` }); };
 const positive = value => Number.isSafeInteger(value) && value > 0;
@@ -17,10 +18,19 @@ const sameRepo = (a, b) => typeof a === 'string' && a.toLowerCase() === b.toLowe
 // Backend source publication uses the merged PR's standard unit/lint gate.
 // It neither consumes nor authorizes a Pages publication artifact.
 export async function authorizeAppsScriptDeployment({ repository, eventName, ref, commit,
-  expectedCommit = '', workflowRef, backendRunId, backendRunAttempt, backendRunSha, api }) {
+  expectedCommit = '', workflowRef, backendRunId, backendRunAttempt, backendRunSha,
+  coordinatorRunId, coordinatorRunAttempt, requireSupabase, scriptChanged: requestedScriptChange, api }) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository || '') || typeof api !== 'function') fail('IDENTITY_INVALID');
   if (workflowRef !== `${repository}/${DEPLOYMENT_PATH}@refs/heads/main`) fail('WORKFLOW_NOT_TRUSTED');
   if (expectedCommit && (!SHA.test(expectedCommit) || expectedCommit !== commit)) fail('EXPECTED_COMMIT_MISMATCH');
+  if (eventName === 'workflow_dispatch' && (!positive(coordinatorRunId) || !positive(coordinatorRunAttempt)
+    || !positive(backendRunId) || !positive(backendRunAttempt) || backendRunSha !== commit)) fail('COORDINATOR_RUN_REQUIRED');
+  if (eventName === 'workflow_dispatch' && ![true, false, 'true', 'false'].includes(requireSupabase)) {
+    fail('COORDINATOR_SCOPE_INVALID');
+  }
+  if (eventName === 'workflow_dispatch' && requestedScriptChange !== true && requestedScriptChange !== 'true') {
+    fail('SCRIPT_CHANGE_NOT_AUTHORIZED');
+  }
   const root = `repos/${repository}`;
   if (eventName === 'workflow_run') {
     if (!positive(backendRunId) || !positive(backendRunAttempt) || backendRunSha !== commit) fail('BACKEND_RUN_INVALID');
@@ -36,6 +46,58 @@ export async function authorizeAppsScriptDeployment({ repository, eventName, ref
   const matches = associated.filter(pr => pr.merge_commit_sha === commit && pr.merged_at
     && pr.base?.ref === 'main' && sameRepo(pr.base?.repo?.full_name, repository)
     && sameRepo(pr.head?.repo?.full_name, repository));
+  if (positive(coordinatorRunId) && eventName === 'workflow_dispatch') {
+    const coordinator = await api(`${root}/actions/workflows/pages-static.yml`);
+    if (!positive(coordinator?.id) || coordinator.path !== COORDINATOR_PATH || coordinator.state !== 'active') {
+      fail('COORDINATOR_WORKFLOW_INVALID');
+    }
+    if (!positive(coordinatorRunAttempt)) fail('COORDINATOR_RUN_INVALID');
+    const releaseRun = await api(`${root}/actions/runs/${coordinatorRunId}`);
+    if (!releaseRun || releaseRun.id !== coordinatorRunId || releaseRun.workflow_id !== coordinator.id
+      || releaseRun.path !== COORDINATOR_PATH || !['push', 'workflow_dispatch'].includes(releaseRun.event)
+      || releaseRun.head_branch !== 'main' || releaseRun.head_sha !== commit
+      || !sameRepo(releaseRun.head_repository?.full_name, repository)
+      || releaseRun.run_attempt !== coordinatorRunAttempt
+      || !['in_progress', 'completed'].includes(releaseRun.status)) fail('COORDINATOR_RUN_INVALID');
+    if (releaseRun.status === 'completed' && releaseRun.conclusion !== 'success') fail('COORDINATOR_RUN_FAILED');
+    const coordinatorJobs = await listGitHubApiItems({ api,
+      endpoint: `${root}/actions/runs/${releaseRun.id}/attempts/${releaseRun.run_attempt}/jobs`, field: 'jobs' });
+    const byName = name => coordinatorJobs.filter(job => job.name === name && job.run_id === releaseRun.id
+      && job.head_sha === commit
+      && job.status === 'completed' && job.conclusion === 'success');
+    if (byName('authorize-main').length !== 1 || byName('scope').length !== 1) fail('COORDINATOR_SCOPE_NOT_VALIDATED');
+    const validationJobs = ['frontend-validation / release-gate', 'node-validation / pr-gate'];
+    if (!validationJobs.some(name => byName(name).length === 1)) fail('COORDINATOR_VALIDATION_NOT_GREEN');
+    const backendPublication = coordinatorJobs.filter(job => job.run_id === releaseRun.id && job.name === 'backend-publication'
+      && job.head_sha === commit && (job.status === 'in_progress'
+        || (job.status === 'completed' && job.conclusion === 'success')));
+    if (backendPublication.length !== 1) fail('COORDINATOR_BACKEND_NOT_ACTIVE');
+    const backendWorkflow = await api(`${root}/actions/workflows/apps-script-sync.yml`);
+    if (!positive(backendWorkflow?.id) || backendWorkflow.path !== BACKEND_PATH) fail('BACKEND_WORKFLOW_INVALID');
+    if (!positive(backendRunId) || !positive(backendRunAttempt) || backendRunSha !== commit) fail('BACKEND_RUN_INVALID');
+    const backendRun = await api(`${root}/actions/runs/${backendRunId}`);
+    if (!backendRun || backendRun.id !== backendRunId || backendRun.workflow_id !== backendWorkflow.id || backendRun.path !== BACKEND_PATH
+      || backendRun.event !== 'workflow_dispatch' || backendRun.head_branch !== 'main' || backendRun.head_sha !== commit
+      || backendRun.status !== 'completed' || backendRun.conclusion !== 'success'
+      || backendRun.run_attempt !== backendRunAttempt
+      || !sameRepo(backendRun.head_repository?.full_name, repository)) fail('BACKEND_RUN_NOT_TRUSTED');
+    const backendJobs = await listGitHubApiItems({ api,
+      endpoint: `${root}/actions/runs/${backendRun.id}/attempts/${backendRun.run_attempt}/jobs`, field: 'jobs' });
+    const deploy = backendJobs.filter(job => job.run_id === backendRun.id && job.name === BACKEND_DEPLOY_JOB
+      && job.head_sha === commit && job.status === 'completed'
+      && (requireSupabase === true || requireSupabase === 'true'
+        ? job.conclusion === 'success' : ['success', 'skipped'].includes(job.conclusion)));
+    if (deploy.length !== 1) fail('BACKEND_DEPLOY_NOT_SUCCESSFUL');
+    if (requestedScriptChange !== true && requestedScriptChange !== 'true') fail('SCRIPT_CHANGE_NOT_AUTHORIZED');
+    await assertCurrentMain();
+    const latest = await api(`${root}/actions/runs/${coordinatorRunId}`);
+    if (latest?.id !== releaseRun.id || latest?.workflow_id !== coordinator.id || latest?.path !== COORDINATOR_PATH
+      || latest?.run_attempt !== coordinatorRunAttempt || latest?.head_sha !== commit
+      || !sameRepo(latest?.head_repository?.full_name, repository)) fail('COORDINATOR_RUN_CHANGED');
+    await assertCurrentMain();
+    return { commit, pullRequest: matches[0]?.number || null, runId: releaseRun.id, attempt: releaseRun.run_attempt,
+      scriptChanged: requestedScriptChange === true || requestedScriptChange === 'true' };
+  }
   if (matches.length !== 1 || !positive(matches[0].number)) fail('NO_UNIQUE_MERGED_PR');
   const number = matches[0].number;
   const readPr = () => api(`${root}/pulls/${number}`);
@@ -149,13 +211,19 @@ export async function authorizeProductionAppsScriptDeploymentFromEnvironment({ e
   return authorizeAppsScriptDeployment({ repository: env.GITHUB_REPOSITORY, eventName: env.GITHUB_EVENT_NAME,
     ref: env.GITHUB_REF, commit: env.GITHUB_SHA, workflowRef: env.GITHUB_WORKFLOW_REF,
     expectedCommit: env.EXPECTED_COMMIT || '', backendRunId: Number(env.APPS_SCRIPT_BACKEND_RUN_ID),
-    backendRunAttempt: Number(env.APPS_SCRIPT_BACKEND_RUN_ATTEMPT), backendRunSha: env.APPS_SCRIPT_BACKEND_RUN_SHA, api });
+    backendRunAttempt: Number(env.APPS_SCRIPT_BACKEND_RUN_ATTEMPT), backendRunSha: env.APPS_SCRIPT_BACKEND_RUN_SHA,
+    coordinatorRunId: Number(env.APPS_SCRIPT_COORDINATOR_RUN_ID),
+    coordinatorRunAttempt: Number(env.APPS_SCRIPT_COORDINATOR_RUN_ATTEMPT),
+    requireSupabase: env.APPS_SCRIPT_SUPABASE_REQUIRED,
+    scriptChanged: env.APPS_SCRIPT_SCRIPT_CHANGED, api });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   authorizeProductionAppsScriptDeploymentFromEnvironment().then(result => {
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT,
       `authorized=true\ncommit=${result.commit}\nscript-changed=${result.scriptChanged}\n`);
-    console.log(`Authorized Apps Script commit ${result.commit} from PR #${result.pullRequest}, validation ${result.runId}/${result.attempt}.`);
+    console.log(result.pullRequest
+      ? `Authorized Apps Script commit ${result.commit} from PR #${result.pullRequest}, validation ${result.runId}/${result.attempt}.`
+      : `Authorized Apps Script commit ${result.commit} through coordinator ${result.runId}/${result.attempt}.`);
   }).catch(error => { console.error(error.code || 'APPS_SCRIPT_DEPLOYMENT_AUTHORIZATION_FAILED'); process.exitCode = 1; });
 }

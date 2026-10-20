@@ -1,54 +1,66 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import yaml from 'js-yaml';
-import { verifyV2313AppsScriptProtection, isV2313DriveTimingWithinBudget, V2313_FINALIZE_BUDGET_MS } from '../scripts/check-v2313-retained-validation.mjs';
+import { isV2313DriveTimingWithinBudget, V2313_FINALIZE_BUDGET_MS } from '../scripts/check-v2313-retained-validation.mjs';
 import { patchAppsScriptFunctions } from '../scripts/apps-script-function-patch.mjs';
-import { execFileSync } from 'node:child_process';
 import { migrationContractQuery, bulkMasterSnapshotMigrationName, bulkContextIndexPlanMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
 
-test('v2313 deployment selects ingestion evidence and skips unchanged Edge deployment', () => {
+test('backend deployment selects exact migrations and Edge Functions without package-version branches', () => {
   const workflow = yaml.safeLoad(fs.readFileSync('.github/workflows/apps-script-sync.yml', 'utf8'));
   const jobs = workflow.jobs;
-  assert.ok(jobs['authorize-backend'].outputs.v2313);
-  for (const name of ['pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract']) {
-    assert.match(jobs[name].if, /v2313 != 'true'/);
-  }
-  assert.match(jobs['v238-retained-contracts'].if, /v2313 == 'true'/);
-  const edgeStep = jobs['deploy-supabase'].steps.find(step => step.name === 'Configure Production Schedule dispatch and deploy backend functions');
-  assert.equal(edgeStep.if, "needs.authorize-backend.outputs.v2313 != 'true'");
+  assert.ok(jobs['authorize-backend'].outputs.migrations);
+  assert.ok(jobs['authorize-backend'].outputs['edge-functions']);
+  assert.match(jobs['deploy-supabase'].if, /backend-validation.result == 'success'/);
+  const edgeStep = jobs['deploy-supabase'].steps.find(step => step.name === 'Deploy changed Edge Functions');
+  assert.equal(edgeStep.if, "needs.authorize-backend.outputs['edge-functions'] != '[]'");
+  assert.match(edgeStep.run, /RELEASE_EDGE_FUNCTIONS/);
   const migrationStep = jobs['deploy-supabase'].steps.find(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs');
-  assert.equal(migrationStep.env.V2313_SCOPED_DEPLOY, '${{ needs.authorize-backend.outputs.v2313 }}');
-  assert.equal(jobs['deploy-supabase'].steps.find(step => step.name === 'Verify deployed Aura authorization').if,
-    "needs.authorize-backend.outputs.v2313 != 'true'");
+  assert.equal(migrationStep.if, "needs.authorize-backend.outputs.migrations != '[]'");
+  assert.equal(migrationStep.env.RELEASE_MIGRATIONS, '${{ needs.authorize-backend.outputs.migrations }}');
+  assert.doesNotMatch(JSON.stringify(workflow.jobs), /v2313|v2311|v238|receipt|retained/i);
 });
 
-test('v2313 schema gate requires sealed native PostgreSQL evidence without UI or unrelated SQL reruns', () => {
+test('schema gate requires selected database integration checks to pass', () => {
   const workflow = yaml.safeLoad(fs.readFileSync('.github/workflows/release-database.yml', 'utf8'));
-  assert.ok(workflow.jobs['schema-path-scope'].outputs.v2313);
   const gate = workflow.jobs['schema-gate'].steps[0];
-  assert.ok(gate.env.V2313);
-  assert.match(gate.run, /V2313_INGESTION_EVIDENCE_REQUIRED/);
-  const program = gate.run.replace(/^node[^\n]*\n/, '').replace(/\nNODE\s*$/, '');
-  const results = Object.fromEntries(['schema-path-scope', 'discover', 'integration'].map(name => [name, { result: 'success' }]));
-  for (const name of ['edge-functions', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions']) results[name] = { result: 'skipped' };
-  assert.doesNotThrow(() => execFileSync(process.execPath, ['--input-type=module', '-e', program], {
-    env: { ...process.env, SCOPE: 'true', V2313: 'true', RESULTS: JSON.stringify(results) }, encoding: 'utf8',
-  }));
-  for (const name of ['schema-contracts', 'suspend-tag-approval', 'database-and-functions']) {
-    assert.match(workflow.jobs[name].if, /v2313 != 'true'/);
+  assert.match(gate.run, /jobs\[name\]\?\.result !== 'success'/);
+  assert.match(gate.run, /All full schema integration checks passed/);
+  for (const name of ['integration', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions'])
+    assert.match(workflow.jobs[name].if, /needs\.schema-path-scope\.outputs\.changed == 'true'/);
+  assert.match(workflow.jobs['edge-functions'].if, /needs\.discover\.outputs\.edge/);
+  assert.doesNotMatch(JSON.stringify(workflow.jobs), /v2313|v2311|v238|receipt|retained/i);
+  const program = gate.run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
+  const required = ['schema-path-scope', 'discover', 'integration', 'edge-functions', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions'];
+  const results = Object.fromEntries(required.map(name => [name, { result: 'success' }]));
+  const run = (scope = 'true', requireScope = 'false', edgeScope = '{"include":[{"name":"edge"}]}') => vm.runInNewContext(program, {
+    process: { env: { SCOPE: scope, EDGE_SCOPE: edgeScope, REQUIRE_SCHEMA_SCOPE: requireScope, RESULTS: JSON.stringify(results) }, exit() {} },
+    console: { log() {} },
+  });
+  assert.doesNotThrow(() => run());
+  for (const name of required.slice(2)) {
+    results[name].result = 'skipped';
+    assert.throws(() => run(), new RegExp(`BACKEND_SCHEMA_GATE_FAILED_${name}`));
+    results[name].result = 'success';
   }
+  results['edge-functions'].result = 'skipped';
+  assert.doesNotThrow(() => run('true', 'false', '{"include":[]}'));
+  assert.throws(() => run(), /BACKEND_SCHEMA_GATE_FAILED_edge-functions/);
+  results['edge-functions'].result = 'success';
+  assert.doesNotThrow(() => run('false', 'false'));
+  assert.throws(() => run('false', 'true'), /BACKEND_SCHEMA_SCOPE_REQUIRED/);
 });
 
-test('v2313 Apps Script patch preserves every unapproved function and historical scheduling', () => {
-  const protection = verifyV2313AppsScriptProtection();
-  assert.ok(protection.protectedFunctions > 100);
-  assert.ok(protection.patchNames.includes('processSnapshotBatchFolderLocked_'));
-  const base = execFileSync('git', ['show', '1fa247e779838d20ec5090f5d95559a0bf0be864:Code.gs'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-  const local = fs.readFileSync('Code.gs', 'utf8');
-  const patch = patchAppsScriptFunctions({ remoteSource: base, localSource: local, functionNames: protection.patchNames });
+test('Apps Script patching preserves an unapproved scheduling function in a synthetic fixture', () => {
+  const remote = 'const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = "fixture";\nfunction handleSignedRequestDeliveryEvent_(){ return "old"; }\nfunction scheduledBackfill(){ return "trusted"; }\n';
+  const local = 'const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = "fixture";\nfunction handleSignedRequestDeliveryEvent_(){ return "new"; }\nfunction scheduledBackfill(){ return "changed"; }\n';
+  const patch = patchAppsScriptFunctions({ remoteSource: remote, localSource: local, functionNames: ['handleSignedRequestDeliveryEvent_'] });
+  assert.match(patch.source, /function handleSignedRequestDeliveryEvent_\(\)\{ return "new"; \}/);
+  assert.match(patch.source, /function scheduledBackfill\(\)\{ return "trusted"; \}/);
+  assert.doesNotMatch(patch.source, /changed/);
   assert.ok(patch.protectedSourceDigest);
-  assert.equal(patch.functions.length, protection.patchNames.length);
+  assert.deepEqual(patch.functions, ['handleSignedRequestDeliveryEvent_']);
 });
 
 test('v2313 approved finalization budget retains strict boundaries and staging gates', () => {

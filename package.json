@@ -134,6 +134,5 @@
     "vitest": "4.1.10"
   },
   "appsScriptRelease": "AgData v2.2.1",
-  "appsScriptPatchFunctions": [],
-  "scopedValidationReceipt": "docs/releases/v2.3.16-retained-validation.json"
+  "appsScriptPatchFunctions": []
 }

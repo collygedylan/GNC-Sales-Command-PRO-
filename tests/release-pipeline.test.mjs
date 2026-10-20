@@ -67,22 +67,25 @@ test('CI commands defer retries to their configs and retain exhausted-failure ga
   }
 });
 
-test('Pages validation builds a same-run immutable artifact without blocking on browsers', () => {
+test('Pages uses one current-main coordinator and binds frontend publication to its validated artifact', () => {
   assert.equal(pages.permissions.actions, 'read');
   assert.equal(validation.jobs['release-gate'].outputs['proof-id'], '${{ steps.proof.outputs.artifact-id }}');
   assert.equal(validation.on.workflow_call.outputs['proof-id'].value, '${{ jobs.release-gate.outputs.proof-id }}');
   assert.equal(validation.on.workflow_call.outputs['site-id'].value, '${{ jobs.release-gate.outputs.site-id }}');
   assert.equal(validation.jobs['release-gate'].steps.find(s => s.uses === 'actions/upload-artifact@v4').id, 'proof');
-  assert.equal(pages.jobs.validation.uses, './.github/workflows/release-validation.yml');
-  assert.deepEqual(pages.jobs.deploy.needs, ['authorize-main','validation']);
+  assert.equal(pages.jobs['frontend-validation'].uses, './.github/workflows/release-validation.yml');
+  assert.deepEqual(pages.on.push.branches, ['main']);
+  assert.equal(pages.on.workflow_dispatch.inputs['expected-commit'].required, false);
+  assert.ok(pages.jobs['backend-publication'].needs.includes('scope'));
+  assert.equal(pages.jobs.deploy.needs.includes('frontend-validation'), true);
   assert.equal(pages.jobs.deploy.steps.find(s => s.uses === './.github/actions/download-release').with['run-id'],
     '${{ github.run_id }}');
   assert.equal(pages.jobs.deploy.steps.find(s => s.uses === './.github/actions/download-release').with.commit,
     '${{ github.sha }}');
   assert.equal(pages.jobs['exact-live'].needs, 'deploy');
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.equal(pages.jobs.validation.with['run-nightly-suites'], false);
-  assert.doesNotMatch(JSON.stringify(pages.jobs.validation), /fast-browser/);
+  assert.equal(pages.jobs['frontend-validation'].with['run-nightly-suites'], false);
+  assert.doesNotMatch(JSON.stringify(pages.jobs['frontend-validation']), /fast-browser/);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -94,11 +97,95 @@ test('Pages publication directly requires current-main authorization and compact
   assert.match(pages.jobs['authorize-main'].if, /refs\/heads\/main/);
   assert.match(pages.jobs['authorize-main'].steps[0].with.script, /FRONTEND_EXPECTED_COMMIT_MISMATCH/);
   assert.match(pages.jobs.deploy.if, /needs\.authorize-main\.result == 'success'/);
-  assert.match(pages.jobs.deploy.if, /needs\.validation\.result == 'success'/);
+  assert.match(pages.jobs.deploy.if, /needs\.frontend-validation\.result == 'success'/);
   assert.match(pages.jobs.deploy.if, /!cancelled\(\)/);
   assert.match(pages.jobs['exact-live'].steps.find(step => step.name === 'Report the verified live version').run,
     /\$\{version\} is now LIVE/);
-  assert.doesNotMatch(JSON.stringify(pages.jobs), /SUPABASE|APPS_SCRIPT/i);
+  assert.match(pages.jobs['backend-publication'].steps[0].with.script, /createWorkflowDispatch/);
+  assert.match(pages.jobs['backend-publication'].steps[0].with.script, /BACKEND_RUN_IDENTITY_MISMATCH/);
+  assert.doesNotMatch(JSON.stringify(pages.jobs['tooling-validation'].steps.map(step => ({ run: step.run, uses: step.uses }))), /build|browser|docker/i);
+  assert.doesNotMatch(read('.github/workflows/release-database.yml'), /V238|V2311|V2313|scopedValidationReceipt|retained/);
+});
+
+test('Pages recovery scope uses a real deployment baseline and preserves tooling-only fast path', () => {
+  const baseline = pages.jobs.scope.steps.find(step => step.id === 'baseline').run;
+  const classify = pages.jobs.scope.steps.find(step => step.id === 'classify').run;
+  assert.match(baseline, /scripts\/release-baseline\.mjs/);
+  assert.match(classify, /packageMetadataSafe\(before\)/);
+  assert.match(classify, /!initialScope\.toolingOnly/);
+  assert.match(classify, /merge-base', '--is-ancestor/);
+  assert.match(classify, /selectReleaseRecoveryBase/);
+  assert.match(classify, /changedReleasePaths\(\{ before, after: commit \}\)/);
+});
+
+test('Pages backend handoff reuses the exact Apps Script run and checks attempt-specific jobs', async () => {
+  const job = pages.jobs['backend-publication'].steps.find(step => step.uses === 'actions/github-script@v7');
+  const source = job.with.script;
+  const sha = 'a'.repeat(40);
+  const backendWorkflow = { id: 10, path: '.github/workflows/apps-script-sync.yml', state: 'active' };
+  const scriptWorkflow = { id: 11, path: '.github/workflows/apps-script-deploy.yml', state: 'active' };
+  const backendRun = { id: 20, workflow_id: 10, path: backendWorkflow.path, event: 'workflow_dispatch',
+    head_branch: 'main', head_sha: sha, head_repository: { full_name: 'example/app' },
+    run_attempt: 3, run_number: 4, status: 'completed', conclusion: 'success' };
+  const scriptRun = { id: 21, workflow_id: 11, path: scriptWorkflow.path, event: 'workflow_dispatch',
+    head_branch: 'main', head_sha: sha, head_repository: { full_name: 'example/app' },
+    run_attempt: 2, run_number: 5, status: 'completed', conclusion: 'success' };
+  const backendJob = { id: 30, run_id: backendRun.id, head_sha: sha,
+    name: 'Apply backend migrations and deploy Edge Functions', status: 'completed', conclusion: 'success' };
+  const publishJob = { id: 31, run_id: scriptRun.id, head_sha: sha, name: 'deploy-apps-script',
+    status: 'completed', conclusion: 'success', steps: [{ name: 'Publish the guarded production Apps Script version',
+      status: 'completed', conclusion: 'success' }] };
+  const attempts = [];
+  const dispatches = [];
+  const api = {
+    git: { getRef: async () => ({ data: { object: { sha } } }) },
+    actions: {
+      getWorkflow: async ({ workflow_id }) => ({ data: workflow_id === 'apps-script-sync.yml' ? backendWorkflow : scriptWorkflow }),
+      listWorkflowRuns: async ({ workflow_id }) => ({ data: workflow_id === 10 ? [backendRun] : [scriptRun] }),
+      getWorkflowRun: async ({ run_id }) => ({ data: run_id === backendRun.id ? backendRun : scriptRun }),
+      listJobsForWorkflowRunAttempt: async args => {
+        attempts.push(args);
+        return { data: { jobs: args.run_id === backendRun.id ? [backendJob] : [publishJob] } };
+      },
+      createWorkflowDispatch: async args => { dispatches.push(args); return { status: 204 }; },
+    },
+  };
+  const github = { rest: api, paginate: async (method, args) => (await method(args)).data };
+  const context = { repo: { owner: 'example', repo: 'app' }, runId: 44 };
+  const process = { env: { EXPECTED_COMMIT: sha, COORDINATOR_RUN_ATTEMPT: '7', REQUIRE_SUPABASE: 'true',
+    REQUIRE_APPS_SCRIPT: 'true', RELEASE_MIGRATIONS: '["supabase/migrations/m.sql"]', RELEASE_EDGE_FUNCTIONS: '["app-api"]' } };
+  await vm.runInNewContext(`(async () => {${source}\n})()`, {
+    github, context, process, Date, setTimeout: callback => setTimeout(callback, 0),
+  });
+  assert.deepEqual(attempts.map(({ run_id, attempt_number }) => [run_id, attempt_number]), [[20, 3], [21, 2]]);
+  assert.deepEqual(dispatches, [], 'a matching successful Apps Script run is reused');
+  assert.match(source, /process\.env\.COORDINATOR_RUN_ATTEMPT/);
+  assert.equal(Object.hasOwn(context, 'runAttempt'), false, 'the workflow attempt comes from the trusted environment input');
+});
+
+test('Pages backend handoff rejects a stale run identity before accepting its attempt jobs', async () => {
+  const job = pages.jobs['backend-publication'].steps.find(step => step.uses === 'actions/github-script@v7');
+  const source = job.with.script;
+  const sha = 'b'.repeat(40);
+  const workflow = { id: 10, path: '.github/workflows/apps-script-sync.yml', state: 'active' };
+  const run = { id: 20, workflow_id: 10, path: workflow.path, event: 'workflow_dispatch', head_branch: 'main',
+    head_sha: sha, head_repository: { full_name: 'example/app' }, run_attempt: 3, run_number: 4,
+    status: 'completed', conclusion: 'success' };
+  const staleRun = { ...run, head_sha: 'c'.repeat(40) };
+  const api = { git: { getRef: async () => ({ data: { object: { sha } } }) }, actions: {
+    getWorkflow: async () => ({ data: workflow }),
+    listWorkflowRuns: async () => ({ data: [run] }),
+    getWorkflowRun: async () => ({ data: staleRun }),
+    listJobsForWorkflowRunAttempt: async () => ({ data: { jobs: [] } }),
+    createWorkflowDispatch: async () => ({ status: 204 }),
+  } };
+  const github = { rest: api, paginate: async (method, args) => (await method(args)).data };
+  const context = { repo: { owner: 'example', repo: 'app' }, runId: 44 };
+  const process = { env: { EXPECTED_COMMIT: sha, COORDINATOR_RUN_ATTEMPT: '7', REQUIRE_SUPABASE: 'true',
+    REQUIRE_APPS_SCRIPT: 'false', RELEASE_MIGRATIONS: '[]', RELEASE_EDGE_FUNCTIONS: '[]' } };
+  await assert.rejects(vm.runInNewContext(`(async () => {${source}\n})()`, {
+    github, context, process, Date, setTimeout: callback => setTimeout(callback, 0),
+  }), /BACKEND_RUN_IDENTITY_MISMATCH/);
 });
 
 test('expanded browser shards remain intact for the nightly workflow, outside standard release validation', () => {
@@ -175,8 +262,8 @@ test('nightly performance remains a serial paired comparison with immutable base
   assert.match(validation.jobs['release-gate'].steps[0].run, /RUN_NIGHTLY_SUITES/);
 });
 
-test('Pages dispatch validates only frontend inputs before publication', () => {
-  assert.equal(pages.on.push, undefined);
+test('Pages coordinator separates tooling, frontend, and backend validation lanes', () => {
+  assert.deepEqual(pages.on.push.branches, ['main']);
   assert.ok('workflow_dispatch' in pages.on);
   assert.equal(performance.on.push, undefined);
   assert.ok('pull_request' in performance.on);
@@ -184,13 +271,15 @@ test('Pages dispatch validates only frontend inputs before publication', () => {
   assert.ok('schedule' in nightly.on);
   assert.equal(performance.jobs.validation.uses, './.github/workflows/pr-validation.yml');
   assert.equal(performance.jobs['diagnostic-validation'].uses, './.github/workflows/release-validation.yml');
-  assert.equal(pages.jobs.validation.with['run-backend-tests'], false);
-  assert.equal(pages.jobs.validation.with['run-schema-tests'], false);
+  assert.equal(pages.jobs['frontend-validation'].with['run-backend-tests'], false);
+  assert.equal(pages.jobs['frontend-validation'].with['run-schema-tests'], false);
+  assert.equal(pages.jobs['tooling-validation'].steps.some(step => /build|browser|docker/i.test(step.run || '')), false);
+  assert.match(JSON.stringify(pages.jobs['backend-publication']), /APPS_SCRIPT|SUPABASE/);
   assert.equal(pages.concurrency['cancel-in-progress'], false);
   assert.match(pages.jobs['authorize-main'].if, /github.ref == 'refs\/heads\/main'/);
   assert.ok(pages.on.workflow_dispatch.inputs['expected-commit']);
-  assert.equal(pages.jobs.validation.with['production-health'], false);
-  assert.doesNotMatch(JSON.stringify(pages.jobs.validation), /SUPABASE|APPS_SCRIPT/i);
+  assert.equal(pages.jobs['frontend-validation'].with['production-health'], false);
+  assert.doesNotMatch(JSON.stringify(pages.jobs['frontend-validation']), /SUPABASE|APPS_SCRIPT/i);
 });
 
 test('scheduled live canaries await main and run outside the release publication path', () => {

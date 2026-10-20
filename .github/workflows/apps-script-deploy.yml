@@ -1,15 +1,38 @@
 name: Deploy Apps Script ingestion
 
 on:
-  workflow_run:
-    workflows: [Deploy Supabase backend]
-    types: [completed]
   workflow_dispatch:
     inputs:
       expected-commit:
         description: Merged main SHA supplied by the trusted publisher.
         type: string
-        required: false
+        required: true
+      backend-run-id:
+        description: Exact successful backend coordinator run.
+        type: string
+        required: true
+      backend-run-attempt:
+        description: Exact backend run attempt.
+        type: string
+        required: true
+      coordinator-run-id:
+        description: Exact Pages coordinator run authorizing this deployment.
+        type: string
+        required: true
+      coordinator-run-attempt:
+        description: Exact Pages coordinator attempt.
+        type: string
+        required: true
+      supabase-required:
+        description: Whether the validated coordinator scope requires a successful Supabase deployment.
+        type: boolean
+        required: true
+        default: false
+      script-changed:
+        description: Whether the validated coordinator scope includes Apps Script source.
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -24,17 +47,19 @@ jobs:
   deploy-apps-script:
     if: >-
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_repository.full_name == github.repository))
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
       EXPECTED_COMMIT: ${{ inputs.expected-commit }}
-      APPS_SCRIPT_BACKEND_RUN_ID: ${{ github.event.workflow_run.id }}
-      APPS_SCRIPT_BACKEND_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-      APPS_SCRIPT_BACKEND_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+      APPS_SCRIPT_BACKEND_RUN_ID: ${{ inputs.backend-run-id }}
+      APPS_SCRIPT_BACKEND_RUN_ATTEMPT: ${{ inputs.backend-run-attempt }}
+      APPS_SCRIPT_BACKEND_RUN_SHA: ${{ github.sha }}
+      APPS_SCRIPT_COORDINATOR_RUN_ID: ${{ inputs.coordinator-run-id }}
+      APPS_SCRIPT_COORDINATOR_RUN_ATTEMPT: ${{ inputs.coordinator-run-attempt }}
+      APPS_SCRIPT_SUPABASE_REQUIRED: ${{ inputs.supabase-required }}
+      APPS_SCRIPT_SCRIPT_CHANGED: ${{ inputs.script-changed }}
     steps:
       - uses: actions/checkout@v4
         with:

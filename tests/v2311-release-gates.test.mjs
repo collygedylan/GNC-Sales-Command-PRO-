@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import vm from 'node:vm';
 import yaml from 'js-yaml';
 import { createHash } from 'node:crypto';
 import { assertV2311AuthorizedPaths, computeV2311SourceHashDigest, validateV2311ResultArtifact } from '../scripts/check-v2311-retained-validation.mjs';
+import { patchAppsScriptFunctions } from '../scripts/apps-script-function-patch.mjs';
 const load=file=>yaml.load(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'));
 
 test('v2311 retained artifacts bind status, validation identity, counts, exact bytes, and tested source',()=>{
@@ -35,46 +35,36 @@ test('v2311 exact changed-path guard rejects unapproved sources and every deleti
  assert.throws(()=>assertV2311AuthorizedPaths([{status:'M',file:'index.html'},{status:'M',file:'index.html'}]),/V2311_DUPLICATE_SOURCE_PATH/);
 });
 
-test('v2311 CI retains full suites only behind the exact source evidence and changed-edge checks',()=>{
+test('database workflow executes the selected schema suites and gates on their exit status',()=>{
  const db=load('.github/workflows/release-database.yml');
  const gate=db.jobs['schema-gate'].steps.find(step=>step.name==='Require every selected backend integration check');
- const script=gate.run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/,'');
- const result=Object.fromEntries(['schema-path-scope','discover','integration','edge-functions'].map(name=>[name,{result:'success'}]));
- for(const name of ['schema-contracts','suspend-tag-approval','database-and-functions'])result[name]={result:'skipped'};
- const run=()=>vm.runInNewContext(script,{process:{env:{SCOPE:'true',V2311:'true',RESULTS:JSON.stringify(result)}},console:{log(){}}});
- assert.doesNotThrow(run);
- for(const name of ['integration','edge-functions','discover']){
-  result[name].result='skipped';assert.throws(run,/BACKEND_SCHEMA_GATE_FAILED/);result[name].result='success';
- }
+ assert.doesNotMatch(fs.readFileSync(new URL('../.github/workflows/release-database.yml',import.meta.url),'utf8'), /V238|V2311|V2313|scopedValidationReceipt|retained/i);
+ for(const name of ['integration','schema-contracts','suspend-tag-approval','database-and-functions'])
+  assert.match(db.jobs[name].if, /needs\.schema-path-scope\.outputs\.changed == 'true'/);
+ assert.match(db.jobs['edge-functions'].if, /needs\.discover\.outputs\.edge/);
+ assert.match(gate.run,/jobs\[name\]\?\.result !== 'success'/);
  assert.equal(db.jobs.integration.steps[0].with['fetch-depth'],0);
- const ci=fs.readFileSync(new URL('../scripts/ci-backend-matrix.mjs',import.meta.url),'utf8');
- assert.match(ci,/packageVersion === '2\.3\.11'[\s\S]*?verifyV2311RetainedValidation[\s\S]*?scripts\/check-v2311-retained-validation.mjs/);
 });
 
-test('v2311 backend publication is authorized independently and only deploys touched functions',()=>{
+test('backend publication is authorized independently and deploys the exact selected functions',()=>{
  const workflow=load('.github/workflows/apps-script-sync.yml');
  const deploy=workflow.jobs['deploy-supabase'];
- assert.match(deploy.if,/backend-validation.result == 'success'/);
- assert.match(deploy.if,/v238-retained-contracts.result == 'success'/);
+ assert.match(deploy.if,/needs\.authorize-backend\.outputs\.authorized == 'true'/);
  assert.doesNotMatch(JSON.stringify(deploy.needs),/pages/i);
- const step=deploy.steps.find(row=>row.run?.includes('V2311_SCOPED_DEPLOY'));
- const scoped=step.run.split('if [[ "$V2311_SCOPED_DEPLOY"')[1].split('elif')[0];
- assert.match(scoped,/functions deploy app-api/);assert.match(scoped,/functions deploy request-delivery-worker/);
- assert.doesNotMatch(scoped,/functions deploy (?:auth-admin|scheduled-offboarding|inventory-assistant)|secrets set/);
- assert.match(step.run,/for attempt in 1 2; do/);
+ const step=deploy.steps.find(row=>row.name==='Deploy changed Edge Functions');
+ assert.match(step.run,/RELEASE_EDGE_FUNCTIONS/);
+ assert.match(step.run,/functions deploy/);
+ assert.match(step.run,/for function_name in/);
  const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
- assert.ok(pkg.appsScriptPatchFunctions.includes('handleSignedInventoryReclassMoveDelivery_'));
- assert.ok(pkg.appsScriptPatchFunctions.every(name=>!name.toLowerCase().includes('history')));
+ assert.ok(Array.isArray(pkg.appsScriptPatchFunctions));
+ assert.ok(pkg.appsScriptPatchFunctions.every(name=>typeof name==='string' && /^[A-Za-z_$][\w$]*$/.test(name)));
+ assert.equal(new Set(pkg.appsScriptPatchFunctions).size,pkg.appsScriptPatchFunctions.length);
 });
-import { parse } from 'acorn';
-import { execFileSync } from 'node:child_process';
-
-test('v2311 Code.gs edits are restricted to the completed receipt handler, signed dispatcher and Inquiry report layout',()=>{
- const before=execFileSync('git',['show','f3bb57f2d77524617bce1502efd75a207b19bac7:Code.gs'],{encoding:'utf8',maxBuffer:16*1024*1024});
- const after=fs.readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
- const allowed=new Set(['handleSignedRequestDeliveryEvent_','handleSignedInventoryReclassMoveDelivery_','buildReclassInquiryCompactReportHtml_','buildReclassInquiryReportModel_']);
- const protectedNodes=source=>parse(source,{ecmaVersion:'latest',sourceType:'script'}).body
-  .filter(node=>node.type!=='FunctionDeclaration'||!allowed.has(node.id.name))
-  .map(node=>source.slice(node.start,node.end).replaceAll('\r\n','\n'));
- assert.deepEqual(protectedNodes(after),protectedNodes(before),'all backfill functions, scheduling constants, and other handlers remain byte-identical after newline normalization');
+test('Apps Script patching preserves unselected functions with a synthetic fixture',()=>{
+ const remote='const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = "fixture";\nfunction handleSignedRequestDeliveryEvent_(){ return "old"; }\nfunction protectedJob(){ return "trusted"; }\n';
+ const local='const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = "fixture";\nfunction handleSignedRequestDeliveryEvent_(){ return "new"; }\nfunction protectedJob(){ return "attacker"; }\n';
+ const result=patchAppsScriptFunctions({remoteSource:remote,localSource:local,functionNames:['handleSignedRequestDeliveryEvent_']});
+ assert.match(result.source,/function handleSignedRequestDeliveryEvent_\(\)\{ return "new"; \}/);
+ assert.match(result.source,/function protectedJob\(\)\{ return "trusted"; \}/);
+ assert.doesNotMatch(result.source,/attacker/);
 });

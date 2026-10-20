@@ -1,3 +1,19 @@
+# Normalize source text across Windows and CI. Specific exceptions follow.
+*.js text eol=lf
+*.mjs text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.sql text eol=lf
+*.gs text eol=lf
+*.webmanifest text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+.gitattributes text eol=lf
+Dockerfile* text eol=lf
 assets/vendor/supabase-browser-*.min.js binary
 **/database.types.ts text eol=lf linguist-generated=true
 **/sandbox.database.types.ts text eol=lf linguist-generated=true

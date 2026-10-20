@@ -7,6 +7,19 @@ on:
         description: Optional merged main commit SHA expected by the caller.
         required: false
         type: string
+      migrations:
+        description: JSON array of migrations selected from the coordinator's exact commit range.
+        required: false
+        type: string
+      edge-functions:
+        description: JSON array of Edge Functions selected from the coordinator's exact commit range.
+        required: false
+        type: string
+      supabase-changed:
+        description: Whether the exact coordinator change range contains deployable Supabase changes.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -25,10 +38,8 @@ jobs:
     outputs:
       authorized: ${{ steps.guard.outputs.authorized }}
       backend-changed: ${{ steps.scope.outputs.backend-changed }}
-      v238: ${{ steps.scope.outputs.v238 }}
-      v2311: ${{ steps.scope.outputs.v2311 }}
-      v2313: ${{ steps.scope.outputs.v2313 }}
-      scoped: ${{ steps.scope.outputs.scoped }}
+      migrations: ${{ steps.scope.outputs.migrations }}
+      edge-functions: ${{ steps.scope.outputs.edge-functions }}
     steps:
       - name: Check out current main history
         uses: actions/checkout@v4
@@ -53,45 +64,50 @@ jobs:
 
       - name: Require changed Supabase or database paths
         id: scope
-        shell: bash
+        env:
+          INPUT_MIGRATIONS: ${{ inputs.migrations }}
+          INPUT_EDGE_FUNCTIONS: ${{ inputs.edge-functions }}
+          INPUT_SUPABASE_CHANGED: ${{ inputs.supabase-changed }}
+          RELEASE_COMMIT: ${{ github.sha }}
         run: |
-          set -euo pipefail
-          if ! git rev-parse --verify "${GITHUB_SHA}^1" >/dev/null 2>&1; then
-            echo 'BACKEND_PATH_COMPARISON_FAILED' >&2
-            exit 1
-          fi
-          diff_file="$RUNNER_TEMP/backend-paths.nul"
-          if ! git diff --name-only --no-renames -z --diff-filter=ACMRD "${GITHUB_SHA}^1" "$GITHUB_SHA" > "$diff_file"; then
-            echo 'BACKEND_PATH_COMPARISON_FAILED' >&2
-            exit 1
-          fi
-          mapfile -d '' -t changed_files < "$diff_file"
-          backend_changed=false
-          for changed_file in "${changed_files[@]}"; do
-            case "$changed_file" in
-              supabase/*|database/*|scripts/apply-item-low-stock-migration.mjs|.github/workflows/apps-script-sync.yml) backend_changed=true ;;
-            esac
-          done
-          scoped_receipt="$(jq -r '.scopedValidationReceipt // empty' package.json)"
-          scoped=false
-          if [[ -n "$scoped_receipt" ]]; then
-            scoped=true
-            if [[ ! "$scoped_receipt" =~ ^docs/releases/[a-z0-9.-]+-retained-validation\.json$ ]] || [[ ! -f "$scoped_receipt" ]]; then
-              # Fail closed into the retained-contract gate for malformed scoped metadata.
-              backend_changed=true
-            elif jq -e '((.deployment.migrations | type) == "array" and (.deployment.migrations | length) > 0) or ((.deployment.edgeFunctions | type) == "array" and (.deployment.edgeFunctions | length) > 0)' "$scoped_receipt" >/dev/null; then
-              backend_changed=true
-            fi
-          fi
-          echo "backend-changed=$backend_changed" >> "$GITHUB_OUTPUT"
-          echo "scoped=$scoped" >> "$GITHUB_OUTPUT"
-          echo "v2313=$(test "$(jq -r .version package.json)" = 2.3.13 && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "v2311=$(test "$(jq -r .version package.json)" = 2.3.11 && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          if [[ "$(jq -r '.version' package.json)" == '2.3.8' ]]; then
-            echo 'v238=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'v238=false' >> "$GITHUB_OUTPUT"
-          fi
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          import { changedReleasePaths, classifyReleasePaths } from './scripts/release-scope.mjs';
+          const commit = process.env.RELEASE_COMMIT;
+          const parent = execFileSync('git', ['rev-parse', `${commit}^1`], { encoding: 'utf8' }).trim();
+          const paths = changedReleasePaths({ before: parent, after: commit });
+          const scope = classifyReleasePaths(paths);
+          const parseArray = (value, fallback, name) => {
+            if (!value) return fallback;
+            let parsed;
+            try { parsed = JSON.parse(value); } catch { throw new Error(`${name}_JSON_INVALID`); }
+            if (!Array.isArray(parsed)) throw new Error(`${name}_ARRAY_INVALID`);
+            return parsed;
+          };
+          const migrationPaths = parseArray(process.env.INPUT_MIGRATIONS, scope.migrations, 'MIGRATIONS');
+          const migrations = migrationPaths.map(value => String(value).replaceAll('\\', '/').replace(/^\.\//, '')).sort();
+          if (migrations.some(value => value.includes('..') || value.startsWith('/')
+            || !/^(?:supabase\/migrations|supabase\/archive_migrations|database(?:\/migrations)?)\/[^/]+\.sql$/i.test(value))) {
+            throw new Error('RELEASE_MIGRATION_INPUT_INVALID');
+          }
+          const tracked = execFileSync('git', ['ls-tree', '-r', '--name-only', commit, 'supabase/functions'], { encoding: 'utf8' });
+          let edgeFunctions = parseArray(process.env.INPUT_EDGE_FUNCTIONS, scope.edgeFunctions, 'EDGE_FUNCTIONS');
+          if (edgeFunctions.includes('*')) edgeFunctions = [...new Set(tracked.split(/\r?\n/)
+            .map(file => /^supabase\/functions\/([^/]+)\//.exec(file)?.[1]).filter(name => name && name !== '_shared'))].sort();
+          const available = new Set(tracked.split(/\r?\n/).map(file => /^supabase\/functions\/([^/]+)\//.exec(file)?.[1]).filter(Boolean));
+          if (edgeFunctions.some(name => typeof name !== 'string' || !available.has(name) || name === '_shared')) {
+            throw new Error('EDGE_FUNCTION_SELECTION_INVALID');
+          }
+          const explicit = process.env.INPUT_MIGRATIONS !== '' || process.env.INPUT_EDGE_FUNCTIONS !== ''
+            || process.env.INPUT_SUPABASE_CHANGED === 'true';
+          const backendChanged = explicit
+            ? process.env.INPUT_SUPABASE_CHANGED === 'true' || migrations.length > 0 || edgeFunctions.length > 0
+            : scope.deploy.supabase;
+          appendFileSync(process.env.GITHUB_OUTPUT,
+            `backend-changed=${backendChanged}\nmigrations=${JSON.stringify(migrations)}\nedge-functions=${JSON.stringify(edgeFunctions)}\n`);
+          console.log(`Backend scope: changed=${backendChanged}, migrations=${migrations.length}, Edge Functions=${edgeFunctions.length}.`);
+          NODE
 
   backend-validation:
     name: Validate backend schema and transactions before deployment
@@ -106,64 +122,23 @@ jobs:
 
   pending-order-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.scoped != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
     uses: ./.github/workflows/bloomscapes-pending-tests.yml
 
   suspend-tag-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.scoped != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
     uses: ./.github/workflows/suspend-tag-tests.yml
 
   live-dataset-contract:
     needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.scoped != 'true'
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
     uses: ./.github/workflows/live-dataset-revisions.yml
-
-  v238-retained-contracts:
-    name: Verify scoped database contract receipts
-    needs: [authorize-backend, backend-validation]
-    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && (needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true' || needs.authorize-backend.outputs.v2313 == 'true' || needs.authorize-backend.outputs.scoped == 'true')
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install locked checker dependencies
-        uses: ./.github/actions/setup-node-dependencies
-      - name: Require exact retained pending-order and live-dataset contract hashes
-        run: |
-          node --input-type=module <<'NODE'
-          import { verifyV2311RetainedValidation } from './scripts/check-v2311-retained-validation.mjs';
-          import fs from 'node:fs';
-          import { verifyV2313RetainedValidation } from './scripts/check-v2313-retained-validation.mjs';
-          import { verifyScopedRetainedValidation } from './scripts/check-retained-release-validation.mjs';
-          if (JSON.parse(fs.readFileSync('package.json', 'utf8')).scopedValidationReceipt) {
-            verifyScopedRetainedValidation();
-            console.log('PASS source-sealed scoped SQL, email, Edge and browser validation evidence');
-            process.exit(0);
-          }
-          if (JSON.parse(fs.readFileSync('package.json', 'utf8')).version === '2.3.13') {
-            verifyV2313RetainedValidation();
-            console.log('PASS v2.3.13 native PostgreSQL staging and atomic publication evidence');
-            process.exit(0);
-          }
-          if (JSON.parse(fs.readFileSync('package.json', 'utf8')).version === '2.3.11') {
-            verifyV2311RetainedValidation();
-            console.log('PASS v2.3.11 exact source-sealed disposable SQL and delivery contracts');
-            process.exit(0);
-          }
-          import { verifyV238RetainedValidation } from './scripts/check-v238-retained-validation.mjs';
-          const receipt = verifyV238RetainedValidation({ rootDir: process.cwd() });
-          if (receipt.canRetainPendingOrderContract !== true) throw new Error('V238_PENDING_ORDER_CONTRACT_NOT_RETAINABLE');
-          if (receipt.canRetainLiveDatasetContract !== true) throw new Error('V238_LIVE_DATASET_CONTRACT_NOT_RETAINABLE');
-          console.log('PASS retained pending-order and live-dataset contracts match their verified baseline hashes');
-          NODE
 
   deploy-supabase:
     name: Apply backend migrations and deploy Edge Functions
-    needs: [authorize-backend, backend-validation, pending-order-contract, suspend-tag-contract, live-dataset-contract, v238-retained-contracts]
-    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && (((needs.authorize-backend.outputs.v238 == 'true' || needs.authorize-backend.outputs.v2311 == 'true' || needs.authorize-backend.outputs.v2313 == 'true' || needs.authorize-backend.outputs.scoped == 'true') && needs.v238-retained-contracts.result == 'success' && needs.pending-order-contract.result == 'skipped' && needs.suspend-tag-contract.result == 'skipped' && needs.live-dataset-contract.result == 'skipped') || (needs.authorize-backend.outputs.v238 != 'true' && needs.authorize-backend.outputs.v2311 != 'true' && needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.scoped != 'true' && needs.v238-retained-contracts.result == 'skipped' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'))
+    needs: [authorize-backend, backend-validation, pending-order-contract, suspend-tag-contract, live-dataset-contract]
+    if: always() && needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true' && needs.backend-validation.result == 'success' && needs.pending-order-contract.result == 'success' && needs.suspend-tag-contract.result == 'success' && needs.live-dataset-contract.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -202,24 +177,21 @@ jobs:
         uses: ./.github/actions/setup-node-dependencies
 
       - name: Apply validated backend release migrations
+        if: needs.authorize-backend.outputs.migrations != '[]'
         env:
-          V2313_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v2313 }}
-          SCOPED_RELEASE_DEPLOY: ${{ needs.authorize-backend.outputs.scoped }}
+          RELEASE_MIGRATIONS: ${{ needs.authorize-backend.outputs.migrations }}
           GH_TOKEN: ${{ github.token }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/apply-item-low-stock-migration.mjs
 
-      - name: Configure Production Schedule dispatch and deploy backend functions
-        if: needs.authorize-backend.outputs.v2313 != 'true' || needs.authorize-backend.outputs.scoped == 'true'
+      - name: Deploy changed Edge Functions
+        if: needs.authorize-backend.outputs['edge-functions'] != '[]'
         env:
+          RELEASE_EDGE_FUNCTIONS: ${{ needs.authorize-backend.outputs['edge-functions'] }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
-          V238_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v238 }}
-          V2311_SCOPED_DEPLOY: ${{ needs.authorize-backend.outputs.v2311 }}
-          SCOPED_RELEASE_DEPLOY: ${{ needs.authorize-backend.outputs.scoped }}
         shell: bash
         run: |
           set -euo pipefail
@@ -244,35 +216,13 @@ jobs:
               sleep "$((attempt * 5))"
             done
           }
-          if [[ "$SCOPED_RELEASE_DEPLOY" == 'true' ]]; then
-            mapfile -t scoped_functions < <(node --input-type=module -e "import {verifyScopedRetainedValidation} from './scripts/check-retained-release-validation.mjs'; for (const name of verifyScopedRetainedValidation().deployment.edgeFunctions) console.log(name)")
-            for function_name in "${scoped_functions[@]}"; do
-              deploy_with_retry supabase functions deploy "$function_name" --use-api --project-ref "$project_ref"
-            done
-          elif [[ "$V2311_SCOPED_DEPLOY" == 'true' ]]; then
-            deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
-          elif [[ "$V238_SCOPED_DEPLOY" == 'true' ]]; then
-            deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy send-push-alert --use-api --project-ref "$project_ref"
-          else
-            [[ "$APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID" =~ ^AKfy[a-zA-Z0-9_-]+$ ]] || { echo 'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID_REQUIRED'; exit 1; }
-            web_app_url="https://script.google.com/macros/s/${APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID}/exec"
-            supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy send-push-alert --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy calendar-reminder-sweep --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy scheduled-offboarding --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy auth-admin --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy inventory-assistant --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy aura-query --use-api --project-ref "$project_ref"
-            deploy_with_retry supabase functions deploy aura-llm-router --use-api --project-ref "$project_ref"
-          fi
+          mapfile -t selected_functions < <(node --input-type=module -e "for (const name of JSON.parse(process.env.RELEASE_EDGE_FUNCTIONS)) console.log(name)")
+          for function_name in "${selected_functions[@]}"; do
+            deploy_with_retry supabase functions deploy "$function_name" --use-api --project-ref "$project_ref"
+          done
 
       - name: Verify deployed Aura authorization
-        if: needs.authorize-backend.outputs.v2313 != 'true' && needs.authorize-backend.outputs.scoped != 'true'
+        if: contains(needs.authorize-backend.outputs['edge-functions'], 'aura-query')
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: node scripts/aura-query-production-smoke.mjs

@@ -6,8 +6,8 @@ on:
     types: [completed]
 
 # GITHUB_TOKEN merges do not trigger the Pages push workflow. This trusted
-# default-branch handler sequences only releases with a dependent frontend;
-# other releases keep independent frontend/backend publication.
+# default-branch handler sends the confirmed merge and its first parent to the
+# unified release coordinator.
 concurrency:
   group: publish-validated-candidate
   cancel-in-progress: false
@@ -24,8 +24,7 @@ jobs:
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
-    # v2.3.11 waits for its backend deployment before dispatching Pages.
-    timeout-minutes: 45
+    timeout-minutes: 10
     steps:
       # Never check out or execute PR files in this privileged workflow.
       - name: Complete the approved merge and dispatch independent release workflows
@@ -87,12 +86,15 @@ jobs:
               core.notice('A newer main commit will publish through its own validation.');
               return;
             }
-            async function dispatchOnce(workflow_id) {
+            async function dispatchPagesOnce(baseCommit) {
+              const workflow_id = 'pages-static.yml';
               const existing = await github.paginate(github.rest.actions.listWorkflowRuns, {
                 owner, repo, workflow_id, head_sha: pr.merge_commit_sha, per_page: 100,
               });
-              const reusable = existing.find(candidate => candidate.head_branch === 'main' &&
-                  candidate.head_sha === pr.merge_commit_sha && candidate.event === 'workflow_dispatch' &&
+              const reusable = existing.find(candidate => candidate.path === '.github/workflows/pages-static.yml'
+                  && candidate.head_branch === 'main' && candidate.head_sha === pr.merge_commit_sha
+                  && ['push', 'workflow_dispatch'].includes(candidate.event)
+                  && candidate.head_repository?.full_name === repository &&
                   (candidate.status !== 'completed' || candidate.conclusion === 'success'));
               if (reusable) {
                 core.notice(`${workflow_id} is already queued, running, or successful for this merge.`);
@@ -101,73 +103,17 @@ jobs:
               const previousIds = new Set(existing.map(candidate => candidate.id));
               await github.rest.actions.createWorkflowDispatch({
                 owner, repo, workflow_id, ref: 'main',
-                inputs: { 'expected-commit': pr.merge_commit_sha },
+                inputs: { 'expected-commit': pr.merge_commit_sha, 'base-commit': baseCommit },
               });
               return { run: null, previousIds };
             }
 
-            async function waitForSuccessfulWorkflow(workflow_id, dispatch) {
-              const deadline = Date.now() + 40 * 60 * 1000;
-              let run = dispatch.run;
-              while (Date.now() < deadline) {
-                if (!run) {
-                  const candidates = await github.paginate(github.rest.actions.listWorkflowRuns, {
-                    owner, repo, workflow_id, head_sha: pr.merge_commit_sha, per_page: 100,
-                  });
-                  run = candidates.find(candidate => candidate.head_branch === 'main' &&
-                    candidate.head_sha === pr.merge_commit_sha && candidate.event === 'workflow_dispatch' &&
-                    !dispatch.previousIds.has(candidate.id));
-                }
-                if (run) {
-                  const { data: latest } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: run.id });
-                  if (latest.head_sha !== pr.merge_commit_sha || latest.event !== 'workflow_dispatch') {
-                    throw new Error(`BACKEND_RUN_IDENTITY_MISMATCH:${workflow_id}`);
-                  }
-                  if (latest.status === 'completed') {
-                    if (latest.conclusion !== 'success') {
-                      throw new Error(`BACKEND_WORKFLOW_FAILED:${workflow_id}:${latest.conclusion}`);
-                    }
-                    return latest;
-                  }
-                  run = latest;
-                }
-                await new Promise(resolve => setTimeout(resolve, 15_000));
-              }
-              throw new Error(`BACKEND_WORKFLOW_TIMEOUT:${workflow_id}`);
-            }
-
-            const packageResponse = await github.rest.repos.getContent({
-              owner, repo, path: 'package.json', ref: pr.merge_commit_sha,
+            const { data: mergeCommit } = await github.rest.repos.getCommit({
+              owner, repo, commit_sha: pr.merge_commit_sha,
             });
-            const packageBytes = Buffer.from(packageResponse.data.content, 'base64');
-            const packageConfig = JSON.parse(packageBytes.toString('utf8'));
-            const releaseVersion = packageConfig.version;
-            const scopedAppsScriptRelease = Boolean(packageConfig.scopedValidationReceipt &&
-              Array.isArray(packageConfig.appsScriptPatchFunctions) && packageConfig.appsScriptPatchFunctions.length > 0);
-            if (releaseVersion === '2.3.11') {
-              // This frontend requires the canonical access-control schema and
-              // RPCs. Keep Pages unpublished until that exact merge is deployed.
-              const backendDispatch = await dispatchOnce('apps-script-sync.yml');
-              const backendRun = await waitForSuccessfulWorkflow('apps-script-sync.yml', backendDispatch);
-              core.notice(`Backend publication succeeded for ${pr.merge_commit_sha} (run ${backendRun.id}); dispatching Pages.`);
-              await dispatchOnce('pages-static.yml');
-              core.notice(`Dispatched frontend publication for PR #${pull_number}, merge ${pr.merge_commit_sha}.`);
-            } else if (scopedAppsScriptRelease) {
-              // The scoped Pages workflow is already queued after backend dispatch;
-              // explicitly publish the allowlisted Apps Script functions before its gate completes.
-              const backendDispatch = await dispatchOnce('apps-script-sync.yml');
-              const backendRun = await waitForSuccessfulWorkflow('apps-script-sync.yml', backendDispatch);
-              core.notice(`Backend publication succeeded for ${pr.merge_commit_sha} (run ${backendRun.id}); dispatching guarded Apps Script and Pages.`);
-              await dispatchOnce('apps-script-deploy.yml');
-              await dispatchOnce('pages-static.yml');
-              core.notice(`Dispatched Apps Script and frontend publication for PR #${pull_number}, merge ${pr.merge_commit_sha}.`);
-            } else {
-              // Existing releases retain their independent publication order.
-              await dispatchOnce('pages-static.yml');
-              core.notice(`Dispatched frontend publication for PR #${pull_number}, merge ${pr.merge_commit_sha}.`);
-              try {
-                await dispatchOnce('apps-script-sync.yml');
-              } catch {
-                core.warning('BACKEND_DISPATCH_FAILED: frontend publication is already queued; backend can be dispatched independently.');
-              }
+            const baseCommit = mergeCommit.parents?.[0]?.sha;
+            if (!/^[a-f0-9]{40}$/.test(pr.merge_commit_sha) || !/^[a-f0-9]{40}$/.test(baseCommit || '')) {
+              throw new Error('CANDIDATE_MERGE_BASE_NOT_VALIDATED');
             }
+            await dispatchPagesOnce(baseCommit);
+            core.notice(`Dispatched unified release coordination for PR #${pull_number}, merge ${pr.merge_commit_sha}, base ${baseCommit}.`);

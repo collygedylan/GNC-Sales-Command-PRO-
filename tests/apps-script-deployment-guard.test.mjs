@@ -8,8 +8,9 @@ import { authorizeAppsScriptDeployment } from '../scripts/lib/apps-script-deploy
 const repository = 'example/app';
 const commit = 'a'.repeat(40), head = 'b'.repeat(40);
 const backendPath = '.github/workflows/apps-script-sync.yml';
-const options = { repository, eventName: 'workflow_dispatch', ref: 'refs/heads/main', commit,
-  expectedCommit: commit, workflowRef: `${repository}/.github/workflows/apps-script-deploy.yml@refs/heads/main` };
+const options = { repository, eventName: 'workflow_run', ref: 'refs/heads/main', commit,
+  expectedCommit: commit, workflowRef: `${repository}/.github/workflows/apps-script-deploy.yml@refs/heads/main`,
+  backendRunId: 88, backendRunAttempt: 1, backendRunSha: commit };
 function harness(change = {}) {
   const calls = [];
   const pr = { number: 391, merged: true, merged_at: '2026-10-13T12:00:00Z', draft: false,
@@ -68,25 +69,111 @@ function harness(change = {}) {
   return { api, calls };
 }
 
-test('standard merged PR units and lint authorize Apps Script independently of publication artifacts', async () => {
+test('legacy merged PR units and lint path remains independent of publication artifacts', async () => {
   const { api, calls } = harness();
-  const result = await authorizeAppsScriptDeployment({ ...options, api });
+  const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+    backendRunAttempt: 1, backendRunSha: commit, api });
   assert.deepEqual(result, { commit, pullRequest: 391, runId: 100, attempt: 1, scriptChanged: true });
   assert.ok(!calls.some(path => /artifacts|pages-static|release-proof/.test(path)));
   assert.equal(calls.filter(path => path.endsWith('/git/ref/heads/main')).length, 2);
 });
 
-test('trusted backend completion publishes the newly merged current main', async () => {
-  const { api } = harness({ pr: { changed_files: 2 }, files: [
-    { filename: 'supabase/migrations/feature.sql', status: 'added' },
-    { filename: 'Code.gs', status: 'modified' }
-  ] });
-  const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
-    backendRunAttempt: 1, backendRunSha: commit, api });
-  assert.equal(result.scriptChanged, true);
+test('trusted direct-main coordinator publishes Apps Script without requiring a merged PR', async () => {
+  const coordinator = { id: 12, path: '.github/workflows/pages-static.yml', state: 'active' };
+  const coordinatorRun = { id: 120, workflow_id: 12, run_number: 19, run_attempt: 1,
+    path: coordinator.path, event: 'push', head_branch: 'main', head_sha: commit,
+    head_repository: { full_name: repository }, status: 'in_progress', conclusion: null };
+  const coordinatorJobs = ['authorize-main', 'scope', 'node-validation / pr-gate', 'backend-publication'].map((name, i) => ({
+    id: 500 + i, run_id: coordinatorRun.id, head_sha: commit, name,
+    status: name === 'backend-publication' ? 'in_progress' : 'completed',
+    conclusion: name === 'backend-publication' ? null : 'success'
+  }));
+  const backendRun = { id: 88, workflow_id: 10, run_number: 14, run_attempt: 1, path: backendPath,
+    event: 'workflow_dispatch', head_branch: 'main', head_sha: commit,
+    head_repository: { full_name: repository }, status: 'completed', conclusion: 'success' };
+  const backendJobs = [{ id: 310, run_id: 88, head_sha: commit,
+    name: 'Apply backend migrations and deploy Edge Functions', status: 'completed', conclusion: 'skipped' }];
+  const api = async endpoint => {
+    if (endpoint.endsWith('/git/ref/heads/main')) return { object: { sha: commit } };
+    if (endpoint.endsWith('/commits/' + commit + '/pulls?per_page=100')) return [];
+    if (endpoint.endsWith('/actions/workflows/pages-static.yml')) return coordinator;
+    if (endpoint.endsWith('/actions/runs/120')) return coordinatorRun;
+    if (endpoint.includes('/actions/runs/120/attempts/1/jobs')) return { total_count: coordinatorJobs.length, jobs: coordinatorJobs };
+    if (endpoint.endsWith('/actions/workflows/apps-script-sync.yml')) return { id: 10, path: backendPath, state: 'active' };
+    if (endpoint.endsWith('/actions/runs/88')) return backendRun;
+    if (endpoint.includes('/actions/runs/88/attempts/1/jobs')) return { total_count: 1, jobs: backendJobs };
+    throw new Error(`Unexpected API path ${endpoint}`);
+  };
+  const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_dispatch', backendRunId: 88,
+    backendRunAttempt: 1, backendRunSha: commit, coordinatorRunId: 120, coordinatorRunAttempt: 1,
+    requireSupabase: false, scriptChanged: true, api });
+  assert.deepEqual(result, { commit, pullRequest: null, runId: 120, attempt: 1, scriptChanged: true });
+});
+
+test('direct coordinator requires exact backend identity and a successful Supabase job when selected', async () => {
+  const invoke = (change = {}, overrides = {}) => {
+    const coordinator = { id: 12, path: '.github/workflows/pages-static.yml', state: 'active' };
+    const coordinatorRun = { id: 120, workflow_id: 12, run_number: 19, run_attempt: 1,
+      path: coordinator.path, event: 'workflow_dispatch', head_branch: 'main', head_sha: commit,
+      head_repository: { full_name: repository }, status: 'in_progress', conclusion: null };
+    const coordinatorJobs = ['authorize-main', 'scope', 'node-validation / pr-gate', 'backend-publication'].map((name, i) => ({
+      id: 500 + i, run_id: coordinatorRun.id, head_sha: commit, name,
+      status: name === 'backend-publication' ? 'in_progress' : 'completed',
+      conclusion: name === 'backend-publication' ? null : 'success'
+    }));
+    const backendRun = { id: 88, workflow_id: 10, run_number: 14, run_attempt: 1, path: backendPath,
+      event: 'workflow_dispatch', head_branch: 'main', head_sha: commit,
+      head_repository: { full_name: repository }, status: 'completed', conclusion: 'success', ...change.backendRun };
+    const backendJobs = [{ id: 310, run_id: change.jobRunId ?? backendRun.id, head_sha: commit,
+      name: 'Apply backend migrations and deploy Edge Functions', status: 'completed',
+      conclusion: change.jobConclusion ?? 'success' }];
+    const api = async endpoint => {
+      if (endpoint.endsWith('/git/ref/heads/main')) return { object: { sha: commit } };
+      if (endpoint.endsWith('/commits/' + commit + '/pulls?per_page=100')) return [];
+      if (endpoint.endsWith('/actions/workflows/pages-static.yml')) return coordinator;
+      if (endpoint.endsWith('/actions/runs/120')) return coordinatorRun;
+      if (endpoint.includes('/actions/runs/120/attempts/1/jobs')) return { total_count: coordinatorJobs.length, jobs: coordinatorJobs };
+      if (endpoint.endsWith('/actions/workflows/apps-script-sync.yml')) return { id: 10, path: backendPath, state: 'active' };
+      if (endpoint.endsWith('/actions/runs/88')) return { ...backendRun, id: change.backendResponseId ?? backendRun.id };
+      if (endpoint.includes('/actions/runs/88/attempts/1/jobs')) return { total_count: 1, jobs: backendJobs };
+      throw new Error('Unexpected API path ' + endpoint);
+    };
+    return authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_dispatch', backendRunId: overrides.backendRunId ?? 88,
+      backendRunAttempt: 1, backendRunSha: commit, coordinatorRunId: 120, coordinatorRunAttempt: overrides.coordinatorRunAttempt ?? 1,
+      requireSupabase: overrides.requireSupabase ?? true, scriptChanged: overrides.scriptChanged ?? true, api });
+  };
+  await assert.rejects(invoke({ jobConclusion: 'skipped' }), /BACKEND_DEPLOY_NOT_SUCCESSFUL/);
+  await assert.rejects(invoke({ backendResponseId: 89 }), /BACKEND_RUN_NOT_TRUSTED/);
+  await assert.rejects(invoke({ backendRun: { run_attempt: 2 } }), /BACKEND_RUN_NOT_TRUSTED/);
+  await assert.rejects(invoke({ jobRunId: 89 }), /BACKEND_DEPLOY_NOT_SUCCESSFUL/);
+  await assert.rejects(invoke({}, { scriptChanged: false }), /SCRIPT_CHANGE_NOT_AUTHORIZED/);
+  await assert.rejects(invoke({}, { coordinatorRunAttempt: 2 }), /COORDINATOR_RUN_INVALID/);
+});
+
+test('tooling validation alone cannot authorize Apps Script deployment', async () => {
+  const coordinator = { id: 12, path: '.github/workflows/pages-static.yml', state: 'active' };
+  const coordinatorRun = { id: 120, workflow_id: 12, run_number: 19, run_attempt: 1,
+    path: coordinator.path, event: 'push', head_branch: 'main', head_sha: commit,
+    head_repository: { full_name: repository }, status: 'in_progress', conclusion: null };
+  const jobs = ['authorize-main', 'scope', 'tooling-validation', 'backend-publication'].map((name, i) => ({
+    id: 500 + i, run_id: coordinatorRun.id, head_sha: commit, name, status: 'completed', conclusion: 'success'
+  }));
+  const api = async endpoint => {
+    if (endpoint.endsWith('/git/ref/heads/main')) return { object: { sha: commit } };
+    if (endpoint.endsWith('/commits/' + commit + '/pulls?per_page=100')) return [];
+    if (endpoint.endsWith('/actions/workflows/pages-static.yml')) return coordinator;
+    if (endpoint.endsWith('/actions/runs/120')) return coordinatorRun;
+    if (endpoint.includes('/actions/runs/120/attempts/1/jobs')) return { total_count: jobs.length, jobs };
+    throw new Error('Unexpected API path ' + endpoint);
+  };
+  await assert.rejects(authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_dispatch', coordinatorRunId: 120, coordinatorRunAttempt: 1,
+    backendRunId: 88, backendRunAttempt: 1, backendRunSha: commit, requireSupabase: false, scriptChanged: true, api }),
+  /COORDINATOR_VALIDATION_NOT_GREEN/);
 });
 
 test('an unrelated merged UI PR does not republish Apps Script automatically', async () => {
+  await assert.rejects(authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_dispatch', api: harness().api }),
+    /COORDINATOR_RUN_REQUIRED/);
   const { api } = harness({ files: [{ filename: 'index.html', status: 'modified' }] });
   const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
     backendRunAttempt: 1, backendRunSha: commit, api });
@@ -133,7 +220,7 @@ for (const [name, overrides, error] of [
   ['expected SHA', { expectedCommit: 'c'.repeat(40) }, 'EXPECTED_COMMIT_MISMATCH'],
   ['workflow', { workflowRef: `${repository}/.github/workflows/other.yml@refs/heads/main` }, 'WORKFLOW_NOT_TRUSTED'],
   ['untrusted event', { eventName: 'pull_request' }, 'EVENT_NOT_ELIGIBLE'],
-  ['missing backend run', { eventName: 'workflow_run' }, 'BACKEND_RUN_INVALID']
+  ['missing backend run', { eventName: 'workflow_run', backendRunId: 0 }, 'BACKEND_RUN_INVALID']
 ]) test(`deployment rejects invalid ${name}`, async () => {
   await assert.rejects(authorizeAppsScriptDeployment({ ...options, ...overrides, api: harness().api }), new RegExp(error));
 });
@@ -175,14 +262,12 @@ test('untrusted backend run and incomplete changed paths cannot publish', async 
     api: harness({ files: [] }).api }), /CHANGED_PATHS_INCOMPLETE/);
 });
 
-test('backend migrations require an exact-SHA successful backend deploy before manual Apps Script publication', async () => {
+test('backend migrations require the exact successful backend event and do not imply a script change', async () => {
   const files = [{ filename: 'supabase/migrations/feature.sql', status: 'added' }];
-  await assert.rejects(authorizeAppsScriptDeployment({ ...options, api: harness({ files }).api }), /BACKEND_RUNS_INVALID/);
-  const successful = { id: 89, workflow_id: 10, run_number: 15, run_attempt: 1, path: backendPath,
-    event: 'workflow_dispatch', head_branch: 'main', head_sha: commit,
-    head_repository: { full_name: repository }, status: 'completed', conclusion: 'success' };
-  const result = await authorizeAppsScriptDeployment({ ...options, api: harness({ files, backendRuns: [successful] }).api });
-  assert.equal(result.scriptChanged, true);
+  await assert.rejects(authorizeAppsScriptDeployment({ ...options,
+    api: harness({ files, backendRun: { head_sha: 'f'.repeat(40) } }).api }), /BACKEND_RUN_NOT_TRUSTED/);
+  const result = await authorizeAppsScriptDeployment({ ...options, api: harness({ files }).api });
+  assert.equal(result.scriptChanged, false);
 });
 
 test('backend changes reject skipped or failed deploy jobs and do not fall back to an older success', async () => {
@@ -192,15 +277,16 @@ test('backend changes reject skipped or failed deploy jobs and do not fall back 
     head_repository: { full_name: repository }, status: 'completed', conclusion: 'success' };
   await assert.rejects(authorizeAppsScriptDeployment({ ...options, api: harness({ files, backendRuns: [successful],
     backendDeployJob: { conclusion: 'skipped' } }).api }), /BACKEND_DEPLOY_NOT_SUCCESSFUL/);
-  const failedLatest = { ...successful, id: 90, run_number: 16, conclusion: 'failure' };
+  const failedLatest = { ...successful, id: 88, run_number: 16, conclusion: 'failure' };
   await assert.rejects(authorizeAppsScriptDeployment({ ...options, api: harness({ files,
-    backendRuns: [successful, failedLatest] }).api }), /BACKEND_RUN_NOT_TRUSTED/);
+    backendRun: failedLatest, backendRuns: [successful, failedLatest] }).api }), /BACKEND_RUN_NOT_TRUSTED/);
 });
 
 test('Apps Script deployment is independent, guarded, and uses existing configured credentials', () => {
   const workflow = yaml.load(readFileSync(new URL('../.github/workflows/apps-script-deploy.yml', import.meta.url), 'utf8'));
-  assert.deepEqual(workflow.on.workflow_run.workflows, ['Deploy Supabase backend']);
+  assert.equal(workflow.on.workflow_run, undefined);
   assert.ok(workflow.on.workflow_dispatch.inputs['expected-commit']);
+  assert.ok(workflow.on.workflow_dispatch.inputs['coordinator-run-id']);
   assert.equal(workflow.concurrency['cancel-in-progress'], false);
   const job = workflow.jobs['deploy-apps-script'];
   assert.equal(job.needs, undefined);
@@ -213,6 +299,6 @@ test('Apps Script deployment is independent, guarded, and uses existing configur
     'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID', 'APPS_SCRIPT_SCRIPT_ID']);
   assert.doesNotMatch(JSON.stringify(workflow.jobs), /pages-static|run-schema-tests|browser|supabase functions deploy/);
   const source = readFileSync(new URL('../scripts/sync-codegs-to-apps-script.js', import.meta.url), 'utf8');
-  assert.match(source, /beforeMutation: \(\) => authorizeProductionAppsScriptDeploymentFromEnvironment\(\)/);
+  assert.match(source, /beforeMutation: patchEvidence \? createAppsScriptSourceGuard\(\{[\s\S]*?authorize: authorizeProductionAppsScriptDeploymentFromEnvironment,[\s\S]*?\}\) : authorizeProductionAppsScriptDeploymentFromEnvironment/);
   assert.ok(source.indexOf('await authorizeProductionAppsScriptDeploymentFromEnvironment()') < source.indexOf('const claspRc = parseClaspRc'));
 });

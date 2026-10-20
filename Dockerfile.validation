@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+# Local release-smoke runtime. The pinned Playwright image already contains
+# browser binaries and Linux dependencies for the package version in package.json.
+FROM mcr.microsoft.com/playwright:v1.62.1-noble
+
+WORKDIR /workspace
+COPY package.json package-lock.json ./
+ENV CI=1 \
+    HUSKY=0 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    npm_config_cache=/root/.npm
+
+# Keep the large, lockfile-pinned dependency install in an image layer. The
+# runtime named volume is validated against this lock before reuse.
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+RUN touch /ms-playwright/.gnc-playwright-1.62.1
+
+CMD ["node", "scripts/validation/run-release-smoke-container.mjs"]

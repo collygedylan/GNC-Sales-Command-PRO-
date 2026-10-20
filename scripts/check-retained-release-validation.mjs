@@ -1,3 +1,5 @@
+// Historical receipt inspection only. Active release gates execute selected checks
+// and verify Actions job/commit/artifact identity; they must not import this verifier.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';

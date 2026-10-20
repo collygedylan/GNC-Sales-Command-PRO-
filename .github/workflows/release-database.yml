@@ -34,10 +34,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       changed: ${{ steps.scope.outputs.changed }}
-      v238: ${{ steps.scope.outputs.v238 }}
-      v2311: ${{ steps.scope.outputs.v2311 }}
-      v2313: ${{ steps.scope.outputs.v2313 }}
-      scoped: ${{ steps.scope.outputs.scoped }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -99,14 +95,6 @@ jobs:
           done
           if [[ "${{ inputs.run-all-schema-tests }}" == 'true' ]]; then changed=true; fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
-          echo "scoped=$(test -n "$(jq -r '.scopedValidationReceipt // empty' package.json)" && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "v2313=$(test "$(jq -r .version package.json)" = 2.3.13 && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "v2311=$(test "$(jq -r .version package.json)" = 2.3.11 && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          if [[ "$(jq -r '.version' package.json)" == '2.3.8' ]]; then
-            echo 'v238=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'v238=false' >> "$GITHUB_OUTPUT"
-          fi
 
   discover:
     runs-on: ubuntu-latest
@@ -123,7 +111,7 @@ jobs:
         run: node scripts/ci-backend-matrix.mjs
 
   integration:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.scoped != 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true'
     needs: [discover, schema-path-scope]
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -137,17 +125,16 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - name: Restore isolated PGlite modules
-        if: needs.schema-path-scope.outputs.v2311 != 'true' && needs.schema-path-scope.outputs.v2313 != 'true' && needs.schema-path-scope.outputs.scoped != 'true'
         id: pglite
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/gnc-handover-pglite
           key: pglite-v1-${{ runner.os }}-${{ runner.arch }}-node22-0.5.8
       - name: Install pinned PGlite
-        if: needs.schema-path-scope.outputs.v2311 != 'true' && needs.schema-path-scope.outputs.v2313 != 'true' && needs.schema-path-scope.outputs.scoped != 'true' && steps.pglite.outputs.cache-hit != 'true'
+        if: steps.pglite.outputs.cache-hit != 'true'
         run: npm install --prefix "$RUNNER_TEMP/gnc-handover-pglite" --no-save --package-lock=false --no-audit --no-fund @electric-sql/pglite@0.5.8
       - name: Save isolated PGlite modules
-        if: needs.schema-path-scope.outputs.v2311 != 'true' && needs.schema-path-scope.outputs.v2313 != 'true' && needs.schema-path-scope.outputs.scoped != 'true' && steps.pglite.outputs.cache-hit != 'true'
+        if: steps.pglite.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/gnc-handover-pglite
@@ -240,56 +227,30 @@ jobs:
 
   schema-gate:
     if: always() && inputs.run-schema-tests
-    needs: [schema-path-scope, discover, integration, edge-functions, schema-contracts, suspend-tag-approval, database-and-functions, scoped-retained-contracts]
+    needs: [schema-path-scope, discover, integration, edge-functions, schema-contracts, suspend-tag-approval, database-and-functions]
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
       - name: Require every selected backend integration check
         env:
           SCOPE: ${{ needs.schema-path-scope.outputs.changed }}
-          V238: ${{ needs.schema-path-scope.outputs.v238 }}
-          V2311: ${{ needs.schema-path-scope.outputs.v2311 }}
-          V2313: ${{ needs.schema-path-scope.outputs.v2313 }}
-          SCOPED: ${{ needs.schema-path-scope.outputs.scoped }}
+          EDGE_SCOPE: ${{ needs.discover.outputs.edge }}
           REQUIRE_SCHEMA_SCOPE: ${{ inputs.run-all-schema-tests }}
           RESULTS: ${{ toJSON(needs) }}
         run: |
           node --input-type=module <<'NODE'
           const scope = process.env.SCOPE;
           const jobs = JSON.parse(process.env.RESULTS);
-          const required = ['schema-path-scope', 'discover', 'edge-functions'];
+          const required = ['schema-path-scope', 'discover'];
           for (const name of ['schema-path-scope', 'discover']) {
             if (jobs[name]?.result !== 'success') throw new Error(`BACKEND_SCHEMA_GATE_FAILED_${name}`);
           }
           if (scope !== 'true') {
             if (scope !== 'false' || process.env.REQUIRE_SCHEMA_SCOPE === 'true') throw new Error('BACKEND_SCHEMA_SCOPE_REQUIRED');
             console.log('No database paths changed; schema integration jobs were intentionally skipped.');
-          } else if (process.env.SCOPED === 'true') {
-            for (const name of ['edge-functions', 'scoped-retained-contracts']) {
-              if (jobs[name]?.result !== 'success') throw new Error(`SCOPED_BACKEND_GATE_FAILED_${name}`);
-            }
-            for (const name of ['integration', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions']) {
-              if (jobs[name]?.result !== 'skipped') throw new Error(`SCOPED_UNEXPECTED_UNCHANGED_SCHEMA_JOB_${name}`);
-            }
-            console.log('Verified source-sealed disposable SQL evidence and changed Edge validation; unaffected schema suites retained.');
-          } else if (process.env.V2313 === 'true') {
-            required.splice(required.indexOf('edge-functions'), 1);
-            required.push('integration');
-            if (jobs.integration?.result !== 'success') throw new Error('V2313_INGESTION_EVIDENCE_REQUIRED');
-            for (const name of ['edge-functions', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions']) {
-              if (jobs[name]?.result !== 'skipped') throw new Error(`V2313_UNEXPECTED_UNAFFECTED_JOB_${name}`);
-            }
-            console.log('Verified exact source-sealed native PostgreSQL ingestion evidence; unchanged UI and Edge suites retained.');
-          } else if (process.env.V238 === 'true' || process.env.V2311 === 'true') {
-            for (const name of ['integration', 'edge-functions']) {
-              if (jobs[name]?.result !== 'success') throw new Error(`BACKEND_SCHEMA_GATE_FAILED_${name}`);
-            }
-            for (const name of ['schema-contracts', 'suspend-tag-approval', 'database-and-functions']) {
-              if (jobs[name]?.result !== 'skipped') throw new Error(`V238_UNEXPECTED_FULL_SCHEMA_JOB_${name}`);
-            }
-            console.log('Scoped SQL evidence and changed-edge checks passed; unaffected full-schema results are retained by the source-sealed receipt gate.');
           } else {
             required.push('integration', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions');
+            if (process.env.EDGE_SCOPE !== '{"include":[]}') required.push('edge-functions');
             for (const name of required) {
               if (jobs[name]?.result !== 'success') throw new Error(`BACKEND_SCHEMA_GATE_FAILED_${name}`);
             }
@@ -302,7 +263,7 @@ jobs:
           NODE
 
   schema-contracts:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true' && needs.schema-path-scope.outputs.v2311 != 'true' && needs.schema-path-scope.outputs.v2313 != 'true' && needs.schema-path-scope.outputs.scoped != 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
     # The timeout is a safety bound for full schema diagnostics, including the
@@ -331,7 +292,7 @@ jobs:
           path: artifacts/performance
           if-no-files-found: ignore
   suspend-tag-approval:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true' && needs.schema-path-scope.outputs.v2311 != 'true' && needs.schema-path-scope.outputs.v2313 != 'true' && needs.schema-path-scope.outputs.scoped != 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -350,7 +311,7 @@ jobs:
       - name: Verify Suspend Tag grants, completion, decisions, and delivery isolation
         run: node scripts/run-discovered-tests.mjs postgres-runtime
   database-and-functions:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.v238 != 'true' && needs.schema-path-scope.outputs.v2311 != 'true' && needs.schema-path-scope.outputs.v2313 != 'true' && needs.schema-path-scope.outputs.scoped != 'true'
+    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -478,24 +439,3 @@ jobs:
             playwright-report/database
             test-results/database
           if-no-files-found: ignore
-
-  scoped-retained-contracts:
-    if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true' && needs.schema-path-scope.outputs.scoped == 'true'
-    needs: schema-path-scope
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-node-dependencies
-      - name: Verify source-sealed disposable Suspend and retained release evidence
-        run: |
-          node --input-type=module <<'NODE'
-          import { verifyScopedRetainedValidation } from './scripts/check-retained-release-validation.mjs';
-          const receipt = verifyScopedRetainedValidation({ rootDir: process.cwd() });
-          if (receipt.evidence.database.disposable !== true || !(receipt.evidence.database.assertions > 0)) {
-            throw new Error('SCOPED_DISPOSABLE_SUSPEND_CONTRACT_REQUIRED');
-          }
-          console.log('PASS source-sealed scoped disposable SQL contracts; unchanged SQL suites retained');
-          NODE

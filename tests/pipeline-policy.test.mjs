@@ -15,9 +15,9 @@ test('root agent instructions persist the workspace and implementation policies'
     /PILLAR 2: ARCHITECTURE, SECURITY & QUALITY/,
     /Zero Feature Regression/,
     /PILLAR 3: RESILIENCY & PERFORMANCE STANDARDS/,
-    /PILLAR 4: AUTONOMOUS CI\/CD DEPLOYMENT PROTOCOL/,
-    /Auto-merge the PR immediately upon passing scoped local tests/,
-    /report live status only when the frontend and\/or backend publications are 100% complete/,
+    /PILLAR 4: AUTONOMOUS `< 5 MINUTE` CI\/CD DEPLOYMENT PROTOCOL/,
+    /manual\/automatic triggers both publish cleanly without receipt-hash bureaucracy/,
+    /apply Supabase SQL migrations and Edge Functions first, apply any `Code\.gs` patch second/,
   ]) assert.match(policy, rule);
   assert.doesNotMatch(policy, /FIRE-AND-FORGET|STAY AWAKE|gh pr checks --watch/);
 });
@@ -41,12 +41,16 @@ test('nightly retains daily and manual diagnostics and opts into full database c
   }
 });
 
-test('backend integration failure cannot become a Pages dependency', () => {
+test('Pages frontend-only release stays independent and mixed release sequences backend first', () => {
   const pages = workflow('pages-static.yml');
-  assert.equal(pages.jobs.validation.with['run-backend-tests'], false);
-  assert.equal(pages.jobs.validation.with['run-schema-tests'], false);
-  assert.equal(pages.jobs.validation.with['run-nightly-suites'], false);
-  assert.deepEqual(pages.jobs.deploy.needs, ['authorize-main', 'validation']);
+  assert.equal(pages.jobs['frontend-validation'].with['run-backend-tests'], false);
+  assert.equal(pages.jobs['frontend-validation'].with['run-schema-tests'], false);
+  assert.equal(pages.jobs['frontend-validation'].with['run-nightly-suites'], false);
+  assert.match(pages.jobs.deploy.if, /needs\.frontend-validation\.result == 'success'/);
+  assert.match(pages.jobs.deploy.if, /needs\.backend-publication\.result == 'success'/);
+  assert.match(pages.jobs['backend-publication'].if, /needs\.scope\.outputs\.supabase == 'true'/);
+  assert.match(pages.jobs['backend-publication'].if, /needs\.scope\.outputs\['apps-script'\] == 'true'/);
+  assert.match(pages.jobs.deploy.if, /needs\.backend-publication\.result == 'skipped'/);
   assert.equal(pages.jobs['exact-live'].needs, 'deploy');
-  assert.doesNotMatch(JSON.stringify(pages.jobs), /apps-script-sync|release-database|backend-validation/);
+  assert.match(JSON.stringify(pages.jobs), /apps-script-sync/);
 });
