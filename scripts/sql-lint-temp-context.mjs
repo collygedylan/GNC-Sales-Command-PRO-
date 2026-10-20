@@ -21,6 +21,10 @@ const SUPPORTED = Object.freeze({
   'public.bulk_import_master_snapshot_v1': Object.freeze({
     args: ['uuid', 'uuid', 'jsonb', 'text'], declarations: ['v_rows jsonb;'],
   }),
+  'public.finalize_master_snapshot_stage_v1': Object.freeze({
+    args: ['uuid', 'uuid', 'text'], declarations: [],
+    probeGroup: 'master-snapshot-stage', contextTables: ['ph_master_bulk_stage_v1'],
+  }),
   'public.ph_refresh_hold_learning_itemcode_batch': Object.freeze({
     args: ['text', 'integer'], declarations: ['v_job_name text;', 'v_batch_size integer;'],
   }),
@@ -42,6 +46,25 @@ const SUPPORTED = Object.freeze({
 const IDENT = /^[a-z_][a-z0-9_$]*$/i;
 const TEMP_CREATE = /^\s*create\s+(?:(?:local|global)\s+)?(?:temp|temporary)\s+table\b/i;
 const TEMP_NAME = /^\s*create\s+(?:(?:local|global)\s+)?(?:temp|temporary)\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_$]*)\b/i;
+const STAGED_VIEW_CONTRACT = `create temp view ph_master_bulk_stage_v1 as
+  select s.row_number::bigint as row_number,s.raw_values,s.raw_item6_count,
+    s.raw_item6_fields,s.field_keys,s.lineage_key,s.source_hash,s.stable_identity_key,%s,
+    null::text as warehousei
+  from app_sync_private.ph_master_snapshot_stage_rows_v1 s
+  where s.request_id=%L::uuid`;
+
+function stagedViewSetup(body, functionName) {
+  const matches = [...body.matchAll(/execute\s+format\(\s*'(create temp view ph_master_bulk_stage_v1 as[^']*)',\s*stage_columns,\s*p_request_id\);/gi)];
+  if (matches.length !== 1 || matches[0][1].replace(/\s+/g, '') !== STAGED_VIEW_CONTRACT.replace(/\s+/g, '')
+      || !/stage_columns\s*:=\s*app_sync_private\.master_snapshot_stage_columns_v1\('s'\);/.test(body)) {
+    throw new Error(`SQL_LINT_TEMP_CONTEXT_VIEW_CONTRACT_CHANGED:${functionName}`);
+  }
+  // The exact production view and typed projection are planned with a null
+  // request id, so this probe cannot read or publish a staged request.
+  return `DO $lint_staged_view$\nDECLARE stage_columns text;\nBEGIN\n` +
+    `  stage_columns := app_sync_private.master_snapshot_stage_columns_v1('s');\n` +
+    `  EXECUTE format('${matches[0][1]}',stage_columns,null::uuid);\nEND\n$lint_staged_view$;`;
+}
 const functionInventorySql = `
 select 'SQL_LINT_FUNCTIONS:' || replace(encode(convert_to(coalesce(jsonb_agg(jsonb_build_object(
   'schema', n.nspname, 'name', p.proname,
@@ -214,7 +237,8 @@ export function getSupportedFunctions(rawFunctions, { allowMissing = false } = {
         throw new Error(`SQL_LINT_TEMP_CONTEXT_UNSUPPORTED_LOCAL_VARIABLE:${qualifiedName}:${name}`);
       }
     }
-    functions.set(qualifiedName, { ...item, qualifiedName, specification, statements });
+    const contextSetup = specification.probeGroup === 'master-snapshot-stage' ? stagedViewSetup(item.body, qualifiedName) : '';
+    functions.set(qualifiedName, { ...item, qualifiedName, specification, statements, contextSetup });
   }
   const expected = Object.keys(SUPPORTED).sort();
   const actual = [...functions.keys()].sort();
@@ -222,9 +246,20 @@ export function getSupportedFunctions(rawFunctions, { allowMissing = false } = {
       || actual.some(name => !expected.includes(name))) {
     throw new Error(`SQL_LINT_TEMP_CONTEXT_FUNCTION_SET_CHANGED:${actual.join(',')}`);
   }
-  const tableNames = [...functions.values()].flatMap(item => item.statements.map(statement => statement.name.toLowerCase()));
+  const tableNames = [...functions.values()].flatMap(item => item.statements.map(statement =>
+    `${item.specification.probeGroup || 'default'}:${statement.name.toLowerCase()}`));
   if (new Set(tableNames).size !== tableNames.length) throw new Error('SQL_LINT_TEMP_CONTEXT_TEMP_TABLE_NAME_COLLISION');
   return [...functions.values()];
+}
+
+export function groupProbeFunctions(functions) {
+  const groups = new Map();
+  for (const item of functions) {
+    const name = item.specification.probeGroup || 'default';
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(item);
+  }
+  return [...groups.values()];
 }
 
 function quoteIdentifier(value) {
@@ -237,13 +272,17 @@ function quoteLiteral(value) {
 }
 
 export function probeSql(functions) {
+  const groups = groupProbeFunctions(functions);
+  if (groups.length > 1) return groups.map(group => probeSql(group)).join('\n');
   const blocks = functions.map((item, index) => {
     const declarations = item.specification.declarations.length
       ? `DECLARE\n${item.specification.declarations.map(value => `  ${value}`).join('\n')}\n`
       : '';
     return `DO $lint_temp_context_${index}$\n${declarations}BEGIN\n${item.statements.map(statement => `  ${statement.statement}`).join('\n')}\nEND\n$lint_temp_context_${index}$;`;
   });
-  const names = functions.flatMap(item => item.statements.map(statement => statement.name));
+  const names = [...new Set(functions.flatMap(item => [
+    ...item.statements.map(statement => statement.name), ...(item.specification.contextTables || []),
+  ]))];
   const namesArray = `ARRAY[${names.map(name => quoteLiteral(name)).join(', ')}]::text[]`;
   const metadata = `select 'SQL_LINT_SHAPES:' || replace(replace(encode(convert_to(coalesce(jsonb_agg(jsonb_build_object(
   'name', c.relname,
@@ -251,8 +290,8 @@ export function probeSql(functions) {
     from pg_attribute a where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped)
 ) order by c.relname), '[]'::jsonb)::text, 'UTF8'), 'base64'), E'\\n', ''), E'\\r', '')
 from pg_class c
-where c.relnamespace = pg_my_temp_schema() and c.relkind = 'r' and c.relname = any(${namesArray});`;
-  return `BEGIN;\n${blocks.join('\n')}\n${metadata}\nROLLBACK;\n`;
+where c.relnamespace = pg_my_temp_schema() and c.relkind in ('r','v') and c.relname = any(${namesArray});`;
+  return `BEGIN;\n${functions.map(item => item.contextSetup).filter(Boolean).join('\n')}\n${blocks.join('\n')}\n${metadata}\nROLLBACK;\n`;
 }
 
 export function validateShapes(functions, rawShapes) {
@@ -364,8 +403,10 @@ export function withSqlLintTempContext({ root = repoRoot, workspaceRoot, cli = p
     { root, capture: true }, 'FUNCTION_INVENTORY');
   const functions = getSupportedFunctions(decodeJsonBase64(inventoryOutput, 'FUNCTION_INVENTORY'), { allowMissing: allowMissingFunctions });
   if (functions.length === 0 && allowMissingFunctions) return action();
-  const shapesOutput = psql(executeDocker, root, workspace.containerId, probeSql(functions), 'TEMP_PROBE');
-  const decorated = decodeShapes(shapesOutput, functions);
+  const decorated = groupProbeFunctions(functions).flatMap(group => {
+    const shapesOutput = psql(executeDocker, root, workspace.containerId, probeSql(group), 'TEMP_PROBE');
+    return decodeShapes(shapesOutput, group);
+  });
   const extensionOutput = checkedOutput(executeDocker, 'docker', ['exec', workspace.containerId, 'psql', '-X', '-q', '-A', '-t', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c',
     "select 'SQL_LINT_EXTENSION:' || n.nspname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where p.proname='plpgsql_check_pragma' and p.provariadic<>0"],
   { root, capture: true }, 'EXTENSION_LOOKUP');

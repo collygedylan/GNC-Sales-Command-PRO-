@@ -6,6 +6,7 @@ import {
   extractTempStatements,
   firstBeginIndex,
   getSupportedFunctions,
+  groupProbeFunctions,
   patchSql,
   probeSql,
   validateShapes,
@@ -33,14 +34,59 @@ const fixtureFunctions = () => [
   const schema = name === 'apply_inventory_reclass_import_overlay_v1' || name === 'apply_inventory_reclass_moves_set_v1' ? 'private' : 'public';
   return { schema, name, arguments: args, argumentNames: [], body,
     definition: 'CREATE OR REPLACE FUNCTION ' + schema + '.' + name + '() RETURNS void LANGUAGE plpgsql AS $$' + body + '$$;' };
-});
+}).concat(finalizeFixture());
 
 function encodeJson(value) { return Buffer.from(JSON.stringify(value)).toString('base64'); }
+
+function finalizeFixture() {
+  const migration = readFileSync(new URL('../supabase/migrations/20261019225625_master_snapshot_chunked_staging_v1.sql', import.meta.url), 'utf8');
+  const view = migration.match(/execute format\(\s*'create temp view ph_master_bulk_stage_v1 as[\s\S]*?',stage_columns,p_request_id\);/)[0]
+    .replace('s.lineage_key,s.source_hash,%s,', 's.lineage_key,s.source_hash,s.stable_identity_key,%s,');
+  const body = `DECLARE\nstage_columns text;\nBEGIN\n` +
+    `stage_columns := app_sync_private.master_snapshot_stage_columns_v1('s');\n${view}\n` +
+    'create temp table ph_master_bulk_map_v1 on commit drop as select row_number, null::text as canonical_unique_id from pg_temp.ph_master_bulk_stage_v1;\n' +
+    'create temp table ph_master_proven_new_ids_v1(unique_id text primary key) on commit drop;\n' +
+    'create temp table ph_master_new_insert_ids_v1(unique_id text primary key) on commit drop;\nEND;';
+  return { schema: 'public', name: 'finalize_master_snapshot_stage_v1', arguments: 'uuid, uuid, text',
+    argumentNames: ['p_run_id', 'p_request_id', 'p_source_digest'], body,
+    definition: `CREATE OR REPLACE FUNCTION public.finalize_master_snapshot_stage_v1() RETURNS void LANGUAGE plpgsql AS $$${body}$$;` };
+}
+
+test('staged finalize lint derives its own data-free typed view instead of borrowing the legacy stage shape', () => {
+  const [finalize] = getSupportedFunctions([finalizeFixture()], { allowMissing: true });
+  assert.deepEqual(finalize.statements.map(statement => statement.name), [
+    'ph_master_bulk_map_v1', 'ph_master_proven_new_ids_v1', 'ph_master_new_insert_ids_v1',
+  ]);
+  const probe = probeSql([finalize]);
+  assert.match(probe, /master_snapshot_stage_columns_v1\('s'\)/);
+  assert.match(probe, /create temp view ph_master_bulk_stage_v1/);
+  assert.match(probe, /stage_columns,null::uuid/);
+  assert.match(probe, /s\.source_hash,s\.stable_identity_key,%s/);
+  assert.doesNotMatch(probe, /p_request_id|finalize_master_snapshot_stage_v1\(/);
+  assert.throws(() => getSupportedFunctions([{ ...finalizeFixture(), arguments: 'uuid, uuid, jsonb, text' }], { allowMissing: true }), /FUNCTION_SIGNATURE_CHANGED/);
+  assert.throws(() => getSupportedFunctions([{ ...finalizeFixture(), body: finalizeFixture().body.replace('s.raw_values', 's.unexpected_raw_values') }], { allowMissing: true }), /VIEW_CONTRACT_CHANGED/);
+  const groups = groupProbeFunctions(getSupportedFunctions(fixtureFunctions()));
+  assert.equal(groups.length, 2);
+  assert.deepEqual(groups[1].map(item => item.qualifiedName), ['public.finalize_master_snapshot_stage_v1']);
+  const legacy = getSupportedFunctions(fixtureFunctions()).find(item => item.name === 'bulk_import_master_snapshot_v1');
+  const legacyShapes = fixtureShapes([legacy]);
+  const stagedShapes = fixtureShapes([finalizeFixture()]).map(shape => ({ ...shape,
+    columns: [{ name: 'different_stage_field', type: 'text' }],
+  }));
+  assert.match(validateShapes([legacy], legacyShapes)[0].pragmas.join('\n'), /\(id integer\)/);
+  assert.match(validateShapes([finalize], stagedShapes)[0].pragmas.join('\n'), /\(different_stage_field text\)/);
+  assert.throws(() => getSupportedFunctions([{ ...finalizeFixture(), name: 'unknown_stage_v1' }], { allowMissing: true }), /FUNCTION_UNSUPPORTED/);
+  const colliding = fixtureFunctions();
+  const learning = colliding.find(item => item.name === 'ph_refresh_hold_learning_itemcode_batch');
+  learning.body = learning.body.replace('tmp_hl_batch', 'ph_master_bulk_map_v1');
+  assert.throws(() => getSupportedFunctions(colliding), /TEMP_TABLE_NAME_COLLISION/);
+});
 
 function fixtureShapes(functions) {
   const names = new Set(functions.flatMap(item => [
     ...(item.name === 'apply_inventory_reclass_import_overlay_v1' ? [] : extractTempStatements(item.body, item.name).map(statement => statement.name)),
     ...(item.name === 'apply_inventory_reclass_import_overlay_v1' ? ['ph_master_bulk_stage_v1', 'ph_master_bulk_map_v1'] : []),
+    ...(item.name === 'finalize_master_snapshot_stage_v1' ? ['ph_master_bulk_stage_v1'] : []),
   ]));
   return [...names].map(name => ({ name, columns: [{ name: 'id', type: 'integer' }] }));
 }
@@ -132,8 +178,8 @@ test('temporary SQL parser respects nested comments, dollar strings, and escape 
 
 test('source inventory validates exact function signatures, local declarations, and static temp DDL', () => {
   const functions = getSupportedFunctions(fixtureFunctions());
-  assert.equal(functions.length, 10);
-  assert.equal(functions.flatMap(item => item.statements).length, 18);
+  assert.equal(functions.length, 11);
+  assert.equal(functions.flatMap(item => item.statements).length, 21);
   assert.match(probeSql(functions), /WITH NO DATA/);
   assert.match(probeSql(functions), /create temporary table season_items/i);
   assert.throws(() => getSupportedFunctions(fixtureFunctions().slice(1)), /FUNCTION_SET_CHANGED/);
@@ -150,7 +196,7 @@ test('derived shapes produce exact pragmas and decoration inserts them after the
   const shapes = fixtureShapes(fixtureFunctions());
   const withPragmas = validateShapes(functions, shapes);
   const decorated = decorateDefinitions(withPragmas, 'extensions');
-  assert.equal(decorated.length, 10);
+  assert.equal(decorated.length, 11);
   const learningBatch = decorated.find(item => item.signature === 'public.ph_refresh_hold_learning_itemcode_batch').decorated;
   assert.match(learningBatch, /BEGIN\s+PERFORM "extensions"\.plpgsql_check_pragma\('table: tmp_hl_batch\(id integer\)'\);/);
   assert.match(learningBatch, /limit v_batch_size/i);
@@ -169,7 +215,6 @@ test('patch batch terminates each pg_get_functiondef even when deparser omits fi
 
 test('lint helper restores original definitions after a strict lint failure', () => {
   const functions = fixtureFunctions();
-  const shapes = fixtureShapes(functions);
   const calls = [];
   const executeDocker = (_command, args, options = {}) => {
     calls.push({ args, input: options.input });
@@ -179,7 +224,8 @@ test('lint helper restores original definitions after a strict lint failure', ()
     if (args.includes('-c') && args.some(value => String(value).includes('SQL_LINT_EXTENSION:'))) {
       return { status: 0, stdout: 'SQL_LINT_EXTENSION:extensions\n' };
     }
-    if (options.input?.includes('SQL_LINT_SHAPES:')) return { status: 0, stdout: 'SQL_LINT_SHAPES:' + encodeJson(shapes) + '\n' };
+    if (options.input?.includes('SQL_LINT_SHAPES:')) return { status: 0, stdout: 'SQL_LINT_SHAPES:' + encodeJson(fixtureShapes(functions.filter(item =>
+      options.input.includes('create temp view ph_master_bulk_stage_v1') === (item.name === 'finalize_master_snapshot_stage_v1')))) + '\n' };
     return { status: 0, stdout: '' };
   };
   assert.throws(() => withSqlLintTempContext({
@@ -194,16 +240,16 @@ test('lint helper restores original definitions after a strict lint failure', ()
   assert.ok(sqlInputs.some(input => input.includes('CREATE EXTENSION IF NOT EXISTS plpgsql_check')));
   assert.ok(sqlInputs.some(input => input.includes('CREATE SCHEMA "aura_lint_')));
   assert.ok(sqlInputs.some(input => input.includes('DROP SCHEMA "aura_lint_') && input.includes('EXECUTE saved.definition')));
-  assert.equal(sqlInputs.filter(input => input.includes('WITH NO DATA')).length, 1);
+  assert.equal(sqlInputs.filter(input => input.includes('WITH NO DATA')).length, 2);
 });
 
 test('lint helper surfaces restoration failures without losing the primary lint error', () => {
   const functions = fixtureFunctions();
-  const shapes = fixtureShapes(functions);
   const executeDocker = (_command, args, options = {}) => {
     if (args.some(value => String(value).includes('SQL_LINT_FUNCTIONS:'))) return { status: 0, stdout: 'SQL_LINT_FUNCTIONS:' + encodeJson(functions) + '\n' };
     if (args.some(value => String(value).includes('SQL_LINT_EXTENSION:'))) return { status: 0, stdout: 'SQL_LINT_EXTENSION:extensions\n' };
-    if (options.input?.includes('SQL_LINT_SHAPES:')) return { status: 0, stdout: 'SQL_LINT_SHAPES:' + encodeJson(shapes) + '\n' };
+    if (options.input?.includes('SQL_LINT_SHAPES:')) return { status: 0, stdout: 'SQL_LINT_SHAPES:' + encodeJson(fixtureShapes(functions.filter(item =>
+      options.input.includes('create temp view ph_master_bulk_stage_v1') === (item.name === 'finalize_master_snapshot_stage_v1')))) + '\n' };
     if (options.input?.includes('EXECUTE saved.definition')) return { status: 1, stdout: '', stderr: 'restore failed' };
     return { status: 0, stdout: '' };
   };
