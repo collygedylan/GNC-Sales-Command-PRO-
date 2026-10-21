@@ -2148,7 +2148,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.3.26';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.31';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -16363,6 +16363,14 @@ function buildProtectedLiveEditReportRows_(transaction, frozenRows, overlays, li
       .forEach(function(key) {
         if (Object.prototype.hasOwnProperty.call(expected, key)) allowedExpected[key] = expected[key];
       });
+    // Priority/Hold changes were already committed atomically. Their report
+    // uses the server-frozen stock quantity, not an older display quantity.
+    // Quantity-changing proposals retain their original conflict checks.
+    const frozen = liveEditDelivery.rowsByUid.get(normalizeInventoryTransactionText_(rawOverlay.unique_id));
+    const quantityAction = safeOverlay.proposals.some(function(proposal) {
+      return ['priority_change', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].indexOf(String(proposal.action || '')) === -1;
+    });
+    if (frozen && !quantityAction) allowedExpected.ptronhand = frozen.ptronhand;
     safeOverlay.expected = allowedExpected;
     return safeOverlay;
   });

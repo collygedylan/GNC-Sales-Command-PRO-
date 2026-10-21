@@ -5,6 +5,7 @@ const fingerprint = 'APPS_SCRIPT_DEPLOYMENT_COMMIT_';
 const releaseVersion = 'APP_RELEASE_VERSION_';
 const additiveEmailHandler = 'handleSignedInventoryReclassMoveDelivery_';
 const reclassEmailFunctions = new Set([
+  'buildProtectedLiveEditReportRows_',
   'getReclassInquiryEmailRecipients_',
   'deliverReclassInquiryPayload_',
   'buildReclassInquiryReportText_',

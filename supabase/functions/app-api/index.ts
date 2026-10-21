@@ -982,7 +982,7 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
     ?? sumSuspendTagMetric(cavFallbackRows, fallbackKeys);
   const locationRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode);
   const locOnHand = locationRows.length ? sumSuspendTagMetric(locationRows, ["ptronhand"])
-    : masterSourceAuthoritative ? 0 : null;
+    : sumSuspendTagMetric([row], ["ptronhand", "PTRONHAND"]) ?? metric(["ptronhand"]) ?? (masterSourceAuthoritative ? 0 : null);
   const locPhotoMatch = locationRows.length ? sumSuspendTagMetric(locationRows, ["loc_match_qty"])
     : masterSourceAuthoritative ? 0 : null;
   return {
@@ -1993,7 +1993,21 @@ export async function handleDriveReclassAction(
       p_idempotency_token: token,
     });
     if (error) return driveReclassErrorResponse(error.message || "");
-    return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "missing" });
+    const result = jsonObject(data);
+    // The status RPC already authorizes the actor/token. Recover the committed
+    // inventory receipt independently of its email delivery status.
+    if (result.jobId) {
+      const { data: event } = await supabase.from("ph_request_delivery_outbox")
+        .select("payload").eq("event_id", String(result.jobId)).maybeSingle();
+      const inquiry = jsonObject(jsonObject(event?.payload).reclassPayload);
+      if (normalizeUsername(String(jsonObject(inquiry.actor).username || "")) === actorUsername) {
+        const receipt = jsonObject(inquiry.protectedDelivery);
+        for (const field of ["liveEdits", "inventoryRevision", "liveEditScope", "inventoryFields", "v7Scope"]) {
+          if (receipt[field] !== undefined) result[field] = receipt[field];
+        }
+      }
+    }
+    return jsonResponse(Object.keys(result).length ? result : { ok: false, status: "missing" });
   } catch (_) {
     return driveReclassErrorResponse("DRIVE_RECLASS_SERVICE_UNAVAILABLE");
   }

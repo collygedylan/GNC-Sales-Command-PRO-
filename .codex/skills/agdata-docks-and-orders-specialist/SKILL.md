@@ -33,3 +33,5 @@ node --test tests/dock-trip-status.test.mjs tests/hl-order-ship-date.test.mjs te
 ```
 
 Use the canonical map's Comm row for chat changes. Register actual new read routes in shared fixtures; follow AGENTS limits and keep broad browser/import/database checks in their authorized lane.
+
+Docks previews its authenticated SOC rows before optional inventory and customer joins finish; task master previews follow the same retained-display contract. Partial previews do not establish write proof.

@@ -176,7 +176,7 @@ test('Suspend Tag dataset pages carry ordered master/CAV metric fallback without
   assert.equal(itemLot.PTRREVIEWED, 35);
   assert.equal(itemLot.PTRAVAILABLE, 5);
   assert.equal(itemLot.S_LTS, -400, 'repeated seasonal open-stock values are not summed per location');
-  assert.equal(itemLot.LOC_ON_HAND, 0, 'no physical row exists at the Suspend Tag location');
+  assert.equal(itemLot.LOC_ON_HAND, 40, 'missing staging location uses the numeric item/lot stock fallback');
 
   const itemFallback = context.build({ itemcode: '006009.031.1', locationcode: '0.00.111', lotcode: 'missing-lot' }, [
     { itemcode: '006009.031.1', locationcode: 'D.17.000', lotcode: '27.F1', season: 'F1', ptronhand: '35', s_lts: '-400' },
@@ -222,7 +222,7 @@ test('Suspend Tag dataset pages carry ordered master/CAV metric fallback without
     for (const metric of ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'S_LTS', 'LOC_MATCH_QTY', 'LOC_ON_HAND']) {
       assert.equal(typeof card[metric], 'number', `${itemcode} exposes numeric ${metric}`);
     }
-    assert.equal(card.LOC_ON_HAND, 0, `${itemcode} has no physical inventory row at 0.00.111`);
+    assert.equal(card.LOC_ON_HAND, 12, `${itemcode} uses item/lot On Hand at the staging location`);
     assert.equal(card.LOC_MATCH_QTY, 0, `${itemcode} has no location photo match at 0.00.111; unrelated lot matches do not leak`);
     assert.equal(card.HOLDSTOPREASON, 'QC HOLD', `${itemcode} retains the master reason for the card`);
   }
@@ -316,4 +316,60 @@ test('Suspend Tag client uses item/lot and CAV display fallback and marks observ
   });
   assert.match(html, /data-queue-metric="loc-photo-match">0<\/span>/);
   assert.match(html, /data-queue-metric="loc-on-hand">0<\/span>/);
+});
+
+test('existing photo and spec allow each physical Suspend Tag to complete', () => {
+  const html=readComposedAppSource();
+  const ctx=vm.createContext({fullInventory:[{ITEMCODE:'004380.010.1',LOCATIONCODE:'C.09.000',LOTCODE:'27.F1',PHOTO_LINK:'https://example.invalid/photo.jpg',SPEC:'6-8" H'}],suspendTagRawSourceRows:[],
+    firstNonEmptyValue:(...values)=>values.find(v=>v!=null&&String(v).trim()!=='')||'',
+    getDockSuspendDcRequestCompletionValues:()=>({match:'',spec:'',avNote:''}), parseLocMatchPercent:v=>v===''?null:Number(v),
+    hasDockSuspendDcRequestCompletionPhoto:()=>false, requiresAvNoteForCompletion:()=>true});
+  for(const name of ['getSuspendTagExistingReview','getDockSuspendDcRequestCompletionReadiness']) vm.runInContext(html.match(new RegExp('        function '+name+'\\([^]*?^        }','m'))[0],ctx);
+  for(const uid of ['dock39-drop40','dock50-drop50','dock56-drop10','dock56-drop70']) {
+    const row={UNIQUE_ID:uid,ITEMCODE:'004380.010.1',LOCATIONCODE:'C.09.000',LOTCODE:'27.F1'};
+    const ready=ctx.getDockSuspendDcRequestCompletionReadiness(row,row);
+    assert.equal(ready.ready,true,uid); assert.equal(ready.values.match,'100'); assert.equal(ready.values.avNote,'SPEC - 6-8" H');
+  }
+});
+
+test('Suspend review reuse keeps source versions and approval locks in the atomic command', () => {
+  const sql=readFileSync(new URL('../supabase/migrations/20261021160000_suspend_existing_review_v1.sql',import.meta.url),'utf8');
+  for (const contract of ['SUSPEND_TAG_SOURCE_CHANGED','SUSPEND_TAG_VERSION_CHANGED','SUSPEND_TAG_TOKEN_CONFLICT','SUSPEND_TAG_REVIEW_LOCKED','suspend_tag_private.validate_review(edited)','suspend_tag_private.existing_review(edited)','sibling.itemcode=s.itemcode']) assert.ok(sql.includes(contract),contract);
+});
+
+test('confirmed priority report uses frozen quantity but retains quantity-action conflicts', () => {
+  const code=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
+  const tree=ts.createSourceFile('Code.gs',code,ts.ScriptTarget.Latest,true);
+  let implementation; function visit(n){if(ts.isFunctionDeclaration(n)&&n.name?.text==='buildProtectedLiveEditReportRows_') implementation=n.getText(tree);ts.forEachChild(n,visit);} visit(tree);
+  const ctx=vm.createContext({RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_:'v5',normalizeInventoryTransactionText_:String,
+    buildReclassInquiryActionRowsV3_:(_tx,rows,overlays)=>({ok:overlays[0].expected.ptronhand===rows[0].ptronhand,rows:[{unique_id:'row',values:{priority:''},changedFields:[]}]}),
+    RECLASS_INQUIRY_HOLD_ACTIONS_V3_:['hold','stop_ship','take_off_hold','off_stop_ship']});
+  vm.runInContext(implementation,ctx);
+  const rows=[{unique_id:'row',ptronhand:'144'}],live={rowsByUid:new Map([['row',rows[0]]]),editsByUid:new Map([['row',{priority:'1'}]])};
+  const overlay={unique_id:'row',expected:{ptronhand:'150'},proposals:[{action:'priority_change',priority:'1'}]};
+  assert.equal(ctx.buildProtectedLiveEditReportRows_({},rows,[overlay],live,{} )[0].values.priority,'1');
+  overlay.proposals=[{action:'move_up',quantity:1}];
+  assert.throws(()=>ctx.buildProtectedLiveEditReportRows_({},rows,[overlay],live,{}),/RECLASS_CONFLICT/);
+});
+
+test('Reclass recovery reads committed receipts and restores an unloaded source by identity', () => {
+  const html=readComposedAppSource();
+  assert.match(html,/const receipt = await driveReclassApi\('status'/);
+  const reopen=html.match(/        async function reopenReclassDeliveryJob\([^]*?^        }/m)[0];
+  assert.match(reopen,/requestInventoryRead\('master_page'/);
+  assert.doesNotMatch(reopen,/The source row is not loaded/);
+  assert.match(html,/Dismiss inquiry notification/);
+  assert.match(appApi,/result\.jobId[\s\S]*receipt\[field\]/);
+});
+
+test('a committed priority receipt survives failed email status without rollback', async () => {
+  const html=readComposedAppSource();let rollback=0,applied=0;
+  const receipt={ok:false,status:'conflict',liveEdits:[{unique_id:'006489.021.1/G.24.000/27.F1',priority:'1'}]};
+  const ctx=vm.createContext({getInventoryStatusSync:()=>({begin:()=> 'pending',confirm:async()=>{},rollback:async()=>{rollback++;},revalidate:()=>{}}),
+    buildInventoryStatusPatches:()=>[{unique_id:'row',priority:'1'}],getArgosReclassLiveEditIdentityKey:()=> 'actor',getSupabaseReadIdentityScope:()=> 'actor',
+    inventoryStatusPendingSaves:new Map(),clearTimeout,document:{getElementById:()=>null},applyConfirmedArgosReclassLiveEdits:()=>{applied++;},
+    window:{GncDatabase:{confirmedReclassLiveEditsFromResult:()=>({liveEdits:[]})}}});
+  vm.runInContext(html.match(/        async function runInventoryStatusMutation\([^]*?^        }/m)[0],ctx);
+  const result=await ctx.runInventoryStatusMutation({idempotencyToken:'same-command'},async()=>receipt);
+  assert.equal(result,receipt);assert.equal(applied,1);assert.equal(rollback,0);assert.equal(ctx.inventoryStatusPendingSaves.size,0);
 });

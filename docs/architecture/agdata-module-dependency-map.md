@@ -346,3 +346,5 @@ The absence statements above are static identifier searches, not proof that no i
 - `ph_department_calendar_events`: [20260929200000_production_baseline.sql](../../supabase/migrations/20260929200000_production_baseline.sql#L20139).
 - `aura_voice_access_v1`: [20261011032352_aura_voice_soc_reads.sql](../../supabase/migrations/20261011032352_aura_voice_soc_reads.sql#L7) (latest matching canonical definition).
 - `aura_voice_conversation_v1`: [20261010200046_aura_voice_role_access.sql](../../supabase/migrations/20261010200046_aura_voice_role_access.sql#L348).
+
+v2.3.31: `getSuspendTagExistingReview` and `suspend_tag_private.existing_review` resolve saved photo/spec evidence for completion. `previewProductionSnapshots` retains complete account-scoped master catalogs and allows primary-source Tasks/Docks display; `renderHome` is inert outside Home. Existing `drive_reclass_inquiry` status now returns the actor-authorized committed inventory receipt; signed report construction uses its frozen quantity for status edits. Regression coverage remains in role-access-parity, eval-reports-engine, suspend-tag-dataset, inventory-drill-navigation and dock-trip-status.

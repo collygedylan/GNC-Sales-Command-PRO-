@@ -272,3 +272,11 @@ test('priority split model rejects incomplete witnesses, aliases, orphan shields
     assert.equal(prioritySplitModel(f), false, label);
   }
 });
+
+test('Docks and Tasks preview their primary rows before optional joins finish', () => {
+  const contextSource=source('getProductionLiveSyncContext');
+  assert.ok(contextSource.includes("['drive', 'av', 'tasks', 'docks'].includes(view)"));
+  assert.match(contextSource,/view === 'docks' \? 'core:soc' : 'core:master'/);
+  const preview=source('previewProductionSnapshots');
+  assert.match(preview,/context\.view === 'docks' \? 'core:soc' : 'core:master'/);
+});

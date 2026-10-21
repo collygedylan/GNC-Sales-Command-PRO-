@@ -115,3 +115,29 @@ test('unverified and revoked sessions cannot use the administrator UI grant', ()
   context.window.GncUserAccessControl = { getSelfState: () => ({ denied: true }) };
   assert.equal(context.isFullAppAdministrator(), false);
 });
+
+test('background Home rendering retains the active Manager module', () => {
+  const ctx = vm.createContext({ activeHomeTab: 'access-control', selectedProductivityUser: 'dylan_collyge',
+    getCurrentVisibleViewId: () => 'managers', document: { getElementById: () => { throw new Error('inactive Home DOM touched'); } } });
+  vm.runInContext(html.match(/        function renderHome\([^]*?^        }/m)[0], ctx);
+  ctx.renderHome();
+  assert.equal(ctx.activeHomeTab, 'access-control');
+});
+
+test('only the admin trio can view Home imported filenames', () => {
+  const ctx=vm.createContext({currentUser:''});
+  vm.runInContext(html.match(/        function canViewDashboardSyncStatus\([^]*?^        }/m)[0],ctx);
+  for (const user of ['dylan_collyge','megan_kelly','jd_jones','nelly_aguilar','brian_hatfield','']) {
+    ctx.currentUser=user;
+    assert.equal(ctx.canViewDashboardSyncStatus(),['dylan_collyge','megan_kelly','jd_jones'].includes(user));
+  }
+});
+
+test('verified administrator controls remain available during a same-account refresh', () => {
+  const source=read('assets/user-access-control.js');
+  const ctx=vm.createContext({selfStatus:'loading',selfDenied:false,selfRecord:{verified:true,profile:{id:'actor',username:'dylan_collyge'},effective_permissions:{can_manage_user_access:true}},
+    getIdentity:()=>({id:'actor',username:'dylan_collyge'}),isFullAppAdministrator:()=>true});
+  vm.runInContext(source.match(/    function isVerifiedManager\([^]*?^    }/m)[0],ctx);
+  assert.equal(ctx.isVerifiedManager(),true);
+  ctx.selfDenied=true; assert.equal(ctx.isVerifiedManager(),false);
+});

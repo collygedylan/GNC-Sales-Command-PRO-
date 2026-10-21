@@ -113,8 +113,9 @@
     }
 
     function isVerifiedManager() {
-        return selfStatus === 'ready' && selfRecord?.verified === true
-            && isFullAppAdministrator(getIdentity()?.username)
+        const identity = getIdentity();
+        return !selfDenied && selfRecord?.verified === true && selfRecord.profile.id === identity?.id
+            && selfRecord.profile.username === identity?.username && isFullAppAdministrator(identity?.username)
             && selfRecord.effective_permissions.can_manage_user_access === true;
     }
 
@@ -545,7 +546,9 @@
         const identity = getIdentity();
         const identityKey = identity ? `${identity.id}:${identity.username}` : '';
         const remembered = managerUiState?.identityKey === identityKey ? managerUiState : null;
-        const selectedRole = normalizeRole(options.selectedRole || container.dataset.selectedRole || remembered?.selectedRole || ROLE_KEYS[0]);
+        const requestedRole = normalizeRole(options.selectedRole || container.dataset.selectedRole || remembered?.selectedRole || self.role || ROLE_KEYS[0]);
+        const selectedRole = directory?.role_baselines.some(row => row.role === requestedRole) ? requestedRole
+            : directory?.role_baselines[0]?.role || requestedRole;
         const selectedUsername = key(options.selectedUsername || container.dataset.selectedUsername || remembered?.selectedUsername || '');
         const query = text(options.query ?? container.dataset.query ?? remembered?.query ?? '');
         const roleFilter = normalizeRole(options.roleFilter ?? container.dataset.roleFilter ?? remembered?.roleFilter ?? '');
@@ -561,7 +564,8 @@
         const filteredUsers = current.users.filter(user => (!roleFilter || user.canonical_role === roleFilter)
             && (!query || [user.username, user.display_name, user.email, user.salesrep_id, ...user.salesrep_match_names].some(value => key(value).includes(key(query)))))
             .sort((left, right) => left.display_name.localeCompare(right.display_name));
-        const chosenUser = filteredUsers.find(user => user.username === selectedUsername && user.active === true) || null;
+        const chosenUser = current.users.find(user => user.username === selectedUsername && user.active === true) || null;
+        if (chosenUser && !filteredUsers.includes(chosenUser)) filteredUsers.unshift(chosenUser);
         container.dataset.selectedRole = selectedRole;
         container.dataset.selectedUsername = chosenUser?.username || '';
         container.dataset.query = query;
@@ -579,11 +583,11 @@
         container.setAttribute('aria-busy', String(directoryStatus === 'loading'));
         container.innerHTML = `<div class="agdata-user-access__heading"><div><h2>User &amp; Role Access</h2><p>Role baselines are inherited by users unless a per-user override is saved.</p></div><button type="button" data-access-refresh>Refresh access</button></div>
             <p class="agdata-user-access__status" data-access-status role="${directoryError ? 'alert' : 'status'}">${escapeHtml(statusText)}</p>
-            <div class="agdata-user-access__grid"><section class="agdata-user-access__panel" aria-label="Role baselines"><h3>Role baselines</h3><label>Role<select data-role-select>${ROLE_KEYS.map(role => `<option value="${escAttr(role)}"${role === selectedRole ? ' selected' : ''}>${escapeHtml(role.replaceAll('_', ' '))}</option>`).join('')}</select></label><div data-role-permissions></div><button type="button" data-role-save ${canManage && baseline && directoryStatus === 'ready' ? '' : 'disabled'}>Save &amp; Apply to Role</button></section>
-            <section class="agdata-user-access__panel" aria-label="Users"><h3>Users <span data-user-count>${filteredUsers.filter(user => user.active === true).length}</span></h3><label>Search users<input type="search" data-user-search value="${escAttr(query)}" autocomplete="off"></label><label>Filter by role<select data-user-role-filter><option value="">All roles</option>${ROLE_KEYS.map(role => `<option value="${escAttr(role)}"${role === roleFilter ? ' selected' : ''}>${escapeHtml(role.replaceAll('_', ' '))}</option>`).join('')}</select></label><label>User<select data-user-select><option value="">Select an active user</option>${filteredUsers.map(user => `<option value="${escAttr(user.username)}"${user.active !== true ? ' disabled' : ''}${user.username === chosenUser?.username ? ' selected' : ''}>${escapeHtml(user.display_name)} — ${escapeHtml(user.role)}${user.salesrep_id ? ` (${escapeHtml(user.salesrep_id)})` : ''}${user.active !== true ? ' — no active profile' : ''}</option>`).join('')}</select></label><div data-user-permissions></div><button type="button" data-user-save ${canManage && chosenUser && directoryStatus === 'ready' ? '' : 'disabled'}>Save user overrides</button></section></div>`;
+            <div class="agdata-user-access__grid"><section class="agdata-user-access__panel" aria-label="Role baselines"><h3>Role baselines</h3><label>Role<select data-role-select>${ROLE_KEYS.map(role => `<option value="${escAttr(role)}"${role === selectedRole ? ' selected' : ''}>${escapeHtml(role.replaceAll('_', ' '))}</option>`).join('')}</select></label><div data-role-permissions></div><button type="button" data-role-save ${canManage && baseline && !!directoryRecord ? '' : 'disabled'}>Save &amp; Apply to Role</button></section>
+            <section class="agdata-user-access__panel" aria-label="Users"><h3>Users <span data-user-count>${filteredUsers.filter(user => user.active === true).length}</span></h3><label>Search users<input type="search" data-user-search value="${escAttr(query)}" autocomplete="off"></label><label>Filter by role<select data-user-role-filter><option value="">All roles</option>${ROLE_KEYS.map(role => `<option value="${escAttr(role)}"${role === roleFilter ? ' selected' : ''}>${escapeHtml(role.replaceAll('_', ' '))}</option>`).join('')}</select></label><label>User<select data-user-select><option value="">Select an active user</option>${filteredUsers.map(user => `<option value="${escAttr(user.username)}"${user.active !== true ? ' disabled' : ''}${user.username === chosenUser?.username ? ' selected' : ''}>${escapeHtml(user.display_name)} — ${escapeHtml(user.role)}${user.salesrep_id ? ` (${escapeHtml(user.salesrep_id)})` : ''}${user.active !== true ? ' — no active profile' : ''}</option>`).join('')}</select></label><div data-user-permissions></div><button type="button" data-user-save ${canManage && chosenUser && !!directoryRecord ? '' : 'disabled'}>Save user overrides</button></section></div>`;
         const rolePermissions = container.querySelector('[data-role-permissions]');
         if (baseline) {
-            rolePermissions.innerHTML = PERMISSION_KEYS.map(permission => `<label class="agdata-user-access__permission"><span>${escapeHtml(permission.replace(/^can_/, '').replaceAll('_', ' '))}</span><input type="checkbox" data-role-permission="${permission}"${baseline.permissions[permission] ? ' checked' : ''}${canManage && directoryStatus === 'ready' ? '' : ' disabled'}></label>`).join('');
+            rolePermissions.innerHTML = PERMISSION_KEYS.map(permission => `<label class="agdata-user-access__permission"><span>${escapeHtml(permission.replace(/^can_/, '').replaceAll('_', ' '))}</span><input type="checkbox" data-role-permission="${permission}"${baseline.permissions[permission] ? ' checked' : ''}${canManage && !!directoryRecord ? '' : ' disabled'}></label>`).join('');
         } else rolePermissions.innerHTML = '<p role="status">Role baseline not available from the server.</p>';
         const userPermissions = container.querySelector('[data-user-permissions]');
         if (chosenUser) {
@@ -591,7 +595,7 @@
                 const override = chosenUser.permission_overrides[permission];
                 const inherited = override === null;
                 const effective = chosenUser.effective_permissions[permission];
-                return `<label class="agdata-user-access__permission"><span>${escapeHtml(permission.replace(/^can_/, '').replaceAll('_', ' '))}<small>${inherited ? `Inherited · ${effective ? 'Allowed' : 'Denied'}` : `Override · ${effective ? 'Allowed' : 'Denied'}`}</small></span><select data-user-permission="${permission}"${canManage && directoryStatus === 'ready' ? '' : ' disabled'}><option value="inherit"${inherited ? ' selected' : ''}>Inherit role baseline</option><option value="true"${override === true ? ' selected' : ''}>Allow</option><option value="false"${override === false ? ' selected' : ''}>Deny</option></select></label>`;
+                return `<label class="agdata-user-access__permission"><span>${escapeHtml(permission.replace(/^can_/, '').replaceAll('_', ' '))}<small>${inherited ? `Inherited · ${effective ? 'Allowed' : 'Denied'}` : `Override · ${effective ? 'Allowed' : 'Denied'}`}</small></span><select data-user-permission="${permission}"${canManage && !!directoryRecord ? '' : ' disabled'}><option value="inherit"${inherited ? ' selected' : ''}>Inherit role baseline</option><option value="true"${override === true ? ' selected' : ''}>Allow</option><option value="false"${override === false ? ' selected' : ''}>Deny</option></select></label>`;
             }).join('');
         } else userPermissions.innerHTML = '<p class="agdata-user-access__inherited">Choose an active user to inspect inherited access and overrides.</p>';
         container.querySelector('[data-access-refresh]').onclick = async () => {
@@ -615,7 +619,7 @@
         container.querySelector('[data-role-save]').onclick = async () => {
             const permissions = Object.fromEntries(PERMISSION_KEYS.map(permission => [permission, !!container.querySelector(`[data-role-permission="${permission}"]`)?.checked]));
             const roleAtSubmit = normalizeRole(container.dataset.selectedRole || selectedRole);
-            try { await saveRoleBaseline(roleAtSubmit, permissions); renderManager(container, latestManagerOptions()); }
+            try { await saveRoleBaseline(roleAtSubmit, permissions); root.showToast?.('Saved role access', 'Role permissions were applied.'); renderManager(container, latestManagerOptions()); }
             catch (error) { directoryError = text(error?.message); renderManager(container, latestManagerOptions()); }
         };
         container.querySelector('[data-user-save]').onclick = async () => {
@@ -624,7 +628,7 @@
                 const value = container.querySelector(`[data-user-permission="${permission}"]`)?.value || 'inherit';
                 return [permission, value === 'inherit' ? null : value === 'true'];
             }));
-            try { await saveUserOverrides(chosenUser.username, overrides); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username }); }
+            try { await saveUserOverrides(chosenUser.username, overrides); root.showToast?.('Saved user access', 'User overrides were saved.'); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username }); }
             catch (error) { directoryError = text(error?.message); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username }); }
         };
         if (!self.verified && selfStatus === 'idle' && !selfInFlight) loadSelf().then(async () => {
@@ -648,7 +652,10 @@
         return { self, directory: current, directoryStatus, manager: canManage };
     }
 
-    function mountManager(container, options = {}) { return renderManager(container, options); }
+    function mountManager(container, options = {}) {
+        if (container?.querySelector('[data-role-select]') && isVerifiedManager() && !Object.keys(options).length) return;
+        return renderManager(container, options);
+    }
 
     const api = {
         configure, reset, loadSelf, loadDirectory, getSelfState, getEffectiveUserPermissions,

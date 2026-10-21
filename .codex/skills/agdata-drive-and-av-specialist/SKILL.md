@@ -38,3 +38,5 @@ node --test tests/inventory-card-location-on-hand.test.mjs tests/inventory-drill
 ```
 
 These are local source/VM tests, not browser, export-layout or production-volume benchmarks. Target `< 10s`, unmeasured until actually run. Choose the relevant subset; full volume/browser checks stay nightly unless explicitly requested. The docs-only verification override takes precedence. See the canonical module map, cluster 3, for the complete dependency tables.
+
+A partial master preview cannot replace a complete same-account, same-permission display receipt. Common Name rendering paints its first batch synchronously while continuing in frames. Plant search removes punctuation and accepts joined word searches (stjohn). Resolved AV thumbnails hydrate immediately in the visible window; missing location totals may display a positive card On Hand fallback.

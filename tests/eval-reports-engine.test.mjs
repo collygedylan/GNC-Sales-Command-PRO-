@@ -1570,3 +1570,15 @@ test('detail teardown and BlockAlpha drilldowns keep navigation state explicit',
   assert.match(modules, /renderManagers\(\)/);
   assert.match(html, /\[data-manager-eval2-detail\]>div:first-child>button:first-child\{display:none!important\}/);
 });
+
+test('cold paged Eval2 index uses server report totals without an undefined surface flag', async () => {
+  const { default: vm } = await import('node:vm');
+  const { readComposedAppSource } = await import('../scripts/composed-app-source.mjs');
+  const source = readComposedAppSource();
+  const ctx = vm.createContext({ getManagerEvalReportsApi: () => ({ REPORT_IDS: ['one'] }),
+    getSupabaseReadIdentityScope: () => 'same-account', appAccessSnapshotState: { snapshot: {} }, managerEvalReport2Cache: null,
+    getManagerEvalReport2SelectedReportIds: () => Array(11).fill('one'), getConfiguredCurrentSeasonCode: () => 'F1',
+    getConfiguredCurrentSalesYearCode: () => '27', getConfiguredNextSaleSeasonTarget: () => ({ season: 'S1', salesYear: '27' }), managerEvalReportSettings: {} });
+  vm.runInContext(source.match(/        function createPagedManagerEvalIndex\([^]*?^        }/m)[0], ctx);
+  assert.equal(ctx.createPagedManagerEvalIndex({ revision: '1', metadata: { reportMatchCount: 31, filteredRowCount: 12 } }).fullReportMatchCount, 31);
+});

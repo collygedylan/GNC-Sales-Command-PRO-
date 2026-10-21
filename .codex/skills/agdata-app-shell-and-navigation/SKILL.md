@@ -33,3 +33,5 @@ node --test tests/inventory-drill-navigation.test.mjs tests/login-navigation-pre
 ```
 
 Target under 10 seconds; select only affected files when fewer suffice. These Node/VM checks cover drill transitions, permission/shortcut integration and static shell CSS contracts. They do not prove rendered Back visibility or browser layout. No new timing measurement is claimed by this audit; browser work requires the task's explicit authorization or Nightly selection.
+
+Background renderHome calls return when Home is not the visible view, preserving the active Manager module. The mounted canonical access editor owns its DOM and is retained during Manager refreshes.

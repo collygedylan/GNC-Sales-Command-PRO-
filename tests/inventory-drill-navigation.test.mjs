@@ -57,7 +57,7 @@ test('completed AV hydration refreshes search results while preserving the focus
 test('Drive accepts the first authorized master page while settings and remaining pages are pending', () => {
   const rows = Array.from({ length: 500 }, (_, id) => ({ UNIQUE_ID: `row-${id}` }));
   const calls = [];
-  const context = vm.createContext({ fullInventory: [], avOpenInventory: [], activeAVTab: 'open',
+  const context = vm.createContext({ productionDisplayMasterReceipt: null, fullInventory: [], avOpenInventory: [], activeAVTab: 'open',
     hasProductionLiveSyncDraft: () => false, confirmedArgosReclassLiveEditRevisions: new Map(),
     getArgosReclassLiveEditIdentityKey: () => 'dylan', getCurrentPreparedMasterRows: () => null,
     processAndLoadData: payload => { calls.push(payload.data.length); },
@@ -829,4 +829,28 @@ test('Home Sales, Request Queue and Tasks tiles use the shared fast action and h
   allowed.delete('sales');
   f.openHomeModuleView('sales');
   assert.equal(view, 'tasks', 'confirmed denial must not navigate');
+});
+
+test('plant search ignores punctuation and accepts joined St John tokens', () => {
+  const ctx = vm.createContext({});
+  vm.runInContext(['normalizeSearchValue','tokenizeSearchValue','normalizedSearchTextHasWordStart','doesProgressiveSearchTextMatch','doesSearchProfilePrefixMatch'].map(source).join('\n'), ctx);
+  for (const plant of ['Blue Velvet™ St. Johnswort','Cobalt-N-Gold™ St. Johnswort','Sunburst St. Johnswort']) {
+    for (const query of ['st john','st. john','stjohn']) {
+      assert.equal(ctx.doesProgressiveSearchTextMatch(plant, query), true, plant + query);
+      assert.equal(ctx.doesSearchProfilePrefixMatch([plant],ctx.tokenizeSearchValue(query)), true, plant + query);
+    }
+  }
+});
+
+test('complete same-account master cannot be replaced by a partial preview', () => {
+  const rows = Array.from({length:9600},(_,id)=>({id}));
+  let processed = false;
+  const ctx = vm.createContext({ fullInventory:rows, productionDisplayMasterReceipt:{rows,readScope:'owner',permission:'p'},
+    hasProductionLiveSyncDraft:()=>false, getSupabaseReadIdentityScope:()=> 'owner',
+    confirmedArgosReclassLiveEditRevisions:new Map(), getArgosReclassLiveEditIdentityKey:()=> 'owner',
+    processAndLoadData:()=>{processed=true;}, invalidateResolvedViewStateCaches:()=>{}, scheduleProductionLiveSyncRender:()=>{} });
+  vm.runInContext(source('previewProductionSnapshots'),ctx);
+  ctx.previewProductionSnapshots([{adapter:{id:'core:master'},value:{rowCompleteness:'partial',payload:{data:rows.slice(0,200)}}}],
+    {progressive:true,visible:true,partialCohort:true,view:'drive',dataPermissionVersion:'p'});
+  assert.equal(processed,false); assert.equal(ctx.fullInventory.length,9600);
 });

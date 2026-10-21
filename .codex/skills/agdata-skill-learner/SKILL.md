@@ -35,3 +35,5 @@ When adding or changing a feature, button, table or RPC:
 5. Validate the skill manifests and affected contracts together with the implementation's selected checks. Record unresolved behavior honestly rather than teaching an unverified assumption as fact.
 
 This is repository maintenance, not model training or automatic Gemini account synchronization. Improve skills from concrete feature changes or demonstrated failures; avoid duplicate global rules, speculative policies and unrelated cleanup. Existing user scope and authorization remain controlling.
+
+The v2.3.31 recovery uses existing inventory_read master_page and drive_reclass_inquiry status contracts; no new startup/background route is introduced.
