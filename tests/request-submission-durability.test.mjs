@@ -1308,3 +1308,63 @@ test('Request numeric zero survives background hydration and keypad text has no 
  assert.ok(appSource.includes("if (detailSourceView.toLowerCase() === 'request') renderSavedPhotos"));
  assert.ok(appSource.includes("const spec = normalizeDetailSpecTextForSave(document.getElementById('req-spec')"));
 });
+
+
+test('Drive newest snapshot archives superseded files only after publication', () => {
+    const code = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+    const fn = code.match(/^function runRoutedDropImport_\([^]*?^}/m)[0];
+    const files = [
+        { getId: () => 'new', getName: () => 'DriveAroundMC-123334.xlsx', getLastUpdated: () => new Date('2026-10-21T17:52:00Z') },
+        { getId: () => 'old', getName: () => 'DriveAroundMC-103311.xlsx', getLastUpdated: () => new Date('2026-10-21T15:45:00Z') }
+    ];
+    const moved = [];
+    let success = false;
+    const context = vm.createContext({
+        withDatasetImportProcessorLock_: f => f(), getImportHistoryRoute_: () => ({ dropFolderId: 'drop', archiveFolderId: 'done', tableName: 'ph_master_inventory' }),
+        listRoutedDropFiles_: () => files, buildMasterPayload() {}, buildStandardPayload() {},
+        processSnapshotBatchFolderLocked_: (...args) => { assert.equal(args[4].historyFileId, 'new'); return { filesProcessed: success ? 1 : 0, failedFiles: success ? 0 : 1 }; },
+        saveManualSyncLiveSourceWatermark_() {}, getDriveFolderByIdWithRetry_: () => ({}),
+        getImportSourceIdentity_: f => ({ fileId: f.getId(), modifiedAt: f.getLastUpdated().toISOString() }),
+        importSourceIdentityMatches_: (a,b) => a.fileId === b.fileId && a.modifiedAt === b.modifiedAt,
+        moveDriveFileToFolderWithRetry_: f => moved.push(f.getId()), console
+    });
+    vm.runInContext(fn, context);
+    context.runRoutedDropImport_('drive');
+    assert.deepEqual(moved, []);
+    success = true;
+    context.runRoutedDropImport_('drive');
+    assert.deepEqual(moved, ['old']);
+});
+
+
+test('compact Request metadata shows persisted submitter under rep and keeps requested quantity', () => {
+    const start = appSource.indexOf('                const requestCustomer =', appSource.indexOf('function generateCard('));
+    const end = appSource.indexOf('                const suspendSalesRep =', start);
+    const item = { REQ_CUSTOMER:'Customer', REQ_CONSIGNEE:'Consignee', REQUEST_CREATED_BY_DISPLAY:'Nelly Aguilar', DESIRED_CALIPER:'N/A', REQUEST_NOTE:'GENERAL' };
+    const metadata = vm.runInNewContext(appSource.slice(start,end)+';({requestMetaHtml, requestHoldBar})', {
+        item, cust:'Customer', cleanHoldCode:'H', holdReasonText:'small on stake',
+        firstNonEmptyValue: (...v) => v.find(x=>x!==null&&x!==undefined&&x!==''),
+        getRequestAssignedRep: () => 'Traci Earle', esc: value => String(value)
+    });
+    assert.match(metadata.requestMetaHtml, /Sales Rep[^]*Traci Earle[^]*Submitted By[^]*Nelly Aguilar/);
+    assert.doesNotMatch(metadata.requestMetaHtml, /Caliper|N\/A|GENERAL|Request Qty/);
+    assert.match(metadata.requestHoldBar, /app-request-card-hold[^]*small on stake/);
+    const card = appSource.split('\n').find(line=>line.includes('return ')&&line.includes('app-request-compact-card'));
+    assert.ok(card.indexOf('Qty ') < card.indexOf('esc(item.ITEMCODE'));
+    assert.match(appSource, /req_qty:window\.AgMetricRequestSubmission\.normalizeOptionalQuantity\(dataObj\.qty\)/);
+    assert.equal(api.normalizeOptionalQuantity('25'),'25');
+    assert.equal(api.normalizeOptionalQuantity('0'),'0');
+    const css = readFileSync(new URL('../assets/ops-precision-pilot.css',import.meta.url),'utf8');
+    assert.match(css,/grid-template-columns:64px minmax\(0,1fr\)/);
+    assert.match(css,/app-request-compact-card \.app-card-qty-row[^}]*repeat\(3,minmax\(0,1fr\)\)/);
+});
+
+test('Reclass retry accepts frozen server receipts and immediately invokes the leased worker', () => {
+    const sql = readFileSync(new URL('../supabase/migrations/20261021200000_inventory_override_reconciliation.sql', import.meta.url),'utf8');
+    const edge = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url),'utf8');
+    assert.match(sql, /RECLASS_CONFLICT%[^]*v7FrozenRows[^]*status = 'pending'/);
+    assert.match(sql, /contractVersion}' = 'drive-reclass-protected-v1'/);
+    assert.match(edge, /invokeReclassDeliveryWorkerNow[^]*request-delivery-worker[^]*AbortSignal.timeout\(20000\)/);
+    assert.match(edge, /operation === "retry" \? await dispatchReclassDeliveryNow/);
+    assert.match(edge, /dispatchReclassDeliveryNow\(result, actorUsername, String\(protectedPayload.idempotencyToken/);
+});

@@ -1925,6 +1925,28 @@ async function handlePhotoHistoryAction(
   }
 }
 
+async function invokeReclassDeliveryWorkerNow() {
+  return await fetch(SUPABASE_URL + "/functions/v1/request-delivery-worker", {
+    method: "POST", headers: { Authorization: "Bearer " + SUPABASE_SERVICE_ROLE_KEY,
+      apikey: SUPABASE_SERVICE_ROLE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ source: "reclass_immediate" }), signal: AbortSignal.timeout(20000),
+  });
+}
+
+async function dispatchReclassDeliveryNow(result: Record<string, unknown>, actorUsername: string, token: string) {
+  if (!result.jobId || result.status === "delivered") return result;
+  try {
+    // The durable outbox and leased worker own idempotency and Gmail receipts.
+    // A transport timeout never replays the inventory mutation or fabricates delivery.
+    await invokeReclassDeliveryWorkerNow();
+    const { data, error } = await supabase.rpc("get_drive_reclass_inquiry_status_v1", {
+      p_actor_username: actorUsername, p_idempotency_token: token,
+    });
+    if (!error && data && typeof data === "object") return { ...result, ...jsonObject(data) };
+  } catch { /* The existing durable worker retries and status recovery retain the receipt. */ }
+  return result;
+}
+
 export async function handleDriveReclassAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -2003,7 +2025,8 @@ export async function handleDriveReclassAction(
           : "enqueue_drive_reclass_inquiry_v1";
       const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: jsonValue(protectedPayload) });
       if (error) return driveReclassErrorResponse(error.message || "");
-      return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
+      const result = jsonObject(data);
+      return jsonResponse(await dispatchReclassDeliveryNow(result, actorUsername, String(protectedPayload.idempotencyToken || "")));
     }
     const token = String(payload.idempotencyToken || payload.idempotency_token || "").trim();
     const rpcName = operation === "status"
@@ -2017,7 +2040,8 @@ export async function handleDriveReclassAction(
       p_idempotency_token: token,
     });
     if (error) return driveReclassErrorResponse(error.message || "");
-    const result = jsonObject(data);
+    const savedResult = jsonObject(data);
+    const result = operation === "retry" ? await dispatchReclassDeliveryNow(savedResult, actorUsername, token) : savedResult;
     // The status RPC already authorizes the actor/token. Recover the committed
     // inventory receipt independently of its email delivery status.
     if (result.jobId) {
@@ -5990,6 +6014,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     if (!actor) return errorResponse("An active, unlocked app profile is required.", 403, { code: "INVENTORY_RECLASS_PROFILE_INACTIVE" });
     try {
       const data = await handleInventoryReclassMove({ supabase, actorProfile: actor, payload });
+      if (jsonObject(data).deliveryEventId) await invokeReclassDeliveryWorkerNow().catch(() => null);
       return jsonResponse({ ok: true, data });
     } catch (error) {
       const failure = inventoryReclassMoveError(error);

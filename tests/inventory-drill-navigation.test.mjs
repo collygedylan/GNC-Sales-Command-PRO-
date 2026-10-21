@@ -77,7 +77,7 @@ test('Drive accepts the first authorized master page while settings and remainin
 test('Home ready-source summary survives a narrower Drive revision response and clears on account change', () => {
   let owner = 'dylan:login-1';
   const context = vm.createContext({ datasetRevisionConnectionOwner: '', datasetRevisionConnectionStates: [],
-    getSupabaseReadIdentityScope: () => owner, updateSyncDiagnostics() {},
+    getSupabaseReadIdentityScope: () => owner, updateSyncDiagnostics() {}, hasActiveManualSync: () => true,
     window: { GncUserAccessControl: { getSelfState: () => ({ denied: false }) } } });
   vm.runInContext(source('recordDatasetRevisionConnection') + source('getDatasetRevisionConnectionLabel'), context);
   const record = sources => context.recordDatasetRevisionConnection({ contractVersion: 1, permissionVersion: 'p1', sources }, {},

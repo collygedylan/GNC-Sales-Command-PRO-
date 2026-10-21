@@ -10148,3 +10148,33 @@ body.ops-precision-pilot #request-content .app-suspend-tag-compact-card :is(.app
     text-overflow: clip !important;
   }
 }
+
+/* Request and Archived share the compact operational card, including all six metrics. */
+#request-content .app-request-compact-card .app-drive-card-grid {
+  display:grid !important; grid-template-columns:64px minmax(0,1fr) !important;
+  grid-template-areas:"photo main" "meta meta" "hold hold" "qty qty" "extra extra" "bottom bottom" !important;
+  gap:4px 8px !important; min-width:0; width:100%;
+}
+#request-content .app-request-compact-card .app-drive-card-photo { width:64px !important; }
+#request-content .app-request-compact-card .app-drive-card-photo :is(.app-smart-thumb,.app-inline-thumb-box) { width:64px !important; height:64px !important; border-radius:8px !important; }
+#request-content .app-request-compact-card .app-drive-card-main { min-width:0; }
+#request-content .app-request-compact-card .app-drive-card-title-row { display:flex !important; align-items:start; justify-content:space-between; gap:4px; }
+#request-content .app-request-compact-card .app-drive-card-title { min-width:0; font-size:14px !important; line-height:1.15 !important; }
+#request-content .app-request-compact-card .app-request-card-status-row { display:flex; flex-wrap:wrap; justify-content:end; gap:2px; margin:0 !important; font-size:9px; }
+#request-content .app-request-compact-card :is(.app-drive-card-itemcode,.app-drive-card-meta) { margin:2px 0 0 !important; font-size:11px !important; line-height:1.2 !important; }
+#request-content .app-request-compact-card .app-request-qty-badge { display:inline-block; border-radius:4px; padding:2px 4px; background:#007a4d; color:#fff; font-weight:800; }
+#request-content .app-request-card-metadata { grid-area:meta; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:2px 8px; min-width:0; border-top:1px solid var(--border-subtle,#dbe4dc); padding-top:4px; }
+#request-content .app-request-card-metadata>div { min-width:0; }
+#request-content .app-request-card-metadata .app-request-card-meta-chip { display:flex; min-width:0; gap:4px; padding:1px 0; border:0; border-radius:0; background:none; font-size:10px; line-height:1.2; }
+#request-content .app-request-card-metadata .app-request-card-meta-chip>span { flex-shrink:0; }
+#request-content .app-request-card-metadata .app-request-card-meta-chip strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#request-content .app-request-card-note { grid-column:1/-1; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#request-content .app-request-card-hold { grid-area:hold; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; line-height:1.3; }
+#request-content .app-request-card-extra { grid-area:extra; min-width:0; }
+body.ops-precision-pilot #request-content .app-request-compact-card .app-card-qty-row { display:grid !important; grid-template-columns:repeat(6,minmax(0,1fr)) !important; gap:4px !important; width:100%; min-width:0; }
+body.ops-precision-pilot #request-content .app-request-compact-card .app-card-qty-chip { min-width:0 !important; width:auto !important; padding:3px 2px !important; }
+body.ops-precision-pilot #request-content .app-request-compact-card .app-card-qty-label { font-size:10px !important; white-space:nowrap !important; letter-spacing:0 !important; }
+body.ops-precision-pilot #request-content .app-request-compact-card .app-card-qty-value { font-size:16px !important; white-space:nowrap !important; }
+@media(max-width:639px) {
+  body.ops-precision-pilot #request-content .app-request-compact-card .app-card-qty-row { grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+}

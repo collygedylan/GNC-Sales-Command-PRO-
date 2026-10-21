@@ -345,3 +345,19 @@ test('conditional snapshot reads remain behind authorization and scoped query va
   assert.match(handler, /parsed.ifRevision === revision/);
   assert.match(api, /masterByItem.get\(key\)/);
 });
+
+
+test('durable inventory overrides acknowledge only matching raw ERP values and retain protected physical rows', () => {
+    const sql = readFileSync(new URL('../supabase/migrations/20261021200000_inventory_override_reconciliation.sql', import.meta.url),'utf8');
+    assert.match(sql,/erp_baseline_value jsonb, app_override_value jsonb, latest_erp_value jsonb/);
+    assert.match(sql,/updated_by text not null/);
+    assert.match(sql,/enable row level security/);
+    assert.match(sql,/revoke all on app_sync_private.inventory_live_overrides_v1 from public,anon,authenticated/);
+    assert.match(sql,/canonical and incoming \? edit.field_name/);
+    assert.match(sql,/edit.pending and private.inventory_override_matches_v1/);
+    assert.match(sql,/elsif edit.pending then[^]*app_override_value/);
+    assert.match(sql,/if run_id is not null and exists[^]*e.pending\) then return null/);
+    assert.match(sql,/if candidates>1 then[^]*inventory_live_overrides_v1[^]*MASTER_ITEM6_LINEAGE_AMBIGUOUS/);
+    assert.doesNotMatch(sql,/errcode\s*=\s*'40001'/);
+    for (const field of ['ptronhand','ptravailable','priority','holdstopcode','spec','av_note','match','photo_link','locationnote']) assert.ok(sql.includes("'"+field+"'"),field);
+});

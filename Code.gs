@@ -1510,20 +1510,35 @@ function runRoutedDropImport_(dataset) {
   return withDatasetImportProcessorLock_(function() {
     const route = getImportHistoryRoute_(dataset);
     const files = listRoutedDropFiles_(route, dataset);
-    // Select the newest valid source for this live stage. Historical replay is
-    // independently scheduled and must never be started by an operational sync.
-    if (!files.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' };
     const sourceFile = files[0];
-    const sourceWatermark = {
+    const sourceWatermark = sourceFile ? {
       fileId: String(sourceFile.getId() || ''),
       modifiedAt: Number(sourceFile.getLastUpdated().getTime())
-    };
+    } : readManualSyncLiveSourceWatermark_(dataset);
+    // Freeze older file identities before publication. Never archive a file that
+    // changed during the import or a source newer than the published snapshot.
+    const superseded = dataset === 'drive' && sourceWatermark
+      ? listRoutedDropFiles_(route, null).filter(function(file) {
+        return String(file.getId()) !== sourceWatermark.fileId
+          && Number(file.getLastUpdated().getTime()) <= sourceWatermark.modifiedAt;
+      }).map(function(file) { return { file: file, identity: getImportSourceIdentity_(file, route.tableName) }; }) : [];
+    if (!sourceFile && !superseded.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' };
     const options = { deltaMode: true, historyDataset: dataset, historyFileId: sourceWatermark.fileId };
-    const result = dataset === 'drive'
-      ? processSnapshotBatchFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildMasterPayload, options)
-      : processLatestFileOnlyFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildStandardPayload, options);
-    if (!result.failedFiles && !result.fatalFailure && result.filesProcessed > 0) {
-      saveManualSyncLiveSourceWatermark_(dataset, sourceWatermark);
+    const result = !sourceFile ? { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' }
+      : dataset === 'drive'
+        ? processSnapshotBatchFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildMasterPayload, options)
+        : processLatestFileOnlyFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildStandardPayload, options);
+    if (!result.failedFiles && !result.fatalFailure && (result.filesProcessed > 0 || !sourceFile)) {
+      if (sourceFile) saveManualSyncLiveSourceWatermark_(dataset, sourceWatermark);
+      if (superseded.length) {
+        const archive = getDriveFolderByIdWithRetry_(route.archiveFolderId, 'Published DriveAround superseded sources');
+        result.archivedOlderFiles = 0;
+        superseded.forEach(function(entry) {
+          if (!entry.identity || !importSourceIdentityMatches_(getImportSourceIdentity_(entry.file, route.tableName), entry.identity)) return;
+          moveDriveFileToFolderWithRetry_(entry.file, archive, 'Superseded DriveAround snapshot ' + entry.file.getName());
+          result.archivedOlderFiles += 1;
+        });
+      }
       if (listRoutedDropFiles_(route, dataset).length) result.continuationPending = true;
     }
     return result;
@@ -2138,7 +2153,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.3.33';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.34';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,

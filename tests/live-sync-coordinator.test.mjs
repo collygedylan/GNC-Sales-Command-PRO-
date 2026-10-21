@@ -1354,3 +1354,16 @@ test('conditional page cache avoids retransfers and is isolated by account and p
     assert.equal(calls[3].params.ifRevision, undefined);
     assert.equal(transferred, 3);
 });
+
+
+test('idle sync header never counts interrupted datasets as updating', () => {
+    const runtime=readComposedAppSource();
+    const fn=runtime.match(/        function getDatasetRevisionConnectionLabel\([^]*?^        }/m)[0];
+    let active=false;
+    const context=vm.createContext({ datasetRevisionConnectionOwner:'owner',getSupabaseReadIdentityScope:()=> 'owner',window:{},
+      hasActiveManualSync:()=>active, datasetRevisionConnectionStates:[{state:'ready'},{state:'interrupted'},{state:'importing'}] });
+    vm.runInContext(fn,context);
+    assert.equal(context.getDatasetRevisionConnectionLabel(),'Connected · 1 ready');
+    active=true;
+    assert.equal(context.getDatasetRevisionConnectionLabel(),'Connected · 1 ready · 1 updating');
+});
