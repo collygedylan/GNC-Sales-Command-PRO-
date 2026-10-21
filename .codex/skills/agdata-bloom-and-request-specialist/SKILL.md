@@ -1,22 +1,35 @@
 ---
 name: agdata-bloom-and-request-specialist
-description: Maintain AgData Bloom Picker, Request creation, Historical Requests, Sales and Sales Office workflows and their recipient rules.
+description: Maintain AgData Bloom selection/actions, Request wizard and durable submission, customer/consignee mapping, historical sales and territory-specific email contracts.
 ---
 
 # Bloom and requests
 
-Preserve the persistent Selected Rows tray, its six inventory metrics, swipe-to-remove, and CLEAR BLOOM PICKER. Selection and per-item drafts survive navigation and background refreshes within the same account.
+Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 6 and shared Back/navigation ownership.
 
-The nine Bloom actions are Assign, Eval Work, Submit QC, Request, Location Move, Flyer, Take Back, 2nd Cut, and Shear. Preserve every existing action and its permissions.
+## Owned implementation boundaries
 
-CREATE REQUEST follows the existing five selection/specification steps, then email review:
+- `index.html`: `renderBloomPickerTrayRows`, `clearBloomPickerSelection`, `openBloomPickerModal`, `submitBloomPickerOrder`, `openBloomActionRowFormModal`, `submitBloomActionRowForm`, `openBloomEmailPurposeModal`, `sendBloomEmailPurpose`; `openRequestModal`, `selectRepForRequest`, `loadRequestModalCustomerOptionsForRep`, `renderExistingRequestFolderPicker`, `renderRequestQtyStepCurrentItem`, `submitRequestWithQtys`, `finalizeRequestAction`; `renderRequestEmailChainPanel`, `handleRequestEmailChainRecipientChange`, `sendEmailNotification`; `ensureHistoricalRequestsIsland`, `renderSalesHub`, `renderSalesOffice`, `saveSalesOfficeAvNote`.
+- `assets/request-submission.js`: `AgMetricRequestSubmission.createController`, `resolveCustomerMappingPayload`, `validateAcknowledgment`, conflict reconciliation. `index.html` integration owns `getRequestSubmissionController`, `performRequestSubmission`, `flushRequestOutbox`, `restoreRequestSubmissionForm`; durable IndexedDB records and blobs must retain account + batch identity.
+- `assets/sales-workspace.js`: `SalesWorkspace.open`, `load`, `stageRefresh`, `applyRefresh`, `back`, `submit`, `review`, `resolveSource`, `amend`. Historical Requests source: `components/historical-requests/`, `services/historicalRequests.ts` (compiled `assets/historical-requests.js`). Mapping services: `services/customerRepMapping.ts`, `services/customerRepAssignments.ts`, `services/requestRecipients.ts`; mapping live events: `assets/customer-mapping-live-events.js`.
+- Advertisement/Flyer in `index.html`: `renderAdvertisement`, `saveAdvertisementExportToSupabase`, `sendAdvertisementEmail`; preserve canvas/photo/history drafts and marketing bucket + `marketing_materials` metadata identity. Reuse the existing purpose/recipient policy rather than creating a separate mail path.
+- Backend: `supabase/functions/app-api/index.ts` actions `customer-rep-map`, `request_recipient_directory`, `request_history`, `sales_credit`, `season_sales_office`, plus the authorized `db` boundary for Request persistence; `_shared/sales-workflow.ts`. Delivery: `supabase/functions/request-delivery-worker/index.ts`, `Code.gs` `collectRequestRecipients_`, `collectRequestSubmitterEmails_`, `buildRequestEmailMessage_`, `handleSignedRequestDeliveryEvent_`, `processRequestDeliveryOutbox_`.
 
-1. Who requested this? Select Sales Rep.
-2. Select Customer from the prefetched local dictionary.
-3. Select Consignee.
-4. Select Request Folder.
-5. Complete sequential ITEM 1 OF N specifications without losing earlier selections.
+## Shared dependencies and invariants
 
-Then Add People To Email uses TX, OK, NE, ADMIN, EVAL, ADV, ALL and CLEAR filters. Always include the deduplicated required recipients dylan_collyge, megan_kelly, the submitter and selected sales rep. Preserve explicit selected recipients and existing authorization. Request recipients differ from the stricter Reclass policy; use the queue-and-reclass skill for that workflow.
+- Use `switchView`, `canAccessView`, `updateGlobalBackButton`, `goBackUniversal`, modal back handlers and the selection tray's navigation ownership. Preserve `#bloom-picker-tray`, `#bloom-picker-modal`, `#request-rep-modal`, `#view-sales`, `#view-sales-office`, `#historical-requests-content`. The shell skill owns shared header/Back visibility; individual wizard Back handlers retain their current step history.
+- Preserve the Selected Rows tray, six inventory metrics, swipe removal and CLEAR BLOOM PICKER; preserve all nine actions: Assign, Eval Work, Submit QC, Request, Location Move, Flyer, Take Back, 2nd Cut, Shear.
+- Request sequence remains Sales Rep → Customer → Consignee → Folder → ITEM 1 OF N → email review. Preserve `tempSelectedReqRep`, `tempReqCust`, `tempRequestCustomerSelectedContext`, `tempReqFolder`, per-item quantity/specification drafts, `requestMappingRpcCache`, submission generation and same-account outbox state. Keep selected Rep identity distinct from submitter identity; dictionary results are cached and late mapping reads cannot replace a newer Rep selection.
+- Territory filters TX, OK, NE, ADMIN, EVAL, ADV, ALL and CLEAR select recipients; do not redefine authorization. The existing selected recipients and active mapped addresses remain deduplicated.
+- **Actual email policies differ:** `Code.gs` `REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_` / `plant-request-lifecycle-v2` requires Dylan + Kayla + JD for `new_request` and `request_complete`, plus resolved submitter, selected Rep and explicit applicable recipients. Inventory/Bloom purpose reports use `INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_` (Sunday + Sharon + Mitch + JD + Megan) plus actor and selected recipients. Crop updates, approval stages, shift reports and HL tags have separate branches in `collectRequestRecipients_`; preserve them. Do not copy these recipients into the server-authoritative Dylan + Megan + submitter Reclass policy.
+- Submission is idempotent and disabled while inflight. Clear selected rows/blobs only after validated acknowledgment; retain failed drafts for retry and require explicit conflict/mapping review. Sales credit evidence retains its private storage and account boundaries.
 
-Preserve Request, Historical Requests, Sales and Sales Office views and their account boundaries. Submission is idempotent with inflight protection; retain a failed draft for retry. Validate payload continuity, territory filters and recipient sets with focused Node tests. New startup/background reads need explicit fixture allowlist entries in the same commit.
+## Scoped verification
+
+Select the affected files from this pure Node command (target under 10 seconds; **unmeasured by this audit**):
+
+```sh
+node --test tests/request-submission-durability.test.mjs tests/request-mapping-reader.test.mjs tests/request-email-optional-qty.test.mjs
+```
+
+Use canonical map rows for Bloom metrics and historical-sales source changes. Follow AGENTS daytime limits; do not expand into browsers, Docker or database replay without the applicable authorization.

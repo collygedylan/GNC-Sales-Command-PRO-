@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runToolingReleaseChecks, toolingReleaseCheckFiles } from '../scripts/run-tooling-release-checks.mjs';
 
-test('daytime tooling runs only focused scope, registration and mocked runner contracts', () => {
+test('daytime tooling runs only focused scope, registration, governance and mocked runner contracts', () => {
   assert.deepEqual(toolingReleaseCheckFiles, [
     'tests/release-scope.test.mjs', 'tests/main-release-registration.test.mjs',
     'tests/tooling-release-runner.test.mjs',
+    'tests/agdata-governance.test.mjs', 'tests/agdata-architecture.test.mjs',
   ]);
   const logs = [];
   const errors = [];

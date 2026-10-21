@@ -23,3 +23,20 @@ Reclass submission must not await a client cache revision or permission refresh.
 Preserve an authenticated session through transient refresh failures. Explicit Log Out / Use another account and confirmed server-side role revocation remain real access boundaries. Never expose another account's cache, ignore a confirmed revocation, weaken RLS, fabricate a valid server session or permit unauthorized writes. Retaining visible authorized data does not authorize new backend actions.
 
 Cover refresh failure, interrupted imports, account changes, confirmed revocation, modal drafts and cache-upgrade behavior in the appropriate focused tests. Apply the release governor for changed rendering. This skill describes required behavior; it does not certify the current runtime without evidence.
+
+## Ownership and dependency boundary
+
+- Owned frontend seams: `index.html` — `getNativeAuthSession`, `refreshNativeRoleAndCapabilities`, `clearInMemorySessionIdentity`, `initializeAppAccessSnapshot`, `loadFromCache`, `saveToCache`, `getSupabaseReadIdentityScope`, `getProductionLiveSyncContext`, `resetProductionLiveSync`. Read/write bindings also touch `assets/user-access-control.js` (`configure`, `loadSelf`, `getEffectiveUserPermissions`), `assets/bounded-snapshot-cache.js`, and the owned Service Worker lifecycle in `assets/app-lifecycle.js`.
+- Coordinator implementation: `assets/live-sync-coordinator.js` — `createCoordinator`, `readSourceToken`, `isReadableSource`, `isPublishedReadable`; lifecycle owners: `AgMetricLifecycle.resetSession`, `enterView`, `createScope`. Their auth epoch, identity scope, permission version and source revision must travel together. Never replace a same-account display receipt with an unverified cross-account cache.
+- Backend boundaries: `app-api` actions `native_session_bridge`, `user_access`, `inventory_read`, `dataset_read`; `supabase/functions/_shared/canonical-user-access.ts`, `app-auth.ts`, and canonical `user_access_command_v1` / `user_access_control` authorization. Cache retention does not bypass those server checks.
+- Shared shell dependency: `switchView`, `showOnlyPrimaryView`, `fastBackToView`, `goBackUniversal`, `updateGlobalBackButton`, `viewHistoryStack`, and `#global-header-inline-back` belong to the shell. Preserve their call order when resetting a session or restoring a view; do not add per-feature back-button/CSS overrides. `#global-back-btn` is a separate legacy control, not a replacement for the inline header Back control.
+
+## Scoped pure Node verification
+
+For changes to these seams, select only the relevant files from:
+
+```sh
+node --test tests/release-app-lifecycle.test.mjs tests/live-sync-coordinator.test.mjs tests/live-sync-priority-cache.test.mjs
+```
+
+These use local fixtures/VMs without a browser or database. Target `< 10s`; this is a budget, not a measured pass. For a docs-only task follow its verification override; do not run these automatically. See `docs/architecture/agdata-module-dependency-map.md`, cluster 2, for source anchors and the full component map.

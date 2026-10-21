@@ -5,6 +5,8 @@ description: Maintain AgData Home sync status, Drive file freshness, RUN SCRIPT,
 
 # Sync and Supabase architecture
 
+Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 8 and shared Back/navigation ownership.
+
 - Home DRIVE, SOC, RESERVES and CAV status cards display the single active/latest filename for each source.
 - RUN SCRIPT must detect unchanged Google Drive source metadata and return UP_TO_DATE on the fast path, targeting less than 500 ms. Ignore TEMP_* and ~$* files before choosing a source; temporary Warehouse Assigned Items exports cannot stall the stage.
 - Use chunked set-based upserts with a 120s statement timeout for bulk work. This timeout is not an interactive-query allowance: ordinary interactive queries remain below 100 ms and the atomic 100-source Reclass batch remains at or below 1,000 ms.
@@ -15,3 +17,19 @@ description: Maintain AgData Home sync status, Drive file freshness, RUN SCRIPT,
 Use Supabase MCP for read-only schema/contract/log inspection and validated production migrations. Keep credentials in environment/secret stores. Test destructive SQL, trigger faults and rollback behavior in disposable local databases. Use the repository's PostgreSQL 17/Supabase harness for full compatibility; a PostgreSQL 15 lightweight sandbox is not equivalent. No live fault injection is authorized by this skill.
 
 Measure new, changed, unchanged and retried snapshots when importer behavior changes. Register new RPC/background reads in the fixture allowlist and update this skill in the same commit.
+
+## Owned seams and shared dependencies
+
+- Home frontend in `index.html`: `runGoogleAppsScriptTrigger`, `refreshDashboardSyncMetadata`, `updateDashboardSyncSummary`, `selectDashboardSyncFilename`; `#run-google-script-btn`, `#view-home`. Runtime synchronization uses `getProductionLiveSyncCoordinator`, `getProductionLiveSyncContext`, `withProductionLiveSyncSignal`, `scheduleProductionLiveSyncRender` and `processAndLoadData`.
+- `assets/live-sync-registry.js` owns module/source declarations and `getViewAdapters` / `getSourceKeys`; `assets/live-sync-adapters.js` owns `create` and synchronous stage/commit publication; `assets/live-sync-coordinator.js` owns generation/source gates, permissions, retained display and cancellation. `assets/bounded-snapshot-cache.js` owns chunked IndexedDB writes. Preserve `productionLiveSyncReadAuthEpoch`, source signatures, scoped dataset state, `fullInventory` and master indexes across each atomic publication.
+- `Code.gs` owns `getManualSyncStageOrder_`, `queueManualSyncRequest_`, `runQueuedManualSyncStage_`, `saveManualSyncStatus_`, `beginDatasetImportFence_`, `heartbeatDatasetImportFence_`, `closeDatasetImportFence_`, `failDatasetImportFence_`, `buildMasterBulkSnapshotPayload_`, `callMasterBulkSnapshotImport_`, `processSiteSplitMasterSnapshotBatchFolder_`, `buildMasterPayload`, `buildStandardPayload`, `buildCavPayload`. Treat the 500-row stage chunks, source digest, immutable source identity and resumable cursor as one contract; don't substitute ordinary upsert semantics for canonical master publication.
+- Supabase contracts: `begin_dataset_import_v1`, import heartbeat/finish/failure RPCs, `begin_master_snapshot_stage_v1`, `append_master_snapshot_stage_chunk_v1`, `finalize_master_snapshot_stage_v1`, `app_dataset_revisions`, private import leases/runs/stage rows, source baselines and field protection triggers. Published read proof distinguishes retained READY data from authorization to mutate. Changing a projection also touches `app-api` `inventory_read` / `dataset_read` and `_shared/inventory-projections.ts`.
+- Shared shell: sync completion routes through existing deferred render/invalidation and `switchView` / `showOnlyPrimaryView`; it must preserve `viewHistoryStack`, `goBackUniversal`, `updateGlobalBackButton`, current detail state and modal drafts. Data readiness is not navigation authorization. Never toggle paused backfill/15-minute triggers as an incidental fix.
+
+## Scoped pure Node verification
+
+```sh
+node --test tests/master-snapshot-chunk-import.test.mjs tests/live-sync-registry-coverage.test.mjs tests/apps-script-sync.test.mjs
+```
+
+These use local source/VM or injected transport fixtures without a database, browser or deployment. Target `< 10s`, unmeasured until run; choose only the relevant subset. SQL/RPC changes require targeted isolated SQL checks, never automatic full migration replay. Docs-only task overrides take precedence. See canonical module-map cluster 8 for source anchors and cross-module contracts.

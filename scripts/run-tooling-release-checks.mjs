@@ -3,10 +3,27 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+// Explicit registry shared by the fast architecture/governance contracts.
+export const toolingSkillManifests = Object.freeze([
+  'agdata-app-shell-and-navigation',
+  'agdata-aura-assistant',
+  'agdata-bloom-and-request-specialist',
+  'agdata-docks-and-orders-specialist',
+  'agdata-drive-and-av-specialist',
+  'agdata-field-ops-and-qc',
+  'agdata-queue-and-reclass-specialist',
+  'agdata-release-governor',
+  'agdata-skill-learner',
+  'agdata-sync-and-supabase-architect',
+  'agdata-zero-lockout-guard',
+].map(name => `.codex/skills/${name}/SKILL.md`));
+
 export const toolingReleaseCheckFiles = Object.freeze([
   'tests/release-scope.test.mjs',
   'tests/main-release-registration.test.mjs',
   'tests/tooling-release-runner.test.mjs',
+  'tests/agdata-governance.test.mjs',
+  'tests/agdata-architecture.test.mjs',
 ]);
 
 export function runToolingReleaseChecks({ spawn = spawnSync, now = () => performance.now(), print = console.log,

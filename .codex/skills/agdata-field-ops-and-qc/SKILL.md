@@ -1,15 +1,35 @@
 ---
 name: agdata-field-ops-and-qc
-description: Maintain AgData Manager, Managers, QC, Production and field work queues while protecting in-app tasks and overwintering notes from ERP imports.
+description: Maintain AgData Manager, QC, Production, Eval Work, Shear List, Location Work, field counting and Bunch Notes, including their protected task and report contracts.
 ---
 
 # Field operations and QC
 
-Cover Manager / Managers, QC, Production, LOCATION MOVES, RECOUNT, SHEAR LIST, EVAL WORK and BUNCH NOTES. Preserve the existing role permissions and crew workflow in every queue.
+Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 5 and shared Back/navigation ownership.
 
-- Sort locationcode naturally ascending for single-pass nursery work. Preserve distinct task and physical-row identity and stable ordering within a location.
-- Daily DriveAround ERP imports must preserve active in-app queue tasks and overwintering bunch notes. Identify protected live fields before changing mappings, staging, triggers or publication. Do not treat missing ERP fields as an instruction to clear user work.
-- Link Hold/Stop reasons and quality flag grades to live inventory with existing item/location/lot identity. Do not reinterpret grades or invent reason codes.
-- Keep loaded same-account work visible during import and permission refreshes. Manager and Docks navigation must remain available to authorized users while background checks run.
+## Owned implementation boundaries
 
-Use focused tests for sorting, joins and protected-field merge behavior. Test changed import/trigger contracts in a disposable database. Preserve resumable cursors, atomic READY publication and current crew edits through failures and retries. Apply the zero-lockout guard to loading-state changes and update affected skills/fixture routes with new features.
+- `index.html`: `renderManagers`, `setHomeTab`, `renderQcHub`, `renderProductionHub`; `loadEvalWorkAssignments`, `renderEvalWorkQueue`, `openEvalWorkDetail`, `saveEvalWorkDraft`, `submitEvalWork`, `openEvalWorkSetupFromReclass`; `loadShearListData`, `renderShearList`, `submitShearList`, `completeShearListRow`, `completeShearLocationInquiry`; `loadLocationWorkJobs`, `openLocationWorkJob`, `renderLocationWorkQueue`, `resolveLocationWorkLine`; `loadProductionWorkflowRows`, `renderProductionWorkflowPanel`, `completeProductionWorkflowRow`; `createFieldCountingTransport`, `ensureFieldCountingIsland`; `renderManagerEvalReportsPanel`, `renderManagerEvalReports2Panel`, `buildManagerEvalReport2IndexAsync`, `renderManagerAssignedItemsPreviewTable`, `renderManagerSeasonPriorityPanel`, `renderManagerMovesPanel`, `renderManagerBlockClearingPanel` and `renderGrowerScout`.
+- `assets/eval-reports-engine.js`: `GncEvalReports.classifyRows`, `classifyScriptCompatibleRowsAsync`, `buildAuthoritativeAssignmentModelAsync`, `buildItemInquiryModel`. Preserve location, season, ownership and report-suppression rules.
+- `assets/bunch-note.js`: `BunchNote.open`, `back`, `saveDraft`, card picker, draft/action/recount transitions; `assets/bunch-queue-shell.js`: `BunchQueueShell.render`, `openDetail`, `closeDetail`, `stage`, `commit`. Source components live in `components/bunch-notes/`, `components/bunch-queue/`, `components/field-counting/`; bridges in `services/bunchQueue.ts`, `services/fieldCounting.ts`. Generated assets are build outputs, not independent business-rule sources.
+- `assets/report-pages-live.js` (`createController`), `services/reportPages.ts`, `components/report-pages/`; production schedule source `components/managers/ProductionSchedule/`, `services/productionScheduleClient.js`, `services/productionScheduleSheets.js` produces `assets/production-schedule.js`.
+- Peripheral field surfaces in `index.html`: `renderCropRollModule`, `loadCropRollData`, `saveCropRollDetailCompletionRow`, `renderWeatherHold`, `loadWeatherHoldRiskData`, `submitGrowerScoutReport`, `saveGrowerScoutRowLog`, `renderPestManagement`, `renderTakeBack`, `completeTakeBackRow`, `submitLaborHours`; keep run/row identity, protected notes, attachment lifecycle and current actor scope. HR command-center/offboarding overlaps the Docks/Comm skill and auth skill.
+- Backend: `supabase/functions/app-api/index.ts` actions `eval_work`, `report_read_v2`, `shear_location_work`, `location_work`, `production_workflow`, `production_schedule`, `bunch_note`, `bunch_note_workflow`, `manager_season_settings`; `_shared/production-workflow.ts` and `_shared/bunch-note-pdf-delivery.ts`. `Code.gs`: `buildEvalWorkReportModel_`, `handleSignedEvalWorkDelivery_`, `handleSignedShearLocationDelivery_`, `handleSignedLocationWorkDelivery_`, `handleSignedBunchNoteDelivery_`, `runProductionScheduleImportChunk_`.
+
+## Shared dependencies and invariants
+
+- Enter views through `switchView` / `setHomeTab`; preserve `canAccessView`, `getManagersToolAccess`, `updateGlobalBackButton`, `goBackUniversal` and the existing modal/secondary-back stack. Relevant roots: `#managers-content`, `#view-qc`, `#view-production`, `#production-workflow-page-content`, `#shear-list-content`, `#bunch-note-content`, `#manager-production-schedule-root`. Never change shared Back/header visibility to repair one queue; the shell skill owns that policy.
+- Preserve account/auth epoch ownership, `activeHomeTab`, `evalWorkRows` / `activeEvalWorkDetailId`, `productionWorkflowState`, report-page source revisions and `GncEvalReports` assignment indexes. Keep same-account loaded work while refreshing; discard late responses from a different account/view.
+- LOCATION MOVES, RECOUNT, SHEAR LIST, EVAL WORK and BUNCH NOTES remain distinct work types. Sort `locationcode` naturally ascending and retain physical-row/task identity. Preserve Hold/Stop reason/flag grades and overwintering notes; an absent ERP column cannot clear app-owned work.
+- Mutations retain actor/module authorization, exact source/revision checks, command identity and atomic delivery/outbox behavior. Eval's modern creation freezes source AssignedTo and completion recipients in `create_eval_work_multi_v1`; do not substitute legacy browser-selected assignees for that path.
+- Bunch Note required recipients are Dylan, Megan, Sharon and location/card owners (`requiredBunchRecipientIds`); preserve active mapped emails and selected additions. This is distinct from Request and Reclass routing.
+
+## Scoped verification
+
+For a relevant change, select the affected files from this pure Node command (target under 10 seconds, **not measured by the static audit**):
+
+```sh
+node --test tests/eval-reports-engine.test.mjs tests/bunch-note-card-model.test.mjs tests/production-schedule-client.test.mjs
+```
+
+Use the canonical dependency map's Location Work / Shear rows when those specific contracts change. Follow AGENTS daytime limits; browser, import replay and database suites require the applicable explicit or Nightly scope. This skill does not authorize production writes or a broad regression run.

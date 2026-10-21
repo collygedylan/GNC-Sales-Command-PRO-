@@ -5,6 +5,23 @@ description: Keep AgData domain skills and explicit fixture-read contracts synch
 
 # Maintain skills alongside features
 
+## Owned files and core functions
+
+- Own `docs/architecture/agdata-module-dependency-map.md`, its static inventory, `.codex/skills/*/SKILL.md`, the skill routing list in `AGENTS.md`, and manifest/dependency registration in `tests/agdata-governance.test.mjs`, `tests/agdata-architecture.test.mjs` and `scripts/run-tooling-release-checks.mjs` (`runToolingReleaseChecks`).
+- Use the map to route functions in `index.html`, `assets/*.js`, `supabase/functions/app-api/index.ts` and `Code.gs` to their domain owner. This maintenance skill does not own application mutations. Track renamed/added functions, DOM ownership, action/RPC names, migration contracts and exact focused test paths in the same commit as the feature.
+
+## Shared component dependencies
+
+Every feature skill must name its dependency on the shared `switchView` / `showOnlyPrimaryView` router, `goBackUniversal` / `updateGlobalBackButton`, `viewHistoryStack` and header/search ownership where applicable. Do not teach a local component to hide or recreate global Back/navigation DOM. Keep permissions, auth epoch, cached rows and recipient contracts distinct from visual shell state. Record static findings separately from rendered behavior and measured performance.
+
+## Scoped Node verification
+
+```sh
+node --test tests/agdata-governance.test.mjs tests/agdata-architecture.test.mjs
+```
+
+Target under 10 seconds. These checks validate manifests, registered ownership and usable test/source pointers without running the feature suites. The audit inventory is a commit-stamped reference, not a receipt authorizing deployment or a claim that all runtime behavior was tested.
+
 When adding or changing a feature, button, table or RPC:
 
 1. Trace the actual ERP → Supabase → UI flow, including row identities, protected live fields, account permissions and owning domain skills, before coding.
