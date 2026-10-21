@@ -7974,7 +7974,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 <div class="nav-header-utility">
                     <div class="nav-header-identity">
                         <div class="nav-header-copy">
-                            <div id="header-user" class="nav-header-user">User</div>
+                            <div class="flex items-center gap-2"><div id="header-user" class="nav-header-user">User</div><span id="runtime-watchdog-header-badge" class="hidden rounded-full bg-rose-600 px-2 py-1 text-[9px] font-black text-white" role="status" aria-label="Open runtime incidents"></span></div>
                             <div class="nav-header-company">AG DATA SOLUTIONS</div>
                         </div>
                     </div>
@@ -38171,6 +38171,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     let metadata;
                     try {
                         metadata = await supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 15000, signal });
+                        if (metadata?.contractVersion === 1 && Array.isArray(metadata.sources)) {
+                            window.GncRuntimeWatchdog?.setDatasetRevisions(Object.fromEntries(metadata.sources.map(source => [String(source.key || ''), { revision: String(source.revision ?? ''), state: String(source.state || '') }])));
+                        }
                     } catch (error) {
                         if (keys.includes('ph_master_inventory') && owner === getSupabaseReadIdentityScope() && !signal.aborted) {
                             inventoryStatusSync?.setSourceReady(false);
@@ -147728,11 +147731,33 @@ C.14.043 C.15.000
                 <div id="runtime-watchdog-events" class="mt-4 space-y-3" aria-live="polite">Loading open incidents…</div></section>`;
         }
         let runtimeWatchdogOpenEvents = [];
+        let runtimeWatchdogBadgeRefresh = null;
+        let runtimeWatchdogBadgeCheckedAt = 0;
+        async function refreshRuntimeWatchdogBadge(force = false) {
+            const badge = document.getElementById('runtime-watchdog-header-badge');
+            if (!badge || String(currentUser || '').trim().toLowerCase() !== 'dylan_collyge') return;
+            if (!force && Date.now() - runtimeWatchdogBadgeCheckedAt < 30000) return;
+            if (runtimeWatchdogBadgeRefresh) return runtimeWatchdogBadgeRefresh;
+            runtimeWatchdogBadgeRefresh = loadRuntimeWatchdogEvents().then(rows => {
+                runtimeWatchdogBadgeCheckedAt = Date.now();
+                const count = rows.length;
+                badge.textContent = String(count);
+                badge.classList.toggle('hidden', count === 0);
+                badge.title = `${count} open runtime incident${count === 1 ? '' : 's'}`;
+                return count;
+            }).catch(() => null).finally(() => { runtimeWatchdogBadgeRefresh = null; });
+            return runtimeWatchdogBadgeRefresh;
+        }
         async function refreshRuntimeWatchdogPanel() {
             const host = document.getElementById('runtime-watchdog-events');
             if (!host) return;
             try {
                 runtimeWatchdogOpenEvents = await loadRuntimeWatchdogEvents();
+                if (String(currentUser || '').trim().toLowerCase() === 'dylan_collyge') {
+                    const badge = document.getElementById('runtime-watchdog-header-badge');
+                    if (badge) { badge.textContent = String(runtimeWatchdogOpenEvents.length); badge.classList.toggle('hidden', runtimeWatchdogOpenEvents.length === 0); }
+                    runtimeWatchdogBadgeCheckedAt = Date.now();
+                }
                 if (!runtimeWatchdogOpenEvents.length) { host.innerHTML = '<p class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">No open runtime incidents.</p>'; return; }
                 const groups = new Map();
                 for (const row of runtimeWatchdogOpenEvents) { const key = `${row.normalized_role || 'unknown'} · ${row.view_id || 'unknown'} · ${row.owning_skill || 'unmapped'}`; groups.set(key, [...(groups.get(key) || []), row]); }
@@ -147872,6 +147897,7 @@ C.14.043 C.15.000
                 }
             } else container.innerHTML = html;
             if (activeHomeTab === MANAGER_RUNTIME_WATCHDOG_VIEW && canViewRuntimeWatchdog) void refreshRuntimeWatchdogPanel();
+            else if (activeHomeTab === 'dashboard' && canViewRuntimeWatchdog) void refreshRuntimeWatchdogBadge();
             if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) void mountManagerAssignedItemsView(container.querySelector('#manager-assigned-items-root'));
             if (isManagerApprovalTab(activeHomeTab) && ['ncr-approvals', 'move-up-approvals', 'move-down-approvals', 'hold-release-approvals', 'recount-approvals', 'not-on-inventory-approvals'].includes(String(activeHomeTab).toLowerCase())) {
                 const host = container.querySelector('[data-manager-paged-approval="true"]');
