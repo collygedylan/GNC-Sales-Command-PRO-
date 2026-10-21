@@ -2,15 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.37';
-const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1-role-parity-r1-reclass-stock-r1';
+const APP_SHELL_BUILD = 'AgData v2.3.38';
+const APP_SHELL_RUNTIME_REVISION = 'desktop-shell-r1';
+const APP_ASSET_VERSION = '2.3.38';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD + '-scope-r1-lists-r1-av-stock-r2-role-parity-r1-reclass-stock-r1';
+const CACHE_NAME = 'agdata-v2.3.38';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
@@ -66,11 +67,8 @@ const BRANDING_CANONICAL_ASSETS = Object.freeze([
 // END GENERATED BRANDING ASSETS
 const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/bunch-note-cards.css",
-  "./assets/bunch-note-chunks/CardBoard-SFKXC2GV.js",
   "./assets/bunch-note-chunks/CardBoard-WXA27JK6.js",
-  "./assets/bunch-note-chunks/StructuredBunchNote-7B3SEYGE.js",
   "./assets/bunch-note-chunks/StructuredBunchNote-KKG4GWIR.js",
-  "./assets/bunch-note-chunks/chunk-46YKMRUS.js",
   "./assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
   "./assets/bunch-note-structured.js",
   "./assets/bunch-note.css",
@@ -78,14 +76,10 @@ const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/bunch-queue.css",
   "./assets/bunch-queue.js",
   "./assets/field-counting-chunks/FieldCountingView-CBZQJHBV.js",
-  "./assets/field-counting-chunks/FieldCountingView-PBPNYFTR.js",
   "./assets/field-counting-chunks/chunk-4U4VUOO3.js",
-  "./assets/field-counting-chunks/chunk-C5JZPQWQ.js",
   "./assets/field-counting.css",
   "./assets/field-counting.js",
-  "./assets/historical-requests-chunks/HistoricalRequestsView-2SDVJKBX.js",
   "./assets/historical-requests-chunks/HistoricalRequestsView-MMF43IVA.js",
-  "./assets/historical-requests-chunks/chunk-34HXWUAQ.js",
   "./assets/historical-requests-chunks/chunk-HXYT2SBZ.js",
   "./assets/historical-requests.css",
   "./assets/historical-requests.js",
@@ -93,6 +87,7 @@ const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/report-pages.js"
 ];
 const ASSETS_TO_CACHE = [
+  './assets/app-styles.css',
   ...DEFERRED_VIEW_ASSETS,
   './assets/bunch-queue-shell.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
   './assets/bunch-queue.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
@@ -136,7 +131,7 @@ const ASSETS_TO_CACHE = [
   './assets/vendor/phosphor/light/style.css',
   './assets/vendor/phosphor/light/Phosphor-Light.woff2',
   ...BRANDING_CANONICAL_ASSETS
-];
+].map((asset) => /\.(?:css|js|mjs)(?:\?|$)/i.test(asset) ? asset.split('?')[0] + '?v=' + APP_ASSET_VERSION : asset);
 const RUNTIME_CACHE_EXTENSION_REGEX = /\.(?:css|js|mjs|json|png|jpg|jpeg|webp|svg|ico|woff2?)$/i;
 const CONTENT_VERSION_REGEX = /(?:[._-](?:v?20\d{6,}|[a-f0-9]{8,})[._-]|\/assets\/vendor\/)/i;
 const PRIVATE_NETWORK_PATH_REGEX = /\/(?:auth\/v1|rest\/v1|functions\/v1|storage\/v1\/object\/sign)(?:\/|$)/i;
@@ -179,9 +174,9 @@ function isIndependentAppRequest(request) {
 }
 
 function isRetiredRootCacheName(name) {
-  // This is the only historical shell-cache namespace established by this worker.
-  // Unknown, Workbox, v2, and partner caches belong to other applications.
-  return String(name).startsWith('ag-data-v4.3-rebuild-') && name !== CACHE_NAME;
+  // Explicit release upgrade: retire all prior Cache Storage generations.
+  // Authenticated snapshots and user drafts remain in their separate stores.
+  return name !== CACHE_NAME;
 }
 
 async function matchRootCache(request, options) {
@@ -485,7 +480,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 self.addEventListener('activate', (event) => {
-  const claimed = self.clients.claim();
   event.waitUntil(
     caches.keys()
       .then((keys) => {
@@ -495,7 +489,7 @@ self.addEventListener('activate', (event) => {
         if (!self.registration || !self.registration.navigationPreload) return Promise.resolve();
         return self.registration.navigationPreload.enable().catch(() => {});
       })
-      .then(() => claimed)
+      .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
       .then(() => navigateInactiveClientsToCurrentShell('sw-activated'))
   );
