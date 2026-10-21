@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import yaml from 'js-yaml';
 import { createAppsScriptPostVerifier, signAppsScriptAction, signAppsScriptCommand } from './helpers/zero-trust-apps-script.mjs';
 
 const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
@@ -193,4 +194,23 @@ test('Apps Script doPost rejects unsigned requests and verifies the signed actio
     payload: { type: 'deployment_health' }, actor: { system: 'apps-script-deployment-health' } });
   assert.equal(verifier.authorize(health).type, 'deployment_health');
   assert.equal(verifier.authorize({ type: 'request_delivery_event', timestamp: 'signed-by-dedicated-protocol' }).type, 'request_delivery_event');
+});
+
+test('manual Apps Script health diagnostic signs read-only health and emits only allowlisted fields', () => {
+  const workflow = yaml.safeLoad(readFileSync(new URL('../.github/workflows/apps-script-database-diagnostic.yml', import.meta.url), 'utf8'));
+  const dispatch = workflow.on.workflow_dispatch;
+  assert.equal(dispatch.inputs.target.type, 'choice');
+  assert.deepEqual(dispatch.inputs.target.options, ['database', 'apps-script']);
+  const steps = workflow.jobs['diagnose-database'].steps;
+  const databaseProbe = steps.find(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs --diagnose');
+  assert.equal(databaseProbe.if, "inputs.target == 'database'");
+  const health = steps.find(step => step.name === 'Probe Apps Script signed deployment health');
+  assert.equal(health.if, "inputs.target == 'apps-script'");
+  assert.equal(health.env.APPS_SCRIPT_DEPLOYMENT_ID, '${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}');
+  assert.equal(health.env.SUPABASE_SERVICE_ROLE_KEY, '${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}');
+  assert.match(health.run, /createSignedDeploymentHealthEnvelope\(key\)/);
+  assert.match(health.run, /safeCodes\.has\(/);
+  assert.match(health.run, /JSON\.stringify\(\{ status: response\.status, ok: response\.ok && payload\?\.ok === true,\s*errorCode, deployedCommit \}\)/);
+  assert.doesNotMatch(health.run, /console\.log\(payload|console\.log\(text|console\.log\(body/);
+  assert.doesNotMatch(health.run, /SUPABASE_DB_URL|\.rpc\(|\.from\(/);
 });

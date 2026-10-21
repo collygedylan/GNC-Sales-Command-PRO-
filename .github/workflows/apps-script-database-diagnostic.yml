@@ -2,6 +2,15 @@ name: Diagnose low-stock database connection
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Select a read-only database or Apps Script health probe.
+        type: choice
+        options:
+          - database
+          - apps-script
+        default: database
+        required: true
 
 permissions:
   contents: read
@@ -27,6 +36,7 @@ jobs:
           node-version: 20
           install-mode: ignore-scripts
       - name: Probe the configured database without applying migrations
+        if: inputs.target == 'database'
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_REF: ${{ github.ref }}
@@ -36,3 +46,35 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: node scripts/apply-item-low-stock-migration.mjs --diagnose
+      - name: Probe Apps Script signed deployment health
+        if: inputs.target == 'apps-script'
+        env:
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { createSignedDeploymentHealthEnvelope } from './scripts/apps-script-signing.mjs';
+          const safeCodes = new Set([
+            'APPS_SCRIPT_ACTION_SIGNATURE_REQUIRED', 'APPS_SCRIPT_ACTION_SIGNATURE_EXPIRED',
+            'APPS_SCRIPT_ACTION_SIGNING_KEY_MISSING', 'APPS_SCRIPT_ACTION_SIGNATURE_INVALID',
+            'APPS_SCRIPT_ACTION_PAYLOAD_INVALID', 'APPS_SCRIPT_HEALTH_ACTOR_INVALID',
+            'APPS_SCRIPT_POST_SIGNATURE_REQUIRED'
+          ]);
+          const deploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
+          const key = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+          if (!deploymentId || !key) throw new Error('APPS_SCRIPT_HEALTH_CONFIGURATION_MISSING');
+          const response = await fetch(`https://script.google.com/macros/s/${encodeURIComponent(deploymentId)}/exec`, {
+            method: 'POST', redirect: 'follow', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(createSignedDeploymentHealthEnvelope(key)), signal: AbortSignal.timeout(20000)
+          });
+          let payload = null;
+          try { payload = await response.json(); } catch {}
+          const errorCode = safeCodes.has(String(payload?.message || payload?.errorCode || ''))
+            ? String(payload.message || payload.errorCode) : '';
+          const deployedCommit = /^[a-f0-9]{40}$/i.test(String(payload?.deployedCommit || ''))
+            ? String(payload.deployedCommit) : '';
+          console.log(JSON.stringify({ status: response.status, ok: response.ok && payload?.ok === true,
+            errorCode, deployedCommit }));
+          if (!response.ok || payload?.ok !== true) process.exitCode = 1;
+          NODE
