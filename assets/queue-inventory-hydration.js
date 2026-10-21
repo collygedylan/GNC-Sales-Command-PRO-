@@ -69,6 +69,86 @@
                 if (candidates?.length) return { status:'ready', row:representative(candidates), matchLevel };
             }
             return { status:'missing', row:null };
+        }, resolveSuspendTagDisplay(input, fallbackRows = []) {
+            const i = identity(input);
+            if (!i.itemCode) return { status:'missing', row:null };
+            const itemRows = items.get(i.itemCode) || [];
+            const exactRows = i.locationCode && i.lotCode
+                ? (keys.get(locationLotKey(i)) || []).filter(row => matches(row, i)) : [];
+            const lotRows = i.lotCode ? itemRows.filter(row => identity(row).lotCode === i.lotCode) : [];
+            const selectedRows = exactRows.length ? exactRows : lotRows.length ? lotRows : itemRows;
+            const itemCavRows = Array.isArray(fallbackRows) ? fallbackRows.filter(row => identity(row).itemCode === i.itemCode) : [];
+            const seasons = new Set(selectedRows.map(row => text(pick(row, 'SEASON', 'season'))).filter(Boolean));
+            const cavRows = selectedRows.length && seasons.size
+                ? itemCavRows.filter(row => seasons.has(text(pick(row, 'SEASON', 'season')))) : itemCavRows;
+            const rowsForMetrics = selectedRows.length ? selectedRows : cavRows;
+            if (!rowsForMetrics.length) return { status:'missing', row:null };
+            const base = representative(rowsForMetrics) || {};
+            const sum = keys => {
+                let total = 0, found = false;
+                for (const row of rowsForMetrics) {
+                    const value = pick(row, ...keys);
+                    if (value === '') continue;
+                    const number = Number(String(value).replace(/,/g, ''));
+                    if (!Number.isFinite(number)) continue;
+                    total += number;
+                    found = true;
+                }
+                return found ? total : null;
+            };
+            const sumAvailable = rows => {
+                let total = 0, found = false;
+                for (const row of rows) {
+                    const raw = pick(row, 'PTRAVAILABLE', 'ptravailable', 'AVAILABLE', 'available');
+                    const available = raw === '' ? NaN : Number(String(raw).replace(/,/g, ''));
+                    if (Number.isFinite(available)) {
+                        total += available;
+                        found = true;
+                        continue;
+                    }
+                    const onHandRaw = pick(row, 'PTRONHAND', 'ptronhand');
+                    const reviewedRaw = pick(row, 'PTRREVIEWED', 'ptrreviewed');
+                    if (onHandRaw === '' || reviewedRaw === '') continue;
+                    const onHand = Number(String(onHandRaw).replace(/,/g, ''));
+                    const reviewed = Number(String(reviewedRaw).replace(/,/g, ''));
+                    if (!Number.isFinite(onHand) || !Number.isFinite(reviewed)) continue;
+                    total += onHand - reviewed;
+                    found = true;
+                }
+                return found ? total : null;
+            };
+            const openStockBySeason = new Map();
+            for (const row of rowsForMetrics) {
+                const value = pick(row, 'S_LTS', 's_lts');
+                if (value === '') continue;
+                const season = text(pick(row, 'SEASON', 'season'));
+                const key = season || `${identity(row).lotCode}|${value}`;
+                if (!openStockBySeason.has(key)) {
+                    const number = Number(String(value).replace(/,/g, ''));
+                    if (Number.isFinite(number)) openStockBySeason.set(key, number);
+                }
+            }
+            const locationRows = i.locationCode ? itemLocations.get(itemLocationKey(i)) || [] : [];
+            let locationOnHandFound = false;
+            const locationOnHand = locationRows.reduce((total, row) => {
+                const value = pick(row, 'PTRONHAND', 'ptronhand');
+                if (value === '') return total;
+                const number = Number(String(value || '0').replace(/,/g, ''));
+                if (Number.isFinite(number)) locationOnHandFound = true;
+                return total + (Number.isFinite(number) ? number : 0);
+            }, 0);
+            return { status:'ready', matchLevel: exactRows.length ? 'item-location-lot' : lotRows.length ? 'item-lot' : selectedRows.length ? 'item' : 'cav-item', row:{
+                ...base,
+                PTRONHAND: sum(['PTRONHAND', 'ptronhand']),
+                PTRREVIEWED: sum(['PTRREVIEWED', 'ptrreviewed']) ?? (sum(['PTRONHAND', 'ptronhand']) !== null ? 0 : null),
+                PTRAVAILABLE: sumAvailable(selectedRows) ?? sumAvailable(cavRows),
+                S_LTS: openStockBySeason.size ? [...openStockBySeason.values()].reduce((total, value) => total + value, 0) : null,
+                LOC_ON_HAND: locationRows.length ? (locationOnHandFound ? locationOnHand : null) : 0,
+                LOC_MATCH_QTY: (() => {
+                    const value = pick(base, 'LOC_MATCH_QTY', 'loc_match_qty');
+                    return value === '' ? null : value;
+                })()
+            } };
         }, resolve(input) {
             const i = identity(input);
             if (i.masterUid) {
