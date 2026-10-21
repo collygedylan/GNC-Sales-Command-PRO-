@@ -655,6 +655,44 @@ function verifyProductionScheduleImportCommand_(payload) {
   return delivery;
 }
 
+function verifyRuntimeWatchdogAlert_(payload) {
+  const timestamp = String(payload && payload.timestamp || '').trim();
+  const signature = String(payload && payload.signature || '').trim();
+  const deliveryJson = String(payload && payload.deliveryJson || '');
+  const timestampMs = Date.parse(timestamp);
+  if (!timestamp || !signature || !deliveryJson || !Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > 300000) throw new Error('RUNTIME_WATCHDOG_SIGNATURE_REQUIRED');
+  const expected = requestDeliveryBase64Url_(Utilities.computeHmacSha256Signature(timestamp + '.' + deliveryJson, productionScheduleSigningKey_(), Utilities.Charset.UTF_8));
+  if (!productionScheduleEqual_(expected, signature)) throw new Error('RUNTIME_WATCHDOG_SIGNATURE_INVALID');
+  let command;
+  try { command = JSON.parse(deliveryJson); } catch (error) { throw new Error('RUNTIME_WATCHDOG_COMMAND_INVALID'); }
+  if (!command || command.contractVersion !== 'runtime-watchdog-alert-v1' || !['high', 'critical'].includes(String(command.severity)) || !command.fingerprint || !command.appVersion) throw new Error('RUNTIME_WATCHDOG_COMMAND_INVALID');
+  return command;
+}
+
+function handleRuntimeWatchdogAlert_(payload) {
+  const command = verifyRuntimeWatchdogAlert_(payload);
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) throw new Error('RUNTIME_WATCHDOG_WORKER_BUSY');
+  try {
+    const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(command.fingerprint) + '|' + String(command.appVersion));
+    const key = 'runtime_watchdog_alert_' + Utilities.base64EncodeWebSafe(digest).replace(/=+$/g, '');
+    const props = PropertiesService.getScriptProperties();
+    const sentAt = Number(props.getProperty(key) || 0);
+    if (sentAt && Date.now() - sentAt < 60 * 60 * 1000) return { ok: true, deduplicated: true };
+    props.setProperty(key, String(Date.now()));
+    const lines = [
+      'AgData runtime watchdog detected a production incident.',
+      'Version: ' + String(command.appVersion), 'Severity: ' + String(command.severity),
+      'User / role: ' + String(command.username) + ' / ' + String(command.role),
+      'View: ' + String(command.view), 'Owner: ' + String(command.owningSkill),
+      'Fingerprint: ' + String(command.fingerprint), 'Details: ' + String(command.message || '').slice(0, 300),
+      'Review incidents in AgData Manager > Watchdog Monitor.'
+    ];
+    MailApp.sendEmail({ to: 'dylan_collyge@greenleafnursery.com', subject: '[AgData Watchdog] ' + String(command.severity).toUpperCase() + ' · ' + String(command.view).slice(0, 60), body: lines.join('\n') });
+    return { ok: true, sent: true };
+  } finally { lock.releaseLock(); }
+}
+
 function productionScheduleSheetMetadata_(spreadsheet) {
   const sheets = spreadsheet.getSheets();
   if (sheets.length !== PRODUCTION_SCHEDULE_SHEETS_.length) throw new Error('PRODUCTION_SCHEDULE_SHEET_SET_CHANGED');
@@ -2109,7 +2147,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.3.21';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.22';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -22368,6 +22406,7 @@ function doPost(e) {
     if (payload.type === 'production_schedule_import_v1') {
       return jsonOutput_(acceptProductionScheduleImportCommand_(payload));
     }
+    if (payload.type === 'runtime_watchdog_alert_v1') return jsonOutput_(handleRuntimeWatchdogAlert_(payload));
 
     if (payload.type === 'deployment_health') {
       return jsonOutput_(getAppsScriptDeploymentHealth_());

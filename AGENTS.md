@@ -31,6 +31,7 @@ Before modifying any module, load and follow the corresponding domain skill(s) f
 9. `.codex/skills/agdata-skill-learner/SKILL.md` — Continuous self-learning: whenever a new feature, table, or RPC is added, register any new startup/background read in the shared Playwright fixture allowlist and update the matching `.codex/skills/<name>/SKILL.md` file in the same commit.
 10. `.codex/skills/agdata-app-shell-and-navigation/SKILL.md` — Shared view router, Home/Menu/footer, header/search/Back ownership, breadcrumb/history stack, modal delegation and theme chrome; load with a feature skill whenever navigation changes.
 11. `.codex/skills/agdata-aura-assistant/SKILL.md` — AURA voice/query lifecycle, per-account capabilities, bounded inventory/history/SOC analytics, reviewed draft actions and the separate legacy assistant boundary.
+12. `.codex/skills/agdata-runtime-watchdog/SKILL.md` — Passive runtime load/error telemetry, bounded incident persistence and the authorized Manager review panel.
 
 Use [the canonical module dependency map](docs/architecture/agdata-module-dependency-map.md) for exact functions, shared state, backend contracts and the 1–3 focused Node targets for each cluster. Its source inventory is an audit snapshot, not a release receipt or permission to skip current checks. Register skill additions in `scripts/run-tooling-release-checks.mjs`; preserve shared Back/navigation dependencies in every domain skill.
 

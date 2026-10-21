@@ -13,6 +13,7 @@ export const toolingSkillManifests = Object.freeze([
   'agdata-field-ops-and-qc',
   'agdata-queue-and-reclass-specialist',
   'agdata-release-governor',
+  'agdata-runtime-watchdog',
   'agdata-skill-learner',
   'agdata-sync-and-supabase-architect',
   'agdata-zero-lockout-guard',

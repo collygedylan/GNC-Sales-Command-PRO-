@@ -26,7 +26,7 @@ import { createDatabaseRestBridge, legacyDatabaseTableAliases } from "../../../s
 import { jsonObject, jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
 import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs";
 import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
-import { createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
+import { createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
 import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
 import { auraInventoryV2Rpc } from "../_shared/aura-inventory.ts";
@@ -1148,6 +1148,28 @@ export async function signProductionScheduleCommand(command: Record<string, unkn
   const deliveryJson = JSON.stringify(command);
   const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${timestamp}.${deliveryJson}`));
   return { deliveryJson, signature: productionScheduleBase64Url(new Uint8Array(signature)) };
+}
+
+async function dispatchRuntimeWatchdogAlert(event: Record<string, unknown>) {
+  if (!PRODUCTION_SCHEDULE_APPS_SCRIPT_URL || !PRODUCTION_SCHEDULE_SIGNING_SECRET) return;
+  const timestamp = new Date().toISOString();
+  const command = {
+    contractVersion: "runtime-watchdog-alert-v1",
+    fingerprint: String(event.fingerprint || "").slice(0, 400),
+    appVersion: String(event.app_version || "").slice(0, 80),
+    severity: String(event.severity || ""),
+    username: String(event.username || "").slice(0, 120),
+    role: String(event.normalized_role || "").slice(0, 80),
+    view: String(event.view_id || "").slice(0, 100),
+    owningSkill: String(event.owning_skill || "").slice(0, 100),
+    message: String(event.error_message || "").slice(0, 300),
+  };
+  const { deliveryJson, signature } = await signProductionScheduleCommand(command, timestamp, PRODUCTION_SCHEDULE_SIGNING_SECRET);
+  await fetch(PRODUCTION_SCHEDULE_APPS_SCRIPT_URL, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "runtime_watchdog_alert_v1", timestamp, signature, deliveryJson }),
+    signal: AbortSignal.timeout(5000), redirect: "follow",
+  });
 }
 
 async function handleProductionScheduleAction(
@@ -5365,6 +5387,83 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
+
+  if (action.startsWith("watchdog_")) {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+    try {
+      const actor = await resolveActiveSessionProfile(session);
+      const username = normalizeUsername(actor.username || session.username || "");
+      const watchdogRole = (value: unknown) => {
+        const role = normalizeRole(String(value || "")).toLowerCase();
+        if (["salesrep", "sales_rep", "sales"].includes(role)) return "sales_rep";
+        if (["dockoffice", "dock_office"].includes(role)) return "dock_office";
+        if (["qcsupervisor", "qc_supervisor"].includes(role)) return "qc_supervisor";
+        if (["dataentry", "data_entry"].includes(role)) return "data_entry";
+        if (["takebacks", "take_backs"].includes(role)) return "take_backs";
+        return role;
+      };
+      const privileged = new Set(["dylan_collyge", "megan_kelly", "jd_jones"]);
+      if (action === "watchdog_log_event") {
+        const event = payload.event && typeof payload.event === "object" && !Array.isArray(payload.event) ? payload.event as Record<string, unknown> : {};
+        const allowed = new Set(["event_type", "severity", "app_version", "username", "normalized_role", "view_id", "sub_module", "duration_ms", "error_message", "dataset_revisions_snapshot", "cluster_id", "owning_skill", "suspected_functions", "fingerprint"]);
+        if (Object.keys(event).some(key => !allowed.has(key)) || normalizeUsername(event.username) !== username) throw new Error("WATCHDOG_EVENT_INVALID");
+        const boundedText = (value: unknown, max: number) => String(value || "").slice(0, max);
+        const eventType = boundedText(event.event_type, 64);
+        if (!new Set(["VIEW_LOAD_STALL", "ROLE_LATENCY_ANOMALY", "DATA_PARITY_MISMATCH", "UI_LOCKOUT_BANNER", "APP_API_FAILURE", "UNHANDLED_JS_EXCEPTION", "UNHANDLED_PROMISE_REJECTION"]).has(eventType)) throw new Error("WATCHDOG_EVENT_TYPE_INVALID");
+        const severity: "low" | "medium" | "high" | "critical" = eventType === "UI_LOCKOUT_BANNER" ? "critical"
+          : eventType === "UNHANDLED_JS_EXCEPTION" || eventType === "UNHANDLED_PROMISE_REJECTION" || eventType === "DATA_PARITY_MISMATCH" || eventType === "VIEW_LOAD_STALL" ? "high"
+          : eventType === "APP_API_FAILURE" && /\b5\d\d\b/.test(String(event.error_message || "")) ? "high" : "medium";
+        const cluster = String(event.cluster_id || "");
+        if (!new Set(["low", "medium", "high", "critical"]).has(severity) || !/^Cluster (?:[1-9]|10)$/.test(cluster)) throw new Error("WATCHDOG_EVENT_INVALID");
+        const fingerprint = boundedText(event.fingerprint, 400);
+        const appVersion = boundedText(event.app_version, 80);
+        if (!fingerprint || !appVersion) throw new Error("WATCHDOG_EVENT_INVALID");
+        const revisionInput = event.dataset_revisions_snapshot && typeof event.dataset_revisions_snapshot === "object" && !Array.isArray(event.dataset_revisions_snapshot)
+          ? event.dataset_revisions_snapshot as Record<string, unknown> : {};
+        const revisions = Object.fromEntries(Object.entries(revisionInput).slice(0, 24).map(([key, value]) => [boundedText(key, 80), boundedText(value, 120)]));
+        const owningSkill = boundedText(event.owning_skill, 100);
+        if (!/^agdata-[a-z0-9-]+$/.test(owningSkill)) throw new Error("WATCHDOG_EVENT_OWNER_INVALID");
+        const safeSuspectedFunctions = Array.isArray(event.suspected_functions) ? event.suspected_functions.slice(0, 8).map(value => boundedText(value, 160)) : [];
+        const row = {
+          fingerprint, app_version: appVersion, event_type: eventType, severity,
+          username, normalized_role: watchdogRole(actor.role), view_id: boundedText(event.view_id, 100),
+          sub_module: boundedText(event.sub_module, 120), duration_ms: Math.min(2_147_483_647, Math.max(0, Number(event.duration_ms) || 0)),
+          error_message: boundedText(event.error_message, 1000), dataset_revisions_snapshot: revisions,
+          cluster_id: cluster, owning_skill: owningSkill, suspected_functions: safeSuspectedFunctions,
+          sample_payload: { fingerprint, app_version: appVersion, event_type: eventType, severity, username, normalized_role: watchdogRole(actor.role), view_id: boundedText(event.view_id, 100), sub_module: boundedText(event.sub_module, 120), duration_ms: Math.min(2_147_483_647, Math.max(0, Number(event.duration_ms) || 0)), error_message: boundedText(event.error_message, 1000), dataset_revisions_snapshot: revisions, cluster_id: cluster, owning_skill: owningSkill, suspected_functions: safeSuspectedFunctions, observed_at: new Date().toISOString() },
+        };
+        const { error } = await supabase.from("app_runtime_watchdog_events" as never).upsert(row as never, { onConflict: "fingerprint,app_version", ignoreDuplicates: false });
+        if (error) throw error;
+        if (severity === "critical" || severity === "high") {
+          const now = new Date();
+          const eligibleBefore = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+          const { data: claimed } = await supabase.from("app_runtime_watchdog_events" as never)
+            .update({ alert_last_sent_at: now.toISOString() } as never)
+            .eq("fingerprint", fingerprint).eq("app_version", appVersion)
+            .or(`alert_last_sent_at.is.null,alert_last_sent_at.lt.${eligibleBefore}`).select("id");
+          if (Array.isArray(claimed) && claimed.length) await dispatchRuntimeWatchdogAlert(row).catch(() => {});
+        }
+        return jsonResponse({ ok: true });
+      }
+      if (!privileged.has(username)) return errorResponse("This feature is not enabled for your active profile.", 403, { code: "WATCHDOG_FORBIDDEN" });
+      if (action === "watchdog_list_events") {
+        const { data, error } = await supabase.from("app_runtime_watchdog_events" as never).select("*").eq("status", "open").order("last_seen_at", { ascending: false }).limit(250);
+        if (error) throw error;
+        return jsonResponse({ ok: true, data: data || [] });
+      }
+      if (action === "watchdog_resolve_events") {
+        const ids = Array.isArray(payload.ids) ? payload.ids.filter(value => typeof value === "number" && Number.isSafeInteger(value)).slice(0, 250) : [];
+        if (!ids.length) throw new Error("WATCHDOG_EVENT_IDS_REQUIRED");
+        const { error } = await supabase.from("app_runtime_watchdog_events" as never).update({ status: "resolved" } as never).in("id", ids as never[]);
+        if (error) throw error;
+        return jsonResponse({ ok: true, resolved: ids.length });
+      }
+      return errorResponse("Unsupported watchdog action.", 400, { code: "WATCHDOG_ACTION_INVALID" });
+    } catch (error) {
+      const code = String((error as { message?: unknown })?.message || "WATCHDOG_FAILED");
+      return errorResponse(code, /FORBIDDEN/.test(code) ? 403 : /AUTH/.test(code) ? 401 : 400, { code });
+    }
+  }
 
   const actionGate = canonicalActionGate(action, payload);
   let canonicalAccessForRequest: CanonicalUserAccess | null = null;

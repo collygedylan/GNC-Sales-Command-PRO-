@@ -21,9 +21,10 @@ const domains = {
   'skill-learner': ['ERP', 'Supabase', 'UI', 'same commit', 'allowlist', 'SKILL.md'],
   'app-shell-and-navigation': ['goBackUniversal', 'switchView', 'viewHistoryStack', 'global-header-inline-back', 'data-secondary-back', 'Home'],
   'aura-assistant': ['callAuraLlmRouter', 'requestAuraQuery', 'switchView', 'aura_voice_access_v1', 'legacy'],
+  'runtime-watchdog': ['GncRuntimeWatchdog', 'VIEW_LOAD_STALL', 'watchdog_log_event', 'watchdog_list_events', 'COPY AI FIX BRIEF', 'switchView', 'goBackUniversal'],
 };
 
-test('all eleven domain skills have valid unique manifests and requested contracts', () => {
+test('all AgData domain skills have valid unique manifests and requested contracts', () => {
   const skillRoot = path.join(root, '.codex/skills');
   const names = fs.readdirSync(skillRoot).filter(name => name.startsWith('agdata-')).sort();
   assert.deepEqual(names, Object.keys(domains).map(name => `agdata-${name}`).sort());
@@ -47,7 +48,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    '361cb218fb5c111977450da541c1ffe0f824014f0b5534f3b37fb983cfda0416');
+    'b9ba8243b8e701e17a1414d71e2e16bcc70d7bd5951f3def08c4b465414caa32');
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));

@@ -27,10 +27,10 @@ const clusters = [
   [10, 'release-governor', 'scripts/release-scope.mjs', ['classifyReleasePaths', 'selectReleaseRecoveryBase'], 'runToolingReleaseChecks'],
 ];
 
-test('all eleven installed skills are explicitly registered and provide bounded Node commands', () => {
+test('all installed skills are explicitly registered and provide bounded Node commands', () => {
   const actual = fs.readdirSync(path.join(root, '.codex/skills'))
     .filter(name => name.startsWith('agdata-')).map(name => `.codex/skills/${name}/SKILL.md`).sort();
-  assert.equal(actual.length, 11);
+  assert.equal(actual.length, 12);
   assert.deepEqual([...toolingSkillManifests].sort(), actual);
   assert.equal(new Set(toolingSkillManifests).size, toolingSkillManifests.length);
   for (const manifest of actual) {
