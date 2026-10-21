@@ -66,3 +66,7 @@ After identity verification, finalizeLogin reveals Home before awaiting capabili
 Active same-account sessions defer Service Worker reload and mismatch recovery, including a reload queued before login completed. Transient token/session refresh loss retains the visible shell and cached identity; confirmed disabled or locked profiles still clear access. Foreground restoration preserves the current view. Request save receipt acceptance checks account scope without rejecting a committed result solely because permission revision advanced. Focused coverage: release-app-lifecycle.test.mjs and request-submission-durability.test.mjs.
 
 Same-version runtime releases must advance the service-worker runtime/cache revision while retaining the visible AgData badge. Reclass stock r1 refreshes shell assets with the existing reload-cache installer and preserves authenticated account data, drafts, and inactive-client navigation rules.
+
+## Desktop shell recovery
+
+The explicit v2.3.38 cache upgrade uses agdata-v2.3.38, skipWaiting, all-prior Cache Storage deletion and clients.claim. Version every shell CSS/JS URL consistently, including compiled assets and precache entries. This release clears Cache Storage only; retain authenticated snapshots, session storage, IndexedDB and drafts. Existing active-session reload deferral and shared router/Back ownership remain unchanged.

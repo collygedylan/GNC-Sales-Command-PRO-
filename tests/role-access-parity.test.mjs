@@ -12,6 +12,59 @@ const auth = read('supabase/functions/_shared/app-auth.ts');
 const html = readComposedAppSource();
 const coordinator = read('assets/live-sync-coordinator.js');
 
+function shellFunction(name) {
+  const match = html.match(new RegExp('        (?:async )?function ' + name + '\\([^]*?^        }', 'm'));
+  assert.ok(match, name);
+  return match[0];
+}
+
+test('verified administrators mount all eleven Home modules at desktop and mobile widths', () => {
+  const registry = html.match(/        const HOME_MODULE_REGISTRY = Object.freeze\(\[[^]*?\n        \]\);/)[0];
+  for (const width of [320, 390, 768, 1024, 1440, 2560]) {
+    for (const username of ['dylan_collyge', 'megan_kelly', 'jd_jones']) {
+      const grid = { dataset: {}, innerHTML: '' };
+      const ctx = vm.createContext({ currentUser: username, nativeAuthSessionActive: true,
+        nativeAuthSessionUserId: 'actor', nativeAuthProfile: { id: 'actor', username },
+        PRIVILEGED_MANAGER_USER_KEYS: ['dylan_collyge', 'megan_kelly', 'jd_jones'],
+        window: { innerWidth: width }, document: { getElementById: () => grid },
+        buildFastInvokeAttrs: () => '' });
+      vm.runInContext(registry + shellFunction('isFullAppAdministrator') + shellFunction('canAccessView') + shellFunction('ensureHomeModuleRegistry'), ctx);
+      ctx.ensureHomeModuleRegistry();
+      const views = [...grid.innerHTML.matchAll(/data-home-module-view="([^"]+)"/g)].map(match => match[1]);
+      assert.deepEqual(views, ['drive', 'hl-order', 'av', 'sales-office', 'sales', 'historical-requests', 'managers', 'qc', 'office', 'sales-inventory', 'production']);
+      for (const view of views) assert.equal(ctx.canAccessView(view), true, `${username} ${width}px ${view}`);
+      assert.match(grid.innerHTML.match(/<button[^>]+id="home-tile-sales-office"[^]*?<\/button>/)[0], /<svg[^>]+viewBox="0 0 24 24"[^]*?<path/);
+    }
+  }
+});
+
+test('Home sync always renders four named cards while partial metadata refreshes', () => {
+  const nodes = Object.fromEntries(['dashboard-sync-accordion', 'dashboard-sync-stamp', 'dashboard-sync-summary', 'dashboard-sync-files'].map(id => [id, { classList: { toggle() {} }, innerHTML: '', innerText: '' }]));
+  const ctx = vm.createContext({ document: { getElementById: id => nodes[id] }, canViewDashboardSyncStatus: () => true,
+    getSupabaseReadIdentityScope: () => 'owner', dashboardSyncMetadataOwner: 'owner',
+    dashboardSyncMetadataSummaries: [], dashboardSyncMetadataFetchedAt: Date.now(), dashboardSyncMetadataInFlight: false,
+    DASHBOARD_SYNC_METADATA_TTL_MS: 60000, fullInventory: [], socInventory: [], reservesInventory: [], cavInventory: [],
+    collectDashboardSyncSource: (_rows, label) => ({ label, iso: label === 'Reserves' ? '2026-10-21T16:00:00Z' : '', ms: label === 'Reserves' ? 1 : 0, files: label === 'Reserves' ? ['Reserves.xlsx'] : [] }),
+    mergeDashboardSyncSummaries: rows => rows, formatDashboardSyncDateTime: value => value || 'Awaiting import metadata',
+    escapeDashboardSyncText: value => String(value) });
+  vm.runInContext(shellFunction('updateDashboardSyncSummary'), ctx);
+  ctx.updateDashboardSyncSummary();
+  for (const source of ['DRIVE', 'CAV', 'RESERVES', 'SOC']) assert.match(nodes['dashboard-sync-files'].innerHTML, new RegExp('data-sync-source="' + source + '"'));
+  assert.match(nodes['dashboard-sync-files'].innerHTML, /Reserves.xlsx/);
+});
+
+test('desktop connection status is visible without standalone mode or an active import', () => {
+  const nodes = Object.fromEntries(['sync-diagnostics-badge', 'sync-diagnostics-detail'].map(id => [id, { classList: { toggle(_key, hidden) { this.hidden = hidden; } } }]));
+  const ctx = vm.createContext({ document: { getElementById: id => nodes[id] }, navigator: { onLine: true },
+    isIOSDevice: () => false, isStandaloneApp: () => false, hasActiveManualSync: () => false,
+    isTouchConstrainedDevice: () => false, syncDiagnosticsOverride: '', liveSyncMode: 'idle', lastSuccessfulSyncTime: 0,
+    getDatasetRevisionConnectionLabel: () => 'Connected · 4 ready', formatDiagnosticsTime: () => '', getDiagnosticsPlatformLabel: () => 'Desktop' });
+  vm.runInContext(shellFunction('updateSyncDiagnostics'), ctx); ctx.updateSyncDiagnostics();
+  assert.equal(nodes['sync-diagnostics-badge'].classList.hidden, false);
+  assert.equal(nodes['sync-diagnostics-badge'].innerText, 'IDLE');
+  assert.match(nodes['sync-diagnostics-detail'].innerText, /Connected · 4 ready/);
+});
+
 test('all nursery role aliases normalize consistently on client and server', () => {
   const aliases = new Map([
     ['admin', 'admin'], ['sales rep', 'sales_rep'], ['salesrep', 'sales_rep'], ['sales_rep', 'sales_rep'],
@@ -140,4 +193,18 @@ test('verified administrator controls remain available during a same-account ref
   vm.runInContext(source.match(/    function isVerifiedManager\([^]*?^    }/m)[0],ctx);
   assert.equal(ctx.isVerifiedManager(),true);
   ctx.selfDenied=true; assert.equal(ctx.isVerifiedManager(),false);
+});
+
+test('Dylan saved Manager shortcut produces the eight requested footer entries', async () => {
+  const window = {};
+  vm.runInNewContext(read('assets/navigation-preferences.js'), { window });
+  const api = window.GncNavigationPreferences;
+  const shortcuts = ['drive', 'managers', 'docks', 'request', 'bloom'];
+  api.configure({ username: () => 'dylan_collyge', canAccess: () => true,
+    call: async () => ({ data: { username: 'dylan_collyge', footerRevision: 2, shortcuts,
+      views: shortcuts.map(view => ({ view, selectable: true, allowed: true })) } }) });
+  await api.refresh();
+  assert.deepEqual(Array.from(api.shortcuts()), shortcuts);
+  const labels = vm.runInNewContext(read('assets/navigation-preferences.js').match(/const LABELS = [^;]+;/)[0] + 'LABELS');
+  assert.deepEqual(['menu', 'home', ...api.shortcuts(), 'communication'].map(view => labels[view]), ['Menu', 'Home', 'Drive', 'Manager', 'Docks', 'Que', 'Bloom', 'Comm']);
 });

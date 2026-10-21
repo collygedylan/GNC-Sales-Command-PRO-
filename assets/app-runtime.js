@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.37';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.38';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4649,7 +4649,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getHomeDesktopColumnCount(count) {
             const total = Math.max(1, Math.floor(Number(count) || 0));
-            return Math.ceil(total / Math.ceil(total / 6));
+            return Math.min(total, 3);
         }
 
         function syncHomeDashboardPhoneFit(reason = 'default') {
@@ -4706,12 +4706,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const colGapPx = profile.phone
                 ? clamp(Math.round(profile.width * 0.026), 8, 12)
                 : clamp(Math.round(profile.width * 0.008), 10, 16);
-            const desktopLayout = profile.width >= 1100;
+            const desktopLayout = profile.width >= 768;
             const portraitPhone = profile.width < 640 && profile.height >= profile.width;
             const landscapeCompact = profile.width > profile.height * 1.22 && profile.height < 640;
             let columnCount = profile.width < 640
                 ? 2
-                : (profile.width < 840 ? 3 : (profile.width < 1100 ? 4 : getHomeDesktopColumnCount(visibleTiles.length)));
+                : (profile.width < 1024 ? 2 : getHomeDesktopColumnCount(visibleTiles.length));
             const candidateColumns = desktopLayout
                 ? [columnCount]
                 : (portraitPhone ? [2] : (landscapeCompact ? [columnCount, 4, 6] : [columnCount, 4]));
@@ -4740,7 +4740,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 fit = calculateFit(columnCount);
                 fitTilePx = fit.height;
             }
-            const tilePx = Math.max(hardMinPx, fitTilePx);
+            const tilePx = desktopLayout ? clamp(fitTilePx, 96, 130) : Math.max(hardMinPx, fitTilePx);
             const cardWidthPx = Math.max(hardMinPx, fit.width);
             const iconPx = clamp(Math.round(tilePx * (profile.phone ? 0.30 : 0.20)), profile.phone ? 18 : 28, profile.phone ? 30 : 48);
             const labelPx = clamp(Math.round(tilePx * (profile.phone ? 0.16 : 0.075)), profile.phone ? 9 : 12, profile.phone ? 12 : 16);
@@ -25882,7 +25882,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.37').trim() || 'AgData v2.3.37';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.38').trim() || 'AgData v2.3.38';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -59282,11 +59282,11 @@ function toggleDriveQuickRequestItem(domId) {
 
         function ensureHomeModuleRegistry() {
             const grid = document.getElementById('home-dashboard-grid');
-            if (!grid || grid.dataset.homeRegistryRelease === '20') return grid;
-            grid.dataset.homeRegistryRelease = '20';
+            if (!grid || grid.dataset.homeRegistryRelease === '38') return grid;
+            grid.dataset.homeRegistryRelease = '38';
             grid.innerHTML = HOME_MODULE_REGISTRY.map((module) => `
                 <button type="button" id="home-tile-${module.view}" class="home-module-tile hidden" data-home-module-view="${module.view}" ${module.view === 'sales' ? buildFastInvokeAttrs('openHomeModuleView', [module.view], `Open ${module.label}`) : `onclick="${module.action}"`} aria-label="Open ${module.label}">
-                    <i class="ph ${module.icon}" aria-hidden="true"></i>
+                    ${module.view === 'sales-office' ? '<svg class="home-module-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M9 7V4h6v3M3 7h18v14H3zM3 12h18M10 12v3h4v-3"/></svg>' : `<i class="ph ${module.icon}" aria-hidden="true"></i>`}
                     <span>${module.label}</span>
                 </button>`).join('');
             return grid;
@@ -113495,29 +113495,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 refreshDashboardSyncMetadata(false).catch(() => {});
             }
             const mergedSummaries = mergeDashboardSyncSummaries([...sourceSummaries, ...dashboardSyncMetadataSummaries]);
-            if (!mergedSummaries.length) {
-                stampEl.innerText = 'Awaiting imported file data';
-                summaryEl.innerText = '';
-                filesEl.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400">No imported file metadata loaded yet.</div>';
-                return;
-            }
-            const overall = mergedSummaries.reduce((winner, entry) => {
-                if (!winner || entry.ms > winner.ms) return entry;
-                return winner;
-            }, null);
-            stampEl.innerText = formatDashboardSyncDateTime(overall && overall.iso ? overall.iso : '');
+            const overall = mergedSummaries.reduce((winner, entry) => !winner || entry.ms > winner.ms ? entry : winner, null);
+            stampEl.innerText = overall && overall.iso ? formatDashboardSyncDateTime(overall.iso) : 'Awaiting imported file data';
             summaryEl.innerText = '';
-            filesEl.innerHTML = mergedSummaries.map((entry) => {
-                const fileListHtml = entry.files.length
-                    ? entry.files.map((fileName) => '<div class="break-words">' + escapeDashboardSyncText(fileName) + '</div>').join('')
-                    : '<div class="text-slate-400">No file name stored on the latest rows.</div>';
-                return '<div class="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">' +
-                    '<div class="flex items-center justify-between gap-3">' +
-                    '<span class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">' + escapeDashboardSyncText(entry.label) + '</span>' +
-                    '<span class="text-[10px] font-bold text-slate-500 text-right">' + escapeDashboardSyncText(formatDashboardSyncDateTime(entry.iso)) + '</span>' +
-                    '</div>' +
-                    '<div class="mt-2 space-y-1 text-[11px] font-semibold text-slate-700">' + fileListHtml + '</div>' +
-                    '</div>';
+            // Preserve all four source positions while metadata arrives independently.
+            filesEl.innerHTML = ['DRIVE', 'CAV', 'RESERVES', 'SOC'].map((label) => {
+                const entry = mergedSummaries.find((item) => String(item.label || '').toUpperCase() === label);
+                const fileName = entry && entry.files.length ? entry.files[0] : '';
+                return '<div class="dashboard-sync-card" data-sync-source="' + label + '">' +
+                    '<div class="dashboard-sync-card-heading"><strong>' + label + '</strong>' +
+                    '<time>' + escapeDashboardSyncText(entry && entry.iso ? formatDashboardSyncDateTime(entry.iso) : 'Awaiting import metadata') + '</time></div>' +
+                    '<div class="dashboard-sync-filename">' + escapeDashboardSyncText(fileName || 'Filename pending') + '</div></div>';
             }).join('');
         }
 
@@ -139390,7 +139378,7 @@ C.14.043 C.15.000
             const badge = document.getElementById('sync-diagnostics-badge');
             const detail = document.getElementById('sync-diagnostics-detail');
             if (!badge || !detail) return;
-            const show = isIOSDevice() || isStandaloneApp() || hasActiveManualSync();
+            const show = true; // Connection state is shared desktop and mobile chrome.
             const compactTouchChrome = isTouchConstrainedDevice();
             badge.classList.toggle('hidden', !show);
             detail.classList.toggle('hidden', !show);

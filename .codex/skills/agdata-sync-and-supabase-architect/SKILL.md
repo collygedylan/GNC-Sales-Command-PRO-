@@ -69,3 +69,7 @@ The private inventory_live_overrides_v1 audit records per-physical-UID ERP basel
 runRoutedDropImport_ selects one newest live source and archives older unchanged file identities only after successful publication, using the published watermark for archival retry. Historical backfills remain paused. Shared switchView/showOnlyPrimaryView, goBackUniversal/updateGlobalBackButton, viewHistoryStack and header/search ownership remain dependencies. Focused checks: request-submission-durability and security-zero-trust.
 
 Pending Reclass season stock overrides protect master s_lts/season_oh and ph_cav_import Open Stock/Season OH until matching fenced ERP evidence and CAV acknowledgement. Imports retain new physical siblings and pending season CAV rows. Historical backfill and its 15-minute trigger remain paused.
+
+## Desktop shell recovery
+
+Home renders stable DRIVE/CAV/RESERVES/SOC filename cards even when only one metadata read has completed. Missing metadata has an honest pending label; keep one latest filename per source. The authorized admin trio retains RUN SCRIPT, Print, and native keyboard-accessible disclosure with a styled chevron. Desktop connection status is visible during idle and background imports. No read route, mutation permission, import schedule or paused historical trigger changes.

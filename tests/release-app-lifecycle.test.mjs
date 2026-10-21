@@ -3,10 +3,55 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import postcss from 'postcss';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const source = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
 const runtimeSource = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+
+test('shell layout has explicit desktop and mobile structural rules independent of utility CSS', () => {
+  const css = readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8');
+  const tree = postcss.parse(css);
+  const rule = selector => {
+    let found;
+    tree.walkRules(selector, node => { if (node.parent.type !== 'root') return; found = Object.fromEntries(node.nodes.filter(item => item.type === 'decl').map(item => [item.prop, item.value])); });
+    assert.ok(found, selector); return found;
+  };
+  assert.deepEqual(rule('html body #app-wrapper .nav-header-utility'), {
+    display: 'flex', 'align-items': 'center', 'justify-content': 'space-between', 'flex-wrap': 'nowrap', 'flex-direction': 'row', gap: '8px', width: '100%', 'min-width': '0'
+  });
+  assert.equal(rule('html body #app-wrapper #header-version').width, 'auto');
+  assert.equal(rule('html body #app-wrapper #header-version').flex, '0 0 auto');
+  assert.equal(rule('html body #app-wrapper #bottom-nav').display, 'grid');
+  assert.equal(rule('html body #app-wrapper #bottom-nav').position, 'fixed');
+  assert.match(css, /max-width:\s*1120px/);
+  assert.match(css, /min-height:\s*96px/);
+  assert.match(css, /max-height:\s*130px/);
+  assert.match(css, /summary::\-webkit-details-marker\s*\{\s*display:\s*none/);
+  const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(shell, /id="dashboard-print-btn"[^>]*onclick="[^"]*window.print\(\)/);
+  for (const label of ['Menu', 'Home', 'Drive', 'Docks', 'Que', 'Bloom', 'Comm']) assert.ok(shell.includes(`<span>${label}</span>`));
+});
+
+test('v2.3.38 assets and worker upgrade purge previous cache generations', () => {
+  const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
+    assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.38', match[1]);
+  }
+  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.38'/);
+  assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
+  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.38' });
+  vm.runInContext(sw.match(/function isRetiredRootCacheName\([^]*?^}/m)[0], ctx);
+  for (const key of ['agdata-v2.3.34', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'ag-data-runtime-images-v2', 'legacy-shell']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);
+  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.38'), false);
+  const worker = vm.createContext({ self: { addEventListener() {}, location: { href: 'https://agmetricapp.com/sw.js', origin: 'https://agmetricapp.com' }, registration: { scope: 'https://agmetricapp.com/' } }, URL });
+  vm.runInContext(sw + '\nglobalThis.assets = ASSETS_TO_CACHE;', worker);
+  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.38', asset);
+  const build = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
+  assert.match(build, /shellStylesheetMarkup\(`\.\/assets\/live-app-styles-base/);
+  assert.match(build, /shellStylesheetMarkup\(pilotStylesheetHref\)/);
+});
 const watchdogPanelContext = {};
 vm.runInNewContext(readFileSync(new URL('../assets/runtime-watchdog-panel.js', import.meta.url), 'utf8'), watchdogPanelContext);
 const { createController: createRuntimeWatchdogPanel } = watchdogPanelContext.AgMetricRuntimeWatchdogPanel;
@@ -372,7 +417,7 @@ test('resolved live revisions clear the first-sync header before snapshot hydrat
   const labelEnd = runtimeSource.indexOf('\n        function requireCurrentProductionLiveSyncProof', markStart);
   assert.ok(markStart >= 0 && labelEnd > markStart);
   const state = vm.createContext({
-    datasetRevisionConnectionOwner: '', datasetRevisionConnectionStates: [],
+    datasetRevisionConnectionOwner: '', datasetRevisionConnectionStates: [], hasActiveManualSync: () => true,
     getSupabaseReadIdentityScope: () => 'account-a:login-1',
     getRequestCapabilityUsernameKey: value => String(value || '').trim().toLowerCase(),
     window: { GncUserAccessControl: { getSelfState: () => ({ denied: false }) } },
@@ -386,6 +431,8 @@ test('resolved live revisions clear the first-sync header before snapshot hydrat
   const normalized = { sources: new Map(value.sources.map(source => [source.key, source])) };
   assert.equal(state.record(value, normalized, { readIdentity: 'account-a:login-1', authenticated: true, accessDenied: false }), true);
   assert.equal(state.label(), 'Connected · 1 ready · 1 updating');
+  state.hasActiveManualSync = () => false;
+  assert.equal(state.label(), 'Connected · 1 ready');
   assert.equal(state.diagnosticsUpdates, 1);
   assert.match(runtimeSource, /onRevisionRead: \(value, metadata, context\) => recordDatasetRevisionConnection\(value, metadata, context\)/);
   assert.match(runtimeSource, /connectionSourceKeys: \(\) => \['ph_master_inventory'\]/);

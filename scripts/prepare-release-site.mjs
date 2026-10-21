@@ -94,6 +94,10 @@ try {
   if (fingerprint.error || fingerprint.status !== 0) throw new Error('RELEASE_PREPARATION_FAILED_write-deployment-fingerprint.mjs');
   if ((await stat(path.join(site, 'index.html'))).size > 1_500_000) throw new Error('RELEASE_INDEX_TOO_LARGE');
   const html = await readFile(path.join(site, 'index.html'), 'utf8');
+  const assetVersion = v2Release.replace(/^AgData v/, '');
+  for (const match of html.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^"]*)?)"/g)) {
+    if (new URL(match[1], 'https://release.invalid').searchParams.get('v') !== assetVersion) throw new Error('RELEASE_ASSET_VERSION_MISMATCH: ' + match[1]);
+  }
   if (/cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/.test(html)) throw new Error('RELEASE_EXTERNAL_CDN_FORBIDDEN');
   console.log('RELEASE_SITE_PREPARED');
 } catch (error) {

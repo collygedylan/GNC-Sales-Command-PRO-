@@ -4,7 +4,7 @@
     const FIXED_VIEWS = new Set(['menu', 'home', 'communication']);
     const ICONS = { drive: 'ph-car', tasks: 'ph-clipboard-text', docks: 'ph-truck', request: 'ph-list-checks', bloom: 'ph-handbag', sales: 'ph-handshake', 'sales-office': 'ph-desktop', 'historical-requests': 'ph-clock-counter-clockwise', 'request-history': 'ph-clock-counter-clockwise', 'sales-credit': 'ph-receipt', 'credit-request': 'ph-check-square', 'sales-inventory': 'ph-storefront', production: 'ph-plant', managers: 'ph-users-three', reports: 'ph-chart-bar', av: 'ph-notebook', 'hl-order': 'ph-truck', 'bunch-note': 'ph-notepad' };
     const FOOTER_IDS = { menu: 'footer-menu-btn', home: 'footer-home-btn', communication: 'footer-communication-btn', drive: 'footer-drive-btn', tasks: 'footer-tasks-btn', docks: 'footer-docks-btn', request: 'footer-request-btn', bloom: 'footer-cart-btn' };
-    const LABELS = { drive: 'Drive', tasks: 'Tasks', docks: 'Docks', request: 'Queue', bloom: 'Bloom', home: 'Home', menu: 'Menu', communication: 'Comm' };
+    const LABELS = { drive: 'Drive', tasks: 'Tasks', docks: 'Docks', request: 'Que', managers: 'Manager', bloom: 'Bloom', home: 'Home', menu: 'Menu', communication: 'Comm' };
     let hooks = {}, state = null, inflight = null, timer = null, generation = 0, bound = false;
     let footerObserver = null, lastFooter = null;
     const text = value => String(value == null ? '' : value);

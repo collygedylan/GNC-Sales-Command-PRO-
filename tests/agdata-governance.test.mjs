@@ -144,6 +144,6 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
  assert.match(migrationContractQuery('20261021195000_master_chunk_ledger_capacity.sql'),/convalidated/);
 });
 
-test('same-version Reclass publication refreshes shell assets without clearing account data', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.37'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = '[^']*reclass-stock-r1'/);assert.match(sw,/CACHE_NAME = '[^']*' \+ APP_SHELL_BUILD \+ '[^']*reclass-stock-r1'/);assert.match(sw,/cache: 'reload'/);
+test('desktop shell publication refreshes assets without clearing account stores', () => {
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.38'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'desktop-shell-r1'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.38'/);assert.match(sw,/cache: 'reload'/);
 });

@@ -5,20 +5,20 @@ import { minify } from 'terser';
 import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'AgData v2.3.37';
-const RELEASE_QUERY = encodeURIComponent(RELEASE);
+const RELEASE = 'AgData v2.3.38';
+const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
-const lifecycleTag = '<script src="./assets/app-lifecycle.js" data-app-lifecycle></script>';
 const rawHtml = await readFile(htmlPath, 'utf8');
-if (rawHtml.split(lifecycleTag).length !== 2) throw new Error('Expected exactly one lifecycle bootstrap marker.');
+const lifecycleTag = rawHtml.match(/<script src="\.\/assets\/app-lifecycle\.js(?:\?[^"]*)?" data-app-lifecycle><\/script>/)?.[0];
+if (!lifecycleTag || rawHtml.split(lifecycleTag).length !== 2) throw new Error('Expected exactly one lifecycle bootstrap marker.');
 // Compile the single owner inline so a failed runtime download cannot disable Reload cleanup.
 const lifecycleSource = await readFile(path.join(root, 'assets', 'app-lifecycle.js'), 'utf8');
 const sourceHtml = rawHtml.replace(lifecycleTag, () => `<script id="app-lifecycle-owner">${lifecycleSource}</script>`);
 const pilotCss = await readFile(path.join(root, 'assets', 'ops-precision-pilot.css'), 'utf8');
-const runtimeMarker = '<script id="app-script-source" src="./assets/app-runtime.js"></script>';
-if (sourceHtml.split(runtimeMarker).length !== 2) throw new Error('Unable to locate the extracted application runtime marker.');
+const runtimeMarker = sourceHtml.match(/<script id="app-script-source" src="\.\/assets\/app-runtime\.js(?:\?[^"]*)?"><\/script>/)?.[0];
+if (!runtimeMarker || sourceHtml.split(runtimeMarker).length !== 2) throw new Error('Unable to locate the extracted application runtime marker.');
 const runtime = { match: runtimeMarker, index: sourceHtml.indexOf(runtimeMarker) };
 const runtimeSourceText = await readFile(path.join(root, 'assets', 'app-runtime.js'), 'utf8');
 if (runtimeSourceText.length < 1_000_000) throw new Error('Extracted application runtime is unexpectedly small.');
@@ -51,6 +51,7 @@ await mkdir(path.join(siteRoot, 'assets', 'vendor'), { recursive: true });
 await copyFile(path.join(root, 'assets', 'login-network-trace.js'), path.join(siteRoot, 'assets', 'login-network-trace.js'));
 await copyFile(path.join(root, 'assets', 'vendor', 'fabric-6.7.1.min.mjs'), path.join(siteRoot, 'assets', 'vendor', 'fabric-6.7.1.min.mjs'));
 
+const shellStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}">`;
 const asyncStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
     <noscript><link rel="stylesheet" href="${href}"></noscript>`;
 
@@ -169,7 +170,7 @@ replaceLoginMarkup('<button id="login-passkey-button"', '<div id="login-runtime-
 // document head. Parsing those rules delays the login logo even though none of
 // them are needed for the first screen. Keep the small critical/prepaint rules
 // inline, preserve the original cascade on either side of the pilot stylesheet,
-// and preload the route styles without blocking the first paint.
+// and load shell structure before the authenticated app can paint.
 const headEnd = runtimeDeployedHtml.indexOf('</head>');
 const headHtml = runtimeDeployedHtml.slice(0, headEnd);
 const opsStylesheetIndex = headHtml.indexOf('./assets/ops-precision-pilot.css');
@@ -187,7 +188,7 @@ const extractedStyleLinks = [...headHtml.matchAll(extractedStylePattern)];
 const extractedCssByHref = new Map(await Promise.all(extractedStyleLinks.map(async ([, attrs]) => {
   const href = attrs.match(/\bhref="([^"]+)"/i)?.[1];
   if (!href) throw new Error('Extracted stylesheet marker is missing its href.');
-  return [href, await readFile(path.resolve(root, href.replace(/^\.\//, '')), 'utf8')];
+  return [href, await readFile(path.resolve(root, href.split('?')[0].replace(/^\.\//, '')), 'utf8')];
 })));
 let optimizedHead = headHtml.replace(extractedStylePattern, (match, attrs, offset) => {
   const href = attrs.match(/\bhref="([^"]+)"/i)?.[1];
@@ -207,11 +208,11 @@ let optimizedHead = headHtml.replace(extractedStylePattern, (match, attrs, offse
 
   if (beforePilotStylesheet && !baseLinkWritten) {
     baseLinkWritten = true;
-    return asyncStylesheetMarkup(`./assets/live-app-styles-base-v2026090503.css?v=${RELEASE_QUERY}`);
+    return shellStylesheetMarkup(`./assets/live-app-styles-base-v2026090503.css?v=${RELEASE_QUERY}`);
   }
   if (!beforePilotStylesheet && !authorityLinkWritten) {
     authorityLinkWritten = true;
-    return asyncStylesheetMarkup(`./assets/live-app-styles-authority-v2026090503.css?v=${RELEASE_QUERY}`);
+    return shellStylesheetMarkup(`./assets/live-app-styles-authority-v2026090503.css?v=${RELEASE_QUERY}`);
   }
   return '';
 });
@@ -227,12 +228,11 @@ if (!baseStyles.length || !authorityStyles.length) {
 }
 
 const deferrableStylesheets = [
-  `./assets/live-tailwind-v2026082010.min.css?v=${RELEASE_QUERY}`,
-  './assets/vendor/phosphor/regular/style.css?v=2.1.2',
-  './assets/vendor/phosphor/bold/style.css?v=2.1.2',
-  './assets/vendor/phosphor/duotone/style.css?v=2.1.2',
-  './assets/vendor/phosphor/fill/style.css?v=2.1.2',
-  './assets/vendor/phosphor/light/style.css?v=2.1.2'
+  `./assets/vendor/phosphor/regular/style.css?v=${RELEASE_QUERY}`,
+  `./assets/vendor/phosphor/bold/style.css?v=${RELEASE_QUERY}`,
+  `./assets/vendor/phosphor/duotone/style.css?v=${RELEASE_QUERY}`,
+  `./assets/vendor/phosphor/fill/style.css?v=${RELEASE_QUERY}`,
+  `./assets/vendor/phosphor/light/style.css?v=${RELEASE_QUERY}`
 ];
 for (const href of deferrableStylesheets) {
   const blockingTag = `<link rel="stylesheet" href="${href}">`;
@@ -264,14 +264,16 @@ if (!optimizedHead.includes(pilotStylesheetTag)) {
 }
 optimizedHead = optimizedHead.replace(
   pilotStylesheetTag,
-  `<style id="login-critical-styles">${loginCriticalStyles}</style>\n    ${asyncStylesheetMarkup(pilotStylesheetHref)}`
+  `<style id="login-critical-styles">${loginCriticalStyles}</style>\n    ${shellStylesheetMarkup(pilotStylesheetHref)}`
 );
 
 const stylesRoot = path.join(siteRoot, 'assets');
 await writeFile(path.join(stylesRoot, 'live-app-styles-base-v2026090503.css'), `${baseStyles.join('\n')}\n`, 'utf8');
 await writeFile(path.join(stylesRoot, 'live-app-styles-authority-v2026090503.css'), `${authorityStyles.join('\n')}\n`, 'utf8');
 
-const deployedHtml = optimizedHead + runtimeDeployedHtml.slice(headEnd);
+const deployedHtml = (optimizedHead + runtimeDeployedHtml.slice(headEnd)).replace(
+  /(<(?:link|script)\b[^>]*(?:href|src)=")\.\/assets\/([^"?]+\.(?:css|js))(?:\?[^"]*)?"/g,
+  (_match, prefix, asset) => prefix + './assets/' + asset + '?v=' + RELEASE_QUERY + '"');
 await mkdir(siteRoot, { recursive: true });
 await writeFile(path.join(siteRoot, 'index.html'), deployedHtml, 'utf8');
 
@@ -280,4 +282,4 @@ if (deployedBytes > 1_500_000) {
   throw new Error(`Deployed HTML is still too large (${deployedBytes} bytes).`);
 }
 
-console.log(`Built ${RELEASE}: index ${deployedBytes} bytes, runtime ${Buffer.byteLength(minified.code)} bytes, deferred CSS ${Buffer.byteLength(baseStyles.join('\n')) + Buffer.byteLength(authorityStyles.join('\n'))} bytes.`);
+console.log(`Built ${RELEASE}: index ${deployedBytes} bytes, runtime ${Buffer.byteLength(minified.code)} bytes, shell CSS ${Buffer.byteLength(baseStyles.join('\n')) + Buffer.byteLength(authorityStyles.join('\n'))} bytes.`);
