@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,7 +10,7 @@ const requestSubmissionSource = readFileSync(new URL('../assets/request-submissi
 const requestSubmissionSandbox = { window: {} };
 vm.runInNewContext(requestSubmissionSource, requestSubmissionSandbox);
 const requestSubmissionApi = requestSubmissionSandbox.window.AgMetricRequestSubmission;
-const appSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const appSource = readComposedAppSource();
 
 function extractAppFunction(name) {
   const start = appSource.indexOf(`        function ${name}(`);

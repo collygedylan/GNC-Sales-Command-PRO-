@@ -1,3 +1,4 @@
+import { readComposedAppSource } from './composed-app-source.mjs';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
@@ -87,7 +88,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       try { await client.connect(); db = client; }
       catch (error) { const connectionCode = code(error.code); db = { query: async () => { throw Object.assign(new Error(), { code: connectionCode }); } }; }
     }
-    const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const source = readComposedAppSource();
     const result = await collectRecoveryDiagnostics({ db,
       appOrigin: process.env.PRODUCTION_APP_ORIGIN || 'https://agmetricapp.com',
       deploymentId: process.env.APPS_SCRIPT_DEPLOYMENT_ID || source.match(/script.google.com\/macros\/s\/([^/]+)\/exec/)?.[1],

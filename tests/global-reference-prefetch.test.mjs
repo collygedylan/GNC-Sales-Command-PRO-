@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -5,7 +6,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { requestMappingFunctions, requestMappingSetup } from './helpers/customer-mapping-fixture.mjs';
 
-const indexSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const indexSource = readComposedAppSource();
 function extractFunction(name) {
   let start = indexSource.indexOf(`        function ${name}(`);
   if (start < 0) start = indexSource.indexOf(`        async function ${name}(`);

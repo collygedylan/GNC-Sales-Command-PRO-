@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -5,7 +6,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const root = process.cwd();
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const html = readComposedAppSource();
 
 function loadWorkflowPolicySelector() {
   const start = html.indexOf('function getArgosReclassActionWorkflowPolicyVersionV3(');

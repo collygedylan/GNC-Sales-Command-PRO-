@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: requests,backend
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -5,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 const root = process.cwd();
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const html = readComposedAppSource();
 const saveData = html.slice(
   html.indexOf('async function saveData('),
   html.indexOf('function getPendingEditsCache(')

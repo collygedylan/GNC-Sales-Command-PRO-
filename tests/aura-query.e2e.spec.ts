@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 test('global standby hands off to the verified voice panel and preferences stay account-owned', { tag: ['@local-e2e', '@release-functional'] }, async ({ browser }) => {
   for (const width of [320, 390, 820, 1440]) {
@@ -339,7 +340,7 @@ test('the React-owned Aura bundle keeps one voice session and reports processing
 });
 
 test('the shell Aura bridge retries stale app context once without changing the voice turn ID', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
-  const html = await fs.readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const start = html.indexOf('async function requestAuraQuery(body, options = {}) {');
   const end = html.indexOf('\n        async function openAuraQueryAction', start);
   expect(start, 'the production shell command bridge exists').toBeGreaterThanOrEqual(0);

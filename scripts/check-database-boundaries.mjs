@@ -1,3 +1,4 @@
+import { readComposedAppSource } from './composed-app-source.mjs';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -129,7 +130,7 @@ export function checkDatabaseBoundaries({ root = repoRoot } = {}) {
     }
   }
   for (const directory of ['services', 'components', 'assets', 'v2/src', 'supabase/functions']) walk(directory);
-  const html = readFileSync(path.join(root, 'index.html'), 'utf8');
+  const html = readComposedAppSource();
   for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
     if (!/\bsrc\s*=/.test(match[1])) errors.push(...inspectDatabaseBoundary('index.html', match[2]));
   }

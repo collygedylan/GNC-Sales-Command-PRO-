@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: bunch-notes-v221
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +10,7 @@ const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 const plain = value => JSON.parse(JSON.stringify(value));
 
 test('Bunch Notes native scrollers are excluded from delayed shell input repositioning', () => {
-  const html=read('index.html');
+  const html=readComposedAppSource();
   const source=html.slice(html.indexOf('        function isMobileTextEntryPositionLocked('),html.indexOf('        function rememberMobileTextEntryScroll('));
   const context=vm.createContext({shouldUseMobileTextEntryStabilizer:()=>true, mobileTextEntryState:null, Date});
   vm.runInContext(source,context);

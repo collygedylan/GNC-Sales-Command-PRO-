@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: backend
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -15,7 +16,7 @@ import {
 const sha = '0123456789abcdef0123456789abcdef01234567';
 const source = `const DEPLOYED_COMMIT = '${APPS_SCRIPT_DEPLOYMENT_COMMIT_PLACEHOLDER}';`;
 
-const appHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const appHtml = readComposedAppSource();
 const appsScriptSource = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
 
 test('Home imported filenames are expanded and available to authorized sales reps', () => {

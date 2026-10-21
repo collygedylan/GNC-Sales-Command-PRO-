@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const html = readComposedAppSource().replace(/\r\n/g, '\n');
 const guardStart = html.indexOf('const supabaseReadInFlight = new Map();');
 const guardEnd = html.indexOf('async function getResponseError(', guardStart);
 assert.ok(guardStart >= 0 && guardEnd > guardStart, 'shared read guard source must be present');

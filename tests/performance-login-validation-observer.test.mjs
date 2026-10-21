@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -26,7 +27,7 @@ function makeVmScheduler(timers, source, globals = {}) {
 }
 
 function actualSchedulerSourceFromIndex() {
-  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = readComposedAppSource();
   const start = source.indexOf('        function scheduleBackgroundLoginValidation(');
   const end = source.indexOf('        function getLoginReadHeaders(', start + 1);
   assert.ok(start >= 0 && end > start, 'actual background-login validation function remains in the shell');

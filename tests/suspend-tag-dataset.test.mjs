@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: suspend
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -10,7 +11,7 @@ const appAuth = readFileSync(new URL('../supabase/functions/_shared/app-auth.ts'
 const suspendRead = readFileSync(new URL('../supabase/functions/app-api/suspend-tag-read.ts', import.meta.url), 'utf8');
 
 test('current SOC snapshot keeps unchanged suspend rows from earlier delta filenames', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const context = vm.createContext({ socRawSourceRows: [],
     firstNonEmptyValue: (...values) => values.find(value => value != null && value !== '') || '',
     getDockSuspendValue: row => row.suspend,
@@ -108,7 +109,7 @@ test('Suspend Tag has an exact editor allowlist without broadening ordinary SOC 
   assert.match(appApi, /suspend_tag:\s*\{\s*table: "ph_soc_master", permission: "ph_soc_master"/);
   assert.match(appApi, /dataset === "suspend_tag"\s*\? !SUSPEND_TAG_EDITORS\.has\(username\)\s*:\s*!hasTableReadAccess\(role, source\.permission, username\) && !canonicalDatasetAccess/);
   const policy=readFileSync(new URL("../supabase/functions/_shared/suspend-tag.ts",import.meta.url),"utf8");
-  assert.match(policy,/new Set\(\['dylan_collyge', 'megan_kelly', 'dan_mccuistion'\]\)/);
+  assert.match(policy,/new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'dan_mccuistion'\]\)/);
 });
 
 test('Suspend Tag first page exposes only bounded latest SOC filename metadata', () => {

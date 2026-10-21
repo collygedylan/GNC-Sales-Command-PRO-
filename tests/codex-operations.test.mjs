@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: codex-workflow
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -15,7 +16,7 @@ const githubApp = read('../supabase/functions/_shared/github-app.ts');
 const workflow = read('../.github/workflows/codex-ops.yml');
 const maintenance = read('../.github/workflows/codex-ops-maintenance.yml');
 const pathWorkflow = read('../.github/workflows/codex-mobile-path-policy.yml');
-const html = read('../index.html');
+const html = readComposedAppSource();
 const healthProbe = read('../scripts/probe-production-auth-health.mjs');
 const productionCanary = read('./production-request-canary.spec.ts');
 const projectConfig = read('../.codex/config.toml');

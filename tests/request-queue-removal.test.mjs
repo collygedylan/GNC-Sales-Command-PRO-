@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { parse } from 'acorn';
 
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
 const source = scripts.find(script => script.includes('async function removeRequestQueueRow('));
 const ast = parse(source, { ecmaVersion: 'latest', sourceType: 'script' });

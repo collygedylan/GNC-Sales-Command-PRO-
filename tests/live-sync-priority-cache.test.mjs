@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -10,7 +11,7 @@ const deferred = () => { let resolve; const promise = new Promise(done => { reso
 const settle = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
 
 test('Home published metadata hydrates before filename reads and survives same-account access refresh', () => {
-    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const html = readComposedAppSource();
     const context = vm.createContext({
         dashboardSyncMetadataSummaries: [], dashboardSyncMetadataFetchedAt: 0, dashboardSyncMetadataOwner: '',
         getSupabaseReadIdentityScope: () => 'account-a:session-1', canViewDashboardSyncStatus: () => true,
@@ -47,7 +48,7 @@ test('Home published metadata hydrates before filename reads and survives same-a
 });
 
 test('same-account readable data exits the view skeleton without installing an exact permission proof', () => {
-    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const html = readComposedAppSource();
     const live = { scope: 'account-a', authenticated: true, accessDenied: false,
         readIdentity: 'login-1', viewKey: 'docks', adapters: [{ id: 'soc', cacheKey: 'all' }], dataPermissionVersion: 'new' };
     const readContextKey = sandbox.module.exports.readContextKey;
@@ -285,7 +286,7 @@ test('a navigation-only Home opens before its badge cohort and still loads those
     assert.equal(f.coordinator.getStatus().state, 'Up to date');
 });
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 
 test('a loading placeholder cannot retain the Drive render key and suppress unchanged rows on return', () => {
     const container = { dataset: { driveRenderKey: 'same-snapshot' }, innerHTML: 'verified rows' };

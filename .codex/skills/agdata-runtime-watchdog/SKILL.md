@@ -11,7 +11,7 @@ The `GncRuntimeWatchdog` in `assets/runtime-watchdog.js` installs a passive Muta
 
 `app_runtime_watchdog_events` is service-role-only under RLS. `watchdog_log_event` binds username and role to the active server profile; `watchdog_list_events` and `watchdog_resolve_events` are restricted to Dylan, Megan and JD. The Manager panel is restricted to those same users. Keep event fields bounded and do not include row contents, credentials or user drafts. Fingerprints deduplicate by app version; status resolution is an operator action.
 
-The Manager panel exposes the `COPY AI FIX BRIEF` action. The panel and client sensor are hosted by `index.html`; event persistence is in `supabase/functions/app-api/index.ts` and `supabase/migrations/*_runtime_watchdog_v1.sql`. Runtime anomalies map to existing module clusters and skills in [the dependency map](../../../docs/architecture/agdata-module-dependency-map.md). This does not replace domain ownership or the shared router: enter Manager through `setHomeTab` / `switchView`, retain `goBackUniversal`, `updateGlobalBackButton`, `viewHistoryStack`, and shared header/search ownership.
+The Manager panel exposes the `COPY AI FIX BRIEF` action. `assets/runtime-watchdog-panel.js` owns the panel controller, shared incident reads, cached brief and view/account generations. `assets/app-runtime.js` retains the existing public render/refresh/copy handlers; `index.html` mounts their DOM and ordered scripts. Event persistence is in `supabase/functions/app-api/index.ts` and `supabase/migrations/*_runtime_watchdog_v1.sql`. Runtime anomalies map to existing module clusters and skills in [the dependency map](../../../docs/architecture/agdata-module-dependency-map.md). This does not replace domain ownership or the shared router: enter Manager through `setHomeTab` / `switchView`, retain `goBackUniversal`, `updateGlobalBackButton`, `viewHistoryStack`, and shared header/search ownership.
 
 Focused checks:
 
@@ -24,3 +24,5 @@ node --test tests/runtime-watchdog.test.mjs tests/role-access-parity.test.mjs
 ```
 
 These static/VM contracts verify sensor fields and role aliases; they do not certify production alert delivery, rendered parity, database latency or all device profiles. Email alerts are sent only through an authorized deduplicated production delivery path.
+
+Panel badge and incident-list refreshes share one pending read for the same verified account. A changed view, auth epoch or mounted host must reject stale completion; account changes clear private cached brief/events before reuse. Resolving an incident keeps the existing server authorization and must not repaint an unmounted panel.

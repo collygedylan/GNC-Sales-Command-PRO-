@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: drive
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const source = name => html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0] || assert.fail(name);
 
 test('Brian and admin render a prepared 9600-row Drive snapshot in one pass through the same catalog path', () => {
@@ -387,7 +388,7 @@ function loginNavigationHarness() {
     lastGuardedViewSwitchKey: '', lastGuardedViewSwitchAt: 0, VIEW_SWITCH_DUPLICATE_GUARD_MS: 300,
     cartPanelOpen: false, bloomShareMenuOpen: false, bloomCropUpdateModalOpen: false, selectedItems: new Set(),
     MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned-items', MANAGER_HR_COMMAND_VIEW: 'hr', MANAGER_PRODUCTION_SCHEDULE_VIEW: 'schedule',
-    canAccessView: view => allowed.has(view), canUseProductionLiveSync: () => false,
+    canAccessView: view => allowed.has(view), isFullAppAdministrator: () => false, canUseProductionLiveSync: () => false,
     isViewVisible: view => {
       const element = document.getElementById(`view-${view}`);
       return !!element && !element.hidden && !element.classList.contains('hidden');

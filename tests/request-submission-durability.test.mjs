@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -5,7 +6,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const source = readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8');
-const appSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const appSource = readComposedAppSource();
 const sandbox = { window: {} };
 vm.runInNewContext(source, sandbox);
 const api = sandbox.window.AgMetricRequestSubmission;

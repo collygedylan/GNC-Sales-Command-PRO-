@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -5,7 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 function extract(name, next) {
   const start = html.indexOf(`        async function ${name}(`);
   const end = html.indexOf(`        async function ${next}(`, start + 1);

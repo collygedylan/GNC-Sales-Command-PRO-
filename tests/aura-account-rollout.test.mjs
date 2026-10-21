@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const auth = html.slice(html.indexOf('        function isAuraProfileCandidate()'), html.indexOf('        function disposeAuraWidget()'));
 test('AURA button requires a server-verified per-account flag for every role', () => {
   assert.doesNotMatch(auth.slice(auth.indexOf('function isAuraRouterProfileCandidate()')), /dylan_collyge|jd_jones/);

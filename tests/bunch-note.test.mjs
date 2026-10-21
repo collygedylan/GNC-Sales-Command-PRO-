@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: bunch-notes
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -81,7 +82,7 @@ test('shell repaint preserves creator navigation; explicit refresh and account r
  const ctx=runtime({document:{getElementById:()=>element},getCurrentVisibleViewId:()=> 'bunch-note',showToast(){},
   window:{},ensureViewRenderState:()=>viewState,beginInternalPerfMeasure:()=>0,incrementInternalPerfCounter(){},scheduleIosPhoneTaskStyleModuleFlowCleanup(){},recordInternalPerfDuration(){},reportPerformanceHealthEvent(){},getAdaptivePerfElapsedMs:()=>0,
   postAppFunctionJson:async(_url,body)=>{commands.push(body.operation);return {ok:true,data:body.operation==='inventory'?{rows:[row]}:{blocks:['D'],users:[],drafts:[],options:[],locations:[]}};}});
- const shell=read('index.html');
+ const shell=readComposedAppSource();
  vm.runInContext(shell.slice(shell.indexOf('        function renderViewContent('),shell.indexOf('        function getCurrentVisibleViewId()',shell.indexOf('        function renderViewContent('))),ctx);
  ctx.renderViewContent('bunch-note',false,true);await new Promise(r=>setImmediate(r));
  assert.deepEqual(commands,['blocks','directory','drafts','catalog']);

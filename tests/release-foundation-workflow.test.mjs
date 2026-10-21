@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -44,7 +45,7 @@ test('the compiler embeds the one lifecycle owner before deferred runtime boot',
   assert.match(source, /rawHtml\.split\(lifecycleTag\)\.length !== 2/);
   assert.match(source, /assets', 'app-lifecycle\.js'/);
   assert.match(source, /id="app-lifecycle-owner"/);
-  const html = read('index.html');
+  const html = readComposedAppSource();
   assert.equal(html.split('data-app-lifecycle').length, 2);
   assert.doesNotMatch(html, /function installShellMaintenanceLifecycle|productionLiveSyncNavigation = new AbortController/);
   assert.match(html, /AgMetricLifecycle\.getSignal\('session'\)/);

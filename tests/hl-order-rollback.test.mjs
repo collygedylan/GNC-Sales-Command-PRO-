@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 const read = (name) => readFileSync(new URL('../' + name, import.meta.url), 'utf8').replaceAll('\r\n', '\n');
-const html = read('index.html');
+const html = readComposedAppSource();
 function appFunction(name) {
   const start = html.search(new RegExp(`        (?:async )?function ${name}\\(`));
   assert.ok(start >= 0, `${name} exists`);

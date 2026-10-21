@@ -2,8 +2,9 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { expect, test } from '@playwright/test';
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
-const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const indexHtml = readComposedAppSource().replace(/\r\n/g, '\n');
 const baseInlineCss = [...indexHtml.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].find(match => match[1].includes('.app-drive-card-grid{display:grid'))?.[1] || '';
 const commonCss = [
   'theme-tokens.css',

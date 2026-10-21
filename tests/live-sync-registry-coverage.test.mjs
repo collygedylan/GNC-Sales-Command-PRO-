@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const registryCode = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
 const coordinatorCode = readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8');
 const demandDetailCode = readFileSync(new URL('../assets/drive-demand-detail.js', import.meta.url), 'utf8');

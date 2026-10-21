@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: sticky-layout
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,7 +9,7 @@ import vm from 'node:vm';
 
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
-const html = read('index.html');
+const html = readComposedAppSource();
 const pilot = read('assets/ops-precision-pilot.js');
 const playwrightConfig = read('playwright.config.ts');
 

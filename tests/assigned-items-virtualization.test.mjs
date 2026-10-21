@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 function extract(name) {
   const start = html.search(new RegExp(`        (?:async )?function ${name}\\(`));
   assert.ok(start >= 0, name);

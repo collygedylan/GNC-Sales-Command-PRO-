@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -12,7 +13,7 @@ const actor = { id: 'ec34e498-ed81-4b30-8236-5751af4e68cb', username: 'dylan_col
 const source = { unique_id: 'row-1', itemcode: '006138.051.1', contsize: '5DP', locationcode: 'D.08.001', lotcode: null };
 
 test('production render retains exact-row edits and focus but never crosses workflows or sessions', () => {
-  const app = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const app = readComposedAppSource();
   const start = app.indexOf('function setProductionWorkflowPanelHtml(');
   const end = app.indexOf('\n        function renderProductionWorkflowPanel(', start);
   assert.ok(start >= 0 && end > start);

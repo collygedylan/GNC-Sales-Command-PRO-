@@ -1,8 +1,9 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+const html=readComposedAppSource();
 const start=html.indexOf('function canCurrentUserSubmitRepInventoryOperations()');
 const end=html.indexOf('function buildArgosInventoryTransactionRailHtml',start);
 test('rep operational controls require the active stored account identity',()=>{

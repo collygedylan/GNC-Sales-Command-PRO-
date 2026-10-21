@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -67,7 +68,7 @@ test('card suppression examines a 10,001-row, 1,000-itemcode snapshot without mu
 });
 
 test('Eval2 removes suppressed-only itemcodes before report counts and picker rows are published', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const start = html.indexOf('function prepareManagerEvalReport2GroupLookups(index)');
   const end = html.indexOf('async function performManagerEvalReport2IndexBuild(job)', start);
   assert.ok(start >= 0 && end > start, 'Eval2 group preparation helper must be present');
@@ -115,7 +116,7 @@ test('Eval2 removes suppressed-only itemcodes before report counts and picker ro
 });
 
 test('Eval2 main Users control stays direct, counts distinct ITEMCODEs, and filters unassigned rows', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const optionStart = html.indexOf('function getManagerEvalReport2UserFilterOptions(');
   const optionEnd = html.indexOf('function getManagerEvalReport2LocationOptions(', optionStart);
   const matchStart = html.indexOf('function normalizeManagerEvalAssignedUser(', optionEnd);
@@ -178,7 +179,7 @@ test('Eval2 main Users control stays direct, counts distinct ITEMCODEs, and filt
 });
 
 test('Eval2 shared-snapshot reopen is a sub-300ms cache hit without repeating dataset or settings loads', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const start = html.indexOf('async function loadManagerEvalReports2(force = false)');
   const end = html.indexOf('function getManagerEvalReport2CacheKeyValue()', start);
   assert.ok(start >= 0 && end > start, 'Eval2 shared-snapshot loader must be present');

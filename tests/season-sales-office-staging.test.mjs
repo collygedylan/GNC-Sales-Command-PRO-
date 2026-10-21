@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -10,7 +11,7 @@ const migration = read('../supabase/archive_migrations/20260903171416_repair_sea
 const accessMigration = read('../supabase/archive_migrations/20260903193349_enforce_season_sales_note_users_and_drive_drill.sql');
 const arrivalMigration = read('../supabase/archive_migrations/20260904192758_add_season_sales_office_arrived_at.sql');
 const api = read('../supabase/functions/app-api/index.ts');
-const html = read('../index.html');
+const html = readComposedAppSource();
 const appsScript = read('../Code.gs');
 const workflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const ciSalesOfficeBaseline = read('../supabase/ci/sales_office_baseline.sql');

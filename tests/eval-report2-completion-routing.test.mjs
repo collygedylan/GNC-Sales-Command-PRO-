@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: eval
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import test from 'node:test';
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/archive_migrations/20260901201209_eval_report2_completion_routing.sql');
 const appApi = read('../supabase/functions/app-api/index.ts');
-const html = read('../index.html');
+const html = readComposedAppSource();
 
 test('Eval Reports #2 completion routing is server-owned and submitter-aware', () => {
   assert.match(migration, /^begin;[\s\S]*commit;\s*$/);

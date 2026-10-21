@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { assertHistoricalMigration, assertIsolatedSqlTest } from './helpers/ci-discovery.mjs';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/archive_migrations/20260901192727_repair_request_option_append.sql');
-const html = read('../index.html');
+const html = readComposedAppSource();
 const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const sqlTest = read('../supabase/tests/request_option_append_test.sql');
 

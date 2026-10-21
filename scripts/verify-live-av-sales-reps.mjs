@@ -1,3 +1,4 @@
+import { readComposedAppSource } from './composed-app-source.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +17,7 @@ const sessionFile = String(process.env.GNC_AV_REP_SESSIONS_FILE || '').trim();
 const outputFile = path.resolve(process.env.GNC_AV_REP_OUTPUT || path.join(root, '.gnc-local', 'v2310-live-av-e2e.json'));
 const envFile = path.resolve(process.env.GNC_SUPABASE_ENV_FILE || 'C:/Users/dylan/Projects/GNC/repo/.env');
 const caFile = path.resolve(root, 'scripts/certs/supabase-prod-ca-2021.crt');
-const shell = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const shell = readComposedAppSource();
 const supabaseUrl = shell.match(/const SUPABASE_URL = "([^"]+)"/)?.[1] || '';
 const publishableKey = shell.match(/const SUPABASE_KEY = "([^"]+)"/)?.[1] || '';
 const safeProgress = { failedUsername: null, completedUsers: [] };

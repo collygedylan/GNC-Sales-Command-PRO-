@@ -25,6 +25,8 @@ while ((match = scriptPattern.exec(html))) {
 
 for (const relativePath of [
   'assets/app-lifecycle.js',
+  'assets/app-runtime.js',
+  'assets/runtime-watchdog-panel.js',
   'assets/ops-precision-pilot.js',
   'assets/production-schedule.js',
   'assets/eval-reports-engine.js',
@@ -47,4 +49,4 @@ for (const relativePath of [
 }
 
 if (parsed < 3) throw new Error(`Expected at least 3 inline scripts, parsed ${parsed}.`);
-console.log(`Parsed ${parsed} inline scripts and 13 shell assets.`);
+console.log(`Parsed ${parsed} inline scripts and 15 shell assets.`);

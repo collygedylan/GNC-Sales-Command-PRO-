@@ -58,13 +58,14 @@ async function setupBlockClearing(page: Page, width: number, options: { realShel
       await route.fulfill({ response, body: (await response.text()) + lexicalTestBridge });
       return;
     }
-    if (route.request().resourceType() === 'document') {
+    if (url.pathname.endsWith('/assets/app-runtime.js')) {
       const response = await route.fetch();
-      // Local source uses indirect eval, which keeps its let/const bindings private.
-      // Expose only a test bridge in that lexical environment; production code is untouched.
-      const html = (await response.text()).replace(/(<script id="app-script-source" type="text\/plain">)([\s\S]*?)(<\/script>)/,
-        (_match, start, source, end) => `${start}${source}${lexicalTestBridge}${end}`);
-      await route.fulfill({ response, body: html });
+      // The editable source shell executes this parser-blocking classic asset.
+      await route.fulfill({ response, body: (await response.text()) + lexicalTestBridge });
+      return;
+    }
+    if (route.request().resourceType() === 'document') {
+      await route.continue();
       return;
     }
     await route.continue();

@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
-const html = fs.readFileSync('index.html','utf8');
+const html = readComposedAppSource();
 function extract(name) {
   const start=html.indexOf('        function '+name+'(');
   const end=html.slice(start+20).search(/\n        (?:async )?function /);

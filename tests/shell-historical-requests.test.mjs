@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const source = html.slice(html.indexOf('        function canUseHistoricalRequests('), html.indexOf('        function canAccessView('));
 function harness(profile = {}) {
   const context = vm.createContext({

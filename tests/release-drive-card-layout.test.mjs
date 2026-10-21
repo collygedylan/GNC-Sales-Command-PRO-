@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -5,7 +6,7 @@ import test from 'node:test';
 
 const root = process.cwd();
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
-const html = read('index.html');
+const html = readComposedAppSource();
 const css = read('assets/ops-precision-pilot.css');
 const client = read('assets/ops-precision-pilot.js');
 

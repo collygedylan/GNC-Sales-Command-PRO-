@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: suspend
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const precisionCss = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
 function between(start, end) {
   const from = html.indexOf(start);

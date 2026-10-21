@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
 import { backendTestMatrices } from '../scripts/ci-backend-matrix.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
@@ -13,7 +14,7 @@ import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
-const html = read('index.html');
+const html = readComposedAppSource();
 const css = read('assets/ops-precision-pilot.css');
 const themeTokens = read('assets/theme-tokens.css');
 const client = read('assets/ops-precision-pilot.js');

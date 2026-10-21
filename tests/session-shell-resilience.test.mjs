@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: @session-recovery
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -5,7 +6,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const lifecycle = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const html = readComposedAppSource().replace(/\r\n/g, '\n');
 const release = html.match(/window\.__APP_SHELL_VERSION__\s*=\s*'([^']+)'/)?.[1] || 'AgData current';
 const releases = ['AgData v2.1.38', release];
 

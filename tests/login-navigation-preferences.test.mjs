@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: navigation
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const worker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const preferencesSource = readFileSync(new URL('../assets/navigation-preferences.js', import.meta.url), 'utf8');
 

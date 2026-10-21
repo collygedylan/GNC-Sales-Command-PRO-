@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const start = html.indexOf('function previewProductionSnapshots(');
 const end = html.indexOf('\n        function writeProductionVerifiedSnapshot(', start);
 assert.ok(start >= 0 && end > start, 'previewProductionSnapshots source is present');

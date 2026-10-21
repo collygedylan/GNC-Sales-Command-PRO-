@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const html = readFileSync(process.env.GNC_SHELL_TEST_STDIN === '1' ? 0 : new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const html = (process.env.GNC_SHELL_TEST_STDIN === '1' ? readFileSync(0, 'utf8') : readComposedAppSource()).replace(/\r\n/g, '\n');
 const lifecycle = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
 function section(start, end) {
   const a = html.indexOf(start);

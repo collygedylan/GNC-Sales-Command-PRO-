@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: drive
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -10,7 +11,7 @@ const migration = read('supabase/archive_migrations/20260903032040_protected_dri
 const v4Migration = read('supabase/migrations/20261006145333_reclass_split_move_inquiries_v4.sql');
 const auditBaseline = read('supabase/archive_migrations/20260903035800_drive_reclass_access_audit_baseline_v1.sql');
 const api = read('supabase/functions/app-api/index.ts');
-const app = read('index.html');
+const app = readComposedAppSource();
 const worker = read('Code.gs');
 const deliveryWorker = read('supabase/functions/request-delivery-worker/index.ts');
 

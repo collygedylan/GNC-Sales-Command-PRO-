@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: photos,av-blanks
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -5,7 +6,7 @@ import test from 'node:test';
 import './av-photo-evidence-integrity.test.mjs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const html = read('../index.html');
+const html = readComposedAppSource();
 const worker = read('../assets/image-optimize-worker-v2026090401.js');
 const edge = read('../supabase/functions/app-api/index.ts');
 const healthMigration = read('../supabase/archive_migrations/20260904070154_photo_delivery_health_v1.sql');

@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -13,7 +14,7 @@ const row = (extra = {}) => ({ unique_id:'master-1',itemcode:'004380.010.1',loca
 const identity = { itemCode:'43800101',locationCode:' c.9.0 ',lotCode:'27.F1',source:'1' };
 
 function productionQueueHydrationHarness({ authorized = true, rows = [], complete = true, rpcRows = null } = {}) {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const html = readComposedAppSource().replace(/\r\n/g, '\n');
   const signal = new AbortController().signal;
   const authorizationScope = JSON.stringify(['actor', 'dylan', 'ADMIN', 'login']);
   const context = {
@@ -203,7 +204,7 @@ test('production resolver discards a complete older master snapshot after a live
 
 
 test('Suspend write verification resolves normalized identity before reading an exact full master row', async () => {
-  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const html=readComposedAppSource();
   const start=html.indexOf('        async function resolveSuspendTagInventoryRow(');
   const next=/\r?\n        (?:async )?function /.exec(html.slice(start+1));
   const calls=[], c={window:{AgMetricQueueInventory:harness()}, productionLiveSyncNavigation:{signal:new AbortController().signal},

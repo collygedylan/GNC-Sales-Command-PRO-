@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/archive_migrations/20260901131941_dock_trip_status_global_v1.sql', import.meta.url), 'utf8');
 const source = name => html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0] || assert.fail(name);

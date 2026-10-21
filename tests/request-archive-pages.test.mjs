@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { buildSync } from 'esbuild';
@@ -14,7 +15,7 @@ const built = buildSync({ entryPoints: ['services/requestArchivePages.ts'], bund
 const module = { exports: {} };
 new Function('require', 'module', 'exports', built.outputFiles[0].text)(require, module, module.exports);
 const { createRequestArchivePagesService } = module.exports;
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 
 function extractFunction(source, name, nextName) {
   const syncStart = source.indexOf(`function ${name}(`);

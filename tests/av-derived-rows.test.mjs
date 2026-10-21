@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ import vm from 'node:vm';
 import { setImmediate as nextEventLoopTurn } from 'node:timers/promises';
 
 const source = readFileSync(new URL('../assets/av-derived-rows.js', import.meta.url), 'utf8');
-const appSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const appSource = readComposedAppSource().replace(/\r\n/g, '\n');
 
 function extractAppFunction(name) {
   const match = appSource.match(new RegExp(`(?:async )?function ${name}\\(`));

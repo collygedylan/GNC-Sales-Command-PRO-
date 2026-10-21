@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const html = readComposedAppSource().replace(/\r\n/g, '\n');
 function appFunction(name) {
     const start = html.search(new RegExp(`(?:async )?function ${name}\\(`));
     assert.ok(start >= 0, name);

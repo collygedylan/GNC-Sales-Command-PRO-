@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: sales
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -178,7 +179,7 @@ test('background refresh preserves expanded drafts and does not detach unchanged
 
 test('evaluated shell exports its public API URL for external Request History and Credit reads', async () => {
   const { JSDOM } = await import('jsdom');
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const start = html.indexOf('const APP_API_FUNCTION_URL =');
   const end = html.indexOf('const AURA_QUERY_URL =', start);
   assert.ok(start > 0 && end > start);

@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const html = readComposedAppSource().replace(/\r\n/g, '\n');
 function source(name) {
   let start = html.indexOf(`        function ${name}(`);
   if (start < 0) start = html.indexOf(`        async function ${name}(`);

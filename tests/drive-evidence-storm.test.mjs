@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { assertHistoricalMigration, assertIsolatedSqlTest } from './helpers/ci-discovery.mjs';
 // @test-group: drive
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
@@ -7,7 +8,7 @@ import test from 'node:test';
 import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const html = read('../index.html');
+const html = readComposedAppSource();
 const migration = read('../supabase/archive_migrations/20260904015607_emergency_drive_evidence_retry_storm_v2.sql');
 const hostedProbe = read('../scripts/probe-production-auth-health.mjs');
 const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;

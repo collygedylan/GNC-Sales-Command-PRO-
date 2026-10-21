@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,7 +9,7 @@ const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'ut
 const runtime = read('assets/runtime-watchdog.js');
 const api = read('supabase/functions/app-api/index.ts');
 const auth = read('supabase/functions/_shared/app-auth.ts');
-const html = read('index.html');
+const html = readComposedAppSource();
 const coordinator = read('assets/live-sync-coordinator.js');
 
 test('all nursery role aliases normalize consistently on client and server', () => {

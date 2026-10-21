@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { assertHistoricalMigration, assertIsolatedSqlTest } from './helpers/ci-discovery.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,7 +10,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const migration = read('../supabase/archive_migrations/20260831210000_request_eval_drive_reliability_repair.sql');
 const safeRepairMigration = read('../supabase/archive_migrations/20260905233900_safe_request_drive_evidence_repair_and_rpc_hardening.sql');
 const currentMembershipHealth = read('../supabase/archive_migrations/20260902165500_current_request_membership_health.sql');
-const html = read('../index.html');
+const html = readComposedAppSource();
 const appApi = read('../supabase/functions/app-api/index.ts');
 const observability = read('../supabase/functions/_shared/observability.ts');
 const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;

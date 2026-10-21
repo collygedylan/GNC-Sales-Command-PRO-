@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const DYLAN_ID = '54c87ebf-d76d-452b-96b4-beaaeb1742d9';
 const ISSUER = 'https://kzrnyjsosryejjejliii.supabase.co/auth/v1';
 const NOW = Date.parse('2026-09-08T02:00:00Z');

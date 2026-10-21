@@ -19,6 +19,7 @@ export function prepareReleaseVersion(root=process.cwd(), check=false) {
     'v2/src/services/api.ts':/export const APP_VERSION\s*=\s*['"]([^'"]+)['"]/,
     'v2/public/manifest.webmanifest':/"version"\s*:\s*"([^"]+)"/
   };
+  if (fs.existsSync(path.join(root,'assets/app-runtime.js'))) markers['assets/app-runtime.js'] = /const APP_SHELL_VERSION\s*=\s*[^\n]*?\|\|\s*['"]([^'"]+)['"]/;
   if (fs.existsSync(path.join(root,'Code.gs'))) {
     if (preservedScriptRelease) {
       const actual=read('Code.gs').match(/const APP_RELEASE_VERSION_\s*=\s*['"]([^'"]+)['"]/)?.[1];

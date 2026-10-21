@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: requests
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -51,7 +52,7 @@ test('only a later acknowledged server version can reopen a completed row', () =
 });
 
 function appFixture() {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const values = new Map();
   const context = vm.createContext({
     window: { localStorage: { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value) } },

@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import { parse } from 'acorn';
-const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+const html=readComposedAppSource();
 const script=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).find(s=>s.includes('function getBloomPickerTrayRowHtml('));
 const ast=parse(script,{ecmaVersion:'latest'});
 const names=new Set(['getBloomPickerTrayRowHtml','renderBloomPickerTrayRows','buildInventoryQuantityChipsHtml','firstNonEmptyValue','normalizeCardQuantityValue','getCardPtrOnHandValue','getCardPtrReviewedValue','getCardPtrAvailableValue','getCardOpenStockValue']);

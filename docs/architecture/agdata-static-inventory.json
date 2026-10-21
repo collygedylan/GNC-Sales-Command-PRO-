@@ -688,5 +688,44 @@
     {"path":"tests/wait-for-live-release.test.mjs","bytes":4333,"sha256":"e5c0ed8623a8454e5df9ff727ddcf78a2c20bb76eeddb9a8e014f5a7b9c78f3f","callables":[["fingerprint",17,8],["runWaiter",20,10]]},
     {"path":"tests/warehouse-export-resilience.test.mjs","bytes":4150,"sha256":"1cb6e8e758ec0fc2df5f21737014db9be4ea68265ccf0a746aea32210ca9fa9f","callables":[["fixture",11,10],["warn",13,10],["getSupabaseHeadersForKey_",15,10],["fetch",16,10],["getResponseCode",16,10],["getContentText",16,10],["getScriptProperties",17,10],["getProperty",17,10],["setProperty",17,10],["fetchAllSupabaseData",18,10],["getSupabaseFetchOptionsForTable_",19,10],["getAssignedItemLowStockExportTargets_",19,10],["openById",20,10],["getSheets",20,10],["getLastRow",20,10],["getLastColumn",20,10],["getRange",21,10],["setValues",21,10],["clearContent",21,10],["setFontWeight",21,10],["setFrozenRows",22,10],["emitTableSyncLiveEvent_",22,8],["state",24,10],["failWrite",24,10]]},
     {"path":"tests/warm-refresh-content.test.mjs","bytes":3096,"sha256":"4fb32f55d52ff4f871eb13c8bdcee7ff8c2c140340dee277cfaf940426457cff","callables":[["functionSource",9,10],["deferred",18,10],["getElementById",29,10],["setContainerHtml",30,10],["loadWeatherHoldData",31,5],["isViewVisible",32,10],["c.setContainerHtml",44,10],["c.loadWeatherHoldData",45,5],["getElementById",57,10],["setContainerHtml",58,10],["loadShearListData",59,5],["reconcileInventoryEditMockShearListRows",60,5],["isViewVisible",61,10],["c.setContainerHtml",72,10],["c.loadShearListData",73,5]]}
-  ]
+  ],
+  "sourceLayout": {
+    "appVersion": "AgData v2.3.25",
+    "baseCommit": "09a2a6e9f8cd56232abb20fcbe385aa426dfb3be",
+    "historicalCensusRetained": true,
+    "method": "Source relocation only. The files/coverage census above remains the declared v2.3.17 audit; current removal and binding metrics are recorded separately in the remediation report.",
+    "shell": "index.html",
+    "classicRuntime": "assets/app-runtime.js",
+    "classicModules": ["assets/runtime-watchdog-panel.js"],
+    "stylesheets": [
+      "assets/app-shell-style-01.css",
+      "assets/app-shell-style-02.css",
+      "assets/app-shell-style-03.css",
+      "assets/app-shell-style-04.css",
+      "assets/app-shell-style-05.css",
+      "assets/app-shell-style-06.css",
+      "assets/app-shell-style-07.css",
+      "assets/app-shell-style-08.css",
+      "assets/app-shell-style-09.css",
+      "assets/app-shell-style-10.css",
+      "assets/app-shell-style-11.css",
+      "assets/app-shell-style-12.css",
+      "assets/app-shell-style-13.css",
+      "assets/app-shell-style-14.css",
+      "assets/app-shell-style-15.css"
+    ],
+    "clusters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "skillCount": 12
+  }
 }

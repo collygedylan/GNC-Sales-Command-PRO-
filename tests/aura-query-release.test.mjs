@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -60,11 +61,11 @@ test('query UI is packaged, versioned through the widget import and excluded fro
   assert.match(read('components/common/auraVoiceWidget.js'), /from "\.\/auraQueryPanel\.js"/);
   assert.match(read('scripts/prepare-release-site.mjs'), /'auraQueryPanel\.js'/);
   assert.match(read('sw.js'), /auraVoiceWidget\|auraQueryPanel/);
-  assert.match(read('index.html'), /requestAssistant: requestAuraQuery/);
-  assert.match(read('index.html'), /assets\/aura-voice\.js\?v=/);
+  assert.match(readComposedAppSource(), /requestAssistant: requestAuraQuery/);
+  assert.match(readComposedAppSource(), /assets\/aura-voice\.js\?v=/);
   assert.match(read('scripts/build-aura-voice.mjs'), /components\/common\/auraVoiceReact\.tsx/);
-  assert.match(read('index.html'), /functions\/v1\/aura-query/);
-  assert.match(read('index.html'), /functions\/v1\/aura-llm-router/);
+  assert.match(readComposedAppSource(), /functions\/v1\/aura-query/);
+  assert.match(readComposedAppSource(), /functions\/v1\/aura-llm-router/);
 });
 
 test('seasonal SOC reader projection is present with production types in the composed CI fixture', () => {

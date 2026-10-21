@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: @session-recovery
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const html = readComposedAppSource().replace(/\r\n/g, '\n');
 const coordinator = readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 function declaration(name) {

@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
@@ -7,7 +8,7 @@ import { verifyPoManagementHealth } from '../scripts/po-management-health.mjs';
 import { createDatabaseRestBridge } from '../services/databaseRest.ts';
 import { PO_MANAGEMENT_PROJECTION_FIELDS, poManagementCanaryRows, poManagementRow } from './fixtures/po-management-canary.mjs';
 
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const appApi = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const migration = fs.readFileSync(
   new URL('../supabase/archive_migrations/20260828014753_restore_po_management_native_auth_access.sql', import.meta.url),

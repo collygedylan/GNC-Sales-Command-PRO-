@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: sales
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const appAuth = fs.readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
 const appApi = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const migration = fs.readFileSync(new URL('../supabase/archive_migrations/20260904003007_sales_marketing_and_kayla_limited_access.sql', import.meta.url), 'utf8');

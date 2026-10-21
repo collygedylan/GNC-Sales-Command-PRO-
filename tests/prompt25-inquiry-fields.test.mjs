@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -10,7 +11,7 @@ const bundle = buildSync({ entryPoints: ['services/reclassEditableFields.ts'], b
 const module = { exports: {} };
 new Function('require', 'module', 'exports', bundle.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
 const { inquiryFieldEdits, inquiryEditableFields, validateReclassEditableFieldProposals, confirmedInquiryFields, RECLASS_EDITABLE_FIELDS_POLICY } = module.exports;
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const source = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]).find(value => value.includes('function repairDisplayMojibake('));
 const ast = parse(source, { ecmaVersion: 'latest' });
 function functions(names, values = {}) {

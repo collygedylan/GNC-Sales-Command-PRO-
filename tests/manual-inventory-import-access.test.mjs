@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { parse } from 'acorn';
 const gs = fs.readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const ast = parse(gs, { ecmaVersion: 'latest' });
 const code = ast.body.filter(node => node.type === 'FunctionDeclaration' && ['doPost', 'verifyManualInventoryImportActor_'].includes(node.id.name))
   .map(node => gs.slice(node.start, node.end)).join('\n');

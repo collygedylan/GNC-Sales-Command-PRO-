@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
 const capabilityMigration = readFileSync(new URL('../supabase/archive_migrations/20260825222325_stabilize_request_capabilities.sql', import.meta.url), 'utf8');
 const capabilityPolicyGrantMigration = readFileSync(new URL('../supabase/archive_migrations/20260825223040_grant_request_policy_helper.sql', import.meta.url), 'utf8');

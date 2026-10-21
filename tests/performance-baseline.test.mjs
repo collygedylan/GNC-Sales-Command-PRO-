@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -100,7 +101,7 @@ test('missing metrics, samples, changed fixtures, and invalid data fail closed',
   assert.throws(() => compareBenchmarks(manifest, report('duration', [1]), report('duration', [1, 2])), /COVERAGE_MISMATCH/);
 });
 test('live background refresh keeps reason deadlines and resolves current visible dirty views safely', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const start = html.indexOf('        function scheduleDeferredVisibleDirtyViewRefresh(');
   const end = html.indexOf('\n        function ', start + 1);
   const pending = new Map(), scheduled = [], rendered = [], states = { drive: { dirty: true }, request: { dirty: true } };

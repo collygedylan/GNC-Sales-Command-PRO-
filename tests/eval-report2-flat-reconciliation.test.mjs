@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: eval
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -15,7 +16,7 @@ const productionProbe = read('../scripts/probe-production-auth-health.mjs');
 const deliveryWorker = read('../supabase/functions/request-delivery-worker/index.ts');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const codeGs = read('../Code.gs');
-const html = read('../index.html');
+const html = readComposedAppSource();
 
 test('Eval2 status reserves both wrapping labels and updates only its visible text', () => {
   assert.match(html, /data-loading-label="\$\{escapeHtml\(loadingLabel\)\}" data-loaded-label="\$\{escapeHtml\(loadedLabel\)\}"/);

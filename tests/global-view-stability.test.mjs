@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -5,7 +6,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const asset = new URL('../assets/stable-view-dom.js', import.meta.url);
 function fixture(markup) {
   const dom = new JSDOM(`<main id="view">${markup}</main>`, { pretendToBeVisual: true });

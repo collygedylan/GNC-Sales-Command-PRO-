@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -7,7 +8,7 @@ const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const migration = read('supabase/archive_migrations/20260901121622_dylan_location_work_worksheets_v1.sql');
 const api = read('supabase/functions/app-api/index.ts');
 const worker = read('supabase/functions/request-delivery-worker/index.ts');
-const app = read('index.html');
+const app = readComposedAppSource();
 const appsScript = read('Code.gs');
 
 test('Location Work uses append-only protected tables and service-role-only RPCs', () => {

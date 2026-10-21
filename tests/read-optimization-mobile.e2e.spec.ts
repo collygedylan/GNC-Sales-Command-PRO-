@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test';
-
-import fs from 'node:fs';
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: @production-schedule
 
 
-const shell = fs.readFileSync('index.html', 'utf8');
+const shell = readComposedAppSource();
 const start = shell.indexOf('const CLIENT_BROWSE_PAGE_SIZE = 100;');
 const end = shell.indexOf('function renderDriveRecordResults', start);
 if (start < 0 || end < start) throw new Error('Browse paging helpers not found');

@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const source = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const source = readComposedAppSource();
 const body = source.slice(source.indexOf('        function canonicalFeaturePermission('), source.indexOf('        function configureCanonicalUserAccess('));
 
 function resolve(state, override = '') {

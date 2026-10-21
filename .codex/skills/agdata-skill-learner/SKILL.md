@@ -10,6 +10,8 @@ description: Keep AgData domain skills and explicit fixture-read contracts synch
 - Own `docs/architecture/agdata-module-dependency-map.md`, its static inventory, `.codex/skills/*/SKILL.md`, the skill routing list in `AGENTS.md`, and manifest/dependency registration in `tests/agdata-governance.test.mjs`, `tests/agdata-architecture.test.mjs` and `scripts/run-tooling-release-checks.mjs` (`runToolingReleaseChecks`).
 - Use the map to route functions in `index.html`, `assets/*.js`, `supabase/functions/app-api/index.ts` and `Code.gs` to their domain owner. This maintenance skill does not own application mutations. Track renamed/added functions, DOM ownership, action/RPC names, migration contracts and exact focused test paths in the same commit as the feature.
 
+Source extraction changes file ownership, not the number of business features. Keep the original census clearly labeled as a historical snapshot, record current source layout separately, and refresh dependency-map links to the actual function or stylesheet. Count function removals independently of functions merely moved into linked assets; preserve static tests through the shared composed-source reader.
+
 ## Shared component dependencies
 
 Every feature skill must name its dependency on the shared `switchView` / `showOnlyPrimaryView` router, `goBackUniversal` / `updateGlobalBackButton`, `viewHistoryStack` and header/search ownership where applicable. Do not teach a local component to hide or recreate global Back/navigation DOM. Keep permissions, auth epoch, cached rows and recipient contracts distinct from visual shell state. Record static findings separately from rendered behavior and measured performance.

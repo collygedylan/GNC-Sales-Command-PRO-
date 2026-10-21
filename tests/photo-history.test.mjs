@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: photos,av-blanks
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -66,7 +67,7 @@ test('both marketing submitters use V2 with Dylan and JD included, correct attri
 });
 
 test('AV Blanks no-photo approval remains per-user and Task Season context only',async()=>{
-  const html=read('index.html');
+  const html=readComposedAppSource();
   const contextStart=html.indexOf('        function isAvBlanksPhotoBypassTaskContext(');
   const contextEnd=html.indexOf('        function renderAvBlanksPhotoBypassSettingsPanel(',contextStart);
   const source=html.slice(contextStart,contextEnd);

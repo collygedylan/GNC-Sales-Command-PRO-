@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -20,7 +21,7 @@ new Function('require', 'module', 'exports', builtAv.outputFiles[0].text)(requir
 const { readAvPage } = avModule.exports;
 const database = databaseContracts(fs.readFileSync(new URL('../supabase/functions/_shared/database.types.ts', import.meta.url), 'utf8'));
 const reserveColumns = [...source.matchAll(/const RESERVE_FULL_SELECT_FIELDS = \[([\s\S]*?)\].join/g)].flatMap(match => [...match[1].matchAll(/"([a-z0-9_]+)"/g)].map(item => item[1])).join(',');
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const edge = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const observability = fs.readFileSync(new URL('../supabase/functions/_shared/observability.ts', import.meta.url), 'utf8');
 const appAuth = fs.readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');

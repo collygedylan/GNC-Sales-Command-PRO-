@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: inventory
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import test from 'node:test';
 import { appApiDatabaseBridge } from './helpers/database-bridge.mjs';
 import { inventoryRowAssignmentFixture } from './fixtures/inventory-row-assignment.mjs';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 
 test('stable-refresh assignment fixture satisfies the strict PostgREST row contract', async () => {
   const row = inventoryRowAssignmentFixture({ unique_id: 'fixture-row', master_unique_id: 'fixture-row', itemcode: 'FIXTURE.001',

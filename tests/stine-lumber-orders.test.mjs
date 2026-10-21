@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
@@ -9,7 +10,7 @@ import vm from 'node:vm';
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const code = read('Code.gs');
-const html = read('index.html');
+const html = readComposedAppSource();
 const migration = read('supabase/archive_migrations/20260902131328_stine_orders_history.sql');
 const uploadMigration = read('supabase/archive_migrations/20260902134004_manager_order_source_row_upload.sql');
 const finalizerPrivilegeMigration = read('supabase/archive_migrations/20260902140500_repair_manager_order_finalizer_privilege.sql');

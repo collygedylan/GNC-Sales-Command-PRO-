@@ -1,3 +1,4 @@
+import { readComposedAppSource } from './composed-app-source.mjs';
 // Render-only production canary: no email, Queue work, or inventory changes.
 import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { makePayload } from '../tests/helpers/block-clearing-pdf-harness.mjs';
 const args = process.argv.slice(2);
 assert.ok(args.every((arg) => arg === '--multipage') && args.length <= 1, 'Only --multipage is supported; this canary always renders without email');
 const multipage = args.includes('--multipage');
-const source = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const source = readComposedAppSource();
 const supabaseUrl = process.env.PRODUCTION_SUPABASE_URL || source.match(/const SUPABASE_URL = "([^"]+)"/)?.[1];
 const publishableKey = process.env.PRODUCTION_SUPABASE_PUBLISHABLE_KEY || source.match(/const SUPABASE_KEY = "([^"]+)"/)?.[1];
 const sessionToken = String(process.env.PRODUCTION_APP_SESSION_TOKEN || '').trim();

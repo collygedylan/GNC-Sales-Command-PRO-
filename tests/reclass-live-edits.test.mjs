@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,7 +40,7 @@ function liveEdit(overrides = {}) {
   return { ...row, evidence: evidenceRow(row.unique_id, row.last_updated, overrides.evidence || {}) };
 }
 
-const html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
+const html = readComposedAppSource();
 
 test('Reclass notices distinguish committed move quantities from inquiry-only sheared instructions', () => {
   const noticeText = 'Confirmed Move Up/Down quantities update live inventory before the inquiry is sent.';

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const source = fs.readFileSync(new URL('../assets/runtime-watchdog.js', import.meta.url), 'utf8');
 
@@ -38,7 +39,8 @@ test('watchdog normalizes every supported role alias and emits bounded incident 
 test('critical catch fallbacks report bounded operational failures without replacing their recovery', () => {
   for (const path of ['index.html', 'assets/app-lifecycle.js', 'assets/live-sync-coordinator.js',
     'assets/request-submission.js', 'assets/user-access-control.js', 'assets/queue-completion-state.js']) {
-    const text = fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+    const text = path === 'index.html' ? readComposedAppSource()
+      : fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
     assert.match(text, /GncRuntimeWatchdog\?\.capture\?\.\(error,/, path);
   }
 });
@@ -78,6 +80,6 @@ test('signed watchdog email embeds the same complete fix brief returned to the c
   vm.runInNewContext(script.slice(start, end) + '\nhandleRuntimeWatchdogAlert_({});', context);
   assert.equal(sent.to, 'dylan_collyge@greenleafnursery.com');
   assert.ok(sent.body.endsWith(brief));
-  assert.match(read('index.html'), /const brief = runtimeWatchdogFixBrief;/);
+  assert.match(readComposedAppSource(), /const brief = fixBrief;/);
   assert.match(read('supabase/functions/app-api/index.ts'), /fixBrief: buildRuntimeWatchdogFixBrief/);
 });

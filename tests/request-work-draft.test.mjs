@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: requests
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -6,7 +7,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const source = fs.readFileSync(path.join(process.cwd(), 'assets/request-submission.js'), 'utf8');
-const html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
+const html = readComposedAppSource();
 const sandbox = { window: {} };
 vm.runInNewContext(source, sandbox);
 const { planRequestWorkConflictRebase, resolveRequestWorkDraftConflicts } = sandbox.window.AgMetricRequestSubmission;

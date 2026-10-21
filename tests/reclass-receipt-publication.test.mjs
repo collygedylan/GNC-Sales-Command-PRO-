@@ -1,9 +1,10 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const rowStart = html.indexOf('        function applyArgosInventoryTransactionReturnedRow(');
 const rowsSource = html.slice(rowStart, html.indexOf('        const confirmedArgosReclassLiveEditRevisions', rowStart));
 const moveStart = html.indexOf('        async function applyArgosInventoryReclassMoveCommand(');

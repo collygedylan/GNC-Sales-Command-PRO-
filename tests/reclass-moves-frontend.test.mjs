@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { assertInventoryReclassMoveReceiptMatchesCommand, createInventoryReclassMovesService, confirmedInventoryReclassMoveReceipt } from '../services/reclassMoves.ts';
@@ -6,7 +7,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
-const html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
+const html = readComposedAppSource();
 
 function extractAppFunction(name) {
   const marker = `function ${name}(`;

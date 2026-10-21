@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -10,7 +11,7 @@ import { startReclassCdpTimeline, summarizeReclassCdpTrace } from './helpers/rec
 import { captureReclassFailureDiagnostics, installReclassFailureDiagnostics } from './helpers/reclass-failure-diagnostics.mjs';
 import { installReclassStageTiming } from './helpers/reclass-stage-timing.mjs';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const spec = readFileSync(new URL('./reclass-splits.e2e.spec.ts', import.meta.url), 'utf8');
 const fixtureSource = readFileSync(new URL('./fixtures/hl-order-state.mjs', import.meta.url), 'utf8');
 const driveLayoutSource = readFileSync(new URL('./fixtures/drive-card-layout.ts', import.meta.url), 'utf8');

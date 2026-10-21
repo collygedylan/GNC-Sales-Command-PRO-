@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -5,7 +6,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 const edgeSource = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
-const appSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const appSource = readComposedAppSource();
 const start = edgeSource.indexOf('const INTERNAL_MOVE_REQUEST_INSERT_FIELDS = new Set(');
 const end = edgeSource.indexOf('\nasync function restRequest(', start);
 assert.ok(start >= 0 && end > start, 'request write boundary helpers should exist');

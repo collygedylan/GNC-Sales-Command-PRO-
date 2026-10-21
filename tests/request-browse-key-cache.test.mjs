@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const cacheStart = html.indexOf('const CLIENT_BROWSE_PAGE_KEY_CACHE_LIMIT =');
 const cacheEnd = html.indexOf('function getClientBrowsePage(view =', cacheStart);
 assert.ok(cacheStart >= 0 && cacheEnd > cacheStart, 'browse key cache source is present');

@@ -5,7 +5,7 @@ import { minify } from 'terser';
 import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'AgData v2.3.24';
+const RELEASE = 'AgData v2.3.25';
 const RELEASE_QUERY = encodeURIComponent(RELEASE);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
@@ -17,18 +17,14 @@ if (rawHtml.split(lifecycleTag).length !== 2) throw new Error('Expected exactly 
 const lifecycleSource = await readFile(path.join(root, 'assets', 'app-lifecycle.js'), 'utf8');
 const sourceHtml = rawHtml.replace(lifecycleTag, () => `<script id="app-lifecycle-owner">${lifecycleSource}</script>`);
 const pilotCss = await readFile(path.join(root, 'assets', 'ops-precision-pilot.css'), 'utf8');
-const inlineScriptPattern = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
-const candidates = [...sourceHtml.matchAll(inlineScriptPattern)]
-  .map((match) => ({ match: match[0], source: match[1] || '', index: match.index || 0 }))
-  .sort((a, b) => b.source.length - a.source.length);
-const runtime = candidates[0];
-
-if (!runtime || runtime.source.length < 1_000_000) {
-  throw new Error('Unable to locate the live inline application runtime.');
-}
+const runtimeMarker = '<script id="app-script-source" src="./assets/app-runtime.js"></script>';
+if (sourceHtml.split(runtimeMarker).length !== 2) throw new Error('Unable to locate the extracted application runtime marker.');
+const runtime = { match: runtimeMarker, index: sourceHtml.indexOf(runtimeMarker) };
+const runtimeSourceText = await readFile(path.join(root, 'assets', 'app-runtime.js'), 'utf8');
+if (runtimeSourceText.length < 1_000_000) throw new Error('Extracted application runtime is unexpectedly small.');
 
 const runtimeManifest = await loadLiveRuntimeManifest({ root });
-const runtimeSource = assembleLiveRuntime(runtime.source, runtimeManifest);
+const runtimeSource = assembleLiveRuntime(runtimeSourceText, runtimeManifest);
 const minified = await minify(runtimeSource, {
   compress: false,
   mangle: false,
@@ -48,7 +44,7 @@ await mkdir(path.dirname(runtimeTarget), { recursive: true });
 await writeFile(runtimeTarget, `${minified.code}\n;window.__gncAppRuntimeExecuted = true;\n`, 'utf8');
 // These synchronous dependencies must accompany the extracted production
 // runtime in local verification as well as the Pages artifact.
-await Promise.all(['sales-workspace.js', 'sales-workspace.css', 'mobile-workspace.js', 'mobile-workspace.css', 'navigation-preferences.js', 'navigation-preferences.css', 'user-access-control.js', 'user-access-control.css', 'location-code.js', 'bunch-note.js', 'bunch-queue-shell.js', 'bunch-queue.js', 'bunch-queue.css', 'bunch-note.css', 'bunch-note-cards.css', 'bunch-note-structured.js', 'assigned-items-table.js', 'assigned-items.css', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'request-submission.js', 'inventory-list-contract.js', 'queue-inventory-hydration.js', 'master-detail-snapshots.js'].map((name) =>
+await Promise.all(['sales-workspace.js', 'sales-workspace.css', 'mobile-workspace.js', 'mobile-workspace.css', 'navigation-preferences.js', 'navigation-preferences.css', 'user-access-control.js', 'user-access-control.css', 'location-code.js', 'bunch-note.js', 'bunch-queue-shell.js', 'bunch-queue.js', 'bunch-queue.css', 'bunch-note.css', 'bunch-note-cards.css', 'bunch-note-structured.js', 'assigned-items-table.js', 'assigned-items.css', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'request-submission.js', 'inventory-list-contract.js', 'queue-inventory-hydration.js', 'master-detail-snapshots.js', 'runtime-watchdog-panel.js'].map((name) =>
   copyFile(path.join(root, 'assets', name), path.join(siteRoot, 'assets', name))));
 await prepareLiveIslandAssets({ root, site: siteRoot });
 await mkdir(path.join(siteRoot, 'assets', 'vendor'), { recursive: true });
@@ -183,14 +179,28 @@ if (headEnd < 0 || opsStylesheetIndex < 0) {
 
 const baseStyles = [];
 const authorityStyles = [];
-let styleOrdinal = 0;
 let baseLinkWritten = false;
 let authorityLinkWritten = false;
-const stylePattern = /<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi;
-let optimizedHead = headHtml.replace(stylePattern, (match, css, offset) => {
-  const currentOrdinal = styleOrdinal++;
-  if (currentOrdinal < 4) return match;
-
+let styleOrdinal = 0;
+const extractedStylePattern = /<link\b([^>]*\bdata-app-extracted-style\b[^>]*)>/gi;
+const extractedStyleLinks = [...headHtml.matchAll(extractedStylePattern)];
+const extractedCssByHref = new Map(await Promise.all(extractedStyleLinks.map(async ([, attrs]) => {
+  const href = attrs.match(/\bhref="([^"]+)"/i)?.[1];
+  if (!href) throw new Error('Extracted stylesheet marker is missing its href.');
+  return [href, await readFile(path.resolve(root, href.replace(/^\.\//, '')), 'utf8')];
+})));
+let optimizedHead = headHtml.replace(extractedStylePattern, (match, attrs, offset) => {
+  const href = attrs.match(/\bhref="([^"]+)"/i)?.[1];
+  if (!href) throw new Error('Extracted stylesheet marker is missing its href.');
+  const css = extractedCssByHref.get(href);
+  if (typeof css !== 'string') throw new Error(`Unable to read extracted stylesheet: ${href}`);
+  if (styleOrdinal < 4) {
+    styleOrdinal += 1;
+    const id = attrs.match(/\bid="([^"]+)"/i)?.[1];
+    const media = attrs.match(/\bmedia="([^"]+)"/i)?.[1];
+    return `<style${id ? ` id="${id}"` : ''}${media ? ` media="${media}"` : ''}>${css}</style>`;
+  }
+  styleOrdinal += 1;
   const beforePilotStylesheet = offset < opsStylesheetIndex;
   const collectedStyles = beforePilotStylesheet ? baseStyles : authorityStyles;
   collectedStyles.push(css.trim());

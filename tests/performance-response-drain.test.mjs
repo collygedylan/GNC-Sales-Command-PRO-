@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
@@ -264,7 +265,7 @@ test('Home readiness blocks on baseline per-reason and candidate coalesced refre
 });
 
 test('source touch-deferred callback remains a readiness blocker through role refresh and API idle', async () => {
-  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = readComposedAppSource();
   const extract = (startMarker, endMarker) => {
     const start = source.indexOf(startMarker), end = source.indexOf(endMarker, start + 1);
     assert.ok(start >= 0 && end > start, `source function exists: ${startMarker}`);
@@ -332,7 +333,7 @@ test('source touch-deferred callback remains a readiness blocker through role re
 });
 
 test('cold-login gate waits for the real startup initializer and unresolved profile restore in both boot paths', async () => {
-  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = readComposedAppSource();
   const initializerStart = source.indexOf('        async function initializeAppSessionOnLoad()');
   const initializerEnd = source.indexOf('\n        let appChromeStartupStarted', initializerStart);
   const bindingStart = source.indexOf('        if (document.readyState === \'complete\') {', initializerEnd);
@@ -471,7 +472,7 @@ test('generated browser readiness expression passes the expected view and evalua
 });
 
 test('route readiness waits for live render tokens but accepts a completed replacement frame with stale timer bookkeeping', () => {
-  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = readComposedAppSource();
   const start = source.indexOf('        function scheduleUiRender(');
   const end = source.indexOf('\n        function ', start + 1);
   assert.ok(start >= 0 && end > start);

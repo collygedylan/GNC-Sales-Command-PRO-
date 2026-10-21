@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import test from 'node:test';
 import { installPerformanceShellObserver } from '../scripts/performance-shell-observer.mjs';
 
 test('shell observer follows the real two-frame scheduler through its deferred callback', () => {
-  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = readComposedAppSource();
   const start = source.indexOf('        function runAfterShellInteractive(');
   const end = source.indexOf('\n        function cancelRunAfterTouchInteractionTask', start);
   assert.ok(start >= 0 && end > start);

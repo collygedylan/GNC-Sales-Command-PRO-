@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: suspend
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -7,7 +8,7 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'
 const migration = read('supabase/migrations/20261019113414_suspend_tag_sender_identity.sql');
 const worker = read('supabase/functions/request-delivery-worker/index.ts');
 const push = read('supabase/functions/send-push-alert/index.ts');
-const ui = read('index.html');
+const ui = readComposedAppSource();
 const appsScript = read('Code.gs');
 
 test('Suspend approval keeps actor identity distinct, freezes authorized recipients, and validates optional decision text', () => {

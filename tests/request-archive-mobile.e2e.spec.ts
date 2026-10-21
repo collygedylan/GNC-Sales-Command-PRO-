@@ -11,12 +11,12 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/*', async route => {
     const hostname = new URL(route.request().url()).hostname;
     if (hostname !== '127.0.0.1' && hostname !== 'localhost') return route.abort();
-    if (route.request().resourceType() === 'document') {
+    if (new URL(route.request().url()).pathname.endsWith('/assets/app-runtime.js')) {
       const response = await route.fetch();
-      const bridge = '\n;window.__requestArchiveTestEval = (source) => eval(source);\n';
-      const html = (await response.text()).replace(/(<script id="app-script-source" type="text\/plain">)([\s\S]*?)(<\/script>)/,
-        (_match, start, source, end) => `${start}${source}${bridge}${end}`);
-      return route.fulfill({ response, body: html });
+      return route.fulfill({ response, body: `${await response.text()}\n;window.__requestArchiveTestEval = (source) => eval(source);\n` });
+    }
+    if (route.request().resourceType() === 'document') {
+      return route.continue();
     }
     if (/^\/(?:_site\/)?assets\/live-app-runtime-v\d+\.min\.js$/.test(new URL(route.request().url()).pathname)) {
       const response = await route.fetch();

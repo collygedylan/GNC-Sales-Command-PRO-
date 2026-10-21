@@ -3,8 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const source = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
+const watchdogPanelContext = {};
+vm.runInNewContext(readFileSync(new URL('../assets/runtime-watchdog-panel.js', import.meta.url), 'utf8'), watchdogPanelContext);
+const { createController: createRuntimeWatchdogPanel } = watchdogPanelContext.AgMetricRuntimeWatchdogPanel;
 
 function harness() {
   const listeners = new Map();
@@ -73,8 +77,93 @@ const deferred = () => {
   return { promise, resolve };
 };
 
+function watchdogPanelHarness() {
+  let username = 'dylan_collyge', profileId = 'profile-a', authEpoch = 1, cacheScope = 'cache-a';
+  let visibleView = 'managers', activeTab = 'runtime-watchdog';
+  const pending = [];
+  const writes = [];
+  let requests = 0;
+  let scopeCurrent = true;
+  const host = { innerHTML: '', querySelectorAll: () => [] };
+  const badge = { textContent: '', title: '', classList: { toggle() {} } };
+  const elements = new Map([['runtime-watchdog-events', host], ['runtime-watchdog-header-badge', badge]]);
+  const document = { getElementById: id => elements.get(id) || null };
+  const controller = createRuntimeWatchdogPanel({
+    document,
+    lifecycle: { createScope: () => ({ isCurrent: () => scopeCurrent, dispose() {} }) },
+    apiUrl: '/api',
+    postJson: () => { requests++; const task = deferred(); pending.push(task); return task.promise; },
+    getUsername: () => username,
+    getProfileId: () => profileId,
+    getAuthEpoch: () => authEpoch,
+    getCacheScope: () => cacheScope,
+    getVisibleView: () => visibleView,
+    getActiveTab: () => activeTab,
+    panelViewId: 'runtime-watchdog',
+    escape: value => String(value || ''),
+    clipboard: { writeText: async value => writes.push(value) },
+    showToast() {},
+    prompt() {},
+  });
+  return {
+    controller, pending, writes, host, badge, get requests() { return requests; },
+    setOwner(value, profile, epoch, scope) { username = value; profileId = profile; authEpoch = epoch; cacheScope = scope; },
+    setScopeCurrent(value) { scopeCurrent = value; },
+    setVisibleView(value) { visibleView = value; },
+    setActiveTab(value) { activeTab = value; },
+    setHost(value) { elements.set('runtime-watchdog-events', value); },
+  };
+}
+
+test('watchdog badge and Manager panel share one active-owner refresh', async () => {
+  const h = watchdogPanelHarness();
+  const panel = h.controller.refreshPanel();
+  const badge = h.controller.refreshBadge(true);
+  assert.equal(h.requests, 1, 'the badge and panel share a single owner-scoped request');
+  h.pending[0].resolve({ data: [{ id: 1, normalized_role: 'manager', view_id: 'home', owning_skill: 'agdata-runtime-watchdog', username: 'dylan_collyge' }], fixBrief: 'current brief' });
+  await Promise.all([panel, badge]);
+  assert.match(h.host.innerHTML, /dylan_collyge/);
+  assert.equal(h.badge.textContent, '1');
+  assert.deepEqual(h.writes, []);
+});
+
+test('watchdog refresh and copied brief cannot publish after account or view ownership changes', async () => {
+  const h = watchdogPanelHarness();
+  const oldHost = h.host;
+  const oldPanel = h.controller.refreshPanel();
+  h.setOwner('megan_kelly', 'profile-b', 2, 'cache-b');
+  const freshHost = { innerHTML: '', querySelectorAll: () => [] };
+  h.setHost(freshHost);
+  const freshPanel = h.controller.refreshPanel();
+  assert.equal(h.requests, 2, 'a new authenticated owner starts a new request');
+  h.pending[1].resolve({ data: [{ id: 2, normalized_role: 'admin', view_id: 'home', owning_skill: 'agdata-runtime-watchdog', username: 'megan_kelly' }], fixBrief: 'new owner brief' });
+  await freshPanel;
+  h.pending[0].resolve({ data: [{ id: 1, username: 'dylan_collyge' }], fixBrief: 'old owner brief' });
+  await oldPanel;
+  assert.match(freshHost.innerHTML, /megan_kelly/);
+  assert.doesNotMatch(freshHost.innerHTML, /dylan_collyge/);
+  assert.equal(oldHost.innerHTML, '', 'the detached prior panel is not resurrected');
+  await h.controller.copyFixBrief();
+  assert.deepEqual(h.writes, ['new owner brief']);
+
+  h.setOwner('jd_jones', 'profile-c', 3, 'cache-c');
+  const copied = h.controller.copyFixBrief();
+  assert.equal(h.requests, 3, 'owner changes invalidate cached incidents and brief before copy');
+  h.pending[2].resolve({ data: [], fixBrief: 'third owner brief' });
+  await copied;
+  assert.deepEqual(h.writes, ['new owner brief', 'third owner brief']);
+
+  const pendingPanel = h.controller.refreshPanel();
+  const before = freshHost.innerHTML;
+  h.setScopeCurrent(false);
+  h.pending[3].resolve({ data: [{ id: 3, username: 'stale-view' }], fixBrief: 'stale view brief' });
+  await pendingPanel;
+  assert.equal(freshHost.innerHTML, before, 'an aborted lifecycle view does not publish late results');
+  assert.deepEqual(h.writes, ['new owner brief', 'third owner brief']);
+});
+
 test('startup restores the native session before exposing credentials after an update reload', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const startup = html.match(/        async function initializeAppSessionOnLoad\([^]*?^        }/m)?.[0];
   assert.ok(startup);
   for (const restored of [true, false]) {
@@ -105,7 +194,7 @@ test('startup restores the native session before exposing credentials after an u
 });
 
 test('a transient Chat schema probe failure does not permanently disable the next authorized visit', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const source = html.match(/        async function ensureChatSchemaReady\([^]*?^        }/m)?.[0];
   assert.ok(source);
   let unavailable = true, probes = 0;
@@ -121,7 +210,7 @@ test('a transient Chat schema probe failure does not permanently disable the nex
 });
 
 test('successful native permission refresh health telemetry is informational', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const source = html.match(/        async function refreshNativeRoleAndCapabilities\([^]*?^        }/m)?.[0];
   assert.ok(source);
   assert.match(source, /reportSemanticHealthEvent\('native_role_refreshed', 'auth', roleChanged \? 'NATIVE_ROLE_CHANGED' : 'NATIVE_PERMISSIONS_CHANGED', \{[^]*?\}, 'info'\)/);
@@ -129,7 +218,7 @@ test('successful native permission refresh health telemetry is informational', (
 });
 
 test('same-account Request access refresh is silent and deduplicated; old owners and real denials remain fenced', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const functions = ['initializeRequestCapabilities', 'getRequestCapabilityStatusMarkup'].map(name => {
     const source = html.match(new RegExp('        (?:async )?function ' + name + '\\([^]*?^        }', 'm'))?.[0];
     assert.ok(source, name); return source;
@@ -249,7 +338,7 @@ test('view and session invalidation fence late work while scopes stay isolated',
 });
 
 test('Docks and Que session/view reads survive a same-account access snapshot completion while real session reset still aborts', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   for (const view of ['docks', 'request']) {
     const h = harness();
     const access = deferred();

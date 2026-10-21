@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -36,7 +37,7 @@ test('profile and sample seeds vary reproducibly without depending on candidate 
 });
 
 test('the real health reporter has the validated 10 percent gate as its only random draw', () => {
-  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = readComposedAppSource();
   const start = source.indexOf('        function reportPerformanceHealthEvent(');
   const end = source.indexOf('\n        window.reportSemanticHealthEvent', start);
   assert.ok(start > 0 && end > start);
@@ -48,7 +49,7 @@ test('the real health reporter has the validated 10 percent gate as its only ran
 });
 
 test('real sampled telemetry calls are stable per event, area and reason despite unrelated random and UUID calls', async () => {
-  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = readComposedAppSource();
   const start = source.indexOf('        function reportPerformanceHealthEvent(');
   const end = source.indexOf('\n        window.reportSemanticHealthEvent', start);
   assert.ok(start > 0 && end > start);
@@ -120,7 +121,7 @@ test('real sampled telemetry calls are stable per event, area and reason despite
 });
 
 test('health sampling isolates earlier Request reasons while repeated same-reason calls advance the stream', async () => {
-  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = readComposedAppSource();
   const start = source.indexOf('        function reportPerformanceHealthEvent(');
   const end = source.indexOf('\n        window.reportSemanticHealthEvent', start);
   assert.ok(start > 0 && end > start);
@@ -242,7 +243,7 @@ test('no-user and offline early returns consume neither global nor health-sampli
 });
 
 test('health invocation diagnostics are bounded and omit unsafe labels or arbitrary metadata', async () => {
-  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = readComposedAppSource();
   const start = source.indexOf('        function reportPerformanceHealthEvent(');
   const end = source.indexOf('\n        window.reportSemanticHealthEvent', start);
   assert.ok(start > 0 && end > start);

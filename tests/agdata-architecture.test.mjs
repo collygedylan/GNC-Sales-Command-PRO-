@@ -5,11 +5,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs';
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const cache = new Map();
 const read = file => {
-  if (!cache.has(file)) cache.set(file, fs.readFileSync(path.join(root, file), 'utf8'));
+  if (!cache.has(file)) cache.set(file, file === 'index.html'
+    ? readComposedAppSource({ directory: root })
+    : fs.readFileSync(path.join(root, file), 'utf8'));
   return cache.get(file);
 };
 const map = read('docs/architecture/agdata-module-dependency-map.md');
@@ -67,6 +70,18 @@ test('ten cluster tables bind existing core functions, contracts and skill comma
     }
     const command = read(`.codex/skills/agdata-${suffix}/SKILL.md`).match(/^node --test [^\r\n]+$/m)?.[0];
     assert.ok(command && section.includes(command), `cluster ${id}: same focused command`);
+  }
+});
+
+test('current source layout resolves while the v2.3.17 census stays historical', () => {
+  const layout = inventory.sourceLayout;
+  assert.equal(layout.historicalCensusRetained, true);
+  assert.equal(layout.shell, 'index.html');
+  assert.equal(layout.classicRuntime, 'assets/app-runtime.js');
+  assert.deepEqual(layout.clusters, Array.from({ length: 10 }, (_, index) => index + 1));
+  assert.equal(toolingSkillManifests.length, 12);
+  for (const file of [layout.shell, layout.classicRuntime, ...(layout.classicModules || []), ...layout.stylesheets]) {
+    assert.ok(fs.statSync(path.join(root, file)).isFile(), file);
   }
 });
 

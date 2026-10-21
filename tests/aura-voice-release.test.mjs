@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,7 +34,7 @@ test('Gemini readiness remains outside the backend deployment gate', () => {
   assert.equal(steps[provider].if, '${{ false }}');
   assert.equal(workflow.jobs['publish-pages'], undefined);
   assert.match(steps[provider].env.SUPABASE_SERVICE_ROLE_KEY, /secrets\.SUPABASE_SERVICE_ROLE_KEY/);
-  assert.doesNotMatch(read('index.html'), /AIza[A-Za-z0-9_-]{25,}|AQ\.[A-Za-z0-9_-]{25,}|GEMINI_API_KEY/);
+  assert.doesNotMatch(readComposedAppSource(), /AIza[A-Za-z0-9_-]{25,}|AQ\.[A-Za-z0-9_-]{25,}|GEMINI_API_KEY/);
 });
 test('production provider probe requires expected engine/model and fails closed without readiness', async () => {
   let sent;

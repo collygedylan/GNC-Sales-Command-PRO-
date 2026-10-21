@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: inventory
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -13,7 +14,7 @@ const built = buildSync({ entryPoints: ['services/inventoryStatusSync.ts'], bund
 const serviceModule = { exports: {} };
 new Function('require', 'module', 'exports', built.outputFiles[0].text)(require, serviceModule, serviceModule.exports);
 const { createInventoryStatusSync } = serviceModule.exports;
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const helperStart = html.indexOf('let inventoryStatusSync = null;');
 const helperEnd = html.indexOf('async function postArgosInventoryTransactionPayload(payload)', helperStart);
 assert.ok(helperStart >= 0 && helperEnd > helperStart, 'inventory status UI helper cluster should exist');

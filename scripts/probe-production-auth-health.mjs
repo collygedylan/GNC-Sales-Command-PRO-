@@ -1,8 +1,9 @@
+import { readComposedAppSource } from './composed-app-source.mjs';
 import fs from 'node:fs';
 import { verifyPoManagementHealth } from './po-management-health.mjs';
 import { createSignedDeploymentHealthEnvelope, isSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
 
-const source = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const source = readComposedAppSource();
 const supabaseUrl = process.env.PRODUCTION_SUPABASE_URL
   || source.match(/const SUPABASE_URL = "([^"]+)"/)?.[1]
   || '';

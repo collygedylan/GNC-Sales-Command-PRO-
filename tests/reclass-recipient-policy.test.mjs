@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
 // @test-group: @reclass-inquiry,@release-smoke
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 function model(user, sourceView) {
   const start = html.indexOf('        function getInventoryTransactionRequiredRecipientEmails(');
   const end = html.indexOf('        function generateArgosInventoryTransactionId(', start);

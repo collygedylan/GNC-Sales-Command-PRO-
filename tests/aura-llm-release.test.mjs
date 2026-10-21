@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -58,7 +59,7 @@ test('database CI checks quota contention and permissions in an isolated databas
 });
 
 test('router deduplication does not put utterances or customer sidecars in diagnostic keys', () => {
-  const source = read('index.html');
+  const source = readComposedAppSource();
   const adapter = source.slice(source.indexOf('        async function requestAuraLlm('), source.indexOf('        async function resolveAuraOrderParty('));
   assert.match(adapter, /payload\.turnId \|\| options\.requestId/);
   assert.doesNotMatch(adapter, /JSON\.stringify\(payload\)/);

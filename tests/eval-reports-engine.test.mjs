@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: eval
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -11,7 +12,7 @@ vm.runInContext(engineSource, context, { filename: 'eval-reports-engine.js' });
 const engine = context.GncEvalReports;
 
 test('Manager report sessions and in-flight responses survive same-account permission refresh but retain denial and owner fences', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const source = html.match(/        function getManagerReportPageController\([^]*?^        }/m)?.[0];
   assert.ok(source);
   const live = { module: { exports: {} }, AbortController };
@@ -82,7 +83,7 @@ test('Manager report read gates accept only an existing published snapshot proof
 });
 
 test('Season Priority displays a proven published snapshot without relabeling an interrupted source ready', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const source = html.match(/        async function readManagerSeasonPriorityPageMetadata\([^]*?^        }/m)?.[0];
   assert.ok(source);
   for (const proven of [true, false]) {
@@ -115,7 +116,7 @@ test('SQL location-base fixture qualifies for the configured Eval1 priority repo
 });
 
 test('multi-report selection preserves union, exact row deduplication and server-owned Queue membership', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
   const migration = readFileSync(new URL('../supabase/archive_migrations/20260904171529_eval_report2_multi_report_selection.sql', import.meta.url), 'utf8');
   const union = html.slice(html.indexOf('function getManagerEvalReport2Rows('), html.indexOf('function getManagerEvalReport2ItemCode('));
@@ -677,7 +678,7 @@ test('script-compatible shared ordering retains punctuation and Unicode item-cod
 });
 
 test('cached row keys preserve synchronous index and membership semantics', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const functionStart = html.indexOf('function getManagerEvalReport2RowKey(');
   const functionEnd = html.indexOf('function getManagerEvalReport2EditFieldConfig(', functionStart);
   assert.ok(functionStart >= 0 && functionEnd > functionStart);
@@ -733,7 +734,7 @@ test('cached row keys preserve synchronous index and membership semantics', () =
 });
 
 test('worker report identities and memberships match the synchronous contract', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const source = html.slice(html.indexOf('function getManagerEvalReport2WorkerSource('), html.indexOf('let managerEvalReport2IndexJob = null'));
   const helper = vm.createContext({});
   vm.runInContext(`${source};globalThis.workerSource = getManagerEvalReport2WorkerSource();`, helper);
@@ -780,7 +781,7 @@ test('worker report identities and memberships match the synchronous contract', 
 });
 
 test('large getter uses one guarded loading lifecycle and retains monitored fallback', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const start = html.indexOf('function getManagerEvalReport2Index(');
   const end = html.indexOf('let managerEvalReport2SelectedReportIds', start);
   const state = { loading: false, error: '' };
@@ -823,7 +824,7 @@ test('large getter uses one guarded loading lifecycle and retains monitored fall
 });
 
 test('Eval Reports #2 joins a normal revision check without failing refresh or losing its last-good index', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const functionSource = name => {
     const start = html.indexOf(`function ${name}(`);
     const end = html.indexOf('\n        function ', start + 1);
@@ -914,7 +915,7 @@ test('Eval Reports #2 joins a normal revision check without failing refresh or l
 });
 
 test('Eval2 classifier paths omit per-item target APIs and honor shared threshold boundaries', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const source = name => {
     const start = html.indexOf(`function ${name}(`);
     const end = html.indexOf('\n        function ', start + 1);
@@ -939,7 +940,7 @@ test('Eval2 classifier paths omit per-item target APIs and honor shared threshol
 });
 
 test('Eval2 index builder sends shared-threshold options to every classifier path', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const start = html.indexOf('async function performManagerEvalReport2IndexBuild(');
   const end = html.indexOf('function getManagerEvalReport2Index(', start);
   assert.ok(start >= 0 && end > start);
@@ -990,7 +991,7 @@ test('Eval2 index builder sends shared-threshold options to every classifier pat
 });
 
 test('async report results reject changed identity, snapshot, and access', async () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const start = html.indexOf('let managerEvalReport2IndexJob = null');
   const end = html.indexOf('function getManagerEvalReport2Index(', start);
   for (const changed of ['identity', 'snapshot', 'access', 'none']) {
@@ -1110,7 +1111,7 @@ test('authoritative assignment overlay and classification stay within the 10,000
 });
 
 test('the live shell keeps Eval Reports #1 and settings management Dylan/Megan-only', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   assert.match(html, /const MANAGER_EVAL_REPORTS_VIEW = 'eval-reports'/);
   assert.match(html, /key === 'dylan_collyge' \|\| key === 'megan_kelly'/);
@@ -1121,7 +1122,7 @@ test('the live shell keeps Eval Reports #1 and settings management Dylan/Megan-o
 });
 
 test('the live shell registers Eval Reports #2 without replacing Eval Reports #1', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   assert.match(html, /const MANAGER_EVAL_REPORTS_VIEW = 'eval-reports'/);
   assert.match(html, /const MANAGER_EVAL_REPORTS_2_VIEW = 'eval-reports-2'/);
   assert.match(html, /tabs\.push\(\{ id: MANAGER_EVAL_REPORTS_2_VIEW, label: 'Eval Reports #2' \}\)/);
@@ -1234,7 +1235,7 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
 });
 
 test('Eval Reports #1 and #2 share multi-user OR filtering without locking AssignedTo', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   assert.match(html, /managerEvalReportAssignedToFilters=new Set\(\)/);
   assert.match(html, /managerEvalReport2AssignedToFilters=new Set\(\)/);
   assert.match(html, /function managerEvalAssignedUserMatches\(/);
@@ -1248,7 +1249,7 @@ test('Eval Reports #1 and #2 share multi-user OR filtering without locking Assig
 });
 
 test('detail teardown and BlockAlpha drilldowns keep navigation state explicit', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   assert.match(html, /function teardownDetailPresentation\(reason = 'detail-teardown', options = \{\}\)/);
   assert.match(html, /const leavingDetail = safeViewId !== 'detail' && isViewVisible\('detail'\)/);
   assert.match(html, /teardownDetailPresentation\('primary-view-change', \{ preserveDraft: true \}\)/);

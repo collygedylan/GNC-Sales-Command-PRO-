@@ -1,10 +1,11 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: bunch-notes,navigation
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readComposedAppSource();
 const workspace = readFileSync(new URL('../assets/mobile-workspace.js', import.meta.url), 'utf8');
 function section(start, end) {
   const from = html.indexOf(start), to = html.indexOf(end, from + start.length);

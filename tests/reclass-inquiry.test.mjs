@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,7 +18,7 @@ test('Item Spec uses the exact authoritative opening row when the source project
 });
 
 const root = process.cwd();
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const html = readComposedAppSource();
 const code = fs.readFileSync(path.join(root, 'Code.gs'), 'utf8');
 
 test('the fullscreen mobile Reclass panel avoids rasterizing an invisible outer shadow', () => {

@@ -1,3 +1,4 @@
+import { readComposedAppSource } from './composed-app-source.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -107,7 +108,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const operation = process.argv[2];
     if (!['inspect', 'provision'].includes(operation)) throw new Error('USAGE_GOOGLE_SANDBOX_ADMIN_INSPECT_OR_PROVISION');
     const source = fs.readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
-    const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const html = readComposedAppSource();
     const deploymentId = html.match(/script.google.com\/macros\/s\/([^/]+)\/exec/)?.[1];
     if (!deploymentId) throw new Error('PRODUCTION_DEPLOYMENT_UNRESOLVED');
     const api = await googleApiFromClasp(process.env.GNC_CLASP_CREDENTIALS_FILE);

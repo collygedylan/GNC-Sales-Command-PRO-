@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { assertHistoricalMigration, assertIsolatedSqlTest } from './helpers/ci-discovery.mjs';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
@@ -9,7 +10,7 @@ import vm from 'node:vm';
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const code = read('Code.gs');
-const html = read('index.html');
+const html = readComposedAppSource();
 const migration = read('supabase/archive_migrations/20260831165043_pikes_orders_manager_history.sql');
 const repairMigration = read('supabase/archive_migrations/20260831224251_repair_pikes_assignments_and_maintenance.sql');
 const repairAuditHardening = read('supabase/archive_migrations/20260831230825_harden_pikes_assignment_repair_audit.sql');

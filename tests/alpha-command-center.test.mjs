@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -5,7 +6,7 @@ import test from 'node:test';
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const component = read('components/command-center/fieldCommandCenter.jsx');
 const database = read('services/commandCenterDatabase.ts');
-const shell = read('index.html');
+const shell = readComposedAppSource();
 const builder = read('scripts/build-alpha-command-center.mjs');
 const pushSender = read('supabase/functions/send-push-alert/index.ts');
 const reminderSweep = read('supabase/functions/calendar-reminder-sweep/index.ts');

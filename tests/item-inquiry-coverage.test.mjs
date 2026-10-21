@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -5,7 +6,7 @@ import { test } from 'node:test';
 const root = new URL('../', import.meta.url);
 const read = path => readFileSync(new URL(path, root), 'utf8');
 const migration = read('supabase/archive_migrations/20260904180407_item_inquiry_absence_coverage_v1.sql');
-const app = read('index.html');
+const app = readComposedAppSource();
 const worker = read('Code.gs');
 
 test('coverage setting is manager-only, revisioned, idempotent and audited', () => {

@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const deterministicMath = Object.create(Math);
 deterministicMath.random = () => 0.2;
@@ -1115,7 +1116,7 @@ test('cached display permission mismatch and logout never preview stale rows', a
     coordinator.reset();
 });
 
-const appSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const appSource = readComposedAppSource();
 function appFunction(name) {
     const found = appSource.match(new RegExp(`(?:async )?function ${name}\\(`));
     assert.ok(found, name);

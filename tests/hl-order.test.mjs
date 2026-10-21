@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: hl-orders
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import vm from 'node:vm';
 import { appApiDatabaseBridge, installDatabaseBridge } from './helpers/database-bridge.mjs';
 import { hlOrderFixtureRpcResult, hlProfileRow, hlSeasonSettingsRows } from './fixtures/hl-order-state.mjs';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const html = readComposedAppSource().replace(/\r\n/g, '\n');
 const evalSecurityStart = html.indexOf('        function isEvalSensitiveDataRestricted(');
 const evalSecurityEnd = html.indexOf('        function runDedupeSupabaseRead(', evalSecurityStart);
 assert.ok(evalSecurityStart >= 0 && evalSecurityEnd > evalSecurityStart, 'Eval security helpers should exist');

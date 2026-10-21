@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: eval
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -10,7 +11,7 @@ const resolutionMigration = read('../supabase/archive_migrations/20260830213039_
 const parityMigration = read('../supabase/archive_migrations/20260831004047_eval_work_request_drive_parity.sql');
 const appApi = read('../supabase/functions/app-api/index.ts');
 const worker = read('../supabase/functions/request-delivery-worker/index.ts');
-const html = read('../index.html');
+const html = readComposedAppSource();
 const appsScript = read('../Code.gs');
 
 test('multi-origin Eval Work storage is append-only, service-owned, and V1 compatible', () => {

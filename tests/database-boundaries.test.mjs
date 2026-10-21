@@ -1,3 +1,4 @@
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -213,7 +214,7 @@ test('app-api reads Suspend Tag overlay rows from the RPC object envelope', () =
 });
 
 test('legacy shell routes database reads/writes through the checked adapter', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const html = readComposedAppSource();
   assert.doesNotMatch(html, /(?:fetchWithTimeout|fetch)\s*\([^\n]*\/rest\/v1\//);
   assert.doesNotMatch(html, /client\.from\(['"]profiles/);
   assert.match(html, /GncDatabase\.readProfile\(client, session\.user\.id\)/);
