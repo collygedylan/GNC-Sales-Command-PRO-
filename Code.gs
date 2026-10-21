@@ -16912,9 +16912,15 @@ function buildReclassItemInquiryTable_(model) {
   const safe = model || {}, identity = safe.identity || {};
   const columns = [['locationcode','Location'],['lotcode','Lot'],['priority','Priority'],['ptronhand','On Hand'],['ptrreviewed','Review'],['ptravailable','Available'],['s_lts','Open Stock'],['action','Action'],['details','Action Details'],['holdstopcode','Hold/Stop'],['holdstopreason','Reason'],['holdstopbegindate','Since'],['locationnote','Location Note'],['salesnote','Sales Note']];
   const labels = {hold:'On Hold',take_off_hold:'Off Hold',stop_ship:'On Stop',off_stop_ship:'Off Stop',sheared:'Sheared to #',move_up:'Move Up',move_down:'Move Down',priority_change:'Priority Change',on_hold:'On Hold',off_hold:'Off Hold',on_stop:'On Stop',off_stop:'Off Stop',recount:'Re-Count',re_count:'Re-Count',sheared_to:'Sheared to #'};
+  const seasonOf=function(v){return String(v && (v.lotcode || v.season) || '').split('.').pop().toUpperCase();};
+  const stockSeasons=new Set(); const quantityRows=new Set();
+  (safe.completedMoveSummary || []).forEach(function(m){stockSeasons.add(seasonOf(m.source));stockSeasons.add(seasonOf(m.destination));quantityRows.add(String(m.source.unique_id || m.source.uniqueId));quantityRows.add(String(m.destination.unique_id || m.destination.uniqueId));});
+  (safe.rows || []).forEach(function(row){const av=row.actionValues || {};['moveup','movedown'].forEach(function(prefix){const splits=av[prefix+'splits'] || (av[prefix+'quantity'] ? [{destinationSeason:av[prefix+'season']}] : []);if(splits.length)stockSeasons.add(seasonOf(row.values));splits.forEach(function(s){stockSeasons.add(String(s.destinationSeason).toUpperCase());});});});
   const rows = sortReclassInquiryCompactRows_(safe.rows).map(function(row) {
     const values = Object.assign({}, row.values || {}), av = row.actionValues || {};
     const changed = new Set(row.changedFields || []), actions = [], details = [];
+    if(stockSeasons.has(seasonOf(values)))changed.add('s_lts');
+    if(quantityRows.has(String(row.unique_id))){changed.add('ptronhand');changed.add('ptravailable');}
     (safe.v7InventoryFields || []).filter(function(e){return e.unique_id === row.unique_id;}).forEach(function(e){(e.changedFields || []).forEach(function(k){changed.add(k);});});
     function action(label, detail) { if(actions.indexOf(label)<0) actions.push(label); if(detail && details.indexOf(detail)<0) details.push(detail); }
     [['moveup','Move Up'],['movedown','Move Down']].forEach(function(pair){
@@ -16926,6 +16932,7 @@ function buildReclassItemInquiryTable_(model) {
     if(changed.has('priority')) action('Priority Change','Priority Change: '+(values.priority || '-'));
     if(changed.has('holdstopcode')) action(values.holdstopcode==='H'?'On Hold':values.holdstopcode==='S'?'On Stop':'Off Hold / Stop');
     (row.temporaryChanges || []).forEach(function(c){if(c.key && !columns.some(function(col){return col[0]===c.key;})) details.push(String(c.label || c.key)+': '+String(c.value == null?'':c.value));});
+    if(av.shearedquantity)action('Sheared to #','Sheared to #: '+av.shearedquantity+(av.shearedproposeddesigitem ? ' '+av.shearedproposeddesigitem : ''));
     values.action=actions.join('; '); values.details=details.join('; ');
     if(values.action)changed.add('action'); if(values.details)changed.add('details');
     if(changed.has('holdstopcode'))changed.add('holdstopbegindate');
