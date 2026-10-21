@@ -6,6 +6,14 @@
         'can_manage_user_access', 'can_access_eval_reports_2', 'can_submit_reclass',
         'can_complete_suspend_tag', 'can_approve_deny_suspend'
     ]);
+    const FULL_APP_ADMINISTRATORS = Object.freeze(['dylan_collyge', 'megan_kelly', 'jd_jones']);
+    const isFullAppAdministrator = username => FULL_APP_ADMINISTRATORS.includes(text(username).toLowerCase());
+    function enforceAccountPermissions(username, permissions) {
+        const result = normalizePermissions(permissions);
+        if (isFullAppAdministrator(username)) for (const flag of PERMISSION_KEYS) result[flag] = true;
+        result.can_manage_user_access = isFullAppAdministrator(username);
+        return result;
+    }
     const ROLE_ALIASES = Object.freeze({
         admin: ['ADMIN', 'ADMINISTRATOR', 'SUPERADMIN', 'SUPER ADMIN'],
         manager: ['MANAGER'],
@@ -105,6 +113,7 @@
 
     function isVerifiedManager() {
         return selfStatus === 'ready' && selfRecord?.verified === true
+            && isFullAppAdministrator(getIdentity()?.username)
             && selfRecord.effective_permissions.can_manage_user_access === true;
     }
 
@@ -185,7 +194,7 @@
                 const overrides = active ? normalizeOverrides(row.permission_overrides || row.permissionOverrides) : normalizeOverrides(null);
                 const effectiveSource = row.effective_permissions || row.effectivePermissions;
                 return { ...profile, active, selectable: active, baseline, permission_overrides: overrides,
-                    effective_permissions: active && effectiveSource ? normalizePermissions(effectiveSource) : mergePermissions(baseline, overrides),
+                    effective_permissions: active ? enforceAccountPermissions(profile.username, effectiveSource || mergePermissions(baseline, overrides)) : normalizePermissions(null),
                     access_revision: Math.max(0, Number(row.access_revision || row.revision) || 0) };
             }).filter(Boolean)
         };
@@ -236,8 +245,8 @@
         const role = profileRole;
         const baseline = normalizePermissions(baselineSource?.permissions || baselineSource?.baseline_permissions);
         const overrides = normalizeOverrides(value.permission_overrides || value.permissionOverrides);
-        const effective = normalizePermissions(value.effective_permissions || value.effectivePermissions);
-        const computed = mergePermissions(baseline, overrides);
+        const effective = enforceAccountPermissions(profile.username, value.effective_permissions || value.effectivePermissions);
+        const computed = enforceAccountPermissions(profile.username, mergePermissions(baseline, overrides));
         for (const permission of PERMISSION_KEYS) {
             if (computed[permission] !== effective[permission]) throw new Error('USER_ACCESS_EFFECTIVE_PERMISSION_MISMATCH');
         }
@@ -348,7 +357,7 @@
         for (const user of directoryRecord.users) {
             if (user.canonical_role !== role || user.active !== true) continue;
             user.baseline = nextPermissions;
-            user.effective_permissions = mergePermissions(nextPermissions, user.permission_overrides);
+            user.effective_permissions = enforceAccountPermissions(user.username, mergePermissions(nextPermissions, user.permission_overrides));
         }
         persistDisplayCache(directoryRecord); publish('role-baseline-optimistic');
         try {
@@ -365,14 +374,14 @@
                 const baseline = normalizePermissions(saved.baseline.permissions || saved.baseline);
                 directoryRecord.role_baselines = directoryRecord.role_baselines.map(row => row.role === role ? { ...row, permissions: baseline } : row);
                 for (const user of directoryRecord.users) if (user.canonical_role === role && user.active === true) {
-                    user.baseline = baseline; user.effective_permissions = mergePermissions(baseline, user.permission_overrides);
+                    user.baseline = baseline; user.effective_permissions = enforceAccountPermissions(user.username, mergePermissions(baseline, user.permission_overrides));
                 }
             } else throw new Error('USER_ACCESS_SAVE_RESPONSE_INVALID');
             directoryRecord.revision = Math.max(directoryRecord.revision + 1, Number(saved.revision) || 0);
             if (selfRecord?.verified === true && selfRecord.role === role
                 && selfRecord.profile.id === currentIdentity.id && selfRecord.profile.username === currentIdentity.username) {
                 selfRecord.baseline = { ...directoryRecord.role_baselines.find(row => row.role === role).permissions };
-                selfRecord.effective_permissions = mergePermissions(selfRecord.baseline, selfRecord.permission_overrides);
+                selfRecord.effective_permissions = enforceAccountPermissions(selfRecord.profile.username, mergePermissions(selfRecord.baseline, selfRecord.permission_overrides));
                 selfRecord.revision = directoryRecord.revision;
             }
             cachedDirectoryRecord = directoryRecord; persistDisplayCache(directoryRecord); publish('role-baseline-saved');
@@ -399,7 +408,7 @@
         if (saveInFlight.has(requestKey)) return false;
         saveInFlight.add(requestKey);
         target.permission_overrides = overrides;
-        target.effective_permissions = mergePermissions(target.baseline, overrides);
+        target.effective_permissions = enforceAccountPermissions(target.username, mergePermissions(target.baseline, overrides));
         persistDisplayCache(directoryRecord); publish('user-overrides-optimistic');
         try {
             const saved = await transport('save_user_overrides', { username, permission_overrides: overrides },
