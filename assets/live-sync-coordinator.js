@@ -48,7 +48,7 @@
         const applied = new Map();
         const appliedKey = adapter => JSON.stringify([adapter.id, adapter.cacheKey]);
         const appliedFor = adapter => applied.get(appliedKey(adapter));
-        function rememberApplied(adapter, value, metadata, ctx) {
+        function rememberApplied(adapter, value, metadata, ctx, readOnlySnapshot = false) {
             const sourceSignature = signature(metadata, adapter.sourceKeys);
             const key = appliedKey(adapter);
             // Browse and full reads share an identity, but are distinct verified
@@ -66,6 +66,7 @@
             }
             applied.set(key, { id: adapter.id, value, cacheKey: adapter.cacheKey, scope: String(ctx?.scope || ''),
                 readIdentity: String(ctx?.readIdentity || ''),
+                readOnlySnapshot,
                 permissionVersion: String(metadata.permissionVersion || ''), sourceSignature,
                 projection: adapter.projection, projectionFamily: adapter.projectionFamily,
                 signature: JSON.stringify([adapter.cacheKey, sourceSignature]) });
@@ -197,7 +198,7 @@
             if (ctx?.authenticated === false || ctx?.accessDenied === true
                 || !entry || entry.cacheKey !== adapter.cacheKey || entry.scope !== String(ctx?.scope || '')
                 || entry.readIdentity !== String(ctx?.readIdentity || '')
-                || !entry.permissionVersion) return false;
+                || !entry.permissionVersion || entry.readOnlySnapshot) return false;
             if (Object.prototype.hasOwnProperty.call(ctx || {}, 'dataPermissionVersion'))
                 return !!String(ctx.dataPermissionVersion || '') && String(ctx.dataPermissionVersion) === entry.permissionVersion;
             return true;
@@ -587,7 +588,15 @@
             }
             permission = before.permissionVersion;
             const blocked = adapters.filter((adapter) => adapter.sourceKeys.some((key) => !readable(before.sources.get(key))));
-            if (blocked.length) {
+            // Revision visibility and endpoint authorization are independent.
+            // E.g. a report may read private sources through a guarded RPC that
+            // the metadata endpoint does not expose. Only a successful real
+            // adapter read may supply display data; it cannot establish proof.
+            const metadataReadOnly = !background && canContinueRead(ctx) && blocked.length > 0
+                && blocked.every(adapter => adapter.sourceKeys.every(key => readable(before.sources.get(key))
+                    || before.sources.get(key).state === 'unavailable'));
+            if (metadataReadOnly) proofContextKey = JSON.stringify(['read-only-metadata', proofContextKey]);
+            if (blocked.length && !metadataReadOnly) {
                 const states = blocked.flatMap(adapter => adapter.sourceKeys.map(key => before.sources.get(key).state));
                 const retained = lastVerifiedAt ? ' Keeping the last verified data.' : ' No complete snapshot has been verified in this session yet.';
                 const unavailableReason = blocked.filter(adapter => adapter.sourceKeys.some(key => before.sources.get(key).state === 'unavailable')).map(adapter => adapter.unavailableReason).filter(Boolean).join(' ');
@@ -596,7 +605,8 @@
                     { blockedSources: unique(blocked.flatMap(adapter => adapter.sourceKeys)), unavailableSources: keys.filter(key => before.sources.get(key).state === 'unavailable') });
                 return false;
             }
-            const changed = adapters.filter(adapter => appliedFor(adapter)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)]));
+            const changed = adapters.filter(adapter => metadataReadOnly || appliedFor(adapter)?.readOnlySnapshot
+                || appliedFor(adapter)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)]));
             const staged = [];
             const display = new Map(adapters.filter(adapter => {
                 const entry = appliedFor(adapter);
@@ -637,7 +647,7 @@
                         const adapter = changed[cursor++];
                         try {
                             const meta = cacheMeta(adapter, ctx, before);
-                            const cached = options.readCachedSnapshot ? await Promise.resolve().then(() => options.readCachedSnapshot(adapter, meta)).catch(() => null) : null;
+                            const cached = !metadataReadOnly && options.readCachedSnapshot ? await Promise.resolve().then(() => options.readCachedSnapshot(adapter, meta)).catch(() => null) : null;
                             if (!current()) return;
                             let value;
                             if (ctx.progressive && !background && !display.has(adapter.id)
@@ -689,14 +699,14 @@
                     if (!current()) {
                         return discard('View settings changed; verifying the updated selection.');
                     }
-                    staged.forEach(({ adapter, value }) => rememberApplied(adapter, value, after, ctx));
-                    staged.forEach(({ adapter, value }) => {
+                    staged.forEach(({ adapter, value }) => rememberApplied(adapter, value, after, ctx, metadataReadOnly));
+                    if (!metadataReadOnly) staged.forEach(({ adapter, value }) => {
                         try { Promise.resolve(options.writeCachedSnapshot?.(adapter, value, cacheMeta(adapter, ctx, after))).catch(() => {}); }
                         catch (error) { /* Cache persistence must not invalidate an authoritative commit. */ }
                     });
                 }
             }
-            if (!background) {
+            if (!background && !metadataReadOnly) {
                 revisionChurnCounts.delete(proofContextKey);
                 lastVerifiedAt = now();
                 verifiedAtByIdentity.set(proofContextKey, lastVerifiedAt);
@@ -704,7 +714,9 @@
             if (!background && sourceGate?.halfOpenInFlight && sourceGateMatches(ctx)) clearSourceGate();
             const publishedSources = keys.filter(key => publishedReadable(before.sources.get(key)));
             const readableStatus = canContinueRead(ctx) ? { dataReadable: true, readContextKey: readContextKey(ctx) } : {};
-            if (publishedSources.length) {
+            if (metadataReadOnly) {
+                emit('Available data', 'Showing authorized data while source metadata refreshes.', { ...readableStatus, readOnlySnapshot: true });
+            } else if (publishedSources.length) {
                 emit('Published data', 'Showing the last completed data. The latest import is recovering.', {
                     ...readableStatus, publishedSources, dataReadable: true, readOnlySnapshot: true,
                     publishedAt: publishedSources.map(key => before.sources.get(key).publishedAt).sort()[0]
@@ -834,7 +846,7 @@
             if (appliedEntry && appliedEntry.scope === String(ctx.scope)
                 && hasCurrentPermissionSnapshot && hasFreshPermissionSnapshot(ctx)
                 && String(ctx.dataPermissionVersion || '')
-                && !isTrustedApplied(appliedEntry, adapter, ctx)) {
+                && appliedEntry.permissionVersion !== String(ctx.dataPermissionVersion)) {
                 applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
                 try { Promise.resolve(options.onPermissionChange?.(String(ctx.dataPermissionVersion || ''), { reason: 'access-snapshot-changed' })).catch(() => {}); } catch (_) {}
             }
