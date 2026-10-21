@@ -6,7 +6,7 @@
     'use strict';
     const abortError = () => Object.assign(new Error('Report session changed.'), { name: 'AbortError' });
     function createController(options) {
-        let owner = '', permission = '', session = null, module = null, ready = null, generation = 0, mountGeneration = 0, inventoryGeneration = 0;
+        let owner = '', permission = '', session = null, module = null, ready = null, capabilityRefresh = null, capabilityAttempted = false, generation = 0, mountGeneration = 0, inventoryGeneration = 0;
         let capabilities = null;
         const states = new Map(), mounts = new Map(), mountConfigs = new Map(), controllers = new Set();
         function current() {
@@ -22,7 +22,7 @@
             mountGeneration += 1;
             controllers.forEach(controller => controller.abort()); controllers.clear();
             mounts.forEach(mount => mount.destroy()); mounts.clear(); mountConfigs.clear();
-            session?.clear(); session = null; states.clear(); capabilities = null; ready = null;
+            session?.clear(); session = null; states.clear(); capabilities = null; ready = null; capabilityRefresh = null; capabilityAttempted = false;
             if (owner) options.onClear?.();
         }
         function state(surface) {
@@ -30,11 +30,43 @@
             if (!states.has(surface)) states.set(surface, { rows: [], metadata: {}, page: null, loading: false, error: '', revision: '', queryKey: '', completeItems: new Map(), itemRows: new Map() });
             return states.get(surface);
         }
-        async function initialize() {
+        function refreshCapabilitiesInBackground(token, scope, version, retry = false) {
+            if (capabilityRefresh) return capabilityRefresh;
+            if (capabilityAttempted && !retry) return Promise.resolve();
+            capabilityAttempted = true;
+            const controller = new AbortController(); controllers.add(controller);
+            capabilities = { surfaces:[], capabilityUnavailable:true };
+            capabilityRefresh = Promise.resolve().then(() => options.transport(null, controller.signal)).then(reply => {
+                if (token !== generation || scope !== options.scope() || version !== options.permission()) return;
+                capabilities = reply;
+                options.onReady?.();
+            }).catch(() => {
+                if (token === generation && scope === options.scope() && version === options.permission()) {
+                    const changed = !capabilities?.capabilityUnavailable;
+                    capabilities = { surfaces:[], capabilityUnavailable:true };
+                    if (changed) options.onReady?.();
+                }
+            }).finally(() => {
+                controllers.delete(controller);
+                if (token === generation) capabilityRefresh = null;
+            });
+            return capabilityRefresh;
+        }
+        async function initialize(surface = '', retryCapabilities = false) {
             current();
-            if (session && capabilities) return session;
-            if (ready) return ready;
+            if (session && capabilities && !capabilities.capabilityUnavailable) return session;
             const token = generation, scope = owner, version = permission;
+            if (surface === 'eval2' && options.serverAuthorizedSurfaces?.includes('eval2')) {
+                if (!module) module = await options.loadModule();
+                if (token !== generation || scope !== options.scope() || version !== options.permission()) throw abortError();
+                const createdSession = !session;
+                session ||= module.createReportSession({ scopeKey:scope, permissionVersion:version,
+                    transport:(query, signal) => options.transport(query, signal) });
+                void refreshCapabilitiesInBackground(token, scope, version, retryCapabilities);
+                if (createdSession) options.onReady?.();
+                return session;
+            }
+            if (ready) return ready;
             ready = (async () => {
                 module = module || await options.loadModule();
                 const controller = new AbortController(); controllers.add(controller);
@@ -56,8 +88,9 @@
         }
         function enabled(surface) {
             if (!current() || !options.allowed(surface)) return false;
+            if (options.serverAuthorizedSurfaces?.includes(surface)) return true;
             if (surface === 'approval' && capabilities && !(capabilities.approvalTabs || []).includes(options.variant?.(surface))) return false;
-            return capabilities === null || (capabilities.surfaces || []).includes(surface);
+            return capabilities === null || (!capabilities.capabilityUnavailable && (capabilities.surfaces || []).includes(surface));
         }
         function apply(surface, query, result) {
             const target = state(surface), key = JSON.stringify(query);
@@ -96,7 +129,7 @@
                 target.queryKey = key; target.loading = true;
             }
             try {
-                await initialize();
+                await initialize(query.surface);
                 if (token !== generation || mountToken !== mountGeneration || scope !== options.scope() || !host.isConnected || !enabled(query.surface)) return null;
                 for (const [element, instance] of mounts) if (!element.isConnected) { instance.destroy(); mounts.delete(element); mountConfigs.delete(element); }
                 mountConfigs.set(host, { query, config });
@@ -121,7 +154,7 @@
             // keep accepting updates for its mounted query during that read.
             if (query.operation !== 'metadata') target.queryKey = key;
             options.onState?.(query.surface, target);
-            target.promise = initialize().then(() => {
+            target.promise = initialize(query.surface, fresh).then(() => {
                 if (token !== generation || inventoryToken !== inventoryGeneration || scope !== options.scope()) throw abortError();
                 if (!enabled(query.surface) || !session) throw new Error('Paged reports are unavailable.');
                 return fresh ? session.refresh(query) : session.read(query);
@@ -145,7 +178,7 @@
         }
         async function readComplete(query, fresh = true) {
             const scope = current(), token = generation, inventoryToken = inventoryGeneration;
-            await initialize();
+            await initialize(query.surface);
             if (token !== generation || inventoryToken !== inventoryGeneration || scope !== options.scope()) throw abortError();
             if (!enabled(query.surface)) throw new Error('Paged reports are unavailable.');
             const controller = new AbortController(); controllers.add(controller);
@@ -203,7 +236,7 @@
         }
         async function readPage(query, signal) {
             const scope = current(), token = generation, inventoryToken = inventoryGeneration;
-            await initialize();
+            await initialize(query.surface);
             if (token !== generation || inventoryToken !== inventoryGeneration || scope !== options.scope()) throw abortError();
             if (!enabled(query.surface) || !session) throw new Error('Paged reports are unavailable.');
             const page = await session.refresh(query, signal);
