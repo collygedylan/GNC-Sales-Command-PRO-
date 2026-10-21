@@ -216,9 +216,6 @@
             : requestPending ? data(['requests'])
             : requestSuspendTag ? data([])
             : viewId === 'detail' && context.driveDetail ? data(['master'], ['settings']) : view];
-        if ((viewId === 'drive' || viewId === 'detail' && context.driveDetail) && context.driveAssignmentsRequired) {
-            entries.push(data(['warehouseAssignedItems']));
-        }
         if (viewId === 'tasks') {
             const task = String(context.taskView || '').toLowerCase();
             const filter = String(context.taskFilter || '').toLowerCase();

@@ -17,6 +17,52 @@ const source = `const DEPLOYED_COMMIT = '${APPS_SCRIPT_DEPLOYMENT_COMMIT_PLACEHO
 
 const appHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const appsScriptSource = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+
+test('Home imported filenames are expanded and available to authorized sales reps', () => {
+  assert.match(appHtml, /<details id="dashboard-sync-accordion"[^>]*\bopen\b/);
+  const context = vm.createContext({ currentUser: 'brian_hatfield',
+    canAccessView: view => view === 'drive', getProtectedUserTokens: () => new Set(),
+    hasPrivilegedManagerAccess: () => false });
+  vm.runInContext(sourceFunction(appHtml, 'canViewDashboardSyncStatus', '        '), context);
+  assert.equal(context.canViewDashboardSyncStatus(), true);
+});
+
+test('Home first render exposes all four exact filenames with their import timestamps', () => {
+  const importedAt = '2026-10-20T18:12:53.303Z';
+  const files = ['DriveAroundMC-10-12333420261020123334.xlsx', 'SOC-10 Open Orders-12251620261020122516.xlsx',
+    'SOC-10 Reserves-12370820261020123708.xlsx', 'Dylan Wide Open 2026-10-19.xlsx'];
+  const elements = Object.fromEntries(['accordion', 'stamp', 'summary', 'files'].map(key =>
+    [`dashboard-sync-${key}`, { classList: { toggle() {} }, innerHTML: '', innerText: '' }]));
+  const context = vm.createContext({ document: { getElementById: id => elements[id] },
+    canViewDashboardSyncStatus: () => true, getSupabaseReadIdentityScope: () => 'brian',
+    dashboardSyncMetadataOwner: 'brian', dashboardSyncMetadataFetchedAt: Date.now(),
+    dashboardSyncMetadataInFlight: null, dashboardSyncMetadataRequestOwner: '', DASHBOARD_SYNC_METADATA_TTL_MS: 60000,
+    dashboardSyncMetadataSummaries: files.map((file, index) => ({ label: ['Drive', 'SOC', 'Reserves', 'CAV'][index],
+      files: [file], iso: importedAt, ms: Date.parse(importedAt), authoritative: true })),
+    fullInventory: [], socInventory: [], reservesInventory: [], cavInventory: [],
+    collectDashboardSyncSource: () => ({ iso: '', files: [] }), mergeDashboardSyncSummaries: rows => rows,
+    formatDashboardSyncDateTime: iso => iso, escapeDashboardSyncText: text => text });
+  vm.runInContext(sourceFunction(appHtml, 'updateDashboardSyncSummary', '        '), context);
+  context.updateDashboardSyncSummary();
+  for (const file of files) assert.ok(elements['dashboard-sync-files'].innerHTML.includes(file));
+  assert.equal(elements['dashboard-sync-stamp'].innerText, importedAt);
+  assert.equal((elements['dashboard-sync-files'].innerHTML.match(/2026-10-20T18:12:53.303Z/g) || []).length, 4);
+});
+
+test('empty drop folders never open Processed folders, import fences or publication RPCs', () => {
+  for (const name of ['processFolderLocked_', 'processLatestFileOnlyFolderLocked_',
+    'processSiteSplitMasterSnapshotBatchFolderLocked_', 'processSnapshotBatchFolderLocked_']) {
+    const calls = [];
+    const context = vm.createContext({ console: { log() {} },
+      getDriveFolderByIdWithRetry_: id => { calls.push(id); assert.equal(id, 'drop'); return {}; },
+      listDriveFilesWithRetry_: () => ({ hasNext: () => false }),
+      pruneImportSourceRejectionMarkers_: () => ({}), createDeltaSyncStats_: () => ({}) });
+    vm.runInContext(sourceFunction(appsScriptSource, name), context);
+    const result = context[name]('drop', 'processed', 'ph_soc_master', () => assert.fail('no parse'));
+    assert.equal(result.filesProcessed, 0);
+    assert.deepEqual(calls, ['drop']);
+  }
+});
 function sourceFunction(text, name, indent = '') {
   const found = text.match(new RegExp(`^${indent}(?:async )?function ${name}\\([^]*?^${indent}\\}`, 'm'));
   assert.ok(found, `function ${name} exists`);

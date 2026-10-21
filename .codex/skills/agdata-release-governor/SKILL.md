@@ -5,6 +5,8 @@ description: Deliver scoped AgData releases through fast daytime checks and orde
 
 # Release governor
 
+Edge type checks resolve pinned npm imports through Deno's global cache (`--node-modules-dir=none --frozen`). The frontend npm installation may omit exact Edge-only versions; do not loosen the lockfile or skip an affected function to mask that mismatch.
+
 ## Owned files and core functions
 
 - `scripts/release-scope.mjs`: `classifyReleasePaths`, `changedReleasePaths`, `selectReleaseRecoveryBase`; `scripts/release-baseline.mjs`: `findLastSuccessfulDeploymentBaseline`; `scripts/run-tooling-release-checks.mjs`: `runToolingReleaseChecks`.

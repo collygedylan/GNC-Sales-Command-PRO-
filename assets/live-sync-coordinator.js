@@ -122,7 +122,7 @@
             unsubscribe = null; subscribedScope = '';
         }
         function reset() {
-            epoch++; clearTimers(); sourceGate = null; revisionChurnCounts.clear(); closeSubscription(); applied.clear(); requested.clear(); forcedReloads.clear(); verifiedAtByIdentity.clear();
+            epoch++; clearTimers(); running = null; activeRun = null; backgroundRunning = null; sourceGate = null; revisionChurnCounts.clear(); closeSubscription(); applied.clear(); requested.clear(); forcedReloads.clear(); verifiedAtByIdentity.clear();
             permission = ''; scope = ''; readOwner = ''; lastVerifiedAt = null; queued = false;
             backgroundStatus = { state: 'Waiting', lastVerifiedAt: null };
             publish('Syncing', 'Waiting to verify current data.');
@@ -787,6 +787,7 @@
             const task = (async () => {
                 let result = false, passes = 0;
                 while (queued && passes++ < 3) {
+                    if (passes > 1 && running !== task) break;
                     queued = false;
                     const run = { epoch };
                     activeRun = run;
@@ -808,7 +809,8 @@
             })();
             running = task;
             task.finally(() => {
-                if (running === task) running = null;
+                if (running !== task) return;
+                running = null;
                 activeRun = null;
                 if (sourceGate?.halfOpenInFlight) {
                     sourceGate.halfOpenInFlight = false;
@@ -876,7 +878,7 @@
             }
             return result;
         }
-        function suspend() { epoch++; clearTimers(); closeSubscription(); queued = false; }
+        function suspend() { epoch++; clearTimers(); running = null; activeRun = null; backgroundRunning = null; closeSubscription(); queued = false; }
         return Object.freeze({ check, signal, ensure, reset, suspend, retainDisplay,
             isSourceReadSuspended: () => {
                 const ctx = options.getContext();

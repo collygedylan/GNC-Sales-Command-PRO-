@@ -147,7 +147,7 @@ jobs:
           import { spawnSync } from 'node:child_process';
           for (const name of JSON.parse(process.env.RELEASE_EDGE_FUNCTIONS)) {
             if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error('RELEASE_EDGE_NAME_INVALID');
-            const result = spawnSync('./node_modules/.bin/deno', ['check',
+            const result = spawnSync('./node_modules/.bin/deno', ['check', '--node-modules-dir=none', '--frozen',
               `supabase/functions/${name}/index.ts`], { stdio: 'inherit' });
             if (result.error || result.status !== 0) throw new Error(`RELEASE_DENO_CHECK_FAILED_${name}`);
           }
