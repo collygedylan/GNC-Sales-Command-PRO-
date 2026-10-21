@@ -2148,7 +2148,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.3.23';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.24';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -12366,6 +12366,13 @@ function fetchHlTagsJson_(url, headers, authRequest) {
 }
 
 function verifyHlTagsSender_(payload) {
+  if (payload && payload.__verifiedAppActor) {
+    const verified = verifyAppsScriptActionActor_(payload.__verifiedAppActor);
+    if (verified.username !== 'dylan_collyge') {
+      throw hlTagsError_(403, 'hl_tags_forbidden', 'HL TAGS is available only to the active dylan_collyge account.');
+    }
+    return verified;
+  }
   const token = String(payload && payload.accessToken || '').trim();
   if (!token || token.length > 8192 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
     throw hlTagsError_(401, 'hl_tags_auth_required', 'Sign in again before sending HL TAGS.');
@@ -14741,6 +14748,7 @@ function inventoryWorkflowRpc_(name, payload) {
 }
 
 function verifyInventoryWorkflowActor_(payload) {
+  if (payload && payload.__verifiedAppActor) return verifyAppsScriptActionActor_(payload.__verifiedAppActor);
   const token = String(payload && (payload.nativeAuthAccessToken || payload.accessToken) || '').trim();
   if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token) || token.length > 8192) {
     throw new Error('Sign in again and update the app before using inventory history or transactions.');
@@ -22454,9 +22462,11 @@ function handlePhotoArchiveRequest_(payload) {
 
 function verifyManualInventoryImportActor_(payload) {
   try {
-    const actor = verifyInventoryWorkflowActor_(payload);
+    const actor = payload && payload.__verifiedAppActor
+      ? verifyAppsScriptActionActor_(payload.__verifiedAppActor)
+      : verifyInventoryWorkflowActor_(payload);
     const username = String(actor && actor.username || '').trim().toLowerCase();
-    if (!actor || !actor.id || ['dylan_collyge', 'jd_jones'].indexOf(username) < 0) throw new Error('forbidden');
+    if (!actor || !actor.id || ['dylan_collyge', 'megan_kelly', 'jd_jones'].indexOf(username) < 0) throw new Error('forbidden');
     return { id: actor.id, username: username };
   } catch (_) {
     const error = new Error('Permission Denied');
@@ -22467,7 +22477,7 @@ function verifyManualInventoryImportActor_(payload) {
 
 function doPost(e) {
   try {
-    const payload = JSON.parse(e.postData.contents);
+    const payload = authorizeAppsScriptPost_(JSON.parse(e.postData.contents));
     if (['manual_run', 'manual_continue', 'manual_clear_status', 'manual_clear_stale_status'].indexOf(payload.type) >= 0) {
       const importActor = verifyManualInventoryImportActor_(payload);
       payload.requested_by = importActor.username;
@@ -22769,4 +22779,150 @@ function doPost(e) {
       message: err && err.message ? err.message : String(err)
     })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function appsScriptActionConstantTimeEqual_(left, right) {
+  const a = String(left || '');
+  const b = String(right || '');
+  if (!a.length || a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < a.length; index += 1) mismatch |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  return mismatch === 0;
+}
+
+function verifyAppsScriptActionActor_(actor) {
+  const id = String(actor && actor.id || '').trim();
+  const username = String(actor && actor.username || '').trim().toLowerCase();
+  const role = String(actor && actor.role || '').trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+      || !/^[a-z0-9_.@-]{1,120}$/.test(username) || !role || role.length > 80) {
+    throw new Error('APPS_SCRIPT_ACTOR_INVALID');
+  }
+  const rows = requestDeliveryRest_('profiles', 'GET', 'select=id,username,disabled_at,locked_until,must_change_password&id=eq.' + encodeURIComponent(id) + '&limit=2', null);
+  const profile = Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
+  const lockedUntil = profile && profile.locked_until;
+  if (!profile || String(profile.id || '') !== id || String(profile.username || '').trim().toLowerCase() !== username
+      || profile.disabled_at || profile.must_change_password !== false
+      || (lockedUntil && (!Number.isFinite(Date.parse(lockedUntil)) || Date.parse(lockedUntil) > Date.now()))) {
+    throw new Error('APPS_SCRIPT_ACTOR_INACTIVE');
+  }
+  const access = callSupabaseRpc_('user_access_command_v1', {
+    p_actor_profile_id: id, p_operation: 'resolve', p_payload: {}
+  });
+  const resolved = access && access.data ? access.data : access;
+  const resolvedProfile = resolved && resolved.profile;
+  const canonicalRole = String(resolved && resolved.baseline && resolved.baseline.role || '').trim().toLowerCase();
+  if (!resolvedProfile || String(resolvedProfile.id || '') !== id
+      || String(resolvedProfile.username || '').trim().toLowerCase() !== username
+      || !canonicalRole || canonicalRole !== role.toLowerCase()) throw new Error('APPS_SCRIPT_ACTOR_ACCESS_MISMATCH');
+  return { id: id, username: username, role: canonicalRole };
+}
+
+function verifyAppsScriptActionEnvelope_(envelope) {
+  const timestamp = String(envelope && envelope.timestamp || '').trim();
+  const signature = String(envelope && envelope.signature || '').trim();
+  const deliveryJson = String(envelope && envelope.deliveryJson || '');
+  const timestampMs = Date.parse(timestamp);
+  if (!timestamp || !signature || !deliveryJson || deliveryJson.length > 24000000 || !Number.isFinite(timestampMs)) {
+    throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_REQUIRED');
+  }
+  if (Math.abs(Date.now() - timestampMs) > 300000) throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_EXPIRED');
+  const key = String(SUPABASE_KEY || '').trim();
+  if (!key) throw new Error('APPS_SCRIPT_ACTION_SIGNING_KEY_MISSING');
+  const expected = requestDeliveryBase64Url_(Utilities.computeHmacSha256Signature(
+    timestamp + '.' + deliveryJson, key, Utilities.Charset.UTF_8
+  ));
+  if (!appsScriptActionConstantTimeEqual_(expected, signature)) throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_INVALID');
+  let command;
+  try { command = JSON.parse(deliveryJson); } catch (_) { throw new Error('APPS_SCRIPT_ACTION_PAYLOAD_INVALID'); }
+  if (!command || command.contractVersion !== 'apps-script-action-v1' || typeof command.action !== 'string'
+      || !command.payload || typeof command.payload !== 'object' || Array.isArray(command.payload)) {
+    throw new Error('APPS_SCRIPT_ACTION_PAYLOAD_INVALID');
+  }
+  const action = String(command.action || '').trim();
+  const allowed = [
+    'deployment_health', 'block_clearing_pdf', 'bunch_note_preview', 'hl_order_preview',
+    'reclass_inquiry_status', 'reclass_inquiry_retry', 'clear_request_gallery_cache',
+    'drivearound_name_preview', 'drivearound_name_cleanup', 'manual_continue', 'manual_run', 'manual_clear_status',
+    'manual_clear_stale_status', 'manual_status', 'inventory_transaction_history',
+    'reclass_inquiry_email', 'inventory_transaction', 'email', 'image'
+  ];
+  if (allowed.indexOf(action) < 0 || action === 'drivearound_history_backfill') {
+    throw new Error('APPS_SCRIPT_ACTION_FORBIDDEN');
+  }
+  let actor = null;
+  if (action === 'deployment_health') {
+    if (!command.actor || command.actor.system !== 'apps-script-deployment-health'
+        || Object.keys(command.actor).length !== 1) throw new Error('APPS_SCRIPT_HEALTH_ACTOR_INVALID');
+  } else if (command.actor && command.actor.system === 'apps-script-lifecycle-canary') {
+    verifyAppsScriptLifecycleCanary_(action, command.payload);
+  } else {
+    actor = verifyAppsScriptActionActor_(command.actor);
+  }
+  const payload = Object.assign({}, command.payload);
+  if (payload.type && String(payload.type) !== action) throw new Error('APPS_SCRIPT_ACTION_MISMATCH');
+  payload.type = action;
+  if (action === 'drivearound_name_preview' || action === 'drivearound_name_cleanup') {
+    if (!actor || actor.username !== 'dylan_collyge') throw new Error('APPS_SCRIPT_ACTION_FORBIDDEN');
+    payload.requested_by = actor.username;
+  }
+  if (['manual_run', 'manual_continue', 'manual_clear_status', 'manual_clear_stale_status'].indexOf(action) >= 0) {
+    if (!actor) throw new Error('APPS_SCRIPT_ACTION_FORBIDDEN');
+    payload.requested_by = actor.username;
+  }
+  if (actor) {
+    ['requestedBy', 'requestedByUsername', 'requested_by', 'requested_by_username',
+      'submittedByUsername', 'submitted_by_username', 'requestCreatedByUsername', 'request_created_by_username']
+      .forEach(function(key) { if (Object.prototype.hasOwnProperty.call(payload, key)) payload[key] = actor.username; });
+    if (Array.isArray(payload.requestItems)) payload.requestItems.forEach(function(item) {
+      if (item && typeof item === 'object' && Object.prototype.hasOwnProperty.call(item, 'request_created_by_username')) {
+        item.request_created_by_username = actor.username;
+      }
+    });
+  }
+  delete payload.__verifiedAppActor;
+  if (actor) Object.defineProperty(payload, '__verifiedAppActor', { value: actor, enumerable: false });
+  return payload;
+}
+
+function verifyAppsScriptLifecycleCanary_(action, payload) {
+  const allowedKeys = ['type', 'emailType', 'folderId', 'requestFolder', 'customer', 'requestedBy', 'repName',
+    'requestCreatedByUsername', 'submittedByUsername', 'internalRecipients', 'itemsCount', 'requestItems', 'threadId', 'messageId'];
+  const folder = String(payload && payload.folderId || '');
+  const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
+  const recipients = Array.isArray(payload && payload.internalRecipients)
+    ? payload.internalRecipients.map(value => String(value || '').trim().toLowerCase()).sort() : [];
+  const required = ['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com', 'kayla_knepp@greenleafnursery.com'].sort();
+  const items = Array.isArray(payload && payload.requestItems) ? payload.requestItems : [];
+  if (action !== 'email' || !payload || Object.keys(payload).some(key => allowedKeys.indexOf(key) < 0)
+      || payload.type !== 'email' || !['new_request', 'request_complete'].includes(emailType)
+      || !/^INTERNAL-LIFECYCLE-CANARY-[0-9]{10,}$/.test(folder)
+      || String(payload.requestFolder || '') !== folder
+      || String(payload.customer || '') !== 'INTERNAL TEST - NO CUSTOMER DATA'
+      || String(payload.requestedBy || '') !== 'dylan_collyge' || String(payload.repName || '') !== 'dylan_collyge'
+      || String(payload.requestCreatedByUsername || '') !== 'dylan_collyge'
+      || String(payload.submittedByUsername || '') !== 'dylan_collyge'
+      || Number(payload.itemsCount) !== 1 || recipients.join('|') !== required.join('|')
+      || items.length !== 1 || String(items[0] && items[0].unique_id || '') !== folder + '-ITEM'
+      || String(items[0] && items[0].commonname || '') !== 'INTERNAL TEST ITEM'
+      || String(items[0] && items[0].request_created_by_username || '') !== 'dylan_collyge'
+      || (emailType === 'new_request' && (payload.threadId || payload.messageId))
+      || (emailType === 'request_complete' && (!String(payload.threadId || '').trim() || !String(payload.messageId || '').trim()))) {
+    throw new Error('APPS_SCRIPT_LIFECYCLE_CANARY_INVALID');
+  }
+}
+
+function authorizeAppsScriptPost_(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('APPS_SCRIPT_POST_INVALID');
+  if (payload.type === 'apps_script_action_v1') return verifyAppsScriptActionEnvelope_(payload);
+  const signedDirectActions = [
+    'production_schedule_import_v1', 'runtime_watchdog_alert_v1', 'request_delivery_event',
+    'photo_history_thumbnail', 'photo_archive'
+  ];
+  if (signedDirectActions.indexOf(String(payload.type || '')) < 0) throw new Error('APPS_SCRIPT_POST_SIGNATURE_REQUIRED');
+  if (payload.type === 'production_schedule_import_v1') verifyProductionScheduleImportCommand_(payload);
+  else if (payload.type === 'runtime_watchdog_alert_v1') verifyRuntimeWatchdogAlert_(payload);
+  else if (payload.type === 'request_delivery_event' || payload.type === 'photo_history_thumbnail') verifySignedRequestDelivery_(payload);
+  else verifyPhotoArchiveRequest_(payload);
+  return payload;
 }

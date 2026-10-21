@@ -133,6 +133,7 @@ async function main() {
     deploymentId,
     source,
     githubSha,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     beforeMutation: patchEvidence ? createAppsScriptSourceGuard({ script, scriptId,
       beforeDigest: expectedRemoteDigest, afterDigest: publishedDigest,
       authorize: authorizeProductionAppsScriptDeploymentFromEnvironment,

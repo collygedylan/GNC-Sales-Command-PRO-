@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { verifyPoManagementHealth } from './po-management-health.mjs';
+import { createSignedDeploymentHealthEnvelope, isSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
 
 const source = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const supabaseUrl = process.env.PRODUCTION_SUPABASE_URL
@@ -53,7 +54,7 @@ function assertReadOnlyProbeRequest(url, options = {}) {
       && body?.password === 'invalid-health-probe' && Object.keys(body).length === 3) return;
   if (method === 'POST' && target.origin === 'https://script.google.com'
       && target.pathname === `/macros/s/${encodeURIComponent(appsScriptDeploymentId)}/exec`
-      && body?.type === 'deployment_health' && Object.keys(body).length === 1) return;
+      && isSignedDeploymentHealthEnvelope(body, serviceRoleKey)) return;
   const allowedSnapshots = new Set([
     'get_hosted_health_snapshot', 'get_pikes_order_assignment_health_v1',
     'get_po_management_health_snapshot', 'get_access_control_health_snapshot_v1',
@@ -84,7 +85,7 @@ async function probeAppsScriptDeploymentHealth() {
         method: 'POST',
         redirect: 'follow',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'deployment_health' })
+        body: JSON.stringify(createSignedDeploymentHealthEnvelope(serviceRoleKey))
       }, 20000);
       const text = await response.text();
       let payload = null;

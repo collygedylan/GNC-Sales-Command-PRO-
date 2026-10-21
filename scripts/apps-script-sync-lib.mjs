@@ -1,4 +1,5 @@
 import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
+import { createSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
 
 export const APPS_SCRIPT_VERSION_LIMIT = 200;
 export const APPS_SCRIPT_VERSION_WARNING_THRESHOLD = 180;
@@ -103,6 +104,7 @@ export async function verifyDeploymentVersion({
 export async function verifyDeploymentHealth({
   deploymentId,
   githubSha,
+  serviceRoleKey,
   fetchImpl = globalThis.fetch,
   sleep = delay,
   attempts = 12,
@@ -118,7 +120,7 @@ export async function verifyDeploymentHealth({
         method: 'POST',
         redirect: 'follow',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'deployment_health' })
+        body: JSON.stringify(createSignedDeploymentHealthEnvelope(serviceRoleKey))
       });
       const text = await response.text();
       let payload = null;
@@ -155,6 +157,7 @@ export async function syncAppsScriptProject({
   deploymentId = '',
   source,
   githubSha = '',
+  serviceRoleKey = '',
   logger = console,
   fetchImpl = globalThis.fetch,
   sleep = delay,
@@ -230,6 +233,7 @@ export async function syncAppsScriptProject({
   const health = await verifyDeploymentHealth({
     deploymentId,
     githubSha,
+    serviceRoleKey,
     fetchImpl,
     sleep,
     attempts: healthAttempts,

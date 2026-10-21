@@ -27,7 +27,7 @@ import { createDatabaseRestBridge, legacyDatabaseTableAliases } from "../../../s
 import { jsonObject, jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
 import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs";
 import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
-import { createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
+import { createAppRateLimitDigest, createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
 import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
 import { auraInventoryV2Rpc } from "../_shared/aura-inventory.ts";
@@ -84,6 +84,17 @@ const LEGACY_TABLE_ALIASES: Record<string, string> = {
 const AV_OPTION_EVAL_REQUESTS_TABLE = "ph_av_option_eval_requests";
 const AV_OPTION_EVAL_MANAGER_USERS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
 const FULL_ACCESS_USER_KEYS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
+const APPS_SCRIPT_PROXY_ACTIONS = new Set([
+  "email", "image", "block_clearing_pdf", "bunch_note_preview", "hl_order_preview", "inventory_transaction", "inventory_transaction_history",
+  "reclass_inquiry_status", "reclass_inquiry_retry", "reclass_inquiry_email",
+  "clear_request_gallery_cache", "drivearound_name_preview", "drivearound_name_cleanup",
+  "manual_continue", "manual_run", "manual_clear_status", "manual_clear_stale_status", "manual_status",
+]);
+const APPS_SCRIPT_EMAIL_TYPES = new Set([
+  "new_request", "request_complete", "ncr_complete", "ncr_approval", "hold_release_request",
+  "drive_customer_outreach", "bloom_crop_update", "bloom_purpose_report", "drive_shift_report",
+  "block_clearing_email", "flyer_created", "request_rep_reviewed",
+]);
 const AV_OPTION_EVAL_STATUS_VALUES = new Set(["open", "in_progress", "complete", "cancelled"]);
 const AV_OPTION_EVAL_INSERT_FIELDS = new Set([
   "status",
@@ -538,7 +549,7 @@ async function authorizeInternalCustomerRequestInsert(
   try { actor = await resolveActiveSessionProfile(session); }
   catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
   const username = normalizeUsername(String(actor.username || ""));
-  const access = getRoleAccessState(String(actor.role || ""));
+  const access = getRoleAccessState(String(session?.role || ""));
   if (!username || (!access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username))) {
     return errorResponse("This request workflow is not available to this account.", 403, { code: "INTERNAL_REQUEST_FORBIDDEN" });
   }
@@ -875,7 +886,7 @@ async function handleDatasetRead(
   try { actor = await resolveActiveSessionProfile(session); }
   catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
   const username = normalizeUsername(String(actor.username || ""));
-  const role = String(actor.role || "");
+  const role = String(session.role || "");
   const dataset = String(payload.dataset || "").trim().toLowerCase();
   const source = DATASET_READ_SOURCES[dataset];
   if (!source) return errorResponse("Unsupported dataset.", 400, { code: "DATASET_READ_INVALID" });
@@ -1298,7 +1309,7 @@ async function handleAppendProductivityHistory(
   try { actor = await resolveActiveSessionProfile(session); }
   catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
   const username = normalizeUsername(String(actor.username || ""));
-  const role = String(actor.role || "");
+  const role = String(session.role || "");
   if (!hasTableWriteAccess(role, "ph_productivity_history", "POST", payload.entries, username)) return errorResponse("You do not have access to productivity history.", 403, { code: "PRODUCTIVITY_HISTORY_FORBIDDEN" });
   if (Object.keys(payload).some((key) => !["action", "entries"].includes(key)) || !Array.isArray(payload.entries) || payload.entries.length < 1 || payload.entries.length > 500) {
     return errorResponse("Productivity history entries are invalid.", 400, { code: "PRODUCTIVITY_HISTORY_PAYLOAD_INVALID" });
@@ -1428,6 +1439,33 @@ async function resolveActiveSessionProfile(
   return profile as Record<string, unknown>;
 }
 
+async function resolveZeroTrustRequestContext(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+) {
+  if (!session) throw Object.assign(new Error("AUTH_REQUIRED"), { status: 401 });
+  if (session.mustChangePassword) throw Object.assign(new Error("PASSWORD_CHANGE_REQUIRED"), { status: 403 });
+  const actor = await resolveActiveSessionProfile(session);
+  const access = await resolveCanonicalUserAccess(supabase, String(actor.id || ""));
+  const profileUsername = normalizeUsername(String(actor.username || ""));
+  const sessionUsername = normalizeUsername(String(session.username || ""));
+  if (!profileUsername || profileUsername !== sessionUsername || profileUsername !== access.username) {
+    throw Object.assign(new Error("AUTH_IDENTITY_MISMATCH"), { status: 401 });
+  }
+  return {
+    actor,
+    access,
+    session: {
+      ...session,
+      authUserId: String(actor.id),
+      username: profileUsername,
+      displayName: String(actor.display_name || profileUsername),
+      role: access.canonicalRole,
+      displayRole: String(actor.role || "User"),
+      canonicalRole: access.canonicalRole,
+    },
+  };
+}
+
 export async function handleFieldCountAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -1448,8 +1486,8 @@ export async function handleFieldCountAction(
     const input = jsonObject(payload.payload);
     if (input.countType !== "bunch" && input.countType !== "spread") return errorResponse("FIELD_COUNT_TYPE_INVALID", 400);
     const table = input.countType === "bunch" ? "ph_bunch_counts" : "ph_spread_counts";
-    if (!hasTableReadAccess(String(actor.role), table, String(actor.username))
-      || !hasTableWriteAccess(String(actor.role), table, "POST", null, String(actor.username))) {
+    if (!hasTableReadAccess(String(session.role), table, String(actor.username))
+      || !hasTableWriteAccess(String(session.role), table, "POST", null, String(actor.username))) {
       return errorResponse("FIELD_COUNT_FORBIDDEN", 403, { code: "FIELD_COUNT_FORBIDDEN" });
     }
     const { data, error } = await supabase.rpc("field_count_command_v1", {
@@ -1553,10 +1591,10 @@ async function handleCustomerRepMappingAction(
     const code = String(error instanceof Error ? error.message : "CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
     return errorResponse("The customer mapping request is invalid.", 400, { code });
   }
-  if (request.operation === "options" && !hasTableReadAccess(String(actor.role || ""), "ph_customer_consignee_sales_reps", String(actor.username || ""))) {
+  if (request.operation === "options" && !hasTableReadAccess(String(session.role || ""), "ph_customer_consignee_sales_reps", String(actor.username || ""))) {
     return errorResponse("Forbidden", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
   }
-  if (request.operation !== "options" && !isCustomerRepMappingEditorRole(actor.role)) {
+  if (request.operation !== "options" && !isCustomerRepMappingEditorRole(session.role)) {
     return errorResponse("Customer mapping management is available only to active Administrators and Managers.", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
   }
   try {
@@ -2399,7 +2437,7 @@ async function handleDockTripStatusAction(
   if (!session) return errorResponse("Authentication required.", 401);
   try {
     const actorProfile = await resolveActiveSessionProfile(session);
-    const role = String(actorProfile.role || session.role || "").trim();
+    const role = String(session.role || "").trim();
     const actor = normalizeUsername(actorProfile.username || session.username || session.displayName || "");
     const normalizedRole = String(role || "").toUpperCase().replace(/\s+/g, "");
     const canView = FULL_ACCESS_USER_KEYS.has(actor)
@@ -3029,9 +3067,9 @@ export async function handleManagerReportReadAction(
   const operation = String(query?.operation || payload.operation || "").trim().toLowerCase();
   if (operation === "capabilities") {
     const canViewEval1 = FULL_ACCESS_USER_KEYS.has(actor);
-    const canViewInventoryManager = hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor);
+    const canViewInventoryManager = hasTableReadAccess(String(session.role || ""), "ph_master_inventory", actor);
     const canViewApproval = INVENTORY_NCR_FIRST_STAGE_USERS.has(actor) || INVENTORY_NCR_JD_STAGE_USERS.has(actor);
-    const roleCanReadInventory = hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor);
+    const roleCanReadInventory = hasTableReadAccess(String(session.role || ""), "ph_master_inventory", actor);
     try {
       const access = canonicalAccess || await resolveCanonicalUserAccess(supabase, String(profile.id || ""));
       const canViewEval2 = access.permissions.can_access_eval_reports_2 === true;
@@ -3065,7 +3103,7 @@ export async function handleManagerReportReadAction(
   }
   const surface = String(query.surface || "").trim().toLowerCase();
   if (surface === "assigned-items" || surface === "season-priority") {
-    if (!hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor)) {
+    if (!hasTableReadAccess(String(session.role || ""), "ph_master_inventory", actor)) {
       return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
     }
     const allowed = new Set(["surface", "operation", "filters", "offset", "limit", "sourceRevision"]);
@@ -3096,7 +3134,7 @@ export async function handleManagerReportReadAction(
   }
   if (surface === "approval") {
     if ((!INVENTORY_NCR_FIRST_STAGE_USERS.has(actor) && !INVENTORY_NCR_JD_STAGE_USERS.has(actor))
-      || !hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor)) {
+      || !hasTableReadAccess(String(session.role || ""), "ph_master_inventory", actor)) {
       return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
     }
     const allowed = new Set(["surface", "operation", "filters", "offset", "limit", "sourceRevision"]);
@@ -3190,7 +3228,7 @@ export async function handleManagerReportReadAction(
   if (!["eval1", "eval2", "ncr"].includes(surface)) {
     return errorResponse("This report surface is not available through the bounded report API.", 501, { code: "MANAGER_REPORT_SURFACE_UNAVAILABLE" });
   }
-  if (surface === "ncr" && !hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor)) return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
+  if (surface === "ncr" && !hasTableReadAccess(String(session.role || ""), "ph_master_inventory", actor)) return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
   if ((surface === "eval1" && !FULL_ACCESS_USER_KEYS.has(actor))
     || (surface === "eval2" && (canonicalAccess || await resolveCanonicalUserAccess(supabase, String(profile.id || ""))).permissions.can_access_eval_reports_2 !== true)) {
     return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
@@ -3539,13 +3577,166 @@ function prepareAvOptionEvalDbRequest(
   return { query, body };
 }
 
-async function handleLogin(payload: Record<string, unknown>) {
+function getLoginClientAddress(req: Request) {
+  const forwarded = String(req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || "").trim();
+  if (forwarded) return forwarded.slice(0, 128);
+  // X-Forwarded-For is client-controlled unless the entire proxy chain is
+  // configured to overwrite it. The username digest still limits attempts if
+  // this edge does not provide a trusted address header.
+  return "unknown";
+}
+
+async function updateLoginRateLimit(operation: "check" | "failure" | "success", username: string, req: Request) {
+  const [usernameDigest, ipDigest] = await Promise.all([
+    createAppRateLimitDigest("username", normalizeUsername(username)),
+    createAppRateLimitDigest("ip", getLoginClientAddress(req)),
+  ]);
+  const rateLimitRpc = supabase.rpc.bind(supabase) as unknown as (
+    name: "app_login_rate_limit_v1",
+    args: { p_operation: "check" | "failure" | "success"; p_username_digest: string; p_ip_digest: string },
+  ) => Promise<{ data: unknown; error: unknown }>;
+  const { data, error } = await rateLimitRpc("app_login_rate_limit_v1", {
+    p_operation: operation,
+    p_username_digest: usernameDigest,
+    p_ip_digest: ipDigest,
+  });
+  if (error) throw error;
+  return data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+}
+
+function authorizeAppsScriptProxyAction(action: string, payload: Record<string, unknown>, actor: Record<string, unknown>, access: CanonicalUserAccess) {
+  const username = normalizeUsername(String(actor.username || ""));
+  const requireAny = (flags: readonly CanonicalUserAccessFlag[]) => {
+    if (!hasAnyCanonicalUserAccessFlag(access, flags)) throw Object.assign(new Error("APPS_SCRIPT_ACTION_FORBIDDEN"), { status: 403 });
+  };
+  if (!APPS_SCRIPT_PROXY_ACTIONS.has(action) || action === "drivearound_history_backfill" || action === "deployment_health") {
+    throw Object.assign(new Error("APPS_SCRIPT_ACTION_FORBIDDEN"), { status: 403 });
+  }
+  if (["manual_run", "manual_continue", "manual_clear_status", "manual_clear_stale_status", "clear_request_gallery_cache", "drivearound_name_cleanup"].includes(action)) {
+    if (!FULL_ACCESS_USER_KEYS.has(username)) throw Object.assign(new Error("APPS_SCRIPT_ACTION_FORBIDDEN"), { status: 403 });
+    return;
+  }
+  // Home status is an existing read for every active authenticated nursery role.
+  if (action === "manual_status") return;
+  if (action === "drivearound_name_preview") return requireAny(["can_access_drive_mode"]);
+  if (action === "inventory_transaction" || action === "inventory_transaction_history") return requireAny(["can_access_drive_mode"]);
+  if (action === "block_clearing_pdf") return requireAny(["can_access_manager_tab", "can_access_drive_mode"]);
+  if (action === "bunch_note_preview" || action === "hl_order_preview") return requireAny(["can_access_que", "can_access_manager_tab"]);
+  if (action.startsWith("reclass_inquiry_")) return requireAny(["can_submit_reclass", "can_access_manager_tab"]);
+  if (action === "image") return requireAny(["can_access_drive_mode", "can_access_av", "can_access_que"]);
+  if (action === "email") {
+    const emailType = String(payload.emailType || "").trim().toLowerCase();
+    if (!APPS_SCRIPT_EMAIL_TYPES.has(emailType)) throw Object.assign(new Error("APPS_SCRIPT_EMAIL_TYPE_FORBIDDEN"), { status: 403 });
+    if (["new_request", "request_complete", "request_rep_reviewed"].includes(emailType)) return requireAny(["can_access_que"]);
+    if (["ncr_complete", "ncr_approval", "hold_release_request", "block_clearing_email"].includes(emailType)) {
+      return requireAny(["can_access_manager_tab", "can_submit_reclass", "can_access_que"]);
+    }
+    if (["drive_customer_outreach", "drive_shift_report"].includes(emailType)) return requireAny(["can_access_drive_mode", "can_access_manager_tab"]);
+    return requireAny(["can_access_av", "can_access_que", "can_access_manager_tab"]);
+  }
+  throw Object.assign(new Error("APPS_SCRIPT_ACTION_FORBIDDEN"), { status: 403 });
+}
+
+function sanitizeAppsScriptProxyPayload(source: Record<string, unknown>, actor: Record<string, unknown>) {
+  const payload: Record<string, unknown> = { ...source };
+  const untrustedIdentityKeys = new Set([
+    "actor", "actorid", "actorusername", "actorprofileid", "authuserid", "sessiontoken", "apptoken",
+    "isadmin", "role", "userrole", "requestedbyusername", "requestedbydisplay",
+    "submittedbyusername", "requestcreatedbyusername",
+  ]);
+  for (const key of Object.keys(payload)) {
+    if (untrustedIdentityKeys.has(key.replace(/[^a-z0-9]/gi, "").toLowerCase())) delete payload[key];
+  }
+  const username = normalizeUsername(String(actor.username || ""));
+  if (Object.prototype.hasOwnProperty.call(source, "requestedBy")) {
+    payload.requestedBy = String(actor.display_name || actor.username || "");
+  }
+  if (Object.prototype.hasOwnProperty.call(source, "requestedByUsername")) payload.requestedByUsername = username;
+  if (Object.prototype.hasOwnProperty.call(source, "submittedByUsername")) payload.submittedByUsername = username;
+  if (Object.prototype.hasOwnProperty.call(source, "requestCreatedByUsername")) payload.requestCreatedByUsername = username;
+  return payload;
+}
+
+async function handleAppsScriptAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  requestPayload: Record<string, unknown>,
+  access: CanonicalUserAccess | null,
+) {
+  if (!session || !access) return errorResponse("An active authenticated profile is required.", 401, { code: "AUTH_REQUIRED" });
+  if (!PRODUCTION_SCHEDULE_APPS_SCRIPT_URL || !PRODUCTION_SCHEDULE_SIGNING_SECRET) {
+    return errorResponse("The Apps Script action gateway is unavailable.", 503, { code: "APPS_SCRIPT_GATEWAY_UNAVAILABLE" });
+  }
+  if (Object.keys(requestPayload).some(key => key !== "action" && key !== "payload")) {
+    return errorResponse("Invalid Apps Script action request.", 400, { code: "APPS_SCRIPT_ACTION_REQUEST_INVALID" });
+  }
+  const action = String(requestPayload.action || "").trim().toLowerCase();
+  const source = requestPayload.payload && typeof requestPayload.payload === "object" && !Array.isArray(requestPayload.payload)
+    ? requestPayload.payload as Record<string, unknown> : null;
+  if (!source) return errorResponse("Invalid Apps Script action payload.", 400, { code: "APPS_SCRIPT_ACTION_REQUEST_INVALID" });
+  const actor = await resolveActiveSessionProfile(session);
+  try {
+    authorizeAppsScriptProxyAction(action, source, actor, access);
+  } catch (error) {
+    const status = Number((error as { status?: unknown })?.status) || 403;
+    const code = String((error as { message?: unknown })?.message || "APPS_SCRIPT_ACTION_FORBIDDEN");
+    return errorResponse("This action is not enabled for your active profile.", status, { code });
+  }
+  const serializedSource = JSON.stringify(source);
+  if (serializedSource.length > 24_000_000) return errorResponse("Apps Script action payload is too large.", 413, { code: "APPS_SCRIPT_ACTION_PAYLOAD_TOO_LARGE" });
+  const forwardedPayload = sanitizeAppsScriptProxyPayload(source, actor);
+  const command = {
+    contractVersion: "apps-script-action-v1",
+    action,
+    payload: forwardedPayload,
+    actor: {
+      id: String(actor.id),
+      username: normalizeUsername(String(actor.username || "")),
+      role: access.canonicalRole,
+    },
+  };
+  const timestamp = new Date().toISOString();
+  const { deliveryJson, signature } = await signProductionScheduleCommand(command, timestamp, PRODUCTION_SCHEDULE_SIGNING_SECRET);
+  try {
+    const response = await fetch(PRODUCTION_SCHEDULE_APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "apps_script_action_v1", timestamp, signature, deliveryJson }),
+      signal: AbortSignal.timeout(30_000),
+      redirect: "follow",
+    });
+    const responseText = await response.text();
+    if (responseText.length > 2_000_000) return errorResponse("Apps Script returned an oversized response.", 502, { code: "APPS_SCRIPT_RESPONSE_TOO_LARGE" });
+    let responseBody: unknown;
+    try { responseBody = JSON.parse(responseText); }
+    catch { responseBody = { ok: response.ok, data: responseText }; }
+    return jsonResponse(responseBody, response.status);
+  } catch (error) {
+    recordHandledError("app-api", "apps_script_action", error, 502);
+    return errorResponse("The Apps Script action could not be completed.", 502, { code: "APPS_SCRIPT_ACTION_FAILED" });
+  }
+}
+
+async function handleLogin(payload: Record<string, unknown>, req: Request) {
   const username = String(payload.username || "").trim();
   const password = String(payload.password || "").trim();
   if (!username || !password) return errorResponse("Username and password are required.", 400);
 
-  const selectCols = "username,role,password,division,language";
   const normalizedInput = normalizeUsername(username);
+  let rateLimit: Record<string, unknown>;
+  try {
+    rateLimit = await updateLoginRateLimit("check", normalizedInput, req);
+  } catch (error) {
+    recordHandledError("app-api", "login_rate_limit", error, 503);
+    return errorResponse("Sign-in is temporarily unavailable. Try again shortly.", 503, { code: "LOGIN_RATE_LIMIT_UNAVAILABLE" });
+  }
+  if (rateLimit.allowed !== true) {
+    return errorResponse("Too many unsuccessful sign-in attempts. Try again shortly.", 429, {
+      code: "LOGIN_RATE_LIMITED",
+      retryAfterSeconds: Math.max(1, Math.min(900, Number(rateLimit.retry_after_seconds) || 60)),
+    });
+  }
+
+  const selectCols = "username,role,password,division,language";
   const exactResponse = await restRequest(
     "ph_app_users",
     "GET",
@@ -3570,7 +3761,21 @@ async function handleLogin(payload: Record<string, unknown>) {
     return doesLoginPasswordMatch(dbPassword, password) && normalizeUsername(dbUsername) === normalizedInput;
   }) || null;
 
-  if (!matchedUser) return jsonResponse({ ok: false, reason: "mismatch" }, 200);
+  if (!matchedUser) {
+    try {
+      await updateLoginRateLimit("failure", normalizedInput, req);
+    } catch (error) {
+      recordHandledError("app-api", "login_rate_limit", error, 503);
+      return errorResponse("Sign-in is temporarily unavailable. Try again shortly.", 503, { code: "LOGIN_RATE_LIMIT_UNAVAILABLE" });
+    }
+    return jsonResponse({ ok: false, reason: "mismatch" }, 200);
+  }
+  try {
+    await updateLoginRateLimit("success", normalizedInput, req);
+  } catch (error) {
+    recordHandledError("app-api", "login_rate_limit", error, 503);
+    return errorResponse("Sign-in is temporarily unavailable. Try again shortly.", 503, { code: "LOGIN_RATE_LIMIT_UNAVAILABLE" });
+  }
   if (!await isAppAccountActive(supabase, { username: normalizedInput })) {
     return errorResponse("This account is no longer active. Contact an administrator.", 403, { code: "ACCOUNT_INACTIVE" });
   }
@@ -3613,7 +3818,7 @@ async function handleNativeSessionBridge(
   const bridgedSession = await createAppSession({
     username: session.username,
     displayName: session.displayName || session.username,
-    role: session.role,
+    role: String((session as typeof session & { displayRole?: string }).displayRole || session.role),
     mustChangePassword: false,
   });
 
@@ -3935,7 +4140,8 @@ async function handleInventoryRead(
     return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" });
   }
   const username = normalizeUsername(String(actor.username || ""));
-  const role = String(actor.role || "");
+  const role = String(session.role || "");
+  actor.role = role;
   const operation = String(payload.operation || "").trim().toLowerCase();
   const readParams = payload.params && typeof payload.params === "object" && !Array.isArray(payload.params)
     ? payload.params as Record<string, unknown> : {};
@@ -5381,14 +5587,42 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
 
   const contentType = String(req.headers.get("content-type") || "").toLowerCase();
-  const session = await readSupabaseOrAppSessionFromRequest(req, supabase);
+  let session = await readSupabaseOrAppSessionFromRequest(req, supabase);
+  let canonicalAccessForRequest: CanonicalUserAccess | null = null;
 
   if (contentType.includes("multipart/form-data")) {
-    return await handlePhotoUpload(session, req);
+    try {
+      const context = await resolveZeroTrustRequestContext(session);
+      session = context.session;
+      canonicalAccessForRequest = context.access;
+      return await handlePhotoUpload(session, req);
+    } catch (error) {
+      const message = String((error as { message?: unknown })?.message || "AUTH_REQUIRED");
+      const status = Number((error as { status?: unknown })?.status)
+        || ((error as { code?: unknown })?.code === "42501" || /profile_not_active|USER_ACCESS_ACTIVE_PROFILE_REQUIRED|USER_ACCESS_FORBIDDEN/.test(message) ? 403 : /AUTH_REQUIRED|IDENTITY_MISMATCH/.test(message) ? 401 : 503);
+      return errorResponse(status === 503 ? "Access could not be verified. Retry when the service is available." : "An active authenticated profile is required.", status, { code: status === 503 ? "USER_ACCESS_UNAVAILABLE" : message });
+    }
   }
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
+
+  // Login credentials and the dedicated password reconciliation flow have
+  // their own proof contracts; every other app-api action shares the gate below.
+  if (action === "login") return await handleLogin(payload, req);
+  if (action === "password_change") return await handlePasswordChange(await readPasswordChangeSession(req, session), payload);
+
+  try {
+    const context = await resolveZeroTrustRequestContext(session);
+    session = context.session;
+    canonicalAccessForRequest = context.access;
+  } catch (error) {
+    const message = String((error as { message?: unknown })?.message || "AUTH_REQUIRED");
+    const status = Number((error as { status?: unknown })?.status)
+      || ((error as { code?: unknown })?.code === "42501" || /profile_not_active|USER_ACCESS_ACTIVE_PROFILE_REQUIRED|USER_ACCESS_FORBIDDEN/.test(message) ? 403 : /AUTH_REQUIRED|IDENTITY_MISMATCH/.test(message) ? 401 : 503);
+    const code = status === 503 ? "USER_ACCESS_UNAVAILABLE" : message;
+    return errorResponse(status === 503 ? "Access could not be verified. Retry when the service is available." : "An active authenticated profile is required.", status, { code });
+  }
 
   if (action.startsWith("watchdog_")) {
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
@@ -5411,9 +5645,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         if (Object.keys(event).some(key => !allowed.has(key)) || normalizeUsername(event.username) !== username) throw new Error("WATCHDOG_EVENT_INVALID");
         const boundedText = (value: unknown, max: number) => String(value || "").slice(0, max);
         const eventType = boundedText(event.event_type, 64);
-        if (!new Set(["VIEW_LOAD_STALL", "ROLE_LATENCY_ANOMALY", "DATA_PARITY_MISMATCH", "UI_LOCKOUT_BANNER", "APP_API_FAILURE", "UNHANDLED_JS_EXCEPTION", "UNHANDLED_PROMISE_REJECTION"]).has(eventType)) throw new Error("WATCHDOG_EVENT_TYPE_INVALID");
+        if (!new Set(["VIEW_LOAD_STALL", "ROLE_LATENCY_ANOMALY", "DATA_PARITY_MISMATCH", "UI_LOCKOUT_BANNER", "APP_API_FAILURE", "UNHANDLED_JS_EXCEPTION", "UNHANDLED_PROMISE_REJECTION", "OPERATIONAL_FAILURE"]).has(eventType)) throw new Error("WATCHDOG_EVENT_TYPE_INVALID");
         const severity: "low" | "medium" | "high" | "critical" = eventType === "UI_LOCKOUT_BANNER" ? "critical"
-          : eventType === "UNHANDLED_JS_EXCEPTION" || eventType === "UNHANDLED_PROMISE_REJECTION" || eventType === "DATA_PARITY_MISMATCH" || eventType === "VIEW_LOAD_STALL" ? "high"
+          : eventType === "UNHANDLED_JS_EXCEPTION" || eventType === "UNHANDLED_PROMISE_REJECTION" || eventType === "DATA_PARITY_MISMATCH" || eventType === "VIEW_LOAD_STALL" || eventType === "OPERATIONAL_FAILURE" ? "high"
           : eventType === "APP_API_FAILURE" && /\b5\d\d\b/.test(String(event.error_message || "")) ? "high" : "medium";
         const cluster = String(event.cluster_id || "");
         if (!new Set(["low", "medium", "high", "critical"]).has(severity) || !/^Cluster (?:[1-9]|10)$/.test(cluster)) throw new Error("WATCHDOG_EVENT_INVALID");
@@ -5471,14 +5705,10 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
 
   const actionGate = canonicalActionGate(action, payload);
-  let canonicalAccessForRequest: CanonicalUserAccess | null = null;
-  if (actionGate && session && !session.mustChangePassword) {
+  if (actionGate && canonicalAccessForRequest) {
     try {
-      const actor = await resolveActiveSessionProfile(session);
-      const access = await resolveCanonicalUserAccess(supabase, String(actor.id || ""));
-      canonicalAccessForRequest = access;
-      if ("flag" in actionGate) requireCanonicalUserAccessFlag(access, actionGate.flag);
-      else if (!hasAnyCanonicalUserAccessFlag(access, actionGate.any)) throw new Error("USER_ACCESS_SHARED_READ_FORBIDDEN");
+      if ("flag" in actionGate) requireCanonicalUserAccessFlag(canonicalAccessForRequest, actionGate.flag);
+      else if (!hasAnyCanonicalUserAccessFlag(canonicalAccessForRequest, actionGate.any)) throw new Error("USER_ACCESS_SHARED_READ_FORBIDDEN");
     } catch (error) {
       const message = String((error as { message?: unknown })?.message || "USER_ACCESS_UNAVAILABLE");
       const denied = message.startsWith("USER_ACCESS_FORBIDDEN:") || message === "USER_ACCESS_SHARED_READ_FORBIDDEN";
@@ -5543,6 +5773,14 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
   }
 
+  if (action === "apps_script_action") {
+    if (Object.keys(payload).some(key => key !== "action" && key !== "payload")) {
+      return errorResponse("Invalid Apps Script action request.", 400, { code: "APPS_SCRIPT_ACTION_REQUEST_INVALID" });
+    }
+    return await handleAppsScriptAction(session, payload.payload && typeof payload.payload === "object" && !Array.isArray(payload.payload)
+      ? payload.payload as Record<string, unknown> : {}, canonicalAccessForRequest);
+  }
+
   if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
   if (action === "request_recipient_directory") return await handleRequestRecipientDirectory(session, payload);
   if (action === "customer-rep-map") return await handleCustomerRepMappingAction(session, payload);
@@ -5588,9 +5826,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       return jsonResponse(failure.body, failure.status);
     }
   }
-  if (action === "login") return await handleLogin(payload);
   if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
-  if (action === "password_change") return await handlePasswordChange(await readPasswordChangeSession(req, session), payload);
   if (action === "get_user_preferences" || action === "live_pilot_bootstrap") {
     return await handleGetUserPreferences(session);
   }
@@ -5713,7 +5949,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
     try {
       const username = normalizeUsername(String(actor.username || ""));
-      const role = String(actor.role || "");
+      const role = String(session.role || "");
       const access = getRoleAccessState(role);
       const data = await readAvPage({ supabase, actor, payload,
         // Existing active master-inventory readers may read the single

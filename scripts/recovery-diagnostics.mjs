@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
+import { createSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
 
 const code = value => /^[A-Z0-9_]{2,64}$/.test(String(value || '')) ? String(value) : 'UNAVAILABLE';
 export const migrationDigest = versions => createHash('sha256').update(JSON.stringify([...versions].sort())).digest('hex');
@@ -29,7 +30,7 @@ export async function collectRecoveryDiagnostics({ fetchImpl = fetch, db, appOri
   }), check('appsScript', async () => {
     if (!deploymentId) throw Object.assign(new Error(), { code: 'CONFIGURATION_MISSING' });
     const health = await json(`https://script.google.com/macros/s/${encodeURIComponent(deploymentId)}/exec`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'deployment_health' })
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(createSignedDeploymentHealthEnvelope(serviceKey))
     });
     if (health.ok !== true || !/^[a-f0-9]{40}$/.test(health.deployedCommit)) throw new Error();
     const imports = health.importDiagnostics;

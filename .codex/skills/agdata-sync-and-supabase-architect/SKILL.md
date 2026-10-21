@@ -18,6 +18,10 @@ Read [the canonical dependency map](../../../docs/architecture/agdata-module-dep
 
 Use Supabase MCP for read-only schema/contract/log inspection and validated production migrations. Keep credentials in environment/secret stores. Test destructive SQL, trigger faults and rollback behavior in disposable local databases. Use the repository's PostgreSQL 17/Supabase harness for full compatibility; a PostgreSQL 15 lightweight sandbox is not equivalent. No live fault injection is authorized by this skill.
 
+The zero-trust RLS migration enables RLS on public base tables and revokes anonymous/PUBLIC table and column mutation grants plus volatile/definer RPC execution. Preserve existing authenticated/service-role privileges explicitly before removing inherited PUBLIC grants; signed Code.gs imports continue with the server credential. Do not test this by mutating production rows.
+
+All browser Apps Script POSTs use the verified app-api gateway. `Code.gs` authorizes a short-lived signed envelope before dispatch and retains the action-specific server checks. Deployment health uses a separately signed, read-only system envelope. The existing Home `manual_status` background read is registered with its exact nested gateway shape in `tests/helpers/release-smoke-route-policy.mjs`; unknown gateway mutations must not receive fixture success.
+
 Measure new, changed, unchanged and retried snapshots when importer behavior changes. Register new RPC/background reads in the fixture allowlist and update this skill in the same commit.
 
 ## Owned seams and shared dependencies

@@ -161,7 +161,7 @@
     function persistDisplayCache(directory) {
         const storageKey = cacheKey();
         if (!storageKey || !root.localStorage || !directory) return;
-        try { root.localStorage.setItem(storageKey, JSON.stringify({ directory, savedAt: Date.now() })); } catch { /* Cache is optional display state. */ }
+        try { root.localStorage.setItem(storageKey, JSON.stringify({ directory, savedAt: Date.now() })); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'persistDisplayCache'); /* Cache is optional display state. */ }
     }
 
     function normalizeDirectory(value) {
@@ -627,11 +627,11 @@
             catch (error) { directoryError = text(error?.message); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username }); }
         };
         if (!self.verified && selfStatus === 'idle' && !selfInFlight) loadSelf().then(async () => {
-            if (isVerifiedManager() && directoryStatus !== 'ready') await loadDirectory().catch(() => {});
+            if (isVerifiedManager() && directoryStatus !== 'ready') await loadDirectory().catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'renderManager'); });
             renderManager(container, latestManagerOptions());
         });
         else if (!self.verified && selfInFlight) selfInFlight.then(async () => {
-            if (isVerifiedManager() && directoryStatus !== 'ready' && !directoryInFlight) await loadDirectory().catch(() => {});
+            if (isVerifiedManager() && directoryStatus !== 'ready' && !directoryInFlight) await loadDirectory().catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'renderManager'); });
             renderManager(container, latestManagerOptions());
         });
         else if (isVerifiedManager() && directoryStatus !== 'ready' && !directoryInFlight) loadDirectory().then(() => {

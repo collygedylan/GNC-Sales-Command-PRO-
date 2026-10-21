@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+import { isManualStatusAppsScriptProxyRead } from './helpers/release-smoke-route-policy.mjs';
 // @test-group: @home-role,home
 
 
@@ -54,8 +55,8 @@ async function harness(page: Page, baseURL: string) {
         && Object.keys(body.payload || {}).length === 0;
       if (preferenceRead) return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
         body: JSON.stringify({ ok: true, data: { username: fixtureUsername, views: [], shortcuts: null, footerRevision: 0, accessRevision: 0 } }) });
-      const isManualStatusRead = request.method() === 'POST' && url.hostname === 'script.google.com'
-        && /^\/macros\/s\/[^/]+\/exec$/.test(url.pathname) && request.postData() === '{"type":"manual_status"}';
+      const isManualStatusRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api' && isManualStatusAppsScriptProxyRead(body);
       const isRevisionRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1';
       const inventoryReadOperations = new Set([
@@ -91,6 +92,8 @@ async function harness(page: Page, baseURL: string) {
         return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
           body: JSON.stringify({ ok: true, data }) });
       }
+      if (isManualStatusRead) return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ ok: true, active: false }) });
       if (!isManualStatusRead && !isRevisionRead && !['/rest/v1/rpc/report_app_health_event', '/rest/v1/rpc/get_app_user_directory'].includes(url.pathname)) {
         const action = String(body?.action || 'unclassified');
         const detail = body?.dataset ? `:${body.dataset}` : body?.operation ? `:${body.operation}` : '';

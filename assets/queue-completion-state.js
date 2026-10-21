@@ -11,7 +11,7 @@
         const [id, version] = Array.isArray(entry) ? entry : [entry, 0];
         if (typeof id === 'string' && id.length < 512) confirmed.set(id, Number(version) || 0);
       }
-    } catch { /* Storage is optional; the session still protects optimistic rows. */ }
+    } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'create'); /* Storage is optional; the session still protects optimistic rows. */ }
     return Object.freeze({
       /** @param {string} id @param {number} [version] */
       begin(id, version = 0) {
@@ -31,7 +31,7 @@
         if (!id) return;
         pending.delete(id); confirmed.set(id, Number(version) || 0);
         // Only confirmed identities are durable. No row data or unfinished writes.
-        try { storage?.setItem(key, JSON.stringify([...confirmed])); } catch { /* Keep session receipt. */ }
+        try { storage?.setItem(key, JSON.stringify([...confirmed])); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'create'); /* Keep session receipt. */ }
       },
       /** @param {string} id */
       rollback(id) { pending.delete(id); }

@@ -19,6 +19,7 @@ export async function getAppsScriptSyncPreflight({
   deploymentId,
   expectedScriptId,
   expectedDeploymentId,
+  serviceRoleKey,
   token,
   fetchImpl = globalThis.fetch
 }) {
@@ -30,6 +31,7 @@ export async function getAppsScriptSyncPreflight({
       repository,
       candidateCommit,
       deploymentId: target.deploymentId,
+      serviceRoleKey,
       token,
       fetchImpl,
       attempts: 1,
@@ -56,6 +58,7 @@ async function main() {
     deploymentId: env.APPS_SCRIPT_DEPLOYMENT_ID,
     expectedScriptId: env.APPS_SCRIPT_PRODUCTION_SCRIPT_ID,
     expectedDeploymentId: env.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID,
+    serviceRoleKey: String(env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
     token: String(env.GH_TOKEN || env.GITHUB_TOKEN || '').trim()
   });
   appendFileSync(env.GITHUB_OUTPUT, `sync-required=${result.syncRequired}\n`);

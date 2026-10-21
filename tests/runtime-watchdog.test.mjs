@@ -25,6 +25,22 @@ test('watchdog normalizes every supported role alias and emits bounded incident 
   assert.equal(event.view_id, 'drive');
   assert.equal(event.duration_ms, 4001);
   assert.equal(event.owning_skill, 'agdata-drive-and-av-specialist');
+  assert.equal(window.GncRuntimeWatchdog.capture({ name: 'AbortError' }, 'view.cancel'), false);
+  assert.equal(reported.length, 1, 'expected view cancellation is not an incident');
+  assert.equal(window.GncRuntimeWatchdog.capture(new Error('secret token and row contents'), 'queue.persist'), true);
+  assert.equal(reported[1].event_type, 'OPERATIONAL_FAILURE');
+  assert.equal(reported[1].error_message, 'queue.persist failed (Error)');
+  assert.equal(JSON.stringify(reported).includes('secret token'), false);
+  window.GncRuntimeWatchdog.configure({ username: 'dylan_collyge', role: 'Admin', reportEvent: () => { throw new Error('transport unavailable'); } });
+  assert.doesNotThrow(() => window.GncRuntimeWatchdog.capture(new Error('failure'), 'view.load'));
+});
+
+test('critical catch fallbacks report bounded operational failures without replacing their recovery', () => {
+  for (const path of ['index.html', 'assets/app-lifecycle.js', 'assets/live-sync-coordinator.js',
+    'assets/request-submission.js', 'assets/user-access-control.js', 'assets/queue-completion-state.js']) {
+    const text = fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+    assert.match(text, /GncRuntimeWatchdog\?\.capture\?\.\(error,/, path);
+  }
 });
 
 test('watchdog persistence is RLS protected and privileged actions are server authorized', () => {
@@ -49,8 +65,9 @@ test('signed watchdog email embeds the same complete fix brief returned to the c
     duration_ms: 4200, event_type: 'VIEW_LOAD_STALL', error_message: 'test incident',
     dataset_revisions_snapshot: { inventory: '42' }, cluster_id: 'Cluster 5', owning_skill: 'agdata-field-ops-and-qc',
     suspected_functions: ['buildManagerEvalReport2IndexAsync'] };
+  const release = 'AgData v' + JSON.parse(read('package.json')).version;
   const brief = module.exports.buildRuntimeWatchdogFixBrief([row]);
-  for (const text of ['# AgData Runtime Watchdog Fix Brief', 'AgData v2.3.23', 'megan_kelly', '4200ms', 'inventory', '42', 'Cluster 5', '.codex/skills/agdata-field-ops-and-qc/SKILL.md', 'buildManagerEvalReport2IndexAsync', 'Focused verification:']) assert.ok(brief.includes(text), text);
+  for (const text of ['# AgData Runtime Watchdog Fix Brief', release, 'megan_kelly', '4200ms', 'inventory', '42', 'Cluster 5', '.codex/skills/agdata-field-ops-and-qc/SKILL.md', 'buildManagerEvalReport2IndexAsync', 'Focused verification:']) assert.ok(brief.includes(text), text);
   const script = read('Code.gs');
   const start = script.indexOf('function handleRuntimeWatchdogAlert_('), end = script.indexOf('\nfunction ', start + 1);
   let sent;

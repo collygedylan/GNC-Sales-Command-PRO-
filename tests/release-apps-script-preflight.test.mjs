@@ -46,7 +46,7 @@ function fixture({ deployedBlob = candidateBlob, healthStatus = 200, candidateSt
   return { calls, fetchImpl };
 }
 
-const run = (f, overrides = {}) => getAppsScriptSyncPreflight({
+const run = (f, overrides = {}) => getAppsScriptSyncPreflight({ serviceRoleKey: 'synthetic-signing-key',
   repository, candidateCommit, ...target, token: 'test-token', fetchImpl: f.fetchImpl, ...overrides
 });
 
@@ -83,6 +83,6 @@ test('production target configuration errors fail closed before any request', as
 test('unexpected transport errors fail closed', async () => {
   const error = new Error('network failure');
   const fetchImpl = async () => { throw error; };
-  await assert.rejects(getAppsScriptSyncPreflight({ repository, candidateCommit, ...target,
+  await assert.rejects(getAppsScriptSyncPreflight({ serviceRoleKey: 'synthetic-signing-key', repository, candidateCommit, ...target,
     token: 'test-token', fetchImpl }), error);
 });

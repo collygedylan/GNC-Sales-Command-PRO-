@@ -250,7 +250,7 @@ function healthyFetch(overrides = {}) {
 test('full capacity fails before editable Apps Script source is touched', async () => {
   const { script, calls } = makeScript({ versionCount: 200 });
   await assert.rejects(
-    syncAppsScriptProject({ script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha }),
+    syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key', script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha }),
     (error) => error.code === 'APPS_SCRIPT_VERSION_CAPACITY_EXHAUSTED'
   );
   assert.deepEqual(calls, ['versions.list']);
@@ -259,7 +259,7 @@ test('full capacity fails before editable Apps Script source is touched', async 
 test('capacity at 180 warns but still permits an editable-source-only sync', async () => {
   const { script, calls } = makeScript({ versionCount: 180 });
   const warnings = [];
-  const result = await syncAppsScriptProject({
+  const result = await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key',
     script,
     scriptId: 'script',
     source: 'const healthy = true;',
@@ -274,7 +274,7 @@ test('capacity at 180 warns but still permits an editable-source-only sync', asy
 
 test('successful sync advances and verifies the exact deployment version and health policy', async () => {
   const { script, calls } = makeScript({ versionCount: 30, createdVersion: 202, deployedVersion: 202 });
-  const result = await syncAppsScriptProject({
+  const result = await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key',
     script,
     scriptId: 'script',
     deploymentId: 'deployment',
@@ -310,7 +310,7 @@ test('semantic releases label the Apps Script version and deployment consistentl
     descriptions.push(request.requestBody.deploymentConfig.description);
     return { data: {} };
   };
-  await syncAppsScriptProject({ script, scriptId: 'script', deploymentId: 'deployment',
+  await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key', script, scriptId: 'script', deploymentId: 'deployment',
     source: `${source}\nconst APP_RELEASE_VERSION_ = 'AgData v2.0.0';`, githubSha: sha,
     fetchImpl: healthyFetch(), sleep: async () => {}, healthAttempts: 1 });
   assert.deepEqual(descriptions, ['AgData v2.0.0 (0123456)', 'AgData v2.0.0 (0123456)']);
@@ -318,7 +318,7 @@ test('semantic releases label the Apps Script version and deployment consistentl
 
 test('production authorization is checked immediately before each source, version, and deployment mutation', async () => {
   const { script, calls } = makeScript();
-  await syncAppsScriptProject({ script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha,
+  await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key', script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha,
     beforeMutation: async () => { calls.push('authorize'); }, fetchImpl: healthyFetch(), healthAttempts: 1 });
   for (const name of ['updateContent', 'versions.create', 'deployments.update']) {
     assert.equal(calls[calls.indexOf(name) - 1], 'authorize');
@@ -328,7 +328,7 @@ test('production authorization is checked immediately before each source, versio
 for (const deniedMutation of [1, 2, 3]) test(`a superseded main stops mutation ${deniedMutation} without retrying publication`, async () => {
   const { script, calls } = makeScript();
   let checks = 0;
-  await assert.rejects(syncAppsScriptProject({ script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha,
+  await assert.rejects(syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key', script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha,
     beforeMutation: async () => { if (++checks === deniedMutation) throw new Error('CURRENT_MAIN_CHANGED'); },
     fetchImpl: healthyFetch(), healthAttempts: 1 }), /CURRENT_MAIN_CHANGED/);
   const mutations = calls.filter(name => ['updateContent', 'versions.create', 'deployments.update'].includes(name));
@@ -340,7 +340,7 @@ test('deployment version mismatch is rejected before health is accepted', async 
   const sleeps = [];
   let healthReads = 0;
   await assert.rejects(
-    syncAppsScriptProject({
+    syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key',
       script,
       scriptId: 'script',
       deploymentId: 'deployment',
@@ -366,7 +366,7 @@ test('stale deployment reads converge without another version or deployment writ
   const sleeps = [];
   const warnings = [];
   let healthReads = 0;
-  const result = await syncAppsScriptProject({
+  const result = await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key',
     script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha,
     sleep: async ms => { sleeps.push(ms); }, logger: { warn: value => warnings.push(value) },
     fetchImpl: async () => { healthReads += 1; return healthyFetch()(); }
@@ -390,7 +390,7 @@ test('newer, missing, and malformed deployment versions fail without polling or 
     ['202', 'INVALID'], [0, 'INVALID'], [202.5, 'INVALID']
   ]) {
     const { script, calls } = makeScript({ createdVersion: 202, observedVersions: [version] });
-    await assert.rejects(syncAppsScriptProject({
+    await assert.rejects(syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key',
       script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha,
       sleep: async () => assert.fail('must not wait'), fetchImpl: async () => assert.fail('must not accept health')
     }), error => error.code === `APPS_SCRIPT_DEPLOYMENT_VERSION_${expectedCode}`);
@@ -475,7 +475,7 @@ test('invalid verification bounds fail before any API read', async () => {
 test('stale lifecycle recipient policy is rejected after deployment advancement', async () => {
   const { script } = makeScript({ versionCount: 30, createdVersion: 202, deployedVersion: 202 });
   await assert.rejects(
-    syncAppsScriptProject({
+    syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key',
       script,
       scriptId: 'script',
       deploymentId: 'deployment',

@@ -120,7 +120,7 @@
                 if (previous !== target) for (const key of keys) storage.removeItem(key);
                 storage.setItem('gnc_app_filter_version_v1', target);
                 updated = true;
-            } catch (_) {}
+            } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
         }
         return updated;
     };
@@ -132,7 +132,7 @@
         if (root.__gncPwaReloadPending) return false;
         root.__gncPwaReloadPending = true;
         if (!root.__gncShellUpdateToastShown && typeof root.showToast === 'function') {
-            try { root.showToast('Updating', 'New version detected. Updating...', false); } catch (_) {}
+            try { root.showToast('Updating', 'New version detected. Updating...', false); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
         } else if (!root.__gncShellUpdateToastShown && doc.body) {
             const toast = doc.createElement('div');
             toast.setAttribute('role', 'status');
@@ -150,7 +150,7 @@
                     next.searchParams.set('shellv', nextBuild);
                     next.searchParams.set('shellts', String(Date.now()));
                     root.history.replaceState(root.history.state, '', next.toString());
-                } catch (_) {}
+                } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
             }
             root.location.reload();
         }, 700);
@@ -179,7 +179,7 @@
                 await Promise.allSettled(registrations.filter(isOwnedShellRegistration)
                     .map(registration => registration.unregister()));
             }
-        } catch (_) {}
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
         try {
             if (typeof root.caches?.keys === 'function' && typeof root.caches?.delete === 'function') {
                 const keys = await root.caches.keys();
@@ -187,14 +187,14 @@
                     && (!safeTarget || !key.includes(safeTarget)));
                 await Promise.allSettled(obsoleteShellCaches.map(key => root.caches.delete(key)));
             }
-        } catch (_) {}
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
         root.__swReg = null;
         return true;
     };
 
     root.registerGncServiceWorkerSafely = async (serviceWorker, scriptUrl, options, handlers = {}) => {
         const unavailable = reason => {
-            try { handlers.onUnavailable?.(reason); } catch (_) {}
+            try { handlers.onUnavailable?.(reason); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
             return null;
         };
         if (typeof serviceWorker?.register !== 'function') return unavailable('registration-api-unavailable');
@@ -207,7 +207,7 @@
             if (!registration || typeof registration !== 'object') return unavailable('registration-result-unavailable');
             return registration;
         } catch (error) {
-            try { handlers.onError?.(error); } catch (_) {}
+            try { handlers.onError?.(error); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
             return null;
         }
     };
@@ -228,7 +228,7 @@
         try {
             if (root.sessionStorage.getItem('gnc_shell_recovery_v1') === marker) return Promise.resolve(false);
             root.sessionStorage.setItem('gnc_shell_recovery_v1', marker);
-        } catch (_) { /* The URL also bounds recovery when storage is disabled. */ }
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); /* The URL also bounds recovery when storage is disabled. */ }
         shellRecovery = (async () => {
             suspendNavigation();
             await root.clearOwnedShellControllerState(target);

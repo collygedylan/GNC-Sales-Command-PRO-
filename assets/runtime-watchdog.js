@@ -32,6 +32,17 @@
     };
     event.fingerprint = fingerprint(event); send(event); return event;
   }
+  function capture(error, operation = 'unknown') {
+    if (error?.name === 'AbortError' || error?.code === 'ABORT_ERR') return false;
+    const owner = String(operation).replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 160) || 'unknown';
+    const code = String(error?.code || error?.name || 'Error').replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 64);
+    // Do not send payloads, credentials, row data or arbitrary exception messages.
+    // This sensor never mutates app state or repairs code. Its own transport failure
+    // is intentionally terminal, so observing an error cannot recurse into itself.
+    try { record('OPERATIONAL_FAILURE', { severity: 'high', error_message: `${owner} failed (${code || 'Error'})`, suspected_functions: [owner] }); }
+    catch (_) { return false; }
+    return true;
+  }
   function inspect() {
     const current = view(); const root = document.getElementById(`view-${current}`) || document.body;
     const subModule = String(global.activeHomeTab || '');
@@ -66,7 +77,7 @@
   if (document.documentElement) observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-busy', 'data-loading'] });
   global.GncRuntimeWatchdog = Object.freeze({
     configure(options = {}) { state.apiUrl = String(options.apiUrl || ''); state.username = String(options.username || '').trim().toLowerCase(); state.role = String(options.role || ''); state.report = options.reportEvent; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : {}; inspect(); },
-    record, normalizeRole: normalizedRole, setDatasetRevisions(value) { state.revisions = value && typeof value === 'object' ? value : {}; },
+    record, capture, normalizeRole: normalizedRole, setDatasetRevisions(value) { state.revisions = value && typeof value === 'object' ? value : {}; },
     inspect, constants: Object.freeze({ stallMs: STALL_MS, roles: Object.freeze(Object.keys(ROLE_ALIASES)) })
   });
 })(window);

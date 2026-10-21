@@ -24,4 +24,5 @@ jobs:
       - name: Send synthetic internal lifecycle thread and verify receipt
         env:
           APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/probe-apps-script-lifecycle-canary.mjs

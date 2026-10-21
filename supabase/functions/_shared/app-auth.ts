@@ -128,6 +128,21 @@ async function signPayload(payload = "") {
   return encodeBase64Url(new Uint8Array(signature));
 }
 
+/** Returns a keyed digest for rate-limit dimensions without persisting raw identifiers. */
+export async function createAppRateLimitDigest(scope: string, value: string) {
+  const secret = getSessionSecret();
+  if (!secret) throw new Error("APP_SESSION_SECRET is not configured.");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const bytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(`app-login-rate-v1\u0000${scope}\u0000${value}`)));
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export async function createAppSession(input: {
   authUserId?: string;
   username: string;
@@ -162,7 +177,9 @@ export async function verifyAppSessionToken(token = ""): Promise<AppSessionClaim
     if (expectedSignature !== signaturePart) return null;
     const claims = JSON.parse(decoder.decode(decodeBase64Url(payloadPart))) as AppSessionClaims;
     if (!claims || typeof claims !== "object") return null;
-    if (!claims.username || !claims.exp || claims.exp <= Math.floor(Date.now() / 1000)) return null;
+    const expiresAt = Number(claims.exp);
+    if (typeof claims.username !== "string" || !claims.username.trim()
+      || !Number.isSafeInteger(expiresAt) || expiresAt <= Math.floor(Date.now() / 1000)) return null;
     return {
       ver: Number(claims.ver || 1),
       ...(Number(claims.ver || 1) >= 2 && String(claims.authUserId || "").trim()
@@ -173,7 +190,7 @@ export async function verifyAppSessionToken(token = ""): Promise<AppSessionClaim
       role: String(claims.role || "User").trim() || "User",
       mustChangePassword: !!claims.mustChangePassword,
       iat: Number(claims.iat || 0),
-      exp: Number(claims.exp || 0),
+      exp: expiresAt,
     };
   } catch (_error) {
     return null;

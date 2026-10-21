@@ -8,8 +8,11 @@ const args = process.argv.slice(2);
 assert.ok(args.every((arg) => arg === '--multipage') && args.length <= 1, 'Only --multipage is supported; this canary always renders without email');
 const multipage = args.includes('--multipage');
 const source = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const endpoint = source.match(/const GOOGLE_SCRIPT_URL = "([^"]+)"/)?.[1];
-assert.match(endpoint || '', /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/);
+const supabaseUrl = process.env.PRODUCTION_SUPABASE_URL || source.match(/const SUPABASE_URL = "([^"]+)"/)?.[1];
+const publishableKey = process.env.PRODUCTION_SUPABASE_PUBLISHABLE_KEY || source.match(/const SUPABASE_KEY = "([^"]+)"/)?.[1];
+const sessionToken = String(process.env.PRODUCTION_APP_SESSION_TOKEN || '').trim();
+assert.ok(sessionToken && publishableKey, 'A verified active app session and publishable key are required');
+const endpoint = new URL('/functions/v1/app-api', supabaseUrl).href;
 const payload = makePayload();
 payload.report.title += multipage ? ' - SYNTHETIC MULTIPAGE RENDER CHECK' : ' - SYNTHETIC RENDER CHECK';
 payload.report.createdAt = new Date().toISOString();
@@ -46,8 +49,8 @@ delete payload.requestedBy;
 delete payload.requestedByEmail;
 delete payload.idempotencyKey;
 const response = await fetch(endpoint, {
-  method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' },
-  body: JSON.stringify(payload), signal: AbortSignal.timeout(60000), redirect: 'follow'
+  method: 'POST', headers: { 'content-type': 'application/json', apikey: publishableKey, 'x-app-session': sessionToken },
+  body: JSON.stringify({ action: 'apps_script_action', payload: { action: 'block_clearing_pdf', payload } }), signal: AbortSignal.timeout(60000), redirect: 'follow'
 });
 assert.equal(response.ok, true, 'PDF render endpoint must succeed');
 const result = await response.json();

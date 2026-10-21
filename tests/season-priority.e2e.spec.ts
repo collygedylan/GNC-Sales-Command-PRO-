@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { isManualStatusAppsScriptProxyRead } from './helpers/release-smoke-route-policy.mjs';
 // @test-group: @season-priority,season-priority
 
 
@@ -72,6 +73,9 @@ async function fixture(page: Page, baseURL: string, role = 'MANAGER') {
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*' } });
     if (/\/functions\/v1\//.test(url.pathname) && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
+      if (url.pathname === '/functions/v1/app-api' && isManualStatusAppsScriptProxyRead(body)) {
+        return fulfill(route, { ok: true, active: false });
+      }
       if (body.action === 'drive_reclass_inquiry') {
         if (body.operation === 'season_priority_list') {
           listBodies.push(structuredClone(body));
@@ -118,7 +122,6 @@ async function fixture(page: Page, baseURL: string, role = 'MANAGER') {
     if (url.hostname === 'script.google.com' && request.method() === 'POST') {
       let scriptBody: Record<string, unknown> = {};
       try { scriptBody = JSON.parse(request.postData() || '{}'); } catch { /* mutation canary below */ }
-      if (scriptBody.type === 'manual_status') return fulfill(route, { ok: true, active: false });
       unexpectedMutations.push(`apps-script:${String(scriptBody.type || 'unknown')}`);
       return route.abort('blockedbyclient');
     }

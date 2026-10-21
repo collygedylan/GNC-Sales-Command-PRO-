@@ -1,5 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { createSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
 
 const COMPLETE_SHA = /^[a-f0-9]{40}$/;
 const BLOB_SHA = /^[a-f0-9]{40}$/;
@@ -38,13 +39,13 @@ async function githubCodeBlob({ repository, commit, token, fetchImpl, requestTim
   return payload.sha;
 }
 
-async function deployedCommit({ deploymentId, fetchImpl, requestTimeoutMs }) {
+async function deployedCommit({ deploymentId, serviceRoleKey, fetchImpl, requestTimeoutMs }) {
   const response = await fetchImpl(`https://script.google.com/macros/s/${encodeURIComponent(deploymentId)}/exec`, {
     method: 'POST',
     signal: AbortSignal.timeout(requestTimeoutMs),
     redirect: 'follow',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ type: 'deployment_health' })
+    body: JSON.stringify(createSignedDeploymentHealthEnvelope(serviceRoleKey))
   });
   const payload = await responseJson(response, 'HEALTH');
   const commit = String(payload?.deployedCommit || '').trim();
@@ -58,6 +59,7 @@ export async function waitForCompatibleAppsScript({
   repository,
   candidateCommit,
   deploymentId,
+  serviceRoleKey,
   token,
   fetchImpl = globalThis.fetch,
   sleep = delay,
@@ -68,7 +70,7 @@ export async function waitForCompatibleAppsScript({
   now = () => Date.now()
 }) {
   if (!REPOSITORY.test(String(repository || '')) || !COMPLETE_SHA.test(String(candidateCommit || ''))
-      || !String(deploymentId || '').trim() || !String(token || '').trim()
+      || !String(deploymentId || '').trim() || !String(token || '').trim() || !String(serviceRoleKey || '').trim()
       || typeof fetchImpl !== 'function' || typeof sleep !== 'function'
       || !Number.isFinite(Number(timeoutMs)) || Number(timeoutMs) < 1
       || !Number.isFinite(Number(requestTimeoutMs)) || Number(requestTimeoutMs) < 1) {
@@ -83,7 +85,7 @@ export async function waitForCompatibleAppsScript({
   for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
     if (now() >= deadline) break;
     try {
-      lastCommit = await deployedCommit({ deploymentId, fetchImpl, requestTimeoutMs: remainingRequestTime() });
+      lastCommit = await deployedCommit({ deploymentId, serviceRoleKey, fetchImpl, requestTimeoutMs: remainingRequestTime() });
       const liveBlob = await githubCodeBlob({ repository, commit: lastCommit, token, fetchImpl,
         requestTimeoutMs: remainingRequestTime() });
       if (liveBlob === candidateBlob) {
@@ -102,6 +104,7 @@ async function main() {
     repository: String(process.env.GITHUB_REPOSITORY || '').trim(),
     candidateCommit: String(process.env.GITHUB_SHA || '').trim(),
     deploymentId: String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim(),
+    serviceRoleKey: String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
     token: String(process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '').trim(),
     attempts: Number(process.env.APPS_SCRIPT_COMPATIBILITY_ATTEMPTS || 49),
     retryDelayMs: Number(process.env.APPS_SCRIPT_COMPATIBILITY_INTERVAL_MS || 5000),

@@ -1,5 +1,16 @@
 export const RELEASE_SMOKE_SUPABASE_ORIGIN = 'https://kzrnyjsosryejjejliii.supabase.co';
 
+export function isManualStatusAppsScriptProxyRead(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).sort().join(',') !== 'action,payload' || body.action !== 'apps_script_action') return false;
+  const wrapper = body.payload;
+  if (!wrapper || typeof wrapper !== 'object' || Array.isArray(wrapper)
+      || Object.keys(wrapper).sort().join(',') !== 'action,payload' || wrapper.action !== 'manual_status') return false;
+  const payload = wrapper.payload;
+  return !!payload && typeof payload === 'object' && !Array.isArray(payload)
+    && Object.keys(payload).sort().join(',') === 'type' && payload.type === 'manual_status';
+}
+
 const SUPABASE_METHODS = new Map([
   ['/functions/v1/app-api', new Set(['POST'])],
   ['/rest/v1/rpc/get_app_user_directory', new Set(['POST'])],

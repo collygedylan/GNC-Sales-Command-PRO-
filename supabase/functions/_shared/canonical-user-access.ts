@@ -10,6 +10,8 @@ export const CANONICAL_USER_ACCESS_FLAGS = [
 export type CanonicalUserAccessFlag = typeof CANONICAL_USER_ACCESS_FLAGS[number];
 export type CanonicalUserAccess = {
   revision: number;
+  username: string;
+  canonicalRole: string;
   permissions: Record<CanonicalUserAccessFlag, boolean>;
 };
 
@@ -43,6 +45,10 @@ export async function resolveCanonicalUserAccess(db: RpcClient, actorProfileId: 
   const resolved = record(envelope.data) || envelope;
   const profile = record(resolved.profile);
   if (profile?.id !== actorProfileId || typeof profile.username !== "string") throw new Error("USER_ACCESS_IDENTITY_MISMATCH");
+  const baseline = record(resolved.baseline);
+  const username = profile.username.trim().toLowerCase();
+  const canonicalRole = String(baseline?.role || "").trim().toLowerCase();
+  if (!username || !canonicalRole) throw new Error("USER_ACCESS_IDENTITY_MISMATCH");
   const source = record(resolved.effective_permissions || resolved.effectivePermissions);
   if (!source) throw new Error("USER_ACCESS_PERMISSION_SNAPSHOT_INVALID");
   const permissions = {} as Record<CanonicalUserAccessFlag, boolean>;
@@ -52,7 +58,7 @@ export async function resolveCanonicalUserAccess(db: RpcClient, actorProfileId: 
   }
   const revision = Number(resolved.revision);
   if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("USER_ACCESS_REVISION_INVALID");
-  return { revision, permissions: enforceCanonicalAccountPermissions(profile.username, permissions) };
+  return { revision, username, canonicalRole, permissions: enforceCanonicalAccountPermissions(username, permissions) };
 }
 
 export function requireCanonicalUserAccessFlag(access: CanonicalUserAccess, flag: CanonicalUserAccessFlag): void {

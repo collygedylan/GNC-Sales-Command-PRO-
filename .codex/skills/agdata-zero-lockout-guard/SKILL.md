@@ -30,6 +30,10 @@ Keep account/session read identity separate from the mutable permission revision
 
 Cover refresh failure, interrupted imports, account changes, confirmed revocation, modal drafts and cache-upgrade behavior in the appropriate focused tests. Apply the release governor for changed rendering. This skill describes required behavior; it does not certify the current runtime without evidence.
 
+## Server verification and signed actions
+
+Every non-login app-api action requires a non-expired server-verified session; the dedicated password-change reconciliation path also requires a verified identity. Resolve active canonical access and actor identity on the server. Client actor, username, role and administrator fields never grant authority. Failed-login throttling uses keyed username/IP digests and a service-role-only RPC; it must never throttle active-session reads or actions. Browser Apps Script actions use the authenticated `apps_script_action` gateway with its explicit action/capability allowlist and signed server actor. Transient verification errors preserve same-account rendered caches and drafts.
+
 ## Ownership and dependency boundary
 
 - Owned frontend seams: `index.html` — `getNativeAuthSession`, `refreshNativeRoleAndCapabilities`, `clearInMemorySessionIdentity`, `initializeAppAccessSnapshot`, `loadFromCache`, `saveToCache`, `getSupabaseReadIdentityScope`, `getProductionLiveSyncContext`, `resetProductionLiveSync`. Read/write bindings also touch `assets/user-access-control.js` (`configure`, `loadSelf`, `getEffectiveUserPermissions`), `assets/bounded-snapshot-cache.js`, and the owned Service Worker lifecycle in `assets/app-lifecycle.js`.

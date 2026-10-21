@@ -20,7 +20,7 @@ test('frontend compatibility accepts an older live commit with the identical Cod
     if (url.includes('/contents/Code.gs')) return jsonResponse({ type: 'file', sha: candidateBlob });
     return jsonResponse({ ok: true, deployedCommit: olderSameCode });
   };
-  const result = await waitForCompatibleAppsScript({ repository: 'owner/repo', candidateCommit: candidate,
+  const result = await waitForCompatibleAppsScript({ serviceRoleKey: 'synthetic-signing-key', repository: 'owner/repo', candidateCommit: candidate,
     deploymentId: 'deployment', token: 'token', fetchImpl, sleep: async () => {}, attempts: 1 });
   assert.equal(result.compatible, true);
   assert.equal(result.appsScriptCommit, olderSameCode);
@@ -35,7 +35,7 @@ test('frontend compatibility waits through an incompatible live commit and fails
     if (url.includes(`ref=${incompatible}`)) return jsonResponse({ type: 'file', sha: oldBlob });
     healthReads += 1; return jsonResponse({ ok: true, deployedCommit: incompatible });
   };
-  await assert.rejects(waitForCompatibleAppsScript({ repository: 'owner/repo', candidateCommit: candidate,
+  await assert.rejects(waitForCompatibleAppsScript({ serviceRoleKey: 'synthetic-signing-key', repository: 'owner/repo', candidateCommit: candidate,
     deploymentId: 'deployment', token: 'token', fetchImpl, sleep: async () => { sleeps += 1; }, attempts: 3 }), /CODE_MISMATCH/);
   assert.equal(healthReads, 3);
   assert.equal(sleeps, 2);
@@ -49,7 +49,7 @@ test('frontend compatibility succeeds after the Apps Script workflow catches up'
     healthReads += 1;
     return jsonResponse({ ok: true, deployedCommit: healthReads === 1 ? incompatible : candidate });
   };
-  const result = await waitForCompatibleAppsScript({ repository: 'owner/repo', candidateCommit: candidate,
+  const result = await waitForCompatibleAppsScript({ serviceRoleKey: 'synthetic-signing-key', repository: 'owner/repo', candidateCommit: candidate,
     deploymentId: 'deployment', token: 'token', fetchImpl, sleep: async () => { sleeps += 1; }, attempts: 3 });
   assert.equal(result.appsScriptCommit, candidate);
   assert.equal(sleeps, 1);

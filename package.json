@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.23",
+  "version": "2.3.24",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -133,11 +133,19 @@
     "vite-plugin-pwa": "1.3.0",
     "vitest": "4.1.10"
   },
-  "appsScriptRelease": "AgData v2.3.23",
+  "appsScriptRelease": "AgData v2.3.24",
   "appsScriptPatchFunctions": [
     "processCustomerRepMapSnapshotLocked_",
     "requestNaMappingDigest_",
     "ensureProtectedRequestNaCustomerMappings_",
+    "verifyHlTagsSender_",
+    "verifyInventoryWorkflowActor_",
+    "verifyManualInventoryImportActor_",
+    "appsScriptActionConstantTimeEqual_",
+    "verifyAppsScriptActionActor_",
+    "verifyAppsScriptActionEnvelope_",
+    "authorizeAppsScriptPost_",
+    "verifyAppsScriptLifecycleCanary_",
     "verifyRuntimeWatchdogAlert_",
     "doPost",
     "buildRequestEmailMessage_",

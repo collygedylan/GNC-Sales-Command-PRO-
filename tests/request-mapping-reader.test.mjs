@@ -16,11 +16,15 @@ test('Apps Script scoped patch ships request mapping, email, and watchdog change
  const patch=patchAppsScriptFunctions({remoteSource,localSource:codeSource,functionNames:manifest.appsScriptPatchFunctions});
  assert.deepEqual(patch.functions,[
   'processCustomerRepMapSnapshotLocked_','requestNaMappingDigest_','ensureProtectedRequestNaCustomerMappings_',
+  'verifyHlTagsSender_','verifyInventoryWorkflowActor_','verifyManualInventoryImportActor_',
+  'appsScriptActionConstantTimeEqual_','verifyAppsScriptActionActor_','verifyAppsScriptActionEnvelope_',
+  'authorizeAppsScriptPost_','verifyAppsScriptLifecycleCanary_',
   'verifyRuntimeWatchdogAlert_','doPost','buildRequestEmailMessage_','buildRequestDeliveryEmailPayload_',
   'sendRequestDeliveryPush_','handleRuntimeWatchdogAlert_'
  ]);
  for(const name of patch.functions)assert.ok(patch.source.includes(`function ${name}(`),`${name} is included in the scoped patch`);
  assert.equal(patch.source.split("if (payload.type === 'runtime_watchdog_alert_v1')").length-1,1,'the signed watchdog dispatch is added exactly once');
+ assert.match(patch.source,/const payload = authorizeAppsScriptPost_\(JSON\.parse\(e\.postData\.contents\)\)/,'the scoped patch installs the doPost authentication entry gate');
  assert.ok(patch.source.includes("function protectedRemoteOnly_() { return 'unchanged'; }"));
  assert.equal(patch.protectedSourceDigest.length,64);
 });

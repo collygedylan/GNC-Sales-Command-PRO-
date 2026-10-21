@@ -47,6 +47,14 @@ const liveImportFunctions = new Set([
   "requestNaMappingDigest_",
   "ensureProtectedRequestNaCustomerMappings_",
   "verifyRuntimeWatchdogAlert_",
+  "verifyAppsScriptLifecycleCanary_",
+  "verifyHlTagsSender_",
+  "verifyInventoryWorkflowActor_",
+  "verifyManualInventoryImportActor_",
+  "appsScriptActionConstantTimeEqual_",
+  "verifyAppsScriptActionActor_",
+  "verifyAppsScriptActionEnvelope_",
+  "authorizeAppsScriptPost_",
   "doPost",
   "buildRequestEmailMessage_",
   "buildRequestDeliveryEmailPayload_",
@@ -71,6 +79,7 @@ const liveImportFunctions = new Set([
 const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_", "requestNaMappingDigest_", "ensureProtectedRequestNaCustomerMappings_", "handleRuntimeWatchdogAlert_"]);
 additiveFunctions.add('setDatasetImportSourceMetadata_');
 additiveFunctions.add('verifyRuntimeWatchdogAlert_');
+for (const name of ['appsScriptActionConstantTimeEqual_', 'verifyAppsScriptActionActor_', 'verifyAppsScriptActionEnvelope_', 'authorizeAppsScriptPost_', 'verifyAppsScriptLifecycleCanary_']) additiveFunctions.add(name);
 const fail = code => { throw new Error(`APPS_SCRIPT_FUNCTION_PATCH_${code}`); };
 const digest = source => createHash('sha256').update(source).digest('hex');
 
@@ -121,6 +130,15 @@ function mergeRuntimeWatchdogDispatch(remote, local) {
   return remote.replace(deployment, route + '\n\n' + deployment);
 }
 
+function mergeAppsScriptPostGate(remote, local) {
+  const oldEntry = '    const payload = JSON.parse(e.postData.contents);';
+  const guardedEntry = '    const payload = authorizeAppsScriptPost_(JSON.parse(e.postData.contents));';
+  if (!local.includes(guardedEntry)) fail('POST_GATE_LOCAL_ANCHOR');
+  if (remote.includes(guardedEntry)) return remote;
+  if (remote.split(oldEntry).length !== 2) fail('POST_GATE_REMOTE_ANCHOR');
+  return remote.replace(oldEntry, guardedEntry);
+}
+
 /** Preserve remote source verbatim outside the explicitly authorized functions. */
 export function patchAppsScriptFunctions({ remoteSource, localSource, functionNames, includeRelease = false }) {
   if (!Array.isArray(functionNames) || !functionNames.length
@@ -147,6 +165,7 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
       let remoteBlock = preparedRemote.slice(remote.get(name).start, remote.get(name).end);
       if (replacement.includes("if (payload.type === 'manual_continue')")) remoteBlock = mergeManualContinuation(remoteBlock, replacement);
       if (replacement.includes("if (payload.type === 'runtime_watchdog_alert_v1')")) remoteBlock = mergeRuntimeWatchdogDispatch(remoteBlock, replacement);
+      if (replacement.includes('authorizeAppsScriptPost_(JSON.parse(e.postData.contents))')) remoteBlock = mergeAppsScriptPostGate(remoteBlock, replacement);
       replacement = remoteBlock;
     }
     return { name, ...remote.get(name), replacement };

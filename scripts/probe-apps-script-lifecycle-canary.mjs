@@ -1,4 +1,7 @@
+import { createSignedLifecycleCanaryEnvelope } from './apps-script-signing.mjs';
+
 const deploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
+const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const requiredRecipients = [
   'dylan_collyge@greenleafnursery.com',
   'jd_jones@greenleafnursery.com',
@@ -7,6 +10,7 @@ const requiredRecipients = [
 const expectedPolicyVersion = 'plant-request-lifecycle-v2';
 
 if (!deploymentId) throw new Error('APPS_SCRIPT_DEPLOYMENT_ID_MISSING');
+if (!serviceRoleKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY_MISSING');
 
 const endpoint = `https://script.google.com/macros/s/${encodeURIComponent(deploymentId)}/exec`;
 
@@ -15,7 +19,7 @@ async function post(payload) {
     method: 'POST',
     redirect: 'follow',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(createSignedLifecycleCanaryEnvelope(payload, serviceRoleKey))
   });
   const text = await response.text();
   let result = null;
