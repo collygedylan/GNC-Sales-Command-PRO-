@@ -6,6 +6,31 @@ import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const source = name => html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0] || assert.fail(name);
+
+test('Brian and admin render a prepared 9600-row Drive snapshot in one pass through the same catalog path', () => {
+  const registryContext = vm.createContext({ module: { exports: {} } });
+  vm.runInContext(fs.readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8'), registryContext);
+  const registry = registryContext.module.exports;
+  const rows = Array.from({ length: 9600 }, (_, index) => ({ UNIQUE_ID: `row-${index}` }));
+  for (const role of ['admin', 'salesrep', 'sales rep', 'sales_rep']) {
+    let passes = 0;
+    assert.deepEqual(Array.from(registry.getViewAdapters('drive', { driveAssignmentsRequired: role !== 'admin' })),
+      ['core:master', 'side:settings']);
+    const context = vm.createContext({ currentRole: role, activeDriveMode: 'ok', activeDriveTab: 'name',
+      DRIVE_MODE_LABELS: { ok: 'Drive Mode' },
+      document: { getElementById: () => ({ classList: { remove() {} } }) },
+      ensureViewDataForRender: () => false, syncDriveModeTabs() {}, syncDriveTabPills() {},
+      renderDriveUniversalSearchResultsOnly: () => false, hideDrivePlantFilters() {},
+      buildDriveVisibleItemsState: () => ({ baseSearchFilteredItems: rows }),
+      scheduleDriveTopControlsRender() {}, renderDriveQuickRequestBar() {},
+      renderDriveCommonNameDrill: (_container, _crumb, _label, state) => {
+        passes++; assert.equal(state.baseSearchFilteredItems.length, 9600);
+      } });
+    vm.runInContext(source('renderDrive'), context);
+    context.renderDrive();
+    assert.equal(passes, 1, role);
+  }
+});
 function fixture(mode) {
   const driveSearchInput = { value: 'Maple', classList: { add() {} }, removeAttribute() {} };
   const context = vm.createContext({ Set, activeDriveMode: mode, activeDriveTab: 'name', driveViewLevel: 3,

@@ -5,6 +5,8 @@ description: Maintain AgData Home sync status, Drive file freshness, RUN SCRIPT,
 
 # Sync and Supabase architecture
 
+Home imported-file cards start expanded for authorized Drive/AV/Docks readers. Empty folder checks return before opening Processed folders or acquiring publication fences; source names and actual import timestamps survive polling. Warehouse assignments are now exported from Supabase, so a sheet export timestamp must never be presented as a new import.
+
 Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 8 and shared Back/navigation ownership.
 
 - Home DRIVE, SOC, RESERVES and CAV status cards display the single active/latest filename for each source.

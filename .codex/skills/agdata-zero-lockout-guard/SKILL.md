@@ -5,6 +5,8 @@ description: Preserve authorized same-account AgData views, session continuity a
 
 # Authorized stale-while-revalidate views
 
+Account reset and suspension must detach aborted coordinator promises immediately. A transport that ignores cancellation cannot retain the next account's render lock; late completion must neither publish old rows nor clear a newer run.
+
 Apply across screens, tabs, modules, Row Details and Reclass. During import or transient permission/session refresh, retain same-account loaded data and use the latest completed READY snapshot. Do not disable Manager or Docks bottom navigation for a background check.
 
 Do not introduce the following lockout gates:
