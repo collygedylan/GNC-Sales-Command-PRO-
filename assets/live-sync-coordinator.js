@@ -143,7 +143,14 @@
             if (pollTimer !== null) cancel(pollTimer);
             pollTimer = null;
             if (!ctx?.scope || ctx.visible === false) { closeSubscription(); return; }
-            pollTimer = later(() => { pollTimer = null; check('foreground-safeguard'); }, 30000);
+            const pollMs = Math.max(8000, Number(options.getPollInterval?.(ctx)) || 30000);
+            pollTimer = later(() => {
+                pollTimer = null;
+                const next = options.getContext();
+                if (!next?.scope || next.visible === false || next.online === false) { clearTimers(); closeSubscription(); return; }
+                options.onHeartbeat?.(next);
+                check('foreground-safeguard');
+            }, pollMs);
             if (ctx.online === false) { closeSubscription(); return; }
             if (ctx.online !== false && options.subscribe && subscribedScope !== ctx.scope) {
                 closeSubscription(); subscribedScope = ctx.scope;

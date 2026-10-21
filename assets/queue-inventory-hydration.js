@@ -40,6 +40,18 @@
     const itemLocationKey = value => { const i = identity(value); return JSON.stringify([i.itemCode, i.locationCode]); };
     function createIndex(rows = []) {
         const ids = new Map(), keys = new Map(), itemLocations = new Map(), items = new Map();
+        const byItemLoc = new Map(), byItem = new Map(), normalizedSearchText = new WeakMap();
+        const fallbackIndexes = new WeakMap();
+        const aggregate = (map, key, row) => {
+            const entry = map.get(key) || { rows: [], locOnHand: 0, onHandKnown: false, available: 0 };
+            entry.rows.push(row);
+            const raw = pick(row, 'PTRONHAND', 'ptronhand');
+            const value = raw === '' ? NaN : Number(String(raw).replace(/,/g, ''));
+            if (Number.isFinite(value)) { entry.locOnHand += value; entry.onHandKnown = true; }
+            const available = Number(String(pick(row, 'PTRAVAILABLE', 'ptravailable', 'AVAILABLE', 'available')).replace(/,/g, ''));
+            if (Number.isFinite(available)) entry.available += available;
+            map.set(key, entry);
+        };
         for (const row of rows) {
             const uid = String(pick(row, 'UNIQUE_ID', 'unique_id')).trim();
             if (!uid || ids.has(uid)) continue;
@@ -53,10 +65,16 @@
             const itemCode = identity(row).itemCode;
             if (!items.has(itemCode)) items.set(itemCode, []);
             items.get(itemCode).push(row);
+            aggregate(byItemLoc, itemLocation, row);
+            aggregate(byItem, itemCode, row);
+            normalizedSearchText.set(row, String([pick(row, 'COMMONNAME', 'commonname'), itemCode,
+                pick(row, 'LOCATIONCODE', 'locationcode'), pick(row, 'CONTSIZE', 'contsize'),
+                pick(row, 'LOTCODE', 'lotcode'), pick(row, 'SEASON', 'season')].join(' '))
+                .toLowerCase().replace(/[.'’™®]/g, '').replace(/[-\s]+/g, ' ').trim());
         }
         const representative = rows => rows.reduce((best, row) => !best
             || String(pick(row, 'UNIQUE_ID', 'unique_id')) < String(pick(best, 'UNIQUE_ID', 'unique_id')) ? row : best, null);
-        return { resolveDisplay(input) {
+        return { byItemLocLot: keys, byItemLoc, byItem, normalizedSearchText, resolveDisplay(input) {
             // Docks shows stock evidence from a complete authorized snapshot.
             // This representative is never an exact-row mutation identity.
             const i = identity(input);
@@ -77,7 +95,16 @@
                 ? (keys.get(locationLotKey(i)) || []).filter(row => matches(row, i)) : [];
             const lotRows = i.lotCode ? itemRows.filter(row => identity(row).lotCode === i.lotCode) : [];
             const selectedRows = exactRows.length ? exactRows : lotRows.length ? lotRows : itemRows;
-            const itemCavRows = Array.isArray(fallbackRows) ? fallbackRows.filter(row => identity(row).itemCode === i.itemCode) : [];
+            let fallbackIndex = fallbackIndexes.get(fallbackRows);
+            if (!fallbackIndex && Array.isArray(fallbackRows)) {
+                fallbackIndex = new Map();
+                for (const row of fallbackRows) {
+                    const key = identity(row).itemCode;
+                    const bucket = fallbackIndex.get(key) || []; bucket.push(row); fallbackIndex.set(key, bucket);
+                }
+                fallbackIndexes.set(fallbackRows, fallbackIndex);
+            }
+            const itemCavRows = fallbackIndex?.get(i.itemCode) || [];
             const seasons = new Set(selectedRows.map(row => text(pick(row, 'SEASON', 'season'))).filter(Boolean));
             const cavRows = selectedRows.length && seasons.size
                 ? itemCavRows.filter(row => seasons.has(text(pick(row, 'SEASON', 'season')))) : itemCavRows;
