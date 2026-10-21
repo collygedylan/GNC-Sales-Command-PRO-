@@ -82,6 +82,7 @@ The new code-health gate enforces **3,000 lines / 360,000 bytes** for `index.htm
 | v2.3.26 tooling after staging gate addition | 36 passed | 3.099 s |
 | v2.3.26 lifecycle after optional-module startup guard | 15 passed | 1.28 s |
 | Signing-key recovery: security / Request reader | 11 / 24 passed | 0.206 / 7.1 s |
+| Final recovery signer/verifier integration / inline / preparation / tooling / whitespace | 11 passed / passed / passed / 36 passed / passed | 0.331 / 0.857 / 3.459 / 3.066 / 0.092 s |
 
 Stage 1's successful commands totaled 19.13 s; an initial Deno failure identified two type/null guards and took another 10.86 s before the targeted fix. Stage 2's successful command time totaled 18.29 s. Stage 3's first fully captured checkpoint took 27.246 s before its affected-file rerun, exceeding the requested 25 s target; all 258 focused cases have passing results after the correction. An earlier 8.093 s failed focused run could not print its Unicode output through the Windows console, so it was rerun with UTF-8 output. Timing is measured command wall time, not elapsed engineering time. No omitted suite is represented as passing.
 
@@ -91,4 +92,12 @@ The two validated SQL migrations were applied through Supabase on 2026-10-21 UTC
 
 Backend workflow `39545791907` successfully published the Edge Functions for `b4d90510`. Three live non-login requests without a session, including claimed administrator identity, returned `401 AUTH_REQUIRED`. Apps Script Head/active Web App advanced to v2.3.26 version 343, but its signed health check failed and Pages was correctly withheld. Read-only diagnostic `39546628025` confirmed `APPS_SCRIPT_ACTION_SIGNATURE_INVALID`; the guarded reconciliation above repairs this configuration mismatch while retaining the existing signing key.
 
-The final delivery receipt is the production workflow evidence and HTTP fingerprint for the final commit after recovery. The initial deployment used an explicit empty SQL selection after the independently verified MCP application, preventing replay under a different migration timestamp. Historical Apps Script settings are outside this SQL observation; this release does not resume or alter them.
+### Verified final publication
+
+- Runtime release commit: **`e74f7ebd37652d0d44fa59740ce802aae762967a`**, AgData v2.3.26.
+- [Apps Script publication 39547213278](https://github.com/collygedylan/GNC-Sales-Command-PRO-/actions/runs/39547213278) succeeded. Signed reconciliation and normal signed deployment health passed. Independent Apps Script API reads confirmed **Head and active Web App version 344** both contain that release and commit. An unsigned health POST returned `{ok:false,error:APPS_SCRIPT_POST_SIGNATURE_REQUIRED}` (Apps Script HTTP transport status 200).
+- [Pages publication 39546953958](https://github.com/collygedylan/GNC-Sales-Command-PRO-/actions/runs/39546953958) and its exact-live job succeeded. Independent HTTP GETs returned **200** for the root HTML, the v2.3.26 deployment fingerprint, and the extracted watchdog panel asset; the fingerprint exactly matches the runtime commit above.
+- A final read-only Supabase catalog query again found **142** public tables with RLS, **0** anonymous mutation relations, and **0** anonymous executable volatile/security-definer routines.
+- The successful recovery workflow took **329 seconds** from creation to completion; its fast gate took **111 seconds** and Pages publication took **24 seconds**. The overall delivery and fast-gate timing targets were exceeded. These timings exclude the earlier failed publication and diagnostic run.
+
+The final focused files contain **261 passing cases**, accumulated through the requested checkpoint and affected-file reruns; they were not represented as one later full-suite run. The tooling gate passed **36** cases. The initial deployment used an explicit empty SQL selection after the independently verified MCP application, preventing replay under a different migration timestamp; recovery correctly skipped unchanged SQL and Edge deployments. Historical Apps Script settings are outside the SQL observation; neither source publication nor signing-key reconciliation resumes or alters them. This receipt is a documentation-only follow-up to the already verified runtime commit.
