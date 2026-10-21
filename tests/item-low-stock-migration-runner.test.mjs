@@ -12,6 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
+  auraDylanOwnerOnlyMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -21,7 +22,8 @@ import { discoverTests } from '../scripts/test-discovery.mjs';
 
 test('Reclass scope restoration is registered and verifies secure delegation to the current policy', () => {
   assert.equal(reclassRepScopeMigrationName, '20261020233500_reclass_rep_scope_preservation_v1.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), reclassRepScopeMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(reclassRepScopeMigrationName) < releaseDatabaseMigrations.indexOf(auraDylanOwnerOnlyMigrationName));
+  assert.equal(releaseDatabaseMigrations.at(-1), auraDylanOwnerOnlyMigrationName);
   assert.deepEqual(normalizeScopedMigrationPaths([`supabase/migrations/${reclassRepScopeMigrationName}`]),
     [reclassRepScopeMigrationName]);
   const sql = fs.readFileSync(new URL(`../supabase/migrations/${reclassRepScopeMigrationName}`, import.meta.url), 'utf8');

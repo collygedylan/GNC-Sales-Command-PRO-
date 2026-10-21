@@ -2423,6 +2423,7 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         #view-detail.detail-photo-update-mode :is(#ssn-match,#lsn-match,#na-match,#req-match,#ncr-match,#flyer-match){padding-right:10px!important}
         #view-detail.detail-photo-update-mode :is(#ssn-match-display,#lsn-match-display,#na-match-display,#req-match-display,#ncr-match-display,#flyer-match-display){position:static!important;display:block;margin-top:2px!important;text-align:right;font-size:7px!important;line-height:1!important}
         #view-detail.detail-photo-update-mode :is(#ssn-match-display,#lsn-match-display,#na-match-display,#req-match-display,#ncr-match-display,#flyer-match-display).hidden{display:none!important}
+        #view-detail.detail-request-mode #req-match-display{position:static!important;margin-top:6px!important;padding:4px 8px;border-radius:8px;background:#e8fff3;color:#064e3b;font-size:10px!important;line-height:1.4!important;text-align:right}
         #view-detail.detail-photo-update-mode :is(#ssn-av-note,#lsn-av-note,#na-av-note,#req-av-note,#flyer-av-note) + button{height:39px!important;width:39px!important;border-radius:10px!important;font-size:1.3rem!important}
         #view-detail.detail-photo-update-mode :is(#ssn-av-dropdown-list,#lsn-av-dropdown-list,#na-av-dropdown-list,#req-av-dropdown-list,#flyer-av-dropdown-list){top:46px!important;max-height:9rem!important}
         #view-detail.detail-photo-update-mode :is(#ssn-btn-save-complete,#lsn-btn-save-complete,#na-btn-save-complete,#req-btn-save-complete,#ncr-btn-save-complete,#flyer-btn-save-complete){min-height:42px!important;border-radius:12px!important;padding:9px 12px!important;font-size:.88rem!important;letter-spacing:.08em}
@@ -2654,4 +2655,3 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
             z-index:3000 !important;
             will-change:auto !important;
         }
-    

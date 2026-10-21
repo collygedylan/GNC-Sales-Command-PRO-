@@ -27,6 +27,39 @@ test('header watchdog badge force-hides after Dylan switches to any other canoni
     assert.equal(badge.textContent, '', username);
   }
   assert.equal(reads, 1, 'hidden badge performs no additional reads; telemetry uses its independent transport');
+  const runtime = readComposedAppSource();
+  const start = runtime.indexOf('function syncRuntimeWatchdogHeaderVisibility()');
+  const end = runtime.indexOf('\n        function configureRuntimeWatchdogForCurrentSession()', start);
+  assert.ok(start >= 0 && end > start);
+  const hideHeaderBadge = runtime.slice(start, end);
+  const otherBadge = { hidden: false, style: { display: '' }, textContent: '9', title: 'open', classList: { add() {} } };
+  const otherContext = { currentUser: 'megan_kelly', document: { getElementById: () => otherBadge } };
+  vm.runInNewContext(`${hideHeaderBadge}; syncRuntimeWatchdogHeaderVisibility();`, otherContext);
+  assert.equal(otherBadge.hidden, true);
+  assert.equal(otherBadge.style.display, 'none');
+  assert.equal(otherBadge.textContent, '');
+  assert.equal(otherBadge.title, '');
+});
+
+test('Watchdog Monitor is the first Manager module only for the three authorized administrators', () => {
+  const runtime = readComposedAppSource();
+  const start = runtime.indexOf('function getManagerModuleOptions(');
+  const end = runtime.indexOf('\n        function getManagerModuleMeta(', start);
+  assert.ok(start >= 0 && end > start);
+  const picker = runtime.slice(start, end);
+  for (const username of ['dylan_collyge', 'megan_kelly', 'jd_jones']) {
+    const context = { currentUser: username, MANAGER_RUNTIME_WATCHDOG_VIEW: 'runtime-watchdog',
+      SHEAR_APPROVAL_VIEW: 'shear-approval', NCR_APPROVAL_NEW_CROP_VIEW: 'ncr-approval-new-crop' };
+    vm.runInNewContext(`${picker}; result = getManagerModuleOptions({}, [], [{ id: 'first-tool', label: 'First tool' }]);`, context);
+    assert.equal(context.result[0].id, 'runtime-watchdog', username);
+    assert.equal(context.result[0].label, 'WATCHDOG MONITOR', username);
+  }
+  const other = { currentUser: 'brian_hatfield', MANAGER_RUNTIME_WATCHDOG_VIEW: 'runtime-watchdog',
+    SHEAR_APPROVAL_VIEW: 'shear-approval', NCR_APPROVAL_NEW_CROP_VIEW: 'ncr-approval-new-crop' };
+  vm.runInNewContext(`${picker}; result = getManagerModuleOptions({}, [], [{ id: 'first-tool', label: 'First tool' }]);`, other);
+  assert.equal(other.result[0].id, 'first-tool');
+  assert.equal(other.result.some(option => option.id === 'runtime-watchdog'), false);
+  assert.match(runtime, /if \(activeHomeTab === 'dashboard'\) html = renderManagerModulePicker\(access, managerApprovalTabs, managerToolTabs\);/);
 });
 
 function parityHarness({ currentView = 'managers', subModule = 'eval-reports-2' } = {}) {
@@ -291,6 +324,8 @@ test('watchdog persistence is RLS protected and privileged actions are server au
   assert.match(api, /watchdog_list_events/);
   assert.match(api, /watchdog_resolve_events/);
   assert.match(api, /new Set\(\["dylan_collyge", "megan_kelly", "jd_jones"\]\)/);
+  assert.match(api, /createClient<Database>\(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(api, /supabase\.from\("app_runtime_watchdog_events" as never\)\.upsert/);
 });
 
 test('signed watchdog email embeds the same complete fix brief returned to the copy button', () => {

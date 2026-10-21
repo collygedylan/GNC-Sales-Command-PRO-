@@ -684,7 +684,11 @@
                                 }
                             }
                             if (value === undefined) throw new Error(`${adapter.id} did not return a snapshot.`);
-                            if (!display.has(adapter.id) || !adapter.id.startsWith('core:')) preview(adapter, value);
+                            // Replace a first-page display as soon as its full
+                            // source finishes, even if another cohort member is
+                            // slow. Revision validation and commit still follow.
+                            if (!display.has(adapter.id) || !adapter.id.startsWith('core:')
+                                || display.get(adapter.id)?.value?.partial === true && value.partial !== true) preview(adapter, value);
                             staged.push({ adapter, value });
                         } catch (error) { fail(error, adapter); }
                     }

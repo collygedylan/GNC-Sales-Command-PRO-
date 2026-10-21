@@ -8,6 +8,52 @@ import { JSDOM } from 'jsdom';
 const html = readComposedAppSource();
 const source = name => html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0] || assert.fail(name);
 
+test('AV marks a cold administrator catalog partial and prefers complete master over an old AV slice', () => {
+  const master = Array.from({ length: 9600 }, (_, id) => ({ UNIQUE_ID: id }));
+  let complete = false;
+  const ctx = vm.createContext({ fullInventory: master, avOpenInventory: master.slice(0, 76), activeAVTab: 'open',
+    canUseProductionLiveSync: () => true, shouldUseRepAvOpenDataset: () => false,
+    getDatasetState: () => ({ rowCompleteness: complete ? 'complete' : 'partial' }),
+    isDatasetLoaded: key => key === 'avOpen' || complete,
+  });
+  vm.runInContext(source('isAvLiveCatalogIncomplete') + source('selectAvSalesInventorySourceRows'), ctx);
+  assert.equal(ctx.isAvLiveCatalogIncomplete(), true, 'a 76-row admin preview must never be advertised as complete');
+  complete = true;
+  ctx.shouldUseRepAvOpenDataset = () => true;
+  assert.equal(ctx.selectAvSalesInventorySourceRows().length, 9600, 'the complete master supersedes a previously loaded AV subset');
+});
+
+test('published stock with a blank ERP review field renders numeric zero without inventing unknown stock', () => {
+  const first = (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '';
+  const ctx = vm.createContext({ firstNonEmptyValue: first,
+    parseAppNumber: value => value === '' || value == null ? null : Number(value),
+    normalizeCardQuantityValue: value => value === '' ? '0' : String(value),
+  });
+  vm.runInContext(source('getCardPtrReviewedValue'), ctx);
+  for (const qty of [78, 216]) assert.equal(ctx.getCardPtrReviewedValue({ PTRREVIEWED: '', PTRONHAND: qty, PTRAVAILABLE: qty }, { preserveUnknown: true }), '0');
+  assert.equal(ctx.getCardPtrReviewedValue({}, { preserveUnknown: true }), null);
+});
+
+test('completed AV hydration refreshes search results while preserving the focused search input', () => {
+  const input = { id: 'av-search', matches: () => true };
+  let rendered = 0;
+  const ctx = vm.createContext({ document: { hidden: false, activeElement: input },
+    window: { AgMetricLiveSyncRegistry: { views: { av: { kind: 'data' } } } },
+    getCurrentVisibleViewId: () => 'av', productionVerifiedViewKey: () => 'av:owner', VIEW_LOAD_UI: {},
+    productionLiveSyncRenderGeneration: 0, productionLiveSyncRenderPending: false,
+    productionLiveSyncDraftChanged: false, productionLiveSyncActiveRender: null, productionLiveSyncRendering: false,
+    latestViewRenderTokensByView: { av: 1 }, canUseProductionLiveSync: () => true,
+    hasProductionLiveSyncDraft: () => false, captureProductionRefreshAnchor: () => ({}),
+    isProductionRefreshCurrent: () => true, restoreProductionRefreshAnchor() {}, finishProductionRefresh() {},
+    markViewDirty() {}, renderViewContent: () => { rendered++; },
+    scheduleTypingAwareUiRender: (_key, run) => run(),
+  });
+  vm.runInContext(source('scheduleProductionLiveSyncRender'), ctx);
+  ctx.scheduleProductionLiveSyncRender(true);
+  assert.equal(rendered, 1, 'a focused search must not leave a finished catalog stuck at its preview results');
+  assert.equal(ctx.document.activeElement, input);
+});
+
 test('Drive accepts the first authorized master page while settings and remaining pages are pending', () => {
   const rows = Array.from({ length: 500 }, (_, id) => ({ UNIQUE_ID: `row-${id}` }));
   const calls = [];
@@ -490,6 +536,69 @@ test('AV search clear resets stored item drill and common-name column filters', 
   assert.equal(f.avOpenLevel, 0); assert.equal(f.selectedAvOpenName, null); assert.equal(f.selectedAvOpenSeason, null);
   assert.equal(f.avColumnFilters.COMMONNAME, undefined); assert.deepEqual(f.avColumnFilters.CONTSIZE, ['#3']);
   assert.equal(f.avResolvedBaseStateCache, null);
+});
+
+test('AV entry from Home clears a stale search before rendering and focus sync keeps the live search node mounted', () => {
+  const f = vm.createContext({
+    avColumnFilters: { COMMONNAME: ['Red Yucca'], commonname: ['Red Yucca'], CONTSIZE: ['#3'] },
+    avResolvedBaseStateKey: 'old', avResolvedBaseStateCache: {},
+    selectedAvOpenName: 'Red Yucca', selectedAvOpenSize: '#3', selectedAvOpenSeason: 'F1', selectedAvOpenLot: '27.F1',
+    document: { getElementById: id => id === 'av-search' ? input : id === 'av-search-clear' ? clearBtn : null },
+    markViewDirty: view => { f.dirtyView = view; },
+    resetAvSearchDrilldownState: () => { f.avOpenLevel = 0; }, avOpenLevel: 3
+  });
+  const input = { value: 'Blue point', isConnected: true };
+  const clearBtn = { classList: { add: value => { clearBtn.added = value; } } };
+  vm.runInNewContext(source('clearAvSearchForHomeEntry'), f);
+  assert.equal(f.clearAvSearchForHomeEntry(), true);
+  assert.equal(input.value, '');
+  assert.equal(clearBtn.added, 'hidden');
+  assert.equal(f.selectedAvOpenName, null);
+  assert.equal(f.selectedAvOpenSeason, null);
+  assert.equal(f.avColumnFilters.COMMONNAME, undefined);
+  assert.deepEqual(f.avColumnFilters.CONTSIZE, ['#3']);
+  assert.equal(f.avResolvedBaseStateCache, null);
+  assert.equal(f.dirtyView, 'av');
+
+  const chrome = source('syncGlobalHeaderChrome');
+  const focusedStart = chrome.indexOf('if (focusedSearchIsAlreadyMounted)');
+  const focusedEnd = chrome.indexOf('if (!nextOptions.force && chromeState.signature', focusedStart);
+  assert.ok(focusedStart >= 0 && focusedEnd > focusedStart);
+  assert.match(chrome.slice(focusedStart, focusedEnd), /syncGlobalHeaderSearchOwnership\(chromeState\.searchContainer\)[\s\S]*?return;/);
+  assert.doesNotMatch(chrome.slice(focusedStart, focusedEnd), /appendChild|clearNodeChildren/);
+  assert.match(html, /id="av-search"[^>]*autocomplete="off"[^>]*autocorrect="off"[^>]*autocapitalize="none"[^>]*spellcheck="false"/);
+  assert.match(source('switchView'), /nextViewId === 'av' && currentViewId === 'home'\) clearAvSearchForHomeEntry\(\)/);
+});
+
+test('AV current-season F1 2027 rows remain searchable by multiword common name', () => {
+  const extract = name => {
+    const match = html.match(new RegExp(`(?:async )?function ${name}\\(`));
+    assert.ok(match, `expected ${name}`);
+    const end = html.indexOf('\n        function ', match.index + match[0].length);
+    assert.ok(end > match.index, `${name} boundary`);
+    return html.slice(match.index, end);
+  };
+  const context = vm.createContext({ Array, Math, Number, Object, String,
+    PICK_NOTE_CURRENT_SEASON_CODE: 'F1', AV_OPEN_MAX_SALES_YEAR: 27,
+    getConfiguredCurrentSeasonCode: () => 'F1', getConfiguredCurrentSalesYearCode: () => 27,
+    SEARCH_PROFILES: { av_open: item => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE] } });
+  const functions = [
+    'firstNonEmptyValue', 'parseAppNumber', 'normalizeNcrSeasonCode', 'normalizeNcrSalesYearValue', 'parseNcrLotCode',
+    'getNcrLotInfo', 'getNcrSalesYear', 'getAvConfiguredCurrentSeasonCode',
+    'getAvConfiguredCurrentSalesYearCode', 'getAvComparableSalesYear', 'getAvSalesSeasonValue',
+    'getAvSalesYearValue', 'getAvSalesYearNumber', 'itemMatchesAvCurrentSeasonBucket',
+    'normalizeSearchValue', 'tokenizeSearchValue', 'isProgressiveSearchWordChar',
+    'normalizedSearchTextHasWordStart', 'doesSearchProfilePrefixMatch', 'getSearchValuesForProfile', 'matchesItemSearch'
+  ].map(extract).join('\n');
+  vm.runInContext(functions, context);
+  const rows = [
+    { COMMONNAME: 'Red Yucca #7', ITEMCODE: '002900.070.1', LOCATIONCODE: 'G.17.000', LOTCODE: '27.F1', SEASON: 'F1', SALEYEAR: 27 },
+    { COMMONNAME: 'Blue Point Juniper - 2 Tier Poodle #5', ITEMCODE: '000152.050.1', LOCATIONCODE: 'G.11.000', LOTCODE: '27.F1', SEASON: 'F1', SALEYEAR: 27 }
+  ];
+  for (const row of rows) assert.equal(context.itemMatchesAvCurrentSeasonBucket(row), true, row.COMMONNAME);
+  assert.equal(context.matchesItemSearch(rows[0], 'Red yucca', 'av_open'), true);
+  assert.equal(context.matchesItemSearch(rows[1], 'Blue point', 'av_open'), true);
+  assert.equal(context.matchesItemSearch(rows[0], 'Blue point', 'av_open'), false);
 });
 
 function loginNavigationHarness() {

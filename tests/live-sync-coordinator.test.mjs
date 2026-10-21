@@ -871,9 +871,12 @@ test('a configured primary preview adapter displays before side adapters finish 
     assert.equal(typeof shown[0][2].sources.get, 'function', 'the established before-revision argument remains third');
     assert.equal(shown[0][1].partialCohort, true);
     assert.equal(committed.length, 0, 'a partial display never commits or proves a cohort');
-    primaryGate.resolve(); sideGate.resolve();
+    primaryGate.resolve(); await settle();
+    assert.deepEqual(shown.at(-1)[0][0].value.rows, ['all rows'], 'the full master replaces its first page before reserves finish');
+    assert.equal(committed.length, 0, 'display completion still does not grant full-cohort write proof');
+    sideGate.resolve();
     assert.equal(await pending, true);
-    assert.equal(shown.length, 2, 'a changed master object previews; the side adapter does not replay that identical subset');
+    assert.equal(shown.length, 3, 'first page, changed first page and completed master each preview once');
     assert.deepEqual(shown[1][0].map(entry => entry.adapter.id), ['core:master']);
     assert.deepEqual(shown[1][0][0].value.rows, ['updated first page']);
     assert.equal(committed.length, 1, 'the existing full-cohort commit runs only after every adapter and revision check completes');

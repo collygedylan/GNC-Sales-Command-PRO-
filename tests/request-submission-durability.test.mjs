@@ -11,6 +11,146 @@ const sandbox = { window: {} };
 vm.runInNewContext(source, sandbox);
 const api = sandbox.window.AgMetricRequestSubmission;
 
+function extractRuntimeFunction(name) {
+    const start = appSource.indexOf(`        function ${name}(`);
+    assert.notEqual(start, -1, `expected ${name} in composed runtime`);
+    const end = appSource.indexOf('\n        }', start);
+    assert.notEqual(end, -1, `expected ${name} to close`);
+    return appSource.slice(start, end + '\n        }'.length);
+}
+
+test('request photo/spec completion keeps verified match counts and detail editing stable', () => {
+    assert.match(appSource, /calculatedMatchQty\s*=\s*match\s*!==\s*''\s*&&\s*Number\.isFinite\(Number\(match\)\)/);
+    assert.match(appSource, /Loc photo match.*\$\{match\}%/);
+    assert.match(appSource, /replace\(\/\\\\\(\[\\'\"\]\)\/g, '\$1'\)/);
+    assert.match(appSource, /photoUploadInFlight.*pendingPhotoUploads.*size/);
+    assert.match(appSource, /target !== detailMeasurementKeyboardTarget/);
+    assert.doesNotMatch(appSource, /ph-cardholder.*ph-map-pin/);
+    assert.match(appSource, /detail-measurement-keyboard-open/);
+});
+
+test('published request evidence patches the cached master and retains numeric photo match', () => {
+    const context = vm.createContext({
+        parseAppNumber: value => value == null || value === '' || !Number.isFinite(Number(value)) ? null : Number(value),
+        firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== ''),
+        normalizeRowPhotoFields() {}, buildSearchIndex() {}, parsePaperNcrPackageMetaFromText() { return null; },
+        getLocPhotoEvidenceState: () => ({ context: 'shared', qualified: true, photoCount: 1 }),
+        getPhotoQualifiedLocMatchQtyValue: () => null,
+        getLocPhotoOwnedValue: () => '',
+        getEditorLocMatchQtyValue: (row, match) => Math.round(Number(row.PTRAVAILABLE) * Number(match) / 100),
+        getLocPhotoEvidenceContext: () => 'shared', shouldPreferFlyerOwnedFields: () => false,
+        shouldHideSharedAppPayloadForInvalidAvRules: () => false
+    });
+    vm.runInContext(`${extractRuntimeFunction('applyMasterSyncPayloadToLocalRow')}\n${extractRuntimeFunction('getDisplayLocMatchQtyValue')}`, context);
+    for (const fixture of [
+        { id: 'blue-point', match: 65, available: 78, count: 51, spec: "4.5' H", avNote: "SPEC - 4.5' H", photos: 'blue-1.webp,blue-2.webp' },
+        { id: 'red-yucca', match: 80, available: 216, count: 173, spec: '16-18" H', avNote: 'SPEC - 16-18" H', photos: 'red-1.webp,red-2.webp,red-3.webp' }
+    ]) {
+        const master = { UNIQUE_ID: fixture.id, PTRONHAND: fixture.available, PTRREVIEWED: 0, PTRAVAILABLE: fixture.available, LOC_ON_HAND: 51 };
+        context.applyMasterSyncPayloadToLocalRow(master, {
+            av_note: fixture.avNote, match: fixture.match, spec: fixture.spec, loc_match_qty: fixture.count,
+            photo_link: fixture.photos, photo_name: fixture.photos
+        });
+        assert.equal(master.AV_NOTE, fixture.avNote);
+        assert.equal(master.SPEC, fixture.spec);
+        assert.equal(master.PHOTO_LINK, fixture.photos);
+        assert.equal(master.PTRONHAND, fixture.available);
+        assert.equal(master.PTRREVIEWED, 0);
+        assert.equal(master.LOC_ON_HAND, 51);
+        assert.equal(context.getDisplayLocMatchQtyValue({ ...master, MATCH: fixture.match }, 'drive'), String(fixture.count));
+    }
+});
+
+test('request metric cards read cached master values while refresh hydration is pending', () => {
+    const master = { UNIQUE_ID: 'master-ivy', PTRONHAND: 88, PTRREVIEWED: 0, PTRAVAILABLE: 88, S_LTS: 88, LOC_MATCH_QTY: 0, LOC_ON_HAND: 3 };
+    const optionsSeen = [];
+    let masterState = { initialLoaded: true, rowCompleteness: 'complete', liveVerifiedScope: 'owner-scope', liveVerifiedPermission: 'permission-v1' };
+    let authorization = { scope: 'owner-scope', readScope: 'user-owner', permission: 'permission-v1' };
+    const context = vm.createContext({
+        window: { AgMetricQueueInventory: {} }, fullInventory: [], productionDisplayMasterReceipt: null,
+        isDockSuspendDcRequestMirrorRow: () => false,
+        getQueueCardInventoryState: () => ({ status: 'loading', row: null }),
+        getQueueCardInventoryAuthorizationContext: () => authorization,
+        getDatasetState: () => masterState,
+        findLinkedMasterRow: () => master,
+        buildInventoryQuantityChipsHtml: (row, options) => { optionsSeen.push(options); return JSON.stringify(row); }
+    });
+    vm.runInContext(extractRuntimeFunction('buildQueueInventoryMetricsHtml'), context);
+    const rendered = JSON.parse(context.buildQueueInventoryMetricsHtml({ UNIQUE_ID: 'request-ivy' }, 'request'));
+    for (const key of ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS','LOC_MATCH_QTY','LOC_ON_HAND']) assert.equal(rendered[key], master[key]);
+    assert.equal(optionsSeen[0].sourceView, 'drive');
+    assert.equal(optionsSeen[0].hydrationStatus, 'ready');
+    authorization = { scope: 'new-owner-scope', readScope: 'new-user-owner', permission: 'permission-new' };
+    masterState = { initialLoaded: true, rowCompleteness: 'complete', liveVerifiedScope: 'owner-scope', liveVerifiedPermission: 'permission-v1' };
+    const denied = JSON.parse(context.buildQueueInventoryMetricsHtml({ UNIQUE_ID: 'request-ivy' }, 'request'));
+    assert.deepEqual(denied, {});
+    assert.equal(optionsSeen[1].hydrationStatus, 'loading');
+});
+
+test('live-shaped nameless published photos qualify from the AV publication timestamp', () => {
+    const names = [
+        'firstNonEmptyValue', 'parseAppNumber', 'normalizeLocMatchPercentText', 'parseLocMatchPercent',
+        'calculateLocMatchQtyValue', 'getLocPhotoEvidenceContext', 'getLocPhotoOwnedValue',
+        'parseLocPhotoEvidenceTimestamp', 'getLocPhotoCaptureEvidence', 'getLocPhotoEvidenceState',
+        'getPhotoQualifiedLocMatchQtyValue', 'getDisplayLocMatchQtyValue', 'getEditorLocMatchQtyValue',
+        'normalizeRuleText', 'getSharedAppPhotoName', 'getSharedAppPhotoLinkCsvRaw', 'getPhotoDateMsFromText_', 'extractPhotoDateIsoFromText_',
+        'getPhotoRetentionFallbackDateMs', 'getPhotoEntryDateMs', 'isPhotoDateMsExpired', 'isPhotoEntryExpired',
+        'parsePhotoCsvValues', 'filterPhotoCsvByRetention', 'getSharedAppPhotoLinkCsv', 'shouldHideSharedAppPhotoForExpiredAvRules',
+        'getRowPhotoLink', 'getPhotoUrlList', 'getValidIsoTimestamp', 'getEffectiveAvRuleUpdatedAt',
+        'hasTrackedAvPayload', 'getMasterAvInvalidationReasons', 'shouldHideSharedAppPayloadForInvalidAvRules', 'isInvalidLocMatchPercent'
+    ];
+    class LiveDate extends Date { static now() { return Date.parse('2026-10-21T14:00:00Z'); } }
+    const context = vm.createContext({ Date: LiveDate, URL, PHOTO_RETENTION_MAX_AGE_MS: 10 * 86400000, AV_RULE_MAX_AGE_MS: 10 * 86400000,
+        findLinkedMasterRow: () => null, getLatestPhotoDateIsoForRetention: () => '',
+        mergePhotoCsvList: values => (Array.isArray(values) ? values : [values]).filter(Boolean).join(','),
+        findPendingPhotoPreviewByUrl: () => null,
+        getDisplayPhotoLinkCsv: base => base, shouldPreferFlyerOwnedFields: () => false,
+        getExpandedImageUrl: value => value, getHoldStopSnapshotFromItem: () => '', getHoldStopBlockTokens: () => new Set(),
+        hasHoldStopChangedSinceAvSnapshot: () => false });
+    vm.runInContext(names.map(extractRuntimeFunction).join('\n'), context);
+    for (const fixture of [
+        { match: '65', available: 78, count: 51, at: '2026-10-21T13:38:21Z', item: '000152.050.1' },
+        { match: '80', available: 216, count: 173, at: '2026-10-21T13:48:17Z', item: '002900.070.1' }
+    ]) {
+        const row = { SOURCE_TABLE: 'ph_master_inventory', ITEMCODE: fixture.item, MATCH: fixture.match,
+            PTRAVAILABLE: fixture.available, INITIAL_PTR: null, LOC_MATCH_QTY: fixture.count,
+            PHOTO_LINK: 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/published.webp',
+            PHOTO_NAME: '', DATE_COMPLETED: null, AV_RULE_PHOTO_UPDATED_AT: fixture.at,
+            AV_RULE_MATCH_UPDATED_AT: fixture.at };
+        const evidence = context.getLocPhotoEvidenceState(row, 'av');
+        assert.equal(evidence.qualified, true);
+        assert.equal(evidence.state, 'current');
+        assert.equal(context.getPhotoQualifiedLocMatchQtyValue(row, 'av'), fixture.count);
+        assert.equal(context.getDisplayLocMatchQtyValue(row, 'av'), String(fixture.count));
+        assert.equal(context.shouldHideSharedAppPayloadForInvalidAvRules(row, { locMatchQty: fixture.count }), false);
+        const photoCsv = context.getRowPhotoLink(row, 'av');
+        assert.equal(photoCsv, row.PHOTO_LINK);
+        assert.equal(context.getPhotoUrlList(photoCsv).length, 1);
+    }
+});
+
+test('Mark Done preview reports the actual plant count and percentage and cleans feet/inches', () => {
+    const values = { 'req-match': '65', 'req-spec': "4.5\\' H", 'req-av-note': "SPEC - 4.5\\' H" };
+    const context = vm.createContext({
+        document: { getElementById: id => Object.prototype.hasOwnProperty.call(values, id) ? { value: values[id] } : null },
+        getMarkDoneInputValue: id => values[id] || '',
+        firstNonEmptyValue: (...args) => args.find(value => value !== null && value !== undefined && value !== ''),
+        getRequestActualSpecValue: () => '', getRequestActualCaliperValue: () => '', getItemDisplayValue: () => '',
+        getPhotoQualifiedLocMatchQtyValue: () => null,
+        getEditorLocMatchQtyValue: (item, match) => Math.round(Number(item.PTRAVAILABLE) * Number(match) / 100)
+    });
+    vm.runInContext(`${extractRuntimeFunction('buildMarkDonePhotoSpecSummary')}\n${extractRuntimeFunction('normalizeDetailSpecTextForSave')}\n${extractRuntimeFunction('resolveDetailMeasurementKeyboardToken')}`, context);
+    const summary = Array.from(context.buildMarkDonePhotoSpecSummary({ PTRAVAILABLE: 78 }, 'req-'));
+    assert.ok(summary.includes("Loc photo match: 51 (65%)"));
+    values['req-match'] = '80';
+    const yuccaSummary = Array.from(context.buildMarkDonePhotoSpecSummary({ PTRAVAILABLE: 216 }, 'req-'));
+    assert.ok(yuccaSummary.includes('Loc photo match: 173 (80%)'));
+    assert.equal(context.normalizeDetailSpecTextForSave(values['req-spec']), "4.5' H");
+    assert.equal(context.normalizeDetailSpecTextForSave(values['req-av-note']), "SPEC - 4.5' H");
+    assert.equal(context.resolveDetailMeasurementKeyboardToken('apostrophe'), "'");
+    assert.equal(context.resolveDetailMeasurementKeyboardToken('double_quote'), '"');
+});
+
 function deferred() {
     let resolve;
     let reject;

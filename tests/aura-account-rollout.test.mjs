@@ -6,15 +6,18 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const html = readComposedAppSource();
 const auth = html.slice(html.indexOf('        function isAuraProfileCandidate()'), html.indexOf('        function disposeAuraWidget()'));
-test('AURA button requires a server-verified per-account flag for every role', () => {
-  assert.doesNotMatch(auth.slice(auth.indexOf('function isAuraRouterProfileCandidate()')), /dylan_collyge|jd_jones/);
-  for (const username of ['dylan_collyge', 'jd_jones', 'rep_one']) for (const auraEnabled of [undefined, false, 'true', true]) {
+test('AURA controls require canonical Dylan identity and the server-verified per-account flag', () => {
+  const routerAuth = auth.slice(auth.indexOf('function isAuraRouterProfileCandidate()'));
+  assert.match(routerAuth, /username === 'dylan_collyge'/);
+  assert.match(routerAuth, /currentUser \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'dylan_collyge'/);
+  for (const username of ['dylan_collyge', 'jd_jones', 'megan_kelly', 'rep_one']) for (const auraEnabled of [undefined, false, 'true', true]) {
     const context = vm.createContext({ nativeAuthSessionActive: true,
       nativeAuthProfile: { id: 'actor', username, role: 'REP' }, currentUser: username,
+      window: { GncUserAccessControl: { isAuraOwner: value => String(value).trim().toLowerCase() === 'dylan_collyge' } },
       auraRouterVerifiedProfileId: 'actor', auraVerifiedProfileId: 'actor',
       auraRouterCapabilities: { id: 'actor', username, role: 'REP', auraEnabled } });
     vm.runInContext(auth, context);
-    assert.equal(context.isAuraRouterWidgetAuthorized(), auraEnabled === true);
+    assert.equal(context.isAuraRouterWidgetAuthorized(), username === 'dylan_collyge' && auraEnabled === true);
     assert.equal(context.isAuraWidgetAuthorized(), auraEnabled === true && username === 'dylan_collyge');
     context.auraRouterVerifiedProfileId = 'another-user';
     assert.equal(context.isAuraRouterWidgetAuthorized(), false);

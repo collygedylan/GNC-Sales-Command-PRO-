@@ -1,5 +1,19 @@
 # Drive, Eval and SUSPEND recovery
 
+## Continued release — v2.3.30
+
+The expanded continuation preserves all v2.3.29 work and finishes its migration registration. The AV coordinator previously retained its first partial master display until every other source finished; it now publishes the completed master display immediately while keeping full-cohort verification separate. Administrator AV previews now retain the incomplete label, and a complete master takes precedence over an older AV subset. A focused AV or Drive search no longer blocks newly hydrated results; the header input remains mounted. Home-to-AV clears the prior query, and browser autocomplete is disabled. The existing F1/27 season predicate correctly admits ERP sales year 2027 and was retained.
+
+Read-only SQL during this continuation returned **9,585 master rows**, of which **3,425 have F1 and normalized sales year at most 27** before other AV visibility filters. Red Yucca `002900.070.1` / `G.17.000` has On Hand/Available/Open Stock **216/216/216**, match **173 (80%)**, three saved photo URLs and `SPEC - 16-18" H`; Blue Point `000152.050.1` / `G.11.000` has **78/78/85**, match **51 (65%)**, two saved photo URLs and `SPEC - 4.5' H`. Both have a blank ERP Review field, now displayed as zero when stock quantities are known. HTTP HEAD returned **200 image/webp** for the first saved photo of each item.
+
+Those published rows have blank `photo_name`, null `date_completed` and `initial_ptr`, and current server `av_rule_photo_updated_at` / `av_rule_match_updated_at` timestamps. Their persisted photo/spec data predates this patch; client publication and display must recognize the server publication evidence rather than depend on filename dates.
+
+Watchdog persistence was verified as already functioning: **14 stored events**, latest `last_seen_at` **2026-10-21 13:57:16 UTC**, including client inventory revision conflicts. The service-role app-api write path and RLS grants are retained. WATCHDOG MONITOR is now the first Manager module for Dylan, Megan and JD; only Dylan receives the header badge and AURA.
+
+REQUEST confirmation now shows the computed plant count with its percentage, uses a mint title on dark green, and removes the repeated publication heading. The match helper has its own spacing below the input. Remaining cards retain a cached master display only when the snapshot belongs to the current account and permission scope. Item Detail defers polling renders during photo uploads, drafts and editing; changing fields closes the measurement keyboard, the completion bar hides during editing, and feet/inches text is normalized before saving.
+
+The final ten-file Node command passed **260/260 in 4.56 seconds**. It includes the real photo evidence, quantity, retention and display helper chain for both saved row shapes, plus a cross-account rejection case for cached Queue metrics. Inline passed in **0.99 seconds**, app-api Deno type checking in **6.58 seconds**, and tooling **36/36 in 3.62 seconds**; `git diff --check` passed. Deno exceeded its five-second target. These Node checks do not measure live device paint or establish the requested sub-2.5-second full hydration.
+
 ## Drive cold-start recovery — v2.3.29
 
 The 11-to-2 header change was a summary bug: each revision response replaced the previous list, so Drive's two-source response erased Home's eleven-source summary. The connection display now merges states by source within the same authenticated owner and clears on account/session changes.
@@ -28,6 +42,8 @@ The header Watchdog count is restricted to canonical `dylan_collyge`, with expli
 The same release restricts AURA to the active canonical `dylan_collyge` profile. Other accounts force-hide and dispose the floating control, widget and voice/panel state; verified server identity also gates app-api and router/query authorization. The SQL migration adds the owner condition to access, context, inventory and SOC reader RPCs, retaining their existing capability checks and grants. This covers callers using the database APIs directly. The signed deployment health probe remains a system diagnostic and does not grant user AURA access.
 
 Read-only migration preflight confirmed that the replacement anchor occurs exactly once in each of the four live RPC definitions, each retains SECURITY DEFINER and authenticated execution, and none grants anonymous execution. The proposed owner condition admits Dylan and rejects Megan, JD and Brian. Deployment applies this guarded migration before Edge Functions and Pages.
+
+The first publication attempt stopped before migration SQL because the new filename was absent from the release runner's explicit allowlist. Its stale error phase reported `database_connect`; a focused test reproduced `LOW_STOCK_SCOPED_MIGRATION_NOT_ALLOWLISTED`. Registering the migration and its four-RPC installed-contract query resolved that local failure; all 14 security checks then passed in 0.36 seconds. The original release artifact prepared successfully in 6.51 seconds.
 
 ## Previous release — v2.3.28
 

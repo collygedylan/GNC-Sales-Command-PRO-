@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.29';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.30';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8399,12 +8399,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             keyboard.innerHTML = [
                 '<div class="detail-keyboard-shell mx-auto max-w-md">',
                 '<div class="detail-keyboard-header mb-1 flex items-center justify-between gap-3 px-2 text-zinc-300">',
-                `<button type="button" tabindex="-1" class="grid h-7 min-w-10 place-items-center rounded-xl bg-transparent px-1 text-[12px] font-black uppercase tracking-[0.08em] text-zinc-200 active:scale-95" aria-label="Toggle keyboard page" ${type === 'av-note' ? buildPressAttrs('__toggle_av_mode', 'toggle-av-mode') : 'onpointerdown="markDetailMeasurementKeyboardInteraction(); event.preventDefault()" ontouchstart="markDetailMeasurementKeyboardInteraction(); event.preventDefault()" onclick="return false"'}>${type === 'av-note' ? esc(detailMeasurementKeyboardAvNoteMode === 'numbers' ? 'ABC' : '123') : '<i class="ph-bold ph-squares-four"></i>'}</button>`,
-                '<div class="flex items-center gap-5 text-lg text-zinc-200">',
-                '<i class="ph-bold ph-key"></i>',
-                '<i class="ph-bold ph-cardholder"></i>',
-                '<i class="ph-bold ph-map-pin"></i>',
-                '</div>',
+                type === 'av-note'
+                    ? `<button type="button" tabindex="-1" class="grid h-7 min-w-10 place-items-center rounded-xl bg-transparent px-1 text-[12px] font-black uppercase tracking-[0.08em] text-zinc-200 active:scale-95" aria-label="Toggle keyboard page" ${buildPressAttrs('__toggle_av_mode', 'toggle-av-mode')}>${esc(detailMeasurementKeyboardAvNoteMode === 'numbers' ? 'ABC' : '123')}</button>`
+                    : '<span aria-hidden="true" class="h-7 min-w-10"></span>',
+                '<span aria-hidden="true" class="flex-1"></span>',
                 `<button type="button" tabindex="-1" class="grid h-7 w-8 place-items-center rounded-xl bg-transparent text-lg text-zinc-200 active:scale-95" aria-label="Close keyboard" ${buildPressAttrs('__done', 'done')}><i class="ph-bold ph-caret-down"></i></button>`,
                 '</div>',
                 buildChoicePanelHtml(),
@@ -8416,6 +8414,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             detailMeasurementKeyboardRenderSignature = renderSignature;
             if (keyboard.dataset) keyboard.dataset.detailKeyboardSignature = renderSignature;
             keyboard.classList.remove('hidden');
+            if (document.body) document.body.classList.add('detail-measurement-keyboard-open');
+            const saveActionWrap = document.getElementById('req-save-action-wrap');
+            if (saveActionWrap) saveActionWrap.classList.add('hidden');
             syncDetailMeasurementKeyboardLayout();
             requestAnimationFrame(() => {
                 syncDetailMeasurementKeyboardLayout();
@@ -8500,6 +8501,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 detailMeasurementKeyboardChoiceOpen = '';
                 const keyboard = document.getElementById('detail-measurement-keyboard');
                 if (keyboard) keyboard.classList.add('hidden');
+                if (document.body) document.body.classList.remove('detail-measurement-keyboard-open');
+                const saveActionWrap = document.getElementById('req-save-action-wrap');
+                if (saveActionWrap) saveActionWrap.classList.remove('hidden');
                 clearDetailMeasurementKeyboardRenderSignature();
                 clearDetailMeasurementKeyboardLayout();
                 return false;
@@ -8637,6 +8641,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             detailMeasurementKeyboardChoiceOpen = '';
             const keyboard = document.getElementById('detail-measurement-keyboard');
             if (keyboard) keyboard.classList.add('hidden');
+            if (document.body) document.body.classList.remove('detail-measurement-keyboard-open');
+            const saveActionWrap = document.getElementById('req-save-action-wrap');
+            if (saveActionWrap) saveActionWrap.classList.remove('hidden');
             clearDetailMeasurementKeyboardRenderSignature();
             clearDetailMeasurementKeyboardLayout();
             if (input && (commitChange || safeOptions.blur === true)) {
@@ -8752,7 +8759,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function normalizeDetailSpecTextForSave(value = '') {
-            const text = String(value || '').trim().replace(/\s+/g, ' ');
+            const text = String(value || '').replace(/\\([\'"])/g, '$1').trim().replace(/\s+/g, ' ');
             const compact = text.replace(/\s+/g, '');
             const rangeMatch = compact.match(/^(\d{1,3}(?:\.\d+)?)-(\d{1,3}(?:\.\d+)?)(\d)$/);
             if (!rangeMatch) return text;
@@ -9468,7 +9475,14 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 snapshot.PTRREVIEW,
                 snapshot.ptrreview
             );
-            return value === '' && preserveUnknown ? null : normalizeCardQuantityValue(value);
+            if (value === '' && preserveUnknown) {
+                const onHand = parseAppNumber(firstNonEmptyValue(item.PTRONHAND, item.ptronhand, snapshot.PTRONHAND, snapshot.ptronhand, ''));
+                const available = parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, snapshot.PTRAVAILABLE, snapshot.ptravailable, ''));
+                // ERP leaves Review blank for stock with no reviewed quantity.
+                // Require known stock before treating that blank as numeric zero.
+                return onHand != null && available != null ? '0' : null;
+            }
+            return normalizeCardQuantityValue(value);
         }
 
         function getCardPtrAvailableValue(item = null, options = {}) {
@@ -9741,7 +9755,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 ? Number(knownLocationOnHand)
                 : locationAggregate?.verified === true ? locationAggregate.value : getCardLocationOnHandValue(locationMetricRow);
             const locationChips = safeOptions.includeLocationMetrics === false ? [] : [
-                ['Loc Photo Match', (sourceView === 'drive' || sourceView === 'request' || sourceView === 'docks') && locationPhotoMatch === 'Not verified' ? 'N/A' : locationPhotoMatch],
+                ['Loc Photo Match', ['drive', 'request', 'docks', 'av', 'av-photo'].includes(sourceView) && locationPhotoMatch === 'Not verified' ? 'N/A' : locationPhotoMatch],
                 ['Loc On Hand', safeOptions.canonical === true ? locationOnHand : (locationOnHand ?? (safeOptions.missingValue === 'N/A' ? 'N/A' : 'Unknown'))]
             ];
             const allChips = [...primaryChips, openStockChip, ...locationChips];
@@ -10159,9 +10173,24 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getDisplayLocMatchQtyValue(item, sourceView = '') {
             const view = shouldPreferFlyerOwnedFields(item, sourceView) ? 'flyer' : sourceView;
-            const qty = getPhotoQualifiedLocMatchQtyValue(item, view);
+            const evidence = getLocPhotoEvidenceState(item, view);
+            const qualifiedQty = getPhotoQualifiedLocMatchQtyValue(item, view);
+            const hasPublishedPhotos = evidence.qualified === true;
+            const persistedQty = parseAppNumber(firstNonEmptyValue(
+                item && item.LOC_MATCH_QTY, item && item.loc_match_qty,
+                item && item.REQ_LOC_MATCH_QTY, item && item.req_loc_match_qty, ''
+            ));
+            const metricMatch = evidence.context === 'request'
+                ? getLocPhotoOwnedValue(item, ['REQ_MATCH','req_match'])
+                : evidence.context === 'flyer'
+                    ? firstNonEmptyValue(item && item.FLYER_MATCH, item && item.flyer_match, item && item.MATCH, item && item.match, '')
+                    : firstNonEmptyValue(item && item.MATCH, item && item.match, item && item.MATCHPCT, item && item.MATCH_PCT, '');
+            const publishedQty = hasPublishedPhotos
+                ? (persistedQty ?? getEditorLocMatchQtyValue(item, metricMatch))
+                : null;
+            const qty = qualifiedQty ?? publishedQty;
             // Preserve existing visibility rules without letting their legacy math mutate observations.
-            if (qty > 0 && getLocPhotoEvidenceContext(item, view) === 'shared'
+            if (qualifiedQty != null && qty > 0 && getLocPhotoEvidenceContext(item, view) === 'shared'
                 && typeof shouldHideSharedAppPayloadForInvalidAvRules === 'function'
                 && shouldHideSharedAppPayloadForInvalidAvRules({ ...item }, { locMatchQty: qty })) return '';
             return qty == null ? '' : String(qty);
@@ -25770,7 +25799,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.29').trim() || 'AgData v2.3.29';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.30').trim() || 'AgData v2.3.30';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28680,9 +28709,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     return;
                 }
                 const focused = document.activeElement;
-                // A live search remains the user's draft too; data is refreshed behind it.
-                const resumingCommonNames = view === 'drive' && focused?.id === 'drive-search' && driveCommonNameNeedsPreparation();
-                if (focused?.matches?.('input,select,[contenteditable="true"]') && !resumingCommonNames) {
+                // Inventory search owns a stable header input. Refresh its
+                // results when full data arrives without moving or blurring it.
+                const focusedInventorySearch = (view === 'drive' && focused?.id === 'drive-search')
+                    || (view === 'av' && focused?.id === 'av-search');
+                if (focused?.matches?.('input,select,[contenteditable="true"]') && !focusedInventorySearch) {
                     productionLiveSyncDraftChanged = true;
                     return;
                 }
@@ -28723,6 +28754,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }, immediate || waitingForContent ? 0 : 150, 120, {
                 deferUntilIdle: true,
                 ignoreChunkDuringInteraction: true,
+                allowWhileTyping: targetView === 'drive' || targetView === 'av',
                 // A preview or verified first Request display may bypass only
                 // the navigation click's grace window. Verification can replace
                 // a pending preview callback before that callback paints.
@@ -46588,11 +46620,15 @@ let avTopControlsRenderToken = 0;
             ) || '').trim();
             const reserve = safePrefix === 'req-' ? (getMarkDoneInputValue('req-reserve') || String(firstNonEmptyValue(item && item.REQ_RESERVE, '') || '').trim()) : '';
             const qualifiedMatchQty = getPhotoQualifiedLocMatchQtyValue(item, sourceView, { matchOverride: match, currentAsBaseline: true });
-            const locMatchQty = qualifiedMatchQty == null ? 'Not verified' : String(qualifiedMatchQty);
+            const calculatedMatchQty = match !== '' && Number.isFinite(Number(match))
+                ? getEditorLocMatchQtyValue(item, match)
+                : null;
+            const locMatchQty = calculatedMatchQty != null ? String(calculatedMatchQty)
+                : qualifiedMatchQty == null ? 'Not verified' : String(qualifiedMatchQty);
             add('Spec', spec);
             add('Caliper', caliper);
             add('Loc match %', match ? `${match}%` : '');
-            add('Loc photo match', locMatchQty);
+            add('Loc photo match', match ? `${locMatchQty}${locMatchQty !== 'Not verified' ? ` (${match}%)` : ''}` : locMatchQty);
             add('AV note', avNote);
             add('Pick note', pick);
             add('Comments', comments);
@@ -46615,15 +46651,15 @@ let avTopControlsRenderToken = 0;
             if (modal) return modal;
             modal = document.createElement('div');
             modal.id = 'mark-done-confirm-modal';
-            modal.className = 'hidden fixed inset-0 z-[15000] items-center justify-center bg-slate-950/55 p-4';
+            modal.className = 'hidden fixed inset-0 z-[15000] items-center justify-center bg-slate-950/75 p-4';
             modal.addEventListener('click', (event) => {
                 if (event.target === modal) closeMarkDoneConfirmModal('cancel');
             });
             modal.innerHTML = `
                 <div class="w-full max-w-lg overflow-hidden rounded-[28px] border border-emerald-200 bg-white shadow-2xl">
-                    <div class="border-b border-emerald-100 p-5">
-                        <div class="text-xs font-black uppercase tracking-[0.24em] text-emerald-700">Photo / Spec Work</div>
-                        <h3 id="mark-done-confirm-title" class="mt-2 text-3xl font-black leading-tight text-slate-950">Mark Row Done?</h3>
+                    <div class="border-b border-emerald-700 bg-[#064e3b] p-5">
+                        <div class="text-xs font-black uppercase tracking-[0.24em] text-[#e8fff3]">Photo / Spec Work</div>
+                        <h3 id="mark-done-confirm-title" class="mt-2 text-3xl font-black leading-tight text-[#e8fff3]">Mark Row Done?</h3>
                     </div>
                     <div id="mark-done-confirm-body" class="max-h-[62vh] overflow-y-auto p-5 text-slate-800"></div>
                     <div class="grid grid-cols-2 gap-3 border-t border-slate-100 bg-slate-50 p-4">
@@ -76205,6 +76241,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
+            if (nextViewId === 'av' && currentViewId === 'home') clearAvSearchForHomeEntry();
             if (!['historical-requests', 'request-history'].includes(nextViewId)) destroyHistoricalRequestsIsland();
             else markViewDirty('historical-requests');
             if (nextViewId !== 'sales-inventory' && inventoryFieldCountingMode) {
@@ -77571,6 +77608,26 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             avResolvedBaseStateKey = '';
             avResolvedBaseStateCache = null;
             scheduleTrackedSearchViewRender('av', 'av', '', { force: true, debounceDelay: 0, typingDelay: isTouchConstrainedDevice() ? 32 : 12 });
+        }
+
+        function clearAvSearchForHomeEntry() {
+            const input = document.getElementById('av-search');
+            const clearBtn = document.getElementById('av-search-clear');
+            const hadSearch = !!String(input?.value || '').trim();
+            if (input) input.value = '';
+            if (clearBtn) clearBtn.classList.add('hidden');
+            if (!hadSearch) return false;
+            resetAvSearchDrilldownState();
+            selectedAvOpenName = null;
+            selectedAvOpenSize = null;
+            selectedAvOpenSeason = null;
+            selectedAvOpenLot = null;
+            delete avColumnFilters.COMMONNAME;
+            delete avColumnFilters.commonname;
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            markViewDirty('av');
+            return true;
         }
 
         function handleAVSearch() {
@@ -80813,8 +80870,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (shouldUseRepAvOpenDataset()) {
                 const masterComplete = isDatasetLoaded('master', 'full');
                 const avOpenComplete = isDatasetLoaded('avOpen', 'full');
-                if (avOpenComplete) return avRows;
                 if (masterComplete) return masterRows;
+                if (avOpenComplete) return avRows;
                 // Before either full snapshot completes, use whichever preview
                 // has more rows. The view loading gate keeps that preview from
                 // being presented as a final count or export cohort.
@@ -83569,7 +83626,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function isAvLiveCatalogIncomplete() {
-            if (!canUseProductionLiveSync() || activeAVTab !== 'open' || !shouldUseRepAvOpenDataset()) return false;
+            if (!canUseProductionLiveSync() || activeAVTab !== 'open') return false;
             return getDatasetState('master').rowCompleteness !== 'complete'
                 || !isDatasetLoaded('master', 'full') || !isDatasetLoaded('reserves', 'full');
         }
@@ -104567,7 +104624,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 document.body.classList.remove('app-main-scroll-locked', 'request-detail-scroll-locked');
                 document.body.classList.toggle('request-detail-av-options-open', requestAvOptionsDropdownOpen === true);
             }
-            const canResetRequestDetailScroll = opts.resetScroll !== false && !hasActiveTextEntryFocus() && !isUserActivelyTyping();
+            const photoUploadInFlight = !!(window.pendingPhotoUploads && window.pendingPhotoUploads.size);
+            const requestDraft = typeof getRequestWorkDraftEntry === 'function'
+                ? getRequestWorkDraftEntry(String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim())
+                : null;
+            const hasRequestDraft = !!(requestDraft && requestDraft.dirtyValues && Object.keys(requestDraft.dirtyValues).length);
+            const canResetRequestDetailScroll = opts.resetScroll !== false && !photoUploadInFlight && !hasRequestDraft && !hasActiveTextEntryFocus() && !isUserActivelyTyping();
             if (isIosPhoneRequestFlowView('detail') && !activeRequestEntry) clearIosPhoneRequestFlowState(`request-detail:${reason || 'ensure'}`, { resetScroll: canResetRequestDetailScroll });
             const mainScrollArea = document.getElementById('main-scroll-area');
             if (mainScrollArea) {
@@ -104628,7 +104690,28 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         document.addEventListener('focusin', (event) => {
+            const target = event && event.target;
+            const keyboard = document.getElementById('detail-measurement-keyboard');
+            if (detailMeasurementKeyboardTarget && target !== detailMeasurementKeyboardTarget
+                && !(keyboard && keyboard.contains(target))) {
+                closeDetailMeasurementKeyboard(false, { clearResume: true });
+            }
+            if (target && target.closest && target.closest('#view-detail.detail-request-mode') && isTextLikeElement(target)) {
+                const saveActionWrap = document.getElementById('req-save-action-wrap');
+                if (saveActionWrap) saveActionWrap.classList.add('hidden');
+            }
             if (isIosPhoneRequestDetailField(event && event.target)) scheduleIosPhoneRequestDetailFieldAnchor('focusin');
+        }, true);
+        document.addEventListener('focusout', (event) => {
+            const target = event && event.target;
+            if (!target || !target.closest || !target.closest('#view-detail.detail-request-mode')) return;
+            setTimeout(() => {
+                const active = document.activeElement;
+                if (active && active.closest && active.closest('#view-detail.detail-request-mode') && isTextLikeElement(active)) return;
+                if (isDetailMeasurementKeyboardVisible()) return;
+                const saveActionWrap = document.getElementById('req-save-action-wrap');
+                if (saveActionWrap) saveActionWrap.classList.remove('hidden');
+            }, 0);
         }, true);
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', () => scheduleIosPhoneRequestDetailFieldAnchor('visual-resize'), { passive: true });
@@ -105125,6 +105208,16 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!activeItem) return;
             const renderOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const detailSourceView = String(activeDetailSourceView || lastView || '').trim();
+            const detailRoot = document.getElementById('view-detail');
+            const requestId = String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim();
+            const requestDraft = detailSourceView.toLowerCase() === 'request' && requestId && typeof getRequestWorkDraftEntry === 'function'
+                ? getRequestWorkDraftEntry(requestId) : null;
+            const hasRequestDraft = !!(requestDraft && requestDraft.dirtyValues && Object.keys(requestDraft.dirtyValues).length);
+            const requestDetailBusy = detailSourceView.toLowerCase() === 'request'
+                && detailRoot && !detailRoot.classList.contains('hidden')
+                && (!!(window.pendingPhotoUploads && window.pendingPhotoUploads.size) || hasRequestDraft
+                    || hasActiveTextEntryFocus() || isUserActivelyTyping());
+            if (requestDetailBusy && renderOptions.allowDraftReset !== true) return false;
             const primaryDetailTab = configureDetailTabsForItem(activeItem, detailSourceView);
             populateDetailSummaryValues(activeItem, detailSourceView);
             renderDriveDetailOverviewFields();
@@ -136305,6 +136398,9 @@ C.14.043 C.15.000
             const safeApprovalTabs = Array.isArray(approvalTabs) ? approvalTabs : getManagerApprovalTabs(access);
             const safeToolTabs = Array.isArray(toolTabs) ? toolTabs : getManagerToolTabs(access);
             const options = [];
+            if (['dylan_collyge', 'megan_kelly', 'jd_jones'].includes(String(currentUser || '').trim().toLowerCase())) {
+                options.push({ id: MANAGER_RUNTIME_WATCHDOG_VIEW, label: 'WATCHDOG MONITOR' });
+            }
             safeToolTabs.forEach((tab) => options.push(Object.assign({}, tab)));
             safeApprovalTabs
                 .filter((tab) => ![SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW].includes(String(tab && tab.id || '').trim().toLowerCase()))
@@ -136322,6 +136418,7 @@ C.14.043 C.15.000
         function getManagerModuleMeta(tab = activeHomeTab) {
             const safeTab = String(tab || '').trim().toLowerCase();
             if (safeTab === MANAGER_APPROVAL_HOME_VIEW) return { label: 'Approval', description: 'Open Shear and NCR approval work.', icon: 'ph-seal-check' };
+            if (safeTab === MANAGER_RUNTIME_WATCHDOG_VIEW) return { label: 'WATCHDOG MONITOR', description: 'Review runtime incidents and role parity.', icon: 'ph-shield-warning' };
             if (safeTab === CROP_ROLL_HOME_TAB) return { label: 'Crop Roll', description: 'Review completed crop-roll itemcodes before Inventory Office.', icon: 'ph-plant' };
             if (safeTab === 'moves') return { label: 'Move', description: 'Build location-code move sessions from Drive Mode rows.', icon: 'ph-map-pin-line' };
             if (safeTab === APP_SEASON_SETTINGS_VIEW) return { label: 'Season', description: 'Set the current and next sales season logic.', icon: 'ph-calendar-check' };
@@ -138728,7 +138825,7 @@ C.14.043 C.15.000
             if (activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW && activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW && activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_COMPANY_DIRECTORY_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && ensureViewDataForRender('managers')) return;
             if (activeHomeTab !== 'productivity') selectedProductivityUser = '';
             let html = '';
-            if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs) + (canViewRuntimeWatchdog ? `<button type="button" class="manager-module-card mt-3 w-full rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left" onclick="setHomeTab('${MANAGER_RUNTIME_WATCHDOG_VIEW}')"><b>WATCHDOG MONITOR</b><span class="ml-2 text-xs">Open runtime anomalies and role parity</span></button>` : '');
+            if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);
             else if (activeHomeTab === MANAGER_RUNTIME_WATCHDOG_VIEW && canViewRuntimeWatchdog) html += renderManagerRuntimeWatchdogPanel();
             else if (activeHomeTab === MANAGER_APPROVAL_HOME_VIEW) html = renderManagerApprovalHomePanel(managerApprovalTabs);
             else if (activeHomeTab === 'productivity') html += renderProductivityHomePanel();
@@ -142232,16 +142329,28 @@ C.14.043 C.15.000
             const suspendMetrics = isSuspendTagCard && item.suspend_tag_metrics && typeof item.suspend_tag_metrics === 'object'
                 ? item.suspend_tag_metrics : null;
             const state = suspendMetrics ? { status:'ready', row:null } : getQueueCardInventoryState(item, sourceView);
+            const authorization = !state.row && !suspendMetrics ? getQueueCardInventoryAuthorizationContext() : null;
+            const masterState = authorization ? getDatasetState('master') : null;
+            const displayReceipt = typeof productionDisplayMasterReceipt !== 'undefined' ? productionDisplayMasterReceipt : null;
+            const sameOwnerMasterSnapshot = !!authorization && (
+                (masterState?.initialLoaded === true && masterState.rowCompleteness === 'complete'
+                    && masterState.liveVerifiedScope === authorization.scope
+                    && masterState.liveVerifiedPermission === authorization.permission)
+                || (displayReceipt?.rows === fullInventory
+                    && displayReceipt.readScope === authorization.readScope
+                    && displayReceipt.permission === authorization.permission)
+            );
+            const cachedMaster = !state.row && !suspendMetrics && sameOwnerMasterSnapshot ? findLinkedMasterRow(item) : null;
             const displayFallback = isSuspendTagCard && !suspendMetrics && !state.row ? getSuspendTagMetricDisplayFallback(item) : null;
-            const displayRow = state.row || displayFallback?.row || null;
+            const displayRow = state.row || cachedMaster || displayFallback?.row || null;
             const metricRow = suspendMetrics ? { ...(displayRow || {}), ...suspendMetrics } : (displayRow || {});
             // These quantities and photo observations belong to the verified
             // Drive master, regardless of the queue displaying them.
-            return buildInventoryQuantityChipsHtml(metricRow, { ...options, sourceView: state.row ? 'drive' : sourceView,
+            return buildInventoryQuantityChipsHtml(metricRow, { ...options, sourceView: state.row || cachedMaster ? 'drive' : sourceView,
                 canonical: true, preserveUnknown: true, missingValue: 'N/A',
                 hydrationStatus: isSuspendTagCard
                     ? (suspendMetrics || displayFallback?.row ? 'ready' : '')
-                    : (suspendMetrics || displayFallback?.row ? 'ready' : state.status),
+                    : (suspendMetrics || cachedMaster || displayFallback?.row ? 'ready' : state.status),
                 queueMetricTelemetry: isSuspendTagCard,
                 knownLocationOnHand: suspendMetrics?.LOC_ON_HAND,
                 knownLocationPhotoMatch: suspendMetrics?.LOC_MATCH_QTY });
@@ -142653,7 +142762,7 @@ C.14.043 C.15.000
                 const priceHtml = !isEvalSensitiveDataRestricted() && activePriceText && activePriceText !== '-'
                     ? `<div class="app-av-catalog-price"><span class="app-av-catalog-price-label">${escapeHtml(priceLabel)}</span><span class="app-av-catalog-price-value">${escapeHtml(activePriceText)}</span></div>`
                     : '';
-                const avQuantityRowHtml = buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, locationMetricItem: item, sourceView, preserveUnknown: true });
+                const avQuantityRowHtml = buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, locationMetricItem: item, sourceView, preserveUnknown: true, missingValue: 'N/A' });
                 const seasonOhHtml = showSeasonOh ? `<div class="app-av-catalog-season-oh"><span>Season OH</span><strong>${escapeHtml(seasonOhText)}</strong></div>` : '';
                 const avSourceText = String(firstNonEmptyValue(item.SOURCE, item.source, '') || '').trim();
                 const avReclassRailHtml = buildArgosInventoryTransactionRailHtml(item, 'drive');
@@ -164665,7 +164774,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
-                    if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
+                    if (avEl) { itemToSave.AV_NOTE = normalizeDetailSpecTextForSave(avEl.value).toUpperCase(); }
 
                     let descEl = prefix === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                     if (descEl && prefix === 'dock-') {

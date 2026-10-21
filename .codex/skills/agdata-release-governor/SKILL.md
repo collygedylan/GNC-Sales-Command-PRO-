@@ -12,6 +12,7 @@ Edge type checks resolve pinned npm imports through Deno's global cache (`--node
 - `scripts/release-scope.mjs`: `classifyReleasePaths`, `changedReleasePaths`, `selectReleaseRecoveryBase`; `scripts/release-baseline.mjs`: `findLastSuccessfulDeploymentBaseline`; `scripts/run-tooling-release-checks.mjs`: `runToolingReleaseChecks`.
 - `.github/workflows/pages-static.yml`, `pr-validation.yml`, `publish-candidate.yml`, `release-validation.yml`, `nightly-validation.yml`; `.github/actions/prepare-native-release/action.yml`; `scripts/lib/apps-script-deployment-guard.mjs`: `authorizeAppsScriptDeployment`.
 - Runtime boundaries are inputs to scope classification: `index.html`, `assets/*.js`, `supabase/functions/app-api/index.ts`, SQL migrations and `Code.gs`. This skill owns their release ordering and exact-commit checks, not their business functions. Use the domain owner in [Cluster 10](../../../docs/architecture/agdata-module-dependency-map.md#cluster-10-release-pipeline-scoped-tests-and-nightly-regression).
+- Register each new production SQL migration in `scripts/apply-item-low-stock-migration.mjs` with its migration constant, `releaseDatabaseMigrations` allowlist entry and an `as installed` contract query; then add coverage to the runner registration checks so scoped publication can apply and verify it.
 
 ## Shared component dependencies
 

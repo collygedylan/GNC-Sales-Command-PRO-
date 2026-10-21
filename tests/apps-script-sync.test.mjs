@@ -145,7 +145,7 @@ test('manual sync has authenticated exact-run kick, serial worker, per-stage ref
 
 test('source metadata and Manager read migrations are registered with secure deploy contracts', () => {
   for (const name of ['20261021014500_manager_published_read_continuity_v1.sql', '20261021020000_import_source_metadata_v1.sql',
-    '20261021021000_master_priority_split_identity_v1.sql']) {
+    '20261021021000_master_priority_split_identity_v1.sql', '20261021133149_aura_dylan_owner_only_guard.sql']) {
     assert.ok(releaseDatabaseMigrations.includes(name));
     assert.match(migrationContractQuery(name), /as installed/);
   }

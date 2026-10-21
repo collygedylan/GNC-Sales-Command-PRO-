@@ -59,6 +59,16 @@ test('AURA voice capabilities require canonical Dylan while signed deployment he
   assert.match(auraVoiceStore.slice(auraVoiceStore.indexOf('export async function handleAuraProviderProbe')), /SUPABASE_SERVICE_ROLE_KEY/);
 });
 
+test('the scoped release runner accepts and verifies the AURA owner migration', async () => {
+  const { selectReleaseMigrations, migrationContractQuery } = await import('../scripts/apply-item-low-stock-migration.mjs');
+  const name = '20261021133149_aura_dylan_owner_only_guard.sql';
+  assert.deepEqual(selectReleaseMigrations(JSON.stringify([`supabase/migrations/${name}`])), [name]);
+  const contract = migrationContractQuery(name);
+  for (const rpc of ['aura_voice_access_v1', 'aura_voice_context_v1', 'aura_voice_inventory_read_v1', 'aura_voice_soc_read_v1']) assert.ok(contract.includes(rpc));
+  assert.match(contract, /dylan_collyge/);
+  assert.match(contract, /has_function_privilege/);
+});
+
 test('the common actor context is server-resolved and rejects identity or canonical-access mismatches', () => {
   const start = api.indexOf('async function resolveZeroTrustRequestContext(');
   const end = api.indexOf('\nexport async function handleFieldCountAction', start);
