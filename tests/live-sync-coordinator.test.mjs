@@ -8,10 +8,10 @@ const deterministicMath = Object.create(Math);
 deterministicMath.random = () => 0.2;
 const sandbox = { module: { exports: {} }, setTimeout, clearTimeout, AbortController, Math: deterministicMath };
 vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8'), sandbox);
-const { createCoordinator } = sandbox.module.exports;
+const { createCoordinator, readContextKey } = sandbox.module.exports;
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 25; i++) await Promise.resolve(); };
-function fixture() {
+function fixture(overrides = {}) {
     let revision = '1', state = 'ready', permission = 'role-v1', changedAt = '2026-10-08T00:00:00Z', clock = 1000;
     let rows = [{ id: 'dock-28' }], reads = 0, metadataReads = 0, subscriptions = 0, closes = 0;
     let fault = null, loadHook = null, metadataHook = null, notify = null, sourceGateReadChecks = false, publication = null;
@@ -32,7 +32,8 @@ function fixture() {
         onStatus: (value) => statuses.push(value), onPermissionChange: (...args) => permissionChanges.push(args), now: () => clock,
         subscribe: (changed) => { subscriptions++; notify = changed; return () => { closes++; }; },
         setTimeout: (callback, delay) => { const id = ++timerId; timers.set(id, { callback, at: clock + delay }); return id; },
-        clearTimeout: (id) => timers.delete(id)
+        clearTimeout: (id) => timers.delete(id),
+        ...overrides
     });
     return { coordinator, context, adapter, commits, statuses, permissionChanges, timers,
         get revision() { return revision; }, set revision(value) { revision = value; }, set state(value) { state = value; }, set changedAt(value) { changedAt = value; }, set rows(value) { rows = value; },
@@ -54,6 +55,129 @@ test('metadata before and after the read gates the first authoritative snapshot'
     assert.equal(f.metadataReads, 2); assert.equal(f.reads, 1);
     assert.deepEqual(f.commits[0], [{ id: 'dock-28' }]);
     assert.equal(f.coordinator.getStatus().state, 'Up to date');
+});
+
+for (const view of ['docks', 'request:suspend-tag']) {
+    test(`${view} in-flight server read completes through a same-account access refresh without claiming changed permission proof`, async () => {
+        const f = fixture();
+        Object.assign(f.context, { viewKey: view, authenticated: true, accessDenied: false,
+            readIdentity: 'account-a:login-epoch-1', dataPermissionVersion: 'role-v1', dataPermissionSnapshotFresh: true });
+        const gate = deferred();
+        let signal;
+        f.loadHook = value => { signal = value; return gate.promise; };
+        const pending = f.coordinator.ensure(f.adapter);
+        await settle();
+        assert.ok(signal, 'the data read must actually be in flight');
+        const owner = readContextKey(f.context);
+        f.context.dataPermissionVersion = 'role-v2';
+        f.context.dataPermissionSnapshotFresh = true;
+        f.coordinator.signal('permissions', 0);
+        await f.advance(0);
+        assert.equal(signal.aborted, false, 'a background permission refresh is not an account boundary');
+        assert.equal(readContextKey(f.context), owner);
+        gate.resolve();
+        assert.equal(await pending, true, 'server-authorized rows satisfy the view loader');
+        assert.deepEqual(f.commits.at(-1), [{ id: 'dock-28' }]);
+        const status = f.coordinator.getStatus();
+        assert.equal(status.dataReadable, true);
+        assert.equal(status.readContextKey, owner);
+        assert.match(status.contextKey, /role-v1/, 'proof remains tied to the server permission hash');
+        assert.doesNotMatch(status.contextKey, /role-v2/, 'independent access refresh cannot fabricate freshness/write proof');
+        assert.equal(f.statuses.some(value => /Access permissions changed while this screen/.test(value.message)), false);
+        f.coordinator.reset();
+    });
+
+    test(`${view} reissues once when the server permission revision changes during the read`, async () => {
+        const f = fixture();
+        Object.assign(f.context, { viewKey: view, authenticated: true, accessDenied: false,
+            readIdentity: 'account-a:login-epoch-1', dataPermissionVersion: 'role-v1' });
+        const gate = deferred();
+        f.loadHook = () => gate.promise;
+        const pending = f.coordinator.ensure(f.adapter);
+        await settle();
+        f.permission = 'role-v2'; f.context.dataPermissionVersion = 'role-v2';
+        gate.resolve();
+        assert.equal(await pending, true);
+        assert.equal(f.reads, 2, 'only the obsolete server-bracketed read is repeated');
+        assert.equal(f.commits.length, 1, 'the obsolete permission cohort is never published');
+        assert.match(f.coordinator.getStatus().contextKey, /role-v2/);
+        assert.equal(f.statuses.some(value => /Access permissions changed while this screen/.test(value.message)), false);
+        f.coordinator.reset();
+    });
+}
+
+test('same-account read continuity does not survive logout, confirmed denial or a new login epoch', async () => {
+    for (const boundary of ['logout', 'revoked', 'relogin']) {
+        const f = fixture();
+        Object.assign(f.context, { authenticated: true, accessDenied: false,
+            readIdentity: 'account-a:login-epoch-1', dataPermissionVersion: 'role-v1' });
+        const gate = deferred();
+        let signal;
+        f.loadHook = value => { signal = value; return gate.promise; };
+        const pending = f.coordinator.ensure(f.adapter);
+        await settle();
+        const previousOwner = readContextKey(f.context);
+        if (boundary === 'logout') { f.context.authenticated = false; f.context.scope = ''; }
+        else if (boundary === 'revoked') f.context.accessDenied = true;
+        else { f.context.readIdentity = 'account-a:login-epoch-2'; f.rows = [{ id: 'new-login-row' }]; }
+        assert.notEqual(readContextKey(f.context), previousOwner, `${boundary}: the read owner changes`);
+        f.coordinator.signal('permissions', 0);
+        assert.equal(signal.aborted, true);
+        gate.resolve();
+        assert.equal(await pending, false, boundary);
+        assert.deepEqual(f.commits, boundary === 'relogin' ? [[{ id: 'new-login-row' }]] : [], 'an old owner never publishes its rows');
+        assert.equal(f.coordinator.retainDisplay(), false, boundary);
+        f.coordinator.reset();
+    }
+});
+
+test('same-account adapter scope drift retries once, while persistent drift and unknown failures remain failures', async () => {
+    for (const failure of ['once', 'persistent', 'unknown']) {
+        const f = fixture();
+        Object.assign(f.context, { authenticated: true, accessDenied: false,
+            readIdentity: 'account-a:login-epoch-1', dataPermissionVersion: 'role-v1' });
+        let attempts = 0;
+        f.loadHook = () => {
+            attempts++;
+            if (failure === 'once' && attempts > 1) return;
+            throw Object.assign(new Error(failure), { code: failure === 'unknown' ? 'UNEXPECTED_FAILURE' : 'DATASET_READ_SCOPE_CHANGED' });
+        };
+        assert.equal(await f.coordinator.ensure(f.adapter), failure === 'once');
+        assert.equal(attempts, failure === 'unknown' ? 1 : 2);
+        assert.equal(f.commits.length, failure === 'once' ? 1 : 0);
+        if (failure !== 'once') assert.notEqual(f.coordinator.getStatus().dataReadable, true);
+        f.coordinator.reset();
+    }
+});
+
+test('an active-account permission refresh runs in the background without delaying Docks rows', async () => {
+    const access = deferred();
+    let refreshes = 0;
+    const f = fixture({ onPermissionChange: () => { refreshes++; return access.promise; } });
+    Object.assign(f.context, { viewKey: 'docks', authenticated: true, accessDenied: false,
+        readIdentity: 'account-a:login-epoch-1', dataPermissionVersion: 'role-v2' });
+    const pending = f.coordinator.ensure(f.adapter);
+    await settle();
+    assert.ok(refreshes > 0);
+    assert.equal(f.commits.length, 1, 'the server read completes before independent profile/capability refresh');
+    assert.equal(f.coordinator.getStatus().dataReadable, true);
+    access.resolve();
+    assert.equal(await pending, true);
+    f.coordinator.reset();
+});
+
+test('a server authorization denial during access refresh still clears same-account retained rows', async () => {
+    const f = fixture();
+    Object.assign(f.context, { authenticated: true, accessDenied: false,
+        readIdentity: 'account-a:login-epoch-1', dataPermissionVersion: 'role-v1' });
+    await f.coordinator.check();
+    f.context.dataPermissionVersion = 'role-v2'; f.permission = 'role-v2'; f.revision = '2';
+    f.fault = Object.assign(new Error('Forbidden'), { status: 403, code: '42501' });
+    assert.equal(await f.coordinator.ensure(f.adapter, true), false);
+    assert.equal(f.coordinator.getStatus().authorizationDenied, true);
+    assert.notEqual(f.coordinator.getStatus().dataReadable, true);
+    assert.equal(f.coordinator.retainDisplay(), false);
+    f.coordinator.reset();
 });
 test('unchanged revisions perform no full downloads; a healthy socket never stops the 30s check', async () => {
     const f = fixture(); await f.coordinator.check(); const first = f.metadataReads;

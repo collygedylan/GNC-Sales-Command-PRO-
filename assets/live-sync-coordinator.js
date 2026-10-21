@@ -25,6 +25,21 @@
     function signature(meta, keys) {
         return JSON.stringify([meta.permissionVersion, ...unique(keys).map((key) => [key, meta.sources.get(key)?.revision, meta.sources.get(key)?.state, ...(publishedReadable(meta.sources.get(key)) ? [meta.sources.get(key).publishedRevision] : [])])]);
     }
+    function canContinueRead(ctx) {
+        return ctx?.authenticated === true && ctx.accessDenied === false && !!String(ctx.readIdentity || '');
+    }
+    function contextKey(ctx, permissionVersion = ctx.dataPermissionVersion || '') {
+        const parts = [ctx.scope, permissionVersion, ctx.viewKey,
+            (ctx.adapters || []).map((item) => [item.id, item.cacheKey])];
+        if (Array.isArray(ctx.previewAdapterIds)) parts.push([...ctx.previewAdapterIds].sort());
+        return JSON.stringify(parts);
+    }
+    function readContextKey(ctx) {
+        // Permission hashes are proof/cache versions, not authenticated owners.
+        // A real login epoch, account, role, view or filter change still fences reads.
+        const key = contextKey(ctx, canContinueRead(ctx) ? '' : ctx.dataPermissionVersion || '');
+        return ctx.readIdentity ? JSON.stringify([key, String(ctx.readIdentity)]) : key;
+    }
     function createCoordinator(options) {
         const now = options.now || Date.now;
         const later = options.setTimeout || setTimeout;
@@ -50,6 +65,7 @@
                 if (!coveredBrowse || otherKey === key) applied.delete(otherKey);
             }
             applied.set(key, { id: adapter.id, value, cacheKey: adapter.cacheKey, scope: String(ctx?.scope || ''),
+                readIdentity: String(ctx?.readIdentity || ''),
                 permissionVersion: String(metadata.permissionVersion || ''), sourceSignature,
                 projection: adapter.projection, projectionFamily: adapter.projectionFamily,
                 signature: JSON.stringify([adapter.cacheKey, sourceSignature]) });
@@ -58,7 +74,7 @@
         }
         const requested = new Map();
         const forcedReloads = new Map();
-        let epoch = 0, scope = '', permission = '', running = null, queued = false;
+        let epoch = 0, scope = '', readOwner = '', permission = '', running = null, queued = false;
         let activeRun = null, backgroundRunning = null, backgroundGeneration = 0, backgroundTimer = null, backgroundController = null;
         let pollTimer = null, signalTimer = null, signalAt = Infinity, signalReason = '', signalIdentity = '', unsubscribe = null, subscribedScope = '';
         let sourceGate = null, sourceGateTimer = null;
@@ -106,19 +122,19 @@
         }
         function reset() {
             epoch++; clearTimers(); sourceGate = null; revisionChurnCounts.clear(); closeSubscription(); applied.clear(); requested.clear(); forcedReloads.clear(); verifiedAtByIdentity.clear();
-            permission = ''; scope = ''; lastVerifiedAt = null; queued = false;
+            permission = ''; scope = ''; readOwner = ''; lastVerifiedAt = null; queued = false;
             backgroundStatus = { state: 'Waiting', lastVerifiedAt: null };
             publish('Syncing', 'Waiting to verify current data.');
         }
         function context() {
             const next = options.getContext();
             if (!next || !next.scope || next.visible === false || next.online === false) return next;
-            if (scope !== next.scope) {
+            if (scope !== next.scope || readOwner !== String(next.readIdentity || '')) {
                 invalidateBackground();
                 clearSourceGate();
                 revisionChurnCounts.clear();
                 epoch++; applied.clear(); requested.clear(); forcedReloads.clear(); verifiedAtByIdentity.clear(); permission = ''; lastVerifiedAt = null;
-                scope = next.scope; closeSubscription();
+                scope = next.scope; readOwner = String(next.readIdentity || ''); closeSubscription();
             }
             return { ...next, adapters: (next.adapters || []).map((adapter) => ({ ...adapter, sourceKeys: [...adapter.sourceKeys] })) };
         }
@@ -148,7 +164,7 @@
             return Array.from(result.values());
         }
         function retainDisplay(ctx = context()) {
-            if (!ctx?.progressive || ctx.visible === false || !ctx.scope || scope !== ctx.scope
+            if (!ctx?.progressive || ctx.visible === false || ctx.authenticated === false || ctx.accessDenied === true || !ctx.scope || scope !== ctx.scope
                 || !options.retainAppliedDisplay) return false;
             const entries = (ctx.adapters || []).map(adapter => {
                 const previous = appliedFor(adapter);
@@ -165,6 +181,7 @@
         }
         function isDisplayRetainable(entry, adapter, ctx) {
             if (!entry || entry.cacheKey !== adapter.cacheKey || entry.scope !== String(ctx?.scope || '')
+                || entry.readIdentity !== String(ctx?.readIdentity || '')
                 || !entry.permissionVersion) return false;
             const currentVersion = String(ctx?.dataPermissionVersion || '');
             // A pending/stale access refresh is not evidence of revocation. Keep
@@ -174,17 +191,26 @@
             return currentVersion === entry.permissionVersion;
         }
         function identity(ctx) {
-            const parts = [ctx.scope, ctx.dataPermissionVersion || '', ctx.viewKey,
-                (ctx.adapters || []).map((item) => [item.id, item.cacheKey])];
-            if (Array.isArray(ctx.previewAdapterIds)) parts.push([...ctx.previewAdapterIds].sort());
-            return JSON.stringify(parts);
+            return contextKey(ctx);
         }
         function isTrustedApplied(entry, adapter, ctx) {
-            if (!entry || entry.cacheKey !== adapter.cacheKey || entry.scope !== String(ctx?.scope || '')
+            if (ctx?.authenticated === false || ctx?.accessDenied === true
+                || !entry || entry.cacheKey !== adapter.cacheKey || entry.scope !== String(ctx?.scope || '')
+                || entry.readIdentity !== String(ctx?.readIdentity || '')
                 || !entry.permissionVersion) return false;
             if (Object.prototype.hasOwnProperty.call(ctx || {}, 'dataPermissionVersion'))
                 return !!String(ctx.dataPermissionVersion || '') && String(ctx.dataPermissionVersion) === entry.permissionVersion;
             return true;
+        }
+        function isReadAvailable(adapter, ctx) {
+            if (isTrustedApplied(appliedFor(adapter), adapter, ctx)) return true;
+            const entry = appliedFor(adapter);
+            // This is loader availability only. Disk reuse and write/freshness
+            // proof still require the exact permission hash above.
+            return canContinueRead(ctx) && entry?.cacheKey === adapter.cacheKey
+                && entry.scope === String(ctx.scope) && entry.readIdentity === String(ctx.readIdentity)
+                && !!entry.permissionVersion && currentStatus.dataReadable === true
+                && currentStatus.readContextKey === readContextKey(ctx);
         }
         function isAuthorizationDenied(error) {
             const status = Number(error?.status || error?.payload?.status || 0);
@@ -194,7 +220,7 @@
         function discardAppliedAfterDenial(ctx, error) {
             if (!isAuthorizationDenied(error)) return false;
             const currentContext = options.getContext() || {};
-            if (identity(currentContext) !== identity(ctx || {})) return false;
+            if (readContextKey(currentContext) !== readContextKey(ctx || {})) return false;
             applied.clear();
             verifiedAtByIdentity.clear();
             lastVerifiedAt = null;
@@ -207,7 +233,9 @@
         }
         function stillCurrent(ctx, startedEpoch) {
             const next = options.getContext();
-            return epoch === startedEpoch && next?.visible !== false && next?.online !== false && identity(next || {}) === identity(ctx);
+            return epoch === startedEpoch && next?.visible !== false && next?.online !== false
+                && next?.authenticated !== false && next?.accessDenied !== true
+                && readContextKey(next || {}) === readContextKey(ctx);
         }
         function cacheMeta(adapter, ctx, metadata) {
             return { contractVersion: 1, scope: ctx.scope, adapterId: adapter.id, cacheKey: adapter.cacheKey,
@@ -436,10 +464,15 @@
             if (background) backgroundController = run.controller;
             if (!background) arm(ctx);
             if (!ctx?.scope || ctx.visible === false) return false;
-            const contextKey = identity(ctx);
-            if (!background) lastVerifiedAt = verifiedAtByIdentity.get(contextKey) ?? null;
-            const emit = background ? publishBackground : (state, message = '', extra = {}) => publish(state, message, { ...extra, contextKey });
+            let proofContextKey = identity(ctx);
+            if (!background) lastVerifiedAt = verifiedAtByIdentity.get(proofContextKey) ?? null;
+            const emit = background ? publishBackground : (state, message = '', extra = {}) => publish(state, message, { ...extra, contextKey: proofContextKey });
             if (ctx.online === false) { emit('Offline', 'Showing the last verified data, if available.'); return false; }
+            if (ctx.authenticated === false || ctx.accessDenied === true) {
+                discardAppliedAfterDenial(ctx, { status: 403 });
+                emit('Needs attention', 'Access to this screen has been revoked.', { authorizationDenied: true, status: 403 });
+                return false;
+            }
             const startedEpoch = epoch;
             const current = () => stillCurrent(ctx, startedEpoch) && (!background || run.generation === backgroundGeneration
                 && JSON.stringify((options.getContext()?.backgroundAdapters || []).map(item => [item.id, item.cacheKey])) === JSON.stringify((ctx.backgroundAdapters || []).map(item => [item.id, item.cacheKey])));
@@ -520,6 +553,7 @@
             const beforeValue = await options.readRevisions(keys, { signal: run.controller?.signal });
             if (!current()) return discard();
             const before = snapshot(beforeValue, keys);
+            if (canContinueRead(ctx)) proofContextKey = contextKey(ctx, before.permissionVersion);
             if (background && (ctx.adapters || []).length && (permission !== before.permissionVersion || (ctx.adapters || []).some(adapter => appliedFor(adapter)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)])))) {
                 publish('Syncing', 'Source data changed; verifying visible data.');
                 signal('background-source-changed', 0);
@@ -531,7 +565,13 @@
                 || (accessSnapshotFresh && accessSnapshotPermissionVersion
                     && accessSnapshotPermissionVersion !== before.permissionVersion)) {
                 applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
-                await options.onPermissionChange?.(before.permissionVersion);
+                if (canContinueRead(ctx)) {
+                    // The app applies confirmed revocation through its access
+                    // context. Its background refresh is not a prerequisite for
+                    // independently authorized, revision-bracketed server reads.
+                    try { Promise.resolve(options.onPermissionChange?.(before.permissionVersion)).catch(() => {}); }
+                    catch (_) {}
+                } else await options.onPermissionChange?.(before.permissionVersion);
                 if (!current()) return discard();
                 // The revision contract and the fresh access snapshot are
                 // independent reads. Never prove or render a joined snapshot
@@ -539,7 +579,8 @@
                 // the first cycle before the coordinator has seen a hash.
                 const refreshedContext = options.getContext();
                 if (accessSnapshotFresh && accessSnapshotPermissionVersion
-                    && String(refreshedContext?.dataPermissionVersion || '') !== before.permissionVersion) {
+                    && String(refreshedContext?.dataPermissionVersion || '') !== before.permissionVersion
+                    && !canContinueRead(refreshedContext)) {
                     emit('Needs attention', 'Access permissions changed while this screen was loading. Refresh access, then retry.');
                     return false;
                 }
@@ -606,7 +647,18 @@
                                 if (displayValue) preview(adapter, displayValue);
                             }
                             if (cacheMatches(cached, meta)) { value = cached.value; statistics.cacheHits++; }
-                            else { statistics.adapterReads++; value = await adapter.stage({ signal: run.controller?.signal, preview: ctx.progressive && !background ? value => preview(adapter, value) : undefined }); }
+                            else {
+                                const stage = () => {
+                                    statistics.adapterReads++;
+                                    return adapter.stage({ signal: run.controller?.signal, preview: ctx.progressive && !background ? value => preview(adapter, value) : undefined });
+                                };
+                                try { value = await stage(); }
+                                catch (error) {
+                                    if (!current() || !canContinueRead(ctx) || run.controller?.signal.aborted
+                                        || String(error?.code || error?.payload?.code || '').toUpperCase() !== 'DATASET_READ_SCOPE_CHANGED') throw error;
+                                    value = await stage();
+                                }
+                            }
                             if (value === undefined) throw new Error(`${adapter.id} did not return a snapshot.`);
                             if (!display.has(adapter.id) || !adapter.id.startsWith('core:')) preview(adapter, value);
                             staged.push({ adapter, value });
@@ -623,7 +675,7 @@
                 const after = snapshot(afterValue, keys);
                 if (signature(before, keys) !== signature(after, keys)) {
                     if (background) { publish('Syncing', 'Source data changed; verifying visible data.'); signal('background-source-changed', 0); }
-                    else if (suspendForRevisionChurn(ctx, keys, after, contextKey)) {
+                    else if (suspendForRevisionChurn(ctx, keys, after, proofContextKey)) {
                         emit('Needs attention', 'Source data is changing repeatedly. Pausing verification before another read.');
                         return false;
                     }
@@ -645,18 +697,19 @@
                 }
             }
             if (!background) {
-                revisionChurnCounts.delete(contextKey);
+                revisionChurnCounts.delete(proofContextKey);
                 lastVerifiedAt = now();
-                verifiedAtByIdentity.set(contextKey, lastVerifiedAt);
+                verifiedAtByIdentity.set(proofContextKey, lastVerifiedAt);
             }
             if (!background && sourceGate?.halfOpenInFlight && sourceGateMatches(ctx)) clearSourceGate();
             const publishedSources = keys.filter(key => publishedReadable(before.sources.get(key)));
+            const readableStatus = canContinueRead(ctx) ? { dataReadable: true, readContextKey: readContextKey(ctx) } : {};
             if (publishedSources.length) {
                 emit('Published data', 'Showing the last completed data. The latest import is recovering.', {
-                    publishedSources, dataReadable: true, readOnlySnapshot: true,
+                    ...readableStatus, publishedSources, dataReadable: true, readOnlySnapshot: true,
                     publishedAt: publishedSources.map(key => before.sources.get(key).publishedAt).sort()[0]
                 });
-            } else emit('Up to date');
+            } else emit('Up to date', '', readableStatus);
             return true;
         }
         function scheduleBackground() {
@@ -712,11 +765,11 @@
                 }
                 // Rendering and navigation ask for the same proof. Real source,
                 // permission and reconnect signals still queue another pass.
-                if (running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === nextIdentity) return running;
+                if (running && activeRun?.epoch === epoch && readContextKey(activeRun.context || {}) === readContextKey(gateContext || {})) return running;
                 if (!running && !queued && signalTimer === null && currentStatus.state === 'Up to date' && currentStatus.contextKey === nextIdentity) return Promise.resolve(true);
             }
             invalidateBackground();
-            if (activeRun && (activeRun.epoch !== epoch || identity(activeRun.context || {}) !== identity(options.getContext() || {}))) activeRun.controller?.abort();
+            if (activeRun && (activeRun.epoch !== epoch || readContextKey(activeRun.context || {}) !== readContextKey(options.getContext() || {}))) activeRun.controller?.abort();
             queued = true;
             if (running) return running;
             const task = (async () => {
@@ -759,9 +812,9 @@
             statistics.signals++;
             const ctx = options.getContext();
             if (!ctx?.scope || ctx.visible === false) { clearTimers(); closeSubscription(); epoch++; return; }
-            if (readinessReasons.has(reason) && running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === identity(ctx)) return;
+            if (readinessReasons.has(reason) && running && activeRun?.epoch === epoch && readContextKey(activeRun.context || {}) === readContextKey(ctx)) return;
             if (readinessReasons.has(reason) && !running && !queued && currentStatus.state === 'Up to date' && currentStatus.contextKey === identity(ctx)) return;
-            if (activeRun && identity(activeRun.context || {}) !== identity(ctx)) activeRun.controller?.abort();
+            if (activeRun && readContextKey(activeRun.context || {}) !== readContextKey(ctx)) activeRun.controller?.abort();
             if (backgroundRunning) invalidateBackground();
             const due = now() + Math.max(0, delay);
             if (signalTimer !== null && signalAt <= due) return;
@@ -772,7 +825,7 @@
         }
         function ensure(adapter, force = false) {
             const ctx = context();
-            if (!ctx?.scope || ctx.visible === false || ctx.online === false) return Promise.resolve(false);
+            if (!ctx?.scope || ctx.visible === false || ctx.online === false || ctx.authenticated === false || ctx.accessDenied === true) return Promise.resolve(false);
             const ensureEpoch = epoch;
             const ensureKey = appliedKey(adapter);
             if (force && forcedReloads.has(ensureKey)) return forcedReloads.get(ensureKey);
@@ -795,16 +848,16 @@
                 signal('cache-expired', 0);
                 return Promise.resolve(true);
             }
-            if (running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === identity(ctx)
+            if (running && activeRun?.epoch === epoch && readContextKey(activeRun.context || {}) === readContextKey(ctx)
                 && (!force || !wasApplied) && activeRun.adapters?.some(item => item.id === adapter.id && item.cacheKey === adapter.cacheKey)) {
-                return running.then(() => isTrustedApplied(appliedFor(adapter), adapter, options.getContext() || {}));
+                return running.then(() => epoch === ensureEpoch && isReadAvailable(adapter, options.getContext() || {}));
             }
             // Invalidate freshness without dropping the same-owner display value.
             // A forced loader must reapply its adapter even at an unchanged revision.
             if (force && appliedFor(adapter)) appliedFor(adapter).signature = null;
             requested.set(adapter.id, adapter);
             const result = check('loader').then(() => epoch === ensureEpoch
-                && isTrustedApplied(appliedFor(adapter), adapter, options.getContext() || {}));
+                && isReadAvailable(adapter, options.getContext() || {}));
             if (force) {
                 forcedReloads.set(ensureKey, result);
                 result.finally(() => { if (forcedReloads.get(ensureKey) === result) forcedReloads.delete(ensureKey); });
@@ -823,6 +876,6 @@
             suspendSourceReads: (error, sourceKeys) => suspendDirectSourceRead(error, sourceKeys),
             getStatus: () => ({ ...currentStatus }), getBackgroundStatus: () => ({ ...backgroundStatus }), getStatistics: () => ({ ...statistics }) });
     }
-    return Object.freeze({ createCoordinator, snapshot, signature, isPublishedReadable: publishedReadable, isReadableSource: readable,
+    return Object.freeze({ createCoordinator, snapshot, signature, readContextKey, isPublishedReadable: publishedReadable, isReadableSource: readable,
         readSourceToken: source => JSON.stringify([source?.revision, source?.state, ...(publishedReadable(source) ? [source.publishedRevision] : [])]) });
 });

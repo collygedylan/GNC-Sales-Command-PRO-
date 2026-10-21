@@ -48,6 +48,7 @@ function harness() {
     if (!item.cancelled) item.callback({ didTimeout: false, timeRemaining: () => 50 });
   };
   return {
+    context,
     window,
     api: window.AgMetricLifecycle,
     errors,
@@ -133,6 +134,60 @@ test('view and session invalidation fence late work while scopes stay isolated',
     { type: 'view', reason: 'view-change' },
     { type: 'session', reason: 'session-reset' },
   ]);
+});
+
+test('Docks and Que session/view reads survive a same-account access snapshot completion while real session reset still aborts', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  for (const view of ['docks', 'request']) {
+    const h = harness();
+    const access = deferred();
+    const persisted = [];
+    Object.assign(h.context, {
+      SUPABASE_URL: 'https://fixture.invalid', nativeAuthSessionActive: true,
+      nativeAuthProfile: { id: 'account-a', username: 'worker' }, currentUser: 'worker',
+      currentRole: 'Admin', currentUserDivision: '10', productionLiveSyncReadAuthEpoch: 1,
+      productionLiveSyncReadPermissionVersion: 'access-v1',
+      appAccessSnapshotLoadPromise: null,
+      appAccessSnapshotState: { username: 'worker', profileId: 'account-a', authEpoch: 1,
+        status: 'ready', stale: false, loadedAt: 1, snapshot: { username: 'worker', dataPermissionVersion: 'access-v1' } },
+      navigator: { onLine: true }, activeHomeTab: 'dashboard', MANAGER_ACCESS_CONTROL_VIEW: 'access-control',
+      getRequestCapabilityUsernameKey: value => String(value || '').trim().toLowerCase(),
+      getCurrentLoginCacheScopeKey: () => 'account-a:login-1',
+      supabaseRpc: () => access.promise,
+      normalizeAppAccessSnapshot: (value, username) => value?.username === username ? value : null,
+      persistAppAccessSnapshot: value => persisted.push(value),
+      getRoleAccessState: () => ({ isAdmin: true }),
+      reportSemanticHealthEvent: () => assert.fail('same-account refresh should not fail'),
+      readCachedAppAccessSnapshot: () => assert.fail('the same-account in-memory snapshot should be retained'),
+    });
+    for (const name of ['getSupabaseReadIdentityScope', 'initializeAppAccessSnapshot']) {
+      const functionSource = html.match(new RegExp('        (?:async )?function ' + name + '\\([^]*?^        }', 'm'))?.[0];
+      assert.ok(functionSource, `missing ${name}`);
+      vm.runInContext(functionSource, h.context);
+    }
+    h.api.enterView(view);
+    const session = h.api.createScope({ lifetime: 'session' });
+    const viewRead = h.api.createScope();
+    const owner = h.context.getSupabaseReadIdentityScope();
+    const pending = h.context.initializeAppAccessSnapshot({ force: true, reason: 'native-role-refresh' });
+    assert.equal(h.context.appAccessSnapshotState.status, 'loading');
+    assert.equal(session.isCurrent(), true);
+    assert.equal(viewRead.isCurrent(), true);
+    h.context.productionLiveSyncReadPermissionVersion = 'access-v2';
+    access.resolve({ username: 'worker', dataPermissionVersion: 'access-v2' });
+    const snapshot = await pending;
+    assert.equal(snapshot.dataPermissionVersion, 'access-v2');
+    assert.equal(persisted.length, 1);
+    assert.equal(h.context.appAccessSnapshotState.status, 'ready');
+    assert.equal(h.context.getSupabaseReadIdentityScope(), owner, 'mutable permission metadata is not a read owner');
+    assert.equal(session.isCurrent(), true, `${view}: session read remains live`);
+    assert.equal(viewRead.isCurrent(), true, `${view}: view read remains live`);
+    h.context.productionLiveSyncReadAuthEpoch++;
+    assert.notEqual(h.context.getSupabaseReadIdentityScope(), owner, 'logout/relogin remains a real identity boundary');
+    h.api.resetSession();
+    assert.equal(session.signal.aborted, true);
+    assert.equal(viewRead.signal.aborted, true);
+  }
 });
 
 test('cancelled navigation may resume on trusted activity but committed navigation requires pageshow', () => {

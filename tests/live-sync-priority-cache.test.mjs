@@ -8,6 +8,71 @@ vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', im
 const { createCoordinator } = sandbox.module.exports;
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
+
+test('Home published metadata hydrates before filename reads and survives same-account access refresh', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const context = vm.createContext({
+        dashboardSyncMetadataSummaries: [], dashboardSyncMetadataFetchedAt: 0, dashboardSyncMetadataOwner: '',
+        getSupabaseReadIdentityScope: () => 'account-a:session-1', canViewDashboardSyncStatus: () => true,
+        getValidIsoTimestamp: value => Number.isFinite(Date.parse(value)) ? value : '',
+        selectDashboardSyncFilename: files => files.filter(Boolean).sort().at(-1) || '',
+        window: {}, renders: 0,
+        updateDashboardSyncSummary() { context.renders++; },
+    });
+    for (const name of ['getDashboardSyncMetadataSources', 'mergeDashboardSyncSummaries', 'applyDashboardPublishedRevisionMetadata']) {
+        const source = html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0];
+        assert.ok(source, name); vm.runInContext(source, context);
+    }
+    const ready = { contractVersion: 1, permissionVersion: 'old-access', sources: [
+        { key: 'ph_soc_master', state: 'ready', changedAt: '2026-10-20T12:00:00Z' },
+        { key: 'ph_master_inventory', state: 'importing', changedAt: '2026-10-21T12:00:00Z',
+            publishedReadable: true, publishedAt: '2026-10-19T12:00:00Z' },
+        { key: 'ph_reserves', state: 'unavailable', changedAt: '2026-10-21T12:00:00Z',
+            publishedReadable: true, publishedAt: '2026-10-19T12:00:00Z' },
+    ] };
+    assert.equal(context.applyDashboardPublishedRevisionMetadata(ready, 'account-a:session-1'), true);
+    assert.deepEqual(Array.from(context.dashboardSyncMetadataSummaries, row => [row.label, row.iso]), [
+        ['SOC', '2026-10-20T12:00:00Z'], ['Drive', '2026-10-19T12:00:00Z'],
+    ]);
+    context.dashboardSyncMetadataSummaries[0].files = ['SOC-10-Open-Orders.xlsx'];
+    assert.equal(context.applyDashboardPublishedRevisionMetadata({ ...ready, permissionVersion: 'new-access' }, 'account-a:session-1'), true);
+    assert.deepEqual(Array.from(context.dashboardSyncMetadataSummaries[0].files), ['SOC-10-Open-Orders.xlsx']);
+    assert.equal(context.dashboardSyncMetadataOwner, 'account-a:session-1');
+    assert.equal(context.renders, 2);
+    context.getSupabaseReadIdentityScope = () => 'account-b:session-2';
+    assert.equal(context.applyDashboardPublishedRevisionMetadata(ready, 'account-a:session-1'), false);
+    assert.equal(context.renders, 2, 'a late old-account reply never renders');
+    context.window.GncUserAccessControl = { getSelfState: () => ({ denied: true }) };
+    assert.equal(context.applyDashboardPublishedRevisionMetadata(ready, 'account-b:session-2'), false);
+});
+
+test('same-account readable data exits the view skeleton without installing an exact permission proof', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const live = { scope: 'account-a', authenticated: true, accessDenied: false,
+        readIdentity: 'login-1', viewKey: 'docks', adapters: [{ id: 'soc', cacheKey: 'all' }], dataPermissionVersion: 'new' };
+    const readContextKey = sandbox.module.exports.readContextKey;
+    const status = { state: 'Up to date', dataReadable: true, readContextKey: readContextKey(live), contextKey: 'old-exact-proof' };
+    const context = vm.createContext({ window: { AgMetricLiveSync: { readContextKey } },
+        getProductionLiveSyncContext: () => live, productionLiveSyncVerifiedView: '',
+        productionVerifiedViewKey: () => 'new-exact-proof', productionLiveSyncCoordinator: { getStatus: () => status },
+        getActiveManagerReportPageSurface: () => '', getViewLoadingConfig: () => ({}),
+        canUseProductionLiveSync: () => true, getCurrentVisibleViewId: () => live.viewKey,
+    });
+    for (const name of ['hasCurrentProductionReadStatus', 'ensureViewDataForRender']) {
+        const source = html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0];
+        assert.ok(source, name); vm.runInContext(source, context);
+    }
+    for (const view of ['docks', 'request']) {
+        live.viewKey = view; status.readContextKey = readContextKey(live);
+        assert.equal(context.ensureViewDataForRender(view), false, `${view} proceeds to render`);
+        assert.equal(context.productionLiveSyncVerifiedView, '', 'read availability never becomes write proof');
+    }
+    live.readIdentity = 'login-2';
+    assert.equal(context.hasCurrentProductionReadStatus(status, live), false);
+    live.readIdentity = 'login-1'; live.accessDenied = true;
+    assert.equal(context.hasCurrentProductionReadStatus(status, live), false);
+});
+
 function fixture(cache = new Map(), overrides = {}) {
     const commits = [], statuses = [], backgroundStatuses = [], reads = [], metadata = [], timers = new Map();
     let timerId = 0, permission = 'p1', revision = '1', state = 'ready';
