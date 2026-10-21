@@ -67,12 +67,13 @@ function ack(value) {
     };
 }
 
-function finalizerFixture({ count = 2, preflight = async () => true } = {}) {
+function finalizerFixture({ count = 2, preflight = async () => true, mappingOverrides = {} } = {}) {
     const calls = [];
     const customerMapping = {
         customeridentityid: '00012', customername: 'Garden ®', customerName: 'Garden ®',
         consigneeidentityid: '00007', consigneename: 'North ™', consigneeName: 'North ™',
-        request_selected_salesrep_id: 'rep-a', salesrepname: 'Rep One', customerstatus: 'A', consigneestatus: 'A'
+        request_selected_salesrep_id: 'rep-a', salesrepname: 'Rep One', customerstatus: 'A', consigneestatus: 'A',
+        ...mappingOverrides
     };
     const customerContext = {
         customeridentityid: customerMapping.customeridentityid, customername: customerMapping.customername,
@@ -101,7 +102,7 @@ function finalizerFixture({ count = 2, preflight = async () => true } = {}) {
         navigator: { onLine: true }, ensureRequestSchemaCompatible: preflight,
         window: { AgMetricRequestSubmission: api, __gncOpsPilot: null },
         createRequestFolderId: () => 'folder-a', resolveRequestCustomerContext: () => ({ ...customerContext }),
-        tempRequestCustomerSelectedContext: { ...customerContext }, tempRequestCustomerSelectedFinalLabel: 'Garden ® | North ™',
+        tempRequestCustomerSelectedContext: { ...customerContext }, tempRequestCustomerSelectedFinalLabel: `${customerMapping.customerName} | ${customerMapping.consigneeName}`,
         requestModalCustomerOptionsReady: true, getRequestModalCustomerOptionsForRep: () => [customerMapping],
         isCurrentRequestCustomerContext: () => true, createStableClientBatchId: () => 'batch-built',
         getRequestSelectionIntentToken: domId => `token-${domId}`,
@@ -765,6 +766,23 @@ test('finalizeRequestAction attaches the verified mapping after creator audit fi
     assert.equal(submitted.request_created_by_username, 'alice', 'creator audit fields remain present');
     assert.equal(outbox.requests[0].request_selected_rep_username, null,
         'the outbox row keeps the verified null username instead of the audit fallback');
+});
+
+test('finalizeRequestAction accepts an active server-mapped N/A / N/A tuple into the durable outbox', async () => {
+    const f = finalizerFixture({ mappingOverrides: {
+        customeridentityid: 'AGDATA_NA_CUSTOMER', customername: 'N/A', customerName: 'N/A',
+        consigneeidentityid: 'AGDATA_NA_CONSIGNEE', consigneename: 'N/A', consigneeName: 'N/A'
+    } });
+    assert.equal(await f.context.finalizeRequestAction(null, 'N/A | N/A', {
+        'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
+    }), true);
+    const outbox = f.calls.find(call => call[0] === 'submit')[1];
+    assert.equal(outbox.requests[0].customeridentityid, 'AGDATA_NA_CUSTOMER');
+    assert.equal(outbox.requests[0].customername, 'N/A');
+    assert.equal(outbox.requests[0].consigneeidentityid, 'AGDATA_NA_CONSIGNEE');
+    assert.equal(outbox.requests[0].consigneename, 'N/A');
+    assert.equal(outbox.requests[0].request_selected_salesrep_id, 'rep-a');
+    assert.equal(outbox.requests[0].req_qty, '2');
 });
 
 test('finalizeRequestAction blocks submission when the selected mapping is not ready and preserves the form', async () => {

@@ -16,6 +16,14 @@ export type CanonicalUserAccess = {
 type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 type JsonRecord = Record<string, unknown>;
 
+export const FULL_APP_ADMINISTRATORS = new Set(["dylan_collyge", "megan_kelly", "jd_jones"]);
+export function enforceCanonicalAccountPermissions(username: string, permissions: Record<CanonicalUserAccessFlag, boolean>) {
+  const fullAccess = FULL_APP_ADMINISTRATORS.has(username.trim().toLowerCase());
+  return Object.fromEntries(CANONICAL_USER_ACCESS_FLAGS.map(flag => [flag,
+    flag === "can_manage_user_access" ? fullAccess : fullAccess || permissions[flag],
+  ])) as Record<CanonicalUserAccessFlag, boolean>;
+}
+
 function record(value: unknown): JsonRecord | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : null;
 }
@@ -33,6 +41,8 @@ export async function resolveCanonicalUserAccess(db: RpcClient, actorProfileId: 
   const envelope = record(data);
   if (!envelope || envelope.ok === false) throw new Error(String(envelope?.code || envelope?.error || "USER_ACCESS_RESOLVE_FAILED"));
   const resolved = record(envelope.data) || envelope;
+  const profile = record(resolved.profile);
+  if (profile?.id !== actorProfileId || typeof profile.username !== "string") throw new Error("USER_ACCESS_IDENTITY_MISMATCH");
   const source = record(resolved.effective_permissions || resolved.effectivePermissions);
   if (!source) throw new Error("USER_ACCESS_PERMISSION_SNAPSHOT_INVALID");
   const permissions = {} as Record<CanonicalUserAccessFlag, boolean>;
@@ -42,7 +52,7 @@ export async function resolveCanonicalUserAccess(db: RpcClient, actorProfileId: 
   }
   const revision = Number(resolved.revision);
   if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("USER_ACCESS_REVISION_INVALID");
-  return { revision, permissions };
+  return { revision, permissions: enforceCanonicalAccountPermissions(profile.username, permissions) };
 }
 
 export function requireCanonicalUserAccessFlag(access: CanonicalUserAccess, flag: CanonicalUserAccessFlag): void {

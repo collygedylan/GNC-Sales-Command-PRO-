@@ -97,6 +97,23 @@ test('request-created delivery snapshots render lowercase req_qty in text and HT
   assert.equal((html.match(/QTY/g) || []).length, 3, 'null and blank quantities stay omitted from HTML');
 });
 
+test('N/A / N/A customer identity survives request delivery with item metrics and photo fields', () => {
+  const context = emailHarness();
+  const requestRow = {
+    unique_id: 'na-request-1', req_customer: 'N/A | N/A', customeridentityid: 'AGDATA_NA_CUSTOMER',
+    customername: 'N/A', consigneeidentityid: 'AGDATA_NA_CONSIGNEE', consigneename: 'N/A',
+    req_qty: '3', itemcode: 'TREE-1', loc_photo_match: 'Y', loc_on_hand: '12', photo_link: 'https://example.test/plant.jpg'
+  };
+  const payload = context.buildRequestDeliveryEmailPayload_({
+    event_type: 'request_created', request_folder: 'na-folder'
+  }, [requestRow]);
+  assert.equal(payload.customer, 'N/A | N/A');
+  assert.equal(payload.itemsCount, 1);
+  assert.deepEqual(payload.requestItems[0], requestRow);
+  const text = context.buildRequestItemsText_(payload);
+  assert.match(text, /Requested Qty: 3/);
+});
+
 test('request email field renderers retain lowercase alias precedence and explicit zero', () => {
   const context = emailHarness();
   for (const [item, expected] of [

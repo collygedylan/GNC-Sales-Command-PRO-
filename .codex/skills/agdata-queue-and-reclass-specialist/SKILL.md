@@ -10,6 +10,7 @@ The current server-authorized SOC snapshot owns Suspend membership. Delta import
 Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 4 and shared Back/navigation ownership.
 
 - Que → SUSPEND represents one physical spreadsheet row as one card using the unique tag line ID. Never collapse distinct physical rows because item/location/lot values match. Preserve Que → REQUEST behavior.
+- Dylan, Megan and JD can edit/complete Suspend Tags and decide pending Suspend approvals through the authenticated canonical grants. Preserve native session proof, command identity, source version and pending-status checks; access does not change delivery recipients.
 - Use natural alphanumeric locationcode ascending as the primary queue order, with stable existing tie-breakers. Build deterministic inventory joins from itemcode, locationcode and lotcode against the complete master DriveAround inventory Map.
 - Reclass Item Inquiry supports atomic live updates for Move Up, Move Down, Hold/Stop, Priority, Loc PTN1, Loc Note and Sales Note. Preserve payload state, permission checks, deduplication and inflight protection. Open immediately from the displayed card; background refresh cannot replace a user draft.
 - Pair each successful Reclass mutation with its durable full GNC PH Reclass Item Inquiry HTML and PDF report handoff. Delivery success is distinct from a queued outbox record; report only the state actually verified.

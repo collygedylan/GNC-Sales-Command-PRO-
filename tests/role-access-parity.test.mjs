@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const runtime = read('assets/runtime-watchdog.js');
@@ -33,4 +35,54 @@ test('Drive, AV, Docks and Que use the shared non-blocking view hydration coordi
   for (const view of required) assert.ok(html.toLowerCase().includes(view), `${view} view wiring`);
   assert.match(runtime, /configure\(options = \{\}\)/);
   assert.match(runtime, /state\.report = options\.reportEvent/);
+});
+
+test('designated administrators retain every flag; management cannot be inherited by another account', async () => {
+  const clientSource = read('assets/user-access-control.js');
+  const server = { exports: {} };
+  vm.runInNewContext(ts.transpileModule(read('supabase/functions/_shared/canonical-user-access.ts'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  }).outputText, server);
+  for (const username of ['dylan_collyge', 'megan_kelly', 'jd_jones', 'other_admin', 'kayla_knepp', 'nelly_aguilar', 'sales_rep']) {
+    const window = {};
+    vm.runInNewContext(clientSource, { window });
+    const access = window.GncUserAccessControl;
+    const privileged = ['dylan_collyge', 'megan_kelly', 'jd_jones'].includes(username);
+    const permissions = Object.fromEntries(access.permissionKeys.map(flag => [flag, !privileged]));
+    const profile = { id: '11111111-1111-4111-8111-111111111111', username, role: 'Admin' };
+    const response = { revision: 1, profile, baseline: { role: 'admin', permissions },
+      permission_overrides: {}, effective_permissions: permissions,
+      data_hydration_policy: { use_shared_instant_snapshot: true, av_season_rule: 'CURRENT_SEASON_F1_LE_27', av_visibility_rule: 'ALL_ELIGIBLE_ROWS' } };
+    access.configure({ getSessionIdentity: () => ({ ...profile, authenticated: true }), transport: async () => ({ ok: true, data: response }) });
+    await access.loadSelf();
+    const client = access.getEffectiveUserPermissions().permissions;
+    const resolved = await server.exports.resolveCanonicalUserAccess({ rpc: async () => ({ data: response, error: null }) }, profile.id);
+    for (const flag of access.permissionKeys) {
+      assert.equal(client[flag], privileged || flag !== 'can_manage_user_access', `${username}: client ${flag}`);
+      assert.equal(resolved.permissions[flag], client[flag], `${username}: server ${flag}`);
+    }
+    if (!privileged) await assert.rejects(access.loadDirectory(), /USER_ACCESS_MANAGER_REQUIRED/);
+  }
+  const migration = read('supabase/migrations/20261021035500_full_app_administrators_v1.sql');
+  assert.match(migration, /if not private\.is_full_app_administrator_v1\(actor\.username\)/);
+  assert.match(migration, /protect_full_app_user_access before insert or update/);
+  assert.match(migration, /history_dylan_financial_v1\(p_actor uuid\)[\s\S]*?private\.is_full_app_administrator_v1\(p\.username\)/);
+  assert.match(api, /operation !== "resolve" && !FULL_ACCESS_USER_KEYS\.has\(String\(actor\.username/);
+});
+
+test('unverified and revoked sessions cannot use the administrator UI grant', () => {
+  const start = html.indexOf('        function isFullAppAdministrator(');
+  const end = html.indexOf('\n        function ', start + 1);
+  const context = { PRIVILEGED_MANAGER_USER_KEYS: ['dylan_collyge', 'megan_kelly', 'jd_jones'],
+    currentUser: 'dylan_collyge', nativeAuthSessionActive: true, nativeAuthSessionUserId: 'owner',
+    nativeAuthProfile: { id: 'owner', username: 'dylan_collyge' }, window: {} };
+  vm.createContext(context); vm.runInContext(html.slice(start, end), context);
+  assert.equal(context.isFullAppAdministrator(), true);
+  context.currentUser = 'other_admin';
+  assert.equal(context.isFullAppAdministrator(), false);
+  context.currentUser = 'dylan_collyge'; context.nativeAuthSessionUserId = 'another-account';
+  assert.equal(context.isFullAppAdministrator(), false);
+  context.nativeAuthSessionUserId = 'owner';
+  context.window.GncUserAccessControl = { getSelfState: () => ({ denied: true }) };
+  assert.equal(context.isFullAppAdministrator(), false);
 });

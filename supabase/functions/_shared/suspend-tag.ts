@@ -2,7 +2,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
 
-export const SUSPEND_TAG_EDITORS = new Set(['dylan_collyge', 'megan_kelly', 'dan_mccuistion']);
+export const SUSPEND_TAG_EDITORS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'dan_mccuistion']);
 type RecordValue = Record<string, unknown>;
 type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 

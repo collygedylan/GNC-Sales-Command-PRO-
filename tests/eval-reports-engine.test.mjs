@@ -822,6 +822,97 @@ test('large getter uses one guarded loading lifecycle and retains monitored fall
   assert.equal(loads, 1, 'an error must not create an automatic retry loop');
 });
 
+test('Eval Reports #2 joins a normal revision check without failing refresh or losing its last-good index', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const functionSource = name => {
+    const start = html.indexOf(`function ${name}(`);
+    const end = html.indexOf('\n        function ', start + 1);
+    assert.ok(start >= 0 && end > start, name);
+    return html.slice(start, end);
+  };
+  const helperStart = html.indexOf('function shouldLetManagerEvalReport2OwnLoadState(');
+  const helperEnd = html.indexOf('\n        function ', helperStart + 1);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart);
+  const scope = vm.createContext({
+    activeHomeTab: 'eval-reports-2', MANAGER_EVAL_REPORTS_2_VIEW: 'eval-reports-2',
+    getCurrentVisibleViewId: () => 'managers', canViewManagerEvalReports2: () => true, String
+  });
+  vm.runInContext(`${html.slice(helperStart, helperEnd)};globalThis.ownsLoad = shouldLetManagerEvalReport2OwnLoadState;`, scope);
+  assert.equal(scope.ownsLoad('managers'), true);
+  assert.equal(scope.ownsLoad('drive'), false);
+  scope.canViewManagerEvalReports2 = () => false;
+  assert.equal(scope.ownsLoad('managers'), false, 'confirmed loss of report permission must remain an access boundary');
+
+  let resolveIndex, status = { state:'Syncing', message:'Checking and loading changed data.' }, settingsReads = 0, indexBuildStarted = false;
+  const lastGoodIndex = { source:'last-good' }, refreshedIndex = { source:'refreshed' };
+  const refreshGate = new Promise(resolve => { resolveIndex = resolve; });
+  const settingsSource = functionSource('loadManagerEvalReportSettings');
+  const loadSource = html.slice(html.indexOf('async function loadManagerEvalReports2('), html.indexOf('\n        function getManagerEvalReport2CacheKeyValue('));
+  const runtime = vm.createContext({
+    managerEvalReportSettings:{ lowStockMaxSLts:150, holdAgeDays:5, locationNoteAgeDays:10 },
+    managerEvalReportSettingsState:{ loading:false, loaded:true, error:'' },
+    managerEvalReport2LoadState:{ loading:false, error:'', promise:null, lastLoadedAt:'', lastSourceUpdatedAt:'' },
+    managerEvalReport2Cache:lastGoodIndex, managerEvalReport2CacheKey:'old-key',
+    fullInventory:[{ ITEMCODE:'A' }], warehouseAssignedItemsInventory:[{ ITEMCODE:'A' }],
+    getSupabaseReadIdentityScope:() => 'account-a:login-1', canViewManagerEvalReports2:() => true,
+    useManagerReportPages:() => false, getDatasetLoadSignature:key => `${key}-revision-1`,
+    ensureDatasetLoaded:async () => true, isDatasetLoaded:() => true,
+    getManagerEvalReport2LatestSourceUpdate:() => '',
+    buildManagerEvalReport2IndexAsync:() => {
+      indexBuildStarted = true;
+      return refreshGate.then(index => {
+        // The production builder publishes the completed index into the shared
+        // cache before it resolves; model that side effect in this harness.
+        runtime.managerEvalReport2Cache = index;
+        return index;
+      });
+    },
+    getProductionLiveSyncCoordinator:() => ({ getStatus:() => status }),
+    shouldUseProductionLiveSyncSideLoad:() => true,
+    ensureProductionLiveSyncSideData:async () => { settingsReads++; throw new Error(status.message); },
+    isSupabaseReadTerminalDenial:error => [401,403].includes(Number(error?.status || 0)),
+    nativeAuthProfile:{ active:true, disabled_at:null }, window:{},
+    MANAGER_EVAL_REPORTS_2_VIEW:'eval-reports-2', activeHomeTab:'eval-reports-2',
+    getCurrentVisibleViewId:() => 'managers',
+    scheduleManagersRender:() => {}, reconcileManagerEvalReport2Navigation:() => {},
+    showToast:(title, message, isError) => toasts.push({ title, message, isError }),
+    reportSemanticHealthEvent:(...args) => events.push(args),
+    getFriendlyBackendErrorMessage:error => String(error?.message || error),
+    Promise, Date, String, Number, Object, Array
+  });
+  const toasts = [], events = [];
+  vm.runInContext(`${settingsSource}\n${loadSource}\nglobalThis.load = loadManagerEvalReports2;`, runtime);
+  // Resolve through the real settings loader's SWR branch, then hold the index
+  // build open to prove the same-account report remains mounted while refreshes.
+  const loading = runtime.load(true);
+  assert.equal(runtime.managerEvalReport2LoadState.loading, true);
+  assert.ok(runtime.managerEvalReport2LoadState.promise, 'refresh must expose the in-flight hydration promise');
+  assert.equal(runtime.managerEvalReport2Cache, lastGoodIndex);
+  for (let index = 0; index < 6; index++) await Promise.resolve();
+  assert.equal(settingsReads, 1);
+  assert.equal(indexBuildStarted, true, 'transient revision status must still resolve the report hydration into index building');
+  assert.equal(runtime.managerEvalReport2Cache, lastGoodIndex);
+  assert.equal(runtime.managerEvalReport2LoadState.error, '');
+  assert.equal(events.length, 0);
+  resolveIndex(refreshedIndex);
+  assert.equal(await loading, refreshedIndex);
+  assert.equal(runtime.managerEvalReport2Cache, refreshedIndex);
+  assert.deepEqual(toasts.map(toast => toast.title), ['Eval Reports #2 Refreshed']);
+
+  status = { state:'Needs attention', message:'Access revoked.', status:403, authorizationDenied:true };
+  runtime.ensureProductionLiveSyncSideData = async () => { const error = new Error(status.message); error.status = 403; throw error; };
+  await assert.rejects(runtime.loadManagerEvalReportSettings(false), error => error.status === 403,
+    'confirmed denial must remain a real failure');
+
+  const viewLoaderStart = html.indexOf('function ensureViewDataForRender(viewId)');
+  const viewLoaderEnd = html.indexOf('\n        function ', viewLoaderStart + 1);
+  const liveSyncStart = html.indexOf('onStatus: (status) => {');
+  const liveSyncEnd = html.indexOf('\n                on', liveSyncStart + 1);
+  assert.match(html.slice(viewLoaderStart, viewLoaderEnd), /shouldLetManagerEvalReport2OwnLoadState\(viewId\)\) return false/);
+  assert.match(html.slice(liveSyncStart, liveSyncEnd), /VIEW_LOAD_UI\[currentView\] && !shouldLetManagerEvalReport2OwnLoadState\(currentView\)/);
+  assert.match(html.slice(liveSyncStart, liveSyncEnd), /failedUi && !shouldLetManagerEvalReport2OwnLoadState\(failedView\)/);
+});
+
 test('Eval2 classifier paths omit per-item target APIs and honor shared threshold boundaries', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const source = name => {
@@ -1139,7 +1230,7 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(batchSetupSlice, /Every current row for each selected ITEMCODE is included in Eval Work and the PDF/);
   assert.doesNotMatch(batchSetupSlice, /Select All Lots|Select All Shown|Clear Lots|Block Alpha|Block Number|Location\/Lot/);
   assert.doesNotMatch(html.slice(html.indexOf('function setManagerEvalReport2RowEditValue'), html.indexOf('function isNamedManagerEvalReport2AssignedTo')), /supabase(Update|Insert|Delete|Rpc)|fetch\(/i);
-  assert.match(html, /Eval Reports #2 is available only to Dylan, Megan, and JD/);
+  assert.match(html, /Your active profile does not have access to Eval Reports #2/);
 });
 
 test('Eval Reports #1 and #2 share multi-user OR filtering without locking AssignedTo', () => {

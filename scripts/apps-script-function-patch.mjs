@@ -44,6 +44,14 @@ const liveImportFunctions = new Set([
   "assertRoutedPendingSourceSelection_",
   "assertDriveAroundSourceContract_",
   "processCustomerRepMapSnapshotLocked_",
+  "requestNaMappingDigest_",
+  "ensureProtectedRequestNaCustomerMappings_",
+  "verifyRuntimeWatchdogAlert_",
+  "doPost",
+  "buildRequestEmailMessage_",
+  "buildRequestDeliveryEmailPayload_",
+  "sendRequestDeliveryPush_",
+  "handleRuntimeWatchdogAlert_",
   "getManualSyncStatusForClient_",
   "createManualSyncQueuedStatus_",
   "sanitizeManualSyncStatusForClient_",
@@ -60,8 +68,9 @@ const liveImportFunctions = new Set([
   "assertRoutedPendingSourceSelection_",
   "processCustomerRepMapSnapshotLocked_",
 ]);
-const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkPublishedReplay_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_"]);
+const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_", "requestNaMappingDigest_", "ensureProtectedRequestNaCustomerMappings_", "handleRuntimeWatchdogAlert_"]);
 additiveFunctions.add('setDatasetImportSourceMetadata_');
+additiveFunctions.add('verifyRuntimeWatchdogAlert_');
 const fail = code => { throw new Error(`APPS_SCRIPT_FUNCTION_PATCH_${code}`); };
 const digest = source => createHash('sha256').update(source).digest('hex');
 
@@ -103,6 +112,15 @@ function mergeManualContinuation(remote, local) {
   return remote.replace(next, block + next);
 }
 
+function mergeRuntimeWatchdogDispatch(remote, local) {
+  const route = "    if (payload.type === 'runtime_watchdog_alert_v1') return jsonOutput_(handleRuntimeWatchdogAlert_(payload));";
+  const deployment = "    if (payload.type === 'deployment_health') {";
+  if (!local.includes(route)) fail('WATCHDOG_DISPATCH_LOCAL_ANCHOR');
+  if (remote.includes(route)) return remote;
+  if (remote.split(deployment).length !== 2) fail('WATCHDOG_DISPATCH_REMOTE_ANCHOR');
+  return remote.replace(deployment, route + '\n\n' + deployment);
+}
+
 /** Preserve remote source verbatim outside the explicitly authorized functions. */
 export function patchAppsScriptFunctions({ remoteSource, localSource, functionNames, includeRelease = false }) {
   if (!Array.isArray(functionNames) || !functionNames.length
@@ -124,9 +142,14 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
   const names = [...functionNames, fingerprint, ...(includeRelease ? [releaseVersion] : [])];
   for (const name of names) if (!local.has(name) || !remote.has(name)) fail('FUNCTION_MISSING');
   const changes = names.map(name => {
-    const replacement = localSource.slice(local.get(name).start, local.get(name).end);
-    return { name, ...remote.get(name), replacement: name === 'doPost' && replacement.includes("if (payload.type === 'manual_continue')")
-      ? mergeManualContinuation(preparedRemote.slice(remote.get(name).start, remote.get(name).end), replacement) : replacement };
+    let replacement = localSource.slice(local.get(name).start, local.get(name).end);
+    if (name === 'doPost') {
+      let remoteBlock = preparedRemote.slice(remote.get(name).start, remote.get(name).end);
+      if (replacement.includes("if (payload.type === 'manual_continue')")) remoteBlock = mergeManualContinuation(remoteBlock, replacement);
+      if (replacement.includes("if (payload.type === 'runtime_watchdog_alert_v1')")) remoteBlock = mergeRuntimeWatchdogDispatch(remoteBlock, replacement);
+      replacement = remoteBlock;
+    }
+    return { name, ...remote.get(name), replacement };
   })
     .sort((a, b) => b.start - a.start);
   let merged = preparedRemote;

@@ -1,7 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { patchAppsScriptFunctions } from '../scripts/apps-script-function-patch.mjs';
 import { requestMappingFunctions, requestMappingSetup, mappingFixtureRow } from './helpers/customer-mapping-fixture.mjs';
+
+const codeSource = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+
+test('Apps Script scoped patch ships request mapping, email, and watchdog changes only',()=>{
+ const manifest=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
+ const remoteSource=execFileSync('git',['show','HEAD:Code.gs'],{encoding:'utf8',maxBuffer:16*1024*1024})
+  .replace("    if (payload.type === 'runtime_watchdog_alert_v1') return jsonOutput_(handleRuntimeWatchdogAlert_(payload));\n",'')
+  +"\nfunction protectedRemoteOnly_() { return 'unchanged'; }\n";
+ const patch=patchAppsScriptFunctions({remoteSource,localSource:codeSource,functionNames:manifest.appsScriptPatchFunctions});
+ assert.deepEqual(patch.functions,[
+  'processCustomerRepMapSnapshotLocked_','requestNaMappingDigest_','ensureProtectedRequestNaCustomerMappings_',
+  'verifyRuntimeWatchdogAlert_','doPost','buildRequestEmailMessage_','buildRequestDeliveryEmailPayload_',
+  'sendRequestDeliveryPush_','handleRuntimeWatchdogAlert_'
+ ]);
+ for(const name of patch.functions)assert.ok(patch.source.includes(`function ${name}(`),`${name} is included in the scoped patch`);
+ assert.equal(patch.source.split("if (payload.type === 'runtime_watchdog_alert_v1')").length-1,1,'the signed watchdog dispatch is added exactly once');
+ assert.ok(patch.source.includes("function protectedRemoteOnly_() { return 'unchanged'; }"));
+ assert.equal(patch.protectedSourceDigest.length,64);
+});
 
 function fixture(fetchPage) {
  const c=vm.createContext({document:{getElementById:()=>null},window:{setTimeout,clearTimeout},APP_API_FUNCTION_URL:'https://example.invalid',ensureDatasetLoaded:async()=>true,postAppFunctionJson:fetchPage,refreshRequestModalCustomerStepIfVisible:()=>{},resetRequestCustomerSelectionState:()=>{c.tempRequestCustomerSelectedContext=null;},renderExistingRequestFolderPicker:()=>{}});
@@ -22,6 +44,53 @@ test('Request reader loads every rep-ID page before publishing choices',async()=
  assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,201);
  assert.equal(c.tempSelectedReqSalesrepId,'01');
  assert.equal(c.requestModalCustomerOptionsCacheKey,'01:9');
+});
+test('N/A Customer and Consignee map to an authorized tuple and stay pinned first',()=>{
+ const c=fixture(async()=>({ok:true,rows:[],total:0,revision:'9'}));
+ const options=[
+  {...mappingFixtureRow,customerName:'Garden ®',consigneeName:'North ™',label:'Garden ® | North ™'},
+  {...mappingFixtureRow,unique_id:'garden-south',consigneeid:'00008',consigneeidentityid:'00008',consigneename:'South ™',consigneeName:'South ™',label:'Garden ® | South ™'},
+  {...mappingFixtureRow,unique_id:'garden-na-consignee',consigneeid:'AGDATA_NA_CONSIGNEE',consigneeidentityid:'AGDATA_NA_CONSIGNEE',consigneename:'N/A',consigneeName:'N/A',label:'Garden ® | N/A'},
+  {...mappingFixtureRow,unique_id:'na-map',customeridentityid:'AGDATA_NA_CUSTOMER',customername:'N/A',customerName:'N/A',
+   consigneeid:'AGDATA_NA_CONSIGNEE',consigneeidentityid:'AGDATA_NA_CONSIGNEE',consigneename:'N/A',consigneeName:'N/A',label:'N/A | N/A'}
+ ];
+ const groups=Array.from(c.buildRequestCustomerPickerGroups(options));
+ assert.equal(groups[0].label,'N/A');
+ assert.equal(groups[0].consignees[0].consigneeName,'N/A');
+ assert.equal(groups[0].consignees[0].customeridentityid,'AGDATA_NA_CUSTOMER');
+ assert.equal(groups[0].consignees[0].consigneeidentityid,'AGDATA_NA_CONSIGNEE');
+ const garden=groups.find(group=>group.label==='Garden ®');
+ assert.equal(garden.consignees[0].consigneeName,'N/A','N/A Consignee is pinned first inside an ordinary Customer');
+ assert.equal(garden.consignees[0].customeridentityid,'00012');
+ assert.equal(garden.consignees[0].consigneeidentityid,'AGDATA_NA_CONSIGNEE');
+});
+
+test('customer map import adds one active protected N/A row for each active mapped Sales Rep',()=>{
+ const start=codeSource.indexOf('function requestNaMappingDigest_(');
+ const end=codeSource.indexOf('\nfunction buildCustomerRepMapSnapshot_(',start);
+ assert.ok(start>=0&&end>start,'import helper exists');
+ const context=vm.createContext({
+  Utilities:{DigestAlgorithm:{MD5:'MD5'},Charset:{UTF_8:'UTF-8'},computeDigest:(_algorithm,value)=>{
+   const seed=Array.from(String(value||'')).reduce((sum,char)=>sum+char.charCodeAt(0),0);
+   return Array.from({length:16},(_,index)=>(seed+index)%256);
+  }},
+  normalizeImportedSalesRepName_:value=>String(value||'').trim(),
+  buildRowSyncHash_:()=> 'stable-row-hash'
+ });
+ vm.runInContext("const REQUEST_NA_CUSTOMER_ID_='AGDATA_NA_CUSTOMER'; const REQUEST_NA_CONSIGNEE_ID_='AGDATA_NA_CONSIGNEE';\n"+codeSource.slice(start,end),context);
+ const rows=context.ensureProtectedRequestNaCustomerMappings_([
+  {...mappingFixtureRow,salesrepid:'01',salesrepname:'Rep One'},
+  {...mappingFixtureRow,unique_id:'rep-one-2',customeridentityid:'00012',consigneeid:'00008',salesrepid:'01',salesrepname:'Rep One'},
+  {...mappingFixtureRow,unique_id:'rep-two',salesrepid:'02',salesrepname:'Rep Two'},
+  {...mappingFixtureRow,unique_id:'inactive-rep',salesrepid:'03',salesrepname:'Rep Three',customerstatus:'I'}
+  ],'customers.csv','2026-10-21T00:00:00.000Z');
+ const naConsigneeRows=Array.from(rows).filter(row=>row.consigneeid==='AGDATA_NA_CONSIGNEE'&&row.consigneename==='N/A');
+ assert.equal(naConsigneeRows.length,4,'each active mapped customer plus the universal N/A customer gets one active N/A Consignee per rep');
+ assert.deepEqual(Array.from(naConsigneeRows, row=>[row.salesrepid,row.customeridentityid,row.customername,row.customerstatus,row.consigneestatus]),[
+  ['01','AGDATA_NA_CUSTOMER','N/A','A','A'],['01','00012','Garden ®','A','A'],
+  ['02','AGDATA_NA_CUSTOMER','N/A','A','A'],['02','00012','Garden ®','A','A']
+ ]);
+ assert.equal(new Set(Array.from(naConsigneeRows,row=>row.unique_id)).size,4);
 });
 test('a 103-customer rep directory is fully available without a short display cap',async()=>{
  const rows=Array.from({length:103},(_,index)=>({...mappingFixtureRow,

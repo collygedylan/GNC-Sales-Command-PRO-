@@ -686,7 +686,8 @@ function handleRuntimeWatchdogAlert_(payload) {
       'User / role: ' + String(command.username) + ' / ' + String(command.role),
       'View: ' + String(command.view), 'Owner: ' + String(command.owningSkill),
       'Fingerprint: ' + String(command.fingerprint), 'Details: ' + String(command.message || '').slice(0, 300),
-      'Review incidents in AgData Manager > Watchdog Monitor.'
+      'Review incidents in AgData Manager > Watchdog Monitor.',
+      '', 'AI FIX BRIEF', '', String(command.fixBrief || '')
     ];
     MailApp.sendEmail({ to: 'dylan_collyge@greenleafnursery.com', subject: '[AgData Watchdog] ' + String(command.severity).toUpperCase() + ' · ' + String(command.view).slice(0, 60), body: lines.join('\n') });
     return { ok: true, sent: true };
@@ -2147,7 +2148,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.3.22';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.23';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -4739,6 +4740,65 @@ function getCustomerRepMapIdentityKey_(row) {
   return [customerId, consigneeId, salesRepId].join('|');
 }
 
+function requestNaMappingDigest_(value) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, String(value || '').trim().toLowerCase(), Utilities.Charset.UTF_8)
+    .map(function(byte) { return ((byte + 256) % 256).toString(16).padStart(2, '0'); }).join('');
+}
+
+function ensureProtectedRequestNaCustomerMappings_(rows, fileName, importedAt) {
+  const REQUEST_NA_CUSTOMER_ID_ = 'AGDATA_NA_CUSTOMER';
+  const REQUEST_NA_CONSIGNEE_ID_ = 'AGDATA_NA_CONSIGNEE';
+  const sourceRows = Array.isArray(rows) ? rows : [];
+  const repsById = new Map();
+  const customersByRep = new Map();
+  sourceRows.forEach(function(row) {
+    const salesrepId = String(row && row.salesrepid || '').trim();
+    const salesrepName = normalizeImportedSalesRepName_(row && row.salesrepname);
+    if (!salesrepId || !salesrepName || String(row.customerstatus || '').trim().toUpperCase() !== 'A'
+        || String(row.consigneestatus || '').trim().toUpperCase() !== 'A') return;
+    const key = salesrepId.toLowerCase();
+    if (!repsById.has(key)) repsById.set(key, { salesrepid: salesrepId, salesrepname: salesrepName, territorycode: row.territorycode || null, territorydesc: row.territorydesc || null });
+    const customerId = String(row.customeridentityid || '').trim();
+    const customerName = String(row.customername || '').trim();
+    if (customerId && customerName && customerId !== REQUEST_NA_CUSTOMER_ID_) {
+      if (!customersByRep.has(key)) customersByRep.set(key, new Map());
+      const customers = customersByRep.get(key);
+      if (!customers.has(customerId.toLowerCase())) customers.set(customerId.toLowerCase(), { customeridentityid: customerId, customername: customerName });
+    }
+  });
+  const activeRepIds = new Set(Array.from(repsById.values()).map(function(rep) { return rep.salesrepid.toLowerCase(); }));
+  const retained = sourceRows.filter(function(row) {
+    const isProtectedConsignee = String(row && row.consigneeid || '').trim() === REQUEST_NA_CONSIGNEE_ID_
+      && String(row && row.consigneename || '').trim().toUpperCase() === 'N/A';
+    return !isProtectedConsignee || !activeRepIds.has(String(row.salesrepid || '').trim().toLowerCase());
+  });
+  const timestamp = String(importedAt || new Date().toISOString());
+  const addMapping = function(rep, customerIdentityId, customerName) {
+    const row = {
+      unique_id: 'cust_rep_na_' + requestNaMappingDigest_(rep.salesrepid.toLowerCase() + '|' + customerIdentityId.toLowerCase()),
+      filename: 'PROTECTED REQUEST N/A MAPPING',
+      source_file_name: 'PROTECTED REQUEST N/A MAPPING',
+      source_row_number: null,
+      raw_data: { customeridentityid: customerIdentityId, customername: customerName, consigneeid: REQUEST_NA_CONSIGNEE_ID_, consigneename: 'N/A', salesrepid: rep.salesrepid, salesrepname: rep.salesrepname, customerstatus: 'A', consigneestatus: 'A' },
+      customeridentityid: customerIdentityId, customername: customerName,
+      consigneeid: REQUEST_NA_CONSIGNEE_ID_, consigneename: 'N/A',
+      salesrepid: rep.salesrepid, salesrepname: rep.salesrepname,
+      customerstatus: 'A', consigneestatus: 'A',
+      territorycode: rep.territorycode, territorydesc: rep.territorydesc,
+      imported_at: timestamp, updated_at: timestamp
+    };
+    row.row_hash = buildRowSyncHash_(row, ['imported_at', 'updated_at']);
+    retained.push(row);
+  };
+  repsById.forEach(function(rep, repKey) {
+    addMapping(rep, REQUEST_NA_CUSTOMER_ID_, 'N/A');
+    (customersByRep.get(repKey) || new Map()).forEach(function(customer) {
+      addMapping(rep, customer.customeridentityid, customer.customername);
+    });
+  });
+  return retained;
+}
+
 function buildCustomerRepMapSnapshot_(rawData, syncStartTime, fileName) {
   if (!Array.isArray(rawData) || !rawData.length || !isCustomerRepMapCompleteHeaderRow_(rawData[0])) {
     throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', 'Customer Rep Map source is missing required identity/status headers.');
@@ -6369,6 +6429,7 @@ function processCustomerRepMapSnapshotLocked_() {
       preserveHeaderRowIndex: true
     });
     const snapshot = buildCustomerRepMapSnapshot_(rawData, syncStartTime, fileName);
+    snapshot.rows = ensureProtectedRequestNaCustomerMappings_(snapshot.rows, fileName, syncStartTime);
     sourceRows = snapshot.rows.length;
     const sourceHash = customerRepMapSourceHash_(snapshot.rows);
     if (continuation && continuation.sourceHash !== sourceHash) {
@@ -18597,7 +18658,12 @@ function buildRequestEmailMessage_(payload) {
     || useFormattedApprovalLayout
   ) && !(emailType === 'request_complete' && !isSuspendTagCompletionEmail && !isEvalTaskCompletion);
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
-  const customer = escapeEmailHtml_(payload.customer || 'N/A');
+  const requestCustomerName = String(firstNonEmptyRequestValue_(payload.customerName, payload.customername, '') || '').trim();
+  const requestConsigneeName = String(firstNonEmptyRequestValue_(payload.consigneeName, payload.consigneename, '') || '').trim();
+  const requestNaPair = requestCustomerName.toUpperCase() === 'N/A' && requestConsigneeName.toUpperCase() === 'N/A';
+  const requestCustomerDisplay = requestNaPair ? 'N/A | N/A'
+    : String(firstNonEmptyRequestValue_(payload.customer, requestCustomerName && requestConsigneeName ? requestCustomerName + ' | ' + requestConsigneeName : requestCustomerName, 'N/A') || 'N/A');
+  const customer = escapeEmailHtml_(requestCustomerDisplay);
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
   const fallbackItemsHtml = emailType === 'request_complete'
@@ -18622,7 +18688,7 @@ function buildRequestEmailMessage_(payload) {
       textBody: [
         'New Plant Request Submitted',
         'Rep: ' + String(payload.repName || payload.salesRepName || ''),
-        'Customer: ' + String(payload.customer || 'N/A'),
+        'Customer: ' + requestCustomerDisplay,
         'Folder ID: ' + String(payload.folderId || payload.requestFolder || ''),
         'Items Requested: ' + String(payload.itemsCount || 0),
         selectionSummaryText,
@@ -19895,6 +19961,8 @@ function sendRequestDeliveryPush_(eventRow, requestRows) {
     requestedBy: String(firstRow.requested_by || ''),
     requestedByUsername: String(firstRow.request_selected_rep_username || firstRow.requested_by || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'),
     customer: String(firstRow.req_customer || ''),
+    customerName: String(firstRow.customername || firstRow.customerName || ''),
+    consigneeName: String(firstRow.consigneename || firstRow.consigneeName || ''),
     itemsCount: Array.isArray(requestRows) ? requestRows.length : 0,
     requestIds: Array.isArray(requestRows) ? requestRows.map(function(row) { return row.unique_id; }).filter(Boolean) : [],
     itemcode: String(payload.itemcode || ''),
@@ -19945,6 +20013,8 @@ function buildRequestDeliveryEmailPayload_(eventRow, rows) {
     repName: String(firstRow.requested_by || ''),
     requestedBy: String(firstRow.requested_by || ''),
     customer: String(firstRow.req_customer || ''),
+    customerName: String(firstRow.customername || firstRow.customerName || ''),
+    consigneeName: String(firstRow.consigneename || firstRow.consigneeName || ''),
     itemsCount: Array.isArray(rows) ? rows.length : 0,
     requestItems: Array.isArray(rows) ? rows : [],
     items: Array.isArray(rows) ? rows : [],

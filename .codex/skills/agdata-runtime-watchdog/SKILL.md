@@ -13,6 +13,10 @@ The Manager panel exposes the `COPY AI FIX BRIEF` action. The panel and client s
 
 Focused checks:
 
+Watchdog alert emails to Dylan include the complete Markdown AI FIX BRIEF. `supabase/functions/_shared/runtime-watchdog-brief.ts` formats both the signed alert payload and the authenticated list response; the in-app copy button copies that server response. Keep dataset revision/state metadata structured and preserve the existing hourly deduplication and fixed recipient.
+
+Scoped Apps Script publication must include both signed watchdog helpers and the `runtime_watchdog_alert_v1` dispatch branch. The function patcher merges that branch into the live `doPost` while preserving other dispatch paths.
+
 ```sh
 node --test tests/runtime-watchdog.test.mjs tests/role-access-parity.test.mjs
 ```

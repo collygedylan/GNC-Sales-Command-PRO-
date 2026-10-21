@@ -83,6 +83,8 @@ The preceding trace and inventory remain the v2.3.17 audit snapshot. The v2.3.18
 
 ## Cluster 2: Auth, Session, Service Worker and Zero-Lockout Cache
 
+The v2.3.23 account contract is enforced by `isFullAppAdministrator`, `enforceCanonicalAccountPermissions` and `20261021035500_full_app_administrators_v1.sql`: Dylan, Megan and JD have all canonical operational flags; access management is exclusive to those canonical authenticated accounts. Request's protected N/A tuples are seeded by `20261021035641_protect_na_request_mappings_v1.sql`. Watchdog's panel/email Markdown is formatted by `_shared/runtime-watchdog-brief.ts`. These are source contracts, not production verification receipts.
+
 Owner: `agdata-zero-lockout-guard`. Shared upstream boundary: `switchView`, `showOnlyPrimaryView`, `goBackUniversal`, `updateGlobalBackButton`, `viewHistoryStack`, account identity and render generations. Preserve header/search/modal ownership while changing feature-specific state.
 
 | Feature | Exact frontend / source anchors | State / DOM / dependencies | Edge / RPC / tables / Apps Script |

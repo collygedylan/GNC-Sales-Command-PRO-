@@ -11,7 +11,7 @@ export function requestMappingFunctions() {
     'getRequestMappedRepDirectory','getRequestReserveFallbackDirectory','getRequestAuthorizedReserveFallbackMappings','getReserveSalesRepLabel','getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue','isRequestModalCustomerAuthorizationFailure',
     'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions',
     'isActiveRequestCustomerMapping','buildRequestModalCustomerOptionsCache','loadRequestModalCustomerOptionsForRep','prefetchRequestModalCustomerOptions','scheduleRequestModalReferencePrefetch','scheduleGlobalReferencePrefetch','ensureDockAssignableUsers','prepareRequestModalChoicesForStartup','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
-    'isCurrentRequestCustomerContext','getRequestModalCachedCustomerOptionsForRep','buildRequestCustomerPickerGroups','getExistingRequestFolderRepRows','getExistingRequestFolderRowsSignature','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep','renderRequestModalRepPickerOnOpen',
+    'isCurrentRequestCustomerContext','getRequestModalCachedCustomerOptionsForRep','isRequestNaCustomerValue','buildRequestCustomerPickerGroups','getExistingRequestFolderRepRows','getExistingRequestFolderRowsSignature','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep','renderRequestModalRepPickerOnOpen',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
   return names.map(name => {
     let start = html.indexOf(`        function ${name}(`);
@@ -40,6 +40,7 @@ var mappingRevision='1',resolvedViewStateEpoch=0;
 var getDatasetLoadSignature=key=>String(key)==='customerRepMap'?'customerRepMap:'+mappingRevision:String(key)+':1';
 var isDatasetLoaded=()=>true;
 var REQUEST_MODAL_REP_OPTIONS=['Rep One','Rep Two','Molly Dixon'].map(label=>{const token=normalizeRepMatchToken(label);return {label,token,collapsedToken:token.replace(/\\s+/g,'')};});
+var REQUEST_NA_CUSTOMER_NAME='N/A';
 var requestModalRepUserOptions=[],requestMappedRepSource=null,requestMappedRepRevision='',requestMappedRepOptions=[],requestMappedRepIdsByName=new Map();
 var requestModalRepUserOptionsReady=false,requestModalRepUserOptionsLoadPromise=null,requestModalRepUserOptionsLoading=false,requestModalRepUserOptionsError='';
 var getSupabaseReadIdentityScope=()=> 'identity-1',appAccessSnapshotState={status:'ready',stale:false,snapshot:{dataPermissionVersion:'perm-1'}};

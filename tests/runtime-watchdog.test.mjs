@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import ts from 'typescript';
 
 const source = fs.readFileSync(new URL('../assets/runtime-watchdog.js', import.meta.url), 'utf8');
 
@@ -36,4 +37,30 @@ test('watchdog persistence is RLS protected and privileged actions are server au
   assert.match(api, /watchdog_list_events/);
   assert.match(api, /watchdog_resolve_events/);
   assert.match(api, /new Set\(\["dylan_collyge", "megan_kelly", "jd_jones"\]\)/);
+});
+
+test('signed watchdog email embeds the same complete fix brief returned to the copy button', () => {
+  const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+  const module = { exports: {} };
+  vm.runInNewContext(ts.transpileModule(read('supabase/functions/_shared/runtime-watchdog-brief.ts'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  }).outputText, module);
+  const row = { username: 'megan_kelly', normalized_role: 'admin', view_id: 'managers', sub_module: 'eval-reports-2',
+    duration_ms: 4200, event_type: 'VIEW_LOAD_STALL', error_message: 'test incident',
+    dataset_revisions_snapshot: { inventory: '42' }, cluster_id: 'Cluster 5', owning_skill: 'agdata-field-ops-and-qc',
+    suspected_functions: ['buildManagerEvalReport2IndexAsync'] };
+  const brief = module.exports.buildRuntimeWatchdogFixBrief([row]);
+  for (const text of ['# AgData Runtime Watchdog Fix Brief', 'AgData v2.3.23', 'megan_kelly', '4200ms', 'inventory', '42', 'Cluster 5', '.codex/skills/agdata-field-ops-and-qc/SKILL.md', 'buildManagerEvalReport2IndexAsync', 'Focused verification:']) assert.ok(brief.includes(text), text);
+  const script = read('Code.gs');
+  const start = script.indexOf('function handleRuntimeWatchdogAlert_('), end = script.indexOf('\nfunction ', start + 1);
+  let sent;
+  const context = { verifyRuntimeWatchdogAlert_: () => ({ fingerprint: 'f', appVersion: 'AgData v2.3.23', severity: 'high', view: 'managers', fixBrief: brief }),
+    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
+    Utilities: { computeDigest: () => [], DigestAlgorithm: { SHA_256: '' }, base64EncodeWebSafe: () => 'hash' },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty() {} }) }, MailApp: { sendEmail: value => { sent = value; } } };
+  vm.runInNewContext(script.slice(start, end) + '\nhandleRuntimeWatchdogAlert_({});', context);
+  assert.equal(sent.to, 'dylan_collyge@greenleafnursery.com');
+  assert.ok(sent.body.endsWith(brief));
+  assert.match(read('index.html'), /const brief = runtimeWatchdogFixBrief;/);
+  assert.match(read('supabase/functions/app-api/index.ts'), /fixBrief: buildRuntimeWatchdogFixBrief/);
 });

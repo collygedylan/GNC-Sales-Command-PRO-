@@ -1,4 +1,5 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -1163,6 +1164,7 @@ async function dispatchRuntimeWatchdogAlert(event: Record<string, unknown>) {
     view: String(event.view_id || "").slice(0, 100),
     owningSkill: String(event.owning_skill || "").slice(0, 100),
     message: String(event.error_message || "").slice(0, 300),
+    fixBrief: buildRuntimeWatchdogFixBrief([event], String(event.app_version || "AgData v2.3.23")),
   };
   const { deliveryJson, signature } = await signProductionScheduleCommand(command, timestamp, PRODUCTION_SCHEDULE_SIGNING_SECRET);
   await fetch(PRODUCTION_SCHEDULE_APPS_SCRIPT_URL, {
@@ -3026,7 +3028,7 @@ export async function handleManagerReportReadAction(
     ? payload.query as Record<string, unknown> : null;
   const operation = String(query?.operation || payload.operation || "").trim().toLowerCase();
   if (operation === "capabilities") {
-    const canViewEval1 = ["dylan_collyge", "megan_kelly"].includes(actor);
+    const canViewEval1 = FULL_ACCESS_USER_KEYS.has(actor);
     const canViewInventoryManager = hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor);
     const canViewApproval = INVENTORY_NCR_FIRST_STAGE_USERS.has(actor) || INVENTORY_NCR_JD_STAGE_USERS.has(actor);
     const roleCanReadInventory = hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor);
@@ -3189,7 +3191,7 @@ export async function handleManagerReportReadAction(
     return errorResponse("This report surface is not available through the bounded report API.", 501, { code: "MANAGER_REPORT_SURFACE_UNAVAILABLE" });
   }
   if (surface === "ncr" && !hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor)) return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
-  if ((surface === "eval1" && !["dylan_collyge", "megan_kelly"].includes(actor))
+  if ((surface === "eval1" && !FULL_ACCESS_USER_KEYS.has(actor))
     || (surface === "eval2" && (canonicalAccess || await resolveCanonicalUserAccess(supabase, String(profile.id || ""))).permissions.can_access_eval_reports_2 !== true)) {
     return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
   }
@@ -3860,8 +3862,8 @@ const INVENTORY_MASTER_INITIAL_BASE_FIELDS = MASTER_INITIAL_BASE_FIELDS;
 const INVENTORY_MASTER_FULL_FIELDS = MASTER_FULL_FIELDS;
 const INVENTORY_MASTER_BROWSE_FIELDS = MASTER_BROWSE_FIELDS;
 const INVENTORY_NCR_ASSIGNMENT_TYPES = new Set(["new-crop", "move-up", "move-down", "hold-release", "recount"]);
-const INVENTORY_NCR_FIRST_STAGE_USERS = new Set(["dylan_collyge", "megan_kelly"]);
-const INVENTORY_NCR_JD_STAGE_USERS = new Set(["jd_jones", "megan_kelly"]);
+const INVENTORY_NCR_FIRST_STAGE_USERS = new Set(["dylan_collyge", "megan_kelly", "jd_jones"]);
+const INVENTORY_NCR_JD_STAGE_USERS = new Set(["jd_jones", "megan_kelly", "dylan_collyge"]);
 const INVENTORY_NOT_ON_INVENTORY_ASSIGNMENTS = new Set(["not_on_inventory_dylan", "not_on_inventory_jd"]);
 const MANAGER_APPROVAL_VIEW_TYPES: Record<string, string> = {
   "ncr-approvals": "new-crop", "move-up-approvals": "move-up", "move-down-approvals": "move-down",
@@ -5420,7 +5422,10 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         if (!fingerprint || !appVersion) throw new Error("WATCHDOG_EVENT_INVALID");
         const revisionInput = event.dataset_revisions_snapshot && typeof event.dataset_revisions_snapshot === "object" && !Array.isArray(event.dataset_revisions_snapshot)
           ? event.dataset_revisions_snapshot as Record<string, unknown> : {};
-        const revisions = Object.fromEntries(Object.entries(revisionInput).slice(0, 24).map(([key, value]) => [boundedText(key, 80), boundedText(value, 120)]));
+        const revisions = Object.fromEntries(Object.entries(revisionInput).slice(0, 24).map(([key, value]) => {
+          const metadata = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+          return [boundedText(key, 80), metadata ? { revision: boundedText(metadata.revision, 120), state: boundedText(metadata.state, 40) } : boundedText(value, 120)];
+        }));
         const owningSkill = boundedText(event.owning_skill, 100);
         if (!/^agdata-[a-z0-9-]+$/.test(owningSkill)) throw new Error("WATCHDOG_EVENT_OWNER_INVALID");
         const safeSuspectedFunctions = Array.isArray(event.suspected_functions) ? event.suspected_functions.slice(0, 8).map(value => boundedText(value, 160)) : [];
@@ -5449,7 +5454,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       if (action === "watchdog_list_events") {
         const { data, error } = await supabase.from("app_runtime_watchdog_events" as never).select("*").eq("status", "open").order("last_seen_at", { ascending: false }).limit(250);
         if (error) throw error;
-        return jsonResponse({ ok: true, data: data || [] });
+        return jsonResponse({ ok: true, data: data || [], fixBrief: buildRuntimeWatchdogFixBrief((data || []) as Record<string, unknown>[]) });
       }
       if (action === "watchdog_resolve_events") {
         const ids = Array.isArray(payload.ids) ? payload.ids.filter(value => typeof value === "number" && Number.isSafeInteger(value)).slice(0, 250) : [];
@@ -5492,6 +5497,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const operation = String(payload.operation || "").trim().toLowerCase();
       if (!["resolve", "directory", "save_role_baseline", "save_user_overrides"].includes(operation)) {
         throw new Error("USER_ACCESS_OPERATION_INVALID");
+      }
+      if (operation !== "resolve" && !FULL_ACCESS_USER_KEYS.has(String(actor.username || "").trim().toLowerCase())) {
+        return errorResponse("Only the designated administrators can manage user access.", 403, { code: "USER_ACCESS_MANAGER_REQUIRED" });
       }
       const mutation = operation === "save_role_baseline" || operation === "save_user_overrides";
       const expectedRevision = payload.expected_revision;
