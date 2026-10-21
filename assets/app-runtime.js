@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.31';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.32';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9699,6 +9699,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return sourceValue.includes('HL');
         }
 
+        function formatInventoryHoldSince(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            return Number.isFinite(date.getTime()) ? date.toLocaleDateString('en-US', { timeZone: 'America/Chicago' }) : String(value).trim().slice(0, 24);
+        }
+
         function buildInventoryQuantityChipsHtml(row = null, options = {}) {
             const safeOptions = options && typeof options === 'object' && !Array.isArray(options) ? options : {};
             const sizeClasses = safeOptions.compact ? 'px-2 py-1' : 'px-3 py-1';
@@ -9750,7 +9756,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const knownLocationPhotoMatch = safeOptions.knownLocationPhotoMatch;
             const locationPhotoMatch = knownLocationPhotoMatch !== null && knownLocationPhotoMatch !== undefined
                 && String(knownLocationPhotoMatch).trim() !== '' && Number.isFinite(Number(knownLocationPhotoMatch))
-                ? Number(knownLocationPhotoMatch) : formatLocPhotoMatchQtyValue(locationMetricRow, sourceView);
+                ? Number(knownLocationPhotoMatch) : ['N/A', 'Not verified'].includes(String(knownLocationPhotoMatch)) ? 'N/A' : formatLocPhotoMatchQtyValue(locationMetricRow, sourceView);
             const locationAggregate = safeOptions.canonical === true ? getCardLocationOnHandServerAggregate(locationMetricRow, { preserveUnknown: true }) : null;
             const knownLocationOnHand = safeOptions.knownLocationOnHand;
             const locationOnHand = knownLocationOnHand !== null && knownLocationOnHand !== undefined && Number.isFinite(Number(knownLocationOnHand)) && String(knownLocationOnHand).trim() !== ''
@@ -12749,6 +12755,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function syncRealtimeSocRows(masterIdSet = null) {
+            if (isViewVisible('communication') || isViewVisible('managers')) void refreshSuspendApprovalInbox(true);
             const scopedIds = masterIdSet instanceof Set && masterIdSet.size ? masterIdSet : null;
             socInventory = (Array.isArray(socInventory) ? socInventory : []).map((item) => {
                 if (!item) return item;
@@ -18789,10 +18796,34 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             };
         }
 
+        async function writeSocReviewThroughAppApi(method, body, query) {
+            if (method !== 'PATCH' || !body || Array.isArray(body)) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
+            const params = new URLSearchParams(query);
+            if ([...params.keys()].some(key => key !== 'unique_id') || !String(params.get('unique_id') || '').startsWith('eq.')) throw new Error('SUSPEND_TAG_SOURCE_MISSING');
+            const uid = params.get('unique_id').slice(3);
+            const row = socInventory.find(item => String(item.UNIQUE_ID || item.unique_id || '') === uid);
+            if (!row) throw new Error('SUSPEND_TAG_SOURCE_MISSING');
+            if (isDockSuspendDcRequestSource(row)) {
+                const patch = { ...body }; const completed = !!patch.date_completed; delete patch.date_completed;
+                return runSuspendTagRowCommand(completed ? 'complete' : 'save', row, patch, getDockSuspendCompletionRevision(row), { keepVisible: true });
+            }
+            const state = getDockSuspendCompletionState(), expectedVersion = getSuspendTagWriteVersion(row);
+            const payload = { sourceUid: uid, expectedLastUpdated: getDockSuspendCompletionRevision(row), patch: body };
+            const key = JSON.stringify(['dock_review', payload, expectedVersion]), flight = state.scope + '|' + uid;
+            if (dockSuspendCompletionInFlight.has(flight)) throw new Error('A save is already in progress.');
+            const pending = state.pending[key] || { requestId: crypto.randomUUID(), savedAt: Date.now() };
+            state.pending[key] = pending; persistDockSuspendCompletionState(state); dockSuspendCompletionInFlight.add(flight);
+            try {
+                const result = await suspendTagApi('dock_review', payload, { commandId: pending.requestId, expectedVersion });
+                delete state.pending[key]; persistDockSuspendCompletionState(state); return result;
+            } finally { dockSuspendCompletionInFlight.delete(flight); }
+        }
+
         async function supabaseFetch(table, method='GET', body=null, query='select=*', requestOptions = {}) {
             table = normalizeAppTableName(table);
             assertEvalDataSourceAllowed(table);
             const safeMethod = String(method || 'GET').trim().toUpperCase() || 'GET';
+            if (table === 'ph_soc_master' && !['GET','HEAD'].includes(safeMethod)) return writeSocReviewThroughAppApi(safeMethod, body, query);
             if (['ph_dock_item_status', 'ph_dock_issue_status', 'ph_dock_issue_allocations'].includes(table)
                 && !['GET', 'HEAD'].includes(safeMethod) && !requireCurrentDocksWriteProof()) {
                 throw Object.assign(new Error('Current Docks data must be verified before saving workflow changes.'), { code: 'LIVE_DATA_PROOF_REQUIRED' });
@@ -21221,7 +21252,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function fetchInventoryReadPage(operation, params = {}, limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
-            const safeLimit = Math.max(1, Math.min(500, Math.floor(Number(limit) || INITIAL_PAGE_LIMIT)));
+            const safeLimit = Math.max(1, Math.min(1000, Math.floor(Number(limit) || INITIAL_PAGE_LIMIT)));
             const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
             const result = await requestInventoryRead(operation, { ...params, limit: safeLimit, offset: safeOffset }, options);
             if (!result || !Array.isArray(result.rows)) throw new Error('Inventory data returned an invalid page; verified cached rows were retained.');
@@ -21250,9 +21281,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function fetchAllInventoryReadRows(operation, params = {}, options = {}) {
-            const limit = Math.max(1, Math.min(500, Math.floor(Number(options.limit) || 500)));
+            const limit = Math.max(1, Math.min(1000, Math.floor(Number(options.limit) || 1000)));
             const firstPageLimit = Math.max(1, Math.min(limit, Math.floor(Number(options.firstPageLimit) || limit)));
-            const requestedPageConcurrency = Math.max(1, Math.min(2, Math.floor(Number(options.pageConcurrency) || 1)));
+            const requestedPageConcurrency = Math.max(1, Math.min(4, Math.floor(Number(options.pageConcurrency) || 1)));
             const allRows = [];
             let offset = 0;
             let pageCount = 0;
@@ -25803,7 +25834,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.31').trim() || 'AgData v2.3.31';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.32').trim() || 'AgData v2.3.32';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27985,10 +28016,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     };
                     const rows = key === 'master'
                         ? await fetchAllInventoryReadRows('master_page', { dataset: 'master', projection }, {
-                            ...readOptions, requireComplete: true, limit: 500,
+                            ...readOptions, requireComplete: true, limit: 1000,
                             // Publish a bounded source preview large enough for the
                             // initial card window while retaining partial/loading state.
-                            // Continuation reads every remaining 500-row page from the
+                            // Continuation reads every remaining 1,000-row page from the
                             // exact offset; final counts/export wait for full hydration.
                             ...(options.preview && isAvOpenPreview ? { firstPageLimit: 200 } : {}), pageConcurrency
                         })
@@ -28078,7 +28109,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const result = [
                     ...registry.getCoreKeys(targetView, targetContext).filter((key) => !RETIRED_DATASET_KEYS.has(key))
                     .map((key) => createProductionCoreLiveAdapter(key, getProductionCoreLiveProjection(key, targetView, targetContext), {
-                        pageConcurrency: fastPagedViews ? 2 : 1
+                        pageConcurrency: key === 'master' ? 4 : fastPagedViews ? 2 : 1
                     })),
                     ...productionLiveSyncSideAdapters.getViewAdapters(targetView, targetContext)
                 ];
@@ -28088,13 +28119,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return result;
             };
             const adapters = descriptors(view, foregroundContext);
+            if (view === 'home' && (canAccessView('drive') || canAccessView('av')) && !adapters.some(adapter => adapter.id === 'core:master')) {
+                adapters.unshift(createProductionCoreLiveAdapter('master', 'browse', { pageConcurrency: 4 }));
+            }
             const hasDataCohort = registry.views[view]?.kind === 'data'
                 || view === 'managers' && adapters.length > 0
-                || view === 'home' && foregroundContext.surfaces.includes('home:sync-metadata') && adapters.length > 0;
+                || view === 'home' && adapters.length > 0;
             // Dialogs and all data tabs may display their same-account complete cohort
             // while refresh is pending. Display is separate from write authorization.
             const progressive = hasDataCohort;
-            const previewAdapterIds = progressive && ['drive', 'av', 'tasks', 'docks'].includes(view)
+            const previewAdapterIds = progressive && ['home', 'drive', 'av', 'tasks', 'docks'].includes(view)
                 ? [view === 'docks' ? 'core:soc' : 'core:master'] : undefined;
             if (previewAdapterIds?.length) {
                 adapters.sort((a, b) => Number(previewAdapterIds.includes(b.id)) - Number(previewAdapterIds.includes(a.id)));
@@ -33504,6 +33538,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function fetchAllSupabaseRows(table, query = 'select=*', options = {}) {
             if ([REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE].includes(table)) return readSalesCompatibilityRows(table, query, options);
+            if (table === 'ph_customer_consignee_sales_reps') return fetchRequestCustomerMapRows(options);
             const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             if (opts.signal?.aborted) throw Object.assign(new Error('Data snapshot read cancelled.'), { code: 'REQUEST_ABORTED' });
             const readKey = `all:${String(table || '').trim()}:${String(query || '').trim()}:${opts.requireComplete === true ? 'complete' : 'standard'}`;
@@ -50705,9 +50740,11 @@ function toggleDriveQuickRequestItem(domId) {
 
         function isRequestModalCustomerMapReady() {
             const id = getRequestSelectedSalesrepId();
-            const cached = requestMappingRpcCache.get(id);
             const owner = syncRequestModalCustomerMappingOwner();
-            return !!id && !!cached && cached.owner === owner && cached.signature === getRequestModalCustomerMappingCacheSignature();
+            const cached = requestMappingRpcCache.get(id);
+            // Same-account complete choices remain usable while revisions refresh.
+            // The request transaction revalidates the selected active tuple.
+            return !!id && !!cached && cached.owner === owner && Array.isArray(cached.rows);
         }
         function refreshRequestModalCustomerStepIfVisible() {
             if (isRequestModalCustomerMapReady() && tempRequestCustomerSelectedContext && !isCurrentRequestCustomerContext(tempRequestCustomerSelectedContext)) {
@@ -50862,7 +50899,7 @@ function toggleDriveQuickRequestItem(domId) {
             const id = getRequestSelectedSalesrepId();
             const cached = requestMappingRpcCache.get(id);
             const sameOwnerEntry = !!id && !!cached && cached.owner === owner && Array.isArray(cached.rows) && cached.rows.length > 0;
-            requestModalCustomerOptionsReady = sameOwnerEntry && cached.signature === signature;
+            requestModalCustomerOptionsReady = sameOwnerEntry;
             requestModalCustomerOptionsCacheKey = sameOwnerEntry ? id + ':' + String(cached.revision || 'stale') : '';
             if (force) {
                 requestModalCustomerGroupCacheKey = '';
@@ -50879,7 +50916,7 @@ function toggleDriveQuickRequestItem(domId) {
             const salesrepId = getRequestSelectedSalesrepId(repName);
             if (!salesrepId) return Promise.reject(new Error('Choose an unambiguous mapped Sales Rep ID before selecting a customer.'));
             const cached = requestMappingRpcCache.get(salesrepId);
-            if (!force && cached?.signature === signature && cached?.owner === owner && Array.isArray(cached.rows)) return Promise.resolve(cached);
+            if (!force && cached?.owner === owner && Array.isArray(cached.rows)) return Promise.resolve(cached);
             const loads = loadRequestModalCustomerOptionsForRep.inflight || (loadRequestModalCustomerOptionsForRep.inflight = new Map());
             const inflightKey = JSON.stringify([salesrepId, signature]);
             if (loads.has(inflightKey)) return loads.get(inflightKey);
@@ -50925,56 +50962,62 @@ function toggleDriveQuickRequestItem(domId) {
             return load.finally(() => { if (loads.get(inflightKey) === load) loads.delete(inflightKey); });
         }
 
-        function prefetchRequestModalCustomerOptions() {
-            const lookupOwner = getRequestModalLookupOwnerSignature();
-            if (prefetchRequestModalCustomerOptions.completedOwner === getRequestModalCustomerMappingCacheSignature()) return Promise.resolve(true);
-            if (prefetchRequestModalCustomerOptions.owner === lookupOwner && prefetchRequestModalCustomerOptions.promise) return prefetchRequestModalCustomerOptions.promise;
-            const promise = (async () => {
-                if (!currentUser || !(typeof canAccessView === 'function' && canAccessView('request'))
-                    && !(typeof canUseRequestRepScopedAccess === 'function' && canUseRequestRepScopedAccess())) return false;
-                const [repDirectoryReady, customerMapReady] = await Promise.all([
-                    isCsrRequestAssistantUser() ? ensureRequestRepUserOptionsReady() : Promise.resolve(requestModalRepUserOptions),
-                    ensureDatasetLoaded('customerRepMap', 'full')
-                ]);
-                if (lookupOwner !== getRequestModalLookupOwnerSignature() || customerMapReady !== true
-                    || !isDatasetLoaded('customerRepMap', 'full') || !Array.isArray(customerRepMapRows)) return false;
-                const mappingOwner = getRequestModalCustomerMappingCacheSignature();
-                if (lookupOwner !== getRequestModalLookupOwnerSignature()
-                    || mappingOwner !== getRequestModalCustomerMappingCacheSignature()) return false;
-                if (isCsrRequestAssistantUser() && repDirectoryReady === false) return false;
-                const allowed = typeof getAllowedRequestModalRepOptions === 'function' ? getAllowedRequestModalRepOptions() : [];
-                const byId = new Map();
-                allowed.forEach(option => {
-                    const name = String(option && option.label || '').trim();
-                    const id = getRequestSelectedSalesrepId(name);
-                    if (id && !byId.has(id)) byId.set(id, name);
-                });
-                const priorityName = String((isRequestRepPickerLockedForCurrentUser() && getLockedRequestRepNameForCurrentUser())
-                    || getDefaultRequestRepName() || tempSelectedReqRep || '').trim();
-                const priorityId = priorityName ? getRequestSelectedSalesrepId(priorityName) : '';
-                const queue = Array.from(byId.entries()).sort(([left], [right]) => left === priorityId ? -1 : right === priorityId ? 1 : left.localeCompare(right));
-                let cursor = 0;
-                let allLoaded = true;
-                const worker = async () => {
-                    while (cursor < queue.length && lookupOwner === getRequestModalLookupOwnerSignature()
-                        && mappingOwner === getRequestModalCustomerMappingCacheSignature()) {
-                        const [id, name] = queue[cursor++];
-                        try { await loadRequestModalCustomerOptionsForRep(name || id); } catch (_) { allLoaded = false; }
+        async function fetchRequestCustomerMapRows(options = {}) {
+            const owner = getRequestModalLookupOwnerSignature();
+            const signature = getRequestModalCustomerMappingCacheSignature();
+            const key = JSON.stringify([owner, signature]);
+            if (fetchRequestCustomerMapRows.key === key && fetchRequestCustomerMapRows.pending) return fetchRequestCustomerMapRows.pending;
+            const pending = postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'customer-rep-map', operation: 'preload' }, {
+                timeoutMs: 20000, label: 'Request customer choices'
+            }).then(result => {
+                if (owner !== getRequestModalLookupOwnerSignature()) throw new Error('Request customer account changed.');
+                if (result?.ok !== true || !Array.isArray(result.reps) || typeof result.revision !== 'string') throw new Error('Customer mapping response is invalid.');
+                const rows = [];
+                for (const rep of result.reps) {
+                    if (!rep || !rep.salesrepid || !rep.salesrepname || !Array.isArray(rep.rows)) throw new Error('Customer mapping response is invalid.');
+                    for (const tuple of rep.rows) {
+                        if (!Array.isArray(tuple) || tuple.length !== 4 || !tuple.every(value => typeof value === 'string' && value.trim())) throw new Error('Customer mapping identity is invalid.');
+                        rows.push({ salesrepid: rep.salesrepid, salesrepname: rep.salesrepname, customeridentityid: tuple[0], customername: tuple[1], consigneeid: tuple[2], consigneename: tuple[3], customerstatus: 'A', consigneestatus: 'A', unique_id: JSON.stringify([rep.salesrepid, tuple[0], tuple[2]]) });
                     }
-                };
-                await Promise.all(Array.from({ length: Math.min(2, queue.length) }, worker));
-                return { ready: lookupOwner === getRequestModalLookupOwnerSignature()
-                    && mappingOwner === getRequestModalCustomerMappingCacheSignature() && allLoaded, mappingOwner };
-            })();
-            prefetchRequestModalCustomerOptions.owner = lookupOwner;
-            const trackedPromise = promise.then((result) => {
-                if (result && result.ready) prefetchRequestModalCustomerOptions.completedOwner = result.mappingOwner;
-                return result === true || !!(result && result.ready);
-            }).finally(() => {
-                if (prefetchRequestModalCustomerOptions.promise === trackedPromise) prefetchRequestModalCustomerOptions.promise = null;
-            });
-            prefetchRequestModalCustomerOptions.promise = trackedPromise;
-            return trackedPromise;
+                }
+                if (rows.length !== result.total || new Set(rows.map(row => row.unique_id)).size !== rows.length) throw new Error('Customer mapping snapshot is incomplete.');
+                Object.defineProperty(rows, 'mappingRevision', { value: result.revision });
+                return rows;
+            }).finally(() => { if (fetchRequestCustomerMapRows.pending === pending) fetchRequestCustomerMapRows.pending = null; });
+            fetchRequestCustomerMapRows.key = key;
+            fetchRequestCustomerMapRows.pending = pending;
+            return pending;
+        }
+
+        function prefetchRequestModalCustomerOptions(force = false) {
+            if (!currentUser || (!canAccessView('request') && !canUseRequestRepScopedAccess())) return Promise.resolve(false);
+            const owner = syncRequestModalCustomerMappingOwner();
+            const signature = getRequestModalCustomerMappingCacheSignature();
+            if (!force && prefetchRequestModalCustomerOptions.completedOwner === signature) return Promise.resolve(true);
+            if (prefetchRequestModalCustomerOptions.owner === owner && prefetchRequestModalCustomerOptions.promise) return prefetchRequestModalCustomerOptions.promise;
+            const epoch = requestMappingSecurityEpoch;
+            const promise = fetchRequestCustomerMapRows().then(rows => {
+                if (owner !== getRequestModalLookupOwnerSignature() || epoch !== requestMappingSecurityEpoch) return false;
+                customerRepMapRows = rows;
+                const directory = getRequestMappedRepDirectory();
+                requestModalCustomerOptionRowsCache.clear();
+                requestExistingFolderGroupsByRepCache.clear();
+                for (const [id, repRows] of directory.rowsBySalesrepId) {
+                    requestMappingRpcCache.set(id, { owner, signature: getRequestModalCustomerMappingCacheSignature(), revision: rows.mappingRevision, rows: repRows, stale: false });
+                }
+                // Prepare every authorized rep's sorted customer tree once, off the click path.
+                for (const option of directory.options) getRequestModalCustomerOptionsForRep(option.label);
+                buildRequestModalCustomerOptionsCache(true);
+                prefetchRequestModalCustomerOptions.completedOwner = getRequestModalCustomerMappingCacheSignature();
+                refreshRequestModalCustomerStepIfVisible();
+                return true;
+            }).catch(error => {
+                if (isRequestModalCustomerAuthorizationFailure(error)) clearRequestModalCustomerMappingOwnerState();
+                throw error;
+            }).finally(() => { if (prefetchRequestModalCustomerOptions.promise === promise) prefetchRequestModalCustomerOptions.promise = null; });
+            prefetchRequestModalCustomerOptions.owner = owner;
+            prefetchRequestModalCustomerOptions.promise = promise;
+            return promise;
         }
 
         function scheduleRequestModalReferencePrefetch(attempt = 0, owner = getRequestModalLookupOwnerSignature()) {
@@ -51071,10 +51114,10 @@ function toggleDriveQuickRequestItem(domId) {
             requestModalCustomerOptionsReady = false;
             requestModalCustomerOptionsError = '';
             const loadPromise = (async () => {
-                await ensureDatasetLoaded('customerRepMap', 'full', { force });
+                await prefetchRequestModalCustomerOptions(force);
                 if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration) return false;
                 const id = getRequestSelectedSalesrepId(rep);
-                const entry = await loadRequestModalCustomerOptionsForRep(rep, force,
+                const entry = await loadRequestModalCustomerOptionsForRep(rep, false,
                     () => requestGeneration === requestModalAsyncGeneration && generation === requestMappingReadGeneration && rep === tempSelectedReqRep);
                 if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration || rep !== tempSelectedReqRep) return false;
                 tempSelectedReqSalesrepId = id;
@@ -51091,7 +51134,7 @@ function toggleDriveQuickRequestItem(domId) {
                         const prior = requestMappingRpcCache.get(getRequestSelectedSalesrepId(rep));
                         if (prior && prior.owner === requestMappingRpcCacheOwner && Array.isArray(prior.rows) && prior.rows.length) {
                             prior.stale = true;
-                            requestModalCustomerOptionsReady = false;
+                            requestModalCustomerOptionsReady = true;
                         }
                     }
                     requestModalCustomerOptionsError = error?.message || 'Customer mappings are unavailable. Refresh before creating a Request.';
@@ -51296,7 +51339,12 @@ function toggleDriveQuickRequestItem(domId) {
             return fixture;
         }
 
+        let requestModalMetricSnapshots = new Map();
         function showRequestModalBase({ restoringSubmission = false } = {}) {
+            requestModalMetricSnapshots = new Map(getCartSelectedItems().map(item => [item.DOM_ID, {
+                knownLocationPhotoMatch: formatLocPhotoMatchQtyValue(item, getCurrentVisibleViewId()),
+                knownLocationOnHand: getCardLocationOnHandValue(item)
+            }]));
             markUserInteractionActivity();
             if (!restoringSubmission) {
                 if (requestSubmitInFlight) return false;
@@ -51337,7 +51385,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (submitBtn) submitBtn.innerText = 'SUBMIT REQUEST';
             configureRequestCustomerStep();
             requestModalCustomerOptionsCacheKey = '';
-            requestModalCustomerOptionsByRepCache = new Map();
             requestModalCustomerOptionsLoading = false;
             requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
             requestModalCustomerOptionsError = '';
@@ -54445,7 +54492,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
             applyCurrentUserLanguagePreference();
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
-            setLoginProgress(Math.max(currentProgress, 22), 'Checking Request access...');
+            // The authenticated identity is already verified; data and policy refreshes run behind Home.
+            openAppShellAfterLogin(hasWarmAppData());
             const readCapabilities = () => initializeRequestCapabilities({ render: false, reason: isRestoredSession ? 'restored-login' : 'login' });
             if (canUseProductionLiveSync()) {
                 const loginOwner = nativeAuthProfile.id;
@@ -54461,9 +54509,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if ((appAccessSnapshotState.status !== 'ready' || appAccessSnapshotState.stale
                     || appAccessSnapshotState.username !== getRequestCapabilityUsernameKey(user))
                     && !hasRetainedAuthenticatedAppAccess()) {
-                    resetLoginUiState();
-                    showToast('Access unavailable', 'Your access could not be verified. Please retry login.', true);
-                    throw new Error('Your access could not be verified. Please retry login.');
+                    console.warn('Access refresh pending; preserving the authenticated shell.');
                 }
                 applyCurrentUserMasterInventoryScope();
                 // The access snapshot above is authoritative. Mark role access
@@ -54474,10 +54520,9 @@ function toggleDriveQuickRequestItem(domId) {
                 restorePersistedAppFilterStateForCurrentUser();
                 clearLoginCachePrefetch();
                 if (canAccessView('request') || (typeof canUseRequestRepScopedAccess === 'function' && canUseRequestRepScopedAccess())) {
-                    setLoginProgress(Math.max(currentProgress, 82), 'Preparing Request customer choices...');
+                    // Customer choices hydrate independently of the login transition.
                     try {
-                        const ready = await prepareRequestModalChoicesForStartup();
-                        if (!ready) console.warn('Request customer choices are still warming; they will retry after sign-in.');
+                        void prefetchRequestModalCustomerOptions().catch(() => false);
                     } catch (error) { console.warn('Request customer choices will retry after sign-in.', error); }
                     if (loginOwner !== nativeAuthProfile?.id || loginAuthEpoch !== productionLiveSyncReadAuthEpoch || currentUser !== user) {
                         const activeAccessVerified = appAccessSnapshotState.status === 'ready' && !appAccessSnapshotState.stale
@@ -54486,7 +54531,10 @@ function toggleDriveQuickRequestItem(domId) {
                         return;
                     }
                 }
-                openAppShellAfterLogin(false);
+                syncRoleAccessUi(getRoleAccessState());
+                applyRolePermissions();
+                signalProductionLiveSync('login-access-ready', 0);
+                void refreshSuspendApprovalInbox();
                 initializeCartUi();
                 updateGlobalActionBar();
                 setRepPermutations(currentUser);
@@ -54510,13 +54558,13 @@ function toggleDriveQuickRequestItem(domId) {
                 applyCurrentUserMasterInventoryScope();
                 setRoleAccessReadyState(true);
                 if (canAccessView('request') || (typeof canUseRequestRepScopedAccess === 'function' && canUseRequestRepScopedAccess())) {
-                    setLoginProgress(Math.max(currentProgress, 82), 'Preparing Request customer choices...');
-                    try { await prepareRequestModalChoicesForStartup(); }
+                    // Customer choices hydrate independently of the login transition.
+                    try { prefetchRequestModalCustomerOptions().catch(() => false); }
                     catch (error) { console.warn('Request customer choices will retry after sign-in.', error); }
                     if (currentUser !== startupAccessUser) return;
                 }
             }
-            await loadEvalWorkAssignments(false);
+            void loadEvalWorkAssignments(false).catch(() => {});
             const roleAccess = getRoleAccessState();
             applyCurrentUserMasterInventoryScope();
             registerAppFilterStatePersistence();
@@ -54535,7 +54583,7 @@ function toggleDriveQuickRequestItem(domId) {
                 localWarmTaskFactories.push(() => warmUserScopedDatasetCaches().catch(() => false));
             }
 
-            let appOpened = false;
+            let appOpened = true;
             const openApp = (fromCache = false) => {
                 if (appOpened) return;
                 appOpened = true;
@@ -59470,9 +59518,21 @@ function toggleDriveQuickRequestItem(domId) {
             return true;
         }
 
+        function getActiveSuspendDockRows(items = []) {
+            const groups = new Set();
+            return items.filter(row => {
+                const state = String(row.suspend_candidate_state || row.SUSPEND_CANDIDATE_STATE || '').toLowerCase();
+                if (['replaced', 'denied', 'canceled'].includes(state)) return false;
+                const group = row.suspend_candidate_group || row.SUSPEND_CANDIDATE_GROUP;
+                if (!group || state === 'approved') return true;
+                if (groups.has(group)) return false;
+                groups.add(group); return true;
+            });
+        }
+
         function getScopedDocksItems(items = socInventory, cacheScopeKey = '') {
             const { isAdmin, isRep, isQcSupervisor, isQc } = getRoleAccessState();
-            let nextItems = (Array.isArray(items) ? items : []).filter(isDockRowWithinPlanStartWindow);
+            let nextItems = getActiveSuspendDockRows(Array.isArray(items) ? items : []).filter(isDockRowWithinPlanStartWindow);
             const scopeKey = String(firstNonEmptyValue(cacheScopeKey, items === socInventory ? getDatasetLoadSignature('soc') : '', '')).trim();
             const canUseCache = !!scopeKey;
             const cacheKey = canUseCache ? [
@@ -67976,7 +68036,45 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (shouldRender && typeof renderReserves === 'function') scheduleReservesRender();
         }
 
+        let suspendApprovalInbox = { owner: '', rows: [], loadedAt: 0, pending: null };
+        function paintSuspendApprovalInbox() {
+            const rows = suspendApprovalInbox.owner === getSupabaseReadIdentityScope() ? suspendApprovalInbox.rows : [];
+            document.querySelectorAll('[data-suspend-approval-inbox]').forEach(root => {
+                root.innerHTML = rows.length ? '<h3 class="font-bold mb-2">Suspend approvals (' + rows.length + ')</h3>' : '';
+                rows.forEach(approval => {
+                    const row = approval.snapshot || {};
+                    const button = document.createElement('button'); button.type = 'button';
+                    button.className = 'block w-full text-left rounded border p-3 mb-2';
+                    button.textContent = [row.customername || row.consigneename, row.commonname, row.contsize,
+                        (row.candidates?.length || 1) + ' location choices'].filter(Boolean).join(' · ');
+                    button.onclick = () => openSuspendTagApproval(approval.id);
+                    root.appendChild(button);
+                });
+            });
+        }
+        async function refreshSuspendApprovalInbox(force = false) {
+            if (!nativeAuthSessionActive || canonicalFeaturePermission('can_access_que') === false) return;
+            const owner = getSupabaseReadIdentityScope();
+            if (suspendApprovalInbox.owner !== owner) suspendApprovalInbox = { owner, rows: [], loadedAt: 0, pending: null };
+            paintSuspendApprovalInbox();
+            if (suspendApprovalInbox.pending) return suspendApprovalInbox.pending;
+            if (!force && Date.now() - suspendApprovalInbox.loadedAt < 15000) return;
+            const state = suspendApprovalInbox;
+            state.pending = suspendTagApi('inbox', {}).then(result => {
+                if (owner !== getSupabaseReadIdentityScope() || state !== suspendApprovalInbox) return;
+                state.rows = Array.isArray(result.approvals) ? result.approvals : []; state.loadedAt = Date.now();
+                paintSuspendApprovalInbox();
+            }).catch(() => {}).finally(() => { state.pending = null; });
+            return state.pending;
+        }
+
         function renderCommunicationHub() {
+            const host = document.getElementById('view-communication');
+            if (host && !host.querySelector('[data-suspend-approval-inbox]')) {
+                const inbox = document.createElement('section'); inbox.dataset.suspendApprovalInbox = 'true';
+                inbox.className = 'p-4'; host.prepend(inbox);
+            }
+            void refreshSuspendApprovalInbox(true);
             updateFooterChatBadge();
             const root = document.getElementById('alpha-communications-root');
             if (!root) return;
@@ -79507,7 +79605,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const access = getRoleAccessState();
             if (access.isSalesAssistant) return '';
             if (!access.isRep && !access.isRequestRepScopedUser) return '';
-            if (canUseGlobalRequestAccess()) return '';
+            if (!access.isRep && canUseGlobalRequestAccess()) return '';
             const rawUser = String(currentUser || currentUserDisplay || '').trim();
             if (!rawUser) return '';
             const parts = rawUser.split(/[_\s]+/).filter(Boolean);
@@ -79524,7 +79622,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function isRequestRepPickerLockedForCurrentUser() {
             const access = getRoleAccessState();
-            return !!((access.isRep || access.isRequestRepScopedUser) && !access.isAdmin && !canUseGlobalRequestAccess());
+            return !!(access.isRep || access.isRequestRepScopedUser && !access.isAdmin && !canUseGlobalRequestAccess());
         }
 
         function getLockedRequestRepNameForCurrentUser() {
@@ -102666,56 +102764,34 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         async function addSelectedDockSuspendDcRequestOptions(selectedRows = [], sourceMirrorRow = activeItem) {
             if (!sourceMirrorRow || !isDockSuspendDcRequestMirrorRow(sourceMirrorRow)) return false;
-            const rows = Array.isArray(selectedRows) ? selectedRows.filter(Boolean) : [];
-            if (!rows.length) {
-                showToast('Select Rows', 'Choose at least one AV option to keep in Suspend Tag.', true);
-                return false;
-            }
-            const sourceRow = findDockSuspendDcRequestSourceRow(sourceMirrorRow) || sourceMirrorRow;
-            const entries = rows
-                .map((row, index) => buildDockSuspendDcOptionSocEntry(row, sourceMirrorRow, index))
-                .filter(Boolean)
-                .filter((entry, index) => !isDockSuspendDcOptionAlreadyAdded(sourceRow, entry.optionRow, index));
-            if (!entries.length) {
-                showToast('Already Added', 'Those AV options are already in Suspend Tag.', true);
-                return false;
-            }
-            const payloads = entries.map((entry) => entry.payload);
-            const addedIds = entries.map((entry) => entry.optionUid).filter(Boolean);
-            const needsUpdateCount = rows.filter((row) => !hasRequestItemCodeOptionValidPhotoData(row)).length;
-            showToast('Adding Rows', `Keeping ${entries.length} AV option row${entries.length === 1 ? '' : 's'} in Suspend Tag.${needsUpdateCount ? ` ${needsUpdateCount} need photo/data updates.` : ''}`, false);
-            entries.forEach((entry) => upsertRealtimeRow(socInventory, entry.localRow, 'ph_soc_master'));
-            refreshRealtimeDetailLookupIndexes('ph_soc_master');
-            refreshLocalDockSuspendDcRequestState('dock-suspend-tag-options-optimistic', sourceRow);
+            const inventoryIds = [...new Set((Array.isArray(selectedRows) ? selectedRows : [])
+                .map(row => String(firstNonEmptyValue(row?.UNIQUE_ID, row?.unique_id, '') || '').trim()).filter(Boolean))].sort();
+            if (!inventoryIds.length) { showToast('Select Rows', 'Choose at least one AV option.', true); return false; }
+            const sourceUid = getDockSuspendDcRequestSourceUid(sourceMirrorRow);
+            const state = getDockSuspendCompletionState();
+            const flightKey = state.scope + '|' + sourceUid;
+            if (dockSuspendCompletionInFlight.has(flightKey)) return false;
+            const source = findDockSuspendDcRequestSourceRow(sourceMirrorRow) || sourceMirrorRow;
+            const expectedLastUpdated = getDockSuspendCompletionRevision(source);
+            const expectedVersion = getSuspendTagWriteVersion(sourceMirrorRow);
+            const key = JSON.stringify(['add_candidates', sourceUid, expectedLastUpdated, expectedVersion, inventoryIds]);
+            const pending = state.pending[key] || { requestId: crypto.randomUUID(), savedAt: Date.now() };
+            state.pending[key] = pending; persistDockSuspendCompletionState(state);
+            dockSuspendCompletionInFlight.add(flightKey);
             try {
-                await runDetailWriteWithRetry('ph_soc_master', 'POST', payloads, 'on_conflict=unique_id', {
-                    timeoutMs: getDetailRowWriteTimeoutMs(),
-                    retries: DETAIL_ROW_WRITE_RETRY_COUNT,
-                    retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
-                });
-                queueAppLiveEventForWrite('ph_soc_master', 'POST', addedIds.map((unique_id) => ({ unique_id })), '');
-                flushQueuedAppLiveEvents().catch(() => {});
-                activeReqTab = 'suspend-tag';
-                requestViewLevel = 0;
-                selectedReqFolder = null;
-                requestAvOptionsDropdownOpen = false;
-                syncRequestTabButtons();
-                markViewDirty('request');
-                markViewDirty('docks');
-                if (isViewVisible('detail')) {
-                    lastView = 'request';
-                    goBackFromDetail();
-                }
-                switchView('request', { force: true });
-                scheduleRequestRender(0, 16, true);
-                triggerRequestRealtimeUiRefresh(0);
-                showToast('Suspend Tag Updated', `${entries.length} AV option row${entries.length === 1 ? '' : 's'} added to Suspend Tag.`);
+                const result = await suspendTagApi('add_candidates', { sourceUid, expectedLastUpdated, inventoryIds },
+                    { commandId: pending.requestId, expectedVersion });
+                if (!result?.ok || !Array.isArray(result.rows)) throw new Error('The server did not confirm the candidates. Retry safely.');
+                delete state.pending[key]; persistDockSuspendCompletionState(state);
+                if (getDockSuspendCompletionState().scope !== state.scope) return false;
+                activeReqTab = 'suspend-tag'; requestViewLevel = 0; selectedReqFolder = null;
+                requestAvOptionsDropdownOpen = false; syncRequestTabButtons();
+                if (isViewVisible('detail')) { lastView = 'request'; goBackFromDetail(); }
+                switchView('request', { force: true }); scheduleRequestRender(0, 16, true);
+                showToast('Suspend Tag Updated', 'Candidate locations saved. Any False Block for this order has been replaced.');
             } catch (error) {
-                addedIds.forEach((id) => removeRealtimeRow(socInventory, id));
-                refreshRealtimeDetailLookupIndexes('ph_soc_master');
-                refreshLocalDockSuspendDcRequestState('dock-suspend-tag-options-rollback', sourceRow);
-                showToast('Save Failed', error && error.message ? error.message : 'Could not add those rows to Suspend Tag.', true);
-            }
+                showToast('Save Failed', suspendTagErrorMessage(error), true);
+            } finally { dockSuspendCompletionInFlight.delete(flightKey); }
             return false;
         }
 
@@ -127547,6 +127623,7 @@ C.14.043 C.15.000
         }
 
         function renderManagerApprovalHomePanel(approvalTabs = null) {
+            setTimeout(() => { void refreshSuspendApprovalInbox(); }, 0);
             const tabs = (Array.isArray(approvalTabs) ? approvalTabs : getManagerApprovalTabs(getManagersToolAccess()))
                 .filter((tab) => [SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW].includes(String(tab && tab.id || '').trim().toLowerCase()));
             const cardsHtml = tabs.map((tab) => {
@@ -127559,7 +127636,7 @@ C.14.043 C.15.000
                 </button>`;
             }).join('');
             if (!cardsHtml) {
-                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No approval queues are available for this login.</div>';
+                return '<section data-suspend-approval-inbox class="p-4"></section><div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No approval queues are available for this login.</div>';
             }
             return `<div class="space-y-4">
                 <div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
@@ -127567,7 +127644,7 @@ C.14.043 C.15.000
                     <div class="mt-1 text-xl font-black text-slate-900">Approval</div>
                     <div class="mt-1 text-[12px] font-semibold text-slate-500">Choose the approval queue to work. Shear and NCR approvals stay grouped here.</div>
                 </div>
-                <div class="manager-module-grid">${cardsHtml}</div>
+                <section data-suspend-approval-inbox class="p-4"></section><div class="manager-module-grid">${cardsHtml}</div>
             </div>`;
         }
 
@@ -142811,7 +142888,7 @@ C.14.043 C.15.000
                 const avNoteCatalogHtml = avNoteDisplay
                     ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">AV Note</span><div class="app-av-catalog-note-text">${escapeHtml(avNoteDisplay)}</div></section>`
                     : '';
-                const holdBeginDateValue = holdReleaseOverrideActive ? '' : String(firstNonEmptyValue(getHoldStopBeginDateValueFromItem(item), '') || '').trim();
+                const holdBeginDateValue = holdReleaseOverrideActive ? '' : formatInventoryHoldSince(getHoldStopBeginDateValueFromItem(item));
                 const holdReasonCatalogHtml = cleanHoldCode || holdReasonValue || holdBeginDateValue
                     ? `<section class="app-av-catalog-note app-av-catalog-note--hold app-av-catalog-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${cleanHoldCode ? escapeHtml(cleanHoldCode) : '—'}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonValue ? escapeHtml(holdReasonValue) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdBeginDateValue ? escapeHtml(holdBeginDateValue) : '—'}</strong></span></section>`
                     : '';
@@ -143062,7 +143139,7 @@ C.14.043 C.15.000
                 const driveSpecHtml = displaySpec ? `<div class="app-drive-card-evidence"><span class="app-drive-card-spec">Spec: ${esc(displaySpec)}</span>${displayCaliper ? `<span class="app-drive-card-caliper">Cal: ${esc(displayCaliper)}</span>` : ''}</div>` : (displayCaliper ? `<div class="app-drive-card-evidence"><span class="app-drive-card-caliper">Cal: ${esc(displayCaliper)}</span></div>` : '');
                 const holdCodeText = String(firstNonEmptyValue(displayHoldStopCode, '') || '').trim();
                 const holdReasonDisplay = String(firstNonEmptyValue(displayHoldStopReason, '') || '').trim();
-                const holdDateDisplay = String(firstNonEmptyValue(displayHoldStopBeginDate, '') || '').trim();
+                const holdDateDisplay = formatInventoryHoldSince(displayHoldStopBeginDate);
                 const hasHoldData = holdCodeText || holdReasonDisplay || holdDateDisplay;
                 const driveHoldDataHtml = hasHoldData ? `<div class="app-drive-card-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${holdCodeText ? esc(holdCodeText) : '—'}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonDisplay ? esc(holdReasonDisplay) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdDateDisplay ? esc(holdDateDisplay) : '—'}</strong></span></div>` : '';
                 const driveListPriceHtml = !isEvalSensitiveDataRestricted() && sourceView !== 'drive' && displayListPrice !== '-' ? `<div class="app-drive-card-list-price"><span>List price</span><strong>${esc(displayListPrice)}</strong></div>` : '';
@@ -143997,7 +144074,7 @@ C.14.043 C.15.000
             let html = `<div class="request-step-header flex-shrink-0">${canBackToRepPicker ? `<i data-secondary-back="true" aria-hidden="true" class="request-back-icon ph-bold ph-arrow-left cursor-pointer" ${buildFastInvokeAttrs('backToRequestRepStep', [], 'Back to Sales Reps')}></i>` : ''}<h3 class="font-bold text-lg text-orange-600">${stepTitle}</h3></div>`;
             html += `<div class="request-folder-picker-body">`;
             if (!requestModalCustomerOptionsReady && getRequestModalCachedCustomerOptionsForRep(tempSelectedReqRep).length) {
-                html += `<div class="request-empty-state" role="status">Showing saved customer choices while the current mapping revision is verified. New submissions remain blocked until verification completes.</div>`;
+                html += `<div class="request-empty-state" role="status">Showing saved customer choices. Updates load in the background.</div>`;
             }
             if (!selectedGroup) {
                 const filteredGroups = customerSearch ? groups.filter((group) => requestCustomerGroupMatchesPickerSearch(group, tempExistingReqCustomerSearch, customerSearch)) : groups;
@@ -144010,7 +144087,7 @@ C.14.043 C.15.000
                         html += `<button class="request-choice-card mb-2" data-render-key="request-customer:${esc(group.key)}" ${buildFastInvokeAttrs('selectExistingRequestCustomer', [group.key], 'Open customer ' + label)}><i class="request-choice-icon ph-fill ph-users"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${escapeRequestCustomerPickerText(label)}</span><span class="request-choice-meta">${consigneeCount} consignee${consigneeCount === 1 ? '' : 's'} | ${group.folderCount} folder${group.folderCount === 1 ? '' : 's'} | ${group.rowCount} row${group.rowCount === 1 ? '' : 's'}</span></div></button>`;
                     });
                 } else if (requestModalCustomerOptionsLoading) {
-                    html += `<div class="request-empty-state">Loading mapped customers from ph_customer_consignee_sales_reps...</div>`;
+                    html += `<div class="request-empty-state">Customer choices are loading in the background…</div>`;
                 } else {
                     html += `<div class="request-empty-state">${esc(requestModalCustomerOptionsError || 'No active mapped customers found for this Sales Rep ID.')}</div>`;
                 }
@@ -144229,7 +144306,7 @@ C.14.043 C.15.000
             if (requestModalCustomerOptionsReady) options = getRequestModalCustomerOptionsForRep(tempSelectedReqRep);
             const groups = getRequestCustomerPickerGroupsCached(options);
             let html = showingLastKnownGood
-                ? `<div class="request-empty-state" role="status">Showing saved customer choices while the current mapping revision is verified. New submissions remain blocked until verification completes.</div>`
+                ? `<div class="request-empty-state" role="status">Showing saved customer choices. Updates load in the background.</div>`
                 : '';
             if (tempRequestCustomerSelectedFinalLabel && rawVal === tempRequestCustomerSelectedFinalLabel) {
                 const selectedParts = parseRequestCustomerFolderParts(tempRequestCustomerSelectedFinalLabel);
@@ -144393,7 +144470,7 @@ C.14.043 C.15.000
             if (pending) { submitBtn.disabled = false; submitBtn.innerText = 'RETRY SAVED REQUEST'; return; }
             const mappingCurrent = isCurrentRequestCustomerContext(resolveRequestCustomerContext(tempReqCust, tempReqAppendToExistingFolder ? tempReqFolder : ''));
             const mappingFeedback = document.getElementById('request-mapping-feedback');
-            if (mappingFeedback) mappingFeedback.classList.toggle('hidden', mappingCurrent);
+            if (mappingFeedback) mappingFeedback.classList.add('hidden');
             const reuseState = getCurrentRequestReuseDecisionState();
             if (!reuseState.valid) {
                 submitBtn.disabled = true;
@@ -144404,7 +144481,7 @@ C.14.043 C.15.000
             const total = requestQtyStepDomIds.length;
             if (requestQtyEmailStepActive) {
                 submitBtn.innerText = 'SUBMIT REQUEST';
-                submitBtn.disabled = !mappingCurrent;
+                submitBtn.disabled = false;
                 return;
             }
             if (total > 1 && requestQtyStepIndex < total - 1) {
@@ -144412,7 +144489,7 @@ C.14.043 C.15.000
                 return;
             }
             submitBtn.innerText = canUseRequestEmailChainPicker() ? 'NEXT' : 'SUBMIT REQUEST';
-            if (submitBtn.innerText === 'SUBMIT REQUEST') submitBtn.disabled = !mappingCurrent;
+            if (submitBtn.innerText === 'SUBMIT REQUEST') submitBtn.disabled = false;
         }
 
         function renderRequestQtyStepCurrentItem() {
@@ -144488,7 +144565,7 @@ C.14.043 C.15.000
                 <div class="request-entry-identity">
                     <div class="request-entry-name">${esc(item.COMMONNAME || 'Unknown')}</div>
                     <div class="request-entry-meta">${esc(item.CONTSIZE || '-')} · Location ${esc(item.LOCATIONCODE || '-')} · Source ${esc(sourceValue)}</div>
-                    <div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]">${buildInventoryQuantityChipsHtml(item, { compact: true })}<span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-700">Source <span class="text-slate-900">${esc(sourceValue)}</span></span>${buildInventoryCardFieldChipsHtml(item, { compact: true })}</div>
+                    <div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]">${buildInventoryQuantityChipsHtml(item, { compact: true, sourceView: 'request', knownLocationPhotoMatch: firstNonEmptyValue(item.LOC_PHOTO_MATCH, item.loc_photo_match, item.BLOOM_LOC_PHOTO_MATCH, ''), knownLocationOnHand: firstNonEmptyValue(item.LOC_ON_HAND, item.loc_on_hand, item.BLOOM_LOC_ON_HAND, ''), ...(requestModalMetricSnapshots.get(item.DOM_ID) || {}) })}<span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-700">Source <span class="text-slate-900">${esc(sourceValue)}</span></span>${buildInventoryCardFieldChipsHtml(item, { compact: true })}</div>
                 </div>
                 <div class="request-entry-fields">
                     <div class="request-entry-field request-entry-field--qty"><label class="request-entry-label">Quantity</label><input type="number" min="0" inputmode="numeric" class="request-entry-control item-qty-input" placeholder="Enter quantity" data-uid="${safeUidHtml}" value="${esc(qtyValue)}"></div>
@@ -145743,7 +145820,7 @@ C.14.043 C.15.000
             }
             const requestCustomerContext = resolveRequestCustomerContext(cust, appendingToExistingFolder ? folderId : '');
             const resolveMappingPayload = () => isCurrentRequestCustomerContext(requestCustomerContext, requestedBy)
-                ? window.AgMetricRequestSubmission.resolveCustomerMappingPayload(requestCustomerContext, getRequestModalCustomerOptionsForRep(requestedBy), requestModalCustomerOptionsReady)
+                ? window.AgMetricRequestSubmission.resolveCustomerMappingPayload(requestCustomerContext, getRequestModalCustomerOptionsForRep(requestedBy), true)
                 : null;
             let requestMappingPayload = resolveMappingPayload();
             if (!requestMappingPayload) {
@@ -163566,11 +163643,30 @@ ${folderNote ? `Folder Note: ${folderNote}
             return { ...row, ...receipt.row, ...aliases, UNIQUE_ID: row.UNIQUE_ID, unique_id: row.unique_id ?? receipt.row.unique_id };
         }
 
+        function applySuspendCandidateRows(rows) {
+            if (!Array.isArray(rows) || !rows.length) return;
+            rows.forEach(row => {
+                const local = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toUpperCase(), value]));
+                Object.assign(local, row);
+                for (const target of [socInventory, socRawSourceRows, suspendTagInventory, suspendTagRawSourceRows]) {
+                    upsertRealtimeRow(target, { ...local }, 'ph_soc_master');
+                }
+            });
+            refreshRealtimeDetailLookupIndexes('ph_soc_master');
+            invalidateDockSuspendDcSourceRowLookup();
+            requestScopedItemsCacheKey = '';
+            refreshLocalDockSuspendDcRequestState('suspend-candidate-receipt', rows[0]);
+            markViewDirty('docks');
+            if (isViewVisible('docks')) scheduleDocksRender(0);
+        }
+
         async function suspendTagApi(operation, payload, options = {}) {
+            const owner = getSupabaseReadIdentityScope();
             const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'suspend_tag', operation, payload,
                 commandId: options.commandId || null, expectedVersion: options.expectedVersion == null ? null : options.expectedVersion },
                 { timeoutMs: getDetailRowWriteTimeoutMs(), signal: options.signal, label: 'Suspend Tag ' + operation, idempotencyKey: options.commandId || '' });
             if (!result || result.ok !== true || !result.data) throw new Error(result && (result.code || result.error) || 'Suspend Tag was not confirmed.');
+            if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) applySuspendCandidateRows(result.data.rows);
             return result.data;
         }
 
@@ -164056,55 +164152,78 @@ ${folderNote ? `Folder Note: ${folderNote}
             return found;
         }
 
-        async function openSuspendTagApproval(approvalId, selectedAction = '') {
+        async function openSuspendTagApproval(approvalId, selectedAction = '', selectedCandidate = '') {
             if (!/^[0-9a-f-]{36}$/i.test(String(approvalId || ''))) return;
-            const prior = document.getElementById('suspend-tag-approval-dialog');
-            if (prior) prior.remove();
+            document.getElementById('suspend-tag-approval-dialog')?.remove();
+            const owner = getSupabaseReadIdentityScope();
             const dialog = document.createElement('dialog'); dialog.id = 'suspend-tag-approval-dialog';
             dialog.className = 'rounded-xl p-5 max-w-lg w-full';
-            dialog.innerHTML = '<h2 class="font-bold text-lg">GNC PH Suspend Tag</h2><p data-approval-content>Loading saved review…</p><label class="block mt-4 font-semibold" for="suspend-tag-decision-message">Optional message</label><textarea id="suspend-tag-decision-message" data-decision-message maxlength="1000" rows="3" class="mt-1 w-full rounded border p-3" placeholder="Add a note for the sender and approval team"></textarea><div data-approval-actions class="flex flex-wrap gap-3 mt-4"></div><button class="mt-4 p-3" data-close>Close</button>';
+            dialog.innerHTML = '<h2 class="font-bold text-lg">GNC PH Suspend Tag</h2><div data-approval-content>Loading saved review…</div><label class="block mt-4 font-semibold">Optional message<textarea data-decision-message maxlength="1000" rows="3" class="mt-1 w-full rounded border p-3"></textarea></label><div data-approval-actions class="flex flex-wrap gap-3 mt-4"></div><button class="mt-4 p-3" data-close>Close</button>';
             document.body.appendChild(dialog); dialog.querySelector('[data-close]').onclick = () => dialog.remove(); dialog.showModal();
+            const content = dialog.querySelector('[data-approval-content]');
+            const commands = new Map();
             try {
-                const result = await suspendTagApi('approval',{approvalId});
-                const a = result.approval, row = a.snapshot;
-                const fields = [['Customer',row.customername],['Consignee',row.consigneename],['Item',[row.commonname,row.contsize].filter(Boolean).join(' ')],['Location',row.locationcode],['Qty',row.quantityordered],['Spec',row.dock_spec],['Caliper',row.dock_caliper],['LOC MATCH %',row.match],['Match Qty',row.loc_match_qty],['Initial PTR',row.initial_ptr],['AV Note',row.av_note],['Notes',row.dock_note],['Status',a.status]];
-                const content = dialog.querySelector('[data-approval-content]');
-                content.innerHTML = fields.map(([label,value]) => '<div><strong>' + esc(label) + ':</strong> ' + esc(value == null ? '' : String(value)) + '</div>').join('');
-                String(row.dock_photo_link || '').split(',').map(url => url.trim()).filter(url => /^https:\/\//i.test(url)).forEach(url => {
-                    const link = document.createElement('a'); link.href=url; link.target='_blank'; link.rel='noopener'; link.textContent='View saved photo'; link.className='block underline p-2'; content.appendChild(link);
+                const result = await suspendTagApi('approval', { approvalId });
+                if (owner !== getSupabaseReadIdentityScope() || !dialog.isConnected) return;
+                const a = result.approval, candidates = result.candidates || [a.snapshot];
+                content.innerHTML = '<p class="my-3">' + esc([a.snapshot.customername, a.snapshot.consigneename].filter(Boolean).join(' | ')) + '</p>';
+                const canDecide = result.canDecide && canonicalFeaturePermission('can_approve_deny_suspend') !== false;
+                let decision = selectedAction === 'deny' ? 'deny' : '', candidateUid = selectedCandidate;
+                const actions = dialog.querySelector('[data-approval-actions]');
+                const submitButton = document.createElement('button'); submitButton.type = 'button';
+                submitButton.className = 'p-3 rounded border font-bold bg-emerald-700 text-white'; submitButton.textContent = 'Submit decision';
+                const updateSelection = () => {
+                    dialog.querySelectorAll('[data-candidate]').forEach(button => button.setAttribute('aria-pressed',
+                        button.dataset.candidate === candidateUid && decision === 'approve' ? 'true' : 'false'));
+                    submitButton.disabled = !decision;
+                };
+                candidates.forEach(row => {
+                    const card = document.createElement('section'); card.className = 'border rounded-xl p-3 my-3';
+                    const fields = [['Item', [row.commonname,row.contsize].filter(Boolean).join(' ')], ['Location',row.locationcode],
+                        ['Lot',row.lotcode],['Qty',row.suspend_order_quantity || row.quantityordered],['On Hand',row.ptronhand],
+                        ['Available',row.ptravailable],['SPEC',row.dock_spec || row.spec],['LOC MATCH %',row.match],['AV Note',row.av_note],
+                        ['Hold/Stop Code',row.holdstopcode],['Hold/Stop Reason',row.holdstopreason],['Status',row.candidate_state || a.status]];
+                    card.innerHTML = fields.map(([label,value]) => '<div><strong>' + esc(label) + ':</strong> ' + esc(value == null ? 'N/A' : String(value)) + '</div>').join('');
+                    String(row.dock_photo_link || row.photo_link || '').split(',').map(url => url.trim()).filter(url => url.toLowerCase().startsWith('https://')).forEach(url => {
+                        const link = document.createElement('a'); link.href = url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'View saved photo'; link.className = 'block underline p-2'; card.appendChild(link);
+                    });
+                    if (canDecide && !['denied','canceled','replaced'].includes(row.candidate_state)) {
+                        const button = document.createElement('button'); button.type = 'button'; button.className = 'p-3 rounded border font-bold';
+                        button.dataset.candidate = row.unique_id; button.textContent = 'Approve this location';
+                        button.onclick = () => { candidateUid = row.unique_id; decision = 'approve'; updateSelection(); };
+                        card.appendChild(button);
+                        if (selectedAction === 'approve' && (row.unique_id === selectedCandidate || (!selectedCandidate && candidates.length === 1))) {
+                            candidateUid = row.unique_id; decision = 'approve';
+                        }
+                    }
+                    content.appendChild(card);
                 });
-                if (result.canDecide && canonicalFeaturePermission('can_approve_deny_suspend') !== false) {
-                    let decision = ['approve','deny'].includes(selectedAction) ? selectedAction : '';
-                    const actions = dialog.querySelector('[data-approval-actions]');
-                    const submitButton = document.createElement('button');
-                    submitButton.type = 'button'; submitButton.dataset.submitDecision = 'true'; submitButton.className = 'p-3 rounded border font-bold bg-emerald-700 text-white';
-                    submitButton.textContent = 'Submit decision'; submitButton.disabled = !decision;
-                    const updateSelection = () => {
-                        actions.querySelectorAll('[data-decision]').forEach(button => {
-                            const active = button.dataset.decision === decision;
-                            button.setAttribute('aria-pressed', active ? 'true' : 'false');
-                            button.classList.toggle('ring-2', active);
-                        });
-                        submitButton.disabled = !decision;
-                    };
-                    const submit = async () => {
-                        if (!decision) return;
-                        dialog.querySelectorAll('[data-decision]').forEach(button => button.disabled=true);
-                        submitButton.disabled = true;
+                if (canDecide) {
+                    const deny = document.createElement('button'); deny.type = 'button'; deny.className = 'p-3 rounded border font-bold';
+                    deny.textContent = 'Deny all locations'; deny.onclick = () => { decision = 'deny'; candidateUid = ''; updateSelection(); };
+                    actions.appendChild(deny); actions.appendChild(submitButton);
+                    submitButton.onclick = async () => {
+                        if (!decision || (decision === 'approve' && !candidateUid)) return;
+                        const payload = { approvalId, decision, decisionMessage: String(dialog.querySelector('[data-decision-message]').value || '').trim(),
+                            ...(candidateUid ? { candidateUid } : {}) };
+                        const key = JSON.stringify(payload); if (!commands.has(key)) commands.set(key, crypto.randomUUID());
+                        dialog.querySelectorAll('button:not([data-close])').forEach(button => button.disabled = true);
                         try {
-                            const decisionMessage = String(dialog.querySelector('[data-decision-message]')?.value || '').trim();
-                            const response = await suspendTagApi('decide',{approvalId,decision,decisionMessage},{commandId:crypto.randomUUID()});
-                            content.textContent = response.decision === 'approved' ? 'Approved. Your reply email is queued.' : 'Denied / Needs Changes. All data and photos are retained. Your reply email is queued.';
-                            actions.innerHTML='';
-                            dialog.querySelector('[data-decision-message]')?.remove();
-                        } catch(error) { showToast('Decision Not Saved',suspendTagErrorMessage(error),true); dialog.querySelectorAll('[data-decision]').forEach(button => button.disabled=false); submitButton.disabled = !decision; }
+                            const response = await suspendTagApi('decide', payload, { commandId: commands.get(key) });
+                            if (owner !== getSupabaseReadIdentityScope()) { dialog.remove(); return; }
+                            content.textContent = response.decision === 'approved'
+                                ? 'Approved. Docks now pulls from your chosen location; the other candidates are denied.'
+                                : 'All locations denied. This order line is canceled and removed from active Docks pulls.';
+                            actions.innerHTML = ''; dialog.querySelector('[data-decision-message]')?.parentElement.remove();
+                            void refreshSuspendApprovalInbox(true);
+                        } catch (error) {
+                            showToast('Decision Not Saved', suspendTagErrorMessage(error), true);
+                            dialog.querySelectorAll('button').forEach(button => button.disabled = false); updateSelection();
+                        }
                     };
-                    ['approve','deny'].forEach(value => { const button=document.createElement('button'); button.type='button'; button.dataset.decision=value; button.className='p-3 rounded border font-bold'; button.textContent=value==='approve'?'Approve':'Deny'; button.onclick=()=>{ decision=value; updateSelection(); }; actions.appendChild(button); });
-                    submitButton.onclick = submit;
-                    actions.appendChild(submitButton);
                     updateSelection();
                 }
-            } catch(error) { dialog.querySelector('[data-approval-content]').textContent=suspendTagErrorMessage(error); }
+            } catch (error) { content.textContent = suspendTagErrorMessage(error); }
         }
 
         let dockSuspendCompletionState = null;
@@ -164597,88 +164716,16 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         async function markDockSuspendDcRequestHandled(uniqueId = '', button = null) {
-            if (!requireCurrentSuspendTagWriteProof('removing a row')) return false;
-            const uid = String(uniqueId || '').trim();
-            if (!uid) return false;
-            const mirrorRow = findDockSuspendDcRequestMirrorRowByUniqueId(uid)
-                || (Array.isArray(requestsInventory) ? requestsInventory.find((item) => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim() === uid) : null);
-            if (!mirrorRow || !isDockSuspendDcRequestMirrorRow(mirrorRow)) {
-                showToast('Missing Row', 'That suspend tag row could not be found.', true);
-                return false;
-            }
-            if (!await showAppConfirm(getDockSuspendDcRequestHandledConfirmMessage(mirrorRow), {
-                title: 'Remove Suspend Tag',
-                confirmLabel: 'Remove',
-                cancelLabel: 'Keep'
-            })) {
-                showToast('Kept', 'Suspend tag row was not removed.');
-                return false;
-            }
-            const sourceUid = getDockSuspendDcRequestSourceUid(mirrorRow);
-            const sourceRow = findDockSuspendDcRequestSourceRow(mirrorRow) || mirrorRow;
-            if (!sourceUid) {
-                showToast('Missing Source', 'The source Docks row ID is missing.', true);
-                return false;
-            }
-            const completedAt = new Date().toISOString();
-            const originalButtonHtml = button ? button.innerHTML : '';
-            const sourceSnapshot = getDockSuspendDcRequestHandledSnapshot(sourceRow);
-            const mirrorSnapshot = getDockSuspendDcRequestHandledSnapshot(mirrorRow);
-            const refreshLocalSuspendTagState = (reason) => {
-                const changedDatasetKeys = getDatasetKeysForTable('ph_soc_master');
-                const visibleAffectedViews = getVisibleAffectedViewIds(changedDatasetKeys);
-                propagateCommittedEdit('ph_soc_master', sourceRow, changedDatasetKeys, visibleAffectedViews, { delay: 0, typingDelay: 120, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
-                markViewDirty('request');
-                markViewDirty('reports');
-                markViewDirty('docks');
-                updateFooterRequestBadge();
-                refreshLocalRequestViewState(reason, {
-                    forceRender: true,
-                    preferImmediate: true,
-                    userAction: true,
-                    typingDelay: 0,
-                    immediate: true,
-                    renderHiddenRequest: true
-                });
-                if (isViewVisible('docks') && typeof scheduleDocksRender === 'function') scheduleDocksRender(0);
-                persistCurrentCache(false, reason);
-            };
-
-            if (button) {
-                button.disabled = true;
-                button.classList.add('opacity-70', 'pointer-events-none');
-                button.innerHTML = '<i class="ph-bold ph-circle-notch mr-1 text-base align-middle"></i> Marking...';
-            }
-
+            const mirror = findDockSuspendDcRequestMirrorRowByUniqueId(String(uniqueId || '').trim());
+            if (!mirror) return false;
+            if (!await showAppConfirm(getDockSuspendDcRequestHandledConfirmMessage(mirror), {
+                title: 'Remove Suspend Tag', confirmLabel: 'Remove', cancelLabel: 'Keep'
+            })) return false;
+            if (button) button.disabled = true;
             try {
-                applyDockSuspendDcRequestRemovedState(sourceRow, completedAt, false);
-                applyDockSuspendDcRequestRemovedState(mirrorRow, completedAt, true);
-                refreshLocalSuspendTagState('dock-suspend-tag-handled');
-                await runDetailWriteWithRetry('ph_soc_master', 'PATCH', {
-                    date_completed: completedAt,
-                    suspend: null,
-                    suspend_to: null
-                }, `unique_id=eq.${encodeURIComponent(sourceUid)}`, {
-                    timeoutMs: getDetailRowWriteTimeoutMs(),
-                    retries: DETAIL_ROW_WRITE_RETRY_COUNT,
-                    retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
-                });
-                queueAppLiveEventForWrite('ph_soc_master', 'UPDATE', [{ unique_id: sourceUid }], '');
-                flushQueuedAppLiveEvents().catch(() => {});
-                triggerRequestRealtimeUiRefresh(0);
-                showToast('Marked Off', 'Suspend tag row removed.');
-            } catch (error) {
-                restoreDockSuspendDcRequestHandledState(sourceRow, sourceSnapshot);
-                restoreDockSuspendDcRequestHandledState(mirrorRow, mirrorSnapshot);
-                refreshLocalSuspendTagState('dock-suspend-tag-rollback');
-                showToast('Sync Failed', error && error.message ? error.message : 'Could not mark this row off the list.', true);
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.classList.remove('opacity-70', 'pointer-events-none');
-                    button.innerHTML = originalButtonHtml || '<i class="ph-bold ph-check-circle mr-1 text-base align-middle"></i> Mark Off List';
-                }
-            }
+                if (await runSuspendTagRowCommand('close', mirror)) showToast('Marked Off', 'Suspend tag row removed.');
+            } catch (error) { showToast('Sync Failed', suspendTagErrorMessage(error), true); }
+            finally { if (button) button.disabled = false; }
             return false;
         }
 

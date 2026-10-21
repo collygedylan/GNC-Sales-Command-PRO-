@@ -1,3 +1,4 @@
+import { releaseSnapshotReadFixture } from './helpers/release-smoke-route-policy.mjs';
 // @test-group: @v2311-frontend-smoke
 import { test, expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
@@ -144,12 +145,13 @@ test('v2.3.11 Request picker shows and searches all 103 mapped customers for Ann
     const request = route.request();
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 200, body: '', headers: { 'access-control-allow-origin': origin, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': request.headers()['access-control-request-headers'] || 'authorization, apikey, content-type', 'access-control-allow-credentials': 'true' } });
     const body = request.postDataJSON() || {};
-    if (request.method() !== 'POST' || body.action !== 'customer-rep-map' || body.operation !== 'options') return route.fallback();
+    if (request.method() !== 'POST' || body.action !== 'customer-rep-map' || !['options','preload'].includes(body.operation)) return route.fallback();
     customerMapApi.optionsReads += 1;
     if (customerMapApi.failNextRead) {
       customerMapApi.failNextRead = false;
       return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'fixture mapping temporarily unavailable' }), headers: { 'access-control-allow-origin': origin, 'access-control-allow-credentials': 'true' } });
     }
+    if (body.operation === 'preload') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(releaseSnapshotReadFixture(body,mapRows)),headers:{'access-control-allow-origin':origin,'access-control-allow-credentials':'true'}});
     const pageIndex = Math.max(0, Number(body.page) || 0), pageSize = Math.min(200, Math.max(1, Number(body.pageSize) || 200));
     let revision = 'v2311-customer-map-r1';
     if (customerMapApi.driftNextRead) {

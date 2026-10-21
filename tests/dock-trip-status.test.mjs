@@ -275,8 +275,25 @@ test('priority split model rejects incomplete witnesses, aliases, orphan shields
 
 test('Docks and Tasks preview their primary rows before optional joins finish', () => {
   const contextSource=source('getProductionLiveSyncContext');
-  assert.ok(contextSource.includes("['drive', 'av', 'tasks', 'docks'].includes(view)"));
+  assert.ok(contextSource.includes("['home', 'drive', 'av', 'tasks', 'docks'].includes(view)"));
   assert.match(contextSource,/view === 'docks' \? 'core:soc' : 'core:master'/);
   const preview=source('previewProductionSnapshots');
   assert.match(preview,/context\.view === 'docks' \? 'core:soc' : 'core:master'/);
+});
+
+test('grouped Suspend choices count once; approval changes the pull and deny-all cancels it',()=>{
+ const source=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ const ctx=vm.createContext({});
+ vm.runInContext(source.match(/        function getActiveSuspendDockRows\([^]*?^        }/m)[0],ctx);
+ const base={suspend_candidate_group:'dock35-drop80-item010248',quantityordered:'20'};
+ const rows=[
+  {...base,unique_id:'false-block',locationcode:'0.00.111',suspend_candidate_state:'replaced',quantityordered:'0'},
+  {...base,unique_id:'choice1',locationcode:'B.08.000',lotcode:'26.F1',suspend_candidate_state:'candidate'},
+  {...base,unique_id:'choice2',locationcode:'E.12.000',lotcode:'26.U2',suspend_candidate_state:'candidate'}
+ ];
+ assert.equal(ctx.getActiveSuspendDockRows(rows).length,1);
+ rows[1].suspend_candidate_state='denied'; rows[1].quantityordered='0'; rows[2].suspend_candidate_state='approved';
+ assert.deepEqual(Array.from(ctx.getActiveSuspendDockRows(rows),r=>[r.locationcode,r.lotcode,r.quantityordered]),[['E.12.000','26.U2','20']]);
+ rows[2].suspend_candidate_state='canceled'; rows[2].quantityordered='0';
+ assert.equal(ctx.getActiveSuspendDockRows(rows).length,0);
 });

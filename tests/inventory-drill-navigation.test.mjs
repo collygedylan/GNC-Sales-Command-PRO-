@@ -854,3 +854,28 @@ test('complete same-account master cannot be replaced by a partial preview', () 
     {progressive:true,visible:true,partialCohort:true,view:'drive',dataPermissionVersion:'p'});
   assert.equal(processed,false); assert.equal(ctx.fullInventory.length,9600);
 });
+
+test('complete 9600-row inventory with 1613 names hydrates in bounded parallel pages',async()=>{
+ const rows=Array.from({length:9600},(_,i)=>({unique_id:'row-'+i,commonname:i%1613===0?'Monarch™ Purple Holly':'Name '+(i%1613)}));
+ let active=0,maxActive=0;
+ const ctx=vm.createContext({console,yieldToUiFrame:async()=>{},fetchInventoryReadPage:async(_op,_params,limit,offset)=>{
+  active++;maxActive=Math.max(maxActive,active);await new Promise(resolve=>setTimeout(resolve,2));active--;
+  return {rows:rows.slice(offset,offset+limit),total:rows.length,hasMore:offset+limit<rows.length,projection:'browse',fieldCoverage:'browse',columns:['unique_id','commonname']};
+ }});
+ vm.runInContext(html.match(/        async function fetchAllInventoryReadRows\([^]*?^        }/m)[0],ctx);
+ const start=performance.now();
+ const full=await ctx.fetchAllInventoryReadRows('browse',{}, {limit:1000,pageConcurrency:4,requireComplete:true});
+ assert.equal(full.length,9600);assert.equal(new Set(full.map(row=>row.commonname)).size,1613);
+ assert.equal(full.readMeta.rowCompleteness,'complete');assert.equal(maxActive,4);
+ assert.ok(full.some(row=>row.commonname.toLowerCase().includes('mon')));
+ assert.ok(performance.now()-start<2000);
+ console.log('9600-row mocked page hydration: '+(performance.now()-start).toFixed(2)+'ms');
+});
+
+test('1000-row master pages preserve the aggregate RPC 500-row safety bound',()=>{
+ const api=fs.readFileSync(new URL('../supabase/functions/app-api/index.ts',import.meta.url),'utf8');
+ const page=api.slice(api.indexOf('    if (operation === "master_page") {'),api.indexOf('    if (operation === "master_identity_batch")'));
+ assert.match(page,/inventoryReadPageBounds\(params, 1000\)/);
+ assert.match(page,/projected.slice\(0, 500\)/);assert.match(page,/projected.slice\(500\)/);
+ assert.match(page,/enrichInventoryLocationRows\(supabase, String\(actor.id \|\| ""\), batch, inventoryRevision\)/);
+});

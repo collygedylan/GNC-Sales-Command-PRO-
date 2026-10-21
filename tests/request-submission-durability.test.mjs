@@ -926,41 +926,38 @@ test('finalizeRequestAction accepts an active server-mapped N/A / N/A tuple into
     assert.equal(outbox.requests[0].req_qty, '2');
 });
 
-test('finalizeRequestAction blocks submission when the selected mapping is not ready and preserves the form', async () => {
-    let preflightCalls = 0;
-    const f = finalizerFixture({ preflight: async () => { preflightCalls++; return true; } });
+test('a retained mapped tuple submits during background revision refresh', async () => {
+    const f = finalizerFixture();
     f.context.requestModalCustomerOptionsReady = false;
-    const selectionBefore = { ...f.context.tempRequestCustomerSelectedContext };
     assert.equal(await f.context.finalizeRequestAction(null, 'Garden ® | North ™', {
         'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
-    }), false);
-    assert.equal(preflightCalls, 0, 'mapping validation happens before schema preflight');
-    assert.equal(f.calls.some(call => call[0] === 'submit'), false);
-    assert.equal(f.context.tempReqCust, 'Grower A');
-    assert.deepEqual(f.context.tempRequestCustomerSelectedContext, selectionBefore);
-    const toast = f.calls.find(call => call[0] === 'toast');
-    assert.ok(toast, 'show an actionable mapping message');
-    assert.doesNotMatch(toast.join(' '), /REQUEST_CUSTOMER_MAPPING_REQUIRED/);
+    }), true);
+    assert.equal(f.calls.some(call => call[0] === 'submit'), true);
 });
-
-test('finalizeRequestAction rechecks mapping readiness after asynchronous schema preflight', async () => {
+test('a revision refresh during preflight does not discard the selected mapping', async () => {
     let f;
     f = finalizerFixture({ preflight: async () => { f.context.requestModalCustomerOptionsReady = false; return true; } });
-    const selectionBefore = { ...f.context.tempRequestCustomerSelectedContext };
     assert.equal(await f.context.finalizeRequestAction(null, 'Garden ® | North ™', {
         'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
+    }), true);
+    assert.equal(f.calls.some(call => call[0] === 'submit'), true);
+});
+test('missing customer identity remains rejected before submission', async () => {
+    const f = finalizerFixture();
+    f.context.tempRequestCustomerSelectedContext = null;
+    f.context.resolveRequestCustomerContext = () => null;
+    assert.equal(await f.context.finalizeRequestAction(null, 'Unknown | Unknown', {
+        'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
     }), false);
-    assert.equal(f.calls.some(call => call[0] === 'submit'), false, 'a mapping that became stale during preflight is never queued');
-    assert.deepEqual(f.context.tempRequestCustomerSelectedContext, selectionBefore);
-    assert.equal(f.context.tempReqCust, 'Grower A');
+    assert.equal(f.calls.some(call => call[0] === 'submit'), false);
 });
 
-test('submit button blocks only final submission when mapped customer context is stale', () => {
+test('submit button remains enabled during mapping revision refresh', () => {
     const button = {
         disabled: false, innerText: '', attrs: new Map(),
         setAttribute(name, value) { this.attrs.set(name, value); }, removeAttribute(name) { this.attrs.delete(name); }
     };
-    const mappingFeedback = { toggles: [], classList: { toggle: (...args) => mappingFeedback.toggles.push(args) } };
+    const mappingFeedback = { toggles: [], classList: { add: (...args) => mappingFeedback.toggles.push(args), toggle: (...args) => mappingFeedback.toggles.push(args) } };
     const resolvedArgs = [];
     let mappingCurrent = false;
     const context = {
@@ -975,9 +972,9 @@ test('submit button blocks only final submission when mapped customer context is
     vm.runInNewContext(extractFunction('updateRequestQtyStepSubmitButton', 'function renderRequestQtyStepCurrentItem('), context);
     context.updateRequestQtyStepSubmitButton();
     assert.equal(button.innerText, 'SUBMIT REQUEST');
-    assert.equal(button.disabled, true, 'the final submit action requires a current mapped customer context');
+    assert.equal(button.disabled, false, 'the server validates the selected tuple at submit');
     assert.deepEqual(resolvedArgs[0], ['Garden ® | North ™', '']);
-    assert.deepEqual(mappingFeedback.toggles, [['hidden', false]], 'inline feedback is shown when the current folder mapping cannot be verified');
+    assert.deepEqual(mappingFeedback.toggles, [['hidden']], 'revision refresh never shows the mapping lock');
 
     context.requestQtyStepDomIds = ['row-a', 'row-b'];
     context.requestQtyStepIndex = 0;

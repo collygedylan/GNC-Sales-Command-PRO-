@@ -1,4 +1,4 @@
-export type CustomerRepMappingOperation = "list" | "options" | "detail" | "save" | "reps" | "assign" | "reset";
+export type CustomerRepMappingOperation = "list" | "options" | "preload" | "detail" | "save" | "reps" | "assign" | "reset";
 
 export type CustomerRepMappingRequest = {
   operation: CustomerRepMappingOperation;
@@ -40,6 +40,10 @@ export function validateCustomerRepMappingRequest(input: unknown): CustomerRepMa
     throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
   }
   const operation = value.operation;
+  if (operation === "preload") {
+    if (!onlyKeys(value, new Set(["action", "operation"]))) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+    return { operation, payload: {} };
+  }
   if (operation === "list") {
     if (!onlyKeys(value, LIST_FIELDS)) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
     const page = value.page ?? 0;

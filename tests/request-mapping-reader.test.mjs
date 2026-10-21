@@ -8,21 +8,25 @@ import { requestMappingFunctions, requestMappingSetup, mappingFixtureRow } from 
 
 const codeSource = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
 
-test('Apps Script scoped patch ships request mapping, email, and watchdog changes only',()=>{
+test('retained mapping choices remain usable during revision refresh', () => {
+ const source=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ assert.doesNotMatch(source,/New submissions remain blocked until verification completes/);
+ const ready=source.match(/        function isRequestModalCustomerMapReady\([^]*?^        }/m)[0];
+ assert.doesNotMatch(ready,/cached\.signature === getRequestModalCustomerMappingCacheSignature/);
+});
+
+test('request login does not await customer map hydration', () => {
+ const source=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ const login=source.match(/        async function finalizeLogin\([^]*?^        }/m)[0];
+ assert.doesNotMatch(login,/await prepareRequestModalChoicesForStartup/);
+});
+
+test('Apps Script scoped patch ships grouped Suspend email and preserves protected functions',()=>{
  const manifest=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  const remoteSource=execFileSync('git',['show','HEAD:Code.gs'],{encoding:'utf8',maxBuffer:16*1024*1024})
-  .replace("    if (payload.type === 'runtime_watchdog_alert_v1') return jsonOutput_(handleRuntimeWatchdogAlert_(payload));\n",'')
   +"\nfunction protectedRemoteOnly_() { return 'unchanged'; }\n";
  const patch=patchAppsScriptFunctions({remoteSource,localSource:codeSource,functionNames:manifest.appsScriptPatchFunctions});
- assert.deepEqual(patch.functions,[
-  'processCustomerRepMapSnapshotLocked_','requestNaMappingDigest_','ensureProtectedRequestNaCustomerMappings_',
-  'verifyHlTagsSender_','verifyInventoryWorkflowActor_','verifyManualInventoryImportActor_',
-  'appsScriptActionConstantTimeEqual_','getAppsScriptActionSigningKeys_','reconcileAppsScriptActionSigningKey_',
-  'verifyAppsScriptActionActor_','verifyAppsScriptActionEnvelope_',
-  'authorizeAppsScriptPost_','verifyAppsScriptLifecycleCanary_',
-  'verifyRuntimeWatchdogAlert_','doPost','buildRequestEmailMessage_','buildRequestDeliveryEmailPayload_',
-  'sendRequestDeliveryPush_','handleRuntimeWatchdogAlert_'
- ]);
+ assert.deepEqual(patch.functions,['buildSuspendTagApprovalEmail_']);
  for(const name of patch.functions)assert.ok(patch.source.includes(`function ${name}(`),`${name} is included in the scoped patch`);
  assert.equal(patch.source.split("return jsonOutput_(handleRuntimeWatchdogAlert_(payload));").length-1,1,'the watchdog handler dispatch is present exactly once');
  assert.match(patch.source,/const payload = authorizeAppsScriptPost_\(JSON\.parse\(e\.postData\.contents\)\)/,'the scoped patch installs the doPost authentication entry gate');
@@ -31,12 +35,15 @@ test('Apps Script scoped patch ships request mapping, email, and watchdog change
 });
 
 function fixture(fetchPage) {
- const c=vm.createContext({document:{getElementById:()=>null},window:{setTimeout,clearTimeout},APP_API_FUNCTION_URL:'https://example.invalid',ensureDatasetLoaded:async()=>true,postAppFunctionJson:fetchPage,refreshRequestModalCustomerStepIfVisible:()=>{},resetRequestCustomerSelectionState:()=>{c.tempRequestCustomerSelectedContext=null;},renderExistingRequestFolderPicker:()=>{}});
+ const c=vm.createContext({document:{getElementById:()=>null},window:{setTimeout,clearTimeout},APP_API_FUNCTION_URL:'https://example.invalid',ensureDatasetLoaded:async()=>true,postAppFunctionJson:async(url,body)=>{
+  const response=await fetchPage(url,body.operation==='preload'?{...body,page:0,pageSize:200}:body);
+  if(body.operation!=='preload'||!Array.isArray(response.rows)) return response;
+  const groups=new Map();
+  response.rows.forEach(row=>{ if(!groups.has(row.salesrepid)) groups.set(row.salesrepid,{salesrepid:row.salesrepid,salesrepname:row.salesrepname,rows:[]});
+    groups.get(row.salesrepid).rows.push([row.customeridentityid,row.customername,row.consigneeid,row.consigneename]); });
+  return {...response,reps:[...groups.values()]};
+ },refreshRequestModalCustomerStepIfVisible:()=>{},resetRequestCustomerSelectionState:()=>{c.tempRequestCustomerSelectedContext=null;},renderExistingRequestFolderPicker:()=>{}});
  vm.runInContext(requestMappingSetup+'\n'+requestMappingFunctions()+`\nvar requestModalAsyncGeneration=0,requestMappingReadGeneration=0,requestModalCustomerOptionsLoadPromise=null,requestModalCustomerOptionsLoading=false,requestModalCustomerOptionsReady=false,requestModalCustomerOptionsError='',requestExistingFolderGroupsCacheKey='';`,c);
- c.isRequestModalCustomerMapReady=()=>{
-  const id=c.getRequestSelectedSalesrepId(),cached=c.requestMappingRpcCache.get(id);
-  return !!id && !!cached && cached.signature===c.getDatasetLoadSignature('customerRepMap');
- };
  c.customerRepMapRows=[mappingFixtureRow];
  return c;
 }
@@ -44,11 +51,10 @@ test('Request reader loads every rep-ID page before publishing choices',async()=
  const calls=[];
  const rows=Array.from({length:201},(_,i)=>({...mappingFixtureRow,unique_id:'m'+i,customeridentityid:String(i).padStart(5,'0'),consigneeid:'C'+i}));
  const c=fixture(async(_url,body)=>{calls.push(body);return {ok:true,rows:rows.slice(body.page*200,(body.page+1)*200),total:201,revision:'9'};});
- assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ await c.loadRequestModalCustomerOptionsForRep('Rep One');
  assert.deepEqual(calls.map(body=>[body.salesrepId,body.page]),[['01',0],['01',1]]);
  assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,201);
- assert.equal(c.tempSelectedReqSalesrepId,'01');
- assert.equal(c.requestModalCustomerOptionsCacheKey,'01:9');
+ assert.equal(c.requestMappingRpcCache.get('01').revision,'9');
 });
 test('N/A Customer and Consignee map to an authorized tuple and stay pinned first',()=>{
  const c=fixture(async()=>({ok:true,rows:[],total:0,revision:'9'}));
@@ -110,9 +116,8 @@ test('a 103-customer rep directory is fully available without a short display ca
 });
 test('a mapping revision change between pages rejects partial results',async()=>{
  const c=fixture(async(_url,body)=>({ok:true,rows:Array.from({length:body.page?1:200},(_,i)=>({...mappingFixtureRow,customeridentityid:String(body.page*200+i),consigneeid:String(i)})),total:201,revision:body.page?'10':'9'}));
- assert.equal(await c.ensureRequestModalCustomerOptionsReady(),false);
+ await assert.rejects(c.loadRequestModalCustomerOptionsForRep('Rep One'),/changed during loading/);
  assert.equal(c.requestMappingRpcCache.size,0);
- assert.match(c.requestModalCustomerOptionsError,/changed during loading/);
 });
 test('an obsolete rep read cannot overwrite the new selection',async()=>{
  let finish;
@@ -122,7 +127,7 @@ test('an obsolete rep read cannot overwrite the new selection',async()=>{
  c.requestMappingReadGeneration++;c.tempSelectedReqRep='Rep Two';
  finish({ok:true,rows:[mappingFixtureRow],total:1,revision:'9'});
  assert.equal(await pending,false);
- assert.equal(c.requestMappingRpcCache.size,0);
+ assert.equal(c.tempSelectedReqRep,'Rep Two');
 });
 test('transport failure preserves the customer draft but leaves mapping unverified and retryable',async()=>{
  const c=fixture(async()=>{throw new Error('Network unavailable');});
@@ -134,7 +139,7 @@ test('transport failure preserves the customer draft but leaves mapping unverifi
  assert.equal(c.requestMappingRpcCache.size,0);
  assert.match(c.requestModalCustomerOptionsError,/Network unavailable/);
 });
-test('same-identity mapping options remain displayable but unverified after a refresh failure',async()=>{
+test('same-identity mapping options remain submittable after a refresh failure',async()=>{
  let shouldFail=false;
  const c=fixture(async()=>{
   if(shouldFail)throw new Error('Network unavailable');
@@ -144,11 +149,11 @@ test('same-identity mapping options remain displayable but unverified after a re
  const prior=c.getRequestModalCustomerOptionsForRep('Rep One');
  shouldFail=true;
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(true),false);
- assert.equal(c.requestModalCustomerOptionsReady,false);
+ assert.equal(c.requestModalCustomerOptionsReady,true);
  assert.equal(c.getRequestModalCachedCustomerOptionsForRep('Rep One').length,1);
  assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Rep One'),row=>row.customeridentityid),['00012']);
  assert.equal(c.requestMappingRpcCache.get('01').stale,true);
- assert.equal(c.requestModalCustomerOptionsReady,false,'same-owner choices remain visible but do not validate submission during a failed refresh');
+ assert.equal(c.requestModalCustomerOptionsReady,true,'same-owner choices remain usable; submission revalidates the tuple on the server');
  assert.match(c.requestModalCustomerOptionsError,/Network unavailable/);
  assert.equal(c.getSupabaseReadIdentityScope(),'identity-1');
  assert.equal(prior.length,1);
@@ -167,19 +172,18 @@ test('modal cache initialization uses only a complete RPC result for the exact r
  c.tempRequestCustomerSelectedContext={customeridentityid:'00012',consigneeidentityid:'00007',customername:'Garden ®',consigneename:'North ™',request_selected_salesrep_id:'01'};
  assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,1,'same-owner choices remain available as stale display data');
  assert.equal(c.requestMappingRpcCache.size,1);
- assert.equal(c.requestModalCustomerOptionsReady,false);
+ assert.equal(c.requestModalCustomerOptionsReady,true);
  assert.notEqual(c.tempRequestCustomerSelectedContext,null);
- assert.equal(c.isRequestModalCustomerMapReady(),false,'revision drift blocks use until the replacement read completes');
+ assert.equal(c.isRequestModalCustomerMapReady(),true,'revision drift retains complete same-account choices');
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
- assert.equal(calls,2);
+ assert.equal(calls,1);
 });
 
-test('directory revision changes during a single-page RPC read reject stale choices',async()=>{
+test('an atomic preload remains usable when the background revision signal advances',async()=>{
  let c;
  c=fixture(async()=>{c.mappingRevision='2';return {ok:true,rows:[mappingFixtureRow],total:1,revision:'9'};});
- assert.equal(await c.ensureRequestModalCustomerOptionsReady(),false);
- assert.equal(c.requestMappingRpcCache.size,0);
- assert.match(c.requestModalCustomerOptionsError,/changed during loading/);
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,1);
 });
 
 test('CSR rep choices reuse the revision-coordinated app-user directory',async()=>{
@@ -254,27 +258,16 @@ test('mapping option cache is scoped to the current authenticated identity and p
  assert.equal(calls,2);
 });
 
-test('startup prefetch warms only allowed rep IDs and puts the current default first',async()=>{
- const rows=[
-  mappingFixtureRow,
-  {...mappingFixtureRow,unique_id:'map-2',salesrepid:'02',salesrepname:'Rep Two',customeridentityid:'00013',consigneeid:'00008'},
-  {...mappingFixtureRow,unique_id:'map-hidden',salesrepid:'99',salesrepname:'Hidden Rep',customeridentityid:'00014',consigneeid:'00009'},
- ];
- const calls=[]; let active=0,maxActive=0;
- const c=fixture(async(_url,body)=>{
-  calls.push(body.salesrepId); active++; maxActive=Math.max(maxActive,active);
-  await new Promise(resolve=>setTimeout(resolve,5)); active--;
-  const selected=rows.filter(row=>row.salesrepid===body.salesrepId);
-  return {ok:true,rows:selected,total:selected.length,revision:'r1'};
- });
- c.customerRepMapRows=rows;
- c.getAllowedRequestModalRepOptions=()=>[{label:'Rep One'},{label:'Rep Two'}];
- c.getDefaultRequestRepName=()=> 'Rep Two';
+test('startup preload indexes every server-authorized rep in one snapshot',async()=>{
+ const rows=[mappingFixtureRow,{...mappingFixtureRow,unique_id:'map-2',salesrepid:'02',salesrepname:'Rep Two',customeridentityid:'00013',consigneeid:'00008'}];
+ const calls=[];
+ const c=fixture(async(_url,body)=>{calls.push(body);return {ok:true,rows,total:rows.length,revision:'r1'};});
  assert.equal(await c.prefetchRequestModalCustomerOptions(),true);
- assert.equal(calls[0],'02');
- assert.equal(maxActive<=2,true);
+ assert.equal(calls.length,1); assert.equal(calls[0].operation,'preload');
  assert.deepEqual(Array.from(c.requestMappingRpcCache.keys()).sort(),['01','02']);
- assert.equal(calls.includes('99'),false);
+ const start=performance.now();
+ assert.equal(c.getRequestModalCustomerOptionsForRep('Rep Two').length,1);
+ assert.ok(performance.now()-start<50);
 });
 
 test('cold startup retries a stale lookup only after its permission scope changes',async()=>{
@@ -348,19 +341,14 @@ test('modal mapping ensure reuses a prefetched page set without another API read
  assert.equal(calls,1);
 });
 
-test('startup mapping prefetch cancels before the options RPC when identity scope changes',async()=>{
- let releaseDataset;
- let rpcCalls=0;
- const c=fixture(async()=>{rpcCalls++;return {ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'};});
- c.customerRepMapRows=[mappingFixtureRow];
- c.getAllowedRequestModalRepOptions=()=>[{label:'Rep One'}];
- c.ensureDatasetLoaded=()=>new Promise(resolve=>{releaseDataset=resolve;});
+test('startup preload rejects a response after the account changes',async()=>{
+ let finish;
+ const c=fixture(()=>new Promise(resolve=>{finish=resolve;}));
  const pending=c.prefetchRequestModalCustomerOptions();
- await new Promise(resolve=>setTimeout(resolve,0));
- c.getSupabaseReadIdentityScope=()=> 'different-identity';
- releaseDataset();
- assert.equal(await pending,false);
- assert.equal(rpcCalls,0);
+ const rejected=assert.rejects(pending,/account changed/);
+ await Promise.resolve(); c.getSupabaseReadIdentityScope=()=> 'different-identity';
+ finish({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'});
+ await rejected;
  assert.equal(c.requestMappingRpcCache.size,0);
 });
 
@@ -373,4 +361,39 @@ test('startup mapping prefetch stays idle when Request access is denied',async()
  assert.equal(await c.prefetchRequestModalCustomerOptions(),false);
  assert.equal(datasetReads,0);
  assert.equal(rpcCalls,0);
+});
+
+test('all 26 rep customer trees are warm under 50ms with N/A first',async()=>{
+ const rows=Array.from({length:26},(_,i)=>[
+  {...mappingFixtureRow,salesrepid:String(i),salesrepname:'Representative '+i,customeridentityid:'A',consigneeid:'A',customername:'A & M Flowers',consigneename:'Garden'},
+  {...mappingFixtureRow,salesrepid:String(i),salesrepname:'Representative '+i,customeridentityid:'NA',consigneeid:'NA',customername:'N/A',consigneename:'N/A'}
+ ]).flat();
+ let reads=0;
+ const c=fixture(async()=>{reads++;return {ok:true,rows,total:rows.length,revision:'26-reps'};});
+ await c.prefetchRequestModalCustomerOptions();
+ const start=performance.now();
+ for(let i=0;i<26;i++) {
+  const options=c.getRequestModalCustomerOptionsForRep('Representative '+i);
+  const groups=c.buildRequestCustomerPickerGroups(options);
+  assert.equal(groups[0].label,'N/A');
+  assert.equal(groups[0].consignees[0].consigneeName,'N/A');
+ }
+ const elapsed=performance.now()-start;
+ assert.ok(elapsed<50,'warm lookup '+elapsed.toFixed(2)+'ms'); assert.equal(reads,1);
+ console.log('26 warm rep trees: '+elapsed.toFixed(2)+'ms');
+});
+test('sales_rep accounts bind themselves even with broad view grants; office users keep the picker',()=>{
+ const source=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ const extract=name=>source.match(new RegExp('        function '+name+'\\([^]*?^        }','m'))[0];
+ const c=vm.createContext({getRoleAccessState:()=>({isRep:true}),canUseGlobalRequestAccess:()=>true,
+  currentUser:'ben_brown',currentUserDisplay:'Ben Brown',resolveCanonicalRequestRepName:value=>value});
+ vm.runInContext(extract('getDefaultRequestRepName')+extract('isRequestRepPickerLockedForCurrentUser'),c);
+ for(const [username,label] of [['ben_brown','Ben Brown'],['brian_hatfield','Brian Hatfield']]) {
+  c.currentUser=username; assert.equal(c.isRequestRepPickerLockedForCurrentUser(),true);
+  assert.equal(c.getDefaultRequestRepName(),label);
+ }
+ c.getRoleAccessState=()=>({isRep:false});
+ for(const username of ['nelly_aguilar','dylan_collyge']) {c.currentUser=username;assert.equal(c.isRequestRepPickerLockedForCurrentUser(),false);}
+ const modal=source.match(/        function showRequestModalBase\([^]*?^        }/m)[0];
+ assert.match(modal,/if \(repPickerLocked\)/); assert.match(modal,/renderExistingRequestFolderPicker\(\)/);
 });

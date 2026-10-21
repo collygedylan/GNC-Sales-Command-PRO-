@@ -79,7 +79,31 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
   // A read action with an explicit write operation must still fail closed.
   const write = /(?:^|_)(?:create|update|delete|remove|insert|upsert|submit|apply|save|set|complete|close|send|enqueue|command|move|approve|deny|reclass)(?:_|$)/i;
   if (write.test(action) || write.test(operation)) return false;
+  if (action === 'customer-rep-map' && operation === 'preload') return true;
+  if (action === 'suspend_tag' && operation === 'inbox') return true;
   return /(?:^|_)read(?:_v\d+)?$/i.test(action)
     || /^(?:get|list|read|resolve|lookup|search|fetch|metadata|capabilities|detail|rows|groups|compatibility)(?:_|$)/i.test(operation)
     || /^(?:health[-_]telemetry|telemetry|health)$/i.test(action);
+}
+
+/** Exact authenticated snapshot reads shared by startup fixtures. Unknown bodies
+ * return null so the caller's existing rejection path remains authoritative. */
+export function releaseSnapshotReadFixture(body, mappings = [], approvals = []) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  if (body.action === 'customer-rep-map' && body.operation === 'preload'
+      && Object.keys(body).sort().join(',') === 'action,operation') {
+    const reps = new Map();
+    for (const row of mappings) {
+      if (!reps.has(row.salesrepid)) reps.set(row.salesrepid,{salesrepid:row.salesrepid,salesrepname:row.salesrepname,rows:[]});
+      reps.get(row.salesrepid).rows.push([row.customeridentityid,row.customername,row.consigneeid,row.consigneename]);
+    }
+    return {ok:true,reps:[...reps.values()],total:mappings.length,revision:'fixture-mapping-snapshot-r1'};
+  }
+  if (body.action === 'suspend_tag' && body.operation === 'inbox'
+      && Object.keys(body).sort().join(',') === 'action,commandId,expectedVersion,operation,payload'
+      && body.commandId === null && body.expectedVersion === null
+      && body.payload && Object.keys(body.payload).length === 0 && !Array.isArray(body.payload)) {
+    return {ok:true,data:{approvals}};
+  }
+  return null;
 }

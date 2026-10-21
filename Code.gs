@@ -2148,7 +2148,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.3.31';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.32';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -21865,6 +21865,8 @@ function buildSuspendTagApprovalEmail_(delivery) {
     ['LOC MATCH %', value(row.match)], ['Match Qty', value(row.loc_match_qty)], ['Initial PTR', value(row.initial_ptr)],
     ['AV Note', value(row.av_note)], ['Notes', value(row.dock_note)]
   ];
+  const candidates = Array.isArray(row.candidates) && row.candidates.length ? row.candidates : [row];
+  if (decision) fields.push(['Approved location', value((candidates.find(function(candidate) { return candidate.unique_id === approval.selected_source_uid; }) || {}).locationcode)]);
   const appUrl = 'https://agmetricapp.com/' + '?suspendApproval=' + encodeURIComponent(approval.id);
   const approveUrl = appUrl + '&suspendDecision=approve';
   const denyUrl = appUrl + '&suspendDecision=deny';
@@ -21879,22 +21881,25 @@ function buildSuspendTagApprovalEmail_(delivery) {
   }
   const title = decision ? value(row.rep_display) + ' ' + (approval.status === 'approved' ? 'approved' : 'denied') + ' this Suspend Tag row.'
     : approval.status !== 'pending' ? 'Saved Suspend Tag review. The Sales Rep has already ' + value(approval.status) + ' this round.'
-      : 'Please review this completed Suspend Tag row.' + (row.sent_by_display ? ' Sent by ' + value(row.sent_by_display) + '.' : '');
+      : 'Please choose one candidate location or deny all locations.' + (row.sent_by_display ? ' Sent by ' + value(row.sent_by_display) + '.' : '');
   const subject = ('GNC PH Suspend Tag - ' + value(row.customername || row.consigneename) + ' - ' + value(row.commonname) + ' - ' + approval.id).replace(/[\r\n]+/g, ' ');
-  const item = Object.assign({}, row, { req_qty: row.quantityordered, req_spec: row.dock_spec, req_caliper: row.dock_caliper,
-    req_photo_link: row.dock_photo_link, req_photo_name: row.dock_photo_name, req_customer: [row.customername,row.consigneename].filter(Boolean).join(' | ') });
+  const items = candidates.map(function(row) { return Object.assign({}, row, { req_qty: row.quantityordered, req_spec: row.dock_spec, req_caliper: row.dock_caliper,
+    req_photo_link: row.dock_photo_link, req_photo_name: row.dock_photo_name, req_customer: [row.customername,row.consigneename].filter(Boolean).join(' | ') }); });
+  const candidateFields = function(row) { return [['Location',row.locationcode],['Lot',row.lotcode],['Qty',row.suspend_order_quantity || row.quantityordered],['On Hand',row.ptronhand],['Available',row.ptravailable],['SPEC',row.dock_spec || row.spec],['LOC MATCH %',row.match],['AV Note',row.av_note],['Hold/Stop Code',row.holdstopcode],['Hold/Stop Reason',row.holdstopreason]]; };
+  const choicesText = candidates.map(function(candidate) { return candidateFields(candidate).map(function(f) { return f[0] + ': ' + value(f[1]); }).join('\n') + '\nPhotos: ' + value(candidate.dock_photo_link || candidate.photo_link) + (!decision && approval.status === 'pending' ? '\nApprove this location: ' + approveUrl + '&suspendCandidate=' + encodeURIComponent(candidate.unique_id) : ''); }).join('\n\n');
+  const choicesHtml = candidates.map(function(candidate) { return '<section style="border:1px solid #ddd;padding:12px;margin:12px 0">' + candidateFields(candidate).map(function(f) { return '<p><strong>' + escapeEmailHtml_(f[0]) + ':</strong> ' + escapeEmailHtml_(value(f[1])) + '</p>'; }).join('') + (!decision && approval.status === 'pending' ? '<a href="' + escapeEmailHtml_(approveUrl + '&suspendCandidate=' + encodeURIComponent(candidate.unique_id)) + '" style="display:inline-block;padding:12px;background:#087443;color:white">Approve this location</a>' : '') + '</section>'; }).join('');
   return {
     subject: subject, to: toArray.join(','), toArray: toArray,
     replyTo: decision ? approval.rep_email : approval.submitter_email,
     textBody: ['GNC PH Suspend Tag', title].concat(fields.map(function(f) { return f[0] + ': ' + f[1]; }),
       decisionMessage ? ['Decision message: ' + decisionMessage] : [],
       decision || approval.status !== 'pending' ? [] : ['Approve: ' + approveUrl, 'Deny: ' + denyUrl],
-      ['Photos: ' + value(row.dock_photo_link), 'Open approval: ' + appUrl]).join('\n'),
+      [choicesText, 'Open approval: ' + appUrl]).join('\n'),
     htmlBody: '<div style="font-family:Arial,sans-serif"><h2>GNC PH Suspend Tag</h2><p>' + escapeEmailHtml_(title) + '</p>'
       + fields.map(function(f) { return '<p><strong>' + escapeEmailHtml_(f[0]) + ':</strong> ' + escapeEmailHtml_(f[1]) + '</p>'; }).join('')
       + (decisionMessage ? '<p><strong>Decision message:</strong> ' + escapeEmailHtml_(decisionMessage) + '</p>' : '')
-      + buildRequestEmailTableItemsHtml_({ requestItems: [item], folderId: 'suspend-tag-' + approval.id }, { title: 'Suspend Tag Row' })
-      + (!decision && approval.status === 'pending' ? '<div style="display:flex;gap:12px;margin:20px 0"><a href="' + escapeEmailHtml_(approveUrl) + '" style="display:inline-block;padding:12px 20px;background:#087443;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Approve</a><a href="' + escapeEmailHtml_(denyUrl) + '" style="display:inline-block;padding:12px 20px;background:#9f1d1d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Deny</a></div>' : '')
+      + buildRequestEmailTableItemsHtml_({ requestItems: items, folderId: 'suspend-tag-' + approval.id }, { title: 'Suspend Tag Candidates' }) + choicesHtml
+      + (!decision && approval.status === 'pending' ? '<div style="display:flex;gap:12px;margin:20px 0"><a href="' + escapeEmailHtml_(appUrl) + '" style="display:inline-block;padding:12px 20px;background:#087443;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Review locations</a><a href="' + escapeEmailHtml_(denyUrl) + '" style="display:inline-block;padding:12px 20px;background:#9f1d1d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Deny all locations</a></div>' : '')
       + '<p><a href="' + escapeEmailHtml_(appUrl) + '">Open approval in the app</a></p></div>'
   };
 }

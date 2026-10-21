@@ -717,8 +717,8 @@ const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
   ph_shear_list: "unique_id,source_table,source_unique_id,status,percent_to_shear,itemcode,commonname,contsize,locationcode,lotcode,season,blockalpha,ptravailable,holdstopcode,holdstopreason,snapshot,created_by_username,created_by_display,created_at,updated_by_username,updated_by_display,updated_at,completed_by_username,completed_by_display,completed_at,instructions",
   ph_request_queue_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,delivery_event_id,delivery_status,delivery_attempt_count,delivery_next_attempt_at,delivery_first_attempt_at,delivery_last_attempt_at,delivery_lease_expires_at,delivery_error_code,delivery_email_delivered_at,delivery_push_delivered_at,delivery_delivered_at,delivery_mode,delivery_age_seconds,delivery_display_state",
   ph_active_request_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,customeridentityid,customername,consigneeidentityid,consigneename",
-  ph_soc_master: "unique_id,concat,last_updated,assignedto,date_completed,dock_photo_link,dock_photo_name,dock_spec,dock_caliper,dock_note,contsize,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccount,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortnamevariety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landed,retailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,dock_num,source,desigitem,desigcust,desigloc,filename",
-  suspend_tag: "unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode",
+  ph_soc_master: "unique_id,concat,last_updated,assignedto,date_completed,dock_photo_link,dock_photo_name,dock_spec,dock_caliper,dock_note,contsize,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccount,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortnamevariety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landed,retailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,dock_num,source,desigitem,desigcust,desigloc,filename,suspend_candidate_group,suspend_candidate_state,suspend_order_quantity,suspend_origin_uid",
+  suspend_tag: "unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode,suspend_candidate_group,suspend_candidate_state,suspend_order_quantity,suspend_origin_uid",
   ph_cav_import: "unique_id,last_updated,filename,itemcode,commonname,contsize,season,ptravailable,brand,spec,hz,unitprice,holdstopreason,ordertotal,product_description,brand_code,h,available,reserved_qty,order_qty,unit_price,n_star,hot_price,hold_reason,ext_item_total,created_at",
   ph_reserves: "unique_id,concat,last_updated,assigned_to,assignedto,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,date_completed,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,item,size,container,location,lot,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccountidgroup,national_account_idgroup,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortname,variety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landedretailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit,merch_shipped,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,nationalaccount,sortnamevariety,landed,retailprice,dock_num,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,contsize,source,desigitem,desigcust,desigloc,filename",
   ph_sales_office: "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,priority,sales_note,photo_link,completed_by,completed_at,master_id,so_source,order_folder,order_number,order_customer,order_qty,order_desired_spec,order_desired_caliper,order_reserve,order_submitted_by,order_submitted_at,order_status,av_note,spec,caliper,photo_name,move_batch_id,move_from_locationcode,move_to_locationcode,move_actual_qty,workflow_status,workflow_detail,state_revision,reopen_reason,source_revision,updated_at,arrived_at",
@@ -1741,10 +1741,10 @@ async function handleCustomerRepMappingAction(
     const code = String(error instanceof Error ? error.message : "CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
     return errorResponse("The customer mapping request is invalid.", 400, { code });
   }
-  if (request.operation === "options" && !hasTableReadAccess(String(session.role || ""), "ph_customer_consignee_sales_reps", String(actor.username || ""))) {
+  if (["options", "preload"].includes(request.operation) && !hasTableReadAccess(String(session.role || ""), "ph_customer_consignee_sales_reps", String(actor.username || ""))) {
     return errorResponse("Forbidden", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
   }
-  if (request.operation !== "options" && !isCustomerRepMappingEditorRole(session.role)) {
+  if (!["options", "preload"].includes(request.operation) && !isCustomerRepMappingEditorRole(session.role)) {
     return errorResponse("Customer mapping management is available only to active Administrators and Managers.", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
   }
   try {
@@ -4260,13 +4260,13 @@ function inventoryReadParams(payload: Record<string, unknown>, allowed: string[]
   return params;
 }
 
-function inventoryReadPageBounds(params: Record<string, unknown>) {
+function inventoryReadPageBounds(params: Record<string, unknown>, maxLimit = 500) {
   const requestedLimit = Number(params.limit ?? 250);
   const requestedOffset = Number(params.offset ?? 0);
   if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || !Number.isInteger(requestedOffset) || requestedOffset < 0 || requestedOffset > 2_000_000) {
     throw new Error("INVENTORY_READ_PAGE_INVALID");
   }
-  return { limit: Math.min(500, requestedLimit), offset: requestedOffset };
+  return { limit: Math.min(maxLimit, requestedLimit), offset: requestedOffset };
 }
 
 function inventoryActorQueueAssignments(username: string) {
@@ -4341,7 +4341,7 @@ async function handleInventoryRead(
 
     if (operation === "master_page") {
       const params = inventoryReadParams(payload, ["dataset", "projection", "uniqueId", "itemCode", "locationCode", "lotCode", "source", "season", "limit", "offset"]);
-      const { limit, offset } = inventoryReadPageBounds(params);
+      const { limit, offset } = inventoryReadPageBounds(params, 1000);
       const dataset = String(params.dataset || "").trim();
       const projection = String(params.projection || "initial").trim();
       if (!["master", "avOpen", "lookup"].includes(dataset) || !["initial", "initial_base", "browse", "full"].includes(projection)) throw new Error("INVENTORY_READ_OPERATION_INVALID");
@@ -4377,7 +4377,10 @@ async function handleInventoryRead(
       response = response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
       const { data, error, count } = await response;
       if (error) throw error;
-      const rows = await enrichInventoryLocationRows(supabase, String(actor.id || ""), projectInventoryRows(data, fields), inventoryRevision);
+      const projected = projectInventoryRows(data, fields);
+      const batches = [projected.slice(0, 500), ...(projected.length > 500 ? [projected.slice(500)] : [])];
+      const rows = (await Promise.all(batches.map(batch =>
+        enrichInventoryLocationRows(supabase, String(actor.id || ""), batch, inventoryRevision)))).flat();
       return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count,
         inventoryRevision, projection, fieldCoverage: projection === "browse" ? "browse" : dataset === "avOpen" || projection === "full" ? "full" : "initial", columns: fields.split(",") } });
     }
@@ -5726,9 +5729,10 @@ function canonicalActionGate(action: string, payload: Record<string, unknown>): 
     return { flag: "can_access_eval_reports_2" };
   }
   if (action === "suspend_tag") {
+    if (payload.operation === "dock_review") return { flag: "can_access_drive_mode" };
     return String(payload.operation || "").trim().toLowerCase() === "decide"
       ? { flag: "can_approve_deny_suspend" }
-      : ["approval", "rows"].includes(String(payload.operation || "").trim().toLowerCase())
+      : ["approval", "inbox", "rows"].includes(String(payload.operation || "").trim().toLowerCase())
       ? { flag: "can_access_que" } : { flag: "can_complete_suspend_tag" };
   }
   if (action === "production_workflow" || action === "inventory_transaction_history") return { flag: "can_access_drive_mode" };
@@ -5990,7 +5994,21 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     try {
       const actor = await resolveActiveSessionProfile(session);
       actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, req);
-      return jsonResponse({ ok: true, data: await handleSuspendTag(supabase, actor, payload) });
+      const data = await handleSuspendTag(supabase, actor, payload);
+      const notification = jsonObject(jsonObject(data).notification);
+      if (notification.approvalId && notification.repUsername) {
+        // Database-owned recipient; the durable worker retries the same push receipt.
+        const push = fetch(SUPABASE_URL + "/functions/v1/send-push-alert", {
+          method: "POST", headers: { "Content-Type": "application/json",
+            Authorization: "Bearer " + SUPABASE_SERVICE_ROLE_KEY, apikey: SUPABASE_SERVICE_ROLE_KEY },
+          signal: AbortSignal.timeout(5000),
+          body: JSON.stringify({ eventType: "suspend_tag_approval_requested", ...notification }),
+        }).then(response => { if (!response.ok) console.warn("SUSPEND_TAG_PUSH_PENDING", response.status); })
+          .catch(() => console.warn("SUSPEND_TAG_PUSH_PENDING"));
+        const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (task: Promise<void>) => void } }).EdgeRuntime;
+        if (runtime) runtime.waitUntil(push); else await push;
+      }
+      return jsonResponse({ ok: true, data });
     } catch (error) {
       const failure = suspendTagError(error);
       return jsonResponse(failure.body, failure.status);

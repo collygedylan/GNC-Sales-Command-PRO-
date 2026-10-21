@@ -49,3 +49,5 @@ Explicit task-specific validation overrides take precedence: a tooling-only task
 The permanent published-snapshot smoke also covers cached-row Reclass during interrupted imports and stale permission refresh: Desktop uses Dylan, Android uses Megan, and iPhone uses JD. It holds exact item hydration until quantities, Hold and notes are drafted, verifies late hydration preserves those drafts, and submits through explicitly intercepted atomic move/live-field responses. Keep the report state labeled queued; these synthetic fixtures perform no production writes or real email delivery.
 
 Register suspend_existing_review_v1 in the scoped migration runner and verify its installed atomic command contract before Edge, Apps Script and frontend publication.
+
+Register suspend_candidates_request_preload_v1 in the scoped migration runner; SQL and app-api precede the scoped buildSuspendTagApprovalEmail_ Apps Script patch, then Pages. Preserve the paused historical schedules.

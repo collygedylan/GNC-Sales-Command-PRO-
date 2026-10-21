@@ -1,3 +1,4 @@
+import { releaseSnapshotReadFixture } from '../helpers/release-smoke-route-policy.mjs';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './inventory-list-read-fixture.mjs';
 import { createDefaultV2311CanonicalAccessFixture, installV2311CanonicalAccessRoute } from './v2311-canonical-access.mjs';
 
@@ -800,7 +801,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         if (['master_page', 'master_delta', 'po_detail', 'recount_queue', 'ncr_queue', 'not_on_inventory_queue'].includes(operation)) {
           control.backgroundMasterReads++;
           const requestMasterRows = holdNextBackgroundMasterRead && heldMasterRows ? heldMasterRows : control.master;
-          const dataset = String(params.dataset || ''), limit = Math.min(500, Math.max(1, Number(params.limit) || 250)), offset = Math.max(0, Number(params.offset) || 0);
+          const dataset = String(params.dataset || ''), limit = Math.min(1000, Math.max(1, Number(params.limit) || 250)), offset = Math.max(0, Number(params.offset) || 0);
           // Inventory browse fixtures can contain thousands of rows. Copy the
           // array before sorting, but keep immutable row values shared; cloning
           // every wide row for every 500-row page made browser-load checks
@@ -863,6 +864,8 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         control.blockedMutations.push(`PROHIBITED_NATIVE_DB:${body.method}:${body.table}`);
         return json(route, { ok: false, error: 'Native Auth sessions must use PostgREST with RLS for database access.', code: 'DIRECT_RLS_REQUIRED' }, 410);
       }
+      const snapshotRead = releaseSnapshotReadFixture(body, options.requestMappings || [], options.suspendApprovals || []);
+      if (snapshotRead) return json(route, snapshotRead);
       if (body.action === 'customer-rep-map' && body.operation === 'reps'
         && ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(String(role || '').trim().toUpperCase())) {
         // Manager-only read used by the assignment picker startup prefetch. AV

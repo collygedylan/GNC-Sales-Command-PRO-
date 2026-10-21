@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.31';
+const APP_SHELL_BUILD = 'AgData v2.3.32';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1-role-parity-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);

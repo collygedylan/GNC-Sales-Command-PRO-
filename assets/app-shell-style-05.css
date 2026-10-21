@@ -2655,3 +2655,17 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
             z-index:3000 !important;
             will-change:auto !important;
         }
+
+/* AV option metrics keep labels and values legible on narrow cards. */
+body .request-av-option-card-shell .app-card-qty-row,
+body.viewport-compact .request-av-option-card-shell .app-card-qty-row {
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:.5rem !important;
+}
+body .request-av-option-card-shell .app-card-qty-chip {
+    flex-direction:column; min-width:0; padding:.45rem .2rem !important;
+    letter-spacing:normal; white-space:nowrap;
+}
+body .request-av-option-card-shell .app-card-qty-label {font-size:.58rem !important;white-space:nowrap}
+body .request-av-option-card-shell .app-card-qty-value {font-size:.9rem !important;white-space:nowrap}
+body .request-av-option-card-shell [data-inventory-card-field="holdstopbegindate"] strong {white-space:nowrap}

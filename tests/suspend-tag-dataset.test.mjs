@@ -11,6 +11,13 @@ const appAuth = readFileSync(new URL('../supabase/functions/_shared/app-auth.ts'
 const suspendRead = readFileSync(new URL('../supabase/functions/app-api/suspend-tag-read.ts', import.meta.url), 'utf8');
 const queueInventory = readFileSync(new URL('../assets/queue-inventory-hydration.js', import.meta.url), 'utf8');
 
+test('candidate commands use the authenticated atomic Suspend endpoint', () => {
+  const source = readComposedAppSource();
+  const addition = source.match(/        async function addSelectedDockSuspendDcRequestOptions\([^]*?^        }/m)[0];
+  assert.match(addition, /suspendTagApi\('add_candidates'/);
+  assert.doesNotMatch(addition, /runDetailWriteWithRetry\('ph_soc_master'/);
+});
+
 test('current SOC snapshot keeps unchanged suspend rows from earlier delta filenames', () => {
   const html = readComposedAppSource();
   const context = vm.createContext({ socRawSourceRows: [],
@@ -372,4 +379,32 @@ test('a committed priority receipt survives failed email status without rollback
   vm.runInContext(html.match(/        async function runInventoryStatusMutation\([^]*?^        }/m)[0],ctx);
   const result=await ctx.runInventoryStatusMutation({idempotencyToken:'same-command'},async()=>receipt);
   assert.equal(result,receipt);assert.equal(applied,1);assert.equal(rollback,0);assert.equal(ctx.inventoryStatusPendingSaves.size,0);
+});
+
+test('candidate handler forwards only exact inventory IDs and the verified actor to the atomic RPC',async()=>{
+ const src=readFileSync(new URL('../supabase/functions/_shared/suspend-tag.ts',import.meta.url),'utf8');
+ const body=src.replace(/^import[^]*?;\s*$/gm,'').replace(/^export /gm,'');
+ const code=ts.transpileModule(body,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
+ const calls=[],ctx=vm.createContext({jsonValue:value=>value});
+ vm.runInContext(code,ctx);
+ const actor={id:'actor-native',username:'dylan_collyge',nativeSessionId:'session-native'};
+ const client={rpc:async(name,args)=>{calls.push([name,args]);return {data:{ok:true,rows:[{unique_id:'choice',locationcode:'B.08.000',lotcode:'26.F1'},{unique_id:'false',locationcode:'0.00.111',suspend_candidate_state:'replaced',quantityordered:'0'}]},error:null};}};
+ const command={operation:'add_candidates',commandId:'command-stable',expectedVersion:0,payload:{sourceUid:'dock35-drop80-010248.021.1',expectedLastUpdated:'2026-10-21T00:00:00Z',inventoryIds:['inventory-b08-26f1']}};
+ const result=await ctx.handleSuspendTag(client,actor,command);
+ assert.equal(result.rows[0].locationcode,'B.08.000');assert.equal(result.rows[1].suspend_candidate_state,'replaced');
+ assert.equal(calls[0][0],'suspend_tag_command_v1');assert.equal(calls[0][1].p_actor_id,'actor-native');
+ assert.equal(calls[0][1].p_session_id,'session-native');assert.equal(calls[0][1].p_command_id,'command-stable');
+ await assert.rejects(ctx.handleSuspendTag(client,{...actor,username:'nelly_aguilar'},command),/FORBIDDEN/);
+ await assert.rejects(ctx.handleSuspendTag(client,actor,{...command,payload:{...command.payload,quantityordered:'999'}}),/FIELD_FORBIDDEN/);
+});
+test('group transaction fences identity, replaces False Block, resolves all candidates and retains idempotency',()=>{
+ const sql=readFileSync(new URL('../supabase/migrations/20261021170000_suspend_candidates_request_preload_v1.sql',import.meta.url),'utf8');
+ for(const identity of ['stopnumber','transactionnumber','planstart','consigneeidentityid','salesrepid','itemcode','suspend_order_quantity'])assert.ok(sql.includes(identity));
+ assert.match(sql,/suspend_candidate_state='replaced',suspend=null,suspend_to=null,quantityordered='0'/);
+ assert.match(sql,/case when decision='approve' and r.unique_id=chosen then 'approved' else 'denied' end/);
+ assert.match(sql,/suspend_candidate_state='canceled'/);
+ assert.match(sql,/SUSPEND_TAG_TOKEN_CONFLICT/);assert.match(sql,/SUSPEND_TAG_APPROVAL_SUPERSEDED/);
+ assert.match(sql,/rep_id<>actor.id/);assert.match(sql,/session_active\(p_actor_id, p_session_id\)/);
+ assert.match(sql,/retain_suspend_candidate_decision/);
+ assert.match(appApi,/eventType: "suspend_tag_approval_requested"/);
 });

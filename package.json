@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.31",
+  "version": "2.3.32",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -134,7 +134,7 @@
     "vitest": "4.1.10"
   },
   "appsScriptPatchFunctions": [
-    "buildProtectedLiveEditReportRows_"
+    "buildSuspendTagApprovalEmail_"
   ],
   "appsScriptPatchRelease": true
 }

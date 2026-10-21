@@ -58,3 +58,5 @@ node --test tests/release-app-lifecycle.test.mjs tests/live-sync-coordinator.tes
 These use local fixtures/VMs without a browser or database. Target `< 10s`; this is a budget, not a measured pass. For a docs-only task follow its verification override; do not run these automatically. See `docs/architecture/agdata-module-dependency-map.md`, cluster 2, for source anchors and the full component map.
 
 The canonical access editor retains its DOM and verified same-account administrator controls through background permission refresh; confirmed denial still disables access. Reclass delivery trays are cleared during logout.
+
+After identity verification, finalizeLogin reveals Home before awaiting capability, permission, mapping or dataset refresh. Transient access refresh failure retains the authenticated shell; confirmed revocation continues through the canonical access path. Request revision drift keeps complete same-account choices usable while server-side tuple validation protects writes.

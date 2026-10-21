@@ -348,3 +348,10 @@ The absence statements above are static identifier searches, not proof that no i
 - `aura_voice_conversation_v1`: [20261010200046_aura_voice_role_access.sql](../../supabase/migrations/20261010200046_aura_voice_role_access.sql#L348).
 
 v2.3.31: `getSuspendTagExistingReview` and `suspend_tag_private.existing_review` resolve saved photo/spec evidence for completion. `previewProductionSnapshots` retains complete account-scoped master catalogs and allows primary-source Tasks/Docks display; `renderHome` is inert outside Home. Existing `drive_reclass_inquiry` status now returns the actor-authorized committed inventory receipt; signed report construction uses its frozen quantity for status edits. Regression coverage remains in role-access-parity, eval-reports-engine, suspend-tag-dataset, inventory-drill-navigation and dock-trip-status.
+
+
+### Suspend candidates and compact Request startup
+- Clusters 4/7: addSelectedDockSuspendDcRequestOptions -> suspend_tag/add_candidates -> suspend_tag_private.group_command; exact order group, immutable candidate approval snapshot, immediate durable push, and getActiveSuspendDockRows.
+- Cluster 6: fetchRequestCustomerMapRows -> customer-rep-map/preload -> customer_rep_mapping_manage_v1; complete authorized compact tuples, cached per-rep trees, and server submission validation.
+- Clusters 3/8: finalizeLogin opens the verified shell before refresh awaits; Home starts complete master hydration in bounded four-way 1,000-row pages.
+- Focused targets: suspend-tag-dataset.test.mjs, request-mapping-reader.test.mjs, dock-trip-status.test.mjs; inventory-drill-navigation.test.mjs covers complete paged hydration.

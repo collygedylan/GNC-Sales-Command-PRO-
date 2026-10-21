@@ -91,3 +91,11 @@ test('setup documentation supplies a compiler prompt without claiming account ac
   assert.ok(source.includes('88/142/387 ms'));
   assert.ok(source.includes('not measurements of the modified harness'));
 });
+
+test('startup snapshot fixtures reject unregistered operations and injected parameters',async()=>{
+ const {releaseSnapshotReadFixture}=await import('./helpers/release-smoke-route-policy.mjs');
+ assert.equal(releaseSnapshotReadFixture({action:'customer-rep-map',operation:'preload'}).total,0);
+ assert.deepEqual(releaseSnapshotReadFixture({action:'suspend_tag',operation:'inbox',payload:{},commandId:null,expectedVersion:null}).data.approvals,[]);
+ assert.equal(releaseSnapshotReadFixture({action:'customer-rep-map',operation:'preload',actorId:'forged'}),null);
+ assert.equal(releaseSnapshotReadFixture({action:'suspend_tag',operation:'send',payload:{},commandId:null,expectedVersion:null}),null);
+});

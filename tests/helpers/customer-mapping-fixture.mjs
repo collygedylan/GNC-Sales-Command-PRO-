@@ -4,16 +4,18 @@ import { readComposedAppSource } from '../../scripts/composed-app-source.mjs';
 export function mappingBrowserBundle() {
   return buildSync({ entryPoints: ['services/customerRepMapping.ts'], bundle:true, format:'iife', globalName:'MappingEditor', write:false, logLevel:'silent' }).outputFiles[0].text + '\nglobalThis.MappingEditor = MappingEditor;';
 }
+let cachedRequestMappingFunctions;
 export function requestMappingFunctions() {
+  if (cachedRequestMappingFunctions) return cachedRequestMappingFunctions;
   const html = readComposedAppSource();
   const names = ['normalizeRepMatchToken','normalizeRepDisplayOrder','getRepNameLookupTokens','getRequestRepMatchTokens','doesRequestRepMatchValue',
     'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName','isRequestRepRoleValue','normalizeRequestRepUserOption','ensureRequestRepUserOptionsReady','getRequestModalLookupOwnerSignature','getRequestModalCustomerMappingCacheSignature','normalizeRequestSalesrepId','syncRequestModalCustomerMappingOwner','clearRequestModalCustomerMappingOwnerState',
     'getRequestMappedRepDirectory','getRequestReserveFallbackDirectory','getRequestAuthorizedReserveFallbackMappings','getReserveSalesRepLabel','getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue','isRequestModalCustomerAuthorizationFailure',
     'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions',
-    'isActiveRequestCustomerMapping','buildRequestModalCustomerOptionsCache','loadRequestModalCustomerOptionsForRep','prefetchRequestModalCustomerOptions','scheduleRequestModalReferencePrefetch','scheduleGlobalReferencePrefetch','ensureDockAssignableUsers','prepareRequestModalChoicesForStartup','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
+    'isActiveRequestCustomerMapping','fetchRequestCustomerMapRows','isRequestModalCustomerMapReady','buildRequestModalCustomerOptionsCache','loadRequestModalCustomerOptionsForRep','prefetchRequestModalCustomerOptions','scheduleRequestModalReferencePrefetch','scheduleGlobalReferencePrefetch','ensureDockAssignableUsers','prepareRequestModalChoicesForStartup','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
     'isCurrentRequestCustomerContext','getRequestModalCachedCustomerOptionsForRep','isRequestNaCustomerValue','buildRequestCustomerPickerGroups','getExistingRequestFolderRepRows','getExistingRequestFolderRowsSignature','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep','renderRequestModalRepPickerOnOpen',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
-  return names.map(name => {
+  return cachedRequestMappingFunctions = names.map(name => {
     let start = html.indexOf(`        function ${name}(`);
     if (start < 0) start = html.indexOf(`        async function ${name}(`);
     if (start < 0) throw new Error('Missing Request mapping function ' + name);

@@ -45,3 +45,5 @@ node --test tests/master-snapshot-chunk-import.test.mjs tests/live-sync-registry
 These use local source/VM or injected transport fixtures without a database, browser or deployment. Target `< 10s`, unmeasured until run; choose only the relevant subset. SQL/RPC changes require targeted isolated SQL checks, never automatic full migration replay. Docs-only task overrides take precedence. See canonical module-map cluster 8 for source anchors and cross-module contracts.
 
 Home source filename drawer and toggle are restricted to the authenticated Dylan/Megan/JD trio. The existing historical backfill and 15-minute trigger remain paused.
+
+Master startup hydration begins from Home for every authorized inventory role, with bounded four-way 1,000-row pages. Customer/consignee choices use the compact authenticated preload endpoint instead of duplicated raw-table and per-rep paging. Keep historical backfill and its 15-minute trigger paused under the current release instruction.
