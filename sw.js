@@ -3,14 +3,14 @@
 */
 
 const APP_SHELL_BUILD = 'AgData v2.3.37';
-const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1-role-parity-r1';
+const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1-role-parity-r1-reclass-stock-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD + '-scope-r1-lists-r1-av-stock-r2-role-parity-r1';
+const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD + '-scope-r1-lists-r1-av-stock-r2-role-parity-r1-reclass-stock-r1';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';

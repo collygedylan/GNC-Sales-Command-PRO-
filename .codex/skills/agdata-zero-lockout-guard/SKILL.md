@@ -64,3 +64,5 @@ After identity verification, finalizeLogin reveals Home before awaiting capabili
 ## Request completion and foreground continuity
 
 Active same-account sessions defer Service Worker reload and mismatch recovery, including a reload queued before login completed. Transient token/session refresh loss retains the visible shell and cached identity; confirmed disabled or locked profiles still clear access. Foreground restoration preserves the current view. Request save receipt acceptance checks account scope without rejecting a committed result solely because permission revision advanced. Focused coverage: release-app-lifecycle.test.mjs and request-submission-durability.test.mjs.
+
+Same-version runtime releases must advance the service-worker runtime/cache revision while retaining the visible AgData badge. Reclass stock r1 refreshes shell assets with the existing reload-cache installer and preserves authenticated account data, drafts, and inactive-client navigation rules.
