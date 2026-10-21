@@ -116,6 +116,29 @@ test('set-based Eval2 report patch retains the authorization and published-read 
   assert.match(published, /source_revision is null or \(source_state is distinct from 'ready'[\s\S]*?published_snapshot_read_proof/);
 });
 
+test('Eval2 batched preview migration bounds cards and retains authoritative report counts', () => {
+  const migrationDir = new URL('../supabase/migrations/', import.meta.url);
+  const migrationName = readdirSync(migrationDir).find(name => name.endsWith('_manager_eval2_batched_preview_v1.sql'));
+  assert.ok(migrationName, 'the bounded Eval2 preview migration exists');
+  const patch = readFileSync(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), 'utf8');
+  const registry = readFileSync(new URL('../scripts/apply-item-low-stock-migration.mjs', import.meta.url), 'utf8');
+  assert.ok(registry.includes(`managerEval2BatchedPreviewMigrationName = '${migrationName}'`));
+  assert.match(registry, /releaseDatabaseMigrations[\s\S]*managerEval2BatchedPreviewMigrationName/);
+  assert.match(patch, /eval2_preview_candidates as materialized/);
+  assert.match(patch, /preview_ordinal<=18/);
+  assert.match(patch, /'previewRows'/);
+  assert.match(patch, /'previewHasMore'/);
+  assert.match(patch, /'reportMatchCount',\(select count\(\*\) from classified where cardinality\(report_ids\)>0\)/);
+  assert.match(patch, /jsonb_agg\(private\.manager_report_enrich_location_on_hand_json_v1/);
+  assert.match(patch, /jsonb_typeof\(value\) in \('array','object'\)/);
+  assert.match(patch, /manager_report_actor_required/);
+  assert.match(patch, /manager_report_eval2_forbidden/);
+  assert.match(patch, /published_snapshot_read_proof/);
+  assert.match(patch, /manager_report_source_revision_changed/);
+  assert.match(patch, /revoke all on function public\.manager_report_read_v2\(jsonb\) from public,anon,authenticated/);
+  assert.match(patch, /grant execute on function public\.manager_report_read_v2\(jsonb\) to service_role/);
+});
+
 test('Season Priority displays a proven published snapshot without relabeling an interrupted source ready', async () => {
   const html = readComposedAppSource();
   const source = html.match(/        async function readManagerSeasonPriorityPageMetadata\([^]*?^        }/m)?.[0];
@@ -912,7 +935,7 @@ test('Eval Reports #2 keeps its last-good index while the authoritative report p
     Promise, Date, String, Number, Object, Array
   });
   const toasts = [], events = [];
-  vm.runInContext(`${settingsSource}\n${loadSource}\nglobalThis.load = loadManagerEvalReports2;`, runtime);
+  vm.runInContext(`let managerEvalReport2ProgressiveRowsState = null;\n${settingsSource}\n${loadSource}\nglobalThis.load = loadManagerEvalReports2;`, runtime);
   // Hold the signed server page read open to prove the same-account report
   // remains visible while the shared Manager revision is syncing.
   const loading = runtime.load(true);
@@ -999,8 +1022,125 @@ test('cold Eval2 loads the report_read_v2 page before any local inventory snapsh
   context.getManagerEvalReports2Api = () => ({ REPORT_IDS:Array.from(engine.REPORT_IDS) });
   vm.runInContext(`${html.slice(idsStart, idsEnd)}; globalThis.selectedIds = getManagerEvalReport2SelectedReportIds();`, context);
   assert.deepEqual(Array.from(context.selectedIds), Array.from(engine.REPORT_IDS), 'cold report query defaults to all 11 report IDs');
-  assert.match(html, /mountPagedManagerReport\(container, query, renderPagedManagerEval2Record/,
-    'the first report rows are rendered from the paged server report reader');
+  assert.match(html, /loadManagerEvalReport2ProgressivePage\(state\)/,
+    'the first report rows are rendered from materialized pages with one progressive continuation');
+});
+
+test('Eval2 uses authoritative all-11 server counts and bounded card previews without eager item-row fan-out', async () => {
+  const html = readComposedAppSource();
+  const countStart = html.indexOf('function getManagerEvalReport2ReportCount(');
+  const countEnd = html.indexOf('\n        function ', countStart + 1);
+  const signalStart = html.indexOf('function getManagerEvalReport2CountSignals(');
+  const signalEnd = html.indexOf('\n        function ', signalStart + 1);
+  assert.ok(countStart >= 0 && countEnd > countStart && signalStart >= 0 && signalEnd > signalStart);
+  const counts = Object.fromEntries(engine.REPORT_IDS.map((id, index) => [id, 25 + index]));
+  const index = { paged:true, counts, inventoryRowCount:9585, fullReportMatchCount:7186, filteredRowCount:1200 };
+  const context = vm.createContext({ getManagerEvalReport2Index:() => index,
+    getManagerEvalReport2Rows:id => [{ id }], getManagerEvalReports2Api:() => engine,
+    Object, Number, String, Math });
+  vm.runInContext(`${html.slice(countStart, countEnd)}\n${html.slice(signalStart, signalEnd)}; globalThis.count = getManagerEvalReport2ReportCount; globalThis.signals = getManagerEvalReport2CountSignals;`, context);
+  assert.deepEqual(Array.from(engine.REPORT_IDS, id => context.count(id)), Array.from(engine.REPORT_IDS, id => counts[id]));
+  assert.deepEqual(JSON.parse(JSON.stringify(context.signals())), { ready:true, sourceRows:9585, matches:7186 });
+
+  const recordStart = html.indexOf('function renderPagedManagerEval2Record(');
+  const recordEnd = html.indexOf('\n        function ', recordStart + 1);
+  assert.ok(recordStart >= 0 && recordEnd > recordStart);
+  let renderedGroup = null;
+  context.isManagerEvalReport2ItemcodeBrowseLevel = () => true;
+  context.normalizePagedManagerGroup = value => ({ ...value });
+  context.normalizePagedManagerRow = row => ({ ...row, normalized:true });
+  context.renderManagerEvalReport2SelectableCard = group => { renderedGroup = group; return '<article>card</article>'; };
+  vm.runInContext(`${html.slice(recordStart, recordEnd)}; globalThis.renderRecord = renderPagedManagerEval2Record;`, context);
+  const previewRows = [{ locationcode:'C.06.029', itemcode:'A' }];
+  assert.match(context.renderRecord({ itemCode:'A', previewRows, previewHasMore:false }, 0), /<article>card<\/article>/);
+  assert.equal(renderedGroup.rows[0].normalized, true, 'bounded group previews render their location rows synchronously');
+  assert.doesNotMatch(html.slice(recordStart, recordEnd), /data-paged-eval2-item-rows/,
+    'Eval2 cards no longer launch an independent row query for every item group');
+  const pageApplyStart = html.indexOf('function applyManagerEvalReport2ProgressivePage(');
+  const pageApplyEnd = html.indexOf('\n        function ', pageApplyStart + 1);
+  assert.ok(pageApplyStart >= 0 && pageApplyEnd > pageApplyStart);
+  const pageState = { revision:'', rows:[], nextOffset:0, total:null, hasMore:true, error:'', loading:true };
+  context.applyPage = null;
+  vm.runInContext(`${html.slice(pageApplyStart, pageApplyEnd)}; globalThis.applyPage = applyManagerEvalReport2ProgressivePage;`, context);
+  context.applyPage(pageState, { sourceRevision:'r1', total:3, hasMore:true, offset:0, rows:[{ itemCode:'A' }, { itemCode:'B' }] }, true);
+  context.applyPage(pageState, { sourceRevision:'r1', total:3, hasMore:false, offset:2, rows:[{ itemCode:'C' }] }, false);
+  assert.deepEqual(Array.from(pageState.rows, group => group.itemCode), ['A', 'B', 'C']);
+  assert.equal(pageState.nextOffset, 3);
+  assert.equal(pageState.hasMore, false, 'progressive report reads stop at the server-reported final page');
+  assert.throws(() => context.applyPage(pageState, { sourceRevision:'r2', total:4, hasMore:true, offset:3, rows:[{ itemCode:'D' }] }, false), /report changed/i,
+    'a changed source revision cannot append rows from a different snapshot');
+  assert.throws(() => context.applyPage(pageState, { sourceRevision:'r1', total:3, hasMore:true, offset:3, rows:[] }, false), /empty page/i,
+    'an empty page that claims more results cannot leave the continuation stuck at the same offset');
+  const loadStart = html.indexOf('function loadManagerEvalReport2ProgressivePage(');
+  const loadEnd = html.indexOf('\n        function ', loadStart + 1);
+  assert.ok(loadStart >= 0 && loadEnd > loadStart);
+  const calls = [];
+  const progressiveState = { key:'query', query:{ surface:'eval2', operation:'groups', offset:0, limit:25 }, owner:'account-a',
+    rows:[], nextOffset:0, total:null, revision:'', hasMore:true, loading:false, error:'', requestId:0 };
+  context.managerEvalReport2ProgressiveRowsState = progressiveState;
+  context.getSupabaseReadIdentityScope = () => 'account-a';
+  context.scheduleManagersRender = () => {};
+  context.getManagerReportPageController = () => ({
+    load:async query => { calls.push(['load', query.offset]); return { sourceRevision:'r1', total:2, hasMore:true, offset:0, rows:[{ key:'item:A', itemCode:'A' }] }; },
+    readPage:async query => { calls.push(['read', query.offset, query.sourceRevision]); return { sourceRevision:'r1', total:2, hasMore:false, offset:1, rows:[{ key:'item:B', itemCode:'B' }] }; },
+    state:() => ({ error:'' })
+  });
+  vm.runInContext(`${html.slice(loadStart, loadEnd)}; globalThis.loadPage = loadManagerEvalReport2ProgressivePage;`, context);
+  await context.loadPage(progressiveState);
+  await context.loadPage(progressiveState);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [['load', 0], ['read', 1, 'r1']]);
+  assert.deepEqual(Array.from(progressiveState.rows, group => group.itemCode), ['A', 'B']);
+  assert.equal(progressiveState.hasMore, false);
+
+  const refreshStart = html.indexOf('function refreshManagerEvalReport2ProgressiveRows(');
+  const refreshEnd = html.indexOf('\n        function ', refreshStart + 1);
+  assert.ok(refreshStart >= 0 && refreshEnd > refreshStart);
+  let resolveRefresh;
+  const refreshPagePromise = new Promise(resolve => { resolveRefresh = resolve; });
+  const retainedState = { key:'query', query:{ surface:'eval2', operation:'groups' }, owner:'account-a', rows:[{ key:'item:old', itemCode:'OLD' }],
+    nextOffset:1, total:2, revision:'r1', hasMore:true, loading:false, refreshing:false, error:'', retryFirstPage:false, requestId:0 };
+  let activeOwner = 'account-a';
+  context.getSupabaseReadIdentityScope = () => activeOwner;
+  context.managerEvalReport2ProgressiveRowsState = retainedState;
+  context.getManagerReportPageController = () => ({ load:() => refreshPagePromise, state:() => ({ error:'' }) });
+  context.initialProgressiveState = retainedState;
+  vm.runInContext(`let managerEvalReport2ProgressiveRowsState = globalThis.initialProgressiveState;
+    function scheduleManagersRender() {}
+    ${html.slice(refreshStart, refreshEnd)}
+    globalThis.refreshProgressive = refreshManagerEvalReport2ProgressiveRows;
+    globalThis.replaceProgressiveState = value => { managerEvalReport2ProgressiveRowsState = value; };`, context);
+  const refreshPromise = context.refreshProgressive(retainedState);
+  assert.deepEqual(Array.from(retainedState.rows, group => group.itemCode), ['OLD'], 'last-good cards stay visible while a refresh is pending');
+  resolveRefresh({ sourceRevision:'r2', total:1, hasMore:false, offset:0, rows:[{ key:'item:new', itemCode:'NEW' }] });
+  await refreshPromise;
+  assert.deepEqual(Array.from(retainedState.rows, group => group.itemCode), ['NEW'], 'a successful revision refresh replaces the old page set');
+
+  const staleState = { key:'query', query:{ surface:'eval2', operation:'groups' }, owner:'account-a', rows:[{ key:'item:old', itemCode:'OLD' }],
+    nextOffset:1, total:2, revision:'r1', hasMore:true, loading:false, refreshing:false, error:'', retryFirstPage:false, requestId:0 };
+  let resolveStaleRefresh;
+  const staleRefreshPagePromise = new Promise(resolve => { resolveStaleRefresh = resolve; });
+  context.getManagerReportPageController = () => ({ load:() => staleRefreshPagePromise, state:() => ({ error:'' }) });
+  context.managerEvalReport2ProgressiveRowsState = staleState;
+  const staleRefresh = context.refreshProgressive(staleState);
+  activeOwner = 'account-b';
+  context.replaceProgressiveState({ owner:'account-b', rows:[] });
+  resolveStaleRefresh({ sourceRevision:'r2', total:1, hasMore:false, offset:0, rows:[{ key:'item:new', itemCode:'NEW' }] });
+  await staleRefresh;
+  assert.deepEqual(Array.from(staleState.rows, group => group.itemCode), ['OLD'], 'a response from the prior account cannot replace its retained rows');
+  assert.match(html.slice(html.indexOf('function renderManagerEvalReport2Records('), html.indexOf('\n        function ', html.indexOf('function renderManagerEvalReport2Records(') + 1)),
+    /managerEvalReport2DisplayMode,\s*managerEvalReport2SelectionRevision,\s*managerEvalReport2EditRevision/,
+    'display mode, selection, and edits participate in the progressive render key');
+
+  assert.match(html.slice(html.indexOf('function renderManagerEvalReport2ReportsPanel('), html.indexOf('\n        function ', html.indexOf('function renderManagerEvalReport2ReportsPanel(') + 1)), /data-eval-report-counts-ready/);
+  const recordsStart = html.indexOf('function renderManagerEvalReport2Records(');
+  const recordsEnd = html.indexOf('\n        function ', recordsStart + 1);
+  assert.ok(recordsStart >= 0 && recordsEnd > recordsStart);
+  const recordsSource = html.slice(recordsStart, recordsEnd);
+  assert.match(recordsSource, /data-eval2-progressive-list/);
+  assert.match(recordsSource, /data-eval2-page-sentinel/);
+  assert.match(recordsSource, /No matching rows for selected report filter\(s\)\./);
+  assert.doesNotMatch(recordsSource, /mountPagedManagerReport\(container/,
+    'Eval2 displays only materialized groups and fetches the next page from one continuation sentinel');
 });
 
 test('Eval2 report loading ignores blocked capability refresh, preserves server authorization, and retries without snapshots', async () => {
@@ -1043,7 +1183,7 @@ test('Eval2 report loading ignores blocked capability refresh, preserves server 
     ensureDatasetLoaded:async () => { datasetReads += 1; throw new Error('full snapshot path is forbidden'); },
     Promise, JSON, String, Object, Array
   });
-  vm.runInContext(`${runSource.slice(loaderStart, loaderEnd)}; globalThis.loadEval2 = loadManagerEvalReports2;`, runtime);
+  vm.runInContext(`let managerEvalReport2ProgressiveRowsState = null;\n${runSource.slice(loaderStart, loaderEnd)}; globalThis.loadEval2 = loadManagerEvalReports2;`, runtime);
 
   const actualPageRead = pageController.load(query);
   const first = await actualPageRead;

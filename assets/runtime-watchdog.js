@@ -2,16 +2,18 @@
   'use strict';
   if (global.GncRuntimeWatchdog) return;
   const STALL_MS = 4000;
+  const PARITY_STALL_MS = 2000;
   const ROLE_ALIASES = Object.freeze({
     admin: 'admin', 'sales rep': 'sales_rep', salesrep: 'sales_rep', sales_rep: 'sales_rep',
     supervisor: 'supervisor', evaluator: 'evaluator', kier: 'kier', 'dock office': 'dock_office', dock_office: 'dock_office',
     'qc supervisor': 'qc_supervisor', qc_supervisor: 'qc_supervisor', shipping: 'shipping', 'data entry': 'data_entry',
     data_entry: 'data_entry', foreman: 'foreman', 'take backs': 'take_backs', take_backs: 'take_backs'
   });
-  const OWNERS = Object.freeze({ home: 'agdata-sync-and-supabase-architect', drive: 'agdata-drive-and-av-specialist', av: 'agdata-drive-and-av-specialist', docks: 'agdata-docks-and-orders-specialist', que: 'agdata-queue-and-reclass-specialist', managers: 'agdata-field-ops-and-qc', bloom: 'agdata-bloom-and-request-specialist', comm: 'agdata-docks-and-orders-specialist', chat: 'agdata-docks-and-orders-specialist' });
+  const OWNERS = Object.freeze({ home: 'agdata-sync-and-supabase-architect', drive: 'agdata-drive-and-av-specialist', av: 'agdata-drive-and-av-specialist', docks: 'agdata-docks-and-orders-specialist', que: 'agdata-queue-and-reclass-specialist', request: 'agdata-queue-and-reclass-specialist', managers: 'agdata-field-ops-and-qc', bloom: 'agdata-bloom-and-request-specialist', comm: 'agdata-docks-and-orders-specialist', chat: 'agdata-docks-and-orders-specialist' });
   const REPORT_QUEUE_PREFIX = 'agdata.runtime-watchdog.pending.v1:';
   const MAX_QUEUED_REPORTS = 100;
   const state = { configured: false, apiUrl: '', username: '', role: '', revisions: {}, pending: new Map(), seen: new Set(), report: null, getSubModule: null, reportQueue: [], reportQueueOwner: '', reportTimer: null, reportRetryMs: 1000, reportGeneration: 0, reportFlushGeneration: null, viewKey: '', viewVisitId: 0, viewStartedAt: Date.now(), viewBaselines: new Map(), measuredViews: new Set() };
+  let parityWait = null;
   function normalizedRole(value) { const key = String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); return ROLE_ALIASES[key] || key.replace(/\W+/g, '_').replace(/^_+|_+$/g, '') || 'unknown'; }
   function view() { return String(document.body?.dataset?.currentView || document.querySelector('[id^="view-"]:not(.hidden)')?.id?.replace(/^view-/, '') || 'unknown').toLowerCase(); }
   function subModule() { try { return String(typeof state.getSubModule === 'function' ? state.getSubModule() || '' : global.activeHomeTab || ''); } catch (_) { return ''; } }
@@ -94,7 +96,7 @@
       app_version: String(global.__APP_RELEASE_VERSION__ || 'unknown'), username: state.username, normalized_role: normalizedRole(state.role),
       view_id: currentView, sub_module: String(details.sub_module || subModule()), duration_ms: Math.max(0, Number(details.duration_ms) || 0),
       error_message: String(details.error_message || '').slice(0, 1000), dataset_revisions_snapshot: state.revisions,
-      cluster_id: ({ home: 'Cluster 8', drive: 'Cluster 3', av: 'Cluster 3', docks: 'Cluster 7', que: 'Cluster 4', managers: 'Cluster 5', bloom: 'Cluster 6', comm: 'Cluster 7', chat: 'Cluster 7' })[currentView] || 'Cluster 1',
+      cluster_id: ({ home: 'Cluster 8', drive: 'Cluster 3', av: 'Cluster 3', docks: 'Cluster 7', que: 'Cluster 4', request: 'Cluster 4', managers: 'Cluster 5', bloom: 'Cluster 6', comm: 'Cluster 7', chat: 'Cluster 7' })[currentView] || 'Cluster 1',
       owning_skill: OWNERS[currentView] || 'agdata-app-shell-and-navigation', suspected_functions: Array.isArray(details.suspected_functions) ? details.suspected_functions.slice(0, 8) : [], fingerprint: ''
     };
     event.fingerprint = fingerprint(event); send(event); return event;
@@ -110,9 +112,56 @@
     catch (_) { return false; }
     return true;
   }
+  function isVisibleParityNode(node) { return !!node && !node.hidden && !node.closest?.('.hidden, [hidden], [aria-hidden="true"]'); }
+  function hasEvalLoadingText(root) {
+    return [...root.querySelectorAll('*')].some(node => node.children.length === 0 && isVisibleParityNode(node)
+      && /^Loading(?:\.{3}|\u2026)$/i.test(String(node.textContent || '').trim()));
+  }
+  function inspectDataParity(root, current, currentSubModule) {
+    const eval2 = current === 'managers' && currentSubModule === 'eval-reports-2';
+    const waiting = eval2 && !document.hidden && hasEvalLoadingText(root);
+    const key = `${state.reportGeneration}:${current}:${currentSubModule}`;
+    if (parityWait && (!waiting || parityWait.key !== key)) { global.clearTimeout(parityWait.timer); parityWait = null; }
+    if (waiting && !parityWait) {
+      const startedAt = Date.now();
+      parityWait = { key, timer: global.setTimeout(() => {
+        if (!parityWait || parityWait.key !== key) return;
+        parityWait = null;
+        const nextRoot = document.getElementById(`view-${current}`) || document.body;
+        if (!document.hidden && view() === current && subModule() === currentSubModule
+          && key === `${state.reportGeneration}:${current}:${currentSubModule}` && hasEvalLoadingText(nextRoot)) {
+          record('DATA_PARITY_MISMATCH', { view_id: current, sub_module: currentSubModule,
+            duration_ms: Math.max(PARITY_STALL_MS, Date.now() - startedAt),
+            error_message: 'Eval Reports #2 Loading... rows persisted beyond 2000ms',
+            suspected_functions: ['renderManagerEvalReport2Records', 'mountPagedManagerReport'] });
+        }
+      }, PARITY_STALL_MS) };
+    }
+    if (document.hidden) return;
+    if (current === 'request' || current === 'que') {
+      const missing = [...root.querySelectorAll('[data-suspend-tag-card="true"]')].filter(isVisibleParityNode)
+        .some(card => [...card.querySelectorAll('[data-queue-metric]')]
+          .some(metric => isVisibleParityNode(metric) && String(metric.textContent || '').trim() === '--'));
+      if (missing) record('DATA_PARITY_MISMATCH', { view_id: current, sub_module: 'suspend',
+        error_message: 'Que SUSPEND rendered unresolved -- inventory metrics',
+        suspected_functions: ['buildSuspendTagRenderPlan', 'buildQueueInventoryMetricsHtml'] });
+    }
+    if (eval2) {
+      const countsRoot = root.querySelector('[data-eval-report-counts-ready="true"]');
+      const counts = countsRoot ? [...countsRoot.querySelectorAll('[data-eval-report-count]')] : [];
+      // A legitimately empty published dataset or report is not an incident.
+      if (Number(countsRoot?.dataset?.evalSourceRowCount) > 0 && Number(countsRoot?.dataset?.evalReportMatchCount) > 0
+        && counts.length === 11 && counts.every(node => Number(node.dataset.evalReportCount) === 0)) {
+        record('DATA_PARITY_MISMATCH', { view_id: current, sub_module: currentSubModule,
+          error_message: 'All 11 Eval report counts are zero despite matching published source rows',
+          suspected_functions: ['buildManagerEvalReport2IndexAsync', 'report_read_v2'] });
+      }
+    }
+  }
   function inspect() {
     const current = view(); const root = document.getElementById(`view-${current}`) || document.body;
     const currentSubModule = subModule();
+    inspectDataParity(root, current, currentSubModule);
     const key = `${current}:${currentSubModule}`;
     if (key !== state.viewKey) { state.viewKey = key; state.viewVisitId++; state.viewStartedAt = Date.now(); }
     const waiting = root.querySelector('.skeleton, .skeleton-bar, [aria-busy="true"], .loading, [data-loading="true"]') ||
@@ -141,12 +190,12 @@
   global.addEventListener('error', event => record('UNHANDLED_JS_EXCEPTION', { severity: 'high', error_message: String(event.message || 'Unhandled error'), suspected_functions: [String(event.filename || '').split('/').pop() + ':' + (event.lineno || '')] }));
   global.addEventListener('unhandledrejection', event => record('UNHANDLED_PROMISE_REJECTION', { severity: 'high', error_message: String(event.reason?.message || event.reason || 'Unhandled rejection') }));
   const observer = new MutationObserver(inspect);
-  if (document.documentElement) observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-busy', 'data-loading'] });
+  if (document.documentElement) observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'aria-busy', 'data-loading', 'data-eval-report-counts-ready', 'data-eval-report-count'] });
   global.addEventListener('online', () => { state.reportRetryMs = 1000; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } void flushPendingReports(); });
   document.addEventListener?.('visibilitychange', () => { if (!document.hidden) void flushPendingReports(); });
   global.GncRuntimeWatchdog = Object.freeze({
     configure(options = {}) { const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : {}; inspect(); void flushPendingReports(); },
     record, capture, normalizeRole: normalizedRole, setDatasetRevisions(value) { state.revisions = value && typeof value === 'object' ? value : {}; },
-    inspect, flushPendingReports, constants: Object.freeze({ stallMs: STALL_MS, roles: Object.freeze(Object.keys(ROLE_ALIASES)), maxQueuedReports: MAX_QUEUED_REPORTS })
+    inspect, flushPendingReports, constants: Object.freeze({ stallMs: STALL_MS, parityStallMs: PARITY_STALL_MS, roles: Object.freeze(Object.keys(ROLE_ALIASES)), maxQueuedReports: MAX_QUEUED_REPORTS })
   });
 })(window);

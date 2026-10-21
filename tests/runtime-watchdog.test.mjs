@@ -7,6 +7,87 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const source = fs.readFileSync(new URL('../assets/runtime-watchdog.js', import.meta.url), 'utf8');
 
+function parityHarness({ currentView = 'managers', subModule = 'eval-reports-2' } = {}) {
+  const reports = [], timers = new Map();
+  let now = 0, timerId = 0;
+  const dom = { loading: false, cards: [], counts: null };
+  const leaf = textContent => ({ textContent, children: [], closest: () => null });
+  const root = {
+    textContent: '',
+    querySelector: selector => selector === '[data-eval-report-counts-ready="true"]' ? dom.counts : null,
+    querySelectorAll: selector => selector === '[data-suspend-tag-card="true"]' ? dom.cards
+      : selector === '*' && dom.loading ? [leaf('Loading...')] : []
+  };
+  const document = { body: { dataset: { currentView }, ...root }, documentElement: {},
+    querySelector: () => null, getElementById: () => root, addEventListener() {} };
+  const schedule = (fn, delay) => { const id = ++timerId; timers.set(id, { fn, at: now + delay }); return id; };
+  const cancel = id => timers.delete(id);
+  const window = { __APP_RELEASE_VERSION__: 'AgData v2.3.28', addEventListener() {}, setTimeout: schedule, clearTimeout: cancel };
+  class MutationObserver { observe() {} }
+  vm.runInNewContext(source, { window, document, MutationObserver, setTimeout: schedule, clearTimeout: cancel,
+    Date: { now: () => now }, Map, Set, Object, String, Number, Array });
+  const watchdog = window.GncRuntimeWatchdog;
+  watchdog.configure({ username: 'dylan_collyge', role: 'Admin', getSubModule: () => subModule,
+    reportEvent: event => { reports.push(event); return { ok: true }; } });
+  return { reports, dom, document, watchdog, leaf,
+    async advance(ms) { now += ms; for (const [id, timer] of [...timers]) if (timer.at <= now) { timers.delete(id); timer.fn(); }
+      await new Promise(resolve => setImmediate(resolve)); }
+  };
+}
+
+test('parity sensor flags Suspend metric dashes but accepts explicit zero and N/A', async () => {
+  const h = parityHarness({ currentView: 'request', subModule: '' });
+  const metric = (name, value) => ({ ...h.leaf(value), dataset: { queueMetric: name } });
+  let metrics = [metric('on-hand', '0'), metric('review', '0'), metric('loc-photo-match', 'N/A')];
+  h.dom.cards = [{ closest: () => null, querySelectorAll: () => metrics }];
+  h.watchdog.inspect();
+  assert.equal(h.reports.length, 0);
+  metrics = [metric('on-hand', '--'), metric('reason', '--')];
+  h.watchdog.inspect();
+  await h.advance(0);
+  assert.equal(h.reports.length, 1);
+  assert.equal(h.reports[0].event_type, 'DATA_PARITY_MISMATCH');
+  assert.equal(h.reports[0].owning_skill, 'agdata-queue-and-reclass-specialist');
+  assert.match(h.reports[0].error_message, /SUSPEND/);
+  h.watchdog.inspect();
+  await h.advance(0);
+  assert.equal(h.reports.length, 1, 'repeat mutations are deduplicated');
+});
+
+test('parity sensor reports Eval Loading text only after two seconds and cancels after navigation or completion', async () => {
+  const h = parityHarness();
+  h.dom.loading = true;
+  h.watchdog.inspect();
+  await h.advance(1999);
+  assert.equal(h.reports.length, 0);
+  await h.advance(2);
+  assert.equal(h.reports.length, 1);
+  assert.equal(h.reports[0].event_type, 'DATA_PARITY_MISMATCH');
+  assert.ok(h.reports[0].duration_ms >= 2000);
+  for (const change of ['complete', 'navigate', 'account']) {
+    const other = parityHarness();
+    other.dom.loading = true; other.watchdog.inspect();
+    if (change === 'complete') other.dom.loading = false;
+    if (change === 'navigate') other.document.body.dataset.currentView = 'home';
+    if (change === 'account') other.watchdog.configure({ username: 'megan_kelly', role: 'Admin', reportEvent: event => other.reports.push(event) });
+    other.watchdog.inspect(); await other.advance(2001);
+    assert.equal(other.reports.length, 0, change);
+  }
+});
+
+test('parity sensor detects contradictory all-zero Eval counts without flagging a valid empty result', () => {
+  const h = parityHarness();
+  const counts = Array.from({ length: 11 }, () => ({ dataset: { evalReportCount: '0' } }));
+  h.dom.counts = { dataset: { evalSourceRowCount: '9581', evalReportMatchCount: '0' }, querySelectorAll: () => counts };
+  h.watchdog.inspect();
+  assert.equal(h.reports.length, 0, 'an authoritative empty report is valid');
+  h.dom.counts.dataset.evalReportMatchCount = '7180';
+  h.watchdog.inspect();
+  assert.equal(h.reports.length, 1);
+  assert.equal(h.reports[0].event_type, 'DATA_PARITY_MISMATCH');
+  assert.match(h.reports[0].error_message, /11.*zero/);
+});
+
 test('watchdog normalizes every supported role alias and emits bounded incident fields', async () => {
   const listeners = new Map();
   const reported = [];

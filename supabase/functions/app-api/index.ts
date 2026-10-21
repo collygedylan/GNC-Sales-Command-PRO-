@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.27";
+const APP_RUNTIME_RELEASE = "AgData v2.3.28";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -875,6 +875,146 @@ function restrictedRequestIdentityOrCondition(identity: string) {
     .map((field) => `${field}.imatch.${datasetReadOrLiteral(pattern)}`).join(",");
 }
 
+const SUSPEND_TAG_METRIC_MASTER_FIELDS = "unique_id,itemcode,locationcode,lotcode,season,ptronhand,ptrreviewed,ptravailable,s_lts,holdstopcode,holdstopreason,av_note,sales_note,spec,caliper,pic_note,photo_link,photo_name,loc_match_qty,match";
+const SUSPEND_TAG_METRIC_CAV_FIELDS = "unique_id,itemcode,season,ptravailable,available,reserved_qty,order_qty,holdstopreason,hold_reason,spec,brand,product_description";
+
+function normalizeSuspendTagMetricKey(value: unknown) {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function sumSuspendTagMetric(rows: Array<Record<string, unknown>>, keys: string[]) {
+  let total = 0;
+  let found = false;
+  for (const row of rows) {
+    const raw = keys.map((key) => row[key] ?? row[key.toUpperCase()]).find((value) => value !== null && value !== undefined && String(value).trim() !== "");
+    if (raw === undefined) continue;
+    const parsed = Number(String(raw).replace(/,/g, "").trim());
+    if (!Number.isFinite(parsed)) continue;
+    total += parsed;
+    found = true;
+  }
+  return found ? total : null;
+}
+
+function sumSuspendTagOpenStock(rows: Array<Record<string, unknown>>) {
+  const bySeason = new Map<string, number>();
+  for (const row of rows) {
+    const raw = row.s_lts ?? row.S_LTS;
+    if (raw === null || raw === undefined || String(raw).trim() === "") continue;
+    const season = normalizeSuspendTagMetricKey(row.season ?? row.SEASON);
+    const key = season || `${normalizeSuspendTagMetricKey(row.lotcode ?? row.LOTCODE)}|${String(raw).trim()}`;
+    if (bySeason.has(key)) continue;
+    const value = Number(String(raw).replace(/,/g, "").trim());
+    if (Number.isFinite(value)) bySeason.set(key, value);
+  }
+  return bySeason.size ? [...bySeason.values()].reduce((total, value) => total + value, 0) : null;
+}
+
+function sumSuspendTagAvailable(rows: Array<Record<string, unknown>>) {
+  let total = 0;
+  let found = false;
+  for (const row of rows) {
+    const availableRaw = row.ptravailable ?? row.PTRAVAILABLE ?? row.available ?? row.AVAILABLE;
+    const available = availableRaw === null || availableRaw === undefined || String(availableRaw).trim() === ""
+      ? NaN : Number(String(availableRaw).replace(/,/g, "").trim());
+    if (Number.isFinite(available)) {
+      total += available;
+      found = true;
+      continue;
+    }
+    const onHandRaw = row.ptronhand ?? row.PTRONHAND;
+    const reviewedRaw = row.ptrreviewed ?? row.PTRREVIEWED;
+    if (onHandRaw === null || onHandRaw === undefined || String(onHandRaw).trim() === ""
+      || reviewedRaw === null || reviewedRaw === undefined || String(reviewedRaw).trim() === "") continue;
+    const onHand = Number(String(onHandRaw).replace(/,/g, "").trim());
+    const reviewed = Number(String(reviewedRaw).replace(/,/g, "").trim());
+    if (!Number.isFinite(onHand) || !Number.isFinite(reviewed)) continue;
+    total += onHand - reviewed;
+    found = true;
+  }
+  return found ? total : null;
+}
+
+function firstSuspendTagMetricValue(rows: Array<Record<string, unknown>>, keys: string[]) {
+  for (const row of rows) {
+    const value = keys.map((key) => row[key] ?? row[key.toUpperCase()]).find((candidate) => candidate !== null && candidate !== undefined && String(candidate).trim() !== "");
+    if (value !== undefined) return value;
+  }
+  return null;
+}
+
+async function readSuspendTagMetricRows(table: "ph_master_inventory" | "ph_cav_import", fields: string, itemCodes: string[]) {
+  const rows: Array<Record<string, unknown>> = [];
+  const pageSize = 1000;
+  for (let start = 0; start < itemCodes.length; start += 100) {
+    const batch = itemCodes.slice(start, start + 100);
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase.from(table).select(fields).in("itemcode", batch)
+        .order("unique_id", { ascending: true }).range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      const page = Array.isArray(data) ? data : [];
+      rows.push(...page.map((row) => jsonObject(row)));
+      if (page.length < pageSize) break;
+      if (offset >= 20_000) throw new Error("SUSPEND_TAG_METRIC_SOURCE_LIMIT");
+    }
+  }
+  return rows;
+}
+
+function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows: Array<Record<string, unknown>>, cavRows: Array<Record<string, unknown>>) {
+  const itemCode = normalizeSuspendTagMetricKey(row.itemcode ?? row.ITEMCODE);
+  const locationCode = normalizeSuspendTagMetricKey(row.locationcode ?? row.LOCATIONCODE);
+  const lotCode = normalizeSuspendTagMetricKey(row.lotcode ?? row.LOTCODE);
+  const itemMaster = masterRows.filter((candidate) => normalizeSuspendTagMetricKey(candidate.itemcode) === itemCode);
+  const exactRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode
+    && normalizeSuspendTagMetricKey(candidate.lotcode) === lotCode);
+  const lotRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.lotcode) === lotCode);
+  const matchLevel = exactRows.length ? "item-location-lot" : lotRows.length ? "item-lot" : itemMaster.length ? "item" : "cav-item";
+  const selectedMasterRows = exactRows.length ? exactRows : lotRows.length ? lotRows : itemMaster;
+  const selectedRows = selectedMasterRows.length ? selectedMasterRows : cavRows.filter((candidate) => normalizeSuspendTagMetricKey(candidate.itemcode) === itemCode);
+  const itemCavRows = cavRows.filter((candidate) => normalizeSuspendTagMetricKey(candidate.itemcode) === itemCode);
+  const selectedSeasons = new Set(selectedMasterRows.map((candidate) => normalizeSuspendTagMetricKey(candidate.season)).filter(Boolean));
+  const cavFallbackRows = selectedMasterRows.length && selectedSeasons.size
+    ? itemCavRows.filter((candidate) => selectedSeasons.has(normalizeSuspendTagMetricKey(candidate.season)))
+    : itemCavRows;
+  const hasSourceRows = selectedRows.length > 0 || cavFallbackRows.length > 0;
+  const absentSourceValue = hasSourceRows ? null : 0;
+  const metric = (keys: string[], fallbackKeys: string[] = keys) => sumSuspendTagMetric(selectedRows, keys)
+    ?? sumSuspendTagMetric(cavFallbackRows, fallbackKeys);
+  const locationRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode);
+  const locOnHand = locationRows.length ? sumSuspendTagMetric(locationRows, ["ptronhand"]) : 0;
+  return {
+    PTRONHAND: metric(["ptronhand"]) ?? absentSourceValue,
+    PTRREVIEWED: metric(["ptrreviewed"]) ?? (sumSuspendTagMetric(selectedRows, ["ptronhand"]) !== null ? 0 : absentSourceValue),
+    PTRAVAILABLE: sumSuspendTagAvailable(selectedRows) ?? sumSuspendTagAvailable(cavFallbackRows) ?? absentSourceValue,
+    S_LTS: sumSuspendTagOpenStock(selectedRows) ?? absentSourceValue,
+    LOC_ON_HAND: locOnHand,
+    LOC_MATCH_QTY: sumSuspendTagMetric(selectedRows, ["loc_match_qty"]),
+    HOLDSTOPCODE: firstSuspendTagMetricValue(selectedRows, ["holdstopcode"]) ?? row.holdstopcode ?? null,
+    HOLDSTOPREASON: firstSuspendTagMetricValue(selectedRows, ["holdstopreason", "hold_reason"]) ?? firstSuspendTagMetricValue(cavFallbackRows, ["holdstopreason", "hold_reason"]) ?? row.holdstopreason ?? null,
+    AV_NOTE: firstSuspendTagMetricValue(selectedRows, ["av_note"]) ?? row.av_note ?? null,
+    SALES_NOTE: firstSuspendTagMetricValue(selectedRows, ["sales_note"]) ?? row.sales_note ?? row.salesnote ?? null,
+    SPEC: firstSuspendTagMetricValue(selectedRows, ["spec"]) ?? row.spec ?? null,
+    CALIPER: firstSuspendTagMetricValue(selectedRows, ["caliper"]) ?? row.caliper ?? null,
+    PIC_NOTE: firstSuspendTagMetricValue(selectedRows, ["pic_note"]) ?? row.pic_note ?? null,
+    PHOTO_LINK: firstSuspendTagMetricValue(selectedRows, ["photo_link"]) ?? row.photo_link ?? null,
+    PHOTO_NAME: firstSuspendTagMetricValue(selectedRows, ["photo_name"]) ?? row.photo_name ?? null,
+    MATCH: firstSuspendTagMetricValue(selectedRows, ["match"]) ?? row.match ?? null,
+    MATCH_LEVEL: matchLevel,
+    SOURCE: selectedMasterRows.length ? "ph_master_inventory" : "ph_cav_import",
+  };
+}
+
+async function enrichSuspendTagMetricRows(rows: Array<Record<string, Json | undefined>>) {
+  const itemCodes = [...new Set(rows.map((row) => String(row.itemcode ?? row.ITEMCODE ?? "").trim()).filter(Boolean))];
+  if (!itemCodes.length) return rows;
+  const [masterRows, cavRows] = await Promise.all([
+    readSuspendTagMetricRows("ph_master_inventory", SUSPEND_TAG_METRIC_MASTER_FIELDS, itemCodes),
+    readSuspendTagMetricRows("ph_cav_import", SUSPEND_TAG_METRIC_CAV_FIELDS, itemCodes),
+  ]);
+  return rows.map((row) => ({ ...row, suspend_tag_metrics: buildSuspendTagMetricFallback(row, masterRows, cavRows) as unknown as Json }));
+}
+
 async function handleDatasetRead(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -1006,8 +1146,13 @@ async function handleDatasetRead(
         if (current) for (const [key, value] of Object.entries(current)) if (key.startsWith("suspend_tag_") || key in row) row[key] = value;
       }
     }
-    const rows = inventoryRevision === null ? data
-      : await enrichInventoryLocationRows(supabase, String(actor.id || ""), data, inventoryRevision);
+    let metricRows = data;
+    if (dataset === "suspend_tag") {
+      try { metricRows = await enrichSuspendTagMetricRows(data); }
+      catch { metricRows = data; }
+    }
+    const rows = inventoryRevision === null ? metricRows
+      : await enrichInventoryLocationRows(supabase, String(actor.id || ""), metricRows, inventoryRevision);
     return jsonResponse({ ok: true, data: { rows, total, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < total,
       ...(sourceFreshnessResponse ? { sourceFreshness } : {}),
       ...(inventoryRevision === null ? {} : { inventoryRevision }) } });
