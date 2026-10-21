@@ -6459,6 +6459,33 @@ body.ops-precision-pilot.measurement-keyboard-open {
   }
 }
 
+/* Mobile Drive uses one in-flow rail below the command header. Do not
+   retain desktop filter spacing or a detached rail's placeholder. */
+@media (max-width: 820px) {
+  body.ops-precision-pilot.current-view-drive {
+    --ops-module-search-filter-gap: 0px;
+  }
+  body.ops-precision-pilot #view-drive .drive-controls-sticky.ops-module-filter-band {
+    margin-top: 0 !important;
+  }
+  body.ops-precision-pilot #view-drive .fixed-filter-spacer {
+    display: none !important;
+  }
+  body.ops-precision-pilot #view-drive #drive-crumb {
+    margin-top: 0 !important;
+  }
+}
+
+body.ops-precision-pilot.current-view-home.global-back-active #global-header-search-row {
+  display: flex !important;
+}
+
+body.ops-precision-pilot:not(.current-view-home) #global-header-inline-back:not([popover]) {
+  display: inline-flex !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
 /* V2026.08.16.07 — request detail viewport fit and collapsed-panel performance shell. */
 body.ops-precision-pilot #view-detail.detail-request-mode:not(.hidden) {
   box-sizing: border-box !important;
