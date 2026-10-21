@@ -169,7 +169,7 @@
                 const conflict = detail.includes('REQUEST_VERSION_CONFLICT') || detail.includes('40001') || Number(error && error.status) === 409;
                 if (!conflict) return { status: 'error', error, draft, attempts: attempt + 1 };
                 let canonical = null;
-                try { canonical = await options.readCanonical(); } catch {}
+                try { canonical = await options.readCanonical(); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'saveRequestWorkWithReconciliation');}
                 if (!canonical) return { status: 'review-required', reason: 'canonical-row-unavailable', error, draft, attempts: attempt + 1 };
                 const plan = planRequestWorkConflictRebase(draft, canonical);
                 if (plan.status !== 'rebase') return { status: 'review-required', error, draft, plan, canonical, attempts: attempt + 1 };
@@ -231,7 +231,7 @@
         const inFlight = new Map(), commands = new Map(), receipts = new Map();
         const ownerMatches = entry => !!entry.ownerKey && entry.ownerKey === currentOwner();
         const keyFor = entry => JSON.stringify([entry.ownerKey, entry.clientBatchId]);
-        const cleanupError = (error, entry) => { try { options.onCleanupError?.(error, entry); } catch {} };
+        const cleanupError = (error, entry) => { try { options.onCleanupError?.(error, entry); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'createController');} };
         const acknowledged = async (entry, result, notify = true) => {
             const key = keyFor(entry);
             const receipt = { ...entry, status: 'acknowledged', acknowledgment: result };
@@ -275,13 +275,13 @@
                         lastAttemptAt: new Date().toISOString(), lastErrorCode: String(error?.code || (error?.status ? `HTTP_${error.status}` : 'REQUEST_COMMIT_FAILED')) };
                     commands.set(key, pending);
                     try { await saveEntry(pending); } catch (storageError) { cleanupError(storageError, pending); }
-                    if (ownerMatches(entry)) { try { await options.onFailure?.(pending, error); } catch {} }
+                    if (ownerMatches(entry)) { try { await options.onFailure?.(pending, error); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'submit');} }
                     return { status: ownerMatches(entry) ? pending.status : 'scope-changed', entry: pending, error };
                 }
                 return acknowledged(entry, result);
             })();
             inFlight.set(key, operation);
-            operation.finally(() => { if (inFlight.get(key) === operation) inFlight.delete(key); }).catch(() => {});
+            operation.finally(() => { if (inFlight.get(key) === operation) inFlight.delete(key); }).catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'submit'); });
             return operation;
         }
 

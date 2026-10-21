@@ -117,7 +117,7 @@
         }
         function closeSubscription() {
             if (unsubscribe) {
-                try { Promise.resolve(unsubscribe()).catch(() => {}); } catch (_) {}
+                try { Promise.resolve(unsubscribe()).catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'closeSubscription'); }); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'closeSubscription');}
             }
             unsubscribe = null; subscribedScope = '';
         }
@@ -228,8 +228,8 @@
             try {
                 // This callback also clears the rendered display cache. A retained
                 // snapshot is never kept after the server has denied this identity.
-                Promise.resolve(options.onPermissionChange?.(null, { reason: 'authorization-denied' })).catch(() => {});
-            } catch (_) {}
+                Promise.resolve(options.onPermissionChange?.(null, { reason: 'authorization-denied' })).catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'discardAppliedAfterDenial'); });
+            } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'discardAppliedAfterDenial');}
             return true;
         }
         function stillCurrent(ctx, startedEpoch) {
@@ -570,8 +570,8 @@
                     // The app applies confirmed revocation through its access
                     // context. Its background refresh is not a prerequisite for
                     // independently authorized, revision-bracketed server reads.
-                    try { Promise.resolve(options.onPermissionChange?.(before.permissionVersion)).catch(() => {}); }
-                    catch (_) {}
+                    try { Promise.resolve(options.onPermissionChange?.(before.permissionVersion)).catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'cycle'); }); }
+                    catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'cycle');}
                 } else await options.onPermissionChange?.(before.permissionVersion);
                 if (!current()) return discard();
                 // The revision contract and the fresh access snapshot are
@@ -701,8 +701,8 @@
                     }
                     staged.forEach(({ adapter, value }) => rememberApplied(adapter, value, after, ctx, metadataReadOnly));
                     if (!metadataReadOnly) staged.forEach(({ adapter, value }) => {
-                        try { Promise.resolve(options.writeCachedSnapshot?.(adapter, value, cacheMeta(adapter, ctx, after))).catch(() => {}); }
-                        catch (error) { /* Cache persistence must not invalidate an authoritative commit. */ }
+                        try { Promise.resolve(options.writeCachedSnapshot?.(adapter, value, cacheMeta(adapter, ctx, after))).catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'cycle'); }); }
+                        catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'cycle'); /* Cache persistence must not invalidate an authoritative commit. */ }
                     });
                 }
             }
@@ -850,7 +850,7 @@
                 && String(ctx.dataPermissionVersion || '')
                 && appliedEntry.permissionVersion !== String(ctx.dataPermissionVersion)) {
                 applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
-                try { Promise.resolve(options.onPermissionChange?.(String(ctx.dataPermissionVersion || ''), { reason: 'access-snapshot-changed' })).catch(() => {}); } catch (_) {}
+                try { Promise.resolve(options.onPermissionChange?.(String(ctx.dataPermissionVersion || ''), { reason: 'access-snapshot-changed' })).catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'ensure'); }); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'ensure');}
             }
             const wasApplied = isTrustedApplied(appliedFor(adapter), adapter, ctx);
             if (!force && wasApplied) {
