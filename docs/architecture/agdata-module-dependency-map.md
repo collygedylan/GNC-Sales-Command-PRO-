@@ -77,6 +77,10 @@ node --test tests/inventory-drill-navigation.test.mjs tests/login-navigation-pre
 
 **Conclusion:** the verified static mechanism is deliberate local-control suppression plus Home parent collapse and split Home visibility ownership. The reported all-view symptom is not fully explained by source evidence. No runtime fix or browser reproduction is claimed; a future fix should unify header/Back ownership while preserving drill, modal, keyboard/focus, auth and history behavior.
 
+### v2.3.18 navigation maintenance
+
+The preceding trace and inventory remain the v2.3.17 audit snapshot. The v2.3.18 frontend change makes `getGlobalBackState` / `applyGlobalBackState` the shared visibility owner for `updateGlobalBackButton`, `syncGlobalHeaderChrome` and `syncGlobalModalBack`. Normal navigation removes closed-popover mode and stale hidden/display/disabled state; chrome repair precedes search-focus, signature and deferred-work early exits. Primary view/body/visible DOM align before lifecycle callbacks. Back gives modal/wizard actions priority, then one feature drill step (including AV open-stock), delegated subqueue navigation, previous history and finally Home. Mobile Drive releases fixed filter spacers and additional command-to-filter margins. These changes have focused Node contracts; no browser reproduction or measured mobile layout is implied.
+
 ## Cluster 2: Auth, Session, Service Worker and Zero-Lockout Cache
 
 Owner: `agdata-zero-lockout-guard`. Shared upstream boundary: `switchView`, `showOnlyPrimaryView`, `goBackUniversal`, `updateGlobalBackButton`, `viewHistoryStack`, account identity and render generations. Preserve header/search/modal ownership while changing feature-specific state.

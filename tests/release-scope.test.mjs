@@ -30,6 +30,29 @@ test('site source, Supabase, and Apps Script deploy scopes remain independent', 
   assert.deepEqual(scope.validation, { frontend: false, backend: false, schema: false });
 });
 
+test('Back navigation and frontend version markers publish only Pages without historical suites', () => {
+  const frontendFiles = [
+    'index.html', 'assets/ops-precision-pilot.css', 'assets/ops-precision-pilot.js',
+    'manifest.json', 'sw.js', 'v2/src/services/api.ts', 'v2/public/manifest.webmanifest',
+    'package.json', 'package-lock.json',
+  ];
+  // Cover individual runtime/version files as well as the complete frontend patch.
+  for (const files of [...frontendFiles.map(file => [file]), [...frontendFiles,
+    'scripts/build-live-shell.mjs', 'tests/release-scope.test.mjs',
+    '.codex/skills/agdata-app-shell-and-navigation/SKILL.md']]) {
+    const scope = classifyReleasePaths(files);
+    assert.equal(scope.toolingOnly, false, files.join(', '));
+    assert.deepEqual(scope.deploy, { frontend: true, supabase: false, appsScript: false });
+    assert.deepEqual(scope.validation, { frontend: false, backend: false, schema: false });
+    assert.deepEqual(scope.migrations, []);
+    assert.deepEqual(scope.edgeFunctions, []);
+  }
+  assert.equal(isSafePackageMetadataChange(
+    { version: '2.3.17', appsScriptRelease: 'AgData v2.2.1' },
+    { version: '2.3.18', appsScriptRelease: 'AgData v2.2.1' },
+  ), false, 'a frontend version bump must not be suppressed as tooling metadata');
+});
+
 test('full matrices require the explicit Nightly selection for every deployment scope', () => {
   for (const files of [['src/app.tsx'], ['supabase/functions/app-api/index.ts'], ['Code.gs'],
     ['index.html', 'supabase/migrations/new.sql'], ['tests/new.test.mjs']]) {

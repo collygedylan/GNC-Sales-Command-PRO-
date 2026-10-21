@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
+import yaml from 'js-yaml';
 import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const root = process.cwd();
@@ -190,10 +191,12 @@ test('every verified session restores its user-scoped theme before the app shell
   assert.match(html, /const scopedPreferenceKey = 'gnc_ops_precision_preferences_v2:' \+ verifiedUsername/);
   assert.match(html, /verifiedUsername === 'dylan_collyge' \? \(localStorage\.getItem\('gnc_ops_precision_preferences_v1'\)/);
   assert.match(html, /document\.documentElement\.dataset\.opsPrepaintTheme = prepaintTheme/);
-  assert.match(html, /id="ops-theme-prepaint"[\s\S]*data-ops-prepaint-theme="dark"[\s\S]*background:#050806 !important/);
-  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#home-dashboard-grid > div[\s\S]*background:#0a120e !important/);
-  assert.match(html, /data-ops-prepaint-theme="dark"[\s\S]*#bottom-nav[\s\S]*background:#0a120e !important[\s\S]*color:#adc9b5 !important/);
-  assert.match(html, /data-ops-prepaint-theme="light"[\s\S]*background:#f4fbf7 !important/);
+  const prepaintStyle = html.match(/<style\b[^>]*\bid="ops-theme-prepaint"[^>]*>([\s\S]*?)<\/style>/)?.[1];
+  assert.ok(prepaintStyle, 'the actual prepaint style owner must exist');
+  assert.match(prepaintStyle, /data-ops-prepaint-theme="dark"[\s\S]*background:#050806 !important/);
+  assert.match(prepaintStyle, /data-ops-prepaint-theme="dark"[\s\S]*#home-dashboard-grid > div[\s\S]*background:#0a120e !important/);
+  assert.match(prepaintStyle, /data-ops-prepaint-theme="dark"[\s\S]*#bottom-nav[\s\S]*background:#0a120e !important[\s\S]*color:#adc9b5 !important/);
+  assert.match(prepaintStyle, /data-ops-prepaint-theme="light"[\s\S]*background:#f4fbf7 !important/);
   assert.match(client, /function clearPrepaintTheme\(\)/);
   assert.match(client, /writeCachedPreferences\(state\.preferences, useDirtyCache\);[\s\S]*applyUiState\(\);[\s\S]*clearPrepaintTheme\(\)/);
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
@@ -391,8 +394,222 @@ test('Home alone shows identity metadata while modules use the compact command h
   assert.match(css, /ops-precision-pilot:not\(\.current-view-home\) #app-top-chrome \.nav-header[\s\S]*display: none !important/);
   assert.match(html, /building: 'building-search-container'/);
   assert.match(html, /const homeIdentityOnly = chromeState\.currentView === 'home' && !chromeState\.showHomeBack/);
-  assert.match(html, /const visibleBack = naturalBack/);
+  const headerSync = inlineShellFunction('syncGlobalHeaderChrome');
+  assert.match(headerSync, /updateGlobalBackButton\(\)/);
+  assert.ok(headerSync.indexOf('updateGlobalBackButton()') < headerSync.indexOf('return;'), 'Back repair must precede chrome early returns');
   assert.match(html, /if \(homeIdentityOnly\)[\s\S]*searchRow\.classList\.add\('hidden'\)/);
+});
+
+function inlineShellFunction(name) {
+  const start = html.indexOf(`        function ${name}(`);
+  assert.ok(start >= 0, `Missing shared shell function ${name}`);
+  const tail = html.slice(start + 1);
+  const end = tail.search(/\r?\n        (?:async )?function \w+\(/);
+  assert.ok(end >= 0, `Missing function boundary after ${name}`);
+  return html.slice(start, start + 1 + end);
+}
+
+function sharedBackFixture({ popoverSupported = true } = {}) {
+  const buttonMarkup = html.match(/<button id="global-header-inline-back"[\s\S]*?<\/button>/)?.[0];
+  assert.ok(buttonMarkup, 'Use the real shared Back button and its handler binding');
+  const views = [...new Set([...html.matchAll(/id="view-([^"\s]+)"/g)].map(match => match[1]))];
+  const dom = new JSDOM(`<style>.hidden,[hidden]{display:none!important}[data-secondary-back]{display:none!important}</style>
+    <body class="ops-precision-pilot current-view-drive"><div id="app-top-chrome">
+    <div id="global-header-search-row">${buttonMarkup}<div id="global-header-search-slot"><div id="fixture-search"><input></div></div>
+    <div id="global-header-inline-title"></div><span id="global-header-view-title"></span></div></div>
+    ${views.map(view => `<section id="view-${view}" class="hidden"></section>`).join('')}</body>`, { runScripts: 'dangerously' });
+  const { window } = dom;
+  let currentView = 'drive', clicked = 0, popoverOpen = false, shown = 0, hidden = 0;
+  Object.assign(window, {
+    getCurrentVisibleViewId: () => currentView,
+    shouldShowHomeProductivityBackButton: () => false,
+    cartPanelOpen: false, bloomShareMenuOpen: false, bloomCropUpdateModalOpen: false,
+    goBackUniversal: () => { clicked++; },
+  });
+  const row = window.document.getElementById('global-header-search-row');
+  const button = window.document.getElementById('global-header-inline-back');
+  const nativeMatches = button.matches.bind(button);
+  button.matches = selector => selector === ':popover-open' ? popoverOpen : nativeMatches(selector);
+  if (popoverSupported) {
+    button.showPopover = () => { popoverOpen = true; shown++; };
+    button.hidePopover = () => { popoverOpen = false; hidden++; };
+  } else {
+    button.showPopover = undefined;
+    button.hidePopover = undefined;
+  }
+  window.eval(['getVisibleSecondaryBack', 'getGlobalBackState', 'applyGlobalBackState',
+    'updateGlobalBackButton', 'syncGlobalModalBack'].map(inlineShellFunction).join('\n'));
+  const select = view => {
+    for (const id of views) window.document.getElementById(`view-${id}`).classList.toggle('hidden', id !== view);
+    currentView = view;
+    window.document.body.dataset.currentView = view;
+    window.document.body.className = `ops-precision-pilot current-view-${view}`;
+  };
+  select('drive');
+  const stale = () => {
+    for (const element of [row, button]) {
+      element.hidden = true;
+      element.classList.add('hidden');
+      element.style.setProperty('display', 'none', 'important');
+      element.style.setProperty('visibility', 'hidden', 'important');
+      element.style.setProperty('pointer-events', 'none', 'important');
+    }
+    button.disabled = true;
+    button.setAttribute('aria-hidden', 'true');
+    button.setAttribute('aria-disabled', 'true');
+    button.setAttribute('popover', 'manual');
+    popoverOpen = true;
+  };
+  return { dom, window, views, button, row, select, stale,
+    clicked: () => clicked, popover: () => ({ open: popoverOpen, shown, hidden }) };
+}
+
+function assertSharedBackReady(fixture) {
+  const { window, button, row } = fixture;
+  for (const element of [row, button]) {
+    assert.equal(element.hidden, false);
+    assert.equal(element.classList.contains('hidden'), false);
+    assert.notEqual(window.getComputedStyle(element).display, 'none');
+    assert.notEqual(window.getComputedStyle(element).visibility, 'hidden');
+    assert.notEqual(window.getComputedStyle(element).pointerEvents, 'none');
+  }
+  assert.equal(button.disabled, false);
+  assert.equal(button.getAttribute('aria-hidden'), 'false');
+  assert.equal(button.getAttribute('aria-disabled'), 'false');
+}
+
+test('shared Back repairs stale hidden popover state and remains clickable in every non-Home view', t => {
+  const fixture = sharedBackFixture();
+  t.after(() => fixture.dom.window.close());
+  const modules = fixture.views.filter(view => view !== 'home');
+  assert.ok(modules.includes('drive') && modules.includes('managers') && modules.includes('request'));
+  for (const view of modules) {
+    fixture.select(view);
+    fixture.stale();
+    fixture.window.updateGlobalBackButton();
+    assertSharedBackReady(fixture);
+    assert.equal(fixture.button.hasAttribute('popover'), false, view);
+    assert.equal(fixture.popover().open, false, view);
+    const before = fixture.clicked();
+    fixture.button.click();
+    assert.equal(fixture.clicked(), before + 1, `${view}: real markup retains its Back handler`);
+  }
+});
+
+test('shared Back modal promotion and cleanup work with and without native popover APIs', t => {
+  for (const popoverSupported of [true, false]) {
+    const fixture = sharedBackFixture({ popoverSupported });
+    t.after(() => fixture.dom.window.close());
+    const { window, button } = fixture;
+    const modal = window.document.createElement('div');
+    modal.id = 'fixture-back-modal';
+    modal.innerHTML = '<button data-secondary-back="true" aria-hidden="true">Previous step</button>';
+    window.document.body.append(modal);
+    assert.equal(window.getGlobalBackState().modalBack, modal.firstElementChild, 'CSS-hidden secondary control remains eligible');
+    window.syncGlobalModalBack();
+    assert.equal(button.disabled, false);
+    assert.equal(button.getAttribute('aria-hidden'), 'false');
+    assert.equal(button.getAttribute('aria-disabled'), 'false');
+    if (popoverSupported) assert.equal(fixture.popover().open, true);
+    modal.classList.add('hidden');
+    // A stale attribute left by a previous browser/runtime must be removed even
+    // when this environment does not implement showPopover/hidePopover.
+    button.setAttribute('popover', 'manual');
+    window.syncGlobalModalBack();
+    assertSharedBackReady(fixture);
+    assert.equal(button.hasAttribute('popover'), false);
+    if (popoverSupported) assert.equal(fixture.popover().open, false);
+    modal.classList.remove('hidden');
+    modal.firstElementChild.disabled = true;
+    assert.equal(Boolean(window.getGlobalBackState().modalBack), false, 'disabled modal steps are never delegated');
+    modal.firstElementChild.disabled = false;
+    modal.firstElementChild.classList.add('hidden');
+    assert.equal(Boolean(window.getGlobalBackState().modalBack), false, 'explicitly hidden modal steps remain ineligible');
+  }
+});
+
+test('Home Back state follows real productivity and Bloom drill state instead of precision theme alone', t => {
+  const fixture = sharedBackFixture();
+  t.after(() => fixture.dom.window.close());
+  const homeActiveSelector = 'body.ops-precision-pilot.current-view-home.global-back-active #global-header-search-row';
+  const homeOverrideAt = css.indexOf(homeActiveSelector);
+  assert.ok(homeOverrideAt > css.indexOf('body.ops-precision-pilot.current-view-home #global-header-search-row,'),
+    'the Home Back exception must follow the original parent collapse');
+  assert.match(css.slice(homeOverrideAt, css.indexOf('}', homeOverrideAt) + 1), /display: flex !important/);
+  fixture.select('home');
+  fixture.window.updateGlobalBackButton();
+  assert.equal(fixture.window.getGlobalBackState().showBack, false);
+  assert.equal(fixture.window.document.body.classList.contains('global-back-active'), false);
+  assert.equal(fixture.row.hidden, true);
+  for (const flag of ['cartPanelOpen', 'bloomShareMenuOpen', 'bloomCropUpdateModalOpen']) {
+    fixture.window[flag] = true;
+    fixture.window.updateGlobalBackButton();
+    assert.equal(fixture.window.getGlobalBackState().showBack, true, flag);
+    assert.equal(fixture.window.document.body.classList.contains('global-back-active'), true, flag);
+    assertSharedBackReady(fixture);
+    fixture.window[flag] = false;
+    fixture.window.updateGlobalBackButton();
+    assert.equal(fixture.window.document.body.classList.contains('global-back-active'), false);
+    assert.equal(fixture.row.hidden, true);
+  }
+  fixture.window.shouldShowHomeProductivityBackButton = () => true;
+  fixture.window.updateGlobalBackButton();
+  assert.equal(fixture.window.getGlobalBackState().showBack, true);
+  assert.equal(fixture.window.document.body.classList.contains('global-back-active'), true);
+  assertSharedBackReady(fixture);
+});
+
+test('focused, unchanged and deferred header sync paths repair Back before returning without moving search', t => {
+  for (const mode of ['focused', 'signature', 'deferred']) {
+    const fixture = sharedBackFixture();
+    t.after(() => fixture.dom.window.close());
+    const { window } = fixture;
+    const search = window.document.getElementById('fixture-search');
+    const input = search.querySelector('input');
+    let deferred = 0;
+    Object.assign(window, {
+      normalizeUiSyncReason: value => value,
+      getGlobalHeaderChromeState: () => ({ currentView: 'drive', showHomeBack: false, signature: 'same',
+        searchContainer: search, searchVisible: true, resolvedTitle: 'Drive' }),
+      getFastFocusableSearchInput: element => element === input ? input : null,
+      lastGlobalHeaderChromeSignature: mode === 'signature' ? 'same' : '',
+      syncGlobalHeaderSearchOwnership() {}, syncIosFixedTopChromeMetrics() {}, scheduleStickyRailOffsetSync() {},
+      shouldDeferChromeSyncWork: () => mode === 'deferred',
+      scheduleDeferredChromeSyncTask: () => { deferred++; },
+    });
+    window.eval(inlineShellFunction('syncGlobalHeaderChrome'));
+    if (mode === 'focused') input.focus();
+    fixture.stale();
+    window.syncGlobalHeaderChrome({ reason: 'back-repair' });
+    assertSharedBackReady(fixture);
+    assert.equal(window.document.getElementById('global-header-search-slot').firstElementChild, search);
+    if (mode === 'focused') assert.equal(window.document.activeElement, input);
+    assert.equal(deferred, mode === 'deferred' ? 1 : 0);
+  }
+});
+
+test('phone Drive keeps its filter rail in flow without the shared desktop search gap', t => {
+  const fixture = sharedBackFixture();
+  t.after(() => fixture.dom.window.close());
+  const { window } = fixture;
+  window.isIOSDevice = () => false;
+  window.document.body.style.setProperty('--ops-module-search-filter-gap', '18px');
+  const rail = window.document.createElement('div');
+  rail.className = 'ops-module-filter-band';
+  window.document.getElementById('view-drive').append(rail);
+  window.eval(['shouldUseFixedFilterRailForView', 'getModuleFilterGapPx'].map(inlineShellFunction).join('\n'));
+  for (const width of [375, 820]) {
+    window.innerWidth = width;
+    assert.equal(window.shouldUseFixedFilterRailForView('drive'), false, String(width));
+    assert.equal(window.getModuleFilterGapPx(rail), 0, String(width));
+  }
+  window.innerWidth = 821;
+  assert.equal(window.shouldUseFixedFilterRailForView('drive'), true);
+  assert.equal(window.getModuleFilterGapPx(rail), 18);
+  window.innerWidth = 375;
+  window.document.getElementById('view-request').append(rail);
+  assert.equal(window.shouldUseFixedFilterRailForView('request'), true, 'Android Queue retains its existing fixed-rail contract');
+  assert.equal(window.getModuleFilterGapPx(rail), 18, 'the mobile Drive override cannot change Queue gaps');
 });
 
 test('primary module icons use a restrained single-weight treatment', () => {
@@ -1218,10 +1435,28 @@ test('Task search application mode executes the production level contract', () =
   assert.equal(hiddenMode('av-blanks', 0, 'karl'), 'none');
 });
 
-test('CI gates responsive release checks in Chromium, Firefox, and WebKit', () => {
-  assert.match(workflow, /default: chromium firefox webkit/);
-  assert.match(workflow, /RELEASE_TEST_BROWSERS: \$\{\{ inputs\.browsers \}\}/);
-  assert.match(workflow, /playwright install --with-deps \$RELEASE_TEST_BROWSERS/);
+test('Nightly preserves Chromium, Firefox and WebKit coverage while daytime publication skips full validation', () => {
+  const nightlyGraph = readReleaseWorkflowSources('.github/workflows/nightly-validation.yml');
+  assert.ok(nightlyGraph.files.some(file => file.path === '.github/workflows/release-validation.yml'));
+  assert.ok(nightlyGraph.files.some(file => file.path === '.github/workflows/release-database.yml'));
+  assert.match(nightlyGraph.text, /run-nightly-suites: true/);
+  assert.match(nightlyGraph.text, /default: chromium firefox webkit/);
+  assert.match(nightlyGraph.text, /RELEASE_TEST_BROWSERS: \$\{\{ inputs\.browsers \}\}/);
+  assert.match(nightlyGraph.text, /playwright install --with-deps \$RELEASE_TEST_BROWSERS/);
+  const validation = yaml.load(read('.github/workflows/release-validation.yml'));
+  assert.deepEqual(validation.jobs.functional.strategy.matrix.project, ['chromium', 'firefox', 'webkit']);
+  assert.deepEqual(validation.jobs.functional.strategy.matrix.shard, [1, 2, 3, 4]);
+  for (const id of ['functional', 'compiled', 'database']) {
+    assert.match(validation.jobs[id].if, /inputs\.run-nightly-suites/);
+    assert.match(validation.jobs[id].if, /github\.workflow == 'Nightly Validation'/);
+  }
+  assert.doesNotMatch(workflow, /playwright install|run-release-smoke\.mjs|database-check\.mjs|uses:.*release-database\.yml|docker\/build-push-action/);
+  const main = yaml.load(read('.github/workflows/pages-static.yml'));
+  assert.match(main.jobs['backend-publication'].if, /outputs\.supabase == 'true'/);
+  assert.match(main.jobs['backend-publication'].if, /outputs\['apps-script'\] == 'true'/);
+  assert.match(main.jobs.deploy.if, /needs\.backend-publication\.result == 'skipped'/);
+  assert.match(main.jobs.deploy.if, /outputs\.supabase != 'true'/);
+  assert.match(main.jobs.deploy.if, /outputs\['apps-script'\] != 'true'/);
   assert.match(playwrightConfig, /name: 'chromium'/);
   assert.match(playwrightConfig, /name: 'firefox'/);
   assert.match(playwrightConfig, /name: 'webkit'/);

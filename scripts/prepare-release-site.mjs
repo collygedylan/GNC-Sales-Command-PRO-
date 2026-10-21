@@ -31,6 +31,23 @@ async function copyTree(source, destination) {
 try {
   const existing = await lstat(site).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
   if (existing && (!existing.isDirectory() || existing.isSymbolicLink() || (await readdir(site)).length)) throw new Error('RELEASE_SITE_MUST_BE_EMPTY');
+  // CI supplies freshly compiled inputs. Repair only missing/wrong-release
+  // local prerequisites here; matching labels do not verify same-version source freshness.
+  const v2Output = await lstat(path.join(root, 'v2', 'dist')).catch(error => {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  });
+  if (v2Output && (!v2Output.isDirectory() || v2Output.isSymbolicLink())) throw new Error('RELEASE_V2_OUTPUT_INVALID');
+  const v2Release = await readExpectedRelease(root);
+  let v2Manifest = null;
+  try { v2Manifest = JSON.parse(await readFile(path.join(root, 'v2', 'dist', 'manifest.webmanifest'), 'utf8')); }
+  catch (error) { if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error; }
+  if (!v2Output || v2Manifest?.version !== v2Release
+      || v2Manifest?.start_url !== `./?shellv=${encodeURIComponent(v2Release)}`) {
+    const v2Build = spawnSync(process.execPath, [path.join(root, 'node_modules', 'vite', 'bin', 'vite.js'),
+      'build', '--config', 'vite.v2.config.ts'], { cwd: root, stdio: 'inherit', windowsHide: true });
+    if (v2Build.error || v2Build.status !== 0) throw new Error('RELEASE_PREPARATION_FAILED_V2');
+  }
   await mkdir(site, { recursive: true });
   for (const name of files) await copyTree(path.join(root, name), path.join(site, name));
   await copyTree(path.join(root, 'assets'), path.join(site, 'assets'));

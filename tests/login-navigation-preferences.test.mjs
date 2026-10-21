@@ -185,6 +185,53 @@ test('post-login shell completes role initialization without the optional prefer
   assert.equal(elements.get('loading-spinner').classList.contains('hidden'), true);
 });
 
+test('primary view visibility, cached identity and body marker agree before lifecycle and Back chrome hooks', () => {
+  const makeElement = (...initialClasses) => {
+    const classes = new Set(initialClasses);
+    return { dataset: {}, classList: {
+      add: name => classes.add(name), remove: name => classes.delete(name),
+      contains: name => classes.has(name), [Symbol.iterator]: () => classes.values(),
+    } };
+  };
+  const views = new Map(['home', 'drive', 'av', 'request'].map(view => [view, makeElement(...(view === 'home' ? [] : ['hidden']))]));
+  const body = makeElement('current-view-home');
+  body.dataset.currentView = 'home';
+  const observations = [];
+  let expectedView = 'home';
+  let context;
+  const observe = hook => {
+    assert.equal(context.currentPrimaryViewId, expectedView, `${hook}: cached primary view`);
+    assert.equal(context.getCurrentVisibleViewId(), expectedView, `${hook}: visible primary view`);
+    assert.equal(body.dataset.currentView, expectedView, `${hook}: synchronous body marker`);
+    assert.deepEqual(Array.from(body.classList).filter(name => name.startsWith('current-view-')), [`current-view-${expectedView}`]);
+    assert.deepEqual(Array.from(views).filter(([, view]) => !view.classList.contains('hidden')).map(([id]) => id), [expectedView]);
+    observations.push(hook);
+  };
+  context = vm.createContext({
+    currentPrimaryViewId: 'home', TRACKED_VIEW_IDS: ['drive', 'av', 'request'],
+    document: { body, getElementById: id => views.get(id.replace(/^view-/, '')) || null },
+    window: { BunchQueueShell: { closeDetail() {} }, AgMetricLifecycle: { enterView: () => observe('lifecycle') } },
+    getPrimaryViewIds: () => Array.from(views.keys()), getViewElementById: id => views.get(id),
+    isViewVisible: id => !!views.get(id) && !views.get(id).classList.contains('hidden'),
+    syncHomeDashboardBodyMode() {}, syncRequestDetailScrollMode: () => observe('detail-scroll'),
+    repairAppShellScrollState: () => observe('scroll-repair'),
+    updateGlobalBackButton: () => observe('back-chrome'),
+    canUseProductionLiveSync: () => true, beginProductionVerifiedNavigation: () => observe('live-navigation'),
+  });
+  for (const name of ['getCurrentVisibleViewId', 'syncCurrentViewBodyClass', 'showOnlyPrimaryView']) {
+    const source = html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0];
+    assert.ok(source, `missing ${name}`);
+    vm.runInContext(source, context);
+  }
+  for (const view of ['drive', 'av', 'request', 'home']) {
+    expectedView = view;
+    observations.length = 0;
+    assert.equal(context.showOnlyPrimaryView(view), views.get(view));
+    assert.ok(observations.includes('lifecycle'), 'lifecycle must observe the completed synchronous view transition');
+    assert.ok(observations.includes('back-chrome'), 'global Back chrome must be refreshed synchronously');
+  }
+});
+
 test('navigation module URL and service worker cache use the current shell build', () => {
   const build = worker.match(/const APP_SHELL_BUILD = '([^']+)'/);
   assert.ok(build, 'service worker build marker should exist');
