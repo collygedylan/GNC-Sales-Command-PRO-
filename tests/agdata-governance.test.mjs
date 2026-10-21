@@ -108,7 +108,7 @@ test('Request and sync startup reads reject forged parameters and all mutations'
  assert.equal(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities',actorId:'forged'},[],[],{}),null);
  assert.deepEqual(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities'},[],[],{username:'dylan_collyge'}).data,{username:'dylan_collyge'});
  const runner=read('scripts/apply-item-low-stock-migration.mjs');
- assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName]'));
+ assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName]'));
  assert.ok(runner.includes('if (name === requestWorkSyncStatusMigrationName)'));
 });
 
@@ -132,4 +132,14 @@ test('conditional dataset fixture rejects unknown keys, unsupported datasets and
  assert.equal(allowed({...body,params:{...body.params,ifRevision:'invalid'}}),false);
  assert.equal(allowed({...body,dataset:'suspend_tag'}),false);
  assert.equal(allowed({...body,operation:'delete'}),false);
+});
+
+
+test('master staging constraints accept 2000-row batches and preserve existing 500-row receipts',async()=>{
+ const sql=read('supabase/migrations/20261021195000_master_chunk_ledger_capacity.sql');
+ assert.match(sql,/row_count >= 1 and row_count <= 2000/);
+ assert.doesNotMatch(sql,/delete from|truncate|drop table/i);
+ const {selectReleaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.equal(selectReleaseMigrations(JSON.stringify(['supabase/migrations/20261021195000_master_chunk_ledger_capacity.sql'])).length,1);
+ assert.match(migrationContractQuery('20261021195000_master_chunk_ledger_capacity.sql'),/convalidated/);
 });
