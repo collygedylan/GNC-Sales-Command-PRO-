@@ -41,3 +41,7 @@ Verified login mounts Home once before background refresh awaits. Later access r
 ## Request completion and foreground continuity
 
 Active authenticated sessions keep the current shell during worker updates and foreground restoration. Drive refresh preserves its drill state; Home entry retains the existing explicit navigation reset. app-shell-style-15.css owns forest footer colors, mint inactive labels, emerald active buttons, crimson Bloom clear, dark missing-photo surfaces and unclipped source filenames. Preserve shared Back/history/header ownership. Focused coverage: release-app-lifecycle.test.mjs and inventory-drill-navigation.test.mjs.
+
+## Manager report Back and deferred reads
+
+Global Back delegates Eval2 BLOCK / LOCATION drill state before leaving the module: ITEMCODE cards -> LOCATIONCODE -> BLOCK ALPHA -> Manager Modules -> Home. ITEMCODES returns to Modules. cancelManagerModuleReads cancels report-page reads and workers on setHomeTab, openManagersModules and switchView exits; renderManagers returns when Manager is inactive. Late item-inquiry reads must verify the same view, account and module generation before opening a modal. Retain Eval2 filter controls themselves, including native disclosure state, during background renders. Preserve viewHistoryStack and shared header/search ownership.

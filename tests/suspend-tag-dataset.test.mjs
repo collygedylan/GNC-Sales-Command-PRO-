@@ -312,6 +312,8 @@ test('Suspend Tag client uses item/lot and CAV display fallback and marks observ
   assert.equal(renderedMetrics.options.hydrationStatus, 'ready');
 
   const renderContext = vm.createContext({
+    parseAppNumber: value => value == null ? null : Number(value),
+    preserveCardLocationOnHand: (_row,value) => value,
     escapeHtml: value => String(value ?? ''),
     normalizeCardQuantityValue: value => String(value ?? ''),
     getCardPtrOnHandValue: () => null,
@@ -415,4 +417,14 @@ test('group transaction fences identity, replaces False Block, resolves all cand
  assert.match(sql,/rep_id<>actor.id/);assert.match(sql,/session_active\(p_actor_id, p_session_id\)/);
  assert.match(sql,/retain_suspend_candidate_decision/);
  assert.match(appApi,/eventType: "suspend_tag_approval_requested"/);
+});
+
+
+test('candidate receipt removes the false block from active Suspend arrays immediately',()=>{
+ const source=readComposedAppSource().match(/        function applySuspendCandidateRows\([^]*?^        }/m)[0];
+ const stale={UNIQUE_ID:'false',LOCATIONCODE:'0.00.111'};
+ const ctx=vm.createContext({socInventory:[{...stale}],socRawSourceRows:[{...stale}],suspendTagInventory:[{...stale}],suspendTagRawSourceRows:[{...stale}],upsertRealtimeRow:(rows,row)=>{const i=rows.findIndex(x=>x.UNIQUE_ID===row.UNIQUE_ID);if(i<0)rows.push(row);else rows[i]=row;},refreshRealtimeDetailLookupIndexes(){},invalidateDockSuspendDcSourceRowLookup(){},requestScopedItemsCacheKey:'',refreshLocalDockSuspendDcRequestState(){},markViewDirty(){},isViewVisible:()=>false});
+ vm.runInContext(source,ctx);ctx.applySuspendCandidateRows([{unique_id:'false',locationcode:'0.00.111',suspend_candidate_state:'replaced'},{unique_id:'real',itemcode:'010248.021.1',locationcode:'B.08.000',lotcode:'26.F1',ptronhand:'16'}]);
+ assert.equal(ctx.suspendTagInventory.length,1);assert.equal(ctx.suspendTagInventory[0].LOCATIONCODE,'B.08.000');assert.equal(ctx.suspendTagInventory[0].LOTCODE,'26.F1');
+ const migration=readFileSync(new URL('../supabase/migrations/20261021210000_eval_browse_suspend_receipts_v1.sql',import.meta.url),'utf8');assert.ok(migration.includes('removed_false_block'));assert.ok(migration.includes('added_rows'));
 });

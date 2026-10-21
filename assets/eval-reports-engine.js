@@ -835,7 +835,71 @@
         };
     }
 
+
+    const browseSeedCache = new WeakMap();
+    function browseSeedRows(metadata) {
+        if (!Array.isArray(metadata?.browseRows) || !Array.isArray(metadata?.browseColumns)) return null;
+        if (!browseSeedCache.has(metadata.browseRows)) {
+            browseSeedCache.set(metadata.browseRows, metadata.browseRows.map(values =>
+                Object.fromEntries(metadata.browseColumns.map((key, index) => [key, values[index]]))));
+        }
+        return browseSeedCache.get(metadata.browseRows);
+    }
+    function filterBrowseRows(rows, filters = {}, ignoreUsers = false) {
+        const text = value => String(value ?? '').trim().toLowerCase();
+        const reports = new Set(filters.reportIds || ['low-stock']);
+        const users = new Set((filters.assignedUsers || []).map(text));
+        const seasons = new Set((filters.seasons || []).map(text));
+        const search = text(filters.search).split(/\s+/).filter(Boolean);
+        const equals = (value, wanted) => !wanted || wanted === 'all' || text(value) === text(wanted);
+        return rows.filter(row => (row.reportIds || []).some(id => reports.has(id))
+            && equals(row.contsize, filters.contsize) && equals(row.locationcode, filters.locationcode)
+            && equals(row.locationcode, filters.drillLocation) && equals(row.contsize, filters.drillContsize)
+            && equals(row.blockalpha, filters.blockalpha) && equals(row.commonname || row.itemcode, filters.commonname)
+            && (!seasons.size || seasons.has(text(row.season)))
+            && (filters.priority !== 'with' || !!text(row.priority)) && (filters.priority !== 'without' || !text(row.priority))
+            && (ignoreUsers || !users.size || users.has(text(row.assignedto || '(Unassigned)')))
+            && search.every(word => [row.itemcode,row.commonname,row.contsize,row.locationcode,row.lotcode,row.season,row.priority,row.assignedto,row.genusname,row.holdstopcode].some(value => text(value).includes(word))));
+    }
+    function browseUserOptions(metadata, filters = {}) {
+        const rows = browseSeedRows(metadata);
+        if (!rows) return null;
+        const counts = new Map((metadata.evaluatorDirectory || metadata.assignedToOptions || []).map(user => [String(user),0]));
+        const matched = filterBrowseRows(rows, {...filters,blockalpha:'',drillLocation:'',commonname:'',drillContsize:''},true);
+        for (const row of matched) {
+            const user = row.assignedto || '(Unassigned)'; counts.set(user,(counts.get(user)||0)+1);
+        }
+        return [{value:'all',label:'All Users ('+matched.length+')'}, ...Array.from(counts).sort(([a],[b])=>a.localeCompare(b)).map(([value,count])=>({value,label:value+' ('+count+')'}))];
+    }
+    function buildBrowsePage(metadata, query, sourceRevision) {
+        const seed = browseSeedRows(metadata);
+        if (!seed || query.surface !== 'eval2' || query.operation !== 'groups') return null;
+        const filters = query.filters || {}, kind = filters.groupBy || 'itemcode';
+        const matching = filterBrowseRows(seed,filters), matchedIds = new Set(matching.map(row=>row.unique_id));
+        const itemCodes = new Set(matching.map(row=>row.itemcode));
+        const rows = kind === 'itemcode' && !(filters.seasons || []).length ? seed.filter(row=>itemCodes.has(row.itemcode)) : matching;
+        const groups = new Map();
+        for (const row of rows) {
+            const value = kind === 'blockalpha' ? row.blockalpha || 'UNASSIGNED' : kind === 'locationcode' ? row.locationcode || 'UNASSIGNED' : row.itemcode;
+            let group = groups.get(value);
+            if (!group) { group={key:(kind==='itemcode'?'item':kind)+':'+value,value,label:value,groupBy:kind,itemCode:row.itemcode,commonName:row.commonname,contsize:row.contsize,blockalpha:row.blockalpha,locationcode:row.locationcode,representativeRow:row,previewRows:[],rowCount:0,reportRowCount:0,_items:new Set(),_locations:new Set(),_sizes:new Set(),_names:new Set(),_users:new Set(),_reports:new Set()};groups.set(value,group); }
+            group.rowCount++; if(matchedIds.has(row.unique_id)) group.reportRowCount++;
+            group._items.add(row.itemcode);group._locations.add(row.locationcode);group._sizes.add(row.contsize);group._names.add(row.commonname);
+            if(row.assignedto)group._users.add(row.assignedto);
+            (row.reportIds||[]).forEach(id=>group._reports.add(id));
+            if(kind==='itemcode' && group.previewRows.length<8)group.previewRows.push(row);
+        }
+        const ordered = Array.from(groups.values()).sort((a,b)=>a.value.localeCompare(b.value,undefined,{numeric:true,sensitivity:'base'}));
+        const offset=Math.max(0,Number(query.offset)||0),limit=Math.max(1,Number(query.limit)||25);
+        const page=ordered.slice(offset,offset+limit).map(group=>{
+            const {_items,_locations,_sizes,_names,_users,_reports,...result}=group;
+            return {...result,itemCount:_items.size,locationCount:_locations.size,fullLocationCount:_locations.size,fullLocations:Array.from(_locations),containerSizes:Array.from(_sizes),contSizeCount:_sizes.size,commonNameCount:_names.size,assignedToUsers:Array.from(_users),reportIds:Array.from(_reports),previewHasMore:group.rowCount>group.previewRows.length};
+        });
+        return {rows:page,total:ordered.length,offset,limit,hasMore:offset+page.length<ordered.length,sourceRevision,metadata};
+    }
+
     root.GncEvalReports = Object.freeze({
+        browseSeedRows, filterBrowseRows, browseUserOptions, buildBrowsePage,
         REPORT_IDS,
         REPORT_META,
         DEFAULT_SETTINGS,

@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'AgData v2.3.34';
+  const RELEASE = 'AgData v2.3.35';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1';
   const PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:';
@@ -540,6 +540,8 @@
     // Avoid a full selector scan after every unrelated card mutation.
     if (!mobile && !hasCompactBrowseRails) return;
     document.querySelectorAll(BROWSE_RAIL_SELECTOR).forEach((rail) => {
+      // Eval2 mounts its closed disclosure synchronously and retains that DOM.
+      if (rail.matches('.manager-eval2-drive-controls')) return;
       const saved = compactBrowseRailState.get(rail);
       if (!mobile) {
         if (saved && saved.details.isConnected) {

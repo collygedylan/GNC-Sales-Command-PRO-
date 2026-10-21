@@ -20,7 +20,7 @@ test('Manager report sessions and in-flight responses survive same-account permi
   const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
   const settle = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
   let owner = 'account-a:login-1', gate = deferred(), requests = 0, clears = 0;
-  const runtime = vm.createContext({ managerReportPageController: null, AbortController,
+  const runtime = vm.createContext({ managerReportPageController: null, managerReportVisibleRows:new Map(), AbortController,
     getSupabaseReadIdentityScope: () => owner,
     appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'access-v1' } },
     nativeAuthProfile: { id: 'account-a', active: true }, window: {}, activeHomeTab: 'ncr-approvals',
@@ -59,6 +59,12 @@ test('Manager report sessions and in-flight responses survive same-account permi
   gate.resolve({ ok: true, data: { rows: [{ uid: 'must-not-publish' }] } });
   await assert.rejects(denied, error => error.status === 403);
   runtime.nativeAuthProfile.active = true;
+  gate = deferred();
+  const leftReport = controller.readPage({ surface: 'eval2', operation: 'rows' });
+  await settle();
+  controller.suspendReads();
+  gate.resolve({ ok: true, data: { rows: [{ uid: 'must-not-reopen' }] } });
+  await assert.rejects(leftReport, error => error.name === 'AbortError');
   gate = deferred();
   const switched = controller.readPage({ surface: 'eval2', operation: 'rows' });
   await settle();
@@ -1021,7 +1027,7 @@ test('cold Eval2 loads the report_read_v2 page before any local inventory snapsh
   context.activeManagerEvalReport2 = '';
   context.getManagerEvalReports2Api = () => ({ REPORT_IDS:Array.from(engine.REPORT_IDS) });
   vm.runInContext(`${html.slice(idsStart, idsEnd)}; globalThis.selectedIds = getManagerEvalReport2SelectedReportIds();`, context);
-  assert.deepEqual(Array.from(context.selectedIds), Array.from(engine.REPORT_IDS), 'cold report query defaults to all 11 report IDs');
+  assert.deepEqual(Array.from(context.selectedIds), ['low-stock'], 'cold report query defaults only to LowStock');
   assert.match(html, /loadManagerEvalReport2ProgressivePage\(state\)/,
     'the first report rows are rendered from materialized pages with one progressive continuation');
 });
@@ -1080,6 +1086,7 @@ test('Eval2 uses authoritative all-11 server counts and bounded card previews wi
   context.managerEvalReport2ProgressiveRowsState = progressiveState;
   context.getSupabaseReadIdentityScope = () => 'account-a';
   context.scheduleManagersRender = () => {};
+  context.getManagerEvalReport2BrowsePage = () => null;
   context.getManagerReportPageController = () => ({
     load:async query => { calls.push(['load', query.offset]); return { sourceRevision:'r1', total:2, hasMore:true, offset:0, rows:[{ key:'item:A', itemCode:'A' }] }; },
     readPage:async query => { calls.push(['read', query.offset, query.sourceRevision]); return { sourceRevision:'r1', total:2, hasMore:false, offset:1, rows:[{ key:'item:B', itemCode:'B' }] }; },
@@ -1561,7 +1568,8 @@ test('detail teardown and BlockAlpha drilldowns keep navigation state explicit',
   assert.ok(managerBack);
   assert.match(managerBack, /activeHomeTab[^]*?!== 'dashboard'\) return openManagersModules\(\)/);
   assert.match(managerBack, /fastBackHome\(\)/);
-  assert.doesNotMatch(managerBack, /backManagerEvalReport2Drill|managerEvalReport2DetailItemKey|managerEvalReport2DrillLevel/);
+  assert.match(managerBack, /backManagerEvalReport2Drill/);
+  assert.match(managerBack, /managerEvalReport2BrowseMode === 'location'/);
   const modules = html.match(/        function openManagersModules\([^]*?^        }/m)?.[0];
   assert.ok(modules);
   assert.match(modules, /activeHomeTab = 'dashboard'/);
@@ -1581,4 +1589,26 @@ test('cold paged Eval2 index uses server report totals without an undefined surf
     getConfiguredCurrentSalesYearCode: () => '27', getConfiguredNextSaleSeasonTarget: () => ({ season: 'S1', salesYear: '27' }), managerEvalReportSettings: {} });
   vm.runInContext(source.match(/        function createPagedManagerEvalIndex\([^]*?^        }/m)[0], ctx);
   assert.equal(ctx.createPagedManagerEvalIndex({ revision: '1', metadata: { reportMatchCount: 31, filteredRowCount: 12 } }).fullReportMatchCount, 31);
+});
+
+
+test('Eval2 defaults only to LowStock and Apply owns the committed selection', () => {
+ const source = readComposedAppSource();
+ const get = name => source.match(new RegExp('        function '+name+'\\([^]*?^        }','m'))[0];
+ const ctx = vm.createContext({getManagerEvalReports2Api:()=>engine,managerEvalReport2SelectionInitialized:false,managerEvalReport2SelectedReportIds:[],activeManagerEvalReport2:''});
+ vm.runInContext(get('getManagerEvalReport2SelectedReportIds'),ctx);
+ assert.deepEqual(Array.from(ctx.getManagerEvalReport2SelectedReportIds()),['low-stock']);
+ assert.doesNotMatch(get('toggleManagerEvalReport2ReportPicker'),/setManagerEvalReport2Reports/);
+ assert.match(get('renderManagerEvalReport2ReportsPanel'),/applyManagerEvalReport2ReportPicker\(this\)/);
+ assert.match(get('renderManagerEvalReport2ReportsPanel'),/Select All/);
+});
+
+
+test('authorized compact Eval browse data filters reports/users/drills synchronously with row counts',()=>{
+ const metadata={browseColumns:['unique_id','itemcode','commonname','contsize','locationcode','lotcode','season','blockalpha','assignedto','ptronhand','ptravailable','s_lts','reportIds'],browseRows:[['one','000101.010.1','Gold Mop','#1','C.16.000','26.F1','F1','C','allen_ward',62,60,1500,['low-stock']],['two','x','Plant','#3','C.17.000','26.F1','F1','C','abigail_vazquez',16,16,16,['low-stock']],['three','y','Plant','#3','H.06.000','26.U2','U2','H','bobby_hooper',58,58,58,['u2']]],evaluatorDirectory:['allen_ward','abigail_vazquez','bobby_hooper']};
+ const query={surface:'eval2',operation:'groups',filters:{reportIds:['low-stock'],groupBy:'blockalpha'}};
+ const page=engine.buildBrowsePage(metadata,query,'rev1');assert.equal(page.rows[0].value,'C');assert.equal(page.rows[0].rowCount,2);
+ const options=engine.browseUserOptions(metadata,query.filters);assert.equal(options[0].label,'All Users (2)');assert.ok(options.some(o=>o.label==='allen_ward (1)'));assert.ok(options.some(o=>o.value==='bobby_hooper'));
+ query.filters={...query.filters,groupBy:'locationcode',blockalpha:'C',assignedUsers:['allen_ward']};assert.equal(engine.buildBrowsePage(metadata,query,'rev1').rows[0].value,'C.16.000');
+ query.filters={...query.filters,reportIds:[]};assert.equal(engine.buildBrowsePage(metadata,query,'rev1').total,0);
 });

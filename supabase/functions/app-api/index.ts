@@ -6044,7 +6044,13 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     try {
       const actor = await resolveActiveSessionProfile(session);
       actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, req);
-      const data = await handleSuspendTag(supabase, actor, payload);
+      const data = jsonObject(await handleSuspendTag(supabase, actor, payload));
+      if (payload.operation === "add_candidates" && Array.isArray(data.rows)) {
+        // The service-role RPC has already committed atomically. Enrichment must
+        // never turn a committed candidate receipt into a failed mutation.
+        try { data.rows = jsonValue(await enrichSuspendTagMetricRows(suspendTagRowsFromResult(data), String(actor.id))); }
+        catch { /* Canonical source quantities remain on the durable receipt. */ }
+      }
       const notification = jsonObject(jsonObject(data).notification);
       if (notification.approvalId && notification.repUsername) {
         // Database-owned recipient; the durable worker retries the same push receipt.

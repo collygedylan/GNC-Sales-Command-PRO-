@@ -58,3 +58,9 @@ rebuildMasterInventoryIndexes installs the shared queue inventory index with byI
 Request/Archived cards display persisted req_qty immediately before itemcode, with creator display/username beneath Sales Rep and legacy creator/rep fallbacks. Metadata spans both thumbnail columns; meaningful notes replace empty caliper/source pills. The six metrics use three columns at narrow widths, matching Suspend. Submission retains canonical quantity and server creator audit fields.
 
 Reclass create/retry immediately invokes the existing leased delivery worker, then reads its receipt. Only server-frozen v7 inquiries may retry an earlier RECLASS_CONFLICT; no inventory mutation is replayed. A timeout retains queued state and never reports delivery without a receipt. Current Dylan/Megan/actor recipient resolution remains authoritative. Focused tests: request-submission-durability and security-zero-trust.
+
+## Option metrics and partial location refresh
+
+On Hand accepts on_hand/onhand/onHand/qty_on_hand/oh and existing PTR aliases, deriving available + review when On Hand is absent/zero and that sum is positive. AV option cards use the shared spaced six-metric grid and a literal gap before container size. preserveCardLocationOnHand retains max(summedLocationOnHand, existingLocOnHand, rowOnHand) within the same account/permission item/location scope; partial refreshes cannot downgrade a known multi-lot total.
+
+Candidate additions remain a verified service-role suspend_tag_command_v1 transaction with exact parent order grouping, source/version guards and idempotency. The receipt includes added_rows/removed_false_block and all affected physical rows; replaced False Block rows are removed from active Suspend arrays immediately. Optional metric enrichment cannot turn a committed receipt into failure. No synchronous Code.gs mutation is involved. Focused coverage: suspend-tag-dataset, inventory-drill-navigation and dock-trip-status.

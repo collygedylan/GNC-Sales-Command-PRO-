@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.34';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.35';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9457,6 +9457,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!item || typeof item !== 'object') return preserveUnknown ? null : '0';
             const snapshot = item.SNAPSHOT && typeof item.SNAPSHOT === 'object' ? item.SNAPSHOT : {};
             const value = firstNonEmptyValue(
+                item.on_hand, item.onhand, item.onHand, item.qty_on_hand, item.oh,
                 item.PTRONHAND,
                 item.ptronhand,
                 item.PTR_ON_HAND,
@@ -9468,6 +9469,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 snapshot.PTR_ON_HAND,
                 snapshot.ptr_on_hand
             );
+            const available = parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, item.available, ''));
+            const review = parseAppNumber(firstNonEmptyValue(item.PTRREVIEWED, item.ptrreviewed, item.review, item.reviewed, ''));
+            const derived = (Number(available) || 0) + (Number(review) || 0);
+            if (!(parseAppNumber(value) > 0) && derived > 0) return normalizeCardQuantityValue(derived);
             return value === '' && preserveUnknown ? null : normalizeCardQuantityValue(value);
         }
 
@@ -9476,6 +9481,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!item || typeof item !== 'object') return preserveUnknown ? null : '0';
             const snapshot = item.SNAPSHOT && typeof item.SNAPSHOT === 'object' ? item.SNAPSHOT : {};
             const value = firstNonEmptyValue(
+                item.review, item.reviewed,
                 item.PTRREVIEWED,
                 item.ptrreviewed,
                 item.PTR_REVIEWED,
@@ -9646,16 +9652,30 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return index;
         }
 
+        let retainedLocationOnHandDisplay = { owner: '', values: new Map() };
+        function preserveCardLocationOnHand(item, summedLocationOnHand = null) {
+            const owner = getSupabaseReadIdentityScope() + '|' + String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+            if (retainedLocationOnHandDisplay.owner !== owner) retainedLocationOnHandDisplay = { owner, values: new Map() };
+            const key = getInventoryCardItemLocationKey(item);
+            const rowOnHand = parseAppNumber(firstNonEmptyValue(item?.PTRONHAND, item?.ptronhand, item?.on_hand, item?.onhand, item?.onHand, item?.qty_on_hand, item?.oh, ''));
+            const existingLocOnHand = key ? retainedLocationOnHandDisplay.values.get(key) : null;
+            const known = [summedLocationOnHand, existingLocOnHand, rowOnHand].filter(value => value != null && Number.isFinite(Number(value)));
+            if (!known.length) return null;
+            const value = Math.max(...known.map(Number));
+            if (key) retainedLocationOnHandDisplay.values.set(key, value);
+            return Number(value.toFixed(6)).toLocaleString('en-US', { maximumFractionDigits: 6 });
+        }
+
         function getCardLocationOnHandValue(item = null) {
             const fallbackQty = parseAppNumber(firstNonEmptyValue(item?.PTRONHAND, item?.ptronhand, ''));
-            const fallback = fallbackQty > 0 ? fallbackQty.toLocaleString('en-US', { maximumFractionDigits: 6 }) : null;
+            const fallback = preserveCardLocationOnHand(item, fallbackQty > 0 ? fallbackQty : null);
             const state = getDatasetState('master');
             const nativeModeActive = nativeAuthSessionActive === true || !!nativeAuthProfile?.id;
             const authorization = nativeModeActive ? getQueueCardInventoryAuthorizationContext() : null;
             const serverAggregate = getCardLocationOnHandServerAggregate(item, { authorization });
             if (serverAggregate.verified === true) {
                 if (serverAggregate.value == null) return fallback;
-                return Number(serverAggregate.value.toFixed(6)).toLocaleString('en-US', { maximumFractionDigits: 6 });
+                return preserveCardLocationOnHand(item, serverAggregate.value);
             }
             // Browse projections include On Hand for every row. Full *field*
             // coverage is not required to sum a complete inventory snapshot.
@@ -9677,7 +9697,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const entry = masterInventoryByItemLocationOnHand.get(key);
             if (!entry) return fallback;
             if (!entry.known || !Number.isFinite(entry.total)) return fallback;
-            return Number(entry.total.toFixed(6)).toLocaleString('en-US', { maximumFractionDigits: 6 });
+            return preserveCardLocationOnHand(item, entry.total);
         }
 
         function getCardSeasonOhValue(item = null) {
@@ -9783,7 +9803,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 : locationAggregate?.verified === true ? locationAggregate.value : getCardLocationOnHandValue(locationMetricRow);
             const locationChips = safeOptions.includeLocationMetrics === false ? [] : [
                 ['Loc Photo Match', ['drive', 'request', 'docks', 'av', 'av-photo'].includes(sourceView) && locationPhotoMatch === 'Not verified' ? 'N/A' : locationPhotoMatch],
-                ['Loc On Hand', safeOptions.canonical === true ? locationOnHand : (locationOnHand ?? (safeOptions.missingValue === 'N/A' ? 'N/A' : 'Unknown'))]
+                ['Loc On Hand', preserveCardLocationOnHand(locationMetricRow, parseAppNumber(locationOnHand)) ?? (safeOptions.canonical === true ? locationOnHand : (locationOnHand ?? (safeOptions.missingValue === 'N/A' ? 'N/A' : 'Unknown')))]
             ];
             const allChips = [...primaryChips, openStockChip, ...locationChips];
             const trailingChipsHtml = String(safeOptions.trailingChipsHtml || '').trim();
@@ -12210,10 +12230,6 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function handleDetailCameraInputActivation(event) {
             const target = event && event.target;
             const isFileInput = !!(target && target.matches && target.matches('input[type="file"]'));
-            if (isFileInput) {
-                prepareIosCameraPickerOpen('detail-camera');
-                return true;
-            }
             if (Date.now() >= (detailCameraInputBlockUntil || 0)) {
                 prepareIosCameraPickerOpen('detail-camera');
                 return true;
@@ -25866,7 +25882,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.34').trim() || 'AgData v2.3.34';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.35').trim() || 'AgData v2.3.35';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -38998,6 +39014,22 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const usernameKey = getRequestCapabilityUsernameKey(currentUser);
             if (!usernameKey || requestCapabilityState.username !== usernameKey) return null;
             return requestCapabilityState.capabilities || null;
+        }
+
+        function getRequestEntryCapabilities() {
+            const denied = window.GncUserAccessControl?.getSelfState?.().denied === true;
+            if (denied || nativeAuthProfile?.active === false || nativeAuthProfile?.disabled_at != null) return null;
+            const existing = getRequestCapabilities();
+            // Explicit server denials remain authoritative; refresh age is not a denial.
+            if (existing) return existing;
+            const username = getRequestCapabilityUsernameKey(currentUser);
+            const profile = nativeAuthProfile;
+            if (!username || !nativeAuthSessionActive || !profile?.id || nativeAuthSessionUserId !== profile.id
+                || getRequestCapabilityUsernameKey(profile.username) !== username) return null;
+            const role = normalizeRoleAccessToken(profile.role || currentRole);
+            const allowed = ['ADMIN','ADMINISTRATOR','MANAGER','CSR','OFFICE','SALESREP','SALES','REP','EVAL','QCSUPERVISOR','QC','FOREMAN','GROWER'].includes(role)
+                && canonicalFeaturePermission('can_access_que') !== false;
+            return { username, canCreateGeneral: allowed, canCreateAv: allowed && canonicalFeaturePermission('can_access_av') !== false };
         }
 
         function isRequestCapabilityDataUsable() {
@@ -76466,7 +76498,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 ? (currentViewId === 'managers' && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
                     ? getManagerAssignedColumnState().scroll : getMainAreaScrollTop())
                 : null;
-            if (currentViewId === 'managers' && nextViewId !== 'managers') destroyManagerAssignedItemsView();
+            if (currentViewId === 'managers' && nextViewId !== 'managers') { cancelManagerModuleReads(); destroyManagerAssignedItemsView(); }
             if (currentViewId === 'communication' && nextViewId !== 'communication') unmountAlphaCommandCenter('communications');
             if (currentViewId === 'managers' && nextViewId !== 'managers' && activeHomeTab === MANAGER_HR_COMMAND_VIEW) unmountAlphaCommandCenter('hr');
             if (currentViewId === 'managers' && nextViewId !== 'managers' && activeHomeTab === MANAGER_PRODUCTION_SCHEDULE_VIEW) {
@@ -76641,6 +76673,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // internal drill or a still-pending read. Modal/editor Back above
             // remains local to the active interaction.
             if (currentView === 'managers') {
+                if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
+                    && (managerEvalReport2DetailItemKey || managerEvalReport2BrowseMode === 'location' && managerEvalReport2DrillLevel > 0)) {
+                    backManagerEvalReport2Drill(); updateGlobalBackButton(); return false;
+                }
                 if (String(activeHomeTab || '').trim().toLowerCase() !== 'dashboard') return openManagersModules();
                 fastBackHome();
                 return false;
@@ -125646,6 +125682,7 @@ C.14.043 C.15.000
             if (previousTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && previousTab !== nextTab) {
                 saveManagerAssignedNavigation();
             }
+            if (previousTab !== nextTab) cancelManagerModuleReads();
             if (previousTab !== nextTab && typeof managerReportPageController !== 'undefined') managerReportPageController?.suspendMounts();
             activeHomeTab = nextTab;
             if (nextTab !== MANAGER_SEASON_PRIORITY_VIEW) cancelManagerSeasonPriorityRead();
@@ -128822,6 +128859,7 @@ C.14.043 C.15.000
                     if (state.metadata.settings) managerEvalReportSettings = { ...managerEvalReportSettings, ...state.metadata.settings };
                     if (surface === 'eval2') {
                         if (state.revision) {
+                            getManagerEvalReports2Api()?.browseSeedRows(state.metadata);
                             managerEvalReport2Cache = createPagedManagerEvalIndex(state);
                             managerEvalReport2CacheKey = state.revision;
                         }
@@ -128867,6 +128905,17 @@ C.14.043 C.15.000
             if (activeHomeTab === MANAGER_SEASON_PRIORITY_VIEW) return 'season-priority';
             if (isManagerApprovalTab(activeHomeTab)) return 'approval';
             return '';
+        }
+        function getManagerEvalReport2BrowsePage(query) {
+            const state = getManagerReportPageController().state('eval2');
+            return getManagerEvalReports2Api()?.buildBrowsePage(state.metadata, query, state.revision) || null;
+        }
+        function refreshManagerEvalReport2UserOptions() {
+            const select = document.querySelector('[data-role="manager-eval2-user-filter"]');
+            if (!select || document.activeElement === select) return;
+            const current = getManagerEvalAssignedUsers('eval2')[0] || 'all';
+            select.innerHTML = getManagerEvalReport2UserFilterOptions().map(option => '<option value="'+escapeHtml(option.value)+'">'+escapeHtml(option.label)+'</option>').join('');
+            select.value = current;
         }
         function createPagedManagerEvalIndex(state, retainItems = true) {
             const meta = state.metadata || {}, api = getManagerEvalReportsApi();
@@ -129213,7 +129262,7 @@ C.14.043 C.15.000
         function getManagerEvalReportRowAssignedToUsers(row = null) {
             const source = Array.isArray(row && row.ASSIGNEDTO_USERS)
                 ? row.ASSIGNEDTO_USERS
-                : (Array.isArray(row && row.assignedto_users) ? row.assignedto_users : [getManagerEvalReportRowAssignedTo(row)]);
+                : (Array.isArray(row && row.assignedto_users) ? row.assignedto_users : [getManagerEvalReportRowAssignedTo(row), row?.evaluator, row?.eval_user, row?.assigned_user].filter(Boolean));
             const seen = new Set();
             return source.map((value) => normalizeManagerEvalAssignedUser(value || '(Unassigned)')).filter((value) => {
                 const key = value.toLocaleLowerCase();
@@ -129609,7 +129658,7 @@ C.14.043 C.15.000
         }
 
         function reconcileManagerEvalReport2Navigation() {
-            if (!managerEvalReport2NeedsReconcile || !managerEvalReport2Cache
+            if (!managerEvalReport2NeedsReconcile || !managerEvalReport2Cache || managerEvalReport2Cache.paged
                 || !isDatasetLoaded('master', 'full') || !isDatasetLoaded('warehouseAssignedItems', 'full')
                 || (canUseProductionLiveSync() && productionLiveSyncVerifiedView !== productionVerifiedViewKey())) return;
             managerEvalReport2NeedsReconcile = false;
@@ -130004,7 +130053,7 @@ C.14.043 C.15.000
             if (api && !managerEvalReport2SelectionInitialized) {
                 managerEvalReport2SelectionInitialized = true;
                 if (!managerEvalReport2SelectedReportIds.length) {
-                    managerEvalReport2SelectedReportIds = api.REPORT_IDS.slice();
+                    managerEvalReport2SelectedReportIds = ['low-stock'];
                     activeManagerEvalReport2 = managerEvalReport2SelectedReportIds[0] || '';
                 }
             }
@@ -130021,26 +130070,25 @@ C.14.043 C.15.000
             return getManagerEvalReport2SelectedReportIds().filter((id) => membership.has(id));
         }
 
+        function setManagerEvalReport2PickerChecks(button, checked) {
+            button.closest('[data-manager-eval2-report-picker]')?.querySelectorAll('input[data-eval2-report-id]').forEach(input => { input.checked = checked; });
+            return false;
+        }
+
         function applyManagerEvalReport2ReportPicker(button) {
             const picker = button && button.closest('[data-manager-eval2-report-picker]');
             if (!picker) return false;
             const ids = Array.from(picker.querySelectorAll('input[data-eval2-report-id]:checked')).map((input) => input.value);
             const records = document.getElementById('manager-eval-report-2-records');
             if (records) records.setAttribute('aria-busy', 'true');
-            if (setManagerEvalReport2Reports(ids) !== false) picker.open = false;
+            picker.open = false;
+            if (setManagerEvalReport2Reports(ids) === false) picker.open = true;
             else if (records) records.removeAttribute('aria-busy');
             return false;
         }
 
         function toggleManagerEvalReport2ReportPicker(input) {
-            const picker = input && input.closest('[data-manager-eval2-report-picker]');
-            if (!picker) return false;
-            const ids = Array.from(picker.querySelectorAll('input[data-eval2-report-id]:checked')).map((entry) => entry.value);
-            if (setManagerEvalReport2Reports(ids) === false) input.checked = !input.checked;
-            else requestAnimationFrame(() => {
-                const current = document.querySelector('[data-manager-eval2-report-picker]');
-                if (current) current.open = true;
-            });
+            // Checkboxes are a local draft; Apply commits once without N reads.
             return false;
         }
 
@@ -130076,11 +130124,12 @@ C.14.043 C.15.000
             managerEvalReport2VisibleGroupsCacheKey = '';
             managerEvalReport2NeedsReconcile = true;
             reconcileManagerEvalReport2Navigation();
-            requestAnimationFrame(() => {
+            {
                 const summary = document.getElementById('manager-eval-report-2-report-select');
                 if (summary) summary.textContent = `Reports: ${getManagerEvalReport2ReportLabel()}`;
                 if (!activeManagerEvalReport2 || !refreshManagerEvalReport2BrowseRegion({ keepRecords: true })) scheduleManagersRender(true);
-            });
+                refreshManagerEvalReport2UserOptions();
+            }
             return true;
         }
 
@@ -130153,6 +130202,13 @@ C.14.043 C.15.000
         }
 
         function getManagerEvalReport2UserFilterOptions(rows = null) {
+            if (!Array.isArray(rows) && useManagerReportPages('eval2')) {
+                const metadata = getManagerReportPageController().state('eval2').metadata;
+                const local = getManagerEvalReports2Api()?.browseUserOptions(metadata, buildManagerReportPageQuery('eval2').filters);
+                if (local) return local;
+                return [{ value:'all', label:'All Users ('+Number(metadata.filteredRowCount || 0)+')' },
+                    ...(metadata.evaluatorDirectory || metadata.assignedToOptions || []).map(value => ({value,label:value}))];
+            }
             const sourceRows = Array.isArray(rows) ? rows : getManagerEvalReport2Rows();
             const itemCodesByUser = new Map();
             const allItemCodes = new Set();
@@ -130399,6 +130455,9 @@ C.14.043 C.15.000
 
         function getManagerEvalReport2VisibleItemGroups() {
             if (useManagerReportPages('eval2')) {
+                const progressive = managerEvalReport2ProgressiveRowsState;
+                if (progressive?.owner === getSupabaseReadIdentityScope()
+                    && JSON.stringify(progressive.query) === JSON.stringify(buildManagerReportPageQuery('eval2'))) return progressive.rows.map(normalizePagedManagerGroup);
                 const state = getManagerReportPageController().state('eval2');
                 return state.queryKey === JSON.stringify(buildManagerReportPageQuery('eval2')) ? state.rows.map(normalizePagedManagerGroup) : [];
             }
@@ -131128,6 +131187,11 @@ C.14.043 C.15.000
             const value = getManagerEvalReport2EffectiveFieldValue(row, fieldKey, rowIndex);
             if (isDate) return value ? formatManagerEvalReport2DetailDate(value) : '—';
             const normalized = String(value == null ? '' : value).trim();
+            if (['PTRONHAND','PTRAVAILABLE','S_LTS'].includes(fieldKey)) {
+                const fallback = typeof getOperationalCardInventoryRow === 'function' ? getOperationalCardInventoryRow(row) : row;
+                const numeric = parseAppNumber(normalized || firstNonEmptyValue(fallback?.[fieldKey], fallback?.[fieldKey.toLowerCase()], ''));
+                return String(numeric == null ? 0 : numeric);
+            }
             return normalized || '—';
         }
 
@@ -131313,10 +131377,14 @@ C.14.043 C.15.000
         }
 
         async function openManagerEvalReport2DirectInquiry(encodedKey = '') {
+            const generation = managerModuleReadGeneration;
+            const owner = getSupabaseReadIdentityScope();
             if (useManagerReportPages('eval2')) {
                 try { await loadPagedManagerItem(decodeURIComponent(encodedKey).replace(/^item:/, '')); }
                 catch (error) { showToast('Item Inquiry Unavailable', String(error.message || error), true); return false; }
             }
+            if (generation !== managerModuleReadGeneration || owner !== getSupabaseReadIdentityScope()
+                || getCurrentVisibleViewId() !== 'managers' || activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW) return false;
             if (!isEvalWorkManagerUser()) {
                 showToast('View Only', 'Only Dylan, Megan, or JD can send this Item Inquiry.', true);
                 return false;
@@ -131386,11 +131454,11 @@ C.14.043 C.15.000
                 const priorityValue = getDriveColumnItemValue(row, 'PRIORITY');
                 const openStockValue = getDriveColumnItemValue(row, 'S_LTS');
                 const priority = String(priorityValue == null ? '' : priorityValue).trim() || '—';
-                const openStock = String(openStockValue == null ? '' : openStockValue).trim() || '—';
+                const openStock = getManagerEvalReport2DetailValue(row, 'S_LTS');
                 const onHandValue = getDriveColumnItemValue(row, 'PTRONHAND');
                 const availableValue = getDriveColumnItemValue(row, 'PTRAVAILABLE');
-                const onHand = String(onHandValue == null || onHandValue === '' ? '—' : onHandValue).trim() || '—';
-                const available = String(availableValue == null || availableValue === '' ? '—' : availableValue).trim() || '—';
+                const onHand = getManagerEvalReport2DetailValue(row, 'PTRONHAND');
+                const available = getManagerEvalReport2DetailValue(row, 'PTRAVAILABLE');
                 return `<div class="manager-eval2-inventory-grid manager-eval2-inventory-row border-t border-emerald-100 px-1 py-2 text-[11px] font-bold text-slate-700"><span class="min-w-0 break-words font-mono text-emerald-800">${escapeHtml(location)}</span><span class="min-w-0 break-words font-mono text-slate-700">${escapeHtml(lot)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(priority)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(onHand)}</span><span class="text-right tabular-nums text-blue-800">${escapeHtml(available)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(openStock)}</span></div>`;
             }).join('');
             return `<article role="button" tabindex="0" aria-label="Open Drive Mode Item Inquiry for ${escapeHtml(safeGroup.itemCode)}" class="manager-eval2-item-card overflow-hidden rounded-xl border border-green-200 bg-white shadow-sm cursor-pointer transition-transform" data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" onclick="return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}')" onkeydown="if(event.currentTarget===event.target&&(event.key==='Enter'||event.key===' ')){event.preventDefault();return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}')}"><div class="p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-lg font-black leading-tight text-[#007a4d]">${escapeHtml(safeGroup.commonName || 'Unknown')}</div><div class="mt-1 break-all font-mono text-[14px] font-black text-blue-700">${escapeHtml(safeGroup.itemCode || '-')}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(safeGroup.containerSizes.join(', ') || '-')} &bull; ${safeGroup.rowCount} current rows &bull; ${safeGroup.locationCount} locations</div><div class="mt-2 flex flex-wrap gap-1">${userChips}</div></div><div class="flex shrink-0 items-center gap-2">${checkHtml}<i class="ph-bold ph-pencil-simple-line text-lg text-emerald-500" aria-hidden="true"></i></div></div><div class="manager-eval2-inventory-grid manager-eval2-inventory-header mt-3 rounded-t-lg bg-emerald-50 px-1 py-2 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-800"><span>Location</span><span>Lot</span><span class="text-right">Priority</span><span class="text-right">On Hand</span><span class="text-right">Available</span><span class="text-right">Open Stock Qty</span></div>${inventoryRowsHtml}<div class="mt-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-700">Tap the card to open the Drive Mode Reclass Item Inquiry</div></div></article>`;
@@ -131677,7 +131745,7 @@ C.14.043 C.15.000
             const assignedLocked = managerEvalReport2AssignmentFilterRefreshing;
             const reportLocked = false;
             const selectedReports = getManagerEvalReport2SelectedReportIds();
-            const reportSelect = `<details data-manager-eval2-report-picker data-eval-report-counts-ready="${countSignals.ready ? 'true' : 'false'}" data-eval-source-row-count="${countSignals.sourceRows}" data-eval-report-match-count="${countSignals.matches}" class="rounded-xl border border-emerald-200 bg-white"><summary id="manager-eval-report-2-report-select" class="min-h-[48px] cursor-pointer px-3 py-3 text-[12px] font-black text-slate-800">Reports: ${escapeHtml(getManagerEvalReport2ReportLabel())}</summary><fieldset class="p-3"><legend class="text-[10px] font-bold">Select one or more reports (matches any selected report)</legend>${api.REPORT_IDS.map((id) => `<label data-eval2-report-option="${escapeHtml(id)}" data-eval-report-count="${getManagerEvalReport2ReportCount(id)}" class="flex min-h-[44px] cursor-pointer items-center gap-3"><input type="checkbox" data-eval2-report-id value="${escapeHtml(id)}" ${selectedReports.includes(id) ? 'checked' : ''} class="h-5 w-5" onchange="return toggleManagerEvalReport2ReportPicker(this)"><span>${escapeHtml(getManagerEvalReport2Meta(id).label)} (${escapeHtml(String(getManagerEvalReport2ReportCount(id)))})</span></label>`).join('')}<button type="button" class="mt-2 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 font-black text-white" onclick="this.closest('details').open=false; return false">Apply Reports</button></fieldset></details>`;
+            const reportSelect = `<details data-manager-eval2-report-picker data-eval-report-counts-ready="${countSignals.ready ? 'true' : 'false'}" data-eval-source-row-count="${countSignals.sourceRows}" data-eval-report-match-count="${countSignals.matches}" class="rounded-xl border border-emerald-200 bg-white"><summary id="manager-eval-report-2-report-select" class="min-h-[48px] cursor-pointer px-3 py-3 text-[12px] font-black text-slate-800">Reports: ${escapeHtml(getManagerEvalReport2ReportLabel())}</summary><fieldset class="p-3"><legend class="text-[10px] font-bold">Select one or more reports (matches any selected report)</legend><div class="flex gap-3 py-2"><button type="button" onclick="return setManagerEvalReport2PickerChecks(this,true)">Select All</button><button type="button" onclick="return setManagerEvalReport2PickerChecks(this,false)">Clear All</button></div>${api.REPORT_IDS.map((id) => `<label data-eval2-report-option="${escapeHtml(id)}" data-eval-report-count="${getManagerEvalReport2ReportCount(id)}" class="flex min-h-[44px] cursor-pointer items-center gap-3"><input type="checkbox" data-eval2-report-id value="${escapeHtml(id)}" ${selectedReports.includes(id) ? 'checked' : ''} class="h-5 w-5" onchange="return toggleManagerEvalReport2ReportPicker(this)"><span>${escapeHtml(getManagerEvalReport2Meta(id).label)} (${escapeHtml(String(getManagerEvalReport2ReportCount(id)))})</span></label>`).join('')}<button type="button" class="mt-2 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 font-black text-white" onclick="return applyManagerEvalReport2ReportPicker(this)">Apply Reports</button></fieldset></details>`;
             const assignedSelect = buildManagerEvalReport2Select('AssignedTo', 'assignedto', managerEvalReport2AssignedToFilter, assignedToOptions, true, !activeManagerEvalReport2 || assignedLocked);
             const reportReady = !!activeManagerEvalReport2;
             let reportHtml = '';
@@ -131686,7 +131754,7 @@ C.14.043 C.15.000
             } else {
                 reportHtml = `<div id="manager-eval-report-2-browse-region">${renderManagerEvalReport2BrowseRegionHtml()}</div>`;
             }
-            return `<div class="manager-eval2-drive-workflow" data-eval-report-counts-ready="${countSignals.ready ? 'true' : 'false'}" data-eval-source-row-count="${countSignals.sourceRows}" data-eval-report-match-count="${countSignals.matches}"><div class="manager-eval2-drive-controls"><div class="manager-eval2-drive-filter-grid compact-filter-rail">${reportSelect}${assignedSelect}</div><div id="manager-eval-report-2-lock-note" class="${assignedLocked || reportLocked ? '' : 'hidden'} mt-2 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700">${''}</div>${moreHtml}</div>${renderManagerEvalReport2SelectionTray()}${reportHtml}</div>`;
+            return `<div class="manager-eval2-drive-workflow" data-eval-report-counts-ready="${countSignals.ready ? 'true' : 'false'}" data-eval-source-row-count="${countSignals.sourceRows}" data-eval-report-match-count="${countSignals.matches}"><div class="manager-eval2-drive-controls">${reportSelect}<details class="mobile-browse-filters manager-eval2-native-filters"><summary>Filters</summary><div class="mobile-browse-filter-panel">${assignedSelect}${moreHtml}</div></details><div id="manager-eval-report-2-lock-note" class="${assignedLocked || reportLocked ? '' : 'hidden'} mt-2 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700">${''}</div></div>${renderManagerEvalReport2SelectionTray()}${reportHtml}</div>`;
         }
 
         function renderManagerEvalReport2MoreMenu(index = null, meta = null, sourceUpdated = '') {
@@ -131786,9 +131854,11 @@ C.14.043 C.15.000
             const requestId = ++state.requestId;
             const isFirst = state.nextOffset === 0;
             state.loading = true; state.error = '';
-            const request = isFirst
+            const pageQuery = { ...state.query, offset:state.nextOffset, sourceRevision:state.revision };
+            const local = !retry && getManagerEvalReport2BrowsePage(pageQuery);
+            const request = local ? Promise.resolve(local) : isFirst
                 ? controller.load(state.query, retry)
-                : controller.readPage({ ...state.query, offset:state.nextOffset, sourceRevision:state.revision });
+                : controller.readPage(pageQuery);
             scheduleManagersRender(true);
             return Promise.resolve(request).then(page => {
                 if (managerEvalReport2ProgressiveRowsState !== state || requestId !== state.requestId
@@ -131871,8 +131941,11 @@ C.14.043 C.15.000
                 if (!state || state.key !== queryKey) {
                     state?.observer?.disconnect();
                     state = managerEvalReport2ProgressiveRowsState = { key:queryKey, query, owner:getSupabaseReadIdentityScope(), rows:[], nextOffset:0, total:null, revision:'', hasMore:true, loading:false, error:'', requestId:0, observer:null };
-                    void loadManagerEvalReport2ProgressivePage(state);
+                    const local = getManagerEvalReport2BrowsePage(query);
+                    if (local) applyManagerEvalReport2ProgressivePage(state, local, true);
+                    else void loadManagerEvalReport2ProgressivePage(state);
                 }
+                refreshManagerEvalReport2UserOptions();
                 const renderKey = JSON.stringify([state.key, managerEvalReport2DisplayMode,
                     managerEvalReport2SelectionRevision, managerEvalReport2EditRevision, Number(state.renderRevision) || 0]);
                 const status = state.error
@@ -136879,7 +136952,19 @@ C.14.043 C.15.000
             return false;
         }
 
+        let managerModuleReadGeneration = 0;
+        function cancelManagerModuleReads() {
+            managerModuleReadGeneration += 1;
+            managerReportPageController?.suspendReads?.();
+            managerEvalReport2IndexJob?.cancel?.();
+            resetManagerEvalReport2ProgressiveRowsState();
+            managerEvalReport2AssignmentFilterRequestToken += 1;
+            managerEvalReport2AssignmentFilterRefreshing = false;
+            managerEvalReport2LoadState.loading = false;
+        }
+
         function openManagersModules() {
+            cancelManagerModuleReads();
             if (typeof managerReportPageController !== 'undefined') managerReportPageController?.suspendMounts();
             cancelManagerSeasonPriorityRead();
             window.GncProductionSchedule?.unmount();
@@ -138956,6 +139041,7 @@ C.14.043 C.15.000
                 && !!snapshot && !!userKey && userKey === snapshotUser && retainedAccess === true && accessDenied !== true;
         }
         function renderManagers() {
+            if (getCurrentVisibleViewId() !== 'managers') return;
             if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) ensureSeasonSalesNoteAccessFresh();
             const container = document.getElementById('managers-content');
             if (!container) return;
@@ -139063,17 +139149,21 @@ C.14.043 C.15.000
             else if (activeHomeTab === MANAGER_COMPANY_DIRECTORY_VIEW && getManagersToolAccess().canManageCompanyDirectory) html += '<div id="manager-company-directory-root"></div>';
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
+            const retainedControls = activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW && !managerEvalReport2DetailItemKey
+                ? container.querySelector('.manager-eval2-drive-controls') : null;
             const retainedRecords = activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
                 ? container.querySelector('#manager-eval-report-2-records') : null;
             const retainedReportPicker = activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
                 ? container.querySelector('details[data-manager-eval2-report-picker][open]') : null;
             if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && patchManagerAssignedItemsShell(container, html)) {
                 // The React host stays attached, preserving native focus and scroll measurements.
-            } else if (retainedRecords || retainedReportPicker) {
+            } else if (retainedRecords || retainedReportPicker || retainedControls) {
                 const shell = document.createElement('div');
                 shell.innerHTML = html;
                 const slot = shell.querySelector('#manager-eval-report-2-records');
                 if (slot && retainedRecords) slot.replaceWith(retainedRecords);
+                const controlsSlot = shell.querySelector('.manager-eval2-drive-controls');
+                if (retainedControls && controlsSlot) controlsSlot.replaceWith(retainedControls);
                 const reportPickerSlot = shell.querySelector('details[data-manager-eval2-report-picker]');
                 if (retainedReportPicker && reportPickerSlot) reportPickerSlot.replaceWith(retainedReportPicker);
                 // While a refresh is loading, its index may be temporarily
@@ -142403,8 +142493,8 @@ C.14.043 C.15.000
             const location = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location,
                 operational ? (options.operationalMissingValue || 'N/A') : 'No Loc');
             const compactSuspendHeader = compactSuspend
-                ? `<div class="app-suspend-tag-header-row"><div class="app-suspend-tag-text-column"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')}<span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div></div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(location)} · ${esc(item.LOTCODE || '-')} · PRI ${esc(item.PRIORITY ?? '-')}</div></div>${actions}</div>${options.headerHtml ? `<div class="app-suspend-tag-header-badges">${options.headerHtml}</div>` : ''}`
-                : `<div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')}<span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div></div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(location)} · ${esc(item.LOTCODE || '-')} · PRI ${esc(item.PRIORITY ?? '-')}</div>${operational ? `<div class="app-operational-planstart-date">PLANSTART: ${esc(options.planstartValue || 'N/A')}</div>` : ''}${options.headerHtml || ''}`;
+                ? `<div class="app-suspend-tag-header-row"><div class="app-suspend-tag-text-column"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')} <span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div></div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(location)} · ${esc(item.LOTCODE || '-')} · PRI ${esc(item.PRIORITY ?? '-')}</div></div>${actions}</div>${options.headerHtml ? `<div class="app-suspend-tag-header-badges">${options.headerHtml}</div>` : ''}`
+                : `<div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')} <span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div></div><div class="app-drive-card-itemcode">${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(location)} · ${esc(item.LOTCODE || '-')} · PRI ${esc(item.PRIORITY ?? '-')}</div>${operational ? `<div class="app-operational-planstart-date">PLANSTART: ${esc(options.planstartValue || 'N/A')}</div>` : ''}${options.headerHtml || ''}`;
             return `<div class="app-drive-card-grid ${classes} flex-grow">${photo ? `<div class="app-drive-card-photo">${photo}</div>` : ''}<div class="app-drive-card-main"><div class="app-drive-card-header">${compactSuspendHeader}</div>${compactSuspend ? '' : `${options.operationalMetaHtml || ''}${operationalHeader}`}<div class="app-drive-card-details">${compactSuspend ? options.orderStripHtml || '' : ''}<div class="app-drive-card-quantity-band">${options.metricsHtml || ''}</div>${options.detailsHtml || ''}</div></div>${compactSuspend ? '' : actions}</div>`;
         }
 
@@ -142555,7 +142645,11 @@ C.14.043 C.15.000
             const cachedMaster = !state.row && !suspendMetrics && sameOwnerMasterSnapshot ? findLinkedMasterRow(item) : null;
             const displayFallback = isSuspendTagCard && !suspendMetrics && !state.row ? getSuspendTagMetricDisplayFallback(item) : null;
             const displayRow = state.row || cachedMaster || displayFallback?.row || null;
-            const metricRow = suspendMetrics ? { ...(displayRow || {}), ...suspendMetrics } : (displayRow || {});
+            const falseBlock = isSuspendTagCard && String(item.LOCATIONCODE || item.locationcode || '') === '0.00.111';
+            const zeroMetrics = falseBlock ? { PTRONHAND:0, PTRREVIEWED:0, PTRAVAILABLE:0, S_LTS:0, LOC_ON_HAND:0, LOC_MATCH_QTY:0 } : {};
+            const metricRow = { ...zeroMetrics, ...(displayRow || {}), ...(suspendMetrics || {}) };
+            if (item.ITEMCODE || item.itemcode) metricRow.ITEMCODE = item.ITEMCODE || item.itemcode;
+            if (item.LOCATIONCODE || item.locationcode) metricRow.LOCATIONCODE = item.LOCATIONCODE || item.locationcode;
             // These quantities and photo observations belong to the verified
             // Drive master, regardless of the queue displaying them.
             return buildInventoryQuantityChipsHtml(metricRow, { ...options, sourceView: state.row || cachedMaster ? 'drive' : sourceView,
@@ -142564,8 +142658,8 @@ C.14.043 C.15.000
                     ? (suspendMetrics || displayFallback?.row ? 'ready' : '')
                     : (suspendMetrics || cachedMaster || displayFallback?.row ? 'ready' : state.status),
                 queueMetricTelemetry: isSuspendTagCard,
-                knownLocationOnHand: suspendMetrics?.LOC_ON_HAND,
-                knownLocationPhotoMatch: suspendMetrics?.LOC_MATCH_QTY });
+                knownLocationOnHand: suspendMetrics?.LOC_ON_HAND ?? (falseBlock ? 0 : undefined),
+                knownLocationPhotoMatch: suspendMetrics?.LOC_MATCH_QTY ?? (falseBlock ? 0 : undefined) });
         }
 
         const suspendTagReclassLoads = new Map();
@@ -143702,12 +143796,9 @@ C.14.043 C.15.000
                 lastView,
                 ''
             ) || '').trim().toLowerCase();
-            const requestCapabilities = getRequestCapabilities();
-            if (!requestCapabilities || requestCapabilityState.stale) {
-                showToast('Request Access Check', 'Refresh Request access before creating a request.', true);
-                return false;
-            }
-            const canCreateHere = requestEntryView === 'av' ? requestCapabilities.canCreateAv : requestCapabilities.canCreateGeneral;
+            const requestCapabilities = getRequestEntryCapabilities();
+            void initializeRequestCapabilities().catch(() => {});
+            const canCreateHere = requestEntryView === 'av' ? requestCapabilities?.canCreateAv : requestCapabilities?.canCreateGeneral;
             if (!canCreateHere) {
                 showToast('Request Restricted', requestEntryView === 'av' ? 'AV request entry is not available for this login.' : 'General and plant request entry is not available for this login.', true);
                 return false;
@@ -145895,7 +145986,7 @@ C.14.043 C.15.000
                 domId, item: JSON.parse(JSON.stringify(findItemByDomId(domId))), sourceView: selectedItemSources.get(domId) || visibleRequestSource,
                 selectionToken: getRequestSelectionIntentToken(domId)
             })).filter(source => source.item);
-            const requestCapabilities = getRequestCapabilities();
+            const requestCapabilities = getRequestEntryCapabilities();
             if (requestSourceEntries.length > 100) { showToast('Too Many Rows', 'Submit at most 100 rows per Request. Your cart and form are unchanged.', true); return false; }
             if(!requestSourceEntries.length){showToast("Required","Please select a row first.",true);return}
             if(!requestedBy){showToast("Required","Please choose a sales rep for this request.",true);return}
@@ -145915,11 +146006,7 @@ C.14.043 C.15.000
                 showToast('Choose Photo/Data', 'Choose Use Saved Pictures & Data or Start Request Blank for every row before submitting.', true);
                 return false;
             }
-            if (!requestCapabilities || requestCapabilityState.stale) {
-                showToast('Request Access Check', 'Refresh Request access before creating a request.', true);
-                return false;
-            }
-            if (requestSource === 'av' ? !requestCapabilities.canCreateAv : !requestCapabilities.canCreateGeneral) {
+            if (requestSource === 'av' ? !requestCapabilities?.canCreateAv : !requestCapabilities?.canCreateGeneral) {
                 showToast('Request Restricted', requestSource === 'av' ? 'AV request entry is not available for this login.' : 'General and plant request entry is not available for this login.', true);
                 return false;
             }
@@ -163769,7 +163856,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const local = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toUpperCase(), value]));
                 Object.assign(local, row);
                 for (const target of [socInventory, socRawSourceRows, suspendTagInventory, suspendTagRawSourceRows]) {
-                    upsertRealtimeRow(target, { ...local }, 'ph_soc_master');
+                    const replaced = String(row.suspend_candidate_state || '') === 'replaced';
+                    if (replaced && (target === suspendTagInventory || target === suspendTagRawSourceRows)) {
+                        const index = target.findIndex(value => String(value.UNIQUE_ID || value.unique_id || '') === String(row.unique_id));
+                        if (index >= 0) target.splice(index, 1);
+                    } else upsertRealtimeRow(target, { ...local }, 'ph_soc_master');
                 }
             });
             refreshRealtimeDetailLookupIndexes('ph_soc_master');

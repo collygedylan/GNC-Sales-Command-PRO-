@@ -48,3 +48,9 @@ Request detail paints saved photos before hydration, always exposes AV Note, nor
 Request/Archived cards display persisted req_qty immediately before itemcode, with creator display/username beneath Sales Rep and legacy creator/rep fallbacks. Metadata spans both thumbnail columns; meaningful notes replace empty caliper/source pills. The six metrics use three columns at narrow widths, matching Suspend. Submission retains canonical quantity and server creator audit fields.
 
 Reclass create/retry immediately invokes the existing leased delivery worker, then reads its receipt. Only server-frozen v7 inquiries may retry an earlier RECLASS_CONFLICT; no inventory mutation is replayed. A timeout retains queued state and never reports delivery without a receipt. Current Dylan/Megan/actor recipient resolution remains authoritative. Focused tests: request-submission-durability and security-zero-trust.
+
+## Immediate authorized Request entry
+
+getRequestEntryCapabilities retains same-account server capabilities while refreshing and derives creation defaults from the verified active profile and canonical Que/AV grants when the capability read is pending. Explicit server denial, inactive profile and account changes still deny entry; server mutation/tuple validation remains authoritative. Request entry and submission never gate on capability age. Non-sales users start with Who requested this; sales_rep retains the locked self/customer path. Location totals use preserveCardLocationOnHand to retain the maximum known same-account item/location sum across partial lots (403/143 cannot fall to 102/81); account/permission changes clear retained display totals.
+
+Queue card taps open Item Detail. Camera file inputs must obey the click-through guard; only a subsequent detail photo-control gesture opens the picker. The Request completion footer stays in flow after inputs and AV options. Focused coverage: request-submission-durability and inventory-drill-navigation.

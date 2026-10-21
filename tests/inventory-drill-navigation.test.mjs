@@ -756,10 +756,12 @@ test('actual personalized Manager, Docks and Que footer buttons switch from Home
   preferences.reset();
 });
 
-test('every Manager submodule returns to Modules immediately before pending reads or internal drills, then Home', () => {
+test('Manager submodules return to Modules immediately; Eval2 ITEMCODES mode returns to the hub, then Home', () => {
   for (const tab of ['customer-rep-map', 'access-control', 'season-settings', 'crop-roll', 'approval', 'season-priority', 'production-schedule', 'eval-reports-2', 'moves', 'productivity']) {
     const { context: f, calls } = backHarness('managers');
     f.activeHomeTab = tab;
+    f.MANAGER_EVAL_REPORTS_2_VIEW = 'eval-reports-2';
+    f.managerEvalReport2DetailItemKey = ''; f.managerEvalReport2BrowseMode = 'plant';
     f.managerRead = new Promise(() => {});
     f.managerEvalReport2DrillLevel = 3;
     f.openManagersModules = () => { f.activeHomeTab = 'dashboard'; calls.push('modules'); return false; };
@@ -782,6 +784,7 @@ test('Manager Modules cancels stale render work and mounts the hub synchronously
     activeHomeTab: 'crop-roll', managersSearchTerm: 'old', selectedProductivityUser: 'person', managerMoveDestinationStage: 'pending',
     MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned-items', MANAGER_BLOCK_CLEARING_VIEW: 'block-clearing',
     managerReportPageController: { suspendMounts: () => calls.push('suspend-pages') },
+    cancelManagerModuleReads: () => calls.push('cancel-module-reads'),
     cancelManagerSeasonPriorityRead: () => calls.push('cancel-read'),
     window: { GncProductionSchedule: { unmount: () => calls.push('unmount') } },
     unmountAlphaCommandCenter() {}, cancelScheduledViewRenderWork: () => calls.push('cancel-render'),
@@ -938,4 +941,42 @@ test('9600-row indexes pre-sum locations, preserve lots, and pre-normalize searc
   const median = times.sort((a,b) => a-b)[2];
   assert.ok(median < 5, '9600 indexed lookups/search took ' + median.toFixed(2) + 'ms');
   console.log('Inventory indexed lookup/search median: ' + median.toFixed(2) + 'ms (9600 rows, Node)');
+});
+
+
+test('AV options derive On Hand from aliases and available plus review', () => {
+ const ctx=vm.createContext({firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!=='' )??'',parseAppNumber:x=>x==null||x===''?null:Number(x),normalizeCardQuantityValue:x=>String(Number(x)||0)});
+ vm.runInContext(source('getCardPtrOnHandValue'),ctx);
+ for(const n of [62,58,16]) {assert.equal(ctx.getCardPtrOnHandValue({on_hand:0,available:n,review:0}),String(n));assert.equal(ctx.getCardPtrOnHandValue({qty_on_hand:n}),String(n));}
+});
+
+test('detail camera guard blocks the queue tap even when the target is the file input', () => {
+ let blocked=0;
+ const ctx=vm.createContext({detailCameraInputBlockUntil:Date.now()+2000,prepareIosCameraPickerOpen(){},Date});
+ vm.runInContext(source('handleDetailCameraInputActivation'),ctx);
+ assert.equal(ctx.handleDetailCameraInputActivation({target:{matches:()=>true},preventDefault(){blocked++},stopPropagation(){}}),false);
+ assert.equal(blocked,1);
+});
+
+
+test('same-account partial row refresh cannot lower known multi-lot location totals', () => {
+ let owner='nelly';
+ const ctx=vm.createContext({retainedLocationOnHandDisplay:{owner:'',values:new Map()},getSupabaseReadIdentityScope:()=>owner,appAccessSnapshotState:{snapshot:{dataPermissionVersion:'p1'}},getInventoryCardItemLocationKey:r=>r.ITEMCODE+'|'+r.LOCATIONCODE,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),parseAppNumber:x=>x==null||x===''?null:Number(x)});
+ vm.runInContext(source('preserveCardLocationOnHand'),ctx);
+ for(const [location,total,lot] of [['C.16.000',403,102],['H.06.000',143,81]]){
+ const row={ITEMCODE:'004254.030.1',LOCATIONCODE:location,PTRONHAND:lot};
+ assert.equal(ctx.preserveCardLocationOnHand(row,total),String(total));
+ assert.equal(ctx.preserveCardLocationOnHand(row,lot),String(total));
+ }
+ owner='other';assert.equal(ctx.preserveCardLocationOnHand({ITEMCODE:'004254.030.1',LOCATIONCODE:'C.16.000',PTRONHAND:102},null),'102');
+});
+
+test('Manager global Back unwinds Eval2 location levels then hub and Home',()=>{
+ let view='managers',hub=0,home=0;
+ const ctx=vm.createContext({getVisibleSecondaryBack:()=>null,getManagerAssignedColumnState:()=>({}),getCurrentVisibleViewId:()=>view,isDrawerOpen:()=>false,closeOpenInteractiveSurfaceForBack:()=>false,activeHomeTab:'eval2',MANAGER_EVAL_REPORTS_2_VIEW:'eval2',managerEvalReport2DetailItemKey:'',managerEvalReport2BrowseMode:'location',managerEvalReport2DrillLevel:2,updateGlobalBackButton(){},backManagerEvalReport2Drill(){ctx.managerEvalReport2DrillLevel--;},openManagersModules(){hub++;ctx.activeHomeTab='dashboard';return false;},fastBackHome(){home++;view='home';}});
+ vm.runInContext(source('goBackUniversal'),ctx);
+ ctx.goBackUniversal();assert.equal(ctx.managerEvalReport2DrillLevel,1);
+ ctx.goBackUniversal();assert.equal(ctx.managerEvalReport2DrillLevel,0);
+ ctx.goBackUniversal();assert.equal(hub,1);
+ ctx.goBackUniversal();assert.equal(home,1);
 });

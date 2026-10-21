@@ -375,3 +375,9 @@ rebuildMasterInventoryIndexes installs the shared queue inventory index with byI
 ### Drive backlog and Request card reconciliation (v2.3.34)
 
 Clusters 3/4/6/8: `private.reconcile_inventory_live_overrides_v1`, `app_sync_private.inventory_live_overrides_v1`, `runRoutedDropImport_`, `dispatchReclassDeliveryNow`, and `generateCard` retain canonical row identity, authenticated command boundaries and existing shared navigation. Focused tests: request-submission-durability, security-zero-trust, live-sync-coordinator. No new startup/background route is added.
+
+## v2.3.35 report and detail contracts
+
+Clusters 1/5: cancelManagerModuleReads and report-pages-live.suspendReads fence late callbacks; the mounted native Eval2 Filters disclosure survives refresh. GncEvalReports.browseSeedRows/filterBrowseRows/buildBrowsePage/browseUserOptions consume only the authorized report_read_v2 compact metadata and preserve server row classification/assignments. LowStock is the default; Apply commits report checkbox drafts once.
+
+Clusters 3/4/6/7: getRequestEntryCapabilities preserves authorized Request entry during refresh; preserveCardLocationOnHand retains account/permission-scoped multi-lot display totals; candidate receipts retain the atomic service-only command and remove replaced False Blocks from active arrays. Camera click-through prevention applies to actual file inputs. Focused targets are eval-reports-engine, request-submission-durability, inventory-drill-navigation, suspend-tag-dataset and dock-trip-status. No browser performance claim follows from Node checks.

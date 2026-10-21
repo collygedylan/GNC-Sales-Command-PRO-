@@ -137,6 +137,7 @@ test('Docks stop cards contain exactly one title, six-metric strip and action ro
     getCardLocationOnHandServerAggregate: () => ({ verified:false }), formatLocPhotoMatchQtyValue: () => '7',
     parseAppNumber: value => value == null || String(value).trim() === '' ? null : Number(String(value).replaceAll(',', '')),
     normalizeCardQuantityValue: value => String(value),
+    preserveCardLocationOnHand: (row,value) => value == null ? null : String(value),
     getDockOrderedQtyRaw: () => 3, getDockOrderedQtyDisplay: () => '3', getDockDisplayQty: () => 3, formatDockDisplayQty: String,
     getDockSuspendDcRequestPlanstartInfo: () => ({ valid:false }),
     getDockItemProgress: () => ({ checker:false, inspector:false }), getRoleAccessState: () => ({ isRep:false }),

@@ -238,6 +238,7 @@ function finalizerFixture({ count = 2, preflight = async () => true, mappingOver
         getRequestSourceDomIds: () => rows.map(row => row.DOM_ID), findItemByDomId: domId => rows.find(row => row.DOM_ID === domId),
         getCurrentVisibleViewId: () => 'drive', activeDetailSourceView: '', lastView: '',
         getRequestCapabilities: () => ({ canCreateGeneral: true, canCreateAv: true }),
+        getRequestEntryCapabilities: () => ({ canCreateGeneral: true, canCreateAv: true }),
         requestCapabilityState: { stale: false }, getRequestReusableData: () => ({ hasReusableEvidence: false }),
         normalizeRequestReuseChoice: value => value, normalizeRequestDesiredMeasurementValue: value => value || '',
         navigator: { onLine: true }, ensureRequestSchemaCompatible: preflight,
@@ -1298,7 +1299,7 @@ test('pending Request capabilities retain authorized Mark Done and preserve expl
 });
 
 test('Request numeric zero survives background hydration and keypad text has no escaped quote', () => {
- const ctx=vm.createContext({escapeHtml:String,normalizeCardQuantityValue:String,
+ const ctx=vm.createContext({escapeHtml:String,normalizeCardQuantityValue:String,parseAppNumber:value=>value==null?null:Number(value),preserveCardLocationOnHand:(_row,value)=>value,
  getCardPtrOnHandValue:r=>r.PTRONHAND,getCardPtrReviewedValue:r=>r.PTRREVIEWED,getCardPtrAvailableValue:r=>r.PTRAVAILABLE,getCardOpenStockValue:r=>r.S_LTS,
  formatLocPhotoMatchQtyValue:()=>2,getCardLocationOnHandServerAggregate:()=>({verified:true,value:0}),getCardLocationOnHandValue:()=>0});
  vm.runInContext(extractRuntimeFunction('buildInventoryQuantityChipsHtml')+extractRuntimeFunction('normalizeDetailSpecTextForSave'),ctx);
@@ -1367,4 +1368,23 @@ test('Reclass retry accepts frozen server receipts and immediately invokes the l
     assert.match(edge, /invokeReclassDeliveryWorkerNow[^]*request-delivery-worker[^]*AbortSignal.timeout\(20000\)/);
     assert.match(edge, /operation === "retry" \? await dispatchReclassDeliveryNow/);
     assert.match(edge, /dispatchReclassDeliveryNow\(result, actorUsername, String\(protectedPayload.idempotencyToken/);
+});
+
+
+test('Request entry and submission do not block on stale capability refresh',()=>{
+ assert.equal(appSource.includes('Refresh Request access before creating a request'),false);
+ const open=appSource.match(/        async function openRequestModal\([^]*?^        }/m)[0];
+ assert.match(open,/getRequestEntryCapabilities/);
+ const submit=appSource.match(/        async function finalizeRequestAction\([^]*?^        }/m)[0];
+ assert.equal(submit.includes('const requestCapabilities = getRequestEntryCapabilities();'),true);
+ assert.equal(submit.includes('!requestCapabilities?.canCreateGeneral'),true);
+});
+
+
+test('Nelly and authorized roles can open Request during capability loading; explicit denials remain closed',()=>{
+ const ctx=vm.createContext({window:{},nativeAuthProfile:{id:'p',username:'nelly_aguilar',role:'admin'},nativeAuthSessionActive:true,nativeAuthSessionUserId:'p',currentUser:'nelly_aguilar',currentRole:'admin',getRequestCapabilityUsernameKey:v=>String(v||'').toLowerCase(),getRequestCapabilities:()=>null,normalizeRoleAccessToken:v=>String(v).toUpperCase().replace(/[^A-Z]/g,''),canonicalFeaturePermission:()=>true});
+ vm.runInContext(extractRuntimeFunction('getRequestEntryCapabilities'),ctx);
+ for(const role of ['admin','csr','office','sales_rep','eval','manager']){ctx.nativeAuthProfile.role=role;assert.equal(ctx.getRequestEntryCapabilities().canCreateGeneral,true,role);}
+ ctx.getRequestCapabilities=()=>({canCreateGeneral:false,canCreateAv:false});assert.equal(ctx.getRequestEntryCapabilities().canCreateGeneral,false);
+ ctx.window.GncUserAccessControl={getSelfState:()=>({denied:true})};assert.equal(ctx.getRequestEntryCapabilities(),null);
 });
