@@ -37373,7 +37373,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getProductionCoreLiveProjection(key, viewId, context = {}) {
             const coreKey = key === 'avOpen' ? 'master' : key;
-            if (viewId === 'av' && activeAVTab === 'open' && shouldUseRepAvOpenDataset()
+            if (viewId === 'av' && activeAVTab === 'open'
                 && (coreKey === 'master' || coreKey === 'reserves')) return 'full';
             if (coreKey !== 'master') return 'browse';
             if (pendingMasterFullHydrations.has(JSON.stringify([getSupabaseReadIdentityScope(), viewId]))) return 'full';

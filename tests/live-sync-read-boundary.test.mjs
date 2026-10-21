@@ -825,7 +825,7 @@ test('foreground full-master consumers keep live refreshes full without widening
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'managers', { surfaces: ['managers:eval-reports-2'] }), 'full');
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'managers', { surfaces: ['managers:eval-reports'] }), 'full');
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'drive'), 'browse');
-    assert.equal(ctx.getProductionCoreLiveProjection('master', 'av'), 'browse');
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'av'), 'full');
     assert.equal(ctx.getProductionCoreLiveProjection('requests', 'production-workflow'), 'browse');
     for (const view of ['sales-office', 'moves', 'tasks', 'low-stock', 'review', 'move-up', 'advertisement', 'grower', 'shear-list', 'weather-hold', 'reports']) {
         assert.equal(ctx.getProductionCoreLiveProjection('master', view), 'full', `${view} retains its full snapshot during live refresh`);

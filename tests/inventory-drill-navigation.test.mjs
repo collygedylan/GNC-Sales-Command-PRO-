@@ -31,6 +31,18 @@ test('Brian and admin render a prepared 9600-row Drive snapshot in one pass thro
     assert.equal(passes, 1, role);
   }
 });
+
+test('AV selects the same complete master and reserve projection for every authorized role', () => {
+  for (const role of ['admin', 'salesrep', 'sales rep', 'sales_rep']) {
+    const context = vm.createContext({ activeAVTab: 'open', pendingMasterFullHydrations: new Set(),
+      getSupabaseReadIdentityScope: () => role, shouldUseRepAvOpenDataset: () => role !== 'admin' });
+    vm.runInContext(source('getProductionCoreLiveProjection'), context);
+    for (const key of ['avOpen', 'master', 'reserves']) {
+      assert.equal(context.getProductionCoreLiveProjection(key, 'av'), 'full', `${role}/${key}`);
+    }
+    assert.equal(context.getProductionCoreLiveProjection('master', 'drive'), 'browse');
+  }
+});
 function fixture(mode) {
   const driveSearchInput = { value: 'Maple', classList: { add() {} }, removeAttribute() {} };
   const context = vm.createContext({ Set, activeDriveMode: mode, activeDriveTab: 'name', driveViewLevel: 3,

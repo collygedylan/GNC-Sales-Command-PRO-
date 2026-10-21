@@ -5,7 +5,7 @@ description: Maintain AgData Drive Mode, AV, Inventory, inventory metrics, drill
 
 # Drive, AV and Inventory
 
-Drive's initial catalog and preview use the same master adapter for admin and sales reps. Warehouse assignments hydrate in the background; existing assignment-dependent card actions stay denied until authorized assignment data arrives. Normalize salesrep, sales rep and sales_rep identically.
+Drive's initial catalog and preview use the same master adapter for admin and sales reps. AV Open uses complete master and reserve projections for every authorized role, retaining server reserve ownership filters. Warehouse assignments hydrate in the background; existing assignment-dependent card actions stay denied until authorized assignment data arrives. Normalize salesrep, sales rep and sales_rep identically.
 
 Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 3 and shared Back/navigation ownership.
 
