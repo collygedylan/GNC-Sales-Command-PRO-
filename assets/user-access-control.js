@@ -8,6 +8,7 @@
     ]);
     const FULL_APP_ADMINISTRATORS = Object.freeze(['dylan_collyge', 'megan_kelly', 'jd_jones']);
     const isFullAppAdministrator = username => FULL_APP_ADMINISTRATORS.includes(text(username).toLowerCase());
+    const isAuraOwner = username => text(username).trim().toLowerCase() === 'dylan_collyge';
     function enforceAccountPermissions(username, permissions) {
         const result = normalizePermissions(permissions);
         if (isFullAppAdministrator(username)) for (const flag of PERMISSION_KEYS) result[flag] = true;
@@ -651,7 +652,7 @@
 
     const api = {
         configure, reset, loadSelf, loadDirectory, getSelfState, getEffectiveUserPermissions,
-        normalizeRole, normalizePermissions, normalizeOverrides, mergePermissions, resolveDirectoryUser,
+        normalizeRole, normalizePermissions, normalizeOverrides, mergePermissions, resolveDirectoryUser, isAuraOwner,
         renderManager, mountManager,
         get directory() { return publicDirectory(); },
         get roleBaselines() { return clone(publicDirectory().role_baselines || []); },

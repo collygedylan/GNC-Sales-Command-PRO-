@@ -684,7 +684,11 @@
                                 }
                             }
                             if (value === undefined) throw new Error(`${adapter.id} did not return a snapshot.`);
-                            if (!display.has(adapter.id) || !adapter.id.startsWith('core:')) preview(adapter, value);
+                            // Replace a first-page display as soon as its full
+                            // source finishes, even if another cohort member is
+                            // slow. Revision validation and commit still follow.
+                            if (!display.has(adapter.id) || !adapter.id.startsWith('core:')
+                                || display.get(adapter.id)?.value?.partial === true && value.partial !== true) preview(adapter, value);
                             staged.push({ adapter, value });
                         } catch (error) { fail(error, adapter); }
                     }
@@ -795,7 +799,15 @@
                 if (!running && !queued && signalTimer === null && currentStatus.state === 'Up to date' && currentStatus.contextKey === nextIdentity) return Promise.resolve(true);
             }
             invalidateBackground();
-            if (activeRun && (activeRun.epoch !== epoch || readContextKey(activeRun.context || {}) !== readContextKey(options.getContext() || {}))) activeRun.controller?.abort();
+            if (activeRun && (activeRun.epoch !== epoch || readContextKey(activeRun.context || {}) !== readContextKey(options.getContext() || {}))) {
+                activeRun.controller?.abort();
+                // Navigation owns a new foreground read. A cancelled transport
+                // may ignore AbortSignal; fence its late result without waiting
+                // for it or discarding the same-account applied snapshots.
+                epoch++;
+                running = null;
+                activeRun = null;
+            }
             queued = true;
             if (running) return running;
             const task = (async () => {

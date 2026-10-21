@@ -21,8 +21,19 @@
         Number(deps.getAuthEpoch?.() || 0),
         String(deps.getCacheScope?.() || ''),
     ]);
+    function updateBadge(count = 0) {
+        const badge = deps.document.getElementById('runtime-watchdog-header-badge');
+        if (!badge) return;
+        const visible = String(deps.getUsername?.() || '').trim().toLowerCase() === 'dylan_collyge' && count > 0;
+        badge.hidden = !visible;
+        if (badge.style) badge.style.display = visible ? '' : 'none';
+        badge.classList.toggle('hidden', !visible);
+        badge.textContent = visible ? String(count) : '';
+        badge.title = visible ? `${count} open runtime incident${count === 1 ? '' : 's'}` : '';
+    }
     function ensureOwner(owner = ownerKey()) {
         if (owner === cachedOwner) return owner;
+        updateBadge(0);
         cachedOwner = owner;
         openEvents = [];
         fixBrief = '';
@@ -74,7 +85,7 @@
     async function refreshBadge(force = false) {
         const owner = ensureOwner();
         const badge = deps.document.getElementById('runtime-watchdog-header-badge');
-        if (!badge || String(deps.getUsername?.() || '').trim().toLowerCase() !== 'dylan_collyge') return;
+        if (!badge || String(deps.getUsername?.() || '').trim().toLowerCase() !== 'dylan_collyge') { updateBadge(0); return; }
         if (!force && Date.now() - badgeCheckedAt < 30000) return;
         if (badgeRefresh && badgeRefreshOwner === owner) return badgeRefresh;
         const scope = createViewScope();
@@ -82,9 +93,7 @@
             if (!scope.isCurrent() || owner !== ownerKey() || deps.document.getElementById('runtime-watchdog-header-badge') !== badge) return null;
             badgeCheckedAt = Date.now();
             const count = rows.length;
-            badge.textContent = String(count);
-            badge.classList.toggle('hidden', count === 0);
-            badge.title = `${count} open runtime incident${count === 1 ? '' : 's'}`;
+            updateBadge(count);
             return count;
         }).catch(() => null).finally(() => {
             scope.dispose();
@@ -105,9 +114,8 @@
             const rows = await loadEvents(owner);
             if (generation !== panelGeneration || !isPanelCurrent(scope, owner, host)) return;
             openEvents = rows;
+            updateBadge(openEvents.length);
             if (String(deps.getUsername?.() || '').trim().toLowerCase() === 'dylan_collyge') {
-                const badge = deps.document.getElementById('runtime-watchdog-header-badge');
-                if (badge) { badge.textContent = String(openEvents.length); badge.classList.toggle('hidden', openEvents.length === 0); }
                 badgeCheckedAt = Date.now();
             }
             if (!openEvents.length) { host.innerHTML = '<p class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">No open runtime incidents.</p>'; return; }
