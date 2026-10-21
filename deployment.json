@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-deployment-fingerprint-v1",
-  "release": "AgData v2.3.32",
-  "commit": "8666064db5f159764e0794bd713ea74ca06c6576",
-  "generatedAt": "2026-10-21T16:06:42.062Z"
+  "release": "AgData v2.3.33",
+  "commit": "8c3ee2e7904952b488a46e017344e2a81188ee71",
+  "generatedAt": "2026-10-21T16:58:10.374Z"
 }

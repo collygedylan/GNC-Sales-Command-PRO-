@@ -124,11 +124,15 @@
         }
         return updated;
     };
+    const activeSession = () => {
+        try { return root.isAuthenticatedAppSessionActive?.() === true; } catch (_) { return false; }
+    };
     // One reload owner per document; the worker's version reply can refine the
     // target during the short toast, even when its registration URL is older.
     root.reloadForServiceWorkerUpdate = targetBuild => {
         const target = String(targetBuild || '').trim();
         if (isShellRelease(target)) root.__gncPwaTargetBuild = target;
+        if (activeSession()) { root.__gncShellUpdateReady = true; return false; }
         if (root.__gncPwaReloadPending) return false;
         root.__gncPwaReloadPending = true;
         if (!root.__gncShellUpdateToastShown && typeof root.showToast === 'function') {
@@ -142,6 +146,7 @@
         }
         root.__gncShellUpdateToastShown = true;
         root.setTimeout(() => {
+            if (activeSession()) { root.__gncPwaReloadPending = false; root.__gncShellUpdateReady = true; return; }
             const nextBuild = root.__gncPwaTargetBuild || root.__APP_SHELL_BUILD__ || root.__APP_SHELL_VERSION__;
             root.invalidateAppFiltersForVersion(nextBuild);
             if (nextBuild) {
@@ -216,6 +221,7 @@
     // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
     let shellRecovery = null;
     root.recoverShellVersionMismatch = (currentBuild, targetBuild) => {
+        if (activeSession()) { root.__gncPwaTargetBuild = targetBuild; root.__gncShellUpdateReady = true; return Promise.resolve(false); }
         if (root.__gncPwaReloadPending) return Promise.resolve(false);
         const current = String(currentBuild || '').trim();
         const target = String(targetBuild || '').trim();
