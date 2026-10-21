@@ -22827,12 +22827,32 @@ function verifyAppsScriptActionEnvelope_(envelope) {
     throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_REQUIRED');
   }
   if (Math.abs(Date.now() - timestampMs) > 300000) throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_EXPIRED');
-  const key = String(SUPABASE_KEY || '').trim();
-  if (!key) throw new Error('APPS_SCRIPT_ACTION_SIGNING_KEY_MISSING');
-  const expected = requestDeliveryBase64Url_(Utilities.computeHmacSha256Signature(
-    timestamp + '.' + deliveryJson, key, Utilities.Charset.UTF_8
-  ));
-  if (!appsScriptActionConstantTimeEqual_(expected, signature)) throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_INVALID');
+  const signingKeys = getAppsScriptActionSigningKeys_();
+  const signatureMessage = timestamp + '.' + deliveryJson;
+  const matchesCurrentKey = signingKeys.some(function(key) {
+    const expected = requestDeliveryBase64Url_(Utilities.computeHmacSha256Signature(
+      signatureMessage, key, Utilities.Charset.UTF_8
+    ));
+    return appsScriptActionConstantTimeEqual_(expected, signature);
+  });
+  let candidateKey = '';
+  const reconciliationRequested = envelope.reconcileSigningKey === true;
+  if (reconciliationRequested) {
+    const reconciliationKeys = 'deliveryJson,reconcileSigningKey,serverAuthorization,signature,timestamp,type';
+    if (Object.keys(envelope).sort().join(',') !== reconciliationKeys) {
+      throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_INVALID');
+    }
+    const authorizedKey = String(envelope.serverAuthorization || '').trim();
+    if (!authorizedKey || authorizedKey.length > 4096) throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_INVALID');
+    const candidateSignature = requestDeliveryBase64Url_(Utilities.computeHmacSha256Signature(
+      signatureMessage, authorizedKey, Utilities.Charset.UTF_8
+    ));
+    if (!appsScriptActionConstantTimeEqual_(candidateSignature, signature)) throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_INVALID');
+    if (!signingKeys.some(function(key) { return appsScriptActionConstantTimeEqual_(key, authorizedKey); })) candidateKey = authorizedKey;
+  } else if (Object.prototype.hasOwnProperty.call(envelope, 'serverAuthorization')
+      || Object.keys(envelope).sort().join(',') !== 'deliveryJson,signature,timestamp,type' || !matchesCurrentKey) {
+    throw new Error('APPS_SCRIPT_ACTION_SIGNATURE_INVALID');
+  }
   let command;
   try { command = JSON.parse(deliveryJson); } catch (_) { throw new Error('APPS_SCRIPT_ACTION_PAYLOAD_INVALID'); }
   if (!command || command.contractVersion !== 'apps-script-action-v1' || typeof command.action !== 'string'
@@ -22840,6 +22860,12 @@ function verifyAppsScriptActionEnvelope_(envelope) {
     throw new Error('APPS_SCRIPT_ACTION_PAYLOAD_INVALID');
   }
   const action = String(command.action || '').trim();
+  if (reconciliationRequested) {
+    if (action !== 'deployment_health' || JSON.stringify(command.payload) !== JSON.stringify({ type: 'deployment_health' })
+        || !command.actor || command.actor.system !== 'apps-script-deployment-health'
+        || Object.keys(command.actor).length !== 1) throw new Error('APPS_SCRIPT_HEALTH_RECONCILIATION_FORBIDDEN');
+    if (candidateKey) reconcileAppsScriptActionSigningKey_(candidateKey);
+  }
   const allowed = [
     'deployment_health', 'block_clearing_pdf', 'bunch_note_preview', 'hl_order_preview',
     'reclass_inquiry_status', 'reclass_inquiry_retry', 'clear_request_gallery_cache',
@@ -22883,6 +22909,32 @@ function verifyAppsScriptActionEnvelope_(envelope) {
   delete payload.__verifiedAppActor;
   if (actor) Object.defineProperty(payload, '__verifiedAppActor', { value: actor, enumerable: false });
   return payload;
+}
+
+function getAppsScriptActionSigningKeys_() {
+  const keys = [];
+  const propertyKey = String(PropertiesService.getScriptProperties().getProperty('AGDATA_ACTION_SIGNING_KEY_V1') || '').trim();
+  const legacyKey = String(SUPABASE_KEY || '').trim();
+  [propertyKey, legacyKey].forEach(function(key) {
+    if (key && keys.indexOf(key) < 0) keys.push(key);
+  });
+  return keys;
+}
+
+function reconcileAppsScriptActionSigningKey_(candidateKey) {
+  let response;
+  try {
+    response = UrlFetchApp.fetch(SUPABASE_URL + '/auth/v1/admin/users?page=1&per_page=1', {
+      method: 'get', headers: getSupabaseHeadersForKey_(candidateKey), muteHttpExceptions: true
+    });
+  } catch (ignored) {
+    throw new Error('APPS_SCRIPT_SIGNING_KEY_SERVICE_AUTH_REQUIRED');
+  }
+  if (!response || Number(response.getResponseCode()) !== 200) throw new Error('APPS_SCRIPT_SIGNING_KEY_SERVICE_AUTH_REQUIRED');
+  let body;
+  try { body = JSON.parse(response.getContentText() || ''); } catch (ignored) { throw new Error('APPS_SCRIPT_SIGNING_KEY_SERVICE_AUTH_REQUIRED'); }
+  if (!body || !Array.isArray(body.users)) throw new Error('APPS_SCRIPT_SIGNING_KEY_SERVICE_AUTH_REQUIRED');
+  PropertiesService.getScriptProperties().setProperty('AGDATA_ACTION_SIGNING_KEY_V1', candidateKey);
 }
 
 function verifyAppsScriptLifecycleCanary_(action, payload) {

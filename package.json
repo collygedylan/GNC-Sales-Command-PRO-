@@ -142,6 +142,8 @@
     "verifyInventoryWorkflowActor_",
     "verifyManualInventoryImportActor_",
     "appsScriptActionConstantTimeEqual_",
+    "getAppsScriptActionSigningKeys_",
+    "reconcileAppsScriptActionSigningKey_",
     "verifyAppsScriptActionActor_",
     "verifyAppsScriptActionEnvelope_",
     "authorizeAppsScriptPost_",

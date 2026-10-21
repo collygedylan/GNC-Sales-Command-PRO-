@@ -1,5 +1,8 @@
 import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
-import { createSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
+import {
+  createAppsScriptSigningKeyReconciliationEnvelope,
+  createSignedDeploymentHealthEnvelope
+} from './apps-script-signing.mjs';
 
 export const APPS_SCRIPT_VERSION_LIMIT = 200;
 export const APPS_SCRIPT_VERSION_WARNING_THRESHOLD = 180;
@@ -17,6 +20,40 @@ export class AppsScriptSyncError extends Error {
 
 function syncError(code) {
   return new AppsScriptSyncError(code);
+}
+
+const SAFE_HEALTH_ERROR_CODES = new Set([
+  'APPS_SCRIPT_ACTION_SIGNATURE_REQUIRED', 'APPS_SCRIPT_ACTION_SIGNATURE_EXPIRED',
+  'APPS_SCRIPT_ACTION_SIGNATURE_INVALID', 'APPS_SCRIPT_ACTION_SIGNING_KEY_MISSING',
+  'APPS_SCRIPT_HEALTH_ACTOR_INVALID', 'APPS_SCRIPT_ACTION_PAYLOAD_INVALID',
+  'APPS_SCRIPT_ACTION_FORBIDDEN', 'APPS_SCRIPT_POST_SIGNATURE_REQUIRED',
+  'APPS_SCRIPT_HEALTH_RECONCILIATION_FORBIDDEN', 'APPS_SCRIPT_SIGNING_KEY_SERVICE_AUTH_REQUIRED'
+]);
+
+function safeHealthErrorCode(payload) {
+  const candidate = String(payload?.message || payload?.error || payload?.code || '').trim();
+  return SAFE_HEALTH_ERROR_CODES.has(candidate) ? candidate : '';
+}
+
+async function reconcileDeploymentSigningKey({ deploymentId, serviceRoleKey, githubSha, fetchImpl }) {
+  const response = await fetchImpl(healthUrlForDeployment(deploymentId), {
+    method: 'POST',
+    redirect: 'follow',
+    signal: AbortSignal.timeout(20000),
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(createAppsScriptSigningKeyReconciliationEnvelope(serviceRoleKey))
+  });
+  const text = await response.text();
+  let payload = null;
+  try { payload = text ? JSON.parse(text) : null; } catch {}
+  if (!response.ok || payload?.ok !== true) {
+    const status = Number(response.status) || 0;
+    const safeCode = safeHealthErrorCode(payload);
+    throw syncError(`APPS_SCRIPT_SIGNING_KEY_RECONCILIATION_HTTP_${status}${safeCode ? `_${safeCode}` : ''}`);
+  }
+  if (String(payload.deployedCommit || '').trim() !== String(githubSha || '').trim()) {
+    throw syncError('APPS_SCRIPT_SIGNING_KEY_RECONCILIATION_COMMIT_MISMATCH');
+  }
 }
 
 function normalizeAppsScriptFileName(name) {
@@ -127,7 +164,8 @@ export async function verifyDeploymentHealth({
       try { payload = text ? JSON.parse(text) : null; } catch {}
 
       if (!response.ok || payload?.ok !== true) {
-        lastCode = `APPS_SCRIPT_DEPLOYMENT_HEALTH_HTTP_${Number(response.status) || 0}`;
+        const safeCode = safeHealthErrorCode(payload);
+        lastCode = `APPS_SCRIPT_DEPLOYMENT_HEALTH_HTTP_${Number(response.status) || 0}${safeCode ? `_${safeCode}` : ''}`;
       } else if (String(payload.deployedCommit || '').trim() !== String(githubSha || '').trim()) {
         lastCode = 'APPS_SCRIPT_DEPLOYMENT_HEALTH_COMMIT_MISMATCH';
       } else if (String(payload.lifecycleRecipientPolicyVersion || '').trim() !== REQUEST_LIFECYCLE_POLICY_VERSION) {
@@ -229,6 +267,8 @@ export async function syncAppsScriptProject({
     script, scriptId, deploymentId, versionNumber, sleep,
     onObservation: observation => logger.warn(`APPS_SCRIPT_DEPLOYMENT_VERSION_PENDING ${JSON.stringify(observation)}`)
   });
+
+  await reconcileDeploymentSigningKey({ deploymentId, serviceRoleKey, githubSha, fetchImpl });
 
   const health = await verifyDeploymentHealth({
     deploymentId,

@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { createAppsScriptSigningKeyReconciliationEnvelope, createSignedDeploymentHealthEnvelope, isSignedDeploymentHealthEnvelope } from '../scripts/apps-script-signing.mjs';
 import yaml from 'js-yaml';
-import { createAppsScriptPostVerifier, signAppsScriptAction, signAppsScriptCommand } from './helpers/zero-trust-apps-script.mjs';
+import { createAppsScriptPostVerifier, signAppsScriptAction, signAppsScriptCommand, signAppsScriptReconciliationCommand } from './helpers/zero-trust-apps-script.mjs';
 
 const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const auth = readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
@@ -194,6 +195,57 @@ test('Apps Script doPost rejects unsigned requests and verifies the signed actio
     payload: { type: 'deployment_health' }, actor: { system: 'apps-script-deployment-health' } });
   assert.equal(verifier.authorize(health).type, 'deployment_health');
   assert.equal(verifier.authorize({ type: 'request_delivery_event', timestamp: 'signed-by-dedicated-protocol' }).type, 'request_delivery_event');
+});
+
+test('Apps Script signing-key reconciliation is restricted to authenticated deployment health', () => {
+  const command = { contractVersion: 'apps-script-action-v1', action: 'deployment_health',
+    payload: { type: 'deployment_health' }, actor: { system: 'apps-script-deployment-health' } };
+  const ordinary = createAppsScriptPostVerifier();
+  assert.equal(ordinary.authorize(signAppsScriptCommand(command)).type, 'deployment_health');
+  assert.equal(ordinary.testState.propertyWrites.length, 0);
+  assert.equal(ordinary.testState.adminCalls.length, 0);
+
+  const candidate = 'candidate-service-role-key';
+  const reconciler = createAppsScriptPostVerifier({ key: 'legacy-key', adminStatus: 200, adminBody: { users: [{ id: 'fixture' }] } });
+  const reconciliationEnvelope = createAppsScriptSigningKeyReconciliationEnvelope(candidate);
+  assert.deepEqual(Object.keys(reconciliationEnvelope).sort(), ['deliveryJson', 'reconcileSigningKey', 'serverAuthorization', 'signature', 'timestamp', 'type']);
+  const reconciled = reconciler.authorize(reconciliationEnvelope);
+  assert.equal(reconciled.type, 'deployment_health');
+  assert.deepEqual(Array.from(reconciler.testState.propertyWrites, row => Array.from(row)), [['AGDATA_ACTION_SIGNING_KEY_V1', candidate]]);
+  assert.equal(reconciler.testState.adminCalls.length, 1);
+  const normalHealth = createSignedDeploymentHealthEnvelope(candidate);
+  assert.equal(reconciler.authorize(normalHealth).type, 'deployment_health');
+  assert.equal(isSignedDeploymentHealthEnvelope(normalHealth, candidate), true);
+  assert.equal(isSignedDeploymentHealthEnvelope(reconciliationEnvelope, candidate), false);
+  assert.match(reconciler.testState.adminCalls[0].url, /\/auth\/v1\/admin\/users\?page=1&per_page=1$/);
+  assert.equal(reconciler.testState.adminCalls[0].options.method, 'get');
+  assert.equal(reconciler.authorize(reconciliationEnvelope).type, 'deployment_health');
+  assert.equal(reconciler.testState.propertyWrites.length, 1);
+  assert.equal(reconciler.testState.adminCalls.length, 1);
+
+  const missingAuthorization = { ...reconciliationEnvelope };
+  delete missingAuthorization.serverAuthorization;
+  const noAuthorization = createAppsScriptPostVerifier({ key: 'legacy-key' });
+  assert.throws(() => noAuthorization.authorize(missingAuthorization), /APPS_SCRIPT_ACTION_SIGNATURE_INVALID/);
+  assert.equal(noAuthorization.testState.propertyWrites.length, 0);
+
+  const invalidAuthorization = { ...reconciliationEnvelope, serverAuthorization: 'different-key' };
+  const wrongAuthorization = createAppsScriptPostVerifier({ key: 'legacy-key' });
+  assert.throws(() => wrongAuthorization.authorize(invalidAuthorization), /APPS_SCRIPT_ACTION_SIGNATURE_INVALID/);
+  assert.equal(wrongAuthorization.testState.propertyWrites.length, 0);
+
+  const invalidCredential = createAppsScriptPostVerifier({ key: 'legacy-key', adminStatus: 401, adminBody: { users: [] } });
+  assert.throws(() => invalidCredential.authorize(signAppsScriptReconciliationCommand(command, 'anon-key')),
+    /APPS_SCRIPT_SIGNING_KEY_SERVICE_AUTH_REQUIRED/);
+  assert.equal(invalidCredential.testState.propertyWrites.length, 0);
+
+  const nonHealth = createAppsScriptPostVerifier({ key: 'legacy-key', adminStatus: 200, adminBody: { users: [] } });
+  const mutation = { contractVersion: 'apps-script-action-v1', action: 'manual_run', payload: { type: 'manual_run' },
+    actor: { id: '11111111-1111-4111-8111-111111111111', username: 'fixture_user', role: 'manager' } };
+  assert.throws(() => nonHealth.authorize(signAppsScriptReconciliationCommand(mutation, candidate)),
+    /APPS_SCRIPT_HEALTH_RECONCILIATION_FORBIDDEN/);
+  assert.equal(nonHealth.testState.propertyWrites.length, 0);
+  assert.equal(nonHealth.testState.adminCalls.length, 0);
 });
 
 test('manual Apps Script health diagnostic signs read-only health and emits only allowlisted fields', () => {

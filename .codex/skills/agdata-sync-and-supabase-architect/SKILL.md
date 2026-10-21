@@ -22,6 +22,8 @@ The zero-trust RLS migration enables RLS on public base tables and revokes anony
 
 All browser Apps Script POSTs use the verified app-api gateway. `Code.gs` authorizes a short-lived signed envelope before dispatch and retains the action-specific server checks. Deployment health uses a separately signed, read-only system envelope. The existing Home `manual_status` background read is registered with its exact nested gateway shape in `tests/helpers/release-smoke-route-policy.mjs`; unknown gateway mutations must not receive fixture success.
 
+Apps Script accepts the current `AGDATA_ACTION_SIGNING_KEY_V1` property and legacy `SUPABASE_KEY` as action HMAC keys. A new key can be stored only through an explicitly marked, exact deployment-health system envelope: its HMAC must validate under the candidate key and the same key must pass Supabase Auth Admin `GET /auth/v1/admin/users` before the property is written. This is an Apps Script deployment-health probe only, never a UI/background fixture read; invalid keys and all non-health commands leave properties untouched.
+
 Measure new, changed, unchanged and retried snapshots when importer behavior changes. Register new RPC/background reads in the fixture allowlist and update this skill in the same commit.
 
 ## Owned seams and shared dependencies

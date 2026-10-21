@@ -275,13 +275,17 @@ test('capacity at 180 warns but still permits an editable-source-only sync', asy
 
 test('successful sync advances and verifies the exact deployment version and health policy', async () => {
   const { script, calls } = makeScript({ versionCount: 30, createdVersion: 202, deployedVersion: 202 });
+  const healthRequests = [];
   const result = await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key',
     script,
     scriptId: 'script',
     deploymentId: 'deployment',
     source,
     githubSha: sha,
-    fetchImpl: healthyFetch(),
+    fetchImpl: async (_url, options) => {
+      healthRequests.push(JSON.parse(options.body));
+      return healthyFetch()();
+    },
     sleep: async () => {},
     healthAttempts: 1
   });
@@ -290,6 +294,13 @@ test('successful sync advances and verifies the exact deployment version and hea
   assert.equal(result.health.requiredRecipientCount, 3);
   assert.ok(script.updatedSource.includes(sha));
   assert.ok(!script.updatedSource.includes(APPS_SCRIPT_DEPLOYMENT_COMMIT_PLACEHOLDER));
+  assert.equal(healthRequests.length, 2, 'deployment reconciles the signer key before the ordinary health read');
+  assert.equal(healthRequests[0].reconcileSigningKey, true);
+  assert.equal(healthRequests[0].serverAuthorization, 'synthetic-signing-key');
+  assert.equal(healthRequests[0].type, 'apps_script_action_v1');
+  assert.equal(healthRequests[1].type, 'apps_script_action_v1');
+  assert.equal(Object.hasOwn(healthRequests[1], 'reconcileSigningKey'), false, 'ordinary health remains read-only');
+  assert.equal(Object.hasOwn(healthRequests[1], 'serverAuthorization'), false, 'ordinary health sends no key candidate');
   assert.deepEqual(calls, [
     'versions.list',
     'getContent',
@@ -373,7 +384,7 @@ test('stale deployment reads converge without another version or deployment writ
     fetchImpl: async () => { healthReads += 1; return healthyFetch()(); }
   });
   assert.equal(result.deployedVersionNumber, 202);
-  assert.equal(healthReads, 1);
+  assert.equal(healthReads, 2, 'one reconciliation request precedes the normal health read');
   assert.deepEqual(sleeps, [5000, 5000]);
   assert.equal(warnings.length, 2);
   assert.ok(warnings.every(value => value.startsWith('APPS_SCRIPT_DEPLOYMENT_VERSION_PENDING ')));

@@ -17,7 +17,8 @@ test('Apps Script scoped patch ships request mapping, email, and watchdog change
  assert.deepEqual(patch.functions,[
   'processCustomerRepMapSnapshotLocked_','requestNaMappingDigest_','ensureProtectedRequestNaCustomerMappings_',
   'verifyHlTagsSender_','verifyInventoryWorkflowActor_','verifyManualInventoryImportActor_',
-  'appsScriptActionConstantTimeEqual_','verifyAppsScriptActionActor_','verifyAppsScriptActionEnvelope_',
+  'appsScriptActionConstantTimeEqual_','getAppsScriptActionSigningKeys_','reconcileAppsScriptActionSigningKey_',
+  'verifyAppsScriptActionActor_','verifyAppsScriptActionEnvelope_',
   'authorizeAppsScriptPost_','verifyAppsScriptLifecycleCanary_',
   'verifyRuntimeWatchdogAlert_','doPost','buildRequestEmailMessage_','buildRequestDeliveryEmailPayload_',
   'sendRequestDeliveryPush_','handleRuntimeWatchdogAlert_'

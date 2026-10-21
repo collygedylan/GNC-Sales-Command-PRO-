@@ -20,6 +20,16 @@ export function createSignedDeploymentHealthEnvelope(serviceRoleKey, now = Date.
   }, serviceRoleKey, now);
 }
 
+export function createAppsScriptSigningKeyReconciliationEnvelope(serviceRoleKey, now = Date.now()) {
+  const key = String(serviceRoleKey || '').trim();
+  if (!key) throw new Error('APPS_SCRIPT_SIGNING_KEY_MISSING');
+  return {
+    ...createSignedDeploymentHealthEnvelope(key, now),
+    reconcileSigningKey: true,
+    serverAuthorization: key
+  };
+}
+
 export function createSignedLifecycleCanaryEnvelope(payload, serviceRoleKey, now = Date.now()) {
   return createSignedAppsScriptActionEnvelope({
     contractVersion: 'apps-script-action-v1',

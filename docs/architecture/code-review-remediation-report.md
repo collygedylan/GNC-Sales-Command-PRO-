@@ -12,6 +12,8 @@ This report distinguishes source evidence, local executable checks, and producti
 
 Login failures are keyed by HMAC digests, with limits of 10 per username and 40 per IP in 15 minutes. The rate-limit RPC is service-role-only; valid authenticated sessions do not traverse the login limiter. Apps Script `doPost` requires an authenticated signed envelope, validates its time window, and resolves the canonical actor. Existing purpose-specific signed delivery protocols remain supported.
 
+Deployment also reconciles an independently verified service credential into the private `AGDATA_ACTION_SIGNING_KEY_V1` Script Property when CI and Apps Script use different valid keys. This requires a matching candidate HMAC, the exact deployment-health command, and successful authentication against the project's Supabase Auth Admin endpoint. The existing key remains accepted, repeated reconciliation does not write again, and ordinary health probes cannot provision keys. Credentials are never embedded in source or emitted in diagnostics.
+
 | Live schema measure | Before release | Migration-enforced postcondition |
 | --- | ---: | ---: |
 | Public base tables with RLS | 142 / 142 | All public base tables |
@@ -79,6 +81,7 @@ The new code-health gate enforces **3,000 lines / 360,000 bytes** for `index.htm
 | v2.3.26 tooling / whitespace | 36 passed / passed | 3.169 / 0.325 s |
 | v2.3.26 tooling after staging gate addition | 36 passed | 3.099 s |
 | v2.3.26 lifecycle after optional-module startup guard | 15 passed | 1.28 s |
+| Signing-key recovery: security / Request reader | 11 / 24 passed | 0.206 / 7.1 s |
 
 Stage 1's successful commands totaled 19.13 s; an initial Deno failure identified two type/null guards and took another 10.86 s before the targeted fix. Stage 2's successful command time totaled 18.29 s. Stage 3's first fully captured checkpoint took 27.246 s before its affected-file rerun, exceeding the requested 25 s target; all 258 focused cases have passing results after the correction. An earlier 8.093 s failed focused run could not print its Unicode output through the Windows console, so it was rerun with UTF-8 output. Timing is measured command wall time, not elapsed engineering time. No omitted suite is represented as passing.
 
@@ -86,4 +89,6 @@ Stage 1's successful commands totaled 19.13 s; an initial Deno failure identifie
 
 The two validated SQL migrations were applied through Supabase on 2026-10-21 UTC, recorded as `20261021044338_zero_trust_rls_lockdown_v1` and `20261021044342_app_login_rate_limit_v1`. A subsequent live catalog query verified **142/142** public base tables with RLS, **0** anonymous mutation relations, and **0** anonymous executable volatile/security-definer routines. The rate-limit RPC is executable by `service_role`, not `anon` or `authenticated`. All three designated administrators remain active with all nine canonical override flags true. All **26** active mapped sales representatives retain N/A mappings, with **0** missing. No historical/backfill Supabase cron job is present.
 
-Edge, Apps Script Head/active Web App, and Pages publication remain pending at this committed report's preparation. The final delivery receipt is the production workflow evidence and HTTP fingerprint for the final commit. The deployment uses an explicit empty SQL selection after the independently verified MCP application, preventing replay under a different migration timestamp. Historical Apps Script settings are outside this SQL observation; this release does not resume or alter them.
+Backend workflow `39545791907` successfully published the Edge Functions for `b4d90510`. Three live non-login requests without a session, including claimed administrator identity, returned `401 AUTH_REQUIRED`. Apps Script Head/active Web App advanced to v2.3.26 version 343, but its signed health check failed and Pages was correctly withheld. Read-only diagnostic `39546628025` confirmed `APPS_SCRIPT_ACTION_SIGNATURE_INVALID`; the guarded reconciliation above repairs this configuration mismatch while retaining the existing signing key.
+
+The final delivery receipt is the production workflow evidence and HTTP fingerprint for the final commit after recovery. The initial deployment used an explicit empty SQL selection after the independently verified MCP application, preventing replay under a different migration timestamp. Historical Apps Script settings are outside this SQL observation; this release does not resume or alter them.
