@@ -1,5 +1,5 @@
 /** The panel and signed email use this same bounded incident representation. */
-export function buildRuntimeWatchdogFixBrief(rows: Record<string, unknown>[], version = "AgData v2.3.25", commit = "see deployed release metadata"): string {
+export function buildRuntimeWatchdogFixBrief(rows: Record<string, unknown>[], version = "AgData v2.3.26", commit = "see deployed release metadata"): string {
   return [
     "# AgData Runtime Watchdog Fix Brief", "",
     `- Active App Version: ${version}`, `- Commit: ${commit}`, `- Open Incidents: ${rows.length}`,

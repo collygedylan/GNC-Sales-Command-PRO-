@@ -1,6 +1,9 @@
 name: Validate one immutable release
 
 on:
+  push:
+    branches:
+      - staging
   workflow_call:
     inputs:
       hotfix:
@@ -163,16 +166,44 @@ jobs:
       artifact-id: ${{ steps.site.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - run: npm run check:inline
       - run: node scripts/run-tooling-release-checks.mjs
+      - name: Type-check changed Edge Functions on staging pushes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+        env:
+          BASE_SHA: ${{ github.event.before }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync, spawnSync } from 'node:child_process';
+          import { existsSync } from 'node:fs';
+          import path from 'node:path';
+          const base = process.env.BASE_SHA || '';
+          let files = /^0+$/.test(base)
+            ? execFileSync('git', ['ls-tree', '-r', '--name-only', 'HEAD', 'supabase/functions'], { encoding: 'utf8' }).split(/\r?\n/)
+            : execFileSync('git', ['diff', '--name-only', base, 'HEAD', '--', 'supabase/functions'], { encoding: 'utf8' }).split(/\r?\n/);
+          if (files.some(file => file.startsWith('supabase/functions/_shared/'))) {
+            files = execFileSync('git', ['ls-tree', '-r', '--name-only', 'HEAD', 'supabase/functions'], { encoding: 'utf8' }).split(/\r?\n/);
+          }
+          const names = [...new Set(files.map(file => /^supabase\/functions\/([^/]+)\//.exec(file)?.[1])
+            .filter(name => name && name !== '_shared' && existsSync(path.join('supabase', 'functions', name, 'index.ts'))))].sort();
+          for (const name of names) {
+            if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error('RELEASE_EDGE_NAME_INVALID');
+            const result = spawnSync('./node_modules/.bin/deno', ['check', '--node-modules-dir=none', '--frozen',
+              `supabase/functions/${name}/index.ts`], { stdio: 'inherit' });
+            if (result.error || result.status !== 0) throw new Error(`RELEASE_DENO_CHECK_FAILED_${name}`);
+          }
+          console.log(`Checked ${names.length} changed Edge Functions.`);
+          NODE
       - uses: ./.github/actions/prepare-native-release
       - id: seal
         run: node scripts/release-artifact.mjs seal
       - id: site
         uses: actions/upload-artifact@v4
         with:
-          name: release-site-${{ github.sha }}
+          name: ${{ github.ref == 'refs/heads/staging' && github.event_name == 'push' && 'staging-site' || 'release-site' }}-${{ github.sha }}
           path: _site
           include-hidden-files: true
           if-no-files-found: error

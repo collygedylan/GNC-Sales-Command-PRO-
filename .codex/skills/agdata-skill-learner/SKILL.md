@@ -12,6 +12,8 @@ description: Keep AgData domain skills and explicit fixture-read contracts synch
 
 Source extraction changes file ownership, not the number of business features. Keep the original census clearly labeled as a historical snapshot, record current source layout separately, and refresh dependency-map links to the actual function or stylesheet. Count function removals independently of functions merely moved into linked assets; preserve static tests through the shared composed-source reader.
 
+Governance and skill updates do not authorize production changes. Production AI and watchdog workflows remain read-only: they may summarize evidence or propose a patch, but must not autonomously edit production source, push commits, or publish. A staging push may produce only the fast-validated site artifact; production promotion continues through the reviewed `main` release path.
+
 ## Shared component dependencies
 
 Every feature skill must name its dependency on the shared `switchView` / `showOnlyPrimaryView` router, `goBackUniversal` / `updateGlobalBackButton`, `viewHistoryStack` and header/search ownership where applicable. Do not teach a local component to hide or recreate global Back/navigation DOM. Keep permissions, auth epoch, cached rows and recipient contracts distinct from visual shell state. Record static findings separately from rendered behavior and measured performance.

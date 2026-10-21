@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const source = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
+const runtimeSource = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
 const watchdogPanelContext = {};
 vm.runInNewContext(readFileSync(new URL('../assets/runtime-watchdog-panel.js', import.meta.url), 'utf8'), watchdogPanelContext);
 const { createController: createRuntimeWatchdogPanel } = watchdogPanelContext.AgMetricRuntimeWatchdogPanel;
@@ -76,6 +77,25 @@ const deferred = () => {
   const promise = new Promise(done => { resolve = done; });
   return { promise, resolve };
 };
+
+test('missing watchdog panel module cannot abort app runtime boot', async () => {
+  const start = runtimeSource.indexOf('function createRuntimeWatchdogPanelOrNoop(');
+  const end = runtimeSource.indexOf('\n        const runtimeWatchdogPanel =', start);
+  assert.ok(start >= 0 && end > start, 'runtime retains the fail-open panel factory');
+  const factory = runtimeSource.slice(start, end);
+  const context = vm.createContext({
+    window: { GncRuntimeWatchdog: { capture() { throw new Error('telemetry unavailable'); } } },
+    Promise,
+  });
+  vm.runInContext(`${factory}\nconst panel = createRuntimeWatchdogPanelOrNoop(undefined, {});\n\n` +
+    `globalThis.panelResult = [panel.renderPanel(), panel.refreshBadge(), panel.refreshPanel(), panel.copyFixBrief()];\n` +
+    `globalThis.bootReached = true;`, context);
+  assert.equal(context.bootReached, true);
+  assert.match(context.panelResult[0], /Manager remains available/);
+  assert.equal(await context.panelResult[1], null);
+  assert.equal(await context.panelResult[2], null);
+  assert.equal(await context.panelResult[3], false);
+});
 
 function watchdogPanelHarness() {
   let username = 'dylan_collyge', profileId = 'profile-a', authEpoch = 1, cacheScope = 'cache-a';

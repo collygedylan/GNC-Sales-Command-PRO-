@@ -23,7 +23,7 @@ test('Apps Script scoped patch ships request mapping, email, and watchdog change
   'sendRequestDeliveryPush_','handleRuntimeWatchdogAlert_'
  ]);
  for(const name of patch.functions)assert.ok(patch.source.includes(`function ${name}(`),`${name} is included in the scoped patch`);
- assert.equal(patch.source.split("if (payload.type === 'runtime_watchdog_alert_v1')").length-1,1,'the signed watchdog dispatch is added exactly once');
+ assert.equal(patch.source.split("return jsonOutput_(handleRuntimeWatchdogAlert_(payload));").length-1,1,'the watchdog handler dispatch is present exactly once');
  assert.match(patch.source,/const payload = authorizeAppsScriptPost_\(JSON\.parse\(e\.postData\.contents\)\)/,'the scoped patch installs the doPost authentication entry gate');
  assert.ok(patch.source.includes("function protectedRemoteOnly_() { return 'unchanged'; }"));
  assert.equal(patch.protectedSourceDigest.length,64);

@@ -39,6 +39,8 @@ Use the existing release tooling. Do not create version-numbered check-v23XX scr
 
 Standard main pushes use only the fast inline/static gate, changed-Edge type check, and `scripts/run-tooling-release-checks.mjs` (under 15 seconds). Target a gate under 45 seconds, scoped publication under 60 seconds and total GitHub Actions delivery under 2 minutes. Tooling-only releases make zero runtime changes and must not redeploy older application changes solely because a publication baseline differs.
 
+Pushes to `staging` run the same fast inline/tooling validation and prepare one staging site artifact. This path has read-only repository permissions and performs no production deployment, backend or Apps Script work, secret-backed health checks, browser tests, email delivery, Docker build, or full regression matrix. Keep production promotion on the existing exact-commit fast-forward path from `main`; a passing staging artifact is not a production release authorization.
+
 Stop unrelated work after required checks pass. Keep compact pass summaries and detailed failure evidence; diagnose and rerun only affected checks. Halt after eight consecutive failed corrections of the same issue, retaining evidence. Restore last-known-good publication after a confirmed regression without discarding completed imports or user work.
 
 Explicit task-specific validation overrides take precedence: a tooling-only task may require only focused Node/config checks and reuse historical browser evidence. Label that evidence historical and never claim a new browser/container pass.

@@ -23,6 +23,7 @@ export const toolingReleaseCheckFiles = Object.freeze([
   'tests/release-scope.test.mjs',
   'tests/main-release-registration.test.mjs',
   'tests/tooling-release-runner.test.mjs',
+  'tests/code-health-governance.test.mjs',
   'tests/agdata-governance.test.mjs',
   'tests/agdata-architecture.test.mjs',
 ]);

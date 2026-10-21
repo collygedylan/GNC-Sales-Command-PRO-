@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.25';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.26';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25748,7 +25748,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.25').trim() || 'AgData v2.3.25';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.26').trim() || 'AgData v2.3.26';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -138311,7 +138311,21 @@ C.14.043 C.15.000
             </div><div class="space-y-3">${cardsHtml}</div>`);
         }
 
-        const runtimeWatchdogPanel = window.AgMetricRuntimeWatchdogPanel.createController({
+        function createRuntimeWatchdogPanelOrNoop(panelModule, dependencies) {
+            try {
+                if (typeof panelModule?.createController !== 'function') throw new Error('WATCHDOG_PANEL_MODULE_UNAVAILABLE');
+                return panelModule.createController(dependencies);
+            } catch (error) {
+                try { window.GncRuntimeWatchdog?.capture?.(error, 'initializeRuntimeWatchdogPanel'); } catch (_) { /* telemetry must not affect boot */ }
+                return Object.freeze({
+                    renderPanel: () => '<section class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Watchdog panel unavailable. Manager remains available.</section>',
+                    refreshBadge: () => Promise.resolve(null),
+                    refreshPanel: () => Promise.resolve(null),
+                    copyFixBrief: () => Promise.resolve(false),
+                });
+            }
+        }
+        const runtimeWatchdogPanel = createRuntimeWatchdogPanelOrNoop(window.AgMetricRuntimeWatchdogPanel, {
             document, lifecycle: window.AgMetricLifecycle, apiUrl: APP_API_FUNCTION_URL, postJson: postAppFunctionJson,
             getUsername: () => currentUser, getProfileId: () => typeof nativeAuthProfile !== 'undefined' ? nativeAuthProfile?.id : '',
             getAuthEpoch: () => typeof productionLiveSyncReadAuthEpoch !== 'undefined' ? productionLiveSyncReadAuthEpoch : 0,

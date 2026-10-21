@@ -48,12 +48,16 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    'b9ba8243b8e701e17a1414d71e2e16bcc70d7bd5951f3def08c4b465414caa32');
+    '3bf6dc722b78dca092038ad8c81f83c28b25f36d2df71a6e3239fd4e0936e5d6');
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));
   assert.ok(source.includes('eight consecutive attempts'));
   assert.ok(source.includes('must remain PAUSED whenever explicitly instructed'));
+  assert.ok(source.includes('Production AI and Runtime Watchdog Boundary'));
+  assert.ok(source.includes('read-only by default'));
+  assert.ok(source.includes('explicit user release prompt naming the reviewed change and authorized action'));
+  assert.ok(source.includes('local implementation permission alone does not authorize production writes, push, or deployment'));
   const attributes = read('.gitattributes');
   for (const ext of ['js', 'mjs', 'ts', 'json', 'html', 'css', 'sql', 'gs', 'webmanifest', 'md', 'yml']) {
     assert.ok(attributes.split('\n').includes(`*.${ext} text eol=lf`), ext);
@@ -62,6 +66,21 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   assert.match(read('.codex/config.toml'), /^model_reasoning_effort = "medium"$/m);
   assert.match(read('.codex/config.toml'), /^default_subagent_reasoning_effort = "medium"$/m);
   assert.equal(Object.hasOwn(JSON.parse(read('package.json')), 'scopedValidationReceipt'), false);
+});
+
+test('staging validates one artifact without widening the production release path', () => {
+  const workflow = yaml.safeLoad(read('.github/workflows/release-validation.yml'));
+  assert.deepEqual(workflow.on.push.branches, ['staging']);
+  assert.equal(workflow.permissions.contents, 'read');
+  assert.equal(workflow.permissions.actions, 'read');
+  assert.match(workflow.jobs.build.steps.find(step => step.id === 'site').with.name, /^\$\{\{.*staging-site.*\}\}/);
+  assert.match(workflow.jobs['production-health'].if, /inputs\.production-health/);
+  assert.doesNotMatch(workflow.jobs.build.steps.map(step => JSON.stringify(step)).join('\n'), /secrets\./);
+  assert.equal(Object.keys(workflow.jobs).some(name => /deploy|publish/i.test(name)), false);
+  for (const name of ['lint', 'unit', 'react', 'contracts', 'database', 'fast-browser', 'foundation', 'functional', 'compiled', 'timing', 'performance', 'lighthouse']) {
+    assert.match(workflow.jobs[name].if, /refs\/heads\/main/);
+    assert.match(workflow.jobs[name].if, /run-nightly-suites/);
+  }
 });
 
 test('setup documentation supplies a compiler prompt without claiming account activation', () => {
