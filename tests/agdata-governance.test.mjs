@@ -108,7 +108,7 @@ test('Request and sync startup reads reject forged parameters and all mutations'
  assert.equal(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities',actorId:'forged'},[],[],{}),null);
  assert.deepEqual(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities'},[],[],{username:'dylan_collyge'}).data,{username:'dylan_collyge'});
  const runner=read('scripts/apply-item-low-stock-migration.mjs');
- assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName]'));
+ assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName]'));
  assert.ok(runner.includes('if (name === requestWorkSyncStatusMigrationName)'));
 });
 
@@ -118,4 +118,18 @@ test('sync status table is registered in typed and runtime read contracts',()=>{
  assert.ok(types.includes('app_manual_sync_status: {'));
  assert.ok(generated.includes('"app_manual_sync_status": {'));
  for(const field of ['id','status','updated_at'])assert.ok(generated.slice(generated.indexOf('"app_manual_sync_status"'),generated.indexOf('"app_dataset_revisions"')).includes('"'+field+'"'));
+});
+
+
+test('conditional dataset fixture rejects unknown keys, unsupported datasets and forged operations', async () => {
+ const vm = await import('node:vm');
+ const source=read('tests/fixtures/hl-order-state.mjs');
+ const expression=source.slice(source.indexOf('const datasetRead =') + 'const datasetRead ='.length, source.indexOf(';', source.indexOf('const datasetRead =')));
+ const allowed=body=>vm.runInNewContext(expression,{body,req:{headers:()=>({})}});
+ const body={action:'dataset_read',dataset:'cav',params:{limit:500,offset:0,ifRevision:'7'}};
+ assert.equal(allowed(body),true);
+ assert.equal(allowed({...body,params:{...body.params,actorId:'forged'}}),false);
+ assert.equal(allowed({...body,params:{...body.params,ifRevision:'invalid'}}),false);
+ assert.equal(allowed({...body,dataset:'suspend_tag'}),false);
+ assert.equal(allowed({...body,operation:'delete'}),false);
 });

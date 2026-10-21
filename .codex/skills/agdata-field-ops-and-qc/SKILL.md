@@ -37,3 +37,7 @@ node --test tests/eval-reports-engine.test.mjs tests/bunch-note-card-model.test.
 Use the canonical dependency map's Location Work / Shear rows when those specific contracts change. Follow AGENTS daytime limits; browser, import replay and database suites require the applicable explicit or Nightly scope. This skill does not authorize production writes or a broad regression run.
 
 Paged Eval2 indexes use metadata.reportMatchCount for the full union. Cold initialization must not reference an undeclared surface flag. Tasks may display its authenticated master preview while optional joins finish.
+
+## Application conflict errors
+
+Revision conflicts must use PT409, never custom 40001. The v2.3.34 application_conflict_retry_guard migration preserves existing RPC permissions and retry catches; Edge handlers recognize both real serialization failures and HTTP conflicts.

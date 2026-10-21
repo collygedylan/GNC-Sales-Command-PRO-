@@ -1167,7 +1167,7 @@ export async function handleAuraQueryRequest(request: Request, deps: AuraQueryDe
     if (signal.aborted) return fail("AURA’s request took too long. Try again.", 504, "AURA_QUERY_TIMEOUT");
     const sqlState = String(failure.code || "");
     const databaseMessage = String(failure.message || "");
-    const code = sqlState === "40001" ? "AURA_QUERY_REVISION_CONFLICT"
+    const code = (sqlState === "40001" || sqlState === "PT409") ? "AURA_QUERY_REVISION_CONFLICT"
       : sqlState === "42501" ? "AURA_FORBIDDEN"
       : /^AURA_[A-Z0-9_]+$/.test(databaseMessage) ? databaseMessage : safeErrorCode(error);
     if (code === "AURA_SEASON_SETTINGS_UNAVAILABLE" || code === "AURA_MANAGER_SETTINGS_REVISION_INVALID") return fail("The Managers current season setting is missing or invalid. Ask an authorized manager to save a valid season and sales year.", 503, "AURA_SEASON_SETTINGS_UNAVAILABLE");

@@ -737,7 +737,8 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         'dock_item', 'dock_issue', 'dock_allocations', 'inventory_edits', 'shear'].includes(body.dataset)
         && Object.keys(body).every(key => ['action', 'dataset', 'params'].includes(key))
         && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
-        && Object.keys(body.params).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))
+        && Object.keys(body.params).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order', 'ifRevision'].includes(key))
+        && (body.params.ifRevision === undefined || (['soc','cav','reserves'].includes(body.dataset) && typeof body.params.ifRevision === 'string' && /^[0-9]+$/.test(body.params.ifRevision)))
         && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
         && Number.isInteger(body.params.offset) && body.params.offset >= 0
         && (!body.params.projection || ['default', 'signature', 'ids'].includes(body.params.projection))

@@ -42,20 +42,20 @@
     } catch (_) { state.reportQueue = []; }
   }
   function scheduleReportRetry() {
-    if (state.reportTimer !== null || !state.reportQueue.length) return;
+    if (document.hidden || state.reportTimer !== null || !state.reportQueue.length) return;
     const delay = state.reportRetryMs;
     state.reportRetryMs = Math.min(60000, Math.max(1000, state.reportRetryMs * 2));
     state.reportTimer = global.setTimeout(() => { state.reportTimer = null; flushPendingReports(); }, delay);
   }
   async function flushPendingReports() {
-    if (state.reportFlushGeneration === state.reportGeneration || !state.configured || !state.username || typeof state.report !== 'function'
+    if (document.hidden || state.reportFlushGeneration === state.reportGeneration || !state.configured || !state.username || typeof state.report !== 'function'
       || state.reportQueueOwner !== state.username || !state.reportQueue.length) return false;
     const generation = state.reportGeneration;
     state.reportFlushGeneration = generation;
     const owner = state.username;
     const reporter = state.report;
     try {
-      while (state.reportQueue.length && state.reportQueueOwner === owner && state.username === owner) {
+      while (!document.hidden && state.reportQueue.length && state.reportQueueOwner === owner && state.username === owner) {
         const event = state.reportQueue[0];
         try {
           const result = await reporter(event);
@@ -192,7 +192,12 @@
   const observer = new MutationObserver(inspect);
   if (document.documentElement) observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'aria-busy', 'data-loading', 'data-eval-report-counts-ready', 'data-eval-report-count'] });
   global.addEventListener('online', () => { state.reportRetryMs = 1000; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } void flushPendingReports(); });
-  document.addEventListener?.('visibilitychange', () => { if (!document.hidden) void flushPendingReports(); });
+  document.addEventListener?.('visibilitychange', () => {
+    if (document.hidden) {
+      if (state.reportTimer !== null) global.clearTimeout(state.reportTimer);
+      state.reportTimer = null;
+    } else void flushPendingReports();
+  });
   global.GncRuntimeWatchdog = Object.freeze({
     configure(options = {}) { const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : {}; inspect(); void flushPendingReports(); },
     record, capture, normalizeRole: normalizedRole, setDatasetRevisions(value) { state.revisions = value && typeof value === 'object' ? value : {}; },

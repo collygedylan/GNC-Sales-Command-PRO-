@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.33';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.34';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14299,6 +14299,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function syncVisibleViewPoll(viewId, options = {}) {
+            if (canUseProductionLiveSync()) return;
             if (visibleViewPollTimer) {
                 clearTimeout(visibleViewPollTimer);
                 visibleViewPollTimer = null;
@@ -14331,7 +14332,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 updateSyncDiagnostics(liveSyncMode);
             }
             const baseDelay = Number(options && options.delay !== undefined ? options.delay : policy.pollMs) || policy.pollMs;
-            const minimumPollDelay = policy.viewId === 'request' ? REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS : 1200;
+            const minimumPollDelay = Math.max(20000, policy.viewId === 'request' ? REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS : 20000);
             const attempt = Math.max(0, Number(realtimeFallbackAttemptsByView.get(policy.viewId) || 0));
             const exponentialDelay = Math.min(REALTIME_FALLBACK_MAX_MS, REALTIME_FALLBACK_BASE_MS * (2 ** attempt));
             const nextDelay = Math.max(
@@ -14347,6 +14348,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function startFallbackSync(intervalMs = getFallbackSyncInterval(), requiredTables = activeRealtimeTables) {
+            if (canUseProductionLiveSync()) return;
             if (fallbackSyncInterval) {
                 clearInterval(fallbackSyncInterval);
                 fallbackSyncInterval = null;
@@ -18929,7 +18931,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     normalizedBody = normalizeSupabaseWriteBodyForTable(table, safeMethod, body);
                     liveEventBody = normalizedBody;
                 }
-                if (!nativeHeaders && shouldRouteSupabaseWriteThroughAppApi(table, safeMethod, requestOptions)) {
+                if (isSupabaseWriteMethod(safeMethod)) {
                     try {
                         writeStage = 'app_api';
                         const result = await runAppApiSupabaseWrite(table, safeMethod, normalizedBody, query, { timeoutMs: writeTimeoutMs });
@@ -18938,28 +18940,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     } catch (proxyError) {
                         if (isPasswordChangeRequiredError(proxyError)) throw proxyError;
                         markAppApiWriteProxyUnavailable(proxyError);
-                        if (!shouldUseDirectSupabaseWriteFallback(proxyError, requestOptions)) throw proxyError;
+                        throw proxyError;
                     }
                 }
-                if (!SUPABASE_KEY) throw new Error('Direct Supabase write fallback is disabled.');
-                writeStage = 'rest';
-                const options = {
-                    method: safeMethod,
-                    headers: nativeHeaders || { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
-                };
-                const idempotencyKey = String(requestOptions && requestOptions.idempotencyKey || '').trim();
-                if (idempotencyKey) options.headers['Idempotency-Key'] = idempotencyKey.slice(0, 180);
-                if (safeMethod === 'POST') options.headers.Prefer = table === 'ph_active_request' ? 'return=minimal' : 'return=minimal,resolution=merge-duplicates';
-                else if (safeMethod === 'PATCH' || safeMethod === 'DELETE') options.headers.Prefer = 'return=minimal';
-                else options.headers.Prefer = 'return=representation';
-                if (hasWriteBody) options.body = JSON.stringify(normalizedBody);
-                const response = await window.GncDatabase.fetchTable(SUPABASE_URL, table, query, options, writeTimeoutMs, `${table} ${safeMethod}`);
-                writeRequestId = response.headers?.get('sb-request-id') || response.headers?.get('x-request-id') || '';
-                if (!response.ok) throw await createSupabaseReadResponseError(response, 'Supabase write failed');
-                const text = await response.text();
-                const result = text ? JSON.parse(text) : {};
-                queueAppLiveEventForWrite(table, safeMethod, liveEventBody, query);
-                return result;
+                throw new Error('Direct Supabase writes are disabled; use authenticated app-api.');
             } catch (error) {
                 if (table === 'ph_soc_master') {
                     // Never include the query, row, user, or error message in write diagnostics.
@@ -21178,6 +21162,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const params = buildAuthorizedDatasetReadParams(table, query, limit, offset);
             const identityScope = getSupabaseReadIdentityScope();
             const permissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+            const cacheOwner = JSON.stringify([identityScope, permissionVersion]);
+            if (requestAuthorizedDatasetReadPage.cacheOwner !== cacheOwner) {
+                requestAuthorizedDatasetReadPage.cacheOwner = cacheOwner;
+                requestAuthorizedDatasetReadPage.cache = new Map();
+            }
+            const cache = requestAuthorizedDatasetReadPage.cache;
+            const cacheKey = JSON.stringify([config.dataset, params]);
+            const cached = cache.get(cacheKey);
+            if (cached && ['soc', 'cav', 'reserves'].includes(config.dataset)) params.ifRevision = cached.revision;
             const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
                 action: 'dataset_read', dataset: config.dataset, params
             }, {
@@ -21186,6 +21179,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 label: `${config.dataset} data`
             });
             if (identityScope !== getSupabaseReadIdentityScope() || permissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
+            if (payload?.ok === true && payload.data?.up_to_date === true && cached
+                && String(payload.data.revision) === cached.revision) return structuredClone(cached);
             if (!payload || payload.ok !== true || !payload.data || !Array.isArray(payload.data.rows)
                 || !Number.isInteger(Number(payload.data.total)) || Number(payload.data.total) < 0
                 || Number(payload.data.offset) !== params.offset || Number(payload.data.limit) < 1 || Number(payload.data.limit) > 500) {
@@ -21210,6 +21205,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const inventoryRevision = String(payload.data.inventoryRevision || payload.data.rows.find(row => row?.loc_on_hand_revision || row?.LOC_ON_HAND_REVISION)?.loc_on_hand_revision || payload.data.rows.find(row => row?.LOC_ON_HAND_REVISION)?.LOC_ON_HAND_REVISION || '');
             if (inventoryRevision && acceptCardLocationOnHandSourceReceipt(identityScope, permissionVersion, inventoryRevision)) {
                 payload.data.rows.forEach(row => stampCardLocationOnHandReceipt(row, identityScope, permissionVersion, inventoryRevision));
+            }
+            if (['soc', 'cav', 'reserves'].includes(config.dataset) && /^\d+$/.test(String(payload.data.revision || ''))) {
+                cache.delete(cacheKey);
+                cache.set(cacheKey, structuredClone(payload.data));
+                while (cache.size > 32) cache.delete(cache.keys().next().value);
             }
             return payload.data;
         }
@@ -23605,7 +23605,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         let fullInventory=[]; let cropRollDriveInventory=[]; let cropRollDriveSchemaReady=null; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let salesCreditRequestsInventory=[]; let inventoryEditRequestInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let warehouseAssignedItemsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatMessageSendInFlight=false; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let chatBackgroundPollAttempt=0; let foregroundChatNotificationIds=new Set(); let foregroundDepartmentCalendarNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let masterInventoryByItemCode=new Map(); let cropRollDriveInventoryById=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let salesCreditRequestsById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let warehouseAssignedItemsByLookupKey=new Map(); let warehouseAssignedItemMatchCache=new WeakMap(); let warehouseAssignedItemIndexCacheKey=''; let cavInventoryById=new Map(); let inventoryDomIdLookupCache=new Map(); let inventoryDomIdLookupCacheSignature=''; let inventoryDomIdLookupCacheVersion=0; let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
+        let masterInventoryById=new Map();
+        let masterInventoryLookup = null;
+        let masterInventoryByItemLocLot = new Map(), masterInventoryByItemLoc = new Map(), masterInventoryByItem = new Map(); let masterInventoryByExactKey=new Map(); let masterInventoryByItemCode=new Map(); let cropRollDriveInventoryById=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let salesCreditRequestsById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let warehouseAssignedItemsByLookupKey=new Map(); let warehouseAssignedItemMatchCache=new WeakMap(); let warehouseAssignedItemIndexCacheKey=''; let cavInventoryById=new Map(); let inventoryDomIdLookupCache=new Map(); let inventoryDomIdLookupCacheSignature=''; let inventoryDomIdLookupCacheVersion=0; let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
         let activeGrowerScoutTab='inventory'; let growerScoutRecorder=null; let growerScoutRecorderStream=null; let growerScoutRecordingActive=false; let growerScoutRecordingStartedAt=0; let growerScoutRecordingTimer=null; let growerScoutRecordMimeType=''; let growerScoutAudioChunks=[]; let growerScoutAudioBlob=null; let growerScoutAudioDurationSeconds=0; let growerScoutSubmitInFlight=false;
         let growerInventorySearch=''; let growerInventorySeason='all'; let growerInventoryLocation='all'; let growerInventorySize='all'; let growerInventoryVisibleCount=80; let growerInventorySearchTimer=null; let growerScoutExpandedItem=''; let growerScoutExpandedRow=''; let growerScoutSavingRow=''; const growerScoutRowDrafts=new Map();
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
@@ -25864,7 +25866,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.33').trim() || 'AgData v2.3.33';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.34').trim() || 'AgData v2.3.34';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27060,7 +27062,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function scheduleManualSyncStatusPoll(delayMs = MANUAL_SYNC_STATUS_POLL_MS) {
             clearManualSyncStatusPoll();
-            if (!currentUser || navigator.onLine === false) return;
+            if (!currentUser || document.hidden || navigator.onLine === false || canUseProductionLiveSync()) return;
             manualSyncStatusPollTimer = setTimeout(() => {
                 manualSyncStatusPollTimer = null;
                 refreshManualSyncStatus(true).catch(() => {
@@ -27171,7 +27173,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function refreshManualSyncStatus(force = false) {
-            if (!currentUser || navigator.onLine === false) return manualSyncStatusState;
+            if (!currentUser || document.hidden || navigator.onLine === false) return manualSyncStatusState;
             if (manualSyncStatusPollInFlight) return manualSyncStatusState;
             const now = Date.now();
             if (!force && !hasActiveManualSync() && lastManualSyncStatusCheckedAt && (now - lastManualSyncStatusCheckedAt) < MANUAL_SYNC_STATUS_STALE_MS) {
@@ -27579,6 +27581,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 syncAlwaysOnRequestData(isIOSDevice() ? 460 : 120, { minIntervalMs: 0 });
             } else {
                 clearRequestViewLiveSync();
+                clearManualSyncStatusPoll();
+                clearChatBackgroundPoll();
+                clearVisibleViewPollSync();
+                if (hlOrderPollTimer) clearTimeout(hlOrderPollTimer);
+                hlOrderPollTimer = null;
+                if (managerApprovalLiveRefreshTimer) clearTimeout(managerApprovalLiveRefreshTimer);
+                managerApprovalLiveRefreshTimer = null;
             }
             if (document.hidden && pendingCachePersist) persistCurrentCache(true);
             if (document.hidden) flushPendingEditsCache(true);
@@ -28876,6 +28885,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 },
                 clearTimeout: cancel => cancel(),
                 getContext: getProductionLiveSyncContext,
+                getPollInterval: () => hasActiveManualSync() ? 10000 : 30000,
+                onHeartbeat: () => {
+                    if (document.hidden) return;
+                    if (hasActiveManualSync()) void refreshManualSyncStatus(true).catch(() => {});
+                    if (cartPanelOpen && getCurrentVisibleViewId() !== 'hl-order') void loadHlOrderState(false);
+                },
                 connectionSourceKeys: () => ['ph_master_inventory'],
                 onRevisionRead: (value, metadata, context) => recordDatasetRevisionConnection(value, metadata, context),
                 readRevisions: (keys, options = {}) => withProductionLiveSyncSignal(options.signal, async (signal) => {
@@ -35530,12 +35545,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 byExactKey: new Map(),
                 byItemCode: new Map(),
                 byItemLocationOnHand: new Map(),
-                byNormalizedItemLocation: new Map()
+                byNormalizedItemLocation: new Map(),
+                lookup: null
             };
         }
 
         function addMasterInventoryRowToIndexes(indexes, item) {
             if (!indexes || !item) return indexes;
+            buildSearchIndex(item);
             const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
             if (uniqueId) indexes.byId.set(uniqueId, item);
             const exactKey = getMasterInventoryExactKey(item);
@@ -35557,6 +35574,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function buildMasterInventoryIndexMaps(items = []) {
             const indexes = createMasterInventoryIndexMaps();
             (Array.isArray(items) ? items : []).forEach(item => addMasterInventoryRowToIndexes(indexes, item));
+            indexes.lookup = window.AgMetricQueueInventory?.createIndex(items) || null;
             return indexes;
         }
 
@@ -35564,6 +35582,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!indexes) return false;
             if (typeof queueCardInventoryHydrator !== 'undefined') queueCardInventoryHydrator?.invalidate();
             masterInventoryById = indexes.byId;
+            masterInventoryLookup = indexes.lookup;
+            masterInventoryByItemLocLot = indexes.lookup?.byItemLocLot || new Map();
+            masterInventoryByItemLoc = indexes.lookup?.byItemLoc || new Map();
+            masterInventoryByItem = indexes.lookup?.byItem || new Map();
             masterInventoryByExactKey = indexes.byExactKey;
             masterInventoryByItemCode = indexes.byItemCode;
             masterInventoryByItemLocationOnHand = indexes.byItemLocationOnHand;
@@ -52995,6 +53017,7 @@ function toggleDriveQuickRequestItem(domId) {
             item._searchProfileValues = {};
             item._searchProfileWordStarts = {};
             item._search = candidates.join(' ');
+            item.normalizedSearchText = item._search;
             return item;
         }
 
@@ -60699,7 +60722,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const requestedDelay = Math.max(REALTIME_FALLBACK_BASE_MS, Number(delayMs) || REALTIME_FALLBACK_BASE_MS);
             const cappedDelay = Math.min(REALTIME_FALLBACK_MAX_MS, requestedDelay * (2 ** Math.min(chatBackgroundPollAttempt, 8)));
-            const jitteredDelay = Math.max(750, Math.floor(Math.random() * Math.max(1, cappedDelay)));
+            const jitteredDelay = Math.max(20000, Math.floor(Math.random() * Math.max(1, cappedDelay)));
             chatBackgroundPollTimer = setTimeout(() => {
                 chatBackgroundPollTimer = null;
                 runChatBackgroundPoll().catch(() => {
@@ -88097,7 +88120,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function scheduleHlOrderRefresh() {
-            if (hlOrderPollTimer || hlOrderTimeoutPaused || !canUseHlOrder()) return;
+            if (canUseProductionLiveSync()) return;
+            if (document.hidden || hlOrderPollTimer || hlOrderTimeoutPaused || !canUseHlOrder()) return;
             hlOrderPollTimer = setTimeout(() => {
                 hlOrderPollTimer = null;
                 if (canUseHlOrder() && !document.hidden && (getCurrentVisibleViewId() === 'hl-order' || cartPanelOpen)) void loadHlOrderState(true);
@@ -127320,6 +127344,7 @@ C.14.043 C.15.000
         }
 
         function scheduleManagerApprovalLiveRefresh(delay = MANAGER_APPROVAL_LIVE_REFRESH_MS) {
+            if (canUseProductionLiveSync()) return;
             if (managerApprovalLiveRefreshTimer) clearTimeout(managerApprovalLiveRefreshTimer);
             managerApprovalLiveRefreshTimer = null;
             if (!isManagerApprovalLiveContextActive(activeHomeTab)) return false;
@@ -142466,7 +142491,7 @@ C.14.043 C.15.000
             if (verified) {
                 const receipt = JSON.stringify([context.scope, context.permission, context.revision]);
                 if (!queueCardInventoryIndex || queueCardInventoryIndexRows !== masterInventoryById || queueCardInventoryIndexReceipt !== receipt) {
-                    queueCardInventoryIndex = helper.createIndex(fullInventory);
+                    queueCardInventoryIndex = masterInventoryLookup || helper.createIndex(fullInventory);
                     queueCardInventoryIndexRows = masterInventoryById;
                     queueCardInventoryIndexReceipt = receipt;
                 }
@@ -142501,7 +142526,7 @@ C.14.043 C.15.000
                 || String(state.liveVerifiedRevision) !== context.revision) return null;
             const receipt = JSON.stringify([context.scope, context.permission, context.revision]);
             if (!queueCardInventoryIndex || queueCardInventoryIndexRows !== masterInventoryById || queueCardInventoryIndexReceipt !== receipt) {
-                queueCardInventoryIndex = helper.createIndex(fullInventory);
+                queueCardInventoryIndex = masterInventoryLookup || helper.createIndex(fullInventory);
                 queueCardInventoryIndexRows = masterInventoryById;
                 queueCardInventoryIndexReceipt = receipt;
             }

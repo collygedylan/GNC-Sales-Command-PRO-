@@ -313,3 +313,35 @@ test('manual Apps Script health diagnostic signs read-only health and emits only
   assert.doesNotMatch(health.run, /console\.log\(payload|console\.log\(text|console\.log\(body/);
   assert.doesNotMatch(health.run, /SUPABASE_DB_URL|\.rpc\(|\.from\(/);
 });
+
+
+test('application conflicts use PT409 without weakening SQL authorization or real serialization handlers', async () => {
+  const sql = readFileSync(new URL('../supabase/migrations/20261021193000_application_conflict_retry_guard.sql', import.meta.url), 'utf8');
+  assert.ok(sql.includes("$$errcode='PT409'$$"));
+  assert.ok(sql.includes("exception when sqlstate '40001' or sqlstate 'PT409' then"));
+  assert.match(sql, /pg_get_functiondef/);
+  assert.doesNotMatch(sql, /grant\s|disable row level|drop policy/i);
+  assert.match(sql, /p.id=\(select auth.uid\(\)\)/);
+  assert.match(sql, /expected_rows \+ 1999/);
+  const { migrationContractQuery } = await import('../scripts/apply-item-low-stock-migration.mjs');
+  assert.match(migrationContractQuery('20261021193000_application_conflict_retry_guard.sql'), /PT409/);
+  assert.match(api, /code === "PT409"/);
+});
+
+test('browser table mutations always dispatch through authenticated app-api', () => {
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const body = runtime.slice(runtime.indexOf('        async function supabaseFetch('), runtime.indexOf('        async function supabaseFetch(') + 12000);
+  assert.match(body, /if \(isSupabaseWriteMethod\(safeMethod\)\) \{/);
+  assert.match(body, /await runAppApiSupabaseWrite\(table, safeMethod, normalizedBody/);
+  assert.doesNotMatch(body.split('        async function ')[1] || body, /Authorization: \x60Bearer \$\{SUPABASE_KEY\}/);
+  assert.match(runtime, /if \(!nativeHeaders \|\| !nativeHeaders.Authorization\)/);
+});
+
+test('conditional snapshot reads remain behind authorization and scoped query validation', () => {
+  const handler = api.slice(api.indexOf('async function handleDatasetRead('), api.indexOf('async function handleRequestQueueRemove'));
+  assert.ok(handler.indexOf('DATASET_READ_FORBIDDEN') < handler.indexOf('up_to_date: true'));
+  assert.ok(handler.indexOf('DATASET_READ_ORDER_INVALID') < handler.indexOf('up_to_date: true'));
+  assert.match(handler, /metadata.data\?\.state === "ready"/);
+  assert.match(handler, /parsed.ifRevision === revision/);
+  assert.match(api, /masterByItem.get\(key\)/);
+});

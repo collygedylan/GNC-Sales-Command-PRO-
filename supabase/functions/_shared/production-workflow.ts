@@ -155,7 +155,7 @@ export function inventoryReclassMoveError(error: unknown) {
   const message = error instanceof Error ? error.message : text(source.message);
   const code = /^(?:INVENTORY_RECLASS|DRIVE_RECLASS)_[A-Z0-9_]+$/.test(message) ? message : 'INVENTORY_RECLASS_UNAVAILABLE';
   const forbidden = /FORBIDDEN|PERMISSION_REQUIRED|PROFILE_INACTIVE|ACTOR_REQUIRED/.test(code) || source.code === '42501';
-  const conflict = /CONFLICT|CHANGED|MISSING|AMBIGUOUS|MISMATCH|REFRESH_REQUIRED/.test(code) || source.code === '40001';
+  const conflict = /CONFLICT|CHANGED|MISSING|AMBIGUOUS|MISMATCH|REFRESH_REQUIRED/.test(code) || (source.code === "40001" || source.code === "PT409");
   const status = forbidden ? 403 : conflict ? 409 : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 503 : 400;
   return { status, body: { ok: false, code, message: forbidden ? 'You do not have access to Reclass this inventory.'
     : conflict ? 'Inventory changed or is refreshing. Refresh and review the source row before retrying.'
@@ -168,7 +168,7 @@ export function workflowError(error: unknown) {
   const message = error instanceof Error ? error.message : text(source.message);
   const code = /^(?:WORKFLOW|PRODUCTION|INVENTORY)_[A-Z_]+$/.test(message) ? message : 'WORKFLOW_UNAVAILABLE';
   const forbidden = /FORBIDDEN|INACTIVE|MANAGER_REQUIRED/.test(code) || source.code === '42501';
-  const conflict = /CONFLICT|CHANGED|ALREADY_OPEN|SOURCE_MISSING|REFRESH_REQUIRED/.test(code) || source.code === '40001';
+  const conflict = /CONFLICT|CHANGED|ALREADY_OPEN|SOURCE_MISSING|REFRESH_REQUIRED/.test(code) || (source.code === "40001" || source.code === "PT409");
   return { status: forbidden ? 403 : conflict ? 409 : code === 'WORKFLOW_UNAVAILABLE' ? 503 : 400,
     body: { ok: false, code, message: forbidden ? 'Your current account cannot use this action.' : conflict
       ? 'This row changed. Refresh and review it before trying again.' : code === 'WORKFLOW_UNAVAILABLE'

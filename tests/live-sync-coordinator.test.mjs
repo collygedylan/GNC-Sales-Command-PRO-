@@ -1293,3 +1293,64 @@ test('sync status reads app-api at ten seconds without Apps Script status reques
  for(const expected of ['IMPORT_HISTORY_CHUNK_SIZE_ = 2000','scheduleRequestIntegrityMaintenance_();','app_manual_sync_status','chunkSize: 2000']) assert.ok(script.includes(expected),expected);
  assert.ok(script.includes('chunkSize === 500') || script.includes('[500,2000]'));
 });
+
+
+test('one foreground heartbeat pauses hidden callbacks and skips unchanged dataset downloads', async () => {
+    let heartbeat = 0, interval = 30000;
+    const f = fixture({ getPollInterval: () => interval, onHeartbeat: () => heartbeat++ });
+    await f.coordinator.check();
+    assert.equal(f.reads, 1);
+    await f.advance(30000);
+    assert.equal(f.reads, 1, 'unchanged revision must retain the dataset');
+    assert.equal(heartbeat, 1);
+    const metadataReads = f.metadataReads;
+    f.context.visible = false;
+    await f.advance(30000);
+    assert.equal(f.metadataReads, metadataReads);
+    assert.equal(heartbeat, 1);
+    assert.equal(f.timers.size, 0);
+    f.context.visible = true;
+    interval = 10000;
+    await f.coordinator.check('foreground');
+    assert.equal(f.metadataReads, metadataReads + 1, 'resume performs one lightweight revision read');
+    assert.equal(f.reads, 1);
+    await f.advance(10000);
+    assert.equal(heartbeat, 2);
+    f.coordinator.reset();
+});
+
+
+test('conditional page cache avoids retransfers and is isolated by account and permission', async () => {
+    const app = readComposedAppSource();
+    const source = app.match(/        async function requestAuthorizedDatasetReadPage\([^]*?^        }/m)[0];
+    let scope = 'alice', version = 'v1', transferred = 0;
+    const calls = [];
+    const context = { structuredClone, Map, console,
+      getAuthorizedDatasetRead: () => ({ dataset: 'cav' }),
+      buildAuthorizedDatasetReadParams: () => ({ limit: 500, offset: 0 }),
+      getSupabaseReadIdentityScope: () => scope,
+      appAccessSnapshotState: { snapshot: { dataPermissionVersion: version } },
+      APP_API_FUNCTION_URL: '/app-api', SUPABASE_READ_TIMEOUT_MS: 1000,
+      staleSupabaseReadScopeError: () => new Error('stale'),
+      postAppFunctionJson: async (_url, body) => {
+        calls.push(body);
+        if (body.params.ifRevision === '7') return { ok: true, data: { revision: '7', up_to_date: true } };
+        transferred++;
+        return { ok: true, data: { rows: [{ unique_id: scope }], revision: '7', total: 1, offset: 0, limit: 500 } };
+      }
+    };
+    vm.runInNewContext(source, context);
+    const first = await context.requestAuthorizedDatasetReadPage('ph_cav_import');
+    first.rows[0].unique_id = 'local-edit';
+    const second = await context.requestAuthorizedDatasetReadPage('ph_cav_import');
+    assert.equal(second.rows[0].unique_id, 'alice', 'cached snapshots must not share mutable response rows');
+    assert.equal(transferred, 1);
+    assert.equal(calls[1].params.ifRevision, '7');
+    scope = 'bob';
+    await context.requestAuthorizedDatasetReadPage('ph_cav_import');
+    assert.equal(calls[2].params.ifRevision, undefined);
+    context.appAccessSnapshotState.snapshot.dataPermissionVersion = 'v2';
+    await context.requestAuthorizedDatasetReadPage('ph_cav_import');
+    assert.equal(calls[3].params.ifRevision, undefined);
+    assert.equal(transferred, 3);
+});

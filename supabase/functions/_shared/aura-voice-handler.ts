@@ -564,7 +564,7 @@ export async function handleAuraVoiceRequest(request: Request, deps: AuraVoiceDe
     const failure = optionalObject(error);
     const raw = error instanceof Error ? error.message : String(failure.message || "");
     const code = signal.aborted ? "AURA_QUERY_TIMEOUT" : failure.code === "42501" ? "AURA_FORBIDDEN"
-      : failure.code === "40001" || failure.code === "55P03" ? "AURA_REVISION_CONFLICT"
+      : (failure.code === "40001" || failure.code === "PT409") || failure.code === "55P03" ? "AURA_REVISION_CONFLICT"
       : /^AURA_[A-Z0-9_]+$/.test(raw) ? raw : "AURA_UNAVAILABLE";
     const status = /FORBIDDEN/.test(code) ? 403 : /INVALID|SEASON_AMBIGUOUS|SIZE_AMBIGUOUS/.test(code) ? 400 : /STALE|CONFLICT|CANCELLED|IN_PROGRESS|LEASE/.test(code) ? 409 : /BUSY|QUOTA/.test(code) ? 429 : /TIMEOUT/.test(code) ? 504 : 503;
     const errorMessage = code === "AURA_GEMINI_CONFIGURATION_UNAVAILABLE" ? "Aura’s connection is not configured. Ask your administrator to configure the Edge Function secret."

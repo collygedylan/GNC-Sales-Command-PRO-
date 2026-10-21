@@ -33,3 +33,7 @@ node --test tests/aura-account-rollout.test.mjs tests/aura-query-panel.test.mjs 
 ```
 
 These tests use local mocks and do not prove microphone hardware, provider availability or live auth. Follow AGENTS: no browser/Docker/database or external provider calls without the relevant authorization; changed Edge code needs the authorized focused type check.
+
+## Application conflict errors
+
+Revision conflicts must use PT409, never custom 40001. The v2.3.34 application_conflict_retry_guard migration preserves existing RPC permissions and retry catches; Edge handlers recognize both real serialization failures and HTTP conflicts.

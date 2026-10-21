@@ -387,7 +387,7 @@ function databaseFailureResponse(
   const dbError = error && typeof error === "object" ? error as Record<string, unknown> : {};
   const code = String(dbError.code || fallbackCode);
   const explicitStatus = /^PT[45]\d{2}$/.test(code) ? Number(code.slice(2)) : 0;
-  const status = code === "42501" ? 403 : code === "40001" || code === "23505" ? 409 : explicitStatus || 503;
+  const status = code === "42501" ? 403 : (code === "40001" || code === "PT409") || code === "23505" ? 409 : explicitStatus || 503;
   return errorResponse(message, status, { code });
 }
 
@@ -810,7 +810,7 @@ function validateDatasetReadParams(payload: Record<string, unknown>) {
   const params = payload.params && typeof payload.params === "object" && !Array.isArray(payload.params)
     ? payload.params as Record<string, unknown> : {};
   if (payload.params !== undefined && (!payload.params || typeof payload.params !== "object" || Array.isArray(payload.params))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
-  if (Object.keys(params).some((key) => !["limit", "offset", "projection", "filters", "anyOf", "order"].includes(key))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
+  if (Object.keys(params).some((key) => !["limit", "offset", "projection", "filters", "anyOf", "order", "ifRevision"].includes(key))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
   const requestedLimit = Number(params.limit ?? 250), offset = Number(params.offset ?? 0);
   if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || !Number.isInteger(offset) || offset < 0 || offset > 2_000_000) throw new Error("DATASET_READ_PAGE_INVALID");
   const limit = Math.min(DATASET_READ_PAGE_MAX, requestedLimit);
@@ -820,7 +820,9 @@ function validateDatasetReadParams(payload: Record<string, unknown>) {
   const rawAnyOf = params.anyOf ?? [];
   const rawOrder = params.order ?? [];
   if (!Array.isArray(rawFilters) || rawFilters.length > 30 || !Array.isArray(rawAnyOf) || rawAnyOf.length > 30 || !Array.isArray(rawOrder) || rawOrder.length > 4) throw new Error("DATASET_READ_FILTER_INVALID");
-  return { limit, offset, projection, filters: rawFilters as unknown[], anyOf: rawAnyOf as unknown[], order: rawOrder as unknown[] };
+  const ifRevision = params.ifRevision === undefined ? '' : String(params.ifRevision);
+  if (ifRevision && !/^\d+$/.test(ifRevision)) throw new Error("DATASET_READ_REVISION_INVALID");
+  return { limit, offset, projection, ifRevision, filters: rawFilters as unknown[], anyOf: rawAnyOf as unknown[], order: rawOrder as unknown[] };
 }
 
 function datasetReadScalar(value: unknown) {
@@ -1017,7 +1019,19 @@ async function enrichSuspendTagMetricRows(rows: Array<Record<string, Json | unde
     readSuspendTagMetricRows("ph_cav_import", SUSPEND_TAG_METRIC_CAV_FIELDS, itemCodes),
   ]);
   if (await captureReadyInventoryLocationRevision(actorId) !== inventoryRevision) throw new Error("LOC_ON_HAND_REVISION_CHANGED");
-  return rows.map((row) => ({ ...row, [metricKey]: buildSuspendTagMetricFallback(row, masterRows, cavRows, true, metricKey === "request_inventory_metrics") as unknown as Json }));
+  const groupByItem = (values: Array<Record<string, unknown>>) => {
+    const index = new Map<string, Array<Record<string, unknown>>>();
+    for (const row of values) {
+      const key = normalizeSuspendTagMetricKey(row.itemcode ?? row.ITEMCODE);
+      const bucket = index.get(key) || []; bucket.push(row); index.set(key, bucket);
+    }
+    return index;
+  };
+  const masterByItem = groupByItem(masterRows), cavByItem = groupByItem(cavRows);
+  return rows.map((row) => {
+    const key = normalizeSuspendTagMetricKey(row.itemcode ?? row.ITEMCODE);
+    return { ...row, [metricKey]: buildSuspendTagMetricFallback(row, masterByItem.get(key) || [], cavByItem.get(key) || [], true, metricKey === "request_inventory_metrics") as unknown as Json };
+  });
 }
 
 async function handleDatasetRead(
@@ -1025,11 +1039,12 @@ async function handleDatasetRead(
   payload: Record<string, unknown>,
   request?: Request,
   canonicalAccess: CanonicalUserAccess | null = null,
+  verifiedActor: Record<string, unknown> | null = null,
 ) {
   if (!session) return errorResponse("Unauthorized", 401, { code: "DATASET_READ_UNAUTHORIZED" });
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
   let actor: Record<string, unknown>;
-  try { actor = await resolveActiveSessionProfile(session); }
+  try { actor = verifiedActor || await resolveActiveSessionProfile(session); }
   catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
   const username = normalizeUsername(String(actor.username || ""));
   const role = String(session.role || "");
@@ -1110,6 +1125,14 @@ async function handleDatasetRead(
     }
     query.set("offset", String(parsed.offset));
     query.set("limit", String(parsed.limit));
+    // Only physical, non-enriched snapshots use a single revision. Queue joins
+    // continue to use the coordinator's complete dependency vector.
+    let revision: string | null = null;
+    if (["soc", "cav", "reserves"].includes(dataset)) {
+      const metadata = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", source.table).maybeSingle();
+      if (!metadata.error && metadata.data?.state === "ready") revision = String(metadata.data.revision);
+      if (revision && parsed.ifRevision === revision) return jsonResponse({ ok: true, data: { up_to_date: true, revision } });
+    }
     const includeLocationTotals = parsed.projection === "default" && ["request_queue", "active_request"].includes(dataset)
       && hasTableReadAccess(role, "ph_master_inventory", username);
     const inventoryRevision = includeLocationTotals ? await captureReadyInventoryLocationRevision(String(actor.id || "")) : null;
@@ -1158,7 +1181,7 @@ async function handleDatasetRead(
     }
     const rows = inventoryRevision === null ? metricRows
       : await enrichInventoryLocationRows(supabase, String(actor.id || ""), metricRows, inventoryRevision);
-    return jsonResponse({ ok: true, data: { rows, total, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < total,
+    return jsonResponse({ ok: true, data: { rows, total, revision, up_to_date: false, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < total,
       ...(sourceFreshnessResponse ? { sourceFreshness } : {}),
       ...(inventoryRevision === null ? {} : { inventoryRevision }) } });
   } catch (error) {
@@ -1720,7 +1743,7 @@ async function handleManagerSeasonSettings(
   } catch (error) {
     const detail = error as { code?: string; message?: string };
     if (detail.code === "42501") return forbidden();
-    if (detail.code === "40001" || detail.message === "AURA_MANAGER_SETTINGS_CONFLICT") {
+    if ((detail.code === "40001" || detail.code === "PT409") || detail.message === "AURA_MANAGER_SETTINGS_CONFLICT") {
       return errorResponse("Another manager changed the season. Reload the current setting and review your update.", 409, { code: "AURA_MANAGER_SETTINGS_CONFLICT" });
     }
     return errorResponse("Current season settings are unavailable. Reload and try again; no update has been confirmed.", 503, { code: "AURA_SEASON_SETTINGS_UNAVAILABLE" });
@@ -2808,7 +2831,7 @@ function evalWorkError(error: unknown) {
   const safeCode = (message.match(/eval_(?:work|report2)_[a-z0-9_]+/i) || [code || "eval_work_failed"])[0].toLowerCase();
   const status = code === "42501" || /forbidden|not_authorized/.test(safeCode)
     ? 403
-    : (code === "40001" || /conflict/.test(safeCode) ? 409 : 400);
+    : ((code === "40001" || code === "PT409") || /conflict/.test(safeCode) ? 409 : 400);
   const safeMessages: Record<string, string> = {
     eval_work_assignment_scope_conflict: "The current AssignedTo value no longer matches the selected user filter. Refresh the report and review that selection.",
     eval_work_assignee_email_invalid: "One selected evaluator does not have a verified email address.",
@@ -6126,7 +6149,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       });
     }
   }
-  if (action === "dataset_read") return await handleDatasetRead(session, payload, req, canonicalAccessForRequest);
+  if (action === "dataset_read") return await handleDatasetRead(session, payload, req, canonicalAccessForRequest, activeProfileForRequest);
   if (action === "request_work") {
     const actor = activeProfileForRequest || await resolveActiveSessionProfile(session);
     const operation = String(payload.operation || "");

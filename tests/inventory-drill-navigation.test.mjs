@@ -916,3 +916,26 @@ test('phone footer, Bloom clear and dark missing-photo surfaces have high contra
  for(const token of ['#062115','#0b3522','#d9fbe8','#15803d','#4ade80','#dc2626','#ffffff','rgba(10,38,25,.85)'])assert.ok(css.includes(token),token);
  assert.ok(css.includes('max-height:none'));assert.ok(css.includes('overflow:visible'));
 });
+
+
+test('9600-row indexes pre-sum locations, preserve lots, and pre-normalize search within 5ms', () => {
+  const context = { Map, WeakMap, Set };
+  vm.runInNewContext(fs.readFileSync(new URL('../assets/queue-inventory-hydration.js', import.meta.url), 'utf8'), context);
+  const rows = Array.from({ length: 9600 }, (_, id) => ({ UNIQUE_ID: String(id), ITEMCODE: 'I' + Math.floor(id / 4),
+    LOCATIONCODE: 'A.01.001', LOTCODE: 'L' + id % 2, COMMONNAME: "Dwarf-John's™ Rose®.", PTRONHAND: '12', PTRAVAILABLE: '10' }));
+  const index = context.AgMetricQueueInventory.createIndex(rows);
+  assert.equal(index.byItemLocLot.size, 4800);
+  assert.equal(index.byItemLoc.get(JSON.stringify(['I0','A.01.001'])).locOnHand, 48);
+  assert.equal(index.byItem.get('I0').available, 40);
+  assert.match(index.normalizedSearchText.get(rows[0]), /dwarf johns rose/);
+  // Warm the JIT; measure lookups/filtering only, not snapshot construction.
+  const run = () => { let hits = 0; for (const row of rows) {
+    if (index.byItem.has(row.ITEMCODE) && index.normalizedSearchText.get(row).includes('johns rose')) hits++;
+  } return hits; };
+  run(); run(); run();
+  const times = [];
+  for (let attempt = 0; attempt < 5; attempt++) { const start = performance.now(); assert.equal(run(), 9600); times.push(performance.now() - start); }
+  const median = times.sort((a,b) => a-b)[2];
+  assert.ok(median < 5, '9600 indexed lookups/search took ' + median.toFixed(2) + 'ms');
+  console.log('Inventory indexed lookup/search median: ' + median.toFixed(2) + 'ms (9600 rows, Node)');
+});

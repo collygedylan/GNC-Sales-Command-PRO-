@@ -155,7 +155,7 @@ test('Suspend Tag dataset pages carry ordered master/CAV metric fallback without
   assert.match(appApi, /readSuspendTagMetricRows\("ph_cav_import"/);
   assert.match(appApi, /SUSPEND_TAG_METRIC_CAV_FIELDS\s*=\s*"[^"]*itemcode,season,/);
   assert.match(appApi, /captureReadyInventoryLocationRevision\(actorId\)[\s\S]*?readSuspendTagMetricRows\("ph_master_inventory"[\s\S]*?captureReadyInventoryLocationRevision\(actorId\) !== inventoryRevision/);
-  assert.ok(appApi.includes('[metricKey]: buildSuspendTagMetricFallback(row, masterRows, cavRows, true, metricKey === "request_inventory_metrics")'));
+  assert.ok(appApi.includes('[metricKey]: buildSuspendTagMetricFallback(row, masterByItem.get(key) || [], cavByItem.get(key) || [], true, metricKey === "request_inventory_metrics")'));
   assert.ok(appApi.includes('["suspend_tag", "request_queue", "active_request"].includes(dataset)'));
   assert.ok(appApi.includes('catch { metricRows = data; }'));
   assert.match(appApi, /verifySuspendTagSession\(supabase, actor, request\)/);
