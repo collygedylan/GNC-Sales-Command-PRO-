@@ -393,11 +393,11 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           const moves = Array.isArray(payload.moves) ? payload.moves : [];
           const appliedRows = Array.isArray(payload.appliedRows) ? payload.appliedRows : [];
           const actorEmail = String(payload.actorEmail || "").trim().toLowerCase();
-          if (payload.contractVersion !== "inventory-reclass-move-completed-v1" || recipients.length < 1 || recipients.length > 3
+          if (payload.contractVersion !== "inventory-reclass-move-completed-v1" || recipients.length < 1 || recipients.length > 4
             || recipients.some(email => typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
             || new Set(recipients.map(email => String(email).trim().toLowerCase())).size !== recipients.length
             || !actorEmail || !recipients.some(email => String(email).trim().toLowerCase() === actorEmail)
-            || moves.length < 1 || moves.length > 100 || appliedRows.length < 1 || appliedRows.length > 200) {
+            || moves.length < 1 || moves.length > 100 || appliedRows.length < 1 || appliedRows.length > 10000) {
             throw new Error("INVENTORY_RECLASS_MOVE_DELIVERY_INVALID");
           }
           event.payload = payload;

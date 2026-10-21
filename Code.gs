@@ -2153,7 +2153,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.3.34';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.37';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -14909,7 +14909,7 @@ function getReclassInquiryEmailRecipients_(payload) {
   }
   const recipients = dedupeEmailAddresses_(authoritative);
   const actorKey = actorUsername.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-  if (!recipients.length || recipients.length > 3 || recipients.some(function(email) { return !isLikelyEmailAddress_(email); })) {
+  if (!recipients.length || recipients.length > 4 || recipients.some(function(email) { return !isLikelyEmailAddress_(email); })) {
     throw new Error('RECLASS_VALIDATION:RECIPIENTS_UNAVAILABLE');
   }
   return recipients;
@@ -16579,7 +16579,9 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     ['pullerresponsibility', ['pullerresponsibility', 'PULLERRESPONSIBILITY', 'specialpuller', 'SPECIALPULLER']],
     ['oversellpercentage', ['oversellpercentage', 'OVERSELLPERCENTAGE', 'oversell', 'OVERSELL']],
     ['salesnote', ['salesnote', 'SALESNOTE']],
-    ['suspend', ['suspend', 'SUSPEND']]
+    ['suspend', ['suspend', 'SUSPEND']],
+    ['ptravailable', ['ptravailable', 'PTRAVAILABLE']],
+    ['s_lts', ['s_lts', 'S_LTS', 'open_stock', 'OPEN_STOCK']]
   ];
   normalizedReportRows.forEach(function(row) {
     const source = sourceRowsByUid.get(normalizeInventoryTransactionText_(row.unique_id));
@@ -16757,6 +16759,7 @@ function buildProtectedLiveEditDecisionText_(model) {
 }
 
 function buildReclassInquiryEmailHtml_(model) {
+  if (!(model && model.evalWork)) return buildReclassItemInquiryHtml_(model);
   const safeModel = model || {};
   const identity = safeModel.identity || {};
   const editSummary = safeModel.editSummary || {};
@@ -16905,7 +16908,72 @@ function formatReclassInquiryScopeNote_(scope) {
   return season + ' | sales year <= ' + displayYear + ' | ' + String(Math.max(0, Math.trunc(count))) + ' row' + (Math.trunc(count) === 1 ? '' : 's');
 }
 
+function buildReclassItemInquiryTable_(model) {
+  const safe = model || {}, identity = safe.identity || {};
+  const columns = [['locationcode','Location'],['lotcode','Lot'],['priority','Priority'],['ptronhand','On Hand'],['ptrreviewed','Review'],['ptravailable','Available'],['s_lts','Open Stock'],['action','Action'],['details','Action Details'],['holdstopcode','Hold/Stop'],['holdstopreason','Reason'],['holdstopbegindate','Since'],['locationnote','Location Note'],['salesnote','Sales Note']];
+  const labels = {hold:'On Hold',take_off_hold:'Off Hold',stop_ship:'On Stop',off_stop_ship:'Off Stop',sheared:'Sheared to #',move_up:'Move Up',move_down:'Move Down',priority_change:'Priority Change',on_hold:'On Hold',off_hold:'Off Hold',on_stop:'On Stop',off_stop:'Off Stop',recount:'Re-Count',re_count:'Re-Count',sheared_to:'Sheared to #'};
+  const rows = sortReclassInquiryCompactRows_(safe.rows).map(function(row) {
+    const values = Object.assign({}, row.values || {}), av = row.actionValues || {};
+    const changed = new Set(row.changedFields || []), actions = [], details = [];
+    (safe.v7InventoryFields || []).filter(function(e){return e.unique_id === row.unique_id;}).forEach(function(e){(e.changedFields || []).forEach(function(k){changed.add(k);});});
+    function action(label, detail) { if(actions.indexOf(label)<0) actions.push(label); if(detail && details.indexOf(detail)<0) details.push(detail); }
+    [['moveup','Move Up'],['movedown','Move Down']].forEach(function(pair){
+      const splits=av[pair[0]+'splits'] || (av[pair[0]+'quantity'] ? [{quantity:av[pair[0]+'quantity'],destinationSeason:av[pair[0]+'season']}] : []);
+      splits.forEach(function(s){action(pair[1],pair[1]+': '+s.quantity+' to '+s.destinationSeason);});
+    });
+    (safe.completedMoveSummary || []).filter(function(m){return String(m.source.unique_id || m.source.uniqueId)===String(row.unique_id);}).forEach(function(m){const label=labels[m.direction];action(label,label+': '+m.quantity+' to '+m.destination.season);changed.add('ptronhand');changed.add('ptravailable');changed.add('s_lts');});
+    (row.actions || []).forEach(function(a){const key=String(typeof a==='string'?a:a.action || '');if(key && key!=='inventory_fields') action(labels[key] || key.replace(/_/g,' '));});
+    if(changed.has('priority')) action('Priority Change','Priority Change: '+(values.priority || '-'));
+    if(changed.has('holdstopcode')) action(values.holdstopcode==='H'?'On Hold':values.holdstopcode==='S'?'On Stop':'Off Hold / Stop');
+    (row.temporaryChanges || []).forEach(function(c){if(c.key && !columns.some(function(col){return col[0]===c.key;})) details.push(String(c.label || c.key)+': '+String(c.value == null?'':c.value));});
+    values.action=actions.join('; '); values.details=details.join('; ');
+    if(values.action)changed.add('action'); if(values.details)changed.add('details');
+    if(changed.has('holdstopcode'))changed.add('holdstopbegindate');
+    if(values.ptrreviewed==null || values.ptrreviewed==='')values.ptrreviewed='0';
+    return columns.map(function(col){return {text:String(values[col[0]] == null?'':values[col[0]]),changed:changed.has(col[0])};});
+  });
+  return {identity:identity,columns:columns,rows:rows};
+}
+
+function buildReclassItemInquiryHtml_(model) {
+  const table=buildReclassItemInquiryTable_(model), esc=escapeEmailHtml_;
+  const header=[['Common Name','commonname'],['Item Code','itemcode'],['Size','contsize'],['Source','source']].map(function(p){return '<div><strong>'+p[0]+':</strong> '+esc(table.identity[p[1]] || '')+'</div>';}).join('');
+  const cell='border:1px solid #333333;padding:4px 6px;color:#000000;vertical-align:top;overflow-wrap:anywhere;';
+  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:11in 8.5in landscape;margin:0.35in}*{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0;background:#ffffff;color:#000000;font-family:Arial,sans-serif}h2{margin:0 0 8px}table{width:100%;border-collapse:collapse;table-layout:auto;font-size:9pt}tr{break-inside:avoid}th,td{border:1px solid #333333;padding:4px 6px}th{background:#e5e7eb}.changed{background-color:#ffff00;font-weight:700}</style></head><body style="background:#ffffff;color:#000000"><h2>Item Inquiry</h2>'+header+'<table style="width:100%;border-collapse:collapse;table-layout:auto;font-size:9pt;margin-top:12px"><thead><tr>'+table.columns.map(function(c){return '<th style="'+cell+'background:#e5e7eb;text-align:left">'+esc(c[1])+'</th>';}).join('')+'</tr></thead><tbody>'+table.rows.map(function(row){return '<tr>'+row.map(function(c){return '<td'+(c.changed?' class="changed"':'')+' style="'+cell+(c.changed?'background-color:#ffff00;font-weight:700;':'background:#ffffff;')+'">'+(esc(c.text)||'&nbsp;')+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></body></html>';
+}
+
+function buildReclassItemInquiryPdf_(model) {
+  // A fixed one-page PDF avoids HTML converters ignoring landscape and splitting
+  // columns. Wrap every value, then fit the complete table within Letter margins.
+  const table=buildReclassItemInquiryTable_(model), width=741.6, margin=25.2;
+  const weights=[8,6,7,6,7,9,7,10,14,7,8,8,10,10], total=weights.reduce(function(a,b){return a+b;},0);
+  const widths=weights.map(function(w){return width*w/total;});
+  const clean=function(v){return String(v==null?'':v).replace(/[\r\n]+/g,' ').replace(/[\u2010-\u2015]/g,'-').replace(/\u2192/g,'->');};
+  const escape=function(v){return Array.from(clean(v)).map(function(c){const n=c.charCodeAt(0);return n>=32&&n<=126?(c==='('||c===')'||c==='\\'?'\\'+c:c):n<=255?'\\'+n.toString(8).padStart(3,'0'):'?';}).join('');};
+  const wrap=function(text,chars){const lines=[];let line='';clean(text).split(/\s+/).forEach(function(word){while(word.length>chars){if(line){lines.push(line);line='';}lines.push(word.slice(0,chars));word=word.slice(chars);}if(line && line.length+word.length+1>chars){lines.push(line);line='';}line+=(line?' ':'')+word;});lines.push(line);return lines;};
+  const all=[table.columns.map(function(c){return {text:c[1],header:true};})].concat(table.rows);
+  let font=9, layout, heights;
+  for(let i=0;i<30;i++){
+    layout=all.map(function(row){return row.map(function(c,j){return {cell:c,lines:c.header && !/\s/.test(c.text) ? [c.text] : wrap(c.text,Math.max(1,Math.floor((widths[j]-8)/(font*.62))))};});});
+    heights=layout.map(function(row){return Math.max.apply(null,row.map(function(c){return c.lines.length;}))*font*1.2+8;});
+    if(heights.reduce(function(a,b){return a+b;},0)<=465)break;
+    font*=.88;
+  }
+  const ops=['1 1 1 rg 0 0 792 612 re f','0 0 0 rg'];
+  function text(value,x,y,size,bold){ops.push('BT /'+(bold?'F2':'F1')+' '+size.toFixed(3)+' Tf 1 0 0 1 '+x.toFixed(3)+' '+y.toFixed(3)+' Tm ('+escape(value)+') Tj ET');}
+  text('Item Inquiry',margin,568,18,true);
+  [['Common Name','commonname'],['Item Code','itemcode'],['Size','contsize'],['Source','source']].forEach(function(p,i){text(p[0]+': '+(table.identity[p[1]] || ''),margin,548-i*13,10,false);});
+  let top=491;
+  layout.forEach(function(row,i){let x=margin;const h=heights[i];row.forEach(function(c,j){ops.push(c.cell.header?'.898 .906 .922 rg':c.cell.changed?'1 1 0 rg':'1 1 1 rg');ops.push(x.toFixed(3)+' '+(top-h).toFixed(3)+' '+widths[j].toFixed(3)+' '+h.toFixed(3)+' re f');ops.push('.2 .2 .2 RG .5 w '+x.toFixed(3)+' '+(top-h).toFixed(3)+' '+widths[j].toFixed(3)+' '+h.toFixed(3)+' re S','0 0 0 rg');c.lines.forEach(function(line,k){text(line,x+4,top-4-font-k*font*1.2,font,c.cell.header||c.cell.changed);});x+=widths[j];});top-=h;});
+  const stream=ops.join('\n');
+  const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>','<< /Length '+stream.length+' >>\nstream\n'+stream+'\nendstream'];
+  let pdf='%PDF-1.4\n', offsets=[0];objects.forEach(function(object,i){offsets.push(pdf.length);pdf+=(i+1)+' 0 obj\n'+object+'\nendobj\n';});const start=pdf.length;pdf+='xref\n0 7\n0000000000 65535 f \n'+offsets.slice(1).map(function(n){return String(n).padStart(10,'0')+' 00000 n \n';}).join('')+'trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n'+start+'\n%%EOF';
+  const name=String(table.identity.commonname || 'Item Inquiry').replace(/[\\/:*?"<>|]/g,'-').trim();
+  return Utilities.newBlob(pdf,'application/pdf',name+'.pdf');
+}
+
 function buildReclassInquiryCompactReportHtml_(model, printMode) {
+  if (!(model && model.evalWork)) return buildReclassItemInquiryHtml_(model);
   const safeModel = model || {};
   const esc = escapeEmailHtml_;
   const pageHeaderText = (safeModel.isSyntheticPilot ? 'TEST PILOT - SYNTHETIC DATA ONLY | ' : '') + 'GNC PH Reclass Item Inquiry';
@@ -17377,7 +17445,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     }) : safePayload;
     const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, reportPayload, now);
     // Outbox recipient fields are historical snapshots, not authority. Resolve
-    // the current fixed Dylan/Megan plus submitting-user policy at delivery so
+    // the current fixed Dylan/Megan/Sharon plus submitting-user policy at delivery so
     // older queued events cannot retain unrelated recipients indefinitely.
     const recipients = getReclassInquiryEmailRecipients_(safePayload);
     if (!recipients.length) throw new Error('RECLASS_VALIDATION:RECIPIENT_REQUIRED');
@@ -17385,11 +17453,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     const subject = buildReclassInquiryEmailSubject_(model);
     let pdfBlob;
     try {
-      const printHtml = buildReclassInquiryCompactReportHtml_(model, true);
-      pdfBlob = HtmlService.createHtmlOutput(printHtml).getBlob().getAs(MimeType.PDF);
-      const safeName = commonName.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 60) || 'Item';
-      const safeAction = model.requestActionLabel.replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 40) || 'Request';
-      pdfBlob.setName('GNC_PH_Reclass_' + safeAction + '_' + safeName + '.pdf');
+      pdfBlob = buildReclassItemInquiryPdf_(model);
     } catch (pdfError) {
       throw new Error('RECLASS_PDF_BUILD_FAILED');
     }
@@ -22144,16 +22208,16 @@ function handleSignedInventoryReclassMoveDelivery_(delivery) {
       throw new Error('INVENTORY_RECLASS_MOVE_RECEIPT_INVALID');
     }
     const moves = verified.moves;
-    const rawRecipients = verified.deliveryRecipients;
+    const rawRecipients = getReclassInquiryEmailRecipients_({ actor: { username: verified.actorUsername } });
     const actorEmail = normalizeEmailAddress_(verified.actorEmail);
     if (!Array.isArray(moves) || moves.length < 1 || moves.length > 100
-      || !Array.isArray(rawRecipients) || rawRecipients.length < 1 || rawRecipients.length > 3
+      || !Array.isArray(rawRecipients) || rawRecipients.length < 1 || rawRecipients.length > 4
       || !Array.isArray(verified.appliedRows) || verified.appliedRows.length < 1
       || !actorEmail || rawRecipients.some(function(email) { return typeof email !== 'string' || !isLikelyEmailAddress_(email); })) {
       throw new Error('INVENTORY_RECLASS_MOVE_DELIVERY_INVALID');
     }
     const recipients = dedupeEmailAddresses_(rawRecipients);
-    if (recipients.length !== rawRecipients.length || recipients.indexOf(actorEmail) < 0 || recipients.length > 3) {
+    if (recipients.length !== rawRecipients.length || recipients.indexOf(actorEmail) < 0 || recipients.length > 4) {
       throw new Error('INVENTORY_RECLASS_MOVE_RECIPIENTS_INVALID');
     }
     const routed = resolveOperationalEmailHeaders_(recipients, [], []).to;
@@ -22167,10 +22231,7 @@ function handleSignedInventoryReclassMoveDelivery_(delivery) {
     const subject = (buildReclassInquiryEmailSubject_(reportModel) + ' - Move Completed').replace(/[\r\n]+/g, ' ').slice(0, 220);
     let pdfBlob;
     try {
-      pdfBlob = HtmlService.createHtmlOutput(buildReclassInquiryCompactReportHtml_(reportModel, true))
-        .getBlob().getAs(MimeType.PDF);
-      const safeName = String(reportModel.identity.commonname || 'Inventory').replace(/[^a-z0-9 _-]+/gi, '').trim().replace(/\s+/g, '_').slice(0, 60) || 'Item';
-      pdfBlob.setName('GNC_PH_Reclass_Completed_' + safeName + '.pdf');
+      pdfBlob = buildReclassItemInquiryPdf_(reportModel);
     } catch (pdfError) {
       throw new Error('INVENTORY_RECLASS_MOVE_PDF_BUILD_FAILED');
     }

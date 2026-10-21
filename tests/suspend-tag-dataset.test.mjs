@@ -428,3 +428,14 @@ test('candidate receipt removes the false block from active Suspend arrays immed
  assert.equal(ctx.suspendTagInventory.length,1);assert.equal(ctx.suspendTagInventory[0].LOCATIONCODE,'B.08.000');assert.equal(ctx.suspendTagInventory[0].LOTCODE,'26.F1');
  const migration=readFileSync(new URL('../supabase/migrations/20261021210000_eval_browse_suspend_receipts_v1.sql',import.meta.url),'utf8');assert.ok(migration.includes('removed_false_block'));assert.ok(migration.includes('added_rows'));
 });
+
+
+test('Reclass stock migration preserves physical identity, season import overrides and Sharon recipient authority', () => {
+ const sql=readFileSync(new URL('../supabase/migrations/20261021220000_reclass_season_stock_and_recipients.sql',import.meta.url),'utf8');
+ for(const contract of ['inventory_stock_season_v1','inventory_season_stock_overrides_v1','stock_new','stock_old','inventory_live_overrides_v1_field_name_check','cav_acknowledged','seasonStocks','FLAME_GRASS_REPAIR_SOURCE_CHANGED'])assert.ok(sql.includes(contract),contract);
+ assert.match(sql,/dylan_collyge','megan_kelly','sharon_combs',actor_key/);
+ assert.match(sql,/before insert or update or delete on public.ph_cav_import/);
+ assert.match(appApi,/runtime.waitUntil\(task\)/);
+ const dispatch=appApi.slice(appApi.indexOf('function dispatchReclassDeliveryNow'),appApi.indexOf('export async function handleDriveReclassAction'));
+ assert.doesNotMatch(dispatch,/await invokeReclassDeliveryWorkerNow/);
+});

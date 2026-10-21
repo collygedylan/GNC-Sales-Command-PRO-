@@ -1687,3 +1687,17 @@ test('Eval2 table rows own exact-origin click and keyboard handlers and high-con
   assert.equal(css.includes('body.ops-precision-pilot[data-ops-theme="dark"] #managers-content .manager-eval2-inventory-row .manager-eval2-quantity'),true);
   assert.match(css,/\.manager-eval2-inventory-row \.manager-eval2-quantity[^}]*color:#38bdf8!important[^}]*font-weight:700/);
 });
+
+
+test('Item Inquiry report shares all 14 columns, yellow edits and a single landscape PDF', () => {
+ const gs=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
+ const fn=name=>{const a=gs.indexOf('function '+name+'(');const b=gs.indexOf('\nfunction ',a+9);assert.ok(a>=0);return gs.slice(a,b<0?gs.length:b);};
+ const ctx=vm.createContext({sortReclassInquiryCompactRows_:r=>r,escapeEmailHtml_:v=>String(v),Utilities:{newBlob:(data,type,name)=>({data,type,name})}});
+ vm.runInContext(['buildReclassItemInquiryTable_','buildReclassItemInquiryHtml_','buildReclassItemInquiryPdf_'].map(fn).join('\n'),ctx);
+ const model={identity:{commonname:'Flame Grass',itemcode:'004502.010.1',contsize:'#1',source:'LD'},rows:[{unique_id:'origin',values:{locationcode:'C.16.000',lotcode:'27.S1',priority:'1',ptronhand:'295',ptravailable:'295',s_lts:'585'},changedFields:['priority','s_lts'],actionValues:{moveupsplits:[{quantity:200,destinationSeason:'F1'}]}}]};
+ const table=ctx.buildReclassItemInquiryTable_(model);assert.deepEqual(Array.from(table.columns,c=>c[1]),['Location','Lot','Priority','On Hand','Review','Available','Open Stock','Action','Action Details','Hold/Stop','Reason','Since','Location Note','Sales Note']);
+ const html=ctx.buildReclassItemInquiryHtml_(model);for(const text of ['Item Inquiry','Common Name:','Item Code:','Size:','Source:','11in 8.5in landscape','#ffffff','#ffff00','Move Up: 200 to F1','Priority Change: 1'])assert.ok(html.includes(text),text);
+ const pdf=ctx.buildReclassItemInquiryPdf_(model);assert.equal(pdf.name,'Flame Grass.pdf');assert.match(pdf.data,/\/MediaBox \[0 0 792 612\]/);assert.match(pdf.data,/\/Count 1/);assert.equal((pdf.data.match(/\/Type \/Page /g)||[]).length,1);
+ assert.match(fn('getReclassInquiryEmailRecipients_'),/get_reclass_delivery_recipients_v1/);assert.match(fn('getReclassInquiryEmailRecipients_'),/recipients.length > 4/);
+ const runtime=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');assert.match(runtime,/REQUIRED_RECIPIENT_USERS = Object.freeze\(\['dylan_collyge', 'megan_kelly', 'sharon_combs'\]\)/);
+});

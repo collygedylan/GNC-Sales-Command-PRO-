@@ -5,6 +5,7 @@ const fingerprint = 'APPS_SCRIPT_DEPLOYMENT_COMMIT_';
 const releaseVersion = 'APP_RELEASE_VERSION_';
 const additiveEmailHandler = 'handleSignedInventoryReclassMoveDelivery_';
 const reclassEmailFunctions = new Set([
+  'buildReclassItemInquiryTable_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_', 'buildReclassInquiryReportModel_',
   'buildProtectedLiveEditReportRows_',
   'getReclassInquiryEmailRecipients_',
   'deliverReclassInquiryPayload_',
@@ -85,6 +86,7 @@ for (const name of ['publishManualSyncStatus_', 'scheduleRequestIntegrityMainten
 additiveFunctions.add('setDatasetImportSourceMetadata_');
 additiveFunctions.add('verifyRuntimeWatchdogAlert_');
 for (const name of ['appsScriptActionConstantTimeEqual_', 'getAppsScriptActionSigningKeys_', 'reconcileAppsScriptActionSigningKey_', 'verifyAppsScriptActionActor_', 'verifyAppsScriptActionEnvelope_', 'authorizeAppsScriptPost_', 'verifyAppsScriptLifecycleCanary_']) additiveFunctions.add(name);
+for (const name of ['buildReclassItemInquiryTable_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_']) additiveFunctions.add(name);
 const fail = code => { throw new Error(`APPS_SCRIPT_FUNCTION_PATCH_${code}`); };
 const digest = source => createHash('sha256').update(source).digest('hex');
 

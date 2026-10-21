@@ -48,7 +48,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    '3bf6dc722b78dca092038ad8c81f83c28b25f36d2df71a6e3239fd4e0936e5d6');
+    '9674343e113274f5de41962d4f38897acc640d08d8ffe5cf7ce39c46d34b3608');
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));
@@ -108,7 +108,7 @@ test('Request and sync startup reads reject forged parameters and all mutations'
  assert.equal(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities',actorId:'forged'},[],[],{}),null);
  assert.deepEqual(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities'},[],[],{username:'dylan_collyge'}).data,{username:'dylan_collyge'});
  const runner=read('scripts/apply-item-low-stock-migration.mjs');
- assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName]'));
+ assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName]'));
  assert.ok(runner.includes('if (name === requestWorkSyncStatusMigrationName)'));
 });
 

@@ -24152,7 +24152,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_LIVE_SIGNATURE_SELECT_FIELDS = 'unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,desired_spec,desired_caliper,req_pic_note,request_note,req_comments,av_note,req_photo_link,req_photo_name,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,delivery_status,delivery_attempt_count,delivery_error_code,delivery_display_state,delivery_delivered_at';
         const REQUEST_EMAIL_REQUIRED_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'kayla_knepp@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com', 'megan_kelly@greenleafnursery.com']);
-        const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_USERS = Object.freeze(['dylan_collyge', 'megan_kelly']);
+        const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_USERS = Object.freeze(['dylan_collyge', 'megan_kelly', 'sharon_combs']);
         const REQUEST_EMAIL_LINKED_REP_RECIPIENTS = Object.freeze({
             mollydixon: ['abbey_burka@greenleafnursery.com'],
             molly_dixon: ['abbey_burka@greenleafnursery.com'],
@@ -44118,6 +44118,56 @@ let avTopControlsRenderToken = 0;
             return formatted;
         }
 
+        function applyReclassSeasonStocks(stocks = []) {
+            const changes = new Map(stocks.filter(s => s && s.openStock != null && s.openStock !== '').map(s => [String(s.itemcode) + '|' + String(s.season).toUpperCase(), s]));
+            [fullInventory, avOpenInventory, cavInventory].forEach((rows, index) => rows.forEach(row => {
+                const value = changes.get(String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row));
+                if (!value || !Number.isFinite(Number(value.openStock)) || !Number.isFinite(Number(value.seasonOnHand))) return;
+                row.S_LTS = row.s_lts = row.OPEN_STOCK = row.open_stock = String(value.openStock);
+                row.SEASON_OH = row.season_oh = String(value.seasonOnHand);
+                if (index === 2) row.PTRAVAILABLE = row.ptravailable = row.AVAILABLE = row.available = String(value.openStock);
+            }));
+        }
+
+        function publishOptimisticReclassRows(pending, rows = null) {
+            const commandId = pending.command.commandId;
+            if (rows) {
+                pending.displayRollback = [];
+                const affected = new Set(rows.filter(row => (row.S_LTS ?? row.s_lts) != null).map(row => String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row)));
+                pending.cavRollback = cavInventory.filter(row => affected.has(String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row))).map(row => ({ before: { ...row }, target: row }));
+                const changed = [];
+                rows.forEach(row => {
+                    const uid = String(row.UNIQUE_ID || row.unique_id || '');
+                    const before = fullInventory.find(r => String(r.UNIQUE_ID || r.unique_id || '') === uid);
+                    pending.displayRollback.push({ uid, before: before ? { ...before } : null });
+                    const applied = applyArgosInventoryTransactionReturnedRow(row, uid, { deferPublication: true });
+                    if (applied) { applied.__optimisticReclassMove = commandId; changed.push(applied); }
+                    const av = avOpenInventory.find(r => String(r.UNIQUE_ID || r.unique_id || '') === uid);
+                    if (av) av.__optimisticReclassMove = commandId;
+                });
+                applyReclassSeasonStocks(rows.map(row => ({itemcode: row.ITEMCODE ?? row.itemcode, season: reclassStockSeason(row), openStock: row.S_LTS ?? row.s_lts, seasonOnHand: row.SEASON_OH ?? row.season_oh})));
+                pending.cavRollback.forEach(entry => { entry.after = { ...entry.target }; });
+                publishArgosInventoryTransactionReturnedRows(changed);
+                const view = getCurrentVisibleViewId();
+                if (view) queueInteractiveViewRender(view, false, false, 0, 0);
+            } else {
+                const restored = [];
+                // Restore only the metrics this preview changed; retain unrelated CAV refreshes.
+                (pending.cavRollback || []).forEach(entry => {
+                    const keys = ['S_LTS','s_lts','OPEN_STOCK','open_stock','SEASON_OH','season_oh','PTRAVAILABLE','ptravailable','AVAILABLE','available'];
+                    const row = cavInventory.find(r => r === entry.target);
+                    if (row && keys.every(key => row[key] === entry.after[key])) keys.forEach(key => { row[key] = entry.before[key]; });
+                });
+                (pending.displayRollback || []).forEach(entry => {
+                    const row = fullInventory.find(r => String(r.UNIQUE_ID || r.unique_id || '') === entry.uid);
+                    if (!row || row.__optimisticReclassMove !== commandId) return;
+                    removeRealtimeRow(fullInventory, entry.uid); removeRealtimeRow(avOpenInventory, entry.uid);
+                    if (entry.before) { const applied = applyArgosInventoryTransactionReturnedRow(entry.before, entry.uid, { deferPublication: true }); if (applied) restored.push(applied); }
+                });
+                publishArgosInventoryTransactionReturnedRows(restored);
+            }
+        }
+
         function publishArgosInventoryTransactionReturnedRows(rows = []) {
             // A movement receipt can contain both source and destination rows.
             // Rebuild their shared indexes once before publishing either row.
@@ -44201,7 +44251,7 @@ let avTopControlsRenderToken = 0;
                 masterState.liveVerifiedScope = '';
                 masterState.liveVerifiedPermission = '';
             }
-            if (typeof productionLiveSyncVerifiedView !== 'undefined') productionLiveSyncVerifiedView = '';
+            if (!preserveMasterProof && typeof productionLiveSyncVerifiedView !== 'undefined') productionLiveSyncVerifiedView = '';
             invalidateResolvedViewStateCaches();
             getAffectedViewsForDatasets(['master']).forEach((viewId) => markViewDirty(viewId));
             persistCurrentCache();
@@ -44301,6 +44351,7 @@ let avTopControlsRenderToken = 0;
                 if (applyArgosInventoryTransactionReturnedRow(patched, edit.unique_id, { confirmedEvidence: edit.evidence, confirmedInventoryFields })) applied += 1;
                 else stale = true;
             });
+            if (!stale) applyReclassSeasonStocks(result && result.seasonStocks || []);
             invalidateArgosReclassLiveEditCaches(stale ? 'reclass-live-edit-cache-incomplete' : 'reclass-live-edit-confirmed', {
                 preserveMasterProof: !stale && applied > 0,
             });
@@ -44480,11 +44531,22 @@ let avTopControlsRenderToken = 0;
             return { commandId, expectedRevision, moves };
         }
 
+        function reclassStockSeason(row) {
+            const lot = String(row && (row.LOTCODE ?? row.lotcode) || '').trim();
+            return (lot.match(/\.([A-Z][0-9]?)$/i)?.[1] || String(row && (row.SEASON ?? row.season) || '')).trim().toUpperCase();
+        }
+
         function buildOptimisticInventoryReclassMoveModel(state = null, command = null) {
             const model = state && state.inquiryModel;
             if (!model || !Array.isArray(model.rows) || !command) return null;
             const rows = model.rows.map((row) => ({ ...row }));
             const movedUids = [];
+            const stocks = new Map();
+            const stockKey = row => String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row);
+            rows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.S_LTS ?? row.s_lts); if (!stocks.has(key) && value != null) stocks.set(key, value); });
+            const cavRows = typeof cavInventory !== 'undefined' ? cavInventory : [];
+            cavRows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.OPEN_STOCK ?? row.open_stock ?? row.PTRAVAILABLE ?? row.ptravailable); if (!stocks.has(key) && value != null) stocks.set(key, value); });
+            const effective = row => ['H','S'].includes(String(row.HOLDSTOPCODE ?? row.holdstopcode ?? '').toUpperCase()) ? 0 : 1;
             const physicalValue = (row, field) => row && (row[field] !== undefined ? row[field] : row[field.toUpperCase()]);
             const lineageKey = (row, lotcode = null) => JSON.stringify([
                 String(physicalValue(row, 'warehouseid') ?? physicalValue(row, 'warehousei') ?? ''),
@@ -44506,6 +44568,7 @@ let avTopControlsRenderToken = 0;
                 }
                 rows[sourceIndex] = { ...source, PTRONHAND: String(onHand - total), ptronhand: String(onHand - total),
                     PTRAVAILABLE: String(available - total), ptravailable: String(available - total), __optimisticReclassMove: command.commandId };
+                stocks.set(stockKey(source), (stocks.get(stockKey(source)) || 0) - total * effective(source));
                 movedUids.push(uid);
                 const grouped = new Map();
                 move.lines.forEach((line) => grouped.set(line.destinationSeason, (grouped.get(line.destinationSeason) || 0) + line.quantity));
@@ -44527,12 +44590,22 @@ let avTopControlsRenderToken = 0;
                     const baseAvailable = targetAvailable == null ? 0 : targetAvailable;
                     const pendingUid = current ? String(current.UNIQUE_ID || current.unique_id || '') : `pending-reclass-${command.commandId}-${moveIndex}-${season}`;
                     const target = { ...source, ...(current || {}), UNIQUE_ID: pendingUid, unique_id: pendingUid, LOTCODE: targetLot, lotcode: targetLot,
+                        HOLDSTOPCODE: current ? (current.HOLDSTOPCODE ?? current.holdstopcode) : '', holdstopcode: current ? (current.holdstopcode ?? current.HOLDSTOPCODE) : '',
+                        HOLDSTOPREASON: current ? (current.HOLDSTOPREASON ?? current.holdstopreason) : '', holdstopreason: current ? (current.holdstopreason ?? current.HOLDSTOPREASON) : '',
+                        PRIORITY: current ? (current.PRIORITY ?? current.priority) : '', priority: current ? (current.priority ?? current.PRIORITY) : '',
+                        PTRREVIEWED: current ? (current.PTRREVIEWED ?? current.ptrreviewed) : '0', ptrreviewed: current ? (current.ptrreviewed ?? current.PTRREVIEWED) : '0',
                         SEASON: season, season, PTRONHAND: String(baseOnHand + quantity), ptronhand: String(baseOnHand + quantity),
                         PTRAVAILABLE: String(baseAvailable + quantity), ptravailable: String(baseAvailable + quantity),
                         __optimisticReclassMove: command.commandId };
+                    stocks.set(stockKey(target), (stocks.get(stockKey(target)) || 0) + quantity * effective(target));
                     if (targetIndex >= 0) rows[targetIndex] = target;
                     else rows.push(target);
                 });
+            });
+            rows.forEach(row => {
+                const key = stockKey(row);
+                if (stocks.has(key)) { row.S_LTS = row.s_lts = String(stocks.get(key)); row.OPEN_STOCK = row.open_stock = row.S_LTS; }
+                row.SEASON_OH = row.season_oh = String(rows.filter(r => stockKey(r) === key).reduce((sum, r) => sum + (parseAppNumber(r.PTRONHAND ?? r.ptronhand) || 0), 0));
             });
             return { model: buildItemInquiryViewModel(state.item, rows), movedUids };
         }
@@ -44748,6 +44821,7 @@ let avTopControlsRenderToken = 0;
                     originalModel: state.inquiryModel, movedUids: preview.movedUids, uncertain: false, inFlight: false };
                 state.pendingReclassMove = pending;
                 state.inquiryModel = preview.model;
+                publishOptimisticReclassRows(pending, preview.model.rows);
                 renderArgosInventoryTransactionInquiryModel(state);
                 setArgosReclassMoveInputsLocked(true);
             }
@@ -44786,7 +44860,9 @@ let avTopControlsRenderToken = 0;
                 const knownRevision = currentRevision > previousRevision ? currentRevision : previousRevision;
                 const receiptRevision = BigInt(receipt.revision);
                 const staleReceipt = receiptRevision < knownRevision;
+                publishOptimisticReclassRows(pending);
                 if (!staleReceipt) {
+                    applyReclassSeasonStocks(receipt.seasonStocks || []);
                     const appliedRows = [];
                     try {
                         receipt.rows.forEach(entry => {
@@ -44800,7 +44876,7 @@ let avTopControlsRenderToken = 0;
                 }
                 const nextRevision = receiptRevision > knownRevision ? receiptRevision : knownRevision;
                 if (nextRevision > previousRevision) confirmedArgosReclassLiveEditRevisions.set(identityKey, nextRevision.toString());
-                if (!staleReceipt) invalidateArgosReclassLiveEditCaches('inventory-reclass-move-confirmed');
+                if (!staleReceipt) invalidateArgosReclassLiveEditCaches('inventory-reclass-move-confirmed', { preserveMasterProof: true });
                 else if (!currentRevisionValid || currentRevision < knownRevision) {
                     // The immutable status receipt confirms the old command, but
                     // only a newer permission-scoped snapshot may replace it.
@@ -44822,6 +44898,7 @@ let avTopControlsRenderToken = 0;
                     persistPendingArgosInventoryReclassMove(state, identityKey);
                     throw Object.assign(error instanceof Error ? error : new Error('Move confirmation is delayed.'), { inventoryMovePending: true });
                 }
+                publishOptimisticReclassRows(pending);
                 state.inquiryModel = pending.originalModel;
                 state.pendingReclassMove = null;
                 state.moveCommandId = '';

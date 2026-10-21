@@ -980,3 +980,31 @@ test('Manager global Back unwinds Eval2 location levels then hub and Home',()=>{
  ctx.goBackUniversal();assert.equal(hub,1);
  ctx.goBackUniversal();assert.equal(home,1);
 });
+
+
+test('Reclass moves propagate Open Stock by season across years before the write resolves', () => {
+ const row=(id,loc,lot,oh,av,stock)=>({UNIQUE_ID:id,ITEMCODE:'004502.010.1',LOCATIONCODE:loc,LOTCODE:lot,SEASON:lot.split('.').pop(),PTRONHAND:String(oh),PTRAVAILABLE:String(av),S_LTS:String(stock)});
+ const rows=[row('s','C.16.000','27.S1',495,495,785),row('f','F.19.000','27.F1',189,152,377),row('h','H.06.000','27.F1',228,228,377),row('c','C.17.000','26.F1',17,17,377)];
+ const ctx=vm.createContext({parseAppNumber:v=>v==null?null:Number(v),buildItemInquiryViewModel:(_item,r)=>({rows:r}),avInventory:[],fullInventory:rows});
+ vm.runInContext(source('reclassStockSeason')+source('buildOptimisticInventoryReclassMoveModel'),ctx);
+ const start=performance.now();
+ const result=ctx.buildOptimisticInventoryReclassMoveModel({item:rows[0],inquiryModel:{rows}},{commandId:'test-stock',moves:[{source:{uniqueId:'s'},lines:[{quantity:200,destinationSeason:'F1'}]}]}).model.rows;
+ assert.ok(performance.now()-start<100);
+ const s=result.find(r=>r.UNIQUE_ID==='s'); assert.equal(s.PTRONHAND,'295');assert.equal(s.PTRAVAILABLE,'295');assert.equal(s.S_LTS,'585');
+ const f=result.filter(r=>r.SEASON==='F1');assert.equal(f.length,4);assert.ok(f.every(r=>r.S_LTS==='577'));
+ assert.equal(f.find(r=>r.LOCATIONCODE==='C.16.000').PTRONHAND,'200');
+ assert.equal(result.filter(r=>r.LOCATIONCODE==='C.16.000').reduce((sum,r)=>sum+Number(r.PTRONHAND),0),495);
+ assert.equal(rows[0].PTRONHAND,'495','preview retains immutable rollback rows');
+});
+
+
+test('Reclass card preview publishes before network completion and rolls back only its own rows', () => {
+ const original={UNIQUE_ID:'s',ITEMCODE:'i',LOTCODE:'27.S1',PTRONHAND:'495',S_LTS:'785'};
+ const cav={UNIQUE_ID:'cav',ITEMCODE:'i',SEASON:'S1',PTRAVAILABLE:'785'};
+ const ctx=vm.createContext({fullInventory:[{...original}],avOpenInventory:[{...original}],cavInventory:[cav],getCurrentVisibleViewId:()=> 'drive',queueInteractiveViewRender(){},publishArgosInventoryTransactionReturnedRows(){},removeRealtimeRow:(rows,uid)=>{const i=rows.findIndex(r=>r.UNIQUE_ID===uid);if(i>=0)rows.splice(i,1);}});
+ ctx.applyArgosInventoryTransactionReturnedRow=(row)=>{const value={...row};for(const rows of [ctx.fullInventory,ctx.avOpenInventory]){const i=rows.findIndex(r=>r.UNIQUE_ID===row.UNIQUE_ID);if(i>=0)rows[i]={...value};else rows.push({...value});}return ctx.fullInventory.find(r=>r.UNIQUE_ID===row.UNIQUE_ID);};
+ vm.runInContext(source('reclassStockSeason')+source('applyReclassSeasonStocks')+source('publishOptimisticReclassRows'),ctx);
+ const pending={command:{commandId:'preview'}};const start=performance.now();ctx.publishOptimisticReclassRows(pending,[{...original,PTRONHAND:'295',S_LTS:'585',SEASON_OH:'295'}]);
+ assert.equal(ctx.fullInventory[0].PTRONHAND,'295');assert.equal(cav.PTRAVAILABLE,'585');assert.ok(performance.now()-start<100);
+ ctx.publishOptimisticReclassRows(pending);assert.equal(ctx.fullInventory[0].PTRONHAND,'495');assert.equal(cav.PTRAVAILABLE,'785');
+});

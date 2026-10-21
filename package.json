@@ -133,5 +133,17 @@
     "vite-plugin-pwa": "1.3.0",
     "vitest": "4.1.10"
   },
-  "appsScriptRelease": "AgData v2.3.34"
+  "appsScriptRelease": "AgData v2.3.37",
+  "appsScriptPatchRelease": true,
+  "appsScriptPatchFunctions": [
+    "buildReclassItemInquiryTable_",
+    "buildReclassItemInquiryHtml_",
+    "buildReclassItemInquiryPdf_",
+    "buildReclassInquiryReportModel_",
+    "getReclassInquiryEmailRecipients_",
+    "buildReclassInquiryCompactReportHtml_",
+    "buildReclassInquiryEmailHtml_",
+    "deliverReclassInquiryPayload_",
+    "handleSignedInventoryReclassMoveDelivery_"
+  ]
 }

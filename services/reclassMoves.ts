@@ -17,6 +17,7 @@ export interface InventoryReclassMoveReceipt {
   requestId: string;
   revision: string;
   rows: ConfirmedInventoryReclassMove[];
+  seasonStocks?: { itemcode: string; season: string; openStock: number; seasonOnHand: number }[];
   movements: JsonRecord[];
   status: 'applied' | 'acknowledged' | 'pending' | 'conflict';
   importStatus?: 'pending' | 'acknowledged' | 'conflict';
@@ -96,7 +97,12 @@ export function confirmedInventoryReclassMoveReceipt(value: unknown): InventoryR
     }
     return raw;
   });
-  return { ok: true, commandId: result.commandId, requestId: result.requestId, revision: revision(result.revision), rows, movements,
+  const seasonStocks = result.seasonStocks === undefined ? [] : result.seasonStocks;
+  if (!Array.isArray(seasonStocks) || seasonStocks.length > 1000 || seasonStocks.some(s => !record(s)
+    || typeof s.itemcode !== 'string' || typeof s.season !== 'string'
+    || typeof s.openStock !== 'number' || !Number.isFinite(s.openStock)
+    || typeof s.seasonOnHand !== 'number' || !Number.isFinite(s.seasonOnHand))) throw new Error('INVENTORY_RECLASS_RECEIPT_STOCK_INVALID');
+  return { seasonStocks: seasonStocks as NonNullable<InventoryReclassMoveReceipt['seasonStocks']>, ok: true, commandId: result.commandId, requestId: result.requestId, revision: revision(result.revision), rows, movements,
     status: result.status as InventoryReclassMoveReceipt['status'],
     ...(result.importStatus === 'pending' || result.importStatus === 'acknowledged' || result.importStatus === 'conflict'
       ? { importStatus: result.importStatus } : {}) };

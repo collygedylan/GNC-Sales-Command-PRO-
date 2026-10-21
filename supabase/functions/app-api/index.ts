@@ -1933,17 +1933,13 @@ async function invokeReclassDeliveryWorkerNow() {
   });
 }
 
-async function dispatchReclassDeliveryNow(result: Record<string, unknown>, actorUsername: string, token: string) {
-  if (!result.jobId || result.status === "delivered") return result;
-  try {
-    // The durable outbox and leased worker own idempotency and Gmail receipts.
-    // A transport timeout never replays the inventory mutation or fabricates delivery.
-    await invokeReclassDeliveryWorkerNow();
-    const { data, error } = await supabase.rpc("get_drive_reclass_inquiry_status_v1", {
-      p_actor_username: actorUsername, p_idempotency_token: token,
-    });
-    if (!error && data && typeof data === "object") return { ...result, ...jsonObject(data) };
-  } catch { /* The existing durable worker retries and status recovery retain the receipt. */ }
+function dispatchReclassDeliveryNow(result: Record<string, unknown>, _actorUsername: string, _token: string) {
+  if ((!result.jobId && !result.deliveryEventId) || result.status === "delivered") return result;
+  // The transaction already owns a durable outbox entry. Never hold the save
+  // response open for PDF/Gmail; the leased worker and status RPC own recovery.
+  const task = invokeReclassDeliveryWorkerNow().then(() => {}).catch(() => {});
+  const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (task: Promise<void>) => void } }).EdgeRuntime;
+  if (runtime) runtime.waitUntil(task);
   return result;
 }
 
@@ -6014,7 +6010,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     if (!actor) return errorResponse("An active, unlocked app profile is required.", 403, { code: "INVENTORY_RECLASS_PROFILE_INACTIVE" });
     try {
       const data = await handleInventoryReclassMove({ supabase, actorProfile: actor, payload });
-      if (jsonObject(data).deliveryEventId) await invokeReclassDeliveryWorkerNow().catch(() => null);
+      if (jsonObject(data).deliveryEventId) dispatchReclassDeliveryNow(jsonObject(data), "", "");
       return jsonResponse({ ok: true, data });
     } catch (error) {
       const failure = inventoryReclassMoveError(error);
