@@ -93,7 +93,7 @@ jobs:
         run: echo 'HOTFIX_VALIDATION_SELECTED'
 
   lint:
-    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main'
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -107,7 +107,7 @@ jobs:
       - run: npm run check:tooling
 
   unit:
-    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main'
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation'
     strategy:
       fail-fast: true
       matrix:
@@ -123,7 +123,7 @@ jobs:
 
   react:
     needs: release-mode
-    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation' && needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -135,7 +135,7 @@ jobs:
 
   contracts:
     needs: release-mode
-    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && needs.release-mode.outputs.hotfix != 'true'
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation' && needs.release-mode.outputs.hotfix != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -150,7 +150,7 @@ jobs:
 
   database:
     needs: release-mode
-    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && needs.release-mode.outputs.hotfix != 'true' && inputs.run-backend-tests
+    if: inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation' && needs.release-mode.outputs.hotfix != 'true' && inputs.run-backend-tests
     uses: ./.github/workflows/release-database.yml
     with:
       run-schema-tests: ${{ inputs.run-schema-tests }}
@@ -163,49 +163,10 @@ jobs:
       artifact-id: ${{ steps.site.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
-      # Build Cloud handles Docker image builds; Node builds and SQL/browser
-      # verification retain their existing GitHub-hosted runners and gates.
-      - name: Check Docker Build Cloud credentials
-        id: docker-cloud
-        if: vars.DOCKER_BUILD_CLOUD_ENABLED == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PAT: ${{ secrets.DOCKER_PAT }}
-          DOCKER_CLOUD_BUILDER: ${{ vars.DOCKER_CLOUD_BUILDER }}
-        run: |
-          if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PAT" ] && [[ "$DOCKER_CLOUD_BUILDER" =~ ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ ]]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::Enabled Build Cloud requires credentials and an explicit configured builder."
-            exit 1
-          fi
-      - name: Log in to Docker
-        if: steps.docker-cloud.outputs.enabled == 'true'
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PAT }}
-      - name: Set up Docker Build Cloud
-        if: steps.docker-cloud.outputs.enabled == 'true'
-        uses: docker/setup-buildx-action@v4
-        with:
-          version: v0.37.0
-          driver: cloud
-          endpoint: ${{ vars.DOCKER_CLOUD_BUILDER }}
       - uses: ./.github/actions/setup-node-dependencies
-      - name: Set up local Buildx fallback
-        if: steps.docker-cloud.outputs.enabled != 'true'
-        uses: docker/setup-buildx-action@v4
-      - name: Build release with remote dependency and compilation layers
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: Dockerfile.ci
-          target: release
-          build-args: RELEASE_COMMIT=${{ github.sha }}
-          cache-from: type=gha,scope=gnc-release-build,version=2
-          cache-to: type=gha,scope=gnc-release-build,mode=max,version=2
-          outputs: type=local,dest=.
+      - run: npm run check:inline
+      - run: node scripts/run-tooling-release-checks.mjs
+      - uses: ./.github/actions/prepare-native-release
       - id: seal
         run: node scripts/release-artifact.mjs seal
       - id: site
@@ -218,7 +179,7 @@ jobs:
           retention-days: 7
 
   fast-browser:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -244,7 +205,7 @@ jobs:
           if-no-files-found: ignore
 
   foundation:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     # Browser dependency installation can consume over eight minutes on a cold runner.
@@ -279,7 +240,7 @@ jobs:
           if-no-files-found: ignore
 
   functional:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     # A cold browser install can leave too little of a 15-minute job for the shard.
@@ -320,7 +281,7 @@ jobs:
           if-no-files-found: ignore
 
   compiled:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -868,7 +829,7 @@ jobs:
           if-no-files-found: ignore
 
   timing:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -909,7 +870,7 @@ jobs:
           if-no-files-found: ignore
 
   performance:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -948,7 +909,7 @@ jobs:
           if-no-files-found: error
 
   lighthouse:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main' && github.workflow == 'Nightly Validation'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 12

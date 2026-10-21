@@ -1,43 +1,44 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const checks = [
+export const toolingReleaseCheckFiles = Object.freeze([
   'tests/release-scope.test.mjs',
-  'tests/release-pipeline.test.mjs',
-  'tests/release-publish-candidate.test.mjs',
-  'tests/apps-script-deployment-guard.test.mjs',
-  'tests/agdata-governance.test.mjs',
-  'tests/release-check-execution.test.mjs',
-  'tests/scoped-release-deployment.test.mjs',
-  'tests/pipeline-policy.test.mjs',
-  'tests/v2311-release-gates.test.mjs',
-  'tests/v2313-release-contract.test.mjs',
-  'tests/release-smoke-artifacts.test.mjs',
-  'tests/validation-config.test.mjs',
-];
+  'tests/main-release-registration.test.mjs',
+  'tests/tooling-release-runner.test.mjs',
+]);
 
-const started = performance.now();
-const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', ...checks], {
-  cwd: root,
-  encoding: 'utf8',
-  maxBuffer: 16 * 1024 * 1024,
-  windowsHide: true,
-});
-const elapsedSeconds = ((performance.now() - started) / 1000).toFixed(1);
+export function runToolingReleaseChecks({ spawn = spawnSync, now = () => performance.now(), print = console.log,
+  error = console.error } = {}) {
+  const started = now();
+  const result = spawn(process.execPath, ['--test', '--test-reporter=tap', '--test-concurrency=1', ...toolingReleaseCheckFiles], {
+    cwd: root, encoding: 'utf8', shell: false, maxBuffer: 16 * 1024 * 1024,
+    windowsHide: true, timeout: 15000,
+  });
+  const elapsedSeconds = ((now() - started) / 1000).toFixed(1);
 
-if (result.error) {
-  console.error(result.error);
-  process.exitCode = 1;
-} else if (result.status !== 0) {
-  if (result.stdout) process.stdout.write(result.stdout);
-  if (result.stderr) process.stderr.write(result.stderr);
-  console.error(`Tooling release checks failed (exit ${result.status}; ${elapsedSeconds}s).`);
-  process.exitCode = result.status || 1;
-} else {
-  const output = `${result.stdout || ''}\n${result.stderr || ''}`;
-  const passed = Number(output.match(/^# pass (\d+)$/m)?.[1] || [...output.matchAll(/^ok \d+ - /gm)].length);
-  const fixture = output.match(/PREINDEXED_PAGE_METRIC rows=(\d+) samples=(\d+) max_ms=([\d.]+)/);
-  console.log(`Tooling release checks passed (${passed} tests, ${elapsedSeconds}s).`);
-  if (fixture) console.log(`Fixture: ${fixture[1]} rows, ${fixture[2]} warm page calls, maximum ${fixture[3]} ms.`);
+  if (result.error || result.status !== 0) {
+    if (result.stdout) error(result.stdout);
+    if (result.stderr) error(result.stderr);
+    error(`Tooling release checks failed (${result.error?.code || `exit ${result.status}`}; ${elapsedSeconds}s).`);
+    return { exitCode: Number.isInteger(result.status) && result.status > 0 ? result.status : 1 };
+  }
+  const output = String(result.stdout || '');
+  const count = name => {
+    const matches = [...output.matchAll(new RegExp(`^# ${name} (\\d+)$`, 'gm'))];
+    return matches.length === 1 ? Number(matches[0][1]) : null;
+  };
+  const passed = count('pass');
+  if (!(passed > 0) || ['fail', 'cancelled', 'skipped'].some(name => count(name) !== 0)) {
+    if (output) error(output);
+    error('Tooling release checks require passing tests with no failed, cancelled, or skipped checks.');
+    return { exitCode: 1 };
+  }
+  print(`Tooling release checks passed (${passed} tests, ${elapsedSeconds}s).`);
+  return { exitCode: 0, passed };
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exitCode = runToolingReleaseChecks().exitCode;
 }

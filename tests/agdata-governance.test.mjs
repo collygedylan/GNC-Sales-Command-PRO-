@@ -45,7 +45,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // The approved replacement, with escaped line breaks decoded and Markdown saved as LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    '283f5576d33a56bda64c9271af0bc2d116bc5cc007c4cb890acbbc553d478404');
+    'bb692d0a09d0bc42c972b2905ef08a7056bebf8f76db37cb4bb6ee7487f902d6');
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));

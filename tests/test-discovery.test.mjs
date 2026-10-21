@@ -261,3 +261,14 @@ test('discovery audit blocks unclassified tests, empty groups and duplicate runt
 test('all repository tests have one primary runtime and populated required lanes', () => {
   assert.ok(auditTestDiscovery().total > 0);
 });
+
+test('the actual retry probe remains discovered outside the fast daytime Node contract selection', () => {
+  const browser = discoverTests({ group: 'node-browser' });
+  const units = discoverTests({ group: 'node-unit' });
+  assert.ok(browser.includes('tests/release-retry-policy.browser.test.mjs'));
+  assert.equal(units.includes('tests/release-retry-policy.browser.test.mjs'), false);
+  assert.ok(units.includes('tests/tooling-release-runner.test.mjs'));
+  const retry = readFileSync(new URL('./release-retry-policy.browser.test.mjs', import.meta.url), 'utf8');
+  assert.match(retry, /spawnSync\(process\.execPath/);
+  assert.match(retry, /'@playwright\/test\/cli'/);
+});

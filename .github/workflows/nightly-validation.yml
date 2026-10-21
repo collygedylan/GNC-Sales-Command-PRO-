@@ -6,6 +6,12 @@ on:
     # America/Chicago, then use central-time-gate to keep only the local match.
     - cron: '30 1,2 * * *'
   workflow_dispatch:
+    inputs:
+      full_regression:
+        description: Explicitly run all browser, SQL, import and historical Node suites.
+        type: boolean
+        default: false
+        required: true
 
 permissions:
   contents: read
@@ -27,9 +33,10 @@ jobs:
         id: gate
         env:
           EVENT_NAME: ${{ github.event_name }}
+          FULL_REGRESSION: ${{ inputs.full_regression }}
         run: |
           if [[ "$EVENT_NAME" != "schedule" ]]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "should_run=$FULL_REGRESSION" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -54,6 +61,33 @@ jobs:
       run-frontend-tests: true
       run-backend-tests: false
     secrets: inherit
+
+  release-smoke:
+    needs: [central-time-gate, expanded-validation]
+    if: github.ref == 'refs/heads/main' && needs.central-time-gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: chromium webkit
+      - uses: ./.github/actions/download-release
+        with:
+          digest: ${{ needs.expanded-validation.outputs.digest }}
+      - name: Three-profile release smoke (Nightly only)
+        env:
+          RELEASE_SMOKE_SITE_DIR: _site
+          EXPECTED_RELEASE_COMMIT: ${{ github.sha }}
+          EXPECTED_RELEASE_DIGEST: ${{ needs.expanded-validation.outputs.digest }}
+        run: node scripts/run-release-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-release-smoke-${{ github.run_id }}
+          path: .gnc-local/release-smoke
+          include-hidden-files: true
+          if-no-files-found: ignore
 
   backend-diagnostics:
     needs: central-time-gate
@@ -94,9 +128,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-node-dependencies
-      - name: Wait for the current main commit to be live
+      - name: Resolve the actual frontend publication
+        id: live-baseline
         env:
-          EXPECTED_COMMIT: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_BASELINE_PUBLICATION: frontend
+          RELEASE_BASELINE_INCLUDE_CURRENT: 'true'
+        run: node scripts/release-baseline.mjs
+      - name: Wait for the published frontend commit to be live
+        env:
+          EXPECTED_COMMIT: ${{ steps.live-baseline.outputs.commit }}
           CANARY_BASE_URL: https://agmetricapp.com
           REQUIRE_CURRENT_LIVE_DESCRIPTOR: '1'
           CANARY_WAIT_TIMEOUT_MS: '600000'
@@ -177,6 +218,7 @@ jobs:
       - central-time-gate
       - expanded-validation
       - backend-diagnostics
+      - release-smoke
       - pending-order-contract
       - suspend-tag-contract
       - live-dataset-contract
@@ -197,6 +239,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT_SHA: ${{ github.sha }}
           EXPANDED_VALIDATION_RESULT: ${{ needs.expanded-validation.result }}
+          RELEASE_SMOKE_RESULT: ${{ needs.release-smoke.result }}
           BACKEND_DIAGNOSTICS_RESULT: ${{ needs.backend-diagnostics.result }}
           PENDING_ORDER_CONTRACT_RESULT: ${{ needs.pending-order-contract.result }}
           SUSPEND_TAG_CONTRACT_RESULT: ${{ needs.suspend-tag-contract.result }}
@@ -228,6 +271,7 @@ jobs:
             }).format(new Date());
             const topLevel = [
               ['Expanded validation (repository tests, layout/browser snapshots, performance benchmarks)', process.env.EXPANDED_VALIDATION_RESULT],
+              ['Three-profile release smoke', process.env.RELEASE_SMOKE_RESULT],
               ['Backend diagnostics (database/browser/performance suites)', process.env.BACKEND_DIAGNOSTICS_RESULT],
               ['Pending-order transaction contracts', process.env.PENDING_ORDER_CONTRACT_RESULT],
               ['Suspend Tag transaction contracts', process.env.SUSPEND_TAG_CONTRACT_RESULT],

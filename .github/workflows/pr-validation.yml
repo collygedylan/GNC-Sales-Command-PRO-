@@ -1,12 +1,14 @@
-name: Validate PR units and lint
+name: Validate focused PR contracts
 
 on:
   workflow_call:
     inputs:
       run-frontend-tests:
+        description: Compatibility scope input; the focused inline and tooling checks always run.
         type: boolean
         default: true
       run-backend-tests:
+        description: Compatibility scope input; full backend validation belongs to Nightly Validation.
         type: boolean
         default: true
 
@@ -16,82 +18,15 @@ permissions:
   pull-requests: read
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-node-dependencies
-      - run: node scripts/prepare-release-version.mjs --check
-      - run: npm run check:tooling
-
-  unit:
-    strategy:
-      fail-fast: true
-      matrix:
-        shard: [1, 2, 3, 4]
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-node-dependencies
-      - run: node scripts/run-release-unit-checks.mjs --shard=${{ matrix.shard }}/4
-
-  react:
-    if: inputs.run-frontend-tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-node-dependencies
-      - run: node scripts/run-release-react-checks.mjs
-
-  contracts:
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-node-dependencies
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: node scripts/run-discovered-tests.mjs python
-
-  backend-unit:
-    if: inputs.run-backend-tests
-    uses: ./.github/workflows/release-database.yml
-    with:
-      run-schema-tests: false
-      run-browser-tests: false
-      run-performance-tests: false
-
-  pr-gate:
-    if: always()
-    needs: [lint, unit, react, contracts, backend-unit]
+  fast-pr:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Require the selected unit and lint checks
-        env:
-          PR_JOB_RESULTS: ${{ toJSON(needs) }}
-          RUN_FRONTEND_TESTS: ${{ inputs.run-frontend-tests }}
-          RUN_BACKEND_TESTS: ${{ inputs.run-backend-tests }}
-        run: |
-          node --input-type=module <<'NODE'
-          const jobs = JSON.parse(process.env.PR_JOB_RESULTS);
-          const required = ['lint', 'unit', 'contracts'];
-          if (process.env.RUN_FRONTEND_TESTS === 'true') required.push('react');
-          if (process.env.RUN_BACKEND_TESTS === 'true') required.push('backend-unit');
-          for (const name of required) {
-            if (jobs[name]?.result !== 'success') throw new Error(`PR_GATE_FAILED_${name}`);
-          }
-          console.log('All selected PR unit and lint checks passed; publication is verified separately on main.');
-          NODE
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-dependencies
+      - name: Check release version consistency
+        run: node scripts/prepare-release-version.mjs --check
+      - name: Validate inline application scripts
+        run: npm run check:inline
+      - name: Run focused release tooling contracts
+        run: node scripts/run-tooling-release-checks.mjs

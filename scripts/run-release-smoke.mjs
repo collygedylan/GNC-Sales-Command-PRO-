@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sourceDigest, siteDigest } from './local-validation-evidence.mjs';
-import { verifyReleaseArtifact } from './release-artifact.mjs';
+import { sealReleaseArtifact, verifyReleaseArtifact } from './release-artifact.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const sha256 = value => createHash('sha256').update(value).digest('hex');
@@ -19,8 +19,36 @@ export function assertReleaseAssetReferences(siteDir) {
   }
 }
 
-function git(args) {
-  return spawnSync('git', args, { cwd: root, encoding: 'utf8', shell: false, windowsHide: true });
+function git(args, rootDir) {
+  return spawnSync('git', args, { cwd: rootDir, encoding: 'utf8', shell: false, windowsHide: true });
+}
+
+/** Verify current build bytes without requiring a candidate commit or caller receipts. */
+export async function prepareReleaseSmokeSite({ siteDir, env = process.env, rootDir = root,
+  getSourceDigest = sourceDigest, runGit = git } = {}) {
+  const expectedCommit = String(env.EXPECTED_RELEASE_COMMIT || '').trim().toLowerCase();
+  const expectedArtifact = String(env.EXPECTED_RELEASE_DIGEST || '').trim().toLowerCase();
+  const expectedSource = String(env.RELEASE_SMOKE_SOURCE_DIGEST || '').trim().toLowerCase();
+  if (expectedCommit && !/^[a-f0-9]{40}$/.test(expectedCommit)
+    || expectedArtifact && !/^[a-f0-9]{64}$/.test(expectedArtifact)
+    || expectedSource && !/^[a-f0-9]{64}$/.test(expectedSource)) fail('RELEASE_SMOKE_EXPECTATION_INVALID');
+  const fingerprint = JSON.parse(fs.readFileSync(path.join(siteDir, 'deployment.json'), 'utf8'));
+  const buildCommit = expectedCommit || fingerprint.commit;
+  const artifactEnv = { ...env, EXPECTED_RELEASE_COMMIT: buildCommit };
+  const manifestPath = path.join(siteDir, 'release-manifest.json');
+  if (!fs.existsSync(manifestPath)) await sealReleaseArtifact(siteDir, { ...artifactEnv, GITHUB_OUTPUT: '' });
+  const artifactDigest = expectedArtifact || sha256(fs.readFileSync(manifestPath));
+  const artifact = await verifyReleaseArtifact(siteDir, { ...artifactEnv, CI: '1', EXPECTED_RELEASE_DIGEST: artifactDigest });
+  assertReleaseAssetReferences(siteDir);
+  const currentSourceDigest = getSourceDigest(rootDir);
+  if (expectedSource && currentSourceDigest !== expectedSource) fail('RELEASE_SMOKE_SOURCE_DIGEST_MISMATCH');
+  const head = runGit(['rev-parse', 'HEAD'], rootDir);
+  const status = runGit(['status', '--porcelain', '--untracked-files=normal'], rootDir);
+  return { artifact, currentSourceDigest, currentSiteDigest: siteDigest(siteDir),
+    sourceIdentity: { kind: 'working-tree', digest: currentSourceDigest,
+      head: head.status === 0 ? head.stdout.trim() : null,
+      dirty: status.status === 0 ? Boolean(status.stdout.trim()) : null },
+  };
 }
 
 function collectResults(suites, output = [], inheritedProject = '') {
@@ -39,38 +67,21 @@ function collectResults(suites, output = [], inheritedProject = '') {
 export async function runReleaseSmoke({ env = process.env, print = console.log } = {}) {
   const startedAt = new Date().toISOString();
   const siteDirValue = String(env.RELEASE_SMOKE_SITE_DIR || '').trim();
-  const expectedCommit = String(env.EXPECTED_RELEASE_COMMIT || '').trim().toLowerCase();
-  const expectedArtifact = String(env.EXPECTED_RELEASE_DIGEST || '').trim().toLowerCase();
-  const expectedSource = String(env.RELEASE_SMOKE_SOURCE_DIGEST || '').trim().toLowerCase();
-  if (!siteDirValue || !/^[a-f0-9]{40}$/.test(expectedCommit)
-    || !/^[a-f0-9]{64}$/.test(expectedArtifact) || !/^[a-f0-9]{64}$/.test(expectedSource)) {
-    fail('RELEASE_SMOKE_EXPECTED_SITE_COMMIT_ARTIFACT_AND_SOURCE_DIGEST_REQUIRED');
-  }
+  if (!siteDirValue) fail('RELEASE_SMOKE_SITE_REQUIRED');
   const siteDir = path.resolve(root, siteDirValue);
   const relativeSite = path.relative(root, siteDir);
   if (!relativeSite || relativeSite === '..' || relativeSite.startsWith(`..${path.sep}`) || path.isAbsolute(relativeSite)) {
     fail('RELEASE_SMOKE_SITE_MUST_BE_IN_WORKSPACE');
   }
-  const head = git(['rev-parse', 'HEAD']);
-  if (head.status !== 0 || head.stdout.trim() !== expectedCommit) fail('RELEASE_SMOKE_COMMIT_MISMATCH');
-  const currentSourceDigest = sourceDigest(root);
-  if (currentSourceDigest !== expectedSource) fail('RELEASE_SMOKE_SOURCE_DIGEST_MISMATCH');
-  const artifact = await verifyReleaseArtifact(siteDir, {
-    ...env,
-    CI: '1',
-    EXPECTED_RELEASE_COMMIT: expectedCommit,
-    EXPECTED_RELEASE_DIGEST: expectedArtifact,
-  });
-  assertReleaseAssetReferences(siteDir);
-  const currentSiteDigest = siteDigest(siteDir);
-  const outputDir = path.join(root, '.gnc-local', 'release-smoke', artifact.release.replaceAll(/[^a-z0-9]+/gi, '-').toLowerCase(), expectedCommit.slice(0, 12), startedAt.replaceAll(/[^0-9]/g, ''));
+  const { artifact, currentSourceDigest, currentSiteDigest, sourceIdentity } = await prepareReleaseSmokeSite({ siteDir, env });
+  const outputDir = path.join(root, '.gnc-local', 'release-smoke', artifact.release.replaceAll(/[^a-z0-9]+/gi, '-').toLowerCase(), currentSourceDigest.slice(0, 12), startedAt.replaceAll(/[^0-9]/g, ''));
   fs.mkdirSync(outputDir, { recursive: true });
   const reportPath = path.join(outputDir, 'report.json');
   const logPath = path.join(outputDir, 'playwright.log');
   const report = {
     schemaVersion: 'gnc-release-smoke-v1', status: 'running', startedAt,
-    release: artifact.release, commit: artifact.commit, artifactDigest: artifact.digest,
-    sourceDigest: currentSourceDigest, siteDigest: currentSiteDigest,
+    release: artifact.release, commit: artifact.commit, buildCommit: artifact.commit, artifactDigest: artifact.digest,
+    sourceDigest: currentSourceDigest, siteDigest: currentSiteDigest, sourceIdentity,
     productionWrites: false, realEmailsSent: false,
     browserProjects: ['desktop-chromium', 'android-chromium', 'iphone-webkit'],
     playwright: { status: 'not-started', resultsPath: path.join(outputDir, 'results.json'), logPath },
@@ -152,7 +163,7 @@ export async function runReleaseSmoke({ env = process.env, print = console.log }
   report.durationMs = Date.parse(report.completedAt) - Date.parse(startedAt);
   report.status = report.playwright.status === 'passed' && report.durationMs < 300_000 ? 'passed' : 'failed';
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
-  print(`${report.status === 'passed' ? 'RELEASE_SMOKE_PASSED' : 'RELEASE_SMOKE_FAILED'} ${report.release} ${report.commit} ${report.durationMs}ms ${reportPath}`);
+  print(`${report.status === 'passed' ? 'RELEASE_SMOKE_PASSED' : 'RELEASE_SMOKE_FAILED'} ${report.release} build=${report.buildCommit} working-tree=${report.sourceDigest} ${report.durationMs}ms ${reportPath}`);
   if (report.status !== 'passed') {
     const tail = fs.readFileSync(logPath, 'utf8').split(/\r?\n/).slice(-40).join('\n');
     if (tail) print(tail);

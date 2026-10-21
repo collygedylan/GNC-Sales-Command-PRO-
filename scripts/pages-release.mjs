@@ -55,8 +55,8 @@ async function matchingProof({ repository, commit, api, now, allowPrBrowserProof
   };
   const run = await latest();
   const jobs = await complete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs`, 'jobs');
-  // Unit/lint PR status authorizes merging, never reuse of a publication artifact.
-  if (jobs.some(job => job.name === 'validation / pr-gate')) unavailable('PR_CHECKS_NOT_PUBLICATION_PROOF');
+  // Focused PR status authorizes merging, never reuse of a publication artifact.
+  if (jobs.some(job => ['validation / fast-pr', 'validation / pr-gate'].includes(job.name))) unavailable('PR_CHECKS_NOT_PUBLICATION_PROOF');
   const hotfix = hasAttestedHotfix(jobs);
   const fastPr = jobs.some(job => job.name === 'validation / fast-browser');
   if (fastPr && !allowPrBrowserProof && !hotfix) unavailable('PRODUCTION_BROWSER_VALIDATION_REQUIRED');

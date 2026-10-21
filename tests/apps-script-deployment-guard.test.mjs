@@ -19,10 +19,11 @@ function harness(change = {}) {
   const run = { id: 100, workflow_id: 9, run_number: 12, run_attempt: 1,
     path: '.github/workflows/performance-monitor.yml', event: 'pull_request', head_sha: head,
     head_repository: { full_name: repository }, status: 'completed', conclusion: 'success', ...change.run };
-  let jobs = ['validation / lint', ...[1, 2, 3, 4].map(n => `validation / unit (${n})`), 'validation / pr-gate'].map((name, i) => ({
-    id: 200 + i, run_id: run.id, head_sha: head, name, status: 'completed', conclusion: 'success',
-    steps: name === 'validation / pr-gate' ? [{ name: 'Require the selected unit and lint checks', status: 'completed', conclusion: 'success' }] : []
-  }));
+  let jobs = [{ id: 200, run_id: run.id, head_sha: head, name: 'validation / fast-pr',
+    status: 'completed', conclusion: 'success',
+    steps: ['Validate inline application scripts', 'Run focused release tooling contracts']
+      .map(name => ({ name, status: 'completed', conclusion: 'success' }))
+  }];
   if (change.jobs) jobs = change.jobs(jobs);
   const backendWorkflow = { id: 10, path: backendPath, state: 'active', ...change.backendWorkflow };
   const backendRun = { id: 88, workflow_id: backendWorkflow.id, run_number: 14, run_attempt: 1,
@@ -69,7 +70,7 @@ function harness(change = {}) {
   return { api, calls };
 }
 
-test('legacy merged PR units and lint path remains independent of publication artifacts', async () => {
+test('merged PR fast gate remains independent of publication artifacts', async () => {
   const { api, calls } = harness();
   const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
     backendRunAttempt: 1, backendRunSha: commit, api });
@@ -83,7 +84,7 @@ test('trusted direct-main coordinator publishes Apps Script without requiring a 
   const coordinatorRun = { id: 120, workflow_id: 12, run_number: 19, run_attempt: 1,
     path: coordinator.path, event: 'push', head_branch: 'main', head_sha: commit,
     head_repository: { full_name: repository }, status: 'in_progress', conclusion: null };
-  const coordinatorJobs = ['authorize-main', 'scope', 'node-validation / pr-gate', 'backend-publication'].map((name, i) => ({
+  const coordinatorJobs = ['fast-gate', 'backend-publication'].map((name, i) => ({
     id: 500 + i, run_id: coordinatorRun.id, head_sha: commit, name,
     status: name === 'backend-publication' ? 'in_progress' : 'completed',
     conclusion: name === 'backend-publication' ? null : 'success'
@@ -116,10 +117,11 @@ test('direct coordinator requires exact backend identity and a successful Supaba
     const coordinatorRun = { id: 120, workflow_id: 12, run_number: 19, run_attempt: 1,
       path: coordinator.path, event: 'workflow_dispatch', head_branch: 'main', head_sha: commit,
       head_repository: { full_name: repository }, status: 'in_progress', conclusion: null };
-    const coordinatorJobs = ['authorize-main', 'scope', 'node-validation / pr-gate', 'backend-publication'].map((name, i) => ({
+    const coordinatorJobs = (change.coordinatorNames || ['fast-gate', 'backend-publication']).map((name, i) => ({
       id: 500 + i, run_id: coordinatorRun.id, head_sha: commit, name,
       status: name === 'backend-publication' ? 'in_progress' : 'completed',
-      conclusion: name === 'backend-publication' ? null : 'success'
+      conclusion: name === 'backend-publication' ? null : 'success',
+      ...(name === 'fast-gate' ? change.fastGate : {}),
     }));
     const backendRun = { id: 88, workflow_id: 10, run_number: 14, run_attempt: 1, path: backendPath,
       event: 'workflow_dispatch', head_branch: 'main', head_sha: commit,
@@ -142,6 +144,15 @@ test('direct coordinator requires exact backend identity and a successful Supaba
       backendRunAttempt: 1, backendRunSha: commit, coordinatorRunId: 120, coordinatorRunAttempt: overrides.coordinatorRunAttempt ?? 1,
       requireSupabase: overrides.requireSupabase ?? true, scriptChanged: overrides.scriptChanged ?? true, api });
   };
+  for (const conclusion of ['failure', 'skipped', 'cancelled']) {
+    await assert.rejects(invoke({ fastGate: { conclusion } }), /COORDINATOR_VALIDATION_NOT_GREEN/);
+  }
+  await assert.rejects(invoke({ fastGate: { status: 'in_progress' } }), /COORDINATOR_VALIDATION_NOT_GREEN/);
+  await assert.rejects(invoke({ fastGate: { head_sha: 'f'.repeat(40) } }), /COORDINATOR_VALIDATION_NOT_GREEN/);
+  await assert.rejects(invoke({ fastGate: { run_id: 121 } }), /COORDINATOR_VALIDATION_NOT_GREEN/);
+  await assert.rejects(invoke({ coordinatorNames: ['fast-gate', 'fast-gate', 'backend-publication'] }), /COORDINATOR_VALIDATION_NOT_GREEN/);
+  await assert.rejects(invoke({ coordinatorNames: ['authorize-main', 'scope', 'node-validation / pr-gate', 'backend-publication'] }),
+    /COORDINATOR_VALIDATION_NOT_GREEN/);
   await assert.rejects(invoke({ jobConclusion: 'skipped' }), /BACKEND_DEPLOY_NOT_SUCCESSFUL/);
   await assert.rejects(invoke({ backendResponseId: 89 }), /BACKEND_RUN_NOT_TRUSTED/);
   await assert.rejects(invoke({ backendRun: { run_attempt: 2 } }), /BACKEND_RUN_NOT_TRUSTED/);
@@ -231,10 +242,15 @@ for (const [name, change, error] of [
   ['wrong workflow', { workflow: { path: '.github/workflows/untrusted.yml' } }, 'VALIDATION_WORKFLOW_INVALID'],
   ['failed run', { run: { conclusion: 'failure' } }, 'LATEST_VALIDATION_NOT_GREEN'],
   ['fork validation', { run: { head_repository: { full_name: 'attacker/app' } } }, 'VALIDATION_RUN_IDENTITY_INVALID'],
-  ['missing unit shard', { jobs: jobs => jobs.filter(j => j.name !== 'validation / unit (4)') }, 'UNIT_LINT_GATE_MISSING'],
-  ['skipped lint', { jobs: jobs => jobs.map(j => j.name === 'validation / lint' ? { ...j, conclusion: 'skipped' } : j) }, 'UNIT_LINT_GATE_MISSING'],
-  ['failed gate', { jobs: jobs => jobs.map(j => j.name === 'validation / pr-gate' ? { ...j, conclusion: 'failure' } : j) }, 'VALIDATION_JOB_INVALID'],
+  ['missing fast PR gate', { jobs: () => [] }, 'UNIT_LINT_GATE_MISSING'],
+  ['legacy gate alone', { jobs: jobs => jobs.map(j => ({ ...j, name: 'validation / pr-gate' })) }, 'UNIT_LINT_GATE_MISSING'],
+  ['duplicate fast PR gate', { jobs: jobs => [...jobs, { ...jobs[0], id: 201 }] }, 'UNIT_LINT_GATE_MISSING'],
+  ['skipped fast PR gate', { jobs: jobs => jobs.map(j => ({ ...j, conclusion: 'skipped' })) }, 'UNIT_LINT_GATE_MISSING'],
+  ['failed gate', { jobs: jobs => jobs.map(j => ({ ...j, conclusion: 'failure' })) }, 'VALIDATION_JOB_INVALID'],
   ['missing gate attestation', { jobs: jobs => jobs.map(j => ({ ...j, steps: [] })) }, 'UNIT_LINT_GATE_NOT_ATTESTED'],
+  ['missing inline attestation', { jobs: jobs => jobs.map(j => ({ ...j, steps: j.steps.slice(1) })) }, 'UNIT_LINT_GATE_NOT_ATTESTED'],
+  ['missing tooling attestation', { jobs: jobs => jobs.map(j => ({ ...j, steps: j.steps.slice(0, 1) })) }, 'UNIT_LINT_GATE_NOT_ATTESTED'],
+  ['failed gate step', { jobs: jobs => jobs.map(j => ({ ...j, steps: j.steps.map(step => ({ ...step, conclusion: 'failure' })) })) }, 'UNIT_LINT_GATE_NOT_ATTESTED'],
   ['job SHA drift', { jobs: jobs => jobs.map(j => ({ ...j, head_sha: commit })) }, 'VALIDATION_JOB_INVALID'],
   ['rerun', { rerun: true }, 'VALIDATION_SUPERSEDED'],
   ['PR drift', { changePr: true }, 'PR_IDENTITY_CHANGED'],

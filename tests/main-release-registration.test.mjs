@@ -38,15 +38,24 @@ test('main publication follows build then selected backend then Pages without va
   assert.deepEqual(pages.on.push.branches, ['main']);
   for (const job of Object.values(pages.jobs)) assert.equal(job.strategy?.matrix, undefined);
   for (const removed of ['node-validation', 'tooling-validation', 'frontend-validation']) assert.equal(pages.jobs[removed], undefined);
-  const build = pages.jobs['frontend-build'];
-  assert.equal(build.uses, './.github/workflows/release-validation.yml');
-  for (const option of ['run-nightly-suites', 'run-frontend-tests', 'run-backend-tests', 'run-schema-tests']) assert.equal(build.with[option], false, option);
-  assert.deepEqual(needs(pages.jobs['backend-publication']).sort(), ['authorize-main', 'scope', 'frontend-build'].sort());
-  assert.deepEqual(needs(pages.jobs.deploy).sort(), ['authorize-main', 'scope', 'frontend-build', 'backend-publication'].sort());
-  assert.match(pages.jobs['backend-publication'].if, /needs\.frontend-build\.result == 'success'/);
+  const gate = pages.jobs['fast-gate'];
+  assert.equal(gate.uses, undefined);
+  assert.ok(gate.steps.some(step => step.run === 'npm run check:inline'));
+  assert.ok(gate.steps.some(step => step.run === 'node scripts/run-tooling-release-checks.mjs'));
+  const native = gate.steps.find(step => step.uses === './.github/actions/prepare-native-release');
+  assert.equal(native.if, "steps.classify.outputs.frontend == 'true'");
+  assert.doesNotMatch(commands(gate), /run-discovered-tests|playwright|run-release-smoke|docker build/);
+  const prepare = yaml.load(read('.github/actions/prepare-native-release/action.yml'));
+  assert.ok(prepare.runs.steps.some(step => step.run === 'node scripts/prepare-release-site.mjs'));
+  assert.ok(prepare.runs.steps.some(step => step.uses === 'actions/cache@v4'));
+  assert.doesNotMatch(JSON.stringify(prepare), /docker\//);
+  assert.deepEqual(needs(pages.jobs['backend-publication']).sort(), ['fast-gate'].sort());
+  assert.deepEqual(needs(pages.jobs.deploy).sort(), ['fast-gate', 'backend-publication'].sort());
+  assert.match(pages.jobs['backend-publication'].if, /needs\.fast-gate\.result == 'success'/);
   assert.match(pages.jobs.deploy.if, /needs\.backend-publication\.result == 'success'/);
-  assert.match(commands(pages.jobs.scope), /selectReleaseRecoveryBase\(/);
-  assert.doesNotMatch(commands(pages.jobs.scope), /!initialScope\.toolingOnly\s*&&/);
+  assert.match(commands(pages.jobs['fast-gate']), /selectReleaseRecoveryBase\(/);
+  assert.match(commands(gate), /initialScope\.deploy\.frontend \? await recover\('frontend'\)/);
+  assert.match(commands(gate), /selectReleaseRecoveryBase\(\{ scope: initialScope/);
   const backend = workflow('apps-script-sync.yml');
   assert.deepEqual(needs(backend.jobs['deploy-supabase']), ['authorize-backend']);
   assert.doesNotMatch(commands(backend.jobs['deploy-supabase']), /run-discovered-tests|database-check|playwright/);
@@ -59,9 +68,16 @@ test('expanded validation remains registered exclusively behind the main nightly
     assert.ok(release.jobs[name], name);
     assert.match(release.jobs[name].if, /inputs\.run-nightly-suites/, name);
     assert.match(release.jobs[name].if, /github\.ref == 'refs\/heads\/main'/, name);
+    assert.match(release.jobs[name].if, /github\.workflow == 'Nightly Validation'/, name);
   }
   const nightly = workflow('nightly-validation.yml');
   assert.equal(nightly.name, 'Nightly Validation');
+  assert.equal(nightly.on.workflow_dispatch.inputs.full_regression.default, false);
+  assert.equal(nightly.on.workflow_dispatch.inputs.full_regression.type, 'boolean');
+  const nightGate = nightly.jobs['central-time-gate'].steps[0];
+  assert.equal(nightGate.env.FULL_REGRESSION, '${{ inputs.full_regression }}');
+  assert.match(nightGate.run, /should_run=\$FULL_REGRESSION/);
+  assert.equal(nightly.jobs['release-smoke'].steps.find(step => step.run === 'node scripts/run-release-smoke.mjs').env.RELEASE_SMOKE_SITE_DIR, '_site');
   assert.deepEqual(nightly.on.schedule.map(item => item.cron), ['30 1,2 * * *']);
   assert.match(commands(nightly.jobs['central-time-gate']), /America\/Chicago/);
   const frontend = Object.values(nightly.jobs).find(job => job.uses === './.github/workflows/release-validation.yml');
@@ -108,14 +124,14 @@ test('direct delivery proofs truthfully claim no nightly test scope', () => {
 
 test('current-main, immutable artifact and privileged publishing safeguards survive direct delivery', () => {
   const pages = workflow('pages-static.yml');
-  const authorization = commands(pages.jobs['authorize-main']);
+  const authorization = commands(pages.jobs['fast-gate']);
   assert.match(authorization, /expected !== context\.sha/);
   assert.match(authorization, /main\.object\.sha !== context\.sha/);
   const deploy = pages.jobs.deploy;
   const download = deploy.steps.find(step => step.uses === './.github/actions/download-release');
   assert.equal(download.with.commit, '${{ github.sha }}');
-  assert.equal(download.with.digest, '${{ needs.frontend-build.outputs.digest }}');
-  assert.equal(download.with['artifact-id'], '${{ needs.frontend-build.outputs.site-id }}');
+  assert.equal(download.with.digest, '${{ needs.fast-gate.outputs.digest }}');
+  assert.equal(download.with['artifact-id'], '${{ needs.fast-gate.outputs.site-id }}');
   assert.match(commands(deploy), /FRONTEND_VALIDATION_IDENTITY_MISMATCH/);
   assert.match(commands(deploy), /FRONTEND_MAIN_SUPERSEDED/);
   assert.match(commands(deploy), /GITHUB_RUN_ATTEMPT/);

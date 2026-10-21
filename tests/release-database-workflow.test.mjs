@@ -183,19 +183,25 @@ test('backend schema gate requires every selected integration job and rejects sk
   }
 });
 
-test('backend production mutations require current-main validation and every contract suite', () => {
+test('daytime backend deployment keeps authorization and SQL before Edge while full validation stays nightly', () => {
   const sync = yaml.load(fs.readFileSync(new URL('../.github/workflows/apps-script-sync.yml', import.meta.url), 'utf8'));
-  const validation = sync.jobs['backend-validation'];
-  assert.equal(validation.uses, './.github/workflows/release-database.yml');
-  assert.equal(validation.with['run-schema-tests'], true);
-  assert.equal(validation.with['run-browser-tests'], false);
-  assert.equal(validation.with['run-performance-tests'], false);
-  assert.equal(validation.with['run-all-schema-tests'], true);
   const deploy = sync.jobs['deploy-supabase'];
-  for (const name of ['authorize-backend', 'backend-validation', 'pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract']) {
-    assert.ok(deploy.needs.includes(name));
-    if (name !== 'authorize-backend') assert.match(deploy.if, new RegExp(`needs\\.${name}\\.result == 'success'`));
+  assert.deepEqual([deploy.needs].flat(), ['authorize-backend']);
+  assert.match(deploy.if, /outputs\.authorized == 'true'/);
+  assert.match(deploy.if, /outputs\.backend-changed == 'true'/);
+  for (const name of ['backend-validation', 'pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract']) {
+    assert.equal(sync.jobs[name], undefined, name);
   }
+  const commands = deploy.steps.map(step => step.run || '').join('\n');
+  assert.match(commands, /BACKEND_DISPATCH_STALE_MAIN/);
+  assert.ok(commands.indexOf('scripts/apply-item-low-stock-migration.mjs') < commands.indexOf('supabase functions deploy'));
+  assert.doesNotMatch(commands, /database-check|run-release-unit-checks|run-release-smoke|playwright|docker build/);
+  const nightly = yaml.load(fs.readFileSync(new URL('../.github/workflows/nightly-validation.yml', import.meta.url), 'utf8'));
+  assert.equal(nightly.jobs['backend-diagnostics'].uses, './.github/workflows/release-database.yml');
+  for (const flag of ['run-schema-tests', 'run-browser-tests', 'run-performance-tests', 'run-all-schema-tests']) {
+    assert.equal(nightly.jobs['backend-diagnostics'].with[flag], true, flag);
+  }
+  assert.equal(workflowConfig.on.push, undefined, 'full backend diagnostics never independently trigger on a main push');
 });
 
 test('backend dispatch classifies exact deploy paths while migration runner and workflow tooling stay independent', () => {

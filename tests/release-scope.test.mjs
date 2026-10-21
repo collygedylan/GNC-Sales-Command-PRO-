@@ -27,7 +27,17 @@ test('site source, Supabase, and Apps Script deploy scopes remain independent', 
   ]);
   assert.equal(scope.toolingOnly, false);
   assert.deepEqual(scope.deploy, { frontend: true, supabase: true, appsScript: true });
-  assert.deepEqual(scope.validation, { frontend: true, backend: true, schema: true });
+  assert.deepEqual(scope.validation, { frontend: false, backend: false, schema: false });
+});
+
+test('full matrices require the explicit Nightly selection for every deployment scope', () => {
+  for (const files of [['src/app.tsx'], ['supabase/functions/app-api/index.ts'], ['Code.gs'],
+    ['index.html', 'supabase/migrations/new.sql'], ['tests/new.test.mjs']]) {
+    assert.deepEqual(classifyReleasePaths(files).validation, { frontend: false, backend: false, schema: false });
+  }
+  assert.deepEqual(classifyReleasePaths(['index.html', 'supabase/migrations/new.sql'], { fullRegression: true }).validation,
+    { frontend: true, backend: true, schema: true });
+  assert.equal(classifyReleasePaths(['playwright.release-smoke.config.ts', 'performance/benchmark.mjs']).toolingOnly, true);
 });
 
 test('pipeline helpers and generic migration tooling do not cause deployment by path name alone', () => {
@@ -67,6 +77,8 @@ test('tooling-only scope skips recovery; app scope selects the older successful 
     lastSuccessfulBase: 'a'.repeat(40), isAncestor }), 'a'.repeat(40));
   assert.equal(selectReleaseRecoveryBase({ scope: { toolingOnly: false }, manualBase: 'b'.repeat(40),
     lastSuccessfulBase: 'c'.repeat(40), isAncestor }), 'b'.repeat(40));
+  assert.equal(selectReleaseRecoveryBase({ scope: { toolingOnly: false }, manualBase: 'a'.repeat(40),
+    lastSuccessfulBase: 'b'.repeat(40), isAncestor }), 'b'.repeat(40), 'already published changes must not replay');
 });
 
 test('baseline discovery ignores successful tooling coordinators without a publication job', async () => {
@@ -91,6 +103,10 @@ test('baseline discovery ignores successful tooling coordinators without a publi
   };
   assert.equal(await findLastSuccessfulDeploymentBaseline({ repository: 'example/app', currentRunId: 99,
     currentSha: 'a'.repeat(40), api }), 'e'.repeat(40));
+  assert.equal(await findLastSuccessfulDeploymentBaseline({ repository: 'example/app', currentRunId: 99,
+    currentSha: 'a'.repeat(40), api, publication: 'frontend' }), 'd'.repeat(40));
+  assert.equal(await findLastSuccessfulDeploymentBaseline({ repository: 'example/app', currentRunId: 99,
+    currentSha: 'a'.repeat(40), api, publication: 'backend' }), 'e'.repeat(40));
 });
 
 test('Pages baseline discovery never short-circuits to the supplied parent before consulting publications', () => {

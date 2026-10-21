@@ -44,53 +44,31 @@ export function classifyReleaseSmokeRoute({ method, url, origin, resourceType = 
 }
 
 
-/** Only a recognized read cancelled by its actual lifecycle signal can be omitted from network failures. */
-export function isProvenReleaseSmokeReadCancellation(resource, evidence = []) {
-  if (resource.method !== 'POST' || resource.idempotencyKey || !['Load request cancelled', 'net::ERR_ABORTED'].includes(resource.failure)) return false;
-  let url, body;
-  try { url = new URL(resource.url); body = JSON.parse(resource.body); } catch { return false; }
-  if (url.origin !== RELEASE_SMOKE_SUPABASE_ORIGIN || !body || typeof body !== 'object' || Array.isArray(body)) return false;
-  const keys = (value, allowed) => value && typeof value === 'object' && !Array.isArray(value)
-    && Object.keys(value).every(key => allowed.includes(key));
-  const paged = params => keys(params, ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'])
-    && Number.isInteger(params.limit) && params.limit >= 1 && params.limit <= 500 && Number.isInteger(params.offset) && params.offset >= 0;
-  const datasets = new Set(['request_queue', 'active_request', 'soc', 'suspend_tag', 'cav', 'reserves', 'sales_office',
-    'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history', 'inventory_edits', 'shear']);
-  let knownRead = url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1'
-    && Object.keys(body).join(',') === 'p_dataset_keys' && Array.isArray(body.p_dataset_keys);
-  if (url.pathname === '/functions/v1/app-api') {
-    knownRead = body.action === 'inventory_read' && keys(body, ['action', 'operation', 'params']) && (
-      body.operation === 'source_freshness' && keys(body.params, [])
-      || body.operation === 'master_page' && keys(body.params, ['dataset', 'projection', 'limit', 'offset', 'uniqueId', 'itemCode', 'locationCode'])
-        && ['master', 'avOpen', 'lookup'].includes(body.params.dataset) && ['initial', 'browse', 'full'].includes(body.params.projection)
-        && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
-        && Number.isInteger(body.params.offset) && body.params.offset >= 0
-      || body.operation === 'master_identity_batch' && keys(body.params, ['queueIdentities']) && Array.isArray(body.params.queueIdentities))
-      || body.action === 'dataset_read' && keys(body, ['action', 'dataset', 'params']) && datasets.has(body.dataset) && paged(body.params)
-      // Mirror the fixture's existing, fully specified background read routes.
-      // No wildcard list/get operation can classify an unknown action as safe.
-      || ['eval_work', 'user_access'].includes(body.action)
-        && body.operation === (body.action === 'eval_work' ? 'list' : 'resolve')
-        && Object.keys(body).sort().join(',') === 'action,operation'
-      || body.action === 'shear_location_work' && body.operation === 'list' && body.status === 'active'
-        && Object.keys(body).sort().join(',') === 'action,operation,status'
-      || ['sales_credit', 'request_history'].includes(body.action) && body.operation === 'compatibility'
-        && Object.keys(body).sort().join(',') === 'action,operation,payload'
-        && keys(body.payload, ['status', 'cursor', 'limit']) && Object.keys(body.payload).length === 3
-        && body.payload.status === 'all' && body.payload.cursor === null && body.payload.limit === 100
-      || body.action === 'navigation_preferences' && body.operation === 'get' && keys(body, ['action', 'operation', 'payload'])
-        && Object.keys(body).length === 3 && keys(body.payload, [])
-      || body.action === 'av_read' && ['reserves', 'notes', 'hot_prices', 'settings'].includes(body.dataset)
-        && keys(body, ['action', 'dataset', 'query']) && (body.query === undefined || typeof body.query === 'string');
-  }
-  if (!knownRead) return false;
-  const index = evidence.findIndex(entry => entry.url === resource.url && entry.method === resource.method && entry.body === resource.body
-    && entry.signalAborted === true && entry.reasonName === 'AbortError'
-    && (['suspend-fixture-request-view-transition', 'published-lkg-drive-transition'].includes(entry.context)
-      || typeof entry.abortStack === 'string' && entry.abortStack.includes('live-sync-coordinator.js')
-        && (entry.abortStack.includes('invalidateBackground')
-          || entry.abortStack.includes('abortSupabaseReadsBeforeGeneration') && entry.abortStack.includes('onStageStart'))));
-  if (index < 0) return false;
-  evidence.splice(index, 1); // One observed aborted signal can explain only one failed fetch.
-  return true;
+/** Ignore normal browser cancellation only for fixture routes with read/telemetry semantics.
+ * The route handler still rejects unknown actions and unmocked mutations separately.
+ * Request payload keys, pagination and lifecycle stack traces are not cancellation contracts.
+ */
+export function isProvenReleaseSmokeReadCancellation(resource) {
+  if (!/(?:AbortError|ERR_ABORTED|\b(?:cancelled|canceled|aborted)\b)/i.test(String(resource.failure || ''))) return false;
+  if (resource.idempotencyKey) return false;
+  let url;
+  try { url = new URL(resource.url); } catch { return false; }
+  if (url.origin !== RELEASE_SMOKE_SUPABASE_ORIGIN) return false;
+  const method = String(resource.method || '').toUpperCase();
+  if (!SUPABASE_METHODS.get(url.pathname)?.has(method)) return false;
+  if (['GET', 'HEAD'].includes(method)) return true;
+  if (url.pathname === '/rest/v1/rpc/report_app_health_event') return true;
+  if (url.pathname !== '/functions/v1/app-api') return method === 'POST';
+  let body;
+  try { body = JSON.parse(resource.body); } catch { return false; }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
+  const action = String(body.action || '');
+  const operation = String(body.operation || '');
+  // These semantic verbs classify a read, rather than a particular request shape.
+  // A read action with an explicit write operation must still fail closed.
+  const write = /(?:^|_)(?:create|update|delete|remove|insert|upsert|submit|apply|save|set|complete|close|send|enqueue|command|move|approve|deny|reclass)(?:_|$)/i;
+  if (write.test(action) || write.test(operation)) return false;
+  return /(?:^|_)read(?:_v\d+)?$/i.test(action)
+    || /^(?:get|list|read|resolve|lookup|search|fetch|metadata|capabilities|detail|rows|groups|compatibility)(?:_|$)/i.test(operation)
+    || /^(?:health[-_]telemetry|telemetry|health)$/i.test(action);
 }

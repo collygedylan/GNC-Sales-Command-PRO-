@@ -30,12 +30,20 @@ function fixture(options = {}) {
     head: { ref: 'candidate', sha: headSha, repo: { full_name: repository } }, ...options.pr };
   const candidates = options.candidates ?? [pr];
   const calls = { associated: [], merges: [], dispatches: [], notices: [], warnings: [], workflowRuns: [], events: [] };
+  const fastJob = { name: 'validation / fast-pr', run_id: 71, head_sha: headSha, status: 'completed', conclusion: 'success',
+    steps: ['Validate inline application scripts', 'Run focused release tooling contracts']
+      .map(name => ({ name, status: 'completed', conclusion: 'success' })) };
+  const jobs = typeof options.jobs === 'function' ? options.jobs([fastJob]) : options.jobs ?? [fastJob];
   const workflowRuns = options.workflowRuns ?? [];
   const api = {
     actions: {
       getWorkflowRun: async args => {
         calls.events.push(`get:${args.run_id}`);
         return { data: validatedRun };
+      },
+      listJobsForWorkflowRunAttempt: async args => {
+        assert.deepEqual(JSON.parse(JSON.stringify(args)), { owner: 'example', repo: 'gnc', run_id: 71, attempt_number: 2, per_page: 100 });
+        return { data: { jobs } };
       },
       listWorkflowRuns: async args => {
         calls.workflowRuns.push(args);
@@ -160,6 +168,28 @@ test('queued, running, or successful handoffs deduplicate independently; a faile
   assert.equal(failed.calls.dispatches.length, 1);
 });
 
+test('missing, duplicate, failed or mismatched focused PR evidence never authorizes a merge', async t => {
+  const cases = [
+    ['missing job', () => []],
+    ['duplicate job', jobs => [...jobs, jobs[0]]],
+    ['wrong name', jobs => [{ ...jobs[0], name: 'validation / unit (1)' }]],
+    ['wrong commit', jobs => [{ ...jobs[0], head_sha: 'f'.repeat(40) }]],
+    ['wrong run', jobs => [{ ...jobs[0], run_id: 72 }]],
+    ...['failure', 'skipped', 'cancelled'].map(conclusion => [conclusion, jobs => [{ ...jobs[0], conclusion }]]),
+    ['incomplete job', jobs => [{ ...jobs[0], status: 'in_progress' }]],
+    ['missing inline', jobs => [{ ...jobs[0], steps: jobs[0].steps.slice(1) }]],
+    ['skipped tooling', jobs => [{ ...jobs[0], steps: jobs[0].steps.map(step => ({ ...step,
+      conclusion: step.name === 'Run focused release tooling contracts' ? 'skipped' : step.conclusion })) }]],
+    ['duplicate step', jobs => [{ ...jobs[0], steps: [...jobs[0].steps, jobs[0].steps[0]] }]],
+  ];
+  for (const [name, jobs] of cases) await t.test(name, async () => {
+    const f = fixture({ pr: openCodexPr, jobs });
+    await f.execute();
+    assert.deepEqual(f.calls.merges, []);
+    assert.deepEqual(f.calls.dispatches, []);
+  });
+});
+
 test('an existing push-triggered Pages coordinator deduplicates the publisher handoff', async () => {
   const f = fixture({ workflowRuns: { 'pages-static.yml': [
     { head_branch: 'main', head_sha: mergeSha, event: 'push', status: 'in_progress' },
@@ -233,18 +263,14 @@ test('an existing coordinator run does not trigger a duplicate dispatch', async 
 
 test('Pages publishes its same-run artifact only after selected validation and backend lanes succeed', () => {
   const publish = pages.jobs.deploy;
-  assert.ok(publish.needs.includes('authorize-main'));
-  assert.ok(publish.needs.includes('scope'));
-  assert.ok(publish.needs.includes('frontend-validation'));
+  assert.ok(publish.needs.includes('fast-gate'));
   assert.ok(publish.needs.includes('backend-publication'));
   assert.equal(backend.jobs['publish-pages'], undefined);
-  assert.equal(pages.jobs['frontend-validation'].with['run-backend-tests'], false);
-  assert.equal(pages.jobs['frontend-validation'].with['run-nightly-suites'], false);
-  assert.equal(pages.jobs['frontend-validation'].with['run-schema-tests'], false);
-  assert.equal(pages.jobs['frontend-validation'].with['production-health'], false);
-  assert.doesNotMatch(JSON.stringify(pages.jobs['frontend-validation']), /SUPABASE_|APPS_SCRIPT_|production-release-guard|pages-release.mjs|check-compatible-apps-script|probe-production-auth-health/);
+  assert.match(pages.jobs['fast-gate'].if, /github.ref == 'refs\/heads\/main'/);
+  assert.match(JSON.stringify(pages.jobs['fast-gate']), /FRONTEND_MAIN_SUPERSEDED/);
+  assert.doesNotMatch(JSON.stringify(pages.jobs['fast-gate']), /SUPABASE_SERVICE_ROLE_KEY|APPS_SCRIPT_DEPLOYMENT_ID|probe-production-auth-health/);
   const download = publish.steps.find(step => step.uses === './.github/actions/download-release');
-  assert.match(download.with.digest, /needs[.]frontend-validation[.]outputs[.]digest/);
+  assert.match(download.with.digest, /needs[.]fast-gate[.]outputs[.]digest/);
   assert.match(download.with['run-id'], /github[.]run_id/);
   assert.match(download.with.commit, /github[.]sha/);
   const push = publish.steps.find(step => step.name === 'Deploy verified artifact to Pages');
@@ -258,15 +284,21 @@ test('Pages publishes its same-run artifact only after selected validation and b
   assert.match(pagesBuild.run, /pages\/builds/);
 });
 
-test('PR validation emits no publication proof and has conditional frontend/backend lanes', () => {
+test('PR validation emits no publication proof and requires the single focused job', () => {
   assert.ok(prValidation.on.workflow_call);
   assert.equal(prValidation.on.workflow_call.inputs['run-frontend-tests'].default, true);
   assert.equal(prValidation.on.workflow_call.inputs['run-backend-tests'].default, true);
   assert.deepEqual(prValidation.on.workflow_call.outputs, undefined);
-  assert.deepEqual(prValidation.jobs['pr-gate'].needs, ['lint', 'unit', 'react', 'contracts', 'backend-unit']);
-  assert.match(prValidation.jobs.react.if, /inputs\.run-frontend-tests/);
-  assert.match(prValidation.jobs['backend-unit'].if, /inputs\.run-backend-tests/);
-  assert.doesNotMatch(JSON.stringify(prValidation.jobs['pr-gate'].steps), /artifact|proof|playwright|chromium|lighthouse|performance/i);
+  assert.deepEqual(Object.keys(prValidation.jobs), ['fast-pr']);
+  assert.equal(prValidation.jobs['fast-pr'].if, undefined);
+  assert.doesNotMatch(JSON.stringify(prValidation.jobs['fast-pr'].steps), /artifact|proof|playwright|chromium|lighthouse|performance/i);
+  assert.match(script, /listJobsForWorkflowRunAttempt/);
+  assert.match(script, /attempt_number: run.run_attempt/);
+  assert.match(script, /job.name === 'validation \/ fast-pr'/);
+  for (const name of ['Validate inline application scripts', 'Run focused release tooling contracts']) {
+    assert.ok(script.includes(name));
+    assert.ok(prValidation.jobs['fast-pr'].steps.some(step => step.name === name));
+  }
 });
 
 test('live notification requires both the current descriptor and immutable commit fingerprint', () => {

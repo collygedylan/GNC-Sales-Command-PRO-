@@ -47,6 +47,24 @@ jobs:
               return;
             }
 
+            const { data: attemptJobs } = await github.rest.actions.listJobsForWorkflowRunAttempt({
+              owner, repo, run_id: run.id, attempt_number: run.run_attempt, per_page: 100,
+            });
+            const requiredJobs = (attemptJobs.jobs || []).filter(job => job.name === 'validation / fast-pr');
+            const fastPr = requiredJobs[0];
+            if (requiredJobs.length !== 1 || fastPr.run_id !== run.id || fastPr.head_sha !== run.head_sha ||
+                fastPr.status !== 'completed' || fastPr.conclusion !== 'success') {
+              core.notice('Ignoring validation without the exact successful focused PR job.');
+              return;
+            }
+            for (const name of ['Validate inline application scripts', 'Run focused release tooling contracts']) {
+              const steps = (fastPr.steps || []).filter(step => step.name === name);
+              if (steps.length !== 1 || steps[0].status !== 'completed' || steps[0].conclusion !== 'success') {
+                core.notice('Ignoring validation without completed inline and focused tooling checks.');
+                return;
+              }
+            }
+
             // workflow_run.pull_requests can be empty after a PR has merged.
             const associated = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
               owner, repo, commit_sha: run.head_sha, per_page: 100,

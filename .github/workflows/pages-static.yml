@@ -27,10 +27,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  authorize-main:
+  fast-gate:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    outputs:
+      frontend: ${{ steps.classify.outputs.frontend }}
+      supabase: ${{ steps.classify.outputs.supabase }}
+      apps-script: ${{ steps.classify.outputs.apps-script }}
+      tooling-only: ${{ steps.classify.outputs.tooling-only }}
+      migrations: ${{ steps.classify.outputs.migrations }}
+      edge-functions: ${{ steps.classify.outputs.edge-functions }}
+      digest: ${{ steps.seal.outputs.digest }}
+      site-id: ${{ steps.site.outputs.artifact-id }}
+      run-id: ${{ github.run_id }}
+      attempt: ${{ github.run_attempt }}
     steps:
       - name: Require the requested current main commit
         uses: actions/github-script@v7
@@ -44,41 +55,22 @@ jobs:
             }
             const { data: main } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
             if (main.object.sha !== context.sha) throw new Error('FRONTEND_MAIN_SUPERSEDED');
-
-  scope:
-    needs: authorize-main
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    outputs:
-      frontend: ${{ steps.classify.outputs.frontend }}
-      supabase: ${{ steps.classify.outputs.supabase }}
-      apps-script: ${{ steps.classify.outputs.apps-script }}
-      tooling-only: ${{ steps.classify.outputs.tooling-only }}
-      migrations: ${{ steps.classify.outputs.migrations }}
-      edge-functions: ${{ steps.classify.outputs.edge-functions }}
-    steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Find the last successful Pages publication for recovery scope
-        id: baseline
-        run: node scripts/release-baseline.mjs
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-      - name: Classify exact changed paths for tests and deployment
+      - name: Classify direct scope once; tooling never recovers runtime deployments
         id: classify
         env:
           EVENT_BEFORE: ${{ github.event.before }}
           MANUAL_BASE: ${{ inputs.base-commit }}
-          LAST_SUCCESSFUL_BASE: ${{ steps.baseline.outputs.commit }}
+          GITHUB_TOKEN: ${{ github.token }}
           RELEASE_COMMIT: ${{ github.sha }}
         run: |
           node --input-type=module <<'NODE'
           import { appendFileSync } from 'node:fs';
           import { execFileSync } from 'node:child_process';
+          import { findLastSuccessfulDeploymentBaseline } from './scripts/release-baseline.mjs';
+          import { fetchGitHubJson } from './scripts/lib/github-json-transport.mjs';
           import { changedReleasePaths, classifyReleasePaths, isSafePackageMetadataChange, selectReleaseRecoveryBase } from './scripts/release-scope.mjs';
           const commit = process.env.RELEASE_COMMIT;
           let before = process.env.EVENT_BEFORE || process.env.MANUAL_BASE || '';
@@ -105,16 +97,31 @@ jobs:
             try { execFileSync('git', ['merge-base', '--is-ancestor', ancestor, descendant]); return true; }
             catch { return false; }
           };
-          const recoveryBase = selectReleaseRecoveryBase({ manualBase: process.env.MANUAL_BASE,
-            lastSuccessfulBase: process.env.LAST_SUCCESSFUL_BASE, isAncestor });
-          // Every main push recovers pending runtime changes from the last actual publication.
-          if (recoveryBase && !/^0+$/.test(recoveryBase) && recoveryBase !== commit) {
+          const initialScope = classifyReleasePaths(paths, { packageMetadataOnly: packageMetadataSafe(before) });
+          // Resolve only selected deployment domains. A tooling push performs no history scan.
+          const recover = async publication => {
+            const lastSuccessfulBase = await findLastSuccessfulDeploymentBaseline({
+              repository: process.env.GITHUB_REPOSITORY, currentRunId: Number(process.env.GITHUB_RUN_ID),
+              currentSha: commit, publication,
+              api: endpoint => fetchGitHubJson({ endpoint, token: process.env.GITHUB_TOKEN }),
+            });
+            const recoveryBase = selectReleaseRecoveryBase({ scope: initialScope,
+              manualBase: process.env.MANUAL_BASE || before, lastSuccessfulBase, isAncestor });
+            if (!recoveryBase || /^0+$/.test(recoveryBase)) return initialScope;
             execFileSync('git', ['merge-base', '--is-ancestor', recoveryBase, commit]);
-            before = recoveryBase;
-            paths = changedReleasePaths({ before, after: commit });
-          }
-          const packageMetadataOnly = packageMetadataSafe(before);
-          const scope = classifyReleasePaths(paths, { packageMetadataOnly });
+            const recoveryPaths = changedReleasePaths({ before: recoveryBase, after: commit });
+            return classifyReleasePaths(recoveryPaths);
+          };
+          // Recovery is part of this exact run. Never replay an already-published domain.
+          const frontendScope = initialScope.deploy.frontend ? await recover('frontend') : initialScope;
+          const backendScope = initialScope.deploy.supabase || initialScope.deploy.appsScript
+            ? await recover('backend') : initialScope;
+          const scope = { ...initialScope, deploy: {
+            frontend: initialScope.deploy.frontend && frontendScope.deploy.frontend,
+            supabase: initialScope.deploy.supabase && backendScope.deploy.supabase,
+            appsScript: initialScope.deploy.appsScript && backendScope.deploy.appsScript,
+          }, migrations: initialScope.deploy.supabase ? backendScope.migrations : [],
+             edgeFunctions: initialScope.deploy.supabase ? backendScope.edgeFunctions : [] };
           appendFileSync(process.env.GITHUB_OUTPUT,
             `frontend=${scope.deploy.frontend}\nsupabase=${scope.deploy.supabase}\napps-script=${scope.deploy.appsScript}\ntooling-only=${scope.toolingOnly}\nmigrations=${JSON.stringify(scope.migrations)}\n`);
           let edgeFunctions = scope.edgeFunctions;
@@ -126,27 +133,47 @@ jobs:
           appendFileSync(process.env.GITHUB_OUTPUT, `edge-functions=${JSON.stringify(edgeFunctions)}\n`);
           console.log(`Changed ${paths.length} paths; frontend=${scope.deploy.frontend}, supabase=${scope.deploy.supabase}, apps-script=${scope.deploy.appsScript}, tooling-only=${scope.toolingOnly}.`);
           NODE
-
-  frontend-build:
-    if: needs.scope.outputs.frontend == 'true'
-    needs: [authorize-main, scope]
-    uses: ./.github/workflows/release-validation.yml
-    with:
-      fast-pr: true
-      run-nightly-suites: false
-      run-frontend-tests: false
-      run-backend-tests: false
-      run-schema-tests: false
-      production-health: false
-    secrets: inherit
+      - uses: ./.github/actions/setup-node-dependencies
+      - name: Check inline JavaScript
+        run: npm run check:inline
+      - name: Focused release contracts only (15 second budget)
+        run: node scripts/run-tooling-release-checks.mjs
+      - name: Type-check only selected Edge Functions
+        if: steps.classify.outputs.edge-functions != '[]'
+        env:
+          RELEASE_EDGE_FUNCTIONS: ${{ steps.classify.outputs.edge-functions }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { spawnSync } from 'node:child_process';
+          for (const name of JSON.parse(process.env.RELEASE_EDGE_FUNCTIONS)) {
+            if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error('RELEASE_EDGE_NAME_INVALID');
+            const result = spawnSync('./node_modules/.bin/deno', ['check',
+              `supabase/functions/${name}/index.ts`], { stdio: 'inherit' });
+            if (result.error || result.status !== 0) throw new Error(`RELEASE_DENO_CHECK_FAILED_${name}`);
+          }
+          NODE
+      - uses: ./.github/actions/prepare-native-release
+        if: steps.classify.outputs.frontend == 'true'
+      - id: seal
+        if: steps.classify.outputs.frontend == 'true'
+        run: node scripts/release-artifact.mjs seal
+      - id: site
+        if: steps.classify.outputs.frontend == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-site-${{ github.sha }}
+          path: _site
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+      - name: Record selected fast checks
+        run: echo 'Fast gate passed; full Node shards, SQL suites, browsers and Docker builds were not selected.' >> "$GITHUB_STEP_SUMMARY"
 
   backend-publication:
     if: >-
-      !cancelled() && needs.authorize-main.result == 'success' && needs.scope.result == 'success' &&
-      ((needs.scope.outputs.frontend == 'true' && needs.frontend-build.result == 'success') ||
-       (needs.scope.outputs.frontend != 'true' && needs.frontend-build.result == 'skipped')) &&
-      (needs.scope.outputs.supabase == 'true' || needs.scope.outputs['apps-script'] == 'true')
-    needs: [authorize-main, scope, frontend-build]
+      !cancelled() && needs.fast-gate.result == 'success' &&
+      (needs.fast-gate.outputs.supabase == 'true' || needs.fast-gate.outputs['apps-script'] == 'true')
+    needs: [fast-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -158,10 +185,10 @@ jobs:
         env:
           EXPECTED_COMMIT: ${{ github.sha }}
           COORDINATOR_RUN_ATTEMPT: ${{ github.run_attempt }}
-          REQUIRE_SUPABASE: ${{ needs.scope.outputs.supabase }}
-          REQUIRE_APPS_SCRIPT: ${{ needs.scope.outputs['apps-script'] }}
-          RELEASE_MIGRATIONS: ${{ needs.scope.outputs.migrations }}
-          RELEASE_EDGE_FUNCTIONS: ${{ needs.scope.outputs['edge-functions'] }}
+          REQUIRE_SUPABASE: ${{ needs.fast-gate.outputs.supabase }}
+          REQUIRE_APPS_SCRIPT: ${{ needs.fast-gate.outputs['apps-script'] }}
+          RELEASE_MIGRATIONS: ${{ needs.fast-gate.outputs.migrations }}
+          RELEASE_EDGE_FUNCTIONS: ${{ needs.fast-gate.outputs['edge-functions'] }}
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -287,13 +314,13 @@ jobs:
             throw new Error('BACKEND_PUBLICATION_TIMEOUT');
 
   deploy:
-    needs: [authorize-main, scope, frontend-build, backend-publication]
+    needs: [fast-gate, backend-publication]
     if: >-
-      !cancelled() && github.ref == 'refs/heads/main' && needs.scope.outputs.frontend == 'true' &&
-      needs.authorize-main.result == 'success' && needs.frontend-build.result == 'success' &&
-      (((needs.scope.outputs.supabase == 'true' || needs.scope.outputs['apps-script'] == 'true') &&
+      !cancelled() && github.ref == 'refs/heads/main' && needs.fast-gate.outputs.frontend == 'true' &&
+      needs.fast-gate.result == 'success' &&
+      (((needs.fast-gate.outputs.supabase == 'true' || needs.fast-gate.outputs['apps-script'] == 'true') &&
         needs.backend-publication.result == 'success') ||
-       (needs.scope.outputs.supabase != 'true' && needs.scope.outputs['apps-script'] != 'true' &&
+       (needs.fast-gate.outputs.supabase != 'true' && needs.fast-gate.outputs['apps-script'] != 'true' &&
         needs.backend-publication.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -313,17 +340,17 @@ jobs:
           node-version: 22
       - uses: ./.github/actions/download-release
         with:
-          digest: ${{ needs.frontend-build.outputs.digest }}
+          digest: ${{ needs.fast-gate.outputs.digest }}
           run-id: ${{ github.run_id }}
-          artifact-id: ${{ needs.frontend-build.outputs.site-id }}
+          artifact-id: ${{ needs.fast-gate.outputs.site-id }}
           token: ${{ github.token }}
           commit: ${{ github.sha }}
       - name: Reject a stale main commit immediately before publication
         uses: actions/github-script@v7
         env:
           EXPECTED_COMMIT: ${{ inputs.expected-commit }}
-          VALIDATED_RUN_ID: ${{ needs.frontend-build.outputs.run-id }}
-          VALIDATED_ATTEMPT: ${{ needs.frontend-build.outputs.attempt }}
+          VALIDATED_RUN_ID: ${{ needs.fast-gate.outputs.run-id }}
+          VALIDATED_ATTEMPT: ${{ needs.fast-gate.outputs.attempt }}
         with:
           script: |
             const expected = process.env.EXPECTED_COMMIT || context.sha;

@@ -1,0 +1,23 @@
+name: Prepare native static release
+description: Restore exact-source compiled inputs and prepare a fresh immutable site without Docker.
+runs:
+  using: composite
+  steps:
+    - name: Restore compiled release inputs
+      id: compiled
+      uses: actions/cache@v4
+      with:
+        path: |
+          assets
+          v2/dist
+        key: native-release-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'package-lock.json', 'index.html', 'assets/**', 'components/**', 'styles/**', 'src/**', 'v2/**', 'pages/**', 'services/**', 'utils/**', 'live-src/**', 'scripts/**', '*config*') }}
+    - name: Compile missing native inputs
+      if: steps.compiled.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        npm run build:pilot-monitoring
+        npm run build:live:assets
+        npm run build:v2
+    - name: Prepare static site from compiled inputs
+      shell: bash
+      run: node scripts/prepare-release-site.mjs

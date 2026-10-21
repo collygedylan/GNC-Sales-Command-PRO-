@@ -15,7 +15,8 @@ const fail = code => { throw Object.assign(new Error(`APPS_SCRIPT_DEPLOYMENT_${c
 const positive = value => Number.isSafeInteger(value) && value > 0;
 const sameRepo = (a, b) => typeof a === 'string' && a.toLowerCase() === b.toLowerCase();
 
-// Backend source publication uses the merged PR's standard unit/lint gate.
+// Direct main publication uses the coordinator's authenticated fast gate.
+// Merged-PR publication requires the current fast PR gate and its executed checks.
 // It neither consumes nor authorizes a Pages publication artifact.
 export async function authorizeAppsScriptDeployment({ repository, eventName, ref, commit,
   expectedCommit = '', workflowRef, backendRunId, backendRunAttempt, backendRunSha,
@@ -65,9 +66,7 @@ export async function authorizeAppsScriptDeployment({ repository, eventName, ref
     const byName = name => coordinatorJobs.filter(job => job.name === name && job.run_id === releaseRun.id
       && job.head_sha === commit
       && job.status === 'completed' && job.conclusion === 'success');
-    if (byName('authorize-main').length !== 1 || byName('scope').length !== 1) fail('COORDINATOR_SCOPE_NOT_VALIDATED');
-    const validationJobs = ['frontend-validation / release-gate', 'node-validation / pr-gate'];
-    if (!validationJobs.some(name => byName(name).length === 1)) fail('COORDINATOR_VALIDATION_NOT_GREEN');
+    if (byName('fast-gate').length !== 1) fail('COORDINATOR_VALIDATION_NOT_GREEN');
     const backendPublication = coordinatorJobs.filter(job => job.run_id === releaseRun.id && job.name === 'backend-publication'
       && job.head_sha === commit && (job.status === 'in_progress'
         || (job.status === 'completed' && job.conclusion === 'success')));
@@ -126,14 +125,12 @@ export async function authorizeAppsScriptDeployment({ repository, eventName, ref
   const jobs = await listGitHubApiItems({ api, endpoint: `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs`, field: 'jobs' });
   if (jobs.some(job => job.run_id !== run.id || job.head_sha !== pr.head.sha || job.status !== 'completed'
     || !['success', 'skipped'].includes(job.conclusion))) fail('VALIDATION_JOB_INVALID');
-  const required = ['validation / lint', 'validation / pr-gate', ...[1, 2, 3, 4].map(shard => `validation / unit (${shard})`)];
-  for (const name of required) {
-    const matching = jobs.filter(job => job.name === name);
-    if (matching.length !== 1 || matching[0].conclusion !== 'success') fail('UNIT_LINT_GATE_MISSING');
+  const gates = jobs.filter(job => job.name === 'validation / fast-pr');
+  if (gates.length !== 1 || gates[0].conclusion !== 'success') fail('UNIT_LINT_GATE_MISSING');
+  for (const name of ['Validate inline application scripts', 'Run focused release tooling contracts']) {
+    if (!gates[0].steps?.some(step => step.name === name
+      && step.status === 'completed' && step.conclusion === 'success')) fail('UNIT_LINT_GATE_NOT_ATTESTED');
   }
-  const gate = jobs.find(job => job.name === 'validation / pr-gate');
-  if (!gate.steps?.some(step => step.name === 'Require the selected unit and lint checks'
-    && step.status === 'completed' && step.conclusion === 'success')) fail('UNIT_LINT_GATE_NOT_ATTESTED');
   const latest = await latestRun();
   if (latest.id !== run.id || latest.run_attempt !== run.run_attempt) fail('VALIDATION_SUPERSEDED');
   const finalPr = await readPr();

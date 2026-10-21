@@ -6,11 +6,11 @@ const normalize = value => String(value || '').replaceAll('\\', '/').replace(/^\
 const isUnder = (file, prefix) => file.startsWith(prefix);
 const isSiteSource = file => [
   'assets/', 'components/', 'styles/', 'src/', 'v2/', 'pages/', 'services/', 'utils/',
-  'live-src/', 'performance/',
+  'live-src/',
 ].some(prefix => isUnder(file, prefix)) || [
-  'index.html', 'manifest.json', 'OneSignalSDKWorker.js', 'CNAME', 'lighthouserc.json',
+  'index.html', 'manifest.json', 'sw.js', 'OneSignalSDKWorker.js', 'CNAME', '.nojekyll',
 ].includes(file) || /^Dockerfile(?:\.|$)/i.test(file) && !/^Dockerfile\.validation(?:\.dockerignore)?$/i.test(file)
-  || /^(?:playwright|vite).*\.config\.[^/]+$/i.test(file)
+  || /^vite.*\.config\.[^/]+$/i.test(file)
   || /^tsconfig[^/]*\.json$/i.test(file)
   || ['package.json', 'package-lock.json'].includes(file);
 
@@ -23,10 +23,11 @@ const isAppsScriptDeploySource = file => file === 'Code.gs';
 
 const isToolingPath = file => isUnder(file, '.github/') || isUnder(file, 'scripts/')
   || isUnder(file, 'tests/') || isUnder(file, '.codex/') || isUnder(file, 'docs/')
+  || isUnder(file, 'performance/') || /^playwright.*\.config\.[^/]+$/i.test(file)
   || ['.gitattributes', '.gitignore', 'AGENTS.md', 'Dockerfile.validation', 'Dockerfile.validation.dockerignore',
-    'docker-compose.validation.yml'].includes(file);
+    'docker-compose.validation.yml', 'lighthouserc.json'].includes(file);
 
-export function classifyReleasePaths(paths, { packageMetadataOnly = false } = {}) {
+export function classifyReleasePaths(paths, { packageMetadataOnly = false, fullRegression = false } = {}) {
   const files = [...new Set((paths || []).map(entry => normalize(typeof entry === 'string' ? entry : entry?.path))
     .filter(Boolean))].sort();
   const deploy = {
@@ -43,7 +44,9 @@ export function classifyReleasePaths(paths, { packageMetadataOnly = false } = {}
     && files.every(file => isToolingPath(file)
       || (packageMetadataOnly && ['package.json', 'package-lock.json'].includes(file)));
   const selected = testScopeForPaths(files);
-  const validation = toolingOnly
+  // Publication scope never implies permission to run historical suites.
+  // Only the explicitly gated Nightly caller selects full regression.
+  const validation = !fullRegression || toolingOnly
     ? { frontend: false, backend: false, schema: false }
     : { frontend: selected.frontend, backend: selected.backend, schema: selected.schema };
   return { files, deploy, validation, toolingOnly, migrations,
@@ -60,8 +63,10 @@ export function isSafePackageMetadataChange(beforePackage, afterPackage) {
 
 export function selectReleaseRecoveryBase({ scope, manualBase = '', lastSuccessfulBase = '', isAncestor = () => false }) {
   if (scope?.toolingOnly) return '';
-  if (manualBase && lastSuccessfulBase && manualBase !== lastSuccessfulBase
-      && isAncestor(lastSuccessfulBase, manualBase)) return lastSuccessfulBase;
+  // A confirmed publication supersedes an older dispatch base. Replaying from
+  // that older base redeployed migrations/functions that had already succeeded.
+  if (lastSuccessfulBase && (!manualBase || manualBase === lastSuccessfulBase
+      || isAncestor(lastSuccessfulBase, manualBase) || isAncestor(manualBase, lastSuccessfulBase))) return lastSuccessfulBase;
   return manualBase || lastSuccessfulBase || '';
 }
 
