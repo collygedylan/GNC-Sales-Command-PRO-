@@ -92,6 +92,13 @@
             if (surface === 'approval' && capabilities && !(capabilities.approvalTabs || []).includes(options.variant?.(surface))) return false;
             return capabilities === null || (!capabilities.capabilityUnavailable && (capabilities.surfaces || []).includes(surface));
         }
+        function mergeMetadata(target, page) {
+            const next = page.metadata || target.metadata || {};
+            return target.revision === page.sourceRevision && !Array.isArray(next.browseRows) && Array.isArray(target.metadata?.browseRows)
+                ? { ...next, browseColumns:target.metadata.browseColumns, browseRows:target.metadata.browseRows,
+                    evaluatorDirectory:next.evaluatorDirectory || target.metadata.evaluatorDirectory }
+                : next;
+        }
         function apply(surface, query, result) {
             const target = state(surface), key = JSON.stringify(query);
             if (target.queryKey !== key) return;
@@ -102,7 +109,7 @@
                 if (target.revision && target.revision !== page.sourceRevision) {
                     target.completeItems.clear(); target.itemRows.clear();
                 }
-                target.page = page; target.metadata = page.metadata || target.metadata;
+                target.page = page; target.metadata = mergeMetadata(target, page);
                 target.revision = page.sourceRevision;
                 target.expectedRevision = '';
                 target.rows = Array.isArray(result.rows) ? result.rows : page.rows;
@@ -249,7 +256,7 @@
                 target.completeItems.clear(); target.itemRows.clear();
                 target.expectedRevision = page.sourceRevision;
             } else {
-                target.metadata = page.metadata || {};
+                target.metadata = mergeMetadata(target, page);
                 target.revision = page.sourceRevision;
                 // Metadata may establish counts before a list mounts. It must
                 // never replace the rows already displayed by that list.
@@ -258,12 +265,19 @@
             options.onMetadata?.(surface, target);
             refresh(surface);
         }
+        function suspendReads() {
+            generation += 1;
+            controllers.forEach(controller => controller.abort()); controllers.clear();
+            session?.clear(); session = null; ready = null; capabilityRefresh = null;
+            states.forEach(target => { target.pendingKey = ''; target.promise = null; target.loading = false; });
+            suspendMounts();
+        }
         function suspendMounts() {
             mountGeneration += 1;
             mounts.forEach(instance => instance.destroy()); mounts.clear(); mountConfigs.clear();
             options.onSuspend?.();
         }
-        return { state, enabled, initialize, mount, load, readPage, acceptMetadata, readComplete, refresh, invalidateInventory, clear, suspendMounts, getSession:() => { current(); return session; } };
+        return { state, enabled, initialize, mount, load, readPage, acceptMetadata, readComplete, refresh, invalidateInventory, clear, suspendReads, suspendMounts, getSession:() => { current(); return session; } };
     }
     return { createController };
 });

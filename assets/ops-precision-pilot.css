@@ -10178,3 +10178,25 @@ body.ops-precision-pilot #request-content .app-request-compact-card .app-card-qt
 @media(max-width:639px) {
   body.ops-precision-pilot #request-content .app-request-compact-card .app-card-qty-row { grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
 }
+
+/* Detail options share the six-metric grid even outside the Drive view. */
+.request-av-option-card-shell .app-card-qty-row { display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr))!important; gap:8px!important; }
+.request-av-option-card-shell .app-card-topline { display:flex; flex-wrap:wrap; column-gap:.4rem; }
+.request-av-option-card-shell :is(.app-card-topline-size,.app-drive-card-title-size) { margin-left:.35rem; }
+html.dark #manager-eval-report-2-records :is(.text-blue-600,.text-blue-700,.text-blue-800,.text-emerald-700),
+html.dark .manager-eval2-item-detail :is(td,.text-blue-600,.text-blue-700) { color:#7dd3fc!important; }
+/* In-flow footer follows all inputs/options and cannot overlay their middle. */
+body #view-detail#view-detail.detail-request-mode #req-save-action-wrap,
+body.ops-precision-pilot.ios-device.viewport-phone #view-detail.detail-request-mode #req-save-action-wrap,
+body.ops-precision-pilot.ios-device.viewport-phone.app-main-scroll-locked.request-detail-scroll-locked #view-detail.detail-request-mode #req-save-action-wrap {
+ position:relative!important; inset:auto!important; bottom:auto!important; order:100!important; margin-top:1rem!important; width:100%!important; transform:none!important; z-index:auto!important;
+}
+
+.request-av-option-card-shell .app-card-qty-chip { display:flex!important; flex-direction:column!important; gap:4px!important; padding:7px 4px!important; min-width:0; }
+.request-av-option-card-shell :is(.app-card-qty-label,.app-card-qty-value) { white-space:nowrap; line-height:1.25; }
+html.dark #managers-content :is(.manager-eval2-item-card,[data-manager-eval2-detail]) :is(.text-blue-700,.text-blue-800,.text-blue-900) {color:#7dd3fc!important;}
+
+.manager-eval2-native-filters { margin-top:8px; border:1px solid var(--ops-border,#a7d9c4); border-radius:12px; }
+.manager-eval2-native-filters > summary { padding:12px; cursor:pointer; font-weight:800; }
+.manager-eval2-native-filters > .mobile-browse-filter-panel { padding:12px; display:grid; gap:10px; }
+.manager-eval2-native-filters:not([open]) > .mobile-browse-filter-panel { display:none!important; }
