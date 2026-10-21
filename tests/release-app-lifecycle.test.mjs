@@ -73,6 +73,118 @@ const deferred = () => {
   return { promise, resolve };
 };
 
+test('startup restores the native session before exposing credentials after an update reload', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const startup = html.match(/        async function initializeAppSessionOnLoad\([^]*?^        }/m)?.[0];
+  assert.ok(startup);
+  for (const restored of [true, false]) {
+    const shell = deferred(), restore = deferred();
+    const inputs = new Set(), spinner = new Set(['hidden']);
+    const elements = new Map([['login-inputs', { classList: { add: name => inputs.add(name), remove: name => inputs.delete(name) } }],
+      ['loading-spinner', { classList: { add: name => spinner.add(name), remove: name => spinner.delete(name) } }]]);
+    let resets = 0, savedPrompts = 0;
+    const runtime = vm.createContext({ appSessionStartupStarted: false, NATIVE_AUTH_ENABLED: true,
+      document: { getElementById: id => elements.get(id) }, hasExplicitLogoutMarker: () => false,
+      ensureCurrentShellBuild: () => shell.promise, restoreNativeAuthSessionOnStartup: () => restore.promise,
+      setLoginProgress() {}, resetLoginUiState: () => { resets++; inputs.delete('hidden'); spinner.add('hidden'); },
+      primeSavedLoginUiOnStartup: () => { savedPrompts++; }, console, showToast() {} });
+    vm.runInContext(startup, runtime);
+    const pending = runtime.initializeAppSessionOnLoad();
+    assert.equal(inputs.has('hidden'), true, 'credentials stay hidden during the shell/version check');
+    assert.equal(spinner.has('hidden'), false);
+    shell.resolve(false);
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(inputs.has('hidden'), true, 'credentials stay hidden while SDK restoration is pending');
+    assert.equal(resets, 0);
+    restore.resolve(restored);
+    await pending;
+    assert.equal(resets, restored ? 0 : 1);
+    assert.equal(savedPrompts, restored ? 0 : 1);
+    assert.equal(inputs.has('hidden'), restored, 'the login form appears only when no session was restored');
+  }
+});
+
+test('a transient Chat schema probe failure does not permanently disable the next authorized visit', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = html.match(/        async function ensureChatSchemaReady\([^]*?^        }/m)?.[0];
+  assert.ok(source);
+  let unavailable = true, probes = 0;
+  const runtime = vm.createContext({ chatSchemaReady: null, chatSchemaProbePromise: null, navigator: { onLine: true },
+    CHAT_CONVERSATIONS_TABLE: 'conversations', CHAT_PARTICIPANTS_TABLE: 'participants', CHAT_MESSAGES_TABLE: 'messages',
+    chatApiGet: async () => { probes++; if (unavailable) throw new Error('Network timeout'); return []; },
+    maybeWarnChatSchemaMissing() {} });
+  vm.runInContext(source, runtime);
+  assert.equal(await runtime.ensureChatSchemaReady(), false);
+  unavailable = false;
+  assert.equal(await runtime.ensureChatSchemaReady(), true);
+  assert.equal(probes, 6, 'the next visit performs real guarded reads again');
+});
+
+test('successful native permission refresh health telemetry is informational', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = html.match(/        async function refreshNativeRoleAndCapabilities\([^]*?^        }/m)?.[0];
+  assert.ok(source);
+  assert.match(source, /reportSemanticHealthEvent\('native_role_refreshed', 'auth', roleChanged \? 'NATIVE_ROLE_CHANGED' : 'NATIVE_PERMISSIONS_CHANGED', \{[^]*?\}, 'info'\)/);
+  assert.match(source, /\.catch\(\(error\) => \{[^]*?setProductionPermissionCheckState\('failed'\)/);
+});
+
+test('same-account Request access refresh is silent and deduplicated; old owners and real denials remain fenced', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const functions = ['initializeRequestCapabilities', 'getRequestCapabilityStatusMarkup'].map(name => {
+    const source = html.match(new RegExp('        (?:async )?function ' + name + '\\([^]*?^        }', 'm'))?.[0];
+    assert.ok(source, name); return source;
+  }).join('\n');
+  for (const outcome of ['ready', 'transient', 'denied', 'account-change']) {
+    const gate = deferred();
+    let reads = 0, persisted = 0;
+    const retained = { username: 'worker', canViewQueue: true };
+    const runtime = vm.createContext({ currentUser: 'worker', nativeAuthSessionActive: true, nativeAuthSessionUserId: 'account-a',
+      nativeAuthProfile: { id: 'account-a', active: true }, productionLiveSyncReadAuthEpoch: 1, window: {},
+      requestCapabilityLoadPromise: null, navigator: { onLine: true },
+      requestCapabilityState: { username: 'worker', profileId: 'account-a', authEpoch: 1,
+        status: 'ready', stale: false, loadedAt: 1, capabilities: retained },
+      getRequestCapabilityUsernameKey: value => String(value || '').trim().toLowerCase(),
+      readCachedRequestCapabilities: () => assert.fail('the same-owner memory snapshot takes precedence'),
+      refreshRequestCapabilityUi() {}, normalizeRequestCapabilities: value => value,
+      persistRequestCapabilities: () => { persisted++; }, reportSemanticHealthEvent() {},
+      isSupabaseReadTerminalDenial: error => Number(error?.status) === 403,
+      supabaseRpc: async () => {
+        reads++; await gate.promise;
+        if (outcome === 'denied' || outcome === 'transient') throw Object.assign(new Error(outcome), { status: outcome === 'denied' ? 403 : 503 });
+        return { username: 'worker', canViewQueue: false };
+      },
+    });
+    vm.runInContext(functions, runtime);
+    const first = runtime.initializeRequestCapabilities({ force: true });
+    const second = runtime.initializeRequestCapabilities({ force: true });
+    assert.equal(reads, 1);
+    assert.equal(runtime.requestCapabilityState.stale, true, 'retained access is not falsely marked fresh');
+    assert.equal(runtime.requestCapabilityState.capabilities, retained);
+    assert.equal(runtime.getRequestCapabilityStatusMarkup(), '', 'background checks do not replace Home with a permissions banner');
+    let replacement;
+    if (outcome === 'account-change') {
+      runtime.currentUser = 'other'; runtime.nativeAuthProfile = { id: 'account-b' };
+      runtime.nativeAuthSessionUserId = 'account-b'; runtime.productionLiveSyncReadAuthEpoch++;
+      replacement = { username: 'other', status: 'loading', capabilities: null };
+      runtime.requestCapabilityState = replacement;
+    }
+    gate.resolve();
+    await Promise.all([first, second]);
+    if (outcome === 'account-change') {
+      assert.equal(runtime.requestCapabilityState, replacement);
+      assert.equal(persisted, 0);
+    } else if (outcome === 'denied') {
+      assert.equal(runtime.requestCapabilityState.capabilities, null);
+      assert.match(runtime.getRequestCapabilityStatusMarkup(), /role="alert"/);
+      assert.equal(persisted, 0);
+    } else {
+      assert.equal(runtime.getRequestCapabilityStatusMarkup(), '');
+      assert.equal(runtime.requestCapabilityState.capabilities.canViewQueue, outcome === 'transient');
+      assert.equal(persisted, outcome === 'ready' ? 1 : 0);
+    }
+  }
+});
+
 test('installs one owner with compatibility adapters and validates lifetime names', () => {
   const h = harness();
   const owner = h.api;

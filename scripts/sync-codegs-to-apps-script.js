@@ -116,14 +116,15 @@ async function main() {
     const files = current.data?.files;
     const code = files?.find(file => String(file.name).replace(/\.(gs|js)$/i, '') === 'Code' && file.type === 'SERVER_JS');
     if (!code?.source) fail('APPS_SCRIPT_PATCH_REMOTE_SOURCE_MISSING');
-    const patch = patchAppsScriptFunctions({ remoteSource: code.source, localSource: source, functionNames });
+    const patch = patchAppsScriptFunctions({ remoteSource: code.source, localSource: source, functionNames,
+      includeRelease: packageManifest.appsScriptPatchRelease === true });
     source = patch.source;
     expectedRemoteDigest = appsScriptFilesDigest(files);
     const publishedSource = applyDeploymentFingerprint(source, githubSha);
     publishedDigest = appsScriptFilesDigest(files.map(file => file === code ? { ...file, source: publishedSource } : file));
     patchEvidence = { functions: patch.functions, protectedSourceDigest: patch.protectedSourceDigest,
       remoteFilesDigestBefore: expectedRemoteDigest, remoteFilesDigestAfter: publishedDigest };
-    console.log(`Scoped Apps Script patch prepared for ${functionNames.length} email functions; protected remote code is unchanged.`);
+    console.log(`Scoped Apps Script patch prepared for ${functionNames.length} authorized functions; protected remote code is unchanged.`);
   }
   console.log('Preflighting Apps Script version capacity before source update...');
   const result = await syncAppsScriptProject({

@@ -31,6 +31,11 @@ async function copyTree(source, destination) {
 try {
   const existing = await lstat(site).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
   if (existing && (!existing.isDirectory() || existing.isSymbolicLink() || (await readdir(site)).length)) throw new Error('RELEASE_SITE_MUST_BE_EMPTY');
+  // This small module has editable page/service sources outside assets. Compile
+  // it here too so a scoped local release never packages a stale checked-in copy.
+  const scheduleBuild = spawnSync(process.execPath, [path.join(root, 'scripts', 'build-production-schedule.mjs')],
+    { cwd: root, stdio: 'inherit', windowsHide: true });
+  if (scheduleBuild.error || scheduleBuild.status !== 0) throw new Error('RELEASE_PREPARATION_FAILED_SCHEDULE');
   // CI supplies freshly compiled inputs. Repair only missing/wrong-release
   // local prerequisites here; matching labels do not verify same-version source freshness.
   const v2Output = await lstat(path.join(root, 'v2', 'dist')).catch(error => {

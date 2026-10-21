@@ -39,7 +39,7 @@
     const locationLotKey = value => { const i = identity(value); return JSON.stringify([i.itemCode, i.locationCode, i.lotCode]); };
     const itemLocationKey = value => { const i = identity(value); return JSON.stringify([i.itemCode, i.locationCode]); };
     function createIndex(rows = []) {
-        const ids = new Map(), keys = new Map(), itemLocations = new Map();
+        const ids = new Map(), keys = new Map(), itemLocations = new Map(), items = new Map();
         for (const row of rows) {
             const uid = String(pick(row, 'UNIQUE_ID', 'unique_id')).trim();
             if (!uid || ids.has(uid)) continue;
@@ -50,8 +50,26 @@
             const itemLocation = itemLocationKey(row);
             if (!itemLocations.has(itemLocation)) itemLocations.set(itemLocation, []);
             itemLocations.get(itemLocation).push(row);
+            const itemCode = identity(row).itemCode;
+            if (!items.has(itemCode)) items.set(itemCode, []);
+            items.get(itemCode).push(row);
         }
-        return { resolve(input) {
+        const representative = rows => rows.reduce((best, row) => !best
+            || String(pick(row, 'UNIQUE_ID', 'unique_id')) < String(pick(best, 'UNIQUE_ID', 'unique_id')) ? row : best, null);
+        return { resolveDisplay(input) {
+            // Docks shows stock evidence from a complete authorized snapshot.
+            // This representative is never an exact-row mutation identity.
+            const i = identity(input);
+            if (!i.itemCode) return { status:'missing', row:null };
+            for (const [matchLevel, candidates] of [
+                ['item-location-lot', i.locationCode ? keys.get(locationLotKey(i)) : null],
+                ['item-location', i.locationCode ? itemLocations.get(itemLocationKey(i)) : null],
+                ['item', items.get(i.itemCode)]
+            ]) {
+                if (candidates?.length) return { status:'ready', row:representative(candidates), matchLevel };
+            }
+            return { status:'missing', row:null };
+        }, resolve(input) {
             const i = identity(input);
             if (i.masterUid) {
                 const row = ids.get(i.masterUid);

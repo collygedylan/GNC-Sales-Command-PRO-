@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.19",
+  "version": "2.3.20",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -133,6 +133,16 @@
     "vite-plugin-pwa": "1.3.0",
     "vitest": "4.1.10"
   },
-  "appsScriptRelease": "AgData v2.2.1",
-  "appsScriptPatchFunctions": []
+  "appsScriptRelease": "AgData v2.3.20",
+  "appsScriptPatchFunctions": [
+    "setDatasetImportSourceMetadata_",
+    "closeDatasetImportFence_",
+    "processFolderLocked_",
+    "processLatestFileOnlyFolderLocked_",
+    "processSiteSplitMasterSnapshotBatchFolderLocked_",
+    "processSnapshotBatchFolderLocked_",
+    "runQueuedManualSyncStage_",
+    "doPost"
+  ],
+  "appsScriptPatchRelease": true
 }

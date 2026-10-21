@@ -57,6 +57,50 @@ test('metadata before and after the read gates the first authoritative snapshot'
     assert.equal(f.coordinator.getStatus().state, 'Up to date');
 });
 
+for (const view of ['managers:crop-roll', 'managers:eval-reports-2', 'drive:salesrep', 'chat:salesrep']) {
+    test(`${view} reads authorized rows despite unavailable revision metadata without granting freshness`, async () => {
+        let cacheWrites = 0;
+        const f = fixture({ writeCachedSnapshot: () => { cacheWrites++; } });
+        Object.assign(f.context, { viewKey: view, authenticated: true, accessDenied: false,
+            readIdentity: 'account-a:login-1', dataPermissionVersion: 'role-v1' });
+        f.state = 'unavailable';
+        assert.equal(await f.coordinator.ensure(f.adapter), true);
+        assert.deepEqual(f.commits.at(-1), [{ id: 'dock-28' }]);
+        const status = f.coordinator.getStatus();
+        assert.equal(status.state, 'Available data');
+        assert.equal(status.dataReadable, true);
+        assert.equal(status.readOnlySnapshot, true);
+        assert.equal(status.lastVerifiedAt, null);
+        assert.equal(status.readContextKey, readContextKey(f.context));
+        assert.match(status.contextKey, /read-only-metadata/);
+        assert.equal(cacheWrites, 0, 'unknown revision metadata cannot create a verified disk cache');
+        await f.coordinator.ensure(f.adapter);
+        assert.equal(f.reads, 2, 'unavailable metadata never proves a cached snapshot unchanged');
+        f.state = 'ready';
+        assert.equal(await f.coordinator.ensure(f.adapter), true);
+        assert.equal(f.coordinator.getStatus().state, 'Up to date');
+        assert.doesNotMatch(f.coordinator.getStatus().contextKey, /read-only-metadata/);
+        assert.equal(cacheWrites, 1);
+        f.coordinator.reset();
+    });
+}
+
+test('unavailable revision metadata never bypasses actual endpoint authorization or an unproven interrupted import', async () => {
+    for (const state of ['unavailable', 'interrupted']) {
+        const f = fixture();
+        Object.assign(f.context, { authenticated: true, accessDenied: false,
+            readIdentity: 'account-a:login-1', dataPermissionVersion: 'role-v1' });
+        f.state = state;
+        f.fault = Object.assign(new Error('Forbidden'), { status: 403, code: '42501' });
+        assert.equal(await f.coordinator.ensure(f.adapter), false);
+        assert.equal(f.commits.length, 0);
+        assert.notEqual(f.coordinator.getStatus().dataReadable, true);
+        if (state === 'unavailable') assert.equal(f.coordinator.getStatus().authorizationDenied, true);
+        else assert.equal(f.reads, 0, 'an interrupted source without publication proof remains unreadable');
+        f.coordinator.reset();
+    }
+});
+
 for (const view of ['docks', 'request:suspend-tag']) {
     test(`${view} in-flight server read completes through a same-account access refresh without claiming changed permission proof`, async () => {
         const f = fixture();

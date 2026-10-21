@@ -903,8 +903,8 @@ function getSupabaseHeaders_(extraHeaders) {
   return headers;
 }
 
-// Metadata-only fence around multi-request imports. Start only when there are
-// actual writes: an empty/no-change scheduled run must not refresh every phone.
+// Metadata-only fence around multi-request imports. A validated pending file
+// publishes its source metadata even when every compared data row is unchanged.
 // The server validates this run header on each source statement, including
 // retries, so an expired/superseded writer cannot finish an old snapshot.
 let datasetImportFenceContext_ = null;
@@ -1060,6 +1060,17 @@ function reconcileInventoryAssignmentsInBatches_(context) {
   }
   throw new Error('ASSIGNMENT_RECONCILIATION_CALL_LIMIT');
 }
+function setDatasetImportSourceMetadata_(context, tableName, files) {
+  if (!context || context.closed || !Array.isArray(files) || !files.length) throw new Error('IMPORT_SOURCE_FENCE_REQUIRED');
+  const latest = files[files.length - 1];
+  const file = latest.file || latest;
+  const fileName = String(latest.fileName || file.getName() || '');
+  const fileId = String(file.getId() || '');
+  if (!fileName.trim() || !fileId.trim()) throw new Error('IMPORT_SOURCE_METADATA_INVALID');
+  context.sourceMetadata = (context.sourceMetadata || []).filter(function(source) { return source.key !== tableName; });
+  context.sourceMetadata.push({ key: tableName, fileName: fileName, fileId: fileId });
+}
+
 function closeDatasetImportFence_(context, succeeded, beforeFinish) {
   if (!context || context.closed) return;
   try {
@@ -1068,8 +1079,12 @@ function closeDatasetImportFence_(context, succeeded, beforeFinish) {
       reconcileInventoryAssignmentsInBatches_(context);
     }
     if (succeeded && typeof beforeFinish === 'function') beforeFinish();
-    const result = callDatasetImportFenceRpc_(succeeded ? 'finish_dataset_import_v1' : 'fail_dataset_import_v1', { p_run_id: context.runId });
+    const stampSources = succeeded && Array.isArray(context.sourceMetadata) && context.sourceMetadata.length > 0;
+    const result = callDatasetImportFenceRpc_(stampSources ? 'finish_dataset_import_with_sources_v1'
+      : succeeded ? 'finish_dataset_import_v1' : 'fail_dataset_import_v1',
+      stampSources ? { p_run_id: context.runId, p_sources: context.sourceMetadata } : { p_run_id: context.runId });
     if (!result || result.ok !== true) throw new Error('DATASET_IMPORT_CLOSE_FAILED');
+    if (stampSources && result.sourceMetadataStamped !== true) throw new Error('IMPORT_SOURCE_METADATA_NOT_ACKNOWLEDGED');
     context.closed = true;
   } finally {
     if (datasetImportFenceContext_ === context) datasetImportFenceContext_ = null;
@@ -2094,7 +2109,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.2.1';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.20';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -2864,6 +2879,7 @@ function runQueuedManualSyncStage_(options) {
   manualSyncInvocationDeadlineMs_ = invocationStartedAt + executionBudgetMs;
   try {
     status = loadManualSyncStatus_();
+    if (runOptions.expectedRunId && (!status || String(status.runId) !== String(runOptions.expectedRunId))) return;
     if (!status || !status.active) {
       removeManualSyncStageTriggers_();
       console.log('[MANUAL SYNC] No queued manual sync found.');
@@ -6037,11 +6053,12 @@ function processFolderLocked_(dropFolderId, processedFolderId, tableName, payloa
 
         console.log(`Sync results: ${upserts.length} rows upserted | ${deletes.length} removed rows | ${totalRows} parsed rows`);
 
-        revisionFence = beginDatasetImportFenceIfNeeded_(tableName, upserts.length || deletes.length);
+        revisionFence = beginDatasetImportFenceIfNeeded_(tableName, true);
+        setDatasetImportSourceMetadata_(revisionFence, tableName, [{ file: file, fileName: fileName }]);
         if (upserts.length > 0) pushToSupabase(tableName, upserts);
         if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
       } else {
-        console.warn('[SKIP] 0 rows meeting criteria found.');
+        throw new Error('IMPORT_SOURCE_EMPTY_UNPUBLISHED');
       }
 
       closeDatasetImportFence_(revisionFence, true);
@@ -6538,7 +6555,8 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     }
     setManualSyncImportPhase_(tableName, 'prepared', rawData.length, rawData.length);
     writePhaseStarted = true;
-    revisionFence = beginDatasetImportFenceIfNeeded_(tableName, upserts.length || deletes.length);
+    revisionFence = beginDatasetImportFenceIfNeeded_(tableName, true);
+    setDatasetImportSourceMetadata_(revisionFence, tableName, [{ file: newestFile, fileName: newestFileName }]);
     setManualSyncImportPhase_(tableName, 'writing', 0, upserts.length + deletes.length);
     if (upserts.length > 0) pushToSupabase(tableName, upserts);
     if (deltaMode && deletes.length > 0) deleteFromSupabase(tableName, deletes);
@@ -7399,8 +7417,9 @@ function processSiteSplitMasterSnapshotBatchFolderLocked_(dropFolderId, processe
       }));
 
       if (!revisionFence) {
-        revisionFence = beginDatasetImportFenceIfNeeded_(siteFenceSources, upserts.length || deletes.length);
+        revisionFence = beginDatasetImportFenceIfNeeded_(siteFenceSources, true);
       }
+      setDatasetImportSourceMetadata_(revisionFence, tableName, siteParsedFiles);
       if (upserts.length > 0) pushToSupabase(tableName, upserts);
       if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
       emitTableSyncLiveEvent_(tableName, {
@@ -7667,8 +7686,8 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     if (canonicalPhMasterBulk) revalidateCanonicalMasterSnapshotSources_(parsedFiles);
     if (options && options.historyDataset) assertRoutedPendingSourceSelection_(options.historyDataset, parsedFiles[0].sourceIdentity);
     assertImportTimeBudget_('snapshot_publication', 65000);
-    revisionFence = beginDatasetImportFenceIfNeeded_(tableName,
-      canonicalPhMasterBulk ? true : (upserts.length || deletes.length));
+    revisionFence = beginDatasetImportFenceIfNeeded_(tableName, true);
+    setDatasetImportSourceMetadata_(revisionFence, tableName, parsedFiles);
     writePhaseStarted = true;
     if (canonicalPhMasterBulk) {
       if (!revisionFence || !revisionFence.runId) throw new Error('MASTER_BULK_IMPORT_FENCE_UNAVAILABLE');
@@ -22341,7 +22360,7 @@ function verifyManualInventoryImportActor_(payload) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
-    if (['manual_run', 'manual_clear_status', 'manual_clear_stale_status'].indexOf(payload.type) >= 0) {
+    if (['manual_run', 'manual_continue', 'manual_clear_status', 'manual_clear_stale_status'].indexOf(payload.type) >= 0) {
       const importActor = verifyManualInventoryImportActor_(payload);
       payload.requested_by = importActor.username;
     }
@@ -22416,6 +22435,17 @@ function doPost(e) {
         message: 'DriveAround history backfill trigger queued.',
         maxParsedFilesPerRun: DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN
       });
+    }
+
+    if (payload.type === 'manual_continue') {
+      const pending = loadManualSyncStatus_();
+      if (!pending || !pending.active || String(pending.runId) !== String(payload.run_id || '')) {
+        return jsonOutput_({ ok: false, status: 'superseded', message: 'This manual sync is no longer active.' });
+      }
+      // The same processor lock makes this immediate authenticated kick and
+      // the one-shot recovery trigger mutually exclusive.
+      runQueuedManualSyncStage_({ expectedRunId: payload.run_id });
+      return jsonOutput_(getManualSyncStatusForClient_());
     }
 
     if (payload.type === 'manual_run') {

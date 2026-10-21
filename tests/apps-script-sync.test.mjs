@@ -1,6 +1,10 @@
 // @test-group: backend
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import { migrationContractQuery, releaseDatabaseMigrations } from '../scripts/apply-item-low-stock-migration.mjs';
+import { patchAppsScriptFunctions } from '../scripts/apps-script-function-patch.mjs';
 import {
   APPS_SCRIPT_DEPLOYMENT_COMMIT_PLACEHOLDER,
   REQUEST_LIFECYCLE_POLICY_VERSION,
@@ -10,6 +14,136 @@ import {
 
 const sha = '0123456789abcdef0123456789abcdef01234567';
 const source = `const DEPLOYED_COMMIT = '${APPS_SCRIPT_DEPLOYMENT_COMMIT_PLACEHOLDER}';`;
+
+const appHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const appsScriptSource = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+function sourceFunction(text, name, indent = '') {
+  const found = text.match(new RegExp(`^${indent}(?:async )?function ${name}\\([^]*?^${indent}\\}`, 'm'));
+  assert.ok(found, `function ${name} exists`);
+  return found[0];
+}
+
+test('Home sync metadata retains known filenames across sparse newer revisions and older row polls', () => {
+  const context = vm.createContext({
+    selectDashboardSyncFilename: files => (files || []).filter(Boolean).sort().at(-1) || '',
+    getValidIsoTimestamp: value => value && Number.isFinite(Date.parse(value)) ? value : '',
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') || ''
+  });
+  vm.runInContext(sourceFunction(appHtml, 'mergeDashboardSyncSummaries', '        ') + '\n'
+    + sourceFunction(appHtml, 'collectDashboardSyncSource', '        '), context);
+  for (const [label, filename] of [['SOC', 'SOC-10 Open Orders-current.xlsx'], ['Reserves', 'SOC-10 Reserves-current.xlsx'],
+    ['Drive', 'DriveAroundMC-current.xlsx'], ['CAV', 'Dylan-Wide-Open-current.xlsx']]) {
+    let summaries = [{ label, iso: '2026-10-20T18:00:00Z', ms: 100, files: [filename] }];
+    for (let poll = 0; poll < 8; poll++) {
+      summaries = context.mergeDashboardSyncSummaries([...summaries,
+        { label, iso: '2026-10-20T18:01:00Z', ms: 200 + poll, files: [] },
+        { label, iso: '2026-10-20T17:00:00Z', ms: 50, files: ['old.xlsx'] }]);
+      assert.equal(summaries[0].files[0], filename);
+    }
+    const authoritative = context.mergeDashboardSyncSummaries([...summaries,
+      { label, iso: '2026-10-20T18:02:00Z', ms: 300, files: [filename], authoritative: true },
+      { label, iso: '2026-10-20T18:03:00Z', ms: 400, files: ['old.xlsx'] }]);
+    assert.equal(authoritative[0].files[0], filename);
+    assert.equal(authoritative[0].ms, 300);
+    const firstPaint = context.collectDashboardSyncSource([
+      { filename: '', last_updated: '2026-10-20T18:02:00Z' },
+      { filename, last_updated: '2026-10-20T18:00:00Z' }], label);
+    assert.equal(firstPaint.files[0], filename);
+  }
+});
+
+test('Processed archival requires acknowledged atomic completion and source metadata', () => {
+  let result = { ok: true, sourceMetadataStamped: true };
+  const calls = [];
+  const context = vm.createContext({
+    datasetImportFenceContext_: null,
+    callDatasetImportFenceRpc_: (name, payload) => { calls.push({ name, payload }); return result; },
+    reconcileInventoryAssignmentsInBatches_: () => calls.push({ name: 'reconcile' })
+  });
+  vm.runInContext(sourceFunction(appsScriptSource, 'setDatasetImportSourceMetadata_') + '\n'
+    + sourceFunction(appsScriptSource, 'closeDatasetImportFence_'), context);
+  const makeFence = () => ({ runId: 'run', keys: ['ph_master_inventory'], canonicalKeys: ['ph_master_inventory'] });
+  const fence = makeFence();
+  context.setDatasetImportSourceMetadata_(fence, 'ph_master_inventory', [{ fileName: 'exact-original.xlsx', file: { getId: () => 'file1' } }]);
+  context.closeDatasetImportFence_(fence, true);
+  assert.equal(fence.closed, true);
+  assert.equal(calls[0].name, 'reconcile');
+  assert.equal(calls[1].name, 'finish_dataset_import_with_sources_v1');
+  assert.equal(calls[1].payload.p_sources[0].fileName, 'exact-original.xlsx');
+  result = { ok: true };
+  const unacknowledged = makeFence();
+  context.setDatasetImportSourceMetadata_(unacknowledged, 'ph_master_inventory', [{ fileName: 'exact-original.xlsx', file: { getId: () => 'file1' } }]);
+  assert.throws(() => context.closeDatasetImportFence_(unacknowledged, true), /NOT_ACKNOWLEDGED/);
+  assert.notEqual(unacknowledged.closed, true);
+  for (const name of ['processFolderLocked_', 'processLatestFileOnlyFolderLocked_',
+    'processSiteSplitMasterSnapshotBatchFolderLocked_', 'processSnapshotBatchFolderLocked_']) {
+    const body = sourceFunction(appsScriptSource, name);
+    assert.ok(body.indexOf('setDatasetImportSourceMetadata_') < body.indexOf('closeDatasetImportFence_'));
+    const archive = body.search(/moveDriveFileToFolderWithRetry_|moveAndNormalizeDriveAroundProcessedFiles_/);
+    assert.ok(archive > body.indexOf('closeDatasetImportFence_'), name);
+  }
+});
+
+test('manual sync has authenticated exact-run kick, serial worker, per-stage refresh and retrying poll', () => {
+  assert.match(appsScriptSource, /\['manual_run', 'manual_continue', 'manual_clear_status'/);
+  const continuation = appsScriptSource.slice(appsScriptSource.indexOf("if (payload.type === 'manual_continue')"),
+    appsScriptSource.indexOf("if (payload.type === 'manual_run')"));
+  assert.match(continuation, /String\(pending.runId\) !== String\(payload.run_id/);
+  assert.match(continuation, /runQueuedManualSyncStage_\(\{ expectedRunId: payload.run_id \}\)/);
+  assert.match(sourceFunction(appsScriptSource, 'runQueuedManualSyncStage_'), /lock.tryLock/);
+  assert.match(sourceFunction(appHtml, 'runGoogleAppsScriptTrigger', '        '), /type: 'manual_continue'[\s\S]*nativeAuthAccessToken: importToken/);
+  assert.match(sourceFunction(appHtml, 'applyManualSyncStatus', '        '), /next.stageIndex > previous.stageIndex[\s\S]*refreshDashboardSyncMetadata\(true\)/);
+  assert.match(sourceFunction(appHtml, 'scheduleManualSyncStatusPoll', '        '), /catch\([\s\S]*scheduleManualSyncStatusPoll/);
+});
+
+test('source metadata and Manager read migrations are registered with secure deploy contracts', () => {
+  for (const name of ['20261021014500_manager_published_read_continuity_v1.sql', '20261021020000_import_source_metadata_v1.sql',
+    '20261021021000_master_priority_split_identity_v1.sql']) {
+    assert.ok(releaseDatabaseMigrations.includes(name));
+    assert.match(migrationContractQuery(name), /as installed/);
+  }
+  const migration = readFileSync(new URL('../supabase/migrations/20261021020000_import_source_metadata_v1.sql', import.meta.url), 'utf8');
+  assert.match(migration, /coalesce\(auth.role\(\),''\) <> 'service_role'/);
+  assert.match(migration, /IMPORT_SOURCE_REPLAY_SUPERSEDED/);
+  assert.match(migration, /result := public.finish_dataset_import_v1\(p_run_id\)/);
+  assert.match(migration, /result := app_sync_private.advance_import\(p_run_id,'finish'\)/);
+  assert.match(migration, /foreach dataset in array run.canonical_keys loop/);
+  assert.match(migration, /source_import_run_id=p_run_id/);
+  assert.match(migration, /case when allowed then r.source_file_name else null end/);
+  assert.doesNotMatch(migration, /update public.ph_master_inventory|delete from/);
+});
+
+test('ingestion deployment selects every changed function and preserves remote scheduling outside the patch', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.deepEqual(manifest.appsScriptPatchFunctions, ['setDatasetImportSourceMetadata_', 'closeDatasetImportFence_',
+    'processFolderLocked_', 'processLatestFileOnlyFolderLocked_', 'processSiteSplitMasterSnapshotBatchFolderLocked_',
+    'processSnapshotBatchFolderLocked_', 'runQueuedManualSyncStage_', 'doPost']);
+  assert.equal(manifest.appsScriptPatchRelease, true);
+  const untouched = 'const HISTORICAL_BACKFILL_PAUSED = true;\nconst AUTO_SYNC_PAUSED = true;';
+  const remote = `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = 'old';\nconst APP_RELEASE_VERSION_ = 'old';\n${untouched}\nfunction doPost() { return 'old'; }`;
+  const local = `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = 'new';\nconst APP_RELEASE_VERSION_ = 'new';\nfunction doPost() { return 'new'; }\nfunction setDatasetImportSourceMetadata_() { return 'metadata'; }`;
+  const patch = patchAppsScriptFunctions({ remoteSource: remote, localSource: local,
+    functionNames: ['doPost', 'setDatasetImportSourceMetadata_'], includeRelease: true });
+  assert.ok(patch.source.includes(untouched));
+  assert.match(patch.source, /const APP_RELEASE_VERSION_ = 'new'/);
+  assert.match(patch.source, /function setDatasetImportSourceMetadata_\(\) \{ return 'metadata'; \}/);
+  assert.throws(() => patchAppsScriptFunctions({ remoteSource: remote, localSource: local,
+    functionNames: ['setupDropFolderAutoSyncTrigger'] }), /ALLOWLIST_INVALID/);
+  const localDispatch = sourceFunction(appsScriptSource, 'doPost');
+  const start = localDispatch.indexOf("    if (payload.type === 'manual_continue') {");
+  const next = localDispatch.indexOf("    if (payload.type === 'manual_run') {", start);
+  const remoteOnly = "    if (payload.type === 'remote_only') return jsonOutput_({ preserved: true });\n\n";
+  const priorDispatch = (localDispatch.slice(0, start) + remoteOnly + localDispatch.slice(next))
+    .replace("['manual_run', 'manual_continue', 'manual_clear_status', 'manual_clear_stale_status']",
+      "['manual_run', 'manual_clear_status', 'manual_clear_stale_status']");
+  const prefix = "const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = 'old';\n";
+  const merged = patchAppsScriptFunctions({ remoteSource: prefix + priorDispatch,
+    localSource: prefix + localDispatch, functionNames: ['doPost'] });
+  assert.ok(merged.source.includes(remoteOnly), 'remote-only dispatch remains byte-for-byte intact');
+  assert.match(merged.source, /type === 'manual_continue'/);
+  assert.equal(patchAppsScriptFunctions({ remoteSource: merged.source,
+    localSource: prefix + localDispatch, functionNames: ['doPost'] }).source, merged.source);
+});
 
 function makeScript({ versionCount = 0, createdVersion = 201, deployedVersion = createdVersion, observedVersions } = {}) {
   const calls = [];

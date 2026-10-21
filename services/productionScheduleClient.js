@@ -27,13 +27,15 @@ export function createProductionScheduleClient(request) {
     metadata(signal) { return send('metadata', {}, signal); },
     status(signal) { return send('status', {}, signal); },
     refresh(signal) { return send('refresh', {}, signal); },
-    rows({ sheet, sheetId, q = '', filters = {}, cursor = null, limit = 20 }, signal) {
-      if (!Number.isInteger(Number(sheetId))) throw new TypeError('A sheet ID is required.');
+    rows({ sheet, sheetId, snapshotId, q = '', filters = {}, cursor = null, limit = 20 }, signal) {
+      if (sheetId == null || !Number.isInteger(Number(sheetId)) || Number(sheetId) < 0 || Number(sheetId) > 6) throw new TypeError('A worksheet index is required.');
+      const snapshot = String(snapshotId || '').trim();
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(snapshot)) throw new TypeError('A published workbook snapshot is required.');
       const safeLimit = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(limit) || 20)));
       // Empty-header worksheets are valid. They still get source-row cards and
       // can load all fields lazily from the detail endpoint.
       const columnIndexes = getScheduleCardColumnIndexes(sheet);
-      return send('rows', { sheetId: Number(sheetId), q: String(q).slice(0, 200), filters, cursor,
+      return send('rows', { sheetId: Number(sheetId), snapshotId: snapshot, q: String(q).slice(0, 200), filters, cursor,
         limit: safeLimit, projection: 'cards', columnIndexes }, signal);
     },
     rowDetail({ snapshotId, sheetId, sourceRow }, signal) {

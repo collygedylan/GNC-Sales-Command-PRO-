@@ -213,7 +213,7 @@ export function createProductionSchedulePage() {
     state.dirty = !cached || Date.now() - Number(cached.savedAt || 0) > ROW_CACHE_TTL_MS;
     render();
     try {
-      const result = await client.rows({ sheet, sheetId: sheet.id, q: state.q, filters: state.filters,
+      const result = await client.rows({ sheet, sheetId: sheet.id, snapshotId: snapshot?.id, q: state.q, filters: state.filters,
         cursor: state.cursors[state.page] ?? null, limit: PAGE_SIZE }, controller.signal);
       if (!root || state.read !== controller || identityScope !== readIdentityScope) return;
       if (snapshot?.id && result.snapshotId && String(result.snapshotId) !== String(snapshot.id)) {

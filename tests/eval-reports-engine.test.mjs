@@ -10,6 +10,99 @@ context.globalThis = context;
 vm.runInContext(engineSource, context, { filename: 'eval-reports-engine.js' });
 const engine = context.GncEvalReports;
 
+test('Manager report sessions and in-flight responses survive same-account permission refresh but retain denial and owner fences', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = html.match(/        function getManagerReportPageController\([^]*?^        }/m)?.[0];
+  assert.ok(source);
+  const live = { module: { exports: {} }, AbortController };
+  vm.runInNewContext(readFileSync(new URL('../assets/report-pages-live.js', import.meta.url), 'utf8'), live);
+  const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
+  const settle = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+  let owner = 'account-a:login-1', gate = deferred(), requests = 0, clears = 0;
+  const runtime = vm.createContext({ managerReportPageController: null, AbortController,
+    getSupabaseReadIdentityScope: () => owner,
+    appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'access-v1' } },
+    nativeAuthProfile: { id: 'account-a', active: true }, window: {}, activeHomeTab: 'ncr-approvals',
+    APP_API_FUNCTION_URL: 'fixture.invalid', APP_VERSION: 'fixture', SUPABASE_READ_TIMEOUT_MS: 10000,
+    postAppFunctionJson: async () => { requests++; return gate.promise; },
+    staleSupabaseReadScopeError: () => Object.assign(new Error('Account changed'), { code: 'DATASET_READ_SCOPE_CHANGED' }),
+    canViewManagerEvalReports: () => true, canViewManagerEvalReports2: () => true,
+    canViewAssignedItemsExport: () => true, canViewManagerSeasonPriority: () => true,
+    isManagerApprovalTab: () => true, canAccessView: () => true,
+    GncReportPagesLive: { createController: options => live.module.exports.createController({ ...options,
+      loadModule: async () => ({ createReportSession: config => ({ refresh: config.transport, read: config.transport, clear() {} }) }),
+      onReady() {}, onClear: () => { clears++; }, onMetadata() {}, onState() {},
+    }) },
+  });
+  vm.runInContext(source, runtime);
+  const controller = runtime.getManagerReportPageController();
+  const ready = controller.initialize();
+  await settle();
+  runtime.appAccessSnapshotState.snapshot.dataPermissionVersion = 'access-v2';
+  gate.resolve({ ok: true, data: { surfaces: ['season-priority', 'eval2', 'approval'], approvalTabs: ['ncr-approvals'] } });
+  await ready;
+  assert.equal(requests, 1);
+  assert.ok(controller.getSession());
+  assert.equal(clears, 0, 'background access refresh must not destroy mounted rows or draft selections');
+  gate = deferred();
+  const rows = controller.readPage({ surface: 'season-priority', operation: 'rows' });
+  await settle();
+  runtime.appAccessSnapshotState.snapshot.dataPermissionVersion = 'access-v3';
+  gate.resolve({ ok: true, data: { sourceRevision: 'server-v1', rows: [{ uid: 'published-row' }] } });
+  assert.deepEqual((await rows).rows, [{ uid: 'published-row' }]);
+  gate = deferred();
+  const denied = controller.readPage({ surface: 'eval2', operation: 'rows' });
+  await settle();
+  runtime.nativeAuthProfile.active = false;
+  gate.resolve({ ok: true, data: { rows: [{ uid: 'must-not-publish' }] } });
+  await assert.rejects(denied, error => error.status === 403);
+  runtime.nativeAuthProfile.active = true;
+  gate = deferred();
+  const switched = controller.readPage({ surface: 'eval2', operation: 'rows' });
+  await settle();
+  owner = 'account-b:login-2';
+  gate.resolve({ ok: true, data: { rows: [{ uid: 'must-not-publish' }] } });
+  await assert.rejects(switched, error => error.code === 'DATASET_READ_SCOPE_CHANGED');
+  controller.clear();
+});
+
+test('Manager report read gates accept only an existing published snapshot proof and preserve the installed function bodies', () => {
+  const migration = readFileSync(new URL('../supabase/migrations/20261021014500_manager_published_read_continuity_v1.sql', import.meta.url), 'utf8');
+  for (const signature of ['public.manager_report_read_v2(jsonb)', 'public.manager_ncr_outbox_metadata_v1(text,text)', 'private.manager_report_enrich_location_on_hand_v1(jsonb,boolean)', 'private.manager_report_season_page_v2(uuid,jsonb,text,integer,integer,text)']) assert.ok(migration.includes(signature));
+  assert.match(migration, /state='ready' or coalesce\(\(app_sync_private\.published_snapshot_read_proof\(key,revision\)->>'publishedReadable'\)::boolean,false\)/);
+  assert.match(migration, /source_revision is null or \(source_state is distinct from 'ready'[\s\S]*?and not coalesce/);
+  assert.match(migration, /length\(replace\(definition,patch\.old_gate,''\)\)\) \/ length\(patch\.old_gate\) <> 1/);
+  assert.match(migration, /execute replace\(definition,patch\.old_gate,patch\.new_gate\)/);
+  assert.doesNotMatch(migration, /update public\.|grant execute|disable trigger|mutationAllowed/);
+  const canonical = readFileSync(new URL('../supabase/migrations/20261014110620_eval2_shared_low_stock_threshold.sql', import.meta.url), 'utf8');
+  assert.match(canonical, /private\.eval_work_assert_actor_v1/);
+  assert.match(canonical, /private\.inventory_row_assignment_policy_active_v1\(\)/);
+  assert.match(canonical, /p_payload->>'sourceRevision' <> source_revision/);
+  assert.match(canonical, /manager_report_eval2_forbidden/);
+});
+
+test('Season Priority displays a proven published snapshot without relabeling an interrupted source ready', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const source = html.match(/        async function readManagerSeasonPriorityPageMetadata\([^]*?^        }/m)?.[0];
+  assert.ok(source);
+  for (const proven of [true, false]) {
+    const state = { account: 'worker' };
+    const runtime = vm.createContext({ managerSeasonPriorityState: state, currentUser: 'worker',
+      normalizeSessionIdentity: value => value, buildManagerReportPageQuery: () => ({ surface: 'season-priority', operation: 'metadata' }) });
+    vm.runInContext(source, runtime);
+    const page = { sourceRevision: 'report-v1', metadata: { inventoryState: 'interrupted', publishedReadable: proven,
+      inventoryRevision: 8417, assignedToOptions: [{ value: 'worker', label: 'Worker' }] } };
+    const controller = { load: async () => page };
+    if (proven) {
+      assert.equal(await runtime.readManagerSeasonPriorityPageMetadata(controller, state), page);
+      assert.equal(state.loaded, true);
+      assert.equal(state.inventoryState, 'interrupted');
+      assert.equal(state.readOnlySnapshot, true);
+      assert.equal(state.options[0].value, 'worker');
+    } else await assert.rejects(runtime.readManagerSeasonPriorityPageMetadata(controller, state), /Inventory is updating/);
+  }
+});
+
 test('SQL location-base fixture qualifies for the configured Eval1 priority report', () => {
   const fixture = readFileSync(new URL('../supabase/tests/manager_report_read_v2_test.sql', import.meta.url), 'utf8');
   const currentSeason = fixture.match(/"seasonCode":"([A-Z0-9]+)"/)[1];
@@ -1076,6 +1169,18 @@ test('detail teardown and BlockAlpha drilldowns keep navigation state explicit',
   assert.match(html, /> Location > Select Block Alpha/);
   assert.match(html, /> \$\{selectedBlockLabel\} > Select Block Number/);
   assert.match(html, /function backManagerEvalReport2Drill\(\)/);
-  assert.match(html, /managerEvalReport2DetailItemKey \|\| managerEvalReport2DrillLevel > 0/);
+  const globalBack = html.match(/        function goBackUniversal\([^]*?^        }/m)?.[0];
+  assert.ok(globalBack);
+  const managerBack = globalBack.match(/if \(currentView === 'managers'\) \{([^]*?)\n            }/)?.[1];
+  assert.ok(managerBack);
+  assert.match(managerBack, /activeHomeTab[^]*?!== 'dashboard'\) return openManagersModules\(\)/);
+  assert.match(managerBack, /fastBackHome\(\)/);
+  assert.doesNotMatch(managerBack, /backManagerEvalReport2Drill|managerEvalReport2DetailItemKey|managerEvalReport2DrillLevel/);
+  const modules = html.match(/        function openManagersModules\([^]*?^        }/m)?.[0];
+  assert.ok(modules);
+  assert.match(modules, /activeHomeTab = 'dashboard'/);
+  assert.match(modules, /cancelManagerSeasonPriorityRead\(\)/);
+  assert.match(modules, /GncProductionSchedule\?\.unmount\(\)/);
+  assert.match(modules, /renderManagers\(\)/);
   assert.match(html, /\[data-manager-eval2-detail\]>div:first-child>button:first-child\{display:none!important\}/);
 });

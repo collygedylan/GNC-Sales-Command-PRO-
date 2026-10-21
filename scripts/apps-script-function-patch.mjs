@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { parse } from 'acorn';
 
 const fingerprint = 'APPS_SCRIPT_DEPLOYMENT_COMMIT_';
+const releaseVersion = 'APP_RELEASE_VERSION_';
 const additiveEmailHandler = 'handleSignedInventoryReclassMoveDelivery_';
 const reclassEmailFunctions = new Set([
   'getReclassInquiryEmailRecipients_',
@@ -14,6 +15,8 @@ const reclassEmailFunctions = new Set([
   'buildCompletedInventoryReclassMoveHtml_',
 ]);
 const liveImportFunctions = new Set([
+  'setDatasetImportSourceMetadata_', 'closeDatasetImportFence_',
+  'processLatestFileOnlyFolderLocked_', 'processSiteSplitMasterSnapshotBatchFolderLocked_', 'doPost',
   "syncWarehouseAssignedItemsSheet_", "readWarehouseAssignmentExportRevision_", "exportWarehouseAssignedItemsToSheet_",
   "getMasterBulkSnapshotStageConfig_",
   "masterBulkSnapshotStageCheckpointKey_",
@@ -58,6 +61,7 @@ const liveImportFunctions = new Set([
   "processCustomerRepMapSnapshotLocked_",
 ]);
 const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkPublishedReplay_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_"]);
+additiveFunctions.add('setDatasetImportSourceMetadata_');
 const fail = code => { throw new Error(`APPS_SCRIPT_FUNCTION_PATCH_${code}`); };
 const digest = source => createHash('sha256').update(source).digest('hex');
 
@@ -70,16 +74,37 @@ function boundaries(source, names) {
       found.set(node.id.name, { start: node.start, end: node.end });
     }
     if (node.type === 'VariableDeclaration' && node.declarations.length === 1
-      && node.declarations[0].id.name === fingerprint) {
-      if (found.has(fingerprint)) fail('DUPLICATE_FINGERPRINT');
-      found.set(fingerprint, { start: node.start, end: node.end });
+      && [fingerprint, releaseVersion].includes(node.declarations[0].id.name)) {
+      const name = node.declarations[0].id.name;
+      if (found.has(name)) fail('DUPLICATE_FINGERPRINT');
+      found.set(name, { start: node.start, end: node.end });
     }
   }
   return found;
 }
 
+function mergeManualContinuation(remote, local) {
+  const oldAuthorization = "['manual_run', 'manual_clear_status', 'manual_clear_stale_status']";
+  const authorization = "['manual_run', 'manual_continue', 'manual_clear_status', 'manual_clear_stale_status']";
+  const start = "    if (payload.type === 'manual_continue') {";
+  const next = "    if (payload.type === 'manual_run') {";
+  const localStart = local.indexOf(start), localEnd = local.indexOf(next, localStart);
+  if (localStart < 0 || localEnd < 0) fail('MANUAL_DISPATCH_LOCAL_ANCHOR');
+  const block = local.slice(localStart, localEnd);
+  if (!remote.includes(authorization)) {
+    if (remote.split(oldAuthorization).length !== 2) fail('MANUAL_AUTHORIZATION_REMOTE_ANCHOR');
+    remote = remote.replace(oldAuthorization, authorization);
+  }
+  if (remote.includes(start)) {
+    if (!remote.includes(block)) fail('MANUAL_CONTINUATION_REMOTE_CONFLICT');
+    return remote;
+  }
+  if (remote.split(next).length !== 2) fail('MANUAL_DISPATCH_REMOTE_ANCHOR');
+  return remote.replace(next, block + next);
+}
+
 /** Preserve remote source verbatim outside the explicitly authorized functions. */
-export function patchAppsScriptFunctions({ remoteSource, localSource, functionNames }) {
+export function patchAppsScriptFunctions({ remoteSource, localSource, functionNames, includeRelease = false }) {
   if (!Array.isArray(functionNames) || !functionNames.length
     || new Set(functionNames).size !== functionNames.length
     || functionNames.some(name => !/^[A-Za-z_$][\w$]*$/.test(name)
@@ -96,10 +121,13 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
     }
   }
   const local = boundaries(localSource, functionNames);
-  const names = [...functionNames, fingerprint];
+  const names = [...functionNames, fingerprint, ...(includeRelease ? [releaseVersion] : [])];
   for (const name of names) if (!local.has(name) || !remote.has(name)) fail('FUNCTION_MISSING');
-  const changes = names.map(name => ({ name, ...remote.get(name),
-    replacement: localSource.slice(local.get(name).start, local.get(name).end) }))
+  const changes = names.map(name => {
+    const replacement = localSource.slice(local.get(name).start, local.get(name).end);
+    return { name, ...remote.get(name), replacement: name === 'doPost' && replacement.includes("if (payload.type === 'manual_continue')")
+      ? mergeManualContinuation(preparedRemote.slice(remote.get(name).start, remote.get(name).end), replacement) : replacement };
+  })
     .sort((a, b) => b.start - a.start);
   let merged = preparedRemote;
   let protectedSource = preparedRemote;

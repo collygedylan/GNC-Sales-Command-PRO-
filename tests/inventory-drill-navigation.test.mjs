@@ -474,3 +474,78 @@ test('actual personalized Manager, Docks and Que footer buttons switch from Home
   assert.equal(h.f.getCurrentVisibleViewId(), 'home', 'the existing permission gate still rejects a denied shortcut');
   preferences.reset();
 });
+
+test('every Manager submodule returns to Modules immediately before pending reads or internal drills, then Home', () => {
+  for (const tab of ['customer-rep-map', 'access-control', 'season-settings', 'crop-roll', 'approval', 'season-priority', 'production-schedule', 'eval-reports-2', 'moves', 'productivity']) {
+    const { context: f, calls } = backHarness('managers');
+    f.activeHomeTab = tab;
+    f.managerRead = new Promise(() => {});
+    f.managerEvalReport2DrillLevel = 3;
+    f.openManagersModules = () => { f.activeHomeTab = 'dashboard'; calls.push('modules'); return false; };
+    f.getVisibleSecondaryBack = () => ({ click: () => calls.push('old-module-back') });
+    // An open modal still consumes its own Back; this scenario has none.
+    const secondary = f.getVisibleSecondaryBack;
+    f.getVisibleSecondaryBack = modalOnly => modalOnly ? null : secondary();
+    assert.equal(f.goBackUniversal(), false, tab);
+    assert.equal(f.activeHomeTab, 'dashboard', tab);
+    assert.deepEqual(calls.splice(0), ['modules'], tab);
+    f.goBackUniversal();
+    assert.deepEqual(calls, [{ target: 'home' }], tab);
+  }
+});
+
+test('Manager Modules cancels stale render work and mounts the hub synchronously even from a separate child view', () => {
+  const calls = [];
+  let view = 'crop-roll';
+  const f = vm.createContext({
+    activeHomeTab: 'crop-roll', managersSearchTerm: 'old', selectedProductivityUser: 'person', managerMoveDestinationStage: 'pending',
+    MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned-items', MANAGER_BLOCK_CLEARING_VIEW: 'block-clearing',
+    managerReportPageController: { suspendMounts: () => calls.push('suspend-pages') },
+    cancelManagerSeasonPriorityRead: () => calls.push('cancel-read'),
+    window: { GncProductionSchedule: { unmount: () => calls.push('unmount') } },
+    unmountAlphaCommandCenter() {}, cancelScheduledViewRenderWork: () => calls.push('cancel-render'),
+    cancelChunkRenderWorkForView: () => calls.push('cancel-chunks'),
+    getCurrentVisibleViewId: () => view,
+    switchView: target => { view = target; calls.push(target); },
+    renderManagers: () => calls.push(`render:${f.activeHomeTab}`),
+    updateFooterNavState() {}, updateGlobalBackButton() {}, syncGlobalHeaderChrome() {},
+    renderHomeOrManagersNow: () => assert.fail('hub must not wait for a scheduled render'),
+  });
+  vm.runInContext(source('openManagersModules'), f);
+  assert.equal(f.openManagersModules(), false);
+  assert.equal(view, 'managers');
+  assert.equal(f.activeHomeTab, 'dashboard');
+  assert.ok(calls.indexOf('cancel-read') < calls.indexOf('render:dashboard'));
+  assert.ok(calls.indexOf('cancel-render') < calls.indexOf('render:dashboard'));
+  assert.ok(calls.includes('render:dashboard'));
+});
+
+test('Home Sales, Request Queue and Tasks tiles use the shared fast action and honor current access', () => {
+  const calls = [], allowed = new Set(['sales', 'request', 'tasks']);
+  let view = 'home';
+  const f = vm.createContext({
+    window: {}, activeReqTab: 'suspend-tag', requestViewLevel: 4, requestSalesRepsManagerMode: true,
+    canAccessView: target => allowed.has(target), escapeHtml: value => String(value),
+    esc: value => String(value).replace(/'/g, "\\'").replace(/"/g, '&quot;'),
+    normalizeRequestTabValue: tab => tab, markViewDirty: target => calls.push(`dirty:${target}`),
+    switchView: target => { view = target; calls.push(target); }, getCurrentVisibleViewId: () => view,
+    renderSalesHub: () => calls.push('render-sales'),
+  });
+  for (const name of ['encodeFastPressArgs', 'decodeFastPressArgs', 'buildFastPressAttrs', 'buildFastInvokeAttrs',
+    'dispatchFastPressAction', 'renderRepHomeDashboardTileMarkup', 'openHomeModuleView']) vm.runInContext(source(name), f);
+  f.window.openHomeModuleView = f.openHomeModuleView;
+  for (const target of ['sales', 'request', 'tasks']) {
+    const markup = f.renderRepHomeDashboardTileMarkup({ view: target, title: target });
+    const [, kind, action, args] = markup.match(/onclick="return handleFastPressClick\(event, '([^']+)', '([^']+)', '([^']+)'\)"/) || [];
+    assert.equal(action, 'openHomeModuleView', target);
+    assert.equal(f.dispatchFastPressAction(kind, action, args), true);
+    assert.equal(view, target);
+  }
+  assert.ok(calls.includes('render-sales'), 'Sales hub renders in the activation turn');
+  assert.equal(f.activeReqTab, 'pending');
+  assert.equal(f.requestViewLevel, 0);
+  assert.equal(f.requestSalesRepsManagerMode, false);
+  allowed.delete('sales');
+  f.openHomeModuleView('sales');
+  assert.equal(view, 'tasks', 'confirmed denial must not navigate');
+});
