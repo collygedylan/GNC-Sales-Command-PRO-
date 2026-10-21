@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "7e2b0089afec5df5d2d28f1ccee2bcb457c3a2e8",
+  "commit": "8d64ae10243823232c98bb744c84d80cd3821f96",
   "release": "AgData v2.3.34",
   "files": [
     {
@@ -460,8 +460,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8394906,
-      "sha256": "38e3284e5a667d72c4b706a9f26d88843a2e7dc6f0c42f3e6850605b3449aea8"
+      "bytes": 8395660,
+      "sha256": "4afd72de4b8b5dc12e71834be00e91b65defad9cdb7c5af7d61568931e9af166"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -710,8 +710,8 @@
     },
     {
       "path": "assets/ops-precision-pilot.css",
-      "bytes": 383207,
-      "sha256": "e0955bcf2ca6c0f1aa4cb756b650fc066e3cbed422028bf6b257cb28f8e390ce"
+      "bytes": 386812,
+      "sha256": "183d4feb74f1fd93c1bbd89b1730516975e5ff64b6725efcb4c25feaef9dad8e"
     },
     {
       "path": "assets/ops-precision-pilot.js",
@@ -881,12 +881,12 @@
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "75798db76f7d10b0d42f8175ad2f1d8213e9c08ab6966af0307c2647e4f10d5e"
+      "sha256": "0b46d3fb30eb0a1a87da6062cae038438c0cc34fd641da182e6fc05a2f3c407b"
     },
     {
-      "path": "deployments/7e2b0089afec5df5d2d28f1ccee2bcb457c3a2e8.json",
+      "path": "deployments/8d64ae10243823232c98bb744c84d80cd3821f96.json",
       "bytes": 187,
-      "sha256": "75798db76f7d10b0d42f8175ad2f1d8213e9c08ab6966af0307c2647e4f10d5e"
+      "sha256": "0b46d3fb30eb0a1a87da6062cae038438c0cc34fd641da182e6fc05a2f3c407b"
     },
     {
       "path": "index.html",
@@ -1161,7 +1161,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "2fac4706417727db387986b76ab9f4fdf707e37781b6875311799cebce1d0313"
+      "sha256": "3a42a802e389a104eff19c781a89508d759d4e2f29150204c51d1a85502796d1"
     },
     {
       "path": "v2/v2-cache-migration.js",
