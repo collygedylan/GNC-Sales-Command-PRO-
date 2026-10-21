@@ -9,33 +9,6 @@ const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', im
 const appAuth = readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
 const suspendRead = readFileSync(new URL('../supabase/functions/app-api/suspend-tag-read.ts', import.meta.url), 'utf8');
 
-test('current SOC snapshot keeps unchanged suspend rows from earlier delta filenames', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const context = vm.createContext({ socRawSourceRows: [],
-    firstNonEmptyValue: (...values) => values.find(value => value != null && value !== '') || '',
-    getDockSuspendValue: row => row.suspend,
-    getDockSuspendToValue: row => row.suspend_to,
-    getLatestSocImportFileWatermark: () => ({ filename: 'SOC-noon.xlsx' }) });
-  vm.runInContext(html.match(/        function getLatestSocSuspendTagSourceRows\([^]*?^        }/m)[0], context);
-  const rows = [
-    { unique_id: 'physical-row-1', suspend: 'SUSPEND', suspend_to: 'dc', filename: 'SOC-morning.xlsx' },
-    { unique_id: 'physical-row-2', suspend: 'SUSPEND', suspend_to: 'dc', filename: 'SOC-morning.xlsx' },
-    { unique_id: 'other-owner', suspend: 'SUSPEND', suspend_to: 'mk', filename: 'SOC-noon.xlsx' }
-  ];
-  assert.deepEqual(Array.from(context.getLatestSocSuspendTagSourceRows(rows, rows), row => row.unique_id),
-    ['physical-row-1', 'physical-row-2']);
-  assert.equal(context.getLatestSocSuspendTagSourceRows([], rows).length, 0, 'no archive resurrection');
-});
-
-test('all sales rep aliases retain the same limited server role and inventory access', () => {
-  const auth = actualAccessFunctions();
-  for (const role of ['salesrep', 'sales rep', 'sales_rep']) {
-    assert.equal(auth.roleState(role).isRep, true, role);
-    assert.equal(auth.roleState(role).isAdmin, false, role);
-    assert.equal(auth.access(role, 'ph_master_inventory', 'brian_hatfield'), true);
-  }
-});
-
 function extractFunction(source, name, exported = false) {
   const marker = `${exported ? 'export ' : ''}function ${name}(`;
   const start = source.indexOf(marker);

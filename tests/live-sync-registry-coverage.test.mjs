@@ -407,7 +407,7 @@ test('Drive verifies its displayed stock without waiting for unopened detail sou
   const context = harness(), registry = context.AgMetricLiveSyncRegistry;
   assert.deepEqual(Array.from(registry.getViewAdapters('drive')), ['core:master', 'side:settings']);
   const assigned = registry.getViewAdapters('drive', { driveAssignmentsRequired: true, evalInventoryRows: true });
-  assert.ok(!assigned.includes('core:warehouseAssignedItems'), 'assignment actions hydrate in the background');
+  assert.ok(assigned.includes('core:warehouseAssignedItems'));
   assert.ok(assigned.includes('core:inventoryEditRequests'));
   for (const id of ['core:reserves', 'core:avNotes']) assert.ok(!assigned.includes(id));
   assert.ok(registry.getViewAdapters('drive', { surfaces: ['dialog:av-notes'] }).includes('core:avNotes'));

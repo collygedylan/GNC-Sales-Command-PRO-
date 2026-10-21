@@ -5,8 +5,6 @@ description: Maintain AgData Que SUSPEND and REQUEST, physical tag-row identity,
 
 # Queues and Reclass
 
-The current server-authorized SOC snapshot owns Suspend membership. Delta imports retain earlier filenames on unchanged physical rows, so a latest-filename watermark is display metadata, never a row exclusion predicate. An empty authorized snapshot remains empty.
-
 Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 4 and shared Back/navigation ownership.
 
 - Que → SUSPEND represents one physical spreadsheet row as one card using the unique tag line ID. Never collapse distinct physical rows because item/location/lot values match. Preserve Que → REQUEST behavior.

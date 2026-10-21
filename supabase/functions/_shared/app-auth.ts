@@ -34,7 +34,7 @@ export function normalizeUsername(value: unknown = "") {
 }
 
 export function normalizeRole(value = "") {
-  return String(value || "").toUpperCase().replace(/[^A-Z0-9]+/g, "");
+  return String(value || "").toUpperCase().replace(/\s+/g, "");
 }
 
 export function isForcedPasswordValue(value = "") {

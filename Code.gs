@@ -2109,7 +2109,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.3.21';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.20';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -6013,8 +6013,8 @@ function processFolder(dropFolderId, processedFolderId, tableName, payloadBuilde
 }
 function processFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, `${tableName} drop folder`);
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
   const files = listDriveFilesWithRetry_(dropFolder, `${tableName} drop folder`);
-  let processedFolder = null;
   let filesSeen = 0;
   let filesProcessed = 0;
   let tempFilesRemoved = 0;
@@ -6027,7 +6027,6 @@ function processFolderLocked_(dropFolderId, processedFolderId, tableName, payloa
       continue;
     }
 
-    if (!processedFolder) processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
     filesSeen++;
     console.log(`[START] Processing: ${fileName} -> Table: ${tableName}`);
 
@@ -6428,6 +6427,7 @@ function processCustomerRepMapSnapshotLocked_() {
 
 function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, `${tableName} drop folder`);
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
   const deltaMode = !!(options && options.deltaMode);
   const files = listDriveFilesWithRetry_(dropFolder, `${tableName} drop folder`);
   const pendingFiles = [];
@@ -6459,8 +6459,6 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
       diagnostics: createDeltaSyncStats_()
     };
   }
-
-  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
 
   pendingFiles.sort(function(a, b) {
     const timeDiff = b.getLastUpdated().getTime() - a.getLastUpdated().getTime();
@@ -7317,6 +7315,7 @@ function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolde
 }
 function processSiteSplitMasterSnapshotBatchFolderLocked_(dropFolderId, processedFolderId) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, 'site split drive around drop folder');
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, 'site split drive around processed folder');
   const files = listDriveFilesWithRetry_(dropFolder, 'site split drive around drop folder');
   const pendingFiles = [];
   let tempFilesRemoved = 0;
@@ -7324,7 +7323,11 @@ function processSiteSplitMasterSnapshotBatchFolderLocked_(dropFolderId, processe
   while (files.hasNext()) {
     const file = files.next();
     const fileName = file.getName();
-    if (isLiveImportTemporaryFile_(fileName)) continue;
+    if (fileName.startsWith('TEMP_')) {
+      tempFilesRemoved++;
+      trashDriveFileWithRetry_(file, `site split drive around temp file ${fileName}`);
+      continue;
+    }
     pendingFiles.push(file);
   }
 
@@ -7341,8 +7344,6 @@ function processSiteSplitMasterSnapshotBatchFolderLocked_(dropFolderId, processe
       diagnosticsBySite: {}
     };
   }
-
-  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, 'site split drive around processed folder');
 
   pendingFiles.sort(function(a, b) {
     const timeDiff = a.getLastUpdated().getTime() - b.getLastUpdated().getTime();
@@ -7489,6 +7490,7 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
 }
 function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, `${tableName} drop folder`);
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
   const files = listDriveFilesWithRetry_(dropFolder, `${tableName} drop folder`);
   const pendingFiles = [];
   let tempFilesRemoved = 0;
@@ -7515,8 +7517,6 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       diagnostics: createDeltaSyncStats_()
     };
   }
-
-  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
 
   pendingFiles.sort(function(a, b) {
     const timeDiff = a.getLastUpdated().getTime() - b.getLastUpdated().getTime();

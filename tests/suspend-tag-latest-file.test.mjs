@@ -62,7 +62,7 @@ function loadAuthorizedSuspendTagPageReader() {
   return context;
 }
 
-test('SOC metadata does not hide unchanged physical tags in the current authorized delta snapshot', () => {
+test('latest SOC watermark scopes active Suspend rows before status filtering and does not resurrect older tags when latest file has none', () => {
   const ctx = loadHelpers();
   const fullSoc = [
     { FILENAME: 'SOC-older.xlsx', LAST_UPDATED: '2026-10-19T20:00:00Z', UNIQUE_ID: 'old-1' },
@@ -78,18 +78,18 @@ test('SOC metadata does not hide unchanged physical tags in the current authoriz
   assert.deepEqual(JSON.parse(JSON.stringify(ctx.getLatestSocImportFileWatermark(fullSoc))), {
     filename: 'SOC-latest.xlsx', lastUpdated: '2026-10-20T13:00:00.000Z', timestampMs: Date.parse('2026-10-20T13:00:00Z'),
   });
-  assert.deepEqual(Array.from(ctx.getLatestSocSuspendTagSourceRows(suspendSourceRows, fullSoc), row => row.UNIQUE_ID), ['old-1', 'latest-tag']);
+  assert.deepEqual(Array.from(ctx.getLatestSocSuspendTagSourceRows(suspendSourceRows, fullSoc), row => row.UNIQUE_ID), ['latest-tag']);
 
   const latestFileWithoutAnyDockTags = [
     { FILENAME: 'SOC-older.xlsx', LAST_UPDATED: '2026-10-19T20:00:00Z', UNIQUE_ID: 'old-1' },
     { FILENAME: 'SOC-latest.xlsx', LAST_UPDATED: '2026-10-20T14:00:00Z', UNIQUE_ID: 'latest-unmarked', SUSPEND: '', SUSPEND_TO: 'DC' },
   ];
-  assert.deepEqual(Array.from(ctx.getLatestSocSuspendTagSourceRows([], latestFileWithoutAnyDockTags)), [],
-    'an empty authorized snapshot stays empty instead of resurrecting records from metadata');
+  assert.deepEqual(Array.from(ctx.getLatestSocSuspendTagSourceRows(suspendSourceRows.filter(row => row.FILENAME === 'SOC-older.xlsx'), latestFileWithoutAnyDockTags)), [],
+    'a latest import with no marked rows stays empty instead of falling back to old marked records');
 
   const authoritativeLatestFile = { loaded: true, filename: 'SOC-newest.xlsx', last_updated: '2026-10-20T15:00:00Z' };
-  assert.deepEqual(Array.from(ctx.getLatestSocSuspendTagSourceRows(suspendSourceRows, fullSoc, authoritativeLatestFile), row => row.UNIQUE_ID), ['old-1', 'latest-tag'],
-    'new import metadata does not imply deletion of unchanged rows returned by the server');
+  assert.deepEqual(Array.from(ctx.getLatestSocSuspendTagSourceRows(suspendSourceRows, fullSoc, authoritativeLatestFile)), [],
+    'server freshness remains authoritative even when the filtered page contains only older records');
 });
 
 test('authorized Suspend page freshness is bound to its permission scope and an empty latest file is authoritative', async () => {

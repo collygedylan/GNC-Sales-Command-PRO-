@@ -11,29 +11,6 @@ vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', im
 const { createCoordinator, readContextKey } = sandbox.module.exports;
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 25; i++) await Promise.resolve(); };
-
-test('account switch releases an unresponsive prior read before Brian hydrates once', async () => {
-    const f = fixture();
-    const oldRead = deferred();
-    f.context.scope = 'dylan_collyge';
-    f.loadHook = () => oldRead.promise;
-    const oldTask = f.coordinator.check();
-    await settle();
-    f.coordinator.reset();
-    f.context.scope = 'brian_hatfield';
-    f.context.readIdentity = 'brian_hatfield:login-2';
-    f.loadHook = null;
-    f.rows = [{ id: 'brian-authorized' }];
-    const next = f.coordinator.check();
-    await settle();
-    const committedBeforeOldRead = f.commits.length;
-    oldRead.resolve();
-    await Promise.all([oldTask, next]);
-    assert.equal(committedBeforeOldRead, 1, 'new account must not wait for an aborted transport');
-    assert.deepEqual(f.commits, [[{ id: 'brian-authorized' }]]);
-    assert.equal(f.reads, 2, 'one read for each account');
-    f.coordinator.reset();
-});
 function fixture(overrides = {}) {
     let revision = '1', state = 'ready', permission = 'role-v1', changedAt = '2026-10-08T00:00:00Z', clock = 1000;
     let rows = [{ id: 'dock-28' }], reads = 0, metadataReads = 0, subscriptions = 0, closes = 0;
