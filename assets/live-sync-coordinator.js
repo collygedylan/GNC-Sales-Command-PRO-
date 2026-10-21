@@ -795,7 +795,15 @@
                 if (!running && !queued && signalTimer === null && currentStatus.state === 'Up to date' && currentStatus.contextKey === nextIdentity) return Promise.resolve(true);
             }
             invalidateBackground();
-            if (activeRun && (activeRun.epoch !== epoch || readContextKey(activeRun.context || {}) !== readContextKey(options.getContext() || {}))) activeRun.controller?.abort();
+            if (activeRun && (activeRun.epoch !== epoch || readContextKey(activeRun.context || {}) !== readContextKey(options.getContext() || {}))) {
+                activeRun.controller?.abort();
+                // Navigation owns a new foreground read. A cancelled transport
+                // may ignore AbortSignal; fence its late result without waiting
+                // for it or discarding the same-account applied snapshots.
+                epoch++;
+                running = null;
+                activeRun = null;
+            }
             queued = true;
             if (running) return running;
             const task = (async () => {

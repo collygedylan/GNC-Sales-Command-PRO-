@@ -7,6 +7,28 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const source = fs.readFileSync(new URL('../assets/runtime-watchdog.js', import.meta.url), 'utf8');
 
+test('header watchdog badge force-hides after Dylan switches to any other canonical user', async () => {
+  const module = { exports: {} };
+  vm.runInNewContext(fs.readFileSync(new URL('../assets/runtime-watchdog-panel.js', import.meta.url), 'utf8'), { module, Date });
+  let username = 'dylan_collyge';
+  let reads = 0;
+  const badge = { hidden: true, style: { display: 'none' }, textContent: '', title: '', classList: { toggle() {} } };
+  const panel = module.exports.createController({ document: { getElementById: () => badge },
+    getUsername: () => username, getProfileId: () => username, apiUrl: '/app-api',
+    postJson: async () => { reads++; return { data: [{ id: 1 }] }; } });
+  await panel.refreshBadge(true);
+  assert.equal(badge.hidden, false);
+  assert.notEqual(badge.style.display, 'none');
+  for (username of ['brian_hatfield', 'megan_kelly', 'jd_jones', 'admin', 'Dylan Collyge', '']) {
+    badge.hidden = false; badge.style.display = ''; badge.textContent = '1';
+    await panel.refreshBadge(true);
+    assert.equal(badge.hidden, true, username);
+    assert.equal(badge.style.display, 'none', username);
+    assert.equal(badge.textContent, '', username);
+  }
+  assert.equal(reads, 1, 'hidden badge performs no additional reads; telemetry uses its independent transport');
+});
+
 function parityHarness({ currentView = 'managers', subModule = 'eval-reports-2' } = {}) {
   const reports = [], timers = new Map();
   let now = 0, timerId = 0;
@@ -196,7 +218,7 @@ test('production login wires the sensor to the authenticated watchdog app-api ac
 
 test('watchdog transport supports native-only auth and rejects absent or switched auth before sending', async () => {
   const runtime = readComposedAppSource();
-  const start = runtime.indexOf('function configureRuntimeWatchdogForCurrentSession()');
+  const start = runtime.indexOf('function syncRuntimeWatchdogHeaderVisibility()');
   const end = runtime.indexOf('\n        async function finalizeLogin', start);
   assert.ok(start >= 0 && end > start, 'expected the production watchdog configuration helper');
   const helper = runtime.slice(start, end);

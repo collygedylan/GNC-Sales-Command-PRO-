@@ -5,16 +5,16 @@ import { AURA_GEMINI_MODEL, AURA_PROVIDER_TIMEOUT_MS, AuraGeminiProviderError, a
 import type { AuraVoiceDeps, AuraVoiceStore } from "./aura-voice-handler.ts";
 import { auraVoice, parseAuraGlossary } from "./aura-domain.ts";
 import { synthesizeAuraSpeech, AURA_TTS_MODEL } from "./aura-speech.ts";
+import { isCanonicalAuraOwner } from "./canonical-user-access.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const allowedRoles = new Set(["ADMIN", "ADMINISTRATOR", "MANAGER", "REP", "SALESREP", "CSR"]);
 export function parseAuraAccess(value: unknown, expectedId: string): AuraActor | null {
   const access = auraObject(value);
   if (access.ok !== true) return null;
   const actor = auraObject(access.actor), capabilities = auraObject(access.capabilities);
   if (capabilities.auraEnabled !== true) return null;
-  if (actor.id !== expectedId || !UUID.test(expectedId) || typeof actor.username !== "string" || !actor.username
-    || typeof actor.role !== "string" || (actor.username !== "dylan_collyge" && !allowedRoles.has(actor.role.trim().toUpperCase()))) return null;
+  if (actor.id !== expectedId || !UUID.test(expectedId) || typeof actor.username !== "string" || !isCanonicalAuraOwner(actor.username)
+    || typeof actor.role !== "string" || !actor.role.trim()) return null;
   for (const key of ["inventory", "history", "drafts"]) if (typeof capabilities[key] !== "boolean") return null;
   for (const key of ["socReserves", "socOpenOrders"]) if (capabilities[key] !== undefined && typeof capabilities[key] !== "boolean") return null;
   if (!capabilities.inventory && !capabilities.history && !capabilities.socReserves && !capabilities.socOpenOrders) return null;

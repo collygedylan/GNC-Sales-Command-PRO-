@@ -18,6 +18,7 @@ Use this skill for Drive Mode, AV, Inventory and EXPORT EXCEL. Read the zero-loc
 - Compute numeric Loc On Hand deterministically across every lot with the same itemcode + locationcode in the complete same-account snapshot. A known stock total must not display `--`. Do not invent zero when data is genuinely unknown.
 - Preserve PRI, quality flags ORANGE / NS 1.0 / LD, and Code / Reason / Since strips. Follow the existing source-of-truth field mappings rather than guessing substitute columns.
 - Cache inventory indexes and dictionaries; opening a card must not wait for a fresh network query. Preserve user drafts while a row refresh completes.
+- Drive and AV accept a master-only first-page display while optional settings/joins and the remaining pages load. Keep that preview partial: full export and write proof still require the complete authorized snapshot. Cold views start one bounded authenticated `inventory_read` preview recovery after 1,000 ms (or immediately on coordinator failure); it retries transient errors once and never inherits a stalled coordinator/deduplicated promise. Normal hydration continues with at most two page reads in flight.
 
 Before changing metric math, sorting or hydration, trace ERP → published Supabase snapshot → fixture projection → rendered card. Cover aggregation across lots, full pagination, A–Z completeness and export parity with focused Node cases. Apply the release governor for changed rendering and update this skill when its contracts change.
 

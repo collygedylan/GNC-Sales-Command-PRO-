@@ -5,11 +5,13 @@ description: Preserve authorized same-account AgData views, session continuity a
 
 # Authorized stale-while-revalidate views
 
-The canonical full-app administrators are exactly `dylan_collyge`, `megan_kelly`, and `jd_jones`. Their active authenticated profiles receive every canonical operational flag and registered application capability; the admin role baseline enables every operational flag. `can_manage_user_access` is an account grant for those three only, enforced by client, app-api, SQL command gate and protected access rows. Never infer this identity from a display name, arbitrary payload or unverified session. Confirmed disabled/locked profiles and account switches remain security boundaries. See `20261021035500_full_app_administrators_v1.sql`, `canonical-user-access.ts`, and `isFullAppAdministrator`.
+The canonical full-app administrators are exactly `dylan_collyge`, `megan_kelly`, and `jd_jones`. Their active authenticated profiles receive every canonical operational flag; the admin role baseline enables every operational flag. AURA has a separate canonical Dylan-only owner guard across UI, capabilities, Edge endpoints and database RPCs. `can_manage_user_access` is an account grant for those three only, enforced by client, app-api, SQL command gate and protected access rows. Never infer this identity from a display name, arbitrary payload or unverified session. Confirmed disabled/locked profiles and account switches remain security boundaries. See `20261021035500_full_app_administrators_v1.sql`, `canonical-user-access.ts`, and `isFullAppAdministrator`.
 
 The extracted watchdog panel also owns cached state by verified account and auth epoch; its badge/list share a single pending read and stale view/host generations cannot repaint a later screen.
 
 Account reset and suspension must detach aborted coordinator promises immediately. A transport that ignores cancellation cannot retain the next account's render lock; late completion must neither publish old rows nor clear a newer run.
+
+View changes also detach the obsolete foreground promise while retaining same-account applied snapshots. New read generations must not await a cancelled earlier transport; generation/identity checks reject its late results. Drive's master-only preview follows the same display-only contract as AV.
 
 Apply across screens, tabs, modules, Row Details and Reclass. During import or transient permission/session refresh, retain same-account loaded data and use the latest completed READY snapshot. Do not disable Manager or Docks bottom navigation for a background check.
 

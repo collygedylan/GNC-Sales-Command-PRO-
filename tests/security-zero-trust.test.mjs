@@ -9,6 +9,9 @@ import { createAppsScriptPostVerifier, signAppsScriptAction, signAppsScriptComma
 const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const auth = readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
 const canonical = readFileSync(new URL('../supabase/functions/_shared/canonical-user-access.ts', import.meta.url), 'utf8');
+const auraVoiceStore = readFileSync(new URL('../supabase/functions/_shared/aura-voice-store.ts', import.meta.url), 'utf8');
+const auraRouter = readFileSync(new URL('../supabase/functions/aura-llm-router/index.ts', import.meta.url), 'utf8');
+const auraOwnerMigration = readFileSync(new URL('../supabase/migrations/20261021133149_aura_dylan_owner_only_guard.sql', import.meta.url), 'utf8');
 
 test('bounded report reads reuse only the request gate verified actor', () => {
   const start = api.indexOf('export async function handleManagerReportReadAction(');
@@ -35,6 +38,25 @@ test('all app-api actions except login and password reconciliation pass the veri
   assert.match(api.slice(routerStart, watchdogRoute), /if \(contentType\.includes\("multipart\/form-data"\)\)[\s\S]*?resolveZeroTrustRequestContext\(session\)/);
   assert.match(api.slice(routerStart, watchdogRoute), /action === "login"[\s\S]*?return await handleLogin\(payload, req\)/);
   assert.match(api.slice(routerStart, watchdogRoute), /action === "password_change"[\s\S]*?readPasswordChangeSession\(req, session\)/);
+});
+
+test('AURA voice capabilities require canonical Dylan while signed deployment health stays separate', () => {
+  assert.match(canonical, /export function isCanonicalAuraOwner\(username: unknown\)/);
+  assert.match(auraVoiceStore, /if \(actor\.id !== expectedId \|\| !UUID\.test\(expectedId\) \|\| typeof actor\.username !== "string" \|\| !isCanonicalAuraOwner\(actor\.username\)/);
+  assert.match(auraOwnerMigration, /AURA_OWNER_ACCESS_CONTRACT_MISMATCH/);
+  assert.match(auraOwnerMigration, /AURA_OWNER_CONTEXT_CONTRACT_MISMATCH/);
+  assert.match(auraOwnerMigration, /AURA_OWNER_INVENTORY_CONTRACT_MISMATCH/);
+  assert.match(auraOwnerMigration, /AURA_OWNER_SOC_CONTRACT_MISMATCH/);
+  assert.match(auraOwnerMigration, /AURA_OWNER_ACCESS_ASSERTION_FAILED/);
+  assert.match(auraOwnerMigration, /AURA_OWNER_CONTEXT_ASSERTION_FAILED/);
+  assert.match(auraOwnerMigration, /AURA_OWNER_INVENTORY_ASSERTION_FAILED/);
+  assert.match(auraOwnerMigration, /AURA_OWNER_SOC_ASSERTION_FAILED/);
+  assert.match(auraOwnerMigration, /AURA_ACCESS_RPC_GRANTS_CHANGED/);
+  assert.match(auraOwnerMigration, /AURA_READ_RPC_GRANTS_CHANGED/);
+  assert.match(auraOwnerMigration, /grant state is not modified|Keep the existing SECURITY DEFINER body/);
+  assert.match(auraRouter, /pathname\.endsWith\("\/aura-llm-router\/health"\)\) return handleAuraProviderProbe\(request\)/);
+  assert.match(auraVoiceStore, /export async function handleAuraProviderProbe/);
+  assert.match(auraVoiceStore.slice(auraVoiceStore.indexOf('export async function handleAuraProviderProbe')), /SUPABASE_SERVICE_ROLE_KEY/);
 });
 
 test('the common actor context is server-resolved and rejects identity or canonical-access mismatches', () => {

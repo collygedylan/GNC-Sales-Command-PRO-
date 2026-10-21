@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.28';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.29';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -220,8 +220,9 @@
                 && !!nativeAuthProfile?.id
                 && !nativeAuthProfile.disabled_at
                 && nativeAuthProfile.must_change_password !== true
-                && username !== ''
-                && String(currentUser || '').trim().toLowerCase() === username;
+                && username === 'dylan_collyge'
+                && String(currentUser || '').trim().toLowerCase() === 'dylan_collyge'
+                && window.GncUserAccessControl?.isAuraOwner?.(username) === true;
         }
         function isAuraRouterWidgetAuthorized() {
             const profile = nativeAuthProfile;
@@ -266,7 +267,10 @@
             const visible = !!auraWidgetHandle && isAuraRouterWidgetAuthorized();
             const voice = document.getElementById('aura-voice-preference');
             if (voice && visible) voice.value = auraWidgetHandle.getVoicePreference();
-            document.getElementById('aura-voice-settings')?.classList.toggle('hidden', !visible);
+            const settings = document.getElementById('aura-voice-settings');
+            if (settings) { settings.hidden = !visible; settings.style.display = visible ? '' : 'none'; settings.classList.toggle('hidden', !visible); }
+            const host = document.getElementById('aura-standby-control');
+            if (host) { host.hidden = !isAuraRouterProfileCandidate(); host.style.display = host.hidden ? 'none' : ''; }
             const toggle = document.getElementById('aura-auto-start-toggle');
             if (toggle) {
                 const enabled = visible && auraWidgetHandle.getHandsFreeAutoStart();
@@ -637,6 +641,8 @@
             }, options);
         }
         async function syncAuraWidgetForSession() {
+            const standby = document.getElementById('aura-standby-control');
+            if (standby) { standby.hidden = !isAuraRouterProfileCandidate(); standby.style.display = standby.hidden ? 'none' : ''; }
             const requestedOwnerKey = isAuraRouterProfileCandidate()
                 ? `${String(nativeAuthProfile.id)}:${getSupabaseReadIdentityScope()}` : '';
             if (auraWidgetHandle && auraWidgetOwnerKey !== requestedOwnerKey) disposeAuraWidget();
@@ -9725,7 +9731,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const openStockChip = ['Open Stock', metric('S_LTS', getCardOpenStockValue(row, safeOptions))];
             const locationMetricRow = safeOptions.locationMetricItem || row;
             const sourceView = String(safeOptions.sourceView || '');
-            const locationPhotoMatch = formatLocPhotoMatchQtyValue(locationMetricRow, sourceView);
+            const knownLocationPhotoMatch = safeOptions.knownLocationPhotoMatch;
+            const locationPhotoMatch = knownLocationPhotoMatch !== null && knownLocationPhotoMatch !== undefined
+                && String(knownLocationPhotoMatch).trim() !== '' && Number.isFinite(Number(knownLocationPhotoMatch))
+                ? Number(knownLocationPhotoMatch) : formatLocPhotoMatchQtyValue(locationMetricRow, sourceView);
             const locationAggregate = safeOptions.canonical === true ? getCardLocationOnHandServerAggregate(locationMetricRow, { preserveUnknown: true }) : null;
             const knownLocationOnHand = safeOptions.knownLocationOnHand;
             const locationOnHand = knownLocationOnHand !== null && knownLocationOnHand !== undefined && Number.isFinite(Number(knownLocationOnHand)) && String(knownLocationOnHand).trim() !== ''
@@ -17780,7 +17789,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const previous = supabaseReadLatestByKey.get(cooldownKey);
             if (previous && previous.generation !== generation) {
                 previous.controller.abort();
-                return previous.promise.catch(() => null).then(() => runDedupeSupabaseRead(readKey, taskFn, options));
+                // Old reads are already fenced by generation and identity. Do
+                // not make a new view wait for a transport ignoring cancellation.
+                supabaseReadLatestByKey.delete(cooldownKey);
             }
             const controller = new AbortController();
             const externalSignal = options?.signal || null;
@@ -20864,6 +20875,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             currentAppSessionToken = '';
             currentAppSessionExpiresAt = 0;
             window.GncRuntimeWatchdog?.configure?.({ username: '', reportEvent: null });
+            syncRuntimeWatchdogHeaderVisibility();
             requestCapabilityState = { status: 'idle', capabilities: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
             requestCapabilityLoadPromise = null;
             appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
@@ -25758,7 +25770,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.28').trim() || 'AgData v2.3.28';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.29').trim() || 'AgData v2.3.29';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27637,17 +27649,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (value?.contractVersion !== 1 || !String(value.permissionVersion || '').trim()
                 || owner !== String(context?.readIdentity || '') || context?.authenticated !== true
                 || context?.accessDenied === true || window.GncUserAccessControl?.getSelfState?.().denied === true) return false;
+            const states = new Map(datasetRevisionConnectionOwner === owner
+                ? datasetRevisionConnectionStates.map(source => [source.key, source.state]) : []);
+            for (const source of Array.isArray(value.sources) ? value.sources : []) {
+                if (source?.key) states.set(source.key, String(source.state || metadata?.sources?.get?.(source.key)?.state || 'unavailable'));
+            }
             datasetRevisionConnectionOwner = owner;
-            datasetRevisionConnectionStates = Array.isArray(value.sources)
-                ? value.sources.map(source => String(source?.state || metadata?.sources?.get?.(source?.key)?.state || 'unavailable')) : [];
+            datasetRevisionConnectionStates = Array.from(states, ([key, state]) => ({ key, state }));
             updateSyncDiagnostics();
             return true;
         }
         function getDatasetRevisionConnectionLabel() {
             if (!datasetRevisionConnectionOwner || datasetRevisionConnectionOwner !== getSupabaseReadIdentityScope()
                 || window.GncUserAccessControl?.getSelfState?.().denied === true) return '';
-            const ready = datasetRevisionConnectionStates.filter(state => state === 'ready').length;
-            const updating = datasetRevisionConnectionStates.filter(state => state === 'importing' || state === 'interrupted').length;
+            const ready = datasetRevisionConnectionStates.filter(source => source.state === 'ready').length;
+            const updating = datasetRevisionConnectionStates.filter(source => source.state === 'importing' || source.state === 'interrupted').length;
             if (updating) return `Connected · ${ready} ready · ${updating} updating`;
             return ready ? `Connected · ${ready} ready` : 'Connected';
         }
@@ -28024,7 +28040,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!productionLiveSyncSideAdapters) productionLiveSyncSideAdapters = createProductionLiveSyncSideAdapters();
             const foregroundContext = { ...context, surfaces: context.surfaces.filter(id => !id.startsWith('badge:')) };
             const descriptors = (targetView, targetContext) => {
-                const fastPagedViews = targetView === 'docks'
+                const fastPagedViews = targetView === 'drive' || targetView === 'av' || targetView === 'docks'
                     || targetView === 'request' && targetContext.surfaces.includes('request:suspend-tag');
                 const result = [
                     ...registry.getCoreKeys(targetView, targetContext).filter((key) => !RETIRED_DATASET_KEYS.has(key))
@@ -28185,7 +28201,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function previewProductionSnapshots(snapshots, context) {
             if (!context.progressive || !context.visible || hasProductionLiveSyncDraft()) return;
-            if (context.partialCohort && (context.view !== 'av' || activeAVTab !== 'open'
+            if (context.partialCohort && (!(context.view === 'drive' || context.view === 'av' && activeAVTab === 'open')
                 || snapshots.some(({ adapter }) => adapter.id !== 'core:master'))) return;
             const payload = { _verifiedLiveSync: true, _fromCache: true };
             const confirmedRevision = confirmedArgosReclassLiveEditRevisions.get(getArgosReclassLiveEditIdentityKey()) || '';
@@ -34773,6 +34789,58 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return isTouchConstrainedDevice() ? 900 : 520;
         }
 
+        async function recoverColdInventoryView(viewId, load) {
+            if (!['drive', 'av'].includes(viewId) || load.recoveryStarted
+                || productionLiveSyncViewLoad !== load || getCurrentVisibleViewId() !== viewId
+                || hasProgressiveViewData(getProductionLiveSyncContext())) return;
+            load.recoveryStarted = true;
+            const scope = window.AgMetricLifecycle.createScope({ lifetime: 'view', foreground: true });
+            const owner = getSupabaseReadIdentityScope();
+            const current = () => scope.isCurrent() && owner === getSupabaseReadIdentityScope()
+                && productionLiveSyncViewLoad === load && getCurrentVisibleViewId() === viewId;
+            try {
+                const projection = getProductionCoreLiveProjection('master', viewId);
+                let response;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    try {
+                        // This bounded display read must not inherit a stuck
+                        // coordinator promise or read-queue cooldown. The API
+                        // still verifies the session, role and published source.
+                        response = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                            action: 'inventory_read', operation: 'master_page',
+                            params: { dataset: 'master', projection, limit: 200, offset: 0 }
+                        }, { signal: scope.signal, timeoutMs: 2500, label: 'Inventory preview' });
+                        break;
+                    } catch (error) {
+                        if (!current() || attempt || !isSupabaseReadRetryable(error)) throw error;
+                    }
+                }
+                if (!current() || hasProgressiveViewData(getProductionLiveSyncContext())) return;
+                if (response?.ok !== true || !Array.isArray(response.data?.rows)) throw new Error('Inventory preview returned an invalid page.');
+                validateInventoryReadProjection(response.data, { projection });
+                const context = getProductionLiveSyncContext();
+                if (!context.authenticated || context.accessDenied || !context.visible) return;
+                const adapter = context.adapters.find(item => item.id === 'core:master');
+                if (!adapter) return;
+                const snapshot = await prepareProductionMasterSnapshot(response.data.rows, {
+                    signal: scope.signal, identity: owner, permissionVersion: context.dataPermissionVersion,
+                    includeRawRows: false
+                });
+                if (!current() || hasProgressiveViewData(getProductionLiveSyncContext())) return;
+                previewProductionSnapshots([{ adapter, value: { ...snapshot, partial: true,
+                    rowCompleteness: 'partial', projection } }], { ...context, partialCohort: true });
+                // Full pagination and revision proof continue through the normal
+                // coordinator. A display preview never authorizes writes/export.
+                load.failed = false;
+                getProductionLiveSyncCoordinator().signal('inventory-preview-recovery', 0);
+            } catch (error) {
+                if (current()) {
+                    load.error = error;
+                    showAvReadUnavailableState(error, hasProgressiveViewData(getProductionLiveSyncContext()), viewId);
+                }
+            } finally { scope.dispose(); }
+        }
+
         function ensureViewDataForRender(viewId) {
             const pagedSurface = getActiveManagerReportPageSurface(viewId);
             if (viewId === 'sales-inventory' || pagedSurface && useManagerReportPages(pagedSurface)) return false;
@@ -34814,6 +34882,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (productionLiveSyncViewLoad?.key !== key || !productionLiveSyncViewLoad.pending) {
                     const load = { key, pending: true, failed: false };
                     productionLiveSyncViewLoad = load;
+                    if (!canDisplay && (viewId === 'drive' || viewId === 'av')) {
+                        const recoveryScope = window.AgMetricLifecycle.createScope({ lifetime: 'view', foreground: true });
+                        recoveryScope.timeout(() => {
+                            recoveryScope.dispose();
+                            void recoverColdInventoryView(viewId, load);
+                        }, 1000);
+                    }
                     getProductionLiveSyncCoordinator().check('visible-view').then(() => {
                         const status = productionLiveSyncCoordinator.getStatus();
                         load.failed = productionLiveSyncVerifiedView !== key
@@ -34824,6 +34899,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     }).catch((error) => { load.failed = true; load.error = error; }).finally(() => {
                         load.pending = false;
                         if (!load.failed || productionLiveSyncViewLoad !== load || !isViewVisible(viewId) || productionVerifiedViewKey() !== key) return;
+                        if (viewId === 'drive' || viewId === 'av') void recoverColdInventoryView(viewId, load);
                         const currentHasDisplay = hasProgressiveViewData(getProductionLiveSyncContext());
                         if (load.failed && !currentHasDisplay) {
                             if (viewId === 'av' || viewId === 'drive') showAvReadUnavailableState(load.error || new Error(productionLiveSyncCoordinator.getStatus().message || 'Available inventory could not be verified.'), false, viewId);
@@ -54232,7 +54308,18 @@ function toggleDriveQuickRequestItem(domId) {
             }
             return !!loaded;
         }
+        function syncRuntimeWatchdogHeaderVisibility() {
+            if (String(currentUser || '').trim().toLowerCase() === 'dylan_collyge') return;
+            const badge = document.getElementById('runtime-watchdog-header-badge');
+            if (!badge) return;
+            badge.hidden = true;
+            badge.style.display = 'none';
+            badge.classList.add('hidden');
+            badge.textContent = '';
+            badge.title = '';
+        }
         function configureRuntimeWatchdogForCurrentSession() {
+            syncRuntimeWatchdogHeaderVisibility();
             const username = String(currentUser || '').trim().toLowerCase();
             const role = String(currentRole || '').trim();
             if (!username || !role || typeof window.GncRuntimeWatchdog?.configure !== 'function') return false;
@@ -142156,7 +142243,8 @@ C.14.043 C.15.000
                     ? (suspendMetrics || displayFallback?.row ? 'ready' : '')
                     : (suspendMetrics || displayFallback?.row ? 'ready' : state.status),
                 queueMetricTelemetry: isSuspendTagCard,
-                knownLocationOnHand: suspendMetrics?.LOC_ON_HAND });
+                knownLocationOnHand: suspendMetrics?.LOC_ON_HAND,
+                knownLocationPhotoMatch: suspendMetrics?.LOC_MATCH_QTY });
         }
 
         const suspendTagReclassLoads = new Map();

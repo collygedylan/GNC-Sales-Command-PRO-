@@ -8,6 +8,140 @@ import { JSDOM } from 'jsdom';
 const html = readComposedAppSource();
 const source = name => html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0] || assert.fail(name);
 
+test('Drive accepts the first authorized master page while settings and remaining pages are pending', () => {
+  const rows = Array.from({ length: 500 }, (_, id) => ({ UNIQUE_ID: `row-${id}` }));
+  const calls = [];
+  const context = vm.createContext({ fullInventory: [], avOpenInventory: [], activeAVTab: 'open',
+    hasProductionLiveSyncDraft: () => false, confirmedArgosReclassLiveEditRevisions: new Map(),
+    getArgosReclassLiveEditIdentityKey: () => 'dylan', getCurrentPreparedMasterRows: () => null,
+    processAndLoadData: payload => { calls.push(payload.data.length); },
+    productionDisplayGroupKey: () => 'drive', productionDisplaySnapshotTimes: new Map(),
+    productionDisplayGroups: new Set(), productionDisplayVerifiedAt: new Map(),
+    productionLiveSyncCoordinator: { getStatus: () => ({ state: 'Syncing' }) },
+    renderProductionDataFreshness() {}, invalidateResolvedViewStateCaches() {},
+    scheduleProductionLiveSyncRender: () => calls.push('render'),
+  });
+  vm.runInContext(source('previewProductionSnapshots'), context);
+  context.previewProductionSnapshots([{ adapter: { id: 'core:master' }, value: { payload: { data: rows }, partial: true } }],
+    { view: 'drive', progressive: true, visible: true, partialCohort: true });
+  assert.deepEqual(calls, [500, 'render']);
+  assert.equal(context.productionDisplayGroups.has('drive'), true);
+});
+
+test('Home ready-source summary survives a narrower Drive revision response and clears on account change', () => {
+  let owner = 'dylan:login-1';
+  const context = vm.createContext({ datasetRevisionConnectionOwner: '', datasetRevisionConnectionStates: [],
+    getSupabaseReadIdentityScope: () => owner, updateSyncDiagnostics() {},
+    window: { GncUserAccessControl: { getSelfState: () => ({ denied: false }) } } });
+  vm.runInContext(source('recordDatasetRevisionConnection') + source('getDatasetRevisionConnectionLabel'), context);
+  const record = sources => context.recordDatasetRevisionConnection({ contractVersion: 1, permissionVersion: 'p1', sources }, {},
+    { readIdentity: owner, authenticated: true, accessDenied: false });
+  const home = Array.from({ length: 11 }, (_, i) => ({ key: `source-${i}`, state: 'ready' }));
+  record(home);
+  record(home.slice(0, 2));
+  assert.equal(context.getDatasetRevisionConnectionLabel(), 'Connected · 11 ready');
+  record([{ key: 'source-0', state: 'importing' }]);
+  assert.equal(context.getDatasetRevisionConnectionLabel(), 'Connected · 10 ready · 1 updating');
+  owner = 'brian:login-2';
+  record(home.slice(0, 2));
+  assert.equal(context.getDatasetRevisionConnectionLabel(), 'Connected · 2 ready');
+});
+
+test('cold Drive and AV retry a transient direct API preview without waiting for coordinator completion', async () => {
+  const recoverySource = html.match(/        async function recoverColdInventoryView\([^]*?^        }/m)?.[0];
+  assert.ok(recoverySource);
+  for (const [view, user] of [['drive', 'dylan_collyge'], ['drive', 'brian_hatfield'], ['av', 'brian_hatfield']]) {
+    let requests = 0, previews = 0, continued = 0;
+    const load = {};
+    const scope = { signal: new AbortController().signal, isCurrent: () => true, dispose() {} };
+    const ctx = { authenticated: true, accessDenied: false, visible: true, dataPermissionVersion: 'p1',
+      adapters: [{ id: 'core:master' }] };
+    const context = vm.createContext({ productionLiveSyncViewLoad: load,
+      window: { AgMetricLifecycle: { createScope: () => scope } }, APP_API_FUNCTION_URL: '/app-api',
+      getCurrentVisibleViewId: () => view, getSupabaseReadIdentityScope: () => user,
+      getProductionLiveSyncContext: () => ctx, hasProgressiveViewData: () => false,
+      getProductionCoreLiveProjection: () => view === 'av' ? 'full' : 'browse',
+      postAppFunctionJson: async (_url, body) => {
+        requests++;
+        assert.equal(body.action, 'inventory_read');
+        assert.equal(body.params.limit, 200);
+        if (requests === 1) throw Object.assign(new Error('Temporary unavailable'), { status: 503 });
+        return { ok: true, data: { rows: [{ unique_id: 'authorized' }] } };
+      },
+      isSupabaseReadRetryable: error => error.status === 503, validateInventoryReadProjection() {},
+      prepareProductionMasterSnapshot: async rows => ({ payload: { data: rows }, rowCount: rows.length }),
+      previewProductionSnapshots: snapshots => { previews++; assert.equal(snapshots[0].value.rowCompleteness, 'partial'); },
+      getProductionLiveSyncCoordinator: () => ({ signal: () => continued++ }),
+      showAvReadUnavailableState: error => assert.fail(error.message),
+    });
+    vm.runInContext(recoverySource, context);
+    const started = performance.now();
+    await context.recoverColdInventoryView(view, load);
+    assert.ok(performance.now() - started < 2500);
+    assert.equal(requests, 2);
+    assert.equal(previews, 1);
+    assert.equal(continued, 1);
+    await context.recoverColdInventoryView(view, load);
+    assert.equal(requests, 2, 'one bounded recovery per view load');
+  }
+});
+
+test('Dylan and Brian fetch all 9600 inventory rows and build the complete A-Z Common Name catalog', async () => {
+  const fetchSource = html.match(/        async function fetchAllInventoryReadRows\([^]*?^        }/m)?.[0];
+  assert.ok(fetchSource);
+  const rows = Array.from({ length: 9600 }, (_, i) => ({ unique_id: `id-${i}`, COMMONNAME: `${String.fromCharCode(65 + i % 26)} Plant`, CONTSIZE: '#3' }));
+  for (const user of ['dylan_collyge', 'brian_hatfield']) {
+    let firstPageRows = 0;
+    let catalog = [];
+    const context = vm.createContext({ currentUser: user, activeDriveMode: 'ok', DRIVE_MODE_LABELS: { ok: 'Drive Mode' },
+      driveViewLevel: 0, selectedDriveName: null, driveDrillGroupStateCache: new Map(),
+      shouldLockDriveSearchToTopLevel: () => false, getDrivePlantCommonName: row => row.COMMONNAME,
+      getDrivePlantContSize: row => row.CONTSIZE, compareDriveCommonName: (a, b) => a.localeCompare(b),
+      renderDriveCommonNameGroupCard() {}, renderDriveDrillEntries: (_container, _crumb, _label, groups) => { catalog = groups; },
+      fetchInventoryReadPage: async (_op, _params, limit, offset) => ({ rows: rows.slice(offset, offset + limit),
+        total: rows.length, projection: 'browse', fieldCoverage: 'browse', columns: ['unique_id'], hasMore: offset + limit < rows.length }),
+      yieldToUiFrame: async () => {}, console,
+    });
+    vm.runInContext(fetchSource + source('renderDriveCommonNameDrill'), context);
+    const started = performance.now();
+    const hydrated = await context.fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'browse' },
+      { limit: 500, pageConcurrency: 2, requireComplete: true, onFirstPage: page => { firstPageRows = page.length; } });
+    context.renderDriveCommonNameDrill({}, {}, '', { visibleItems: hydrated, resolvedStateKey: user });
+    assert.equal(firstPageRows, 500);
+    assert.equal(hydrated.length, 9600);
+    assert.equal(hydrated.readMeta.rowCompleteness, 'complete');
+    assert.equal(catalog.length, 26);
+    assert.equal(catalog[0].name, 'A Plant');
+    assert.equal(catalog.at(-1).name, 'Z Plant');
+    assert.equal(catalog.reduce((total, group) => total + group.rowCount, 0), 9600);
+    assert.ok(performance.now() - started < 2500, 'Node fixture hydration and grouping budget');
+  }
+});
+
+test('a new inventory read generation detaches an unresponsive cancelled request', async () => {
+  const pending = {};
+  pending.promise = new Promise(resolve => { pending.resolve = resolve; });
+  const context = vm.createContext({ AbortController, productionLiveSyncReadGeneration: 1,
+    supabaseReadInFlight: new Map(), supabaseReadLatestByKey: new Map(), supabaseReadTerminalDenials: new Map(),
+    getSupabaseReadIdentityScope: () => 'dylan', getSupabaseReadCooldownKey: (owner, key) => JSON.stringify([owner, key]),
+    getSupabaseReadTerminalKey: (_owner, key) => key, incrementInternalPerfCounter() {},
+    runSupabaseReadTask: task => Promise.resolve().then(task), runSupabaseReadWithBackoff: (_key, task) => task(),
+    redactEvalSensitiveData: result => result, staleSupabaseReadScopeError: () => new Error('stale'),
+  });
+  vm.runInContext(source('runDedupeSupabaseRead'), context);
+  const obsolete = context.runDedupeSupabaseRead('inventory_read:master_page', () => pending.promise).catch(() => 'stale');
+  await Promise.resolve();
+  context.productionLiveSyncReadGeneration = 2;
+  let completed = false;
+  const fresh = context.runDedupeSupabaseRead('inventory_read:master_page', async () => ['fresh']).then(result => { completed = true; return result; });
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  const beforeObsoleteSettled = completed;
+  pending.resolve(['old']);
+  assert.deepEqual(await fresh, ['fresh']);
+  assert.equal(await obsolete, 'stale');
+  assert.equal(beforeObsoleteSettled, true);
+});
+
 test('Brian and admin render a prepared 9600-row Drive snapshot in one pass through the same catalog path', () => {
   const registryContext = vm.createContext({ module: { exports: {} } });
   vm.runInContext(fs.readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8'), registryContext);

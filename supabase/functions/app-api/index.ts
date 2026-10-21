@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.28";
+const APP_RUNTIME_RELEASE = "AgData v2.3.29";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -961,7 +961,7 @@ async function readSuspendTagMetricRows(table: "ph_master_inventory" | "ph_cav_i
   return rows;
 }
 
-function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows: Array<Record<string, unknown>>, cavRows: Array<Record<string, unknown>>) {
+function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows: Array<Record<string, unknown>>, cavRows: Array<Record<string, unknown>>, masterSourceAuthoritative = false) {
   const itemCode = normalizeSuspendTagMetricKey(row.itemcode ?? row.ITEMCODE);
   const locationCode = normalizeSuspendTagMetricKey(row.locationcode ?? row.LOCATIONCODE);
   const lotCode = normalizeSuspendTagMetricKey(row.lotcode ?? row.LOTCODE);
@@ -977,19 +977,21 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
   const cavFallbackRows = selectedMasterRows.length && selectedSeasons.size
     ? itemCavRows.filter((candidate) => selectedSeasons.has(normalizeSuspendTagMetricKey(candidate.season)))
     : itemCavRows;
-  const hasSourceRows = selectedRows.length > 0 || cavFallbackRows.length > 0;
-  const absentSourceValue = hasSourceRows ? null : 0;
+  const absentSourceValue = null;
   const metric = (keys: string[], fallbackKeys: string[] = keys) => sumSuspendTagMetric(selectedRows, keys)
     ?? sumSuspendTagMetric(cavFallbackRows, fallbackKeys);
   const locationRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode);
-  const locOnHand = locationRows.length ? sumSuspendTagMetric(locationRows, ["ptronhand"]) : 0;
+  const locOnHand = locationRows.length ? sumSuspendTagMetric(locationRows, ["ptronhand"])
+    : masterSourceAuthoritative ? 0 : null;
+  const locPhotoMatch = locationRows.length ? sumSuspendTagMetric(locationRows, ["loc_match_qty"])
+    : masterSourceAuthoritative ? 0 : null;
   return {
     PTRONHAND: metric(["ptronhand"]) ?? absentSourceValue,
     PTRREVIEWED: metric(["ptrreviewed"]) ?? (sumSuspendTagMetric(selectedRows, ["ptronhand"]) !== null ? 0 : absentSourceValue),
     PTRAVAILABLE: sumSuspendTagAvailable(selectedRows) ?? sumSuspendTagAvailable(cavFallbackRows) ?? absentSourceValue,
     S_LTS: sumSuspendTagOpenStock(selectedRows) ?? absentSourceValue,
     LOC_ON_HAND: locOnHand,
-    LOC_MATCH_QTY: sumSuspendTagMetric(selectedRows, ["loc_match_qty"]),
+    LOC_MATCH_QTY: locPhotoMatch,
     HOLDSTOPCODE: firstSuspendTagMetricValue(selectedRows, ["holdstopcode"]) ?? row.holdstopcode ?? null,
     HOLDSTOPREASON: firstSuspendTagMetricValue(selectedRows, ["holdstopreason", "hold_reason"]) ?? firstSuspendTagMetricValue(cavFallbackRows, ["holdstopreason", "hold_reason"]) ?? row.holdstopreason ?? null,
     AV_NOTE: firstSuspendTagMetricValue(selectedRows, ["av_note"]) ?? row.av_note ?? null,
@@ -1005,14 +1007,16 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
   };
 }
 
-async function enrichSuspendTagMetricRows(rows: Array<Record<string, Json | undefined>>) {
+async function enrichSuspendTagMetricRows(rows: Array<Record<string, Json | undefined>>, actorId: string) {
   const itemCodes = [...new Set(rows.map((row) => String(row.itemcode ?? row.ITEMCODE ?? "").trim()).filter(Boolean))];
   if (!itemCodes.length) return rows;
+  const inventoryRevision = await captureReadyInventoryLocationRevision(actorId);
   const [masterRows, cavRows] = await Promise.all([
     readSuspendTagMetricRows("ph_master_inventory", SUSPEND_TAG_METRIC_MASTER_FIELDS, itemCodes),
     readSuspendTagMetricRows("ph_cav_import", SUSPEND_TAG_METRIC_CAV_FIELDS, itemCodes),
   ]);
-  return rows.map((row) => ({ ...row, suspend_tag_metrics: buildSuspendTagMetricFallback(row, masterRows, cavRows) as unknown as Json }));
+  if (await captureReadyInventoryLocationRevision(actorId) !== inventoryRevision) throw new Error("LOC_ON_HAND_REVISION_CHANGED");
+  return rows.map((row) => ({ ...row, suspend_tag_metrics: buildSuspendTagMetricFallback(row, masterRows, cavRows, true) as unknown as Json }));
 }
 
 async function handleDatasetRead(
@@ -1148,7 +1152,7 @@ async function handleDatasetRead(
     }
     let metricRows = data;
     if (dataset === "suspend_tag") {
-      try { metricRows = await enrichSuspendTagMetricRows(data); }
+      try { metricRows = await enrichSuspendTagMetricRows(data, String(actor.id || "")); }
       catch { metricRows = data; }
     }
     const rows = inventoryRevision === null ? metricRows

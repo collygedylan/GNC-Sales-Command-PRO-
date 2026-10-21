@@ -30,3 +30,5 @@ node --test tests/runtime-watchdog.test.mjs tests/role-access-parity.test.mjs
 These static/VM contracts verify sensor fields and role aliases; they do not certify production alert delivery, rendered parity, database latency or all device profiles. Email alerts are sent only through an authorized deduplicated production delivery path.
 
 Panel badge and incident-list refreshes share one pending read for the same verified account. A changed view, auth epoch or mounted host must reject stale completion; account changes clear private cached brief/events before reuse. Resolving an incident keeps the existing server authorization and must not repaint an unmounted panel.
+
+The top-header count badge is exclusively for canonical `dylan_collyge`. Start it with both `hidden` and `display:none`, force-hide/clear it on other accounts and logout, and reject late badge reads from an earlier owner. This visibility restriction does not disable background event logging or change the existing Manager review authorization.

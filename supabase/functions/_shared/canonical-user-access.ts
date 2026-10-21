@@ -19,6 +19,9 @@ type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 type JsonRecord = Record<string, unknown>;
 
 export const FULL_APP_ADMINISTRATORS = new Set(["dylan_collyge", "megan_kelly", "jd_jones"]);
+export function isCanonicalAuraOwner(username: unknown): boolean {
+  return typeof username === "string" && username.trim().toLowerCase() === "dylan_collyge";
+}
 export function enforceCanonicalAccountPermissions(username: string, permissions: Record<CanonicalUserAccessFlag, boolean>) {
   const fullAccess = FULL_APP_ADMINISTRATORS.has(username.trim().toLowerCase());
   return Object.fromEntries(CANONICAL_USER_ACCESS_FLAGS.map(flag => [flag,

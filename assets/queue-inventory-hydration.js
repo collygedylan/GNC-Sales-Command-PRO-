@@ -137,6 +137,15 @@
                 if (Number.isFinite(number)) locationOnHandFound = true;
                 return total + (Number.isFinite(number) ? number : 0);
             }, 0);
+            let locationPhotoMatchFound = false;
+            const locationPhotoMatch = locationRows.reduce((total, row) => {
+                const value = pick(row, 'LOC_MATCH_QTY', 'loc_match_qty');
+                if (value === '') return total;
+                const number = Number(String(value).replace(/,/g, ''));
+                if (!Number.isFinite(number)) return total;
+                locationPhotoMatchFound = true;
+                return total + number;
+            }, 0);
             return { status:'ready', matchLevel: exactRows.length ? 'item-location-lot' : lotRows.length ? 'item-lot' : selectedRows.length ? 'item' : 'cav-item', row:{
                 ...base,
                 PTRONHAND: sum(['PTRONHAND', 'ptronhand']),
@@ -144,10 +153,7 @@
                 PTRAVAILABLE: sumAvailable(selectedRows) ?? sumAvailable(cavRows),
                 S_LTS: openStockBySeason.size ? [...openStockBySeason.values()].reduce((total, value) => total + value, 0) : null,
                 LOC_ON_HAND: locationRows.length ? (locationOnHandFound ? locationOnHand : null) : 0,
-                LOC_MATCH_QTY: (() => {
-                    const value = pick(base, 'LOC_MATCH_QTY', 'loc_match_qty');
-                    return value === '' ? null : value;
-                })()
+                LOC_MATCH_QTY: locationRows.length ? (locationPhotoMatchFound ? locationPhotoMatch : null) : 0
             } };
         }, resolve(input) {
             const i = identity(input);

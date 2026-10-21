@@ -1,4 +1,35 @@
-# Eval and SUSPEND metric recovery — AgData v2.3.28
+# Drive, Eval and SUSPEND recovery
+
+## Drive cold-start recovery — v2.3.29
+
+The 11-to-2 header change was a summary bug: each revision response replaced the previous list, so Drive's two-source response erased Home's eleven-source summary. The connection display now merges states by source within the same authenticated owner and clears on account/session changes.
+
+Drive requested a master-only preview but `previewProductionSnapshots` rejected partial cohorts outside AV. This discarded the first page and left Drive dependent on full pagination and settings. Drive now accepts that authorized display preview; complete hydration uses at most two page reads in flight. Navigation and new read generations detach obsolete promises immediately, with identity/generation checks rejecting late results. A cold Drive/AV load also has one bounded direct authenticated `inventory_read` preview recovery, followed by normal coordinator hydration. Partial previews never establish complete inventory or write proof.
+
+Focused regressions reproduced all three original failures before the patch. The final specified Node check passed 219/219 tests in 21.55 seconds, including a 9,600-row A–Z fixture for Dylan and Brian, first-page display, cancelled-read recovery, the AURA/Watchdog visibility locks, and the existing specified Eval/SUSPEND/security checks. This is fixture execution, not a mobile paint measurement. Inline passed in 12.57 seconds and Deno checked app-api, aura-llm-router and aura-query in 24.76 seconds. The concurrent tooling run exceeded its 15-second timeout; rerunning only tooling without competing checks passed all 36 tests in 5.68 seconds. `git diff --check` passed. The requested combined time budget was exceeded.
+
+Read-only production verification on October 21, 2026 returned 9,585 inventory rows at READY revision 8,429, and the same eleven Eval counts shown below. The metadata RPC returned 7,186 matching rows in approximately 6.1 seconds; a repeat timed out at the connector's 120-second limit and was not retried. These observations do not establish the requested sub-2.5-second live render. The user authorized SQL/service-role integration and Node verification in place of authenticated client HTTP calls. Historical backfill and trigger configuration are outside this change.
+
+The operational read audit confirmed that master inventory, CAV and reserves already use authenticated `app-api` readers; their authenticated raw-table SELECT grants are absent. SOC uses the same gateway. Warehouse assignments use authenticated REST with an active-profile RLS policy. No anonymous SELECT policy was added.
+
+SUSPEND now obtains both location metrics from the requested item/location. A missing physical location becomes zero only after the complete source read is bracketed by the same verified inventory revision. Item totals retain the item/lot → item → CAV fallback, and missing item data remains unknown. Numeric location photo zero passes through the card renderer without replacing request-owned photo evidence. The seven focused SUSPEND tests passed in 0.89 seconds, including all four item IDs and rejection of the unrelated location's photo count of 967.
+
+Current READY source rows (master revision 8,429; CAV revision 37) yield the following six metrics under the updated enrichment rules. These are source-derived values, not authenticated client HTTP response or rendered-device measurements.
+
+| Item at 0.00.111 / 27.F1 | On Hand | Review | Available | Open Stock | Loc Photo Match | Loc On Hand |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 010248.021.1 | 136 | 0 | 136 | 116 | 0 | 0 |
+| 006009.031.1 | 35 | 35 | 0 | -400 | 0 | 0 |
+| 006408.031.1 | 2,946 | 0 | 2,946 | 2,652 | 0 | 0 |
+| 008035.081.1 | 12 | 0 | 12 | -3 | 0 | 0 |
+
+The header Watchdog count is restricted to canonical `dylan_collyge`, with explicit hidden/display state at boot, session configuration and logout. Account changes and stale responses cannot restore the prior owner's count; background telemetry and existing Manager review access retain their independent authorization.
+
+The same release restricts AURA to the active canonical `dylan_collyge` profile. Other accounts force-hide and dispose the floating control, widget and voice/panel state; verified server identity also gates app-api and router/query authorization. The SQL migration adds the owner condition to access, context, inventory and SOC reader RPCs, retaining their existing capability checks and grants. This covers callers using the database APIs directly. The signed deployment health probe remains a system diagnostic and does not grant user AURA access.
+
+Read-only migration preflight confirmed that the replacement anchor occurs exactly once in each of the four live RPC definitions, each retains SECURITY DEFINER and authenticated execution, and none grants anonymous execution. The proposed owner condition admits Dylan and rejects Megan, JD and Brian. Deployment applies this guarded migration before Edge Functions and Pages.
+
+## Previous release — v2.3.28
 
 ## Changes and verification
 

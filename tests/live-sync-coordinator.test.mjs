@@ -13,6 +13,28 @@ const { createCoordinator, readContextKey } = sandbox.module.exports;
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 25; i++) await Promise.resolve(); };
 
+test('Home to Drive detaches a cancelled startup transport and hydrates the new view immediately', async () => {
+    const f = fixture();
+    const startup = deferred();
+    f.context.viewKey = 'home';
+    f.loadHook = () => startup.promise;
+    const oldTask = f.coordinator.check('login-shell-open');
+    await settle();
+    f.context.viewKey = 'drive';
+    f.loadHook = null;
+    f.rows = Array.from({ length: 9600 }, (_, id) => ({ id }));
+    const started = performance.now();
+    const nextTask = f.coordinator.check('visible-view');
+    await settle();
+    const rendered = f.commits.at(-1)?.length || 0;
+    startup.resolve();
+    await Promise.all([oldTask, nextTask]);
+    assert.equal(rendered, 9600, 'Drive must complete before the obsolete startup transport settles');
+    assert.ok(performance.now() - started < 2500);
+    assert.equal(f.commits.length, 1, 'late Home data must never replace Drive');
+    f.coordinator.reset();
+});
+
 test('account switch releases an unresponsive prior read before Brian hydrates once', async () => {
     const f = fixture();
     const oldRead = deferred();

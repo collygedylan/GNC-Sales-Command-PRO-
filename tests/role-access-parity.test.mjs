@@ -71,6 +71,34 @@ test('designated administrators retain every flag; management cannot be inherite
   assert.match(api, /operation !== "resolve" && !FULL_ACCESS_USER_KEYS\.has\(String\(actor\.username/);
 });
 
+test('AURA owner is canonical Dylan only across browser, Edge voice, and the SQL capability RPC', async () => {
+  const clientSource = read('assets/user-access-control.js');
+  const clientWindow = {};
+  vm.runInNewContext(clientSource, { window: clientWindow });
+  const clientAuraOwner = clientWindow.GncUserAccessControl.isAuraOwner;
+  assert.equal(clientAuraOwner(' DYLAN_COLLYGE '), true);
+  for (const username of ['megan_kelly', 'jd_jones', 'brian_hart', 'other_admin', null]) assert.equal(clientAuraOwner(username), false, username);
+
+  const server = { exports: {} };
+  vm.runInNewContext(ts.transpileModule(read('supabase/functions/_shared/canonical-user-access.ts'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  }).outputText, server);
+  assert.equal(server.exports.isCanonicalAuraOwner(' DYLAN_COLLYGE '), true);
+  for (const username of ['megan_kelly', 'jd_jones', 'brian_hart', 'other_admin', null]) assert.equal(server.exports.isCanonicalAuraOwner(username), false, username);
+
+  const auraRuntime = read('assets/app-runtime.js');
+  const voiceStore = read('supabase/functions/_shared/aura-voice-store.ts');
+  const auraAuth = read('supabase/functions/_shared/aura-auth.ts');
+  const migration = read('supabase/migrations/20261021133149_aura_dylan_owner_only_guard.sql');
+  assert.match(auraRuntime, /username === 'dylan_collyge'[\s\S]*?GncUserAccessControl\?\.isAuraOwner/);
+  assert.match(auraRuntime, /aura-standby-control[\s\S]*?standby\.style\.display = standby\.hidden \? 'none' : ''/);
+  assert.match(voiceStore, /!isCanonicalAuraOwner\(actor\.username\)/);
+  assert.doesNotMatch(voiceStore, /allowedRoles/);
+  assert.match(auraAuth, /isCanonicalAuraOwner\(session\.username\)/);
+  assert.match(migration, /coalesce\(lower\(btrim\(actor\.username\)\),''''\)<>''dylan_collyge''/);
+  assert.match(migration, /AURA_ACCESS_RPC_GRANTS_CHANGED/);
+});
+
 test('unverified and revoked sessions cannot use the administrator UI grant', () => {
   const start = html.indexOf('        function isFullAppAdministrator(');
   const end = html.indexOf('\n        function ', start + 1);
