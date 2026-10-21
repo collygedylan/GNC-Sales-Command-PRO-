@@ -10200,3 +10200,9 @@ html.dark #managers-content :is(.manager-eval2-item-card,[data-manager-eval2-det
 .manager-eval2-native-filters > summary { padding:12px; cursor:pointer; font-weight:800; }
 .manager-eval2-native-filters > .mobile-browse-filter-panel { padding:12px; display:grid; gap:10px; }
 .manager-eval2-native-filters:not([open]) > .mobile-browse-filter-panel { display:none!important; }
+
+/* Keep Eval item quantities legible on the dark green card surface. */
+body.ops-precision-pilot[data-ops-theme="dark"] #managers-content .manager-eval2-inventory-row .manager-eval2-quantity,
+body.dark-mode #managers-content .manager-eval2-inventory-row .manager-eval2-quantity,
+html.dark body #managers-content .manager-eval2-inventory-row .manager-eval2-quantity { color:#38bdf8!important; font-weight:700!important; }
+.argos-tx-source-origin-label { font-size:.7rem; font-weight:700; text-transform:uppercase; margin-bottom:.35rem; }

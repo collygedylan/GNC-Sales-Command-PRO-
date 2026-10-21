@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.35';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.37';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25882,7 +25882,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.35').trim() || 'AgData v2.3.35';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.37').trim() || 'AgData v2.3.37';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -41189,7 +41189,7 @@ let avTopControlsRenderToken = 0;
                 ['On Hand', snapshot.ptrOnHand],
                 ['Available', snapshot.ptrAvailable]
             ];
-            return `<div class="argos-tx-source-grid">${fields.map(([label, value]) => `<div class="argos-tx-source-chip"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || '-')}</strong></div>`).join('')}</div>`;
+            return `<div class="argos-tx-source-origin-label">Originating row</div><div class="argos-tx-source-grid">${fields.map(([label, value]) => `<div class="argos-tx-source-chip"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value == null || value === '' ? '-' : value)}</strong></div>`).join('')}</div>`;
         }
 
         function isArgosReclassMobileEditorViewport() {
@@ -42091,8 +42091,9 @@ let avTopControlsRenderToken = 0;
                 const rowBodyId = getArgosReclassRowBodyId(uid);
                 const metrics = [
                     ['OH', values.ptronhand],
-                    ['REV', values.ptrreviewed],
-                    ['AVL', values.ptravailable]
+                    ['REV', values.ptrreviewed || 0],
+                    ['AVL', values.ptravailable],
+                    ['PRI', values.priority || '—']
                 ].map(([label, value]) => `<span>${escapeHtml(label)} ${escapeHtml(String(value == null || value === '' ? '—' : value))}</span>`).join('');
                 const scopeActions = getArgosReclassV3ScopeActionsForEntry(entry);
                 const actionCount = getArgosReclassV3ActionCountForEntry(entry);
@@ -42431,11 +42432,12 @@ let avTopControlsRenderToken = 0;
 
         function openArgosInventoryTransactionModal(uid = '', action = 'reclass', sourceView = '', options = {}) {
             const safeUid = String(uid || '').trim();
-            const warmGroup = options.__verifiedInquiryGroup ? null : getVerifiedCachedArgosItemInquiryGroup(findItemByUniqueId(safeUid));
+            const displayedItem = options.inquiryRow || findItemByUniqueId(safeUid);
+            const warmGroup = options.__verifiedInquiryGroup ? null : getVerifiedCachedArgosItemInquiryGroup(displayedItem);
             const verifiedGroup = options.__verifiedInquiryGroup || warmGroup;
             const displayGroup = options.__displayInquiryGroup || (!verifiedGroup
-                ? getReadableCachedArgosItemInquiryGroup(findItemByUniqueId(safeUid)) : null);
-            const item = verifiedGroup?.row || displayGroup?.row || findItemByUniqueId(safeUid);
+                ? getReadableCachedArgosItemInquiryGroup(displayedItem) : null);
+            const item = verifiedGroup?.row || displayGroup?.row || displayedItem;
             if (!isArgosInventoryTransactionEligible(item)) {
                 showToast('Unavailable', 'This card is not tied to a live inventory row.', true);
                 return false;
@@ -42454,7 +42456,7 @@ let avTopControlsRenderToken = 0;
             argosInquiryOpenRevision += 1;
             const modal = ensureArgosInventoryTransactionModal();
             const snapshot = getArgosInventorySourceSnapshot(item);
-            const inquiryModel = buildItemInquiryViewModel(item, (verifiedGroup || displayGroup)?.rows || getItemInquiryRows(item));
+            const inquiryModel = buildItemInquiryViewModel(item, getItemInquiryRows(item, [...((verifiedGroup || displayGroup)?.rows || []), ...(options.inquiryRows || [])]));
             resetArgosReclassMultiActionState();
             argosInventoryTransactionState = {
                 uid: snapshot.uniqueId,
@@ -103933,40 +103935,32 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function compareItemInquiryRows(a = null, b = null) {
-            const aLoc = getItemInquiryRowValue(a, ['LOCATIONCODE', 'locationcode', 'LOCATION'], '');
-            const bLoc = getItemInquiryRowValue(b, ['LOCATIONCODE', 'locationcode', 'LOCATION'], '');
+            const aLoc = getItemInquiryRowValue(a, ['LOCATIONCODE', 'locationcode', 'LOCATION'], '').trim();
+            const bLoc = getItemInquiryRowValue(b, ['LOCATIONCODE', 'locationcode', 'LOCATION'], '').trim();
             const locCompare = aLoc.localeCompare(bLoc, undefined, { numeric: true, sensitivity: 'base' });
             if (locCompare) return locCompare;
-            const aLot = getItemInquiryLotSortParts(a);
-            const bLot = getItemInquiryLotSortParts(b);
-            if (aLot.salesYear !== bLot.salesYear) return aLot.salesYear - bLot.salesYear;
-            if (aLot.seasonRank !== bLot.seasonRank) return aLot.seasonRank - bLot.seasonRank;
-            const seasonCompare = aLot.season.localeCompare(bLot.season, undefined, { numeric: true, sensitivity: 'base' });
-            if (seasonCompare) return seasonCompare;
-            return aLot.raw.localeCompare(bLot.raw, undefined, { numeric: true, sensitivity: 'base' });
+            return getItemInquiryRowValue(a, ['LOTCODE','lotcode','LOT'], '').trim()
+                .localeCompare(getItemInquiryRowValue(b, ['LOTCODE','lotcode','LOT'], '').trim(), undefined, { numeric:true, sensitivity:'base' });
         }
 
-        function getItemInquiryRows(item = activeItem) {
+        function getItemInquiryRows(item = activeItem, sourceRows = []) {
             const itemCode = getItemInquiryItemCode(item);
             if (!itemCode) return [];
             if (!masterInventoryByItemCode.size && Array.isArray(fullInventory) && fullInventory.length) rebuildMasterInventoryIndexes();
-            const currentRow = item && typeof item === 'object' ? item : null;
-            const currentKey = getItemInquiryRowKey(currentRow);
             const seen = new Set();
-            const rows = (masterInventoryByItemCode.get(itemCode) || [])
-                .filter((row) => {
-                    if (!row || isRequestLikeItem(row) || isDockLikeItem(row) || isSalesOfficeLikeItem(row)) return false;
-                    const key = getItemInquiryRowKey(row);
-                    if (!key || seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
-                });
-            if (currentRow && currentKey && !seen.has(currentKey) && getItemInquiryItemCode(currentRow) === itemCode) {
-                rows.unshift(currentRow);
-                seen.add(currentKey);
-            }
-            rows.sort(compareItemInquiryRows);
-            return rows;
+            // Master rows retain their exact mutation identity; report/card siblings
+            // fill a partial master cache without turning display data into write proof.
+            return [...(masterInventoryByItemCode.get(itemCode) || []), ...(Array.isArray(sourceRows) ? sourceRows : []), item]
+                .filter(row => {
+                    if (!row || getItemInquiryItemCode(row) !== itemCode) return false;
+                    if (row !== item && (isRequestLikeItem(row) || isDockLikeItem(row) || isSalesOfficeLikeItem(row))) return false;
+                    const key = [itemCode,
+                        getItemInquiryRowValue(row, ['LOCATIONCODE','locationcode','LOCATION'], ''),
+                        getItemInquiryRowValue(row, ['LOTCODE','lotcode','LOT'], '')
+                    ].map(value => String(value || '').trim().toUpperCase()).join('|');
+                    if (seen.has(key)) return false;
+                    seen.add(key); return true;
+                }).sort(compareItemInquiryRows);
         }
 
         const ITEM_INQUIRY_IDENTITY_FIELDS = [
@@ -131376,38 +131370,44 @@ C.14.043 C.15.000
             return openManagerEvalReport2DirectInquiry(encodedKey);
         }
 
-        async function openManagerEvalReport2DirectInquiry(encodedKey = '') {
-            const generation = managerModuleReadGeneration;
-            const owner = getSupabaseReadIdentityScope();
-            if (useManagerReportPages('eval2')) {
-                try { await loadPagedManagerItem(decodeURIComponent(encodedKey).replace(/^item:/, '')); }
-                catch (error) { showToast('Item Inquiry Unavailable', String(error.message || error), true); return false; }
-            }
-            if (generation !== managerModuleReadGeneration || owner !== getSupabaseReadIdentityScope()
-                || getCurrentVisibleViewId() !== 'managers' || activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW) return false;
+        async function openManagerEvalReport2DirectInquiry(encodedKey = '', encodedOriginUid = '') {
+            if (getCurrentVisibleViewId() !== 'managers' || activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW) return false;
             if (!isEvalWorkManagerUser()) {
                 showToast('View Only', 'Only Dylan, Megan, or JD can send this Item Inquiry.', true);
                 return false;
             }
-            let key = '';
-            try { key = decodeURIComponent(String(encodedKey || '')); } catch (error) { key = String(encodedKey || ''); }
-            const group = getManagerEvalReport2VisibleItemGroups().find((entry) => entry.key === key);
-            const completeRows = useManagerReportPages('eval2') ? getManagerEvalReport2AllCurrentItemRows(group?.itemCode) : group?.rows;
-            const representative = completeRows?.[0] || group?.representativeRow;
-            const uid = String(firstNonEmptyValue(representative && representative.UNIQUE_ID, representative && representative.unique_id, '') || '').trim();
-            if (!uid || !activeManagerEvalReport2) {
-                showToast('Item Inquiry Unavailable', 'Refresh Eval Reports #2 and open the ITEMCODE again.', true);
-                return false;
-            }
-            const opened = openArgosInventoryTransactionModal(uid, 'reclass', 'eval-report-2');
-            if (argosInventoryTransactionState) {
+            const decode = value => { try { return decodeURIComponent(String(value || '')); } catch { return String(value || ''); } };
+            const key = decode(encodedKey), originUid = decode(encodedOriginUid);
+            const group = getManagerEvalReport2VisibleItemGroups().find(entry => entry.key === key);
+            if (!group || !activeManagerEvalReport2) return false;
+            const metadata = useManagerReportPages('eval2') ? getManagerReportPageController().state('eval2').metadata : null;
+            const seedRows = getManagerEvalReports2Api()?.browseSeedRows(metadata) || [];
+            const itemCode = String(group.itemCode || '').trim().toUpperCase();
+            const suppliedRows = [
+                ...getManagerEvalReport2AllCurrentItemRows(itemCode),
+                ...(group.rows || []), ...(group.currentRows || []), ...(group.previewRows || []),
+                ...seedRows.filter(row => getItemInquiryItemCode(row) === itemCode)
+            ];
+            const rows = getItemInquiryRows(group.representativeRow || suppliedRows[0], suppliedRows);
+            const uidOf = row => String(row?.UNIQUE_ID || row?.unique_id || '').trim();
+            const drillLocation = String(managerEvalReport2SelectedLocationCode || '').trim().toUpperCase();
+            const tapped = suppliedRows.find(row => originUid && uidOf(row) === originUid);
+            const sameTuple = row => tapped && ['LOCATIONCODE','LOTCODE'].every(field =>
+                getItemInquiryRowValue(row, [field,field.toLowerCase()], '').trim().toUpperCase()
+                === getItemInquiryRowValue(tapped, [field,field.toLowerCase()], '').trim().toUpperCase());
+            const representative = rows.find(row => originUid && (uidOf(row) === originUid || sameTuple(row)))
+                || rows.find(row => drillLocation && getItemInquiryRowValue(row, ['LOCATIONCODE','locationcode','LOCATION'], '').trim().toUpperCase() === drillLocation)
+                || rows[0];
+            const uid = uidOf(representative);
+            if (!uid) return false;
+            // Open from the full displayed item scope now. The shared modal owns
+            // exact background hydration, account/view fences and draft protection.
+            const opened = openArgosInventoryTransactionModal(uid, 'reclass', 'eval-report-2', { inquiryRow:representative, inquiryRows:rows });
+            if (argosInventoryTransactionState?.uid === uid) {
                 argosInventoryTransactionState.reportContext = {
-                    sourceMode: 'eval-report-2',
-                    reportId: group.reportIds[0],
-                    reportIds: group.reportIds.slice(),
-                    reportLabel: getManagerEvalReport2ReportLabel(group.reportIds),
-                    itemcode: group.itemCode,
-                    canonicalRowIds: (completeRows || []).map((row) => String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim()).filter(Boolean)
+                    sourceMode:'eval-report-2', reportId:group.reportIds[0], reportIds:group.reportIds.slice(),
+                    reportLabel:getManagerEvalReport2ReportLabel(group.reportIds), itemcode:group.itemCode,
+                    canonicalRowIds:rows.map(uidOf).filter(Boolean)
                 };
             }
             return opened;
@@ -131459,7 +131459,8 @@ C.14.043 C.15.000
                 const availableValue = getDriveColumnItemValue(row, 'PTRAVAILABLE');
                 const onHand = getManagerEvalReport2DetailValue(row, 'PTRONHAND');
                 const available = getManagerEvalReport2DetailValue(row, 'PTRAVAILABLE');
-                return `<div class="manager-eval2-inventory-grid manager-eval2-inventory-row border-t border-emerald-100 px-1 py-2 text-[11px] font-bold text-slate-700"><span class="min-w-0 break-words font-mono text-emerald-800">${escapeHtml(location)}</span><span class="min-w-0 break-words font-mono text-slate-700">${escapeHtml(lot)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(priority)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(onHand)}</span><span class="text-right tabular-nums text-blue-800">${escapeHtml(available)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(openStock)}</span></div>`;
+                const encodedOriginUid = encodeURIComponent(String(row.UNIQUE_ID || row.unique_id || ''));
+                return `<div role="button" tabindex="0" data-eval2-origin-uid="${escapeHtml(encodedOriginUid)}" aria-label="Open ${escapeHtml(location)} Lot ${escapeHtml(lot)} as originating row" onclick="event.stopPropagation(); return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}','${escJsAttrValue(encodedOriginUid)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}','${escJsAttrValue(encodedOriginUid)}')}" class="manager-eval2-inventory-grid manager-eval2-inventory-row border-t border-emerald-100 px-1 py-2 text-[11px] font-bold text-slate-700"><span class="min-w-0 break-words font-mono text-emerald-800">${escapeHtml(location)}</span><span class="min-w-0 break-words font-mono text-slate-700">${escapeHtml(lot)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(priority)}</span><span class="manager-eval2-quantity text-right tabular-nums text-slate-900">${escapeHtml(onHand)}</span><span class="manager-eval2-quantity text-right tabular-nums text-blue-800">${escapeHtml(available)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(openStock)}</span></div>`;
             }).join('');
             return `<article role="button" tabindex="0" aria-label="Open Drive Mode Item Inquiry for ${escapeHtml(safeGroup.itemCode)}" class="manager-eval2-item-card overflow-hidden rounded-xl border border-green-200 bg-white shadow-sm cursor-pointer transition-transform" data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" onclick="return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}')" onkeydown="if(event.currentTarget===event.target&&(event.key==='Enter'||event.key===' ')){event.preventDefault();return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}')}"><div class="p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-lg font-black leading-tight text-[#007a4d]">${escapeHtml(safeGroup.commonName || 'Unknown')}</div><div class="mt-1 break-all font-mono text-[14px] font-black text-blue-700">${escapeHtml(safeGroup.itemCode || '-')}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(safeGroup.containerSizes.join(', ') || '-')} &bull; ${safeGroup.rowCount} current rows &bull; ${safeGroup.locationCount} locations</div><div class="mt-2 flex flex-wrap gap-1">${userChips}</div></div><div class="flex shrink-0 items-center gap-2">${checkHtml}<i class="ph-bold ph-pencil-simple-line text-lg text-emerald-500" aria-hidden="true"></i></div></div><div class="manager-eval2-inventory-grid manager-eval2-inventory-header mt-3 rounded-t-lg bg-emerald-50 px-1 py-2 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-800"><span>Location</span><span>Lot</span><span class="text-right">Priority</span><span class="text-right">On Hand</span><span class="text-right">Available</span><span class="text-right">Open Stock Qty</span></div>${inventoryRowsHtml}<div class="mt-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-700">Tap the card to open the Drive Mode Reclass Item Inquiry</div></div></article>`;
         }

@@ -1612,3 +1612,78 @@ test('authorized compact Eval browse data filters reports/users/drills synchrono
  query.filters={...query.filters,groupBy:'locationcode',blockalpha:'C',assignedUsers:['allen_ward']};assert.equal(engine.buildBrowsePage(metadata,query,'rev1').rows[0].value,'C.16.000');
  query.filters={...query.filters,reportIds:[]};assert.equal(engine.buildBrowsePage(metadata,query,'rev1').total,0);
 });
+
+
+function evalReclassFixture() {
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const extract = name => runtime.match(new RegExp('^        (?:async )?function '+name+'\\([^]*?^        }','m'))?.[0];
+  const rows = [['c16f','C.16.000','27.F1',61,61],['f19f','F.19.000','27.F1',180,104],['c16s','C.16.000','27.S1',504,504],['h06s','H.06.000','27.S1',7,7],['c19u','C.19.000','27.U1',105,105]].map(([UNIQUE_ID,LOCATIONCODE,LOTCODE,PTRONHAND,PTRAVAILABLE])=>({UNIQUE_ID,ITEMCODE:'001973.010.1',COMMONNAME:'Northwind Switch Grass',LOCATIONCODE,LOTCODE,PTRONHAND,PTRAVAILABLE,PTRREVIEWED:UNIQUE_ID==='f19f'?76:'',PRIORITY:UNIQUE_ID==='f19f'?'1':''}));
+  const group={key:'item:001973.010.1',itemCode:'001973.010.1',rows,representativeRow:rows[0],reportIds:['low-stock']};
+  const inquiry={innerHTML:''}, sourceHeader={innerHTML:''};
+  const modal={classList:{remove(){}},querySelectorAll:()=>[]};
+  const ctx={Map,Set,AbortController,window:{},activeItem:null,
+    firstNonEmptyValue:(...v)=>v.find(x=>x!==null&&x!==undefined&&x!==''),escapeHtml:v=>String(v??''),formatArgosInventoryNumber:v=>String(v??0),
+    masterInventoryByItemCode:new Map([[group.itemCode,[rows[0]]]]),fullInventory:[],rebuildMasterInventoryIndexes(){},
+    isRequestLikeItem:()=>false,isDockLikeItem:()=>false,isSalesOfficeLikeItem:()=>false,
+    getCurrentSeasonSortRank:v=>['F1','S1','U1','U2','U3'].indexOf(v),
+    getManagerEvalReport2VisibleItemGroups:()=>[group],getManagerEvalReport2AllCurrentItemRows:()=>rows,
+    useManagerReportPages:()=>true,getManagerReportPageController:()=>({state:()=>({metadata:{}})}),getManagerEvalReports2Api:()=>engine,
+    loadPagedManagerItem:async()=>rows,isEvalWorkManagerUser:()=>true,managerModuleReadGeneration:1,
+    getSupabaseReadIdentityScope:()=>'account-a',getCurrentVisibleViewId:()=>'managers',activeHomeTab:'eval2',MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
+    managerEvalReport2SelectedLocationCode:'C.19.000',managerEvalReport2BrowseMode:'location',activeManagerEvalReport2:'low-stock',getManagerEvalReport2ReportLabel:()=>'LowStock',
+    showToast:(...args)=>{throw Error(args.join(' '));},findItemByUniqueId:id=>rows.find(r=>r.UNIQUE_ID===id),
+    getVerifiedCachedArgosItemInquiryGroup:()=>null,getReadableCachedArgosItemInquiryGroup:()=>null,
+    isArgosInventoryTransactionEligible:()=>true,activeDetailSourceView:'',lastView:'managers',
+    argosInquiryOpenRevision:0,argosInventoryTransactionState:null,ensureArgosInventoryTransactionModal:()=>modal,
+    document:{getElementById:id=>id==='argos-reclass-item-inquiry'?inquiry:id==='argos-inventory-transaction-source'?sourceHeader:null},
+    buildItemInquiryViewModel:(item,scope)=>({identity:{itemcode:item.ITEMCODE},rows:scope,locationRows:scope.map(row=>({unique_id:row.UNIQUE_ID,sourceRow:row,values:{locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,ptronhand:row.PTRONHAND,ptrreviewed:row.PTRREVIEWED,ptravailable:row.PTRAVAILABLE,priority:row.PRIORITY}}))}),
+    resetArgosReclassMultiActionState(){},getArgosReclassLiveEditIdentityKey:()=>'account-a',generateArgosInventoryTransactionId:()=>'cmd',readPendingArgosInventoryReclassMove:()=>null,
+    refreshArgosInventoryTransactionLotOptions(){},refreshArgosInventoryTransactionPriorityOptions(){},setArgosInventoryTransactionAction(){},setArgosInventoryTransactionHoldAction(){},captureArgosInventoryTransactionDraftBaseline:()=>[],canUseProductionLiveSync:()=>false,
+    isArgosReclassMobileEditorViewport:()=>true,argosReclassRowEditorEntries:new Map(),getArgosReclassRowBodyId:id=>'body-'+id,
+    getArgosReclassV3ScopeActionsForEntry:()=>[],getArgosReclassV3ActionCountForEntry:()=>0,getEvalWorkInquiryRowResolution:()=>'',getArgosReclassProposalRenderSignature:()=>'',getArgosReclassRowRenderSignature:()=>'',
+  };
+  vm.createContext(ctx);
+  for(const name of ['getItemInquiryItemCode','getItemInquiryRowValue','getItemInquiryRowKey','getItemInquiryLotSortParts','compareItemInquiryRows','getItemInquiryRows','getArgosInventorySourceSnapshot','renderArgosInventoryTransactionSource','renderArgosReclassInquiryEditor','openArgosInventoryTransactionModal','openManagerEvalReport2DirectInquiry'])vm.runInContext(extract(name),ctx);
+  return {ctx,rows,group,inquiry,sourceHeader};
+}
+
+test('Eval2 Northwind inquiry renders all five sibling rows immediately and uses the drilled location as origin',async()=>{
+  const f=evalReclassFixture();
+  f.ctx.loadPagedManagerItem=()=>{throw Error('Opening must use displayed rows before any network read');};
+  await f.ctx.openManagerEvalReport2DirectInquiry(encodeURIComponent(f.group.key));
+  assert.equal((f.inquiry.innerHTML.match(/data-reclass-row-card=/g)||[]).length,5);
+  assert.deepEqual(Array.from(f.ctx.argosInventoryTransactionState.inquiryModel.rows,r=>r.UNIQUE_ID),['c16f','c16s','c19u','f19f','h06s']);
+  assert.equal(f.ctx.argosInventoryTransactionState.snapshot.uniqueId,'c19u');
+  assert.match(f.inquiry.innerHTML,/argos-reclass-row-card--origin[^]*?data-reclass-row-card="c19u"/);
+  assert.match(f.inquiry.innerHTML,/REV 0/); assert.match(f.inquiry.innerHTML,/REV 76/); assert.match(f.inquiry.innerHTML,/PRI 1/);
+  assert.match(f.sourceHeader.innerHTML,/Originating row/); assert.match(f.sourceHeader.innerHTML,/>105</);
+});
+
+test('Eval2 tapped location and lot wins over the drill while all sibling accordions remain available',async()=>{
+  const f=evalReclassFixture();
+  await f.ctx.openManagerEvalReport2DirectInquiry(encodeURIComponent(f.group.key),encodeURIComponent('f19f'));
+  assert.equal(f.ctx.argosInventoryTransactionState.snapshot.uniqueId,'f19f');
+  assert.equal(f.ctx.argosReclassRowEditorEntries.size,5);
+  assert.equal((f.inquiry.innerHTML.match(/toggleArgosReclassRowCard/g)||[]).length,5);
+  assert.match(f.sourceHeader.innerHTML,/>180</); assert.match(f.sourceHeader.innerHTML,/>104</);
+});
+
+test('shared inquiry merges item siblings by normalized location/lot and preserves all three Slash Pine lots',()=>{
+  const f=evalReclassFixture();
+  const rows=['27.U3','27.F1','27.S1'].map((LOTCODE,i)=>({UNIQUE_ID:'pine-'+i,ITEMCODE:'000760.050.1',LOCATIONCODE:'C.19.000',LOTCODE}));
+  f.ctx.masterInventoryByItemCode=new Map([['000760.050.1',[rows[0]]]]);
+  const duplicate={...rows[0],UNIQUE_ID:'display-alias',LOCATIONCODE:' c.19.000 ',LOTCODE:'27.u3'};
+  const scoped=f.ctx.getItemInquiryRows(rows[1],[...rows,duplicate,...f.rows]);
+  assert.deepEqual(Array.from(scoped,r=>r.LOTCODE),['27.F1','27.S1','27.U3']);
+});
+
+test('Eval2 table rows own exact-origin click and keyboard handlers and high-contrast quantity styling',()=>{
+  const runtime=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+  const card=runtime.match(/        function renderManagerEvalReport2SelectableCard\([^]*?^        }/m)[0];
+  assert.equal(card.includes('data-eval2-origin-uid'),true);
+  assert.equal(card.includes('event.stopPropagation(); return openManagerEvalReport2DirectInquiry'),true);
+  assert.equal(card.includes('manager-eval2-quantity'),true);
+  const css=readFileSync(new URL('../assets/ops-precision-pilot.css',import.meta.url),'utf8');
+  assert.equal(css.includes('body.ops-precision-pilot[data-ops-theme="dark"] #managers-content .manager-eval2-inventory-row .manager-eval2-quantity'),true);
+  assert.match(css,/\.manager-eval2-inventory-row \.manager-eval2-quantity[^}]*color:#38bdf8!important[^}]*font-weight:700/);
+});
