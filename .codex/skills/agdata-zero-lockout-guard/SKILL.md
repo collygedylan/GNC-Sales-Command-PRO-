@@ -60,3 +60,7 @@ These use local fixtures/VMs without a browser or database. Target `< 10s`; this
 The canonical access editor retains its DOM and verified same-account administrator controls through background permission refresh; confirmed denial still disables access. Reclass delivery trays are cleared during logout.
 
 After identity verification, finalizeLogin reveals Home before awaiting capability, permission, mapping or dataset refresh. Transient access refresh failure retains the authenticated shell; confirmed revocation continues through the canonical access path. Request revision drift keeps complete same-account choices usable while server-side tuple validation protects writes.
+
+## Request completion and foreground continuity
+
+Active same-account sessions defer Service Worker reload and mismatch recovery, including a reload queued before login completed. Transient token/session refresh loss retains the visible shell and cached identity; confirmed disabled or locked profiles still clear access. Foreground restoration preserves the current view. Request save receipt acceptance checks account scope without rejecting a committed result solely because permission revision advanced. Focused coverage: release-app-lifecycle.test.mjs and request-submission-durability.test.mjs.

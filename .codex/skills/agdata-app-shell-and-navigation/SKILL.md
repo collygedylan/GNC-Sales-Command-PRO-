@@ -37,3 +37,7 @@ Target under 10 seconds; select only affected files when fewer suffice. These No
 Background renderHome calls return when Home is not the visible view, preserving the active Manager module. The mounted canonical access editor owns its DOM and is retained during Manager refreshes.
 
 Verified login mounts Home once before background refresh awaits. Later access readiness updates role chrome and signals hydration without remounting Home or resetting an active navigation. Manager Approval and Comm share the assigned-rep Suspend inbox and existing global Back ownership.
+
+## Request completion and foreground continuity
+
+Active authenticated sessions keep the current shell during worker updates and foreground restoration. Drive refresh preserves its drill state; Home entry retains the existing explicit navigation reset. app-shell-style-15.css owns forest footer colors, mint inactive labels, emerald active buttons, crimson Bloom clear, dark missing-photo surfaces and unclipped source filenames. Preserve shared Back/history/header ownership. Focused coverage: release-app-lifecycle.test.mjs and inventory-drill-navigation.test.mjs.

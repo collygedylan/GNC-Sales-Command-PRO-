@@ -38,3 +38,7 @@ node --test tests/request-submission-durability.test.mjs tests/request-mapping-r
 Use canonical map rows for Bloom metrics and historical-sales source changes. Follow AGENTS daytime limits; do not expand into browsers, Docker or database replay without the applicable authorization.
 
 Request startup uses authenticated customer-rep-map/preload to fetch one complete authorized compact tuple snapshot and pre-index every returned rep. Keep same-account cached tuples usable across revision drift and refresh failures; validate active tuple and rep ownership at submission. Every sales_rep alias binds to self even with global view grants; nonrep actors retain the rep picker. Preserve Bloom location metrics in the Request modal snapshot, and mapped N/A customer/consignee ordering and auto-selection.
+
+## Request completion and foreground continuity
+
+Request detail paints saved photos before hydration, always exposes AV Note, normalizes escaped measurement quotes, and derives entered location match from On Hand. Native save_request_work and get_request_capabilities dispatch through app-api request_work; completion receipts patch cached master/AV evidence. Pending capability refresh may reuse only a same-account active profile with confirmed Que access; explicit denials and restricted ownership still win. Focused coverage: request-submission-durability.test.mjs.

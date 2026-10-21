@@ -1260,3 +1260,51 @@ test('in-flight submit locks modal fields, close preserves submit lock, and reop
     assert.equal(await context.openRequestModal(), false, 'a second modal session cannot start during the old submit');
 });
 
+
+ test('zero-available Blue Point Request counts entered match against On Hand during AUTO refresh', () => {
+ const ctx = vm.createContext({ findLinkedMasterRow: () => ({ PTRONHAND: 2, PTRAVAILABLE: 0, PTRREVIEWED: 2 }), firstNonEmptyValue: (...v) => v.find(x => x != null && x !== ''), calculateLocMatchQtyValue: (row, match) => Math.round(Number(row.PTRAVAILABLE) * Number(match) / 100), parseAppNumber: value => value == null || value === '' ? null : Number(value) });
+ vm.runInContext(extractRuntimeFunction('getEditorLocMatchQtyValue'), ctx);
+ assert.equal(ctx.getEditorLocMatchQtyValue({ UNIQUE_ID:'REQ-blue', ITEMCODE:'000152.070.1', LOCATIONCODE:'L.05.000', LOTCODE:'26.F1', REQ_MATCH:100, PTRONHAND:2, PTRAVAILABLE:0 },100),2);
+ });
+ test('Request saves use a native authenticated service action and retain receipts across permission refresh', () => {
+ assert.match(appSource, /action: 'request_work'/);
+ assert.doesNotMatch(appSource.slice(appSource.indexOf('const requestSaveIdentityScope ='),appSource.indexOf('const requestSaveOutcome =')), /requestSavePermissionVersion/);
+ });
+
+test('Blue Point completion dispatches once during AUTO and returns the committed evidence', async () => {
+  const patch = { req_spec: "5.5' H", req_match:'100', req_photo_link:'https://example.test/blue.jpg', av_note:"SPEC - 5.5' H", loc_match_qty:2 };
+  const receipt = { status:'completed', row:{unique_id:'REQ-blue',req_status:'completed',...patch}, master_row:{unique_id:'master-blue',loc_match_qty:'2'} };
+  const sent=[];
+  const ctx=vm.createContext({ assertEvalDataSourceAllowed(){}, getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native'}),
+    SUPABASE_WRITE_TIMEOUT_MS:20000, APP_API_FUNCTION_URL:'/app-api', manualSyncStatus:{active:true,currentStage:'drive'},
+    postAppFunctionJson:async(_url,body)=>{sent.push(body);return {ok:true,data:receipt};} });
+  vm.runInContext(appSource.match(/        async function supabaseRpc\([^]*?^        }/m)[0],ctx);
+  assert.equal(await ctx.supabaseRpc('save_request_work',{request_id:'REQ-blue',expected_version:1,patch,complete:true}),receipt);
+  assert.equal(sent.length,1); assert.equal(sent[0].action,'request_work'); assert.equal(sent[0].complete,true);
+  assert.equal(sent[0].patch.loc_match_qty,2); assert.equal(sent[0].patch.req_photo_link,patch.req_photo_link);
+  const sql=readFileSync(new URL('../supabase/migrations/20261021190000_request_work_sync_status_v1.sql',import.meta.url),'utf8');
+  for(const contract of ['suspend_tag_private.session_active','private.can_work_request_identity','for update','expected_version := existing.row_version','REQUEST_WORK_FIELD_FORBIDDEN','round(qty*pct/100)','from public,anon,authenticated']) assert.ok(sql.toLowerCase().includes(contract.toLowerCase()),contract);
+});
+
+test('pending Request capabilities retain authorized Mark Done and preserve explicit denial', () => {
+ const ctx=vm.createContext({nativeAuthSessionActive:true,nativeAuthProfile:{id:'actor',username:'dylan_collyge',role:'ADMIN'},nativeAuthSessionUserId:'actor',currentUser:'dylan_collyge',
+   window:{},canonicalFeaturePermission:()=>true,getRoleAccessState:()=>({isAdmin:true}),getRequestCapabilities:()=>null,isDockSuspendDcRequestMirrorRow:()=>false});
+ vm.runInContext(extractRuntimeFunction('getRetainedRequestWorkCapabilities')+extractRuntimeFunction('canCurrentUserWorkRequestItem'),ctx);
+ assert.equal(ctx.canCurrentUserWorkRequestItem({UNIQUE_ID:'REQ-blue'},'complete'),true);
+ ctx.getRequestCapabilities=()=>({canComplete:false,scope:'global'});
+ assert.equal(ctx.canCurrentUserWorkRequestItem({UNIQUE_ID:'REQ-blue'},'complete'),false);
+ ctx.getRequestCapabilities=()=>null;ctx.nativeAuthProfile.disabled_at='2026-10-21';
+ assert.equal(ctx.canCurrentUserWorkRequestItem({UNIQUE_ID:'REQ-blue'},'complete'),false);
+});
+
+test('Request numeric zero survives background hydration and keypad text has no escaped quote', () => {
+ const ctx=vm.createContext({escapeHtml:String,normalizeCardQuantityValue:String,
+ getCardPtrOnHandValue:r=>r.PTRONHAND,getCardPtrReviewedValue:r=>r.PTRREVIEWED,getCardPtrAvailableValue:r=>r.PTRAVAILABLE,getCardOpenStockValue:r=>r.S_LTS,
+ formatLocPhotoMatchQtyValue:()=>2,getCardLocationOnHandServerAggregate:()=>({verified:true,value:0}),getCardLocationOnHandValue:()=>0});
+ vm.runInContext(extractRuntimeFunction('buildInventoryQuantityChipsHtml')+extractRuntimeFunction('normalizeDetailSpecTextForSave'),ctx);
+ const markup=ctx.buildInventoryQuantityChipsHtml({PTRONHAND:2,PTRREVIEWED:0,PTRAVAILABLE:0,S_LTS:0},{canonical:true,layout:'row',hydrationStatus:'loading',sourceView:'request'});
+ assert.equal((markup.match(/>0<\/span>/g)||[]).length,4); assert.doesNotMatch(markup,/N\/A|--|Not verified/);
+ assert.equal(ctx.normalizeDetailSpecTextForSave("5.5"+String.fromCharCode(92)+"' H"),"5.5' H");
+ assert.ok(appSource.includes("if (detailSourceView.toLowerCase() === 'request') renderSavedPhotos"));
+ assert.ok(appSource.includes("const spec = normalizeDetailSpecTextForSave(document.getElementById('req-spec')"));
+});

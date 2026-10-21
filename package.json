@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.32",
+  "version": "2.3.33",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -134,7 +134,20 @@
     "vitest": "4.1.10"
   },
   "appsScriptPatchFunctions": [
-    "buildSuspendTagApprovalEmail_"
+    "runAutoDropFolderSync_",
+    "getMasterBulkSnapshotStageConfig_",
+    "readMasterBulkSnapshotStageCheckpoint_",
+    "validateMasterBulkStageState_",
+    "callMasterBulkSnapshotImport_",
+    "buildSupabaseUpsertRequests_",
+    "runRoutedDropImport_",
+    "saveManualSyncStatus_",
+    "publishManualSyncStatus_",
+    "setManualSyncImportPhase_",
+    "scheduleRequestIntegrityMaintenance_",
+    "runQueuedRequestIntegrityMaintenance_",
+    "MANUAL_SYNC_STAGE_ORDER_DEFAULT",
+    "IMPORT_HISTORY_CHUNK_SIZE_"
   ],
   "appsScriptPatchRelease": true
 }

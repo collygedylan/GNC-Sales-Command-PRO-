@@ -79,6 +79,7 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
   // A read action with an explicit write operation must still fail closed.
   const write = /(?:^|_)(?:create|update|delete|remove|insert|upsert|submit|apply|save|set|complete|close|send|enqueue|command|move|approve|deny|reclass)(?:_|$)/i;
   if (write.test(action) || write.test(operation)) return false;
+  if (action === 'manual_sync_status' && !operation && Object.keys(body).length === 1) return true;
   if (action === 'customer-rep-map' && operation === 'preload') return true;
   if (action === 'suspend_tag' && operation === 'inbox') return true;
   return /(?:^|_)read(?:_v\d+)?$/i.test(action)
@@ -88,8 +89,10 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
 
 /** Exact authenticated snapshot reads shared by startup fixtures. Unknown bodies
  * return null so the caller's existing rejection path remains authoritative. */
-export function releaseSnapshotReadFixture(body, mappings = [], approvals = []) {
+export function releaseSnapshotReadFixture(body, mappings = [], approvals = [], capabilities = null) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  if (body.action === 'manual_sync_status' && Object.keys(body).join(',') === 'action') return {ok:true,data:{active:false,currentStage:'idle'}};
+  if (body.action === 'request_work' && body.operation === 'capabilities' && Object.keys(body).sort().join(',') === 'action,operation' && capabilities) return {ok:true,data:capabilities};
   if (body.action === 'customer-rep-map' && body.operation === 'preload'
       && Object.keys(body).sort().join(',') === 'action,operation') {
     const reps = new Map();

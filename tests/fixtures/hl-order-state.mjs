@@ -864,7 +864,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         control.blockedMutations.push(`PROHIBITED_NATIVE_DB:${body.method}:${body.table}`);
         return json(route, { ok: false, error: 'Native Auth sessions must use PostgREST with RLS for database access.', code: 'DIRECT_RLS_REQUIRED' }, 410);
       }
-      const snapshotRead = releaseSnapshotReadFixture(body, options.requestMappings || [], options.suspendApprovals || []);
+      const snapshotRead = releaseSnapshotReadFixture(body, options.requestMappings || [], options.suspendApprovals || [], { contract_version:2, username, scope:'global', can_view_queue:true, can_edit:true, can_complete:true, can_take_photo:true });
       if (snapshotRead) return json(route, snapshotRead);
       if (body.action === 'customer-rep-map' && body.operation === 'reps'
         && ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(String(role || '').trim().toUpperCase())) {

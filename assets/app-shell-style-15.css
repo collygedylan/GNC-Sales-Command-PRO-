@@ -31,4 +31,19 @@
         #docks-content .app-operational-planstart-card[class*="app-planstart-"] :is(input:not([type="checkbox"]), textarea, select) { color:#111827 !important; background-color:#ffffff !important; }
         body.ops-precision-pilot[data-ops-theme="dark"] #docks-content .app-operational-card-meta .app-request-card-meta-chip { border-color:var(--border-subtle); background:var(--bg-surface-muted); color:var(--text-muted); }
         body.ops-precision-pilot[data-ops-theme="dark"] #docks-content .app-operational-card-meta .app-request-card-meta-chip strong { color:var(--text-main); }
-    
+
+/* Phone navigation and field actions retain contrast across every theme. */
+html body #app-wrapper #bottom-nav{background:#0b3522!important;border-top:1.5px solid rgba(74,222,128,.4)!important}
+html.dark body #app-wrapper #bottom-nav,html[data-ops-prepaint-theme="dark"] body #app-wrapper #bottom-nav,html body[data-ops-theme="dark"] #app-wrapper #bottom-nav{background:#062115!important}
+html body #app-wrapper #bottom-nav .footer-nav-btn{color:#d9fbe8!important;opacity:.95!important;font-weight:600!important}
+html body #app-wrapper #bottom-nav .footer-nav-btn :is(i,span){color:inherit!important;opacity:1!important}
+html body #app-wrapper #bottom-nav .footer-nav-btn:is(.active,.menu-open,[aria-current="page"]){background:#15803d!important;border:1.5px solid #4ade80!important;color:#ffffff!important;font-weight:700!important}
+html.outdoor-mode body #app-wrapper #bottom-nav .footer-nav-btn,html body[data-ops-theme="light"] #app-wrapper #bottom-nav .footer-nav-btn{opacity:1!important;font-weight:700!important}
+html body #app-wrapper #bloom-picker-clear{background:#dc2626!important;color:#ffffff!important;border:1.5px solid #fca5a5!important;font-weight:700!important;letter-spacing:.03em;box-shadow:0 2px 6px rgba(220,38,38,.35)!important}
+html.dark body #app-wrapper :is(.app-inline-thumb-box--empty,.app-inline-thumb-box:not(:has(img)),.app-smart-thumb:not(:has(img)),.app-inline-thumb:not(:has(img)),.app-av-hero-empty,.drive-grid-no-photo),
+html[data-ops-prepaint-theme="dark"] body #app-wrapper :is(.app-inline-thumb-box--empty,.app-inline-thumb-box:not(:has(img)),.app-smart-thumb:not(:has(img)),.app-inline-thumb:not(:has(img)),.app-av-hero-empty,.drive-grid-no-photo),
+html body[data-ops-theme="dark"] #app-wrapper :is(.app-inline-thumb-box--empty,.app-inline-thumb-box:not(:has(img)),.app-smart-thumb:not(:has(img)),.app-inline-thumb:not(:has(img)),.app-av-hero-empty,.drive-grid-no-photo){background:rgba(10,38,25,.85)!important;border-color:rgba(74,222,128,.35)!important;color:#d9fbe8!important}
+html body #dashboard-sync-accordion #dashboard-sync-files{max-height:none!important;overflow:visible!important}
+html body #sync-status-text,html body #global-sync-status{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+
+html body #sync-diagnostics-detail{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-width:none!important;line-height:1.3}

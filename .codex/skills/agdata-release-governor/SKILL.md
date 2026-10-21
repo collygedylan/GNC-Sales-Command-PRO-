@@ -51,3 +51,7 @@ The permanent published-snapshot smoke also covers cached-row Reclass during int
 Register suspend_existing_review_v1 in the scoped migration runner and verify its installed atomic command contract before Edge, Apps Script and frontend publication.
 
 Register suspend_candidates_request_preload_v1 in the scoped migration runner; SQL and app-api precede the scoped buildSuspendTagApprovalEmail_ Apps Script patch, then Pages. Preserve the paused historical schedules.
+
+## Request completion and foreground continuity
+
+Register request_work_sync_status_v1 in the scoped migration runner. Publish SQL and app-api before the allowlisted Apps Script function/constant patch, then Pages. Apps Script patching supports only the named MANUAL_SYNC_STAGE_ORDER_DEFAULT and IMPORT_HISTORY_CHUNK_SIZE_ constants plus registered helper additions, retaining protected-source comparison and Head/active-version guards.

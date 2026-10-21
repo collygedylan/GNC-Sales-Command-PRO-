@@ -355,3 +355,10 @@ v2.3.31: `getSuspendTagExistingReview` and `suspend_tag_private.existing_review`
 - Cluster 6: fetchRequestCustomerMapRows -> customer-rep-map/preload -> customer_rep_mapping_manage_v1; complete authorized compact tuples, cached per-rep trees, and server submission validation.
 - Clusters 3/8: finalizeLogin opens the verified shell before refresh awaits; Home starts complete master hydration in bounded four-way 1,000-row pages.
 - Focused targets: suspend-tag-dataset.test.mjs, request-mapping-reader.test.mjs, dock-trip-status.test.mjs; inventory-drill-navigation.test.mjs covers complete paged hydration.
+
+### Request completion, sync status and foreground continuity
+
+- Clusters 4/6: supabaseRpc -> app-api request_work -> service-only request_work_command_v1 -> save_request_work. Actor/session and ownership checks precede locked completion; protected evidence is merged under row lock. request_inventory_metrics adds item/location and CAV display fallback. Tests: request-submission-durability.test.mjs, suspend-tag-dataset.test.mjs.
+- Cluster 8: runAutoDropFolderSync_ prioritizes drive/soc/reserves/cav; 2,000-row staged imports preserve 500-row checkpoints. publishManualSyncStatus_ -> app_manual_sync_status -> app-api manual_sync_status -> ten-second polling. Deferred request integrity maintenance leaves core startup free. Test: live-sync-coordinator.test.mjs.
+- Clusters 1/3: app-lifecycle activeSession defers automatic reload; renderDrive retains full catalogs and drill state. getPlantSearchRank controls Drive/AV word-start ranking; modular style 15 owns contrast. Tests: release-app-lifecycle.test.mjs, inventory-drill-navigation.test.mjs.
+- Cluster 10: request_work_sync_status_v1 is registered in apply-item-low-stock-migration.mjs; native types and generated database schemas include its service RPC. Exact startup reads are registered in releaseSnapshotReadFixture and HL fixture; governance rejects injected keys and mutations.

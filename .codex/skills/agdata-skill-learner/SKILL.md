@@ -39,3 +39,7 @@ This is repository maintenance, not model training or automatic Gemini account s
 The v2.3.31 recovery uses existing inventory_read master_page and drive_reclass_inquiry status contracts; no new startup/background route is introduced.
 
 Shared releaseSnapshotReadFixture registers exact customer-rep-map/preload and suspend_tag/inbox request and response shapes. Reject additional parameters and mutation operations; Node governance assertions cover rejection. These registrations do not imply a new browser validation run.
+
+## Request completion and foreground continuity
+
+releaseSnapshotReadFixture registers exact manual_sync_status and request_work/capabilities shapes with explicit response data. Unknown keys, forged actor IDs and save operations remain rejected. The HL startup fixture supplies account-scoped capabilities. Node governance checks cover these contracts; registration alone does not claim browser validation.

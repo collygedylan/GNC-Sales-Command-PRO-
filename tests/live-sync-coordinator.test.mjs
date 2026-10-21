@@ -1276,3 +1276,20 @@ test('published baseline reads discard a changed publication token and retain au
     assert.equal(await f.coordinator.check(), false); assert.equal(f.commits.length, 0);
     assert.equal(f.coordinator.getStatus().authorizationDenied, true); f.coordinator.reset();
 });
+
+ test('core imports lead the ten-stage run and status polling bypasses Apps Script', () => {
+ const script=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
+ assert.match(script,/MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze\(\['drive', 'soc', 'reserves', 'cav'/);
+ });
+
+test('sync status reads app-api at ten seconds without Apps Script status requests', async () => {
+ const calls=[];const ctx=vm.createContext({APP_API_FUNCTION_URL:'/app-api',postAppFunctionJson:async(url,body)=>{calls.push({url,body});return {ok:true,data:{active:true,currentStage:'drive'}};},normalizeManualSyncStatusPayload:value=>value});
+ vm.runInContext(appFunction('fetchManualSyncStatusFromScript'),ctx);
+ assert.equal((await ctx.fetchManualSyncStatusFromScript()).currentStage,'drive');
+ assert.equal(calls[0].body.action,'manual_sync_status'); assert.equal(calls[0].url,'/app-api');
+ const runtime=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ assert.ok(runtime.includes('MANUAL_SYNC_STATUS_POLL_MS = 10000'));
+ const script=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
+ for(const expected of ['IMPORT_HISTORY_CHUNK_SIZE_ = 2000','scheduleRequestIntegrityMaintenance_();','app_manual_sync_status','chunkSize: 2000']) assert.ok(script.includes(expected),expected);
+ assert.ok(script.includes('chunkSize === 500') || script.includes('[500,2000]'));
+});

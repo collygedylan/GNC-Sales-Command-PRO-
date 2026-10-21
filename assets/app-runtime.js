@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.32';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.33';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -776,7 +776,7 @@
         function isNativeAuthSessionRevoked(error = null) {
             const status = Number(error && (error.status || error.statusCode) || 0);
             const code = String(error && error.code || '').trim().toLowerCase();
-            return status === 401 || /^(invalid_grant|refresh_token_not_found|refresh_token_already_used|session_not_found|user_disabled)$/.test(code);
+            return status === 401 || /^(invalid_grant|refresh_token_not_found|refresh_token_already_used|session_not_found|user_disabled|native_profile_disabled|native_profile_locked)$/.test(code);
         }
 
         function nativeAuthReadRetryError(error = null) {
@@ -958,11 +958,16 @@
                 nativeAuthProfileRestorePending = false;
                 throw error;
             }
-            if (error || !data || data.disabled_at) {
+            if (!error && data && (data.disabled_at || data.active === false)) {
+                await clearRevokedNativeAuthSession({ code: 'NATIVE_PROFILE_DISABLED' });
+                return null;
+            }
+            if (error || !data) {
                 nativeAuthProfileRestorePending = false;
                 destroyHistoricalRequestsIsland(); closeBloomscapesPendingOrders(); return null;
             }
             if (data.locked_until && new Date(data.locked_until).getTime() > Date.now()) {
+                await clearRevokedNativeAuthSession({ code: 'NATIVE_PROFILE_LOCKED' });
                 nativeAuthProfileRestorePending = false;
                 destroyHistoricalRequestsIsland(); closeBloomscapesPendingOrders(); return null;
             }
@@ -1187,6 +1192,13 @@
                     const accountChanged = !!(knownSessionUserId && session?.user?.id && session.user.id !== knownSessionUserId);
                     // The first restored session arrives before its profile exists.
                     // Invalidate only a known account switch, or any sign-out.
+                    if (event === 'SIGNED_OUT' && !hasExplicitLogoutMarker() && knownSessionUserId && currentUser) {
+                        // SDK refresh-token loss is not a confirmed profile revocation.
+                        nativeAuthAccessToken = '';
+                        nativeAuthProfileRestorePending = true;
+                        invalidateNativeAuthRecovery();
+                        return;
+                    }
                     if (event === 'SIGNED_OUT' || accountChanged) {
                         disposeAuraWidget();
                         invalidateNativeAuthRecovery();
@@ -1544,7 +1556,7 @@ const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'rese
 const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'growerScoutReports', 'growerScoutAssets', 'warehouseAssignedItems', 'avNotes']);
 const RETIRED_DATASET_KEYS = new Set(['mlJobs']);
 const RETIRED_MANUAL_SYNC_STAGE_KEYS = new Set(['disease', 'lab', 'lab_reports']);
-const MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT = Object.freeze(['drive','pikes_orders','stine_lumber_orders','soc','reserves','customer_rep_map','warehouse_assigned_items','cav','transactions_keyed','hl_po_parsed']);
+const MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT = Object.freeze(['drive','soc','reserves','cav','pikes_orders','stine_lumber_orders','customer_rep_map','warehouse_assigned_items','transactions_keyed','hl_po_parsed']);
 const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks','hl-order', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
         const APP_LIVE_EVENT_VIEW_AREAS = Object.freeze({
             home: ['request', 'sales-office', 'tasks', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back', 'customer-rep-map'],
@@ -1637,7 +1649,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const REALTIME_RECOVERY_GRACE_MS = 3200;
         const DISABLE_POLLING_WHEN_REALTIME_SUPPORTED = true;
         const HEAVY_DATASET_KEYS = new Set(['master', 'avOpen', 'reserves', 'soc', 'salesOffice', 'cav', 'cavAvBlankKeys', 'avHotPriceKeys', 'avNotes']);
-        const MANUAL_SYNC_STATUS_POLL_MS = 2500;
+        const MANUAL_SYNC_STATUS_POLL_MS = 10000;
         const MANUAL_SYNC_STATUS_STALE_MS = 12000;
         const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
         const MANUAL_SYNC_ACTIVE_STALE_MS = 12 * 60 * 1000;
@@ -6578,6 +6590,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function shouldDeferVisibleShellReload(targetBuild = '', reason = '', options = {}) {
             const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            if (currentUser && !hasExplicitLogoutMarker()) return rememberDeferredShellReload(targetBuild, reason);
             if (opts.allowVisibleReload || opts.ignoreVisibleDefer) return false;
             const safeReason = String(reason || '').trim().toLowerCase();
             const runtimeAge = Date.now() - APP_SHELL_RUNTIME_BOOTED_AT;
@@ -8293,7 +8306,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function updateDetailMeasurementKeyboardValuePreview() {
             const previewEl = document.getElementById('detail-measurement-keyboard-value-preview');
             if (!previewEl) return false;
-            const activeValue = String(detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget.value || '').trim();
+            const activeValue = normalizeDetailSpecTextForSave(detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget.value || '');
             previewEl.textContent = activeValue || 'Type value...';
             return true;
         }
@@ -8392,7 +8405,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     : '';
                 keyboardBodyHtml = `<div class="grid grid-cols-4 gap-2">${keysHtml}</div>${spaceHtml}`;
             }
-            const activeValue = String(detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget.value || '').trim();
+            const activeValue = normalizeDetailSpecTextForSave(detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget.value || '');
             const valuePreviewHtml = type === 'av-note'
                 ? ''
                 : `<div id="detail-measurement-keyboard-value-preview" class="mb-2 rounded-[18px] border border-zinc-600/70 bg-[#151916] px-3 py-2 text-[15px] font-black tracking-wide text-zinc-100 shadow-inner">${esc(activeValue || 'Type value...')}</div>`;
@@ -8817,7 +8830,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             restoreDetailMeasurementFieldFocus(input, safeCursor, safeCursor);
             dispatchDetailMeasurementKeyboardInput(input);
             const previewEl = document.getElementById('detail-measurement-keyboard-value-preview');
-            if (previewEl) previewEl.textContent = String(input.value || '').trim() || 'Type value...';
+            if (previewEl) previewEl.textContent = normalizeDetailSpecTextForSave(input.value) || 'Type value...';
             scheduleDetailMeasurementKeyboardKeepAlive(input, safeCursor, safeCursor);
             return false;
         }
@@ -9250,7 +9263,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             ['tab-select-modal', 'assign-modal', 'eval-task-modal', 'pull-clown-tape-side-modal', 'flyer-assignee-modal', 'endcap-modal', 'shear-list-modal', 'sales-office-shear-stage-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'inventory-edit-request-modal', 'request-publish-modal', 'ncr-email-modal', 'hold-release-modal', 'ncr-rep-outreach-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-email-purpose-modal', 'bloom-action-row-form-modal', 'paper-ncr-package-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'location-move-que-detail-modal', 'take-back-done-confirm-modal', 'mark-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
         }
 
+        window.isAuthenticatedAppSessionActive = () => !!currentUser && !hasExplicitLogoutMarker();
+
         function resetLoginUiState() {
+            if (currentUser && nativeAuthProfile?.id && !hasExplicitLogoutMarker()) return false;
             disposeAuraWidget();
             try { window.GncLoginTrace?.finish('failed'); } catch (_) { /* Diagnostics never prevent login recovery. */ }
             const loginView = document.getElementById('view-login');
@@ -9728,7 +9744,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const compactMetrics = safeOptions.compact === true || safeOptions.layout === 'row';
             const hydrationLabel = safeOptions.hydrationStatus && ['loading', 'missing', 'ambiguous', 'error', 'unavailable'].includes(safeOptions.hydrationStatus) ? '--' : '';
             const formatQuantity = (value) => {
-                if (hydrationLabel) return hydrationLabel;
+                if (hydrationLabel && (value == null || String(value).trim() === '')) return hydrationLabel;
                 if (compactMetrics && /^(unknown|unavailable|not verified|loading.*|not found|check inventory)$/i.test(String(value || '').trim())) return '--';
                 if (value === null || typeof value === 'undefined' || String(value).trim() === '') {
                     if (safeOptions.missingValue === 'N/A') return 'N/A';
@@ -9743,8 +9759,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 const formatted = formatQuantity(value);
                 return `<span class="${stackedChipClassFor(index)}" data-inventory-card-metric="${metricIdFor(label)}"><span class="app-card-qty-label">${escapeHtml(label)}</span><span class="app-card-qty-value${formatted === 'Unknown' ? ' app-card-qty-value--unknown' : ''} ${valueClass}"${label === 'Loc Photo Match' ? ' data-loc-photo-match-value' : ''}${queueMetricAttr(label)}>${escapeHtml(formatted)}</span></span>`;
             };
-            const metric = (key, legacy) => safeOptions.canonical === true
-                ? (Object.prototype.hasOwnProperty.call(row, key) ? row[key] : row[key.toLowerCase()]) : legacy;
+            const metric = (key, legacy) => {
+                if (safeOptions.canonical !== true) return legacy;
+                const value = row?.[key] ?? row?.[key.toLowerCase()];
+                return value == null || String(value).trim() === '' ? legacy : value;
+            };
             const primaryChips = [
                 ['On Hand', metric('PTRONHAND', getCardPtrOnHandValue(row, safeOptions))],
                 ['Review', metric('PTRREVIEWED', getCardPtrReviewedValue(row, safeOptions))],
@@ -10196,7 +10215,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const publishedQty = hasPublishedPhotos
                 ? (persistedQty ?? getEditorLocMatchQtyValue(item, metricMatch))
                 : null;
-            const qty = qualifiedQty ?? publishedQty;
+            const enteredRequestQty = view === 'request' && String(metricMatch ?? '').trim() !== '' ? getEditorLocMatchQtyValue(item, metricMatch) : null;
+            const qty = enteredRequestQty ?? qualifiedQty ?? publishedQty;
             // Preserve existing visibility rules without letting their legacy math mutate observations.
             if (qualifiedQty != null && qty > 0 && getLocPhotoEvidenceContext(item, view) === 'shared'
                 && typeof shouldHideSharedAppPayloadForInvalidAvRules === 'function'
@@ -11699,7 +11719,9 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function getEditorLocMatchQtyValue(item = null, matchValue = '') {
             if (!item) return null;
             const liveRow = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
-            return calculateLocMatchQtyValue(liveRow || item, matchValue);
+            const row = liveRow || item;
+            const onHand = firstNonEmptyValue(row.PTRONHAND, row.ptronhand, item.PTRONHAND, item.ptronhand, row.PTRAVAILABLE, item.PTRAVAILABLE, '');
+            return calculateLocMatchQtyValue({ ...row, PTRAVAILABLE: onHand }, matchValue);
         }
 
         function refreshLiveLocMatchQuantityPreviews() {
@@ -18972,6 +18994,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             try { requestBody = JSON.stringify(body || {}); }
             catch (error) { error.hlOrderCommandDispatch = 'not_sent'; throw error; }
             const timeoutMs = Math.max(1000, Number(requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
+            if (rpcName === 'save_request_work' || rpcName === 'get_request_capabilities') {
+                const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'request_work',
+                    operation: rpcName === 'get_request_capabilities' ? 'capabilities' : 'save',
+                    ...(rpcName === 'save_request_work' ? { requestId: body.request_id, expectedVersion: body.expected_version, patch: body.patch, complete: body.complete === true } : {})
+                }, { timeoutMs, signal: requestOptions.signal, label: 'Request work' });
+                if (!result?.ok || !result.data) throw new Error(result?.code || 'REQUEST_SAVE_UNCONFIRMED');
+                return result.data;
+            }
             const response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, {
                 method: 'POST',
                 headers: {
@@ -25834,7 +25864,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.32').trim() || 'AgData v2.3.32';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.33').trim() || 'AgData v2.3.33';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27006,11 +27036,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function fetchManualSyncStatusFromScript() {
-            const responseData = await postGoogleScriptJsonPayload({ type: 'manual_status' }, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Manual Sync Status');
-            if (responseData && responseData.ok === false) {
-                throw new Error(String(firstNonEmptyValue(responseData.message, 'Could not load manual sync status.')).trim());
-            }
-            return normalizeManualSyncStatusPayload(responseData);
+            const response = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'manual_sync_status' }, { timeoutMs: 10000, label: 'Sync status' });
+            if (!response?.ok) throw new Error(response?.code || 'MANUAL_SYNC_STATUS_UNAVAILABLE');
+            return normalizeManualSyncStatusPayload(response.data);
         }
 
         function requestManualSyncServerStaleSweep() {
@@ -27038,7 +27066,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 refreshManualSyncStatus(true).catch(() => {
                     if (hasActiveManualSync()) scheduleManualSyncStatusPoll(Math.max(MANUAL_SYNC_STATUS_POLL_MS, 4000));
                 });
-            }, Math.max(500, Number(delayMs) || MANUAL_SYNC_STATUS_POLL_MS));
+            }, Math.max(MANUAL_SYNC_STATUS_POLL_MS, Number(delayMs) || MANUAL_SYNC_STATUS_POLL_MS));
         }
 
         function getManualSyncCompletionViewId() {
@@ -27207,7 +27235,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             clearManualSyncStatusPoll();
             syncGoogleScriptButton();
             updateSyncDiagnostics();
-            showToast('Sync Deferred', String(responseData.message || 'Another processor is busy. Try again shortly.'), true);
+            showToast('Sync in progress', 'The import processor is finishing its current work.', false);
+            scheduleManualSyncStatusPoll();
             return true;
         }
 
@@ -38178,6 +38207,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 `fetchpriority="${fetchPriority}"`,
                 'referrerpolicy="no-referrer"',
                 'draggable="false"',
+                `onerror="this.style.visibility='hidden'"`,
                 className ? `class="${escapeDeferredCardPhotoAttribute(className)}"` : '',
                 sizes ? `sizes="${escapeDeferredCardPhotoAttribute(sizes)}"` : '',
                 options.avLoadStatus === true ? `onload="this.dataset.avPhotoLoaded='1'"` : '',
@@ -38980,6 +39010,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'home') renderHome();
             updateFooterNavState();
             if (typeof scheduleRequestRender === 'function' && isViewVisible('request')) scheduleRequestRender(0, 0, true);
+            if (isViewVisible('detail') && String(activeDetailSourceView || lastView || '') === 'request') refreshProtectedSections();
         }
 
         async function initializeRequestCapabilities(options = {}) {
@@ -53721,6 +53752,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (modal) modal.classList.add('hidden');
             return false;
         }
+        function isAuthenticatedAppShellVisible() {
+            const wrapper = document.getElementById('app-wrapper');
+            return !!wrapper && !wrapper.classList.contains('hidden') && wrapper.style.display !== 'none';
+        }
+
         async function restoreNativeAuthSessionOnStartup() {
             if (hasExplicitLogoutMarker() || !NATIVE_AUTH_ENABLED) return false;
             const restoreEpoch = nativeAuthRecoveryEpoch;
@@ -53760,6 +53796,11 @@ function toggleDriveQuickRequestItem(domId) {
             // account switch can still arrive after it resolves and before
             // this continuation applies the captured profile to the UI.
             if (!ownsRestore()) return false;
+            if (currentUser && String(currentUser).toLowerCase() === String(profile.username).toLowerCase() && isAuthenticatedAppShellVisible()) {
+                nativeAuthProfileRestorePending = false;
+                void refreshNativeRoleAndCapabilities('foreground-restored');
+                return true;
+            }
             const loginInputs = document.getElementById('login-inputs');
             const spinner = document.getElementById('loading-spinner');
             if (loginInputs) loginInputs.classList.add('hidden');
@@ -53853,6 +53894,12 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function clearRevokedNativeAuthSession(error = null) {
             if (!isNativeAuthSessionRevoked(error)) return false;
+            if (currentUser && nativeAuthProfile?.id && !hasExplicitLogoutMarker()
+                && !['user_disabled','NATIVE_PROFILE_DISABLED','NATIVE_PROFILE_LOCKED'].includes(String(error?.code || ''))) {
+                nativeAuthProfileRestorePending = true;
+                nativeAuthAccessToken = '';
+                return false;
+            }
             nativeAuthProfileRestorePending = false;
             invalidateNativeAuthRecovery();
             try { await getSupabaseBrowserClient()?.auth?.signOut({ scope: 'local' }); } catch (error) { window.GncRuntimeWatchdog?.capture?.(error, 'clearRevokedNativeAuthSession');}
@@ -59383,7 +59430,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (targetView === 'crop-roll') return canViewCropRollHome() && navigationPreferencesAllowed(targetView, true);
             if (targetView === 'request') {
                 const capabilities = getRequestCapabilities();
-                return (!!(capabilities && capabilities.canViewQueue) || canSeeEvalWorkRequestTab() || ((!userOverride || userOverride === currentUser) && canUseInvBunchNotes())) && navigationPreferencesAllowed(targetView, true);
+                return (canonicalAllowed === true || !!(capabilities && capabilities.canViewQueue) || canSeeEvalWorkRequestTab() || ((!userOverride || userOverride === currentUser) && canUseInvBunchNotes())) && navigationPreferencesAllowed(targetView, true);
             }
             const access = getRoleAccessState('', userOverride);
             if (targetView === 'sales-inventory') return navigationPreferencesAllowed(targetView, access.allowedViews.has(targetView) || ((!userOverride || userOverride === currentUser) && canUseInvBunchNotes()));
@@ -75695,7 +75742,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (viewId === 'home') {
                 renderHome();
             } else if (viewId === 'drive') {
-                if (forceReset || !state.initialized) resetDriveView(false);
+                if (forceReset || (!state.initialized && !selectedDriveName && !selectedDriveLoc && driveViewLevel === 0)) resetDriveView(false);
                 renderDrive();
             } else if (viewId === 'crop-roll') {
                 renderCropRollModule();
@@ -81227,7 +81274,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 size: String(item && item.CONTSIZE || ''),
                 location: String(item && item.LOCATIONCODE || '')
             })).sort((a, b) => (
-                compareText(a.name, b.name)
+                getPlantSearchRank(a.name, document.getElementById('av-search')?.value || '') - getPlantSearchRank(b.name, document.getElementById('av-search')?.value || '')
+                || compareText(a.name, b.name)
                 || compareText(a.size, b.size)
                 || compareText(a.location, b.location)
                 || (a.index - b.index)
@@ -83830,6 +83878,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     fileLabel = searchTerm ? 'av-open-photos-search' : 'av-open-photos';
                 } else if (searchTerm) {
                     rows.sort((a, b) => {
+                        const searchRank = getPlantSearchRank(a.COMMONNAME, searchTerm) - getPlantSearchRank(b.COMMONNAME, searchTerm);
+                        if (searchRank) return searchRank;
                         let priA = parseFloat(a.PRIORITY);
                         let priB = parseFloat(b.PRIORITY);
                         if (isNaN(priA)) priA = Infinity;
@@ -103424,7 +103474,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!avNote) return;
             const wrapper = avNote.closest('.relative.w-full.mb-3');
             if (!wrapper) return;
-            wrapper.classList.toggle('hidden', !requiresAvNoteForCompletion(item));
+            wrapper.classList.toggle('hidden', safePrefix !== 'req-' && !requiresAvNoteForCompletion(item));
+            if (safePrefix === 'req-' && !String(avNote.value || '').trim()) {
+                const spec = normalizeDetailSpecTextForSave(document.getElementById('req-spec')?.value || item?.REQ_SPEC || '');
+                if (spec) avNote.value = 'SPEC - ' + spec;
+            }
         }
 
         function getAvDetailPickNoteText(item = activeItem, detailSourceView = '') {
@@ -105194,7 +105248,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const primaryDetailTab = configureDetailTabsForItem(activeItem, detailSourceView);
             const targetDetailTab = resolveVisibleDetailTab(primaryDetailTab, 'overview');
             populateDetailSummaryValues(activeItem, detailSourceView);
-            resetDetailDeferredMediaShell();
+            if (detailSourceView.toLowerCase() === 'request') renderSavedPhotos();
+            else resetDetailDeferredMediaShell();
             applyCameraPermissions(detailSourceView, activeItem);
             const deferCropRollFormShell = String(detailSourceView || '').trim().toLowerCase() === 'crop-roll'
                 && targetDetailTab === 'crop-roll-form'
@@ -105203,7 +105258,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             else populatePrimaryDetailTabShell(targetDetailTab, detailSourceView, activeItem);
             switchDetailTab(targetDetailTab, { suppressScroll: true, skipHydrate: true });
             if (String(detailSourceView || '').trim().toLowerCase() === 'request') {
-                setRequestDetailLoadState('loading');
+                setRequestDetailLoadState('');
                 scheduleRequestDetailEntryVisible('shell', { skipOptionLoad: true });
             }
             recordInternalPerfDuration('detailShellDurations', detailShellStartedAt, detailSourceView || 'detail');
@@ -105242,8 +105297,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!content || content.classList.contains('hidden')) return false;
             // Held/stopped items intentionally omit AV Note. Check the form
             // required for this item, rather than treating that rule as failure.
-            const requiredIds = ['req-match', 'req-spec', 'req-btn-save-complete'];
-            if (requiresAvNoteForCompletion(activeItem)) requiredIds.push('req-av-note');
+            const requiredIds = ['req-match', 'req-spec', 'req-btn-save-complete', 'req-av-note'];
             const requiredControls = requiredIds.map((id) => content.querySelector('#' + id));
             const renderedHeight = Array.from(content.children || []).reduce((total, child) => {
                 if (!child || !child.getClientRects || !child.getClientRects().length) return total;
@@ -105322,7 +105376,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 && detailRoot && !detailRoot.classList.contains('hidden')
                 && (!!(window.pendingPhotoUploads && window.pendingPhotoUploads.size) || hasRequestDraft
                     || hasActiveTextEntryFocus() || isUserActivelyTyping());
-            if (requestDetailBusy && renderOptions.allowDraftReset !== true) return false;
+            if (requestDetailBusy && renderOptions.allowDraftReset !== true) {
+                setRequestDetailLoadState('');
+                return false;
+            }
             const primaryDetailTab = configureDetailTabsForItem(activeItem, detailSourceView);
             populateDetailSummaryValues(activeItem, detailSourceView);
             renderDriveDetailOverviewFields();
@@ -107622,10 +107679,28 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             ].some((value) => doesCurrentUserMatchRequestCreatorValue(value));
         }
 
+        function getRetainedRequestWorkCapabilities() {
+            const profile = nativeAuthProfile;
+            if (!nativeAuthSessionActive || !profile?.id || profile.id !== nativeAuthSessionUserId
+                || String(profile.username || '').toLowerCase() !== String(currentUser || '').toLowerCase()
+                || profile.disabled_at || profile.active === false
+                || window.GncUserAccessControl?.getSelfState?.().denied === true
+                || (profile.locked_until && Date.parse(profile.locked_until) > Date.now())
+                || canonicalFeaturePermission('can_access_que') !== true) return null;
+            const access = getRoleAccessState();
+            const username = String(currentUser || '').toLowerCase();
+            const fullAdmin = ['dylan_collyge','megan_kelly','jd_jones'].includes(username);
+            const canWork = fullAdmin || username === 'kayla_knepp' || !String(profile.role || '').replace(/[ _]/g,'').toUpperCase().startsWith('QC');
+            return { canTakePhoto: canWork, canEdit: canWork, canComplete: canWork,
+                scope: fullAdmin || access.isAdmin ? 'global' : ['ben_brown','chance_alldredge'].includes(username) ? 'own'
+                    : access.isRep ? 'rep' : String(profile.role || '').toUpperCase().startsWith('EVAL') ? 'eval'
+                    : String(profile.role || '').toUpperCase() === 'CSR' ? 'created' : 'role' };
+        }
+
         function canCurrentUserWorkRequestItem(item = null, action = 'edit') {
             if (isDockSuspendDcRequestMirrorRow(item)) return canCurrentUserViewDockSuspendDcRequests()
                 && (action === 'close' || action === 'email' || !['awaiting_rep','approved'].includes(getSuspendTagStatus(item)));
-            const capabilities = getRequestCapabilities();
+            const capabilities = getRequestCapabilities() || getRetainedRequestWorkCapabilities();
             const actionKey = String(action || 'edit').trim().toLowerCase();
             const actionAllowed = actionKey === 'photo'
                 ? !!(capabilities && capabilities.canTakePhoto)
@@ -142437,8 +142512,9 @@ C.14.043 C.15.000
 
         function buildQueueInventoryMetricsHtml(item, sourceView = 'request', options = {}) {
             const isSuspendTagCard = sourceView === 'request' && isDockSuspendDcRequestMirrorRow(item);
+            const requestMetrics = sourceView === 'request' && (item.request_inventory_metrics || item.REQUEST_INVENTORY_METRICS);
             const suspendMetrics = isSuspendTagCard && item.suspend_tag_metrics && typeof item.suspend_tag_metrics === 'object'
-                ? item.suspend_tag_metrics : null;
+                ? item.suspend_tag_metrics : requestMetrics && typeof requestMetrics === 'object' ? requestMetrics : null;
             const state = suspendMetrics ? { status:'ready', row:null } : getQueueCardInventoryState(item, sourceView);
             const authorization = !state.row && !suspendMetrics ? getQueueCardInventoryAuthorizationContext() : null;
             const masterState = authorization ? getDatasetState('master') : null;
@@ -147828,8 +147904,18 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
         }
 
+        function getPlantSearchRank(value = '', query = '') {
+            const text = normalizeSearchValue(value);
+            const terms = tokenizeSearchValue(query);
+            if (!terms.length) return 0;
+            if (text.startsWith(terms.join(' '))) return 0;
+            if (terms.every(term => normalizedSearchTextHasWordStart(text, term))) return 1;
+            return terms.every(term => text.includes(term)) ? 2 : 3;
+        }
+
         function compareDriveCommonName(a = '', b = '') {
-            return String(a || '').localeCompare(String(b || ''));
+            const query = document.getElementById('drive-search')?.value || '';
+            return getPlantSearchRank(a, query) - getPlantSearchRank(b, query) || String(a || '').localeCompare(String(b || ''));
         }
 
         function compareDrivePlantContSize(a = '', b = '') {
@@ -152543,8 +152629,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No rows match the selected season.</div>`, 'drive:name:cards-empty');
                 return;
             }
-            selectedDriveProgram = null;
-            if (driveViewLevel > 3) driveViewLevel = 3;
             const finalItems = seasonItems;
             const crumbText = `${resolvedDriveModeLabel} > ${selectedDriveName} > ${selectedSizeLabel} > ${selectedSeasonLabel} (${finalItems.length} items)`;
             const renderKey = buildDriveRenderKey('drive:name:cards', crumbText, finalItems);
@@ -152727,6 +152811,13 @@ ${folderNote ? `Folder Note: ${folderNote}
             const syncControls = () => scheduleDriveTopControlsRender(driveViewState.baseSearchFilteredItems, driveViewState.drivePlantFilterState);
             if (activeDriveTab === 'name') {
                 renderDriveQuickRequestBar([]);
+                if (driveViewLevel === 0 && canUseProductionLiveSync() && getDatasetState('master').rowCompleteness !== 'complete'
+                    && productionDisplayMasterReceipt?.rows !== fullInventory) {
+                    syncDriveCrumb(crumb, driveModeLabel + ' > Select Common Name');
+                    if (!container.hasAttribute('data-complete-name-catalog')) container.innerHTML = '<div class="p-4 text-emerald-700" role="status">Preparing the full plant catalog…</div>';
+                    return;
+                }
+                container.setAttribute('data-complete-name-catalog', 'true');
                 renderDriveCommonNameDrill(container, crumb, driveModeLabel, driveViewState);
                 syncControls();
                 return;
@@ -166023,11 +166114,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     applyPhotoFieldsToPayload();
                     try {
-                        if (await stopIfRemoteRequestAlreadyComplete()) return;
                         if (prefix === 'req-') {
-                            if (!(await ensureRequestSchemaCompatible())) {
-                                throw new Error('REQUEST_SCHEMA_MISMATCH');
-                            }
+                            // The atomic service command checks current authorization, row state and schema.
+                            // A separate read probe must not delay or veto the completion command.
                             const expectedVersion = Math.max(1, Number(firstNonEmptyValue(
                                 itemToSave.ROW_VERSION,
                                 itemToSave.row_version,
@@ -166049,10 +166138,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                             const requestWorkFormValuesAtDispatch = getRequestWorkFormValues(itemToSave) || {};
                             const requestWorkCacheEntryTimestampAtDispatch = Number(getPendingEditsCache()[String(itemToSave.UNIQUE_ID || '').trim()]?.timestamp || 0);
                             const requestSaveIdentityScope = getSupabaseReadIdentityScope();
-                            const requestSavePermissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
                             const assertRequestSaveScope = () => {
-                                if (requestSaveIdentityScope !== getSupabaseReadIdentityScope()
-                                    || requestSavePermissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
+                                if (requestSaveIdentityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
                             };
                             const requestSaveOutcome = await saveRequestWorkWithReconciliation({
                                 assertScope: assertRequestSaveScope,
@@ -166101,6 +166188,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 DELIVERY_DISPLAY_STATE: isComplete && ['pending', 'processing'].includes(deliveryState) ? 'sending' : firstNonEmptyValue(itemToSave.DELIVERY_DISPLAY_STATE, ''),
                                 delivery_display_state: isComplete && ['pending', 'processing'].includes(deliveryState) ? 'sending' : firstNonEmptyValue(itemToSave.delivery_display_state, '')
                             });
+                            if (rpcResult.master_row) {
+                                const returnedMaster = formatFetchedRows([rpcResult.master_row], 'ph_master_inventory')[0];
+                                const localMaster = returnedMaster && masterInventoryById.get(String(returnedMaster.UNIQUE_ID));
+                                if (localMaster) Object.assign(localMaster, returnedMaster);
+                                if (requestMasterItem && returnedMaster) Object.assign(requestMasterItem, returnedMaster);
+                            }
                             normalizeRowPhotoFields(itemToSave);
                             buildSearchIndex(itemToSave);
                             if (isComplete && hasRequestCompletionState(itemToSave)) confirmQueueCompletion(itemToSave);
@@ -166457,10 +166550,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function buildNarrowRequestWorkRpcPatch(dirtyValues = {}, item = null) {
             const patch = { ...(dirtyValues || {}) };
             if (Object.prototype.hasOwnProperty.call(patch, 'req_match')) {
-                patch.loc_match_qty = calculateLocMatchQtyValue({
-                    MATCH: patch.req_match,
-                    PTRAVAILABLE: firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, '')
-                });
+                patch.loc_match_qty = getEditorLocMatchQtyValue(item, patch.req_match);
             }
             if (Object.prototype.hasOwnProperty.call(patch, 'req_photo_link')) patch.drive_photo_link = patch.req_photo_link || '';
             if (Object.prototype.hasOwnProperty.call(patch, 'req_photo_name')) patch.drive_photo_name = patch.req_photo_name || '';

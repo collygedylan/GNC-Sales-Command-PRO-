@@ -541,18 +541,8 @@ function runAutoDropFolderSync_(event) {
   } finally {
     lock.releaseLock();
   }
-  // Queue bounded historical analysis independently of the operational import.
-  // A failed/unfinished backfill must never block current SOC synchronization.
-  try { scheduleSocOrderHistoryTrigger_(60 * 1000); }
-  catch (historyError) { console.warn('[SOC HISTORY] SCHEDULE_DEFERRED'); }
-  try {
-    const workerResult = runRequestIntegrityScheduledWorker_();
-    if (workerResult && workerResult.status === 'deferred') {
-      console.warn('[REQUEST INTEGRITY] MAINTENANCE_DEFERRED');
-    }
-  } catch (workerError) {
-    console.error('[REQUEST INTEGRITY] Scheduled worker failed with REQUEST_INTEGRITY_WORKER_FAILED.');
-  }
+  // Operational stages start before the independent integrity/catalog maintenance.
+  scheduleRequestIntegrityMaintenance_();
   const requestedBy = Session.getEffectiveUser().getEmail() || 'Apps Script Auto Sync';
   return queueManualSyncRequest_({
     job: 'all',
@@ -1315,7 +1305,7 @@ function runReservesOnly() { return runRoutedDropImport_('reserves'); }
 
 // Historical snapshots never read or update live app-owned inventory fields.
 // Positional values retain duplicate source headers and every original column.
-const IMPORT_HISTORY_CHUNK_SIZE_ = 500;
+const IMPORT_HISTORY_CHUNK_SIZE_ = 2000;
 const IMPORT_HISTORY_BUDGET_MS_ = 180000;
 const IMPORT_HISTORY_BACKFILL_KEY_ = 'IMPORT_HISTORY_BACKFILL_V1';
 const IMPORT_HISTORY_BACKFILL_HANDLER_ = 'runImportHistoryBackfillChunk_';
@@ -1522,7 +1512,7 @@ function runRoutedDropImport_(dataset) {
     const files = listRoutedDropFiles_(route, dataset);
     // Select the newest valid source for this live stage. Historical replay is
     // independently scheduled and must never be started by an operational sync.
-    if (!files.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0 };
+    if (!files.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' };
     const sourceFile = files[0];
     const sourceWatermark = {
       fileId: String(sourceFile.getId() || ''),
@@ -2078,7 +2068,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'pikes_orders', 'stine_lumber_orders', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'transactions_keyed', 'hl_po_parsed']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'cav', 'pikes_orders', 'stine_lumber_orders', 'customer_rep_map', 'warehouse_assigned_items', 'transactions_keyed', 'hl_po_parsed']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -2148,7 +2138,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
-const APP_RELEASE_VERSION_ = 'AgData v2.3.32';
+const APP_RELEASE_VERSION_ = 'AgData v2.3.33';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -2366,6 +2356,37 @@ function loadManualSyncStatus_() {
   }
 }
 
+function publishManualSyncStatus_(status) {
+  const key = [status && status.runId,status && status.currentStage,status && status.active].join('|');
+  const now = Date.now();
+  if (publishManualSyncStatus_.lastKey === key && now - (publishManualSyncStatus_.lastAt || 0) < 8000) return;
+  try {
+    const safe = sanitizeManualSyncStatusForClient_(status) || { active:false };
+    delete safe.requestedBy;
+    const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/app_manual_sync_status?on_conflict=id', {
+      method:'post',contentType:'application/json',muteHttpExceptions:true,
+      headers:getSupabaseHeaders_({Prefer:'resolution=merge-duplicates,return=minimal'}),
+      payload:JSON.stringify({id:true,status:safe,updated_at:new Date(now).toISOString()})
+    });
+    if (response.getResponseCode() >= 300) throw new Error('STATUS_PUBLISH_FAILED');
+    publishManualSyncStatus_.lastKey=key; publishManualSyncStatus_.lastAt=now;
+  } catch (error) { console.warn('[MANUAL SYNC] STATUS_PUBLISH_DEFERRED'); }
+}
+
+function scheduleRequestIntegrityMaintenance_() {
+  const handler = 'runQueuedRequestIntegrityMaintenance_';
+  if (!ScriptApp.getProjectTriggers().some(function(trigger) { return trigger.getHandlerFunction() === handler; })) {
+    ScriptApp.newTrigger(handler).timeBased().after(60000).create();
+  }
+}
+
+function runQueuedRequestIntegrityMaintenance_() {
+  ScriptApp.getProjectTriggers().forEach(function(trigger) { if (trigger.getHandlerFunction() === 'runQueuedRequestIntegrityMaintenance_') ScriptApp.deleteTrigger(trigger); });
+  const status = loadManualSyncStatus_();
+  if (status && status.active) { scheduleRequestIntegrityMaintenance_(); return {status:'deferred'}; }
+  return runRequestIntegrityScheduledWorker_();
+}
+
 function saveManualSyncStatus_(status) {
   // Retain bounded metadata before the next attempt replaces failed status.
   // Diagnostic storage must not prevent the import status itself being saved.
@@ -2374,6 +2395,7 @@ function saveManualSyncStatus_(status) {
     preserveManualSyncFailure_(status);
   } catch (error) { console.warn('[MANUAL SYNC] FAILURE_HISTORY_UNAVAILABLE'); }
   setScriptPropertyWithQuotaCleanup_(MANUAL_SYNC_STATUS_KEY, JSON.stringify(status || {}));
+  publishManualSyncStatus_(status);
 }
 
 function readManualSyncFailureHistory_() {
@@ -5859,7 +5881,7 @@ function pushToSupabaseLegacy_(tableName, payloadArray) {
 
 // Override the legacy upsert helper so failed Supabase responses stop the sync immediately.
 function buildSupabaseUpsertRequests_(tableName, payloadArray) {
-  const chunkSize = isMasterInventoryTable_(tableName) ? SUPABASE_MASTER_UPSERT_CHUNK_SIZE : 1000;
+  const chunkSize = isMasterInventoryTable_(tableName) ? SUPABASE_MASTER_UPSERT_CHUNK_SIZE : 2000;
   let requests = [];
   for (let i = 0; i < payloadArray.length; i += chunkSize) {
     const sourceChunk = payloadArray.slice(i, i + chunkSize);
@@ -6887,7 +6909,7 @@ function masterBulkRequestUuid_(runId, sourceDigest) {
 
 function getMasterBulkSnapshotStageConfig_() {
   return {
-    chunkSize: 500,
+    chunkSize: 2000,
     checkpointPrefix: 'MASTER_BULK_SNAPSHOT_STAGE_CHECKPOINT_V1_',
     invocationBudgetMs: 180000
   };
@@ -7027,6 +7049,7 @@ function readMasterBulkSnapshotStageCheckpoint_(manifest, bulkPayload) {
       sourceDigest: bulkPayload.sourceDigest,
       expectedRows: bulkPayload.rows.length,
       expectedChunks: Math.ceil(bulkPayload.rows.length / config.chunkSize),
+      chunkSize: config.chunkSize,
       sourceManifestDigest: ''
     };
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkpoint.requestId)) {
@@ -7044,13 +7067,15 @@ function readMasterBulkSnapshotStageCheckpoint_(manifest, bulkPayload) {
       || JSON.stringify(checkpoint.manifest) !== JSON.stringify(manifest)
       || String(checkpoint.sourceDigest || '').toLowerCase() !== String(bulkPayload.sourceDigest || '').toLowerCase()
       || Number(checkpoint.expectedRows) !== bulkPayload.rows.length
-      || Number(checkpoint.expectedChunks) !== Math.ceil(bulkPayload.rows.length / config.chunkSize)
+      || Number(checkpoint.expectedChunks) !== Math.ceil(bulkPayload.rows.length / (checkpoint.chunkSize || 500))
+      || ![500,2000].includes(checkpoint.chunkSize || 500)
       || checkpoint.sourceManifestDigest != null && checkpoint.sourceManifestDigest !== ''
         && !/^[0-9a-f]{64}$/i.test(String(checkpoint.sourceManifestDigest))) {
     // Never replace an unfinished or corrupt checkpoint with a different snapshot.
     throw new Error('MASTER_BULK_STAGE_CHECKPOINT_MISMATCH');
   }
   checkpoint.storageKey = storageKey;
+  checkpoint.chunkSize = checkpoint.chunkSize || 500;
   return checkpoint;
 }
 
@@ -7081,6 +7106,7 @@ function masterBulkStageResponseObject_(response) {
 
 function validateMasterBulkStageState_(response, expected, status) {
   const config = getMasterBulkSnapshotStageConfig_();
+  config.chunkSize = expected.chunkSize || config.chunkSize;
   const value = masterBulkStageResponseObject_(response);
   if (!value || value.status !== status
       || String(value.requestId || '') !== String(expected.requestId || '')
@@ -7088,7 +7114,7 @@ function validateMasterBulkStageState_(response, expected, status) {
       || String(value.sourceDigest || '') !== String(expected.sourceDigest || '')
       || !/^[0-9a-f]{64}$/i.test(String(value.sourceManifestDigest || ''))
       || !Number.isSafeInteger(value.sourceCount) || value.sourceCount !== expected.sourceCount
-      || value.chunkSize !== config.chunkSize
+      || (value.chunkSize !== config.chunkSize && !(expected.expectedChunks === 1 && expected.expectedRows <= 500 && [500,2000].includes(value.chunkSize)))
       || value.expectedRows !== expected.expectedRows || value.expectedChunks !== expected.expectedChunks
       || !Number.isSafeInteger(value.chunksReceived) || value.chunksReceived < 0 || value.chunksReceived > expected.expectedChunks
       || !Number.isSafeInteger(value.rowsReceived) || value.rowsReceived < 0 || value.rowsReceived > expected.expectedRows
@@ -7203,6 +7229,7 @@ function callMasterBulkSnapshotImport_(bulkPayload, parsedFiles, runId) {
   const checkpointKey = masterBulkSnapshotStageCheckpointKey_(manifest, bulkPayload.sourceDigest);
   assertNoPublishedMasterBulkSnapshotAwaitingArchive_(checkpointKey);
   const checkpoint = readMasterBulkSnapshotStageCheckpoint_(manifest, bulkPayload);
+  config.chunkSize = checkpoint.chunkSize || 500;
   const createdCheckpointNow = checkpoint.createdNow === true;
   delete checkpoint.createdNow;
   if (createdCheckpointNow) cleanupOrphanedMasterBulkSnapshotStages_();
@@ -7214,6 +7241,7 @@ function callMasterBulkSnapshotImport_(bulkPayload, parsedFiles, runId) {
     sourceCount: manifest.length,
     expectedRows: bulkPayload.rows.length,
     expectedChunks: Math.ceil(bulkPayload.rows.length / config.chunkSize),
+    chunkSize: config.chunkSize,
     checkpointKey: checkpoint.storageKey
   };
 
@@ -8532,6 +8560,7 @@ function setManualSyncImportPhase_(tableName, phase, rowsRead, totalRows) {
     status.phaseStartedAt = new Date(now).toISOString();
     status.updatedAt = status.phaseStartedAt;
     properties.setProperty(MANUAL_SYNC_STATUS_KEY, JSON.stringify(status));
+    publishManualSyncStatus_(status);
   } catch (ignored) { console.warn('[MANUAL SYNC] PHASE_CHECKPOINT_UNAVAILABLE'); }
 }
 

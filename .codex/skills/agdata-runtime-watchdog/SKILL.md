@@ -34,3 +34,7 @@ Panel badge and incident-list refreshes share one pending read for the same veri
 The top-header count badge is exclusively for canonical `dylan_collyge`. Start it with both `hidden` and `display:none`, force-hide/clear it on other accounts and logout, and reject late badge reads from an earlier owner. Add `WATCHDOG MONITOR` as the first Manager module for Dylan, Megan and JD, preserving its existing panel authorization. This visibility restriction does not disable background event logging or change the existing Manager review authorization. App-api event persistence uses its service-role client. When changing watchdog SQL, register each migration in `scripts/apply-item-low-stock-migration.mjs` with an installed-contract check.
 
 Manager render regression coverage includes inactive Home renders and cold paged Eval2 initialization; watchdog observations remain passive and do not authorize remediation.
+
+## Request completion and foreground continuity
+
+Request permission refresh and sync progress retain same-account views. manual_sync_status is an exact read-only app-api fixture action and may be classified as a canceled read; request_work/capabilities is read-only while request_work/save remains a mutation. The watchdog remains passive and does not gain request-write or deployment authority.

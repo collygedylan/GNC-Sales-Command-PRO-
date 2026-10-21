@@ -47,3 +47,7 @@ These use local source/VM or injected transport fixtures without a database, bro
 Home source filename drawer and toggle are restricted to the authenticated Dylan/Megan/JD trio. The existing historical backfill and 15-minute trigger remain paused.
 
 Master startup hydration begins from Home for every authorized inventory role, with bounded four-way 1,000-row pages. Customer/consignee choices use the compact authenticated preload endpoint instead of duplicated raw-table and per-rep paging. Keep historical backfill and its 15-minute trigger paused under the current release instruction.
+
+## Request completion and foreground continuity
+
+MANUAL_SYNC_STAGE_ORDER_DEFAULT starts drive, soc, reserves, cav. Master stage and history chunks support 2,000 rows; unfinished 500-row checkpoints remain resumable without staging-table alteration. Deferred runQueuedRequestIntegrityMaintenance_ waits until core sync is inactive. publishManualSyncStatus_ writes the service-only app_manual_sync_status singleton with an eight-second same-stage throttle; clients read app-api manual_sync_status every ten seconds. Historical backfills and their fifteen-minute trigger remain paused. These settings are not measured production timing guarantees. Focused coverage: live-sync-coordinator.test.mjs.

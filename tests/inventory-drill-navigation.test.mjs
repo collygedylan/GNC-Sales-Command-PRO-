@@ -197,9 +197,9 @@ test('Brian and admin render a prepared 9600-row Drive snapshot in one pass thro
     let passes = 0;
     assert.deepEqual(Array.from(registry.getViewAdapters('drive', { driveAssignmentsRequired: role !== 'admin' })),
       ['core:master', 'side:settings']);
-    const context = vm.createContext({ currentRole: role, activeDriveMode: 'ok', activeDriveTab: 'name',
+    const context = vm.createContext({ currentRole: role, activeDriveMode: 'ok', activeDriveTab: 'name', driveViewLevel:0, canUseProductionLiveSync:()=>true, getDatasetState:()=>({rowCompleteness:'complete'}),
       DRIVE_MODE_LABELS: { ok: 'Drive Mode' },
-      document: { getElementById: () => ({ classList: { remove() {} } }) },
+      document: { getElementById: () => ({ classList: { remove() {} }, setAttribute() {} }) },
       ensureViewDataForRender: () => false, syncDriveModeTabs() {}, syncDriveTabPills() {},
       renderDriveUniversalSearchResultsOnly: () => false, hideDrivePlantFilters() {},
       buildDriveVisibleItemsState: () => ({ baseSearchFilteredItems: rows }),
@@ -878,4 +878,41 @@ test('1000-row master pages preserve the aggregate RPC 500-row safety bound',()=
  assert.match(page,/inventoryReadPageBounds\(params, 1000\)/);
  assert.match(page,/projected.slice\(0, 500\)/);assert.match(page,/projected.slice\(500\)/);
  assert.match(page,/enrichInventoryLocationRows\(supabase, String\(actor.id \|\| ""\), batch, inventoryRevision\)/);
+});
+
+ test('plant name word starts outrank substrings for st and st jo', () => {
+ const ctx=vm.createContext({});
+ vm.runInContext(['normalizeSearchValue','tokenizeSearchValue','isProgressiveSearchWordChar','normalizedSearchTextHasWordStart','getPlantSearchRank'].map(source).join('\n'),ctx);
+ for(const term of ['st','st jo']) for(const name of ['Blue Velvet™ St. Johnswort','Cobalt-N-Gold™ St. Johnswort','Sunburst St. Johnswort']) {
+ assert.ok(ctx.getPlantSearchRank(name,term)<ctx.getPlantSearchRank('Alaska Shasta Daisy',term));
+ assert.ok(ctx.getPlantSearchRank(name,term)<ctx.getPlantSearchRank('Queen Josephine Hosta',term)); }
+ });
+
+test('AV rendered search ranks St John word starts before Shasta and Hosta even with lower priority', () => {
+ const ctx=vm.createContext({activeAVTab:'open',activeAvOpenTab:'cards'});
+ vm.runInContext(source('normalizeSearchValue')+source('tokenizeSearchValue')+source('isProgressiveSearchWordChar')+source('normalizedSearchTextHasWordStart')+source('getPlantSearchRank')+source('buildAVExportContext'),ctx);
+ const rows=[{COMMONNAME:'Alaska Shasta Daisy',PRIORITY:1},{COMMONNAME:'Queen Josephine Hosta',PRIORITY:1},{COMMONNAME:'Blue Velvet St. Johnswort',PRIORITY:9},{COMMONNAME:'Cobalt-N-Gold St. Johnswort',PRIORITY:9}];
+ for(const term of ['st','st jo']) assert.deepEqual(Array.from(ctx.buildAVExportContext(rows,term).rows.slice(0,2),row=>row.COMMONNAME),['Blue Velvet St. Johnswort','Cobalt-N-Gold St. Johnswort']);
+});
+
+test('cold Drive withholds a partial 27-name catalog and retains the complete catalog through refresh', () => {
+ let complete=false,painted=0; const attrs=new Map();const container={innerHTML:'',classList:{remove(){}},hasAttribute:key=>attrs.has(key),setAttribute:(key,value)=>attrs.set(key,value)};
+ const ctx=vm.createContext({activeDriveTab:'name',activeDriveMode:'ok',driveViewLevel:0,DRIVE_MODE_LABELS:{ok:'Drive Mode'},fullInventory:[],productionDisplayMasterReceipt:null,
+ ensureViewDataForRender:()=>false,syncDriveModeTabs(){},syncDriveTabPills(){},document:{getElementById:()=>container},renderDriveUniversalSearchResultsOnly:()=>false,hideDrivePlantFilters(){},
+ buildDriveVisibleItemsState:()=>({baseSearchFilteredItems:Array.from({length:complete?1613:27})}),scheduleDriveTopControlsRender(){},renderDriveQuickRequestBar(){},
+ canUseProductionLiveSync:()=>true,getDatasetState:()=>({rowCompleteness:complete?'complete':'partial'}),syncDriveCrumb(){},
+ renderDriveCommonNameDrill:(_c,_b,_l,state)=>{painted++;container.innerHTML=String(state.baseSearchFilteredItems.length)+' names';}});
+ vm.runInContext(source('renderDrive'),ctx);
+ ctx.renderDrive();assert.equal(painted,0);assert.doesNotMatch(container.innerHTML,/27 names/);
+ complete=true;ctx.renderDrive();assert.equal(container.innerHTML,'1613 names');
+ complete=false;ctx.renderDrive();assert.equal(container.innerHTML,'1613 names');assert.equal(painted,1);
+ const commonName=source('renderDriveCommonNameDrill');assert.ok(!commonName.includes('driveViewLevel > 3) driveViewLevel = 3'));
+ const renderContent=html.match(/        function renderViewContent\([^]*?^        }/m)[0];
+ assert.ok(renderContent.includes('!selectedDriveName && !selectedDriveLoc && driveViewLevel === 0'));
+});
+
+test('phone footer, Bloom clear and dark missing-photo surfaces have high contrast without filename clipping', () => {
+ const css=fs.readFileSync(new URL('../assets/app-shell-style-15.css',import.meta.url),'utf8');
+ for(const token of ['#062115','#0b3522','#d9fbe8','#15803d','#4ade80','#dc2626','#ffffff','rgba(10,38,25,.85)'])assert.ok(css.includes(token),token);
+ assert.ok(css.includes('max-height:none'));assert.ok(css.includes('overflow:visible'));
 });

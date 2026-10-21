@@ -9,6 +9,12 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      app_manual_sync_status: {
+        Row: { id: boolean; status: Json; updated_at: string }
+        Insert: { id?: boolean; status?: Json; updated_at?: string }
+        Update: { id?: boolean; status?: Json; updated_at?: string }
+        Relationships: []
+      }
       app_dataset_revisions: {
         Row: {
           changed_at: string
@@ -19051,6 +19057,10 @@ export type Database = {
       }
       save_limited_access_override_v1: {
         Args: { p_changes: Json; p_expected_revision: number; p_reason: string }
+        Returns: Json
+      }
+      request_work_command_v1: {
+        Args: { p_actor_id: string; p_session_id: string; p_operation: string; p_request_id?: string; p_expected_version?: number; p_patch?: Json; p_complete?: boolean }
         Returns: Json
       }
       save_request_work: {

@@ -42,3 +42,7 @@ These are local source/VM tests, not browser, export-layout or production-volume
 A partial master preview cannot replace a complete same-account, same-permission display receipt. Common Name rendering paints its first batch synchronously while continuing in frames. Plant search removes punctuation and accepts joined word searches (stjohn). Resolved AV thumbnails hydrate immediately in the visible window; missing location totals may display a positive card On Hand fallback.
 
 Startup warms the complete master browse snapshot from Home with 1,000-row pages and at most four concurrent continuation reads; partial pages never replace a complete same-account catalog. Require stable totals and projection coverage, then refresh focused search after complete hydration. AV option cards format hold Since as a compact date and arrange six metrics in three columns on narrow cards.
+
+## Request completion and foreground continuity
+
+renderDrive withholds partial root Common Name catalogs and retains an already painted complete catalog while refreshing. Background renderViewContent/renderDriveCommonNameDrill preserve selected name/location and CARD depth. getPlantSearchRank puts prefix and word-start tokens ahead of substring matches in Drive and buildAVExportContext. Dark empty photo surfaces are styled in app-shell-style-15.css. Focused coverage: inventory-drill-navigation.test.mjs.

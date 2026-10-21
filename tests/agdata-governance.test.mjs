@@ -99,3 +99,23 @@ test('startup snapshot fixtures reject unregistered operations and injected para
  assert.equal(releaseSnapshotReadFixture({action:'customer-rep-map',operation:'preload',actorId:'forged'}),null);
  assert.equal(releaseSnapshotReadFixture({action:'suspend_tag',operation:'send',payload:{},commandId:null,expectedVersion:null}),null);
 });
+
+test('Request and sync startup reads reject forged parameters and all mutations',async()=>{
+ const {releaseSnapshotReadFixture}=await import('./helpers/release-smoke-route-policy.mjs');
+ assert.equal(releaseSnapshotReadFixture({action:'manual_sync_status'}).data.active,false);
+ assert.equal(releaseSnapshotReadFixture({action:'manual_sync_status',operation:'write'}),null);
+ assert.equal(releaseSnapshotReadFixture({action:'request_work',operation:'save'}),null);
+ assert.equal(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities',actorId:'forged'},[],[],{}),null);
+ assert.deepEqual(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities'},[],[],{username:'dylan_collyge'}).data,{username:'dylan_collyge'});
+ const runner=read('scripts/apply-item-low-stock-migration.mjs');
+ assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName]'));
+ assert.ok(runner.includes('if (name === requestWorkSyncStatusMigrationName)'));
+});
+
+test('sync status table is registered in typed and runtime read contracts',()=>{
+ const types=read('supabase/functions/_shared/database.types.ts');
+ const generated=read('services/database-contracts.generated.ts');
+ assert.ok(types.includes('app_manual_sync_status: {'));
+ assert.ok(generated.includes('"app_manual_sync_status": {'));
+ for(const field of ['id','status','updated_at'])assert.ok(generated.slice(generated.indexOf('"app_manual_sync_status"'),generated.indexOf('"app_dataset_revisions"')).includes('"'+field+'"'));
+});

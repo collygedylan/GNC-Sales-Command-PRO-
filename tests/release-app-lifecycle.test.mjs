@@ -590,3 +590,37 @@ test('a subscriber failure is isolated from later subscribers', () => {
   assert.equal(h.errors.length, 1);
 });
 // @test-group: foundation
+
+test('an active session defers worker updates and mismatch recovery without changing the screen', async () => {
+  const h = harness(); let reloads = 0;
+  h.window.location = { reload() { reloads++; } };
+  h.window.isAuthenticatedAppSessionActive = () => true;
+  assert.equal(h.window.reloadForServiceWorkerUpdate('AgData v2.3.33'), false);
+  assert.equal(await h.window.recoverShellVersionMismatch('AgData v2.3.32', 'AgData v2.3.33'), false);
+  assert.equal(h.window.__gncShellUpdateReady, true);
+  assert.equal(h.timers.length, 0); assert.equal(reloads, 0);
+});
+
+test('a queued worker reload is canceled when login completes before its timer', () => {
+  const h = harness(); let active = false, reloads = 0;
+  h.window.location = { reload() { reloads++; } };
+  h.window.isAuthenticatedAppSessionActive = () => active;
+  assert.equal(h.window.reloadForServiceWorkerUpdate('AgData v2.3.33'), true);
+  active = true; h.runTimer();
+  assert.equal(reloads, 0); assert.equal(h.window.__gncPwaReloadPending, false);
+});
+
+test('transient session loss retains the active identity while confirmed disablement clears it', async () => {
+  const ctx = vm.createContext({ currentUser: 'dylan_collyge', nativeAuthProfile: { id: 'actor' }, nativeAuthAccessToken:'expired',
+    nativeAuthProfileRestorePending:false, nativeAuthSessionActive:true, nativeAuthReadRequired:true, nativeAuthSessionUserId:'actor',
+    hasExplicitLogoutMarker:()=>false, invalidateNativeAuthRecovery(){}, getSupabaseBrowserClient:()=>({auth:{signOut:async()=>{}}}),
+    clearCachedNativeAuthProfile(){}, clearInMemorySessionIdentity(){ctx.currentUser='';}, resetLoginUiState(){ctx.loginShown=true;} });
+  for (const name of ['isNativeAuthSessionRevoked','clearRevokedNativeAuthSession']) {
+    const expression = new RegExp('        (?:async )?function ' + name + '\\([^]*?^        }','m');
+    vm.runInContext(runtimeSource.match(expression)[0],ctx);
+  }
+  assert.equal(await ctx.clearRevokedNativeAuthSession({status:401}),false);
+  assert.equal(ctx.currentUser,'dylan_collyge'); assert.equal(ctx.loginShown,undefined);
+  assert.equal(await ctx.clearRevokedNativeAuthSession({code:'NATIVE_PROFILE_DISABLED'}),true);
+  assert.equal(ctx.currentUser,''); assert.equal(ctx.loginShown,true);
+});

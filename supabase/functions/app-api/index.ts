@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.30";
+const APP_RUNTIME_RELEASE = "AgData v2.3.33";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -961,7 +961,7 @@ async function readSuspendTagMetricRows(table: "ph_master_inventory" | "ph_cav_i
   return rows;
 }
 
-function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows: Array<Record<string, unknown>>, cavRows: Array<Record<string, unknown>>, masterSourceAuthoritative = false) {
+function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows: Array<Record<string, unknown>>, cavRows: Array<Record<string, unknown>>, masterSourceAuthoritative = false, preferLocation = false) {
   const itemCode = normalizeSuspendTagMetricKey(row.itemcode ?? row.ITEMCODE);
   const locationCode = normalizeSuspendTagMetricKey(row.locationcode ?? row.LOCATIONCODE);
   const lotCode = normalizeSuspendTagMetricKey(row.lotcode ?? row.LOTCODE);
@@ -969,15 +969,16 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
   const exactRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode
     && normalizeSuspendTagMetricKey(candidate.lotcode) === lotCode);
   const lotRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.lotcode) === lotCode);
-  const matchLevel = exactRows.length ? "item-location-lot" : lotRows.length ? "item-lot" : itemMaster.length ? "item" : "cav-item";
-  const selectedMasterRows = exactRows.length ? exactRows : lotRows.length ? lotRows : itemMaster;
+  const requestLocationRows = preferLocation ? itemMaster.filter(candidate => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode) : [];
+  const matchLevel = exactRows.length ? "item-location-lot" : requestLocationRows.length ? "item-location" : lotRows.length ? "item-lot" : itemMaster.length ? "item" : "cav-item";
+  const selectedMasterRows = exactRows.length ? exactRows : requestLocationRows.length ? requestLocationRows : lotRows.length ? lotRows : itemMaster;
   const selectedRows = selectedMasterRows.length ? selectedMasterRows : cavRows.filter((candidate) => normalizeSuspendTagMetricKey(candidate.itemcode) === itemCode);
   const itemCavRows = cavRows.filter((candidate) => normalizeSuspendTagMetricKey(candidate.itemcode) === itemCode);
   const selectedSeasons = new Set(selectedMasterRows.map((candidate) => normalizeSuspendTagMetricKey(candidate.season)).filter(Boolean));
   const cavFallbackRows = selectedMasterRows.length && selectedSeasons.size
     ? itemCavRows.filter((candidate) => selectedSeasons.has(normalizeSuspendTagMetricKey(candidate.season)))
     : itemCavRows;
-  const absentSourceValue = null;
+  const absentSourceValue = preferLocation && masterSourceAuthoritative ? 0 : null;
   const metric = (keys: string[], fallbackKeys: string[] = keys) => sumSuspendTagMetric(selectedRows, keys)
     ?? sumSuspendTagMetric(cavFallbackRows, fallbackKeys);
   const locationRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode);
@@ -989,8 +990,8 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
     PTRONHAND: metric(["ptronhand"]) ?? absentSourceValue,
     PTRREVIEWED: metric(["ptrreviewed"]) ?? (sumSuspendTagMetric(selectedRows, ["ptronhand"]) !== null ? 0 : absentSourceValue),
     PTRAVAILABLE: sumSuspendTagAvailable(selectedRows) ?? sumSuspendTagAvailable(cavFallbackRows) ?? absentSourceValue,
-    S_LTS: sumSuspendTagOpenStock(selectedRows) ?? absentSourceValue,
-    LOC_ON_HAND: locOnHand,
+    S_LTS: sumSuspendTagOpenStock(selectedRows) ?? (preferLocation ? sumSuspendTagOpenStock(cavFallbackRows) : null) ?? absentSourceValue,
+    LOC_ON_HAND: locOnHand ?? absentSourceValue,
     LOC_MATCH_QTY: locPhotoMatch,
     HOLDSTOPCODE: firstSuspendTagMetricValue(selectedRows, ["holdstopcode"]) ?? row.holdstopcode ?? null,
     HOLDSTOPREASON: firstSuspendTagMetricValue(selectedRows, ["holdstopreason", "hold_reason"]) ?? firstSuspendTagMetricValue(cavFallbackRows, ["holdstopreason", "hold_reason"]) ?? row.holdstopreason ?? null,
@@ -1007,7 +1008,7 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
   };
 }
 
-async function enrichSuspendTagMetricRows(rows: Array<Record<string, Json | undefined>>, actorId: string) {
+async function enrichSuspendTagMetricRows(rows: Array<Record<string, Json | undefined>>, actorId: string, metricKey = "suspend_tag_metrics") {
   const itemCodes = [...new Set(rows.map((row) => String(row.itemcode ?? row.ITEMCODE ?? "").trim()).filter(Boolean))];
   if (!itemCodes.length) return rows;
   const inventoryRevision = await captureReadyInventoryLocationRevision(actorId);
@@ -1016,7 +1017,7 @@ async function enrichSuspendTagMetricRows(rows: Array<Record<string, Json | unde
     readSuspendTagMetricRows("ph_cav_import", SUSPEND_TAG_METRIC_CAV_FIELDS, itemCodes),
   ]);
   if (await captureReadyInventoryLocationRevision(actorId) !== inventoryRevision) throw new Error("LOC_ON_HAND_REVISION_CHANGED");
-  return rows.map((row) => ({ ...row, suspend_tag_metrics: buildSuspendTagMetricFallback(row, masterRows, cavRows, true) as unknown as Json }));
+  return rows.map((row) => ({ ...row, [metricKey]: buildSuspendTagMetricFallback(row, masterRows, cavRows, true, metricKey === "request_inventory_metrics") as unknown as Json }));
 }
 
 async function handleDatasetRead(
@@ -1151,8 +1152,8 @@ async function handleDatasetRead(
       }
     }
     let metricRows = data;
-    if (dataset === "suspend_tag") {
-      try { metricRows = await enrichSuspendTagMetricRows(data, String(actor.id || "")); }
+    if (["suspend_tag", "request_queue", "active_request"].includes(dataset)) {
+      try { metricRows = await enrichSuspendTagMetricRows(data, String(actor.id || ""),dataset === "suspend_tag" ? "suspend_tag_metrics" : "request_inventory_metrics"); }
       catch { metricRows = data; }
     }
     const rows = inventoryRevision === null ? metricRows
@@ -5703,6 +5704,7 @@ export async function renderBunchNotePreview(options: {
 type CanonicalActionGate = { flag: CanonicalUserAccessFlag } | { any: readonly CanonicalUserAccessFlag[] };
 
 function canonicalActionGate(action: string, payload: Record<string, unknown>): CanonicalActionGate | null {
+  if (action === "manual_sync_status") return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] };
   if (action === "av_read") return { flag: "can_access_av" };
   if (action === "dataset_read") {
     const dataset = String(payload.dataset || "").trim().toLowerCase();
@@ -5722,7 +5724,7 @@ function canonicalActionGate(action: string, payload: Record<string, unknown>): 
       ? { flag: "can_submit_reclass" } : { flag: "can_access_drive_mode" };
   }
   if (action === "inventory_reclass_move") return { flag: "can_submit_reclass" };
-  if (["request_history", "sales_credit", "request_queue_remove", "request_archive", "bunch_note", "bunch_note_workflow"].includes(action)) {
+  if (["request_work", "request_history", "sales_credit", "request_queue_remove", "request_archive", "bunch_note", "bunch_note_workflow"].includes(action)) {
     return { flag: "can_access_que" };
   }
   if (action === "eval_work" && String(payload.operation || "list").trim().toLowerCase() === "report_page") {
@@ -6125,6 +6127,30 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
   }
   if (action === "dataset_read") return await handleDatasetRead(session, payload, req, canonicalAccessForRequest);
+  if (action === "request_work") {
+    const actor = activeProfileForRequest || await resolveActiveSessionProfile(session);
+    const operation = String(payload.operation || "");
+    const allowedKeys = operation === "capabilities" ? ["action", "operation"] : ["action", "operation", "requestId", "expectedVersion", "patch", "complete"];
+    if (!["capabilities", "save"].includes(operation) || Object.keys(payload).some(key => !allowedKeys.includes(key))
+      || (operation === "save" && (typeof payload.requestId !== "string" || !payload.requestId.trim() || payload.requestId.length > 200
+        || !Number.isSafeInteger(payload.expectedVersion) || Number(payload.expectedVersion) < 1 || typeof payload.complete !== "boolean"
+        || !payload.patch || typeof payload.patch !== "object" || Array.isArray(payload.patch) || JSON.stringify(payload.patch).length > 60000))) return errorResponse("Invalid Request work command.",400,{code:"REQUEST_WORK_INVALID"});
+    let sessionId: string;
+    try { sessionId = await verifySuspendTagSession(supabase, actor, req); }
+    catch { return errorResponse("A verified session is required.",403,{code:"REQUEST_WORK_SESSION_REQUIRED"}); }
+    const {data,error} = await supabase.rpc("request_work_command_v1", {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
+      ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})});
+    if (error) return errorResponse(error.message, error.code === "42501" ? 403 : error.code === "PT409" ? 409 : 422,{code:error.message.match(/REQUEST_[A-Z_]+/)?.[0] || "REQUEST_WORK_FAILED"});
+    return jsonResponse({ok:true,data});
+  }
+  if (action === "manual_sync_status") {
+    if (Object.keys(payload).some(key => key !== "action")) return errorResponse("Invalid status read.",400);
+    const response = await databaseBridge.fetchTable(SUPABASE_URL,"app_manual_sync_status","select=status,updated_at&id=eq.true&limit=1",{method:"GET",headers:buildRestHeaders("GET","app_manual_sync_status")},10000,"app-api.manual-sync-status");
+    const data = await readResponsePayload(response);
+    if (!response.ok) return databaseFailureResponse("Sync status is unavailable.",data,"MANUAL_SYNC_STATUS_UNAVAILABLE");
+    const rows = Array.isArray(data) ? data : [];
+    return jsonResponse({ok:true,data:rows[0]?.status || {active:false,currentStage:"idle"}});
+  }
   if (action === "request_queue_remove") return await handleRequestQueueRemove(session, payload);
   if (action === "request_archive") return await handleRequestArchive(session, payload);
   if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);

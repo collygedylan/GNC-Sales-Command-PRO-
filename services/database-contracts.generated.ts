@@ -3,6 +3,53 @@ import type { Database } from '../supabase/functions/_shared/database.types.ts';
 import type { RuntimeContracts } from './database-contract-runtime.ts';
 export const contracts: RuntimeContracts<Database> = {
   "tables": {
+    "app_manual_sync_status": {
+      "row": {
+        "object": {
+          "id": {
+            "schema": "boolean"
+          },
+          "status": {
+            "schema": "json"
+          },
+          "updated_at": {
+            "schema": "string"
+          }
+        }
+      },
+      "insert": {
+        "object": {
+          "id": {
+            "schema": "boolean",
+            "optional": true
+          },
+          "status": {
+            "schema": "json",
+            "optional": true
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      },
+      "update": {
+        "object": {
+          "id": {
+            "schema": "boolean",
+            "optional": true
+          },
+          "status": {
+            "schema": "json",
+            "optional": true
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      }
+    },
     "app_dataset_revisions": {
       "row": {
         "object": {
@@ -92702,6 +92749,74 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "request_work_command_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_session_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_request_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_expected_version": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_patch": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_complete": {
+              "schema": {
+                "oneOf": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "save_request_work": {
       "oneOf": [
         {
@@ -104048,6 +104163,7 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "request_work_command_v1": {"oneOf":["json"]},
     "save_request_work": {
       "oneOf": [
         "json"

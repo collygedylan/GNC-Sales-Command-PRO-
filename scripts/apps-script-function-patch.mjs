@@ -16,6 +16,7 @@ const reclassEmailFunctions = new Set([
   'buildCompletedInventoryReclassMoveHtml_',
 ]);
 const liveImportFunctions = new Set([
+  'runAutoDropFolderSync_', 'buildSupabaseUpsertRequests_', 'runRoutedDropImport_', 'saveManualSyncStatus_', 'publishManualSyncStatus_', 'setManualSyncImportPhase_', 'scheduleRequestIntegrityMaintenance_', 'runQueuedRequestIntegrityMaintenance_', 'MANUAL_SYNC_STAGE_ORDER_DEFAULT', 'IMPORT_HISTORY_CHUNK_SIZE_',
   'setDatasetImportSourceMetadata_', 'closeDatasetImportFence_',
   'processLatestFileOnlyFolderLocked_', 'processSiteSplitMasterSnapshotBatchFolderLocked_', 'doPost',
   "syncWarehouseAssignedItemsSheet_", "readWarehouseAssignmentExportRevision_", "exportWarehouseAssignedItemsToSheet_",
@@ -80,6 +81,7 @@ const liveImportFunctions = new Set([
   "processCustomerRepMapSnapshotLocked_",
 ]);
 const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_", "requestNaMappingDigest_", "ensureProtectedRequestNaCustomerMappings_", "handleRuntimeWatchdogAlert_"]);
+for (const name of ['publishManualSyncStatus_', 'scheduleRequestIntegrityMaintenance_', 'runQueuedRequestIntegrityMaintenance_']) additiveFunctions.add(name);
 additiveFunctions.add('setDatasetImportSourceMetadata_');
 additiveFunctions.add('verifyRuntimeWatchdogAlert_');
 for (const name of ['appsScriptActionConstantTimeEqual_', 'getAppsScriptActionSigningKeys_', 'reconcileAppsScriptActionSigningKey_', 'verifyAppsScriptActionActor_', 'verifyAppsScriptActionEnvelope_', 'authorizeAppsScriptPost_', 'verifyAppsScriptLifecycleCanary_']) additiveFunctions.add(name);
@@ -95,7 +97,7 @@ function boundaries(source, names) {
       found.set(node.id.name, { start: node.start, end: node.end });
     }
     if (node.type === 'VariableDeclaration' && node.declarations.length === 1
-      && [fingerprint, releaseVersion].includes(node.declarations[0].id.name)) {
+      && [fingerprint, releaseVersion, ...names.filter(name => ['MANUAL_SYNC_STAGE_ORDER_DEFAULT','IMPORT_HISTORY_CHUNK_SIZE_'].includes(name))].includes(node.declarations[0].id.name)) {
       const name = node.declarations[0].id.name;
       if (found.has(name)) fail('DUPLICATE_FINGERPRINT');
       found.set(name, { start: node.start, end: node.end });

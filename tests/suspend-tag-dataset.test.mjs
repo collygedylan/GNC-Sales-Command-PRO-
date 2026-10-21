@@ -155,8 +155,9 @@ test('Suspend Tag dataset pages carry ordered master/CAV metric fallback without
   assert.match(appApi, /readSuspendTagMetricRows\("ph_cav_import"/);
   assert.match(appApi, /SUSPEND_TAG_METRIC_CAV_FIELDS\s*=\s*"[^"]*itemcode,season,/);
   assert.match(appApi, /captureReadyInventoryLocationRevision\(actorId\)[\s\S]*?readSuspendTagMetricRows\("ph_master_inventory"[\s\S]*?captureReadyInventoryLocationRevision\(actorId\) !== inventoryRevision/);
-  assert.match(appApi, /suspend_tag_metrics: buildSuspendTagMetricFallback\(row, masterRows, cavRows, true\)/);
-  assert.match(appApi, /if \(dataset === "suspend_tag"\)\s*\{\s*try \{ metricRows = await enrichSuspendTagMetricRows\(data, String\(actor\.id \|\| ""\)\); \}\s*catch \{ metricRows = data; \}/);
+  assert.ok(appApi.includes('[metricKey]: buildSuspendTagMetricFallback(row, masterRows, cavRows, true, metricKey === "request_inventory_metrics")'));
+  assert.ok(appApi.includes('["suspend_tag", "request_queue", "active_request"].includes(dataset)'));
+  assert.ok(appApi.includes('catch { metricRows = data; }'));
   assert.match(appApi, /verifySuspendTagSession\(supabase, actor, request\)/);
   assert.match(appApi, /dataset === "suspend_tag"\s*\? !SUSPEND_TAG_EDITORS\.has\(username\)/);
 
@@ -215,6 +216,13 @@ test('Suspend Tag dataset pages carry ordered master/CAV metric fallback without
   assert.equal(authoritativeNoSource.PTRONHAND, null, 'an authoritative missing item still does not invent item quantities');
   assert.equal(authoritativeNoSource.LOC_ON_HAND, 0, 'authoritative master absence at the physical location is numeric zero');
 
+  const oldLot = context.build({itemcode:'003360.070.2',locationcode:'I.02.000',lotcode:'25.F1'},[
+    {itemcode:'003360.070.2',locationcode:'I.02.000',lotcode:'27.F1',ptronhand:'2',ptrreviewed:'2',ptravailable:'0',s_lts:'0'},
+    {itemcode:'003360.070.2',locationcode:'A.01.000',lotcode:'25.F1',ptronhand:'9'}
+  ],[],true,true);
+  assert.equal(oldLot.MATCH_LEVEL,'item-location');assert.equal(oldLot.PTRONHAND,2);assert.equal(oldLot.PTRAVAILABLE,0);
+  const requestMissing=context.build({itemcode:'none',locationcode:'none',lotcode:'25.F1'},[],[],true,true);
+  for(const metric of ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS','LOC_ON_HAND'])assert.equal(requestMissing[metric],0,metric);
   const reported = [
     ['010248.021.1', 'Tiny Quick Fire Hydrangea 2DP'],
     ['006009.031.1', 'Bobo Hydrangea 3DP'],

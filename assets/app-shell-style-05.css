@@ -1580,7 +1580,7 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
 .home-sync-accordion{width:100%;margin:.42rem 0 0!important}
 .home-sync-accordion>summary{padding:.62rem .75rem!important;align-items:center}
 .home-sync-accordion #dashboard-sync-stamp{font-size:.8rem!important;line-height:1.1}
-.home-sync-accordion #dashboard-sync-files{max-height:min(30vh,240px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.home-sync-accordion #dashboard-sync-files{max-height:none;overflow:visible}
 #home-dashboard-content{scroll-margin-top:11rem}
 body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;transform:none!important;-webkit-transform:none!important}
 .leaf-action-card{margin-top:.65rem;border:1px solid #bbf7d0;background:linear-gradient(180deg,#f6fffb,#ecfdf5);border-radius:18px;padding:.85rem .9rem;box-shadow:0 8px 20px rgba(16,185,129,.08)}
