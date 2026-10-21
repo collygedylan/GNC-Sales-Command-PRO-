@@ -16590,6 +16590,7 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
       row.values[field[0]] = getReclassInquiryExactValue_(source, field[1], '');
     });
   });
+  identity.source = getReclassInquiryExactValue_(sourceRow, ['source', 'SOURCE'], '');
   const sourceUid = getInventoryTransactionRowUid_(sourceRow);
   const originReportRow = normalizedReportRows.find(function(row) {
     return normalizeInventoryTransactionCompareText_(row && row.unique_id) === normalizeInventoryTransactionCompareText_(sourceUid);
@@ -16953,7 +16954,7 @@ function buildReclassItemInquiryPdf_(model) {
   // A fixed one-page PDF avoids HTML converters ignoring landscape and splitting
   // columns. Wrap every value, then fit the complete table within Letter margins.
   const table=buildReclassItemInquiryTable_(model), width=741.6, margin=25.2;
-  const weights=[8,6,7,6,7,9,7,10,14,7,8,8,10,10], total=weights.reduce(function(a,b){return a+b;},0);
+  const weights=[10,6,7,6,7,9,7,10,13,7,8,8,9,10], total=weights.reduce(function(a,b){return a+b;},0);
   const widths=weights.map(function(w){return width*w/total;});
   const clean=function(v){return String(v==null?'':v).replace(/[\r\n]+/g,' ').replace(/[\u2010-\u2015]/g,'-').replace(/\u2192/g,'->');};
   const escape=function(v){return Array.from(clean(v)).map(function(c){const n=c.charCodeAt(0);return n>=32&&n<=126?(c==='('||c===')'||c==='\\'?'\\'+c:c):n<=255?'\\'+n.toString(8).padStart(3,'0'):'?';}).join('');};
@@ -16961,7 +16962,7 @@ function buildReclassItemInquiryPdf_(model) {
   const all=[table.columns.map(function(c){return {text:c[1],header:true};})].concat(table.rows);
   let font=9, layout, heights;
   for(let i=0;i<30;i++){
-    layout=all.map(function(row){return row.map(function(c,j){return {cell:c,lines:c.header && !/\s/.test(c.text) ? [c.text] : wrap(c.text,Math.max(1,Math.floor((widths[j]-8)/(font*.62))))};});});
+    layout=all.map(function(row){return row.map(function(c,j){return {cell:c,lines:c.header && c.text==='Hold/Stop' ? ['Hold/','Stop'] : c.header && !/\s/.test(c.text) ? [c.text] : wrap(c.text,Math.max(1,Math.floor((widths[j]-8)/(font*.62))))};});});
     heights=layout.map(function(row){return Math.max.apply(null,row.map(function(c){return c.lines.length;}))*font*1.2+8;});
     if(heights.reduce(function(a,b){return a+b;},0)<=465)break;
     font*=.88;
