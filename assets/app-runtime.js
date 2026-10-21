@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.26';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.27';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1105,6 +1105,7 @@
 
                 currentRole = nextRole;
                 safeRole = nextRole.toUpperCase().replace(/\s+/g, '');
+                configureRuntimeWatchdogForCurrentSession();
                 try { localStorage.setItem('gnc_role_v3', nextRole); } catch (error) {}
                 // A revision notification alone is not a role change. Keep the
                 // current account's access and display while replacement reads run.
@@ -20857,6 +20858,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             safeRole = '';
             currentAppSessionToken = '';
             currentAppSessionExpiresAt = 0;
+            window.GncRuntimeWatchdog?.configure?.({ username: '', reportEvent: null });
             requestCapabilityState = { status: 'idle', capabilities: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
             requestCapabilityLoadPromise = null;
             appAccessSnapshotState = { status: 'idle', snapshot: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
@@ -20920,6 +20922,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     mustChangePassword: safeRecord.mustChangePassword === true
                 }));
             } catch (error) { window.GncRuntimeWatchdog?.capture?.(error, 'persistAppSessionRecord');}
+            window.GncRuntimeWatchdog?.flushPendingReports?.();
             return true;
         }
 
@@ -23907,6 +23910,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let dockCustomerSelectionMode = 'all';
         let lastSuccessfulSyncTime = "";
         let lastSuccessfulSyncOwner = "";
+        let datasetRevisionConnectionOwner = '';
+        let datasetRevisionConnectionStates = [];
         let syncDiagnosticsOverride = "";
         let manualSyncStatusState = null;
         let manualSyncStatusPollTimer = null;
@@ -25748,7 +25753,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.26').trim() || 'AgData v2.3.26';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.27').trim() || 'AgData v2.3.27';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27592,7 +27597,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function updateProductionLiveSyncProofFromStatus(status) {
             if (status.contextKey && status.contextKey !== productionVerifiedViewKey()) return false;
-            productionLiveSyncVerifiedView = status.state === 'Up to date'
+            productionLiveSyncVerifiedView = status.state === 'Up to date' && status.connectionOnly !== true
                 ? (status.contextKey || productionVerifiedViewKey()) : '';
             return true;
         }
@@ -27607,6 +27612,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
         function resetDashboardSyncMetadataForPermissionChange() {
             resetHomeSuccessfulSyncTimestamp();
+            datasetRevisionConnectionOwner = '';
+            datasetRevisionConnectionStates = [];
             dashboardSyncMetadataSummaries = [];
             dashboardSyncMetadataFetchedAt = 0;
             dashboardSyncMetadataOwner = '';
@@ -27619,6 +27626,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             lastSuccessfulSyncTime = new Date(verifiedAt).toISOString();
             lastSuccessfulSyncOwner = JSON.stringify([context.scope, context.dataPermissionVersion]);
             return true;
+        }
+        function recordDatasetRevisionConnection(value, metadata, context) {
+            const owner = getSupabaseReadIdentityScope();
+            if (value?.contractVersion !== 1 || !String(value.permissionVersion || '').trim()
+                || owner !== String(context?.readIdentity || '') || context?.authenticated !== true
+                || context?.accessDenied === true || window.GncUserAccessControl?.getSelfState?.().denied === true) return false;
+            datasetRevisionConnectionOwner = owner;
+            datasetRevisionConnectionStates = Array.isArray(value.sources)
+                ? value.sources.map(source => String(source?.state || metadata?.sources?.get?.(source?.key)?.state || 'unavailable')) : [];
+            updateSyncDiagnostics();
+            return true;
+        }
+        function getDatasetRevisionConnectionLabel() {
+            if (!datasetRevisionConnectionOwner || datasetRevisionConnectionOwner !== getSupabaseReadIdentityScope()
+                || window.GncUserAccessControl?.getSelfState?.().denied === true) return '';
+            const ready = datasetRevisionConnectionStates.filter(state => state === 'ready').length;
+            const updating = datasetRevisionConnectionStates.filter(state => state === 'importing' || state === 'interrupted').length;
+            if (updating) return `Connected · ${ready} ready · ${updating} updating`;
+            return ready ? `Connected · ${ready} ready` : 'Connected';
         }
         function requireCurrentProductionLiveSyncProof(actionLabel = 'continuing') {
             if (hasCurrentProductionLiveSyncProof()) return true;
@@ -28724,6 +28750,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 },
                 clearTimeout: cancel => cancel(),
                 getContext: getProductionLiveSyncContext,
+                connectionSourceKeys: () => ['ph_master_inventory'],
+                onRevisionRead: (value, metadata, context) => recordDatasetRevisionConnection(value, metadata, context),
                 readRevisions: (keys, options = {}) => withProductionLiveSyncSignal(options.signal, async (signal) => {
                     const owner = getSupabaseReadIdentityScope();
                     let metadata;
@@ -54199,6 +54227,47 @@ function toggleDriveQuickRequestItem(domId) {
             }
             return !!loaded;
         }
+        function configureRuntimeWatchdogForCurrentSession() {
+            const username = String(currentUser || '').trim().toLowerCase();
+            const role = String(currentRole || '').trim();
+            if (!username || !role || typeof window.GncRuntimeWatchdog?.configure !== 'function') return false;
+            window.GncRuntimeWatchdog.configure({
+                apiUrl: APP_API_FUNCTION_URL,
+                username,
+                role,
+                getSubModule: () => getCurrentVisibleViewId() === 'managers' ? activeHomeTab : '',
+                async reportEvent(event) {
+                    if (String(currentUser || '').trim().toLowerCase() !== username) {
+                        throw Object.assign(new Error('The active app account changed before watchdog delivery.'), { code: 'WATCHDOG_SESSION_CHANGED' });
+                    }
+                    let nativeHeaders = null;
+                    if (nativeAuthSessionActive && nativeAuthProfile?.id) {
+                        const nativeProfileId = String(nativeAuthProfile.id);
+                        const nativeEpoch = nativeAuthRecoveryEpoch;
+                        const nativeSessionUserId = String(nativeAuthSessionUserId || '');
+                        if (nativeSessionUserId !== nativeProfileId) {
+                            throw Object.assign(new Error('The active native app session is not ready for watchdog delivery.'), { code: 'WATCHDOG_SESSION_NOT_READY' });
+                        }
+                        nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+                        if (String(currentUser || '').trim().toLowerCase() !== username || !nativeAuthSessionActive
+                            || nativeEpoch !== nativeAuthRecoveryEpoch || String(nativeAuthProfile?.id || '') !== nativeProfileId
+                            || String(nativeAuthSessionUserId || '') !== nativeSessionUserId
+                            || !/^Bearer\s+\S+$/i.test(String(nativeHeaders?.Authorization || ''))) {
+                            throw Object.assign(new Error('The authenticated native account changed before watchdog delivery.'), { code: 'WATCHDOG_SESSION_CHANGED' });
+                        }
+                    } else if (!getCurrentAppSessionToken()) {
+                        throw Object.assign(new Error('The active app session is not ready for watchdog delivery.'), { code: 'WATCHDOG_SESSION_NOT_READY' });
+                    }
+                    return postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'watchdog_log_event', event }, {
+                        nativeHeaders,
+                        timeoutMs: 5000,
+                        label: 'Runtime watchdog telemetry'
+                    });
+                }
+            });
+            return true;
+        }
+
         async function finalizeLogin(user,pass,isBiometricLogin,options = {}) {
             const loginOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const isRestoredSession = !!loginOptions.restoredSession;
@@ -54209,6 +54278,7 @@ function toggleDriveQuickRequestItem(domId) {
             localStorage.setItem('gnc_division_v1',currentUserDivision || '10');
             localStorage.setItem('gnc_language_v1',normalizeAppUserLanguage(currentUserLanguage));
             localStorage.setItem(LOGIN_DISPLAY_NAME_STORAGE_KEY, currentUserDisplay || currentUser || user);
+            configureRuntimeWatchdogForCurrentSession();
             if (nativeAuthSessionActive) {
                 localStorage.removeItem('gnc_pin_v3');
                 localStorage.removeItem(VERIFIED_LOGIN_STORAGE_KEY);
@@ -128300,30 +128370,8 @@ C.14.043 C.15.000
             return null;
         }
         function getManagerReportPageController() {
-            if (!managerReportPageController) managerReportPageController = GncReportPagesLive.createController({
-                scope: () => getSupabaseReadIdentityScope(),
-                // This read-only page session belongs to the account/login.
-                // Canonical permission hashes remain on mutation/freshness
-                // receipts; changing one must not destroy mounted report rows.
-                permission: () => getSupabaseReadIdentityScope(),
-                variant:surface => surface === 'approval' ? activeHomeTab : '',
-                allowed: surface => surface === 'eval1' ? canViewManagerEvalReports()
-                    : surface === 'eval2' ? canViewManagerEvalReports2()
-                    : surface === 'assigned-items' ? canViewAssignedItemsExport()
-                    : surface === 'season-priority' ? canViewManagerSeasonPriority()
-                    : surface === 'approval' ? isManagerApprovalTab(activeHomeTab) : canAccessView('low-stock'),
-                loadModule: () => import('/assets/report-pages.js?v=' + APP_VERSION),
-                onSuspend:() => managerReportVisibleRows.clear(),
-                onClear:() => {
-                    managerReportScopedRows.clear(); managerReportVisibleRows.clear(); managerEvalReport2Cache = null; managerEvalReport2CacheKey = '';
-                    managerPagedLocationBase = ''; managerPagedLocationScroll.clear();
-                    managerReportGridFilters.clear();
-                    managerEvalReport2SelectedItemsByKey.clear(); managerEvalReport2EditsByRowKey.clear(); managerEvalReport2DetailItemKey = '';
-                    managerEvalAssignmentSelection.clear();
-                },
-                transport: async (query, signal) => {
-                    const receiptScope = getSupabaseReadIdentityScope();
-                    const receiptPermission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+            if (!managerReportPageController) {
+                const readPage = async (query, signal, receiptScope, receiptPermission) => {
                     const response = await postAppFunctionJson(APP_API_FUNCTION_URL,
                         query ? { action:'report_read_v2', query } : { action:'report_read_v2', operation:'capabilities' },
                         { signal, label:'Report data', timeoutMs:SUPABASE_READ_TIMEOUT_MS });
@@ -128349,6 +128397,33 @@ C.14.043 C.15.000
                     return response.data.inventoryRevision
                         ? { ...response.data, metadata:{ ...(response.data.metadata || {}), inventoryRevision:String(response.data.inventoryRevision) } }
                         : response.data;
+                };
+                managerReportPageController = GncReportPagesLive.createController({
+                scope: () => getSupabaseReadIdentityScope(),
+                // This read-only page session belongs to the account/login.
+                // Canonical permission hashes remain on mutation/freshness
+                // receipts; changing one must not destroy mounted report rows.
+                permission: () => getSupabaseReadIdentityScope(),
+                variant:surface => surface === 'approval' ? activeHomeTab : '',
+                allowed: surface => surface === 'eval1' ? canViewManagerEvalReports()
+                    : surface === 'eval2' ? canViewManagerEvalReports2()
+                    : surface === 'assigned-items' ? canViewAssignedItemsExport()
+                    : surface === 'season-priority' ? canViewManagerSeasonPriority()
+                    : surface === 'approval' ? isManagerApprovalTab(activeHomeTab) : canAccessView('low-stock'),
+                serverAuthorizedSurfaces:['eval2'],
+                loadModule: () => import('/assets/report-pages.js?v=' + APP_VERSION),
+                onSuspend:() => managerReportVisibleRows.clear(),
+                onClear:() => {
+                    managerReportScopedRows.clear(); managerReportVisibleRows.clear(); managerEvalReport2Cache = null; managerEvalReport2CacheKey = '';
+                    managerPagedLocationBase = ''; managerPagedLocationScroll.clear();
+                    managerReportGridFilters.clear();
+                    managerEvalReport2SelectedItemsByKey.clear(); managerEvalReport2EditsByRowKey.clear(); managerEvalReport2DetailItemKey = '';
+                    managerEvalAssignmentSelection.clear();
+                },
+                transport: async (query, signal) => {
+                    const receiptScope = getSupabaseReadIdentityScope();
+                    const receiptPermission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+                    return await readPage(query, signal, receiptScope, receiptPermission);
                 },
                 onReady: () => { signalProductionLiveSync('report-capabilities', 0); if (getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true); else if (isViewVisible('low-stock')) scheduleLowStockRender(); },
                 onMetadata: (surface, state) => {
@@ -128371,13 +128446,13 @@ C.14.043 C.15.000
                         if (!state.revision && isViewVisible('managers')) scheduleManagersRender(true);
                     }
                 }
-            });
+                });
+            }
             return managerReportPageController;
         }
         function useManagerReportPages(surface) {
             if (!window.GncReportPagesLive || !currentUser) return false;
-            // Eval2 reuses the complete shared snapshots and its local report index.
-            if (surface === 'eval2') return false;
+            if (surface === 'eval2') return canViewManagerEvalReports2();
             return getManagerReportPageController().enabled(surface);
         }
         function getActiveManagerReportPageSurface(viewId = getCurrentVisibleViewId()) {
@@ -129172,89 +129247,35 @@ C.14.043 C.15.000
 
         async function loadManagerEvalReports2(force = false) {
             if (!canViewManagerEvalReports2()) return null;
-            if (useManagerReportPages('eval2')) {
-                const controller = getManagerReportPageController();
-                const pageState = controller.state('eval2');
-                const query = buildManagerReportPageQuery('eval2', 'metadata');
-                if (pageState.pendingKey === JSON.stringify(query) && pageState.promise) {
-                    await pageState.promise;
-                    return getManagerEvalReport2Index();
-                }
-                // Automatic renders and already queued loads must stop after an error.
-                if (!force && pageState.error) return getManagerEvalReport2Index();
-                const page = await controller.load(query, force);
-                // Capability negotiation can select the legacy reader after
-                // navigation has already chosen the optimistic paged path.
-                if (controller.enabled('eval2')) {
-                    if (force && page) controller.refresh('eval2');
-                    scheduleManagersRender(true);
-                    return getManagerEvalReport2Index();
-                }
-                if (managerEvalReport2Cache?.paged) {
-                    managerEvalReport2Cache = null;
-                    managerEvalReport2CacheKey = '';
-                }
-            }
-            // Re-opening Eval #2 over the already verified shared snapshot is a
-            // memory-cache hit. Avoid re-entering the dataset/settings loaders,
-            // which can schedule duplicate reads and briefly replace the view
-            // with its loading state even though the source signature is stable.
-            if (!force && managerEvalReport2Cache
-                && managerEvalReport2CacheKey === getManagerEvalReport2CacheKeyValue()
-                && managerEvalReport2DisplaySourcesReady()) {
-                reconcileManagerEvalReport2Navigation();
+            const state = managerEvalReport2LoadState;
+            if (typeof window === 'undefined' || !window.GncReportPagesLive) {
+                state.error = 'Eval Reports #2 report data is not available right now.';
+                state.loading = false;
+                scheduleManagersRender(true);
                 return managerEvalReport2Cache;
             }
-            const state = managerEvalReport2LoadState;
-            const owner = getSupabaseReadIdentityScope();
-            const isCurrent = () => owner === getSupabaseReadIdentityScope() && canViewManagerEvalReports2();
-            if (state.loading && state.promise && state.owner === owner) return state.promise;
-            if (!force && state.owner === owner && state.error) return managerEvalReport2Cache;
-            state.owner = owner;
-            const lastCompleteCache = managerEvalReport2Cache;
-            const lastCompleteCacheKey = managerEvalReport2CacheKey;
-            const lastCompleteSourceSignature = [getDatasetLoadSignature('master'), getDatasetLoadSignature('warehouseAssignedItems')].join('::');
+            const controller = getManagerReportPageController();
+            const pageState = controller.state('eval2');
+            const query = buildManagerReportPageQuery('eval2');
+            if (pageState.pendingKey === JSON.stringify(query) && pageState.promise) {
+                await pageState.promise;
+                return getManagerEvalReport2Index();
+            }
+            if (!force && pageState.error) return getManagerEvalReport2Index();
+            if (force && pageState.page) {
+                void controller.initialize('eval2', true);
+                controller.refresh('eval2');
+                scheduleManagersRender(true);
+                return getManagerEvalReport2Index();
+            }
             state.loading = true;
             state.error = '';
+            const page = await controller.load(query, force);
+            if (!page) state.error = pageState.error || 'Eval Reports #2 report data is not available right now.';
+            state.loading = false;
             scheduleManagersRender(true);
-            state.promise = Promise.all([
-                ensureDatasetLoaded('master', 'full', force ? { force: true, preserveRequestedMode: true } : {}),
-                ensureDatasetLoaded('warehouseAssignedItems', 'full', force ? { force: true, preserveRequestedMode: true } : {}),
-                loadManagerEvalReportSettings(false)
-            ]).then(async () => {
-                if (!isCurrent()) return null;
-                if (!isDatasetLoaded('master', 'full')) throw new Error('The complete master inventory snapshot is not available yet.');
-                if (!isDatasetLoaded('warehouseAssignedItems', 'full')) throw new Error('The complete Assigned Items snapshot is not available yet.');
-                const nextSourceSignature = [getDatasetLoadSignature('master'), getDatasetLoadSignature('warehouseAssignedItems')].join('::');
-                if (lastCompleteCache && lastCompleteSourceSignature === nextSourceSignature) {
-                    managerEvalReport2Cache = lastCompleteCache;
-                    managerEvalReport2CacheKey = lastCompleteCacheKey;
-                } else invalidateManagerEvalReport2Cache();
-                state.lastLoadedAt = new Date().toISOString();
-                state.lastSourceUpdatedAt = getManagerEvalReport2LatestSourceUpdate();
-                state.error = '';
-                if (force) showToast('Eval Reports #2 Refreshed', `Loaded ${fullInventory.length} inventory rows and ${warehouseAssignedItemsInventory.length} assignment records.`);
-                return await buildManagerEvalReport2IndexAsync();
-            }).catch((error) => {
-                if (!isCurrent()) return null;
-                if (!managerEvalReport2Cache && lastCompleteCache) {
-                    managerEvalReport2Cache = lastCompleteCache;
-                    managerEvalReport2CacheKey = lastCompleteCacheKey;
-                }
-                state.error = getFriendlyBackendErrorMessage(error, 'Could not load the complete inventory and Assigned Items data for Eval Reports #2.');
-                reportSemanticHealthEvent('eval_report_2_load_failed', 'eval_reports_2', 'EVAL_REPORT_2_LOAD_FAILED', {});
-                if (force) showToast('Refresh Failed', state.error, true);
-                return managerEvalReport2Cache;
-            }).finally(() => {
-                if (state.owner !== owner) return;
-                state.loading = false;
-                state.promise = null;
-                if (!isCurrent()) return;
-                if (getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) scheduleManagersRender(true);
-            });
-            return state.promise;
+            return getManagerEvalReport2Index();
         }
-
         function getManagerEvalReport2CacheKeyValue() {
             const nextTarget = getConfiguredNextSaleSeasonTarget();
             return [getDatasetLoadSignature('master'), fullInventory.length, getDatasetLoadSignature('warehouseAssignedItems'), warehouseAssignedItemsInventory.length, getConfiguredCurrentSeasonCode(), getConfiguredCurrentSalesYearCode(), nextTarget.season, nextTarget.salesYear, managerEvalReportSettings.lowStockMaxSLts, managerEvalReportSettings.holdAgeDays, managerEvalReportSettings.locationNoteAgeDays, getManagerEvalReportCentralDateKey()].join('::');
@@ -129470,7 +129491,7 @@ C.14.043 C.15.000
         function getManagerEvalReport2Index(allowSynchronousBuild = false) {
             if (useManagerReportPages('eval2')) {
                 const state = getManagerReportPageController().state('eval2');
-                if (!state.revision) return null;
+                if (!state.revision) return createPagedManagerEvalIndex({ ...state, revision:'pending', metadata:state.metadata || {} }, false);
                 return managerEvalReport2Cache?.paged && managerEvalReport2Cache.scopeKey === getSupabaseReadIdentityScope() && managerEvalReport2Cache.sourceRevision === state.revision
                     ? managerEvalReport2Cache : createPagedManagerEvalIndex(state);
             }
@@ -129561,9 +129582,17 @@ C.14.043 C.15.000
         }
 
         let managerEvalReport2SelectedReportIds = [];
+        let managerEvalReport2SelectionInitialized = false;
 
         function getManagerEvalReport2SelectedReportIds() {
             const api = getManagerEvalReports2Api();
+            if (api && !managerEvalReport2SelectionInitialized) {
+                managerEvalReport2SelectionInitialized = true;
+                if (!managerEvalReport2SelectedReportIds.length) {
+                    managerEvalReport2SelectedReportIds = api.REPORT_IDS.slice();
+                    activeManagerEvalReport2 = managerEvalReport2SelectedReportIds[0] || '';
+                }
+            }
             return api ? api.REPORT_IDS.filter((id) => managerEvalReport2SelectedReportIds.includes(id)) : [];
         }
 
@@ -131235,7 +131264,6 @@ C.14.043 C.15.000
 
         function renderManagerEvalReports2Panel() {
             const paged = useManagerReportPages('eval2');
-            if (paged) ensurePagedManagerReportMetadata('eval2');
             if (!canViewManagerEvalReports2()) return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">Your active profile does not have access to Eval Reports #2.</div>';
             const api = getManagerEvalReports2Api();
             if (!api) return '<div class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm font-bold text-red-700">Eval Reports #2 could not start. Refresh the app to load the report engine.</div>';
@@ -131243,8 +131271,8 @@ C.14.043 C.15.000
                 && (!managerEvalReport2LoadState.error || managerEvalReport2LoadState.owner !== getSupabaseReadIdentityScope())) setTimeout(() => loadManagerEvalReports2(false), 0);
             const index = getManagerEvalReport2Index();
             const accessibleTitle = '<h2 class="sr-only">Eval Reports #2</h2>';
-            if (!index && managerEvalReport2LoadState.loading) return `${accessibleTitle}<div class="flex min-h-[44px] items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3 text-[11px] font-bold text-blue-800"><span class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700"></span>Loading inventory and assignments...</div>`;
-            if (!index) return `${accessibleTitle}<div class="flex min-h-[44px] flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 px-3 text-[11px] font-bold text-red-700"><span>${escapeHtml(managerEvalReport2LoadState.error || 'The inventory and Assigned Items snapshot is unavailable.')}</span><button type="button" class="min-h-[36px] rounded-lg bg-[#007a4d] px-3 text-[10px] font-black uppercase tracking-[0.1em] text-white" onclick="return loadManagerEvalReports2(true)">Retry</button></div>`;
+            if (!index && managerEvalReport2LoadState.loading) return `${accessibleTitle}<div class="flex min-h-[44px] items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3 text-[11px] font-bold text-blue-800"><span class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700"></span>Loading evaluator report and assignments...</div>`;
+            if (!index) return `${accessibleTitle}<div class="flex min-h-[44px] flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800"><span>${escapeHtml(managerEvalReport2LoadState.error || 'Eval Reports #2 data is temporarily unavailable.')}</span><button type="button" class="min-h-[36px] rounded-lg border border-amber-300 bg-white px-3 text-[10px] font-black uppercase tracking-[0.1em] text-amber-900" onclick="return loadManagerEvalReports2(true)">Retry</button></div>`;
             const meta = getManagerEvalReport2Meta();
             const sourceUpdated = managerEvalReport2LoadState.lastSourceUpdatedAt || getManagerEvalReport2LatestSourceUpdate();
             let statusHtml = managerEvalReport2AssignmentFilterRefreshing
@@ -138338,6 +138366,15 @@ C.14.043 C.15.000
         function refreshRuntimeWatchdogBadge(force = false) { return runtimeWatchdogPanel.refreshBadge(force); }
         function refreshRuntimeWatchdogPanel() { return runtimeWatchdogPanel.refreshPanel(); }
         function copyRuntimeWatchdogFixBrief() { return runtimeWatchdogPanel.copyFixBrief(); }
+        function shouldRetainManagerModuleDuringAccessRefresh(tab, allowedTabs, accessState, username, retainedAccess, accessDenied) {
+            const activeTab = String(tab || '').trim().toLowerCase();
+            const userKey = getRequestCapabilityUsernameKey(username);
+            const snapshot = accessState?.snapshot;
+            const snapshotUser = getRequestCapabilityUsernameKey(snapshot?.username || accessState?.username || '');
+            const refreshPending = accessState?.stale === true || ['loading', 'error'].includes(String(accessState?.status || ''));
+            return activeTab !== 'dashboard' && !allowedTabs.has(activeTab) && refreshPending
+                && !!snapshot && !!userKey && userKey === snapshotUser && retainedAccess === true && accessDenied !== true;
+        }
         function renderManagers() {
             if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) ensureSeasonSalesNoteAccessFresh();
             const container = document.getElementById('managers-content');
@@ -138380,6 +138417,8 @@ C.14.043 C.15.000
             managerToolTabs.forEach((tab) => allowedTabs.add(tab.id));
             managerApprovalTabs.forEach((tab) => allowedTabs.add(tab.id));
             if (!allowedTabs.has(activeHomeTab)) {
+                if (shouldRetainManagerModuleDuringAccessRefresh(activeHomeTab, allowedTabs, appAccessSnapshotState,
+                    currentUser, hasRetainedAuthenticatedAppAccess(), window.GncUserAccessControl?.getSelfState?.().denied === true)) return;
                 activeHomeTab = 'dashboard';
                 selectedProductivityUser = '';
             }
@@ -138618,6 +138657,8 @@ C.14.043 C.15.000
             const compactPassiveSync = compactTouchChrome && isPassiveChromeSyncWindowActive();
             const autoManualSync = effectiveMode === 'manual-sync' && isAutoManualSyncStatus();
             const manualSyncPrefix = autoManualSync ? 'AUTO' : 'SYNC';
+            const revisionSummary = navigator.onLine === false ? '' : getDatasetRevisionConnectionLabel();
+            const lastSyncSummary = revisionSummary || formatDiagnosticsTime(lastSuccessfulSyncTime);
             const modeLabel = effectiveMode === 'manual-sync'
                 ? (compactTouchChrome ? manualSyncPrefix : `${manualSyncPrefix} ${getManualSyncProgressInfo().text || ''}`.trim())
                 : (labelMap[effectiveMode] || 'IDLE');
@@ -138626,8 +138667,8 @@ C.14.043 C.15.000
             detail.innerText = effectiveMode === 'manual-sync'
                 ? (compactTouchChrome ? (`${manualSyncPrefix} ${getManualSyncProgressInfo().text || 'Running'}`.trim()) : `${autoManualSync ? 'Auto Sync' : 'Manual Sync'} | ${getManualSyncStatusText() || 'Running...'}`)
                 : (compactTouchChrome
-                    ? `${compactPassiveSync ? 'Sync' : getDiagnosticsPlatformLabel()} | ${formatDiagnosticsTime(lastSuccessfulSyncTime)}`
-                    : `${getDiagnosticsPlatformLabel()} | ${navigator.onLine ? 'Online' : 'Offline'} | Last Sync ${formatDiagnosticsTime(lastSuccessfulSyncTime)}`);
+                    ? `${compactPassiveSync ? 'Sync' : getDiagnosticsPlatformLabel()} | ${lastSyncSummary}`
+                    : `${getDiagnosticsPlatformLabel()} | ${navigator.onLine ? 'Online' : 'Offline'} | ${revisionSummary || `Last Sync ${lastSyncSummary}`}`);
             if (!modeOverride || modeOverride === 'realtime' || modeOverride === 'polling' || modeOverride === 'idle' || modeOverride === 'offline' || modeOverride === 'manual-sync') syncDiagnosticsOverride = '';
         }
 

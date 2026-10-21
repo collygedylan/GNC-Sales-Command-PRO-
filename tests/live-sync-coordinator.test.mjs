@@ -81,6 +81,31 @@ test('metadata before and after the read gates the first authoritative snapshot'
     assert.equal(f.coordinator.getStatus().state, 'Up to date');
 });
 
+test('revision connection is published before nonblocking startup hydration finishes', async () => {
+    const hydration = deferred();
+    const events = [];
+    const f = fixture({ onRevisionRead: (_value, metadata) => events.push(`connected:${metadata.permissionVersion}`) });
+    f.adapter.stage = async () => { events.push('hydrate-started'); await hydration.promise; return [{ id: 'dock-28' }]; };
+    const pending = f.coordinator.check('login-shell-open');
+    await settle();
+    assert.deepEqual(events, ['connected:role-v1', 'hydrate-started']);
+    assert.equal(f.commits.length, 0, 'revision connectivity does not claim hydrated rows');
+    hydration.resolve();
+    assert.equal(await pending, true);
+    assert.equal(f.coordinator.getStatus().state, 'Up to date');
+});
+
+test('an empty navigation hub checks one connection revision without claiming data proof', async () => {
+    const connections = [];
+    const f = fixture({ connectionSourceKeys: () => ['ph_master_inventory'],
+        onRevisionRead: (_value, metadata) => connections.push(metadata.permissionVersion) });
+    f.context.adapters = [];
+    assert.equal(await f.coordinator.check('login-shell-open'), true);
+    assert.deepEqual(connections, ['role-v1']);
+    assert.equal(f.reads, 0);
+    assert.equal(f.coordinator.getStatus().connectionOnly, true);
+});
+
 for (const view of ['managers:crop-roll', 'managers:eval-reports-2', 'drive:salesrep', 'chat:salesrep']) {
     test(`${view} reads authorized rows despite unavailable revision metadata without granting freshness`, async () => {
         let cacheWrites = 0;

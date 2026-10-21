@@ -1,5 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
+const APP_RUNTIME_RELEASE = "AgData v2.3.27";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -1175,7 +1176,7 @@ async function dispatchRuntimeWatchdogAlert(event: Record<string, unknown>) {
     view: String(event.view_id || "").slice(0, 100),
     owningSkill: String(event.owning_skill || "").slice(0, 100),
     message: String(event.error_message || "").slice(0, 300),
-    fixBrief: buildRuntimeWatchdogFixBrief([event], String(event.app_version || "AgData v2.3.23")),
+    fixBrief: buildRuntimeWatchdogFixBrief([event], String(event.app_version || APP_RUNTIME_RELEASE)),
   };
   const { deliveryJson, signature } = await signProductionScheduleCommand(command, timestamp, PRODUCTION_SCHEDULE_SIGNING_SECRET);
   await fetch(PRODUCTION_SCHEDULE_APPS_SCRIPT_URL, {
@@ -3056,10 +3057,13 @@ export async function handleManagerReportReadAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
   canonicalAccess: CanonicalUserAccess | null = null,
+  verifiedActor: Record<string, unknown> | null = null,
 ) {
   if (!session) return errorResponse("Authentication required.", 401, { code: "AUTH_REQUIRED" });
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
-  const profile = await resolveActiveSessionProfile(session).catch(() => null);
+  // The request gate already verified this actor. Reuse that request-local
+  // result instead of adding two serial profile/account reads to first paint.
+  const profile = verifiedActor || await resolveActiveSessionProfile(session).catch(() => null);
   const actor = normalizeUsername(String(profile?.username || ""));
   if (!actor || !profile) return errorResponse("An active, unlocked app profile is required.", 403, { code: "PROFILE_NOT_ACTIVE" });
   const query = payload.query && typeof payload.query === "object" && !Array.isArray(payload.query)
@@ -5589,12 +5593,14 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   const contentType = String(req.headers.get("content-type") || "").toLowerCase();
   let session = await readSupabaseOrAppSessionFromRequest(req, supabase);
   let canonicalAccessForRequest: CanonicalUserAccess | null = null;
+  let activeProfileForRequest: Record<string, unknown> | null = null;
 
   if (contentType.includes("multipart/form-data")) {
     try {
       const context = await resolveZeroTrustRequestContext(session);
       session = context.session;
       canonicalAccessForRequest = context.access;
+      activeProfileForRequest = context.actor;
       return await handlePhotoUpload(session, req);
     } catch (error) {
       const message = String((error as { message?: unknown })?.message || "AUTH_REQUIRED");
@@ -5616,6 +5622,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     const context = await resolveZeroTrustRequestContext(session);
     session = context.session;
     canonicalAccessForRequest = context.access;
+    activeProfileForRequest = context.actor;
   } catch (error) {
     const message = String((error as { message?: unknown })?.message || "AUTH_REQUIRED");
     const status = Number((error as { status?: unknown })?.status)
@@ -5627,7 +5634,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action.startsWith("watchdog_")) {
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
     try {
-      const actor = await resolveActiveSessionProfile(session);
+      const actor = activeProfileForRequest || await resolveActiveSessionProfile(session);
       const username = normalizeUsername(actor.username || session.username || "");
       const watchdogRole = (value: unknown) => {
         const role = normalizeRole(String(value || "")).toLowerCase();
@@ -5688,7 +5695,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       if (action === "watchdog_list_events") {
         const { data, error } = await supabase.from("app_runtime_watchdog_events" as never).select("*").eq("status", "open").order("last_seen_at", { ascending: false }).limit(250);
         if (error) throw error;
-        return jsonResponse({ ok: true, data: data || [], fixBrief: buildRuntimeWatchdogFixBrief((data || []) as Record<string, unknown>[]) });
+        return jsonResponse({ ok: true, data: data || [], fixBrief: buildRuntimeWatchdogFixBrief((data || []) as Record<string, unknown>[], APP_RUNTIME_RELEASE) });
       }
       if (action === "watchdog_resolve_events") {
         const ids = Array.isArray(payload.ids) ? payload.ids.filter(value => typeof value === "number" && Number.isSafeInteger(value)).slice(0, 250) : [];
@@ -5834,7 +5841,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     return await handleSetUserPreferences(session, payload);
   }
   if (action === "eval_work") return await handleEvalWorkAction(session, payload, canonicalAccessForRequest);
-  if (action === "report_read_v2") return await handleManagerReportReadAction(session, payload, canonicalAccessForRequest);
+  if (action === "report_read_v2") return await handleManagerReportReadAction(session, payload, canonicalAccessForRequest, activeProfileForRequest);
   if (action === "photo_history") return await handlePhotoHistoryAction(session, payload);
   if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
   if (action === "season_sales_office") return await handleSeasonSalesOfficeAction(session, payload);

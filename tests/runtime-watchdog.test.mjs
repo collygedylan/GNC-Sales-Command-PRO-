@@ -7,13 +7,13 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const source = fs.readFileSync(new URL('../assets/runtime-watchdog.js', import.meta.url), 'utf8');
 
-test('watchdog normalizes every supported role alias and emits bounded incident fields', () => {
+test('watchdog normalizes every supported role alias and emits bounded incident fields', async () => {
   const listeners = new Map();
   const reported = [];
   const emptyRoot = { querySelector: () => null, querySelectorAll: () => [], textContent: '' };
   const document = { body: { dataset: { currentView: 'drive' }, ...emptyRoot }, documentElement: {}, querySelector: () => null, getElementById: () => null };
   class MutationObserver { observe() {} }
-  const window = { __APP_RELEASE_VERSION__: 'AgData v2.3.22', addEventListener: (name, fn) => listeners.set(name, fn) };
+  const window = { __APP_RELEASE_VERSION__: 'AgData v2.3.22', addEventListener: (name, fn) => listeners.set(name, fn), setTimeout: () => 1, clearTimeout: () => {} };
   vm.runInNewContext(source, { window, document, MutationObserver, setTimeout, clearTimeout, Map, Set, Object, String, Number, Array });
   const roles = ['admin', 'sales rep', 'salesrep', 'sales_rep', 'supervisor', 'evaluator', 'kier', 'dock office', 'dock_office', 'qc supervisor', 'qc_supervisor', 'shipping', 'data entry', 'data_entry', 'foreman', 'take backs', 'take_backs'];
   const normalized = roles.map(role => window.GncRuntimeWatchdog.normalizeRole(role));
@@ -29,11 +29,144 @@ test('watchdog normalizes every supported role alias and emits bounded incident 
   assert.equal(window.GncRuntimeWatchdog.capture({ name: 'AbortError' }, 'view.cancel'), false);
   assert.equal(reported.length, 1, 'expected view cancellation is not an incident');
   assert.equal(window.GncRuntimeWatchdog.capture(new Error('secret token and row contents'), 'queue.persist'), true);
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(reported[1].event_type, 'OPERATIONAL_FAILURE');
   assert.equal(reported[1].error_message, 'queue.persist failed (Error)');
   assert.equal(JSON.stringify(reported).includes('secret token'), false);
   window.GncRuntimeWatchdog.configure({ username: 'dylan_collyge', role: 'Admin', reportEvent: () => { throw new Error('transport unavailable'); } });
   assert.doesNotThrow(() => window.GncRuntimeWatchdog.capture(new Error('failure'), 'view.load'));
+});
+
+test('watchdog queues reports per account, retries after transport recovery and ignores a settled first view', async () => {
+  const listeners = new Map();
+  const storage = new Map();
+  const timers = new Map();
+  let timerId = 0;
+  const localStorage = {
+    getItem: key => storage.has(key) ? storage.get(key) : null,
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: key => storage.delete(key)
+  };
+  const emptyRoot = { querySelector: () => null, querySelectorAll: () => [], textContent: '' };
+  const document = {
+    body: { dataset: { currentView: 'home' }, ...emptyRoot }, documentElement: {},
+    querySelector: () => null, getElementById: () => null, addEventListener: () => {}
+  };
+  const window = {
+    __APP_RELEASE_VERSION__: 'AgData v2.3.27', localStorage,
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    setTimeout: fn => { const id = ++timerId; timers.set(id, fn); return id; },
+    clearTimeout: id => timers.delete(id)
+  };
+  class MutationObserver { observe() {} }
+  vm.runInNewContext(source, { window, document, MutationObserver, setTimeout, clearTimeout, Map, Set, Object, String, Number, Array });
+  const watchdog = window.GncRuntimeWatchdog;
+  let rejectFirstReport;
+  const dylanReports = [];
+  watchdog.configure({ username: 'dylan_collyge', role: 'Admin', getSubModule: () => 'home-dashboard', reportEvent: event => {
+    dylanReports.push(event);
+    return new Promise((_, reject) => { rejectFirstReport = reject; });
+  } });
+  watchdog.inspect();
+  assert.equal(storage.size, 0, 'an already-rendered first view must not create a load-stall incident');
+  watchdog.setDatasetRevisions({ inventory: { revision: '7', state: 'ready' } });
+  watchdog.record('OPERATIONAL_FAILURE', { view_id: 'home', error_message: 'bounded failure' });
+  const dylanKey = 'agdata.runtime-watchdog.pending.v1:dylan_collyge';
+  assert.equal(JSON.parse(storage.get(dylanKey)).length, 1, 'inflight delivery remains durable in the account queue');
+
+  const otherAccountReports = [];
+  watchdog.configure({ username: 'megan_kelly', role: 'Admin', reportEvent: event => { otherAccountReports.push(event); return { ok: true }; } });
+  watchdog.record('OPERATIONAL_FAILURE', { view_id: 'home', error_message: 'other account' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(otherAccountReports.length, 1);
+  assert.equal(otherAccountReports[0].username, 'megan_kelly');
+  assert.equal(JSON.parse(storage.get(dylanKey))[0].username, 'dylan_collyge', 'another account cannot drain the queued event');
+  rejectFirstReport(new Error('offline'));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(JSON.parse(storage.get(dylanKey)).length, 1, 'a stale request completion cannot mutate the new account queue');
+
+  const recoveredReports = [];
+  watchdog.configure({ username: 'dylan_collyge', role: 'Admin', reportEvent: event => { recoveredReports.push(event); return { ok: true }; } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(recoveredReports.length, 1);
+  assert.equal(recoveredReports[0].username, 'dylan_collyge');
+  assert.equal(recoveredReports[0].app_version, 'AgData v2.3.27');
+  assert.equal(recoveredReports[0].sub_module, 'home-dashboard');
+  assert.deepEqual(JSON.parse(JSON.stringify(recoveredReports[0].dataset_revisions_snapshot)), { inventory: { revision: '7', state: 'ready' } });
+  assert.equal(dylanReports.length, 1);
+  assert.equal(storage.has(dylanKey), false, 'successful delivery clears only that account queue');
+});
+
+test('production login wires the sensor to the authenticated watchdog app-api action', () => {
+  const runtime = readComposedAppSource();
+  const fixture = fs.readFileSync(new URL('../tests/fixtures/hl-order-state.mjs', import.meta.url), 'utf8');
+  assert.match(runtime, /function configureRuntimeWatchdogForCurrentSession\(\)/);
+  assert.match(runtime, /window\.GncRuntimeWatchdog\.configure\(\{\s*apiUrl: APP_API_FUNCTION_URL/);
+  assert.match(runtime, /postAppFunctionJson\(APP_API_FUNCTION_URL, \{ action: 'watchdog_log_event', event \}/);
+  assert.match(runtime, /configureRuntimeWatchdogForCurrentSession\(\);[\s\S]{0,500}if \(nativeAuthSessionActive\)/);
+  assert.match(runtime, /GncRuntimeWatchdog\?\.flushPendingReports\?\.\(\)/);
+  assert.ok(fixture.includes("if (body.action === 'watchdog_log_event')"));
+  assert.ok(fixture.includes("Object.keys(body).sort().join(',') === 'action,event'"));
+  assert.ok(fixture.includes("if (body.action === 'watchdog_list_events')"));
+  assert.ok(fixture.includes("Object.keys(body).join(',') === 'action'"));
+  assert.ok(fixture.includes("String(body.action || '').startsWith('watchdog_')"));
+  assert.match(runtime, /getSubModule: \(\) => getCurrentVisibleViewId\(\) === 'managers' \? activeHomeTab : ''/);
+});
+
+test('watchdog transport supports native-only auth and rejects absent or switched auth before sending', async () => {
+  const runtime = readComposedAppSource();
+  const start = runtime.indexOf('function configureRuntimeWatchdogForCurrentSession()');
+  const end = runtime.indexOf('\n        async function finalizeLogin', start);
+  assert.ok(start >= 0 && end > start, 'expected the production watchdog configuration helper');
+  const helper = runtime.slice(start, end);
+  const harness = ({ native = false, token = '', headersPromise = Promise.resolve({ apikey: 'public-key', Authorization: 'Bearer native-token', 'Content-Type': 'application/json' }) } = {}) => {
+    let options = null;
+    const posted = [];
+    let headerReads = 0;
+    const context = {
+      window: { GncRuntimeWatchdog: { configure(value) { options = value; } } },
+      APP_API_FUNCTION_URL: 'https://example.supabase.co/functions/v1/app-api',
+      currentUser: 'dylan_collyge', currentRole: 'Admin', activeHomeTab: 'dashboard',
+      getCurrentVisibleViewId: () => 'managers',
+      getCurrentAppSessionToken: () => token,
+      nativeAuthSessionActive: native,
+      nativeAuthProfile: native ? { id: 'profile-1' } : null,
+      nativeAuthSessionUserId: native ? 'profile-1' : '',
+      nativeAuthRecoveryEpoch: 4,
+      getNativeAuthRequestHeaders: async () => { headerReads += 1; return await headersPromise; },
+      postAppFunctionJson: async (...args) => { posted.push(args); return { ok: true }; }
+    };
+    vm.runInNewContext(helper, context);
+    context.configureRuntimeWatchdogForCurrentSession();
+    return { context, options: () => options, posted, headerReads: () => headerReads };
+  };
+
+  const native = harness({ native: true });
+  await native.options().reportEvent({ username: 'dylan_collyge' });
+  assert.equal(native.headerReads(), 1);
+  assert.equal(native.posted.length, 1);
+  assert.equal(native.posted[0][1].action, 'watchdog_log_event');
+  assert.equal(native.posted[0][2].nativeHeaders.Authorization, 'Bearer native-token');
+
+  const unauthenticated = harness();
+  await assert.rejects(unauthenticated.options().reportEvent({ username: 'dylan_collyge' }), /session is not ready/i);
+  assert.equal(unauthenticated.posted.length, 0);
+
+  let resolveHeaders;
+  const switched = harness({ native: true, headersPromise: new Promise(resolve => { resolveHeaders = resolve; }) });
+  const send = switched.options().reportEvent({ username: 'dylan_collyge' });
+  switched.context.currentUser = 'megan_kelly';
+  resolveHeaders({ apikey: 'public-key', Authorization: 'Bearer native-token', 'Content-Type': 'application/json' });
+  await assert.rejects(send, /account changed/i);
+  assert.equal(switched.posted.length, 0);
+
+  let resolveStaleHeaders;
+  const staleEpoch = harness({ native: true, headersPromise: new Promise(resolve => { resolveStaleHeaders = resolve; }) });
+  const staleSend = staleEpoch.options().reportEvent({ username: 'dylan_collyge' });
+  staleEpoch.context.nativeAuthRecoveryEpoch += 1;
+  resolveStaleHeaders({ apikey: 'public-key', Authorization: 'Bearer native-token', 'Content-Type': 'application/json' });
+  await assert.rejects(staleSend, /account changed/i);
+  assert.equal(staleEpoch.posted.length, 0, 'a stale auth epoch cannot send telemetry');
 });
 
 test('critical catch fallbacks report bounded operational failures without replacing their recovery', () => {
@@ -68,7 +201,7 @@ test('signed watchdog email embeds the same complete fix brief returned to the c
     dataset_revisions_snapshot: { inventory: '42' }, cluster_id: 'Cluster 5', owning_skill: 'agdata-field-ops-and-qc',
     suspected_functions: ['buildManagerEvalReport2IndexAsync'] };
   const release = 'AgData v' + JSON.parse(read('package.json')).version;
-  const brief = module.exports.buildRuntimeWatchdogFixBrief([row]);
+  const brief = module.exports.buildRuntimeWatchdogFixBrief([row], release);
   for (const text of ['# AgData Runtime Watchdog Fix Brief', release, 'megan_kelly', '4200ms', 'inventory', '42', 'Cluster 5', '.codex/skills/agdata-field-ops-and-qc/SKILL.md', 'buildManagerEvalReport2IndexAsync', 'Focused verification:']) assert.ok(brief.includes(text), text);
   const script = read('Code.gs');
   const start = script.indexOf('function handleRuntimeWatchdogAlert_('), end = script.indexOf('\nfunction ', start + 1);
@@ -81,5 +214,5 @@ test('signed watchdog email embeds the same complete fix brief returned to the c
   assert.equal(sent.to, 'dylan_collyge@greenleafnursery.com');
   assert.ok(sent.body.endsWith(brief));
   assert.match(readComposedAppSource(), /const brief = fixBrief;/);
-  assert.match(read('supabase/functions/app-api/index.ts'), /fixBrief: buildRuntimeWatchdogFixBrief/);
+  assert.match(read('supabase/functions/app-api/index.ts'), /fixBrief: buildRuntimeWatchdogFixBrief\(\(data \|\| \[\]\) as Record<string, unknown>\[\]\, APP_RUNTIME_RELEASE\)/);
 });

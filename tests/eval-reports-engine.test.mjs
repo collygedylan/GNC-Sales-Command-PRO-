@@ -1,7 +1,7 @@
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: eval
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
@@ -24,6 +24,7 @@ test('Manager report sessions and in-flight responses survive same-account permi
     getSupabaseReadIdentityScope: () => owner,
     appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'access-v1' } },
     nativeAuthProfile: { id: 'account-a', active: true }, window: {}, activeHomeTab: 'ncr-approvals',
+    getCurrentVisibleViewId:() => 'managers', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
     APP_API_FUNCTION_URL: 'fixture.invalid', APP_VERSION: 'fixture', SUPABASE_READ_TIMEOUT_MS: 10000,
     postAppFunctionJson: async () => { requests++; return gate.promise; },
     staleSupabaseReadScopeError: () => Object.assign(new Error('Account changed'), { code: 'DATASET_READ_SCOPE_CHANGED' }),
@@ -80,6 +81,39 @@ test('Manager report read gates accept only an existing published snapshot proof
   assert.match(canonical, /private\.inventory_row_assignment_policy_active_v1\(\)/);
   assert.match(canonical, /p_payload->>'sourceRevision' <> source_revision/);
   assert.match(canonical, /manager_report_eval2_forbidden/);
+});
+
+test('set-based Eval2 report patch retains the authorization and published-read contract with bounded grouping', () => {
+  const migrationDir = new URL('../supabase/migrations/', import.meta.url);
+  const migrationName = readdirSync(migrationDir).find(name => name.endsWith('_manager_report_set_based_read_v1.sql'));
+  assert.ok(migrationName, 'the set-based report migration is registered');
+  const patch = readFileSync(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), 'utf8');
+  const migrationRegistry = readFileSync(new URL('../scripts/apply-item-low-stock-migration.mjs', import.meta.url), 'utf8');
+  assert.ok(migrationRegistry.includes(`managerReportSetBasedReadMigrationName = '${migrationName}'`));
+  assert.match(migrationRegistry, /releaseDatabaseMigrations[\s\S]*managerReportSetBasedReadMigrationName/);
+  const canonical = readFileSync(new URL('../supabase/migrations/20261014110620_eval2_shared_low_stock_threshold.sql', import.meta.url), 'utf8');
+  const published = readFileSync(new URL('../supabase/migrations/20261021014500_manager_published_read_continuity_v1.sql', import.meta.url), 'utf8');
+  assert.match(patch, /pg_get_functiondef\('public\.manager_report_read_v2\(jsonb\)'::regprocedure\)/);
+  assert.match(patch, /active_assignment_users as materialized/);
+  assert.match(patch, /effective_owners as materialized/);
+  assert.match(patch, /page_keys as materialized[\s\S]*?limit page_limit offset page_offset/);
+  assert.match(patch, /select count\(\*\) from group_keys/);
+  assert.match(patch, /revoke all on function public\.manager_report_read_v2\(jsonb\) from public,anon,authenticated/);
+  assert.match(patch, /grant execute on function public\.manager_report_read_v2\(jsonb\) to service_role/);
+  assert.doesNotMatch(patch, /create or replace function public\.manager_report_read_v2/);
+  for (const contract of [
+    /private\.eval_work_assert_actor_v1\(p_payload->>'actorUsername'\)/,
+    /p_payload->>'sourceRevision' <> source_revision/,
+    /manager_report_eval2_forbidden/,
+    /filters->'assignedUsers'/,
+    /filters->'seasons'/,
+    /filters->>'itemCode'/,
+    /filters->>'uniqueId'/,
+    /filters->'gridColumns'/,
+    /page_offset integer := greatest\(0,coalesce\(\(p_payload->>'offset'\)::integer,0\)\)/
+  ]) assert.match(canonical, contract);
+  assert.match(published, /published_snapshot_read_proof\(key,revision\)->>'publishedReadable'/);
+  assert.match(published, /source_revision is null or \(source_state is distinct from 'ready'[\s\S]*?published_snapshot_read_proof/);
 });
 
 test('Season Priority displays a proven published snapshot without relabeling an interrupted source ready', async () => {
@@ -823,7 +857,7 @@ test('large getter uses one guarded loading lifecycle and retains monitored fall
   assert.equal(loads, 1, 'an error must not create an automatic retry loop');
 });
 
-test('Eval Reports #2 joins a normal revision check without failing refresh or losing its last-good index', async () => {
+test('Eval Reports #2 keeps its last-good index while the authoritative report page refreshes', async () => {
   const html = readComposedAppSource();
   const functionSource = name => {
     const start = html.indexOf(`function ${name}(`);
@@ -844,11 +878,16 @@ test('Eval Reports #2 joins a normal revision check without failing refresh or l
   scope.canViewManagerEvalReports2 = () => false;
   assert.equal(scope.ownsLoad('managers'), false, 'confirmed loss of report permission must remain an access boundary');
 
-  let resolveIndex, status = { state:'Syncing', message:'Checking and loading changed data.' }, settingsReads = 0, indexBuildStarted = false;
+  let resolvePage, status = { state:'Syncing', message:'Checking and loading changed data.' }, settingsReads = 0;
   const lastGoodIndex = { source:'last-good' }, refreshedIndex = { source:'refreshed' };
-  const refreshGate = new Promise(resolve => { resolveIndex = resolve; });
+  const refreshGate = new Promise(resolve => { resolvePage = resolve; });
   const settingsSource = functionSource('loadManagerEvalReportSettings');
   const loadSource = html.slice(html.indexOf('async function loadManagerEvalReports2('), html.indexOf('\n        function getManagerEvalReport2CacheKeyValue('));
+  const pageState = { pendingKey:'', promise:null, page:null, error:'' };
+  const query = { surface:'eval2', operation:'groups', filters:{ reportIds:['low-stock'] }, offset:0, limit:25 };
+  const reportController = { state:() => pageState, load:() => refreshGate.then(page => {
+    pageState.page = page; pageState.error = ''; runtime.managerEvalReport2Cache = refreshedIndex; return page;
+  }), refresh() {} };
   const runtime = vm.createContext({
     managerEvalReportSettings:{ lowStockMaxSLts:150, holdAgeDays:5, locationNoteAgeDays:10 },
     managerEvalReportSettingsState:{ loading:false, loaded:true, error:'' },
@@ -856,23 +895,14 @@ test('Eval Reports #2 joins a normal revision check without failing refresh or l
     managerEvalReport2Cache:lastGoodIndex, managerEvalReport2CacheKey:'old-key',
     fullInventory:[{ ITEMCODE:'A' }], warehouseAssignedItemsInventory:[{ ITEMCODE:'A' }],
     getSupabaseReadIdentityScope:() => 'account-a:login-1', canViewManagerEvalReports2:() => true,
-    useManagerReportPages:() => false, getDatasetLoadSignature:key => `${key}-revision-1`,
-    ensureDatasetLoaded:async () => true, isDatasetLoaded:() => true,
+    useManagerReportPages:() => true, getManagerReportPageController:() => reportController,
+    buildManagerReportPageQuery:() => query, getManagerEvalReport2Index:() => runtime.managerEvalReport2Cache,
     getManagerEvalReport2LatestSourceUpdate:() => '',
-    buildManagerEvalReport2IndexAsync:() => {
-      indexBuildStarted = true;
-      return refreshGate.then(index => {
-        // The production builder publishes the completed index into the shared
-        // cache before it resolves; model that side effect in this harness.
-        runtime.managerEvalReport2Cache = index;
-        return index;
-      });
-    },
     getProductionLiveSyncCoordinator:() => ({ getStatus:() => status }),
     shouldUseProductionLiveSyncSideLoad:() => true,
     ensureProductionLiveSyncSideData:async () => { settingsReads++; throw new Error(status.message); },
     isSupabaseReadTerminalDenial:error => [401,403].includes(Number(error?.status || 0)),
-    nativeAuthProfile:{ active:true, disabled_at:null }, window:{},
+    nativeAuthProfile:{ active:true, disabled_at:null }, window:{ GncReportPagesLive:{} },
     MANAGER_EVAL_REPORTS_2_VIEW:'eval-reports-2', activeHomeTab:'eval-reports-2',
     getCurrentVisibleViewId:() => 'managers',
     scheduleManagersRender:() => {}, reconcileManagerEvalReport2Navigation:() => {},
@@ -883,22 +913,20 @@ test('Eval Reports #2 joins a normal revision check without failing refresh or l
   });
   const toasts = [], events = [];
   vm.runInContext(`${settingsSource}\n${loadSource}\nglobalThis.load = loadManagerEvalReports2;`, runtime);
-  // Resolve through the real settings loader's SWR branch, then hold the index
-  // build open to prove the same-account report remains mounted while refreshes.
+  // Hold the signed server page read open to prove the same-account report
+  // remains visible while the shared Manager revision is syncing.
   const loading = runtime.load(true);
   assert.equal(runtime.managerEvalReport2LoadState.loading, true);
-  assert.ok(runtime.managerEvalReport2LoadState.promise, 'refresh must expose the in-flight hydration promise');
   assert.equal(runtime.managerEvalReport2Cache, lastGoodIndex);
   for (let index = 0; index < 6; index++) await Promise.resolve();
-  assert.equal(settingsReads, 1);
-  assert.equal(indexBuildStarted, true, 'transient revision status must still resolve the report hydration into index building');
+  assert.equal(settingsReads, 0, 'report page loading does not await the optional full-snapshot settings path');
   assert.equal(runtime.managerEvalReport2Cache, lastGoodIndex);
   assert.equal(runtime.managerEvalReport2LoadState.error, '');
   assert.equal(events.length, 0);
-  resolveIndex(refreshedIndex);
+  resolvePage({ sourceRevision:'report-r2', rows:[] });
   assert.equal(await loading, refreshedIndex);
   assert.equal(runtime.managerEvalReport2Cache, refreshedIndex);
-  assert.deepEqual(toasts.map(toast => toast.title), ['Eval Reports #2 Refreshed']);
+  assert.deepEqual(toasts, [], 'background revision status does not emit a false Refresh Failed toast');
 
   status = { state:'Needs attention', message:'Access revoked.', status:403, authorizationDenied:true };
   runtime.ensureProductionLiveSyncSideData = async () => { const error = new Error(status.message); error.status = 403; throw error; };
@@ -912,6 +940,132 @@ test('Eval Reports #2 joins a normal revision check without failing refresh or l
   assert.match(html.slice(viewLoaderStart, viewLoaderEnd), /shouldLetManagerEvalReport2OwnLoadState\(viewId\)\) return false/);
   assert.match(html.slice(liveSyncStart, liveSyncEnd), /VIEW_LOAD_UI\[currentView\] && !shouldLetManagerEvalReport2OwnLoadState\(currentView\)/);
   assert.match(html.slice(liveSyncStart, liveSyncEnd), /failedUi && !shouldLetManagerEvalReport2OwnLoadState\(failedView\)/);
+});
+
+test('cold Eval2 loads the report_read_v2 page before any local inventory snapshot is cached', async () => {
+  const html = readComposedAppSource();
+  const start = html.indexOf('function getManagerReportPageController()');
+  const end = html.indexOf('\n        function useManagerReportPages(', start);
+  assert.ok(start >= 0 && end > start);
+  const reportPage = { sourceRevision:'report-r1', metadata:{ assignedToOptions:['evaluator-a'] }, rows:[{ itemCode:'A' }] };
+  const calls = [], datasetReads = [];
+  let controllerOptions = null;
+  const query = { surface:'eval2', operation:'groups', filters:{ reportIds:['low-stock'] }, offset:0, limit:25 };
+  const owner = 'account-a:login-a';
+  const context = vm.createContext({
+    GncReportPagesLive:{ createController:options => { controllerOptions = options; return {}; } },
+    managerReportPageController:null,
+    managerReportScopedRows:new Map(), managerReportVisibleRows:new Map(), managerReportGridFilters:new Map(),
+    managerEvalReport2SelectedItemsByKey:new Map(), managerEvalReport2EditsByRowKey:new Map(),
+    managerEvalReport2DetailItemKey:'', managerEvalAssignmentSelection:new Map(),
+    getSupabaseReadIdentityScope:() => owner, appAccessSnapshotState:{ snapshot:{ dataPermissionVersion:'permission-a' } },
+    currentUser:{ username:'dylan_collyge' }, canViewManagerEvalReports2:() => true,
+    getCurrentVisibleViewId:() => 'managers', activeHomeTab:'eval2', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
+    buildManagerReportPageQuery:() => query,
+    APP_API_FUNCTION_URL:'/api', SUPABASE_READ_TIMEOUT_MS:1000, AbortController,
+    window:{ GncUserAccessControl:{ getSelfState:() => ({ denied:false }) } },
+    nativeAuthProfile:{ active:true, disabled_at:null },
+    postAppFunctionJson:async (_url, body) => {
+      calls.push(body);
+      return body.operation === 'capabilities'
+        ? { ok:true, data:{ surfaces:['eval2'] } }
+        : { ok:true, data:reportPage };
+    },
+    acceptCardLocationOnHandSourceReceipt:() => false,
+    staleSupabaseReadScopeError:() => new Error('stale scope'),
+    ensureDatasetLoaded:async (...args) => { datasetReads.push(args); throw new Error('cold full snapshot must not be awaited'); },
+    Map, Set, String, Number, Object, Array, Promise, Date
+  });
+  vm.runInContext(`${html.slice(start, end)};globalThis.getController = getManagerReportPageController;`, context);
+  const started = performance.now();
+  const controller = context.getController();
+  const capabilities = await controllerOptions.transport(null, new AbortController().signal);
+  const loaded = await controllerOptions.transport(query, new AbortController().signal);
+  const elapsed = performance.now() - started;
+  assert.deepEqual(capabilities, { surfaces:['eval2'] });
+  assert.deepEqual(loaded, reportPage);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), JSON.parse(JSON.stringify([
+    { action:'report_read_v2', operation:'capabilities' },
+    { action:'report_read_v2', query }
+  ])), 'the capability check and authorized report page are independent reads');
+  assert.deepEqual(datasetReads, [], 'cold Eval2 must not wait for master inventory or Assigned Items hydration');
+  assert.ok(elapsed < 2000, `cold report reader path took ${elapsed.toFixed(1)} ms`);
+  const idsStart = html.indexOf('function getManagerEvalReport2SelectedReportIds(');
+  const idsEnd = html.indexOf('\n        function ', idsStart + 1);
+  assert.ok(idsStart >= 0 && idsEnd > idsStart);
+  context.managerEvalReport2SelectedReportIds = [];
+  context.managerEvalReport2SelectionInitialized = false;
+  context.activeManagerEvalReport2 = '';
+  context.getManagerEvalReports2Api = () => ({ REPORT_IDS:Array.from(engine.REPORT_IDS) });
+  vm.runInContext(`${html.slice(idsStart, idsEnd)}; globalThis.selectedIds = getManagerEvalReport2SelectedReportIds();`, context);
+  assert.deepEqual(Array.from(context.selectedIds), Array.from(engine.REPORT_IDS), 'cold report query defaults to all 11 report IDs');
+  assert.match(html, /mountPagedManagerReport\(container, query, renderPagedManagerEval2Record/,
+    'the first report rows are rendered from the paged server report reader');
+});
+
+test('Eval2 report loading ignores blocked capability refresh, preserves server authorization, and retries without snapshots', async () => {
+  const live = { module:{ exports:{} }, AbortController };
+  vm.runInNewContext(readFileSync(new URL('../assets/report-pages-live.js', import.meta.url), 'utf8'), live);
+  let rejectCapabilities, capabilityCalls = 0, readyCalls = 0, groupReads = 0;
+  const capabilityPromise = new Promise((_resolve, reject) => { rejectCapabilities = reject; });
+  const query = { surface:'eval2', operation:'groups', filters:{ reportIds:Array.from(engine.REPORT_IDS) }, offset:0, limit:25 };
+  const expectedPage = { sourceRevision:'eval-r2', rows:[{ itemCode:'B' }] };
+  const pageController = live.module.exports.createController({
+    scope:() => 'account-a', permission:() => 'account-a', allowed:() => true,
+    serverAuthorizedSurfaces:['eval2'], loadModule:async () => ({ createReportSession:() => ({
+      read:async () => { groupReads += 1; if (groupReads === 1) throw new Error('temporary report read failure'); return expectedPage; },
+      refresh:async () => expectedPage, clear() {}
+    }) }),
+    onReady:() => { readyCalls += 1; },
+    transport:request => {
+      if (request) return Promise.resolve(expectedPage);
+      capabilityCalls += 1;
+      return capabilityCalls === 1 ? capabilityPromise : Promise.reject(new Error('capabilities still unavailable'));
+    }
+  });
+  const runSource = readComposedAppSource();
+  const loaderStart = runSource.indexOf('async function loadManagerEvalReports2(');
+  const loaderEnd = runSource.indexOf('\n        function getManagerEvalReport2CacheKeyValue(', loaderStart);
+  assert.ok(loaderStart >= 0 && loaderEnd > loaderStart);
+  let datasetReads = 0, loaderCalls = 0;
+  const pageState = { pendingKey:'', promise:null, error:'', page:null };
+  const loaderController = {
+    state:() => pageState,
+    load:async () => { loaderCalls += 1; if (loaderCalls === 1) { pageState.error = 'temporary report read failure'; return null; }
+      pageState.error = ''; pageState.page = expectedPage; return expectedPage; },
+    refresh() {}
+  };
+  const runtime = vm.createContext({
+    canViewManagerEvalReports2:() => true, window:{ GncReportPagesLive:{} },
+    managerEvalReport2LoadState:{ loading:false,error:'',owner:'',promise:null }, managerEvalReport2Cache:null,
+    getManagerReportPageController:() => loaderController, buildManagerReportPageQuery:() => query,
+    getManagerEvalReport2Index:() => pageState.page, scheduleManagersRender() {},
+    ensureDatasetLoaded:async () => { datasetReads += 1; throw new Error('full snapshot path is forbidden'); },
+    Promise, JSON, String, Object, Array
+  });
+  vm.runInContext(`${runSource.slice(loaderStart, loaderEnd)}; globalThis.loadEval2 = loadManagerEvalReports2;`, runtime);
+
+  const actualPageRead = pageController.load(query);
+  const first = await actualPageRead;
+  assert.equal(first, null, 'a report read can fail while capabilities remain pending');
+  assert.equal(pageController.enabled('eval2'), true, 'local eligibility keeps Eval2 routed through server authorization');
+  assert.equal(pageController.enabled('assigned-items'), false, 'failed capabilities do not grant unrelated report surfaces');
+  assert.equal(await pageController.load(query), expectedPage, 'the server page can retry while the capability request is still blocked');
+  rejectCapabilities(new Error('temporary capabilities failure'));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(capabilityCalls, 1, 'a failed optional capability read is attempted once without automatic rerender loops');
+  assert.equal(readyCalls, 1, 'capability failure does not repeatedly remount the existing session');
+  assert.equal(await pageController.load(query, true), expectedPage, 'an explicit read retry can refresh capabilities in the background');
+  assert.equal(capabilityCalls, 2);
+  await pageController.load(query);
+  assert.equal(capabilityCalls, 2, 'ordinary report renders do not restart failed capability checks');
+  assert.equal(await runtime.loadEval2(false), null, 'failed report fetch returns without entering a local snapshot path');
+  const retry = await runtime.loadEval2(true);
+  assert.equal(retry, expectedPage, 'explicit retry recovers the report page');
+  assert.equal(loaderCalls, 2);
+  assert.equal(datasetReads, 0, 'failed and retried report reads never download master or assignment snapshots');
+  assert.equal(groupReads, 3);
+  assert.equal(pageController.enabled('eval2'), true, 'capability failure never disables the server-authorized report surface');
 });
 
 test('Eval2 classifier paths omit per-item target APIs and honor shared threshold boundaries', () => {

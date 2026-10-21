@@ -107,6 +107,7 @@ export function createHlOrderState(options = {}) {
     hlMaster('master-other-item', { itemcode: 'UNRELATED', locationcode: 'A.08.001' })],
     commands: [], pdfRequests: [], blockedMutations: [], errors: [], runtime: 0, datasetRevision: 1,
     inventoryReadOperations: [], availabilityRpcCalls: [],
+    watchdogEvents: [],
     failAction: null, failPreview: false, loseSubmitResponse: false, replay: new Map(), previews: new Map(), sequence: 0,
     poBalances, receiptAdjustments: [], importPreviews: new Map(), activeCutoff: options.poCutoff || null };
   // These rows are intentionally separate from the HL state source rows. Drive
@@ -677,6 +678,40 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     if (url.pathname.endsWith('/functions/v1/app-api')) {
       const body = req.postDataJSON() || {};
+      if (body.action === 'watchdog_log_event') {
+        const event = body.event;
+        const eventFields = ['app_version', 'cluster_id', 'dataset_revisions_snapshot', 'duration_ms', 'error_message', 'event_type', 'fingerprint', 'normalized_role', 'owning_skill', 'severity', 'sub_module', 'suspected_functions', 'username', 'view_id'];
+        const eventTypes = new Set(['VIEW_LOAD_STALL', 'ROLE_LATENCY_ANOMALY', 'DATA_PARITY_MISMATCH', 'UI_LOCKOUT_BANNER', 'APP_API_FAILURE', 'UNHANDLED_JS_EXCEPTION', 'UNHANDLED_PROMISE_REJECTION', 'OPERATIONAL_FAILURE']);
+        const valid = method === 'POST' && Object.keys(body).sort().join(',') === 'action,event'
+          && event && typeof event === 'object' && !Array.isArray(event)
+          && Object.keys(event).sort().join(',') === eventFields.join(',')
+          && String(event.username || '').trim().toLowerCase() === String(username || '').trim().toLowerCase()
+          && typeof event.app_version === 'string' && event.app_version.length > 0 && event.app_version.length <= 80
+          && eventTypes.has(event.event_type) && /^Cluster (?:[1-9]|10)$/.test(String(event.cluster_id || ''))
+          && /^agdata-[a-z0-9-]+$/.test(String(event.owning_skill || ''))
+          && typeof event.fingerprint === 'string' && event.fingerprint.length > 0 && event.fingerprint.length <= 400
+          && !req.headers()['idempotency-key'];
+        if (!valid) {
+          control.blockedMutations.push('API watchdog_log_event:invalid-fixture-contract');
+          return json(route, { ok: false, error: 'Blocked' }, 403);
+        }
+        control.watchdogEvents.push(structuredClone(event));
+        return json(route, { ok: true });
+      }
+      if (body.action === 'watchdog_list_events') {
+        const valid = method === 'POST' && Object.keys(body).join(',') === 'action'
+          && ['dylan_collyge', 'megan_kelly', 'jd_jones'].includes(String(username || '').trim().toLowerCase())
+          && !req.headers()['idempotency-key'];
+        if (!valid) {
+          control.blockedMutations.push('API watchdog_list_events:invalid-fixture-contract');
+          return json(route, { ok: false, error: 'Blocked' }, 403);
+        }
+        return json(route, { ok: true, data: [], fixBrief: '' });
+      }
+      if (String(body.action || '').startsWith('watchdog_')) {
+        control.blockedMutations.push(`API ${body.action}:unsupported-watchdog-fixture-contract`);
+        return json(route, { ok: false, error: 'Blocked' }, 403);
+      }
       const managerSeasonRead = method === 'POST' && body.action === 'manager_season_settings' && body.operation === 'read'
         && Object.keys(body).every(key => ['action', 'operation'].includes(key))
         && req.headers().authorization === 'Bearer ' + token

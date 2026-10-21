@@ -40,17 +40,17 @@ test('report query isolates sorted report/user/season choices and current config
   assert.equal(context.buildManagerReportPageQuery('eval2','rows').limit,100);
 });
 
-test('Eval2 opts out of paged reports while other advertised surfaces retain the controller', () => {
+test('Eval2 uses the signed paged report reader alongside other paged manager surfaces', () => {
   const enabled = new Set(['eval1', 'eval2', 'assigned-items']);
   const controllerCalls = [];
   const context = run(['useManagerReportPages'], {
     window:{GncReportPagesLive:{}}, currentUser:{username:'manager'},
     getManagerReportPageController:() => ({ enabled:surface => { controllerCalls.push(surface); return enabled.has(surface); } })
   });
-  assert.equal(context.useManagerReportPages('eval2'), false);
+  assert.equal(context.useManagerReportPages('eval2'), true);
   assert.equal(context.useManagerReportPages('eval1'), true);
   assert.equal(context.useManagerReportPages('assigned-items'), true);
-  assert.deepEqual(controllerCalls, ['eval1', 'assigned-items']);
+  assert.deepEqual(controllerCalls, ['eval2', 'eval1', 'assigned-items']);
 });
 
 test('direct Eval2 full-snapshot ensures use bounded master-page concurrency', async () => {
@@ -182,23 +182,22 @@ test('legacy LowStock All Users snapshot renders Block Alpha through ITEMCODE dr
   assert.match(context.renderManagerEvalReport2DrillGroupCard(groups[0]), /ALPHA-1/);
 });
 
-test('legacy Eval2 cold load deduplicates snapshot requests without fetching per-item LowStock targets', async () => {
-  let release, settingsReads = 0, targetReads = 0, indexBuilds = 0, pagedCalls = 0;
+test('Eval2 cold load reads the server report page without waiting for full local snapshots', async () => {
+  let settingsReads = 0, targetReads = 0, indexBuilds = 0, pagedCalls = 0;
   const datasetReads = [];
-  const gate = new Promise(resolve => { release = resolve; });
   const context = run(['useManagerReportPages', 'loadManagerEvalReports2'], {
     window:{GncReportPagesLive:{}}, currentUser:{username:'manager'},
     getManagerReportPageController:() => ({
       state:() => ({pendingKey:'',promise:null,error:'',page:null}),
       enabled:() => { pagedCalls += 1; return true; },
-      load:async () => { pagedCalls += 1; return {sourceRevision:'paged-r1'}; }
+      load:async query => { pagedCalls += 1; assert.equal(query.operation, 'groups'); return {sourceRevision:'paged-r1'}; }
     }),
     canViewManagerEvalReports2:() => true,
     getSupabaseReadIdentityScope:() => 'account-a',
     managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
     managerEvalReport2Cache:null, managerEvalReport2CacheKey:'',
     getDatasetLoadSignature:key => `${key}-source-r1`,
-    ensureDatasetLoaded:async (key, mode) => { datasetReads.push([key, mode]); await gate; },
+    ensureDatasetLoaded:async (key, mode) => { datasetReads.push([key, mode]); },
     loadManagerEvalReportSettings:async () => { settingsReads += 1; },
     isDatasetLoaded:() => true,
     getManagerEvalReport2SelectedReportIds:() => ['low-stock'],
@@ -216,16 +215,14 @@ test('legacy Eval2 cold load deduplicates snapshot requests without fetching per
 
   const first = context.loadManagerEvalReports2(false);
   const second = context.loadManagerEvalReports2(false);
-  await new Promise(resolve => setImmediate(resolve));
-  assert.deepEqual(datasetReads, [['master','full'],['warehouseAssignedItems','full']], 'one full master and assignments snapshot read');
-  assert.equal(pagedCalls, 0, 'the production Eval2 gate must bypass report-page calls');
-  release();
   const [firstResult, secondResult] = await Promise.all([first, second]);
   assert.equal(firstResult, secondResult);
-  assert.equal(settingsReads, 1);
-  assert.equal(targetReads, 0, 'Eval2 LowStock uses the shared threshold and must not wait on per-item target reads');
-  assert.equal(indexBuilds, 1);
-  assert.deepEqual(firstResult.counts, {'low-stock':1});
+  assert.deepEqual(datasetReads, [], 'first report paint does not wait for master or assignment snapshots');
+  assert.equal(pagedCalls, 1, 'concurrent cold loads share the first server groups page');
+  assert.equal(settingsReads, 0, 'client settings hydration is not on the first-page critical path');
+  assert.equal(targetReads, 0, 'Eval2 LowStock uses the server shared threshold');
+  assert.equal(indexBuilds, 0, 'the cold page is not rebuilt from client snapshots');
+  assert.equal(firstResult.sourceRevision, 'paged-r1');
 });
 
 test('legacy Eval2 cache key tracks source, settings, and report date but ignores target revision', () => {
@@ -408,7 +405,7 @@ test('Eval2 report index waits for verified metadata and then exposes populated 
   assert.equal(context.getManagerEvalReport2Index().inventoryRowCount, 0);
 });
 
-test('Eval2 loader falls back to full inventory after paged capabilities resolve unsupported', async () => {
+test('Eval2 does not fall back to downloading full snapshots when the paged reader is unavailable', async () => {
   const calls = [];
   let paged = true;
   const context = run(['loadManagerEvalReports2'], {
@@ -416,10 +413,11 @@ test('Eval2 loader falls back to full inventory after paged capabilities resolve
     useManagerReportPages:() => paged,
     getManagerReportPageController:() => ({
       state:() => ({}),
-      load:async () => { calls.push('metadata'); paged = false; return null; }, enabled:() => false
+      load:async query => { calls.push(query.operation); paged = false; return null; }, enabled:() => false
     }),
     buildManagerReportPageQuery:(surface, operation) => ({surface,operation}),
     getSupabaseReadIdentityScope:() => 'account-a',
+    getManagerEvalReport2Index:() => null,
     managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
     managerEvalReport2Cache:null, managerEvalReport2CacheKey:'',
     getDatasetLoadSignature:key => `${key}-signature`,
@@ -438,11 +436,11 @@ test('Eval2 loader falls back to full inventory after paged capabilities resolve
     reportSemanticHealthEvent:() => {}, showToast:() => {}
   });
   const result = await context.loadManagerEvalReports2(false);
-  assert.deepEqual(calls.slice(0, 4), ['metadata','master','warehouseAssignedItems','settings']);
-  assert.deepEqual(result.counts, {'low-stock':1});
+  assert.deepEqual(calls, ['groups']);
+  assert.equal(result, null);
 });
 
-test('supported Eval2 load explicitly fetches report metadata before rendering the index', async () => {
+test('supported Eval2 load fetches the first report groups page before rendering the index', async () => {
   const calls = [];
   const controller = {
     refresh:surface => calls.push(`refresh:${surface}`),
@@ -464,7 +462,7 @@ test('supported Eval2 load explicitly fetches report metadata before rendering t
     getManagerEvalReport2Index:() => ({paged:true,counts:{'low-stock':4}})
   });
   const result = await context.loadManagerEvalReports2(false);
-  assert.deepEqual(calls, ['load:eval2:metadata:false']);
+  assert.deepEqual(calls, ['load:eval2:groups:false']);
   assert.equal(result.counts['low-stock'], 4);
 });
 
@@ -573,8 +571,8 @@ function evalLoadFixture(paged) {
   };
 }
 
-for (const paged of [true, false]) {
-  const mode = paged ? 'paged' : 'legacy';
+for (const paged of [true]) {
+  const mode = 'paged';
   test(`Eval2 ${mode} LowStock All Users Block Alpha fetches once after an initial error`, async () => {
     const fixture = evalLoadFixture(paged);
     fixture.render(); fixture.render(); // Includes timers queued before a request starts.
@@ -648,12 +646,16 @@ test('Eval2 paged permission changes clear the previous scoped failure', async (
   assert.equal(fixture.idle(), true);
 });
 
-test('Eval2 paged capability failure makes one attempt and waits for explicit Retry', async () => {
+test('Eval2 capability failure is optional and the signed groups read stays retryable', async () => {
   const fixture = evalLoadFixture(true);
   fixture.failCapabilities();
   await fixture.context.loadManagerEvalReports2(false); await fixture.drain();
   assert.equal(fixture.capabilityCalls(), 1);
-  assert.equal(fixture.fetchCount(), 0);
-  assert.match(fixture.html(), /capability failure/);
+  assert.equal(fixture.fetchCount(), 1, 'the server-authorized groups read proceeds despite a failed capabilities request');
+  assert.match(fixture.html(), /database failure/);
+  fixture.succeed();
+  await fixture.context.loadManagerEvalReports2(true); await fixture.drain();
+  assert.equal(fixture.fetchCount(), 2, 'explicit retry reissues the groups read');
+  assert.equal(fixture.context.managerEvalReport2LoadState.error, '');
   assert.equal(fixture.idle(), true);
 });

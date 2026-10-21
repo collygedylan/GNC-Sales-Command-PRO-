@@ -357,6 +357,62 @@ test('view and session invalidation fence late work while scopes stay isolated',
   ]);
 });
 
+test('a same-view Manager module refresh preserves its view-scoped work', () => {
+  const h = harness();
+  h.api.enterView('managers');
+  const moduleRead = h.api.createScope();
+  h.api.enterView('managers');
+  assert.equal(moduleRead.isCurrent(), true);
+  h.api.enterView('home');
+  assert.equal(moduleRead.isCurrent(), false, 'leaving Managers still retires the module-owned view work');
+});
+
+test('resolved live revisions clear the first-sync header before snapshot hydration completes', () => {
+  const markStart = runtimeSource.indexOf('function recordDatasetRevisionConnection(');
+  const labelEnd = runtimeSource.indexOf('\n        function requireCurrentProductionLiveSyncProof', markStart);
+  assert.ok(markStart >= 0 && labelEnd > markStart);
+  const state = vm.createContext({
+    datasetRevisionConnectionOwner: '', datasetRevisionConnectionStates: [],
+    getSupabaseReadIdentityScope: () => 'account-a:login-1',
+    getRequestCapabilityUsernameKey: value => String(value || '').trim().toLowerCase(),
+    window: { GncUserAccessControl: { getSelfState: () => ({ denied: false }) } },
+    updateSyncDiagnostics: () => { state.diagnosticsUpdates++; }, diagnosticsUpdates: 0,
+  });
+  vm.runInContext(runtimeSource.slice(markStart, labelEnd) +
+    '\nglobalThis.record = recordDatasetRevisionConnection; globalThis.label = getDatasetRevisionConnectionLabel;', state);
+  const value = { contractVersion: 1, permissionVersion: 'access-v2', sources: [
+    { key: 'ph_master_inventory', state: 'ready' }, { key: 'ph_soc_master', state: 'importing' },
+  ] };
+  const normalized = { sources: new Map(value.sources.map(source => [source.key, source])) };
+  assert.equal(state.record(value, normalized, { readIdentity: 'account-a:login-1', authenticated: true, accessDenied: false }), true);
+  assert.equal(state.label(), 'Connected · 1 ready · 1 updating');
+  assert.equal(state.diagnosticsUpdates, 1);
+  assert.match(runtimeSource, /onRevisionRead: \(value, metadata, context\) => recordDatasetRevisionConnection\(value, metadata, context\)/);
+  assert.match(runtimeSource, /connectionSourceKeys: \(\) => \['ph_master_inventory'\]/);
+  assert.match(runtimeSource, /const revisionSummary = navigator\.onLine === false \? '' : getDatasetRevisionConnectionLabel\(\)/);
+});
+
+test('generic Manager module stays selected while same-account access is stale, but not after denial', () => {
+  const helperStart = runtimeSource.indexOf('function shouldRetainManagerModuleDuringAccessRefresh(');
+  const helperEnd = runtimeSource.indexOf('\n        function renderManagers()', helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart);
+  const source = runtimeSource.slice(helperStart, helperEnd);
+  const context = vm.createContext({ getRequestCapabilityUsernameKey: value => String(value || '').trim().toLowerCase() });
+  vm.runInContext(`${source}; globalThis.shouldRetain = shouldRetainManagerModuleDuringAccessRefresh;`, context);
+  const allowed = new Set(['dashboard']);
+  const stale = { status: 'ready', stale: true, username: 'dylan_collyge', snapshot: { username: 'dylan_collyge' } };
+  assert.equal(context.shouldRetain('eval-reports-2', allowed, stale, 'dylan_collyge', true, false), true);
+  assert.equal(context.shouldRetain('eval-reports-2', allowed, stale, 'megan_kelly', true, false), false);
+  assert.equal(context.shouldRetain('eval-reports-2', allowed, stale, 'dylan_collyge', true, true), false);
+  assert.equal(context.shouldRetain('eval-reports-2', allowed,
+    { status: 'ready', stale: false, username: 'dylan_collyge', snapshot: { username: 'dylan_collyge' } },
+    'dylan_collyge', true, false), false);
+  const managerStart = runtimeSource.indexOf('function renderManagers()');
+  const resetAt = runtimeSource.indexOf("activeHomeTab = 'dashboard';", managerStart);
+  assert.ok(runtimeSource.indexOf('shouldRetainManagerModuleDuringAccessRefresh(', managerStart) < resetAt,
+    'transient refresh retention runs before the dashboard fallback');
+});
+
 test('Docks and Que session/view reads survive a same-account access snapshot completion while real session reset still aborts', async () => {
   const html = readComposedAppSource();
   for (const view of ['docks', 'request']) {

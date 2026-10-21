@@ -547,13 +547,27 @@
             }
             // A deferred cohort also verifies the foreground dependencies so it
             // cannot introduce a new shared revision beside older visible joins.
-            const keys = unique([...adapters, ...(background ? ctx.adapters || [] : [])].flatMap(item => item.sourceKeys));
-            if (!adapters.length || !keys.length) { emit('Up to date', 'This screen has no live data.'); return true; }
+            let keys = unique([...adapters, ...(background ? ctx.adapters || [] : [])].flatMap(item => item.sourceKeys));
+            if (!adapters.length || !keys.length) {
+                const connectionKeys = unique(typeof options.connectionSourceKeys === 'function' ? options.connectionSourceKeys(ctx) || [] : []);
+                if (!keys.length && connectionKeys.length) {
+                    statistics.revisionReads++;
+                    const connectionValue = await options.readRevisions(connectionKeys, { signal: run.controller?.signal });
+                    if (!current()) return discard();
+                    const connectionMetadata = snapshot(connectionValue, connectionKeys);
+                    try { options.onRevisionRead?.(connectionValue, connectionMetadata, ctx); }
+                    catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'revision-connected'); }
+                }
+                emit('Up to date', 'Connected; background data may continue loading.', { connectionOnly: !!connectionKeys.length });
+                return true;
+            }
             if (keys.length > 64) throw new Error('This screen exceeds the revision request limit.');
             statistics.revisionReads++;
             const beforeValue = await options.readRevisions(keys, { signal: run.controller?.signal });
             if (!current()) return discard();
             const before = snapshot(beforeValue, keys);
+            try { options.onRevisionRead?.(beforeValue, before, ctx); }
+            catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'revision-connected'); }
             if (canContinueRead(ctx)) proofContextKey = contextKey(ctx, before.permissionVersion);
             if (background && (ctx.adapters || []).length && (permission !== before.permissionVersion || (ctx.adapters || []).some(adapter => appliedFor(adapter)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)])))) {
                 publish('Syncing', 'Source data changed; verifying visible data.');

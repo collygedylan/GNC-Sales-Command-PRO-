@@ -10,6 +10,21 @@ const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', impor
 const auth = readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
 const canonical = readFileSync(new URL('../supabase/functions/_shared/canonical-user-access.ts', import.meta.url), 'utf8');
 
+test('bounded report reads reuse only the request gate verified actor', () => {
+  const start = api.indexOf('export async function handleManagerReportReadAction(');
+  const end = api.indexOf('\ntype LivePilotFeatureKey', start);
+  const report = api.slice(start, end);
+  assert.match(report, /verifiedActor: Record<string, unknown> \| null = null/);
+  assert.match(report, /const profile = verifiedActor \|\| await resolveActiveSessionProfile\(session\)/);
+  assert.match(report, /if \(!session\) return errorResponse/);
+  assert.match(report, /can_access_eval_reports_2 !== true/);
+  const gate = api.indexOf('const context = await resolveZeroTrustRequestContext(session);', api.indexOf('if (action === "password_change")'));
+  const route = api.indexOf('if (action === "report_read_v2") return await handleManagerReportReadAction', gate);
+  assert.ok(gate > 0 && route > gate);
+  assert.match(api.slice(gate, route), /activeProfileForRequest = context\.actor;/);
+  assert.match(api.slice(route, route + 220), /canonicalAccessForRequest, activeProfileForRequest/);
+});
+
 test('all app-api actions except login and password reconciliation pass the verified active-profile gate', () => {
   const routerStart = api.indexOf('const contentType = String(req.headers.get("content-type")');
   const loginRoute = api.indexOf('if (action === "login") return await handleLogin(payload, req);', routerStart);

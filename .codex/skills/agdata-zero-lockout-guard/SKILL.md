@@ -28,6 +28,8 @@ Reclass submission must not await a client cache revision or permission refresh.
 
 Preserve an authenticated session through transient refresh failures. Explicit Log Out / Use another account and confirmed server-side role revocation remain real access boundaries. Never expose another account's cache, ignore a confirmed revocation, weaken RLS, fabricate a valid server session or permit unauthorized writes. Retaining visible authorized data does not authorize new backend actions.
 
+During a same-account permission refresh, keep the selected Manager module and its last rendered DOM while the access snapshot is stale or loading. Once a fresh snapshot confirms that the module is no longer authorized, return to the Manager dashboard; confirmed account denial still follows the normal access boundary.
+
 Keep account/session read identity separate from the mutable permission revision learned by background reads. Explicitly authenticated, non-denied same-account view loads may render a server-authorized snapshot while the independent access snapshot refreshes; exact permission hashes still govern verified caches and write freshness. Home must mount before the login overlay dismisses, and published dataset timestamps may populate its status while bounded filename reads finish.
 
 Cover refresh failure, interrupted imports, account changes, confirmed revocation, modal drafts and cache-upgrade behavior in the appropriate focused tests. Apply the release governor for changed rendering. This skill describes required behavior; it does not certify the current runtime without evidence.
