@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "841dce460696a28af0099365a61995eb15d664b4",
+  "commit": "5ed32fdc9b2afe44907b7b94d98d3126d72b6e66",
   "release": "AgData v2.3.42",
   "files": [
     {
@@ -269,14 +269,29 @@
       "sha256": "7f2f0474088f79a1e8141c55ac52ff846b85686bf2e0899636082f7a86b058de"
     },
     {
+      "path": "assets/bunch-note-chunks/CardBoard-SFKXC2GV.js",
+      "bytes": 19218,
+      "sha256": "dc591802691604d717a9cf0fda455753295072cb5e17a4477fb7ce4a4bd255ee"
+    },
+    {
       "path": "assets/bunch-note-chunks/CardBoard-WXA27JK6.js",
       "bytes": 19218,
       "sha256": "553e9e6a763185cb3c545ee02a588f63b9030a0f20776de5afe2224034fd5e75"
     },
     {
+      "path": "assets/bunch-note-chunks/StructuredBunchNote-7B3SEYGE.js",
+      "bytes": 10174,
+      "sha256": "0731bc5cf798889ec2949bd2c5b0e9536eea9b242f6f297f24415f5378eafae9"
+    },
+    {
       "path": "assets/bunch-note-chunks/StructuredBunchNote-KKG4GWIR.js",
       "bytes": 10174,
       "sha256": "c1678ed171d5b221bdac637565771aab96c45b49fc2cdb164447c262a9b81603"
+    },
+    {
+      "path": "assets/bunch-note-chunks/chunk-46YKMRUS.js",
+      "bytes": 194097,
+      "sha256": "2bca4511648c13bb0db9a7d6a0ec0d83220315cb3775aee1b836765c8cda6e11"
     },
     {
       "path": "assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
@@ -339,7 +354,17 @@
       "sha256": "bbe79dd4697fde25bcf578054b4ac1ae3e45e49b89f825eee45e07d4e0613b96"
     },
     {
+      "path": "assets/field-counting-chunks/FieldCountingView-PBPNYFTR.js",
+      "bytes": 28604,
+      "sha256": "9e83e3f7da6dc46c6642a16fe92e4de38ccd43c6c6ca723d054a73a8a6102f3f"
+    },
+    {
       "path": "assets/field-counting-chunks/chunk-4U4VUOO3.js",
+      "bytes": 9316,
+      "sha256": "eaeabfbdbbf42c5677951a7524b57b4ce5ffe2f02245e7ea7ee3385b77290414"
+    },
+    {
+      "path": "assets/field-counting-chunks/chunk-C5JZPQWQ.js",
       "bytes": 9316,
       "sha256": "eaeabfbdbbf42c5677951a7524b57b4ce5ffe2f02245e7ea7ee3385b77290414"
     },
@@ -354,9 +379,19 @@
       "sha256": "6fbea461b6d37f4fde2045bc7dcbbdbeede5d4bccbbb0e624476da5876d9d19f"
     },
     {
+      "path": "assets/historical-requests-chunks/HistoricalRequestsView-2SDVJKBX.js",
+      "bytes": 31120,
+      "sha256": "fc0687f0b5f8e65a90172ee0f91e1ceeafb56f9d627a17f14acc18a14db6ef2e"
+    },
+    {
       "path": "assets/historical-requests-chunks/HistoricalRequestsView-MMF43IVA.js",
       "bytes": 31120,
       "sha256": "da065346db308f7d1dc92660643adb20b4187eab2314dd4e0ebd73fe0dd7242b"
+    },
+    {
+      "path": "assets/historical-requests-chunks/chunk-34HXWUAQ.js",
+      "bytes": 18529,
+      "sha256": "31fb5d7379e7bc76cd0197f56a1b9c28937b776b975c4f03a1f1f2b2d82bfd25"
     },
     {
       "path": "assets/historical-requests-chunks/chunk-HXYT2SBZ.js",
@@ -886,12 +921,12 @@
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "5976df2d8238f44f0c29534c7d76e174982b0e6eb87b3b68166ed66f6ca96ac2"
+      "sha256": "214c550edb68d32567bb5208b42b16b18109f84c5712b2b75ab702873f57d452"
     },
     {
-      "path": "deployments/841dce460696a28af0099365a61995eb15d664b4.json",
+      "path": "deployments/5ed32fdc9b2afe44907b7b94d98d3126d72b6e66.json",
       "bytes": 187,
-      "sha256": "5976df2d8238f44f0c29534c7d76e174982b0e6eb87b3b68166ed66f6ca96ac2"
+      "sha256": "214c550edb68d32567bb5208b42b16b18109f84c5712b2b75ab702873f57d452"
     },
     {
       "path": "index.html",
@@ -935,8 +970,8 @@
     },
     {
       "path": "sw.js",
-      "bytes": 36077,
-      "sha256": "3982002ca8fbc3368a81d8877ddfe031ae6c53982725855815814d6c9dce2ef5"
+      "bytes": 36500,
+      "sha256": "8c13f8c8d0fcc8cbefb63eef86eb59df971f78dc271666bdb4c0e41dcaf1455c"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -1166,7 +1201,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "b4a112563a0ed6d21fc81b726391c2994dcee23bcb26122a6da8f13968371ce5"
+      "sha256": "e4d14ad2a9c3831430e93281778778d20fad132d363fb15fd4c548065aa69b33"
     },
     {
       "path": "v2/v2-cache-migration.js",
