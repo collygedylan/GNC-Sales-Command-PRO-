@@ -14,6 +14,17 @@
     let eventsRefreshOwner = '';
     let panelGeneration = 0;
     let cachedOwner = '';
+    let activePanelTab = 'open';
+    const RESOLVED_SKILL_FOLDERS = Object.freeze([
+        ['agdata-sync-and-supabase-architect', 'Sync & Supabase AI'],
+        ['agdata-queue-and-reclass-specialist', 'Queue & Reclass AI'],
+        ['agdata-drive-and-av-specialist', 'Drive & AV AI'],
+        ['agdata-field-ops-and-qc', 'Field Ops & QC AI'],
+        ['agdata-app-shell-and-navigation', 'App Shell & Navigation AI'],
+        ['agdata-docks-and-orders-specialist', 'Docks & Orders AI'],
+        ['agdata-aura-assistant', 'AURA Assistant AI'],
+        ['agdata-runtime-watchdog', 'Runtime Watchdog AI'],
+    ]);
 
     const ownerKey = () => JSON.stringify([
         String(deps.getUsername?.() || '').trim().toLowerCase(),
@@ -42,6 +53,7 @@
         badgeRefreshOwner = '';
         eventsRefresh = null;
         eventsRefreshOwner = '';
+        activePanelTab = 'open';
         panelGeneration++;
         return owner;
     }
@@ -86,9 +98,23 @@
 
     function renderPanel() {
         return `<section class="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm" aria-label="Watchdog Monitor">
-            <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-black text-slate-900">WATCHDOG MONITOR</h2><p class="text-xs text-slate-500">Active and resolved runtime incidents grouped by role, view and owning skill.</p></div>
+            <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-black text-slate-900">WATCHDOG MONITOR</h2><p class="text-xs text-slate-500">Open incidents and reviewed resolved fixes remain separated.</p></div>
             <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black text-white" onclick="return copyRuntimeWatchdogFixBrief()">COPY AI FIX BRIEF</button></div>
             <div id="runtime-watchdog-events" class="mt-4 space-y-3" aria-live="polite">Loading incidents…</div></section>`;
+    }
+
+    function renderIncidentCard(row, resolved = false) {
+        return `<li class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-slate-50 p-2 text-xs"><span><b>${deps.escape(row.severity)} · ${deps.escape(row.username)}</b> · ${deps.escape(row.event_type)} · ${Number(row.duration_ms) || 0}ms<br>${deps.escape(row.error_message || '')}<br><span class="text-slate-500">${deps.escape(row.cluster_id)} / ${deps.escape(row.owning_skill)} / ${deps.escape((row.suspected_functions || []).join(', '))}</span></span>${resolved ? '<span class="font-bold text-emerald-700">Resolved</span>' : `<button class="rounded-lg border px-2 py-1 font-bold" data-watchdog-resolve="${Number(row.id)}">Resolve</button>`}</li>`;
+    }
+
+    function syncPanelTab(host) {
+        host.querySelectorAll('[data-watchdog-tab]').forEach(button => {
+            const selected = button.dataset.watchdogTab === activePanelTab;
+            button.setAttribute('aria-selected', selected ? 'true' : 'false');
+            button.classList.toggle('bg-[#062115]', selected);
+            button.classList.toggle('text-white', selected);
+        });
+        host.querySelectorAll('[data-watchdog-view]').forEach(view => view.classList.toggle('hidden', view.dataset.watchdogView !== activePanelTab));
     }
 
     async function refreshBadge(force = false) {
@@ -101,7 +127,7 @@
         const task = loadEvents(owner).then(rows => {
             if (!scope.isCurrent() || owner !== ownerKey() || deps.document.getElementById('runtime-watchdog-header-badge') !== badge) return null;
             badgeCheckedAt = Date.now();
-            const count = rows.filter(row => row.status !== 'resolved').length;
+            const count = rows.filter(row => row.status === 'open').length;
             updateBadge(count);
             return count;
         }).catch(() => null).finally(() => {
@@ -122,17 +148,30 @@
         try {
             const rows = await loadEvents(owner, true);
             if (generation !== panelGeneration || !isPanelCurrent(scope, owner, host)) return;
-            openEvents = rows;
-            updateBadge(openEvents.filter(row => row.status !== 'resolved').length);
+            openEvents = rows.filter(row => row.status === 'open');
+            const resolvedEvents = rows.filter(row => row.status === 'resolved');
+            updateBadge(openEvents.length);
             if (String(deps.getUsername?.() || '').trim().toLowerCase() === 'dylan_collyge') {
                 badgeCheckedAt = Date.now();
             }
-            if (!openEvents.length) { host.innerHTML = '<p class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">No recorded runtime incidents.</p>'; return; }
             const groups = new Map();
             for (const row of openEvents) { const key = `${row.normalized_role || 'unknown'} · ${row.view_id || 'unknown'} · ${row.owning_skill || 'unmapped'}`; groups.set(key, [...(groups.get(key) || []), row]); }
             const parityRows = openEvents.filter(row => row.event_type === 'DATA_PARITY_MISMATCH');
             const paritySummary = '<div class="rounded-xl border border-emerald-200 p-3 text-sm" aria-label="Role parity summary">Role parity reports: ' + parityRows.filter(row => row.status !== 'resolved').length + ' active / ' + parityRows.filter(row => row.status === 'resolved').length + ' resolved</div>';
             host.innerHTML = paritySummary + [...groups].map(([label, groupRows]) => `<section class="rounded-xl border border-slate-200 p-3"><h3 class="text-xs font-black uppercase text-slate-700">${deps.escape(label)} <span class="text-amber-700">(${groupRows.length})</span></h3><ul class="mt-2 space-y-2">${groupRows.map(row => `<li class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-slate-50 p-2 text-xs"><span><b>${deps.escape(row.severity)} · ${deps.escape(row.username)}</b> · ${deps.escape(row.event_type)} · ${Number(row.duration_ms) || 0}ms<br>${deps.escape(row.error_message || '')}<br><span class="text-slate-500">${deps.escape(row.cluster_id)} / ${deps.escape(row.owning_skill)} / ${deps.escape((row.suspected_functions || []).join(', '))}</span></span>${row.status === 'resolved' ? '<span class="font-bold text-emerald-700">Resolved</span>' : `<button class="rounded-lg border px-2 py-1 font-bold" data-watchdog-resolve="${Number(row.id)}">Resolve</button>`}</li>`).join('')}</ul></section>`).join('');
+            const openHtml = openEvents.length
+                ? host.innerHTML
+                : '<p class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">No open runtime incidents.</p>';
+            const resolvedHtml = RESOLVED_SKILL_FOLDERS.map(([skill, label]) => {
+                const folderRows = resolvedEvents.filter(row => String(row.owning_skill || '').trim() === skill);
+                return `<details class="rounded-xl border border-slate-200 bg-white p-3"><summary class="cursor-pointer text-xs font-black uppercase text-slate-700">${deps.escape(label)} <span class="ml-1 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">${folderRows.length}</span></summary>${folderRows.length ? `<ul class="mt-3 space-y-2">${folderRows.map(row => renderIncidentCard(row, true)).join('')}</ul>` : '<p class="mt-3 text-xs text-slate-500">No resolved fixes in this folder.</p>'}</details>`;
+            }).join('');
+            host.innerHTML = `<div class="flex gap-2" role="tablist" aria-label="Watchdog incident status"><button type="button" class="rounded-xl border px-3 py-2 text-xs font-black" data-watchdog-tab="open" role="tab">OPEN ISSUES <span class="ml-1">${openEvents.length}</span></button><button type="button" class="rounded-xl border px-3 py-2 text-xs font-black" data-watchdog-tab="resolved" role="tab">Resolved Fixes <span class="ml-1">${resolvedEvents.length}</span></button></div><div class="space-y-3" data-watchdog-view="open">${openHtml}</div><div class="space-y-3" data-watchdog-view="resolved">${resolvedHtml}</div>`;
+            host.querySelectorAll('[data-watchdog-tab]').forEach(button => button.addEventListener('click', () => {
+                activePanelTab = button.dataset.watchdogTab === 'resolved' ? 'resolved' : 'open';
+                syncPanelTab(host);
+            }));
+            syncPanelTab(host);
             host.querySelectorAll('[data-watchdog-resolve]').forEach(button => button.addEventListener('click', async () => {
                 const actionScope = createViewScope();
                 button.disabled = true;
