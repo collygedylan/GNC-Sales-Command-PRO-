@@ -921,12 +921,12 @@
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "cc2e7e51aa8cbc106a4165b4d6d58d623b13aa34397c72e8f8c6e629dd94d01e"
+      "sha256": "260f891440d4b47aab5ff6040271646530e0943f3b32d4582170319daf473a07"
     },
     {
       "path": "deployments/85214f587e75d50aae550d3b3a093611dc378c69.json",
       "bytes": 187,
-      "sha256": "cc2e7e51aa8cbc106a4165b4d6d58d623b13aa34397c72e8f8c6e629dd94d01e"
+      "sha256": "260f891440d4b47aab5ff6040271646530e0943f3b32d4582170319daf473a07"
     },
     {
       "path": "index.html",
