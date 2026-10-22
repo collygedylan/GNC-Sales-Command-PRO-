@@ -200,6 +200,11 @@ test('ingestion deployment selects every changed function and preserves remote s
     localSource: prefix + localDispatch, functionNames: ['doPost'] }).source, merged.source);
 });
 
+test('urgent Drive cleanup respects the staging RPC minimum age', () => {
+  assert.match(appsScriptSource, /const stagingCutoffMs = Date\.now\(\) - 25 \* 60 \* 60 \* 1000;/);
+  assert.match(appsScriptSource, /cleanup_master_snapshot_staging_v1'[\s\S]*p_older_than: new Date\(stagingCutoffMs\)\.toISOString\(\)/);
+});
+
 function makeScript({ versionCount = 0, createdVersion = 201, deployedVersion = createdVersion, observedVersions } = {}) {
   const calls = [];
   let deploymentReads = 0;

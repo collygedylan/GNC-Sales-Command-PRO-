@@ -586,6 +586,7 @@ function hasPendingDriveAroundSource_() {
 
 function cleanupStaleDriveAroundWorkspace_() {
   const cutoffMs = Date.now() - URGENT_DRIVE_AROUND_STALE_MS_;
+  const stagingCutoffMs = Date.now() - 25 * 60 * 60 * 1000;
   const checkpoint = readImportExtractionCheckpoint_();
   const folder = getDriveFolderByIdWithRetry_(FOLDERS.MASTER_DROP, 'DriveAround stale workspace cleanup');
   const files = listDriveFilesWithRetry_(folder, 'DriveAround stale workspace cleanup');
@@ -602,7 +603,7 @@ function cleanupStaleDriveAroundWorkspace_() {
     p_older_than: new Date(cutoffMs).toISOString()
   });
   callSupabaseRpc_('cleanup_master_snapshot_staging_v1', {
-    p_older_than: new Date(cutoffMs).toISOString(), p_limit: 20
+    p_older_than: new Date(stagingCutoffMs).toISOString(), p_limit: 20
   });
   return { tempFilesRemoved: tempFilesRemoved, recovered: recovered };
 }
