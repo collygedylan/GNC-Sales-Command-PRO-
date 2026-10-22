@@ -73,3 +73,7 @@ Pending Reclass season stock overrides protect master s_lts/season_oh and ph_cav
 ## Desktop shell recovery
 
 Home renders stable DRIVE/CAV/RESERVES/SOC filename cards even when only one metadata read has completed. Missing metadata has an honest pending label; keep one latest filename per source. The authorized admin trio retains RUN SCRIPT, Print, and native keyboard-accessible disclosure with a styled chevron. Desktop connection status is visible during idle and background imports. No read route, mutation permission, import schedule or paused historical trigger changes.
+
+## Watchdog and active queue continuity
+
+Home filename summaries persist under gnc_sync_filenames_v1 scoped by profile ID, username and permission version; restore them synchronously before background metadata refresh. Dark Home summary/cards/buttons use #062115 and light text. Footer queue adapters include actor-scoped Location Work and Bunch queue reads; none may gate the visible active queue. Historical backfills and the 15-minute historical trigger remain PAUSED.

@@ -68450,6 +68450,38 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "suspend_candidate_group": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "suspend_candidate_state": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "suspend_order_quantity": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "suspend_origin_uid": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "suspend_to": {
             "schema": {
               "oneOf": [
@@ -69661,6 +69693,42 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "suspend": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "suspend_candidate_group": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "suspend_candidate_state": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "suspend_order_quantity": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "suspend_origin_uid": {
             "schema": {
               "oneOf": [
                 "string",
@@ -70892,6 +70960,42 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "suspend": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "suspend_candidate_group": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "suspend_candidate_state": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "suspend_order_quantity": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "suspend_origin_uid": {
             "schema": {
               "oneOf": [
                 "string",
@@ -104163,7 +104267,11 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
-    "request_work_command_v1": {"oneOf":["json"]},
+    "request_work_command_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "save_request_work": {
       "oneOf": [
         "json"

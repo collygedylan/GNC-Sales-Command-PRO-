@@ -47,3 +47,5 @@ releaseSnapshotReadFixture registers exact manual_sync_status and request_work/c
 Conditional dataset_read fixture parameters permit ifRevision only as a decimal string for soc/cav/reserves. Unknown keys and mutations remain rejected; Node tests cover hidden heartbeat, scoped cache reuse and indexed lookup timing.
 
 Eval2 extends the existing authorized report_read_v2 response with compact browseColumns/browseRows and evaluatorDirectory metadata. It introduces no startup route, mutation grant or wildcard fixture. Node regression fixtures exercise exact local grouping, user row counts, empty selection, account fences and Back transitions. Register eval_browse_suspend_receipts_v1 in the scoped migration runner and verify its installed contract before app-api/Pages publication.
+
+Queue badge startup registers only location_work/list/status=all and bunch_note_workflow queue/list_discrepancies with filter=mine, offset=0, limit=100 in releaseSnapshotReadFixture. Unknown keys, forged actor IDs and mutations remain rejected. No browser validation is implied.

@@ -55,3 +55,5 @@ Register suspend_candidates_request_preload_v1 in the scoped migration runner; S
 ## Request completion and foreground continuity
 
 Register request_work_sync_status_v1 in the scoped migration runner. Publish SQL and app-api before the allowlisted Apps Script function/constant patch, then Pages. Apps Script patching supports only the named MANUAL_SYNC_STAGE_ORDER_DEFAULT and IMPORT_HISTORY_CHUNK_SIZE_ constants plus registered helper additions, retaining protected-source comparison and Head/active-version guards.
+
+Changes limited to _shared/database.types.ts do not expand changed Edge publication to every function: this file contains erased TypeScript declarations. App-api remains selected by its actual implementation change; generated runtime contract changes travel with the affected function.

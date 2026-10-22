@@ -1367,3 +1367,23 @@ test('idle sync header never counts interrupted datasets as updating', () => {
     active=true;
     assert.equal(context.getDatasetRevisionConnectionLabel(),'Connected · 1 ready · 1 updating');
 });
+
+
+test('Location Moves paints its own memory snapshot while active queue verification stays in background', () => {
+  const runtime = readComposedAppSource();
+  const render = runtime.match(/function renderRequest\([^]*?^        }/m)[0];
+  assert.match(render, /refreshRequestViewInBackground/);
+  assert.doesNotMatch(render, /if \(ensureViewDataForRender\('request'\)\)/);
+});
+
+
+test('Location Work displays cached jobs during a pending read and transport retry preserves denials', () => {
+  const runtime=readComposedAppSource();
+  const fn=name=>runtime.match(new RegExp('function '+name+'\\([^]*?^        }','m'))[0];
+  const cooldowns=new Map([['queue',{until:Date.now()+60000}]]), denials=new Map([['other','denied']]);
+  const ctx=vm.createContext({locationWorkLoading:true,locationWorkLoaded:false,locationWorkError:'',locationWorkRows:[{id:'move-1'}],renderLocationWorkQueueCard:row=>'<article>'+row.id+'</article>',supabaseReadFailureCooldowns:cooldowns,supabaseReadTerminalDenials:denials});
+  vm.runInContext(fn('renderLocationWorkQueue')+fn('resetQueueReadCooldowns'),ctx);
+  const start=performance.now(); const html=ctx.renderLocationWorkQueue();
+  assert.match(html,/move-1/); assert.doesNotMatch(html,/Loading/); assert.ok(performance.now()-start<50);
+  ctx.resetQueueReadCooldowns(); assert.equal(cooldowns.size,0);assert.equal(denials.size,1);
+});

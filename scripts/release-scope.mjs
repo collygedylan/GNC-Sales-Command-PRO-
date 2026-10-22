@@ -39,7 +39,7 @@ export function classifyReleasePaths(paths, { packageMetadataOnly = false, fullR
     || /^database\/(?:migrations\/)?[^/]+\.sql$/i.test(file)).sort();
   const changedEdgeFunctions = [...new Set(files.map(file => /^supabase\/functions\/([^/]+)\//i.exec(file)?.[1])
     .filter(name => name && name !== '_shared'))].sort();
-  const sharedEdgeChange = files.some(file => /^supabase\/functions\/_shared\//i.test(file) || file === 'supabase/config.toml');
+  const sharedEdgeChange = files.some(file => (/^supabase\/functions\/_shared\//i.test(file) && file !== 'supabase/functions/_shared/database.types.ts') || file === 'supabase/config.toml');
   const toolingOnly = files.length > 0 && !deploy.frontend && !deploy.supabase && !deploy.appsScript
     && files.every(file => isToolingPath(file)
       || (packageMetadataOnly && ['package.json', 'package-lock.json'].includes(file)));

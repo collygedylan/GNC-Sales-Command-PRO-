@@ -145,5 +145,16 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.38'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'desktop-shell-r1'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.38'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.39'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'watchdog-queue-r1'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.39'/);assert.match(sw,/cache: 'reload'/);
+});
+
+
+test('queue badge startup contracts remain read-only and reject forged scopes',async()=>{
+ const {releaseSnapshotReadFixture:fixture}=await import('./helpers/release-smoke-route-policy.mjs');
+ const location={action:'location_work',operation:'list',status:'all'};
+ const bunch={action:'bunch_note_workflow',operation:'queue',payload:{filter:'mine',offset:0,limit:100}};
+ assert.deepEqual(fixture(location).data,[]);assert.equal(fixture(bunch).data.active_count,0);
+ assert.equal(fixture({...location,actorId:'forged'}),null);
+ assert.equal(fixture({...bunch,operation:'complete_card'}),null);
+ assert.equal(fixture({...bunch,payload:{...bunch.payload,actorId:'forged'}}),null);
 });

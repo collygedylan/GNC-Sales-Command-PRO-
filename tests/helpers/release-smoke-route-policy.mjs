@@ -91,6 +91,16 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
  * return null so the caller's existing rejection path remains authoritative. */
 export function releaseSnapshotReadFixture(body, mappings = [], approvals = [], capabilities = null) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  if (body.action === 'location_work' && body.operation === 'list' && body.status === 'all'
+      && Object.keys(body).sort().join(',') === 'action,operation,status') return {ok:true,data:[]};
+  if (body.action === 'bunch_note_workflow' && ['queue','list_discrepancies'].includes(body.operation)
+      && Object.keys(body).sort().join(',') === 'action,operation,payload'
+      && body.payload && !Array.isArray(body.payload) && Object.keys(body.payload).sort().join(',') === 'filter,limit,offset'
+      && body.payload.filter === 'mine' && body.payload.offset === 0 && body.payload.limit === 100) {
+    return {ok:true,data:body.operation === 'queue'
+      ? {cards:[],total:0,active_count:0,review_count:0,can_review:false,counters:[],assignee_options:[],unassigned_count:0}
+      : {reviews:[],total:0,review_count:0,can_review:false,counters:[]}};
+  }
   if (body.action === 'manual_sync_status' && Object.keys(body).join(',') === 'action') return {ok:true,data:{active:false,currentStage:'idle'}};
   if (body.action === 'request_work' && body.operation === 'capabilities' && Object.keys(body).sort().join(',') === 'action,operation' && capabilities) return {ok:true,data:capabilities};
   if (body.action === 'customer-rep-map' && body.operation === 'preload'

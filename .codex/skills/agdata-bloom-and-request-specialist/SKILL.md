@@ -54,3 +54,7 @@ Reclass create/retry immediately invokes the existing leased delivery worker, th
 getRequestEntryCapabilities retains same-account server capabilities while refreshing and derives creation defaults from the verified active profile and canonical Que/AV grants when the capability read is pending. Explicit server denial, inactive profile and account changes still deny entry; server mutation/tuple validation remains authoritative. Request entry and submission never gate on capability age. Non-sales users start with Who requested this; sales_rep retains the locked self/customer path. Location totals use preserveCardLocationOnHand to retain the maximum known same-account item/location sum across partial lots (403/143 cannot fall to 102/81); account/permission changes clear retained display totals.
 
 Queue card taps open Item Detail. Camera file inputs must obey the click-through guard; only a subsequent detail photo-control gesture opens the picker. The Request completion footer stays in flow after inputs and AV options. Focused coverage: request-submission-durability and inventory-drill-navigation.
+
+## Watchdog and active queue continuity
+
+Active Request card quantity accepts qty/request_qty/requested_qty/quantity/order_qty/payload.qty and persisted REQ_QTY/req_qty aliases. Render N/A | N/A as N/A only in card presentation; retain the durable customer mapping payload contract.

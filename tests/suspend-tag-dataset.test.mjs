@@ -288,7 +288,7 @@ test('Suspend Tag client uses item/lot and CAV display fallback and marks observ
     assert.ok(source.includes(metric), `${metric} is exposed to the watchdog sensor`);
   }
   assert.match(source, /data-queue-metric="reason"/);
-  assert.match(source, /knownLocationOnHand: suspendMetrics\?\.LOC_ON_HAND/);
+  assert.match(source, /knownLocationOnHand: metricRow\.LOC_ON_HAND \?\? suspendMetrics\?\.LOC_ON_HAND/);
   assert.match(source, /knownLocationPhotoMatch: suspendMetrics\?\.LOC_MATCH_QTY/);
   assert.match(source, /knownLocationPhotoMatch !== null && knownLocationPhotoMatch !== undefined/);
   assert.match(source, /knownLocationOnHand !== null && knownLocationOnHand !== undefined && Number\.isFinite/);
@@ -438,4 +438,31 @@ test('Reclass stock migration preserves physical identity, season import overrid
  assert.match(appApi,/runtime.waitUntil\(task\)/);
  const dispatch=appApi.slice(appApi.indexOf('function dispatchReclassDeliveryNow'),appApi.indexOf('export async function handleDriveReclassAction'));
  assert.doesNotMatch(dispatch,/await invokeReclassDeliveryWorkerNow/);
+});
+
+
+test('valid dataset aliases and default select retain server projection and transient error semantics', () => {
+  assert.match(appApi, /function normalizeDatasetReadAlias/);
+  assert.match(appApi, /DATASET_READ_UNAVAILABLE/);
+  assert.doesNotMatch(appApi, /return errorResponse\("Dataset read parameters are invalid.", 400, \{ code \}\);/);
+  const runtime = readComposedAppSource();
+  assert.match(runtime.match(/function setReqTab\([^]*?^        }/m)[0], /resetQueueReadCooldowns/);
+});
+
+
+test('Suspend projections include all four deployed candidate columns in the generated contract', () => {
+  const generated=readFileSync(new URL('../services/database-contracts.generated.ts',import.meta.url),'utf8');
+  const contracts=JSON.parse(generated.slice(generated.indexOf(' = {')+3).trim().replace(/;$/, ''));
+  const bridge=readFileSync(new URL('../services/databaseRest.ts',import.meta.url),'utf8');
+  const module={exports:{}};
+  vm.runInNewContext(ts.transpileModule(bridge,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module,exports:module.exports,URLSearchParams,require:name=>name.includes('generated')?{contracts}:{}});
+  const fields=['unique_id','suspend_candidate_group','suspend_candidate_state','suspend_order_quantity','suspend_origin_uid'];
+  assert.doesNotThrow(()=>module.exports.validateQuery('ph_soc_master','select='+fields.join(',')));
+  assert.throws(()=>module.exports.validateQuery('ph_soc_master','select=unreviewed_secret_column'));
+  const ctx=vm.createContext({}); vm.runInContext(ts.transpileModule(extractFunction(appApi,'normalizeDatasetReadAlias')+extractFunction(appApi,'validateDatasetReadParams'),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,ctx);
+  for(const [alias,canonical] of Object.entries({suspend:'suspend_tag',suspend_tag:'suspend_tag',ph_soc_master:'soc',location_move:'location_moves',location_moves:'location_moves',recount:'sales_office',shear_list:'shear',eval_work:'eval_work',bunch_notes:'bunch_notes',count_review:'count_review',requests:'request_queue',request_queue:'request_queue',request_history:'request_history'})) assert.equal(ctx.normalizeDatasetReadAlias(alias),canonical);
+  ctx.DATASET_READ_PAGE_MAX=500;
+  assert.equal(ctx.validateDatasetReadParams({action:'dataset_read',dataset:'suspend',params:{select:'*'}}).limit,250);
+  assert.throws(()=>ctx.validateDatasetReadParams({params:{select:'private_payload'}}));
+  assert.throws(()=>ctx.validateDatasetReadParams({params:{offset:-1}}));
 });

@@ -13729,6 +13729,10 @@ export type Database = {
           step: string | null
           stopnumber: string | null
           suspend: string | null
+          suspend_candidate_group: string | null
+          suspend_candidate_state: string | null
+          suspend_order_quantity: string | null
+          suspend_origin_uid: string | null
           suspend_to: string | null
           tagcode: string | null
           tagdeptnote: string | null
@@ -13868,6 +13872,10 @@ export type Database = {
           step?: string | null
           stopnumber?: string | null
           suspend?: string | null
+          suspend_candidate_group?: string | null
+          suspend_candidate_state?: string | null
+          suspend_order_quantity?: string | null
+          suspend_origin_uid?: string | null
           suspend_to?: string | null
           tagcode?: string | null
           tagdeptnote?: string | null
@@ -14007,6 +14015,10 @@ export type Database = {
           step?: string | null
           stopnumber?: string | null
           suspend?: string | null
+          suspend_candidate_group?: string | null
+          suspend_candidate_state?: string | null
+          suspend_order_quantity?: string | null
+          suspend_origin_uid?: string | null
           suspend_to?: string | null
           tagcode?: string | null
           tagdeptnote?: string | null

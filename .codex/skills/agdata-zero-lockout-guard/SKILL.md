@@ -70,3 +70,7 @@ Same-version runtime releases must advance the service-worker runtime/cache revi
 ## Desktop shell recovery
 
 The explicit v2.3.38 cache upgrade uses agdata-v2.3.38, skipWaiting, all-prior Cache Storage deletion and clients.claim. Version every shell CSS/JS URL consistently, including compiled assets and precache entries. This release clears Cache Storage only; retain authenticated snapshots, session storage, IndexedDB and drafts. Existing active-session reload deferral and shared router/Back ownership remain unchanged.
+
+## Watchdog and active queue continuity
+
+Queue rendering bypasses shared full-screen loading/error gates and refreshes through its existing authorized coordinator. Explicit navigation/Retry clears transport cooldowns without granting access or changing mutation authorization. Retain same-account row snapshots and complete inventory receipts during refresh.

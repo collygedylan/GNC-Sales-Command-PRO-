@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.33";
+const APP_RUNTIME_RELEASE = "AgData v2.3.39";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -805,16 +805,29 @@ const DATASET_READ_PAGE_MAX = 500;
 const PRODUCTIVITY_HISTORY_SOURCE_KINDS = new Set(["season_sales_note", "location_sales_note", "need_av", "flyer", "request", "sales_office_order", "end_cap", "task"]);
 const PRODUCTIVITY_HISTORY_ENTRY_FIELDS = new Set(["event_key", "completed_by_username", "completed_by_display", "completed_at", "source_table", "source_kind", "source_unique_id", "source_assignment", "itemcode", "commonname", "contsize", "locationcode", "lotcode", "customer_name", "request_folder", "snapshot"]);
 
+function normalizeDatasetReadAlias(value: unknown): string {
+  const key = String(value || "").trim().toLowerCase().replace(/-/g, "_");
+  const aliases: Record<string, string> = {
+    suspend: "suspend_tag", ph_soc_suspend_tag_rows: "suspend_tag", ph_soc_master: "soc",
+    requests: "request_queue", ph_request_queue_live_rows: "request_queue", shear_list: "shear",
+    recount: "sales_office", location_move: "location_moves", bunch_count_review: "count_review",
+  };
+  return aliases[key] || key;
+}
+
 function validateDatasetReadParams(payload: Record<string, unknown>) {
   if (Object.keys(payload).some((key) => !["action", "dataset", "params"].includes(key))) throw new Error("DATASET_READ_PAYLOAD_INVALID");
   const params = payload.params && typeof payload.params === "object" && !Array.isArray(payload.params)
     ? payload.params as Record<string, unknown> : {};
   if (payload.params !== undefined && (!payload.params || typeof payload.params !== "object" || Array.isArray(payload.params))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
-  if (Object.keys(params).some((key) => !["limit", "offset", "projection", "filters", "anyOf", "order", "ifRevision"].includes(key))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
+  if (Object.keys(params).some((key) => !["limit", "offset", "select", "projection", "filters", "anyOf", "order", "ifRevision"].includes(key))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
   const requestedLimit = Number(params.limit ?? 250), offset = Number(params.offset ?? 0);
   if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || !Number.isInteger(offset) || offset < 0 || offset > 2_000_000) throw new Error("DATASET_READ_PAGE_INVALID");
   const limit = Math.min(DATASET_READ_PAGE_MAX, requestedLimit);
-  const projection = String(params.projection || "default");
+  // A legacy select may narrow the fixed projection, never inject SQL fields.
+  const selection = params.select == null ? "*" : String(params.select).trim() || "*";
+  if (!["*", "unique_id"].includes(selection)) throw new Error("DATASET_READ_PROJECTION_INVALID");
+  const projection = String(params.projection || (selection === "unique_id" ? "ids" : "default"));
   if (!["default", "signature", "ids"].includes(projection)) throw new Error("DATASET_READ_PROJECTION_INVALID");
   const rawFilters = params.filters ?? [];
   const rawAnyOf = params.anyOf ?? [];
@@ -1048,7 +1061,31 @@ async function handleDatasetRead(
   catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
   const username = normalizeUsername(String(actor.username || ""));
   const role = String(session.role || "");
-  const dataset = String(payload.dataset || "").trim().toLowerCase();
+  const dataset = normalizeDatasetReadAlias(payload.dataset);
+  if (["location_moves", "eval_work", "bunch_notes", "count_review", "request_history"].includes(dataset)) {
+    let params: ReturnType<typeof validateDatasetReadParams>;
+    try { params = validateDatasetReadParams(payload); }
+    catch { return errorResponse("Unsupported queue read parameters.", 400, { code:"DATASET_READ_PARAMETERS_INVALID" }); }
+    if (params.filters.length || params.anyOf.length || params.order.length || params.projection !== "default") return errorResponse("This queue uses its scoped reader filters.", 400, { code:"DATASET_READ_FILTER_INVALID" });
+    // Delegate to the existing actor-scoped read. No service-role table alias is introduced.
+    let response: Response;
+    if (dataset === "location_moves") response = await handleLocationWorkAction(session, { operation:"list", status:"active" });
+    else if (dataset === "eval_work") response = await handleEvalWorkAction(session, { operation:"list" }, canonicalAccess);
+    else if (dataset === "request_history") response = await handleSalesWorkflow({ session, payload:{ action:"request_history", operation:"search", payload:{ offset:params.offset, limit:params.limit } }, supabase, resolveActiveSessionProfile, headers:corsHeaders });
+    else {
+      const rpc = supabase.rpc.bind(supabase) as unknown as BunchNoteRpc;
+      const result = await rpc("bunch_note_workflow_command_v1", { p_actor_id:actor.id, p_operation:dataset === "count_review" ? "list_discrepancies" : "queue", p_payload:{ filter:"mine", offset:params.offset, limit:Math.min(params.limit, 100) } });
+      if (result.error) return databaseFailureResponse("Queue refresh is temporarily unavailable.", result.error, "DATASET_READ_UNAVAILABLE");
+      response = jsonResponse({ ok:true, data:result.data });
+    }
+    if (!response.ok) return response;
+    const body = jsonObject(await response.json()), data = body.data;
+    const object = data && !Array.isArray(data) && typeof data === "object" ? data : {};
+    const rows = Array.isArray(data) ? data : Array.isArray(object.rows) ? object.rows : Array.isArray(object.jobs) ? object.jobs : Array.isArray(object.cards) ? object.cards : Array.isArray(object.reviews) ? object.reviews : [];
+    const total = Number(object.total ?? rows.length);
+    const page = ["request_history", "bunch_notes", "count_review"].includes(dataset) ? rows : rows.slice(params.offset, params.offset + params.limit);
+    return jsonResponse({ ok:true, data:{ rows:page, total, offset:params.offset, limit:params.limit, hasMore:params.offset + page.length < total } });
+  }
   const source = DATASET_READ_SOURCES[dataset];
   if (!source) return errorResponse("Unsupported dataset.", 400, { code: "DATASET_READ_INVALID" });
   const canonicalDatasetAccess = dataset !== "suspend_tag" && canonicalDatasetReadAllowed(canonicalAccess, dataset);
@@ -1192,7 +1229,11 @@ async function handleDatasetRead(
       const failure = suspendTagError(error);
       return jsonResponse(failure.body, failure.status);
     }
-    return errorResponse("Dataset read parameters are invalid.", 400, { code });
+    if (/^DATASET_READ_(?:FILTER|ORDER|PAGE|PROJECTION)(?:_[A-Z]+)*_INVALID$/.test(code)) {
+      return errorResponse("Unsupported dataset filter or ordering.", 400, { code });
+    }
+    console.warn("DATASET_READ_UNAVAILABLE", dataset, code);
+    return errorResponse("Dataset refresh is temporarily unavailable. Retry to refresh the saved rows.", 503, { code:"DATASET_READ_UNAVAILABLE" });
   }
 }
 
@@ -5750,8 +5791,8 @@ function canonicalActionGate(action: string, payload: Record<string, unknown>): 
   if (action === "manual_sync_status") return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] };
   if (action === "av_read") return { flag: "can_access_av" };
   if (action === "dataset_read") {
-    const dataset = String(payload.dataset || "").trim().toLowerCase();
-    if (dataset === "suspend_tag") return { flag: "can_access_que" };
+    const dataset = normalizeDatasetReadAlias(payload.dataset);
+    if (["suspend_tag", "location_moves", "eval_work", "bunch_notes", "count_review", "request_history"].includes(dataset)) return { flag: "can_access_que" };
     const flags = CANONICAL_DATASET_READ_FLAGS[dataset];
     if (flags) return { any: flags };
     return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] };
@@ -5905,9 +5946,17 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       }
       if (!privileged.has(username)) return errorResponse("This feature is not enabled for your active profile.", 403, { code: "WATCHDOG_FORBIDDEN" });
       if (action === "watchdog_list_events") {
-        const { data, error } = await supabase.from("app_runtime_watchdog_events" as never).select("*").eq("status", "open").order("last_seen_at", { ascending: false }).limit(250);
+        if (Object.keys(payload).some(key => !["action", "includeResolved", "offset"].includes(key))
+            || payload.includeResolved !== undefined && typeof payload.includeResolved !== "boolean") throw new Error("WATCHDOG_PARAMETERS_INVALID");
+        const offset = Number(payload.offset ?? 0);
+        if (!Number.isSafeInteger(offset) || offset < 0 || offset > 2_000_000) throw new Error("WATCHDOG_PARAMETERS_INVALID");
+        let query = supabase.from("app_runtime_watchdog_events" as never).select("*", { count:"exact" });
+        if (payload.includeResolved !== true) query = query.eq("status", "open");
+        const { data, error, count } = await query.order("last_seen_at", { ascending:false }).order("id", { ascending:false }).range(offset, offset + 249);
         if (error) throw error;
-        return jsonResponse({ ok: true, data: data || [], fixBrief: buildRuntimeWatchdogFixBrief((data || []) as Record<string, unknown>[], APP_RUNTIME_RELEASE) });
+        const rows = (data || []) as Record<string, unknown>[];
+        return jsonResponse({ ok:true, data:rows, hasMore:offset + rows.length < Number(count || 0),
+          fixBrief:buildRuntimeWatchdogFixBrief(rows.filter(row => row.status !== "resolved"), APP_RUNTIME_RELEASE) });
       }
       if (action === "watchdog_resolve_events") {
         const ids = Array.isArray(payload.ids) ? payload.ids.filter(value => typeof value === "number" && Number.isSafeInteger(value)).slice(0, 250) : [];

@@ -75,7 +75,7 @@ test('request metric cards read cached master values while refresh hydration is 
         findLinkedMasterRow: () => master,
         buildInventoryQuantityChipsHtml: (row, options) => { optionsSeen.push(options); return JSON.stringify(row); }
     });
-    vm.runInContext(extractRuntimeFunction('buildQueueInventoryMetricsHtml'), context);
+    vm.runInContext(extractRuntimeFunction('normalizeRequestCardMetrics') + extractRuntimeFunction('buildQueueInventoryMetricsHtml'), context);
     const rendered = JSON.parse(context.buildQueueInventoryMetricsHtml({ UNIQUE_ID: 'request-ivy' }, 'request'));
     for (const key of ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS','LOC_MATCH_QTY','LOC_ON_HAND']) assert.equal(rendered[key], master[key]);
     assert.equal(optionsSeen[0].sourceView, 'drive');
@@ -1342,7 +1342,7 @@ test('compact Request metadata shows persisted submitter under rep and keeps req
     const start = appSource.indexOf('                const requestCustomer =', appSource.indexOf('function generateCard('));
     const end = appSource.indexOf('                const suspendSalesRep =', start);
     const item = { REQ_CUSTOMER:'Customer', REQ_CONSIGNEE:'Consignee', REQUEST_CREATED_BY_DISPLAY:'Nelly Aguilar', DESIRED_CALIPER:'N/A', REQUEST_NOTE:'GENERAL' };
-    const metadata = vm.runInNewContext(appSource.slice(start,end)+';({requestMetaHtml, requestHoldBar})', {
+    const metadata = vm.runInNewContext(extractRuntimeFunction('normalizeRequestCardCustomer') + appSource.slice(start,end)+';({requestMetaHtml, requestHoldBar})', {
         item, cust:'Customer', cleanHoldCode:'H', holdReasonText:'small on stake',
         firstNonEmptyValue: (...v) => v.find(x=>x!==null&&x!==undefined&&x!==''),
         getRequestAssignedRep: () => 'Traci Earle', esc: value => String(value)
@@ -1387,4 +1387,30 @@ test('Nelly and authorized roles can open Request during capability loading; exp
  for(const role of ['admin','csr','office','sales_rep','eval','manager']){ctx.nativeAuthProfile.role=role;assert.equal(ctx.getRequestEntryCapabilities().canCreateGeneral,true,role);}
  ctx.getRequestCapabilities=()=>({canCreateGeneral:false,canCreateAv:false});assert.equal(ctx.getRequestEntryCapabilities().canCreateGeneral,false);
  ctx.window.GncUserAccessControl={getSelfState:()=>({denied:true})};assert.equal(ctx.getRequestEntryCapabilities(),null);
+});
+
+
+test('active queue excludes archives and repairs contradictory request metrics without mutating source', () => {
+  assert.doesNotMatch(extractRuntimeFunction('getAuthorizedRequestCategories'), /push\('archived'\)/);
+  const ctx = vm.createContext({});
+  vm.runInContext(extractRuntimeFunction('normalizeRequestCardMetrics'), ctx);
+  const original = { PTRONHAND:0, PTRREVIEWED:0, PTRAVAILABLE:137, LOC_ON_HAND:0 };
+  const fixed = ctx.normalizeRequestCardMetrics(original);
+  assert.equal(fixed.PTRONHAND,137); assert.equal(fixed.LOC_ON_HAND,137);
+  assert.equal(original.PTRONHAND,0);
+  vm.runInContext(extractRuntimeFunction('normalizeRequestCardCustomer'),ctx);
+  assert.equal(ctx.normalizeRequestCardCustomer('N/A | N/A'),'N/A');
+});
+
+
+test('request quantity resolves every persisted alias and preserves zero', () => {
+  const context=vm.createContext({}); vm.runInContext(extractRuntimeFunction('resolveRequestCardQuantity'),context);
+  for(const key of ['qty','request_qty','requested_qty','quantity','order_qty','REQ_QTY','req_qty']) assert.equal(context.resolveRequestCardQuantity({[key]:23}),23,key);
+  assert.equal(context.resolveRequestCardQuantity({payload:{qty:17}}),17);
+  assert.equal(context.resolveRequestCardQuantity({qty:0,req_qty:5}),0);
+  const options = extractRuntimeFunction('getPendingRequestChunkRenderOptions');
+  const opts=vm.createContext({getRequestChunkRenderOptions:value=>value}); vm.runInContext(options,opts);
+  assert.ok(opts.getPendingRequestChunkRenderOptions().initialRows>=5, 'the reported five-row queue paints in one pass');
+  assert.ok(appSource.includes("archiveHost.id = 'historical-request-archive'"));
+  assert.ok(extractRuntimeFunction('renderHistoricalRequestArchive').includes('renderRequestArchivePageHtml'));
 });

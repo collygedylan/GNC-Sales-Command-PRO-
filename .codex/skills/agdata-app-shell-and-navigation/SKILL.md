@@ -49,3 +49,7 @@ Global Back delegates Eval2 BLOCK / LOCATION drill state before leaving the modu
 ## Desktop shell recovery
 
 Desktop/mobile shell structure is owned by the final blocking assets/app-styles.css. Header identity, compact version, theme and sync status remain horizontal; the footer remains mounted. Home uses two columns below 1024px and three above, with 96–130px rectangular cards and a 1120px maximum width; content scrolls instead of stretching or clipping. The eleven-entry HOME_MODULE_REGISTRY retains canonical authorization, and Sales Office uses an inline SVG. Base/pilot/authority CSS is blocking so a missed link onload cannot leave the shell unstyled. Preserve shared Back/search ownership and keyboard footer behavior. Focused Node coverage: role-access-parity and release-app-lifecycle; static contracts are not browser render measurements.
+
+## Watchdog and active queue continuity
+
+WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModules path. Archived request compatibility links route to historical-requests, outside active Que. Keep forest-green #041a10 through dark prepaint, login/session restore and the main surface. Manager module cards must paint their actual labels instead of content-visibility placeholders.

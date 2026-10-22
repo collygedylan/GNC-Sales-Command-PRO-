@@ -190,3 +190,10 @@ test('changed paths use the complete before-to-after commit range', () => {
     fs.rmSync(rootDir, { recursive: true, force: true });
   }
 });
+
+
+test('type-only schema reconciliation does not redeploy unrelated Edge Functions', () => {
+  const scope = classifyReleasePaths(['supabase/functions/_shared/database.types.ts','services/database-contracts.generated.ts','supabase/functions/app-api/index.ts']);
+  assert.deepEqual(scope.edgeFunctions,['app-api']);
+  assert.equal(scope.deploy.supabase,true);
+});

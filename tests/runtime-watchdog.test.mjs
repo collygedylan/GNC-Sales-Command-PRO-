@@ -352,5 +352,45 @@ test('signed watchdog email embeds the same complete fix brief returned to the c
   assert.equal(sent.to, 'dylan_collyge@greenleafnursery.com');
   assert.ok(sent.body.endsWith(brief));
   assert.match(readComposedAppSource(), /const brief = fixBrief;/);
-  assert.match(read('supabase/functions/app-api/index.ts'), /fixBrief: buildRuntimeWatchdogFixBrief\(\(data \|\| \[\]\) as Record<string, unknown>\[\]\, APP_RUNTIME_RELEASE\)/);
+  assert.ok(read('supabase/functions/app-api/index.ts').includes('fixBrief:buildRuntimeWatchdogFixBrief(rows.filter(row => row.status !== "resolved"), APP_RUNTIME_RELEASE)'));
+});
+
+
+test('Manager Watchdog routing accepts the visible card and bypasses unrelated dataset gates', () => {
+  const runtime = readComposedAppSource();
+  const router = runtime.match(/function setHomeTab\([^]*?^        }/m)[0];
+  assert.match(router, /requestedTab === MANAGER_RUNTIME_WATCHDOG_VIEW/);
+  assert.match(runtime, /data-manager-module=/);
+  const managers = runtime.match(/function renderManagers\([^]*?^        }/m)[0];
+  assert.match(managers, /activeHomeTab !== MANAGER_RUNTIME_WATCHDOG_VIEW/);
+  const back = runtime.match(/function goBackUniversal\([^]*?^        }/m)[0];
+  assert.match(back, /openManagersModules/);
+});
+
+
+test('Watchdog card changes the Manager subview synchronously and shared Back restores the picker', () => {
+  const runtime = readComposedAppSource();
+  const fn = name => runtime.match(new RegExp('function '+name+'\\([^]*?^        }','m'))[0];
+  const router = fn('setHomeTab');
+  const context = { currentUser:'dylan_collyge', activeHomeTab:'dashboard', String, window:{},
+    getCurrentVisibleViewId:()=> 'managers', getManagersToolAccess:()=>({}), isManagerApprovalTab:()=>false,
+    cancelManagerModuleReads(){}, cancelManagerSeasonPriorityRead(){}, stopCodexOpsPoll(){},
+    renderHomeOrManagersNow(){ context.rendered = context.activeHomeTab; },
+    getVisibleSecondaryBack:()=>null, getManagerAssignedColumnState:()=>({}), isDrawerOpen:()=>false,
+    closeOpenInteractiveSurfaceForBack:()=>false, openManagersModules(){context.activeHomeTab='dashboard';} };
+  for (const name of new Set(router.match(/\b[A-Z][A-Z0-9_]{3,}\b/g))) context[name]=name.toLowerCase();
+  context.MANAGER_RUNTIME_WATCHDOG_VIEW='runtime-watchdog';
+  vm.runInNewContext(router+'\n'+fn('goBackUniversal')+'\nsetHomeTab("runtime-watchdog");',context);
+  assert.equal(context.activeHomeTab,'runtime-watchdog'); assert.equal(context.rendered,'runtime-watchdog');
+  vm.runInNewContext('goBackUniversal()',context); assert.equal(context.activeHomeTab,'dashboard');
+});
+
+
+test('Watchdog panel pages active and resolved events and reports parity without counting resolved badges',async()=>{
+ const module={exports:{}};vm.runInNewContext(fs.readFileSync(new URL('../assets/runtime-watchdog-panel.js',import.meta.url),'utf8'),{module,Date});
+ const host={innerHTML:'',querySelectorAll:()=>[]},badge={hidden:true,style:{},classList:{toggle(){}},textContent:''};
+ const calls=[];
+ const controller=module.exports.createController({document:{getElementById:id=>id==='runtime-watchdog-events'?host:badge},getUsername:()=> 'dylan_collyge',getProfileId:()=> 'actor',getVisibleView:()=> 'managers',getActiveTab:()=> 'runtime-watchdog',panelViewId:'runtime-watchdog',escape:value=>String(value||''),postJson:async(_url,body)=>{calls.push(body);return body.offset?{data:[{id:2,status:'resolved',event_type:'DATA_PARITY_MISMATCH'}],hasMore:false}:{data:[{id:1,status:'open',event_type:'DATA_PARITY_MISMATCH'}],hasMore:true};}});
+ await controller.refreshPanel();assert.equal(calls.length,2);assert.equal(calls[0].includeResolved,true);assert.equal(calls[1].offset,1);
+ assert.match(host.innerHTML,/Role parity reports: 1 active \/ 1 resolved/);assert.match(host.innerHTML,/Resolved/);assert.equal(badge.textContent,'1');
 });

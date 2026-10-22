@@ -68,3 +68,7 @@ On Hand accepts on_hand/onhand/onHand/qty_on_hand/oh and existing PTR aliases, d
 Candidate additions remain a verified service-role suspend_tag_command_v1 transaction with exact parent order grouping, source/version guards and idempotency. The receipt includes added_rows/removed_false_block and all affected physical rows; replaced False Block rows are removed from active Suspend arrays immediately. Optional metric enrichment cannot turn a committed receipt into failure. No synchronous Code.gs mutation is involved. Focused coverage: suspend-tag-dataset, inventory-drill-navigation and dock-trip-status.
 
 Reclass previews and confirmed seasonStocks receipts propagate itemcode/canonical-season Open Stock to every master/AV/CAV sibling across lot years. Publish source/destination previews immediately and preserve same-account cards while committing and sending reports asynchronously; rollback only definite rejection and retain unknown commands for idempotent recovery.
+
+## Watchdog and active queue continuity
+
+A complete productionDisplayMasterReceipt with matching readScope and permission permits immediate Drive/AV rendering on navigation; background verification must not replace that account-owned inventory with skeletons.

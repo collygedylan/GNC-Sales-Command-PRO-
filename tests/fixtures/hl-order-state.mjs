@@ -700,14 +700,15 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         return json(route, { ok: true });
       }
       if (body.action === 'watchdog_list_events') {
-        const valid = method === 'POST' && Object.keys(body).join(',') === 'action'
+        const valid = method === 'POST' && (Object.keys(body).join(',') === 'action'
+          || Object.keys(body).sort().join(',') === 'action,includeResolved,offset' && body.includeResolved === true && Number.isSafeInteger(body.offset) && body.offset >= 0 && body.offset <= 2000000)
           && ['dylan_collyge', 'megan_kelly', 'jd_jones'].includes(String(username || '').trim().toLowerCase())
           && !req.headers()['idempotency-key'];
         if (!valid) {
           control.blockedMutations.push('API watchdog_list_events:invalid-fixture-contract');
           return json(route, { ok: false, error: 'Blocked' }, 403);
         }
-        return json(route, { ok: true, data: [], fixBrief: '' });
+        return json(route, { ok: true, data: [], fixBrief: '', hasMore: false });
       }
       if (String(body.action || '').startsWith('watchdog_')) {
         control.blockedMutations.push(`API ${body.action}:unsupported-watchdog-fixture-contract`);
