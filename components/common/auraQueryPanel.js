@@ -141,6 +141,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
     const ticket = ++epoch;
     const controller = new AbortController();
     let submittedTurnId = null, submittedConversationId = null;
+    input.value = '';
     active = { controller, conversationId, turnId: null };
     onAssistantState('processing');
     setBusy(true);
@@ -173,7 +174,6 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
       if (current() && ticket === epoch && !controller.signal.aborted) {
         onAssistantState('idle');
         status.textContent = error.message || 'Aura is temporarily unavailable.';
-        input.value = text;
         button('Retry question', async () => {
           if (submittedConversationId && conversationId !== submittedConversationId) {
             status.textContent = 'Resume the original conversation to retry this question.';
