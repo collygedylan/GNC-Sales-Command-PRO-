@@ -124,7 +124,7 @@ test('designated administrators retain every flag; management cannot be inherite
   assert.match(api, /operation !== "resolve" && !FULL_ACCESS_USER_KEYS\.has\(String\(actor\.username/);
 });
 
-test('AURA owner is canonical Dylan only across browser, Edge voice, and the SQL capability RPC', async () => {
+test('AURA legacy owner stays Dylan-only while voice routing follows server capabilities', async () => {
   const clientSource = read('assets/user-access-control.js');
   const clientWindow = {};
   vm.runInNewContext(clientSource, { window: clientWindow });
@@ -143,13 +143,19 @@ test('AURA owner is canonical Dylan only across browser, Edge voice, and the SQL
   const voiceStore = read('supabase/functions/_shared/aura-voice-store.ts');
   const auraAuth = read('supabase/functions/_shared/aura-auth.ts');
   const migration = read('supabase/migrations/20261021133149_aura_dylan_owner_only_guard.sql');
-  assert.match(auraRuntime, /username === 'dylan_collyge'[\s\S]*?GncUserAccessControl\?\.isAuraOwner/);
+  const legacyCandidate = auraRuntime.slice(auraRuntime.indexOf('function isAuraProfileCandidate()'), auraRuntime.indexOf('function isAuraWidgetAuthorized()'));
+  const routerCandidate = auraRuntime.slice(auraRuntime.indexOf('function isAuraRouterProfileCandidate()'), auraRuntime.indexOf('function isAuraRouterWidgetAuthorized()'));
+  assert.match(legacyCandidate, /dylan_collyge/);
+  assert.doesNotMatch(routerCandidate, /dylan_collyge|isAuraOwner/);
   assert.match(auraRuntime, /aura-standby-control[\s\S]*?standby\.style\.display = standby\.hidden \? 'none' : ''/);
-  assert.match(voiceStore, /!isCanonicalAuraOwner\(actor\.username\)/);
+  assert.doesNotMatch(voiceStore, /isCanonicalAuraOwner/);
+  assert.match(voiceStore, /capabilities\.auraEnabled !== true/);
   assert.doesNotMatch(voiceStore, /allowedRoles/);
   assert.match(auraAuth, /isCanonicalAuraOwner\(session\.username\)/);
   assert.match(migration, /coalesce\(lower\(btrim\(actor\.username\)\),''''\)<>''dylan_collyge''/);
   assert.match(migration, /AURA_ACCESS_RPC_GRANTS_CHANGED/);
+  const releaseMigration = read('supabase/migrations/20261022_inventory_projects_v1.sql');
+  assert.match(releaseMigration, /actor_role not in \(''ADMIN'',''ADMINISTRATOR'',''MANAGER'',''REP'',''SALESREP'',''CSR''\)/);
 });
 
 test('unverified and revoked sessions cannot use the administrator UI grant', () => {

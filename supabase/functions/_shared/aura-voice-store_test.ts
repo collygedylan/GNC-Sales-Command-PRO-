@@ -2,16 +2,16 @@
 import { handleAuraProviderProbe, parseAuraAccess } from "./aura-voice-store.ts";
 function assert(value: unknown, message = "Assertion failed") { if (!value) throw new Error(message); }
 const id = "00000000-0000-4000-8000-000000000001";
-Deno.test("access parser binds stored actor to Auth UUID and requires canonical Dylan regardless of role", () => {
+Deno.test("access parser binds server-authorized capabilities to the authenticated UUID", () => {
   const access = { ok: true, actor: { id, username: " Dylan_Collyge ", role: "EVALUATOR" }, capabilities: { auraEnabled: true, inventory: false, history: true, drafts: false } };
   assert(parseAuraAccess(access, id)?.history === true);
   assert(parseAuraAccess({ ...access, capabilities: { ...access.capabilities, auraEnabled: false } }, id) === null);
   assert(parseAuraAccess({ ...access, capabilities: { ...access.capabilities, auraEnabled: undefined } }, id) === null);
   assert(parseAuraAccess(access, "00000000-0000-4000-8000-000000000002") === null);
-  assert(parseAuraAccess({ ...access, actor: { ...access.actor, username: "rep_one", role: "ADMIN" } }, id) === null);
-  assert(parseAuraAccess({ ...access, actor: { ...access.actor, username: "megan_kelly", role: "ADMIN" } }, id) === null);
-  assert(parseAuraAccess({ ...access, actor: { ...access.actor, username: "jd_jones", role: "ADMIN" } }, id) === null);
-  assert(parseAuraAccess({ ...access, actor: { ...access.actor, username: "brian_hart", role: "ADMIN" } }, id) === null);
+  for (const username of ["rep_one", "megan_kelly", "jd_jones", "brian_hart"]) {
+    assert(parseAuraAccess({ ...access, actor: { ...access.actor, username, role: "ADMIN" } }, id)?.history === true);
+  }
+  assert(parseAuraAccess({ ...access, actor: { ...access.actor, username: "" } }, id) === null);
   assert(parseAuraAccess({ ...access, actor: { ...access.actor, role: "" } }, id) === null);
   assert(parseAuraAccess({ ...access, capabilities: { ...access.capabilities, history: false } }, id) === null);
   assert(parseAuraAccess({ ...access, capabilities: { ...access.capabilities, history: "true" } }, id) === null);
@@ -73,7 +73,7 @@ Deno.test("SOC-only capability access is explicit and never accepts truthy strin
   assert(parseAuraAccess({ ok: true, actor, capabilities: { ...capabilities, socReserves: "true" } }, id) === null);
   assert(parseAuraAccess({ ok: true, actor, capabilities: { ...capabilities, socReserves: false, socOpenOrders: true } }, id)?.socOpenOrders === true);
   assert(parseAuraAccess({ ok: true, actor, capabilities: { ...capabilities, socOpenOrders: 1 } }, id) === null);
-  assert(parseAuraAccess({ ok: true, actor: { ...actor, username: "rep_one", role: "ADMIN" }, capabilities }, id) === null);
+  assert(parseAuraAccess({ ok: true, actor: { ...actor, username: "rep_one", role: "ADMIN" }, capabilities }, id)?.socReserves === true);
 });
 
 Deno.test("readiness identifies real provider timeouts without revealing exception details", async () => {

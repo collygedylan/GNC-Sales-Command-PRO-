@@ -504,21 +504,26 @@ function sendHoursReminderEmail() {
 function setupDropFolderAutoSyncTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(function(trigger) {
-    if (trigger.getHandlerFunction() === AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER) {
+    if ([AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER, URGENT_DRIVE_AROUND_TRIGGER_HANDLER_].includes(trigger.getHandlerFunction())) {
       ScriptApp.deleteTrigger(trigger);
     }
   });
-  ScriptApp.newTrigger(AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER)
-    .timeBased()
-    .everyMinutes(5)
-    .create();
-  console.log('Auto sync trigger established. Drop folders will be checked about every 5 minutes.');
+  [6, 10, 12, 14, 16].forEach(function(hour) {
+    ScriptApp.newTrigger(AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER)
+      .timeBased()
+      .atHour(hour)
+      .nearMinute(30)
+      .everyDays(1)
+      .inTimezone('America/Chicago')
+      .create();
+  });
+  console.log('Auto sync triggers established for 6:30, 10:30, 12:30, 2:30, and 4:30 America/Chicago.');
 }
 
 function removeDropFolderAutoSyncTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(function(trigger) {
-    if (trigger.getHandlerFunction() === AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER) {
+    if ([AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER, URGENT_DRIVE_AROUND_TRIGGER_HANDLER_].includes(trigger.getHandlerFunction())) {
       ScriptApp.deleteTrigger(trigger);
     }
   });
@@ -533,6 +538,10 @@ function runAutoDropFolderSync_(event) {
   try {
     const existing = loadManualSyncStatus_();
     if (existing && existing.active) {
+      if (hasPendingDriveAroundSource_()) {
+        PropertiesService.getScriptProperties().setProperty(URGENT_DRIVE_AROUND_REQUEST_KEY_, new Date().toISOString());
+        scheduleUrgentDriveAroundTrigger_(URGENT_DRIVE_AROUND_RETRY_MS_, event && event.triggerUid);
+      }
       // Under the processor lock, ensure there is one continuation for an
       // orphaned active run. Stale checkpoint recovery is handled by the worker.
       ensureManualSyncStageRetryTrigger_(MANUAL_SYNC_PROCESSOR_RETRY_MS_, event && event.triggerUid);
@@ -549,6 +558,87 @@ function runAutoDropFolderSync_(event) {
     source: 'auto_trigger',
     requestedBy: requestedBy
   });
+}
+
+function removeUrgentDriveAroundTriggers_(currentTriggerUid) {
+  ScriptApp.getProjectTriggers().filter(function(trigger) {
+    if (trigger.getHandlerFunction() !== URGENT_DRIVE_AROUND_TRIGGER_HANDLER_) return false;
+    const triggerUid = typeof trigger.getUniqueId === 'function' ? String(trigger.getUniqueId() || '') : '';
+    return !currentTriggerUid || triggerUid !== String(currentTriggerUid);
+  }).forEach(function(trigger) { ScriptApp.deleteTrigger(trigger); });
+}
+
+function scheduleUrgentDriveAroundTrigger_(delayMs, currentTriggerUid) {
+  removeUrgentDriveAroundTriggers_(currentTriggerUid);
+  ScriptApp.newTrigger(URGENT_DRIVE_AROUND_TRIGGER_HANDLER_)
+    .timeBased()
+    .after(Math.max(1000, Number(delayMs) || URGENT_DRIVE_AROUND_RETRY_MS_))
+    .create();
+}
+
+function hasPendingDriveAroundSource_() {
+  try { return listRoutedDropFiles_(getImportHistoryRoute_('drive'), 'drive').length > 0; }
+  catch (error) {
+    console.warn('[DRIVE AROUND] Pending-source check deferred: ' + getSafeImportFailureCode_(error));
+    return false;
+  }
+}
+
+function cleanupStaleDriveAroundWorkspace_() {
+  const cutoffMs = Date.now() - URGENT_DRIVE_AROUND_STALE_MS_;
+  const checkpoint = readImportExtractionCheckpoint_();
+  const folder = getDriveFolderByIdWithRetry_(FOLDERS.MASTER_DROP, 'DriveAround stale workspace cleanup');
+  const files = listDriveFilesWithRetry_(folder, 'DriveAround stale workspace cleanup');
+  let tempFilesRemoved = 0;
+  while (files.hasNext()) {
+    const file = files.next();
+    if (!String(file.getName() || '').startsWith('TEMP_')) continue;
+    if (checkpoint && String(checkpoint.tempSheetId || '') === String(file.getId() || '')) continue;
+    if (file.getLastUpdated().getTime() > cutoffMs) continue;
+    trashDriveFileWithRetry_(file, 'stale DriveAround temp conversion');
+    tempFilesRemoved += 1;
+  }
+  const recovered = callSupabaseRpc_('recover_stale_master_imports_v1', {
+    p_older_than: new Date(cutoffMs).toISOString()
+  });
+  callSupabaseRpc_('cleanup_master_snapshot_staging_v1', {
+    p_older_than: new Date(cutoffMs).toISOString(), p_limit: 20
+  });
+  return { tempFilesRemoved: tempFilesRemoved, recovered: recovered };
+}
+
+function runUrgentDriveAroundSync_(event) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(MANUAL_SYNC_LOCK_WAIT_MS_)) {
+    scheduleUrgentDriveAroundTrigger_(URGENT_DRIVE_AROUND_RETRY_MS_, event && event.triggerUid);
+    return { status: 'deferred', code: 'DRIVE_AROUND_PROCESSOR_BUSY' };
+  }
+  const previousDeadline = manualSyncInvocationDeadlineMs_;
+  manualSyncInvocationDeadlineMs_ = Date.now() + URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_;
+  try {
+    if (!hasPendingDriveAroundSource_()) {
+      PropertiesService.getScriptProperties().deleteProperty(URGENT_DRIVE_AROUND_REQUEST_KEY_);
+      removeUrgentDriveAroundTriggers_(event && event.triggerUid);
+      return { status: 'up_to_date', code: 'UP_TO_DATE' };
+    }
+    cleanupStaleDriveAroundWorkspace_();
+    const result = withDatasetImportProcessorLock_(function() { return runDriveAroundOnly(); }, lock) || {};
+    if (result.failedFiles || result.fatalFailure || hasPendingDriveAroundSource_()) {
+      PropertiesService.getScriptProperties().setProperty(URGENT_DRIVE_AROUND_REQUEST_KEY_, new Date().toISOString());
+      scheduleUrgentDriveAroundTrigger_(URGENT_DRIVE_AROUND_RETRY_MS_, event && event.triggerUid);
+    } else {
+      PropertiesService.getScriptProperties().deleteProperty(URGENT_DRIVE_AROUND_REQUEST_KEY_);
+      removeUrgentDriveAroundTriggers_(event && event.triggerUid);
+    }
+    return result;
+  } finally {
+    manualSyncInvocationDeadlineMs_ = previousDeadline;
+    lock.releaseLock();
+  }
+}
+
+function runUrgentDriveAroundSync() {
+  return runUrgentDriveAroundSync_({});
 }
 
 // =========================================================================
@@ -1122,11 +1212,14 @@ function closeDatasetImportFence_(context, succeeded, beforeFinish) {
 }
 function failDatasetImportFence_(context) {
   if (!context || context.closed) return;
-  try { closeDatasetImportFence_(context, false); }
+  try {
+    closeDatasetImportFence_(context, false);
+    if (context.canonicalKeys && context.canonicalKeys.includes('ph_master_inventory')) {
+      callDatasetImportFenceRpc_('recover_stale_master_imports_v1', { p_older_than: new Date().toISOString() });
+    }
+  }
   catch (error) {
-    // Never mislabel an uncertain/partial import ready. The database lease
-    // becomes interrupted on expiry; the next canonical import can recover it.
-    console.error('[DATASET SYNC] Import remains incomplete: ' + String(error && error.message || error));
+    console.error('[DATASET SYNC] Import recovery deferred: ' + String(error && error.message || error));
   }
 }
 
@@ -1224,6 +1317,11 @@ const FOLDERS = {
 
 const CUSTOMER_REP_MAP_TABLE = 'ph_customer_consignee_sales_reps';
 const AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER = 'runAutoDropFolderSync_';
+const URGENT_DRIVE_AROUND_TRIGGER_HANDLER_ = 'runUrgentDriveAroundSync_';
+const URGENT_DRIVE_AROUND_REQUEST_KEY_ = 'URGENT_DRIVE_AROUND_REQUEST_V1';
+const URGENT_DRIVE_AROUND_RETRY_MS_ = 15 * 1000;
+const URGENT_DRIVE_AROUND_STALE_MS_ = 4 * 60 * 1000;
+const URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_ = 330 * 1000;
 
 const ALLOWED_DB_COLUMNS = new Set([
   'unique_id','concat','last_updated','assignedto','spec','caliper','pic_note','sales_note',
@@ -3058,6 +3156,15 @@ function runQueuedManualSyncStage_(options) {
       const stageDef = MANUAL_SYNC_STAGE_DEFINITIONS[stageKey];
       if (!stageDef || typeof stageDef.run !== 'function') {
         throw new Error(`Unknown manual sync stage: ${stageKey}`);
+      }
+
+      const urgentDriveRequested = !!PropertiesService.getScriptProperties().getProperty(URGENT_DRIVE_AROUND_REQUEST_KEY_);
+      if (stageKey !== 'drive' && urgentDriveRequested && hasPendingDriveAroundSource_()) {
+        status.updatedAt = new Date().toISOString();
+        status.message = 'Drive Around source detected; yielding for an isolated import with a fresh execution budget.';
+        saveManualSyncStatus_(status);
+        scheduleUrgentDriveAroundTrigger_(URGENT_DRIVE_AROUND_RETRY_MS_, runOptions.triggerUid);
+        break;
       }
 
       status.currentStage = stageKey;

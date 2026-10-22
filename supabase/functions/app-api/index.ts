@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.40";
+const APP_RUNTIME_RELEASE = "AgData v2.3.42";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -1636,9 +1636,16 @@ async function handleInventoryProjects(actor: Record<string, unknown>, payload: 
       if (error) throw error;
       return { deleted:true };
     }
-    const done = payload.status === "done";
-    const { data, error } = await supabase.from("inventory_project_rows").update({ status:done ? "done" : "pending",
-      completed_by:done ? actorUsername : null, completed_at:done ? new Date().toISOString() : null, updated_at:new Date().toISOString() }).eq("id", rowId).select("*").single();
+    const updates: Database["public"]["Tables"]["inventory_project_rows"]["Update"] = { updated_at:new Date().toISOString() };
+    if (typeof payload.rowInstructions === "string") updates.row_instructions = payload.rowInstructions.slice(0, 2000);
+    if (payload.status === "done" || payload.status === "pending") {
+      const done = payload.status === "done";
+      updates.status = done ? "done" : "pending";
+      updates.completed_by = done ? actorUsername : null;
+      updates.completed_at = done ? new Date().toISOString() : null;
+    }
+    if (Object.keys(updates).length === 1) throw new Error("PROJECT_ROW_UPDATE_INVALID");
+    const { data, error } = await supabase.from("inventory_project_rows").update(updates).eq("id", rowId).select("*").single();
     if (error) throw error;
     return data;
   }
@@ -6314,16 +6321,6 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     catch { return errorResponse("A verified session is required.",403,{code:"REQUEST_WORK_SESSION_REQUIRED"}); }
     const {data,error} = await supabase.rpc("request_work_command_v1", {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
       ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})});
-    if (error && /MASTER_SNAPSHOT_NOT_READY|REVISION_CHANGED|IMPORTING|INTERRUPTED/.test(String(error.message || ""))) {
-      await supabase.from("app_dataset_revisions").update({ state:"ready", changed_at:new Date().toISOString() })
-        .in("key", ["ph_active_request","ph_master_inventory","ph_request_delivery_outbox"])
-        .in("state", ["interrupted","importing"]);
-      const { data: retryData, error: retryError } = await supabase.rpc("request_work_command_v1", {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
-        ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})});
-      if (!retryError) return jsonResponse({ok:true,data:retryData});
-      error.message = retryError.message;
-      error.code = retryError.code;
-    }
     if (error) return errorResponse(error.message, error.code === "42501" ? 403 : error.code === "PT409" ? 409 : 422,{code:error.message.match(/REQUEST_[A-Z_]+/)?.[0] || "REQUEST_WORK_FAILED"});
     return jsonResponse({ok:true,data});
   }

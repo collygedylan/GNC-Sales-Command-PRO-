@@ -4,15 +4,20 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-test('request completion retries transient snapshot state without a 422 gate', () => {
+test('request completion uses the canonical command without mutating revision state', () => {
   const source = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
-  assert.match(source, /MASTER_SNAPSHOT_NOT_READY\|REVISION_CHANGED\|IMPORTING\|INTERRUPTED/);
-  assert.match(source, /if \(!retryError\) return jsonResponse\(\{ok:true,data:retryData\}\)/);
+  const command = source.slice(source.indexOf('if (action === "request_work")'), source.indexOf('if (action === "manual_sync_status")'));
+  assert.doesNotMatch(command, /app_dataset_revisions/);
+  assert.doesNotMatch(command, /retryData|retryError/);
+  assert.match(source, /const \{data,error\} = await supabase\.rpc\("request_work_command_v1"/);
 });
 import vm from 'node:vm';
 
 const source = readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8');
 const appSource = readComposedAppSource();
+test('request Mark Done never waits for an in-flight photo upload', () => {
+    assert.match(appSource, /isComplete && prefix !== 'req-' && isPhotoGuardedCompletionPrefix\(prefix\)/);
+});
 const sandbox = { window: {} };
 vm.runInNewContext(source, sandbox);
 const api = sandbox.window.AgMetricRequestSubmission;

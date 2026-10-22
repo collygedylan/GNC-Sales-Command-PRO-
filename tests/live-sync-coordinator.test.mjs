@@ -404,7 +404,9 @@ test('interrupted imports retain verified rows and never become ready from a soc
     const f = fixture(); await f.coordinator.check(); f.state = 'interrupted'; f.revision = '2';
     await f.coordinator.check(); f.notify(); await f.advance(250);
     assert.equal(f.reads, 1); assert.equal(f.commits.length, 1);
-    assert.equal(f.coordinator.getStatus().state, 'Needs attention');
+    assert.equal(f.coordinator.getStatus().state, 'Published data');
+    assert.equal(f.coordinator.getStatus().dataReadable, true);
+    assert.doesNotMatch(f.coordinator.getStatus().message, /interrupted|Needs attention/i);
 });
 test('network failures keep old data visibly stale instead of committing an empty list', async () => {
     const f = fixture(); await f.coordinator.check(); f.revision = '2'; f.fault = new Error('Read timed out');

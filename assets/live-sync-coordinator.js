@@ -623,9 +623,10 @@
                 const states = blocked.flatMap(adapter => adapter.sourceKeys.map(key => before.sources.get(key).state));
                 const retained = lastVerifiedAt ? ' Keeping the last verified data.' : ' No complete snapshot has been verified in this session yet.';
                 const unavailableReason = blocked.filter(adapter => adapter.sourceKeys.some(key => before.sources.get(key).state === 'unavailable')).map(adapter => adapter.unavailableReason).filter(Boolean).join(' ');
-                emit(states.includes('interrupted') || states.includes('unavailable') ? 'Needs attention' : 'Importing',
-                    states.includes('interrupted') ? `An import was interrupted.${retained}` : states.includes('unavailable') ? (unavailableReason || 'Some data could not be verified for your current access.') : `An import is in progress.${retained}`,
-                    { blockedSources: unique(blocked.flatMap(adapter => adapter.sourceKeys)), unavailableSources: keys.filter(key => before.sources.get(key).state === 'unavailable') });
+                const interrupted = states.includes('interrupted');
+                emit(interrupted ? (lastVerifiedAt ? 'Published data' : 'Syncing') : states.includes('unavailable') ? 'Needs attention' : 'Importing',
+                    interrupted ? (lastVerifiedAt ? 'Showing the last verified data while import recovery completes.' : 'Checking the last completed snapshot while import recovery completes.') : states.includes('unavailable') ? (unavailableReason || 'Some data could not be verified for your current access.') : `An import is in progress.${retained}`,
+                    { blockedSources: unique(blocked.flatMap(adapter => adapter.sourceKeys)), unavailableSources: keys.filter(key => before.sources.get(key).state === 'unavailable'), ...(interrupted && lastVerifiedAt ? { dataReadable:true, readOnlySnapshot:true } : {}) });
                 return false;
             }
             const changed = adapters.filter(adapter => metadataReadOnly || appliedFor(adapter)?.readOnlySnapshot
