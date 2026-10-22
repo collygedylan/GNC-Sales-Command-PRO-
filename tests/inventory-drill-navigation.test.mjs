@@ -16,6 +16,22 @@ import { JSDOM } from 'jsdom';
 const html = readComposedAppSource();
 const source = name => html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0] || assert.fail(name);
 
+test('AV cards omit Project while Item Inquiry opens the Reclass editor', () => {
+  const projectLine = html.split('\n').find(line => line.includes('const projectButtonHtml ='));
+  assert.match(projectLine, /!\['av', 'av-photo'\]\.includes/);
+  assert.match(source('openDetailReclassItemInquiry'), /openArgosInventoryTransactionModal/);
+  assert.match(source('switchDetailTab'), /openDetailReclassItemInquiry/);
+  assert.match(readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8'), /#photo-modal[^]*width: 100vw !important[^]*height: 100dvh !important[^]*height: calc\(100dvh - 96px\) !important/);
+});
+
+test('AV and Common Name views render synchronously from complete in-memory rows', () => {
+  assert.match(source('getAvSalesRowsForRendering'), /const service = null/);
+  assert.doesNotMatch(html, /Preparing AV inventory/);
+  assert.match(source('renderDriveCompleteCommonNames'), /const firstBatchSize = entries\.length/);
+  assert.match(html, /supabaseRpc\('save_drive_evidence_v2'/);
+  assert.match(source('reconcileConfirmedDriveEvidence'), /propagateCommittedEdit\('ph_master_inventory'/);
+});
+
 test('AV marks a cold administrator catalog partial and prefers complete master over an old AV slice', () => {
   const master = Array.from({ length: 9600 }, (_, id) => ({ UNIQUE_ID: id }));
   let complete = false;

@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.42';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.43';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8771,7 +8771,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function normalizeDetailSpecTextForSave(value = '') {
-            const text = String(value || '').replace(/\\([\'"])/g, '$1').trim().replace(/\s+/g, ' ');
+            const text = String(value || '')
+                .replace(/\\+(?=[\'"])/g, '')
+                .replace(/'?\s*\\+\s*(?=H\b)/gi, "' ")
+                .trim()
+                .replace(/\s+/g, ' ');
             const compact = text.replace(/\s+/g, '');
             const rangeMatch = compact.match(/^(\d{1,3}(?:\.\d+)?)-(\d{1,3}(?:\.\d+)?)(\d)$/);
             if (!rangeMatch) return text;
@@ -25884,7 +25888,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.42').trim() || 'AgData v2.3.42';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.43').trim() || 'AgData v2.3.43';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -38252,7 +38256,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 `fetchpriority="${fetchPriority}"`,
                 'referrerpolicy="no-referrer"',
                 'draggable="false"',
-                `onerror="this.style.visibility='hidden'"`,
+                'onerror="handleDeferredCardPhotoLoadFailure(this)"',
                 className ? `class="${escapeDeferredCardPhotoAttribute(className)}"` : '',
                 sizes ? `sizes="${escapeDeferredCardPhotoAttribute(sizes)}"` : '',
                 options.avLoadStatus === true ? `onload="this.dataset.avPhotoLoaded='1'"` : '',
@@ -38300,6 +38304,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             });
         }
 
+        function handleDeferredCardPhotoLoadFailure(img = null) {
+            if (!img) return;
+            img.classList.add('app-photo-thumbnail-failed');
+            img.alt = 'Photo unavailable';
+            img.hidden = true;
+            invalidateCardPhotoMatchOnLoadFailure(img);
+            const host = img.parentElement;
+            if (!host || host.querySelector('.app-photo-unavailable')) return;
+            const placeholder = document.createElement('span');
+            placeholder.className = 'app-photo-unavailable';
+            placeholder.textContent = 'Photo unavailable';
+            host.appendChild(placeholder);
+        }
+
         function hydrateDeferredCardPhoto(img = null, expectedSrc = '') {
             if (!img || img.dataset.photoHydrated === '1') return;
             if (img.isConnected === false) {
@@ -38316,9 +38334,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (!img || !img.dataset) return;
                 if (String(img.dataset.src || '').trim() !== src) return;
                 img.dataset.photoLoadFailed = '1';
-                img.classList.add('app-photo-thumbnail-failed');
-                img.alt = 'Photo thumbnail unavailable. Open the photo to retry.';
-                invalidateCardPhotoMatchOnLoadFailure(img);
+                handleDeferredCardPhotoLoadFailure(img);
             };
             img.src = src;
         }
@@ -81588,7 +81604,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAvSalesRowsForRendering(bucket = activeAvSalesBucket, identityInput = null) {
-            const service = window && window.AgMetricAvDerivedRows;
+            const service = null;
             if (!service || typeof service.prepare !== 'function' || typeof service.peek !== 'function') {
                 return { rows: getAvSalesRowsForBucket(bucket), partial: false };
             }
@@ -84046,7 +84062,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function isAvLiveCatalogIncomplete() {
             if (!canUseProductionLiveSync() || activeAVTab !== 'open') return false;
             return getDatasetState('master').rowCompleteness !== 'complete'
-                || !isDatasetLoaded('master', 'full') || !isDatasetLoaded('reserves', 'full');
+                || !isDatasetLoaded('master', 'full');
         }
 
         function buildResolvedAVBaseState(options = {}) {
@@ -85905,7 +85921,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     updateAVExportButton(0);
                     renderAvPhotoOutreachPanel([]);
                     setContainerHtmlWithSignature(container,
-                        '<div class="p-8 text-center text-gray-400" role="status">Preparing AV inventory…</div>',
+                        '<div class="p-8 text-center text-gray-400" role="status">Loading latest AV rows…</div>',
                         `av-preparing|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}`);
                     crumb.innerText = 'Loading AV inventory';
                     return;
@@ -102492,7 +102508,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     ''
                 ) || '').trim()
                 : getRequestRowNoteValue(item);
-            const requestQty = String(firstNonEmptyValue(item && item.LOC_MATCH_QTY, item && item.loc_match_qty, item && item.EVAL_TASK_MOVED_UP_QTY, item && item.eval_task_moved_up_qty, item && item.REQ_QTY, item && item.req_qty, item && item.QTY, item && item.qty, '') || '').trim();
+            const requestQty = String(resolveRequestCardQuantity(item) ?? '').trim();
             const salesRepName = String(firstNonEmptyValue(item && item.REQUESTED_BY, item && item.requested_by, item && item.UPDATED_BY, item && item.updated_by, item && item.SALESREPNAME, item && item.SALESREP, item && item.SALESREPID, '') || '').trim();
             const customerConsignee = typeof getRequestCustomerConsigneeLabelForItem === 'function'
                 ? getRequestCustomerConsigneeLabelForItem(item)
@@ -102553,7 +102569,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const desiredSpec = getRequestDesiredSpecValue(item);
             const desiredCaliper = getRequestDesiredCaliperValue(item);
             const requestNote = getRequestRowNoteValue(item);
-            const requestQty = String(firstNonEmptyValue(item.LOC_MATCH_QTY, item.loc_match_qty, item.EVAL_TASK_MOVED_UP_QTY, item.eval_task_moved_up_qty, item.REQ_QTY, item.req_qty, item.QTY, item.qty, '') || '').trim();
+            const requestQty = String(resolveRequestCardQuantity(item) ?? '').trim();
             const salesRepName = String(firstNonEmptyValue(item.REQUESTED_BY, item.requested_by, item.UPDATED_BY, item.updated_by, item.SALESREPNAME, item.SALESREP, item.SALESREPID, '') || '').trim();
             const customerConsignee = typeof getRequestCustomerConsigneeLabelForItem === 'function'
                 ? getRequestCustomerConsigneeLabelForItem(item)
@@ -102691,8 +102707,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function canFetchRequestItemCodeOptionsFromSupabase() {
-            if (!shouldScopeMasterInventoryToCurrentEval()) return true;
-            return !!(canAddRequestItemCodeOptions() || canUseMovesModule());
+            return !!(currentUser || nativeAuthSessionActive);
         }
 
         function getRequestItemCodeOptionItemCode(item = null) {
@@ -103300,9 +103315,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     return buildSearchIndex(normalizeRowPhotoFields(row));
                 });
                 state.loaded = true;
-                state.error = primaryLookupError && !rawRows.length && !getRequestItemCodeOptionRows(item).length
-                    ? 'Could not load AV options right now.'
-                    : '';
+                state.error = '';
             } catch (error) {
                 if (requestItemCodeOptionState.key === safeStateKey && owner === getSupabaseReadIdentityScope()) {
                     state.denied = isSupabaseReadTerminalDenial(error);
@@ -103410,7 +103423,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 </div>`;
             }).join('') : `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-[12px] font-bold text-slate-400">${state.loading ? 'Loading Drive Mode rows for this location...' : 'No Drive Mode rows found for this itemcode at this location.'}</div>`;
             panel.innerHTML = `<div class="space-y-3">
-                <div class="rounded-[1.35rem] border border-emerald-100 bg-emerald-50/80 px-4 py-4 shadow-sm">
+                <div class="request-this-location-header rounded-[1.35rem] border border-emerald-100 bg-emerald-50/80 px-4 py-4 shadow-sm">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div class="min-w-0">
                             <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"><i class="ph-bold ph-map-pin-line text-sm"></i><span>This Location</span></div>
@@ -105091,7 +105104,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 && !(keyboard && keyboard.contains(target))) {
                 closeDetailMeasurementKeyboard(false, { clearResume: true });
             }
-            if (target && target.closest && target.closest('#view-detail.detail-request-mode') && isTextLikeElement(target)) {
+            if (target && target.id !== 'req-comments' && target.closest && target.closest('#view-detail.detail-request-mode') && isTextLikeElement(target)) {
                 const saveActionWrap = document.getElementById('req-save-action-wrap');
                 if (saveActionWrap) saveActionWrap.classList.add('hidden');
             }
@@ -106331,11 +106344,27 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             galleryEmpty.classList.toggle('hidden', html !== '');
         }
 
+        function openDetailReclassItemInquiry(item = activeItem, sourceView = '') {
+            const inquiryRows = getItemInquiryRows(item);
+            const inquiryRow = inquiryRows.find(row => ['ph_master_inventory', 'master_inventory'].includes(String(firstNonEmptyValue(row && row.SOURCE_TABLE, row && row.source_table, '') || '').trim().toLowerCase()))
+                || findLinkedMasterRow(item)
+                || inquiryRows[0]
+                || item;
+            const uid = String(firstNonEmptyValue(inquiryRow && inquiryRow.UNIQUE_ID, inquiryRow && inquiryRow.unique_id, '') || '').trim();
+            if (!uid) return false;
+            const modalSource = isDockSuspendDcRequestMirrorRow(item) ? 'suspend-tag' : 'drive';
+            return openArgosInventoryTransactionModal(uid, 'reclass', modalSource, { inquiryRow, inquiryRows, sourceView });
+        }
+
         function switchDetailTab(tab, options = {}) {
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const requestedTab = String(tab || 'overview').trim() || 'overview';
             const fallbackTab = getPrimaryDetailTabForItemContext(activeItem, activeDetailSourceView || lastView || '') || activeDetailTab || 'overview';
             const safeTab = resolveVisibleDetailTab(requestedTab, fallbackTab);
+            const sourceView = String(activeDetailSourceView || lastView || '').trim().toLowerCase();
+            if (safeTab === 'item-inquiry' && activeItem && ['drive', 'request'].includes(sourceView)) {
+                return openDetailReclassItemInquiry(activeItem, sourceView);
+            }
             const previousTab = activeDetailTab;
             activeDetailTab = safeTab;
             const detailRoot = document.getElementById('view-detail');
@@ -107984,6 +108013,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function getRequestCustomerConsigneeLabel(customer = '', consignee = '') {
             const customerName = String(customer || '').trim();
             const consigneeName = String(consignee || '').trim();
+            if (isRequestNaCustomerPair(customerName, consigneeName)) return 'N/A';
             return buildRequestCustomerValue(customerName, consigneeName) || customerName || consigneeName || 'Unknown Customer';
         }
 
@@ -143313,7 +143343,7 @@ C.14.043 C.15.000
                 const bloomButtonHtml = domIdText
                     ? `<button type="button" class="app-av-primary-action ${inBloomPicker ? 'is-selected' : ''}" data-cart-dom-id="${escapeHtml(domIdText)}" aria-pressed="${inBloomPicker ? 'true' : 'false'}" onclick="return handleInventoryCardBottomCartAction(event, '${safeDomId}', '${safeCardSourceViewKey}')"><i class="ph-bold ${inBloomPicker ? 'ph-check-circle' : 'ph-handbag'}"></i><span>${inBloomPicker ? 'In Bloom Picker' : 'Add To Bloom Picker'}</span></button>`
                     : '';
-                const projectButtonHtml = domIdText ? `<button type="button" class="app-av-secondary-action" onclick="event.stopPropagation(); return addInventoryRowToProject('${safeDomId}')"><i class="ph-bold ph-folder-plus"></i><span>+ Project</span></button>` : '';
+                const projectButtonHtml = domIdText && !['av', 'av-photo'].includes(String(sourceView || '').trim().toLowerCase()) ? `<button type="button" class="app-av-secondary-action" onclick="event.stopPropagation(); return addInventoryRowToProject('${safeDomId}')"><i class="ph-bold ph-folder-plus"></i><span>+ Project</span></button>` : '';
                 const viewPhotosButtonHtml = hasValidAvPhotos
                     ? `<button type="button" class="app-av-secondary-action" data-fast-press-ignore onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoLink)}', '${photoCaption}', 0); return false;"><i class="ph-bold ph-images"></i><span>View Photos</span></button>`
                     : '';
@@ -152713,8 +152743,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selection: getDriveDrillSelectionStateKey(), search: String(document.getElementById('drive-search')?.value || ''),
                 filterKey: driveVisibleItemsStateCacheKey, user: String(currentUser || ''), role: String(currentRole || '') };
             driveCommonNamePreparation = pending;
-            const firstBatchSize = isTouchConstrainedDevice() ? 32 : 64;
-            const continuationBatchSize = isTouchConstrainedDevice() ? 128 : 256;
+            const firstBatchSize = entries.length;
+            const continuationBatchSize = entries.length;
             const prepareBatch = () => {
                 if (!isDriveCommonNamePreparationCurrent(pending)) {
                     if (driveCommonNamePreparation === pending && recoverDriveCommonNameCacheInvalidation(pending)) return;
@@ -152726,7 +152756,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     // Paint a small first batch promptly, then amortize growing-list
                     // layout across larger slices while yielding between frames.
                     const batchSize = pending.index === 0 ? firstBatchSize : continuationBatchSize;
-                    const budgetMs = pending.index === 0 ? 4 : 8;
+                    const budgetMs = Number.POSITIVE_INFINITY;
                     let html = '', count = 0;
                     while (pending.index < entries.length && count < batchSize && (count === 0 || performance.now() - started < budgetMs)) {
                         html += renderEntry(entries[pending.index++]); count++;
@@ -165247,6 +165277,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
             const executeSave = async () => {
+                let requestCompletionConfirmed = false;
                 if (prefix === 'req-' && !isComplete && isRequestWorkConflictBlocked(itemToSave) && !(saveOptions && saveOptions.requestWorkDraftRetry)) {
                     captureBlockedRequestWorkFormDraft(itemToSave);
                     updateRequestWorkConflictReview(itemToSave);
@@ -166140,6 +166171,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
 
                 const restoreFromFailedSave = (message) => {
+                    if (requestCompletionConfirmed) return;
                     const driveConflict = SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())
                         ? getDriveEvidenceConflictState(itemToSave)
                         : null;
@@ -166571,7 +166603,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                             }
                             normalizeRowPhotoFields(itemToSave);
                             buildSearchIndex(itemToSave);
-                            if (isComplete && hasRequestCompletionState(itemToSave)) confirmQueueCompletion(itemToSave);
+                            if (isComplete && hasRequestCompletionState(itemToSave)) {
+                                requestCompletionConfirmed = true;
+                                confirmQueueCompletion(itemToSave);
+                            }
                             if (acknowledgedRequestWorkDraft) finalizeRequestWorkDraftAfterSuccess(itemToSave, acknowledgedRequestWorkDraft, acknowledgedRequestWorkValues, formattedServerRow, requestWorkFormValuesAtDispatch, requestWorkCacheEntryTimestampAtDispatch, requestWorkValuesAtResponse);
                             requestMasterUpdateResult = { updated: true, atomic: true };
                             const atomicRequestArtifacts = completionArtifacts || buildCompletionArtifacts();
@@ -166611,7 +166646,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 atomicDriveArtifacts.extraMasterSyncPatches = [];
                             }
                             queueAppLiveEventForWrite('ph_master_inventory', 'PATCH', [{ unique_id: itemToSave.UNIQUE_ID }], '');
-                            queueVisibleDatasetCatchup(0);
+                            queueVisibleDatasetCatchup(1200);
                             const finalizeDriveRpcSave = () => handleSaveSuccess(atomicDriveArtifacts);
                             if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeDriveRpcSave, 0);
                             else finalizeDriveRpcSave();

@@ -15,7 +15,7 @@ test('header watchdog badge force-hides after Dylan switches to any other canoni
   const badge = { hidden: true, style: { display: 'none' }, textContent: '', title: '', classList: { toggle() {} } };
   const panel = module.exports.createController({ document: { getElementById: () => badge },
     getUsername: () => username, getProfileId: () => username, apiUrl: '/app-api',
-    postJson: async () => { reads++; return { data: [{ id: 1 }] }; } });
+    postJson: async () => { reads++; return { data: [{ id: 1, status: 'open' }] }; } });
   await panel.refreshBadge(true);
   assert.equal(badge.hidden, false);
   assert.notEqual(badge.style.display, 'none');
@@ -352,7 +352,7 @@ test('signed watchdog email embeds the same complete fix brief returned to the c
   assert.equal(sent.to, 'dylan_collyge@greenleafnursery.com');
   assert.ok(sent.body.endsWith(brief));
   assert.match(readComposedAppSource(), /const brief = fixBrief;/);
-  assert.ok(read('supabase/functions/app-api/index.ts').includes('fixBrief:buildRuntimeWatchdogFixBrief(rows.filter(row => row.status !== "resolved"), APP_RUNTIME_RELEASE)'));
+  assert.ok(read('supabase/functions/app-api/index.ts').includes('fixBrief:buildRuntimeWatchdogFixBrief(rows.filter(row => row.status === "open"), APP_RUNTIME_RELEASE)'));
 });
 
 
@@ -386,11 +386,14 @@ test('Watchdog card changes the Manager subview synchronously and shared Back re
 });
 
 
-test('Watchdog panel pages active and resolved events and reports parity without counting resolved badges',async()=>{
+test('Watchdog panel separates open incidents from resolved AI folders',async()=>{
  const module={exports:{}};vm.runInNewContext(fs.readFileSync(new URL('../assets/runtime-watchdog-panel.js',import.meta.url),'utf8'),{module,Date});
  const host={innerHTML:'',querySelectorAll:()=>[]},badge={hidden:true,style:{},classList:{toggle(){}},textContent:''};
  const calls=[];
  const controller=module.exports.createController({document:{getElementById:id=>id==='runtime-watchdog-events'?host:badge},getUsername:()=> 'dylan_collyge',getProfileId:()=> 'actor',getVisibleView:()=> 'managers',getActiveTab:()=> 'runtime-watchdog',panelViewId:'runtime-watchdog',escape:value=>String(value||''),postJson:async(_url,body)=>{calls.push(body);return body.offset?{data:[{id:2,status:'resolved',event_type:'DATA_PARITY_MISMATCH'}],hasMore:false}:{data:[{id:1,status:'open',event_type:'DATA_PARITY_MISMATCH'}],hasMore:true};}});
  await controller.refreshPanel();assert.equal(calls.length,2);assert.equal(calls[0].includeResolved,true);assert.equal(calls[1].offset,1);
- assert.match(host.innerHTML,/Role parity reports: 1 active \/ 1 resolved/);assert.match(host.innerHTML,/Resolved/);assert.equal(badge.textContent,'1');
+ assert.match(host.innerHTML,/OPEN ISSUES[^]*Resolved Fixes/);assert.match(host.innerHTML,/Runtime Watchdog AI[^]*1/);
+ assert.match(host.innerHTML,/data-watchdog-view="open"[^]*data-watchdog-resolve="1"/);
+ assert.doesNotMatch(host.innerHTML.match(/data-watchdog-view="open"[^]*?<\/div><div class="space-y-3" data-watchdog-view="resolved"/)?.[0]||'',/>Resolved<\/span>/);
+ assert.equal(badge.textContent,'1');
 });

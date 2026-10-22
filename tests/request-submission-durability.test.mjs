@@ -33,7 +33,8 @@ function extractRuntimeFunction(name) {
 test('request photo/spec completion keeps verified match counts and detail editing stable', () => {
     assert.match(appSource, /calculatedMatchQty\s*=\s*match\s*!==\s*''\s*&&\s*Number\.isFinite\(Number\(match\)\)/);
     assert.match(appSource, /Loc photo match.*\$\{match\}%/);
-    assert.match(appSource, /replace\(\/\\\\\(\[\\'\"\]\)\/g, '\$1'\)/);
+    assert.match(appSource, /replace\(\/\\\\\+\(\?=\[\\'\"\]\)\/g, ''\)/);
+    assert.match(appSource, /replace\(\/'\?\\s\*\\\\\+\\s\*\(\?=H\\b\)\/gi, "' "\)/);
     assert.match(appSource, /photoUploadInFlight.*pendingPhotoUploads.*size/);
     assert.match(appSource, /target !== detailMeasurementKeyboardTarget/);
     assert.doesNotMatch(appSource, /ph-cardholder.*ph-map-pin/);
@@ -1317,8 +1318,11 @@ test('Request numeric zero survives background hydration and keypad text has no 
  const markup=ctx.buildInventoryQuantityChipsHtml({PTRONHAND:2,PTRREVIEWED:0,PTRAVAILABLE:0,S_LTS:0},{canonical:true,layout:'row',hydrationStatus:'loading',sourceView:'request'});
  assert.equal((markup.match(/>0<\/span>/g)||[]).length,4); assert.doesNotMatch(markup,/N\/A|--|Not verified/);
  assert.equal(ctx.normalizeDetailSpecTextForSave("5.5"+String.fromCharCode(92)+"' H"),"5.5' H");
+ assert.equal(ctx.normalizeDetailSpecTextForSave("14-16"+String.fromCharCode(92)+"H"),"14-16' H");
  assert.ok(appSource.includes("if (detailSourceView.toLowerCase() === 'request') renderSavedPhotos"));
  assert.ok(appSource.includes("const spec = normalizeDetailSpecTextForSave(document.getElementById('req-spec')"));
+ assert.ok(appSource.includes("target.id !== 'req-comments'"));
+ assert.doesNotMatch(appSource,/Could not load AV options right now\./);
 });
 
 
@@ -1424,4 +1428,8 @@ test('request quantity resolves every persisted alias and preserves zero', () =>
   assert.ok(opts.getPendingRequestChunkRenderOptions().initialRows>=5, 'the reported five-row queue paints in one pass');
   assert.ok(appSource.includes("archiveHost.id = 'historical-request-archive'"));
   assert.ok(extractRuntimeFunction('renderHistoricalRequestArchive').includes('renderRequestArchivePageHtml'));
+  const summarySource=appSource.slice(appSource.indexOf('function renderRequestDesiredSummaryPanel'),appSource.indexOf('function getRequestOpenInfoSnapshot'));
+  const openInfoSource=appSource.slice(appSource.indexOf('function getRequestOpenInfoSnapshot'),appSource.indexOf('function buildRequestOpenInfoHtml'));
+  assert.doesNotMatch(summarySource,/LOC_MATCH_QTY|EVAL_TASK_MOVED_UP_QTY/);
+  assert.doesNotMatch(openInfoSource,/LOC_MATCH_QTY|EVAL_TASK_MOVED_UP_QTY/);
 });

@@ -75,3 +75,59 @@ html[data-ops-prepaint-theme="dark"] body #app-wrapper,
 html[data-ops-prepaint-theme="dark"] body #main-scroll-area,
 html body.ops-precision-pilot[data-ops-theme="dark"] #app-wrapper,
 html body.ops-precision-pilot[data-ops-theme="dark"] #main-scroll-area { background-color: #041a10 !important; }
+
+/* v2.3.43 detail and evidence presentation authority. */
+html body #photo-modal {
+  width: 100vw !important;
+  height: 100dvh !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: #000 !important;
+}
+html body #photo-modal-gallery {
+  width: 100vw !important;
+  height: calc(100dvh - 96px) !important;
+  max-height: none !important;
+  margin-top: 48px !important;
+  padding: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+html body #photo-modal-gallery .photo-modal-slide {
+  flex: 0 0 100vw !important;
+  width: 100vw !important;
+  height: calc(100dvh - 96px) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+html body #photo-modal-gallery .photo-modal-slide img {
+  width: 100vw !important;
+  height: calc(100dvh - 96px) !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+}
+html body #app-wrapper .request-this-location-header,
+html body #app-wrapper #dtab-this-location.active {
+  background: #062115 !important;
+  color: #ecfdf5 !important;
+}
+html body #app-wrapper .request-this-location-header :is(div, span, i) { color: #ecfdf5 !important; }
+html body #app-wrapper .app-drive-card-with-reclass { overflow: hidden !important; }
+html body #app-wrapper .app-drive-card-with-reclass .app-card-bottom-btn--argos-reclass {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.app-photo-unavailable {
+  display: inline-flex;
+  min-width: 6rem;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  padding: .5rem;
+  color: #475569;
+  background: #f1f5f9;
+  font-size: .7rem;
+  font-weight: 800;
+  text-align: center;
+}
