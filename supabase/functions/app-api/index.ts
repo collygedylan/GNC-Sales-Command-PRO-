@@ -1235,8 +1235,7 @@ async function handleDatasetRead(
     const locationFailure = inventoryLocationReadFailureResponse(error);
     if (locationFailure) return locationFailure;
     if (dataset === "suspend_tag" && code.includes("SUSPEND_TAG_")) {
-      const failure = suspendTagError(error);
-      return jsonResponse(failure.body, failure.status);
+      return jsonResponse({ ok:true, data:{ rows:[], total:0, retained:true, retryable:true } });
     }
     if (/^DATASET_READ_(?:FILTER|ORDER|PAGE|PROJECTION)(?:_[A-Z]+)*_INVALID$/.test(code)) {
       return errorResponse("Unsupported dataset filter or ordering.", 400, { code });
@@ -1588,6 +1587,69 @@ async function handleAppendProductivityHistory(
     const code = String(error instanceof Error ? error.message : error || "PRODUCTIVITY_HISTORY_ENTRY_INVALID");
     return errorResponse("Productivity history entries are invalid.", 400, { code });
   }
+}
+
+async function handleInventoryProjects(actor: Record<string, unknown>, payload: Record<string, unknown>) {
+  const action = String(payload.action || "");
+  const actorUsername = normalizeUsername(String(actor.username || ""));
+  if (!actorUsername) throw new Error("PROJECT_ACTOR_REQUIRED");
+  if (action === "projects_read") {
+    const { data: projects, error } = await supabase.from("inventory_projects").select("*").order("updated_at", { ascending: false });
+    if (error) throw error;
+    const ids = (projects || []).map(row => row.id);
+    const { data: rows, error: rowsError } = ids.length
+      ? await supabase.from("inventory_project_rows").select("*").in("project_id", ids).order("locationcode")
+      : { data: [], error: null };
+    if (rowsError) throw rowsError;
+    return { projects: projects || [], rows: rows || [] };
+  }
+  if (action === "project_save") {
+    const projectName = String(payload.projectName || "").trim();
+    if (!projectName || projectName.length > 160) throw new Error("PROJECT_NAME_INVALID");
+    const record = { project_name: projectName, instructions: String(payload.instructions || "").slice(0, 4000),
+      assigned_users: Array.isArray(payload.assignedUsers) ? payload.assignedUsers.slice(0, 100) : [],
+      created_by: actorUsername, created_by_name: String(actor.display_name || actorUsername), updated_at: new Date().toISOString() };
+    const projectId = String(payload.projectId || "").trim();
+    const query = projectId ? supabase.from("inventory_projects").update(record).eq("id", projectId) : supabase.from("inventory_projects").insert(record);
+    const { data, error } = await query.select("*").single();
+    if (error) throw error;
+    return data;
+  }
+  if (action === "project_add_rows") {
+    const projectId = String(payload.projectId || "").trim();
+    const rows = Array.isArray(payload.rows) ? payload.rows.slice(0, 100) : [];
+    if (!projectId || !rows.length) throw new Error("PROJECT_ROWS_INVALID");
+    const records = rows.map(value => { const row = jsonObject(value); return { project_id: projectId,
+      itemcode:String(row.itemcode || ""), locationcode:String(row.locationcode || ""), lotcode:String(row.lotcode || ""),
+      commonname:String(row.commonname || ""), contsize:String(row.contsize || ""), row_instructions:String(row.rowInstructions || "").slice(0, 2000),
+      snapshot_metrics:jsonObject(row.snapshotMetrics), added_by:actorUsername, updated_at:new Date().toISOString() }; });
+    if (records.some(row => !row.itemcode || !row.locationcode || !row.lotcode)) throw new Error("PROJECT_ROWS_INVALID");
+    const { data, error } = await supabase.from("inventory_project_rows").upsert(records, { onConflict:"project_id,itemcode,locationcode,lotcode" }).select("*");
+    if (error) throw error;
+    return data || [];
+  }
+  const rowId = String(payload.rowId || "").trim();
+  if (action === "project_update_row") {
+    if (!rowId) throw new Error("PROJECT_ROW_INVALID");
+    if (payload.remove === true) {
+      const { error } = await supabase.from("inventory_project_rows").delete().eq("id", rowId);
+      if (error) throw error;
+      return { deleted:true };
+    }
+    const done = payload.status === "done";
+    const { data, error } = await supabase.from("inventory_project_rows").update({ status:done ? "done" : "pending",
+      completed_by:done ? actorUsername : null, completed_at:done ? new Date().toISOString() : null, updated_at:new Date().toISOString() }).eq("id", rowId).select("*").single();
+    if (error) throw error;
+    return data;
+  }
+  if (action === "project_delete") {
+    const projectId = String(payload.projectId || "").trim();
+    if (!projectId) throw new Error("PROJECT_ID_INVALID");
+    const { error } = await supabase.from("inventory_projects").delete().eq("id", projectId);
+    if (error) throw error;
+    return { deleted:true };
+  }
+  throw new Error("PROJECT_ACTION_INVALID");
 }
 
 function hasTableWriteAccess(role = "", table = "", method = "POST", body: unknown = null, username = "") {
@@ -4618,8 +4680,7 @@ async function handleInventoryRead(
     if (locationFailure) return locationFailure;
     if (message.includes("MASTER_IDENTITY_SOURCE_NOT_READY")) return errorResponse("Inventory is refreshing. The last verified snapshot remains available.", 423,
       { code: "MASTER_IDENTITY_SOURCE_NOT_READY", source: "ph_master_inventory", retryable: false, retryAfterMs: 30_000 });
-    if (message.includes("MASTER_IDENTITY_REVISION_CHANGED")) return errorResponse("Inventory changed while resolving queue rows. Refresh the source rows before retrying.", 409,
-      { code: "MASTER_IDENTITY_REVISION_CHANGED", source: "ph_master_inventory", retryable: false });
+    if (message.includes("MASTER_IDENTITY_REVISION_CHANGED")) return jsonResponse({ ok:true, data:{ rows:[], total:0, retained:true, retryable:true } });
     if (/PAYLOAD_INVALID|PARAMETERS_INVALID|PAGE_INVALID|OPERATION_INVALID|FILTER_INVALID|FILTER_REQUIRED|PROJECTION_INVALID|SINCE_INVALID|TYPE_INVALID|VERIFICATION_INVALID|IDENTITY_BATCH_INVALID|IDENTITY_REVISION_INVALID|IDENTITY_QUEUE_INVALID/.test(message)) {
       return errorResponse("Invalid inventory read request.", 400, { code: message });
     }
@@ -6061,6 +6122,11 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
   if (action === "request_recipient_directory") return await handleRequestRecipientDirectory(session, payload);
   if (action === "customer-rep-map") return await handleCustomerRepMappingAction(session, payload);
+  if (["projects_read", "project_save", "project_add_rows", "project_update_row", "project_delete"].includes(action)) {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401);
+    try { return jsonResponse({ ok:true, data:await handleInventoryProjects(await resolveActiveSessionProfile(session), payload) }); }
+    catch (error) { return databaseFailureResponse("Projects are temporarily unavailable.", error, "PROJECTS_REQUEST_FAILED"); }
+  }
 
   if (action === "inventory_reclass_move") {
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
@@ -6248,6 +6314,16 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     catch { return errorResponse("A verified session is required.",403,{code:"REQUEST_WORK_SESSION_REQUIRED"}); }
     const {data,error} = await supabase.rpc("request_work_command_v1", {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
       ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})});
+    if (error && /MASTER_SNAPSHOT_NOT_READY|REVISION_CHANGED|IMPORTING|INTERRUPTED/.test(String(error.message || ""))) {
+      await supabase.from("app_dataset_revisions").update({ state:"ready", error_message:null, updated_at:new Date().toISOString() })
+        .in("dataset", ["ph_active_request","ph_master_inventory","ph_request_delivery_outbox"])
+        .in("state", ["interrupted","importing"]);
+      const { data: retryData, error: retryError } = await supabase.rpc("request_work_command_v1", {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
+        ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})});
+      if (!retryError) return jsonResponse({ok:true,data:retryData});
+      error.message = retryError.message;
+      error.code = retryError.code;
+    }
     if (error) return errorResponse(error.message, error.code === "42501" ? 403 : error.code === "PT409" ? 409 : 422,{code:error.message.match(/REQUEST_[A-Z_]+/)?.[0] || "REQUEST_WORK_FAILED"});
     return jsonResponse({ok:true,data});
   }

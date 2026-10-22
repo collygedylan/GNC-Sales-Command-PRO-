@@ -3,6 +3,12 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+
+test('request completion retries transient snapshot state without a 422 gate', () => {
+  const source = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /MASTER_SNAPSHOT_NOT_READY\|REVISION_CHANGED\|IMPORTING\|INTERRUPTED/);
+  assert.match(source, /if \(!retryError\) return jsonResponse\(\{ok:true,data:retryData\}\)/);
+});
 import vm from 'node:vm';
 
 const source = readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8');

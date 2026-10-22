@@ -1,8 +1,16 @@
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: drive
 import test from 'node:test';
+
+test('inventory projects expose folder and row workflows', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  assert.match(html, /id="inventory-open-projects"/);
+  assert.match(html, /id="batch-btn-project"/);
+  for (const action of ['projects_read','project_save','project_add_rows','project_update_row','project_delete']) assert.match(runtime, new RegExp(action));
+});
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import fs, { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 const html = readComposedAppSource();

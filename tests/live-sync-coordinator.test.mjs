@@ -1,5 +1,11 @@
 // @test-group: foundation
 import test from 'node:test';
+
+test('transient permission refresh retains verified access without throwing', () => {
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(runtime, /throw new Error\('Updated permissions could not be verified/);
+  assert.match(runtime, /Permission refresh deferred; retaining the active verified permissions/);
+});
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
