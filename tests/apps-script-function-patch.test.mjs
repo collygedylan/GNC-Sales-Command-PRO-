@@ -27,6 +27,28 @@ test('live ERP patch preserves paused historical source and adds only its tempor
   assert.throws(() => patchAppsScriptFunctions({ remoteSource: before, localSource: after, functionNames: ['startImportHistoryBackfill'] }), /ALLOWLIST_INVALID/);
 });
 
+test('DriveAround release patch adds the urgent processor and schedule constants', () => {
+  const urgentNames = [
+    'setupDropFolderAutoSyncTrigger', 'runAutoDropFolderSync_', 'runUrgentDriveAroundSync_',
+    'runUrgentDriveAroundSync', 'URGENT_DRIVE_AROUND_TRIGGER_HANDLER_', 'URGENT_DRIVE_AROUND_RETRY_MS_',
+  ];
+  const remoteSource = `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+function setupDropFolderAutoSyncTrigger() { return 'old'; }
+function runAutoDropFolderSync_() { return 'old'; }`;
+  const localSource = `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
+function setupDropFolderAutoSyncTrigger() { return 'five-daily'; }
+function runAutoDropFolderSync_() { return runUrgentDriveAroundSync_({}); }
+function runUrgentDriveAroundSync_() { return 'drive-first'; }
+function runUrgentDriveAroundSync() { return runUrgentDriveAroundSync_({}); }
+const URGENT_DRIVE_AROUND_TRIGGER_HANDLER_ = 'runUrgentDriveAroundSync_';
+const URGENT_DRIVE_AROUND_RETRY_MS_ = 15000;`;
+  const patched = patchAppsScriptFunctions({ remoteSource, localSource, functionNames: urgentNames });
+  assert.match(patched.source, /five-daily/);
+  assert.match(patched.source, /function runUrgentDriveAroundSync\(\)/);
+  assert.match(patched.source, /URGENT_DRIVE_AROUND_RETRY_MS_ = 15000/);
+  assert.equal(patchAppsScriptFunctions({ remoteSource: patched.source, localSource, functionNames: urgentNames }).source, patched.source);
+});
+
 test('scoped email publication preserves remote-only history functions and schedule byte-for-byte', () => {
   const patched = patchAppsScriptFunctions({ remoteSource: remote, localSource: local, functionNames: names });
   assert.match(patched.source, /<a>Approve<\/a>/);

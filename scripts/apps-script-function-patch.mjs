@@ -16,8 +16,18 @@ const reclassEmailFunctions = new Set([
   'buildCompletedInventoryReclassMoveText_',
   'buildCompletedInventoryReclassMoveHtml_',
 ]);
+const liveImportDeclarations = new Set([
+  'MANUAL_SYNC_STAGE_ORDER_DEFAULT', 'IMPORT_HISTORY_CHUNK_SIZE_',
+  'URGENT_DRIVE_AROUND_TRIGGER_HANDLER_', 'URGENT_DRIVE_AROUND_REQUEST_KEY_',
+  'URGENT_DRIVE_AROUND_RETRY_MS_', 'URGENT_DRIVE_AROUND_STALE_MS_',
+  'URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_',
+]);
 const liveImportFunctions = new Set([
-  'runAutoDropFolderSync_', 'buildSupabaseUpsertRequests_', 'runRoutedDropImport_', 'saveManualSyncStatus_', 'publishManualSyncStatus_', 'setManualSyncImportPhase_', 'scheduleRequestIntegrityMaintenance_', 'runQueuedRequestIntegrityMaintenance_', 'MANUAL_SYNC_STAGE_ORDER_DEFAULT', 'IMPORT_HISTORY_CHUNK_SIZE_',
+  'setupDropFolderAutoSyncTrigger', 'removeDropFolderAutoSyncTrigger', 'runAutoDropFolderSync_',
+  'removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_',
+  'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync',
+  'failDatasetImportFence_', 'buildSupabaseUpsertRequests_', 'runRoutedDropImport_', 'saveManualSyncStatus_', 'publishManualSyncStatus_', 'setManualSyncImportPhase_', 'scheduleRequestIntegrityMaintenance_', 'runQueuedRequestIntegrityMaintenance_',
+  ...liveImportDeclarations,
   'setDatasetImportSourceMetadata_', 'closeDatasetImportFence_',
   'processLatestFileOnlyFolderLocked_', 'processSiteSplitMasterSnapshotBatchFolderLocked_', 'doPost',
   "syncWarehouseAssignedItemsSheet_", "readWarehouseAssignmentExportRevision_", "exportWarehouseAssignedItemsToSheet_",
@@ -82,6 +92,7 @@ const liveImportFunctions = new Set([
   "processCustomerRepMapSnapshotLocked_",
 ]);
 const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_", "requestNaMappingDigest_", "ensureProtectedRequestNaCustomerMappings_", "handleRuntimeWatchdogAlert_"]);
+for (const name of ['removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_', 'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync']) additiveFunctions.add(name);
 for (const name of ['publishManualSyncStatus_', 'scheduleRequestIntegrityMaintenance_', 'runQueuedRequestIntegrityMaintenance_']) additiveFunctions.add(name);
 additiveFunctions.add('setDatasetImportSourceMetadata_');
 additiveFunctions.add('verifyRuntimeWatchdogAlert_');
@@ -99,7 +110,7 @@ function boundaries(source, names) {
       found.set(node.id.name, { start: node.start, end: node.end });
     }
     if (node.type === 'VariableDeclaration' && node.declarations.length === 1
-      && [fingerprint, releaseVersion, ...names.filter(name => ['MANUAL_SYNC_STAGE_ORDER_DEFAULT','IMPORT_HISTORY_CHUNK_SIZE_'].includes(name))].includes(node.declarations[0].id.name)) {
+      && [fingerprint, releaseVersion, ...names.filter(name => liveImportDeclarations.has(name))].includes(node.declarations[0].id.name)) {
       const name = node.declarations[0].id.name;
       if (found.has(name)) fail('DUPLICATE_FINGERPRINT');
       found.set(name, { start: node.start, end: node.end });
@@ -160,6 +171,12 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
   for (const name of additiveFunctions) {
     if (functionNames.includes(name) && !remote.has(name)) {
       preparedRemote += '\n\nfunction ' + name + '() {}\n';
+      remote = boundaries(preparedRemote, functionNames);
+    }
+  }
+  for (const name of liveImportDeclarations) {
+    if (functionNames.includes(name) && !remote.has(name)) {
+      preparedRemote += '\n\nconst ' + name + ' = null;\n';
       remote = boundaries(preparedRemote, functionNames);
     }
   }
