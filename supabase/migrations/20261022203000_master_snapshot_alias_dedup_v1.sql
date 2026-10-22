@@ -2,7 +2,7 @@ begin;
 
 do $migration$
 declare
-  function_oid oid;
+  function_oid oid := 'public.finalize_master_snapshot_stage_v1(uuid,uuid,text)'::regprocedure;
   function_definition text;
   anchor text := $anchor$           and not exists(select 1 from pg_temp.ph_master_new_insert_ids_v1 ni where ni.unique_id=s.unique_id)$anchor$;
   replacement text := $replacement$           and not exists(select 1 from pg_temp.ph_master_new_insert_ids_v1 ni where ni.unique_id=s.unique_id)
@@ -17,16 +17,11 @@ declare
                and duplicate_s.unique_id < s.unique_id
            )$replacement$;
 begin
-  foreach function_oid in array array[
-    'public.bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)'::regprocedure,
-    'public.finalize_master_snapshot_stage_v1(uuid,uuid,text)'::regprocedure
-  ] loop
-    select pg_get_functiondef(function_oid) into function_definition;
-    if length(function_definition) - length(replace(function_definition, anchor, '')) <> length(anchor) then
-      raise exception 'MASTER_SNAPSHOT_ALIAS_DEDUP_ANCHOR_INVALID';
-    end if;
-    execute replace(function_definition, anchor, replacement);
-  end loop;
+  select pg_get_functiondef(function_oid) into function_definition;
+  if length(function_definition) - length(replace(function_definition, anchor, '')) <> length(anchor) then
+    raise exception 'MASTER_SNAPSHOT_ALIAS_DEDUP_ANCHOR_INVALID';
+  end if;
+  execute replace(function_definition, anchor, replacement);
 end
 $migration$;
 

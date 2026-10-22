@@ -320,9 +320,7 @@ const reclassV7ImplementationOid = `case when exists (
 
 export function migrationContractQuery(name) {
   if (name === masterSnapshotAliasDedupMigrationName) return `select
-    exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)')
-      and position('duplicate_mapped.canonical_unique_id' in p.prosrc)>0)
-    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.finalize_master_snapshot_stage_v1(uuid,uuid,text)')
+    exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.finalize_master_snapshot_stage_v1(uuid,uuid,text)')
       and position('duplicate_mapped.canonical_unique_id' in p.prosrc)>0) as installed`;
   if (name === masterSnapshotSourceDedupMigrationName) return `select
     exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)')
