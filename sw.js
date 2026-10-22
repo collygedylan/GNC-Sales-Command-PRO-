@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.41';
+const APP_SHELL_BUILD = 'AgData v2.3.42';
 const APP_SHELL_RUNTIME_REVISION = 'watchdog-queue-r1';
-const APP_ASSET_VERSION = '2.3.41';
+const APP_ASSET_VERSION = '2.3.42';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.41';
+const CACHE_NAME = 'agdata-v2.3.42';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
@@ -67,11 +67,8 @@ const BRANDING_CANONICAL_ASSETS = Object.freeze([
 // END GENERATED BRANDING ASSETS
 const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/bunch-note-cards.css",
-  "./assets/bunch-note-chunks/CardBoard-SFKXC2GV.js",
   "./assets/bunch-note-chunks/CardBoard-WXA27JK6.js",
-  "./assets/bunch-note-chunks/StructuredBunchNote-7B3SEYGE.js",
   "./assets/bunch-note-chunks/StructuredBunchNote-KKG4GWIR.js",
-  "./assets/bunch-note-chunks/chunk-46YKMRUS.js",
   "./assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
   "./assets/bunch-note-structured.js",
   "./assets/bunch-note.css",
@@ -79,14 +76,10 @@ const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/bunch-queue.css",
   "./assets/bunch-queue.js",
   "./assets/field-counting-chunks/FieldCountingView-CBZQJHBV.js",
-  "./assets/field-counting-chunks/FieldCountingView-PBPNYFTR.js",
   "./assets/field-counting-chunks/chunk-4U4VUOO3.js",
-  "./assets/field-counting-chunks/chunk-C5JZPQWQ.js",
   "./assets/field-counting.css",
   "./assets/field-counting.js",
-  "./assets/historical-requests-chunks/HistoricalRequestsView-2SDVJKBX.js",
   "./assets/historical-requests-chunks/HistoricalRequestsView-MMF43IVA.js",
-  "./assets/historical-requests-chunks/chunk-34HXWUAQ.js",
   "./assets/historical-requests-chunks/chunk-HXYT2SBZ.js",
   "./assets/historical-requests.css",
   "./assets/historical-requests.js",
