@@ -17,6 +17,7 @@
   function normalizedRole(value) { const key = String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); return ROLE_ALIASES[key] || key.replace(/\W+/g, '_').replace(/^_+|_+$/g, '') || 'unknown'; }
   function view() { return String(document.body?.dataset?.currentView || document.querySelector('[id^="view-"]:not(.hidden)')?.id?.replace(/^view-/, '') || 'unknown').toLowerCase(); }
   function subModule() { try { return String(typeof state.getSubModule === 'function' ? state.getSubModule() || '' : global.activeHomeTab || ''); } catch (_) { return ''; } }
+  function isIgnorableRuntimeNoise(value) { return /ResizeObserver loop (?:limit exceeded|completed with undelivered notifications)/i.test(String(value || '')); }
   function fingerprint(event) { return [event.event_type, event.view_id, event.sub_module, event.error_message].join('|').toLowerCase().slice(0, 400); }
   function reportKey(event) { return `${event.username}:${event.fingerprint}:${event.app_version}`; }
   function reportStorageKey(username = state.username) { return `${REPORT_QUEUE_PREFIX}${String(username || '').trim().toLowerCase()}`; }
@@ -187,8 +188,8 @@
     const banners = [...root.querySelectorAll('[role="alert"], .error-banner, .load-error, .text-red-600, .text-red-700')].filter(node => /Load Failed|Access permissions changed|Some data could not be verified|Chat could not load|Could not load these rows/i.test(node.textContent || ''));
     for (const banner of banners) record('UI_LOCKOUT_BANNER', { view_id: current, severity: 'high', error_message: (banner.textContent || '').trim().slice(0, 300) });
   }
-  global.addEventListener('error', event => record('UNHANDLED_JS_EXCEPTION', { severity: 'high', error_message: String(event.message || 'Unhandled error'), suspected_functions: [String(event.filename || '').split('/').pop() + ':' + (event.lineno || '')] }));
-  global.addEventListener('unhandledrejection', event => record('UNHANDLED_PROMISE_REJECTION', { severity: 'high', error_message: String(event.reason?.message || event.reason || 'Unhandled rejection') }));
+  global.addEventListener('error', event => { if (!isIgnorableRuntimeNoise(event.message)) record('UNHANDLED_JS_EXCEPTION', { severity: 'high', error_message: String(event.message || 'Unhandled error'), suspected_functions: [String(event.filename || '').split('/').pop() + ':' + (event.lineno || '')] }); });
+  global.addEventListener('unhandledrejection', event => { const message = String(event.reason?.message || event.reason || 'Unhandled rejection'); if (!isIgnorableRuntimeNoise(message)) record('UNHANDLED_PROMISE_REJECTION', { severity: 'high', error_message: message }); });
   const observer = new MutationObserver(inspect);
   if (document.documentElement) observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'aria-busy', 'data-loading', 'data-eval-report-counts-ready', 'data-eval-report-count'] });
   global.addEventListener('online', () => { state.reportRetryMs = 1000; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } void flushPendingReports(); });
