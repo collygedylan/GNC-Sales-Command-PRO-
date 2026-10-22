@@ -455,13 +455,143 @@
             return withProductionLiveSyncSignal(options.signal || null, (cohortSignal) =>
                 runDedupeSupabaseRead(readKey, ({ signal }) => callAuraLlmRouter(payload, { ...options, signal }), { signal: cohortSignal, maxAttempts: 1, explicitRetry: options.explicitRetry === true }));
         }
+        function parseAuraDeterministicInventoryQuestion(value = '') {
+            const question = String(value || '').normalize('NFKC').trim();
+            if (!question || !/\b(?:inventory|stock|available|on[ -]?hand|review|location|lot|where|how many)\b/i.test(question)) return null;
+            const sizeMatch = question.match(/(?:^|\s)(#\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*(?:DP|GP|SP|QT|PT|GAL|G))(?![A-Z0-9])/i);
+            const locationMatch = question.match(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/i);
+            const itemCodeMatch = question.match(/\b(?:item\s*code|itemcode)\s*(?:#|:)?\s*([A-Z0-9][A-Z0-9._-]{1,99})\b/i);
+            const metric = /\bopen stock\b/i.test(question) ? 'openStock'
+                : /\bon[ -]?hand\b/i.test(question) ? 'onHand'
+                    : /\breview(?:ed)?\b/i.test(question) ? 'review' : /\blocations?|\bwhere\b/i.test(question) ? 'locations' : 'available';
+            const stripped = question
+                .replace(/\b(?:item\s*code|itemcode)\s*(?:#|:)?\s*[A-Z0-9][A-Z0-9._-]{1,99}\b/ig, ' ')
+                .replace(/(?:^|\s)(?:#\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*(?:DP|GP|SP|QT|PT|GAL|G))(?![A-Z0-9])/ig, ' ')
+                .replace(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/ig, ' ')
+                .replace(/\b(?:how many|how much|show me|find|check|what is|what are|do we have|are there|in open stock|open stock|on[ -]?hand|available|reviewed?|inventory|stock|locations?|lots?|where|current|total|units?|plants?|items?|of|the|for|at|in|by|please)\b/ig, ' ')
+                .replace(/[^A-Z0-9._#-]+/ig, ' ')
+                .trim();
+            const plantTerms = stripped.toLowerCase().split(/\s+/).filter(term => term.length > 1).slice(0, 8);
+            if (!itemCodeMatch && !plantTerms.length) return null;
+            return {
+                question,
+                itemcode: String(itemCodeMatch?.[1] || '').trim().toUpperCase(),
+                plantTerms,
+                contSize: String(sizeMatch?.[1] || '').replace(/\s+/g, '').toUpperCase(),
+                locationCode: String(locationMatch?.[0] || '').trim().toUpperCase(),
+                metric
+            };
+        }
+        function buildAuraDeterministicInventoryAnswer(query, rows = [], options = {}) {
+            if (!query || !Array.isArray(rows)) return null;
+            const text = value => String(value ?? '').normalize('NFKC').trim();
+            const normalized = value => text(value).toLowerCase().replace(/[^a-z0-9#]+/g, ' ').trim();
+            const sizeKey = value => text(value).toUpperCase().replace(/\s+/g, '').replace(/^HASH/, '#');
+            const number = value => {
+                const parsed = Number(text(value).replace(/,/g, ''));
+                return Number.isFinite(parsed) ? parsed : 0;
+            };
+            const uniqueRows = new Map();
+            rows.forEach((row, index) => {
+                if (!row || typeof row !== 'object') return;
+                const commonName = text(firstNonEmptyValue(row.COMMONNAME, row.commonname, ''));
+                const itemcode = text(firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''));
+                const contSize = text(firstNonEmptyValue(row.CONTSIZE, row.contsize, ''));
+                const locationcode = text(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, ''));
+                const lotcode = text(firstNonEmptyValue(row.LOTCODE, row.lotcode, ''));
+                const season = text(firstNonEmptyValue(row.SEASON, row.season, ''));
+                const haystack = normalized(`${commonName} ${itemcode}`);
+                if (query.itemcode && itemcode.toUpperCase() !== query.itemcode) return;
+                if (!query.itemcode && !query.plantTerms.every(term => haystack.includes(normalized(term)))) return;
+                if (query.contSize && sizeKey(contSize) !== sizeKey(query.contSize)) return;
+                if (query.locationCode && !locationcode.toUpperCase().startsWith(query.locationCode)) return;
+                if (/SHFT/i.test(text(firstNonEmptyValue(row.DESIGITEM, row.desigitem, '')))) return;
+                const assignment = text(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '')).toLowerCase();
+                if (['not_on_inventory_dylan', 'not_on_inventory_jd', 'not_on_inventory_denied'].includes(assignment)) return;
+                const entry = {
+                    unique_id: text(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, `${itemcode}|${locationcode}|${lotcode}|${season}|${index}`)),
+                    itemcode, commonname: commonName, contsize: contSize, locationcode, lotcode, season,
+                    openStock: number(firstNonEmptyValue(row.S_LTS, row.s_lts, 0)),
+                    available: number(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, 0)),
+                    onHand: number(firstNonEmptyValue(row.PTRONHAND, row.ptronhand, 0)),
+                    review: number(firstNonEmptyValue(row.PTRREVIEWED, row.ptrreviewed, 0)),
+                    priority: text(firstNonEmptyValue(row.PRIORITY, row.priority, ''))
+                };
+                uniqueRows.set(entry.unique_id || `${itemcode}|${locationcode}|${lotcode}|${season}`, entry);
+            });
+            const matchedRows = [...uniqueRows.values()].sort((left, right) =>
+                String(left.season).localeCompare(String(right.season), 'en', { numeric: true, sensitivity: 'base' })
+                || String(left.locationcode).localeCompare(String(right.locationcode), 'en', { numeric: true, sensitivity: 'base' })
+                || String(left.lotcode).localeCompare(String(right.lotcode), 'en', { numeric: true, sensitivity: 'base' }));
+            const totals = matchedRows.reduce((sum, row) => ({
+                openStock: sum.openStock + row.openStock,
+                available: sum.available + row.available,
+                onHand: sum.onHand + row.onHand,
+                review: sum.review + row.review
+            }), { openStock: 0, available: 0, onHand: 0, review: 0 });
+            const seasons = new Map();
+            matchedRows.forEach(row => {
+                const key = row.season || 'Unspecified';
+                const total = seasons.get(key) || { openStock: 0, available: 0, onHand: 0 };
+                total.openStock += row.openStock; total.available += row.available; total.onHand += row.onHand;
+                seasons.set(key, total);
+            });
+            const label = matchedRows[0]?.commonname || query.itemcode || query.plantTerms.join(' ') || 'Inventory';
+            const sizeLabel = matchedRows[0]?.contsize || query.contSize;
+            const format = value => new Intl.NumberFormat('en-US').format(Number(value) || 0);
+            const seasonSummary = [...seasons].map(([season, total]) => `${season}: ${format(total.openStock)} Open Stock`).join('; ');
+            const reply = matchedRows.length
+                ? `${label}${sizeLabel ? ` · ${sizeLabel}` : ''}: ${format(totals.openStock)} Open Stock, ${format(totals.available)} Available, ${format(totals.onHand)} On Hand, and ${format(totals.review)} Review across ${matchedRows.length} location/lot row${matchedRows.length === 1 ? '' : 's'}${seasonSummary ? `. ${seasonSummary}` : ''}.`
+                : `I found no matching inventory rows for ${query.itemcode || query.plantTerms.join(' ')}${query.contSize ? ` · ${query.contSize}` : ''}.`;
+            return {
+                ok: true, requestId: options.requestId || null, reply, speech: reply,
+                actions: matchedRows.length ? [{ type: 'records', title: 'Inventory', rows: matchedRows.slice(0, 50), columns: [
+                    { key: 'season', label: 'Season' }, { key: 'locationcode', label: 'Location' }, { key: 'lotcode', label: 'Lot' },
+                    { key: 'openStock', label: 'Open Stock' }, { key: 'available', label: 'Available' }, { key: 'onHand', label: 'On Hand' }, { key: 'review', label: 'Review' }
+                ] }] : [],
+                interpretation: { engine: 'deterministic-inventory-v1', intent: 'inventory', metric: query.metric, complete: options.complete !== false },
+                source: { kind: options.source || 'local-inventory', checkedAt: options.checkedAt || new Date().toISOString(), complete: options.complete !== false },
+                deterministic: true
+            };
+        }
+        async function requestAuraDeterministicInventoryAnswer(text, options = {}) {
+            const query = parseAuraDeterministicInventoryQuestion(text);
+            if (!query) return null;
+            try {
+                const response = await requestAuraV2Inventory({ operation: 'resolve_query', question: query.question }, { ...options, explicitRetry: true });
+                const data = response?.data ?? response;
+                const serverRows = Array.isArray(data?.rows) ? data.rows : [];
+                const answer = buildAuraDeterministicInventoryAnswer(query, serverRows, {
+                    requestId: options.requestId, source: 'ph_master_inventory', checkedAt: data?.checkedAt, complete: data?.complete !== false
+                });
+                if (answer && (serverRows.length || data?.complete === true)) return answer;
+            } catch (error) {
+                if (options.signal?.aborted) throw error;
+            }
+            return buildAuraDeterministicInventoryAnswer(query, Array.isArray(fullInventory) ? fullInventory : [], {
+                requestId: options.requestId, source: 'masterInventory', complete: true
+            });
+        }
         async function requestAuraQuery(body, options = {}) {
             // Conversation history operations keep request-scoped idempotency and
             // use the server-verified Gemini router for every authorized profile.
             const request = { ...options, requestId: options.requestId || crypto.randomUUID() };
             if (!isAuraRouterWidgetAuthorized()) throw Object.assign(new Error('AURA requires verified router access.'), { status: 403 });
-            if (auraRouterCapabilities?.configured !== true) throw Object.assign(new Error('Aura is not configured yet. Contact your administrator.'), { status: 503, code: 'AURA_LLM_UNAVAILABLE' });
-            if (body?.mode !== 'command') return callAuraLlmRouter(body, request);
+            if (body?.mode !== 'command') {
+                try { return await callAuraLlmRouter(body, request); }
+                catch (error) {
+                    if (body?.mode === 'create' && !request.signal?.aborted) {
+                        return { ok: true, conversationId: crypto.randomUUID(), revision: 0, localOnly: true };
+                    }
+                    throw error;
+                }
+            }
+            const deterministicQuery = parseAuraDeterministicInventoryQuestion(body?.text);
+            if (auraRouterCapabilities?.configured !== true) {
+                const fallback = deterministicQuery ? await requestAuraDeterministicInventoryAnswer(body.text, request) : null;
+                if (fallback) return fallback;
+                throw Object.assign(new Error('Aura is not configured yet. Contact your administrator.'), { status: 503, code: 'AURA_LLM_UNAVAILABLE' });
+            }
 
             const identity = getSupabaseReadIdentityScope();
             const originalTurnId = String(body.turnId || request.requestId);
@@ -476,7 +606,11 @@
                 return await callAuraLlmRouter(command, { ...request, requestId: originalTurnId });
             } catch (error) {
                 if (String(error?.code || '').toUpperCase() !== 'AURA_APP_CONTEXT_STALE'
-                    || Number(error?.status) !== 409) throw error;
+                    || Number(error?.status) !== 409) {
+                    const fallback = deterministicQuery ? await requestAuraDeterministicInventoryAnswer(body.text, { ...request, requestId: originalTurnId }) : null;
+                    if (fallback) return fallback;
+                    throw error;
+                }
                 if (!isAuraRouterWidgetAuthorized() || identity !== getSupabaseReadIdentityScope()
                     || request.signal?.aborted) throw error;
 
@@ -528,7 +662,13 @@
                 // turn. Reuse the interaction ID so an in-flight cancel still
                 // addresses this command after its single context refresh.
                 const retryBody = { ...body, turnId: originalTurnId, appContext: refreshedContext };
-                return callAuraLlmRouter(retryBody, { ...request, requestId: originalTurnId });
+                try {
+                    return await callAuraLlmRouter(retryBody, { ...request, requestId: originalTurnId });
+                } catch (retryError) {
+                    const fallback = deterministicQuery ? await requestAuraDeterministicInventoryAnswer(body.text, { ...request, requestId: originalTurnId }) : null;
+                    if (fallback) return fallback;
+                    throw retryError;
+                }
             }
         }
         async function openAuraQueryAction(action, options = {}) {
@@ -19512,7 +19652,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                             await waitForDriveEvidenceRetry(300, controller.signal);
                         }
                     }
-                    const safeError = new Error('Drive evidence could not be saved. Retry when service is available.');
+                    const safeError = new Error('Drive evidence is queued to retry when service is available.');
                     safeError.code = String(lastError && lastError.code || 'DRIVE_SAVE_RETRYABLE').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80);
                     throw safeError;
                 });
@@ -166202,7 +166342,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete-error' : (isSilentAutoSave ? ':autosave-error' : ':save-error')}`);
                     if (!isSilentAutoSave) showToast(
-                        driveConflict ? 'Review Required' : (prefix === 'req-' && isComplete ? 'Request Still Open' : 'Network Error'),
+                        driveConflict ? 'Review Required' : (prefix === 'req-' && isComplete ? 'Save Needs Retry' : 'Network Error'),
                         prefix === 'req-' && isComplete
                             ? 'The request was not completed. Your entries are still here. Refresh the row and tap Mark Done again.'
                             : (driveConflict ? 'This row changed elsewhere. Your entries remain on this device; review them before retrying.' : (message || 'Could not reach database.')),

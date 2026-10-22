@@ -80,6 +80,15 @@ test('v2.3.43 keeps watchdog status rendering modular and cache-busted', () => {
   assert.match(panel, /RESOLVED_SKILL_FOLDERS/);
 });
 
+test('v2.3.43 keeps AURA inventory recovery bounded and deterministic', () => {
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const router = read('supabase/functions/_shared/aura-voice-handler.ts');
+  assert.match(runtime, /requestAuraDeterministicInventoryAnswer[^]*operation: 'resolve_query'/);
+  assert.match(appApi, /AURA_MAX_INVENTORY_ROWS[^]*resolveAuraDeterministicInventoryQuery/);
+  assert.match(router, /deterministicInventoryTool[^]*signal\.aborted/);
+});
+
 test('ten architecture clusters and twelve registered skills stay synchronized with source layout', () => {
   const inventory = JSON.parse(read('docs/architecture/agdata-static-inventory.json'));
   const layout = inventory.sourceLayout;

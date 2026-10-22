@@ -1,8 +1,17 @@
 // @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import { mountAuraQueryPanel, boundedAuraChatHistory } from '../components/common/auraQueryPanel.js';
+
+const appRuntimeSource = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+function extractRuntimeFunction(name) {
+  const match = appRuntimeSource.match(new RegExp(`        function ${name}\\([^]*?^        }`, 'm'));
+  assert.ok(match, name);
+  return match[0];
+}
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
 function fixture(handler = async () => ({})) {
@@ -168,6 +177,43 @@ test('a transport retry keeps the turn ID so the server can replay a committed a
     assert.equal(f.calls.at(-1).turnId, original.turnId);
     assert.match(f.panel.textContent, /Verified result/);
   } finally { f.close(); }
+});
+
+test('open-stock questions fall back to bounded deterministic inventory and clear processing state', async () => {
+  const context = vm.createContext({
+    Intl, Date,
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && String(value).trim() !== '') ?? '',
+  });
+  vm.runInContext(`${extractRuntimeFunction('parseAuraDeterministicInventoryQuestion')}\n${extractRuntimeFunction('buildAuraDeterministicInventoryAnswer')}`, context);
+  const query = context.parseAuraDeterministicInventoryQuestion('how many 3DP baby gem in open stock?');
+  assert.deepEqual(JSON.parse(JSON.stringify(query.plantTerms)), ['baby', 'gem']);
+  assert.equal(query.contSize, '3DP');
+  assert.equal(query.metric, 'openStock');
+  const answer = context.buildAuraDeterministicInventoryAnswer(query, [
+    { unique_id: 'one', commonname: 'Baby Gem Boxwood', itemcode: 'BG-3', contsize: '3DP', locationcode: 'A.01.001', lotcode: '27.S1', season: 'S1', s_lts: 7, ptravailable: 9, ptronhand: 11, ptrreviewed: 2 },
+    { unique_id: 'two', commonname: 'Baby Gem Boxwood', itemcode: 'BG-3', contsize: '3DP', locationcode: 'A.01.002', lotcode: '27.S1', season: 'S1', s_lts: 5, ptravailable: 6, ptronhand: 8, ptrreviewed: 1 },
+    { unique_id: 'wrong-size', commonname: 'Baby Gem Boxwood', itemcode: 'BG-7', contsize: '#7', locationcode: 'A.02.001', lotcode: '27.S1', season: 'S1', s_lts: 99, ptravailable: 99, ptronhand: 99 },
+  ], { source: 'masterInventory' });
+  assert.match(answer.reply, /12 Open Stock, 15 Available, 19 On Hand, and 3 Review/);
+  assert.equal(answer.actions[0].rows.length, 2);
+
+  let resolveRequest;
+  const panel = fixture(async body => body.mode === 'command' ? await new Promise(resolve => { resolveRequest = resolve; }) : {});
+  try {
+    panel.input.value = 'how many 3DP baby gem in open stock?';
+    const pending = panel.ui.submit(panel.input.value);
+    await flush();
+    assert.equal(panel.input.value, '', 'submission clears the input before the request finishes');
+    resolveRequest(answer);
+    await pending;
+    assert.equal(panel.busy.at(-1), false, 'finally resets the AURA Processing state');
+    assert.match(panel.panel.textContent, /12 Open Stock/);
+  } finally { panel.close(); }
+
+  const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+  const router = readFileSync(new URL('../supabase/functions/_shared/aura-voice-handler.ts', import.meta.url), 'utf8');
+  assert.match(appApi, /operation === "resolve_query"[^]*resolveAuraDeterministicInventoryQuery/);
+  assert.match(router, /deterministicInventoryTool[^]*routeAuraWithGemini[^]*tool = deterministicTool/);
 });
 
 test('a conversation whose sources are revoked can still be explicitly deleted', async () => {

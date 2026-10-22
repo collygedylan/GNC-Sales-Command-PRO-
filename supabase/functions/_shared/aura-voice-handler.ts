@@ -1,4 +1,4 @@
-import { AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, validateAuraHistory, validateAuraTool, validateInventoryFilters, validateSocFilters, type SocFilters, type SocToolName, type AuraActor, type AuraTool, type InventoryFilters } from "./aura-gemini.ts";
+import { AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, validateAuraHistory, validateAuraTool, validateInventoryFilters, validateSocFilters, type SocFilters, type SocToolName, type AuraActor, type AuraTool, type InventoryFilters, type InventoryOperation } from "./aura-gemini.ts";
 import { resolveAuraIntent } from "./aura-query.ts";
 
 import { parseAuraAppContext, requestedAuraVariants, spokenAuraSeason, signedAuraQuantity } from "./aura-voice-scope.ts";
@@ -154,6 +154,30 @@ function explicitFilters(question: string, proposed: InventoryFilters): Inventor
   else if (parsed.seasonReference) { delete filters.season; if (!Object.hasOwn(parsed, "salesYear")) delete filters.salesYear; }
   if (!filters.season && !filters.seasonReference) filters.seasonReference = "current";
   return validateInventoryFilters(filters);
+}
+function deterministicInventoryTool(question: string, active: ReturnType<typeof parseAuraAppContext>): Extract<AuraTool, { name: "inventory" }> | null {
+  try {
+    const intent = resolveAuraIntent(question, {});
+    if (intent.mode !== "inventory") return null;
+    const operation = String(intent.operation || "stock") as InventoryOperation;
+    if (!["stock", "locations", "ownership", "unassigned", "lot", "maximum"].includes(operation)) return null;
+    const filters = validateInventoryFilters(intent.filters);
+    if (!filters.itemcode && !filters.commonName && !filters.productText && !filters.genus) return null;
+    if (operation === "stock") {
+      filters.countMode = "quantity";
+      if (/\bopen stock\b/i.test(question)) {
+        filters.metric = "s_lts";
+        filters.openStockOnly = false;
+      } else if (/\bon[ -]?hand\b/i.test(question)) filters.metric = "ptronhand";
+      else filters.metric = "ptravailable";
+      filters.season = active.season;
+      filters.salesYear = active.salesyear;
+      delete filters.seasonReference;
+    }
+    return { name: "inventory", operation, filters };
+  } catch {
+    return null;
+  }
 }
 function recordAction(title: string, rows: ObjectValue[]): ObjectValue[] {
   const labels: Record<string, string> = { commonName: "Common Name", commonname: "Common Name", itemcode: "Item Code", contSize: "Size", contsize: "Size",
@@ -393,7 +417,8 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
   const history = validateAuraHistory(body.history);
   const domain = await store.domain(signal);
   const active = parseAuraAppContext(await store.appContext(signal));
-  if (body.appContext !== undefined && !same(parseAuraAppContext(body.appContext), active)) {
+  const deterministicTool = deterministicInventoryTool(question, active);
+  if (body.appContext !== undefined && !same(parseAuraAppContext(body.appContext), active) && !deterministicTool) {
     throw Object.assign(new Error("AURA_APP_CONTEXT_STALE"), { appContext: active });
   }
   const args = memoryArgs({ ...body, turnId: body.turnId ?? crypto.randomUUID() }, "begin");
@@ -440,9 +465,16 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       if ((more || selection) && oldTool.name) { const { name, ...values } = oldTool; tool = validateAuraTool(name, values, true); }
       else if (selectionNumber) tool = { name: "clarify", reason: "ambiguous" };
       else if (knownOutsideDomain(question)) tool = { name: "refuse" };
-      else tool = await routeAuraWithGemini({ text: question, history, actor, context: { ...modelContext(context), appContext: active,
-        glossary: domain.glossary.filter(entry => question.toLowerCase().includes(entry.term)).slice(0, 30) }, apiKey: deps.apiKey(),
-        signal: AbortSignal.any([signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: deps.fetcher, reserve: bytes => store.reserve(bytes, signal) });
+      else {
+        try {
+          tool = await routeAuraWithGemini({ text: question, history, actor, context: { ...modelContext(context), appContext: active,
+            glossary: domain.glossary.filter(entry => question.toLowerCase().includes(entry.term)).slice(0, 30) }, apiKey: deps.apiKey(),
+            signal: AbortSignal.any([signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: deps.fetcher, reserve: bytes => store.reserve(bytes, signal) });
+        } catch (error) {
+          if (!deterministicTool || signal.aborted) throw error;
+          tool = deterministicTool;
+        }
+      }
     }
     const follow = more || !!selection || /^(?:and|what about|how about|those|these|are there any)\b/i.test(question) || /\b(?:those|these|them|there)\b/i.test(question);
     const spokenVariants = requestedAuraVariants(question);

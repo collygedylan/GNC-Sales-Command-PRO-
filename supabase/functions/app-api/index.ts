@@ -4695,14 +4695,14 @@ async function handleInventoryRead(
   }
 }
 
-const AURA_V2_OPERATIONS = new Set(["catalog", "count", "maximum", "lots", "validate_draft", "match"]);
+const AURA_V2_OPERATIONS = new Set(["catalog", "count", "maximum", "lots", "validate_draft", "match", "resolve_query"]);
 const AURA_V2_METRICS = new Set(["ptravailable", "ptronhand"]);
 const AURA_V2_SEASONS = new Set(["S1", "F1", "U1", "U2", "U3", "X", "Y", "Z"]);
 
 export { auraInventoryV2ProfileMatches };
 
 export function parseAuraInventoryV2Request(payload: Record<string, unknown>) {
-  const allowed = new Set(["action", "operation", "itemcode", "commonName", "contSize", "locationCode", "metric", "openStockOnly", "quantity", "season", "cursor", "limit", "lines"]);
+  const allowed = new Set(["action", "operation", "itemcode", "commonName", "contSize", "locationCode", "metric", "openStockOnly", "quantity", "season", "cursor", "limit", "lines", "question"]);
   if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("AURA_V2_REQUEST_INVALID");
   const operation = String(payload.operation || "").trim().toLowerCase();
   const itemcode = String(payload.itemcode || "").trim();
@@ -4716,11 +4716,12 @@ export function parseAuraInventoryV2Request(payload: Record<string, unknown>) {
   const limit = payload.limit == null ? 100 : Number(payload.limit);
   const cursor = payload.cursor == null ? null : payload.cursor;
   const lines = payload.lines == null ? [] : payload.lines;
+  const question = String(payload.question || "").normalize("NFKC").trim().replace(/\s+/g, " ");
   if (!Array.isArray(lines)) throw new Error("AURA_V2_REQUEST_INVALID");
   if (!AURA_V2_OPERATIONS.has(operation) || !AURA_V2_METRICS.has(metric)
     || typeof openStockOnly !== "boolean"
     || (season !== null && !AURA_V2_SEASONS.has(season))
-    || itemcode.length > 100 || commonName.length > 160 || contSize.length > 48 || locationCode.length > 64
+    || itemcode.length > 100 || commonName.length > 160 || contSize.length > 48 || locationCode.length > 64 || question.length > 300
     || !Number.isInteger(limit) || limit < 1 || limit > 500
     || (cursor !== null && (!cursor || typeof cursor !== "object" || Array.isArray(cursor)))) {
     throw new Error("AURA_V2_REQUEST_INVALID");
@@ -4729,11 +4730,12 @@ export function parseAuraInventoryV2Request(payload: Record<string, unknown>) {
   if ((operation === "catalog" && cursor !== null && cursorKeys !== "contsize,itemcode")
     || (operation === "count" && cursor !== null && cursorKeys !== "unique_id")
     || (operation === "lots" && cursor !== null && cursorKeys !== "priority,unique_id")
-    || (["maximum", "validate_draft", "match"].includes(operation) && cursor !== null)) {
+    || (["maximum", "validate_draft", "match", "resolve_query"].includes(operation) && cursor !== null)) {
     throw new Error("AURA_V2_CURSOR_INVALID");
   }
   if (["count", "lots"].includes(operation) && !itemcode) throw new Error("AURA_V2_ITEMCODE_REQUIRED");
   if (operation === "match" && !commonName) throw new Error("AURA_V2_NAME_REQUIRED");
+  if (operation === "resolve_query" && !question) throw new Error("AURA_QUERY_TEXT_REQUIRED");
   if (operation === "lots" && (quantity == null || !Number.isInteger(quantity) || quantity < 1 || quantity > 999_999)) throw new Error("AURA_V2_QUANTITY_INVALID");
   if (operation !== "lots" && quantity != null && (quantity <= 0 || quantity > 999_999)) throw new Error("AURA_V2_QUANTITY_INVALID");
   if (operation === "validate_draft") {
@@ -4748,12 +4750,75 @@ export function parseAuraInventoryV2Request(payload: Record<string, unknown>) {
   } else if (Array.isArray(lines) && lines.length) {
     throw new Error("AURA_V2_REQUEST_INVALID");
   }
-  return { operation, itemcode, commonName, contSize, locationCode, metric, openStockOnly, quantity, season, cursor, limit, lines };
+  return { operation, itemcode, commonName, contSize, locationCode, metric, openStockOnly, quantity, season, cursor, limit, lines, question };
 }
 
-const AURA_INVENTORY_FIELDS = "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,priority,ptronhand,s_lts,season,saleyear,desigitem,app_tab_assignment";
+const AURA_INVENTORY_FIELDS = "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,ptrreviewed,priority,ptronhand,s_lts,season,saleyear,desigitem,app_tab_assignment";
 const AURA_MAX_INVENTORY_ROWS = 5000;
 const AURA_INVENTORY_PAGE_SIZE = 500;
+
+export function parseAuraDeterministicInventoryQuestion(value: unknown) {
+  const question = String(value || "").normalize("NFKC").trim();
+  if (!question || !/\b(?:inventory|stock|available|on[ -]?hand|review|location|lot|where|how many)\b/i.test(question)) return null;
+  const sizeMatch = question.match(/(?:^|\s)(#\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*(?:DP|GP|SP|QT|PT|GAL|G))(?![A-Z0-9])/i);
+  const locationMatch = question.match(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/i);
+  const itemCodeMatch = question.match(/\b(?:item\s*code|itemcode)\s*(?:#|:)?\s*([A-Z0-9][A-Z0-9._-]{1,99})\b/i);
+  const metric = /\bopen stock\b/i.test(question) ? "openStock"
+    : /\bon[ -]?hand\b/i.test(question) ? "onHand"
+    : /\breview(?:ed)?\b/i.test(question) ? "review" : /\blocations?|\bwhere\b/i.test(question) ? "locations" : "available";
+  const stripped = question
+    .replace(/\b(?:item\s*code|itemcode)\s*(?:#|:)?\s*[A-Z0-9][A-Z0-9._-]{1,99}\b/ig, " ")
+    .replace(/(?:^|\s)(?:#\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*(?:DP|GP|SP|QT|PT|GAL|G))(?![A-Z0-9])/ig, " ")
+    .replace(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/ig, " ")
+    .replace(/\b(?:how many|how much|show me|find|check|what is|what are|do we have|are there|in open stock|open stock|on[ -]?hand|available|reviewed?|inventory|stock|locations?|lots?|where|current|total|units?|plants?|items?|of|the|for|at|in|by|please)\b/ig, " ")
+    .replace(/[^A-Z0-9._#-]+/ig, " ").trim();
+  const plantTerms = stripped.toLocaleLowerCase("en-US").split(/\s+/).filter(term => term.length > 1).slice(0, 8);
+  if (!itemCodeMatch && !plantTerms.length) return null;
+  return {
+    question,
+    itemcode: String(itemCodeMatch?.[1] || "").trim().toUpperCase(),
+    plantTerms,
+    contSize: String(sizeMatch?.[1] || "").replace(/\s+/g, "").toUpperCase(),
+    locationCode: String(locationMatch?.[0] || "").trim().toUpperCase(),
+    metric,
+  };
+}
+
+async function resolveAuraDeterministicInventoryQuery(question: string, signal?: AbortSignal) {
+  const parsed = parseAuraDeterministicInventoryQuestion(question);
+  if (!parsed) throw new Error("AURA_QUERY_TEXT_REQUIRED");
+  const fetchedRows: Record<string, unknown>[] = [];
+  for (let offset = 0; offset < AURA_MAX_INVENTORY_ROWS; offset += AURA_INVENTORY_PAGE_SIZE) {
+    let builder = supabase.from("ph_master_inventory").select(AURA_INVENTORY_FIELDS);
+    if (parsed.itemcode) builder = builder.eq("itemcode", parsed.itemcode);
+    else builder = builder.ilike("commonname", `%${auraSearchPattern(parsed.plantTerms.join(" "))}%`);
+    if (parsed.locationCode) builder = builder.ilike("locationcode", `${auraSearchPattern(parsed.locationCode)}%`);
+    const pageQuery = builder.order("unique_id", { ascending: true }).range(offset, offset + AURA_INVENTORY_PAGE_SIZE - 1);
+    const { data, error } = await (signal ? pageQuery.abortSignal(signal) : pageQuery);
+    if (error) throw error;
+    const page = Array.isArray(data) ? data.map(row => jsonObject(jsonValue(row))) : [];
+    fetchedRows.push(...page);
+    if (page.length < AURA_INVENTORY_PAGE_SIZE) break;
+  }
+  const normalized = (value: unknown) => String(value ?? "").normalize("NFKC").toLocaleLowerCase("en-US").replace(/[^a-z0-9#]+/g, " ").trim();
+  const rows = fetchedRows.filter(row => {
+    const haystack = normalized(`${row.commonname || ""} ${row.itemcode || ""}`);
+    if (parsed.itemcode && String(row.itemcode || "").trim().toUpperCase() !== parsed.itemcode) return false;
+    if (!parsed.itemcode && !parsed.plantTerms.every(term => haystack.includes(normalized(term)))) return false;
+    if (parsed.contSize && auraCanonicalSize(row.contsize) !== auraCanonicalSize(parsed.contSize)) return false;
+    if (parsed.locationCode && !String(row.locationcode || "").trim().toUpperCase().startsWith(parsed.locationCode)) return false;
+    if (String(row.desigitem || "").toUpperCase().includes("SHFT")) return false;
+    return !["not_on_inventory_dylan", "not_on_inventory_jd", "not_on_inventory_denied"].includes(String(row.app_tab_assignment || "").trim().toLowerCase());
+  });
+  return {
+    ok: true,
+    complete: fetchedRows.length < AURA_MAX_INVENTORY_ROWS,
+    deterministic: true,
+    metric: parsed.metric,
+    checkedAt: new Date().toISOString(),
+    rows,
+  };
+}
 
 export async function handleAuraInventoryV2(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
@@ -4788,6 +4853,9 @@ export async function handleAuraInventoryV2(
     ? AbortSignal.any([options.signal, deadline])
     : deadline || options.signal;
   try {
+    if (input.operation === "resolve_query") {
+      return jsonResponse({ ok: true, data: await resolveAuraDeterministicInventoryQuery(input.question, options.signal) });
+    }
     timeoutStage = "database";
     const { data, error } = await auraInventoryV2Rpc(supabase, input, rpcSignal);
     if (error) throw error;

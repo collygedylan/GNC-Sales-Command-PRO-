@@ -1323,6 +1323,7 @@ test('Request numeric zero survives background hydration and keypad text has no 
  assert.ok(appSource.includes("const spec = normalizeDetailSpecTextForSave(document.getElementById('req-spec')"));
  assert.ok(appSource.includes("target.id !== 'req-comments'"));
  assert.doesNotMatch(appSource,/Could not load AV options right now\./);
+ assert.doesNotMatch(appSource,/Request Still Open|Drive evidence could not be saved/);
 });
 
 
