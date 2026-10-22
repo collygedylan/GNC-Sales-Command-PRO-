@@ -36,6 +36,18 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_projects: {
+        Row: { id: string; project_name: string; instructions: string; assigned_users: Json; status: string; created_by: string; created_by_name: string; created_at: string; updated_at: string }
+        Insert: { id?: string; project_name: string; instructions?: string; assigned_users?: Json; status?: string; created_by: string; created_by_name?: string; created_at?: string; updated_at?: string }
+        Update: { id?: string; project_name?: string; instructions?: string; assigned_users?: Json; status?: string; created_by?: string; created_by_name?: string; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      inventory_project_rows: {
+        Row: { id: string; project_id: string; itemcode: string; locationcode: string; lotcode: string; commonname: string; contsize: string; row_instructions: string; status: string; completed_by: string | null; completed_at: string | null; snapshot_metrics: Json; added_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; project_id: string; itemcode: string; locationcode: string; lotcode: string; commonname?: string; contsize?: string; row_instructions?: string; status?: string; completed_by?: string | null; completed_at?: string | null; snapshot_metrics?: Json; added_by: string; created_at?: string; updated_at?: string }
+        Update: { id?: string; project_id?: string; itemcode?: string; locationcode?: string; lotcode?: string; commonname?: string; contsize?: string; row_instructions?: string; status?: string; completed_by?: string | null; completed_at?: string | null; snapshot_metrics?: Json; added_by?: string; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
       aura_domain_glossary: {
         Row: {
           canonical_entity: string
@@ -20115,4 +20127,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

@@ -6315,8 +6315,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     const {data,error} = await supabase.rpc("request_work_command_v1", {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
       ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})});
     if (error && /MASTER_SNAPSHOT_NOT_READY|REVISION_CHANGED|IMPORTING|INTERRUPTED/.test(String(error.message || ""))) {
-      await supabase.from("app_dataset_revisions").update({ state:"ready", error_message:null, updated_at:new Date().toISOString() })
-        .in("dataset", ["ph_active_request","ph_master_inventory","ph_request_delivery_outbox"])
+      await supabase.from("app_dataset_revisions").update({ state:"ready", changed_at:new Date().toISOString() })
+        .in("key", ["ph_active_request","ph_master_inventory","ph_request_delivery_outbox"])
         .in("state", ["interrupted","importing"]);
       const { data: retryData, error: retryError } = await supabase.rpc("request_work_command_v1", {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
         ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})});

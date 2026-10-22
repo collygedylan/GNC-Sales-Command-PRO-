@@ -37,6 +37,6 @@ alter table public.inventory_projects enable row level security;
 alter table public.inventory_project_rows enable row level security;
 
 update public.app_dataset_revisions
-set state='ready', error_message=null, updated_at=now()
-where dataset in ('ph_active_request','ph_master_inventory','ph_request_delivery_outbox')
+set state='ready', changed_at=now()
+where key in ('ph_active_request','ph_master_inventory','ph_request_delivery_outbox')
   and state='interrupted';
