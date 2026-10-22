@@ -637,8 +637,8 @@ function runUrgentDriveAroundSync_(event) {
   }
 }
 
-function runUrgentDriveAroundSync() {
-  return runUrgentDriveAroundSync_({});
+function runUrgentDriveAroundSync(event) {
+  return runUrgentDriveAroundSync_(event || {});
 }
 
 // =========================================================================
