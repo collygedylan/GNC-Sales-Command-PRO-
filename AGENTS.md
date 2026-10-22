@@ -8,6 +8,9 @@ These protocols govern all engineering, testing, and deployment work across the 
 
 **Model, Quota & Subscription Autonomy:**
 - **OpenAI Codex Token & Effort Hygiene:** Execute with surgical precision (`Medium` / `High` effort). Stop immediately and deploy once all required checks pass—never invent unprompted post-pass edge-case rewrites. Keep test output quiet (print compact pass/fail summaries; dump full stack traces only on failure) to prevent context-compaction loops.
+- **Effort Defaults:** Use `low` reasoning for CSS, copy, and configuration work; use `medium` for standard multi-file fixes. Avoid `xhigh` reasoning.
+- **Bounded Source Reading:** Never read entire monolithic files (`index.html`, `assets/app-runtime.js`, `supabase/functions/app-api/index.ts`, or `Code.gs`) into context. Locate code with `rg -n` and inspect slices of no more than 120 lines; load only the relevant skill sections.
+- **Batched Tool Use:** Batch independent searches, reads, and checks in parallel where practical, and target completion within 12 tool-call turns.
 - **Docker Business Quota Protection:** Always use **local `Docker Desktop`** (`docker compose` / `docker buildx` with local BuildKit cache mounts) for local validation containers and disposable Postgres 15 SQL fault tests (`0` cloud minutes consumed locally). Reserve **Docker Build Cloud** and **Testcontainers Cloud** (`1,500 min/month` each) strictly for GitHub Actions CI runs.
 - **Supabase Pro Protection:** Run all destructive SQL and trigger fault-injection tests (such as simulated `INTERRUPTED` imports, lineage faults, or Reclass trigger rollbacks) inside disposable local Docker Postgres containers or rolled-back transactions—never leave live production datasets marked `INTERRUPTED`. Use the live Supabase MCP integration strictly for read-only schema/contract verification, Postgres log audits, and applying validated production migrations.
 

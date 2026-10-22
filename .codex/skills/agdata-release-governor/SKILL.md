@@ -28,6 +28,12 @@ Target under 10 seconds. The first two validate scope/orchestration; the third e
 
 Use the existing release tooling. Do not create version-numbered check-v23XX scripts, per-version retained-validation files, receipt-hash gates or `.gnc-local/assemble-*` scripts. Historical receipts are archives, not permission to claim new validation.
 
+## Credit and context conservation
+
+- Default to `low` reasoning for CSS, copy and configuration work, and `medium` for standard multi-file fixes; avoid `xhigh`.
+- Never load whole monolithic source files (`index.html`, `assets/app-runtime.js`, `supabase/functions/app-api/index.ts` or `Code.gs`) into context. Use `rg -n` to find anchors and inspect slices of at most 120 lines; load only skill sections needed for the release.
+- Batch independent tool calls in parallel where practical and target completion within 12 tool-call turns.
+
 - Daytime feature/bug-fix validation uses only `npm run check:inline` plus `node scripts/prepare-release-site.mjs` (combined target under 5 seconds), `deno check` for changed `supabase/functions/**` (under 5 seconds), and focused Node tests for the touched feature (under 10 seconds). Run a targeted single-file SQL check only for a changed migration/RPC. Report measured times; preserve acceptance and authorization checks.
 - Do not run `scripts/run-release-smoke.mjs`, Playwright/browser suites, Docker image builds, the full historical Node matrix, or full migration/database replays during daytime feature releases unless the user explicitly requests them. A failing or slow focused check does not authorize a broader suite.
 - Full regression coverage belongs to `nightly-validation.yml`, scheduled for 8:30 PM America/Chicago or explicitly dispatched with `full_regression: true`. Retain the four-shard Node suite, full backend/SQL/import matrix and browser/performance coverage there.
