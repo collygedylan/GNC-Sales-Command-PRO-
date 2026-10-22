@@ -926,6 +926,7 @@ test('Eval Reports #2 keeps its last-good index while the authoritative report p
     getSupabaseReadIdentityScope:() => 'account-a:login-1', canViewManagerEvalReports2:() => true,
     useManagerReportPages:() => true, getManagerReportPageController:() => reportController,
     buildManagerReportPageQuery:() => query, getManagerEvalReport2Index:() => runtime.managerEvalReport2Cache,
+    getManagerEvalReport2BrowsePage:() => pageState.page,
     getManagerEvalReport2LatestSourceUpdate:() => '',
     getProductionLiveSyncCoordinator:() => ({ getStatus:() => status }),
     shouldUseProductionLiveSyncSideLoad:() => true,
@@ -1187,6 +1188,7 @@ test('Eval2 report loading ignores blocked capability refresh, preserves server 
     managerEvalReport2LoadState:{ loading:false,error:'',owner:'',promise:null }, managerEvalReport2Cache:null,
     getManagerReportPageController:() => loaderController, buildManagerReportPageQuery:() => query,
     getManagerEvalReport2Index:() => pageState.page, scheduleManagersRender() {},
+    getManagerEvalReport2BrowsePage:() => pageState.page,
     ensureDatasetLoaded:async () => { datasetReads += 1; throw new Error('full snapshot path is forbidden'); },
     Promise, JSON, String, Object, Array
   });

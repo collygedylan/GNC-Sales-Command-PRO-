@@ -5,7 +5,7 @@ import { minify } from 'terser';
 import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'AgData v2.3.40';
+const RELEASE = 'AgData v2.3.41';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
