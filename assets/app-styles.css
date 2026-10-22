@@ -52,3 +52,26 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
   html body #app-wrapper #bottom-nav, #dashboard-print-btn, #run-google-script-btn { display: none !important; }
   html body #app-wrapper #main-scroll-area { overflow: visible !important; height: auto !important; }
 }
+
+/* Module navigation must paint labels even while the grid scrolls. */
+html body #app-wrapper #view-managers .manager-module-card { content-visibility: visible !important; contain-intrinsic-size: none !important; }
+html[data-ops-prepaint-theme="dark"], html[data-ops-prepaint-theme="dark"] body,
+html body[data-theme="dark"], html body.ops-precision-pilot[data-ops-theme="dark"] { background-color: #041a10 !important; }
+html[data-ops-prepaint-theme="dark"] body #app-wrapper #dashboard-sync-accordion,
+html body.ops-precision-pilot[data-ops-theme="dark"] #app-wrapper #dashboard-sync-accordion,
+html body[data-theme="dark"] #app-wrapper #dashboard-sync-accordion { background: #062115 !important; border: 1.5px solid rgba(74,222,128,.4) !important; color: #ecfdf5 !important; }
+html[data-ops-prepaint-theme="dark"] body #app-wrapper #dashboard-sync-accordion :is(summary, #dashboard-sync-stamp, .home-sync-chevron),
+html body.ops-precision-pilot[data-ops-theme="dark"] #app-wrapper #dashboard-sync-accordion :is(summary, #dashboard-sync-stamp, .home-sync-chevron) { background-color: transparent !important; color: #ecfdf5 !important; }
+html[data-ops-prepaint-theme="dark"] body #app-wrapper #dashboard-sync-accordion :is(.dashboard-sync-card, button),
+html body.ops-precision-pilot[data-ops-theme="dark"] #app-wrapper #dashboard-sync-accordion :is(.dashboard-sync-card, button) { background: rgba(8,36,22,.96) !important; border-color: rgba(74,222,128,.4) !important; color: #ecfdf5 !important; }
+html[data-ops-prepaint-theme="dark"] body #app-wrapper #dashboard-sync-accordion :is(strong, time, .dashboard-sync-filename),
+html body.ops-precision-pilot[data-ops-theme="dark"] #app-wrapper #dashboard-sync-accordion :is(strong, time, .dashboard-sync-filename) { color: #ecfdf5 !important; }
+html[data-ops-prepaint-theme="dark"] body #app-wrapper #view-managers :is(.text-blue-600,.text-blue-700,.text-blue-800,.text-blue-900),
+html body.ops-precision-pilot[data-ops-theme="dark"] #app-wrapper #view-managers :is(.text-blue-600,.text-blue-700,.text-blue-800,.text-blue-900) { color: #38bdf8 !important; font-weight: 700 !important; }
+
+html[data-ops-prepaint-theme="dark"] body #app-wrapper #view-managers .manager-eval2-quantity,
+html body.ops-precision-pilot[data-ops-theme="dark"] #app-wrapper #view-managers .manager-eval2-quantity { color: #6ee7b7 !important; font-weight: 700 !important; }
+html[data-ops-prepaint-theme="dark"] body #app-wrapper,
+html[data-ops-prepaint-theme="dark"] body #main-scroll-area,
+html body.ops-precision-pilot[data-ops-theme="dark"] #app-wrapper,
+html body.ops-precision-pilot[data-ops-theme="dark"] #main-scroll-area { background-color: #041a10 !important; }

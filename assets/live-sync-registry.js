@@ -183,7 +183,7 @@
         'dialog:request': data(['master', 'reserves', 'customerRepMap', 'requests']),
         'dialog:item-inquiry': data(['master', 'reserves', 'avNotes'], ['coverage']),
         'dialog:shear': data(['master', 'reserves'], ['shear']),
-        'badge:queue': data(['requests', 'salesCredits', 'inventoryEditRequests', 'suspendTag', 'salesOffice'], ['shear', 'evalWork']),
+        'badge:queue': data(['requests', 'salesCredits', 'inventoryEditRequests', 'suspendTag', 'salesOffice'], ['shear', 'evalWork', 'locationWork', 'bunchQueue']),
         'badge:communications': data([], ['chat', 'calendar'])
     };
     const evalRowViews = new Set(['drive', 'crop-roll', 'av', 'docks', 'sales-inventory', 'weather-hold', 'reserves', 'sales-office', 'moves', 'tasks', 'low-stock', 'review', 'move-up']);
