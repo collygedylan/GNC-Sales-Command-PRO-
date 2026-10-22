@@ -144,6 +144,22 @@
     "buildReclassInquiryCompactReportHtml_",
     "buildReclassInquiryEmailHtml_",
     "deliverReclassInquiryPayload_",
-    "handleSignedInventoryReclassMoveDelivery_"
+    "handleSignedInventoryReclassMoveDelivery_",
+    "setupDropFolderAutoSyncTrigger",
+    "removeDropFolderAutoSyncTrigger",
+    "runAutoDropFolderSync_",
+    "removeUrgentDriveAroundTriggers_",
+    "scheduleUrgentDriveAroundTrigger_",
+    "hasPendingDriveAroundSource_",
+    "cleanupStaleDriveAroundWorkspace_",
+    "runUrgentDriveAroundSync_",
+    "runUrgentDriveAroundSync",
+    "failDatasetImportFence_",
+    "runQueuedManualSyncStage_",
+    "URGENT_DRIVE_AROUND_TRIGGER_HANDLER_",
+    "URGENT_DRIVE_AROUND_REQUEST_KEY_",
+    "URGENT_DRIVE_AROUND_RETRY_MS_",
+    "URGENT_DRIVE_AROUND_STALE_MS_",
+    "URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_"
   ]
 }

@@ -162,9 +162,17 @@ test('source metadata and Manager read migrations are registered with secure dep
 
 test('ingestion deployment selects every changed function and preserves remote scheduling outside the patch', () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  assert.deepEqual(manifest.appsScriptPatchFunctions, ['setDatasetImportSourceMetadata_', 'closeDatasetImportFence_',
-    'processFolderLocked_', 'processLatestFileOnlyFolderLocked_', 'processSiteSplitMasterSnapshotBatchFolderLocked_',
-    'processSnapshotBatchFolderLocked_', 'runQueuedManualSyncStage_', 'doPost']);
+  assert.deepEqual(manifest.appsScriptPatchFunctions, [
+    'buildReclassItemInquiryTable_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_',
+    'buildReclassInquiryReportModel_', 'getReclassInquiryEmailRecipients_', 'buildReclassInquiryCompactReportHtml_',
+    'buildReclassInquiryEmailHtml_', 'deliverReclassInquiryPayload_', 'handleSignedInventoryReclassMoveDelivery_',
+    'setupDropFolderAutoSyncTrigger', 'removeDropFolderAutoSyncTrigger', 'runAutoDropFolderSync_',
+    'removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_',
+    'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync',
+    'failDatasetImportFence_', 'runQueuedManualSyncStage_', 'URGENT_DRIVE_AROUND_TRIGGER_HANDLER_',
+    'URGENT_DRIVE_AROUND_REQUEST_KEY_', 'URGENT_DRIVE_AROUND_RETRY_MS_', 'URGENT_DRIVE_AROUND_STALE_MS_',
+    'URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_',
+  ]);
   assert.equal(manifest.appsScriptPatchRelease, true);
   const untouched = 'const HISTORICAL_BACKFILL_PAUSED = true;\nconst AUTO_SYNC_PAUSED = true;';
   const remote = `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = 'old';\nconst APP_RELEASE_VERSION_ = 'old';\n${untouched}\nfunction doPost() { return 'old'; }`;
@@ -175,7 +183,7 @@ test('ingestion deployment selects every changed function and preserves remote s
   assert.match(patch.source, /const APP_RELEASE_VERSION_ = 'new'/);
   assert.match(patch.source, /function setDatasetImportSourceMetadata_\(\) \{ return 'metadata'; \}/);
   assert.throws(() => patchAppsScriptFunctions({ remoteSource: remote, localSource: local,
-    functionNames: ['setupDropFolderAutoSyncTrigger'] }), /ALLOWLIST_INVALID/);
+    functionNames: ['startImportHistoryBackfill'] }), /ALLOWLIST_INVALID/);
   const localDispatch = sourceFunction(appsScriptSource, 'doPost');
   const start = localDispatch.indexOf("    if (payload.type === 'manual_continue') {");
   const next = localDispatch.indexOf("    if (payload.type === 'manual_run') {", start);

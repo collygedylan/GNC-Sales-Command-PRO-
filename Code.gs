@@ -638,7 +638,8 @@ function runUrgentDriveAroundSync_(event) {
 }
 
 function runUrgentDriveAroundSync(event) {
-  return runUrgentDriveAroundSync_(event || {});
+  const requestEvent = event && typeof event === 'object' ? event : {};
+  return runUrgentDriveAroundSync_(requestEvent);
 }
 
 // =========================================================================
