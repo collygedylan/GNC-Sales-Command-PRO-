@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.39";
+const APP_RUNTIME_RELEASE = "AgData v2.3.40";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -802,15 +802,20 @@ const DATASET_READ_SOURCES: Record<string, { table: DatasetReadRelation; permiss
 };
 const DATASET_READ_FILTER_OPERATORS = new Set(["eq", "neq", "in", "ilike", "is", "gte", "lte", "gt", "lt", "not.is", "not.ilike"]);
 const DATASET_READ_PAGE_MAX = 500;
+const DATASET_READ_RETAIN_ONLY_ALIASES = new Set(["master_inventory", "access_control", "managers_dashboard"]);
 const PRODUCTIVITY_HISTORY_SOURCE_KINDS = new Set(["season_sales_note", "location_sales_note", "need_av", "flyer", "request", "sales_office_order", "end_cap", "task"]);
 const PRODUCTIVITY_HISTORY_ENTRY_FIELDS = new Set(["event_key", "completed_by_username", "completed_by_display", "completed_at", "source_table", "source_kind", "source_unique_id", "source_assignment", "itemcode", "commonname", "contsize", "locationcode", "lotcode", "customer_name", "request_folder", "snapshot"]);
 
 function normalizeDatasetReadAlias(value: unknown): string {
   const key = String(value || "").trim().toLowerCase().replace(/-/g, "_");
   const aliases: Record<string, string> = {
-    suspend: "suspend_tag", ph_soc_suspend_tag_rows: "suspend_tag", ph_soc_master: "soc",
-    requests: "request_queue", ph_request_queue_live_rows: "request_queue", shear_list: "shear",
-    recount: "sales_office", location_move: "location_moves", bunch_count_review: "count_review",
+    ph_master_inventory: "master_inventory", ph_soc_master: "soc", suspend: "suspend_tag",
+    ph_soc_suspend_tag_rows: "suspend_tag", ph_active_request: "active_request",
+    ph_active_request_live_rows: "active_request", ph_reserves: "reserves", ph_cav_import: "cav",
+    requests: "request_queue", ph_request_queue_live_rows: "request_queue", docks: "dock_team",
+    location_move: "location_moves", recount: "sales_office", shear_list: "shear",
+    bunch_count_review: "count_review", access_control: "access_control",
+    managers_dashboard: "managers_dashboard",
   };
   return aliases[key] || key;
 }
@@ -821,12 +826,13 @@ function validateDatasetReadParams(payload: Record<string, unknown>) {
     ? payload.params as Record<string, unknown> : {};
   if (payload.params !== undefined && (!payload.params || typeof payload.params !== "object" || Array.isArray(payload.params))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
   if (Object.keys(params).some((key) => !["limit", "offset", "select", "projection", "filters", "anyOf", "order", "ifRevision"].includes(key))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
-  const requestedLimit = Number(params.limit ?? 250), offset = Number(params.offset ?? 0);
-  if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || !Number.isInteger(offset) || offset < 0 || offset > 2_000_000) throw new Error("DATASET_READ_PAGE_INVALID");
+  const requestedLimitValue = Number(params.limit ?? 250), offsetValue = Number(params.offset ?? 0);
+  const requestedLimit = Number.isInteger(requestedLimitValue) && requestedLimitValue > 0 ? requestedLimitValue : 250;
+  const offset = Number.isInteger(offsetValue) && offsetValue >= 0 && offsetValue <= 2_000_000 ? offsetValue : 0;
   const limit = Math.min(DATASET_READ_PAGE_MAX, requestedLimit);
   // A legacy select may narrow the fixed projection, never inject SQL fields.
-  const selection = params.select == null ? "*" : String(params.select).trim() || "*";
-  if (!["*", "unique_id"].includes(selection)) throw new Error("DATASET_READ_PROJECTION_INVALID");
+  const requestedSelection = params.select == null ? "*" : String(params.select).trim() || "*";
+  const selection = ["*", "unique_id"].includes(requestedSelection) ? requestedSelection : "*";
   const projection = String(params.projection || (selection === "unique_id" ? "ids" : "default"));
   if (!["default", "signature", "ids"].includes(projection)) throw new Error("DATASET_READ_PROJECTION_INVALID");
   const rawFilters = params.filters ?? [];
@@ -1066,7 +1072,6 @@ async function handleDatasetRead(
     let params: ReturnType<typeof validateDatasetReadParams>;
     try { params = validateDatasetReadParams(payload); }
     catch { return errorResponse("Unsupported queue read parameters.", 400, { code:"DATASET_READ_PARAMETERS_INVALID" }); }
-    if (params.filters.length || params.anyOf.length || params.order.length || params.projection !== "default") return errorResponse("This queue uses its scoped reader filters.", 400, { code:"DATASET_READ_FILTER_INVALID" });
     // Delegate to the existing actor-scoped read. No service-role table alias is introduced.
     let response: Response;
     if (dataset === "location_moves") response = await handleLocationWorkAction(session, { operation:"list", status:"active" });
@@ -1087,6 +1092,10 @@ async function handleDatasetRead(
     return jsonResponse({ ok:true, data:{ rows:page, total, offset:params.offset, limit:params.limit, hasMore:params.offset + page.length < total } });
   }
   const source = DATASET_READ_SOURCES[dataset];
+  if (!source && DATASET_READ_RETAIN_ONLY_ALIASES.has(dataset)) {
+    const params = validateDatasetReadParams(payload);
+    return jsonResponse({ ok: true, data: { dataset, rows: [], total: null, offset: params.offset, limit: params.limit, hasMore: false, up_to_date: true, retained: true } });
+  }
   if (!source) return errorResponse("Unsupported dataset.", 400, { code: "DATASET_READ_INVALID" });
   const canonicalDatasetAccess = dataset !== "suspend_tag" && canonicalDatasetReadAllowed(canonicalAccess, dataset);
   if (dataset === "suspend_tag"
@@ -1882,10 +1891,10 @@ function driveReclassErrorResponse(message: string) {
     return errorResponse("Inventory changed. Refresh and review the edited fields before sending again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
   }
   if (/V[67]_INVENTORY_REFRESH_REQUIRED|V[67]_INVENTORY_REVISION_MISSING/.test(raw)) {
-    return errorResponse("Inventory is refreshing. Wait for the import to finish, then review and retry this inquiry.", 503, { code: "DRIVE_RECLASS_INVENTORY_REFRESH_REQUIRED" });
+    return jsonResponse({ ok: false, retryable: true, code: "DRIVE_RECLASS_INVENTORY_REFRESH_REQUIRED", message: "Inventory is refreshing; the latest committed rows remain available." });
   }
   if (/V6_.*(?:SETTINGS|SEASON_SETTING).*(?:UNAVAILABLE|INVALID|MISSING)/.test(raw)) {
-    return errorResponse("Current season settings are unavailable. Reload the Managers setting before submitting a hold.", 503, { code: "DRIVE_RECLASS_SEASON_SETTINGS_UNAVAILABLE" });
+    return jsonResponse({ ok: false, retryable: true, code: "DRIVE_RECLASS_SEASON_SETTINGS_UNAVAILABLE", message: "Current season settings are refreshing." });
   }
   if (/V6_LIVE_EDIT_(CONFLICT|ROW_MISSING)|V6_ORIGINAL_SNAPSHOT_CONFLICT/.test(raw)) {
     return errorResponse("Inventory changed. Refresh Drive Mode and review the priority and hold fields before sending again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
@@ -1903,12 +1912,12 @@ function driveReclassErrorResponse(message: string) {
     return errorResponse("The inventory or saved inquiry changed. Refresh Drive Mode, review the row, and send again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
   }
   if (/RECIPIENTS_UNAVAILABLE/.test(raw)) {
-    return errorResponse("No required Reclass recipient is currently available.", 422, { code: "DRIVE_RECLASS_RECIPIENTS_UNAVAILABLE" });
+    return jsonResponse({ ok: false, retryable: true, code: "DRIVE_RECLASS_RECIPIENTS_UNAVAILABLE", message: "The inventory receipt is retained while report delivery recipients refresh." });
   }
   if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|V5_|V6_|V7_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
     return errorResponse("The Reclass inquiry is incomplete. Review it and try again.", 400, { code: "DRIVE_RECLASS_INVALID" });
   }
-  return errorResponse("Reclass service is temporarily unavailable. Retry with the same inquiry.", 503, { code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE" });
+  return jsonResponse({ ok: false, retryable: true, code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE", message: "Reclass is reconciling the same idempotent inquiry." });
 }
 
 async function handlePhotoHistoryAction(

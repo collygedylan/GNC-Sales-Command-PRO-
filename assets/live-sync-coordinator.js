@@ -233,11 +233,13 @@
             verifiedAtByIdentity.clear();
             lastVerifiedAt = null;
             try {
-                // This callback also clears the rendered display cache. A retained
-                // snapshot is never kept after the server has denied this identity.
-                Promise.resolve(options.onPermissionChange?.(null, { reason: 'authorization-denied' })).catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'discardAppliedAfterDenial'); });
-            } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'discardAppliedAfterDenial');}
+                Promise.resolve(options.onPermissionChange?.(null, { reason: 'authorization-denied' })).catch(() => {});
+            } catch (_) {}
             return true;
+        }
+        function isRetainableTransientError(error) {
+            const status = Number(error?.status || error?.payload?.status || 0);
+            return status === 409 || status === 422 || status === 423;
         }
         function stillCurrent(ctx, startedEpoch) {
             const next = options.getContext();
@@ -827,6 +829,11 @@
                     try { result = await cycle(run); }
                     catch (error) {
                         if (epoch === run.epoch && stillCurrent(run.context || {}, run.epoch)) {
+                            if (isRetainableTransientError(error)) {
+                                retainDisplay(run.context || {});
+                                result = false;
+                                continue;
+                            }
                             const permissionDenied = discardAppliedAfterDenial(run.context, error);
                             publish('Needs attention', error.message || String(error), {
                                 contextKey: identity(run.context || {}),

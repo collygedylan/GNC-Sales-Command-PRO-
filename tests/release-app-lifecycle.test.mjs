@@ -33,21 +33,21 @@ test('shell layout has explicit desktop and mobile structural rules independent 
   for (const label of ['Menu', 'Home', 'Drive', 'Docks', 'Que', 'Bloom', 'Comm']) assert.ok(shell.includes(`<span>${label}</span>`));
 });
 
-test('v2.3.39 assets and worker upgrade purge previous cache generations', () => {
+test('v2.3.40 assets and worker upgrade purge previous cache generations', () => {
   const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
-    assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.39', match[1]);
+    assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.40', match[1]);
   }
-  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.39'/);
+  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.40'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
-  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.39' });
+  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.40' });
   vm.runInContext(sw.match(/function isRetiredRootCacheName\([^]*?^}/m)[0], ctx);
   for (const key of ['agdata-v2.3.34', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'ag-data-runtime-images-v2', 'legacy-shell']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);
-  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.39'), false);
+  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.40'), false);
   const worker = vm.createContext({ self: { addEventListener() {}, location: { href: 'https://agmetricapp.com/sw.js', origin: 'https://agmetricapp.com' }, registration: { scope: 'https://agmetricapp.com/' } }, URL });
   vm.runInContext(sw + '\nglobalThis.assets = ASSETS_TO_CACHE;', worker);
-  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.39', asset);
+  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.40', asset);
   const build = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
   assert.match(build, /shellStylesheetMarkup\(`\.\/assets\/live-app-styles-base/);
   assert.match(build, /shellStylesheetMarkup\(pilotStylesheetHref\)/);

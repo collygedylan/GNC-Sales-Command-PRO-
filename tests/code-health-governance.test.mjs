@@ -95,9 +95,9 @@ test('ten architecture clusters and twelve registered skills stay synchronized w
   const moduleTags = [...html.matchAll(/<script\b([^>]*\bdata-runtime-watchdog-panel\b[^>]*)><\/script>/gi)];
   assert.deepEqual(layout.classicModules, ['assets/runtime-watchdog-panel.js']);
   assert.equal(moduleTags.length, layout.classicModules.length);
-  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.39"`));
+  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.40"`));
   assert.ok(html.indexOf('data-runtime-watchdog-panel') < html.indexOf('id="app-script-source"'), 'watchdog module loads before app runtime');
-  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.39"/);
+  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.40"/);
   assert.equal(layout.classicRuntime, 'assets/app-runtime.js');
   assert.equal(INDEX_HTML_BUDGET.maxLines, 3000);
 });

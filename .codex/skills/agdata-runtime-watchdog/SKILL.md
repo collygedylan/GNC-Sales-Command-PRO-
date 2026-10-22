@@ -41,6 +41,8 @@ Request permission refresh and sync progress retain same-account views. manual_s
 
 Watchdog delivery pauses while document.hidden; its bounded persisted queue resumes once visible without deleting pending incidents. It remains a passive observer.
 
+Benign browser `ResizeObserver loop limit exceeded` and `ResizeObserver loop completed with undelivered notifications` messages are ignored; they are layout scheduling noise, not actionable runtime incidents.
+
 ## Watchdog and active queue continuity
 
 Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders without the generic Manager dataset gate, and returns through goBackUniversal/openManagersModules. Keep data-manager-module="watchdog-monitor" on its card; keep the existing three-user panel boundary, list/parity/Copy AI Fix Brief/Resolve contracts, and read-only production watchdog policy.

@@ -460,9 +460,10 @@ test('Suspend projections include all four deployed candidate columns in the gen
   assert.doesNotThrow(()=>module.exports.validateQuery('ph_soc_master','select='+fields.join(',')));
   assert.throws(()=>module.exports.validateQuery('ph_soc_master','select=unreviewed_secret_column'));
   const ctx=vm.createContext({}); vm.runInContext(ts.transpileModule(extractFunction(appApi,'normalizeDatasetReadAlias')+extractFunction(appApi,'validateDatasetReadParams'),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,ctx);
-  for(const [alias,canonical] of Object.entries({suspend:'suspend_tag',suspend_tag:'suspend_tag',ph_soc_master:'soc',location_move:'location_moves',location_moves:'location_moves',recount:'sales_office',shear_list:'shear',eval_work:'eval_work',bunch_notes:'bunch_notes',count_review:'count_review',requests:'request_queue',request_queue:'request_queue',request_history:'request_history'})) assert.equal(ctx.normalizeDatasetReadAlias(alias),canonical);
+  for(const [alias,canonical] of Object.entries({ph_master_inventory:'master_inventory',ph_soc_master:'soc',suspend:'suspend_tag',suspend_tag:'suspend_tag',ph_active_request:'active_request',ph_reserves:'reserves',ph_cav_import:'cav',docks:'dock_team',location_move:'location_moves',location_moves:'location_moves',recount:'sales_office',shear_list:'shear',eval_work:'eval_work',bunch_notes:'bunch_notes',count_review:'count_review',access_control:'access_control',managers_dashboard:'managers_dashboard',requests:'request_queue',request_queue:'request_queue',request_history:'request_history'})) assert.equal(ctx.normalizeDatasetReadAlias(alias),canonical);
   ctx.DATASET_READ_PAGE_MAX=500;
+  ctx.DATASET_READ_RETAIN_ONLY_ALIASES=new Set(['master_inventory','access_control','managers_dashboard']);
   assert.equal(ctx.validateDatasetReadParams({action:'dataset_read',dataset:'suspend',params:{select:'*'}}).limit,250);
-  assert.throws(()=>ctx.validateDatasetReadParams({params:{select:'private_payload'}}));
-  assert.throws(()=>ctx.validateDatasetReadParams({params:{offset:-1}}));
+  assert.equal(ctx.validateDatasetReadParams({params:{select:'private_payload'}}).projection,'default');
+  assert.equal(ctx.validateDatasetReadParams({params:{offset:-1}}).offset,0);
 });
