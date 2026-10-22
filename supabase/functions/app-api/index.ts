@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.43";
+const APP_RUNTIME_RELEASE = "AgData v2.3.44";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -4763,13 +4763,23 @@ export function parseAuraDeterministicInventoryQuestion(value: unknown) {
   const sizeMatch = question.match(/(?:^|\s)(#\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*(?:DP|GP|SP|QT|PT|GAL|G))(?![A-Z0-9])/i);
   const locationMatch = question.match(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/i);
   const itemCodeMatch = question.match(/\b(?:item\s*code|itemcode)\s*(?:#|:)?\s*([A-Z0-9][A-Z0-9._-]{1,99})\b/i);
+  const seasonMatch = question.match(/\b(?:(\d{2,4})[.\s-]?)?(S1|F1|U1|U2|U3|X|Y|Z)\b/i);
+  const salesYearMatch = question.match(/\b(?:sales\s*year|salesyear|year)\s*(?:<=?\s*)?(\d{1,4})\b/i);
   const metric = /\bopen stock\b/i.test(question) ? "openStock"
     : /\bon[ -]?hand\b/i.test(question) ? "onHand"
     : /\breview(?:ed)?\b/i.test(question) ? "review" : /\blocations?|\bwhere\b/i.test(question) ? "locations" : "available";
+  const needsSeasonScope = metric === "openStock" || /\b(?:how many|how much|count|inventory count)\b/i.test(question);
+  const rawSalesYear = String(seasonMatch?.[1] || salesYearMatch?.[1] || "");
+  const parsedSalesYear = rawSalesYear ? Number(rawSalesYear) : NaN;
+  const salesYear = Number.isInteger(parsedSalesYear) && parsedSalesYear > 0
+    ? (parsedSalesYear > 99 ? parsedSalesYear % 100 : parsedSalesYear) : (needsSeasonScope ? 27 : null);
+  const season = String(seasonMatch?.[2] || (needsSeasonScope ? "F1" : "")).toUpperCase();
   const stripped = question
     .replace(/\b(?:item\s*code|itemcode)\s*(?:#|:)?\s*[A-Z0-9][A-Z0-9._-]{1,99}\b/ig, " ")
     .replace(/(?:^|\s)(?:#\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*(?:DP|GP|SP|QT|PT|GAL|G))(?![A-Z0-9])/ig, " ")
     .replace(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/ig, " ")
+    .replace(/\b(?:(?:\d{2,4})[.\s-]?)?(?:S1|F1|U1|U2|U3|X|Y|Z)\b/ig, " ")
+    .replace(/\b(?:sales\s*year|salesyear|year)\s*(?:<=?\s*)?\d{1,4}\b/ig, " ")
     .replace(/\b(?:how many|how much|show me|find|check|what is|what are|do we have|are there|in open stock|open stock|on[ -]?hand|available|reviewed?|inventory|stock|locations?|lots?|where|current|total|units?|plants?|items?|of|the|for|at|in|by|please)\b/ig, " ")
     .replace(/[^A-Z0-9._#-]+/ig, " ").trim();
   const plantTerms = stripped.toLocaleLowerCase("en-US").split(/\s+/).filter(term => term.length > 1).slice(0, 8);
@@ -4781,6 +4791,8 @@ export function parseAuraDeterministicInventoryQuestion(value: unknown) {
     contSize: String(sizeMatch?.[1] || "").replace(/\s+/g, "").toUpperCase(),
     locationCode: String(locationMatch?.[0] || "").trim().toUpperCase(),
     metric,
+    season,
+    salesYear,
   };
 }
 
@@ -4791,7 +4803,7 @@ async function resolveAuraDeterministicInventoryQuery(question: string, signal?:
   for (let offset = 0; offset < AURA_MAX_INVENTORY_ROWS; offset += AURA_INVENTORY_PAGE_SIZE) {
     let builder = supabase.from("ph_master_inventory").select(AURA_INVENTORY_FIELDS);
     if (parsed.itemcode) builder = builder.eq("itemcode", parsed.itemcode);
-    else builder = builder.ilike("commonname", `%${auraSearchPattern(parsed.plantTerms.join(" "))}%`);
+    else builder = builder.ilike("commonname", `%${auraSearchPattern(parsed.plantTerms[0])}%`);
     if (parsed.locationCode) builder = builder.ilike("locationcode", `${auraSearchPattern(parsed.locationCode)}%`);
     const pageQuery = builder.order("unique_id", { ascending: true }).range(offset, offset + AURA_INVENTORY_PAGE_SIZE - 1);
     const { data, error } = await (signal ? pageQuery.abortSignal(signal) : pageQuery);
@@ -4801,12 +4813,21 @@ async function resolveAuraDeterministicInventoryQuery(question: string, signal?:
     if (page.length < AURA_INVENTORY_PAGE_SIZE) break;
   }
   const normalized = (value: unknown) => String(value ?? "").normalize("NFKC").toLocaleLowerCase("en-US").replace(/[^a-z0-9#]+/g, " ").trim();
+  const salesYear = (value: unknown) => {
+    const parsedYear = Number(String(value ?? "").replace(/\D/g, ""));
+    return Number.isInteger(parsedYear) && parsedYear > 0 ? (parsedYear > 99 ? parsedYear % 100 : parsedYear) : null;
+  };
   const rows = fetchedRows.filter(row => {
-    const haystack = normalized(`${row.commonname || ""} ${row.itemcode || ""}`);
+    const commonName = normalized(row.commonname || "");
+    const lotMatch = String(row.lotcode || "").match(/(?:^|[^0-9])(\d{2,4})[.\s-](S1|F1|U1|U2|U3|X|Y|Z)(?:$|[^A-Z0-9])/i);
+    const rowSeason = String(lotMatch?.[2] || row.season || "").trim().toUpperCase();
+    const rowSalesYear = salesYear(lotMatch?.[1] || row.saleyear);
     if (parsed.itemcode && String(row.itemcode || "").trim().toUpperCase() !== parsed.itemcode) return false;
-    if (!parsed.itemcode && !parsed.plantTerms.every(term => haystack.includes(normalized(term)))) return false;
+    if (!parsed.itemcode && !parsed.plantTerms.every(term => commonName.includes(normalized(term)))) return false;
     if (parsed.contSize && auraCanonicalSize(row.contsize) !== auraCanonicalSize(parsed.contSize)) return false;
     if (parsed.locationCode && !String(row.locationcode || "").trim().toUpperCase().startsWith(parsed.locationCode)) return false;
+    if (parsed.season && rowSeason !== parsed.season) return false;
+    if (parsed.salesYear != null && (rowSalesYear == null || rowSalesYear > parsed.salesYear)) return false;
     if (String(row.desigitem || "").toUpperCase().includes("SHFT")) return false;
     return !["not_on_inventory_dylan", "not_on_inventory_jd", "not_on_inventory_denied"].includes(String(row.app_tab_assignment || "").trim().toLowerCase());
   });
@@ -4815,6 +4836,8 @@ async function resolveAuraDeterministicInventoryQuery(question: string, signal?:
     complete: fetchedRows.length < AURA_MAX_INVENTORY_ROWS,
     deterministic: true,
     metric: parsed.metric,
+    season: parsed.season,
+    salesYear: parsed.salesYear,
     checkedAt: new Date().toISOString(),
     rows,
   };

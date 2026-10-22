@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.43';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.44';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -461,13 +461,23 @@
             const sizeMatch = question.match(/(?:^|\s)(#\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*(?:DP|GP|SP|QT|PT|GAL|G))(?![A-Z0-9])/i);
             const locationMatch = question.match(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/i);
             const itemCodeMatch = question.match(/\b(?:item\s*code|itemcode)\s*(?:#|:)?\s*([A-Z0-9][A-Z0-9._-]{1,99})\b/i);
+            const seasonMatch = question.match(/\b(?:(\d{2,4})[.\s-]?)?(S1|F1|U1|U2|U3|X|Y|Z)\b/i);
+            const salesYearMatch = question.match(/\b(?:sales\s*year|salesyear|year)\s*(?:<=?\s*)?(\d{1,4})\b/i);
             const metric = /\bopen stock\b/i.test(question) ? 'openStock'
                 : /\bon[ -]?hand\b/i.test(question) ? 'onHand'
                     : /\breview(?:ed)?\b/i.test(question) ? 'review' : /\blocations?|\bwhere\b/i.test(question) ? 'locations' : 'available';
+            const needsSeasonScope = metric === 'openStock' || /\b(?:how many|how much|count|inventory count)\b/i.test(question);
+            const rawSalesYear = String(seasonMatch?.[1] || salesYearMatch?.[1] || '');
+            const parsedSalesYear = rawSalesYear ? Number(rawSalesYear) : NaN;
+            const salesYear = Number.isInteger(parsedSalesYear) && parsedSalesYear > 0
+                ? (parsedSalesYear > 99 ? parsedSalesYear % 100 : parsedSalesYear) : (needsSeasonScope ? 27 : null);
+            const season = String(seasonMatch?.[2] || (needsSeasonScope ? 'F1' : '')).toUpperCase();
             const stripped = question
                 .replace(/\b(?:item\s*code|itemcode)\s*(?:#|:)?\s*[A-Z0-9][A-Z0-9._-]{1,99}\b/ig, ' ')
                 .replace(/(?:^|\s)(?:#\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*(?:DP|GP|SP|QT|PT|GAL|G))(?![A-Z0-9])/ig, ' ')
                 .replace(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/ig, ' ')
+                .replace(/\b(?:(?:\d{2,4})[.\s-]?)?(?:S1|F1|U1|U2|U3|X|Y|Z)\b/ig, ' ')
+                .replace(/\b(?:sales\s*year|salesyear|year)\s*(?:<=?\s*)?\d{1,4}\b/ig, ' ')
                 .replace(/\b(?:how many|how much|show me|find|check|what is|what are|do we have|are there|in open stock|open stock|on[ -]?hand|available|reviewed?|inventory|stock|locations?|lots?|where|current|total|units?|plants?|items?|of|the|for|at|in|by|please)\b/ig, ' ')
                 .replace(/[^A-Z0-9._#-]+/ig, ' ')
                 .trim();
@@ -479,7 +489,9 @@
                 plantTerms,
                 contSize: String(sizeMatch?.[1] || '').replace(/\s+/g, '').toUpperCase(),
                 locationCode: String(locationMatch?.[0] || '').trim().toUpperCase(),
-                metric
+                metric,
+                season,
+                salesYear
             };
         }
         function buildAuraDeterministicInventoryAnswer(query, rows = [], options = {}) {
@@ -487,6 +499,18 @@
             const text = value => String(value ?? '').normalize('NFKC').trim();
             const normalized = value => text(value).toLowerCase().replace(/[^a-z0-9#]+/g, ' ').trim();
             const sizeKey = value => text(value).toUpperCase().replace(/\s+/g, '').replace(/^HASH/, '#');
+            const salesYear = value => {
+                const parsed = Number(text(value).replace(/\D/g, ''));
+                return Number.isInteger(parsed) && parsed > 0 ? (parsed > 99 ? parsed % 100 : parsed) : null;
+            };
+            const rowScope = row => {
+                const lotcode = text(firstNonEmptyValue(row.LOTCODE, row.lotcode, ''));
+                const lotMatch = lotcode.match(/(?:^|[^0-9])(\d{2,4})[.\s-](S1|F1|U1|U2|U3|X|Y|Z)(?:$|[^A-Z0-9])/i);
+                return {
+                    season: String(lotMatch?.[2] || firstNonEmptyValue(row.SEASON, row.season, '')).trim().toUpperCase(),
+                    salesYear: salesYear(lotMatch?.[1] || firstNonEmptyValue(row.SALEYEAR, row.saleyear, ''))
+                };
+            };
             const number = value => {
                 const parsed = Number(text(value).replace(/,/g, ''));
                 return Number.isFinite(parsed) ? parsed : 0;
@@ -499,49 +523,58 @@
                 const contSize = text(firstNonEmptyValue(row.CONTSIZE, row.contsize, ''));
                 const locationcode = text(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, ''));
                 const lotcode = text(firstNonEmptyValue(row.LOTCODE, row.lotcode, ''));
-                const season = text(firstNonEmptyValue(row.SEASON, row.season, ''));
-                const haystack = normalized(`${commonName} ${itemcode}`);
+                const scope = rowScope(row);
+                const haystack = normalized(commonName);
                 if (query.itemcode && itemcode.toUpperCase() !== query.itemcode) return;
                 if (!query.itemcode && !query.plantTerms.every(term => haystack.includes(normalized(term)))) return;
                 if (query.contSize && sizeKey(contSize) !== sizeKey(query.contSize)) return;
                 if (query.locationCode && !locationcode.toUpperCase().startsWith(query.locationCode)) return;
+                if (query.season && scope.season !== query.season) return;
+                if (query.salesYear != null && (scope.salesYear == null || scope.salesYear > query.salesYear)) return;
                 if (/SHFT/i.test(text(firstNonEmptyValue(row.DESIGITEM, row.desigitem, '')))) return;
                 const assignment = text(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '')).toLowerCase();
                 if (['not_on_inventory_dylan', 'not_on_inventory_jd', 'not_on_inventory_denied'].includes(assignment)) return;
                 const entry = {
-                    unique_id: text(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, `${itemcode}|${locationcode}|${lotcode}|${season}|${index}`)),
-                    itemcode, commonname: commonName, contsize: contSize, locationcode, lotcode, season,
+                    unique_id: text(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, `${itemcode}|${locationcode}|${lotcode}|${scope.season}|${index}`)),
+                    itemcode, commonname: commonName, contsize: contSize, locationcode, lotcode, season: scope.season, salesYear: scope.salesYear,
                     openStock: number(firstNonEmptyValue(row.S_LTS, row.s_lts, 0)),
                     available: number(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, 0)),
                     onHand: number(firstNonEmptyValue(row.PTRONHAND, row.ptronhand, 0)),
                     review: number(firstNonEmptyValue(row.PTRREVIEWED, row.ptrreviewed, 0)),
                     priority: text(firstNonEmptyValue(row.PRIORITY, row.priority, ''))
                 };
-                uniqueRows.set(entry.unique_id || `${itemcode}|${locationcode}|${lotcode}|${season}`, entry);
+                uniqueRows.set(entry.unique_id || `${itemcode}|${locationcode}|${lotcode}|${scope.season}`, entry);
             });
             const matchedRows = [...uniqueRows.values()].sort((left, right) =>
                 String(left.season).localeCompare(String(right.season), 'en', { numeric: true, sensitivity: 'base' })
                 || String(left.locationcode).localeCompare(String(right.locationcode), 'en', { numeric: true, sensitivity: 'base' })
                 || String(left.lotcode).localeCompare(String(right.lotcode), 'en', { numeric: true, sensitivity: 'base' }));
-            const totals = matchedRows.reduce((sum, row) => ({
-                openStock: sum.openStock + row.openStock,
+            const locationTotals = matchedRows.reduce((sum, row) => ({
                 available: sum.available + row.available,
                 onHand: sum.onHand + row.onHand,
                 review: sum.review + row.review
-            }), { openStock: 0, available: 0, onHand: 0, review: 0 });
+            }), { available: 0, onHand: 0, review: 0 });
+            const seasonalOpenStock = new Map();
+            matchedRows.forEach(row => {
+                const key = `${row.itemcode}|${row.season || 'Unspecified'}`;
+                if (!seasonalOpenStock.has(key)) seasonalOpenStock.set(key, row.openStock);
+            });
+            const totals = { openStock: [...seasonalOpenStock.values()].reduce((sum, value) => sum + value, 0), ...locationTotals };
             const seasons = new Map();
             matchedRows.forEach(row => {
                 const key = row.season || 'Unspecified';
-                const total = seasons.get(key) || { openStock: 0, available: 0, onHand: 0 };
-                total.openStock += row.openStock; total.available += row.available; total.onHand += row.onHand;
+                const total = seasons.get(key) || { openStock: 0, available: 0, onHand: 0, items: new Set() };
+                if (!total.items.has(row.itemcode)) { total.openStock += row.openStock; total.items.add(row.itemcode); }
+                total.available += row.available; total.onHand += row.onHand;
                 seasons.set(key, total);
             });
             const label = matchedRows[0]?.commonname || query.itemcode || query.plantTerms.join(' ') || 'Inventory';
             const sizeLabel = matchedRows[0]?.contsize || query.contSize;
             const format = value => new Intl.NumberFormat('en-US').format(Number(value) || 0);
             const seasonSummary = [...seasons].map(([season, total]) => `${season}: ${format(total.openStock)} Open Stock`).join('; ');
+            const scopeLabel = query.season ? ` for Season ${query.season} (Sales Year <= ${query.salesYear})` : '';
             const reply = matchedRows.length
-                ? `${label}${sizeLabel ? ` · ${sizeLabel}` : ''}: ${format(totals.openStock)} Open Stock, ${format(totals.available)} Available, ${format(totals.onHand)} On Hand, and ${format(totals.review)} Review across ${matchedRows.length} location/lot row${matchedRows.length === 1 ? '' : 's'}${seasonSummary ? `. ${seasonSummary}` : ''}.`
+                ? `${label}${sizeLabel ? ` · ${sizeLabel}` : ''}: ${format(totals.openStock)} Open Stock${scopeLabel}, ${format(totals.available)} Available, ${format(totals.onHand)} On Hand, and ${format(totals.review)} Review across ${matchedRows.length} location/lot row${matchedRows.length === 1 ? '' : 's'}${seasonSummary ? `. ${seasonSummary}` : ''}.`
                 : `I found no matching inventory rows for ${query.itemcode || query.plantTerms.join(' ')}${query.contSize ? ` · ${query.contSize}` : ''}.`;
             return {
                 ok: true, requestId: options.requestId || null, reply, speech: reply,
@@ -549,7 +582,7 @@
                     { key: 'season', label: 'Season' }, { key: 'locationcode', label: 'Location' }, { key: 'lotcode', label: 'Lot' },
                     { key: 'openStock', label: 'Open Stock' }, { key: 'available', label: 'Available' }, { key: 'onHand', label: 'On Hand' }, { key: 'review', label: 'Review' }
                 ] }] : [],
-                interpretation: { engine: 'deterministic-inventory-v1', intent: 'inventory', metric: query.metric, complete: options.complete !== false },
+                interpretation: { engine: 'deterministic-inventory-v1', intent: 'inventory', metric: query.metric, season: query.season, salesYear: query.salesYear, complete: options.complete !== false },
                 source: { kind: options.source || 'local-inventory', checkedAt: options.checkedAt || new Date().toISOString(), complete: options.complete !== false },
                 deterministic: true
             };
@@ -26028,7 +26061,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.43').trim() || 'AgData v2.3.43';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.44').trim() || 'AgData v2.3.44';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

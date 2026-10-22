@@ -826,8 +826,8 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     setRecognitionBusy(false);
     if (recognitionMode === "browser" && !session.enabled && voiceStatus.status !== "speaking") {
       voiceStatus = { status: "idle", message: "" };
-      renderStatus();
     }
+    renderStatus();
     renderCartControls();
   }
 

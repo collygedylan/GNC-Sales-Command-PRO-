@@ -72,21 +72,23 @@ test('current inline shell, runtime and watchdog module have no duplicate global
   assert.deepEqual(duplicates, [], `duplicate declarations: ${JSON.stringify(duplicates)}`);
 });
 
-test('v2.3.43 keeps watchdog status rendering modular and cache-busted', () => {
+test('v2.3.44 keeps watchdog status rendering modular and cache-busted', () => {
   const shell = read('index.html');
   const panel = read('assets/runtime-watchdog-panel.js');
-  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.43/);
+  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.44/);
   assert.match(panel, /data-watchdog-tab="open"[^]*Resolved Fixes/);
   assert.match(panel, /RESOLVED_SKILL_FOLDERS/);
 });
 
-test('v2.3.43 keeps AURA inventory recovery bounded and deterministic', () => {
+test('v2.3.44 keeps AURA open-stock resolution scoped and deterministic', () => {
   const runtime = read('assets/app-runtime.js');
   const appApi = read('supabase/functions/app-api/index.ts');
   const router = read('supabase/functions/_shared/aura-voice-handler.ts');
   assert.match(runtime, /requestAuraDeterministicInventoryAnswer[^]*operation: 'resolve_query'/);
+  assert.match(runtime, /needsSeasonScope[^]*\? 'F1'[^]*scope\.season !== query\.season[^]*scope\.salesYear > query\.salesYear/);
   assert.match(appApi, /AURA_MAX_INVENTORY_ROWS[^]*resolveAuraDeterministicInventoryQuery/);
-  assert.match(router, /deterministicInventoryTool[^]*signal\.aborted/);
+  assert.match(appApi, /commonName\.includes\(normalized\(term\)\)/);
+  assert.match(router, /scopeAuraOpenStock[^]*strictInventoryIdentityMatch[^]*seasonLevelOpenStockTotal/);
 });
 
 test('ten architecture clusters and twelve registered skills stay synchronized with source layout', () => {
@@ -112,9 +114,9 @@ test('ten architecture clusters and twelve registered skills stay synchronized w
   const moduleTags = [...html.matchAll(/<script\b([^>]*\bdata-runtime-watchdog-panel\b[^>]*)><\/script>/gi)];
   assert.deepEqual(layout.classicModules, ['assets/runtime-watchdog-panel.js']);
   assert.equal(moduleTags.length, layout.classicModules.length);
-  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.43"`));
+  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.44"`));
   assert.ok(html.indexOf('data-runtime-watchdog-panel') < html.indexOf('id="app-script-source"'), 'watchdog module loads before app runtime');
-  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.43"/);
+  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.44"/);
   assert.equal(layout.classicRuntime, 'assets/app-runtime.js');
   assert.equal(INDEX_HTML_BUDGET.maxLines, 3000);
 });

@@ -155,6 +155,55 @@ function explicitFilters(question: string, proposed: InventoryFilters): Inventor
   if (!filters.season && !filters.seasonReference) filters.seasonReference = "current";
   return validateInventoryFilters(filters);
 }
+function scopeAuraOpenStock(filters: InventoryFilters): InventoryFilters {
+  filters.season = String(filters.season || "F1").toUpperCase();
+  filters.salesYear = Number.isInteger(filters.salesYear) ? filters.salesYear : 27;
+  filters.metric = "s_lts";
+  filters.countMode = "quantity";
+  filters.openStockOnly = false;
+  delete filters.seasonReference;
+  delete filters.locationCode;
+  delete filters.locationMode;
+  return filters;
+}
+function normalizeInventoryName(value: unknown) {
+  return String(value ?? "").normalize("NFKC").toLowerCase().replace(/[^a-z0-9#]+/g, " ").trim();
+}
+function strictInventoryIdentityMatch(row: ObjectValue, filters: InventoryFilters) {
+  const requestedItemcode = String(filters.itemcode || "").trim().toUpperCase();
+  if (requestedItemcode && String(row.itemcode || "").trim().toUpperCase() !== requestedItemcode) return false;
+  const requestedName = normalizeInventoryName(filters.commonName || filters.productText);
+  const tokens = requestedName.split(/\s+/).filter(token => token.length > 1);
+  const commonName = normalizeInventoryName(row.commonName || row.commonname);
+  if (!requestedItemcode && !tokens.length) return false;
+  if (tokens.length && !tokens.every(token => commonName.includes(token))) return false;
+  const requestedSize = normalizeInventoryName(filters.contSize).replace(/\s+/g, "");
+  const rowSize = normalizeInventoryName(row.contSize || row.contsize).replace(/\s+/g, "");
+  return !requestedSize || requestedSize === rowSize;
+}
+function distinctInventoryIdentities(rows: ObjectValue[]) {
+  const identities = new Map<string, ObjectValue>();
+  for (const row of rows) {
+    const key = `${String(row.itemcode || "").trim().toUpperCase()}|${normalizeInventoryName(row.contSize || row.contsize).replace(/\s+/g, "")}`;
+    if (!identities.has(key)) identities.set(key, row);
+  }
+  return [...identities.values()];
+}
+function seasonLevelOpenStockTotal(rows: ObjectValue[]): number | null {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const key = `${String(row.itemcode || "").trim().toUpperCase()}|${String(row.season || "F1").trim().toUpperCase()}`;
+    const value = row.s_lts ?? row.quantity;
+    if (!totals.has(key) && typeof value === "number" && Number.isFinite(value)) totals.set(key, value);
+  }
+  return totals.size ? [...totals.values()].reduce((sum, value) => sum + value, 0) : null;
+}
+function normalizeScopedOpenStockData(data: ObjectValue, filters: InventoryFilters): ObjectValue {
+  const rows = array(data.rows).filter(row => strictInventoryIdentityMatch(row, filters));
+  const candidateChoices = distinctInventoryIdentities(array(data.candidateChoices).filter(row => strictInventoryIdentityMatch(row, filters))).slice(0, 5);
+  const total = seasonLevelOpenStockTotal(rows);
+  return { ...data, rows, candidateChoices, ...(data.complete === true && total != null ? { total } : {}) };
+}
 function deterministicInventoryTool(question: string, active: ReturnType<typeof parseAuraAppContext>): Extract<AuraTool, { name: "inventory" }> | null {
   try {
     const intent = resolveAuraIntent(question, {});
@@ -166,13 +215,14 @@ function deterministicInventoryTool(question: string, active: ReturnType<typeof 
     if (operation === "stock") {
       filters.countMode = "quantity";
       if (/\bopen stock\b/i.test(question)) {
-        filters.metric = "s_lts";
-        filters.openStockOnly = false;
+        scopeAuraOpenStock(filters);
       } else if (/\bon[ -]?hand\b/i.test(question)) filters.metric = "ptronhand";
       else filters.metric = "ptravailable";
-      filters.season = active.season;
-      filters.salesYear = active.salesyear;
-      delete filters.seasonReference;
+      if (filters.metric !== "s_lts") {
+        filters.season = active.season;
+        filters.salesYear = active.salesyear;
+        delete filters.seasonReference;
+      }
     }
     return { name: "inventory", operation, filters };
   } catch {
@@ -221,6 +271,21 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
     if (data.ok === false) throw new Error(String(data.code || "AURA_INVENTORY_UNAVAILABLE"));
   }
   if (data.ok !== true || !Array.isArray(data.rows) || data.rows.length > 50 || typeof data.complete !== "boolean") throw new Error("AURA_RESULT_INVALID");
+  if (operation === "stock" && filters.metric === "s_lts") {
+    const strictChoices = distinctInventoryIdentities(array(data.candidateChoices).filter(row => strictInventoryIdentityMatch(row, filters)));
+    if (data.exactMatch === false && strictChoices.length === 1) {
+      const selected = strictChoices[0];
+      filters = { ...filters, itemcode: String(selected.itemcode || "").trim(), contSize: String(selected.contSize || selected.contsize || filters.contSize || "").trim() };
+      delete filters.productText;
+      delete filters.commonName;
+      delete filters.selectionId;
+      cursor = null;
+      data = auraObject(await store.inventory(operation, filters, cursor, signal));
+      if (data.ok !== true || !Array.isArray(data.rows) || data.rows.length > 50 || typeof data.complete !== "boolean") throw new Error("AURA_RESULT_INVALID");
+      if (data.rows.length) data = { ...data, exactMatch: true };
+    }
+    data = normalizeScopedOpenStockData(data, filters);
+  }
   const rows = array(data.rows), choices = array(data.candidateChoices).slice(0, 5);
   const unresolved = number(data.unresolvedCount ?? 0);
   const sourceFingerprint = await inventoryFingerprint(data);
@@ -231,9 +296,10 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
     yearCoverage: data.yearCoverage, yearFilterApplied: true, metric: data.metric ?? filters.metric, datasetRevision: data.datasetRevision, unresolvedCount: unresolved, complete: data.complete === true };
   let reply: string, actions: ObjectValue[] = [];
   if (data.exactMatch === false && choices.length) {
-    const options = choices.map(row => ({ ...row, id: String(row.selectionId || row.uniqueId || row.itemcode), label: label(row) }));
+    const options = choices.map(row => ({ ...row, id: String(row.selectionId || row.uniqueId || row.itemcode),
+      label: filters.metric === "s_lts" ? [row.commonName || row.commonname || row.itemcode, row.contSize || row.contsize, row.itemcode].filter(Boolean).join(" Â· ") : label(row) }));
     nextContext.choices = options; nextContext.cursor = null;
-    reply = "I found possible matches. Choose the exact plant, size, or location.";
+    reply = filters.metric === "s_lts" ? "I found possible plant matches. Choose the exact plant and size." : "I found possible matches. Choose the exact plant, size, or location.";
     actions = [{ type: "choices", kind: "entity", items: options }];
   } else if (data.complete !== true) {
     reply = filters.metric === "allocated" ? "I can’t find verified allocated quantities in the current inventory data."
@@ -375,7 +441,9 @@ async function sourcesCurrent(sources: unknown, actor: AuraActor, store: AuraVoi
     if (source.kind === "domain") {
       if ((await store.domain(signal)).revision !== source.revision) return false;
     } else if (source.kind === "inventory" && actor.inventory) {
-      const data = auraObject(await store.inventory(String(source.operation), validateInventoryFilters(source.filters), source.cursor, signal));
+      const filters = validateInventoryFilters(source.filters);
+      let data = auraObject(await store.inventory(String(source.operation), filters, source.cursor, signal));
+      if (String(source.operation) === "stock" && filters.metric === "s_lts") data = normalizeScopedOpenStockData(data, filters);
       if (data.ok !== true || data.complete !== true && !(allowIncomplete && data.complete === false) || !same(inventoryStamp(data), source.stamp)
         || source.fingerprint !== await inventoryFingerprint(data)) return false;
     } else if (source.kind === "soc" && ((source.tool === "soc_reserves" && actor.socReserves) || (source.tool === "soc_open_orders" && actor.socOpenOrders))) {
@@ -504,8 +572,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
         else if (/\bon[ -]hand\b/i.test(question)) { tool.filters.countMode = "quantity"; tool.filters.metric = "ptronhand"; }
         else if (!(more || selection)) { tool.filters.countMode = "quantity"; tool.filters.metric = "s_lts"; }
         if (tool.filters.countMode === "quantity" && tool.filters.metric === "s_lts") {
-          tool.filters.season = active.season; tool.filters.salesYear = active.salesyear;
-          delete tool.filters.seasonReference; tool.filters.openStockOnly = false;
+          scopeAuraOpenStock(tool.filters);
         }
       }
       if (!confirmingDraft && !(more || selection)) {
@@ -515,7 +582,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
           && (tool.operation === "stock" || /\b(?:open stock|on[ -]hand|allocated|held|on hold)\b/i.test(question))) {
           tool.filters.metric = ({ open_stock: "s_lts", loc_on_hand: "loc_on_hand", allocated: "allocated", held: "held" } as const)[entity.target_metric];
           if (entity.target_metric === "open_stock") {
-            tool.filters.season = active.season; tool.filters.salesYear = active.salesyear; delete tool.filters.seasonReference; tool.filters.openStockOnly = false;
+            scopeAuraOpenStock(tool.filters);
           }
         }
         context.entity = entity;

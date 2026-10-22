@@ -19,14 +19,14 @@ function fixture(handler = async () => ({})) {
   const prior = Object.getOwnPropertyDescriptor(globalThis, 'document');
   Object.defineProperty(globalThis, 'document', { configurable: true, value: dom.window.document });
   const panel = document.querySelector('section'), content = panel.querySelector('div'), input = panel.querySelector('input');
-  const calls = [], actions = [], busy = [];
+  const calls = [], actions = [], busy = [], states = [];
   let authorized = true;
   const ui = mountAuraQueryPanel({ panel, content, input, isAuthorized: () => authorized,
     request: async (body, options) => { calls.push(body); return { ok: true, conversationId: 'chat-1', revision: 1, ...await handler(body, options) }; },
-    speak() {}, setBusy: value => busy.push(value), openAction: async action => actions.push(action),
+    speak() {}, setBusy: value => busy.push(value), onAssistantState: value => states.push(value), openAction: async action => actions.push(action),
   });
   const click = text => { const button = [...panel.querySelectorAll('button')].find(node => node.textContent === text && !node.disabled); assert.ok(button, text); button.click(); };
-  return { ui, calls, actions, busy, panel, content, input, click, revoke() { authorized = false; },
+  return { ui, calls, actions, busy, states, panel, content, input, click, revoke() { authorized = false; },
     close() { ui.destroy(); if (prior) Object.defineProperty(globalThis, 'document', prior); else delete globalThis.document; dom.window.close(); } };
 }
 
@@ -189,13 +189,20 @@ test('open-stock questions fall back to bounded deterministic inventory and clea
   assert.deepEqual(JSON.parse(JSON.stringify(query.plantTerms)), ['baby', 'gem']);
   assert.equal(query.contSize, '3DP');
   assert.equal(query.metric, 'openStock');
+  assert.equal(query.season, 'F1');
+  assert.equal(query.salesYear, 27);
   const answer = context.buildAuraDeterministicInventoryAnswer(query, [
-    { unique_id: 'one', commonname: 'Baby Gem Boxwood', itemcode: 'BG-3', contsize: '3DP', locationcode: 'A.01.001', lotcode: '27.S1', season: 'S1', s_lts: 7, ptravailable: 9, ptronhand: 11, ptrreviewed: 2 },
-    { unique_id: 'two', commonname: 'Baby Gem Boxwood', itemcode: 'BG-3', contsize: '3DP', locationcode: 'A.01.002', lotcode: '27.S1', season: 'S1', s_lts: 5, ptravailable: 6, ptronhand: 8, ptrreviewed: 1 },
-    { unique_id: 'wrong-size', commonname: 'Baby Gem Boxwood', itemcode: 'BG-7', contsize: '#7', locationcode: 'A.02.001', lotcode: '27.S1', season: 'S1', s_lts: 99, ptravailable: 99, ptronhand: 99 },
+    { unique_id: 'one', commonname: 'Baby Gem Boxwood', itemcode: 'BG-3', contsize: '3DP', locationcode: 'A.01.001', lotcode: '27.F1', season: 'F1', saleyear: 27, s_lts: 12, ptravailable: 9, ptronhand: 11, ptrreviewed: 2 },
+    { unique_id: 'two', commonname: 'Baby Gem Boxwood', itemcode: 'BG-3', contsize: '3DP', locationcode: 'A.01.002', lotcode: '26.F1', season: 'F1', saleyear: 26, s_lts: 12, ptravailable: 6, ptronhand: 8, ptrreviewed: 1 },
+    { unique_id: 'wrong-season', commonname: 'Baby Gem Boxwood', itemcode: 'BG-3', contsize: '3DP', locationcode: 'A.03.001', lotcode: '27.S1', season: 'S1', saleyear: 27, s_lts: 90, ptravailable: 90, ptronhand: 90 },
+    { unique_id: 'future-year', commonname: 'Baby Gem Boxwood', itemcode: 'BG-3', contsize: '3DP', locationcode: 'A.04.001', lotcode: '28.F1', season: 'F1', saleyear: 28, s_lts: 80, ptravailable: 80, ptronhand: 80 },
+    { unique_id: 'unrelated-size', commonname: 'Gatsby Glow Ball Oakleaf Hydrangea', itemcode: 'GG-3', contsize: '3DP', locationcode: 'F.14.000', lotcode: '27.F1', season: 'F1', saleyear: 27, s_lts: 70, ptravailable: 70, ptronhand: 70 },
+    { unique_id: 'wrong-size', commonname: 'Baby Gem Boxwood', itemcode: 'BG-7', contsize: '#7', locationcode: 'A.02.001', lotcode: '27.F1', season: 'F1', saleyear: 27, s_lts: 99, ptravailable: 99, ptronhand: 99 },
   ], { source: 'masterInventory' });
-  assert.match(answer.reply, /12 Open Stock, 15 Available, 19 On Hand, and 3 Review/);
+  assert.match(answer.reply, /12 Open Stock for Season F1 \(Sales Year <= 27\), 15 Available, 19 On Hand, and 3 Review/);
+  assert.doesNotMatch(answer.reply, /I found possible matches|Gatsby Glow Ball/);
   assert.equal(answer.actions[0].rows.length, 2);
+  assert.ok(answer.actions[0].rows.every(row => row.commonname === 'Baby Gem Boxwood' && row.contsize === '3DP' && row.season === 'F1' && row.salesYear <= 27));
 
   let resolveRequest;
   const panel = fixture(async body => body.mode === 'command' ? await new Promise(resolve => { resolveRequest = resolve; }) : {});
@@ -207,13 +214,19 @@ test('open-stock questions fall back to bounded deterministic inventory and clea
     resolveRequest(answer);
     await pending;
     assert.equal(panel.busy.at(-1), false, 'finally resets the AURA Processing state');
+    assert.equal(panel.states.at(-1), 'idle', 'rendered replies reset the AURA subtitle to Ready when you are.');
     assert.match(panel.panel.textContent, /12 Open Stock/);
+    assert.doesNotMatch(panel.panel.textContent, /I found possible matches|Gatsby Glow Ball/);
   } finally { panel.close(); }
 
   const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
   const router = readFileSync(new URL('../supabase/functions/_shared/aura-voice-handler.ts', import.meta.url), 'utf8');
+  const widget = readFileSync(new URL('../components/common/auraVoiceWidget.js', import.meta.url), 'utf8');
   assert.match(appApi, /operation === "resolve_query"[^]*resolveAuraDeterministicInventoryQuery/);
-  assert.match(router, /deterministicInventoryTool[^]*routeAuraWithGemini[^]*tool = deterministicTool/);
+  assert.match(appApi, /commonName\.includes\(normalized\(term\)\)[^]*rowSeason !== parsed\.season[^]*rowSalesYear > parsed\.salesYear/);
+  assert.match(router, /scopeAuraOpenStock[^]*season = String\(filters\.season \|\| "F1"\)[^]*filters\.salesYear = Number\.isInteger\(filters\.salesYear\) \? filters\.salesYear : 27/);
+  assert.match(router, /strictInventoryIdentityMatch[^]*commonName\.includes\(token\)[^]*distinctInventoryIdentities/);
+  assert.match(widget, /function finishSignal\([^]*busy = false;[^]*setRecognitionBusy\(false\);[^]*renderStatus\(\);/);
 });
 
 test('a conversation whose sources are revoked can still be explicitly deleted', async () => {
