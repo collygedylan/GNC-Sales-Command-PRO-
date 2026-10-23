@@ -287,11 +287,15 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     background: #f7fcf9;
 }
 
-.sales-intelligence-trace summary {
+.sales-intelligence-trace summary,
+.sales-intelligence-trace-toggle {
     display: flex;
     align-items: center;
     gap: 6px;
+    width: 100%;
     padding: 9px 10px;
+    border: 0;
+    background: transparent;
     color: #006f46;
     cursor: pointer;
     font-size: 10px;
@@ -306,6 +310,10 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     margin: 0;
     padding: 0 10px 10px;
     list-style: none;
+}
+
+.sales-intelligence-trace [hidden] {
+    display: none;
 }
 
 .sales-intelligence-trace li {
@@ -347,8 +355,10 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
 }
 
 #view-smart-moves .sales-intelligence-trace,
+#view-smart-moves .sales-intelligence-trace-toggle,
 #view-smart-moves .sales-intelligence-mode-toggle,
 #view-smart-moves .sales-intelligence-mode-toggle button,
+#view-smart-moves .sales-intelligence-action,
 #view-smart-moves .sales-intelligence-empty {
     border: 1px solid #10b981;
     background: #062115;
@@ -356,10 +366,18 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
 }
 
 #view-smart-moves .sales-intelligence-trace summary,
+#view-smart-moves .sales-intelligence-trace-toggle,
 #view-smart-moves .sales-intelligence-trace li,
 #view-smart-moves .sales-intelligence-trace li strong,
-#view-smart-moves .sales-intelligence-mode-toggle button {
+#view-smart-moves .sales-intelligence-mode-toggle button,
+#view-smart-moves .sales-intelligence-action {
     color: #ecfdf5;
+}
+
+#view-smart-moves .sales-intelligence-trace-toggle:hover,
+#view-smart-moves .sales-intelligence-mode-toggle button:hover,
+#view-smart-moves .sales-intelligence-action:hover {
+    background: #0b3a25;
 }
 
 html[data-ops-prepaint-theme="dark"] .sales-intelligence-shell,
