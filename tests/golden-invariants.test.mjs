@@ -248,6 +248,8 @@ test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () =>
 
 test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', () => {
   const runtime = read('assets/app-runtime.js');
+  const styles = read('assets/app-styles.css');
+  const pilotStyles = read('assets/ops-precision-pilot.css');
   const start = runtime.indexOf('        const HOME_MODULE_REGISTRY = Object.freeze([');
   const end = runtime.indexOf('        function normalizeRoleAccessToken', start);
   assert.ok(start >= 0 && end > start);
@@ -260,8 +262,23 @@ test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', () => {
   vm.runInContext(functionSource('assets/app-runtime.js', 'isAuthenticatedDylanCollyge') + '\n' + functionSource('assets/app-runtime.js', 'isFullAppAdministrator') + '\n' + runtime.slice(start, end) + '\n' + functionSource('assets/app-runtime.js', 'getHomeDesktopColumnCount'), context);
   context.ensureHomeModuleRegistry();
   assert.equal([...grid.innerHTML.matchAll(/data-home-module-view=/g)].length, 12);
-  assert.equal(context.getHomeDesktopColumnCount(12), 6);
-  assert.match(read('assets/ops-precision-pilot.css'), /grid-template-rows:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+  assert.equal(context.getHomeDesktopColumnCount(12), 3);
+  assert.doesNotMatch(pilotStyles, /grid-template-rows:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+  const mobileStart = styles.lastIndexOf('@media (max-width: 767px)');
+  const desktopStart = styles.indexOf('@media (min-width: 768px)', mobileStart);
+  assert.ok(mobileStart >= 0 && desktopStart > mobileStart);
+  const mobileStyles = styles.slice(mobileStart, desktopStart);
+  assert.match(mobileStyles, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important/);
+  assert.match(mobileStyles, /grid-template-rows:\s*none\s*!important/);
+  assert.match(mobileStyles, /grid-auto-rows:\s*clamp\(54px,\s*calc\(\(100dvh - 265px\) \/ 6\),\s*72px\)\s*!important/);
+  assert.match(mobileStyles, /\.home-module-tile\s*\{[^}]*min-height:\s*0\s*!important[^}]*height:\s*100%\s*!important[^}]*max-height:\s*100%\s*!important/);
+  for (const viewportHeight of [568, 667, 740, 844, 932]) {
+    const tileHeight = Math.min(72, Math.max(54, (viewportHeight - 265) / 6));
+    const rows = Array.from({ length: 6 }, (_, index) => ({ top: index * (tileHeight + 8), bottom: index * (tileHeight + 8) + tileHeight }));
+    assert.ok(rows.every(row => row.bottom - row.top >= 54 && row.bottom - row.top <= 72));
+    for (let index = 0; index < rows.length - 1; index += 1) assert.ok(rows[index + 1].top >= rows[index].bottom + 6);
+    assert.ok(rows[5].bottom + 185 <= viewportHeight);
+  }
   assert.match(grid.innerHTML, /Production[^]*Smart Sales (?:&amp;|&) Move|Smart Sales (?:&amp;|&) Move[^]*Production/);
 });
 
@@ -312,7 +329,7 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
   const document = { hidden: false, body: { ...rootNode, dataset: { currentView: 'drive' } }, documentElement: null,
     querySelector: () => null, getElementById: () => null, addEventListener() {} };
   const reports = [];
-  const window = { __APP_RELEASE_VERSION__: 'AgData v2.3.55', activeHomeTab: '',
+  const window = { __APP_RELEASE_VERSION__: 'AgData v2.3.56', activeHomeTab: '',
     localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     setTimeout, clearTimeout, addEventListener() {} };
   const context = vm.createContext({ window, document, MutationObserver: class { observe() {} }, setTimeout, clearTimeout, console });
@@ -325,7 +342,7 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
   ];
   for (const [viewId, symbol] of cases) {
     const event = window.GncRuntimeWatchdog.record('GOLDEN_TRIAGE', { view_id: viewId, suspected_functions: [symbol] });
-    assert.equal(event.app_version, 'AgData v2.3.55');
+    assert.equal(event.app_version, 'AgData v2.3.56');
     const skillPath = path.join(root, '.codex', 'skills', event.owning_skill, 'SKILL.md');
     assert.equal(readFileSync(skillPath, 'utf8').length > 0, true);
     const domain = index.domains[event.owning_skill];
@@ -334,7 +351,7 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
   }
   await new Promise(resolve => setImmediate(resolve));
   assert.equal([...storage.values()].some(value => String(value).includes('AgData v2.3.54')), false);
-  assert.equal(reports.every(event => event.app_version === 'AgData v2.3.55'), true);
+  assert.equal(reports.every(event => event.app_version === 'AgData v2.3.56'), true);
 });
 
 test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
@@ -349,4 +366,44 @@ test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   assert.match(migration, /insert into public\.ph_active_request[^]*insert into public\.ph_request_delivery_outbox/);
   assert.match(runtime, /syncPanel\.open = window\.innerWidth >= 768/);
   assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
+});
+
+test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => {
+  const badgeClasses = new Set(['hidden']);
+  const buttonClasses = new Set();
+  const badge = { innerText: '', classList: { add: name => badgeClasses.add(name), remove: name => badgeClasses.delete(name) } };
+  const button = { classList: { toggle: (name, enabled) => enabled ? buttonClasses.add(name) : buttonClasses.delete(name) } };
+  const badgeContext = runFunctions('assets/app-runtime.js', ['paintFooterRequestBadgeOnly'], {
+    document: { getElementById: id => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null },
+    canUseFooterRequestShortcut: () => true,
+    getRequestQueueAlertCount: counts => Number(counts.pending || 0),
+  });
+  assert.equal(badgeContext.paintFooterRequestBadgeOnly({ pending: 7 }), true);
+  assert.equal(badge.innerText, '7');
+  assert.equal(badgeClasses.has('hidden'), false);
+  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'paintFooterRequestBadgeOnly'), /innerText\s*=\s*['"]!['"]/);
+
+  const connectionContext = runFunctions('assets/app-runtime.js', ['getDatasetRevisionConnectionLabel'], {
+    datasetRevisionConnectionOwner: 'dylan',
+    datasetRevisionConnectionStates: Array.from({ length: 4 }, (_, index) => ({ key: String(index), state: 'ready' })),
+    getSupabaseReadIdentityScope: () => 'dylan',
+    window: { GncUserAccessControl: { getSelfState: () => ({ denied: false }) } },
+    hasActiveManualSync: () => false,
+  });
+  assert.match(connectionContext.getDatasetRevisionConnectionLabel(), /^Connected.*4 ready$/);
+  assert.doesNotMatch(read('index.html'), /<details id="dashboard-sync-accordion"[^>]*\bopen\b/);
+  assert.match(functionSource('assets/app-runtime.js', 'updateDashboardSyncSummary'), /\['DRIVE', 'CAV', 'RESERVES', 'SOC'\]/);
+});
+
+test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
+  const migration = read('supabase/migrations/20261023234500_request_quantity_recovery_v3.sql');
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  for (const uniqueId of ['REQ-mvlgbfl7p8r8zxrj97j', 'REQ-mvlg4t85vlzf7053pv', 'REQ-mvlfib5eqwa3typzcqq',
+    'REQ-mvlfib5evawvlvvx09', 'REQ-mvlex5bay7ngnehzi7', 'REQ-mvlbp5hkkk58akaubms', 'REQ-mvk1xgv2ty9fttuqj2']) assert.match(migration, new RegExp(uniqueId));
+  assert.equal((migration.match(/,'1'::text\)/g) || []).length >= 10, true);
+  assert.match(migration, /'REQ-mvlbp5hkkk58akaubms','003139\.250\.1','A\.08\.000','10'::text/);
+  assert.match(migration, /'REQ-mvk1xgv2ty9fttuqj2','008280\.150\.1','C\.05\.000','4'::text/);
+  assert.match(migration, /app_dataset_revision_updated/);
+  assert.doesNotMatch(migration, /update\s+public\.ph_request_delivery_outbox/i);
+  assert.match(runner, /requestQuantityRecoveryMigrationName[^]*20261023234500_request_quantity_recovery_v3\.sql/);
 });

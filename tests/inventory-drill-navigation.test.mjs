@@ -1189,7 +1189,7 @@ test('v2.3.54 keeps Drive evidence location-stable, thumbnails recoverable, and 
   ), true);
   assert.doesNotMatch(evalEngine, /previewRows\.length<8/);
   assert.match(evalEngine, /locationcode[^]*localeCompare[^]*lotcode[^]*localeCompare[^]*previewHasMore:false/);
-  assert.match(runtime, /getHomeDesktopColumnCount[^]*Math\.min\(total, 6\)/);
+  assert.match(runtime, /getHomeDesktopColumnCount[^]*Math\.min\(total, 3\)/);
   assert.match(styles, /grid-template-columns: repeat\(var\(--home-fit-columns, 2\)[^]*height: var\(--home-fit-tile-height, 44px\)/);
   assert.match(runtime, /\['master', 'soc', 'reserves'\]\.every\(key => isDatasetLoaded\(key, 'full'\)\)/);
 });

@@ -513,3 +513,74 @@ html body #app-wrapper .app-drive-card-with-reclass .app-card-bottom-btn--argos-
   font-weight: 800;
   text-align: center;
 }
+
+@media (max-width: 767px) {
+  html body #app-wrapper #view-home #home-dashboard-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: clamp(54px, calc((100dvh - 265px) / 6), 72px) !important;
+    gap: 8px !important;
+    height: auto !important;
+    align-content: start !important;
+  }
+  html body #app-wrapper #view-home #home-dashboard-grid > .home-module-tile {
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 6px 8px !important;
+    position: relative !important;
+    top: auto !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    aspect-ratio: auto !important;
+  }
+  html body #app-wrapper #view-home #home-dashboard-grid > .home-module-tile > :is(i, svg, .home-module-icon) {
+    width: 20px !important;
+    height: 20px !important;
+    flex: 0 0 20px !important;
+    font-size: 20px !important;
+  }
+  html body #app-wrapper #view-home #home-dashboard-grid > .home-module-tile > span {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    letter-spacing: 0 !important;
+    text-align: center !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+  }
+}
+
+@media (min-width: 768px) {
+  html body #app-wrapper #view-home #home-dashboard-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: clamp(72px, calc((100dvh - 260px) / 4), 104px) !important;
+    gap: 12px !important;
+    height: auto !important;
+    align-content: start !important;
+  }
+  html body #app-wrapper #view-home #home-dashboard-grid > .home-module-tile {
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    position: relative !important;
+    top: auto !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    aspect-ratio: auto !important;
+  }
+}

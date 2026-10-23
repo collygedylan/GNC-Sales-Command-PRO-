@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -142,7 +142,8 @@ test('Drive evidence reconciliation is registered with durable location and requ
 
 test('bounded Request recovery is registered and preserves the atomic submission contract', () => {
   assert.equal(boundedRequestQueueReconciliationMigrationName, '20261023233000_bounded_request_queue_reconciliation_v2.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), boundedRequestQueueReconciliationMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(boundedRequestQueueReconciliationMigrationName)
+    < releaseDatabaseMigrations.indexOf(requestQuantityRecoveryMigrationName));
   const sql = fs.readFileSync(new URL(`../supabase/migrations/${boundedRequestQueueReconciliationMigrationName}`, import.meta.url), 'utf8');
   assert.match(sql, /order by o\.created_at desc,o\.event_id desc\s+limit 100/);
   assert.match(sql, /regexp_matches/);
@@ -151,6 +152,19 @@ test('bounded Request recovery is registered and preserves the atomic submission
   const contract = migrationContractQuery(boundedRequestQueueReconciliationMigrationName);
   for (const marker of ['ph_request_delivery_outbox_request_created_recent_idx', 'limit 100',
     'private.insert_request_batch(uuid,jsonb,text)', 'app_dataset_revision_inserted']) assert.ok(contract.includes(marker), marker);
+});
+
+test('exact pending Request quantities are release-registered without rewriting delivery history', () => {
+  assert.equal(requestQuantityRecoveryMigrationName, '20261023234500_request_quantity_recovery_v3.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1), requestQuantityRecoveryMigrationName);
+  const sql = fs.readFileSync(new URL(`../supabase/migrations/${requestQuantityRecoveryMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['REQ-mvlgbfl7p8r8zxrj97j', 'REQ-mvlg4t85vlzf7053pv', 'REQ-mvlfib5eqwa3typzcqq',
+    'REQ-mvlfib5evawvlvvx09', 'REQ-mvlex5bay7ngnehzi7', 'REQ-mvlbp5hkkk58akaubms', 'REQ-mvk1xgv2ty9fttuqj2']) assert.match(sql, new RegExp(marker));
+  assert.match(sql, /lower\(btrim\(coalesce\(active\.req_status,''\)\)\)='pending'/);
+  assert.match(sql, /app_dataset_revision_updated/);
+  assert.doesNotMatch(sql, /update\s+public\.ph_request_delivery_outbox/i);
+  const contract = migrationContractQuery(requestQuantityRecoveryMigrationName);
+  for (const marker of ['app_dataset_revision_updated', 'REQ-mvlgbfl7p8r8zxrj97j', "'10'::text", "'4'::text"]) assert.ok(contract.includes(marker), marker);
 });
 
 test('mapping publication is release-registered and protects raw source data and writes', () => {

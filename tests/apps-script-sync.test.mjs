@@ -22,7 +22,7 @@ const appsScriptSource = readFileSync(new URL('../Code.gs', import.meta.url), 'u
 test('Home imported filenames stay available with a mobile-collapsed viewport default', () => {
   const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
-  assert.match(indexHtml, /<details id="dashboard-sync-accordion"[^>]*\bopen\b/);
+  assert.doesNotMatch(indexHtml, /<details id="dashboard-sync-accordion"[^>]*\bopen\b/);
   assert.match(runtime, /syncPanel\.open = window\.innerWidth >= 768/);
   assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
   const context = vm.createContext({ currentUser: 'dylan_collyge',

@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.55';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.56';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4846,7 +4846,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getHomeDesktopColumnCount(count) {
             const total = Math.max(1, Math.floor(Number(count) || 0));
-            return Math.min(total, 6);
+            return Math.min(total, 3);
         }
 
         function syncHomeDashboardPhoneFit(reason = 'default') {
@@ -4897,25 +4897,15 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
 
             const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-            let rowGapPx = profile.phone
-                ? clamp(Math.round(profile.height * (profile.short ? 0.0038 : 0.0048)), 4, 8)
-                : clamp(Math.round(profile.height * 0.012), 10, 16);
-            const colGapPx = profile.phone
-                ? clamp(Math.round(profile.width * 0.026), 8, 12)
-                : clamp(Math.round(profile.width * 0.008), 10, 16);
-            const desktopLayout = profile.width >= 640;
-            const portraitPhone = profile.width < 640 && profile.height >= profile.width;
-            const landscapeCompact = profile.width > profile.height * 1.22 && profile.height < 640;
-            let columnCount = profile.width < 640
-                ? 2
-                : (profile.width < 840 ? 3 : (profile.width < 1100 ? 4 : getHomeDesktopColumnCount(visibleTiles.length)));
-            const candidateColumns = desktopLayout
-                ? [columnCount]
-                : (portraitPhone ? [2] : (landscapeCompact ? [columnCount, 4, 6] : [columnCount, 4]));
-            const clearanceTargetPx = desktopLayout
+            const compactHomeLayout = profile.width < 768;
+            let rowGapPx = compactHomeLayout ? 8 : 12;
+            const colGapPx = compactHomeLayout ? 8 : 12;
+            let columnCount = compactHomeLayout ? 2 : getHomeDesktopColumnCount(visibleTiles.length);
+            const candidateColumns = [columnCount];
+            const clearanceTargetPx = !compactHomeLayout
                 ? clamp(Math.round(profile.height * 0.036), 24, 48)
                 : clamp(Math.round(profile.height * 0.018), 8, 18);
-            const hardMinPx = 44;
+            const hardMinPx = compactHomeLayout ? 54 : 72;
             const gridWidth = Math.max(0, Math.floor(gridRect.width || grid.clientWidth || 0));
             const calculateFit = (columns) => {
                 const rows = Math.max(1, Math.ceil(visibleTiles.length / columns));
@@ -4937,12 +4927,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 fit = calculateFit(columnCount);
                 fitTilePx = fit.height;
             }
-            const tilePx = Math.max(hardMinPx, Math.min(130, fitTilePx));
+            const tilePx = Math.max(hardMinPx, Math.min(compactHomeLayout ? 72 : 104, fitTilePx));
             const cardWidthPx = Math.max(hardMinPx, fit.width);
-            const iconPx = clamp(Math.round(tilePx * (profile.phone ? 0.30 : 0.20)), profile.phone ? 18 : 28, profile.phone ? 30 : 48);
-            const labelPx = clamp(Math.round(tilePx * (profile.phone ? 0.16 : 0.075)), profile.phone ? 9 : 12, profile.phone ? 12 : 16);
-            const tileGapPx = clamp(Math.round(tilePx * 0.06), 2, 6);
-            const paddingYPx = clamp(Math.round(tilePx * 0.09), 3, 8);
+            const iconPx = compactHomeLayout ? 20 : clamp(Math.round(tilePx * 0.30), 24, 32);
+            const labelPx = compactHomeLayout ? 12 : clamp(Math.round(tilePx * 0.14), 12, 15);
+            const tileGapPx = compactHomeLayout ? 4 : clamp(Math.round(tilePx * 0.06), 3, 6);
+            const paddingYPx = compactHomeLayout ? 6 : clamp(Math.round(tilePx * 0.09), 6, 10);
             const nextKey = [
                 profile.width,
                 profile.height,
@@ -26193,7 +26183,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.55').trim() || 'AgData v2.3.55';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.56').trim() || 'AgData v2.3.56';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -48676,7 +48666,7 @@ let avTopControlsRenderToken = 0;
             }
             const queueCount = getRequestQueueAlertCount(counts);
             if (queueCount > 0) {
-                badge.innerText = '!';
+                badge.innerText = String(queueCount);
                 badge.classList.remove('hidden');
             } else {
                 badge.classList.add('hidden');

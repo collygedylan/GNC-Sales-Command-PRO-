@@ -1405,7 +1405,7 @@ test('v2.3.45 treats Bunch Note revisions as optional and retries transient iden
   assert.match(source, /if \(isSilentBackgroundRetry\(error\) \|\| isInventoryRevisionAdoption\(error\)\)[^]*?signal\([^]*?, 1000\)/);
 });
 
-test('v2.3.55 REQUEST reconciliation is bounded, non-blocking, and refreshes every open', () => {
+test('v2.3.56 REQUEST reconciliation is bounded, non-blocking, and refreshes every open', () => {
   const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
   const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
   const migration = readFileSync(new URL('../supabase/migrations/20261023233000_bounded_request_queue_reconciliation_v2.sql', import.meta.url), 'utf8');

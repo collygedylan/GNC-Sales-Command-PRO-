@@ -805,7 +805,7 @@ test('optimistic Suspend badge paint does not synchronously rebuild mobile navig
 
   ctx.updateFooterRequestBadge({ pending: 1 });
   assert.equal(buttonClasses.has('hidden'), false);
-  assert.equal(badge.innerText, '!');
+  assert.equal(badge.innerText, '1');
   assert.equal(badgeClasses.has('hidden'), false);
   assert.equal(navSyncCalls, 1, 'ordinary badge updates retain normal navigation reconciliation');
   assert.equal(liveSyncCalls, 1, 'ordinary badge updates retain background synchronization');
