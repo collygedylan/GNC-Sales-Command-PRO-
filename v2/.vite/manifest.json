@@ -1,17 +1,17 @@
 {
-  "../node_modules/.deno/workbox-window@7.4.1/node_modules/workbox-window/build/workbox-window.prod.es5.mjs": {
+  "../node_modules/workbox-window/build/workbox-window.prod.es5.mjs": {
     "file": "assets/workbox-window.prod.es5-Bd17z0YL.js",
     "name": "workbox-window.prod.es5",
-    "src": "../node_modules/.deno/workbox-window@7.4.1/node_modules/workbox-window/build/workbox-window.prod.es5.mjs",
+    "src": "../node_modules/workbox-window/build/workbox-window.prod.es5.mjs",
     "isDynamicEntry": true
   },
   "index.html": {
-    "file": "assets/index-Dzj7CFvB.js",
+    "file": "assets/index-BrEs2dwE.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "dynamicImports": [
-      "../node_modules/.deno/workbox-window@7.4.1/node_modules/workbox-window/build/workbox-window.prod.es5.mjs",
+      "../node_modules/workbox-window/build/workbox-window.prod.es5.mjs",
       "src/pages/RequestQueue.tsx",
       "src/components/DriveInventory.tsx"
     ],
@@ -20,7 +20,7 @@
     ]
   },
   "src/components/DriveInventory.tsx": {
-    "file": "assets/DriveInventory-ChRuJY10.js",
+    "file": "assets/DriveInventory-BKtq23rs.js",
     "name": "DriveInventory",
     "src": "src/components/DriveInventory.tsx",
     "isDynamicEntry": true,
@@ -29,7 +29,7 @@
     ]
   },
   "src/pages/RequestQueue.tsx": {
-    "file": "assets/RequestQueue-B0g3lS7z.js",
+    "file": "assets/RequestQueue-JPl1VZiz.js",
     "name": "RequestQueue",
     "src": "src/pages/RequestQueue.tsx",
     "isDynamicEntry": true,

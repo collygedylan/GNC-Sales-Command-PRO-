@@ -1,12 +1,30 @@
 /* global getMainAreaScrollTop, setMainAreaScrollTop */
 (function(root) {
  'use strict';
- const normalize = value => String(value ?? '').trim().toUpperCase();
- // Only a numeric third segment is a bay. Other codes retain their full identity.
- const base = value => normalize(value).replace(/^([A-Z0-9]+\.\d+)\.\d+$/, '$1');
- function group(values) {
-  const groups = new Map();
-  [...new Set(values.map(normalize).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).forEach(code=>{
+  const normalize = value => String(value ?? '').trim().toUpperCase();
+  // Only a numeric third segment is a bay. Other codes retain their full identity.
+  const base = value => normalize(value).replace(/^([A-Z0-9]+\.\d+)\.\d+$/, '$1');
+  function compareLocationCodeNatural(leftValue, rightValue, compareText = null) {
+   const parse = value => {
+    const clean = normalize(value);
+    const match = clean.match(/^([A-Z]+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?$/);
+    if (!match) return { raw:clean, block:clean, parts:[] };
+    return { raw:clean, block:match[1] || '', parts:[match[2],match[3],match[4]].filter(part=>part!==undefined).map(Number) };
+   };
+   const left=parse(leftValue), right=parse(rightValue);
+   const text=typeof compareText==='function'?compareText:(a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'});
+   const blockCompare=text(left.block,right.block); if(blockCompare)return blockCompare;
+   const length=Math.max(left.parts.length,right.parts.length);
+   for(let index=0;index<length;index++){
+    const leftPart=Number.isFinite(left.parts[index])?left.parts[index]:-1;
+    const rightPart=Number.isFinite(right.parts[index])?right.parts[index]:-1;
+    if(leftPart!==rightPart)return leftPart-rightPart;
+   }
+   return text(left.raw,right.raw);
+  }
+  function group(values) {
+   const groups = new Map();
+   [...new Set(values.map(normalize).filter(Boolean))].sort(compareLocationCodeNatural).forEach(code=>{
    const key=base(code); if(!groups.has(key))groups.set(key,[]);groups.get(key).push(code);
   });
   return groups;
@@ -33,5 +51,6 @@
   if(!el)return false;const key=el.dataset.locationNavigation,v=views.get(key);if(!v)return false;
   v.selected='';paint(key);typeof setMainAreaScrollTop==='function'?setMainAreaScrollTop(v.scroll):root.scrollTo?.(0,v.scroll);return true;
  }
- root.LocationCode={normalize,base,group,cards,open,back,reset:()=>views.clear()};
-})(globalThis);
+  root.compareLocationCodeNatural=compareLocationCodeNatural;
+  root.LocationCode={normalize,base,compare:compareLocationCodeNatural,group,cards,open,back,reset:()=>views.clear()};
+ })(globalThis);
