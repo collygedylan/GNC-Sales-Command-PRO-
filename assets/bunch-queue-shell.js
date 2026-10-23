@@ -91,7 +91,7 @@
         if (host?.parentElement === container) return;
         destroy();
         host = document.createElement('div'); host.id = 'bunch-queue-host';
-        host.textContent = 'Loading assigned Bunch Notes…'; container.replaceChildren(host);
+        host.textContent = 'No assigned Bunch Notes loaded yet.'; container.replaceChildren(host);
         const target = host, token = generation;
         try {
             const ready = await ensure();

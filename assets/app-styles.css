@@ -76,7 +76,7 @@ html[data-ops-prepaint-theme="dark"] body #main-scroll-area,
 html body.ops-precision-pilot[data-ops-theme="dark"] #app-wrapper,
 html body.ops-precision-pilot[data-ops-theme="dark"] #main-scroll-area { background-color: #041a10 !important; }
 
-/* v2.3.44 detail and evidence presentation authority. */
+/* v2.3.45 detail and evidence presentation authority. */
 html body #photo-modal {
   width: 100vw !important;
   height: 100dvh !important;

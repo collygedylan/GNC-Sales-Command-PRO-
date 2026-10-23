@@ -67,7 +67,9 @@
   if(pickerPortalHost.innerHTML!==markup){const position=retainedPosition||captureUiPosition(null,pickerPortalHost);pickerPortalHost.innerHTML=markup;restoreUiPosition(position,null,pickerPortalHost);}
  }
  const normalize = value => String(value ?? '').trim().toUpperCase();
- const displayLocation = value => String(value ?? '').replace(/\.\d{3}$/, '.');
+ const cleanText = (value,limit) => String(value ?? '').replace(/\r\n?/g,'\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,'').trim().slice(0,limit);
+ const canonicalLocation = value => {const text=cleanText(value,200).toUpperCase().replace(/\s+/g,'').replace(/\.+$/,'');return /^[A-Z0-9]+\.[A-Z0-9]+$/.test(text)?`${text}.000`:text;};
+ const displayLocation = value => canonicalLocation(value).replace(/\.000$/, '');
  const BUNCH_HOUSES = ['South House','North House','Center House','South & Center House','North & Center House','East House','West House','East & Center House','West & Center House'];
  const PURPOSE_THREADS = ['Early Winter Protect','Haul-In Space','Small Container Crew','Fall Drill Shift Canfilling','LD Canfilling/Planting','Shovel Shift','Rain Days'];
  const CREW_DIRECTIONS = ['South → North','North → South','East → West','West → East'];
@@ -175,12 +177,22 @@
   }
   loc.row_ids=[...new Set(loc.cards.flatMap(c=>Array.isArray(c.row_ids)?c.row_ids:[]))];
  }
- function prepareDraftCards() { const d=state.draft?.body;if(!d)return;for(const loc of d.locations)prepareCards(loc,!Array.isArray(loc.cards));d.format_version=5; }
+ function normalizeDraftBody(d) {
+  if(!d)return d;d.format_version=5;if(!Array.isArray(d.locations))d.locations=[];
+  for(const loc of d.locations){const code=canonicalLocation(loc.location||loc.source_location);loc.location=code;loc.source_location=code;loc.format_version=5;
+   loc.work_type=cleanText(loc.work_type||loc.title||loc.purposes||`${displayLocation(code)} Bunch Notes`,500);loc.purposes=cleanText(loc.purposes||loc.work_type,500);if('title' in loc)loc.title=cleanText(loc.title,500);
+   loc.purpose_thread=cleanText(loc.purpose_thread,500);loc.default_house_plan=cleanText(loc.default_house_plan,800);loc.schedule_banner=cleanText(loc.schedule_banner,2000);loc.direction=cleanText(loc.direction,200);
+   loc.instructions=cleanText(loc.instructions,8000);loc.prerequisites=cleanText(loc.prerequisites,8000);loc.rule_chips=(Array.isArray(loc.rule_chips)?loc.rule_chips:[]).map(chip=>cleanText(chip,500)).filter(Boolean).slice(0,20);
+   for(const card of Array.isArray(loc.cards)?loc.cards:[])if(card&&typeof card==='object')card.location_code=code;
+  }
+  const firstBlock=d.locations.map(loc=>canonicalLocation(loc.location).split('.')[0]).find(Boolean)||'';d.block=cleanText(d.block,100).toUpperCase().replace(/\.+$/,'')||firstBlock;return d;
+ }
+ function prepareDraftCards() { const d=normalizeDraftBody(state.draft?.body);if(!d)return;for(const loc of d.locations)prepareCards(loc,!Array.isArray(loc.cards)); }
  function ensureLocation(location) {
-  const code=normalize(typeof location==='string'?location:location.location||location.location_code), d=state.draft.body;
-  let loc=d.locations.find(l=>normalize(l.location)===code);
-  if(!loc){const workType=`${displayLocation(code)} Bunch Notes`;loc={location:code,work_type:workType,purposes:workType,purpose_thread:'',priority:'',direction:'',instructions:'',prerequisites:'',default_house_plan:'',schedule_banner:'',rule_chips:[],owner_id:null,row_ids:[],cards:[],source_all:state.rows.filter(r=>normalize(r.locationcode)===code),actions:[],house_sections:[]};d.locations.push(loc);}
-  else {if(!String(loc.work_type||'').trim())loc.work_type=String(loc.purposes||'').trim()||`${displayLocation(code)} Bunch Notes`;if(!String(loc.purposes||'').trim())loc.purposes=loc.work_type;}
+  const code=canonicalLocation(typeof location==='string'?location:location.location||location.location_code), d=state.draft.body;
+  let loc=d.locations.find(l=>canonicalLocation(l.location||l.source_location)===code);
+  if(!loc){const workType=`${displayLocation(code)} Bunch Notes`;loc={location:code,source_location:code,format_version:5,work_type:workType,purposes:workType,purpose_thread:'',priority:'',direction:'',instructions:'',prerequisites:'',default_house_plan:'',schedule_banner:'',rule_chips:[],owner_id:null,row_ids:[],cards:[],source_all:state.rows.filter(r=>canonicalLocation(r.locationcode)===code),actions:[],house_sections:[]};d.locations.push(loc);}
+  else {loc.location=code;loc.source_location=code;if(!String(loc.work_type||'').trim())loc.work_type=String(loc.purposes||'').trim()||`${displayLocation(code)} Bunch Notes`;if(!String(loc.purposes||'').trim())loc.purposes=loc.work_type;}
   return loc;
  }
  function changeCard(location, value) {
@@ -263,7 +275,7 @@
   return response.data;
  }
  async function run(work) {
-  ensureAccount(); if (state.busy) return; const cardScreen=state.draft&&!state.location&&!state.actionEdit&&!state.picker;if(cardScreen)rememberScroll();state.busy = true; render();
+  ensureAccount(); if (state.busy) return; const cardScreen=state.draft&&!state.location&&!state.actionEdit&&!state.picker;if(cardScreen)rememberScroll();clearError();state.busy = true; render();
   try { await work(); state.error = ''; } catch (error) {
    const code = String(error.message || error);
    state.error = code;
@@ -292,10 +304,11 @@
    showToast('Inv Bunch Notes', state.error, true);
   } finally { state.busy = false; render();if(cardScreen)restoreScroll(); }
  }
+ function clearError() {state.error='';if(typeof document==='undefined')return;const container=document.getElementById?.('bunch-note-content'),alert=container?.querySelector?.(':scope > [role="alert"]');if(alert){alert.remove();renderedQueues.delete(container);}}
  async function load(attempt = 0) {
   ensureAccount(); if (state.loading) return;
   state.loading = true;
-  try { const result = await api('list'); state.jobs = Array.isArray(result.jobs) ? result.jobs : []; state.loaded = true; state.epoch++; }
+  try { const result = await api('list'); if (result?.retained !== true) state.jobs = Array.isArray(result.jobs) ? result.jobs : []; state.loaded = true; state.epoch++; }
   catch (error) {
    state.error = String(error && error.message || error || 'Bunch Notes could not be loaded.');
    if (attempt < 3) {
@@ -628,7 +641,7 @@
   const names=[...new Set(jobs.map(j=>normalize(j.location)))], groups=locationGroups(names);
   if(!state.queueBase)return html+`<div class="bn-drill-grid">${[...groups].map(([base,codes])=>drillCard(base,`${codes.length} full locations`,`BunchNote.queueBase(${arg(base)})`,'location')).join('')||'<p>No work in this filter.</p>'}</div>`;
   if(!state.queueLocation)return html+`<h3>${esc(state.queueBase)}</h3><div class="bn-drill-grid">${(groups.get(state.queueBase)||[]).map(loc=>drillCard(loc,'Open location work',`BunchNote.queueLocation(${arg(loc)})`,'location')).join('')||'<p>No work in this location.</p>'}</div>`;
-  return html + (state.loading ? '<p>Loading…</p>' : !jobs.length ? '<p>No work in this filter.</p>' : jobs.filter(j=>normalize(j.location)===state.queueLocation).map(j => `<article class="bn-card"><h3>${esc(j.block)} → ${esc(j.location)}</h3><p>${esc(j.note_number)} · Revision ${j.instruction_revision} · ${esc(j.body.purposes)}</p><p>Priority: ${esc(j.body.priority || '—')} · ${Object.keys(j.progress).length}/${allActions(j).length} actions</p><p>Work: ${esc(j.status)} · Email: ${esc(j.delivery_status)}</p>${button('Open', `BunchNote.detail(${arg(j.id)})`)}</article>`).join(''));
+  return html + (!jobs.length ? '<p>No work in this filter.</p>' : jobs.filter(j=>normalize(j.location)===state.queueLocation).map(j => `<article class="bn-card"><h3>${esc(j.block)} → ${esc(j.location)}</h3><p>${esc(j.note_number)} · Revision ${j.instruction_revision} · ${esc(j.body.purposes)}</p><p>Priority: ${esc(j.body.priority || '—')} · ${Object.keys(j.progress).length}/${allActions(j).length} actions</p><p>Work: ${esc(j.status)} · Email: ${esc(j.delivery_status)}</p>${button('Open', `BunchNote.detail(${arg(j.id)})`)}</article>`).join(''));
  }
  function queueModeMarkup() {
   if (!author()) return '';
@@ -796,7 +809,7 @@
   queueBase: value => {rememberScroll();state.queueBase=value;render();restoreScroll();},
   queueLocation: value => {rememberScroll();state.queueLocation=value;render();restoreScroll();},
   hasBack: () => !!(state.actionEdit||state.customEdit||state.cardPicker||state.picker||state.preview||state.item||state.detail||state.draft||state.queueBase||state.screen==='destinations'),
-  wizardField: (fieldName,value) => {const location=state.draft?.body.locations.find(location=>location.location===state.location);if(!location||!author())return;invalidate();const text=String(value??'');if(fieldName==='workType'){location.work_type=text;location.purposes=text;return;}const key={direction:'direction',notes:'instructions',purpose_thread:'purpose_thread',default_house_plan:'default_house_plan',schedule_banner:'schedule_banner'}[fieldName];if(key)location[key]=text;},
+  wizardField: (fieldName,value) => {const location=state.draft?.body.locations.find(location=>location.location===state.location);if(!location||!author())return;invalidate();clearError();const text=String(value??'');if(fieldName==='workType'){location.work_type=text;location.purposes=text;return;}const key={direction:'direction',notes:'instructions',purpose_thread:'purpose_thread',default_house_plan:'default_house_plan',schedule_banner:'schedule_banner'}[fieldName];if(key)location[key]=text;},
   insertRuleChip: chip => {const location=state.draft?.body.locations.find(location=>location.location===state.location);if(!location||!author()||!HEADER_RULE_CHIPS.includes(chip))return;invalidate();const rules=new Set(Array.isArray(location.rule_chips)?location.rule_chips:[]);if(rules.has(chip))rules.delete(chip);else rules.add(chip);location.rule_chips=[...rules];const existing=String(location.instructions||'').split('\n').filter(line=>!HEADER_RULE_CHIPS.includes(line));location.instructions=[...existing,...location.rule_chips].filter(Boolean).join('\n');render();},
   nextItems: () => run(async()=>{const l=state.draft.body.locations.find(l=>l.location===state.location);if(!l.purposes?.trim())throw new Error('Enter a work type for this location.');await saveDraft();rememberScroll();state.locationStep='items';restoreScroll();}),
   openCardPicker: () => {if(state.busy||!author()||!state.draft||state.locationStep!=='items')return;const location=state.draft.body.locations.find(location=>location.location===state.location);if(!location)return;rememberScroll();state.cardPicker={search:'',destination_search:'',selectedKeys:[],rowIds:[],ownerIds:null,direction:location.direction||'',workflow_action:'',destination_location:'',destination_qualifier:'',destination_house:'',notes:'',workflow_instructions:'',committedId:'',groups:cardPickerGroups(location),visibleLimit:100};render();restoreScroll();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker .bn-field input')?.focus({preventScroll:true}));},
@@ -865,13 +878,13 @@
   stage: async ctx => { ensureAccount(); const owner=account(), epoch=state.epoch, id=state.detail?.job.id; const data = await api('list', {}, null, null, ctx.signal); const detail=id&&data.jobs.some(j=>j.id===id)?await api('get',{job_id:id},null,null,ctx.signal):null; const destination=state.screen==='destinations'?(await api(state.destinationLocation?'destination_detail':'destinations',state.destinationLocation?{location:state.destinationLocation}:{},null,null,ctx.signal)):null; return {account:owner,epoch,jobs:data.jobs,detail,id,destination,destinationLocation:state.destinationLocation}; },
   // The live-sync coordinator schedules the repaint after typing and taps finish.
   commit: value => { ensureAccount(); if (value.account === account() && value.epoch === state.epoch) { state.jobs = value.jobs; state.loaded = true; if (state.detail?.job.id===value.id) {state.detail=value.detail;if(!value.detail)state.item='';} if(value.destination&&state.screen==='destinations'&&state.destinationLocation===value.destinationLocation){state.destinationNames=value.destination.locations;if(state.destinationLocation)state.destinationData=value.destination;} } },
-  chooseBlock: block => run(async () => { if (!block) return; state.rows = (await api('inventory',{block})).rows; state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear(); state.draft = {id:null,revision:null,body:{format_version:5,block,locations:[],recipient_ids:[]}};if(state.parked.has(block))state.draft=state.parked.get(block);state.epoch++; }),
+  chooseBlock: block => run(async () => { block=cleanText(block,100).toUpperCase().replace(/\.+$/,'');if (!block) return; state.rows = (await api('inventory',{block})).rows; state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear(); state.draft = {id:null,revision:null,body:{format_version:5,block,locations:[],recipient_ids:[]}};if(state.parked.has(block))state.draft=state.parked.get(block);state.epoch++; }),
   openDraft: id => run(async () => { const d = state.drafts.find(d => d.id === id); const rows=(await api('inventory',{block:d.block})).rows; state.draft = structuredClone(d); state.rows=rows;for(const location of state.draft.body.locations)location.source_all=rows.filter(row=>normalize(row.locationcode)===normalize(location.location));prepareDraftCards(); state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear();state.epoch++; }),
   backEditor: () => run(async () => { const d=state.draft;if(d.body.locations.length)await saveDraft();state.parked.set(d.body.block,state.draft); state.drafts=(await api('drafts')).drafts; invalidate(); state.draft=null; state.location=''; }),
   backLocations: () => { state.location=''; render(); },
   panel: (key, expanded) => { if(expanded)state.panels.add(key); else state.panels.delete(key); },
   advancedInventoryPanel: (location, expanded) => { const key='advanced-inventory:'+normalize(location),open=state.panels.has(key);if(open===!!expanded)return;if(expanded)state.panels.add(key);else state.panels.delete(key);render(); },
-  openLocation: location => { if(state.busy)return;ensureLocation(location);rememberScroll();state.location=normalize(location);state.base='';state.item='';state.locationStep='setup';render();restoreScroll(); },
+  openLocation: location => { if(state.busy)return;ensureLocation(location);rememberScroll();state.location=canonicalLocation(location);state.base='';state.item='';state.locationStep='setup';render();restoreScroll(); },
   removeLocation: location => run(async () => { if(state.draft.id && state.draft.body.locations.length === 1)return; if(!await showAppConfirm('Remove this location and its draft instructions from this batch?',{title:'Bunch Note'}))return; invalidate(); state.draft.body.locations=state.draft.body.locations.filter(l=>l.location!==location); state.location=''; }),
   selectRow: (i,id,on) => { invalidate(); const l=state.draft.body.locations[i]; l.row_ids=on?[...new Set([...l.row_ids,id])]:l.row_ids.filter(v=>v!==id); const add=document.getElementById('bn-add-selected-'+i); if(add)add.disabled=state.busy || !l.row_ids.length; },
   edit: (i,key,value) => { invalidate(); const location=state.draft.body.locations[i];location[key]=value;if(key==='purposes')location.work_type=String(value??''); },
