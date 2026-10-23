@@ -346,6 +346,22 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     font-weight: 800;
 }
 
+#view-smart-moves .sales-intelligence-trace,
+#view-smart-moves .sales-intelligence-mode-toggle,
+#view-smart-moves .sales-intelligence-mode-toggle button,
+#view-smart-moves .sales-intelligence-empty {
+    border: 1px solid #10b981;
+    background: #062115;
+    color: #ecfdf5;
+}
+
+#view-smart-moves .sales-intelligence-trace summary,
+#view-smart-moves .sales-intelligence-trace li,
+#view-smart-moves .sales-intelligence-trace li strong,
+#view-smart-moves .sales-intelligence-mode-toggle button {
+    color: #ecfdf5;
+}
+
 html[data-ops-prepaint-theme="dark"] .sales-intelligence-shell,
 body[data-ops-theme="dark"] .sales-intelligence-shell {
     border-color: #286b4d;

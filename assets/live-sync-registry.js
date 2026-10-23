@@ -91,6 +91,7 @@
         request: data(['requests', 'master', 'customerRepMap']),
         reports: data(['requests', 'requestHistory', 'salesCredits', 'soc', 'master', 'reserves', 'customerRepMap'], ['settings']),
         'sales-office': data(['salesOffice', 'master', 'flyerRows', 'flyerHistory'], ['settings']),
+        'smart-moves': data(['master', 'soc', 'reserves', 'customerRepMap', 'requests']),
         moves: data(['salesOffice', 'master', 'requests', 'inventoryEditRequests']),
         tasks: data(['master', 'requests', 'salesOffice', 'warehouseAssignedItems'], ['settings']),
         review: data(['master'], ['ncr']), 'move-up': data(['master', 'salesOffice'], ['ncr']),

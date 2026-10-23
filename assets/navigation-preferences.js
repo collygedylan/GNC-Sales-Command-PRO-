@@ -1,6 +1,7 @@
 (function (root) {
     'use strict';
     const DEFAULT_SHORTCUTS = Object.freeze(['drive', 'tasks', 'docks', 'request', 'bloom']);
+    const DYLAN_SHORTCUTS = Object.freeze(['drive', 'managers', 'docks', 'request', 'bloom']);
     const FIXED_VIEWS = new Set(['menu', 'home', 'communication']);
     const ICONS = { drive: 'ph-car', tasks: 'ph-clipboard-text', docks: 'ph-truck', request: 'ph-list-checks', bloom: 'ph-handbag', sales: 'ph-handshake', 'sales-office': 'ph-desktop', 'historical-requests': 'ph-clock-counter-clockwise', 'request-history': 'ph-clock-counter-clockwise', 'sales-credit': 'ph-receipt', 'credit-request': 'ph-check-square', 'sales-inventory': 'ph-storefront', production: 'ph-plant', managers: 'ph-users-three', reports: 'ph-chart-bar', av: 'ph-notebook', 'hl-order': 'ph-truck', 'bunch-note': 'ph-notepad' };
     const FOOTER_IDS = { menu: 'footer-menu-btn', home: 'footer-home-btn', communication: 'footer-communication-btn', drive: 'footer-drive-btn', tasks: 'footer-tasks-btn', docks: 'footer-docks-btn', request: 'footer-request-btn', bloom: 'footer-cart-btn' };
@@ -30,12 +31,16 @@
     }
     function permitted(view) {
         const value = entry(view);
+        if (username() === 'dylan_collyge') return typeof hooks.canAccess === 'function' ? hooks.canAccess(view) === true : true;
         if (value && (!value.selectable || value.allowed !== true)) return false;
         return typeof hooks.canAccess === 'function' ? hooks.canAccess(view) === true : !!value?.allowed;
     }
-    function shortcuts() { return normalizedShortcuts(currentState()?.shortcuts, permitted); }
+    function shortcuts() {
+        return normalizedShortcuts(username() === 'dylan_collyge' ? DYLAN_SHORTCUTS : currentState()?.shortcuts, permitted);
+    }
     function adopt(value) {
         if (!value || !Array.isArray(value.views) || text(value.username).toLowerCase() !== username()) return;
+        if (username() === 'dylan_collyge') value = { ...value, shortcuts: [...DYLAN_SHORTCUTS] };
         const changed = JSON.stringify(state) !== JSON.stringify(value);
         state = value;
         if (changed) {
