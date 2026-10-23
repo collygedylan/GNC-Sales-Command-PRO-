@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.53";
+const APP_RUNTIME_RELEASE = "AgData v2.3.54";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -1135,6 +1135,11 @@ async function handleDatasetRead(
   let parsed: ReturnType<typeof validateDatasetReadParams>;
   try { parsed = validateDatasetReadParams(payload); }
   catch (error) { return errorResponse(String(error instanceof Error ? error.message : error), 400, { code: String(error instanceof Error ? error.message : error) }); }
+
+  if (["request_queue", "active_request"].includes(dataset) && parsed.offset === 0) {
+    const reconciliation = await supabase.rpc("reconcile_active_requests_from_outbox_v1");
+    if (reconciliation.error) console.warn("REQUEST_OUTBOX_RECONCILIATION_DEFERRED", reconciliation.error.code || reconciliation.error.message);
+  }
 
   if (parsed.projection === "signature" && !source.signatures) return errorResponse("This dataset has no signature projection.", 400, { code: "DATASET_READ_PROJECTION_INVALID" });
   const fields = parsed.projection === "ids" ? source.key : parsed.projection === "signature" ? source.signatures! : source.fields;
@@ -3501,6 +3506,31 @@ async function handleEvalWorkAction(
   }
 }
 
+function sortManagerEval2PreviewRows(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const response = { ...(value as Record<string, unknown>) };
+  if (!Array.isArray(response.rows)) return response;
+  const compare = (left: Record<string, unknown>, right: Record<string, unknown>) => {
+    const natural = (first: unknown, second: unknown) => String(first || "").localeCompare(String(second || ""), "en-US", { numeric: true, sensitivity: "base" });
+    return natural(left.locationcode ?? left.LOCATIONCODE, right.locationcode ?? right.LOCATIONCODE)
+      || natural(left.lotcode ?? left.LOTCODE, right.lotcode ?? right.LOTCODE)
+      || natural(left.unique_id ?? left.UNIQUE_ID, right.unique_id ?? right.UNIQUE_ID);
+  };
+  response.rows = response.rows.map((rawGroup) => {
+    if (!rawGroup || typeof rawGroup !== "object" || Array.isArray(rawGroup)) return rawGroup;
+    const group = { ...(rawGroup as Record<string, unknown>) };
+    if (Array.isArray(group.previewRows)) {
+      group.previewRows = group.previewRows
+        .filter((row): row is Record<string, unknown> => !!row && typeof row === "object" && !Array.isArray(row))
+        .slice()
+        .sort(compare);
+      group.previewHasMore = false;
+    }
+    return group;
+  });
+  return response;
+}
+
 export async function handleManagerReportReadAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -3707,7 +3737,8 @@ export async function handleManagerReportReadAction(
       sourceRevision: query.sourceRevision == null ? null : String(query.sourceRevision),
     } });
     if (error) throw error;
-    return jsonResponse(data && typeof data === "object" ? { ok: true, data } : { ok: false, code: "MANAGER_REPORT_READ_FAILED" });
+    const responseData = surface === "eval2" && readOperation === "groups" ? sortManagerEval2PreviewRows(data) : data;
+    return jsonResponse(responseData && typeof responseData === "object" ? { ok: true, data: responseData } : { ok: false, code: "MANAGER_REPORT_READ_FAILED" });
   } catch (error) {
     const message = String((error as { message?: unknown })?.message || (error instanceof Error ? error.message : error || ""));
     if (message.includes("manager_report_eval1_forbidden") || message.includes("manager_report_eval2_forbidden")) return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
@@ -4633,6 +4664,10 @@ async function handleInventoryRead(
     if (operation === "master_page") {
       const params = inventoryReadParams(payload, ["dataset", "projection", "uniqueId", "itemCode", "locationCode", "lotCode", "source", "season", "limit", "offset"]);
       const { limit, offset } = inventoryReadPageBounds(params, 1000);
+      if (offset === 0) {
+        const reconciliation = await supabase.rpc("reconcile_inventory_location_evidence_v1");
+        if (reconciliation.error) console.warn("INVENTORY_LOCATION_EVIDENCE_RECONCILIATION_DEFERRED", reconciliation.error.code || reconciliation.error.message);
+      }
       const dataset = String(params.dataset || "").trim();
       const projection = String(params.projection || "initial").trim();
       if (!["master", "avOpen", "lookup"].includes(dataset) || !["initial", "initial_base", "browse", "full"].includes(projection)) throw new Error("INVENTORY_READ_OPERATION_INVALID");

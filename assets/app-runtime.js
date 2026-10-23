@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.53';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.54';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1734,7 +1734,7 @@ const QUOTA_SAFE_CHAT_HEALTHY_POLL_MS = 180000;
 const QUOTA_SAFE_DIRECT_REALTIME_VIEW_IDS = new Set(['chat', 'communication', 'department-calendar', 'request']);
 const LIVE_SYNC_POLL_STANDALONE_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS : 60000;
 const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS : 90000;
-const REQUEST_LIVE_QUEUE_POLL_MS = 15000;
+const REQUEST_LIVE_QUEUE_POLL_MS = 8000;
 const REQUEST_VISIBLE_POLL_MS = REQUEST_LIVE_QUEUE_POLL_MS;
 const REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS = 5000;
         const REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS = 5000;
@@ -4846,7 +4846,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getHomeDesktopColumnCount(count) {
             const total = Math.max(1, Math.floor(Number(count) || 0));
-            return Math.min(total, 3);
+            return Math.min(total, 6);
         }
 
         function syncHomeDashboardPhoneFit(reason = 'default') {
@@ -4903,12 +4903,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const colGapPx = profile.phone
                 ? clamp(Math.round(profile.width * 0.026), 8, 12)
                 : clamp(Math.round(profile.width * 0.008), 10, 16);
-            const desktopLayout = profile.width >= 768;
+            const desktopLayout = profile.width >= 640;
             const portraitPhone = profile.width < 640 && profile.height >= profile.width;
             const landscapeCompact = profile.width > profile.height * 1.22 && profile.height < 640;
             let columnCount = profile.width < 640
                 ? 2
-                : (profile.width < 1024 ? 2 : getHomeDesktopColumnCount(visibleTiles.length));
+                : (profile.width < 840 ? 3 : (profile.width < 1100 ? 4 : getHomeDesktopColumnCount(visibleTiles.length)));
             const candidateColumns = desktopLayout
                 ? [columnCount]
                 : (portraitPhone ? [2] : (landscapeCompact ? [columnCount, 4, 6] : [columnCount, 4]));
@@ -4937,7 +4937,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 fit = calculateFit(columnCount);
                 fitTilePx = fit.height;
             }
-            const tilePx = desktopLayout ? clamp(fitTilePx, 96, 130) : Math.max(hardMinPx, fitTilePx);
+            const tilePx = Math.max(hardMinPx, Math.min(130, fitTilePx));
             const cardWidthPx = Math.max(hardMinPx, fit.width);
             const iconPx = clamp(Math.round(tilePx * (profile.phone ? 0.30 : 0.20)), profile.phone ? 18 : 28, profile.phone ? 30 : 48);
             const labelPx = clamp(Math.round(tilePx * (profile.phone ? 0.16 : 0.075)), profile.phone ? 9 : 12, profile.phone ? 12 : 16);
@@ -10514,7 +10514,19 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function getSharedAppPhotoLinkCsvRaw(item, options = {}) {
             if (!item) return '';
             const includePending = options.includePending !== false;
-            const savedBase = mergePhotoCsvList([item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK']]);
+            const collectPhotoLinks = (value, depth = 0) => {
+                if (value == null || depth > 2) return [];
+                if (typeof value === 'string') return [value];
+                if (Array.isArray(value)) return value.flatMap(entry => collectPhotoLinks(entry, depth + 1));
+                if (typeof value !== 'object') return [];
+                return ['url', 'publicUrl', 'public_url', 'photo_url', 'PHOTO_URL', 'link', 'href', 'src']
+                    .flatMap(key => collectPhotoLinks(value[key], depth + 1));
+            };
+            const savedBase = mergePhotoCsvList([
+                item.SAVED_PHOTO_LINK, item.PHOTO_LINK, item.PHOTOLINK, item['PHOTO LINK'],
+                item.PHOTO_URL, item.photo_url, item.PHOTO_URLS, item.photo_urls,
+                ...collectPhotoLinks(item.PHOTOS), ...collectPhotoLinks(item.photos)
+            ]);
             return includePending ? getDisplayPhotoLinkCsv(savedBase, item, 'saved') : savedBase;
         }
 
@@ -19579,68 +19591,99 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return row;
         }
 
+        function normalizeDriveEvidenceLocationPart(value = '') {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function isSameDriveEvidenceLocation(left = null, right = null) {
+            return !!(left && right
+                && normalizeDriveEvidenceLocationPart(firstNonEmptyValue(left.ITEMCODE, left.itemcode, '')) === normalizeDriveEvidenceLocationPart(firstNonEmptyValue(right.ITEMCODE, right.itemcode, ''))
+                && normalizeDriveEvidenceLocationPart(firstNonEmptyValue(left.LOCATIONCODE, left.locationcode, '')) === normalizeDriveEvidenceLocationPart(firstNonEmptyValue(right.LOCATIONCODE, right.locationcode, '')));
+        }
+
         function reconcileConfirmedDriveEvidence(result, item, prefix = '', options = {}) {
             if (options.scope && options.scope !== getSupabaseReadIdentityScope()) {
                 throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
             }
             if (result && result.noOp === true) return { row: item, applied: false };
             const raw = window.GncDatabase.confirmedDriveEvidence(result);
-            const identityKeys = ['UNIQUE_ID', 'ITEMCODE', 'LOCATIONCODE', 'LOTCODE'];
-            if (!item || identityKeys.some(key => String(raw[key.toLowerCase()] || '') !== String(item[key] || ''))) {
+            if (!item || !isSameDriveEvidenceLocation(raw, item)) {
                 throw new Error('The saved inventory identity changed. Reopen the item before retrying.');
             }
-            const uid = raw.unique_id;
             const scope = getSupabaseReadIdentityScope();
-            const revision = window.GncDatabase.driveEvidenceRevision(raw.last_updated);
-            const master = fullInventory.find(row => String(row.UNIQUE_ID || '') === uid) || item;
-            const saved = confirmedDriveEvidenceRows.get(uid);
-            if ((saved && saved.scope === scope && revision <= saved.revision)
-                || window.GncDatabase.driveEvidenceRevision(master.LAST_UPDATED) > revision) {
-                return { row: master, applied: false };
-            }
-            if (identityKeys.some(key => String(master[key] || '') !== String(item[key] || ''))) {
-                throw new Error('The inventory row moved. Reopen the item before retrying.');
-            }
-            // The editor may share the master object. Detach it before applying
-            // the receipt so unsubmitted fields cannot leak into lists/broadcasts.
-            const preserveEditor = options.photoOnly === true && activeItem && activeItem.UNIQUE_ID === uid
+            const preserveEditor = options.photoOnly === true && activeItem && isSameDriveEvidenceLocation(activeItem, item)
                 && String(activeItem.SOURCE_TABLE || '').toLowerCase() === 'ph_master_inventory'
-                && identityKeys.every(key => String(activeItem[key] || '') === String(item[key] || ''));
+                && isSameDriveEvidenceLocation(activeItem, item);
             const editorDraft = preserveEditor ? { ...activeItem } : null;
-            if (preserveEditor && activeItem === master) activeItem = { ...activeItem };
-            const canonical = formatFetchedRows([raw], 'ph_master_inventory')[0];
-            // SQL NULLs are authoritative clears, including evidence timestamps.
-            window.GncDatabase.driveEvidenceColumns.forEach(key => {
-                canonical[key.toUpperCase()] = raw[key];
-                canonical[key] = raw[key];
+            if (preserveEditor && fullInventory.includes(activeItem)) activeItem = { ...activeItem };
+            const responseRows = Array.isArray(result && result.locationRows) && result.locationRows.length
+                ? result.locationRows.filter(row => row && typeof row === 'object')
+                : [raw];
+            const claimedRows = new Set();
+            const appliedRows = [];
+            const locationScopedSkip = new Set(['unique_id', 'itemcode', 'locationcode', 'lotcode', 'ptravailable', 'loc_match_qty']);
+            const applyLocationEvidence = (target, source) => {
+                window.GncDatabase.driveEvidenceColumns.forEach(key => {
+                    if (locationScopedSkip.has(key)) return;
+                    const value = source[key.toUpperCase()] ?? source[key] ?? null;
+                    target[key.toUpperCase()] = value;
+                    target[key] = value;
+                });
+                target.PICK = firstNonEmptyValue(source.PICK, source.pic_note, source.PIC_NOTE, '');
+                target.pic_note = target.PICK;
+                const locMatchQty = getEditorLocMatchQtyValue(target, firstNonEmptyValue(source.MATCH, source.match, ''));
+                target.LOC_MATCH_QTY = locMatchQty == null ? firstNonEmptyValue(source.LOC_MATCH_QTY, source.loc_match_qty, '') : locMatchQty;
+                target.loc_match_qty = target.LOC_MATCH_QTY;
+                target.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(firstNonEmptyValue(target.PTRONHAND, target.ptronhand, target.PTRAVAILABLE, target.ptravailable, '')) != null;
+                setPhotoAliasFieldsForPrefix(target, prefix, firstNonEmptyValue(source.PHOTO_LINK, source.photo_link, ''), firstNonEmptyValue(source.PHOTO_NAME, source.photo_name, ''));
+                normalizeRowPhotoFields(target);
+                buildSearchIndex(target);
+            };
+            responseRows.forEach((sourceRow) => {
+                if (!isSameDriveEvidenceLocation(sourceRow, item)) return;
+                const canonical = formatFetchedRows([sourceRow], 'ph_master_inventory')[0];
+                window.GncDatabase.driveEvidenceColumns.forEach(key => {
+                    canonical[key.toUpperCase()] = sourceRow[key];
+                    canonical[key] = sourceRow[key];
+                });
+                canonical.PICK = sourceRow.pic_note;
+                canonical.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(sourceRow.ptravailable) != null;
+                const sourceUid = String(firstNonEmptyValue(canonical.UNIQUE_ID, sourceRow.unique_id, '') || '').trim();
+                const sourceLot = normalizeDriveEvidenceLocationPart(firstNonEmptyValue(canonical.LOTCODE, sourceRow.lotcode, ''));
+                let master = fullInventory.find(row => !claimedRows.has(row) && String(row.UNIQUE_ID || '') === sourceUid);
+                if (!master) master = fullInventory.find(row => !claimedRows.has(row) && isSameDriveEvidenceLocation(row, item)
+                    && normalizeDriveEvidenceLocationPart(row.LOTCODE) === sourceLot);
+                if (!master) {
+                    master = canonical;
+                    fullInventory.push(master);
+                } else {
+                    Object.assign(master, canonical);
+                }
+                claimedRows.add(master);
+                applyLocationEvidence(master, canonical);
+                appliedRows.push(master);
+                confirmedDriveEvidenceRows.set(String(master.UNIQUE_ID || sourceUid), buildConfirmedDriveEvidenceState(master));
             });
-            canonical.PICK = raw.pic_note;
-            canonical.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(raw.ptravailable) != null;
-            Object.assign(master, canonical);
-            normalizeRowPhotoFields(master);
-            buildSearchIndex(master);
-            if (!fullInventory.includes(master)) fullInventory.push(master);
-            confirmedDriveEvidenceRows.set(uid, buildConfirmedDriveEvidenceState(master));
-            if (options.photoOnly !== true && item !== master) Object.assign(item, master);
+            const master = appliedRows.find(row => String(row.UNIQUE_ID || '') === String(raw.unique_id || ''))
+                || appliedRows.find(row => normalizeDriveEvidenceLocationPart(row.LOTCODE) === normalizeDriveEvidenceLocationPart(raw.lotcode))
+                || appliedRows[0] || item;
+            fullInventory.filter(row => isSameDriveEvidenceLocation(row, item) && !claimedRows.has(row)).forEach(row => {
+                applyLocationEvidence(row, master);
+                confirmedDriveEvidenceRows.set(String(row.UNIQUE_ID || ''), buildConfirmedDriveEvidenceState(row));
+            });
+            if (options.photoOnly !== true && item !== master) applyLocationEvidence(item, master);
             const changedKeys = getDatasetKeysForTable('ph_master_inventory');
             try {
                 rebuildMasterInventoryIndexes();
                 touchDatasetLoadStateForLocalChange(changedKeys);
                 propagateCommittedEdit('ph_master_inventory', master, changedKeys, null, { prefix, preserveDetailDraft: options.preserveDetailDraft === true, delay: 0, typingDelay: 120 });
             } finally {
-                if (editorDraft && activeItem && activeItem.UNIQUE_ID === uid) {
+                if (editorDraft && activeItem && isSameDriveEvidenceLocation(activeItem, item)) {
                     Object.assign(activeItem, editorDraft);
-                    // Only acknowledged photo fields/revision replace the draft.
-                    setPhotoAliasFieldsForPrefix(activeItem, prefix, raw.photo_link || '', raw.photo_name || '');
-                    MASTER_EVIDENCE_SYNC_KEYS.forEach(key => {
-                        if (Object.prototype.hasOwnProperty.call(master, key)) {
-                            activeItem[key] = master[key];
-                            activeItem[key.toLowerCase()] = master[key];
-                        }
-                    });
+                    applyLocationEvidence(activeItem, master);
                 }
             }
-            return { row: master, applied: true };
+            return { row: master, rows: appliedRows, applied: appliedRows.length > 0 };
         }
 
         async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, isComplete = false, baselineInput = null) {
@@ -19683,7 +19726,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                                 || (item.__drivePhotoAttachment && !item.__drivePhotoIsCurrent())) {
                                 throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
                             }
-                            const result = await supabaseRpc('save_drive_evidence_v2', {
+                            const result = await supabaseRpc('save_drive_evidence_v3', {
                                 p_master_uid: masterUid,
                                 p_expected_itemcode: String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim(),
                                 p_expected_locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim(),
@@ -26160,7 +26203,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.53').trim() || 'AgData v2.3.53';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.54').trim() || 'AgData v2.3.54';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28921,7 +28964,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const crumbText = 'All Request Que';
             const pendingItems = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
             if (!pendingItems.length) return { empty: true, crumbText, items: [], rows: [], pageIndex: 0, renderKey: '', renderSignature: '', footerMarkup: '' };
-            pendingItems.sort((a, b) => compareRequestLocationCodes(a.LOCATIONCODE, b.LOCATIONCODE));
+            pendingItems.sort((a, b) => compareRequestLocationCodes(a.LOCATIONCODE, b.LOCATIONCODE)
+                || compareRequestLocationCodes(a.LOTCODE, b.LOTCODE)
+                || compareRequestLocationCodes(getItemUniqueId(a), getItemUniqueId(b)));
             return buildRequestPagedRenderPlan('request:pending', crumbText, pendingItems);
         }
 
@@ -29706,12 +29751,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function isRequestPendingVisible(item) {
+            const status = normalizeRequestStatus(firstNonEmptyValue(item && item.REQ_STATUS, item && item.req_status, item && item.STATUS, item && item.status, '')).toLowerCase();
             return !!(item
                 && isRequestVisibleForCurrentUser(item)
                 && !isMoveRequestRow(item)
                 && !item.REQUEST_HISTORY
                 && !item.REQ_ARCHIVED
-                && !isRequestComplete(item));
+                && !hasCompletionDateValue(item)
+                && ['', 'pending', 'open'].includes(status));
         }
 
         function applyRequestStatusHintsToLocalRows(rows = [], options = {}) {
@@ -38585,7 +38632,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getDeferredCardPhotoFallbackSrc(src = '') {
-            return '';
+            const original = getExpandedImageUrl(String(src || '').trim());
+            return original && original !== String(src || '').trim() ? original : '';
         }
 
         function invalidateCardPhotoMatchOnLoadFailure(img = null) {
@@ -38605,6 +38653,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function handleDeferredCardPhotoLoadFailure(img = null) {
             if (!img) return;
+            const fallbackSrc = String(img.dataset && img.dataset.photoFallbackSrc || getDeferredCardPhotoFallbackSrc(img.src || (img.dataset && img.dataset.src) || '')).trim();
+            if (fallbackSrc && img.dataset.photoFallbackAttempted !== '1' && String(img.src || '').trim() !== fallbackSrc) {
+                img.dataset.photoFallbackAttempted = '1';
+                img.hidden = false;
+                img.src = fallbackSrc;
+                return;
+            }
             img.classList.add('app-photo-thumbnail-failed');
             img.alt = 'Photo unavailable';
             img.hidden = true;
@@ -38628,6 +38683,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!src || (expectedSrc && src !== String(expectedSrc).trim())) return;
             delete img.dataset.photoObserved;
             delete img.dataset.photoObservedSrc;
+            const fallbackSrc = getDeferredCardPhotoFallbackSrc(src);
+            if (fallbackSrc) img.dataset.photoFallbackSrc = fallbackSrc;
+            if (img.dataset.photoRecoveryBound !== '1') {
+                img.dataset.photoRecoveryBound = '1';
+                img.addEventListener('load', () => {
+                    delete img.dataset.photoLoadFailed;
+                    img.classList.remove('app-photo-thumbnail-failed');
+                    img.hidden = false;
+                    const placeholder = img.parentElement && img.parentElement.querySelector('.app-photo-unavailable');
+                    if (placeholder) placeholder.remove();
+                });
+            }
             img.dataset.photoHydrated = '1';
             img.onerror = () => {
                 if (!img || !img.dataset) return;
@@ -69602,6 +69669,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 markViewDirty('request');
             }
             switchView(target, { force: true });
+            if (target === 'request' && typeof forceRefreshRequestsForView === 'function') {
+                forceRefreshRequestsForView('request-home-open', { force: true, minIntervalMs: 0, allowWhileInteractive: true }).catch(() => {});
+            }
             if (target === 'sales' && getCurrentVisibleViewId() === 'sales') renderSalesHub();
             return false;
         }
@@ -69674,7 +69744,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function salesIntelligenceRequiredDataReady() {
             const inventoryRows = typeof selectAvSalesInventorySourceRows === 'function' ? selectAvSalesInventorySourceRows() : fullInventory;
             return Array.isArray(inventoryRows) && inventoryRows.length > 0
-                && isDatasetLoaded('master', 'full');
+                && ['master', 'soc', 'reserves'].every(key => isDatasetLoaded(key, 'full'));
         }
 
         function warmSalesIntelligenceData() {
@@ -79150,9 +79220,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return scheduled;
             }
             forceRefreshRequestsForView('request-tab', {
-                force: false,
+                force: true,
                 allowWhileInteractive: true,
-                minIntervalMs: REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS
+                minIntervalMs: 0
             }).catch(() => {});
             return scheduled;
         }
@@ -107373,6 +107443,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 else populatePrimaryDetailTabShell(safeTab, activeDetailSourceView || lastView || '', activeItem);
             }
             if (typeof syncDetailPhotoUpdateMode === 'function') syncDetailPhotoUpdateMode(safeTab);
+            if (safeTab === 'season' && activeItem) retryFailedSeasonDrivePhotoAttachments(activeItem);
             if (typeof syncRequestDetailScrollMode === 'function') syncRequestDetailScrollMode();
             if (safeTab !== previousTab && !nextOptions.suppressScroll) queueScrollMainAreaToTop(`detail-tab:${safeTab}`);
             if (!nextOptions.skipHydrate && activeDetailSourceView === 'drive' && (safeTab !== previousTab || !productionLiveSyncVerifiedView)) resumeProductionLiveSyncAfterNavigation('drive-detail-tab');
@@ -144480,13 +144551,14 @@ C.14.043 C.15.000
                 return buildAvInventoryCard();
             }
             if(photoLink){
-                let firstUrl=String(photoLink).split(',')[0];
-                let cleanUrl=firstUrl.trim();
-                let urlMatch=cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                if(urlMatch)cleanUrl=urlMatch[1];
-                let thumbUrl=getDirectImageUrl(cleanUrl, 'card-inline');
+                const cardPhotoUrls = getPhotoUrlList(photoLink);
+                const cleanUrl = cardPhotoUrls[0] || '';
+                const thumbUrl = getDirectImageUrl(cleanUrl, 'card-feature');
                 if(thumbUrl.startsWith('http')){
-                    thumbHtml=`<div class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${photoLink}', '${esc(item.COMMONNAME)} - ${esc(item.CONTSIZE)}')"><div class="app-inline-thumb-box">${buildDeferredCardPhotoImg(thumbUrl, { className: 'active:scale-95 transition-transform' })}</div>${photoDateHtml}</div>`;
+                    const safePhotoCsv = escJsAttrValue(cardPhotoUrls.join(','));
+                    const safePhotoCaption = escJsAttrValue(`${item.COMMONNAME || 'Inventory Item'} - ${item.CONTSIZE || '-'}`);
+                    const photoCountBadge = cardPhotoUrls.length > 1 ? `<span class="app-av-photo-count" aria-hidden="true">1 / ${cardPhotoUrls.length}</span>` : '';
+                    thumbHtml=`<div class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${safePhotoCaption}', 0); return false;"><div class="app-inline-thumb-box app-av-photo-carousel">${buildDeferredCardPhotoImg(thumbUrl, { className: 'active:scale-95 transition-transform', alt: `${item.COMMONNAME || 'Inventory Item'} photo 1 of ${cardPhotoUrls.length}` })}${photoCountBadge}</div>${photoDateHtml}</div>`;
                 }
             }
             const inlineThumbHtml = thumbHtml || `<div class="app-inline-thumb-column app-inline-thumb-column--empty"><div class="app-inline-thumb-box app-inline-thumb-box--empty px-1 text-center text-[8px] font-black uppercase tracking-[0.12em]">No Photo</div></div>`;
@@ -168725,6 +168797,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function setDrivePhotoAttachmentStatus(job, status) {
             if (!isCurrentDrivePhotoAttachment(job)) return;
+            job.status = status;
             getPendingPhotoPreviewEntries(job.item, job.prefix).forEach(entry => {
                 if (entry.id === job.preview.id) Object.assign(entry, { status, uploadId: job.id, scope: job.scope });
             });
@@ -168734,7 +168807,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         async function persistDrivePhotoAttachment(job) {
             if (!isCurrentDrivePhotoAttachment(job)) throw new Error('Photo session changed.');
             const current = getMasterPhotoSyncItem(job.item) || job.item;
-            if (!canEditRowDetails(job.prefix, current) || ['UNIQUE_ID', 'ITEMCODE', 'LOCATIONCODE', 'LOTCODE'].some(key => String(current[key] || '') !== job.identity[key])) {
+            if (!canEditRowDetails(job.prefix, current) || !isSameDriveEvidenceLocation(current, job.identity)) {
                 throw new Error('The inventory row or access changed. Reopen the item before retrying.');
             }
             if (!job.commandRow) {
@@ -168745,12 +168818,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     photo_name: appendPhotoCsvValue(job.baseline.photo_name, job.upload.fileName)
                 };
             }
-            // The existing RPC owns authorization, row conflicts and replay. Its
-            // physical-row lock also serializes these writes with ordinary edits.
+            // The location-scoped RPC owns authorization, replay, and serialization.
             const result = await saveSecureDriveEvidence(job.commandRow, job.prefix, job.payload, false, job.baseline);
             if (!isCurrentDrivePhotoAttachment(job)) return;
             const canonical = window.GncDatabase.confirmedDriveEvidence(result);
-            if (Object.keys(job.identity).some(key => String(canonical[key.toLowerCase()] || '') !== job.identity[key])) throw new Error('The saved photo row could not be verified. Reopen the item.');
+            if (!isSameDriveEvidenceLocation(canonical, job.identity)) throw new Error('The saved photo location could not be verified. Reopen the item.');
             const links = canonical.photo_link || '';
             if (!parsePhotoCsvValues(links).includes(job.upload.publicUrl)) throw new Error('Photo attachment was not confirmed. Retry photo.');
             const reconciled = reconcileConfirmedDriveEvidence(result, current, job.prefix, { photoOnly: true, scope: job.scope });
@@ -168798,7 +168870,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     job.upload = { publicUrl: uploaded.publicUrl, fileName: String(uploaded.filePath || job.fileName).split('/').pop() };
                 }
                 setDrivePhotoAttachmentStatus(job, 'Saving');
-                const key = `${job.scope}::${job.identity.UNIQUE_ID}`;
+                const key = `${job.scope}::${normalizeDriveEvidenceLocationPart(job.identity.ITEMCODE)}::${normalizeDriveEvidenceLocationPart(job.identity.LOCATIONCODE)}`;
                 const previous = drivePhotoSaveChains.get(key) || Promise.resolve();
                 const saving = previous.catch(() => {}).then(() => persistDrivePhotoAttachment(job));
                 drivePhotoSaveChains.set(key, saving);
@@ -168811,6 +168883,18 @@ ${folderNote ? `Folder Note: ${folderNote}
                 showToast('Photo not saved', String(error && error.message || 'Retry photo without retaking it.'), true);
             }).finally(() => { job.running = false; });
             return false;
+        }
+
+        function retryFailedSeasonDrivePhotoAttachments(item = null) {
+            if (!item) return false;
+            let retried = false;
+            drivePhotoAttachments.forEach((job) => {
+                if (job.prefix !== 'ssn-' || job.status !== 'Save failed' || job.running || !isCurrentDrivePhotoAttachment(job)) return;
+                if (!isSameDriveEvidenceLocation(job.identity, item)) return;
+                retried = true;
+                retryDrivePhotoAttachment(job.id);
+            });
+            return retried;
         }
 
         function queueDrivePhotoAttachment(item, prefix, file, fileName) {

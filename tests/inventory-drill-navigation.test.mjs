@@ -145,7 +145,7 @@ test('AV and Common Name views render synchronously from complete in-memory rows
   assert.match(source('getAvSalesRowsForRendering'), /const service = null/);
   assert.doesNotMatch(html, /Preparing AV inventory/);
   assert.match(source('renderDriveCompleteCommonNames'), /const firstBatchSize = entries\.length/);
-  assert.match(html, /supabaseRpc\('save_drive_evidence_v2'/);
+  assert.match(html, /supabaseRpc\('save_drive_evidence_v3'/);
   assert.match(source('reconcileConfirmedDriveEvidence'), /propagateCommittedEdit\('ph_master_inventory'/);
 });
 
@@ -1167,4 +1167,29 @@ test('Reclass card preview publishes before network completion and rolls back on
  const pending={command:{commandId:'preview'}};const start=performance.now();ctx.publishOptimisticReclassRows(pending,[{...original,PTRONHAND:'295',S_LTS:'585',SEASON_OH:'295'}]);
  assert.equal(ctx.fullInventory[0].PTRONHAND,'295');assert.equal(cav.PTRAVAILABLE,'585');assert.ok(performance.now()-start<100);
  ctx.publishOptimisticReclassRows(pending);assert.equal(ctx.fullInventory[0].PTRONHAND,'495');assert.equal(cav.PTRAVAILABLE,'785');
+});
+
+test('v2.3.54 keeps Drive evidence location-stable, thumbnails recoverable, and Eval #2 uncapped', () => {
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql', import.meta.url), 'utf8');
+  const evalEngine = readFileSync(new URL('../assets/eval-reports-engine.js', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
+  assert.match(migration, /primary key\(itemcode_key,locationcode_key\)/);
+  assert.match(migration, /before insert or update on public\.ph_master_inventory[^]*private\.apply_inventory_location_evidence_v1/);
+  assert.match(migration, /save_drive_evidence_v3[^]*where upper\(btrim\(m\.itemcode\)\)=stable_item and upper\(btrim\(m\.locationcode\)\)=stable_location/);
+  assert.match(migration, /inventory_location_match_qty_v1\(m\.ptronhand,evidence\.match,evidence\.loc_match_qty\)/);
+  assert.match(runtime, /supabaseRpc\('save_drive_evidence_v3'/);
+  assert.match(runtime, /const cardPhotoUrls = getPhotoUrlList\(photoLink\)[^]*getDirectImageUrl\(cleanUrl, 'card-feature'\)[^]*1 \/ \$\{cardPhotoUrls\.length\}/);
+  assert.match(runtime, /getDeferredCardPhotoFallbackSrc[^]*getExpandedImageUrl[^]*photoFallbackAttempted/);
+  const locationContext = vm.createContext({ firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '' });
+  vm.runInContext(source('normalizeDriveEvidenceLocationPart') + source('isSameDriveEvidenceLocation'), locationContext);
+  assert.equal(locationContext.isSameDriveEvidenceLocation(
+    { ITEMCODE: '001884.011.1', LOCATIONCODE: 'E.10.000', LOTCODE: '27.S1', UNIQUE_ID: 'old' },
+    { itemcode: '001884.011.1', locationcode: 'e.10.000', lotcode: '27.F1', unique_id: 'new' }
+  ), true);
+  assert.doesNotMatch(evalEngine, /previewRows\.length<8/);
+  assert.match(evalEngine, /locationcode[^]*localeCompare[^]*lotcode[^]*localeCompare[^]*previewHasMore:false/);
+  assert.match(runtime, /getHomeDesktopColumnCount[^]*Math\.min\(total, 6\)/);
+  assert.match(styles, /grid-template-columns: repeat\(var\(--home-fit-columns, 2\)[^]*height: var\(--home-fit-tile-height, 44px\)/);
+  assert.match(runtime, /\['master', 'soc', 'reserves'\]\.every\(key => isDatasetLoaded\(key, 'full'\)\)/);
 });

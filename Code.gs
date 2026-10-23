@@ -7960,6 +7960,11 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     }
 
     if (isMasterInventoryTable_(tableName)) {
+      if (tableName === 'ph_master_inventory') {
+        const locationEvidence = callSupabaseRpc_('reconcile_inventory_location_evidence_v1', {});
+        console.log('[MASTER INVENTORY] Location evidence reconciled across ' +
+          String(locationEvidence && locationEvidence.affected || 0) + ' row(s).');
+      }
       reconcileSeasonSalesOfficeAfterImport_(syncStartTime, 'master_inventory');
       try {
         const reconcileEvalReport2 = function() {

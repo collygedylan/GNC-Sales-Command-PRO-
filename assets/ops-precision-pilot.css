@@ -6356,7 +6356,7 @@ body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-ope
   overflow: hidden !important;
 }
 
-body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #home-dashboard-modules {
+body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) :is(#home-dashboard-modules, #home-rep-dashboard-modules) {
   display: flex !important;
   height: 100% !important;
   min-height: 0 !important;
@@ -6364,7 +6364,8 @@ body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-ope
   overflow: hidden !important;
 }
 
-body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home #home-dashboard-grid {
+body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home :is(#home-dashboard-grid, #home-rep-dashboard-grid) {
+  display: grid !important;
   grid-template-columns: repeat(var(--home-fit-columns, 2), minmax(0, 1fr)) !important;
   grid-auto-rows: var(--home-fit-tile-height, 44px) !important;
   gap: var(--home-fit-row-gap, 8px) var(--home-fit-col-gap, 10px) !important;
@@ -6375,7 +6376,7 @@ body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-ope
   overflow: hidden !important;
 }
 
-body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home #home-dashboard-grid .home-module-tile {
+body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home :is(#home-dashboard-grid, #home-rep-dashboard-grid) > :is(div, button) {
   width: 100% !important;
   height: var(--home-fit-tile-height, 44px) !important;
   min-width: 0 !important;
@@ -6384,27 +6385,6 @@ body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-ope
   max-height: none !important;
   aspect-ratio: auto !important;
   overflow: hidden !important;
-}
-
-@media (min-width: 1100px) {
-  body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home :is(#home-dashboard-grid, #home-rep-dashboard-grid) {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    align-content: start !important;
-    gap: var(--home-fit-row-gap, 8px) var(--home-fit-col-gap, 10px) !important;
-  }
-
-  body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home :is(#home-dashboard-grid, #home-rep-dashboard-grid) > :is(div, button) {
-    flex: 0 0 var(--home-fit-card-width, 160px) !important;
-    width: var(--home-fit-card-width, 160px) !important;
-    height: var(--home-fit-tile-height, 180px) !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    min-height: 44px !important;
-    max-height: none !important;
-    aspect-ratio: auto !important;
-  }
 }
 
 /* Shared command-to-filter rhythm. Search stays in the global command header;

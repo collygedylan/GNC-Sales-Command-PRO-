@@ -353,3 +353,17 @@ test('v2.3.46 keeps Warehouse Assigned Items synchronous, clean, and bounded', (
   history.getManagerItemLowStockTargetsState = () => ({ rowsByCode: new Map([['A', { history_ready: false, history_pending_files: 2 }]]) });
   assert.equal(history.isManagerAssignedItemHistoryProcessing(), true);
 });
+
+test('v2.3.54 preserves admin evidence authorization and service-only reconciliation', () => {
+  const migration = read('supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql');
+  const appRuntime = read('assets/app-runtime.js');
+  const styles = read('assets/ops-precision-pilot.css');
+  assert.match(migration, /save_drive_evidence_v3[^]*actor:=private\.require_active_admin_profile\(\)/);
+  assert.match(migration, /revoke all on function public\.save_drive_evidence_v3[^]*from public,anon[^]*grant execute[^]*to authenticated,service_role/);
+  assert.match(migration, /revoke all on function public\.reconcile_inventory_location_evidence_v1\(\) from public,anon,authenticated[^]*grant execute[^]*to service_role/);
+  assert.match(migration, /revoke all on function public\.reconcile_active_requests_from_outbox_v1\(\) from public,anon,authenticated[^]*grant execute[^]*to service_role/);
+  assert.match(api, /operation === "master_page"[^]*reconcile_inventory_location_evidence_v1/);
+  assert.match(api, /\["request_queue", "active_request"\]\.includes\(dataset\)[^]*reconcile_active_requests_from_outbox_v1/);
+  assert.match(appRuntime, /profile\.width < 640[^]*\? 2[^]*profile\.width < 840 \? 3[^]*profile\.width < 1100 \? 4/);
+  assert.match(styles, /overflow: hidden !important[^]*:is\(#home-dashboard-grid, #home-rep-dashboard-grid\)[^]*grid-auto-rows: var\(--home-fit-tile-height, 44px\)/);
+});

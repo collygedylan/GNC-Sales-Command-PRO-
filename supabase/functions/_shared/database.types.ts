@@ -18543,6 +18543,14 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_active_requests_from_outbox_v1: {
+        Args: never
+        Returns: Json
+      }
+      reconcile_inventory_location_evidence_v1: {
+        Args: never
+        Returns: Json
+      }
       reconcile_inventory_row_assignments_batch_v1: {
         Args: { p_batch_size?: number; p_import_run_id: string }
         Returns: Json
@@ -18873,6 +18881,21 @@ export type Database = {
         Returns: Json
       }
       save_drive_evidence_v2: {
+        Args: {
+          p_baseline: Json
+          p_complete: boolean
+          p_evidence: Json
+          p_expected_itemcode: string
+          p_expected_locationcode: string
+          p_expected_lotcode: string
+          p_expected_signature: string
+          p_idempotency_key: string
+          p_master_uid: string
+          p_workflow: string
+        }
+        Returns: Json
+      }
+      save_drive_evidence_v3: {
         Args: {
           p_baseline: Json
           p_complete: boolean
