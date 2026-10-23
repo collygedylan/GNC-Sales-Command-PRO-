@@ -26,6 +26,7 @@
 .bn-board-card button:disabled{opacity:.55;cursor:default}
 .bn-board-card__quick label{display:grid;gap:4px;font-size:.75rem;font-weight:800}
 .bn-board-card__actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.bn-card-board__group-actions,.bn-board-card__editor{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}.bn-board-card__editor{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));padding:10px;border:1px solid var(--ops-border,#cbd8d1);border-radius:10px;background:var(--ops-surface-muted,#f7faf8)}.bn-board-card__editor label{display:grid;gap:5px;font-size:.78rem;font-weight:800}.bn-board-card__editor textarea,.bn-board-card__editor select{min-height:78px;max-width:100%;border:1px solid var(--ops-border-strong,#8fa69a);border-radius:8px;padding:8px;background:var(--ops-surface,#fff);color:var(--ops-text,#13221b);font:inherit}
 .bn-board-card__actions>span{color:var(--ops-text-muted,#617068);font-size:.8rem;font-weight:700}
 .bn-board-card__error{margin:8px 0;color:var(--ops-danger,#b83232);font-weight:800}
 .bn-board-lots{border-top:1px solid var(--ops-border,#cbd8d1);margin-top:10px;padding-top:8px}

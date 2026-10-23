@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "32a116c69a2401243c80ce6fd1a63228f38bcd83",
+  "commit": "263ed2bc24e50b55c3038f3fa3083f1c3e15f9bb",
   "release": "AgData v2.3.46",
   "files": [
     {
@@ -265,18 +265,18 @@
     },
     {
       "path": "assets/bunch-note-cards.css",
-      "bytes": 4426,
-      "sha256": "7f2f0474088f79a1e8141c55ac52ff846b85686bf2e0899636082f7a86b058de"
+      "bytes": 5106,
+      "sha256": "49378702c26838b5a899bf0070df86649eeeea991cc89f94020f5889b2f4add5"
     },
     {
-      "path": "assets/bunch-note-chunks/CardBoard-WXA27JK6.js",
-      "bytes": 19218,
-      "sha256": "553e9e6a763185cb3c545ee02a588f63b9030a0f20776de5afe2224034fd5e75"
+      "path": "assets/bunch-note-chunks/CardBoard-O7NWXZWB.js",
+      "bytes": 22231,
+      "sha256": "04c000378a77cdce17f3cf5f3e4d6b14dfacae3a858a1002f95fd77e4e36757e"
     },
     {
-      "path": "assets/bunch-note-chunks/StructuredBunchNote-KKG4GWIR.js",
+      "path": "assets/bunch-note-chunks/StructuredBunchNote-OLDSEG5D.js",
       "bytes": 10174,
-      "sha256": "c1678ed171d5b221bdac637565771aab96c45b49fc2cdb164447c262a9b81603"
+      "sha256": "a9e708144fb1157a8c53395d96f4b82b25a05b9ac56f55712d86ce1bf89abc76"
     },
     {
       "path": "assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
@@ -286,17 +286,17 @@
     {
       "path": "assets/bunch-note-structured.js",
       "bytes": 16604,
-      "sha256": "7930204efe09f43122e9d971a06f2dcdab4dbac105898a3c1f7779a9e66bff14"
+      "sha256": "7d125a080007040d21e1ec5ba99faf6a3f569cccb31c98ffe320a9a4045df859"
     },
     {
       "path": "assets/bunch-note.css",
-      "bytes": 14066,
-      "sha256": "7bc8aaa0d2af27b42cac6339fb02611edd2db2e70bc4457ed92727e9498f51b9"
+      "bytes": 15028,
+      "sha256": "826c93ccc95a77cffe801a79df3489ba0cc969f3253e77c7269a6c65bfa4c2dc"
     },
     {
       "path": "assets/bunch-note.js",
-      "bytes": 160131,
-      "sha256": "ade40e74303077b0f78c8aceaa5c0bd610c2fd6bdd4ec2d960351f923710555e"
+      "bytes": 173818,
+      "sha256": "1c63efe3cff9fe8fefee003a8dbe685a2904a3a98993bb19c9384442f714fd0c"
     },
     {
       "path": "assets/bunch-queue-shell.js",
@@ -465,8 +465,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8440496,
-      "sha256": "0d8fab85b3ed5757fbdfe19b5f83f0716a3394d80393057da8cbae0bae6772dd"
+      "bytes": 8442024,
+      "sha256": "e8367060402e3e1dd6980cf98abbc5d0a6019c3bf425c9ec73fa4c26968c8f46"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -886,12 +886,12 @@
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "2b709611ffcb6e9956b3ceb218f3a1672b35ee234259691d6a3394ada3bd82fb"
+      "sha256": "c81bd923b2ff62c2522025f6b53c75031474c931b9bed369e4838d7aaa445bb2"
     },
     {
-      "path": "deployments/32a116c69a2401243c80ce6fd1a63228f38bcd83.json",
+      "path": "deployments/263ed2bc24e50b55c3038f3fa3083f1c3e15f9bb.json",
       "bytes": 187,
-      "sha256": "2b709611ffcb6e9956b3ceb218f3a1672b35ee234259691d6a3394ada3bd82fb"
+      "sha256": "c81bd923b2ff62c2522025f6b53c75031474c931b9bed369e4838d7aaa445bb2"
     },
     {
       "path": "index.html",
@@ -935,8 +935,8 @@
     },
     {
       "path": "sw.js",
-      "bytes": 36086,
-      "sha256": "d3a55fece245c70ca1c615d8f87d77d5412dc2e4e9650ff63687b92aed98c80f"
+      "bytes": 36085,
+      "sha256": "df34909772282941b8a2b42c2cc7dea67949c948098745c6797dcf24b205e5e0"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -1166,7 +1166,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "944e2b1ede004e8dab08050fef5b8849bd281fcdd9456305686ccedfbcc3687a"
+      "sha256": "c1a6f9428e7a45829fd33bf0f8e136499c068894f1e1d9320ab3b6eda71f5893"
     },
     {
       "path": "v2/v2-cache-migration.js",
