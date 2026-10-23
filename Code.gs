@@ -15275,13 +15275,13 @@ const RECLASS_INQUIRY_SEASON_FIELDS_ = [
 const RECLASS_INQUIRY_COMPACT_FIELDS_ = [
   { key: 'lotcode', label: 'Lotcode', width: '.65in' },
   { key: 'locationcode', label: 'Location', width: '.80in' },
-  { key: 'source', label: 'Source', width: '.50in' },
+  { key: 'source', label: 'SOURCE', width: '.50in' },
   { key: 'priority', label: 'Priority', width: '.75in' },
   { key: 'ptronhand', label: 'OH', width: '1.25in' },
-  { key: 'ptrreviewed', label: 'Rev', width: '.85in' },
+  { key: 'ptrreviewed', label: 'PTRREVIEWED', width: '.85in' },
   { key: 'locationnotedate', label: 'Loc Note Date', width: '.90in' },
-  { key: 'locationptn1', label: 'Loc PTN1', width: '1.15in' },
-  { key: 'locationnote', label: 'Loc Note' }
+  { key: 'locationptn1', label: 'LOCATIONPTN1', width: '1.15in' },
+  { key: 'locationnote', label: 'Location Note' }
 ];
 
 const RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_ = Object.freeze([
@@ -15392,10 +15392,7 @@ function getReclassInquiryActionRuleV2_(value) {
 }
 
 function getReclassInquiryCompactFields_(value, requestActions) {
-  const fields = RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
-  const reviewedIndex = fields.findIndex(function(field) { return field && field.key === 'ptrreviewed'; });
-  fields.splice.apply(fields, [reviewedIndex < 0 ? fields.length : reviewedIndex + 1, 0].concat(RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_));
-  return fields;
+  return RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
 }
 
 function getReclassInquiryExactValue_(row, aliases, fallback) {
@@ -17020,34 +17017,24 @@ function formatReclassInquiryScopeNote_(scope) {
 
 function buildReclassItemInquiryTable_(model) {
   const safe = model || {}, identity = safe.identity || {};
-  const columns = [['locationcode','Location'],['lotcode','Lot'],['priority','Priority'],['ptronhand','On Hand'],['ptrreviewed','Review'],['ptravailable','Available'],['s_lts','Open Stock'],['action','Action'],['details','Action Details'],['holdstopcode','Hold/Stop'],['holdstopreason','Reason'],['holdstopbegindate','Since'],['locationnote','Location Note'],['salesnote','Sales Note']];
-  const labels = {hold:'On Hold',take_off_hold:'Off Hold',stop_ship:'On Stop',off_stop_ship:'Off Stop',sheared:'Sheared to #',move_up:'Move Up',move_down:'Move Down',priority_change:'Priority Change',on_hold:'On Hold',off_hold:'Off Hold',on_stop:'On Stop',off_stop:'Off Stop',recount:'Re-Count',re_count:'Re-Count',sheared_to:'Sheared to #'};
-  const seasonOf=function(v){return String(v && (v.lotcode || v.season) || '').split('.').pop().toUpperCase();};
-  const stockSeasons=new Set(); const quantityRows=new Set();
-  (safe.completedMoveSummary || []).forEach(function(m){stockSeasons.add(seasonOf(m.source));stockSeasons.add(seasonOf(m.destination));quantityRows.add(String(m.source.unique_id || m.source.uniqueId));quantityRows.add(String(m.destination.unique_id || m.destination.uniqueId));});
-  (safe.rows || []).forEach(function(row){const av=row.actionValues || {};['moveup','movedown'].forEach(function(prefix){const splits=av[prefix+'splits'] || (av[prefix+'quantity'] ? [{destinationSeason:av[prefix+'season']}] : []);if(splits.length)stockSeasons.add(seasonOf(row.values));splits.forEach(function(s){stockSeasons.add(String(s.destinationSeason).toUpperCase());});});});
+  const columns = [['lotcode','Lotcode'],['locationcode','Location'],['source','SOURCE'],['priority','Priority'],['ptronhand','OH'],['ptrreviewed','PTRREVIEWED'],['locationnotedate','Loc Note Date'],['locationptn1','LOCATIONPTN1'],['locationnote','Location Note']];
   const rows = sortReclassInquiryCompactRows_(safe.rows).map(function(row) {
     const values = Object.assign({}, row.values || {}), av = row.actionValues || {};
-    const changed = new Set(row.changedFields || []), actions = [], details = [];
-    if(stockSeasons.has(seasonOf(values)))changed.add('s_lts');
-    if(quantityRows.has(String(row.unique_id))){changed.add('ptronhand');changed.add('ptravailable');}
+    const changed = new Set(row.changedFields || []), proposals = [];
     (safe.v7InventoryFields || []).filter(function(e){return e.unique_id === row.unique_id;}).forEach(function(e){(e.changedFields || []).forEach(function(k){changed.add(k);});});
-    function action(label, detail) { if(actions.indexOf(label)<0) actions.push(label); if(detail && details.indexOf(detail)<0) details.push(detail); }
-    [['moveup','Move Up'],['movedown','Move Down']].forEach(function(pair){
+    [['moveup','UP'],['movedown','DOWN']].forEach(function(pair){
       const splits=av[pair[0]+'splits'] || (av[pair[0]+'quantity'] ? [{quantity:av[pair[0]+'quantity'],destinationSeason:av[pair[0]+'season']}] : []);
-      splits.forEach(function(s){action(pair[1],pair[1]+': '+s.quantity+' to '+s.destinationSeason);});
+      splits.forEach(function(s){proposals.push(pair[1]+' '+s.quantity+' TO '+String(s.destinationSeason || '').toUpperCase());});
     });
-    (safe.completedMoveSummary || []).filter(function(m){return String(m.source.unique_id || m.source.uniqueId)===String(row.unique_id);}).forEach(function(m){const label=labels[m.direction];action(label,label+': '+m.quantity+' to '+m.destination.season);changed.add('ptronhand');changed.add('ptravailable');changed.add('s_lts');});
-    (row.actions || []).forEach(function(a){const key=String(typeof a==='string'?a:a.action || '');if(key && key!=='inventory_fields') action(labels[key] || key.replace(/_/g,' '));});
-    if(changed.has('priority')) action('Priority Change','Priority Change: '+(values.priority || '-'));
-    if(changed.has('holdstopcode')) action(values.holdstopcode==='H'?'On Hold':values.holdstopcode==='S'?'On Stop':'Off Hold / Stop');
-    (row.temporaryChanges || []).forEach(function(c){if(c.key && !columns.some(function(col){return col[0]===c.key;})) details.push(String(c.label || c.key)+': '+String(c.value == null?'':c.value));});
-    if(av.shearedquantity)action('Sheared to #','Sheared to #: '+av.shearedquantity+(av.shearedproposeddesigitem ? ' '+av.shearedproposeddesigitem : ''));
-    values.action=actions.join('; '); values.details=details.join('; ');
-    if(values.action)changed.add('action'); if(values.details)changed.add('details');
-    if(changed.has('holdstopcode'))changed.add('holdstopbegindate');
+    let startingOnHand = Number(values.ptronhand);
+    (safe.completedMoveSummary || []).filter(function(m){return String(m.source.unique_id || m.source.uniqueId)===String(row.unique_id);}).forEach(function(m){
+      if(Number.isFinite(startingOnHand))startingOnHand+=Number(m.quantity) || 0;
+      proposals.push((m.direction==='move_down'?'DOWN':'UP')+' '+m.quantity+' TO '+String(m.destination.season || '').toUpperCase());
+    });
+    if(proposals.length)changed.add('ptronhand');
+    if(Number.isFinite(startingOnHand) && proposals.length)values.ptronhand=String(startingOnHand);
     if(values.ptrreviewed==null || values.ptrreviewed==='')values.ptrreviewed='0';
-    return columns.map(function(col){return {text:String(values[col[0]] == null?'':values[col[0]]),changed:changed.has(col[0])};});
+    return columns.map(function(col){return {text:String(values[col[0]] == null?'':values[col[0]]),changed:changed.has(col[0]),proposals:col[0]==='ptronhand'?proposals:[]};});
   });
   return {identity:identity,columns:columns,rows:rows};
 }
@@ -17056,19 +17043,20 @@ function buildReclassItemInquiryHtml_(model) {
   const table=buildReclassItemInquiryTable_(model), esc=escapeEmailHtml_;
   const header=[['Common Name','commonname'],['Item Code','itemcode'],['Size','contsize'],['Source','source']].map(function(p){return '<div><strong>'+p[0]+':</strong> '+esc(table.identity[p[1]] || '')+'</div>';}).join('');
   const cell='border:1px solid #333333;padding:4px 6px;color:#000000;vertical-align:top;overflow-wrap:anywhere;';
-  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:11in 8.5in landscape;margin:0.35in}*{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0;background:#ffffff;color:#000000;font-family:Arial,sans-serif}h2{margin:0 0 8px}table{width:100%;border-collapse:collapse;table-layout:auto;font-size:9pt}tr{break-inside:avoid}th,td{border:1px solid #333333;padding:4px 6px}th{background:#e5e7eb}.changed{background-color:#ffff00;font-weight:700}</style></head><body style="background:#ffffff;color:#000000"><h2>Item Inquiry</h2>'+header+'<table style="width:100%;border-collapse:collapse;table-layout:auto;font-size:9pt;margin-top:12px"><thead><tr>'+table.columns.map(function(c){return '<th style="'+cell+'background:#e5e7eb;text-align:left">'+esc(c[1])+'</th>';}).join('')+'</tr></thead><tbody>'+table.rows.map(function(row){return '<tr>'+row.map(function(c){return '<td'+(c.changed?' class="changed"':'')+' style="'+cell+(c.changed?'background-color:#ffff00;font-weight:700;':'background:#ffffff;')+'">'+(esc(c.text)||'&nbsp;')+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></body></html>';
+  const content=function(c){const value=esc(c.text)||'&nbsp;';if(c.proposals && c.proposals.length)return '<strong>'+value+'</strong>'+c.proposals.map(function(p){return '<div class="proposal-box">'+esc(p)+'</div>';}).join('');return c.changed?'<div class="proposal-box">'+value+'</div>':value;};
+  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:11in 8.5in landscape;margin:0.35in}*{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0;background:#ffffff;color:#000000;font-family:Arial,sans-serif}h2{margin:0 0 8px}table{width:100%;border-collapse:collapse;table-layout:auto;font-size:9pt}tr{break-inside:avoid}th,td{border:1px solid #333333;padding:4px 6px}th{background:#e5e7eb}.changed{background-color:#fef08a;font-weight:700}.proposal-box{margin-top:2px;border:1.5px solid #000;padding:2px 6px;font-weight:700;background:#fef08a}</style></head><body style="background:#ffffff;color:#000000"><h2>GNC PH Reclass Item Inquiry</h2>'+header+'<table style="width:100%;border-collapse:collapse;table-layout:auto;font-size:9pt;margin-top:12px"><thead><tr>'+table.columns.map(function(c){return '<th style="'+cell+'background:#e5e7eb;text-align:left">'+esc(c[1])+'</th>';}).join('')+'</tr></thead><tbody>'+table.rows.map(function(row){return '<tr>'+row.map(function(c){return '<td'+(c.changed?' class="changed"':'')+' style="'+cell+(c.changed?'background-color:#fef08a;font-weight:700;':'background:#ffffff;')+'">'+content(c)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></body></html>';
 }
 
 function buildReclassItemInquiryPdf_(model) {
   // A fixed one-page PDF avoids HTML converters ignoring landscape and splitting
   // columns. Wrap every value, then fit the complete table within Letter margins.
   const table=buildReclassItemInquiryTable_(model), width=741.6, margin=25.2;
-  const weights=[10,6,7,6,7,9,7,10,13,7,8,8,9,10], total=weights.reduce(function(a,b){return a+b;},0);
+  const weights=[8,9,6,7,10,9,10,12,18], total=weights.reduce(function(a,b){return a+b;},0);
   const widths=weights.map(function(w){return width*w/total;});
   const clean=function(v){return String(v==null?'':v).replace(/[\r\n]+/g,' ').replace(/[\u2010-\u2015]/g,'-').replace(/\u2192/g,'->');};
   const escape=function(v){return Array.from(clean(v)).map(function(c){const n=c.charCodeAt(0);return n>=32&&n<=126?(c==='('||c===')'||c==='\\'?'\\'+c:c):n<=255?'\\'+n.toString(8).padStart(3,'0'):'?';}).join('');};
-  const wrap=function(text,chars){const lines=[];let line='';clean(text).split(/\s+/).forEach(function(word){while(word.length>chars){if(line){lines.push(line);line='';}lines.push(word.slice(0,chars));word=word.slice(chars);}if(line && line.length+word.length+1>chars){lines.push(line);line='';}line+=(line?' ':'')+word;});lines.push(line);return lines;};
-  const all=[table.columns.map(function(c){return {text:c[1],header:true};})].concat(table.rows);
+  const wrap=function(text,chars){const lines=[];String(text==null?'':text).split(/\r?\n/).forEach(function(part){let line='';clean(part).split(/\s+/).forEach(function(word){while(word.length>chars){if(line){lines.push(line);line='';}lines.push(word.slice(0,chars));word=word.slice(chars);}if(line && line.length+word.length+1>chars){lines.push(line);line='';}line+=(line?' ':'')+word;});lines.push(line);});return lines;};
+  const all=[table.columns.map(function(c){return {text:c[1],header:true};})].concat(table.rows.map(function(row){return row.map(function(c){return Object.assign({},c,{text:[c.text].concat(c.proposals || []).join('\n')});});}));
   let font=9, layout, heights;
   for(let i=0;i<30;i++){
     layout=all.map(function(row){return row.map(function(c,j){return {cell:c,lines:c.header && c.text==='Hold/Stop' ? ['Hold/','Stop'] : c.header && !/\s/.test(c.text) ? [c.text] : wrap(c.text,Math.max(1,Math.floor((widths[j]-8)/(font*.62))))};});});
@@ -17078,7 +17066,7 @@ function buildReclassItemInquiryPdf_(model) {
   }
   const ops=['1 1 1 rg 0 0 792 612 re f','0 0 0 rg'];
   function text(value,x,y,size,bold){ops.push('BT /'+(bold?'F2':'F1')+' '+size.toFixed(3)+' Tf 1 0 0 1 '+x.toFixed(3)+' '+y.toFixed(3)+' Tm ('+escape(value)+') Tj ET');}
-  text('Item Inquiry',margin,568,18,true);
+  text('GNC PH Reclass Item Inquiry',margin,568,18,true);
   [['Common Name','commonname'],['Item Code','itemcode'],['Size','contsize'],['Source','source']].forEach(function(p,i){text(p[0]+': '+(table.identity[p[1]] || ''),margin,548-i*13,10,false);});
   let top=491;
   layout.forEach(function(row,i){let x=margin;const h=heights[i];row.forEach(function(c,j){ops.push(c.cell.header?'.898 .906 .922 rg':c.cell.changed?'1 1 0 rg':'1 1 1 rg');ops.push(x.toFixed(3)+' '+(top-h).toFixed(3)+' '+widths[j].toFixed(3)+' '+h.toFixed(3)+' re f');ops.push('.2 .2 .2 RG .5 w '+x.toFixed(3)+' '+(top-h).toFixed(3)+' '+widths[j].toFixed(3)+' '+h.toFixed(3)+' re S','0 0 0 rg');c.lines.forEach(function(line,k){text(line,x+4,top-4-font-k*font*1.2,font,c.cell.header||c.cell.changed);});x+=widths[j];});top-=h;});
@@ -17094,17 +17082,9 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const safeModel = model || {};
   const esc = escapeEmailHtml_;
   const pageHeaderText = (safeModel.isSyntheticPilot ? 'TEST PILOT - SYNTHETIC DATA ONLY | ' : '') + 'GNC PH Reclass Item Inquiry';
-  const holdColumns = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
-    .some(function(field) { return field.key === 'holdstopcode'; });
-  const compactWidths = holdColumns
-    ? { lotcode: '.50in', locationcode: '.65in', source: '.50in', priority: '.45in', ptronhand: '.85in', ptrreviewed: '.27in', holdstopcode: '.27in', holdstopreason: '.68in', holdstopbegindate: '.82in', locationnotedate: '.70in', locationptn1: '.72in', locationnote: '.90in', desigitem: '.55in', desigcust: '.55in', desigloc: '.55in', pullerresponsibility: '.30in', oversellpercentage: '.28in', salesnote: '.80in', suspend: '.27in' }
-    : { lotcode: '.55in', locationcode: '.65in', source: '.50in', priority: '.55in', ptronhand: '.70in', ptrreviewed: '.55in', locationnotedate: '.85in', locationptn1: '.85in', locationnote: '1.00in', desigitem: '.55in', desigcust: '.55in', desigloc: '.55in', pullerresponsibility: '.50in', oversellpercentage: '.35in', salesnote: '.95in', suspend: '.35in' };
+  const compactWidths = { lotcode: '.65in', locationcode: '.80in', source: '.50in', priority: '.75in', ptronhand: '1.25in', ptrreviewed: '.85in', locationnotedate: '.90in', locationptn1: '1.15in', locationnote: '1.60in' };
   const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
     .map(function(field) { return Object.assign({}, field, { width: compactWidths[field.key] || '' }); });
-  [
-    ['desigitem', 'Desig Item'], ['desigcust', 'Desig Cust'], ['desigloc', 'Desig Loc'],
-    ['pullerresponsibility', 'Pull'], ['oversellpercentage', 'OS%'], ['salesnote', 'Sales Note'], ['suspend', 'SUS']
-  ].forEach(function(field) { compactFields.push({ key: field[0], label: field[1], width: compactWidths[field[0]] || '' }); });
   const identityChangedFields = Array.isArray(safeModel.identityChangedFields) ? safeModel.identityChangedFields : [];
   const scopeNote = String(safeModel.liveEditSummary && safeModel.liveEditSummary.scopeNote || '')
     || formatReclassInquiryScopeNote_(safeModel.transaction && safeModel.transaction.scope);
@@ -17141,8 +17121,8 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
           const prefix = pair[0];
           const splits = Array.isArray(actionValues[prefix + 'splits']) ? actionValues[prefix + 'splits'] : [];
           splits.forEach(function(split) {
-            v4MovementDetails.push(buildReclassInquiryProposalBoxHtml_(String(split && split.quantity != null ? split.quantity : '')
-              + '-->' + String(split && split.destinationSeason || '').toUpperCase(), 'proposal-box-movement'));
+            v4MovementDetails.push(buildReclassInquiryProposalBoxHtml_(pair[1] + ' ' + String(split && split.quantity != null ? split.quantity : '')
+              + ' TO ' + String(split && split.destinationSeason || '').toUpperCase(), 'proposal-box-movement'));
           });
           if (splits.length && actionValues[prefix + 'applyhold'] === true) {
             const reason = String(actionValues[prefix + 'holdreason'] || '').trim();
@@ -17150,11 +17130,11 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
           }
         });
         movementLines.push.apply(movementLines, v4MovementDetails);
-        if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.moveupquantity).trim() + '-->' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
-        if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.movedownquantity).trim() + '-->' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP ' + String(actionValues.moveupquantity).trim() + ' TO ' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('DOWN ' + String(actionValues.movedownquantity).trim() + ' TO ' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
         if (String(actionValues.shearedproposeddesigitem || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.shearedproposeddesigitem).trim(), 'proposal-box-movement'));
         if (!movementLines.length && String(actionValues.movequantity || '').trim()) {
-          movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.movequantity).trim() + '-->' + String(actionValues.destinationseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+          movementLines.push(buildReclassInquiryProposalBoxHtml_('UP ' + String(actionValues.movequantity).trim() + ' TO ' + String(actionValues.destinationseason || '').trim().toUpperCase(), 'proposal-box-movement'));
         }
         return '<td' + (movementLines.length ? ' class="movement-cell edited-cell" data-edited="true"' : '') + '><strong class="original-oh">' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>' + movementLines.join('') + '</td>';
       }

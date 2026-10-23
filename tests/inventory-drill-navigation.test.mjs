@@ -1099,19 +1099,36 @@ test('Manager global Back unwinds Eval2 location levels then hub and Home',()=>{
 });
 
 
-test('Reclass moves propagate Open Stock by season across years before the write resolves', () => {
- const row=(id,loc,lot,oh,av,stock)=>({UNIQUE_ID:id,ITEMCODE:'004502.010.1',LOCATIONCODE:loc,LOTCODE:lot,SEASON:lot.split('.').pop(),PTRONHAND:String(oh),PTRAVAILABLE:String(av),S_LTS:String(stock)});
- const rows=[row('s','C.16.000','27.S1',495,495,785),row('f','F.19.000','27.F1',189,152,377),row('h','H.06.000','27.F1',228,228,377),row('c','C.17.000','26.F1',17,17,377)];
- const ctx=vm.createContext({parseAppNumber:v=>v==null?null:Number(v),buildItemInquiryViewModel:(_item,r)=>({rows:r}),avInventory:[],fullInventory:rows});
+test('Reclass moves add quantity to each physical Open Stock baseline before the write resolves', () => {
+ const row=(id,loc,lot,oh,av,stock)=>({UNIQUE_ID:id,ITEMCODE:'010018.031.1',LOCATIONCODE:loc,LOTCODE:lot,SEASON:lot.split('.').pop(),PTRONHAND:String(oh),PTRAVAILABLE:String(av),S_LTS:String(stock)});
+ const rows=[row('source','A.03.000','27.S1',330,330,330),row('target','A.03.000','27.F1',114,104,104),row('sibling','A.02.000','28.F1',40,40,375)];
+ const ctx=vm.createContext({parseAppNumber:v=>v==null?null:Number(v),buildItemInquiryViewModel:(_item,r)=>({rows:r}),avInventory:[],fullInventory:rows,cavInventory:[{ITEMCODE:'010018.031.1',SEASON:'F1',OPEN_STOCK:'375'},{ITEMCODE:'010018.031.1',SEASON:'S1',OPEN_STOCK:'330'}]});
  vm.runInContext(source('reclassStockSeason')+source('buildOptimisticInventoryReclassMoveModel'),ctx);
  const start=performance.now();
- const result=ctx.buildOptimisticInventoryReclassMoveModel({item:rows[0],inquiryModel:{rows}},{commandId:'test-stock',moves:[{source:{uniqueId:'s'},lines:[{quantity:200,destinationSeason:'F1'}]}]}).model.rows;
+ const result=ctx.buildOptimisticInventoryReclassMoveModel({item:rows[0],inquiryModel:{rows}},{commandId:'test-stock',moves:[{source:{uniqueId:'source'},lines:[{quantity:55,destinationSeason:'F1'}]}]}).model.rows;
  assert.ok(performance.now()-start<100);
- const s=result.find(r=>r.UNIQUE_ID==='s'); assert.equal(s.PTRONHAND,'295');assert.equal(s.PTRAVAILABLE,'295');assert.equal(s.S_LTS,'585');
- const f=result.filter(r=>r.SEASON==='F1');assert.equal(f.length,4);assert.ok(f.every(r=>r.S_LTS==='577'));
- assert.equal(f.find(r=>r.LOCATIONCODE==='C.16.000').PTRONHAND,'200');
- assert.equal(result.filter(r=>r.LOCATIONCODE==='C.16.000').reduce((sum,r)=>sum+Number(r.PTRONHAND),0),495);
- assert.equal(rows[0].PTRONHAND,'495','preview retains immutable rollback rows');
+ const sourceRow=result.find(r=>r.UNIQUE_ID==='source');assert.equal(sourceRow.PTRONHAND,'275');assert.equal(sourceRow.PTRAVAILABLE,'275');assert.equal(sourceRow.S_LTS,'275');
+ const target=result.find(r=>r.UNIQUE_ID==='target');assert.equal(target.PTRONHAND,'169');assert.equal(target.PTRAVAILABLE,'159');assert.equal(target.S_LTS,'159');
+ assert.equal(result.find(r=>r.UNIQUE_ID==='sibling').S_LTS,'430');
+ assert.equal(target.__reclassSeasonOpenStock,'430');
+ assert.equal(rows[0].PTRONHAND,'330','preview retains immutable rollback rows');
+});
+
+test('Reclass inquiry uses nine canonical columns and boxed starting OH movement', () => {
+ const code=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
+ const scriptFunction=name=>code.match(new RegExp('function '+name+'\\([^]*?^}','m'))?.[0] || assert.fail(name);
+ const ctx=vm.createContext({sortReclassInquiryCompactRows_:rows=>rows});
+ vm.runInContext(scriptFunction('buildReclassItemInquiryTable_'),ctx);
+ const table=ctx.buildReclassItemInquiryTable_({identity:{},rows:[{unique_id:'source',values:{lotcode:'27.S1',locationcode:'A.03.000',source:'BR',ptronhand:'275'},actionValues:{},changedFields:[]}],completedMoveSummary:[{direction:'move_up',quantity:55,source:{unique_id:'source'},destination:{season:'F1'}}]});
+ assert.deepEqual(Array.from(table.columns,column=>column[1]),['Lotcode','Location','SOURCE','Priority','OH','PTRREVIEWED','Loc Note Date','LOCATIONPTN1','Location Note']);
+ assert.doesNotMatch(JSON.stringify(table.columns),/Action(?: Details)?/);
+ const oh=table.rows[0][4];assert.equal(oh.text,'330');assert.deepEqual(Array.from(oh.proposals),['UP 55 TO F1']);assert.equal(oh.changed,true);
+ assert.match(scriptFunction('buildReclassItemInquiryHtml_'),/proposal-box[^]*border:1\.5px solid #000[^]*background:#fef08a/);
+});
+
+test('camera activity blocks shell reload and partial master refresh preserves Drive drill', () => {
+ assert.match(source('isShellReloadHardBlocked'),/isRecentCameraActivity/);
+ assert.match(source('reconcileDriveDrillSelectionWithVisibleItems'),/rowCompleteness !== 'complete'[^]*return false/);
 });
 
 

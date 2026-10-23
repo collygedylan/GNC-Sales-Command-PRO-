@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.49';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.50';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6797,6 +6797,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function isShellReloadHardBlocked() {
             return !!(
                 (window.pendingPhotoUploads && window.pendingPhotoUploads.size)
+                || (typeof isRecentCameraActivity === 'function' && isRecentCameraActivity())
                 || window.googleScriptRunInFlight
                 || pendingRequestArchiveFlushInFlight
             );
@@ -26138,7 +26139,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.49').trim() || 'AgData v2.3.49';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.50').trim() || 'AgData v2.3.50';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -44418,13 +44419,25 @@ let avTopControlsRenderToken = 0;
 
         function applyReclassSeasonStocks(stocks = []) {
             const changes = new Map(stocks.filter(s => s && s.openStock != null && s.openStock !== '').map(s => [String(s.itemcode) + '|' + String(s.season).toUpperCase(), s]));
-            [fullInventory, avOpenInventory, cavInventory].forEach((rows, index) => rows.forEach(row => {
+            const rowStocks = new Map();
+            changes.forEach(value => (Array.isArray(value.rows) ? value.rows : []).forEach(row => {
+                const uniqueId = String(row && (row.uniqueId ?? row.unique_id) || '');
+                if (uniqueId && Number.isFinite(Number(row.openStock))) rowStocks.set(uniqueId, String(row.openStock));
+            }));
+            [fullInventory, avOpenInventory].forEach(rows => rows.forEach(row => {
+                const value = changes.get(String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row));
+                if (!value || !Number.isFinite(Number(value.seasonOnHand))) return;
+                const physicalStock = rowStocks.get(String(row.UNIQUE_ID ?? row.unique_id ?? ''));
+                if (physicalStock != null) row.S_LTS = row.s_lts = row.OPEN_STOCK = row.open_stock = physicalStock;
+                row.SEASON_OH = row.season_oh = String(value.seasonOnHand);
+            }));
+            cavInventory.forEach(row => {
                 const value = changes.get(String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row));
                 if (!value || !Number.isFinite(Number(value.openStock)) || !Number.isFinite(Number(value.seasonOnHand))) return;
                 row.S_LTS = row.s_lts = row.OPEN_STOCK = row.open_stock = String(value.openStock);
                 row.SEASON_OH = row.season_oh = String(value.seasonOnHand);
-                if (index === 2) row.PTRAVAILABLE = row.ptravailable = row.AVAILABLE = row.available = String(value.openStock);
-            }));
+                row.PTRAVAILABLE = row.ptravailable = row.AVAILABLE = row.available = String(value.openStock);
+            });
         }
 
         function publishOptimisticReclassRows(pending, rows = null) {
@@ -44443,7 +44456,17 @@ let avTopControlsRenderToken = 0;
                     const av = avOpenInventory.find(r => String(r.UNIQUE_ID || r.unique_id || '') === uid);
                     if (av) av.__optimisticReclassMove = commandId;
                 });
-                applyReclassSeasonStocks(rows.map(row => ({itemcode: row.ITEMCODE ?? row.itemcode, season: reclassStockSeason(row), openStock: row.S_LTS ?? row.s_lts, seasonOnHand: row.SEASON_OH ?? row.season_oh})));
+                const seasonStocks = new Map();
+                rows.forEach(row => {
+                    const itemcode = String(row.ITEMCODE ?? row.itemcode ?? '');
+                    const season = reclassStockSeason(row);
+                    const key = itemcode + '|' + season;
+                    if (!seasonStocks.has(key)) seasonStocks.set(key, { itemcode, season,
+                        openStock: row.__reclassSeasonOpenStock ?? row.S_LTS ?? row.s_lts,
+                        seasonOnHand: row.SEASON_OH ?? row.season_oh, rows: [] });
+                    seasonStocks.get(key).rows.push({ uniqueId: row.UNIQUE_ID ?? row.unique_id, openStock: row.S_LTS ?? row.s_lts });
+                });
+                applyReclassSeasonStocks(Array.from(seasonStocks.values()));
                 pending.cavRollback.forEach(entry => { entry.after = { ...entry.target }; });
                 publishArgosInventoryTransactionReturnedRows(changed);
                 const view = getCurrentVisibleViewId();
@@ -44551,6 +44574,11 @@ let avTopControlsRenderToken = 0;
             }
             if (!preserveMasterProof && typeof productionLiveSyncVerifiedView !== 'undefined') productionLiveSyncVerifiedView = '';
             invalidateResolvedViewStateCaches();
+            if (typeof managerEvalReport2LoadState !== 'undefined') managerEvalReport2LoadState.preferMaster = true;
+            if (typeof managerEvalReport2CacheKey !== 'undefined') managerEvalReport2CacheKey = '';
+            if (typeof buildManagerEvalReport2IndexAsync === 'function' && Array.isArray(fullInventory) && fullInventory.length) {
+                void buildManagerEvalReport2IndexAsync().then(() => scheduleManagersRender(true)).catch(() => {});
+            }
             getAffectedViewsForDatasets(['master']).forEach((viewId) => markViewDirty(viewId));
             persistCurrentCache();
             if (options.signal !== false && canUseProductionLiveSync()) signalProductionLiveSync(reason, 0);
@@ -44839,11 +44867,12 @@ let avTopControlsRenderToken = 0;
             if (!model || !Array.isArray(model.rows) || !command) return null;
             const rows = model.rows.map((row) => ({ ...row }));
             const movedUids = [];
-            const stocks = new Map();
+            const stockDeltas = new Map();
+            const seasonOpenStocks = new Map();
             const stockKey = row => String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row);
-            rows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.S_LTS ?? row.s_lts); if (!stocks.has(key) && value != null) stocks.set(key, value); });
             const cavRows = typeof cavInventory !== 'undefined' ? cavInventory : [];
-            cavRows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.OPEN_STOCK ?? row.open_stock ?? row.PTRAVAILABLE ?? row.ptravailable); if (!stocks.has(key) && value != null) stocks.set(key, value); });
+            cavRows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.OPEN_STOCK ?? row.open_stock ?? row.PTRAVAILABLE ?? row.ptravailable); if (!seasonOpenStocks.has(key) && value != null) seasonOpenStocks.set(key, value); });
+            rows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.S_LTS ?? row.s_lts); if (!seasonOpenStocks.has(key) && value != null) seasonOpenStocks.set(key, value); });
             const effective = row => ['H','S'].includes(String(row.HOLDSTOPCODE ?? row.holdstopcode ?? '').toUpperCase()) ? 0 : 1;
             const physicalValue = (row, field) => row && (row[field] !== undefined ? row[field] : row[field.toUpperCase()]);
             const lineageKey = (row, lotcode = null) => JSON.stringify([
@@ -44866,7 +44895,7 @@ let avTopControlsRenderToken = 0;
                 }
                 rows[sourceIndex] = { ...source, PTRONHAND: String(onHand - total), ptronhand: String(onHand - total),
                     PTRAVAILABLE: String(available - total), ptravailable: String(available - total), __optimisticReclassMove: command.commandId };
-                stocks.set(stockKey(source), (stocks.get(stockKey(source)) || 0) - total * effective(source));
+                stockDeltas.set(stockKey(source), (stockDeltas.get(stockKey(source)) || 0) - total * effective(source));
                 movedUids.push(uid);
                 const grouped = new Map();
                 move.lines.forEach((line) => grouped.set(line.destinationSeason, (grouped.get(line.destinationSeason) || 0) + line.quantity));
@@ -44895,14 +44924,17 @@ let avTopControlsRenderToken = 0;
                         SEASON: season, season, PTRONHAND: String(baseOnHand + quantity), ptronhand: String(baseOnHand + quantity),
                         PTRAVAILABLE: String(baseAvailable + quantity), ptravailable: String(baseAvailable + quantity),
                         __optimisticReclassMove: command.commandId };
-                    stocks.set(stockKey(target), (stocks.get(stockKey(target)) || 0) + quantity * effective(target));
+                    stockDeltas.set(stockKey(target), (stockDeltas.get(stockKey(target)) || 0) + quantity * effective(target));
                     if (targetIndex >= 0) rows[targetIndex] = target;
                     else rows.push(target);
                 });
             });
             rows.forEach(row => {
                 const key = stockKey(row);
-                if (stocks.has(key)) { row.S_LTS = row.s_lts = String(stocks.get(key)); row.OPEN_STOCK = row.open_stock = row.S_LTS; }
+                const delta = stockDeltas.get(key) || 0;
+                const rowStock = parseAppNumber(row.S_LTS ?? row.s_lts);
+                if (stockDeltas.has(key) && rowStock != null) { row.S_LTS = row.s_lts = String(rowStock + delta); row.OPEN_STOCK = row.open_stock = row.S_LTS; }
+                if (stockDeltas.has(key) && seasonOpenStocks.has(key)) row.__reclassSeasonOpenStock = String(seasonOpenStocks.get(key) + delta);
                 row.SEASON_OH = row.season_oh = String(rows.filter(r => stockKey(r) === key).reduce((sum, r) => sum + (parseAppNumber(r.PTRONHAND ?? r.ptronhand) || 0), 0));
             });
             return { model: buildItemInquiryViewModel(state.item, rows), movedUids };
@@ -130835,7 +130867,7 @@ C.14.043 C.15.000
         }
 
         function managerEvalReport2DisplaySourcesReady() {
-            if (useManagerReportPages('eval2')) return !!getManagerReportPageController().state('eval2').page;
+            if (useManagerReportPages('eval2') && getManagerReportPageController().state('eval2').page) return true;
             return isDatasetLoaded('master', 'full') && isDatasetLoaded('warehouseAssignedItems', 'full')
                 || (canUseProductionLiveSync() && hasProgressiveViewData()
                     && Array.isArray(fullInventory) && Array.isArray(warehouseAssignedItemsInventory));
@@ -131042,7 +131074,7 @@ C.14.043 C.15.000
         }
 
         function getManagerEvalReport2Index(allowSynchronousBuild = false) {
-            if (useManagerReportPages('eval2')) {
+            if (useManagerReportPages('eval2') && managerEvalReport2LoadState.preferMaster !== true) {
                 const state = getManagerReportPageController().state('eval2');
                 if (!state.revision) return createPagedManagerEvalIndex({ ...state, revision:'pending', metadata:getCachedManagerEvalReport2Metadata() || state.metadata || {} }, false);
                 return managerEvalReport2Cache?.paged && managerEvalReport2Cache.scopeKey === getSupabaseReadIdentityScope() && managerEvalReport2Cache.sourceRevision === state.revision
@@ -131068,11 +131100,10 @@ C.14.043 C.15.000
                 // Rendering a large invalidated snapshot must use the same
                 // identity-guarded loading path as Refresh, not block the UI.
                 // That lifecycle retains complete results and disables edits.
-                if (!managerEvalReport2LoadState.error) {
-                    if (canUseProductionLiveSync() && productionLiveSyncVerifiedView !== productionVerifiedViewKey()) {
-                        if (!managerEvalReport2IndexJob) void buildManagerEvalReport2IndexAsync().then(() => scheduleManagersRender(true));
-                    } else void loadManagerEvalReports2(false);
-                }
+                if (typeof buildManagerEvalReport2IndexAsync === 'function'
+                    && (typeof managerEvalReport2IndexJob === 'undefined' || !managerEvalReport2IndexJob)) {
+                    void buildManagerEvalReport2IndexAsync().then(() => scheduleManagersRender(true));
+                } else if (!managerEvalReport2LoadState.error && typeof loadManagerEvalReports2 === 'function') void loadManagerEvalReports2(false);
                 return managerEvalReport2Cache;
             }
             const startedAt = performance.now();
@@ -132882,7 +132913,7 @@ C.14.043 C.15.000
             let statusHtml = managerEvalReport2AssignmentFilterRefreshing
                 ? '<div class="flex min-h-[44px] items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3 text-[11px] font-bold text-blue-800"><span class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700"></span>Verifying current AssignedTo ownership before showing results...</div>'
                 : managerEvalReport2LoadState.error
-                ? `<div class="flex min-h-[44px] flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800"><span>Refresh failed; the last complete results remain visible.</span><button type="button" class="min-h-[36px] rounded-lg border border-amber-300 bg-white px-3 text-[9px] font-black uppercase tracking-[0.1em] text-amber-900" onclick="return loadManagerEvalReports2(true)">Retry</button></div>`
+                ? ''
                 : managerEvalReport2LoadState.loading
                     ? '<div class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-800">Refreshing complete inventory and assignments; current complete results remain visible.</div>'
                     : '';
@@ -152386,6 +152417,8 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function reconcileDriveDrillSelectionWithVisibleItems(visibleItems = []) {
             if (!Array.isArray(visibleItems) || shouldLockDriveSearchToTopLevel()) return false;
+            const masterState = getDatasetState('master');
+            if (masterState && masterState.initialLoaded === true && masterState.rowCompleteness !== 'complete') return false;
             let changed = false;
             if (activeDriveTab === 'name') {
                 const hasSelectedName = !!(selectedDriveName && visibleItems.some((item) => getDrivePlantCommonName(item) === selectedDriveName));
