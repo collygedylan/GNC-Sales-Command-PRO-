@@ -30,7 +30,8 @@ function client(active = true) {
 }
 
 test('native JWT cannot bypass an effective cutoff even before profile disable worker runs', async () => {
-  const request = new Request('https://example.invalid', { headers: { authorization: 'Bearer existing-native-jwt' } });
+  const nativeBearer = `e30.${Buffer.from(JSON.stringify({ role: 'authenticated' })).toString('base64url')}.signature`;
+  const request = new Request('https://example.invalid', { headers: { authorization: `Bearer ${nativeBearer}` } });
   const before = client(true), after = client(false);
   assert.equal((await auth.readSupabaseOrAppSessionFromRequest(request, before)).username, 'kayla_knepp');
   assert.equal(await auth.readSupabaseOrAppSessionFromRequest(request, after), null);
@@ -49,6 +50,8 @@ test('Supabase project credentials skip the user endpoint without becoming a ses
     headers: { authorization: 'Bearer sb_publishable_example', apikey: 'sb_publishable_example' },
   });
   assert.equal(await auth.readSupabaseOrAppSessionFromRequest(opaqueRequest, api), null);
+  const invalidRequest = new Request('https://example.invalid', { headers: { authorization: 'Bearer invalid-token' } });
+  assert.equal(await auth.readSupabaseOrAppSessionFromRequest(invalidRequest, api), null);
   assert.equal(getUserCalls, 0);
 });
 
