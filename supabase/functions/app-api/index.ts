@@ -6207,9 +6207,11 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         const priorIds = ((openVersions || []) as Array<Record<string, unknown>>).filter((row) => {
           const version = String(row.app_version || "").match(/v(\d+)\.(\d+)\.(\d+)/i)?.slice(1).map(Number) || [];
           if (version.length !== 3 || currentVersion.length !== 3) return false;
-          return version.some((value, index) => value !== currentVersion[index]
-            && (value < currentVersion[index] || version.slice(0, index).some((part, priorIndex) => part < currentVersion[priorIndex])))
-            && !version.slice(0, index).some((part, priorIndex) => part > currentVersion[priorIndex]);
+          for (let versionIndex = 0; versionIndex < 3; versionIndex += 1) {
+            if (version[versionIndex] === currentVersion[versionIndex]) continue;
+            return version[versionIndex] < currentVersion[versionIndex];
+          }
+          return false;
         }).map((row) => Number(row.id)).filter(Number.isSafeInteger);
         if (priorIds.length) {
           const { error: resolveError } = await supabase.from("app_runtime_watchdog_events" as never)
