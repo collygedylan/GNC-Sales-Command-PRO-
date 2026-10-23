@@ -1,7 +1,8 @@
 (function (root) {
     'use strict';
     const DEFAULT_SHORTCUTS = Object.freeze(['drive', 'tasks', 'docks', 'request', 'bloom']);
-    const DYLAN_SHORTCUTS = Object.freeze(['drive', 'managers', 'docks', 'request', 'bloom']);
+    const ADMIN_SHORTCUTS = Object.freeze(['drive', 'managers', 'docks', 'request', 'bloom']);
+    const FULL_APP_ADMINISTRATORS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones']);
     const FIXED_VIEWS = new Set(['menu', 'home', 'communication']);
     const ICONS = { drive: 'ph-car', tasks: 'ph-clipboard-text', docks: 'ph-truck', request: 'ph-list-checks', bloom: 'ph-handbag', sales: 'ph-handshake', 'sales-office': 'ph-desktop', 'historical-requests': 'ph-clock-counter-clockwise', 'request-history': 'ph-clock-counter-clockwise', 'sales-credit': 'ph-receipt', 'credit-request': 'ph-check-square', 'sales-inventory': 'ph-storefront', production: 'ph-plant', managers: 'ph-users-three', reports: 'ph-chart-bar', av: 'ph-notebook', 'hl-order': 'ph-truck', 'bunch-note': 'ph-notepad' };
     const FOOTER_IDS = { menu: 'footer-menu-btn', home: 'footer-home-btn', communication: 'footer-communication-btn', drive: 'footer-drive-btn', tasks: 'footer-tasks-btn', docks: 'footer-docks-btn', request: 'footer-request-btn', bloom: 'footer-cart-btn' };
@@ -12,6 +13,7 @@
     const esc = value => text(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const username = () => text(typeof hooks.username === 'function' ? hooks.username() : hooks.username).trim().toLowerCase();
     const commandId = () => root.crypto.randomUUID();
+    const usesAdminShortcuts = () => FULL_APP_ADMINISTRATORS.has(username());
     function normalizedShortcuts(values, permitted = () => true) {
         const result = [];
         (Array.isArray(values) ? values : DEFAULT_SHORTCUTS).forEach(value => {
@@ -31,16 +33,16 @@
     }
     function permitted(view) {
         const value = entry(view);
-        if (username() === 'dylan_collyge') return typeof hooks.canAccess === 'function' ? hooks.canAccess(view) === true : true;
+        if (usesAdminShortcuts()) return typeof hooks.canAccess === 'function' ? hooks.canAccess(view) === true : true;
         if (value && (!value.selectable || value.allowed !== true)) return false;
         return typeof hooks.canAccess === 'function' ? hooks.canAccess(view) === true : !!value?.allowed;
     }
     function shortcuts() {
-        return normalizedShortcuts(username() === 'dylan_collyge' ? DYLAN_SHORTCUTS : currentState()?.shortcuts, permitted);
+        return normalizedShortcuts(usesAdminShortcuts() ? ADMIN_SHORTCUTS : currentState()?.shortcuts, permitted);
     }
     function adopt(value) {
         if (!value || !Array.isArray(value.views) || text(value.username).toLowerCase() !== username()) return;
-        if (username() === 'dylan_collyge') value = { ...value, shortcuts: [...DYLAN_SHORTCUTS] };
+        if (usesAdminShortcuts()) value = { ...value, shortcuts: [...ADMIN_SHORTCUTS] };
         const changed = JSON.stringify(state) !== JSON.stringify(value);
         state = value;
         if (changed) {

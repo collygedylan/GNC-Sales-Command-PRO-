@@ -19,6 +19,8 @@ function shellFunction(name) {
 }
 
 test('Dylan mounts twelve Home modules while every other administrator keeps the standard eleven', () => {
+  const shell = read('index.html');
+  assert.match(shell, /id="home-dashboard-grid"[^]*id="home-tile-smart-moves"[^>]*data-module="smart-moves"[^>]*class="home-module-tile role-access hidden"[^>]*onclick="switchView\('smart-moves'\)"/);
   const registryStart = html.indexOf('        const HOME_MODULE_REGISTRY = Object.freeze([');
   const registryEnd = html.indexOf('        function normalizeRoleAccessToken', registryStart);
   const registry = html.slice(registryStart, registryEnd);
@@ -208,18 +210,23 @@ test('verified administrator controls remain available during a same-account ref
   ctx.selfDenied=true; assert.equal(ctx.isVerifiedManager(),false);
 });
 
-test('Dylan ignores a stale Tasks-only override and produces the eight requested footer entries', async () => {
-  const window = {};
-  vm.runInNewContext(read('assets/navigation-preferences.js'), { window });
-  const api = window.GncNavigationPreferences;
+test('full-app administrators ignore stale Tasks-only overrides and produce the eight requested footer entries', async () => {
   const shortcuts = ['drive', 'managers', 'docks', 'request', 'bloom'];
-  api.configure({ username: () => 'dylan_collyge', canAccess: () => true,
-    call: async () => ({ data: { username: 'dylan_collyge', footerRevision: 2, shortcuts: ['tasks'],
-      views: [{ view: 'tasks', selectable: true, allowed: true }, ...shortcuts.map(view => ({ view, selectable: false, allowed: false }))] } }) });
-  await api.refresh();
-  assert.deepEqual(Array.from(api.shortcuts()), shortcuts);
   const labels = vm.runInNewContext(read('assets/navigation-preferences.js').match(/const LABELS = [^;]+;/)[0] + 'LABELS');
-  assert.deepEqual(['menu', 'home', ...api.shortcuts(), 'communication'].map(view => labels[view]), ['Menu', 'Home', 'Drive', 'Manager', 'Docks', 'Que', 'Bloom', 'Comm']);
+  for (const username of ['dylan_collyge', 'megan_kelly', 'jd_jones']) {
+    const window = {};
+    vm.runInNewContext(read('assets/navigation-preferences.js'), { window });
+    const api = window.GncNavigationPreferences;
+    api.configure({ username: () => username, canAccess: () => true,
+      call: async () => ({ data: { username, footerRevision: 2, shortcuts: ['tasks'],
+        views: [{ view: 'tasks', selectable: true, allowed: true }, ...shortcuts.map(view => ({ view, selectable: false, allowed: false }))] } }) });
+    await api.refresh();
+    assert.deepEqual(Array.from(api.shortcuts()), shortcuts);
+    assert.deepEqual(['menu', 'home', ...api.shortcuts(), 'communication'].map(view => labels[view]), ['Menu', 'Home', 'Drive', 'Manager', 'Docks', 'Que', 'Bloom', 'Comm']);
+  }
+  const shell = read('index.html');
+  assert.match(shell, /data-footer-view="managers"[^>]*aria-label="Manager"[^]*<span>Manager<\/span>/);
+  assert.doesNotMatch(shell, /data-footer-view="tasks"[^>]*<span>Tasks<\/span>/);
 });
 
 test('transient access and navigation fallbacks cannot revoke Dylan or pause live refresh', () => {

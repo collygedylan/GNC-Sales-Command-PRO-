@@ -40,7 +40,9 @@ test('v2.3.49 assets and worker upgrade purge previous cache generations', () =>
     assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.49', match[1]);
   }
   assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.49'/);
+  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'smart-moves-r3'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
+  assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*window\.reloadForServiceWorkerUpdate\(\)[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
   const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.49' });
   vm.runInContext(sw.match(/function isRetiredRootCacheName\([^]*?^}/m)[0], ctx);
   for (const key of ['agdata-v2.3.34', 'agdata-v2.3.43', 'agdata-v2.3.46', 'agdata-v2.3.46-r2', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'ag-data-runtime-images-v2', 'legacy-shell']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);

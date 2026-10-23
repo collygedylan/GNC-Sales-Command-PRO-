@@ -766,7 +766,7 @@ function loginNavigationHarness() {
     syncGlobalHeaderChrome: () => f.updateGlobalBackButton(),
     bindFastPressTarget: (element, _kind, name, args) => { element.onclick = () => f[name](...args); },
   });
-  for (const name of ['syncHomeDashboardBodyMode', 'syncRequestDetailScrollMode', 'repairAppShellScrollState',
+  for (const name of ['syncHomeDashboardBodyMode', 'syncRequestDetailScrollMode', 'repairAppShellScrollState', 'repairHomeDashboardShell',
     'cancelManagerSeasonPriorityRead', 'persistAppFilterStateNow', 'closeTaskDropdowns', 'beginDirectNavigationActivity',
     'destroyHistoricalRequestsIsland', 'destroyManagerAssignedItemsView', 'cancelScheduledViewRenderWork',
     'cancelChunkRenderWorkForView', 'cancelScheduledUiRenderByPrefix', 'ensureNativeBackGuard',
