@@ -6,6 +6,7 @@
     const subscribers = new Set();
     let navigationCommitted = false;
     let viewKey = '';
+    let runtimeRecoveryTimer = null;
     const signal = kind => {
         if (!controllers.has(kind)) throw new TypeError('Unknown lifecycle lifetime.');
         return controllers.get(kind).signal;
@@ -101,6 +102,13 @@
     root.addEventListener('online', () => notify('online', 'online'));
     root.addEventListener('offline', () => notify('offline', 'offline'));
 
+    root.markAgDataRuntimeReady = () => {
+        root.__AGDATA_RUNTIME_READY__ = true;
+        if (runtimeRecoveryTimer) root.clearTimeout(runtimeRecoveryTimer);
+        runtimeRecoveryTimer = null;
+        return true;
+    };
+
     const isShellRelease = value => /^(?:V?\d{4}\.\d{2}\.\d{2}\.\d+|AgData v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.test(value);
     // Filters are disposable UI state. Auth, inventory, drafts and outboxes are not.
     root.invalidateAppFiltersForVersion = targetBuild => {
@@ -177,6 +185,7 @@
     root.clearOwnedShellControllerState = async targetBuild => {
         const safeTarget = String(targetBuild || '').trim();
         const prefix = 'ag-data-v4.3-rebuild-';
+        const targetCache = safeTarget.replace(/^AgData\s+v/i, 'agdata-v');
         try {
             const serviceWorker = root.navigator?.serviceWorker;
             if (typeof serviceWorker?.getRegistrations === 'function') {
@@ -188,14 +197,61 @@
         try {
             if (typeof root.caches?.keys === 'function' && typeof root.caches?.delete === 'function') {
                 const keys = await root.caches.keys();
-                const obsoleteShellCaches = keys.filter(key => key.startsWith(prefix)
-                    && (!safeTarget || !key.includes(safeTarget)));
+                const obsoleteShellCaches = keys.filter(key => (key.startsWith(prefix) || /^agdata-v\d+\.\d+\.\d+(?:-|$)/i.test(key))
+                    && (!safeTarget || key !== targetCache));
                 await Promise.allSettled(obsoleteShellCaches.map(key => root.caches.delete(key)));
             }
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
         root.__swReg = null;
         return true;
     };
+
+    let appLoadRecovery = null;
+    root.recoverAppLoadFailure = reason => {
+        if (appLoadRecovery) return appLoadRecovery;
+        const safeReason = String(reason || 'runtime-load-failure').trim().slice(0, 48) || 'runtime-load-failure';
+        const marker = `${root.__APP_SHELL_VERSION__ || 'current'}:${safeReason}`;
+        try {
+            if (root.sessionStorage.getItem('gnc_app_load_recovery_v1') === marker) return Promise.resolve(false);
+            root.sessionStorage.setItem('gnc_app_load_recovery_v1', marker);
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+        appLoadRecovery = (async () => {
+            suspendNavigation();
+            await root.clearOwnedShellControllerState('');
+            const next = new URL(root.location.href);
+            next.searchParams.set('shellv', String(root.__APP_SHELL_VERSION__ || 'latest'));
+            next.searchParams.set('shellts', String(Date.now()));
+            next.searchParams.set('shellreason', safeReason);
+            try { root.location.replace(next.toString()); }
+            catch (_) { root.location.reload(true); }
+            return true;
+        })();
+        return appLoadRecovery;
+    };
+
+    doc.addEventListener('click', event => {
+        const target = event.target?.closest?.('button,a');
+        if (String(target?.textContent || '').trim().toLowerCase() !== 'reload app') return;
+        event.preventDefault();
+        event.stopImmediatePropagation?.();
+        void root.recoverAppLoadFailure('reload-app');
+    }, true);
+
+    root.addEventListener('error', event => {
+        if (root.__AGDATA_RUNTIME_READY__ === true) return;
+        const source = String(event?.filename || event?.target?.src || '');
+        if (/\/assets\/app-runtime\.js(?:\?|$)/i.test(source)) void root.recoverAppLoadFailure('runtime-script-error');
+    }, true);
+
+    const armRuntimeRecovery = () => {
+        if (root.__AGDATA_RUNTIME_READY__ === true || runtimeRecoveryTimer) return;
+        runtimeRecoveryTimer = root.setTimeout(() => {
+            runtimeRecoveryTimer = null;
+            if (root.__AGDATA_RUNTIME_READY__ !== true) void root.recoverAppLoadFailure('runtime-not-ready');
+        }, 8000);
+    };
+    if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', armRuntimeRecovery, { once: true });
+    else armRuntimeRecovery();
 
     root.registerGncServiceWorkerSafely = async (serviceWorker, scriptUrl, options, handlers = {}) => {
         const unavailable = reason => {
