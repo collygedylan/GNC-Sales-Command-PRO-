@@ -22,6 +22,17 @@ export function parseAuraAccess(value: unknown, expectedId: string): AuraActor |
 }
 function env(name: string) { return String(Deno.env.get(name) || "").trim(); }
 function required(name: string) { const value = env(name); if (!value) throw new Error("AURA_CONFIGURATION_UNAVAILABLE"); return value; }
+function isSupabaseUserBearer(value: string) {
+  const parts = String(value || "").split(".");
+  if (parts.length !== 3) return false;
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const claims = JSON.parse(atob(payload.padEnd(Math.ceil(payload.length / 4) * 4, "="))) as { role?: unknown };
+    return String(claims?.role || "").trim().toLowerCase() === "authenticated";
+  } catch {
+    return false;
+  }
+}
 export function createAuraVoiceStore(bearer: string): AuraVoiceStore {
   const url = required("SUPABASE_URL");
   const user = createClient<Database>(url, required("SUPABASE_ANON_KEY"), {
@@ -46,6 +57,7 @@ export function createAuraVoiceStore(bearer: string): AuraVoiceStore {
       return auraVoice(auraObject(data).voiceName);
     },
     async authorize(signal) {
+      if (!isSupabaseUserBearer(bearer)) return null;
       const authenticated = await user.auth.getUser(bearer);
       const id = authenticated.data.user?.id;
       if (authenticated.error || !id || !UUID.test(id) || signal.aborted) return null;
