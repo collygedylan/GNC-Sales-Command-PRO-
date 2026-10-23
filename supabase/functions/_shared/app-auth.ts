@@ -244,6 +244,7 @@ export async function readSupabaseOrAppSessionFromRequest(
     return await readAppSessionFromRequest(req, supabaseAdmin);
   }
   const bearer = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (bearer && bearer === String(req.headers.get("apikey") || "").trim()) return null;
   if (isNonUserSupabaseBearer(bearer)) return null;
   if (bearer && supabaseAdmin) try {
     const { data, error } = await supabaseAdmin.auth.getUser(bearer);
