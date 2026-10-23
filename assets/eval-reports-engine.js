@@ -877,7 +877,10 @@
         const filters = query.filters || {}, kind = filters.groupBy || 'itemcode';
         const matching = filterBrowseRows(seed,filters), matchedIds = new Set(matching.map(row=>row.unique_id));
         const itemCodes = new Set(matching.map(row=>row.itemcode));
-        const rows = kind === 'itemcode' && !(filters.seasons || []).length ? seed.filter(row=>itemCodes.has(row.itemcode)) : matching;
+        const rows = (kind === 'itemcode' && !(filters.seasons || []).length ? seed.filter(row=>itemCodes.has(row.itemcode)) : matching)
+            .slice().sort((left,right)=>String(left.locationcode||'').localeCompare(String(right.locationcode||''),undefined,{numeric:true,sensitivity:'base'})
+                || String(left.lotcode||'').localeCompare(String(right.lotcode||''),undefined,{numeric:true,sensitivity:'base'})
+                || String(left.unique_id||'').localeCompare(String(right.unique_id||''),undefined,{numeric:true,sensitivity:'base'}));
         const groups = new Map();
         for (const row of rows) {
             const value = kind === 'blockalpha' ? row.blockalpha || 'UNASSIGNED' : kind === 'locationcode' ? row.locationcode || 'UNASSIGNED' : row.itemcode;
@@ -887,13 +890,13 @@
             group._items.add(row.itemcode);group._locations.add(row.locationcode);group._sizes.add(row.contsize);group._names.add(row.commonname);
             if(row.assignedto)group._users.add(row.assignedto);
             (row.reportIds||[]).forEach(id=>group._reports.add(id));
-            if(kind==='itemcode' && group.previewRows.length<8)group.previewRows.push(row);
+            if(kind==='itemcode')group.previewRows.push(row);
         }
         const ordered = Array.from(groups.values()).sort((a,b)=>a.value.localeCompare(b.value,undefined,{numeric:true,sensitivity:'base'}));
         const offset=Math.max(0,Number(query.offset)||0),limit=Math.max(1,Number(query.limit)||25);
         const page=ordered.slice(offset,offset+limit).map(group=>{
             const {_items,_locations,_sizes,_names,_users,_reports,...result}=group;
-            return {...result,itemCount:_items.size,locationCount:_locations.size,fullLocationCount:_locations.size,fullLocations:Array.from(_locations),containerSizes:Array.from(_sizes),contSizeCount:_sizes.size,commonNameCount:_names.size,assignedToUsers:Array.from(_users),reportIds:Array.from(_reports),previewHasMore:group.rowCount>group.previewRows.length};
+            return {...result,itemCount:_items.size,locationCount:_locations.size,fullLocationCount:_locations.size,fullLocations:Array.from(_locations).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'})),containerSizes:Array.from(_sizes),contSizeCount:_sizes.size,commonNameCount:_names.size,assignedToUsers:Array.from(_users),reportIds:Array.from(_reports),previewHasMore:false};
         });
         return {rows:page,total:ordered.length,offset,limit,hasMore:offset+page.length<ordered.length,sourceRevision,metadata};
     }
