@@ -37,12 +37,46 @@ test('Dylan mounts twelve Home modules while every other administrator keeps the
       const views = [...grid.innerHTML.matchAll(/data-home-module-view="([^"]+)"/g)].map(match => match[1]);
       const standard = ['drive', 'hl-order', 'av', 'sales-office', 'sales', 'historical-requests', 'managers', 'qc', 'office', 'sales-inventory', 'production'];
       assert.deepEqual(views, username === 'dylan_collyge' ? [...standard, 'smart-moves'] : standard);
+      if (username === 'dylan_collyge') assert.equal(views.length, 12, `Desktop Browser ${width}px Dylan module count`);
+      assert.doesNotMatch(grid.innerHTML, /App could not load|Reload app/);
       for (const view of views) assert.equal(ctx.canAccessView(view), true, `${username} ${width}px ${view}`);
       if (username === 'dylan_collyge') assert.match(grid.innerHTML, /data-module="smart-moves"[^>]*onclick="switchView\('smart-moves'\)"/);
       else assert.doesNotMatch(grid.innerHTML, /smart-moves/);
       assert.match(grid.innerHTML.match(/<button[^>]+id="home-tile-sales-office"[^]*?<\/button>/)[0], /<svg[^>]+viewBox="0 0 24 24"[^]*?<path/);
     }
   }
+});
+
+test('Desktop Browser Dylan login opens Home when optional initialization fails', () => {
+  const nodes = {
+    'view-login': { style: { display: 'flex' } },
+    'login-inputs': { classList: { remove() {} } },
+    'loading-spinner': { classList: { add() {} } },
+    'app-wrapper': { hidden: true, style: { display: 'none', removeProperty(name) { delete this[name]; } }, classList: { remove() {} } },
+    'main-scroll-area': { style: {} },
+  };
+  const warnings = [];
+  const context = vm.createContext({
+    clearLoginStartupWatchdog() {}, blurActiveField() {}, setLoginProgress() {}, finishInitialAppLoad() {},
+    document: { getElementById: id => nodes[id] || null, body: { classList: { remove() {} } } },
+    isTouchConstrainedDevice: () => false,
+    setMenuOpenState() { throw new Error('preferences unavailable'); },
+    syncAuraWidgetForSession: async () => true, setHomeDashboardModulesReady() {}, syncCurrentViewBodyClass() {},
+    repairAppShellScrollState() {}, syncRoleAccessUi() {}, getRoleAccessState: () => ({}), applyRolePermissions() {},
+    showOnlyPrimaryView: view => { context.visibleView = view; }, renderHome: () => { context.homeRendered = true; },
+    updateFooterNavState() {}, syncGlobalHeaderChrome() {}, runAfterShellInteractive() {},
+    scheduleRequestModalReferencePrefetch() {}, scheduleGlobalReferencePrefetch() {}, ensureHomeDashboardReadyAfterLogin() {},
+    refreshRealtimeSubscriptionsForCurrentView() {}, canUseProductionLiveSync: () => true, signalProductionLiveSync() {},
+    setTimeout() {}, console: { warn: (...args) => warnings.push(args) },
+  });
+  vm.runInContext(`${shellFunction('openAppShellAfterLogin')}\nglobalThis.openLoginShell = openAppShellAfterLogin;`, context);
+  context.openLoginShell(false);
+  assert.equal(nodes['app-wrapper'].hidden, false);
+  assert.equal(nodes['view-login'].style.display, 'none');
+  assert.equal(context.visibleView, 'home');
+  assert.equal(context.homeRendered, true);
+  assert.match(String(warnings[0]?.[0] || ''), /Menu reset deferred after login/);
+  assert.doesNotMatch(shellFunction('openAppShellAfterLogin'), /App could not load|Reload app/);
 });
 
 test('Home sync always renders four named cards while partial metadata refreshes', () => {

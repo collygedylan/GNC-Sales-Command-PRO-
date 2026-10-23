@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.50';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.52';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9553,7 +9553,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function bindLoginUiHandlers() {
             hardenLoginCredentialInputs();
-            if (loginUiHandlersBound) return;
+            if (loginUiHandlersBound) {
+                window.markAgDataRuntimeReady?.();
+                return;
+            }
             loginUiHandlersBound = true;
 
             const loginButton = document.getElementById('login-button');
@@ -9604,6 +9607,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 if (event.key !== 'Enter') return;
                 triggerPasswordChangeFromUI(event);
             });
+            window.markAgDataRuntimeReady?.();
         }
 
         function ensureLoginInteractionHealth(options = {}) {
@@ -26139,7 +26143,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.50').trim() || 'AgData v2.3.50';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.52').trim() || 'AgData v2.3.52';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27783,6 +27787,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 primeSavedLoginUiOnStartup();
             } catch (err) {
                 console.error('Startup failed', err);
+                if (recoverShellAfterLoginRuntimeFailure(err, 'startup-runtime-failure')) return;
                 resetLoginUiState();
                 showToast("Error","Startup failed. Please log in again.",true);
             }
@@ -54486,6 +54491,7 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                     else{
                         finalizeLogin(currentUser,inputPass,isBiometricLogin).catch(err => {
+                            if (recoverShellAfterLoginRuntimeFailure(err, 'login-finalization-failure')) return;
                             finishInitialAppLoad();
                             setBootingSession(false);
                             console.warn('Login crashed unexpectedly.', err);
@@ -54512,12 +54518,28 @@ function toggleDriveQuickRequestItem(domId) {
                     resetLoginUiState();
                 }
             }).catch(err=>{
+                if (recoverShellAfterLoginRuntimeFailure(err, 'login-request-runtime-failure')) return;
                 finishInitialAppLoad();
                 setBootingSession(false);
                 console.warn('Login crashed unexpectedly.', err);
                 showToast('Error', getLoginFailureMessage(err), true);
                 resetLoginUiState();
             });
+        }
+
+        function recoverShellAfterLoginRuntimeFailure(error, reason = 'login-runtime-failure') {
+            const name = String(error?.name || '').trim();
+            const code = String(error?.code || '').trim();
+            const message = String(error?.message || error || '').trim();
+            const runtimeMismatch = /^(?:ReferenceError|SyntaxError|ChunkLoadError)$/i.test(name)
+                || /chunkload|loading chunk|dynamically imported module|is not defined|app could not load|reload app/i.test(`${code} ${message}`);
+            if (!runtimeMismatch || typeof window.recoverAppLoadFailure !== 'function') return false;
+            try {
+                void window.recoverAppLoadFailure(reason);
+                return true;
+            } catch (_) {
+                return false;
+            }
         }
 
         async function submitNewPassword() {
@@ -54591,7 +54613,17 @@ function toggleDriveQuickRequestItem(domId) {
             const appWrapper = document.getElementById('app-wrapper');
             const scrollArea = document.getElementById('main-scroll-area');
             const touchShell = isTouchConstrainedDevice();
-            setMenuOpenState(false);
+            const runLoginInitializationStep = (label, task) => {
+                try {
+                    const result = task();
+                    if (result && typeof result.catch === 'function') result.catch(error => console.warn(`${label} deferred after login.`, error));
+                    return result;
+                } catch (error) {
+                    console.warn(`${label} deferred after login.`, error);
+                    return null;
+                }
+            };
+            runLoginInitializationStep('Menu reset', () => setMenuOpenState(false));
             if (appWrapper) {
                 appWrapper.classList.remove('hidden');
                 appWrapper.hidden = false;
@@ -54599,28 +54631,28 @@ function toggleDriveQuickRequestItem(domId) {
                 appWrapper.style.pointerEvents = 'auto';
                 appWrapper.style.opacity = '1';
             }
-            void syncAuraWidgetForSession();
+            runLoginInitializationStep('AURA widget', () => syncAuraWidgetForSession());
             if (scrollArea) {
                 scrollArea.style.pointerEvents = 'auto';
                 scrollArea.style.opacity = '1';
             }
-            setHomeDashboardModulesReady(true);
-            if (typeof syncCurrentViewBodyClass === 'function') syncCurrentViewBodyClass('home');
+            runLoginInitializationStep('Home module registry', () => setHomeDashboardModulesReady(true));
+            runLoginInitializationStep('Home body state', () => { if (typeof syncCurrentViewBodyClass === 'function') syncCurrentViewBodyClass('home'); });
             document.body.classList.remove('detail-field-active');
-            repairAppShellScrollState('login-shell-open', { resetGestureState: true });
-            syncRoleAccessUi(getRoleAccessState());
-            applyRolePermissions();
+            runLoginInitializationStep('Shell scroll state', () => repairAppShellScrollState('login-shell-open', { resetGestureState: true }));
+            runLoginInitializationStep('Role access UI', () => syncRoleAccessUi(getRoleAccessState()));
+            runLoginInitializationStep('Role permissions', () => applyRolePermissions());
             // A preset Home identity does not prove that its DOM was mounted.
             // Reveal and render synchronously before the login overlay leaves.
-            showOnlyPrimaryView('home');
-            renderHome();
-            updateFooterNavState();
-            syncGlobalHeaderChrome({ reason: 'login-home-mount', force: true });
+            runLoginInitializationStep('Home view', () => showOnlyPrimaryView('home'));
+            runLoginInitializationStep('Home render', () => renderHome());
+            runLoginInitializationStep('Navigation preferences', () => updateFooterNavState());
+            runLoginInitializationStep('Header chrome', () => syncGlobalHeaderChrome({ reason: 'login-home-mount', force: true }));
             runAfterShellInteractive(() => scheduleRequestModalReferencePrefetch(), touchShell ? 180 : 40);
             runAfterShellInteractive(() => scheduleGlobalReferencePrefetch(), touchShell ? 260 : 80);
-            ensureHomeDashboardReadyAfterLogin('login-shell-open');
+            runLoginInitializationStep('Home readiness', () => ensureHomeDashboardReadyAfterLogin('login-shell-open'));
             if (loginView) loginView.style.display = 'none';
-            ensureHomeDashboardReadyAfterLogin('login-shell-open');
+            runLoginInitializationStep('Home readiness confirmation', () => ensureHomeDashboardReadyAfterLogin('login-shell-open'));
             if (loginInputs) loginInputs.classList.remove('hidden');
             if (spinner) spinner.classList.add('hidden');
             try { window.GncLoginTrace?.finish('shell-ready'); } catch (_) { /* Timing only. */ }
@@ -54629,12 +54661,12 @@ function toggleDriveQuickRequestItem(domId) {
                     runAfterTouchInteraction(() => refreshRealtimeSubscriptionsForCurrentView(true), 2800, 'current-view-realtime-subscriptions');
                 }, 220);
             } else {
-                refreshRealtimeSubscriptionsForCurrentView(true);
+                runLoginInitializationStep('Realtime subscriptions', () => refreshRealtimeSubscriptionsForCurrentView(true));
             }
             setTimeout(() => ensureHomeDashboardReadyAfterLogin('login-shell-watchdog-1'), 650);
             setTimeout(() => ensureHomeDashboardReadyAfterLogin('login-shell-watchdog-2'), 1800);
             if (canUseProductionLiveSync()) {
-                signalProductionLiveSync('login-shell-open', 0);
+                runLoginInitializationStep('Production live sync', () => signalProductionLiveSync('login-shell-open', 0));
                 return;
             }
             runAfterShellInteractive(() => {
@@ -54993,7 +55025,8 @@ function toggleDriveQuickRequestItem(domId) {
             localStorage.setItem('gnc_division_v1',currentUserDivision || '10');
             localStorage.setItem('gnc_language_v1',normalizeAppUserLanguage(currentUserLanguage));
             localStorage.setItem(LOGIN_DISPLAY_NAME_STORAGE_KEY, currentUserDisplay || currentUser || user);
-            configureRuntimeWatchdogForCurrentSession();
+            try { configureRuntimeWatchdogForCurrentSession(); }
+            catch (error) { console.warn('Runtime watchdog initialization deferred after login.', error); }
             if (nativeAuthSessionActive) {
                 localStorage.removeItem('gnc_pin_v3');
                 localStorage.removeItem(VERIFIED_LOGIN_STORAGE_KEY);
@@ -55005,6 +55038,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
             // The authenticated identity is already verified; data and policy refreshes run behind Home.
             openAppShellAfterLogin(hasWarmAppData());
+            try {
             const readCapabilities = () => initializeRequestCapabilities({ render: false, reason: isRestoredSession ? 'restored-login' : 'login' });
             if (canUseProductionLiveSync()) {
                 const loginOwner = nativeAuthProfile.id;
@@ -55235,6 +55269,9 @@ function toggleDriveQuickRequestItem(domId) {
             }
             loginLocalWarmPromise.then(() => clearLoginCachePrefetch(), () => clearLoginCachePrefetch());
             flushRequestOutbox('login').catch(() => {});
+            } catch (error) {
+                console.warn('Post-login initialization deferred; Home remains available.', error);
+            }
         }
         async function silentBackgroundSync() {
             if(!currentUser)return;
