@@ -68,3 +68,4 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 
 - Never hide a loaded view behind a dataset/access refresh, add a duplicate Back implementation, clip Home row 6, or leave Smart Moves on its hydration placeholder after navigation.
 - Never repair a feature by directly toggling unrelated `#view-*` roots or by returning transient `401`/`403`/`409`/`423` responses to an already authorized fail-open read.
+- Never default the imported-file disclosure open below `768px`; initialize it collapsed before revealing Home so all 12 module tiles remain above the bottom navigation.

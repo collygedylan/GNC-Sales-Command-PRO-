@@ -89,3 +89,4 @@ Queue rendering bypasses shared full-screen loading/error gates and refreshes th
 
 - Never render a banned lockout banner, clear same-account rows on transient refresh, disable navigation during import, delay Row Details/Reclass opening, or return transient forbidden/conflict/locked statuses where a retained authorized response is possible.
 - Never use fail-open display continuity to bypass RLS, confirmed revocation, exact mutation identity, recipient policy, or account isolation.
+- Never make an authorized `dataset_read` wait for best-effort repair work; schedule bounded reconciliation with `EdgeRuntime.waitUntil` and contain both synchronous and asynchronous failures.

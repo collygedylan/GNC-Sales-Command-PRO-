@@ -1137,8 +1137,17 @@ async function handleDatasetRead(
   catch (error) { return errorResponse(String(error instanceof Error ? error.message : error), 400, { code: String(error instanceof Error ? error.message : error) }); }
 
   if (["request_queue", "active_request"].includes(dataset) && parsed.offset === 0) {
-    const reconciliation = await supabase.rpc("reconcile_active_requests_from_outbox_v1");
-    if (reconciliation.error) console.warn("REQUEST_OUTBOX_RECONCILIATION_DEFERRED", reconciliation.error.code || reconciliation.error.message);
+    try {
+      const reconciliationTask = Promise.resolve(supabase.rpc("reconcile_active_requests_from_outbox_v1"))
+        .then((reconciliation) => {
+          if (reconciliation.error) console.warn("REQUEST_OUTBOX_RECONCILIATION_DEFERRED", reconciliation.error.code || reconciliation.error.message);
+        })
+        .catch((error) => console.warn("REQUEST_OUTBOX_RECONCILIATION_DEFERRED", error instanceof Error ? error.message : String(error)));
+      const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (task: Promise<void>) => void } }).EdgeRuntime;
+      if (runtime) runtime.waitUntil(reconciliationTask);
+    } catch (error) {
+      console.warn("REQUEST_OUTBOX_RECONCILIATION_DEFERRED", error instanceof Error ? error.message : String(error));
+    }
   }
 
   if (parsed.projection === "signature" && !source.signatures) return errorResponse("This dataset has no signature projection.", 400, { code: "DATASET_READ_PROJECTION_INVALID" });

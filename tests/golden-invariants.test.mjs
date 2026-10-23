@@ -336,3 +336,17 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
   assert.equal([...storage.values()].some(value => String(value).includes('AgData v2.3.54')), false);
   assert.equal(reports.every(event => event.app_version === 'AgData v2.3.55'), true);
 });
+
+test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
+  const api = read('supabase/functions/app-api/index.ts');
+  const migration = read('supabase/migrations/20261023233000_bounded_request_queue_reconciliation_v2.sql');
+  const runtime = read('assets/app-runtime.js');
+  assert.match(api, /Promise\.resolve\(supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)\)[^]*runtime\.waitUntil\(reconciliationTask\)/);
+  assert.doesNotMatch(api, /await supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)/);
+  assert.match(migration, /order by o\.created_at desc,o\.event_id desc[^]*limit 100/);
+  assert.match(migration, /jsonb_array_elements[^]*regexp_matches[^]*insert into public\.ph_active_request/);
+  assert.match(migration, /request_source[^]*customeridentityid[^]*consigneeidentityid/);
+  assert.match(migration, /insert into public\.ph_active_request[^]*insert into public\.ph_request_delivery_outbox/);
+  assert.match(runtime, /syncPanel\.open = window\.innerWidth >= 768/);
+  assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
+});

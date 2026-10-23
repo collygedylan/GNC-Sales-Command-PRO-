@@ -27539,6 +27539,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const isVisible = canRunManualInventoryImport();
             // Manual recovery must remain reachable before any data read succeeds.
             const syncPanel = document.getElementById('dashboard-sync-accordion');
+            if (syncPanel && syncPanel.dataset.viewportDefaultApplied !== 'true') {
+                syncPanel.open = window.innerWidth >= 768;
+                syncPanel.dataset.viewportDefaultApplied = 'true';
+            }
             if (syncPanel) syncPanel.classList.toggle('hidden', !canViewDashboardSyncStatus());
             const manualSyncActive = hasActiveManualSync();
             const progress = getManualSyncProgressInfo();

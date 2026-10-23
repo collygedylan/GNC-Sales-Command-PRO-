@@ -1405,17 +1405,20 @@ test('v2.3.45 treats Bunch Note revisions as optional and retries transient iden
   assert.match(source, /if \(isSilentBackgroundRetry\(error\) \|\| isInventoryRevisionAdoption\(error\)\)[^]*?signal\([^]*?, 1000\)/);
 });
 
-test('v2.3.54 REQUEST reconciles emailed rows and refreshes every open on an eight-second cadence', () => {
+test('v2.3.55 REQUEST reconciliation is bounded, non-blocking, and refreshes every open', () => {
   const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
   const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
-  const migration = readFileSync(new URL('../supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../supabase/migrations/20261023233000_bounded_request_queue_reconciliation_v2.sql', import.meta.url), 'utf8');
   assert.match(runtime, /const REQUEST_LIVE_QUEUE_POLL_MS = 8000/);
   assert.match(runtime, /function isRequestPendingVisible[^]*\['', 'pending', 'open'\]\.includes\(status\)/);
   assert.match(runtime, /function buildPendingRequestRenderPlan[^]*compareLocationCodeValues\(a\.LOCATIONCODE, b\.LOCATIONCODE\)[^]*naturalCompare\(a\.LOTCODE, b\.LOTCODE\)/);
   assert.match(runtime, /forceRefreshRequestsForView\('request-tab', \{[^]*force: true[^]*minIntervalMs: 0/);
   assert.match(runtime, /forceRefreshRequestsForView === 'function'[^]*forceRefreshRequestsForView\('request-home-open', \{ force: true, minIntervalMs: 0/);
-  assert.match(appApi, /\["request_queue", "active_request"\]\.includes\(dataset\)[^]*reconcile_active_requests_from_outbox_v1/);
-  assert.match(migration, /ph_request_delivery_outbox[^]*event_type='request_created'[^]*insert into public\.ph_active_request/);
-  assert.match(migration, /update public\.ph_active_request set req_qty='1'/);
-  assert.match(migration, /request_row\.req_qty:=coalesce\(nullif\(btrim\(request_row\.req_qty\),''\),'1'\)/);
+  assert.match(appApi, /\["request_queue", "active_request"\]\.includes\(dataset\)[^]*Promise\.resolve\(supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)\)[^]*runtime\.waitUntil\(reconciliationTask\)/);
+  assert.doesNotMatch(appApi, /const reconciliation = await supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)/);
+  assert.match(migration, /where o\.event_type='request_created'[^]*order by o\.created_at desc,o\.event_id desc[^]*limit 100/);
+  assert.match(migration, /regexp_matches[^]*insert into public\.ph_active_request/);
+  assert.match(migration, /ph_request_delivery_outbox_request_created_recent_idx/);
+  assert.match(migration, /request_source[^]*customeridentityid[^]*consigneeidentityid/);
+  assert.doesNotMatch(migration, /update public\.ph_active_request set req_qty='1'/);
 });

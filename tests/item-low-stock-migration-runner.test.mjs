@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -130,13 +130,27 @@ test('migration target is the configured Supabase project and never a browser ke
 
 test('Drive evidence reconciliation is registered with durable location and request contracts', () => {
   assert.equal(driveLocationEvidenceMigrationName, '20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), driveLocationEvidenceMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(driveLocationEvidenceMigrationName)
+    < releaseDatabaseMigrations.indexOf(boundedRequestQueueReconciliationMigrationName));
   assert.deepEqual(normalizeScopedMigrationPaths([`supabase/migrations/${driveLocationEvidenceMigrationName}`]),
     [driveLocationEvidenceMigrationName]);
   const query = migrationContractQuery(driveLocationEvidenceMigrationName);
   for (const marker of ['inventory_location_evidence_v1', 'save_drive_evidence_v3',
     'request_lifecycle_tombstones_v1', 'reconcile_active_requests_from_outbox_v1',
     "'''previewHasMore'',false", 'eval_work_natural_sort_key_v1(p.lotcode)']) assert.ok(query.includes(marker), marker);
+});
+
+test('bounded Request recovery is registered and preserves the atomic submission contract', () => {
+  assert.equal(boundedRequestQueueReconciliationMigrationName, '20261023233000_bounded_request_queue_reconciliation_v2.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1), boundedRequestQueueReconciliationMigrationName);
+  const sql = fs.readFileSync(new URL(`../supabase/migrations/${boundedRequestQueueReconciliationMigrationName}`, import.meta.url), 'utf8');
+  assert.match(sql, /order by o\.created_at desc,o\.event_id desc\s+limit 100/);
+  assert.match(sql, /regexp_matches/);
+  assert.match(sql, /ATOMIC_REQUEST_SUBMISSION_CONTRACT_INVALID/);
+  assert.doesNotMatch(sql, /update public\.ph_active_request set req_qty='1'/);
+  const contract = migrationContractQuery(boundedRequestQueueReconciliationMigrationName);
+  for (const marker of ['ph_request_delivery_outbox_request_created_recent_idx', 'limit 100',
+    'private.insert_request_batch(uuid,jsonb,text)', 'app_dataset_revision_inserted']) assert.ok(contract.includes(marker), marker);
 });
 
 test('mapping publication is release-registered and protects raw source data and writes', () => {

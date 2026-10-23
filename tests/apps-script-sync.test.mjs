@@ -19,9 +19,13 @@ const source = `const DEPLOYED_COMMIT = '${APPS_SCRIPT_DEPLOYMENT_COMMIT_PLACEHO
 const appHtml = readComposedAppSource();
 const appsScriptSource = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
 
-test('Home imported filenames are expanded and available to authorized sales reps', () => {
-  assert.match(appHtml, /<details id="dashboard-sync-accordion"[^>]*\bopen\b/);
-  const context = vm.createContext({ currentUser: 'brian_hatfield',
+test('Home imported filenames stay available with a mobile-collapsed viewport default', () => {
+  const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  assert.match(indexHtml, /<details id="dashboard-sync-accordion"[^>]*\bopen\b/);
+  assert.match(runtime, /syncPanel\.open = window\.innerWidth >= 768/);
+  assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
+  const context = vm.createContext({ currentUser: 'dylan_collyge',
     canAccessView: view => view === 'drive', getProtectedUserTokens: () => new Set(),
     hasPrivilegedManagerAccess: () => false });
   vm.runInContext(sourceFunction(appHtml, 'canViewDashboardSyncStatus', '        '), context);

@@ -8,7 +8,7 @@ import { toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs
 import { findDuplicateGlobalFunctionDeclarations, INDEX_HTML_BUDGET, inspectSourceBudget } from '../scripts/code-health-governance.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const MIN_GOLDEN_INVARIANTS = 16;
+export const MIN_GOLDEN_INVARIANTS = 17;
 const sourceCache = new Map();
 const read = file => {
   if (!sourceCache.has(file)) sourceCache.set(file, readFileSync(path.join(root, file), 'utf8'));

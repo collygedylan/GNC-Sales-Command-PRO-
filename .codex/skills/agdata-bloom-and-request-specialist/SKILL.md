@@ -73,3 +73,4 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 
 - Never skip a Que/REQUEST refresh because a client TTL or revision appears current, delete pending requests during import, clear a draft before validated acknowledgment, or duplicate the canonical location sorter.
 - Never copy Reclass, Bunch, HL, or inventory-purpose recipient lists into the Plant Request lifecycle contract.
+- Never await outbox reconciliation inside `dataset_read`, scan unbounded delivery history, or replace an optional Request quantity with an invented default; recover only the indexed newest 100 events outside the response path.
