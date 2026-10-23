@@ -20,6 +20,7 @@ export const toolingSkillManifests = Object.freeze([
 ].map(name => `.codex/skills/${name}/SKILL.md`));
 
 export const toolingReleaseCheckFiles = Object.freeze([
+  'tests/golden-invariants.test.mjs',
   'tests/release-scope.test.mjs',
   'tests/main-release-registration.test.mjs',
   'tests/tooling-release-runner.test.mjs',

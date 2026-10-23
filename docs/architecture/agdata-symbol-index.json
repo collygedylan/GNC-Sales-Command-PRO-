@@ -1,0 +1,346 @@
+{
+  "schemaVersion": 1,
+  "release": "AgData v2.3.55",
+  "sourceLayers": [
+    "assets/app-runtime.js",
+    "assets/runtime-watchdog.js",
+    "supabase/functions/app-api/index.ts",
+    "Code.gs"
+  ],
+  "sharedAssets": {
+    "assets/location-code.js": [
+      "compareLocationCodeNatural"
+    ]
+  },
+  "canonicalContracts": {
+    "locationCodeNaturalSort": {
+      "primary": {
+        "file": "assets/location-code.js",
+        "symbol": "compareLocationCodeNatural"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "compareLocationCodeValues"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "compareManagerEvalReport2InventoryRows"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "buildPendingRequestRenderPlan"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "sortAvOpenItems"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "sortDriveCardItems"
+        },
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "compareLocationCodeNatural"
+        },
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "sortManagerEval2PreviewRows"
+        }
+      ]
+    },
+    "photoThumbnailResolution": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "resolveCanonicalPhotoUrls"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "getRowPhotoLink"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "getDetailPhotoUrls"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "renderAV"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "renderDrive"
+        }
+      ]
+    },
+    "evalReport2Ordering": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "compareManagerEvalReport2InventoryRows"
+      },
+      "consumers": [
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "sortManagerEval2PreviewRows"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "renderManagerEvalReports2Panel"
+        }
+      ]
+    },
+    "requestLiveQueue": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "forceRefreshRequestsForView"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "buildPendingRequestRenderPlan"
+        },
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "handleDatasetRead"
+        }
+      ]
+    },
+    "recountLocationGrouping": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "buildReclassRecountLocationGroups"
+      },
+      "consumers": [
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "handleReclassRecountAction"
+        },
+        {
+          "file": "Code.gs",
+          "symbol": "handleSignedReclassRecountCompletion_"
+        }
+      ]
+    },
+    "reclassSeasonMath": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "buildOptimisticInventoryReclassMoveModel"
+      },
+      "consumers": [
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "handleDriveReclassAction"
+        },
+        {
+          "file": "Code.gs",
+          "symbol": "buildReclassItemInquiryTable_"
+        }
+      ]
+    },
+    "smartMovesHydration": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "warmSalesIntelligenceData"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "renderSmartMovesIntelligence"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "switchView"
+        }
+      ]
+    }
+  },
+  "domains": {
+    "agdata-app-shell-and-navigation": {
+      "assets/app-runtime.js": [
+        "switchView",
+        "showOnlyPrimaryView",
+        "goBackUniversal",
+        "updateGlobalBackButton",
+        "renderHome",
+        "warmSalesIntelligenceData",
+        "renderSmartMovesIntelligence"
+      ],
+      "assets/runtime-watchdog.js": [
+        "view"
+      ],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": []
+    },
+    "agdata-aura-assistant": {
+      "assets/app-runtime.js": [
+        "syncAuraWidgetForSession",
+        "requestAuraQuery"
+      ],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [
+        "handleAuraInventoryV2",
+        "handleAuraInventorySearch",
+        "handleAuraScoutLog"
+      ],
+      "Code.gs": []
+    },
+    "agdata-bloom-and-request-specialist": {
+      "assets/app-runtime.js": [
+        "renderBloomPickerTrayRows",
+        "submitRequestWithQtys",
+        "forceRefreshRequestsForView",
+        "buildPendingRequestRenderPlan"
+      ],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [
+        "handleCustomerRepMappingAction",
+        "handleRequestRecipientDirectory",
+        "handleSeasonSalesOfficeAction"
+      ],
+      "Code.gs": [
+        "collectRequestRecipients_",
+        "handleSignedRequestDeliveryEvent_"
+      ]
+    },
+    "agdata-docks-and-orders-specialist": {
+      "assets/app-runtime.js": [
+        "renderDocks",
+        "loadHlOrderState",
+        "renderCommunicationHub"
+      ],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [
+        "handleDockTripStatusAction"
+      ],
+      "Code.gs": [
+        "runReservesOnly",
+        "buildHlOrderPdfHtml_",
+        "handleSignedHlOrderDelivery_"
+      ]
+    },
+    "agdata-drive-and-av-specialist": {
+      "assets/app-runtime.js": [
+        "renderDrive",
+        "renderAV",
+        "compareLocationCodeValues",
+        "sortDriveCardItems",
+        "sortAvOpenItems",
+        "getRowPhotoLink",
+        "resolveCanonicalPhotoUrls",
+        "getDetailPhotoUrls"
+      ],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [
+        "handleInventoryRead"
+      ],
+      "Code.gs": [
+        "buildMasterPayload",
+        "buildMasterBulkSnapshotPayload_"
+      ]
+    },
+    "agdata-field-ops-and-qc": {
+      "assets/app-runtime.js": [
+        "renderManagerEvalReports2Panel",
+        "compareManagerEvalReport2InventoryRows",
+        "renderProductionHub"
+      ],
+      "assets/runtime-watchdog.js": [
+        "inspectDataParity"
+      ],
+      "supabase/functions/app-api/index.ts": [
+        "handleEvalWorkAction",
+        "handleManagerReportReadAction",
+        "sortManagerEval2PreviewRows",
+        "handleLocationWorkAction"
+      ],
+      "Code.gs": [
+        "handleSignedEvalWorkDelivery_",
+        "handleSignedLocationWorkDelivery_"
+      ]
+    },
+    "agdata-queue-and-reclass-specialist": {
+      "assets/app-runtime.js": [
+        "renderRequest",
+        "buildPendingRequestRenderPlan",
+        "buildReclassRecountLocationGroups",
+        "buildOptimisticInventoryReclassMoveModel"
+      ],
+      "assets/runtime-watchdog.js": [
+        "inspectDataParity"
+      ],
+      "supabase/functions/app-api/index.ts": [
+        "handleDatasetRead",
+        "handleDriveReclassAction",
+        "handleReclassRecountAction"
+      ],
+      "Code.gs": [
+        "buildReclassItemInquiryTable_",
+        "handleSignedReclassRecountCompletion_"
+      ]
+    },
+    "agdata-release-governor": {
+      "assets/app-runtime.js": [],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": [],
+      "supportingFiles": {
+        "scripts/run-tooling-release-checks.mjs": [
+          "runToolingReleaseChecks"
+        ]
+      }
+    },
+    "agdata-runtime-watchdog": {
+      "assets/app-runtime.js": [],
+      "assets/runtime-watchdog.js": [
+        "capture",
+        "inspectDataParity",
+        "record"
+      ],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": []
+    },
+    "agdata-skill-learner": {
+      "assets/app-runtime.js": [],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": [],
+      "supportingFiles": {
+        "scripts/run-tooling-release-checks.mjs": [
+          "toolingSkillManifests"
+        ]
+      }
+    },
+    "agdata-sync-and-supabase-architect": {
+      "assets/app-runtime.js": [
+        "runGoogleAppsScriptTrigger",
+        "refreshDashboardSyncMetadata"
+      ],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [
+        "handleDatasetRevisionsAction",
+        "handleAppsScriptAction"
+      ],
+      "Code.gs": [
+        "getManualSyncStageOrder_",
+        "queueManualSyncRequest_",
+        "runQueuedManualSyncStage_"
+      ]
+    },
+    "agdata-zero-lockout-guard": {
+      "assets/app-runtime.js": [
+        "getNativeAuthSession",
+        "initializeAppAccessSnapshot",
+        "showOnlyPrimaryView"
+      ],
+      "assets/runtime-watchdog.js": [
+        "capture"
+      ],
+      "supabase/functions/app-api/index.ts": [
+        "handleNativeSessionBridge",
+        "handleInventoryRead",
+        "handleDatasetRead"
+      ],
+      "Code.gs": []
+    }
+  }
+}

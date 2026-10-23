@@ -76,3 +76,18 @@ Every Reclass Item Inquiry has the same white/black 14-column HTML table and one
 ## Watchdog and active queue continuity
 
 Que contains only active operational tabs; ARCHIVED is absent. Archived/completed request pages and Restore mount inside Home Historical Requests via renderHistoricalRequestArchive, retaining account/permission ownership and idempotent restore. Queue cards paint their owned memory rows while refreshRequestViewInBackground runs; Location Work must not wait on requests/master. Reset transport cooldowns on explicit tab/Retry while preserving authorization fences. Request-only normalizeRequestCardMetrics repairs OH=0 with AVL>0 to AVL+REV and raises Loc OH to that value without mutating source rows. Collapse N/A | N/A and resolve all stored Qty aliases. Suspend candidate projection fields must match database.types.ts and its generated contracts; backend faults return retryable 503, never mislabeled parameter errors.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `assets/app-runtime.js`: `renderRequest`, `buildPendingRequestRenderPlan`, `buildReclassRecountLocationGroups`, `buildOptimisticInventoryReclassMoveModel`, and the atomic Reclass modal/receipt publishers.
+- `supabase/functions/app-api/index.ts`: `handleDatasetRead`, `handleDriveReclassAction`, `handleReclassRecountAction`; SQL: Reclass move/delivery RPCs and recount jobs; `Code.gs`: `buildReclassItemInquiryTable_`, `handleSignedReclassRecountCompletion_`.
+
+## Cross-Layer Blast Radius
+
+- Recount groups one card per `(itemcode, locationcode)`, sums On Hand across every lot, and sends per-lot On Hand/Available/Review plus the submitted location total.
+- Move Up/Down applies the quantity delta to Open Stock on every destination-season row and recomputes Loc Photo Match on first save. The report table remains exactly nine columns, with starting OH and `UP <QTY> TO <SEASON>` inside the OH cell.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never group Recount by physical UID/lot alone, omit lot metrics from completion delivery, update only one destination-season Open Stock row, add Action columns to the nine-column report, or move the proposal box outside OH.
+- Never collapse physical Suspend rows, infer mutation authority from cached UI state, add JD/Sunday as fixed Reclass recipients, or block opening a displayed-card Reclass draft on a background refresh.

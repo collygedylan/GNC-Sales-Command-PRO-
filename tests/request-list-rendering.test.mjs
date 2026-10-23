@@ -6,6 +6,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readComposedAppSource();
+const locationCodeSource = readFileSync(new URL('../assets/location-code.js', import.meta.url), 'utf8');
 function source(name) {
   const start = html.search(new RegExp(`        function ${name}\\(`));
   assert.ok(start >= 0, `${name} exists`);
@@ -21,7 +22,7 @@ function fixture() {
     signatures, pageKeys, pageIndex: 0,
     isRequestPendingVisible: () => true,
     isRegularRequestQueueItem: () => true,
-    compareRequestLocationCodes: (a, b) => String(a).localeCompare(String(b)),
+    naturalCompare: (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true, sensitivity: 'base' }),
     getItemUniqueId: row => row.UNIQUE_ID,
     buildRequestChunkRenderKey: (mode, crumb, rows) => {
       signatures.push(rows.length);
@@ -34,6 +35,8 @@ function fixture() {
     },
     renderClientBrowsePageFooter: (_view, _key, total, page) => `${page.pageIndex}:${total}`
   });
+  vm.runInContext(locationCodeSource, ctx);
+  vm.runInContext(source('compareLocationCodeValues'), ctx);
   for (const name of ['buildRequestBrowseMembershipKey', 'buildRequestPagedRenderPlan']) {
     if (html.includes(`function ${name}(`)) vm.runInContext(source(name), ctx);
   }

@@ -4,6 +4,7 @@ import { runToolingReleaseChecks, toolingReleaseCheckFiles } from '../scripts/ru
 
 test('daytime tooling runs only focused scope, registration, governance and mocked runner contracts', () => {
   assert.deepEqual(toolingReleaseCheckFiles, [
+    'tests/golden-invariants.test.mjs',
     'tests/release-scope.test.mjs', 'tests/main-release-registration.test.mjs',
     'tests/tooling-release-runner.test.mjs',
     'tests/code-health-governance.test.mjs',

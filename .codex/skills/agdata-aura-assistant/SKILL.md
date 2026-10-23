@@ -37,3 +37,17 @@ These tests use local mocks and do not prove microphone hardware, provider avail
 ## Application conflict errors
 
 Revision conflicts must use PT409, never custom 40001. The v2.3.34 application_conflict_retry_guard migration preserves existing RPC permissions and retry catches; Edge handlers recognize both real serialization failures and HTTP conflicts.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `assets/app-runtime.js`: `syncAuraWidgetForSession`, `requestAuraQuery`, `openAuraQueryAction`; `supabase/functions/app-api/index.ts`: `handleAuraInventoryV2`, `handleAuraInventorySearch`, `handleAuraScoutLog`; AURA Edge handlers and the `aura_voice_*` / `aura_domain_context_v1` RPC family.
+- Canonical symbols and their owning skill are recorded in `docs/architecture/agdata-symbol-index.json`; legacy Leaf/assistant functions remain a separate permission boundary.
+
+## Cross-Layer Blast Radius
+
+- Trace voice/query state through account capability, app-api/Edge authorization, bounded SQL readers, reviewed navigation/drafts, shared modal/Back ownership, and watchdog incident mapping. AURA availability must never delay Home or another authorized module.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never broaden AURA beyond canonical `dylan_collyge`, execute model text as SQL, auto-submit a mutation, expose provider keys, or merge the legacy assistant permission path into AURA.
+- Never turn provider, capability, or conversation refresh failure into a shell lockout or a production source write by an AI/watchdog path.

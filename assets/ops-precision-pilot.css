@@ -6387,6 +6387,20 @@ body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-ope
   overflow: hidden !important;
 }
 
+@media (max-width: 639px) {
+  body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home #home-dashboard-grid {
+    flex: 1 1 0 !important;
+    height: auto !important;
+    grid-template-rows: repeat(6, minmax(0, 1fr)) !important;
+    grid-auto-rows: minmax(0, 1fr) !important;
+  }
+
+  body.ops-precision-pilot.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home #home-dashboard-grid > .home-module-tile {
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+}
+
 /* Shared command-to-filter rhythm. Search stays in the global command header;
    each operational filter band begins below it with device-appropriate space. */
 body.ops-precision-pilot {

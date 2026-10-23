@@ -1411,7 +1411,7 @@ test('v2.3.54 REQUEST reconciles emailed rows and refreshes every open on an eig
   const migration = readFileSync(new URL('../supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql', import.meta.url), 'utf8');
   assert.match(runtime, /const REQUEST_LIVE_QUEUE_POLL_MS = 8000/);
   assert.match(runtime, /function isRequestPendingVisible[^]*\['', 'pending', 'open'\]\.includes\(status\)/);
-  assert.match(runtime, /function buildPendingRequestRenderPlan[^]*compareRequestLocationCodes\(a\.LOCATIONCODE, b\.LOCATIONCODE\)[^]*compareRequestLocationCodes\(a\.LOTCODE, b\.LOTCODE\)/);
+  assert.match(runtime, /function buildPendingRequestRenderPlan[^]*compareLocationCodeValues\(a\.LOCATIONCODE, b\.LOCATIONCODE\)[^]*naturalCompare\(a\.LOTCODE, b\.LOTCODE\)/);
   assert.match(runtime, /forceRefreshRequestsForView\('request-tab', \{[^]*force: true[^]*minIntervalMs: 0/);
   assert.match(runtime, /forceRefreshRequestsForView === 'function'[^]*forceRefreshRequestsForView\('request-home-open', \{ force: true, minIntervalMs: 0/);
   assert.match(appApi, /\["request_queue", "active_request"\]\.includes\(dataset\)[^]*reconcile_active_requests_from_outbox_v1/);

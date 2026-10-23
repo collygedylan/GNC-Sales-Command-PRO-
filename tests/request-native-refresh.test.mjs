@@ -6,6 +6,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readComposedAppSource();
+const locationCodeSource = readFileSync(new URL('../assets/location-code.js', import.meta.url), 'utf8');
 
 test('navigation captures outgoing scroll after repair and before layout writes', () => {
   const start = html.indexOf('function switchView(viewId, options = {})');
@@ -135,6 +136,7 @@ function pendingRequestReuseFixture() {
     reconcileRequestDrillState: values => ({ changed: false, items: values }),
     isRequestPendingVisible: () => true,
     isRegularRequestQueueItem: () => true,
+    naturalCompare: (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true, sensitivity: 'base' }),
     getItemUniqueId: row => row.UNIQUE_ID,
     buildRequestChunkRenderKey: (_mode, _crumb, items) => items.map(item => `${item.id}:${item.label}`).join('|'),
     getClientBrowsePage: (_view, key, items) => ({
@@ -148,9 +150,11 @@ function pendingRequestReuseFixture() {
     currentContainer: container
   };
   vm.createContext(ctx);
+  vm.runInContext(locationCodeSource, ctx);
   vm.runInContext([
-    'let requestLocationCollator = null;',
-    extractFunction(html, 'compareRequestLocationCodes', 'function buildPendingRequestRenderPlan('),
+    extractFunction(html, 'compareLocationCodeValues', 'function sortTaskLocationDetailItems('),
+    extractFunction(html, 'buildRequestBrowseMembershipKey', 'function buildRequestPagedRenderPlan('),
+    extractFunction(html, 'buildRequestPagedRenderPlan', 'function buildPendingRequestRenderPlan('),
     extractFunction(html, 'buildPendingRequestRenderPlan', 'function getRequestPendingReuseContextSnapshot('),
     extractFunction(html, 'getRequestPendingReuseContextSnapshot', 'function rememberCompletedPendingRequestRender('),
     extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome('),

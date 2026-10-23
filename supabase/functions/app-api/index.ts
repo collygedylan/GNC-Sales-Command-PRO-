@@ -3506,13 +3506,33 @@ async function handleEvalWorkAction(
   }
 }
 
+function compareLocationCodeNatural(leftValue: unknown, rightValue: unknown): number {
+  const parse = (value: unknown) => {
+    const raw = String(value || "").trim().toUpperCase();
+    const match = raw.match(/^([A-Z]+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?$/);
+    return match
+      ? { raw, block: match[1] || "", parts: [match[2], match[3], match[4]].filter((part): part is string => part !== undefined).map(Number) }
+      : { raw, block: raw, parts: [] as number[] };
+  };
+  const left = parse(leftValue);
+  const right = parse(rightValue);
+  const blockCompare = left.block.localeCompare(right.block, "en-US", { numeric: true, sensitivity: "base" });
+  if (blockCompare) return blockCompare;
+  for (let index = 0; index < Math.max(left.parts.length, right.parts.length); index += 1) {
+    const leftPart = Number.isFinite(left.parts[index]) ? left.parts[index] : -1;
+    const rightPart = Number.isFinite(right.parts[index]) ? right.parts[index] : -1;
+    if (leftPart !== rightPart) return leftPart - rightPart;
+  }
+  return left.raw.localeCompare(right.raw, "en-US", { numeric: true, sensitivity: "base" });
+}
+
 function sortManagerEval2PreviewRows(value: unknown): unknown {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const response = { ...(value as Record<string, unknown>) };
   if (!Array.isArray(response.rows)) return response;
   const compare = (left: Record<string, unknown>, right: Record<string, unknown>) => {
     const natural = (first: unknown, second: unknown) => String(first || "").localeCompare(String(second || ""), "en-US", { numeric: true, sensitivity: "base" });
-    return natural(left.locationcode ?? left.LOCATIONCODE, right.locationcode ?? right.LOCATIONCODE)
+    return compareLocationCodeNatural(left.locationcode ?? left.LOCATIONCODE, right.locationcode ?? right.LOCATIONCODE)
       || natural(left.lotcode ?? left.LOTCODE, right.lotcode ?? right.LOTCODE)
       || natural(left.unique_id ?? left.UNIQUE_ID, right.unique_id ?? right.UNIQUE_ID);
   };

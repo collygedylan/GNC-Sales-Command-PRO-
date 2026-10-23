@@ -61,3 +61,18 @@ Every Reclass Item Inquiry has the same white/black 14-column HTML table and one
 ## Watchdog and active queue continuity
 
 Manager module buttons use content-visibility:visible to avoid blank boxes during scrolling. Eval2 uses getCachedManagerEvalReport2Metadata only from a complete same-account inventory receipt while report_read_v2 refreshes; optional assignment freshness must not erase cached browse rows. Cached classification is display-only; existing mutation authorization remains authoritative. Manager quantity text uses bright mint/cyan on dark backgrounds.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `assets/app-runtime.js`: `renderManagerEvalReports2Panel`, `compareManagerEvalReport2InventoryRows`, `buildManagerEvalReport2IndexAsync`, `renderProductionHub`; `assets/eval-reports-engine.js`: Eval #2 classification/browse models.
+- `supabase/functions/app-api/index.ts`: `compareLocationCodeNatural`, `sortManagerEval2PreviewRows`, `handleManagerReportReadAction`, `handleEvalWorkAction`, `handleLocationWorkAction`; SQL: `manager_report_read_v2`; `Code.gs`: Eval/Location Work delivery handlers.
+
+## Cross-Layer Blast Radius
+
+- Eval Reports #2 sorts `locationcode` naturally as the first key in both app-api preview rows and client rows; location groups remain contiguous and every current item row renders without a `.slice(0, 8)` cap.
+- BLOCK / LOCATION drill-down is exactly BLOCK ALPHA -> base LOCATIONCODE (`C.05`, `C.06`) -> ITEMCODE cards ordered by full numeric bay. Global Back unwinds those two levels before leaving Manager.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never let lot, priority, assignment, or season precede `locationcode`, reintroduce `Showing the first 8 inventory rows`, expose `.017`/`.018` as separate level-two tiles, or replace last-good Eval rows with a loading gate.
+- Never use a Manager refresh to erase field drafts, app-owned notes, task identities, or the shared shell's Back/header state.

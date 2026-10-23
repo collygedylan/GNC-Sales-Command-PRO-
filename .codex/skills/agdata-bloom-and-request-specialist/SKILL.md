@@ -58,3 +58,18 @@ Queue card taps open Item Detail. Camera file inputs must obey the click-through
 ## Watchdog and active queue continuity
 
 Active Request card quantity accepts qty/request_qty/requested_qty/quantity/order_qty/payload.qty and persisted REQ_QTY/req_qty aliases. Render N/A | N/A as N/A only in card presentation; retain the durable customer mapping payload contract.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `assets/app-runtime.js`: `renderBloomPickerTrayRows`, `submitRequestWithQtys`, `forceRefreshRequestsForView`, `buildPendingRequestRenderPlan`; `assets/request-submission.js`: durable controller and acknowledgment validation.
+- `supabase/functions/app-api/index.ts`: `handleCustomerRepMappingAction`, `handleRequestRecipientDirectory`, `handleDatasetRead`; SQL: `public.ph_active_request`, `app_dataset_revisions`, `public.ph_request_delivery_outbox`, and `reconcile_active_requests_from_outbox_v1`; `Code.gs`: `collectRequestRecipients_`, `handleSignedRequestDeliveryEvent_`.
+
+## Cross-Layer Blast Radius
+
+- A Plant Request acknowledgment must synchronously preserve a `Pending` `ph_active_request` row and revision, while outbox reconciliation repairs unfulfilled `New Plant Request Submitted` events. DriveAround publication must not wipe or auto-complete active requests.
+- Opening Que or REQUEST uses `force_fresh: true`, `cache: 'no-store'`, and the eight-second visible poll; retained UI data and exact server-side tuple validation remain separate.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never skip a Que/REQUEST refresh because a client TTL or revision appears current, delete pending requests during import, clear a draft before validated acknowledgment, or duplicate the canonical location sorter.
+- Never copy Reclass, Bunch, HL, or inventory-purpose recipient lists into the Plant Request lifecycle contract.

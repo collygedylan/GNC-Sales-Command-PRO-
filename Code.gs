@@ -2980,7 +2980,7 @@ function queueManualSyncRequest_(options) {
   }
   try {
     cleanupRequestGalleryPropertyCache_();
-    const forceIfStale = !!(options && (options.forceIfStale === true || options.force_if_stale === true));
+    const forceIfStale = !!(options && (options.force === true || options.forceIfStale === true || options.force_if_stale === true));
     let existing = loadManualSyncStatus_();
     if (existing && existing.active && isManualSyncStatusStale_(existing)) {
       const staleStageLabel = String(existing.currentStageLabel || existing.currentStage || 'manual sync');
@@ -22865,6 +22865,7 @@ function doPost(e) {
         job: payload.job || 'all',
         source: payload.trigger || 'webhook',
         requestedBy: payload.requested_by,
+        force: payload.force === true,
         forceIfStale: payload.force_if_stale === true || payload.forceIfStale === true,
         deferStart: !runInline
       });

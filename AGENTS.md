@@ -44,6 +44,12 @@ Before modifying any module, load and follow the corresponding domain skill(s) f
 
 Use [the canonical module dependency map](docs/architecture/agdata-module-dependency-map.md) for exact functions, shared state, backend contracts and the 1–3 focused Node targets for each cluster. Its source inventory is an audit snapshot, not a release receipt or permission to skip current checks. Register skill additions in `scripts/run-tooling-release-checks.mjs`; preserve shared Back/navigation dependencies in every domain skill.
 
+**Mandatory Step 0 — Pre-Edit Skill & Symbol Index Read:** Before editing any file, read `docs/architecture/agdata-symbol-index.json` and every owning `.codex/skills/<skill-name>/SKILL.md`, then document the Cross-Layer Blast Radius across `Code.gs` <-> SQL migrations/RPCs <-> `supabase/functions/app-api/index.ts` <-> `assets/app-runtime.js`. Never introduce a competing helper when the symbol index identifies a canonical function.
+
+**Mandatory Step N — `+1 Ratchet Learning Loop`:** Every future bug fix or Watchdog incident resolution must append its root-cause anti-pattern to the owning skill's `## Forbidden Anti-Patterns (Never Repeat)` section and append the next active, behavior-based `Invariant N` test to `tests/golden-invariants.test.mjs` in the same commit. Golden invariants are append-only: never delete, renumber, skip, todo, or weaken an existing invariant.
+
+**Permanent Golden Contracts:** Preserve the zero-scroll 12-tile `#view-home` fit (including `Production` and `Smart Sales & Move`), immediate `#view-smart-moves` hydration, authorized fail-open `200` responses instead of transient `401`/`403`/`409`/`423` lockouts, `security_invoker = true` on every public SQL view, transactional `SET LOCAL`, and manual `RUN SCRIPT` `force: true` stale-lock override with successfully published `.xlsx` files moved to `Processed`.
+
 ---
 
 # 🛑 PILLAR 1: STRICT SCOPE AND WORKSPACE HYGIENE

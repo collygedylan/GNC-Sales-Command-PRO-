@@ -39,3 +39,17 @@ Docks previews its authenticated SOC rows before optional inventory and customer
 Docks projects grouped Suspend candidates as one pending order quantity. Exclude replaced/denied/canceled rows; retain only the chosen approved location/lot after resolution. Apply all rows in a server command receipt to SOC and Suspend memory together, then invalidate Docks totals. Import updates retain resolved candidate location, original order quantity, canceled quantity and Suspend lifecycle fields. Comm and Manager Approval show the authenticated suspend_tag/inbox read, scoped to the assigned rep or full administrators.
 
 Generic SOC detail saves also route through the authenticated dock_review command; only canonical full administrators or QC supervisors can edit its bounded review fields. Suspend rows retain their stricter editor/completion workflow. Group candidate review evidence propagates only within the same location/lot.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `assets/app-runtime.js`: `renderDocks`, `loadHlOrderState`, `renderCommunicationHub`; `supabase/functions/app-api/index.ts`: `handleDockTripStatusAction` and bounded chat actions; SQL/RPC: `save_dock_trip_status_v1`, `hl_order_state`, `hl_order_command`, and `hl_order_restock_state_v2`.
+- `Code.gs`: `runReservesOnly`, `buildHlOrderPdfHtml_`, `handleSignedHlOrderDelivery_`; exact symbols are indexed in `docs/architecture/agdata-symbol-index.json`.
+
+## Cross-Layer Blast Radius
+
+- Dock/Drop/SOC physical identity crosses imported `Code.gs` rows, Supabase snapshots/RPC commands, app-api authorization, Docks/HL/Office cards, Comm presence, and shared shell navigation. Retained previews never establish write proof.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never collapse physical tag lines, blend ordered/reserved/available quantities, reuse another module's email recipients, block Docks on an optional join, or let a late account response repaint Comm.
+- Never create a second inventory or navigation source inside Office, HL, or Comm.

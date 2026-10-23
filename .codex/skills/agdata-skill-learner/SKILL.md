@@ -49,3 +49,18 @@ Conditional dataset_read fixture parameters permit ifRevision only as a decimal 
 Eval2 extends the existing authorized report_read_v2 response with compact browseColumns/browseRows and evaluatorDirectory metadata. It introduces no startup route, mutation grant or wildcard fixture. Node regression fixtures exercise exact local grouping, user row counts, empty selection, account fences and Back transitions. Register eval_browse_suspend_receipts_v1 in the scoped migration runner and verify its installed contract before app-api/Pages publication.
 
 Queue badge startup registers only location_work/list/status=all and bunch_note_workflow queue/list_discrepancies with filter=mine, offset=0, limit=100 in releaseSnapshotReadFixture. Unknown keys, forged actor IDs and mutations remain rejected. No browser validation is implied.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- Own `docs/architecture/agdata-symbol-index.json`, `.codex/skills/*/SKILL.md`, `AGENTS.md`, `tests/golden-invariants.test.mjs`, governance registration, and the dependency map. Every listed symbol must resolve in its declared source file.
+- **Mandatory Step 0:** before editing any source, read the symbol index and every owning skill, then trace the `Code.gs` <-> SQL <-> app-api <-> `assets/app-runtime.js` blast radius.
+
+## Cross-Layer Blast Radius
+
+- **Mandatory Step N — `+1 Ratchet Learning Loop`:** every bug or Watchdog incident fix appends its root-cause anti-pattern to the owning skill's forbidden section and appends one new active `Invariant N` behavior test to `tests/golden-invariants.test.mjs` in the same commit.
+- New functions/RPCs/background reads update the symbol index, exact fixtures, owning skill, focused checks, and deployment registration together; documentation never substitutes for executable coverage.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never edit before the Step 0 read, leave a new canonical function unindexed, add a wildcard fixture, teach an unverified assumption, or close a bug without the `+1` invariant and root-cause entry.
+- Never delete, renumber, skip, todo, or weaken an existing golden invariant; the ratchet is append-only.

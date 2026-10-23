@@ -74,3 +74,18 @@ The explicit v2.3.38 cache upgrade uses agdata-v2.3.38, skipWaiting, all-prior C
 ## Watchdog and active queue continuity
 
 Queue rendering bypasses shared full-screen loading/error gates and refreshes through its existing authorized coordinator. Explicit navigation/Retry clears transport cooldowns without granting access or changing mutation authorization. Retain same-account row snapshots and complete inventory receipts during refresh.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `assets/app-runtime.js`: `getNativeAuthSession`, `initializeAppAccessSnapshot`, `showOnlyPrimaryView`, retained snapshot/cache ownership; `assets/runtime-watchdog.js`: `capture`; app-api: `handleNativeSessionBridge`, `handleInventoryRead`, `handleDatasetRead` and fail-open read responses.
+- SQL READY/LKG proofs, RLS, confirmed profile revocation, and atomic mutation authorization remain server-owned; `security_invoker = true` is mandatory for public views.
+
+## Cross-Layer Blast Radius
+
+- For authorized same-account flows, `user_access`, `native_session_bridge`, `season_sales_office`, `dataset_read`, `av_read`, customer mapping, AURA, `report_read_v2`, `inventory_read`, `drive_reclass_inquiry`, and `inventory_reclass_move` preserve a `200` retained/success path instead of transient `401`/`403`/`409`/`423` lockouts. Confirmed denial and genuine mutation authorization remain enforced.
+- Session/cache changes cross login bootstrap, shell visibility, account/permission epoch, READY revisions, Row Details/Reclass drafts, Service Worker upgrades, and watchdog evidence.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never render a banned lockout banner, clear same-account rows on transient refresh, disable navigation during import, delay Row Details/Reclass opening, or return transient forbidden/conflict/locked statuses where a retained authorized response is possible.
+- Never use fail-open display continuity to bypass RLS, confirmed revocation, exact mutation identity, recipient policy, or account isolation.

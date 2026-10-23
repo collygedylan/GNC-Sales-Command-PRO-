@@ -1179,7 +1179,7 @@ test('v2.3.54 keeps Drive evidence location-stable, thumbnails recoverable, and 
   assert.match(migration, /save_drive_evidence_v3[^]*where upper\(btrim\(m\.itemcode\)\)=stable_item and upper\(btrim\(m\.locationcode\)\)=stable_location/);
   assert.match(migration, /inventory_location_match_qty_v1\(m\.ptronhand,evidence\.match,evidence\.loc_match_qty\)/);
   assert.match(runtime, /supabaseRpc\('save_drive_evidence_v3'/);
-  assert.match(runtime, /const cardPhotoUrls = getPhotoUrlList\(photoLink\)[^]*getDirectImageUrl\(cleanUrl, 'card-feature'\)[^]*1 \/ \$\{cardPhotoUrls\.length\}/);
+  assert.match(runtime, /canonicalCardPhotoUrls\s*=\s*resolveCanonicalPhotoUrls\(item, sourceView\)[^]*const cardPhotoUrls = canonicalCardPhotoUrls[^]*getDirectImageUrl\(cleanUrl, 'card-feature'\)[^]*1 \/ \$\{cardPhotoUrls\.length\}/);
   assert.match(runtime, /getDeferredCardPhotoFallbackSrc[^]*getExpandedImageUrl[^]*photoFallbackAttempted/);
   const locationContext = vm.createContext({ firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '' });
   vm.runInContext(source('normalizeDriveEvidenceLocationPart') + source('isSameDriveEvidenceLocation'), locationContext);

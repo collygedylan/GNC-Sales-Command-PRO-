@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.54",
+  "version": "2.3.55",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -34,6 +34,7 @@
     "test:v2": "vitest run --config vite.v2.config.ts",
     "test:v2:watch": "vitest --config vite.v2.config.ts",
     "test:photo": "node scripts/run-discovered-tests.mjs node-unit",
+    "test:golden": "node --test tests/golden-invariants.test.mjs",
     "test:v2:e2e": "playwright test",
     "test:footer": "playwright test --config playwright.footer.config.ts",
     "test:home-roles": "playwright test --config playwright.home-role.config.ts",

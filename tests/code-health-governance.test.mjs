@@ -8,6 +8,7 @@ import { toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs
 import { findDuplicateGlobalFunctionDeclarations, INDEX_HTML_BUDGET, inspectSourceBudget } from '../scripts/code-health-governance.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const MIN_GOLDEN_INVARIANTS = 16;
 const sourceCache = new Map();
 const read = file => {
   if (!sourceCache.has(file)) sourceCache.set(file, readFileSync(path.join(root, file), 'utf8'));
@@ -76,15 +77,15 @@ test('current inline shell, runtime and watchdog module have no duplicate global
   assert.deepEqual(duplicates, [], `duplicate declarations: ${JSON.stringify(duplicates)}`);
 });
 
-test('v2.3.54 keeps watchdog status rendering modular and cache-busted', () => {
+test('v2.3.55 keeps watchdog status rendering modular and cache-busted', () => {
   const shell = read('index.html');
   const panel = read('assets/runtime-watchdog-panel.js');
-  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.54/);
+  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.55/);
   assert.match(panel, /data-watchdog-tab="open"[^]*Resolved Fixes/);
   assert.match(panel, /RESOLVED_SKILL_FOLDERS/);
 });
 
-test('v2.3.54 keeps AURA open-stock resolution scoped and deterministic', () => {
+test('v2.3.55 keeps AURA open-stock resolution scoped and deterministic', () => {
   const appRuntime = read('assets/app-runtime.js');
   const runtime = appRuntime.slice(0, appRuntime.indexOf('async function openAuraQueryAction'));
   const appApi = read('supabase/functions/app-api/index.ts');
@@ -96,7 +97,7 @@ test('v2.3.54 keeps AURA open-stock resolution scoped and deterministic', () => 
   assert.match(router, /scopeAuraOpenStock[^]*strictInventoryIdentityMatch[^]*seasonLevelOpenStockTotal/);
 });
 
-test('v2.3.54 keeps Bunch Notes flexible without picker paging or option lock-in', () => {
+test('v2.3.55 keeps Bunch Notes flexible without picker paging or option lock-in', () => {
   const bunchNote = read('assets/bunch-note.js');
   const styles = read('assets/bunch-note.css');
   const cardBoard = read('components/bunch-notes/CardBoard.jsx');
@@ -116,7 +117,7 @@ test('v2.3.54 keeps Bunch Notes flexible without picker paging or option lock-in
   assert.match(appApi, /cleanBunchNoteText\(entry\.work_type[^]*purpose_thread[^]*default_house_plan[^]*schedule_banner[^]*direction/);
 });
 
-test('v2.3.54 release governance prevents JWT gateway login lockout', () => {
+test('v2.3.55 release governance prevents JWT gateway login lockout', () => {
   const config = read('supabase/config.toml');
   const runtime = read('assets/app-runtime.js');
   const appApi = read('supabase/functions/app-api/index.ts');
@@ -157,9 +158,9 @@ test('ten architecture clusters and twelve registered skills stay synchronized w
   const moduleTags = [...html.matchAll(/<script\b([^>]*\bdata-runtime-watchdog-panel\b[^>]*)><\/script>/gi)];
   assert.deepEqual(layout.classicModules, ['assets/runtime-watchdog-panel.js']);
   assert.equal(moduleTags.length, layout.classicModules.length);
-  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.54"`));
+  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.55"`));
   assert.ok(html.indexOf('data-runtime-watchdog-panel') < html.indexOf('id="app-script-source"'), 'watchdog module loads before app runtime');
-  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.54"/);
+  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.55"/);
   assert.equal(layout.classicRuntime, 'assets/app-runtime.js');
   assert.equal(INDEX_HTML_BUDGET.maxLines, 3000);
 });
@@ -173,4 +174,72 @@ test('release instructions lock zero-approval and forward-only workspace rules',
     'Use `git grep -n "<pattern>" -- <paths>`',
     'edit existing files in place without throwaway copies',
   ]) assert.ok(agents.includes(marker), marker);
+});
+
+test('golden invariant ratchet stays active, contiguous, and release-wired', () => {
+  const golden = read('tests/golden-invariants.test.mjs');
+  const invariants = [...golden.matchAll(/\btest\(\s*['"`]Invariant (\d+)\b/g)].map(match => Number(match[1]));
+  assert.ok(invariants.length >= MIN_GOLDEN_INVARIANTS, `${invariants.length} active invariants`);
+  assert.deepEqual(invariants, Array.from({ length: invariants.length }, (_, index) => index + 1));
+  assert.doesNotMatch(golden, /\btest\.(?:skip|todo)\s*\(|\b(?:skip|todo)\s*:\s*true/);
+  const tooling = read('scripts/run-tooling-release-checks.mjs');
+  assert.match(tooling, /['"]tests\/golden-invariants\.test\.mjs['"]/);
+  const pkg = JSON.parse(read('package.json'));
+  assert.equal(pkg.scripts['test:golden'], 'node --test tests/golden-invariants.test.mjs');
+});
+
+test('skills, Step 0, and the +1 ratchet remain mandatory', () => {
+  for (const manifest of toolingSkillManifests) {
+    const skill = read(manifest);
+    assert.match(skill, /^## Owned Files, Canonical Functions & SQL Contracts$/m, manifest);
+    assert.match(skill, /^## Cross-Layer Blast Radius$/m, manifest);
+    assert.match(skill, /^## Forbidden Anti-Patterns \(Never Repeat\)$/m, manifest);
+  }
+  const agents = read('AGENTS.md');
+  assert.match(agents, /Mandatory Step 0[^]*agdata-symbol-index\.json[^]*Cross-Layer Blast Radius/);
+  assert.match(agents, /\+1 Ratchet Learning Loop[^]*tests\/golden-invariants\.test\.mjs/);
+});
+
+test('canonical symbol index resolves every registered domain symbol', () => {
+  const index = JSON.parse(read('docs/architecture/agdata-symbol-index.json'));
+  assert.equal(index.release, 'AgData v2.3.55');
+  assert.deepEqual(Object.keys(index.domains).sort(), toolingSkillManifests.map(file => file.split('/').at(-2)).sort());
+  const verify = (file, symbols) => {
+    const source = read(file);
+    for (const symbol of symbols) {
+      const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      assert.match(source, new RegExp(`\\b(?:function\\s+|class\\s+|(?:export\\s+)?(?:const|let|var)\\s+)?${escaped}\\b`), `${file}:${symbol}`);
+    }
+  };
+  for (const [file, symbols] of Object.entries(index.sharedAssets || {})) verify(file, symbols);
+  for (const domain of Object.values(index.domains)) {
+    for (const file of index.sourceLayers) verify(file, domain[file] || []);
+    for (const [file, symbols] of Object.entries(domain.supportingFiles || {})) verify(file, symbols);
+  }
+  for (const contract of Object.values(index.canonicalContracts)) {
+    verify(contract.primary.file, [contract.primary.symbol]);
+    for (const consumer of contract.consumers) verify(consumer.file, [consumer.symbol]);
+  }
+});
+
+test('latest SQL lineage keeps public views invoker-secure and SET LOCAL transactional', () => {
+  const migrationNames = readdirSync(path.join(root, 'supabase', 'migrations')).filter(name => name.endsWith('.sql')).sort();
+  const securityMigrationName = '20261023203000_dashboard_warning_cleanup_and_reclass_recount_v1.sql';
+  const securityIndex = migrationNames.indexOf(securityMigrationName);
+  assert.ok(securityIndex >= 0);
+  const securityMigration = read(`supabase/migrations/${securityMigrationName}`);
+  assert.match(securityMigration, /alter view %I\.%I set \(security_invoker = true\)/i);
+  for (const name of migrationNames) {
+    const source = read(`supabase/migrations/${name}`);
+    for (const match of source.matchAll(/\bset\s+local\b/gi)) {
+      const prefix = source.slice(0, match.index).toLowerCase();
+      assert.ok(prefix.lastIndexOf('begin;') > Math.max(prefix.lastIndexOf('commit;'), prefix.lastIndexOf('rollback;')), `${name}:${match.index}`);
+    }
+  }
+  for (const name of migrationNames.slice(securityIndex + 1)) {
+    const source = read(`supabase/migrations/${name}`);
+    for (const match of source.matchAll(/create(?:\s+or\s+replace)?\s+view\s+public\.[a-z0-9_]+([^]*?)\bas\b/gi)) {
+      assert.match(match[0], /security_invoker\s*=\s*(?:true|'true')/i, `${name}:${match[0].slice(0, 100)}`);
+    }
+  }
 });

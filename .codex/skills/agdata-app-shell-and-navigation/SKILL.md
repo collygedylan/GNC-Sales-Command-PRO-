@@ -53,3 +53,18 @@ Desktop/mobile shell structure is owned by the final blocking assets/app-styles.
 ## Watchdog and active queue continuity
 
 WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModules path. Archived request compatibility links route to historical-requests, outside active Que. Keep forest-green #041a10 through dark prepaint, login/session restore and the main surface. Manager module cards must paint their actual labels instead of content-visibility placeholders.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `assets/app-runtime.js`: `switchView`, `showOnlyPrimaryView`, `goBackUniversal`, `updateGlobalBackButton`, `renderHome`, `warmSalesIntelligenceData`, and `renderSmartMovesIntelligence`; `index.html`: `#view-home`, `#view-smart-moves`, `#home-dashboard-grid`, and the ordered classic-script tags.
+- The exact symbol registry is `docs/architecture/agdata-symbol-index.json`. This skill has no independent SQL mutation contract; it consumes authorized app-api data through feature owners.
+
+## Cross-Layer Blast Radius
+
+- Keep all 12 Dylan Home tiles above the bottom navigation with no clipped sixth row; `Production` and `Smart Sales & Move` are permanent acceptance tiles. `switchView('smart-moves')` must start `warmSalesIntelligenceData` and render the view immediately while datasets hydrate.
+- Navigation changes must be traced through shell DOM/CSS, feature state, app-api reads, and any SQL readiness contract without inventing a local router or blocking the current authenticated view.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never hide a loaded view behind a dataset/access refresh, add a duplicate Back implementation, clip Home row 6, or leave Smart Moves on its hydration placeholder after navigation.
+- Never repair a feature by directly toggling unrelated `#view-*` roots or by returning transient `401`/`403`/`409`/`423` responses to an already authorized fail-open read.

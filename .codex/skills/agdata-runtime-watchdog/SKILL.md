@@ -46,3 +46,17 @@ Benign browser `ResizeObserver loop limit exceeded` and `ResizeObserver loop com
 ## Watchdog and active queue continuity
 
 Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders without the generic Manager dataset gate, and returns through goBackUniversal/openManagersModules. Keep data-manager-module="watchdog-monitor" on its card; keep the existing three-user panel boundary, list/parity/Copy AI Fix Brief/Resolve contracts, and read-only production watchdog policy.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `assets/runtime-watchdog.js`: `record`, `capture`, `inspectDataParity`, `OWNERS`; `assets/runtime-watchdog-panel.js`: incident list/fix brief controller; app-api watchdog event actions and service-role SQL RPCs.
+- Every emitted `owning_skill` and `suspected_functions` entry must resolve through `docs/architecture/agdata-symbol-index.json`; events report the current app release version.
+
+## Cross-Layer Blast Radius
+
+- Incident view/cluster mapping crosses rendered DOM evidence, bounded local queue, authenticated app-api persistence, Manager review, fix-brief text, skill ownership, and canonical symbols. A release-version change discards prior-version queued incidents as resolved historical noise.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never emit an unknown skill/symbol, retain prior-version incidents in the active queue, include row contents/credentials/drafts, block a view, or let watchdog/AI write production data, source, commits, or deployments.
+- Never infer a parity incident from an authorized empty result or turn telemetry transport failure into recursive reporting.

@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.54';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.55';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11282,6 +11282,17 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (normalizedSourceView === 'av' || normalizedSourceView === 'av-photo' || normalizedSourceView === 'sales-office' || normalizedSourceView === 'drive' || normalizedSourceView === 'tasks' || normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || normalizedSourceView === 'low-stock') return sharedLink;
             return sharedLink;
         }
+
+        function resolveCanonicalPhotoUrls(item, sourceView='') {
+            if (!item) return [];
+            const seen = new Set();
+            return getPhotoUrlList(getRowPhotoLink(item, sourceView)).map((url) => String(url || '').trim()).filter((url) => {
+                if (!url || seen.has(url)) return false;
+                seen.add(url);
+                return true;
+            });
+        }
+
         function extractPhotoDateIsoFromText_(value = '') {
             const text = String(value || '').trim();
             if (!text) return '';
@@ -12406,29 +12417,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function getDetailPhotoUrls(item, sourceView='') {
-            if (!item) return [];
-            const urls = [];
-            const seen = new Set();
-            const normalizedSourceView = String(sourceView || lastView || '').trim().toLowerCase();
-            const photoLinks = [];
-            if (normalizedSourceView === 'request') {
-                photoLinks.push(getRequestPhotoLinkCsv(item, { includePending: false }));
-            } else if (normalizedSourceView === 'docks') {
-                photoLinks.push(getDockOwnedPhotoLinkCsv(item, { includePending: false }));
-            } else if (normalizedSourceView === 'flyer' || shouldPreferFlyerOwnedFields(item, normalizedSourceView)) {
-                photoLinks.push(getFlyerVisiblePhotoLinkCsv(item, { includePending: false }));
-            } else {
-                photoLinks.push(getSharedAppPhotoLinkCsv(item, { includePending: false }));
-            }
-            photoLinks.forEach((link) => {
-                getPhotoUrlList(link).forEach((url) => {
-                    const cleanUrl = String(url || '').trim();
-                    if (!cleanUrl || seen.has(cleanUrl)) return;
-                    seen.add(cleanUrl);
-                    urls.push(cleanUrl);
-                });
-            });
-            return urls;
+            return resolveCanonicalPhotoUrls(item, sourceView || lastView || '');
         }
         function handleDetailBagToggle(event) {
             if (event) {
@@ -12595,7 +12584,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function openAvGallery(item, options = {}) {
             if (!item) return;
             const opts = options || {};
-            const photoLink = getRowPhotoLink(item, 'av');
+            const photoUrls = resolveCanonicalPhotoUrls(item, 'av');
+            const photoLink = photoUrls.join(',');
             if (photoLink) {
                 openPhotoModal(photoLink, `${esc(item.COMMONNAME)} (${esc(item.CONTSIZE)}) - Loc: ${item.LOCATIONCODE || 'N/A'}`);
                 return true;
@@ -26203,7 +26193,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.54').trim() || 'AgData v2.3.54';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.55').trim() || 'AgData v2.3.55';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27597,6 +27587,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     trigger: 'header_button',
                     run_inline: false,
                     fast: false,
+                    force: true,
                     force_if_stale: true,
                     requested_by: currentUserDisplay || currentUser || 'Unknown',
                     requested_at: new Date().toISOString()
@@ -28937,12 +28928,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         let completedPendingRequestRender = null;
-        let requestLocationCollator = null;
-
-        function compareRequestLocationCodes(left, right) {
-            if (!requestLocationCollator) requestLocationCollator = new Intl.Collator(undefined, { numeric: true });
-            return requestLocationCollator.compare(String(left || ''), String(right || ''));
-        }
 
         function buildRequestBrowseMembershipKey(mode, items) {
             return JSON.stringify([mode, items.map(getItemUniqueId)]);
@@ -28964,9 +28949,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const crumbText = 'All Request Que';
             const pendingItems = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
             if (!pendingItems.length) return { empty: true, crumbText, items: [], rows: [], pageIndex: 0, renderKey: '', renderSignature: '', footerMarkup: '' };
-            pendingItems.sort((a, b) => compareRequestLocationCodes(a.LOCATIONCODE, b.LOCATIONCODE)
-                || compareRequestLocationCodes(a.LOTCODE, b.LOTCODE)
-                || compareRequestLocationCodes(getItemUniqueId(a), getItemUniqueId(b)));
+            pendingItems.sort((a, b) => compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE)
+                || naturalCompare(a.LOTCODE, b.LOTCODE)
+                || naturalCompare(getItemUniqueId(a), getItemUniqueId(b)));
             return buildRequestPagedRenderPlan('request:pending', crumbText, pendingItems);
         }
 
@@ -33946,7 +33931,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (table === 'ph_customer_consignee_sales_reps') return fetchRequestCustomerMapRows(options);
             const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             if (opts.signal?.aborted) throw Object.assign(new Error('Data snapshot read cancelled.'), { code: 'REQUEST_ABORTED' });
-            const readKey = `all:${String(table || '').trim()}:${String(query || '').trim()}:${opts.requireComplete === true ? 'complete' : 'standard'}`;
+            const forceFresh = opts.force_fresh === true || opts.forceFresh === true;
+            const readKey = `all:${String(table || '').trim()}:${String(query || '').trim()}:${opts.requireComplete === true ? 'complete' : 'standard'}${forceFresh ? `:fresh:${Date.now()}:${Math.random()}` : ''}`;
             return runDedupeSupabaseRead(readKey, async ({ signal: readSignal } = {}) => {
                 if (readSignal?.aborted) throw Object.assign(new Error('Queued data snapshot read cancelled.'), { code: 'REQUEST_ABORTED' });
                 const readOptions = { ...opts, signal: readSignal };
@@ -34054,7 +34040,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return `select=${fields}&order=unique_id.desc`;
         }
 
-        async function fetchActiveRequestLiveRows(selectFields = '*') {
+        async function fetchActiveRequestLiveRows(selectFields = '*', options = {}) {
             // Legacy request/footer reads share the same document lifetime as
             // verified reads. Reload cancellation is not a missing-view error.
             const signal = productionLiveSyncNavigation.signal;
@@ -34063,9 +34049,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             };
             requireActiveDocument();
             const query = buildActiveRequestLiveRowsQuery(selectFields);
+            const readOptions = { ...(options && typeof options === 'object' ? options : {}), signal };
             if (activeRequestLiveRowsViewReady !== false) {
                 try {
-                    const rows = await fetchAllSupabaseRows(REQUEST_QUEUE_LIVE_ROWS_TABLE, query, { signal });
+                    const rows = await fetchAllSupabaseRows(REQUEST_QUEUE_LIVE_ROWS_TABLE, query, readOptions);
                     requireActiveDocument();
                     activeRequestLiveRowsViewReady = true;
                     return rows;
@@ -77695,6 +77682,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
+            if (nextViewId === 'smart-moves') warmSalesIntelligenceData();
             if (nextViewId === 'av' && currentViewId === 'home') clearAvSearchForHomeEntry();
             if (!['historical-requests', 'request-history'].includes(nextViewId)) destroyHistoricalRequestsIsland();
             else markViewDirty('historical-requests');
@@ -81705,7 +81693,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const photoDateLabel = getRowPhotoDateLabel(item, 'drive', photoLink);
             const photoDateHtml = photoDateLabel ? `<div class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Photo ${photoDateLabel}</div>` : '';
             if (photoLink) {
-                let firstUrl = String(photoLink).split(',')[0].trim();
+                let firstUrl = photoUrls[0] || '';
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (urlMatch) firstUrl = urlMatch[1];
                 const thumbUrl = getDirectImageUrl(firstUrl, 'card-corner');
@@ -82053,8 +82041,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const ptrAvailable = getCardPtrAvailableValue(item);
             const sLts = getCardOpenStockValue(item);
             const priority = firstNonEmptyValue(item.PRIORITY, '-');
-            const photoLink = getRowPhotoLink(item, 'drive');
-            const hasLocationPhotoEvidence = getPhotoUrlList(photoLink).length > 0;
+            const photoUrls = resolveCanonicalPhotoUrls(item, 'drive');
+            const photoLink = photoUrls.join(',');
+            const hasLocationPhotoEvidence = photoUrls.length > 0;
             const locPhotoMatch = hasLocationPhotoEvidence ? getAvOpenStockLocPhotoMatch(item) : '';
             const specText = hasLocationPhotoEvidence ? firstNonEmptyValue(getItemDisplayValue(item, 'SPEC', 'drive'), '-') : '';
             const caliperText = hasLocationPhotoEvidence ? firstNonEmptyValue(getItemDisplayValue(item, 'CALIPER', 'drive'), '-') : '';
@@ -82563,7 +82552,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 getPlantSearchRank(a.name, document.getElementById('av-search')?.value || '') - getPlantSearchRank(b.name, document.getElementById('av-search')?.value || '')
                 || compareText(a.name, b.name)
                 || compareText(a.size, b.size)
-                || compareText(a.location, b.location)
+                || compareLocationCodeValues(a.location, b.location, compareText)
                 || (a.index - b.index)
             )).map((entry) => entry.item);
         }
@@ -114356,7 +114345,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     reason: 'request-signature-status-hint',
                     skipRefresh: false
                 });
-                const rows = await fetchActiveRequestLiveRows('*');
+                const rows = await fetchActiveRequestLiveRows('*', { force_fresh: true, cache: 'no-store' });
                 if (!safeOptions.allowWhileInteractive && shouldDeferInteractiveBackgroundWork()) {
                     if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
                     return false;
@@ -114450,7 +114439,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     });
                     return true;
                 }
-                const rows = await fetchActiveRequestLiveRows('*');
+                const rows = await fetchActiveRequestLiveRows('*', { force_fresh: true, cache: 'no-store' });
                 if (retryIfInteractive()) return false;
                 const formattedRows = formatFetchedRows(rows, ACTIVE_REQUEST_TABLE);
                 requestViewRetryAttempts = 0;
@@ -133540,7 +133529,7 @@ C.14.043 C.15.000
         }
 
         function compareManagerEvalReport2InventoryRows(leftRow = null, rightRow = null) {
-            let result = compareManagerEvalReport2Natural(getManagerEvalReportRowLocation(leftRow), getManagerEvalReportRowLocation(rightRow));
+            let result = compareLocationCodeValues(getManagerEvalReportRowLocation(leftRow), getManagerEvalReportRowLocation(rightRow));
             if (result) return result;
             result = compareManagerEvalReport2Natural(getDriveColumnItemValue(leftRow, 'ITEMCODE'), getDriveColumnItemValue(rightRow, 'ITEMCODE'));
             if (result) return result;
@@ -144348,8 +144337,8 @@ C.14.043 C.15.000
             if (['tasks', 'crop-roll'].includes(String(sourceView || '').trim().toLowerCase())) rememberTaskRenderedRow(item);
             const cardSourceViewKey = String(sourceView || '').trim().toLowerCase();
             const safeCardSourceViewKey = escJsAttrValue(cardSourceViewKey);
-            let thumbHtml=''; let photoLink=getRowPhotoLink(item, sourceView); const photoDateLabel = getRowPhotoDateLabel(item, sourceView, photoLink); const photoDateHtml = photoDateLabel ? `<div class="app-inline-thumb-label app-inline-thumb-date">PHOTO ${photoDateLabel}</div>` : '';
-            const hasCardPhotoEvidence = getPhotoUrlList(photoLink).length > 0;
+            let thumbHtml=''; const canonicalCardPhotoUrls=resolveCanonicalPhotoUrls(item, sourceView); let photoLink=canonicalCardPhotoUrls.join(','); const photoDateLabel = getRowPhotoDateLabel(item, sourceView, photoLink); const photoDateHtml = photoDateLabel ? `<div class="app-inline-thumb-label app-inline-thumb-date">PHOTO ${photoDateLabel}</div>` : '';
+            const hasCardPhotoEvidence = canonicalCardPhotoUrls.length > 0;
 
             const isChecked=selectedItems.has(item.DOM_ID)?'checked':'';
             const isAvCatalogCard = sourceView === 'av' || sourceView === 'av-photo';
@@ -144463,8 +144452,8 @@ C.14.043 C.15.000
                 const listPriceNumber = parseCardPriceNumber(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, ''));
                 const listPriceText = listPriceNumber === null ? formatCardPriceValue(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, '')) : `$${listPriceNumber.toFixed(2)}`;
                 const avNoteText = String(firstNonEmptyValue(item.AV_NOTE, '') || '').trim();
-                const resolvedAvPhotoLink = photoLink || getRowPhotoLink(item, 'drive');
-                const validAvPhotoUrls = getPhotoUrlList(resolvedAvPhotoLink);
+                const validAvPhotoUrls = canonicalCardPhotoUrls.length ? canonicalCardPhotoUrls : resolveCanonicalPhotoUrls(item, 'drive');
+                const resolvedAvPhotoLink = validAvPhotoUrls.join(',');
                 const hasValidAvPhotos = validAvPhotoUrls.length > 0;
                 const isReserveAvCard = activeAVTab === 'reserves';
                 const pickNoteText = hasValidAvPhotos ? getCorrectedPickNoteValue(item, firstNonEmptyValue(getItemDisplayValue(item, 'PICK', sourceView), item.PIC_NOTE, item.PICK, item.PICKNOTE, item.REQ_PICK, item.REQ_PIC_NOTE, item.FLYER_PICK, ''), { includeStandard: true }) : '';
@@ -144551,7 +144540,7 @@ C.14.043 C.15.000
                 return buildAvInventoryCard();
             }
             if(photoLink){
-                const cardPhotoUrls = getPhotoUrlList(photoLink);
+                const cardPhotoUrls = canonicalCardPhotoUrls;
                 const cleanUrl = cardPhotoUrls[0] || '';
                 const thumbUrl = getDirectImageUrl(cleanUrl, 'card-feature');
                 if(thumbUrl.startsWith('http')){
@@ -153271,7 +153260,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (ptrCompare !== 0) return ptrCompare;
                 const lotCompare = String(a.LOTCODE || '').localeCompare(String(b.LOTCODE || ''), undefined, { numeric: true });
                 if (lotCompare !== 0) return lotCompare;
-                return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
+                return compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
             });
         }
 
@@ -158124,28 +158113,12 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getTaskLocationBucket(item) { return LocationCode.base(item && (item.LOCATIONCODE || item.locationcode)) || 'UNASSIGNED'; }
 
         function compareLocationCodeValues(a, b, compareText = null) {
-            const normalize = (value) => String(value || '').trim().toUpperCase();
-            const parse = (value) => {
-                const clean = normalize(value);
-                const match = clean.match(/^([A-Z]+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?$/);
-                if (!match) return { raw: clean, block: clean, parts: [] };
-                return {
-                    raw: clean,
-                    block: match[1] || '',
-                    parts: [match[2], match[3], match[4]].filter(part => part !== undefined).map(part => parseInt(part, 10))
-                };
-            };
-            const left = parse(a);
-            const right = parse(b);
-            const blockCompare = compareText ? compareText(left.block, right.block) : left.block.localeCompare(right.block, undefined, { numeric: true });
-            if (blockCompare !== 0) return blockCompare;
-            const maxLen = Math.max(left.parts.length, right.parts.length);
-            for (let i = 0; i < maxLen; i++) {
-                const leftPart = Number.isFinite(left.parts[i]) ? left.parts[i] : -1;
-                const rightPart = Number.isFinite(right.parts[i]) ? right.parts[i] : -1;
-                if (leftPart !== rightPart) return leftPart - rightPart;
-            }
-            return compareText ? compareText(left.raw, right.raw) : left.raw.localeCompare(right.raw, undefined, { numeric: true });
+            const compare = globalThis.compareLocationCodeNatural || globalThis.LocationCode?.compare;
+            if (typeof compare === 'function') return compare(a, b, compareText);
+            const text = typeof compareText === 'function'
+                ? compareText
+                : (left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+            return text(String(a || '').trim().toUpperCase(), String(b || '').trim().toUpperCase());
         }
 
         function sortTaskLocationDetailItems(items = []) {

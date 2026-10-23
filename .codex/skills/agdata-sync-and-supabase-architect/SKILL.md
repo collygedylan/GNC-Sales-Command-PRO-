@@ -77,3 +77,18 @@ Home renders stable DRIVE/CAV/RESERVES/SOC filename cards even when only one met
 ## Watchdog and active queue continuity
 
 Home filename summaries persist under gnc_sync_filenames_v1 scoped by profile ID, username and permission version; restore them synchronously before background metadata refresh. Dark Home summary/cards/buttons use #062115 and light text. Footer queue adapters include actor-scoped Location Work and Bunch queue reads; none may gate the visible active queue. Historical backfills and the 15-minute historical trigger remain PAUSED.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `assets/app-runtime.js`: `runGoogleAppsScriptTrigger`, `refreshDashboardSyncMetadata`, `selectDashboardSyncFilename`; `supabase/functions/app-api/index.ts`: `handleDatasetRevisionsAction`, `handleAppsScriptAction`; `Code.gs`: `getManualSyncStageOrder_`, `queueManualSyncRequest_`, `runQueuedManualSyncStage_`, `moveAndNormalizeDriveAroundProcessedFiles_`.
+- SQL publication fences/revisions and every public view are governed contracts; the latest migration must enforce `security_invoker = true`, and every `SET LOCAL` must remain inside a transaction.
+
+## Cross-Layer Blast Radius
+
+- Manual RUN SCRIPT sends `force: true`, clears/overrides a stale sync lock, runs DRIVE -> SOC -> RESERVES -> CAV, archives successfully published `.xlsx` inputs into Processed, and immediately preserves one latest Home filename per source from cached/bootstrap state.
+- Import changes cross Drive metadata, Apps Script scheduling/fences, SQL staging/revisions, app-api readiness, client SWR, and watchdog status. Historical backfill and its 15-minute trigger remain PAUSED.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never answer a forced manual run with `The import processor is finishing its current work.`, acquire a fence for an unchanged file, leave a published `.xlsx` in Drop, show multiple stale filenames, create a public definer view, or execute `SET LOCAL` outside `BEGIN`/`COMMIT`.
+- Never run or enable historical backfill outside 23:30–06:15 America/Chicago or while explicitly paused.

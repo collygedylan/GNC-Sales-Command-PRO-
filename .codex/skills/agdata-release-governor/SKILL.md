@@ -63,3 +63,18 @@ Register suspend_candidates_request_preload_v1 in the scoped migration runner; S
 Register request_work_sync_status_v1 in the scoped migration runner. Publish SQL and app-api before the allowlisted Apps Script function/constant patch, then Pages. Apps Script patching supports only the named MANUAL_SYNC_STAGE_ORDER_DEFAULT and IMPORT_HISTORY_CHUNK_SIZE_ constants plus registered helper additions, retaining protected-source comparison and Head/active-version guards.
 
 Changes limited to _shared/database.types.ts do not expand changed Edge publication to every function: this file contains erased TypeScript declarations. App-api remains selected by its actual implementation change; generated runtime contract changes travel with the affected function.
+
+## Owned Files, Canonical Functions & SQL Contracts
+
+- `scripts/run-tooling-release-checks.mjs`: `toolingReleaseCheckFiles`, `runToolingReleaseChecks`; `tests/golden-invariants.test.mjs`; `tests/code-health-governance.test.mjs`; release workflows and scoped deployment registration.
+- The release gate treats `docs/architecture/agdata-symbol-index.json`, all 12 skill manifests, and `AGENTS.md` as governed release inputs. App-api publication always uses `--no-verify-jwt`.
+
+## Cross-Layer Blast Radius
+
+- A full-stack release orders validated SQL, app-api, allowed `Code.gs`, then Pages. Version changes must stay synchronized across the 12 tracked version files and the watchdog/symbol index must report the same release.
+- The v2.3.55 task override forbids Deno and browser execution; its explicit focused Node command, inline check, site preparation, tooling gate, and diff check are the complete authorized local gate.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never skip the golden invariant file, weaken its active count, add `.skip`/`.todo`, deploy app-api without `--no-verify-jwt`, run unrequested browser/Docker/Deno checks, or replay unchanged backend work.
+- Never create versioned throwaway validators, amend/force-push, claim unmeasured evidence, or continue refactoring after the required gate passes.
