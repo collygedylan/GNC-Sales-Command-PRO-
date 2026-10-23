@@ -24,6 +24,49 @@ test('AV cards omit Project while Item Inquiry opens the Reclass editor', () => 
   assert.match(readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8'), /#photo-modal[^]*width: 100vw !important[^]*height: 100dvh !important[^]*height: calc\(100dvh - 96px\) !important/);
 });
 
+test('v2.3.48 Sales intelligence verifies admin moves, rep geography, and three-step traces', () => {
+  const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8');
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  assert.match(shell, /id="sales-intelligence-panel"[^]*id="sales-office-intelligence-panel"/);
+  assert.match(html, /ADMIN \/ INVENTORY COMMAND[^]*SALES REP VIEW/);
+  const modelSource = source('buildSalesIntelligenceModel');
+  assert.match(modelSource, /currentOpen <= 25[^]*nextAvailable > 0/);
+  assert.match(modelSource, /MOVE UP OPPORTUNITY[^]*27\.S1[^]*<= 27\.F1/);
+  assert.match(modelSource, /HOLD \/ PHOTO BOTTLENECK[^]*GEO SURPLUS PUSH/);
+  assert.match(modelSource, /moveCards\.sort\(\(left, right\) => right\.value - left\.value\)/);
+  assert.match(source('renderSalesInventoryIntelligence'), /F1 Open Stock Value \(<= 27\.F1\)[^]*S1 Pull-Forward Opportunity \(27\.S1 Ready\)[^]*Trapped on Hold\/Stop \(\$ Value\)[^]*Active SOC \+ Reserves Coverage/);
+  assert.match(runtime, /function buildSalesIntelligenceTraceHtml[^]*Step 1: Context[^]*Step 2: Source[^]*Step 3: Double-Checked/);
+  const cardSource = source('renderSalesIntelligenceCard');
+  for (const marker of ['\\$ Impact', 'Open in Reclass', '\\+ Project', 'Add to Bloom Picker', 'AURA Query']) assert.match(cardSource, new RegExp(marker));
+  assert.match(styles, /\.sales-intelligence-kpi-strip[^]*\.sales-intelligence-trace[^]*@media \(max-width: 620px\)/);
+
+  const normalize = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const ctx = vm.createContext({ normalizeRepMatchToken: normalize, SALES_INTELLIGENCE_TARGET_YEAR: 27,
+    formatSalesIntelligenceMoney: value => `$${value}` });
+  vm.runInContext(source('buildSalesRepIntelligenceCards'), ctx);
+  const inventoryRow = { UNIQUE_ID: 'inv-1', ITEMCODE: 'A100' };
+  const inventoryFact = { row: inventoryRow, itemCode: 'A100', group: 'Shrub', size: '3G', season: 'F1', salesYear: 27,
+    available: 20, openStock: 20, listPrice: 12, timestamp: 10, photoReady: true, specReady: true };
+  const peerDemand = { itemCode: 'B200', group: 'Shrub', rep: 'Megan Kelly', state: 'TX', quantity: 8, timestamp: 12 };
+  const ownDemand = { itemCode: 'C300', group: 'Tree', rep: 'Dylan Collyge', state: 'TX', quantity: 5, timestamp: 15,
+    source: 'SOC', customer: 'Austin Nursery', consignee: 'Austin TX' };
+  const addOnFact = { ...inventoryFact, itemCode: 'C300', group: 'Tree', openStock: 9, available: 9 };
+  const result = ctx.buildSalesRepIntelligenceCards({
+    inventoryFacts: [inventoryFact, addOnFact],
+    inventoryByItem: new Map([['A100', [inventoryFact]], ['C300', [addOnFact]]]),
+    demandFacts: [peerDemand, ownDemand],
+    demandByGroup: new Map([['shrub', [peerDemand]], ['tree', [ownDemand]]]),
+    repTerritories: new Map([['dylan collyge', new Set(['TX'])]])
+  }, 'Dylan Collyge');
+  assert.equal(result.missed.length, 1);
+  assert.equal(result.missed[0].title, 'MISSED SALES & GEO OPPORTUNITY');
+  assert.equal(result.missed[0].value, 96);
+  assert.equal(result.customers.length, 1);
+  assert.equal(result.customers[0].title, 'MY CUSTOMER ADD-ON');
+  assert.equal(result.customers[0].customer, 'Austin Nursery · Austin TX');
+});
+
 test('AV and Common Name views render synchronously from complete in-memory rows', () => {
   assert.match(source('getAvSalesRowsForRendering'), /const service = null/);
   assert.doesNotMatch(html, /Preparing AV inventory/);

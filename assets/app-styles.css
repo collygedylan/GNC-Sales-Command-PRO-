@@ -39,6 +39,354 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
   html body #app-wrapper #view-home #home-dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   html body #app-wrapper #dashboard-sync-files { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 }
+
+.sales-intelligence-shell {
+    margin: 0 0 18px;
+    padding: 16px;
+    border: 1px solid #a7d7bd;
+    border-radius: 20px;
+    background: linear-gradient(145deg, #f8fffb 0%, #eef9f2 100%);
+    box-shadow: 0 12px 30px rgba(4, 72, 43, .09);
+}
+
+.sales-intelligence-heading,
+.sales-intelligence-card-head,
+.sales-intelligence-section-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.sales-intelligence-heading > div:first-child > span,
+.sales-intelligence-card-type,
+.sales-intelligence-section-title,
+.sales-intelligence-filters label > span,
+.sales-intelligence-impact > span,
+.sales-intelligence-kpi > span {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #087448;
+}
+
+.sales-intelligence-heading h2 {
+    margin: 3px 0 1px;
+    color: #10291d;
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 900;
+    line-height: 1.05;
+}
+
+.sales-intelligence-heading p,
+.sales-intelligence-card-head p,
+.sales-intelligence-summary,
+.sales-intelligence-rep-summary span {
+    margin: 0;
+    color: #607269;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.sales-intelligence-mode-toggle {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: min(100%, 390px);
+    padding: 3px;
+    border: 1px solid #b9dcca;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.sales-intelligence-mode-toggle button {
+    min-height: 38px;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: #39705a;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .08em;
+}
+
+.sales-intelligence-mode-toggle button.active {
+    background: #006f46;
+    color: #fff;
+    box-shadow: 0 5px 12px rgba(0, 111, 70, .2);
+}
+
+.sales-intelligence-mode-toggle button:disabled {
+    opacity: .45;
+}
+
+.sales-intelligence-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.sales-intelligence-filters label {
+    display: grid;
+    gap: 5px;
+}
+
+.sales-intelligence-filters select {
+    width: 100%;
+    min-height: 42px;
+    padding: 8px 30px 8px 10px;
+    border: 1px solid #b9dcca;
+    border-radius: 12px;
+    background: #fff;
+    color: #183a2b;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.sales-intelligence-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.sales-intelligence-kpi,
+.sales-intelligence-card,
+.sales-intelligence-rep-summary,
+.sales-intelligence-empty {
+    border: 1px solid #c8e4d5;
+    border-radius: 16px;
+    background: #fff;
+}
+
+.sales-intelligence-kpi {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 12px;
+}
+
+.sales-intelligence-kpi > strong {
+    margin-top: 5px;
+    color: #0d2d1f;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.sales-intelligence-kpi > small {
+    color: #607269;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.sales-intelligence-rep-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 12px 14px;
+}
+
+.sales-intelligence-rep-summary strong {
+    color: #006f46;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.sales-intelligence-section-title {
+    align-items: center;
+    margin: 16px 2px 8px;
+    color: #153a2a;
+}
+
+.sales-intelligence-section-title span {
+    color: #607269;
+    font-size: 10px;
+}
+
+.sales-intelligence-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.sales-intelligence-card {
+    min-width: 0;
+    padding: 14px;
+    box-shadow: 0 7px 20px rgba(4, 72, 43, .07);
+}
+
+.sales-intelligence-card h3 {
+    margin: 4px 0 1px;
+    color: #112d20;
+    font-size: 17px;
+    font-weight: 900;
+    line-height: 1.08;
+}
+
+.sales-intelligence-impact {
+    flex: 0 0 auto;
+    text-align: right;
+}
+
+.sales-intelligence-impact strong,
+.sales-intelligence-impact small {
+    display: block;
+}
+
+.sales-intelligence-impact strong {
+    color: #006f46;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.sales-intelligence-impact small {
+    color: #607269;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.sales-intelligence-summary {
+    margin-top: 9px;
+    line-height: 1.45;
+}
+
+.sales-intelligence-customer {
+    margin-top: 8px;
+    color: #174f37;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.sales-intelligence-tags,
+.sales-intelligence-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.sales-intelligence-tags span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #edf8f2;
+    color: #1a6546;
+    font-size: 9px;
+    font-weight: 900;
+}
+
+.sales-intelligence-trace {
+    margin-top: 10px;
+    border: 1px solid #b7dcc8;
+    border-radius: 12px;
+    background: #f7fcf9;
+}
+
+.sales-intelligence-trace summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 10px;
+    color: #006f46;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.sales-intelligence-trace ol {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0 10px 10px;
+    list-style: none;
+}
+
+.sales-intelligence-trace li {
+    display: grid;
+    grid-template-columns: minmax(108px, auto) 1fr;
+    gap: 7px;
+    color: #52665c;
+    font-size: 10px;
+}
+
+.sales-intelligence-trace li strong {
+    color: #183a2b;
+}
+
+.sales-intelligence-action {
+    min-height: 38px;
+    padding: 8px 11px;
+    border: 1px solid #82c3a3;
+    border-radius: 11px;
+    background: #fff;
+    color: #006f46;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.sales-intelligence-action--primary {
+    border-color: #006f46;
+    background: #006f46;
+    color: #fff;
+}
+
+.sales-intelligence-empty {
+    grid-column: 1 / -1;
+    padding: 28px;
+    color: #667a70;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+html[data-ops-prepaint-theme="dark"] .sales-intelligence-shell,
+body[data-ops-theme="dark"] .sales-intelligence-shell {
+    border-color: #286b4d;
+    background: linear-gradient(145deg, #0a2619 0%, #071e14 100%);
+}
+
+html[data-ops-prepaint-theme="dark"] .sales-intelligence-kpi,
+html[data-ops-prepaint-theme="dark"] .sales-intelligence-card,
+html[data-ops-prepaint-theme="dark"] .sales-intelligence-rep-summary,
+body[data-ops-theme="dark"] .sales-intelligence-kpi,
+body[data-ops-theme="dark"] .sales-intelligence-card,
+body[data-ops-theme="dark"] .sales-intelligence-rep-summary {
+    border-color: #2d6c50;
+    background: #0c2a1d;
+}
+
+html[data-ops-prepaint-theme="dark"] .sales-intelligence-heading h2,
+html[data-ops-prepaint-theme="dark"] .sales-intelligence-card h3,
+html[data-ops-prepaint-theme="dark"] .sales-intelligence-kpi > strong,
+body[data-ops-theme="dark"] .sales-intelligence-heading h2,
+body[data-ops-theme="dark"] .sales-intelligence-card h3,
+body[data-ops-theme="dark"] .sales-intelligence-kpi > strong {
+    color: #f1fff7;
+}
+
+@media (max-width: 900px) {
+    .sales-intelligence-heading { flex-direction: column; }
+    .sales-intelligence-mode-toggle { width: 100%; }
+    .sales-intelligence-filters,
+    .sales-intelligence-kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+    .sales-intelligence-shell { padding: 11px; border-radius: 16px; }
+    .sales-intelligence-filters,
+    .sales-intelligence-kpi-strip,
+    .sales-intelligence-cards { grid-template-columns: 1fr; }
+    .sales-intelligence-card-head { gap: 8px; }
+    .sales-intelligence-impact strong { font-size: 17px; }
+    .sales-intelligence-trace li { grid-template-columns: 1fr; gap: 1px; }
+}
 @media (max-width: 600px) {
   html body #app-wrapper .nav-header-meta-row { gap: 3px !important; }
   html body #app-wrapper #header-version { font-size: 9px !important; letter-spacing: 0 !important; padding: 4px 6px !important; }

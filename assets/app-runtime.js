@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.47';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.48';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26124,7 +26124,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.47').trim() || 'AgData v2.3.47';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.48').trim() || 'AgData v2.3.48';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -69516,7 +69516,479 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return false;
         }
 
+        const SALES_INTELLIGENCE_TARGET_YEAR = 27;
+        const SALES_INTELLIGENCE_HORIZON = ['<= 27.F1', '27.S1', '27.U1', '27.U2'];
+        const SALES_INTELLIGENCE_STATES = new Set(['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY']);
+        let salesIntelligenceMode = '';
+        let salesIntelligenceOwnerKey = '';
+        let salesIntelligenceFilters = { rep: '', state: '', plant: '', move: 'all' };
+        let salesIntelligenceCache = { key: '', model: null };
+        let salesIntelligenceWarmPromise = null;
+        const salesIntelligenceActionRows = new Map();
+
+        function warmSalesIntelligenceData() {
+            if (!currentUser || salesIntelligenceWarmPromise) return;
+            const missing = ['master', 'soc', 'reserves', 'customerRepMap', 'requests'].filter((key) => !isDatasetLoaded(key, 'full'));
+            if (!missing.length) return;
+            salesIntelligenceWarmPromise = Promise.allSettled(missing.map((key) => ensureDatasetLoaded(key, 'full'))).then(() => {
+                salesIntelligenceCache = { key: '', model: null };
+                const view = getCurrentVisibleViewId();
+                if (view === 'sales' || view === 'sales-office') renderSalesInventoryIntelligence(view);
+            }).finally(() => { salesIntelligenceWarmPromise = null; });
+        }
+
+        function getSalesIntelligenceNumber(value, fallback = 0) {
+            const parsed = parseAppNumber(value);
+            return parsed == null || !Number.isFinite(parsed) ? fallback : parsed;
+        }
+
+        function getSalesIntelligenceItemCode(row = null) {
+            return String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, row && row.ITEM, row && row.item, '') || '').trim().toUpperCase();
+        }
+
+        function getSalesIntelligencePlantGroup(row = null) {
+            return String(firstNonEmptyValue(row && row.PLANTGROUPCODE, row && row.plantgroupcode, row && row.PLANT_GROUP, row && row.plant_group, row && row.GENUS, row && row.COMMONNAME, row && row.commonname, 'Unassigned') || 'Unassigned').trim();
+        }
+
+        function getSalesIntelligenceSize(row = null) {
+            return String(firstNonEmptyValue(row && row.CONTSIZE, row && row.contsize, row && row.SIZE, row && row.size, row && row.CONTAINER, row && row.container, 'No Size') || 'No Size').trim();
+        }
+
+        function getSalesIntelligencePrice(row = null) {
+            return Math.max(0, getSalesIntelligenceNumber(firstNonEmptyValue(row && row.LISTPRICE, row && row.listprice, row && row.LISTPRI, row && row.listpri, row && row.UNITPRICE, row && row.unitprice, row && row.EXTUNITPRICE, row && row.extunitprice, 0), 0));
+        }
+
+        function getSalesIntelligenceOpenStock(row = null) {
+            return getSalesIntelligenceNumber(firstNonEmptyValue(row && row.S_LTS, row && row.s_lts, row && row.OPEN_STOCK, row && row.open_stock, row && row.PTRAVAILABLE, row && row.ptravailable, 0), 0);
+        }
+
+        function getSalesIntelligenceState(row = null) {
+            const direct = String(firstNonEmptyValue(row && row.CONSIGNEESTATE, row && row.consigneestate, row && row.STATE, row && row.state, row && row.TERRITORYCODE, row && row.territorycode, '') || '').trim().toUpperCase();
+            if (SALES_INTELLIGENCE_STATES.has(direct)) return direct;
+            const text = [row && row.CONSIGNEECITY, row && row.consigneecity, row && row.CONSIGNEENAME, row && row.consigneename,
+                row && row.CONSIGNEEADDRESS_1, row && row.consigneeaddress_1, row && row.TERRITORYDESC, row && row.territorydesc]
+                .filter(Boolean).join(' ').toUpperCase();
+            const match = text.match(/(?:^|[^A-Z])(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)(?:$|[^A-Z])/);
+            return match ? match[1] : '';
+        }
+
+        function getSalesIntelligenceTimestamp(row = null) {
+            const value = firstNonEmptyValue(row && row.UPDATED_AT, row && row.updated_at, row && row.LAST_UPDATED, row && row.last_updated, row && row.IMPORTED_AT, row && row.imported_at, row && row.REQUESTDATE, row && row.requestdate, '');
+            const timestamp = value ? Date.parse(String(value)) : NaN;
+            return Number.isFinite(timestamp) ? timestamp : 0;
+        }
+
+        function getSalesIntelligenceRep(row = null) {
+            return String(firstNonEmptyValue(row && row.SALESREPNAME, row && row.salesrepname, row && row.SALESREP, row && row.salesrep,
+                row && row.SALES_REP, row && row.sales_rep, typeof getRequestAssignedRep === 'function' ? getRequestAssignedRep(row) : '', '') || '').trim();
+        }
+
+        function getSalesIntelligenceCustomer(row = null) {
+            return String(firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.customername, row && row.REQ_CUSTOMER, row && row.req_customer, row && row.ORDER_CUSTOMER, row && row.order_customer, 'Customer') || 'Customer').trim();
+        }
+
+        function getSalesIntelligenceConsignee(row = null) {
+            return String(firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.consigneename, row && row.REQ_CONSIGNEE, row && row.req_consignee, '') || '').trim();
+        }
+
+        function getSalesIntelligenceQuantity(row = null) {
+            return Math.max(0, getSalesIntelligenceNumber(firstNonEmptyValue(row && row.QUANTITYORDERED, row && row.quantityordered, row && row.ORDER_QTY, row && row.order_qty,
+                row && row.REQ_QTY, row && row.req_qty, row && row.RESERVE_QTY, row && row.reserve_qty, row && row.PTRAVAILABLE, row && row.ptravailable, 0), 0));
+        }
+
+        function formatSalesIntelligenceMoney(value = 0) {
+            return '$' + Math.max(0, Number(value) || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+
+        function formatSalesIntelligenceTimestamp(timestamp = 0) {
+            if (!timestamp) return 'saved snapshot';
+            return new Date(timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+
+        function getSalesIntelligenceMode() {
+            const ownerKey = normalizeSessionIdentity(currentUser);
+            const isAdmin = !!getRoleAccessState().isAdmin;
+            if (salesIntelligenceOwnerKey !== ownerKey) {
+                salesIntelligenceOwnerKey = ownerKey;
+                salesIntelligenceMode = isAdmin ? 'admin' : 'rep';
+                salesIntelligenceFilters = { rep: '', state: '', plant: '', move: 'all' };
+            }
+            if (!isAdmin) salesIntelligenceMode = 'rep';
+            return salesIntelligenceMode || (isAdmin ? 'admin' : 'rep');
+        }
+
+        function buildSalesIntelligenceModel() {
+            const key = [getSupabaseReadIdentityScope(), 'master', 'soc', 'reserves', 'requests', 'customerRepMap']
+                .map((value) => value === 'master' || value === 'soc' || value === 'reserves' || value === 'requests' || value === 'customerRepMap' ? getDatasetLoadSignature(value) : value).join('|');
+            if (salesIntelligenceCache.key === key && salesIntelligenceCache.model) return salesIntelligenceCache.model;
+            const inventoryRows = (typeof selectAvSalesInventorySourceRows === 'function' ? selectAvSalesInventorySourceRows() : fullInventory).filter(Boolean);
+            const inventoryFacts = [];
+            const inventoryByItem = new Map();
+            const plantOptions = new Map();
+            let driveTimestamp = 0;
+            inventoryRows.forEach((row) => {
+                const itemCode = getSalesIntelligenceItemCode(row);
+                if (!itemCode) return;
+                const group = getSalesIntelligencePlantGroup(row);
+                const size = getSalesIntelligenceSize(row);
+                const available = getSalesIntelligenceNumber(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, 0), 0);
+                const onHand = getSalesIntelligenceNumber(firstNonEmptyValue(row.PTRONHAND, row.ptronhand, available, 0), 0);
+                const openStock = getSalesIntelligenceOpenStock(row);
+                const listPrice = getSalesIntelligencePrice(row);
+                const season = getAvSalesSeasonValue(row);
+                const salesYear = getAvSalesYearNumber(row);
+                const holdText = String(firstNonEmptyValue(row.HOLDSTOPCODE, row.holdstopcode, row.HOLSTOPCODE, row.HOLDSTOPREASON, row.holdstopreason, '') || '').trim();
+                const photoQty = getSalesIntelligenceNumber(firstNonEmptyValue(row.LOC_MATCH_QTY, row.loc_match_qty, row.MATCH, row.match, 0), 0);
+                const photoReady = photoQty > 0 || !!firstNonEmptyValue(row.PHOTO_LINK, row.photo_link, row.ROW_PHOTO_LINK, row.row_photo_link, '');
+                const timestamp = getSalesIntelligenceTimestamp(row);
+                const fact = { row, itemCode, group, size, available, onHand, openStock, listPrice, season, salesYear, timestamp,
+                    hold: /^h(?:old)?$/i.test(holdText) || /^shear/i.test(holdText), photoReady,
+                    specReady: !!String(firstNonEmptyValue(row.SPEC, row.spec, row.ITEMSPEC, row.itemspec, '') || '').trim() };
+                inventoryFacts.push(fact);
+                if (!inventoryByItem.has(itemCode)) inventoryByItem.set(itemCode, []);
+                inventoryByItem.get(itemCode).push(fact);
+                plantOptions.set(`${group}|||${size}`, { key: `${group}|||${size}`, label: `${group} · ${size}` });
+                driveTimestamp = Math.max(driveTimestamp, timestamp);
+            });
+            const demandFacts = [];
+            const demandByItem = new Map();
+            const demandByGroup = new Map();
+            const repOptions = new Map();
+            const stateOptions = new Set();
+            const repTerritories = new Map();
+            let socTimestamp = 0;
+            let reservesTimestamp = 0;
+            const appendDemand = (rows, source) => (Array.isArray(rows) ? rows : []).forEach((row) => {
+                const itemCode = getSalesIntelligenceItemCode(row);
+                const inventoryFact = (inventoryByItem.get(itemCode) || [])[0];
+                const group = getSalesIntelligencePlantGroup(row) === 'Unassigned' && inventoryFact ? inventoryFact.group : getSalesIntelligencePlantGroup(row);
+                const rep = getSalesIntelligenceRep(row);
+                const state = getSalesIntelligenceState(row);
+                const quantity = getSalesIntelligenceQuantity(row);
+                const listPrice = getSalesIntelligencePrice(row) || (inventoryFact ? inventoryFact.listPrice : 0);
+                const timestamp = getSalesIntelligenceTimestamp(row);
+                const fact = { row, source, itemCode, group, rep, state, quantity, listPrice, timestamp,
+                    customer: getSalesIntelligenceCustomer(row), consignee: getSalesIntelligenceConsignee(row) };
+                if (!itemCode && !group) return;
+                demandFacts.push(fact);
+                if (itemCode) {
+                    if (!demandByItem.has(itemCode)) demandByItem.set(itemCode, []);
+                    demandByItem.get(itemCode).push(fact);
+                }
+                if (group) {
+                    const groupKey = normalizeRepMatchToken(group);
+                    if (!demandByGroup.has(groupKey)) demandByGroup.set(groupKey, []);
+                    demandByGroup.get(groupKey).push(fact);
+                }
+                const repKey = normalizeRepMatchToken(rep);
+                if (repKey && rep) repOptions.set(repKey, rep);
+                if (state) stateOptions.add(state);
+                if (repKey && state) {
+                    if (!repTerritories.has(repKey)) repTerritories.set(repKey, new Set());
+                    repTerritories.get(repKey).add(state);
+                }
+                if (source === 'SOC') socTimestamp = Math.max(socTimestamp, timestamp);
+                if (source === 'Reserves') reservesTimestamp = Math.max(reservesTimestamp, timestamp);
+            });
+            appendDemand(socInventory, 'SOC');
+            appendDemand(reservesInventory, 'Reserves');
+            appendDemand(requestsInventory, 'Active Request');
+            (Array.isArray(customerRepMapRows) ? customerRepMapRows : []).forEach((row) => {
+                const rep = getSalesIntelligenceRep(row);
+                const repKey = normalizeRepMatchToken(rep);
+                const state = getSalesIntelligenceState(row);
+                if (repKey && rep) repOptions.set(repKey, rep);
+                if (state) stateOptions.add(state);
+                if (repKey && state) {
+                    if (!repTerritories.has(repKey)) repTerritories.set(repKey, new Set());
+                    repTerritories.get(repKey).add(state);
+                }
+            });
+            const f1Facts = inventoryFacts.filter((fact) => fact.season === 'F1' && (fact.salesYear == null || fact.salesYear <= SALES_INTELLIGENCE_TARGET_YEAR));
+            const s1Facts = inventoryFacts.filter((fact) => fact.season === 'S1' && fact.salesYear === SALES_INTELLIGENCE_TARGET_YEAR);
+            const horizonFacts = inventoryFacts.filter((fact) => fact.salesYear == null || fact.salesYear < SALES_INTELLIGENCE_TARGET_YEAR
+                || fact.salesYear === SALES_INTELLIGENCE_TARGET_YEAR && ['F1','S1','U1','U2'].includes(fact.season));
+            const activeDemand = demandFacts.filter((fact) => fact.quantity > 0);
+            const totals = {
+                f1Units: f1Facts.reduce((sum, fact) => sum + Math.max(0, fact.openStock), 0),
+                f1Value: f1Facts.reduce((sum, fact) => sum + Math.max(0, fact.openStock) * fact.listPrice, 0),
+                s1Units: s1Facts.reduce((sum, fact) => sum + Math.max(0, fact.available), 0),
+                s1Value: s1Facts.reduce((sum, fact) => sum + Math.max(0, fact.available) * fact.listPrice, 0),
+                trappedUnits: horizonFacts.filter((fact) => fact.hold).reduce((sum, fact) => sum + Math.max(0, fact.onHand), 0),
+                trappedValue: horizonFacts.filter((fact) => fact.hold).reduce((sum, fact) => sum + Math.max(0, fact.onHand) * fact.listPrice, 0),
+                coverageUnits: activeDemand.reduce((sum, fact) => sum + fact.quantity, 0),
+                coverageValue: activeDemand.reduce((sum, fact) => sum + fact.quantity * fact.listPrice, 0)
+            };
+            const moveCards = [];
+            const inventoryGroups = new Map();
+            inventoryFacts.forEach((fact) => {
+                const groupKey = `${fact.itemCode}|||${fact.size}`;
+                if (!inventoryGroups.has(groupKey)) inventoryGroups.set(groupKey, []);
+                inventoryGroups.get(groupKey).push(fact);
+            });
+            inventoryGroups.forEach((facts, groupKey) => {
+                const currentFacts = facts.filter((fact) => fact.season === 'F1' && (fact.salesYear == null || fact.salesYear <= SALES_INTELLIGENCE_TARGET_YEAR));
+                const nextFacts = facts.filter((fact) => fact.season === 'S1' && fact.salesYear === SALES_INTELLIGENCE_TARGET_YEAR && fact.available > 0);
+                const currentOpen = currentFacts.reduce((sum, fact) => sum + fact.openStock, 0);
+                const nextAvailable = nextFacts.reduce((sum, fact) => sum + fact.available, 0);
+                if (currentFacts.length && nextFacts.length && currentOpen <= 25 && nextAvailable > 0) {
+                    const representative = nextFacts.slice().sort((left, right) => right.available - left.available)[0];
+                    const units = Math.min(nextAvailable, Math.max(1, 25 - currentOpen));
+                    const demand = demandByItem.get(representative.itemCode) || [];
+                    moveCards.push({ type: 'move-up', title: 'MOVE UP OPPORTUNITY', itemCode: representative.itemCode, group: representative.group, size: representative.size,
+                        row: representative.row, units, value: units * representative.listPrice, states: new Set(demand.map((fact) => fact.state).filter(Boolean)),
+                        reps: new Set(demand.map((fact) => fact.rep).filter(Boolean)), source: 'DriveAround', timestamp: Math.max(...facts.map((fact) => fact.timestamp), driveTimestamp),
+                        summary: `27.S1 has ${Math.round(nextAvailable).toLocaleString()} available while <= 27.F1 Open Stock is ${Math.round(currentOpen).toLocaleString()}.`,
+                        calculation: `${Math.round(units).toLocaleString()} units × ${formatSalesIntelligenceMoney(representative.listPrice)} = ${formatSalesIntelligenceMoney(units * representative.listPrice)}` });
+                }
+                const demand = (demandByItem.get(facts[0].itemCode) || []).filter((fact) => fact.quantity > 0);
+                const bottlenecks = facts.filter((fact) => (fact.hold || !fact.photoReady) && fact.onHand > 0 && fact.listPrice > 0);
+                if (demand.length && bottlenecks.length) {
+                    const representative = bottlenecks.slice().sort((left, right) => right.onHand * right.listPrice - left.onHand * left.listPrice)[0];
+                    const units = bottlenecks.reduce((sum, fact) => sum + Math.max(0, fact.onHand), 0);
+                    const value = bottlenecks.reduce((sum, fact) => sum + Math.max(0, fact.onHand) * fact.listPrice, 0);
+                    moveCards.push({ type: 'hold', title: 'HOLD / PHOTO BOTTLENECK', itemCode: representative.itemCode, group: representative.group, size: representative.size,
+                        row: representative.row, units, value, states: new Set(demand.map((fact) => fact.state).filter(Boolean)), reps: new Set(demand.map((fact) => fact.rep).filter(Boolean)),
+                        source: 'DriveAround + SOC / Reserves', timestamp: Math.max(representative.timestamp, ...demand.map((fact) => fact.timestamp)),
+                        summary: `${representative.hold ? 'Hold/Stop inventory' : 'Missing photo coverage'} is blocking ${Math.round(units).toLocaleString()} on-hand units with active demand.`,
+                        calculation: `${Math.round(units).toLocaleString()} units × blended list price = ${formatSalesIntelligenceMoney(value)}` });
+                }
+                const geoFacts = currentFacts.filter((fact) => fact.openStock > 25 && fact.photoReady && fact.listPrice > 0);
+                const geoDemand = demandByGroup.get(normalizeRepMatchToken(facts[0].group)) || [];
+                if (geoFacts.length && geoDemand.length) {
+                    const representative = geoFacts.slice().sort((left, right) => right.openStock * right.listPrice - left.openStock * left.listPrice)[0];
+                    const units = geoFacts.reduce((sum, fact) => sum + Math.max(0, fact.openStock), 0);
+                    const value = geoFacts.reduce((sum, fact) => sum + Math.max(0, fact.openStock) * fact.listPrice, 0);
+                    moveCards.push({ type: 'geo', title: 'GEO SURPLUS PUSH', itemCode: representative.itemCode, group: representative.group, size: representative.size,
+                        row: representative.row, units, value, states: new Set(geoDemand.map((fact) => fact.state).filter(Boolean)), reps: new Set(geoDemand.map((fact) => fact.rep).filter(Boolean)),
+                        source: 'DriveAround + SOC / Reserves', timestamp: Math.max(representative.timestamp, ...geoDemand.map((fact) => fact.timestamp)),
+                        summary: `${Math.round(units).toLocaleString()} photo-ready <= 27.F1 Open Stock units match demand in ${Array.from(new Set(geoDemand.map((fact) => fact.state).filter(Boolean))).slice(0, 4).join(', ') || 'mapped territories'}.`,
+                        calculation: `${Math.round(units).toLocaleString()} units × blended list price = ${formatSalesIntelligenceMoney(value)}` });
+                }
+            });
+            moveCards.sort((left, right) => right.value - left.value);
+            const model = { inventoryFacts, inventoryByItem, demandFacts, demandByItem, demandByGroup, repOptions, stateOptions, repTerritories, plantOptions, totals, moveCards,
+                timestamps: { drive: driveTimestamp, soc: socTimestamp, reserves: reservesTimestamp } };
+            salesIntelligenceCache = { key, model };
+            return model;
+        }
+
+        function buildSalesRepIntelligenceCards(model, repName = '') {
+            const repKey = normalizeRepMatchToken(repName);
+            const territoryStates = new Set(model.repTerritories.get(repKey) || []);
+            const ownDemand = model.demandFacts.filter((fact) => normalizeRepMatchToken(fact.rep) === repKey);
+            ownDemand.forEach((fact) => { if (fact.state) territoryStates.add(fact.state); });
+            const ownItems = new Set(ownDemand.map((fact) => fact.itemCode).filter(Boolean));
+            const missedCards = [];
+            const itemGroups = new Map();
+            model.inventoryFacts.filter((fact) => fact.season === 'F1' && (fact.salesYear == null || fact.salesYear <= SALES_INTELLIGENCE_TARGET_YEAR)
+                && fact.available > 0 && fact.listPrice > 0).forEach((fact) => {
+                const key = `${fact.itemCode}|||${fact.size}`;
+                if (!itemGroups.has(key)) itemGroups.set(key, []);
+                itemGroups.get(key).push(fact);
+            });
+            itemGroups.forEach((facts) => {
+                const representative = facts.slice().sort((left, right) => right.available - left.available)[0];
+                if (ownItems.has(representative.itemCode)) return;
+                const peerDemand = (model.demandByGroup.get(normalizeRepMatchToken(representative.group)) || []).filter((fact) => normalizeRepMatchToken(fact.rep) !== repKey
+                    && (!territoryStates.size || territoryStates.has(fact.state)));
+                if (!peerDemand.length && territoryStates.size) return;
+                const available = facts.reduce((sum, fact) => sum + Math.max(0, fact.available), 0);
+                const peerUnits = peerDemand.reduce((sum, fact) => sum + fact.quantity, 0);
+                const units = Math.min(available, Math.max(1, peerUnits || available));
+                missedCards.push({ type: 'missed', title: 'MISSED SALES & GEO OPPORTUNITY', itemCode: representative.itemCode, group: representative.group, size: representative.size,
+                    row: representative.row, units, value: units * representative.listPrice, states: new Set(peerDemand.map((fact) => fact.state).filter(Boolean)), reps: new Set([repName]),
+                    source: 'DriveAround + SOC / Reserves', timestamp: Math.max(representative.timestamp, ...peerDemand.map((fact) => fact.timestamp), 0),
+                    summary: `${Math.round(available).toLocaleString()} ready <= 27.F1 units are available; peer customers in ${Array.from(new Set(peerDemand.map((fact) => fact.state).filter(Boolean))).join(', ') || 'the mapped territory'} are buying this plant group.`,
+                    calculation: `${Math.round(units).toLocaleString()} units × ${formatSalesIntelligenceMoney(representative.listPrice)} = ${formatSalesIntelligenceMoney(units * representative.listPrice)}`,
+                    status: `${representative.photoReady ? 'Photo ready' : 'Photo needed'} · ${representative.specReady ? 'Spec ready' : 'Spec needed'}` });
+            });
+            const customerGroups = new Map();
+            ownDemand.filter((fact) => ['SOC','Reserves'].includes(fact.source) && fact.quantity > 0).forEach((fact) => {
+                const key = `${fact.customer}|||${fact.consignee}|||${fact.itemCode}`;
+                if (!customerGroups.has(key)) customerGroups.set(key, []);
+                customerGroups.get(key).push(fact);
+            });
+            const customerCards = [];
+            customerGroups.forEach((facts) => {
+                const inventory = model.inventoryByItem.get(facts[0].itemCode) || [];
+                const openFacts = inventory.filter((fact) => fact.season === 'F1' && (fact.salesYear == null || fact.salesYear <= SALES_INTELLIGENCE_TARGET_YEAR) && fact.openStock > 0);
+                if (!openFacts.length) return;
+                const representative = openFacts.slice().sort((left, right) => right.openStock - left.openStock)[0];
+                const openUnits = openFacts.reduce((sum, fact) => sum + Math.max(0, fact.openStock), 0);
+                const demandUnits = facts.reduce((sum, fact) => sum + fact.quantity, 0);
+                const units = Math.min(openUnits, Math.max(1, demandUnits));
+                customerCards.push({ type: 'add-on', title: 'MY CUSTOMER ADD-ON', itemCode: representative.itemCode, group: representative.group, size: representative.size,
+                    row: representative.row, units, value: units * representative.listPrice, states: new Set(facts.map((fact) => fact.state).filter(Boolean)), reps: new Set([repName]),
+                    source: facts.some((fact) => fact.source === 'Reserves') ? 'Reserves + DriveAround' : 'SOC + DriveAround', timestamp: Math.max(representative.timestamp, ...facts.map((fact) => fact.timestamp)),
+                    customer: `${facts[0].customer}${facts[0].consignee ? ` · ${facts[0].consignee}` : ''}`,
+                    summary: `${Math.round(openUnits).toLocaleString()} <= 27.F1 Open Stock units can be added to an active ${facts[0].source.toLowerCase()} position.`,
+                    calculation: `${Math.round(units).toLocaleString()} units × ${formatSalesIntelligenceMoney(representative.listPrice)} = ${formatSalesIntelligenceMoney(units * representative.listPrice)}` });
+            });
+            return { missed: missedCards.sort((left, right) => right.value - left.value), customers: customerCards.sort((left, right) => right.value - left.value), territoryStates };
+        }
+
+        function buildSalesIntelligenceTraceHtml(card = {}) {
+            const context = `Season ${card.row ? getAvSalesSeasonValue(card.row) || 'F1' : 'F1'}, SY ${card.row ? getAvSalesYearNumber(card.row) ?? '<= 27' : '<= 27'}`;
+            return `<details class="sales-intelligence-trace"><summary><i class="ph-bold ph-seal-check"></i> Verified Trace</summary><ol>
+                <li><strong>Step 1: Context</strong><span>${escapeHtml(context)}</span></li>
+                <li><strong>Step 2: Source</strong><span>${escapeHtml(card.source || 'DriveAround / SOC / Reserves')} · ${escapeHtml(formatSalesIntelligenceTimestamp(card.timestamp || 0))}</span></li>
+                <li><strong>Step 3: Double-Checked</strong><span>${escapeHtml(card.calculation || `${Math.round(card.units || 0).toLocaleString()} units × List Price = ${formatSalesIntelligenceMoney(card.value || 0)}`)}</span></li>
+            </ol></details>`;
+        }
+
+        function registerSalesIntelligenceAction(card = {}) {
+            const uid = String(firstNonEmptyValue(card.row && card.row.UNIQUE_ID, card.row && card.row.unique_id, card.row && card.row.DOM_ID, card.itemCode, '') || '').trim();
+            const key = `${card.type || 'card'}:${uid}:${normalizeRepMatchToken(card.customer || '')}`;
+            const trace = `Step 1 Context: Season ${getAvSalesSeasonValue(card.row) || 'F1'}, SY ${getAvSalesYearNumber(card.row) ?? '<= 27'}; Step 2 Source: ${card.source || 'DriveAround / SOC / Reserves'} at ${formatSalesIntelligenceTimestamp(card.timestamp || 0)}; Step 3 Double-Checked: ${card.calculation || ''}.`;
+            salesIntelligenceActionRows.set(key, { row: card.row, query: `${card.title}: ${card.itemCode} ${card.size}. ${card.summary} ${trace}` });
+            return key;
+        }
+
+        function renderSalesIntelligenceCard(card = {}, mode = 'admin') {
+            const actionKey = registerSalesIntelligenceAction(card);
+            const stateText = Array.from(card.states || []).slice(0, 5).join(', ');
+            const repText = Array.from(card.reps || []).slice(0, 3).join(', ');
+            const reclassButton = `<button type="button" class="sales-intelligence-action sales-intelligence-action--primary" onclick="return openSalesIntelligenceReclass('${escJsAttrValue(actionKey)}')">${card.type === 'move-up' ? 'Open in Reclass' : 'Reclass'}</button>`;
+            const projectButton = card.type === 'hold' ? `<button type="button" class="sales-intelligence-action" onclick="return addSalesIntelligenceProject('${escJsAttrValue(actionKey)}')">+ Project</button>` : '';
+            const bloomButton = ['geo','missed','add-on'].includes(card.type) ? `<button type="button" class="sales-intelligence-action sales-intelligence-action--primary" onclick="return addSalesIntelligenceBloom('${escJsAttrValue(actionKey)}')">Add to Bloom Picker</button>` : '';
+            const requestButton = mode === 'rep' && ['missed','add-on'].includes(card.type) ? `<button type="button" class="sales-intelligence-action" onclick="return requestSalesIntelligenceItem('${escJsAttrValue(actionKey)}')">Request</button>` : '';
+            const auraButton = isAuraRouterWidgetAuthorized() ? `<button type="button" class="sales-intelligence-action" onclick="return openSalesIntelligenceAuraQuery('${escJsAttrValue(actionKey)}')">AURA Query</button>` : '';
+            return `<article class="sales-intelligence-card" data-sales-intelligence-move="${escapeHtml(card.type || '')}" data-sales-intelligence-state="${escapeHtml(stateText)}">
+                <div class="sales-intelligence-card-head"><div><span class="sales-intelligence-card-type">${escapeHtml(card.title || '')}</span><h3>${escapeHtml(card.row && firstNonEmptyValue(card.row.COMMONNAME, card.row.commonname, '') || card.group || card.itemCode)}</h3><p>${escapeHtml(card.itemCode)} · ${escapeHtml(card.size)}</p></div><div class="sales-intelligence-impact"><span>$ Impact</span><strong>${escapeHtml(formatSalesIntelligenceMoney(card.value || 0))}</strong><small>${Math.round(card.units || 0).toLocaleString()} units</small></div></div>
+                ${card.customer ? `<div class="sales-intelligence-customer">${escapeHtml(card.customer)}</div>` : ''}<p class="sales-intelligence-summary">${escapeHtml(card.summary || '')}</p>
+                <div class="sales-intelligence-tags">${stateText ? `<span><i class="ph-bold ph-map-pin"></i>${escapeHtml(stateText)}</span>` : ''}${repText ? `<span><i class="ph-bold ph-user-circle"></i>${escapeHtml(repText)}</span>` : ''}${card.status ? `<span>${escapeHtml(card.status)}</span>` : ''}</div>
+                ${buildSalesIntelligenceTraceHtml(card)}<div class="sales-intelligence-actions">${mode === 'admin' && ['move-up','hold'].includes(card.type) ? reclassButton : ''}${mode === 'admin' ? projectButton : ''}${bloomButton}${requestButton}${auraButton}</div>
+            </article>`;
+        }
+
+        function renderSalesIntelligenceKpi(label, units, value, source, timestamp) {
+            return `<article class="sales-intelligence-kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(formatSalesIntelligenceMoney(value))}</strong><small>${Math.round(units || 0).toLocaleString()} units</small>${buildSalesIntelligenceTraceHtml({ units, value, source, timestamp })}</article>`;
+        }
+
+        function getSalesIntelligenceSelectedRep(model) {
+            if (!getRoleAccessState().isAdmin) return getCurrentAvRepName();
+            const selectedKey = normalizeRepMatchToken(salesIntelligenceFilters.rep);
+            if (selectedKey && model.repOptions.has(selectedKey)) return model.repOptions.get(selectedKey);
+            const current = getCurrentAvRepName();
+            const currentKey = normalizeRepMatchToken(current);
+            if (model.repOptions.has(currentKey)) return model.repOptions.get(currentKey);
+            return Array.from(model.repOptions.values()).sort((left, right) => left.localeCompare(right))[0] || current;
+        }
+
+        function salesIntelligenceCardMatchesFilters(card = {}) {
+            const state = salesIntelligenceFilters.state;
+            const plant = salesIntelligenceFilters.plant;
+            const move = salesIntelligenceFilters.move;
+            const rep = normalizeRepMatchToken(salesIntelligenceFilters.rep);
+            if (state && !(card.states instanceof Set && card.states.has(state))) return false;
+            if (plant && `${card.group}|||${card.size}` !== plant) return false;
+            if (move && move !== 'all' && card.type !== move) return false;
+            if (rep && card.reps instanceof Set && card.reps.size && !Array.from(card.reps).some((value) => normalizeRepMatchToken(value) === rep)) return false;
+            return true;
+        }
+
+        function renderSalesInventoryIntelligence(surface = 'sales') {
+            const root = document.getElementById(surface === 'sales-office' ? 'sales-office-intelligence-panel' : 'sales-intelligence-panel');
+            if (!root) return;
+            warmSalesIntelligenceData();
+            const model = buildSalesIntelligenceModel();
+            const mode = getSalesIntelligenceMode();
+            const isAdmin = !!getRoleAccessState().isAdmin;
+            const selectedRep = getSalesIntelligenceSelectedRep(model);
+            if (!salesIntelligenceFilters.rep && mode === 'rep') salesIntelligenceFilters.rep = selectedRep;
+            const repCards = mode === 'rep' ? buildSalesRepIntelligenceCards(model, selectedRep) : null;
+            const cards = (mode === 'admin' ? model.moveCards : [...repCards.missed, ...repCards.customers]).filter(salesIntelligenceCardMatchesFilters).slice(0, 30);
+            const repOptions = Array.from(model.repOptions.values()).sort((left, right) => left.localeCompare(right));
+            const stateOptions = Array.from(model.stateOptions).sort();
+            const plantOptions = Array.from(model.plantOptions.values()).sort((left, right) => left.label.localeCompare(right.label));
+            const option = (value, label, selected) => `<option value="${escapeHtml(value)}"${selected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+            const adminMoves = [{ value: 'all', label: 'All Move Types' }, { value: 'move-up', label: 'Move Up' }, { value: 'hold', label: 'Hold Bottleneck' }, { value: 'geo', label: 'Geo Surplus' }];
+            const repMoves = [{ value: 'all', label: 'All Opportunities' }, { value: 'missed', label: 'Missed Sales' }, { value: 'add-on', label: 'Customer Add-On' }];
+            const filtersHtml = `<div class="sales-intelligence-filters">
+                <label><span>Sales Rep</span><select onchange="return setSalesIntelligenceFilter('rep',this.value)" ${mode === 'rep' && !isAdmin ? 'disabled' : ''}>${option('', mode === 'rep' ? selectedRep || 'My Territory' : 'All Sales Reps', !salesIntelligenceFilters.rep)}${repOptions.map((rep) => option(rep, rep, normalizeRepMatchToken(salesIntelligenceFilters.rep || selectedRep) === normalizeRepMatchToken(rep))).join('')}</select></label>
+                <label><span>State / Geography</span><select onchange="return setSalesIntelligenceFilter('state',this.value)">${option('', 'All States', !salesIntelligenceFilters.state)}${stateOptions.map((state) => option(state, state, salesIntelligenceFilters.state === state)).join('')}</select></label>
+                <label><span>Plant Group / Size</span><select onchange="return setSalesIntelligenceFilter('plant',this.value)">${option('', 'All Plant Groups / Sizes', !salesIntelligenceFilters.plant)}${plantOptions.map((entry) => option(entry.key, entry.label, salesIntelligenceFilters.plant === entry.key)).join('')}</select></label>
+                <label><span>Move Type</span><select onchange="return setSalesIntelligenceFilter('move',this.value)">${(mode === 'admin' ? adminMoves : repMoves).map((entry) => option(entry.value, entry.label, salesIntelligenceFilters.move === entry.value)).join('')}</select></label>
+            </div>`;
+            const kpis = mode === 'admin' ? `<div class="sales-intelligence-kpi-strip" aria-label="13-Week Live Rolling Position">
+                ${renderSalesIntelligenceKpi('F1 Open Stock Value (<= 27.F1)', model.totals.f1Units, model.totals.f1Value, 'DriveAround', model.timestamps.drive)}
+                ${renderSalesIntelligenceKpi('S1 Pull-Forward Opportunity (27.S1 Ready)', model.totals.s1Units, model.totals.s1Value, 'DriveAround', model.timestamps.drive)}
+                ${renderSalesIntelligenceKpi('Trapped on Hold/Stop ($ Value)', model.totals.trappedUnits, model.totals.trappedValue, 'DriveAround', model.timestamps.drive)}
+                ${renderSalesIntelligenceKpi('Active SOC + Reserves Coverage', model.totals.coverageUnits, model.totals.coverageValue, 'SOC / Reserves', Math.max(model.timestamps.soc, model.timestamps.reserves))}
+            </div>` : `<div class="sales-intelligence-rep-summary"><strong>${escapeHtml(selectedRep || 'Sales Rep')}</strong><span>${escapeHtml(Array.from(repCards.territoryStates).sort().join(', ') || 'Mapped customer geography')}</span></div>`;
+            root.innerHTML = `<section class="sales-intelligence-shell" data-sales-intelligence-mode="${escapeHtml(mode)}"><div class="sales-intelligence-heading"><div><span>Smart Sales & Inventory Move Intelligence</span><h2>${mode === 'admin' ? 'Make the Correct Move' : 'Missed Sales & Geographical Leverage'}</h2><p>Live 13-week rolling position · ${escapeHtml(SALES_INTELLIGENCE_HORIZON.join(' → '))}</p></div><div class="sales-intelligence-mode-toggle"><button type="button" class="${mode === 'admin' ? 'active' : ''}" ${isAdmin ? '' : 'disabled'} onclick="return setSalesIntelligenceMode('admin')">ADMIN / INVENTORY COMMAND</button><button type="button" class="${mode === 'rep' ? 'active' : ''}" onclick="return setSalesIntelligenceMode('rep')">SALES REP VIEW</button></div></div>${filtersHtml}${kpis}
+                <div class="sales-intelligence-section-title"><strong>${mode === 'admin' ? 'Prioritized Smart Move Cards' : 'MISSED SALES & GEO OPPORTUNITIES · MY CUSTOMERS, RESERVES & OPEN ORDERS'}</strong><span>${cards.length} prioritized</span></div>
+                <div class="sales-intelligence-cards">${cards.map((card) => renderSalesIntelligenceCard(card, mode)).join('') || '<div class="sales-intelligence-empty">No verified opportunities match the active filters.</div>'}</div></section>`;
+        }
+
+        function refreshSalesInventoryIntelligence() {
+            renderSalesInventoryIntelligence('sales');
+            renderSalesInventoryIntelligence('sales-office');
+        }
+
+        function setSalesIntelligenceMode(mode = 'rep') {
+            const safeMode = mode === 'admin' && getRoleAccessState().isAdmin ? 'admin' : 'rep';
+            salesIntelligenceMode = safeMode;
+            salesIntelligenceFilters.move = 'all';
+            if (safeMode === 'rep' && !salesIntelligenceFilters.rep) salesIntelligenceFilters.rep = getCurrentAvRepName();
+            refreshSalesInventoryIntelligence();
+            return false;
+        }
+
+        function setSalesIntelligenceFilter(filter = '', value = '') {
+            if (!Object.hasOwn(salesIntelligenceFilters, filter)) return false;
+            salesIntelligenceFilters[filter] = String(value || '');
+            refreshSalesInventoryIntelligence();
+            return false;
+        }
+
+        function getSalesIntelligenceAction(actionKey = '') {
+            return salesIntelligenceActionRows.get(String(actionKey || '')) || null;
+        }
+
+        function openSalesIntelligenceReclass(actionKey = '') {
+            const action = getSalesIntelligenceAction(actionKey);
+            const uid = String(firstNonEmptyValue(action && action.row && action.row.UNIQUE_ID, action && action.row && action.row.unique_id, '') || '').trim();
+            if (!action || !uid) return false;
+            return openArgosInventoryTransactionModal(uid, 'reclass', 'drive');
+        }
+
+        function addSalesIntelligenceProject(actionKey = '') {
+            const action = getSalesIntelligenceAction(actionKey);
+            if (!action || !action.row) return false;
+            return addInventoryRowsToProject([action.row]);
+        }
+
+        function addSalesIntelligenceBloom(actionKey = '') {
+            const action = getSalesIntelligenceAction(actionKey);
+            const domId = String(firstNonEmptyValue(action && action.row && action.row.DOM_ID, action && action.row && action.row.dom_id, '') || '').trim();
+            if (!action || !domId) return false;
+            toggleGlobalItem(domId, true, 'drive-bloom');
+            return false;
+        }
+
+        function requestSalesIntelligenceItem(actionKey = '') {
+            const action = getSalesIntelligenceAction(actionKey);
+            if (!action || !action.row) return false;
+            const domId = String(firstNonEmptyValue(action.row.DOM_ID, action.row.dom_id, '') || '').trim();
+            if (domId) toggleGlobalItem(domId, true, 'drive-bloom');
+            openRequestModal('selection');
+            return false;
+        }
+
+        function openSalesIntelligenceAuraQuery(actionKey = '') {
+            const action = getSalesIntelligenceAction(actionKey);
+            if (!action || !isAuraRouterWidgetAuthorized() || !auraWidgetHandle || typeof auraWidgetHandle.openVoice !== 'function') {
+                showToast('AURA Unavailable', 'AURA Query is available only to its verified account.', true);
+                return false;
+            }
+            auraWidgetHandle.openVoice(action.query);
+            return false;
+        }
+
         function renderSalesHub() {
+            renderSalesInventoryIntelligence('sales');
             GncMobileWorkspace.syncHub('sales');
             const access = getRoleAccessState();
             const historyButton = document.getElementById('sales-open-photo-history');
@@ -107935,6 +108407,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderSalesOffice() {
+            renderSalesInventoryIntelligence('sales-office');
             ensureSeasonSalesNoteAccessFresh();
             if (ensureViewDataForRender('sales-office')) return;
             const access = getRoleAccessState();
