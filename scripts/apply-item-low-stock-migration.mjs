@@ -184,6 +184,7 @@ export function validateDatabaseTarget(connectionString, supabaseUrl) {
   const direct = database.hostname === `db.${match[1]}.supabase.co` && user === 'postgres';
   const pooler = database.hostname.endsWith('.pooler.supabase.com') && user === `postgres.${match[1]}`;
   if ((!direct && !pooler) || !database.password || database.pathname !== '/postgres') throw new Error('LOW_STOCK_DATABASE_TARGET_MISMATCH');
+  if (pooler && database.port === '6543') database.port = '5432';
   // pg merges query parameters over authority fields. Do not allow host/user
   // query overrides to redirect this narrowly scoped production operation.
   const allowed = new Set(['sslmode', 'sslrootcert', 'sslcert', 'sslkey', 'uselibpqcompat', 'application_name']);
