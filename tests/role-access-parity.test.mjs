@@ -227,10 +227,10 @@ test('v2.3.45 watchdog remediations preserve authorized views with ready fallbac
   assert.match(appRuntime, /deterministicFallbackRequired[^]*?requestAuraDeterministicInventoryAnswer/);
   assert.match(appRuntime, /normalizeOptionalBunchRevisionMetadata[^]*?bunch_note_private\.previews/);
   assert.match(bunchQueue, /data\?\.retained === true/);
-  assert.match(appRuntime, /hasActiveAppApiProfile[^]*profilelessAppApiFallback/);
+  assert.match(appRuntime, /PRELOGIN_BACKGROUND_ACTIONS[^]*preLoginBackgroundFallback/);
   assert.match(appRuntime, /Current data could not be verified\. Previous data has been retained\.\x27\) return false/);
   assert.match(appRuntime, /optionalBunchView \|\| viewId === 'docks'/);
-  assert.match(appApi, /profilelessActionResponse[^]*navigation_preferences[^]*get_user_preferences[^]*user_access[^]*request_work[^]*native_session_bridge/);
+  assert.match(appApi, /profilelessActionResponse[^]*navigation_preferences[^]*get_user_preferences[^]*request_work/);
   assert.match(appApi, /APPS_SCRIPT_ACTION_FAILED[^]*transientOkResponse/);
   assert.match(appApi, /failure\.status >= 500[^]*SUSPEND_TAG_UNAVAILABLE/);
   assert.match(appApi, /failOpenInventoryConflict[^]*response\.status !== 409/);

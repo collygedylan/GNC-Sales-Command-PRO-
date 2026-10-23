@@ -76,15 +76,15 @@ test('current inline shell, runtime and watchdog module have no duplicate global
   assert.deepEqual(duplicates, [], `duplicate declarations: ${JSON.stringify(duplicates)}`);
 });
 
-test('v2.3.46 keeps watchdog status rendering modular and cache-busted', () => {
+test('v2.3.47 keeps watchdog status rendering modular and cache-busted', () => {
   const shell = read('index.html');
   const panel = read('assets/runtime-watchdog-panel.js');
-  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.46/);
+  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.47/);
   assert.match(panel, /data-watchdog-tab="open"[^]*Resolved Fixes/);
   assert.match(panel, /RESOLVED_SKILL_FOLDERS/);
 });
 
-test('v2.3.46 keeps AURA open-stock resolution scoped and deterministic', () => {
+test('v2.3.47 keeps AURA open-stock resolution scoped and deterministic', () => {
   const appRuntime = read('assets/app-runtime.js');
   const runtime = appRuntime.slice(0, appRuntime.indexOf('async function openAuraQueryAction'));
   const appApi = read('supabase/functions/app-api/index.ts');
@@ -96,7 +96,7 @@ test('v2.3.46 keeps AURA open-stock resolution scoped and deterministic', () => 
   assert.match(router, /scopeAuraOpenStock[^]*strictInventoryIdentityMatch[^]*seasonLevelOpenStockTotal/);
 });
 
-test('v2.3.46 keeps Bunch Notes flexible without picker paging or option lock-in', () => {
+test('v2.3.47 keeps Bunch Notes flexible without picker paging or option lock-in', () => {
   const bunchNote = read('assets/bunch-note.js');
   const styles = read('assets/bunch-note.css');
   const cardBoard = read('components/bunch-notes/CardBoard.jsx');
@@ -114,6 +114,24 @@ test('v2.3.46 keeps Bunch Notes flexible without picker paging or option lock-in
   assert.match(cardBoard, /const listId = `bn-board-/);
   assert.match(styles, /background:rgba\(234,179,8,\.14\);border:1\.5px solid #facc15;color:#fef08a;font-weight:600/);
   assert.match(appApi, /cleanBunchNoteText\(entry\.work_type[^]*purpose_thread[^]*default_house_plan[^]*schedule_banner[^]*direction/);
+});
+
+test('v2.3.47 release governance prevents JWT gateway login lockout', () => {
+  const config = read('supabase/config.toml');
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const agents = read('AGENTS.md');
+  const workflow = read('.github/workflows/pages-static.yml');
+  const probe = read('scripts/probe-production-login.mjs');
+  assert.match(config, /\[functions\.app-api\][^[]*verify_jwt\s*=\s*false/);
+  assert.match(config, /\[functions\.aura-llm-router\][^[]*verify_jwt\s*=\s*false/);
+  assert.match(runtime, /PRELOGIN_BACKGROUND_ACTIONS[^]*isLoginScreenVisible[^]*expectedPreLoginAuthFailure/);
+  assert.doesNotMatch(runtime, /\['navigation_preferences', 'get_user_preferences', 'user_access'/);
+  assert.doesNotMatch(runtime, /Login service unavailable/);
+  assert.match(appApi, /if \(action === "login"\) return await handleLogin\(payload, req\)/);
+  assert.match(agents, /--no-verify-jwt[^]*breaks access-code login/);
+  assert.match(workflow, /PRODUCTION_SUPABASE_SERVICE_ROLE_KEY[^]*probe-production-login\.mjs/);
+  assert.match(probe, /production_access_code_login_failed[^]*production_user_access_failed[^]*production_native_session_bridge_failed/);
 });
 
 test('ten architecture clusters and twelve registered skills stay synchronized with source layout', () => {
@@ -139,9 +157,9 @@ test('ten architecture clusters and twelve registered skills stay synchronized w
   const moduleTags = [...html.matchAll(/<script\b([^>]*\bdata-runtime-watchdog-panel\b[^>]*)><\/script>/gi)];
   assert.deepEqual(layout.classicModules, ['assets/runtime-watchdog-panel.js']);
   assert.equal(moduleTags.length, layout.classicModules.length);
-  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.46"`));
+  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.47"`));
   assert.ok(html.indexOf('data-runtime-watchdog-panel') < html.indexOf('id="app-script-source"'), 'watchdog module loads before app runtime');
-  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.46"/);
+  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.47"/);
   assert.equal(layout.classicRuntime, 'assets/app-runtime.js');
   assert.equal(INDEX_HTML_BUDGET.maxLines, 3000);
 });

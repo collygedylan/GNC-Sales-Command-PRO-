@@ -33,24 +33,42 @@ test('shell layout has explicit desktop and mobile structural rules independent 
   for (const label of ['Menu', 'Home', 'Drive', 'Docks', 'Que', 'Bloom', 'Comm']) assert.ok(shell.includes(`<span>${label}</span>`));
 });
 
-test('v2.3.46 assets and worker upgrade purge previous cache generations', () => {
+test('v2.3.47 assets and worker upgrade purge previous cache generations', () => {
   const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
-    assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.46', match[1]);
+    assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.47', match[1]);
   }
-  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.46-r2'/);
+  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.47'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
-  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.46-r2' });
+  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.47' });
   vm.runInContext(sw.match(/function isRetiredRootCacheName\([^]*?^}/m)[0], ctx);
-  for (const key of ['agdata-v2.3.34', 'agdata-v2.3.43', 'agdata-v2.3.46', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'ag-data-runtime-images-v2', 'legacy-shell']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);
-  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.46-r2'), false);
+  for (const key of ['agdata-v2.3.34', 'agdata-v2.3.43', 'agdata-v2.3.46', 'agdata-v2.3.46-r2', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'ag-data-runtime-images-v2', 'legacy-shell']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);
+  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.47'), false);
   const worker = vm.createContext({ self: { addEventListener() {}, location: { href: 'https://agmetricapp.com/sw.js', origin: 'https://agmetricapp.com' }, registration: { scope: 'https://agmetricapp.com/' } }, URL });
   vm.runInContext(sw + '\nglobalThis.assets = ASSETS_TO_CACHE;', worker);
-  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.46', asset);
+  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.47', asset);
   const build = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
   assert.match(build, /shellStylesheetMarkup\(`\.\/assets\/live-app-styles-base/);
   assert.match(build, /shellStylesheetMarkup\(pilotStylesheetHref\)/);
+});
+
+test('v2.3.47 keeps access-code login and native bridging reachable before profile hydration', () => {
+  const config = readFileSync(new URL('../supabase/config.toml', import.meta.url), 'utf8');
+  const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+  const agents = readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
+  const workflow = readFileSync(new URL('../.github/workflows/pages-static.yml', import.meta.url), 'utf8');
+  const probe = readFileSync(new URL('../scripts/probe-production-login.mjs', import.meta.url), 'utf8');
+  assert.match(config, /\[functions\.app-api\][^[]*verify_jwt\s*=\s*false/);
+  assert.match(config, /\[functions\.aura-llm-router\][^[]*verify_jwt\s*=\s*false/);
+  const profileless = appApi.match(/function profilelessActionResponse\([^]*?^}/m)?.[0] || '';
+  assert.doesNotMatch(profileless, /user_access|native_session_bridge/);
+  assert.match(appApi, /if \(action === "login"\) return await handleLogin\(payload, req\);[^]*resolveZeroTrustRequestContext/);
+  assert.match(runtimeSource, /PRELOGIN_BACKGROUND_ACTIONS = new Set\(\['navigation_preferences', 'get_user_preferences', 'request_work'\]\)/);
+  assert.doesNotMatch(runtimeSource, /Login service unavailable/);
+  assert.match(agents, /Deploy `app-api` and `aura-llm-router` only with `supabase functions deploy <name> --no-verify-jwt`/);
+  assert.match(workflow, /Verify live access-code and native session login[^]*node scripts\/probe-production-login\.mjs/);
+  assert.match(probe, /username = 'dylan_collyge'[^]*action: 'login'[^]*action: 'user_access'[^]*action: 'native_session_bridge'/);
 });
 const watchdogPanelContext = {};
 vm.runInNewContext(readFileSync(new URL('../assets/runtime-watchdog-panel.js', import.meta.url), 'utf8'), watchdogPanelContext);

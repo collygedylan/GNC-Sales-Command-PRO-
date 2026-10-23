@@ -378,11 +378,9 @@ function errorResponse(message: string, status = 400, extra: Record<string, unkn
 function profilelessActionResponse(action: string, payload: Record<string, unknown>): Response | null {
   if (action === "navigation_preferences") return jsonResponse({ ok: true, data: null, retained: true, profilePending: true });
   if (action === "get_user_preferences" || action === "live_pilot_bootstrap") return jsonResponse({ ok: true, eligible: false, monitoringEligible: false, flags: {}, preferences: null, monitoring: null, retained: true, profilePending: true });
-  if (action === "user_access") return jsonResponse({ ok: true, data: null, retained: true, profilePending: true });
   if (action === "request_work") return String(payload.operation || "") === "capabilities"
     ? jsonResponse({ ok: true, data: { canViewQueue: false, canEditRequest: false, retained: true }, retained: true, profilePending: true })
     : transientOkResponse("REQUEST_WORK_PROFILE_PENDING", "Request work is waiting for the active profile.");
-  if (action === "native_session_bridge") return jsonResponse({ ok: true, session: null, retained: true, profilePending: true });
   return null;
 }
 

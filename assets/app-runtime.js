@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.46';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.47';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21258,30 +21258,26 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return '';
         }
 
-        function hasActiveAppApiProfile() {
-            const username = String(currentUser || '').trim().toLowerCase();
-            return !!(username && nativeAuthSessionActive === true && nativeAuthProfile?.id
-                && nativeAuthSessionUserId === nativeAuthProfile.id
-                && String(nativeAuthProfile.username || '').trim().toLowerCase() === username
-                && nativeAuthProfile.active !== false && !nativeAuthProfile.disabled_at
-                && nativeAuthProfile.must_change_password !== true);
+        const PRELOGIN_BACKGROUND_ACTIONS = new Set(['navigation_preferences', 'get_user_preferences', 'request_work']);
+
+        function isLoginScreenVisible() {
+            const loginView = document.getElementById('view-login');
+            return !!loginView && loginView.hidden !== true && !loginView.classList?.contains('hidden') && loginView.style?.display !== 'none';
         }
 
-        function profilelessAppApiFallback(body = {}) {
+        function preLoginBackgroundFallback(body = {}) {
             const action = String(body.action || '').trim().toLowerCase();
-            if (action === 'navigation_preferences' || action === 'user_access') return { ok: false, data: null, retained: true, profilePending: true };
+            if (action === 'navigation_preferences') return { ok: false, data: null, retained: true, profilePending: true };
             if (action === 'request_work') return String(body.operation || '') === 'capabilities'
                 ? { ok: true, data: { canViewQueue: false, canEditRequest: false, retained: true }, retained: true, profilePending: true }
                 : { ok: false, data: null, retained: true, retryable: true, profilePending: true };
-            if (action === 'native_session_bridge') return { ok: true, session: null, retained: true, profilePending: true };
             return { ok: true, eligible: false, monitoringEligible: false, flags: {}, preferences: null, monitoring: null, retained: true, profilePending: true };
         }
 
         async function postAppFunctionJson(url, body, options = {}) {
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const action = String(body?.action || '').trim().toLowerCase();
-            if (new Set(['navigation_preferences', 'get_user_preferences', 'user_access', 'request_work', 'native_session_bridge']).has(action)
-                && !hasActiveAppApiProfile()) return profilelessAppApiFallback(body);
+            if (PRELOGIN_BACKGROUND_ACTIONS.has(action) && isLoginScreenVisible()) return preLoginBackgroundFallback(body);
             const headers = { 'Content-Type': 'application/json' };
             if (SUPABASE_KEY) {
                 headers['apikey'] = SUPABASE_KEY;
@@ -21306,7 +21302,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }
             if (!response.ok) {
                 const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
-                if (body?.action !== 'watchdog_log_event') window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: `${String(body?.action || safeOptions.label || 'app-api')} returned ${response.status}: ${message}` });
+                const expectedPreLoginAuthFailure = response.status === 401 && isLoginScreenVisible();
+                if (body?.action !== 'watchdog_log_event' && !expectedPreLoginAuthFailure) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: `${String(body?.action || safeOptions.label || 'app-api')} returned ${response.status}: ${message}` });
                 const err = new Error(message || `Request failed (${response.status})`);
                 err.status = response.status;
                 err.requestId = response.headers?.get('x-request-id') || safeOptions.requestId || '';
@@ -23006,7 +23003,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 if (navigator.onLine === false) {
                     return { ok: false, reason: 'network', error: new Error('No network connection.') };
                 }
-                return { ok: false, reason: 'network', error: new Error('Login service unavailable.') };
+                return { ok: false, reason: 'network', error: new Error('Could not reach the login service. Check your connection and try again.') };
             } catch (e) {
                 return { ok: false, reason: 'network', error: e };
             } finally {
@@ -26127,7 +26124,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.46').trim() || 'AgData v2.3.46';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.47').trim() || 'AgData v2.3.47';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

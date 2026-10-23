@@ -425,6 +425,11 @@ jobs:
           CANARY_WAIT_TIMEOUT_MS: '600000'
           CANARY_WAIT_INTERVAL_MS: '5000'
         run: node scripts/wait-for-live-release.mjs
+      - name: Verify live access-code and native session login
+        env:
+          PRODUCTION_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/probe-production-login.mjs
       - name: Report the verified live version
         run: |
           version=$(node --input-type=module -e "import { readExpectedRelease } from './scripts/deployment-fingerprint-lib.mjs'; console.log(await readExpectedRelease());")
