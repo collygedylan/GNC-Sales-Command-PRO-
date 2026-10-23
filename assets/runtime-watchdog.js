@@ -36,10 +36,12 @@
     try {
       const parsed = JSON.parse(global.localStorage?.getItem(reportStorageKey(owner)) || '[]');
       if (!Array.isArray(parsed)) return;
+      const currentVersion = String(global.__APP_RELEASE_VERSION__ || '');
       state.reportQueue = parsed.filter(event => event && typeof event === 'object' && !Array.isArray(event)
         && String(event.username || '').trim().toLowerCase() === owner && String(event.fingerprint || '')
-        && String(event.app_version || '')).slice(-MAX_QUEUED_REPORTS);
+        && String(event.app_version || '') && (!currentVersion || String(event.app_version) === currentVersion)).slice(-MAX_QUEUED_REPORTS);
       state.reportQueue.forEach(event => state.seen.add(reportKey(event)));
+      if (state.reportQueue.length !== parsed.length) persistReportQueue();
     } catch (_) { state.reportQueue = []; }
   }
   function scheduleReportRetry() {
@@ -118,6 +120,11 @@
     return [...root.querySelectorAll('*')].some(node => node.children.length === 0 && isVisibleParityNode(node)
       && /^Loading(?:\.{3}|\u2026)$/i.test(String(node.textContent || '').trim()));
   }
+  function findVisibleLoadingIndicator(root) {
+    return [...root.querySelectorAll('.skeleton, .skeleton-bar, [aria-busy="true"], .loading, [data-loading="true"]')]
+      .find(isVisibleParityNode) || [...root.querySelectorAll('*')].find(node => node.children.length === 0 && isVisibleParityNode(node)
+        && /LOADING DATA\.\.\./i.test(node.textContent || ''));
+  }
   function inspectDataParity(root, current, currentSubModule) {
     const eval2 = current === 'managers' && currentSubModule === 'eval-reports-2';
     const waiting = eval2 && !document.hidden && hasEvalLoadingText(root);
@@ -165,13 +172,12 @@
     inspectDataParity(root, current, currentSubModule);
     const key = `${current}:${currentSubModule}`;
     if (key !== state.viewKey) { state.viewKey = key; state.viewVisitId++; state.viewStartedAt = Date.now(); }
-    const waiting = root.querySelector('.skeleton, .skeleton-bar, [aria-busy="true"], .loading, [data-loading="true"]') ||
-      [...root.querySelectorAll('*')].find(node => node.children.length === 0 && /LOADING DATA\.\.\./i.test(node.textContent || ''));
+    const waiting = findVisibleLoadingIndicator(root);
     if (waiting) {
       if (!state.pending.has(key)) state.pending.set(key, setTimeout(() => {
         state.pending.delete(key);
         const nextRoot = document.getElementById(`view-${current}`) || document.body;
-        if (view() === current && (nextRoot.querySelector('.skeleton, .skeleton-bar, [aria-busy="true"], .loading, [data-loading="true"]') || /LOADING DATA\.\.\./i.test(nextRoot.textContent || ''))) record('VIEW_LOAD_STALL', { view_id: current, sub_module: subModule(), duration_ms: STALL_MS, error_message: 'Loading indicator persisted beyond 4000ms' });
+        if (view() === current && findVisibleLoadingIndicator(nextRoot)) record('VIEW_LOAD_STALL', { view_id: current, sub_module: subModule(), duration_ms: STALL_MS, error_message: 'Loading indicator persisted beyond 4000ms' });
       }, STALL_MS));
     } else {
       if (state.pending.has(key)) { clearTimeout(state.pending.get(key)); state.pending.delete(key); }
