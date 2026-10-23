@@ -69555,7 +69555,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function salesIntelligenceRequiredDataReady() {
             const inventoryRows = typeof selectAvSalesInventorySourceRows === 'function' ? selectAvSalesInventorySourceRows() : fullInventory;
             return Array.isArray(inventoryRows) && inventoryRows.length > 0
-                && ['master', 'soc', 'reserves'].every((key) => isDatasetLoaded(key, 'full'));
+                && isDatasetLoaded('master', 'full');
         }
 
         function warmSalesIntelligenceData() {
@@ -69633,7 +69633,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function getSalesIntelligenceQuantity(row = null) {
             return Math.max(0, getSalesIntelligenceNumber(firstNonEmptyValue(row && row.QUANTITYORDERED, row && row.quantityordered, row && row.ORDER_QTY, row && row.order_qty,
-                row && row.REQ_QTY, row && row.req_qty, row && row.RESERVE_QTY, row && row.reserve_qty, row && row.PTRAVAILABLE, row && row.ptravailable, 0), 0));
+                row && row.REQ_QTY, row && row.req_qty, row && row.RESERVE_QTY, row && row.reserve_qty, row && row.QUANTITY, row && row.quantity,
+                row && row.PTRAVAILABLE, row && row.ptravailable, 0), 0));
         }
 
         function formatSalesIntelligenceMoney(value = 0) {
@@ -69657,6 +69658,31 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return salesIntelligenceMode || (isAdmin ? 'admin' : 'rep');
         }
 
+        function buildSalesIntelligenceCoverage(demandFacts = [], inventoryFacts = [], options = {}) {
+            const activeDemand = (Array.isArray(demandFacts) ? demandFacts : [])
+                .filter((fact) => ['SOC', 'Reserves'].includes(fact.source) && fact.quantity > 0);
+            const demandCoverage = {
+                units: activeDemand.reduce((sum, fact) => sum + fact.quantity, 0),
+                value: activeDemand.reduce((sum, fact) => sum + fact.quantity * fact.listPrice, 0),
+                rowCount: activeDemand.length,
+                source: 'Active SOC / Reserves',
+                context: 'Active SOC and reserve order quantities'
+            };
+            const fallbackFacts = (Array.isArray(inventoryFacts) ? inventoryFacts : []).map((fact) => ({
+                ...fact,
+                coverageUnits: Math.max(0, fact.onHand - fact.available) + Math.max(0, fact.review)
+            })).filter((fact) => fact.coverageUnits > 0 && fact.listPrice > 0);
+            const fallbackCoverage = {
+                units: fallbackFacts.reduce((sum, fact) => sum + fact.coverageUnits, 0),
+                value: fallbackFacts.reduce((sum, fact) => sum + fact.coverageUnits * fact.listPrice, 0),
+                rowCount: fallbackFacts.length,
+                source: 'DriveAround committed / review fallback',
+                context: 'Committed (On Hand - Available) plus Review while SOC / Reserves hydrate'
+            };
+            const demandIncomplete = options.socLoaded !== true || options.reservesLoaded !== true;
+            return demandIncomplete && fallbackCoverage.value > demandCoverage.value ? fallbackCoverage : demandCoverage;
+        }
+
         function buildSalesIntelligenceModel() {
             const key = [getSupabaseReadIdentityScope(), 'master', 'soc', 'reserves', 'requests', 'customerRepMap']
                 .map((value) => value === 'master' || value === 'soc' || value === 'reserves' || value === 'requests' || value === 'customerRepMap' ? getDatasetLoadSignature(value) : value).join('|');
@@ -69671,18 +69697,20 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (!itemCode) return;
                 const group = getSalesIntelligencePlantGroup(row);
                 const size = getSalesIntelligenceSize(row);
-                const available = getSalesIntelligenceNumber(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, 0), 0);
-                const onHand = getSalesIntelligenceNumber(firstNonEmptyValue(row.PTRONHAND, row.ptronhand, available, 0), 0);
+                const available = getSalesIntelligenceNumber(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, row.AVAILABLE, row.available, 0), 0);
+                const onHand = getSalesIntelligenceNumber(firstNonEmptyValue(row.PTRONHAND, row.ptronhand, row.ONHAND, row.onhand, available, 0), 0);
+                const review = getSalesIntelligenceNumber(firstNonEmptyValue(row.PTRREVIEWED, row.ptrreviewed, row.PTRREVIEW, row.ptrreview, row.REVIEW, row.review, 0), 0);
                 const openStock = getSalesIntelligenceOpenStock(row);
                 const listPrice = getSalesIntelligencePrice(row);
                 const season = getAvSalesSeasonValue(row);
                 const salesYear = getAvSalesYearNumber(row);
-                const holdText = String(firstNonEmptyValue(row.HOLDSTOPCODE, row.holdstopcode, row.HOLSTOPCODE, row.HOLDSTOPREASON, row.holdstopreason, '') || '').trim();
+                const holdText = String(firstNonEmptyValue(row.HOLDSTOPCODE, row.holdstopcode, row.HOLSTOPCODE, row.HOLDSTOPREASON, row.holdstopreason,
+                    row.HOLDREASON, row.holdreason, '') || '').trim();
                 const photoQty = getSalesIntelligenceNumber(firstNonEmptyValue(row.LOC_MATCH_QTY, row.loc_match_qty, row.MATCH, row.match, 0), 0);
                 const photoReady = photoQty > 0 || !!firstNonEmptyValue(row.PHOTO_LINK, row.photo_link, row.ROW_PHOTO_LINK, row.row_photo_link, '');
                 const timestamp = getSalesIntelligenceTimestamp(row);
-                const fact = { row, itemCode, group, size, available, onHand, openStock, listPrice, season, salesYear, timestamp,
-                    hold: /^h(?:old)?$/i.test(holdText) || /^shear/i.test(holdText), photoReady,
+                const fact = { row, itemCode, group, size, available, onHand, review, openStock, listPrice, season, salesYear, timestamp,
+                    hold: !!holdText && !/^(?:0|no|none|false)$/i.test(holdText), photoReady,
                     specReady: !!String(firstNonEmptyValue(row.SPEC, row.spec, row.ITEMSPEC, row.itemspec, '') || '').trim() };
                 inventoryFacts.push(fact);
                 if (!inventoryByItem.has(itemCode)) inventoryByItem.set(itemCode, []);
@@ -69700,7 +69728,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             let reservesTimestamp = 0;
             const appendDemand = (rows, source) => (Array.isArray(rows) ? rows : []).forEach((row) => {
                 const itemCode = getSalesIntelligenceItemCode(row);
-                const inventoryFact = (inventoryByItem.get(itemCode) || [])[0];
+                const inventoryFact = (inventoryByItem.get(itemCode) || []).slice().sort((left, right) => right.listPrice - left.listPrice)[0];
                 const group = getSalesIntelligencePlantGroup(row) === 'Unassigned' && inventoryFact ? inventoryFact.group : getSalesIntelligencePlantGroup(row);
                 const rep = getSalesIntelligenceRep(row);
                 const state = getSalesIntelligenceState(row);
@@ -69748,16 +69776,19 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const s1Facts = inventoryFacts.filter((fact) => fact.season === 'S1' && fact.salesYear === SALES_INTELLIGENCE_TARGET_YEAR);
             const horizonFacts = inventoryFacts.filter((fact) => fact.salesYear == null || fact.salesYear < SALES_INTELLIGENCE_TARGET_YEAR
                 || fact.salesYear === SALES_INTELLIGENCE_TARGET_YEAR && ['F1','S1','U1','U2'].includes(fact.season));
-            const activeDemand = demandFacts.filter((fact) => fact.quantity > 0);
+            const trappedFacts = horizonFacts.filter((fact) => fact.hold);
+            const coverage = buildSalesIntelligenceCoverage(demandFacts, inventoryFacts, {
+                socLoaded: isDatasetLoaded('soc', 'full'), reservesLoaded: isDatasetLoaded('reserves', 'full')
+            });
             const totals = {
                 f1Units: f1Facts.reduce((sum, fact) => sum + Math.max(0, fact.openStock), 0),
                 f1Value: f1Facts.reduce((sum, fact) => sum + Math.max(0, fact.openStock) * fact.listPrice, 0),
                 s1Units: s1Facts.reduce((sum, fact) => sum + Math.max(0, fact.available), 0),
                 s1Value: s1Facts.reduce((sum, fact) => sum + Math.max(0, fact.available) * fact.listPrice, 0),
-                trappedUnits: horizonFacts.filter((fact) => fact.hold).reduce((sum, fact) => sum + Math.max(0, fact.onHand), 0),
-                trappedValue: horizonFacts.filter((fact) => fact.hold).reduce((sum, fact) => sum + Math.max(0, fact.onHand) * fact.listPrice, 0),
-                coverageUnits: activeDemand.reduce((sum, fact) => sum + fact.quantity, 0),
-                coverageValue: activeDemand.reduce((sum, fact) => sum + fact.quantity * fact.listPrice, 0)
+                trappedUnits: trappedFacts.reduce((sum, fact) => sum + Math.max(0, fact.onHand), 0),
+                trappedValue: trappedFacts.reduce((sum, fact) => sum + Math.max(0, fact.onHand) * fact.listPrice, 0),
+                coverageUnits: coverage.units,
+                coverageValue: coverage.value
             };
             const moveCards = [];
             const inventoryGroups = new Map();
@@ -69778,36 +69809,41 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     moveCards.push({ type: 'move-up', title: 'MOVE UP OPPORTUNITY', itemCode: representative.itemCode, group: representative.group, size: representative.size,
                         row: representative.row, units, value: units * representative.listPrice, states: new Set(demand.map((fact) => fact.state).filter(Boolean)),
                         reps: new Set(demand.map((fact) => fact.rep).filter(Boolean)), source: 'DriveAround', timestamp: Math.max(...facts.map((fact) => fact.timestamp), driveTimestamp),
+                        rowCount: facts.length, context: '27.S1 available while <= 27.F1 Open Stock is low',
                         summary: `27.S1 has ${Math.round(nextAvailable).toLocaleString()} available while <= 27.F1 Open Stock is ${Math.round(currentOpen).toLocaleString()}.`,
                         calculation: `${Math.round(units).toLocaleString()} units × ${formatSalesIntelligenceMoney(representative.listPrice)} = ${formatSalesIntelligenceMoney(units * representative.listPrice)}` });
                 }
                 const demand = (demandByItem.get(facts[0].itemCode) || []).filter((fact) => fact.quantity > 0);
                 const bottlenecks = facts.filter((fact) => (fact.hold || !fact.photoReady) && fact.onHand > 0 && fact.listPrice > 0);
-                if (demand.length && bottlenecks.length) {
+                if (bottlenecks.length) {
                     const representative = bottlenecks.slice().sort((left, right) => right.onHand * right.listPrice - left.onHand * left.listPrice)[0];
                     const units = bottlenecks.reduce((sum, fact) => sum + Math.max(0, fact.onHand), 0);
                     const value = bottlenecks.reduce((sum, fact) => sum + Math.max(0, fact.onHand) * fact.listPrice, 0);
                     moveCards.push({ type: 'hold', title: 'HOLD / PHOTO BOTTLENECK', itemCode: representative.itemCode, group: representative.group, size: representative.size,
                         row: representative.row, units, value, states: new Set(demand.map((fact) => fact.state).filter(Boolean)), reps: new Set(demand.map((fact) => fact.rep).filter(Boolean)),
-                        source: 'DriveAround + SOC / Reserves', timestamp: Math.max(representative.timestamp, ...demand.map((fact) => fact.timestamp)),
-                        summary: `${representative.hold ? 'Hold/Stop inventory' : 'Missing photo coverage'} is blocking ${Math.round(units).toLocaleString()} on-hand units with active demand.`,
-                        calculation: `${Math.round(units).toLocaleString()} units × blended list price = ${formatSalesIntelligenceMoney(value)}` });
+                        source: demand.length ? 'DriveAround + SOC / Reserves' : 'DriveAround', timestamp: Math.max(representative.timestamp, ...demand.map((fact) => fact.timestamp), 0),
+                        rowCount: bottlenecks.length, context: 'Hold/Stop code or missing photo with On Hand > 0',
+                        summary: `${representative.hold ? 'Hold/Stop inventory' : 'Missing photo coverage'} is blocking ${Math.round(units).toLocaleString()} on-hand units${demand.length ? ' with active demand' : ''}.`,
+                        calculation: `${Math.round(units).toLocaleString()} units × ${formatSalesIntelligenceMoney(units ? value / units : 0)} Avg/List Price = ${formatSalesIntelligenceMoney(value)}` });
                 }
-                const geoFacts = currentFacts.filter((fact) => fact.openStock > 25 && fact.photoReady && fact.listPrice > 0);
+                const geoFacts = currentFacts.filter((fact) => fact.openStock > 0 && fact.available > 0 && fact.listPrice > 0);
                 const geoDemand = demandByGroup.get(normalizeRepMatchToken(facts[0].group)) || [];
-                if (geoFacts.length && geoDemand.length) {
+                if (geoFacts.length) {
                     const representative = geoFacts.slice().sort((left, right) => right.openStock * right.listPrice - left.openStock * left.listPrice)[0];
                     const units = geoFacts.reduce((sum, fact) => sum + Math.max(0, fact.openStock), 0);
                     const value = geoFacts.reduce((sum, fact) => sum + Math.max(0, fact.openStock) * fact.listPrice, 0);
+                    const topStates = Array.from(new Set(geoDemand.map((fact) => fact.state).filter(Boolean))).slice(0, 4);
                     moveCards.push({ type: 'geo', title: 'GEO SURPLUS PUSH', itemCode: representative.itemCode, group: representative.group, size: representative.size,
-                        row: representative.row, units, value, states: new Set(geoDemand.map((fact) => fact.state).filter(Boolean)), reps: new Set(geoDemand.map((fact) => fact.rep).filter(Boolean)),
-                        source: 'DriveAround + SOC / Reserves', timestamp: Math.max(representative.timestamp, ...geoDemand.map((fact) => fact.timestamp)),
-                        summary: `${Math.round(units).toLocaleString()} photo-ready <= 27.F1 Open Stock units match demand in ${Array.from(new Set(geoDemand.map((fact) => fact.state).filter(Boolean))).slice(0, 4).join(', ') || 'mapped territories'}.`,
-                        calculation: `${Math.round(units).toLocaleString()} units × blended list price = ${formatSalesIntelligenceMoney(value)}` });
+                        row: representative.row, units, value, states: new Set(topStates), reps: new Set(geoDemand.map((fact) => fact.rep).filter(Boolean)),
+                        source: geoDemand.length ? 'DriveAround + SOC / Reserves' : 'DriveAround', timestamp: Math.max(representative.timestamp, ...geoDemand.map((fact) => fact.timestamp), 0),
+                        rowCount: geoFacts.length, context: '<= 27.F1 with Open Stock > 0 and Available > 0',
+                        summary: `${Math.round(units).toLocaleString()} <= 27.F1 Open Stock units are available${topStates.length ? ` for priority territories ${topStates.join(', ')}` : ' for mapped-territory targeting'}.`,
+                        calculation: `${Math.round(units).toLocaleString()} units × ${formatSalesIntelligenceMoney(units ? value / units : 0)} Avg/List Price = ${formatSalesIntelligenceMoney(value)}` });
                 }
             });
             moveCards.sort((left, right) => right.value - left.value);
             const model = { inventoryFacts, inventoryByItem, demandFacts, demandByItem, demandByGroup, repOptions, stateOptions, repTerritories, plantOptions, totals, moveCards,
+                traceRows: { f1: f1Facts.length, s1: s1Facts.length, trapped: trappedFacts.length, coverage: coverage.rowCount }, coverage,
                 timestamps: { drive: driveTimestamp, soc: socTimestamp, reserves: reservesTimestamp } };
             salesIntelligenceCache = { key, model };
             return model;
@@ -69869,12 +69905,27 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function buildSalesIntelligenceTraceHtml(card = {}) {
-            const context = `Season ${card.row ? getAvSalesSeasonValue(card.row) || 'F1' : 'F1'}, SY ${card.row ? getAvSalesYearNumber(card.row) ?? '<= 27' : '<= 27'}`;
-            return `<details class="sales-intelligence-trace"><summary><i class="ph-bold ph-seal-check"></i> Verified Trace</summary><ol>
-                <li><strong>Step 1: Context</strong><span>${escapeHtml(context)}</span></li>
-                <li><strong>Step 2: Source</strong><span>${escapeHtml(card.source || 'DriveAround / SOC / Reserves')} · ${escapeHtml(formatSalesIntelligenceTimestamp(card.timestamp || 0))}</span></li>
-                <li><strong>Step 3: Double-Checked</strong><span>${escapeHtml(card.calculation || `${Math.round(card.units || 0).toLocaleString()} units × List Price = ${formatSalesIntelligenceMoney(card.value || 0)}`)}</span></li>
-            </ol></details>`;
+            const context = card.context || `Season ${card.row ? getAvSalesSeasonValue(card.row) || 'F1' : 'F1'}, SY ${card.row ? getAvSalesYearNumber(card.row) ?? '<= 27' : '<= 27'}`;
+            const units = Math.max(0, Number(card.units) || 0);
+            const value = Math.max(0, Number(card.value) || 0);
+            const rowCount = Math.max(0, Number(card.rowCount) || (card.row ? 1 : 0));
+            const calculation = card.calculation || `${Math.round(units).toLocaleString()} units × ${formatSalesIntelligenceMoney(units ? value / units : 0)} Avg/List Price = ${formatSalesIntelligenceMoney(value)}`;
+            return `<div class="sales-intelligence-trace"><button type="button" class="sales-intelligence-trace-toggle" aria-expanded="false" onclick="return toggleSalesIntelligenceTrace(this)"><i class="ph-bold ph-seal-check"></i> Verified Trace</button><ol data-sales-intelligence-trace-body hidden>
+                <li><strong>Step 1 (Context)</strong><span>${escapeHtml(context)}</span></li>
+                <li><strong>Step 2 (Source)</strong><span>${escapeHtml(card.source || 'DriveAround / SOC / Reserves')} · ${rowCount.toLocaleString()} rows · ${escapeHtml(formatSalesIntelligenceTimestamp(card.timestamp || 0))}</span></li>
+                <li><strong>Step 3 (Double-Check)</strong><span>${escapeHtml(calculation)}</span></li>
+            </ol></div>`;
+        }
+
+        function toggleSalesIntelligenceTrace(button) {
+            const trace = button && button.closest ? button.closest('.sales-intelligence-trace') : null;
+            const body = trace && trace.querySelector('[data-sales-intelligence-trace-body]');
+            if (!trace || !body) return false;
+            const expanded = button.getAttribute('aria-expanded') === 'true';
+            button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+            body.hidden = expanded;
+            trace.classList.toggle('is-open', !expanded);
+            return false;
         }
 
         function registerSalesIntelligenceAction(card = {}) {
@@ -69902,8 +69953,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             </article>`;
         }
 
-        function renderSalesIntelligenceKpi(label, units, value, source, timestamp) {
-            return `<article class="sales-intelligence-kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(formatSalesIntelligenceMoney(value))}</strong><small>${Math.round(units || 0).toLocaleString()} units</small>${buildSalesIntelligenceTraceHtml({ units, value, source, timestamp })}</article>`;
+        function renderSalesIntelligenceKpi(label, units, value, source, timestamp, details = {}) {
+            return `<article class="sales-intelligence-kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(formatSalesIntelligenceMoney(value))}</strong><small>${Math.round(units || 0).toLocaleString()} units</small>${buildSalesIntelligenceTraceHtml({ units, value, source, timestamp, ...details })}</article>`;
+        }
+
+        function prioritizeSalesIntelligenceCards(cards = [], limit = 30) {
+            const sorted = (Array.isArray(cards) ? cards : []).slice().sort((left, right) => right.value - left.value);
+            const leaders = ['move-up', 'hold', 'geo'].map((type) => sorted.find((card) => card.type === type)).filter(Boolean);
+            const leaderSet = new Set(leaders);
+            return [...leaders, ...sorted.filter((card) => !leaderSet.has(card))].slice(0, limit);
         }
 
         function getSalesIntelligenceSelectedRep(model) {
@@ -69942,7 +70000,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const selectedRep = getSalesIntelligenceSelectedRep(model);
             if (!salesIntelligenceFilters.rep && mode === 'rep') salesIntelligenceFilters.rep = selectedRep;
             const repCards = mode === 'rep' ? buildSalesRepIntelligenceCards(model, selectedRep) : null;
-            const cards = (mode === 'admin' ? model.moveCards : [...repCards.missed, ...repCards.customers]).filter(salesIntelligenceCardMatchesFilters).slice(0, 30);
+            const filteredCards = (mode === 'admin' ? model.moveCards : [...repCards.missed, ...repCards.customers]).filter(salesIntelligenceCardMatchesFilters);
+            const cards = mode === 'admin' && salesIntelligenceFilters.move === 'all'
+                ? prioritizeSalesIntelligenceCards(filteredCards)
+                : filteredCards.slice().sort((left, right) => right.value - left.value).slice(0, 30);
             const repOptions = Array.from(model.repOptions.values()).sort((left, right) => left.localeCompare(right));
             const stateOptions = Array.from(model.stateOptions).sort();
             const plantOptions = Array.from(model.plantOptions.values()).sort((left, right) => left.label.localeCompare(right.label));
@@ -69956,10 +70017,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 <label><span>Move Type</span><select onchange="return setSalesIntelligenceFilter('move',this.value)">${(mode === 'admin' ? adminMoves : repMoves).map((entry) => option(entry.value, entry.label, salesIntelligenceFilters.move === entry.value)).join('')}</select></label>
             </div>`;
             const kpis = mode === 'admin' ? `<div class="sales-intelligence-kpi-strip" aria-label="13-Week Live Rolling Position">
-                ${renderSalesIntelligenceKpi('F1 Open Stock Value (<= 27.F1)', model.totals.f1Units, model.totals.f1Value, 'DriveAround', model.timestamps.drive)}
-                ${renderSalesIntelligenceKpi('S1 Pull-Forward Opportunity (27.S1 Ready)', model.totals.s1Units, model.totals.s1Value, 'DriveAround', model.timestamps.drive)}
-                ${renderSalesIntelligenceKpi('Trapped on Hold/Stop ($ Value)', model.totals.trappedUnits, model.totals.trappedValue, 'DriveAround', model.timestamps.drive)}
-                ${renderSalesIntelligenceKpi('Active SOC + Reserves Coverage', model.totals.coverageUnits, model.totals.coverageValue, 'SOC / Reserves', Math.max(model.timestamps.soc, model.timestamps.reserves))}
+                ${renderSalesIntelligenceKpi('F1 Open Stock Value (<= 27.F1)', model.totals.f1Units, model.totals.f1Value, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.f1, context: '<= 27.F1 Open Stock' })}
+                ${renderSalesIntelligenceKpi('S1 Pull-Forward Opportunity (27.S1 Ready)', model.totals.s1Units, model.totals.s1Value, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.s1, context: '27.S1 Available' })}
+                ${renderSalesIntelligenceKpi('Trapped on Hold/Stop ($ Value)', model.totals.trappedUnits, model.totals.trappedValue, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.trapped, context: 'Hold/Stop inventory across the active horizon' })}
+                ${renderSalesIntelligenceKpi('Active SOC + Reserves Coverage', model.totals.coverageUnits, model.totals.coverageValue, model.coverage.source, Math.max(model.timestamps.soc, model.timestamps.reserves, model.timestamps.drive), { rowCount: model.traceRows.coverage, context: model.coverage.context })}
             </div>` : `<div class="sales-intelligence-rep-summary"><strong>${escapeHtml(selectedRep || 'Sales Rep')}</strong><span>${escapeHtml(Array.from(repCards.territoryStates).sort().join(', ') || 'Mapped customer geography')}</span></div>`;
             root.innerHTML = `<section class="sales-intelligence-shell" data-sales-intelligence-mode="${escapeHtml(mode)}"><div class="sales-intelligence-heading"><div><span>Smart Sales & Inventory Move Intelligence</span><h2>${mode === 'admin' ? 'Make the Correct Move' : 'Missed Sales & Geographical Leverage'}</h2><p>Live 13-week rolling position · ${escapeHtml(SALES_INTELLIGENCE_HORIZON.join(' → '))}</p></div><div class="sales-intelligence-mode-toggle"><button type="button" class="${mode === 'admin' ? 'active' : ''}" ${isAdmin ? '' : 'disabled'} onclick="return setSalesIntelligenceMode('admin')">ADMIN / INVENTORY COMMAND</button><button type="button" class="${mode === 'rep' ? 'active' : ''}" onclick="return setSalesIntelligenceMode('rep')">SALES REP VIEW</button></div></div>${filtersHtml}${kpis}
                 <div class="sales-intelligence-section-title"><strong>${mode === 'admin' ? 'Prioritized Smart Move Cards' : 'MISSED SALES & GEO OPPORTUNITIES · MY CUSTOMERS, RESERVES & OPEN ORDERS'}</strong><span>${cards.length} prioritized</span></div>

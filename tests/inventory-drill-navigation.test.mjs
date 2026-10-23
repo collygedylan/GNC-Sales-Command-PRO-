@@ -28,22 +28,56 @@ test('v2.3.49 Smart Moves is dedicated, hydrated, valued, and fully traced', () 
   const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const shellDom = new JSDOM(shell);
   assert.match(shell, /id="view-smart-moves"[^>]*data-view="smart-moves"[^]*id="smart-moves-intelligence-panel"/);
   assert.doesNotMatch(shell, /id="sales-intelligence-panel"|id="sales-office-intelligence-panel"/);
+  assert.doesNotMatch(shellDom.window.document.getElementById('view-sales-office')?.textContent || '', /Make the Correct Move/);
+  assert.doesNotMatch(shellDom.window.document.getElementById('view-sales')?.textContent || '', /Make the Correct Move/);
   assert.match(runtime, /view: 'smart-moves'[^]*switchView\('smart-moves'\)/);
   assert.match(html, /ADMIN \/ INVENTORY COMMAND[^]*SALES REP VIEW/);
   const modelSource = source('buildSalesIntelligenceModel');
   assert.match(modelSource, /currentOpen <= 25[^]*nextAvailable > 0/);
   assert.match(modelSource, /MOVE UP OPPORTUNITY[^]*27\.S1[^]*<= 27\.F1/);
-  assert.match(modelSource, /HOLD \/ PHOTO BOTTLENECK[^]*GEO SURPLUS PUSH/);
+  assert.match(modelSource, /if \(bottlenecks\.length\)[^]*HOLD \/ PHOTO BOTTLENECK/);
+  assert.doesNotMatch(modelSource, /demand\.length && bottlenecks\.length/);
+  assert.match(modelSource, /openStock > 0 && fact\.available > 0[^]*if \(geoFacts\.length\)[^]*GEO SURPLUS PUSH/);
   assert.match(modelSource, /moveCards\.sort\(\(left, right\) => right\.value - left\.value\)/);
   assert.match(source('renderSmartMovesIntelligence'), /salesIntelligenceRequiredDataReady[^]*F1 Open Stock Value \(<= 27\.F1\)[^]*S1 Pull-Forward Opportunity \(27\.S1 Ready\)[^]*Trapped on Hold\/Stop \(\$ Value\)[^]*Active SOC \+ Reserves Coverage/);
   assert.match(source('warmSalesIntelligenceData'), /\['master', 'soc', 'reserves'\][^]*ensureDatasetLoaded\(key, 'full'/);
-  assert.match(runtime, /function buildSalesIntelligenceTraceHtml[^]*Step 1: Context[^]*Step 2: Source[^]*Step 3: Double-Checked/);
+  assert.match(runtime, /function buildSalesIntelligenceTraceHtml[^]*sales-intelligence-trace-toggle[^]*Step 1 \(Context\)[^]*Step 2 \(Source\)[^]*rowCount\.toLocaleString[^]*Step 3 \(Double-Check\)/);
   const cardSource = source('renderSalesIntelligenceCard');
   for (const marker of ['\\$ Impact', 'Open in Reclass', '\\+ Project', 'Add to Bloom Picker', 'AURA Query']) assert.match(cardSource, new RegExp(marker));
   assert.match(styles, /\.sales-intelligence-kpi-strip[^]*\.sales-intelligence-trace[^]*@media \(max-width: 620px\)/);
-  assert.match(styles, /#view-smart-moves \.sales-intelligence-trace[^]*border: 1px solid #10b981[^]*background: #062115[^]*color: #ecfdf5/);
+  assert.match(styles, /#view-smart-moves \.sales-intelligence-trace[^]*#view-smart-moves \.sales-intelligence-action[^]*border: 1px solid #10b981[^]*background: #062115[^]*color: #ecfdf5/);
+
+  const filterContext = vm.createContext({
+    salesIntelligenceFilters: { rep: '', state: '', plant: '', move: 'hold' },
+    normalizeRepMatchToken: value => String(value || '').trim().toLowerCase()
+  });
+  vm.runInContext(source('salesIntelligenceCardMatchesFilters') + source('prioritizeSalesIntelligenceCards'), filterContext);
+  const moveCards = [{ type: 'geo', value: 54000000 }, { type: 'hold', value: 1200 }, { type: 'move-up', value: 900 }];
+  assert.deepEqual(moveCards.filter(filterContext.salesIntelligenceCardMatchesFilters).map(card => card.type), ['hold']);
+  filterContext.salesIntelligenceFilters.move = 'geo';
+  assert.deepEqual(moveCards.filter(filterContext.salesIntelligenceCardMatchesFilters).map(card => card.type), ['geo']);
+  assert.deepEqual(Array.from(filterContext.prioritizeSalesIntelligenceCards(moveCards), card => card.type), ['move-up', 'hold', 'geo']);
+
+  const coverageContext = vm.createContext({});
+  vm.runInContext(source('buildSalesIntelligenceCoverage'), coverageContext);
+  const fallbackCoverage = coverageContext.buildSalesIntelligenceCoverage([], [{ onHand: 100, available: 40, review: 10, listPrice: 10 }], { socLoaded: false, reservesLoaded: false });
+  assert.equal(fallbackCoverage.units, 70);
+  assert.equal(fallbackCoverage.value, 700);
+
+  const traceDom = new JSDOM('<div class="sales-intelligence-trace"><button aria-expanded="false"></button><ol data-sales-intelligence-trace-body hidden></ol></div>');
+  const traceContext = vm.createContext({});
+  vm.runInContext(source('toggleSalesIntelligenceTrace'), traceContext);
+  const traceButton = traceDom.window.document.querySelector('button');
+  const traceBody = traceDom.window.document.querySelector('ol');
+  traceContext.toggleSalesIntelligenceTrace(traceButton);
+  assert.equal(traceButton.getAttribute('aria-expanded'), 'true');
+  assert.equal(traceBody.hidden, false);
+  traceContext.toggleSalesIntelligenceTrace(traceButton);
+  assert.equal(traceButton.getAttribute('aria-expanded'), 'false');
+  assert.equal(traceBody.hidden, true);
 
   const totals = vm.createContext({
     parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/[$,]/g, '')),
