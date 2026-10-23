@@ -942,8 +942,10 @@ test('backend rollout verifies current main and applies migrations before deploy
   assert.match(workflow,/classifyReleasePaths\(paths\)/);
   assert.doesNotMatch(workflow, /seed-production-schedule-release|Queue the initial signed workbook import/);
   const steps = yaml.load(workflow).jobs['deploy-supabase'].steps;
+  const dependencyStep = steps.find(step => step.name === 'Install locked backend dependencies');
   const migrationStep = steps.find(step => step.name === 'Apply validated backend release migrations');
   const deployStep = steps.find(step => step.name === 'Deploy changed Edge Functions');
+  assert.equal(dependencyStep.with['node-version'],20);
   assert.equal(migrationStep.run,'node scripts/apply-item-low-stock-migration.mjs');
   assert.equal(migrationStep.env.RELEASE_MIGRATIONS,'${{ needs.authorize-backend.outputs.migrations }}');
   assert.equal(deployStep.env.RELEASE_EDGE_FUNCTIONS,"${{ needs.authorize-backend.outputs['edge-functions'] }}");

@@ -149,6 +149,8 @@ jobs:
 
       - name: Install locked backend dependencies
         uses: ./.github/actions/setup-node-dependencies
+        with:
+          node-version: 20
 
       - name: Apply validated backend release migrations
         if: needs.authorize-backend.outputs.migrations != '[]'
