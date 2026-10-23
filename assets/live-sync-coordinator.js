@@ -491,9 +491,14 @@
             if (!background) lastVerifiedAt = verifiedAtByIdentity.get(proofContextKey) ?? null;
             const emit = background ? publishBackground : (state, message = '', extra = {}) => publish(state, message, { ...extra, contextKey: proofContextKey });
             if (ctx.online === false) { emit('Offline', 'Showing the last verified data, if available.'); return false; }
-            if (ctx.authenticated === false || ctx.accessDenied === true) {
+            if (ctx.accessDenied === true && ctx.accessDeniedConfirmed !== false) {
                 discardAppliedAfterDenial(ctx, { status: 403 });
                 emit('Needs attention', 'Access to this screen has been revoked.', { authorizationDenied: true, status: 403 });
+                return false;
+            }
+            if (ctx.authenticated === false) {
+                retainDisplay(ctx);
+                emit('Refreshing', 'Keeping the last verified data while the session refreshes.', { retained: true, retryable: true });
                 return false;
             }
             const startedEpoch = epoch;

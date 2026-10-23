@@ -18,8 +18,10 @@ function shellFunction(name) {
   return match[0];
 }
 
-test('verified administrators mount all eleven Home modules at desktop and mobile widths', () => {
-  const registry = html.match(/        const HOME_MODULE_REGISTRY = Object.freeze\(\[[^]*?\n        \]\);/)[0];
+test('Dylan mounts twelve Home modules while every other administrator keeps the standard eleven', () => {
+  const registryStart = html.indexOf('        const HOME_MODULE_REGISTRY = Object.freeze([');
+  const registryEnd = html.indexOf('        function normalizeRoleAccessToken', registryStart);
+  const registry = html.slice(registryStart, registryEnd);
   for (const width of [320, 390, 768, 1024, 1440, 2560]) {
     for (const username of ['dylan_collyge', 'megan_kelly', 'jd_jones']) {
       const grid = { dataset: {}, innerHTML: '' };
@@ -28,11 +30,14 @@ test('verified administrators mount all eleven Home modules at desktop and mobil
         PRIVILEGED_MANAGER_USER_KEYS: ['dylan_collyge', 'megan_kelly', 'jd_jones'],
         window: { innerWidth: width }, document: { getElementById: () => grid },
         buildFastInvokeAttrs: () => '' });
-      vm.runInContext(registry + shellFunction('isFullAppAdministrator') + shellFunction('canAccessView') + shellFunction('ensureHomeModuleRegistry'), ctx);
+      vm.runInContext(shellFunction('isAuthenticatedDylanCollyge') + shellFunction('isFullAppAdministrator') + registry + shellFunction('canAccessView'), ctx);
       ctx.ensureHomeModuleRegistry();
       const views = [...grid.innerHTML.matchAll(/data-home-module-view="([^"]+)"/g)].map(match => match[1]);
-      assert.deepEqual(views, ['drive', 'hl-order', 'av', 'sales-office', 'sales', 'historical-requests', 'managers', 'qc', 'office', 'sales-inventory', 'production']);
+      const standard = ['drive', 'hl-order', 'av', 'sales-office', 'sales', 'historical-requests', 'managers', 'qc', 'office', 'sales-inventory', 'production'];
+      assert.deepEqual(views, username === 'dylan_collyge' ? [...standard, 'smart-moves'] : standard);
       for (const view of views) assert.equal(ctx.canAccessView(view), true, `${username} ${width}px ${view}`);
+      if (username === 'dylan_collyge') assert.match(grid.innerHTML, /data-module="smart-moves"[^>]*onclick="switchView\('smart-moves'\)"/);
+      else assert.doesNotMatch(grid.innerHTML, /smart-moves/);
       assert.match(grid.innerHTML.match(/<button[^>]+id="home-tile-sales-office"[^]*?<\/button>/)[0], /<svg[^>]+viewBox="0 0 24 24"[^]*?<path/);
     }
   }
@@ -172,6 +177,8 @@ test('unverified and revoked sessions cannot use the administrator UI grant', ()
   assert.equal(context.isFullAppAdministrator(), false);
   context.nativeAuthSessionUserId = 'owner';
   context.window.GncUserAccessControl = { getSelfState: () => ({ denied: true }) };
+  assert.equal(context.isFullAppAdministrator(), true, 'a stale access fallback cannot revoke the active native profile');
+  context.nativeAuthProfile.active = false;
   assert.equal(context.isFullAppAdministrator(), false);
 });
 
@@ -201,18 +208,30 @@ test('verified administrator controls remain available during a same-account ref
   ctx.selfDenied=true; assert.equal(ctx.isVerifiedManager(),false);
 });
 
-test('Dylan saved Manager shortcut produces the eight requested footer entries', async () => {
+test('Dylan ignores a stale Tasks-only override and produces the eight requested footer entries', async () => {
   const window = {};
   vm.runInNewContext(read('assets/navigation-preferences.js'), { window });
   const api = window.GncNavigationPreferences;
   const shortcuts = ['drive', 'managers', 'docks', 'request', 'bloom'];
   api.configure({ username: () => 'dylan_collyge', canAccess: () => true,
-    call: async () => ({ data: { username: 'dylan_collyge', footerRevision: 2, shortcuts,
-      views: shortcuts.map(view => ({ view, selectable: true, allowed: true })) } }) });
+    call: async () => ({ data: { username: 'dylan_collyge', footerRevision: 2, shortcuts: ['tasks'],
+      views: [{ view: 'tasks', selectable: true, allowed: true }, ...shortcuts.map(view => ({ view, selectable: false, allowed: false }))] } }) });
   await api.refresh();
   assert.deepEqual(Array.from(api.shortcuts()), shortcuts);
   const labels = vm.runInNewContext(read('assets/navigation-preferences.js').match(/const LABELS = [^;]+;/)[0] + 'LABELS');
   assert.deepEqual(['menu', 'home', ...api.shortcuts(), 'communication'].map(view => labels[view]), ['Menu', 'Home', 'Drive', 'Manager', 'Docks', 'Que', 'Bloom', 'Comm']);
+});
+
+test('transient access and navigation fallbacks cannot revoke Dylan or pause live refresh', () => {
+  const accessContext = shellFunction('getProductionLiveSyncContext');
+  const userAccess = read('assets/user-access-control.js');
+  assert.doesNotMatch(accessContext, /getSelfState[^]*denied/);
+  assert.match(accessContext, /accessDeniedConfirmed = context\.accessDenied/);
+  assert.match(coordinator, /ctx\.accessDenied === true && ctx\.accessDeniedConfirmed !== false/);
+  assert.match(coordinator, /ctx\.authenticated === false[^]*Keeping the last verified data while the session refreshes/);
+  assert.match(userAccess, /USER_ACCESS_UNAVAILABLE\|PROFILE_PENDING\|RETRY\|TIMEOUT\|NETWORK[^]*return false/);
+  assert.match(api, /action === "native_session_bridge"[^]*resolveZeroTrustRequestContext\(session\)/);
+  assert.match(api, /normalizeUsername\(session\.username\) === "dylan_collyge"[^]*\? "admin"/);
 });
 
 test('v2.3.45 watchdog remediations preserve authorized views with ready fallbacks', () => {

@@ -24,22 +24,36 @@ test('AV cards omit Project while Item Inquiry opens the Reclass editor', () => 
   assert.match(readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8'), /#photo-modal[^]*width: 100vw !important[^]*height: 100dvh !important[^]*height: calc\(100dvh - 96px\) !important/);
 });
 
-test('v2.3.48 Sales intelligence verifies admin moves, rep geography, and three-step traces', () => {
+test('v2.3.49 Smart Moves is dedicated, hydrated, valued, and fully traced', () => {
   const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
-  assert.match(shell, /id="sales-intelligence-panel"[^]*id="sales-office-intelligence-panel"/);
+  assert.match(shell, /id="view-smart-moves"[^>]*data-view="smart-moves"[^]*id="smart-moves-intelligence-panel"/);
+  assert.doesNotMatch(shell, /id="sales-intelligence-panel"|id="sales-office-intelligence-panel"/);
+  assert.match(runtime, /view: 'smart-moves'[^]*switchView\('smart-moves'\)/);
   assert.match(html, /ADMIN \/ INVENTORY COMMAND[^]*SALES REP VIEW/);
   const modelSource = source('buildSalesIntelligenceModel');
   assert.match(modelSource, /currentOpen <= 25[^]*nextAvailable > 0/);
   assert.match(modelSource, /MOVE UP OPPORTUNITY[^]*27\.S1[^]*<= 27\.F1/);
   assert.match(modelSource, /HOLD \/ PHOTO BOTTLENECK[^]*GEO SURPLUS PUSH/);
   assert.match(modelSource, /moveCards\.sort\(\(left, right\) => right\.value - left\.value\)/);
-  assert.match(source('renderSalesInventoryIntelligence'), /F1 Open Stock Value \(<= 27\.F1\)[^]*S1 Pull-Forward Opportunity \(27\.S1 Ready\)[^]*Trapped on Hold\/Stop \(\$ Value\)[^]*Active SOC \+ Reserves Coverage/);
+  assert.match(source('renderSmartMovesIntelligence'), /salesIntelligenceRequiredDataReady[^]*F1 Open Stock Value \(<= 27\.F1\)[^]*S1 Pull-Forward Opportunity \(27\.S1 Ready\)[^]*Trapped on Hold\/Stop \(\$ Value\)[^]*Active SOC \+ Reserves Coverage/);
+  assert.match(source('warmSalesIntelligenceData'), /\['master', 'soc', 'reserves'\][^]*ensureDatasetLoaded\(key, 'full'/);
   assert.match(runtime, /function buildSalesIntelligenceTraceHtml[^]*Step 1: Context[^]*Step 2: Source[^]*Step 3: Double-Checked/);
   const cardSource = source('renderSalesIntelligenceCard');
   for (const marker of ['\\$ Impact', 'Open in Reclass', '\\+ Project', 'Add to Bloom Picker', 'AURA Query']) assert.match(cardSource, new RegExp(marker));
   assert.match(styles, /\.sales-intelligence-kpi-strip[^]*\.sales-intelligence-trace[^]*@media \(max-width: 620px\)/);
+  assert.match(styles, /#view-smart-moves \.sales-intelligence-trace[^]*border: 1px solid #10b981[^]*background: #062115[^]*color: #ecfdf5/);
+
+  const totals = vm.createContext({
+    parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/[$,]/g, '')),
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? ''
+  });
+  vm.runInContext(source('getSalesIntelligenceNumber') + source('getSalesIntelligencePrice') + source('getSalesIntelligenceOpenStock'), totals);
+  const liveRow = { open_stock: '8', price: '$12.50' };
+  assert.equal(totals.getSalesIntelligenceOpenStock(liveRow), 8);
+  assert.equal(totals.getSalesIntelligencePrice(liveRow), 12.5);
+  assert.equal(totals.getSalesIntelligenceOpenStock(liveRow) * totals.getSalesIntelligencePrice(liveRow), 100);
 
   const normalize = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const ctx = vm.createContext({ normalizeRepMatchToken: normalize, SALES_INTELLIGENCE_TARGET_YEAR: 27,

@@ -215,8 +215,9 @@
     function isTerminalSelfError(error) {
         const code = text(error?.code || error?.message).toUpperCase();
         const status = Number(error?.status) || 0;
+        if (/USER_ACCESS_UNAVAILABLE|PROFILE_PENDING|RETRY|TIMEOUT|NETWORK/.test(code)) return false;
         return status === 401 || status === 403
-            || /AUTH_REQUIRED|ACTIVE_PROFILE_REQUIRED|PROFILE_NOT_ACTIVE|PASSWORD_CHANGE_REQUIRED|USER_ACCESS_FORBIDDEN|USER_ACCESS_IDENTITY_MISMATCH|USER_ACCESS_PROFILE_REQUIRED|USER_ACCESS_PERMISSION_SNAPSHOT_INVALID|USER_ACCESS_EFFECTIVE_PERMISSION_MISMATCH|USER_ACCESS_HYDRATION_POLICY_INVALID/.test(code);
+            || /PROFILE_NOT_ACTIVE|PASSWORD_CHANGE_REQUIRED|USER_ACCESS_FORBIDDEN|USER_ACCESS_IDENTITY_MISMATCH|USER_ACCESS_PERMISSION_SNAPSHOT_INVALID|USER_ACCESS_EFFECTIVE_PERMISSION_MISMATCH|USER_ACCESS_HYDRATION_POLICY_INVALID/.test(code);
     }
 
     async function transport(operation, payload = {}, mutation = {}) {
@@ -293,7 +294,7 @@
                 const current = getIdentity();
                 const samePreviouslyResolvedIdentity = selfRecord?.verified === true && current
                     && selfRecord.profile.id === current.id && selfRecord.profile.username === current.username;
-                selfDenied = selfDenied || isTerminalSelfError(error);
+                selfDenied = isTerminalSelfError(error);
                 if (!samePreviouslyResolvedIdentity || selfDenied) selfRecord = null;
                 selfStatus = 'error'; selfError = text(error?.message) || 'User permissions could not be verified.';
             }

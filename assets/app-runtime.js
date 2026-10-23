@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.48';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.49';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24680,11 +24680,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const username = String(userOverride || currentUser || '').trim().toLowerCase();
             if (!PRIVILEGED_MANAGER_USER_KEYS.includes(username)) return false;
             if (username !== String(currentUser || '').trim().toLowerCase()) return false;
-            if (window.GncUserAccessControl?.getSelfState?.().denied === true) return false;
             return nativeAuthSessionActive === true && !!nativeAuthProfile?.id
                 && nativeAuthProfile.id === nativeAuthSessionUserId
                 && String(nativeAuthProfile.username || '').trim().toLowerCase() === username
-                && !nativeAuthProfile.disabled_at && nativeAuthProfile.must_change_password !== true;
+                && nativeAuthProfile.active !== false && !nativeAuthProfile.disabled_at
+                && nativeAuthProfile.must_change_password !== true;
+        }
+
+        function isAuthenticatedDylanCollyge() {
+            return String(currentUser || '').trim().toLowerCase() === 'dylan_collyge'
+                && nativeAuthSessionActive === true && !!nativeAuthProfile?.id
+                && nativeAuthProfile.id === nativeAuthSessionUserId
+                && String(nativeAuthProfile.username || '').trim().toLowerCase() === 'dylan_collyge'
+                && nativeAuthProfile.active !== false && !nativeAuthProfile.disabled_at
+                && nativeAuthProfile.must_change_password !== true;
+        }
+
+        function hasConfirmedCurrentAccountRevocation() {
+            return nativeAuthProfile?.active === false || nativeAuthProfile?.disabled_at != null
+                || nativeAuthProfile?.must_change_password === true;
         }
 
         function isPrivilegedManagerUser(userOverride = '') {
@@ -26124,7 +26138,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.48').trim() || 'AgData v2.3.48';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.49').trim() || 'AgData v2.3.49';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28350,7 +28364,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             // Keep ordinary list browsing compact; returning to Drive must not
             // make a wider snapshot request sticky across navigation.
             const fullViewIds = new Set([
-                'reports', 'sales-office', 'moves', 'tasks', 'low-stock', 'review', 'move-up',
+                'reports', 'sales-office', 'smart-moves', 'moves', 'tasks', 'low-stock', 'review', 'move-up',
                 'advertisement', 'grower', 'shear-list', 'weather-hold', 'production-workflow'
             ]);
             const fullSurfaces = new Set([
@@ -28392,8 +28406,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const view = registry.views[context.view] ? context.view : 'home';
             context.scope = JSON.stringify([nativeAuthProfile.id, currentUser, currentRole, getCurrentLoginCacheScopeKey()]);
             context.authenticated = nativeAuthSessionActive === true && nativeAuthSessionUserId === nativeAuthProfile.id;
-            context.accessDenied = window.GncUserAccessControl?.getSelfState?.().denied === true
-                || nativeAuthProfile.active === false || nativeAuthProfile.disabled_at != null;
+            context.accessDenied = hasConfirmedCurrentAccountRevocation();
+            context.accessDeniedConfirmed = context.accessDenied;
             context.readIdentity = getSupabaseReadIdentityScope();
             context.dataPermissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
             context.dataPermissionSnapshotFresh = accessReady;
@@ -59563,13 +59577,23 @@ function toggleDriveQuickRequestItem(domId) {
             { view: 'sales-inventory', label: 'Inventory', icon: 'ph-storefront', action: 'openInventoryHubView()' },
             { view: 'production', label: 'Production', icon: 'ph-plant', action: "switchView('production')" },
         ]);
+        const DYLAN_SMART_MOVES_HOME_MODULE = Object.freeze({
+            view: 'smart-moves', label: 'Smart Sales & Move Intelligence', icon: 'ph-trend-up', action: "switchView('smart-moves')"
+        });
+
+        function getHomeModuleRegistry() {
+            return isAuthenticatedDylanCollyge()
+                ? [...HOME_MODULE_REGISTRY, DYLAN_SMART_MOVES_HOME_MODULE]
+                : HOME_MODULE_REGISTRY;
+        }
 
         function ensureHomeModuleRegistry() {
             const grid = document.getElementById('home-dashboard-grid');
-            if (!grid || grid.dataset.homeRegistryRelease === '38') return grid;
-            grid.dataset.homeRegistryRelease = '38';
-            grid.innerHTML = HOME_MODULE_REGISTRY.map((module) => `
-                <button type="button" id="home-tile-${module.view}" class="home-module-tile hidden" data-home-module-view="${module.view}" ${module.view === 'sales' ? buildFastInvokeAttrs('openHomeModuleView', [module.view], `Open ${module.label}`) : `onclick="${module.action}"`} aria-label="Open ${module.label}">
+            const registryKey = `49:${isAuthenticatedDylanCollyge() ? 'dylan' : 'standard'}`;
+            if (!grid || grid.dataset.homeRegistryRelease === registryKey) return grid;
+            grid.dataset.homeRegistryRelease = registryKey;
+            grid.innerHTML = getHomeModuleRegistry().map((module) => `
+                <button type="button" id="home-tile-${module.view}" class="home-module-tile hidden" data-home-module-view="${module.view}"${module.view === 'smart-moves' ? ' data-module="smart-moves"' : ''} ${module.view === 'sales' ? buildFastInvokeAttrs('openHomeModuleView', [module.view], `Open ${module.label}`) : `onclick="${module.action}"`} aria-label="Open ${module.label}">
                     ${module.view === 'sales-office' ? '<svg class="home-module-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M9 7V4h6v3M3 7h18v14H3zM3 12h18M10 12v3h4v-3"/></svg>' : `<i class="ph ${module.icon}" aria-hidden="true"></i>`}
                     <span>${module.label}</span>
                 </button>`).join('');
@@ -59846,6 +59870,7 @@ function toggleDriveQuickRequestItem(domId) {
         function canAccessView(viewId, userOverride = '') {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
+            if (targetView === 'smart-moves') return (!userOverride || String(userOverride).trim().toLowerCase() === 'dylan_collyge') && isAuthenticatedDylanCollyge();
             if (isFullAppAdministrator(userOverride)) return true;
             if (isEvalSensitiveDataRestricted() && ['managers', 'reports', 'request-history', 'historical-requests', 'po-management'].includes(targetView)) return false;
             if (targetView === 'building') return false;
@@ -60102,7 +60127,7 @@ function toggleDriveQuickRequestItem(domId) {
             const homeDrawer = document.getElementById('drawer-home-btn');
             if (homeDrawer) homeDrawer.classList.toggle('hidden', isSalesShellAccess(access));
             let authorizedHomeModules = 0;
-            HOME_MODULE_REGISTRY.forEach((module) => {
+            getHomeModuleRegistry().forEach((module) => {
                 const tile = document.getElementById(`home-tile-${module.view}`);
                 if (!tile) return;
                 const isAllowed = canAccessView(module.view, userOverride) && !isSalesShellAccess(access);
@@ -62596,7 +62621,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['bunch-note','drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','historical-requests','request-history','sales-credit','credit-request','managers','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','hl-order','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['bunch-note','drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','smart-moves','historical-requests','request-history','sales-credit','credit-request','managers','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','hl-order','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -69524,17 +69549,32 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         let salesIntelligenceFilters = { rep: '', state: '', plant: '', move: 'all' };
         let salesIntelligenceCache = { key: '', model: null };
         let salesIntelligenceWarmPromise = null;
+        let salesIntelligenceWarmAttemptedAt = 0;
         const salesIntelligenceActionRows = new Map();
 
+        function salesIntelligenceRequiredDataReady() {
+            const inventoryRows = typeof selectAvSalesInventorySourceRows === 'function' ? selectAvSalesInventorySourceRows() : fullInventory;
+            return Array.isArray(inventoryRows) && inventoryRows.length > 0
+                && ['master', 'soc', 'reserves'].every((key) => isDatasetLoaded(key, 'full'));
+        }
+
         function warmSalesIntelligenceData() {
-            if (!currentUser || salesIntelligenceWarmPromise) return;
-            const missing = ['master', 'soc', 'reserves', 'customerRepMap', 'requests'].filter((key) => !isDatasetLoaded(key, 'full'));
-            if (!missing.length) return;
-            salesIntelligenceWarmPromise = Promise.allSettled(missing.map((key) => ensureDatasetLoaded(key, 'full'))).then(() => {
+            if (!currentUser) return null;
+            if (salesIntelligenceWarmPromise) return salesIntelligenceWarmPromise;
+            const required = ['master', 'soc', 'reserves'];
+            const optional = ['customerRepMap', 'requests'];
+            const inventoryRows = typeof selectAvSalesInventorySourceRows === 'function' ? selectAvSalesInventorySourceRows() : fullInventory;
+            const missing = [...required, ...optional].filter((key) => !isDatasetLoaded(key, 'full')
+                || (key === 'master' && (!Array.isArray(inventoryRows) || inventoryRows.length === 0)));
+            if (!missing.length) return null;
+            if (Date.now() - salesIntelligenceWarmAttemptedAt < 5000) return null;
+            salesIntelligenceWarmAttemptedAt = Date.now();
+            salesIntelligenceWarmPromise = Promise.allSettled(missing.map((key) => ensureDatasetLoaded(key, 'full', { force: required.includes(key) }))).then(() => {
                 salesIntelligenceCache = { key: '', model: null };
                 const view = getCurrentVisibleViewId();
-                if (view === 'sales' || view === 'sales-office') renderSalesInventoryIntelligence(view);
+                if (view === 'smart-moves') renderSmartMovesIntelligence();
             }).finally(() => { salesIntelligenceWarmPromise = null; });
+            return salesIntelligenceWarmPromise;
         }
 
         function getSalesIntelligenceNumber(value, fallback = 0) {
@@ -69555,7 +69595,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getSalesIntelligencePrice(row = null) {
-            return Math.max(0, getSalesIntelligenceNumber(firstNonEmptyValue(row && row.LISTPRICE, row && row.listprice, row && row.LISTPRI, row && row.listpri, row && row.UNITPRICE, row && row.unitprice, row && row.EXTUNITPRICE, row && row.extunitprice, 0), 0));
+            return Math.max(0, getSalesIntelligenceNumber(firstNonEmptyValue(row && row.LISTPRICE, row && row.listprice, row && row.PRICE, row && row.price, row && row.LISTPRI, row && row.listpri, row && row.UNITPRICE, row && row.unitprice, row && row.EXTUNITPRICE, row && row.extunitprice, 0), 0));
         }
 
         function getSalesIntelligenceOpenStock(row = null) {
@@ -69888,10 +69928,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return true;
         }
 
-        function renderSalesInventoryIntelligence(surface = 'sales') {
-            const root = document.getElementById(surface === 'sales-office' ? 'sales-office-intelligence-panel' : 'sales-intelligence-panel');
+        function renderSmartMovesIntelligence() {
+            const root = document.getElementById('smart-moves-intelligence-panel');
             if (!root) return;
             warmSalesIntelligenceData();
+            if (!salesIntelligenceRequiredDataReady()) {
+                root.innerHTML = '<section class="sales-intelligence-shell"><div class="sales-intelligence-empty" role="status">Hydrating live inventory, SOC, and reserves values…</div></section>';
+                return;
+            }
             const model = buildSalesIntelligenceModel();
             const mode = getSalesIntelligenceMode();
             const isAdmin = !!getRoleAccessState().isAdmin;
@@ -69923,8 +69967,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function refreshSalesInventoryIntelligence() {
-            renderSalesInventoryIntelligence('sales');
-            renderSalesInventoryIntelligence('sales-office');
+            if (getCurrentVisibleViewId() === 'smart-moves') renderSmartMovesIntelligence();
         }
 
         function setSalesIntelligenceMode(mode = 'rep') {
@@ -69988,7 +70031,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function renderSalesHub() {
-            renderSalesInventoryIntelligence('sales');
             GncMobileWorkspace.syncHub('sales');
             const access = getRoleAccessState();
             const historyButton = document.getElementById('sales-open-photo-history');
@@ -76773,6 +76815,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 void SalesWorkspace.open(viewId);
             } else if (viewId === 'sales') {
                 renderSalesHub();
+            } else if (viewId === 'smart-moves') {
+                renderSmartMovesIntelligence();
             } else if (viewId === 'qc') {
                 renderQcHub();
             } else if (viewId === 'communication') {
@@ -77182,7 +77226,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         let canonicalUserAccessRevision = 0;
         function canonicalFeaturePermission(flag, userOverride = '') {
             if (userOverride && normalizeMovesUserKey(userOverride) !== normalizeMovesUserKey(currentUser)) return null;
-            if (window.GncUserAccessControl?.getSelfState?.().denied === true) return false;
+            if (hasConfirmedCurrentAccountRevocation()) return false;
             if (flag === 'can_manage_user_access') return isFullAppAdministrator(userOverride);
             if (isFullAppAdministrator(userOverride)) return true;
             const resolved = window.GncUserAccessControl?.getEffectiveUserPermissions(nativeAuthProfile || { username: currentUser });
@@ -108407,7 +108451,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderSalesOffice() {
-            renderSalesInventoryIntelligence('sales-office');
             ensureSeasonSalesNoteAccessFresh();
             if (ensureViewDataForRender('sales-office')) return;
             const access = getRoleAccessState();
