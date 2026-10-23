@@ -10,7 +10,8 @@
     data_entry: 'data_entry', foreman: 'foreman', 'take backs': 'take_backs', take_backs: 'take_backs'
   });
   const OWNERS = Object.freeze({ home: 'agdata-sync-and-supabase-architect', drive: 'agdata-drive-and-av-specialist', av: 'agdata-drive-and-av-specialist', docks: 'agdata-docks-and-orders-specialist', que: 'agdata-queue-and-reclass-specialist', request: 'agdata-queue-and-reclass-specialist', managers: 'agdata-field-ops-and-qc', bloom: 'agdata-bloom-and-request-specialist', comm: 'agdata-docks-and-orders-specialist', chat: 'agdata-docks-and-orders-specialist' });
-  const REPORT_QUEUE_PREFIX = 'agdata.runtime-watchdog.pending.v1:';
+  const REPORT_QUEUE_PREFIX = 'agdata.runtime-watchdog.pending.v2:';
+  const LEGACY_REPORT_QUEUE_PREFIXES = Object.freeze(['agdata.runtime-watchdog.pending.v1:']);
   const MAX_QUEUED_REPORTS = 100;
   const state = { configured: false, apiUrl: '', username: '', role: '', revisions: {}, pending: new Map(), seen: new Set(), report: null, getSubModule: null, reportQueue: [], reportQueueOwner: '', reportTimer: null, reportRetryMs: 1000, reportGeneration: 0, reportFlushGeneration: null, viewKey: '', viewVisitId: 0, viewStartedAt: Date.now(), viewBaselines: new Map(), measuredViews: new Set() };
   let parityWait = null;
@@ -34,6 +35,7 @@
     state.reportQueue = [];
     if (!owner) return;
     try {
+      LEGACY_REPORT_QUEUE_PREFIXES.forEach(prefix => global.localStorage?.removeItem(`${prefix}${owner}`));
       const parsed = JSON.parse(global.localStorage?.getItem(reportStorageKey(owner)) || '[]');
       if (!Array.isArray(parsed)) return;
       const currentVersion = String(global.__APP_RELEASE_VERSION__ || '');
