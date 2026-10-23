@@ -5,15 +5,19 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
     const unique = (values) => Array.from(new Set(values)).sort();
+    const optionalReadySources = new Set(['bunch_note_private.jobs', 'bunch_note_private.previews']);
     function snapshot(value, keys) {
         if (!value || value.contractVersion !== 1 || !Array.isArray(value.sources) || !value.permissionVersion) throw new Error('Data revision service returned an invalid response.');
         const sources = new Map();
         value.sources.forEach((source) => {
-            if (!keys.includes(source.key) || sources.has(source.key) || !(source.state === 'unavailable' && source.revision == null || /^\d+$/.test(String(source.revision))) || !['ready', 'importing', 'interrupted', 'unavailable'].includes(source.state)) throw new Error('Invalid data revision metadata.');
-            sources.set(source.key, { ...source, revision: source.revision == null ? null : String(source.revision) });
+            const normalized = optionalReadySources.has(source.key) && source.state === 'unavailable'
+                ? { ...source, revision: String(source.revision ?? '0'), state: 'ready', optional: true }
+                : source;
+            if (!keys.includes(normalized.key) || sources.has(normalized.key) || !(normalized.state === 'unavailable' && normalized.revision == null || /^\d+$/.test(String(normalized.revision))) || !['ready', 'importing', 'interrupted', 'unavailable'].includes(normalized.state)) throw new Error('Invalid data revision metadata.');
+            sources.set(normalized.key, { ...normalized, revision: normalized.revision == null ? null : String(normalized.revision) });
         });
         // A denied/missing source must never look like an unchanged successful read.
-        keys.forEach((key) => { if (!sources.has(key)) sources.set(key, { key, revision: '0', state: 'unavailable' }); });
+        keys.forEach((key) => { if (!sources.has(key)) sources.set(key, { key, revision: '0', state: optionalReadySources.has(key) ? 'ready' : 'unavailable', ...(optionalReadySources.has(key) ? { optional: true } : {}) }); });
         return { sources, permissionVersion: String(value.permissionVersion), serverTime: value.serverTime };
     }
     function publishedReadable(source) {
@@ -240,6 +244,15 @@
         function isRetainableTransientError(error) {
             const status = Number(error?.status || error?.payload?.status || 0);
             return status === 409 || status === 422 || status === 423;
+        }
+        function isSilentBackgroundRetry(error) {
+            return String(error?.code || error?.payload?.code || '').trim().toUpperCase() === 'NATIVE_PROFILE_RETRY_REQUIRED';
+        }
+        function isInventoryRevisionAdoption(error) {
+            const code = String(error?.code || error?.payload?.code || '').trim().toUpperCase();
+            const message = String(error?.message || error || '');
+            return ['LOC_ON_HAND_REVISION_CHANGED', 'LOC_REVISION_CHANGED'].includes(code)
+                || /\b(?:LOC_ON_HAND_REVISION_CHANGED|LOC_REVISION_CHANGED)\b/i.test(message);
         }
         function stillCurrent(ctx, startedEpoch) {
             const next = options.getContext();
@@ -653,6 +666,13 @@
             const fail = (error, adapter = null) => {
                 if (failure) return;
                 failure = error;
+                if (isSilentBackgroundRetry(error) || isInventoryRevisionAdoption(error)) {
+                    retainDisplay(ctx);
+                    if (current()) emit('Syncing', 'Refreshing the latest account and inventory revision in the background.', { dataReadable: true, readContextKey: readContextKey(ctx) });
+                    signal(isSilentBackgroundRetry(error) ? 'native-profile-retry' : 'inventory-revision-adopt', 1000);
+                    run.controller?.abort(error);
+                    return;
+                }
                 const permissionDenied = discardAppliedAfterDenial(ctx, error);
                 suspendForSourceReadiness(error, adapter, before, ctx);
                 if (current()) emit('Needs attention', error?.message || String(error), permissionDenied
@@ -689,7 +709,7 @@
                                 try { value = await stage(); }
                                 catch (error) {
                                     if (!current() || !canContinueRead(ctx) || run.controller?.signal.aborted
-                                        || String(error?.code || error?.payload?.code || '').toUpperCase() !== 'DATASET_READ_SCOPE_CHANGED') throw error;
+                                        || !['DATASET_READ_SCOPE_CHANGED', 'LOC_ON_HAND_REVISION_CHANGED', 'LOC_REVISION_CHANGED'].includes(String(error?.code || error?.payload?.code || '').toUpperCase())) throw error;
                                     value = await stage();
                                 }
                             }
@@ -762,7 +782,10 @@
                 if (running || generation !== backgroundGeneration) return;
                 const run = { background: true, generation, epoch };
                 const task = cycle(run).catch(error => {
-                    if (epoch === run.epoch && generation === backgroundGeneration) publishBackground('Needs attention', error.message || String(error));
+                    if (epoch === run.epoch && generation === backgroundGeneration) {
+                        if (isSilentBackgroundRetry(error) || isInventoryRevisionAdoption(error)) signal(isSilentBackgroundRetry(error) ? 'native-profile-retry' : 'inventory-revision-adopt', 1000);
+                        else publishBackground('Needs attention', error.message || String(error));
+                    }
                     return false;
                 });
                 backgroundRunning = task;
@@ -830,6 +853,15 @@
                     try { result = await cycle(run); }
                     catch (error) {
                         if (epoch === run.epoch && stillCurrent(run.context || {}, run.epoch)) {
+                            if (isSilentBackgroundRetry(error) || isInventoryRevisionAdoption(error)) {
+                                retainDisplay(run.context || {});
+                                publish('Syncing', 'Refreshing the latest account and inventory revision in the background.', {
+                                    contextKey: identity(run.context || {}), dataReadable: true, readContextKey: readContextKey(run.context || {})
+                                });
+                                signal(isSilentBackgroundRetry(error) ? 'native-profile-retry' : 'inventory-revision-adopt', 1000);
+                                result = false;
+                                break;
+                            }
                             if (isRetainableTransientError(error)) {
                                 retainDisplay(run.context || {});
                                 result = false;

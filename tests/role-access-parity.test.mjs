@@ -214,3 +214,17 @@ test('Dylan saved Manager shortcut produces the eight requested footer entries',
   const labels = vm.runInNewContext(read('assets/navigation-preferences.js').match(/const LABELS = [^;]+;/)[0] + 'LABELS');
   assert.deepEqual(['menu', 'home', ...api.shortcuts(), 'communication'].map(view => labels[view]), ['Menu', 'Home', 'Drive', 'Manager', 'Docks', 'Que', 'Bloom', 'Comm']);
 });
+
+test('v2.3.45 watchdog remediations preserve authorized views with ready fallbacks', () => {
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const auraRouter = read('supabase/functions/aura-llm-router/index.ts');
+  const appRuntime = read('assets/app-runtime.js');
+  const bunchQueue = read('services/bunchQueue.ts');
+  assert.match(appApi, /dataset === "suspend_tag"[^]*?retained: true, retryable: true/);
+  assert.match(appApi, /LOC_ON_HAND_REVISION_CHANGED[^]*?handleInventoryRead\(session, payload, canonicalAccess, true\)/);
+  assert.match(appApi, /operation === "queue"[^]*?state: "ready"[^]*?operation === "list"[^]*?jobs: \[\], retained: true, state: "ready"/);
+  assert.match(auraRouter, /response\.status !== 503[^]*?deterministicFallbackRequired/);
+  assert.match(appRuntime, /deterministicFallbackRequired[^]*?requestAuraDeterministicInventoryAnswer/);
+  assert.match(appRuntime, /normalizeOptionalBunchRevisionMetadata[^]*?bunch_note_private\.previews/);
+  assert.match(bunchQueue, /data\?\.retained === true/);
+});

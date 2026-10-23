@@ -1395,3 +1395,12 @@ test('Location Work displays cached jobs during a pending read and transport ret
   assert.match(html,/move-1/); assert.doesNotMatch(html,/Loading/); assert.ok(performance.now()-start<50);
   ctx.resetQueueReadCooldowns(); assert.equal(cooldowns.size,0);assert.equal(denials.size,1);
 });
+
+test('v2.3.45 treats Bunch Note revisions as optional and retries transient identity or inventory races silently', () => {
+  const source = readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8');
+  assert.match(source, /optionalReadySources = new Set\(\['bunch_note_private\.jobs', 'bunch_note_private\.previews'\]\)/);
+  assert.match(source, /state: optionalReadySources\.has\(key\) \? 'ready' : 'unavailable'/);
+  assert.match(source, /NATIVE_PROFILE_RETRY_REQUIRED/);
+  assert.match(source, /LOC_ON_HAND_REVISION_CHANGED[^]*?continue/);
+  assert.match(source, /if \(isSilentBackgroundRetry\(error\) \|\| isInventoryRevisionAdoption\(error\)\)[^]*?signal\([^]*?, 1000\)/);
+});

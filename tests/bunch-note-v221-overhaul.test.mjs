@@ -25,7 +25,7 @@ const rows = [
   { unique_id: 'private-lot-2', blockalpha: 'D', locationcode: 'D.05.000', itemcode: 'PLANT-B', commonname: 'Hosta', contsize: '#2', lotcode: 'B', stock: 8, review: 0, available: 8 },
 ];
 
-function runtime() {
+function runtime(options = {}) {
   const dom = new JSDOM('<!doctype html><main id="main-scroll-area"><div id="bunch-note-content"></div></main>', {
     url: 'https://fixture.test/', runScripts: 'dangerously', pretendToBeVisual: true,
   });
@@ -60,6 +60,11 @@ function runtime() {
     if (request.operation === 'inventory') return { ok: true, data: { rows } };
     if (request.operation === 'save') {
       savedBody = plain(request.payload.body);
+      if (options.saveErrorOnce) {
+        const message = options.saveErrorOnce;
+        options.saveErrorOnce = '';
+        return { ok: false, message };
+      }
       return { ok: true, data: { draft: { id: 'batch-v221', revision: (request.expectedRevision || 0) + 1, body: savedBody } } };
     }
     if (request.operation === 'preview') {
@@ -305,6 +310,43 @@ test('header blueprint persists purpose, plan, banner, direction, and quick rule
   assert.deepEqual(rt.savedBody.locations[0].rule_chips, ['Keep countable rows, leave aisles between varieties, risers, & doors']);
   assert.match(rt.savedBody.locations[0].instructions, /Keep countable rows/);
   rt.dom.window.close();
+});
+
+test('header save canonicalizes dotted locations, derives block, bounds multiline text, and clears stale errors', async () => {
+  const rt = runtime({ saveErrorOnce: 'BUNCH_NOTE_HEADER_INVALID' });
+  await rt.note.open();
+  await rt.note.chooseBlock('I.');
+  rt.note.openLocation('I.07.');
+  rt.note.wizardField('workType', 'LOC. Bunch Notes');
+  rt.note.wizardField('purpose_thread', 'Early Winter Protect');
+  rt.note.wizardField('direction', 'East → West');
+  rt.note.wizardField('default_house_plan', 'Bunch West & Center, Spread Space, or custom plan');
+  rt.note.wizardField('schedule_banner', ` First line\r\n${'alert '.repeat(500)} `);
+  rt.note.wizardField('notes', ` Extra notes\r\n${'detail '.repeat(1500)} `);
+  assert.equal(rt.window.document.querySelector('.bn-location-editor h3')?.textContent, 'Plan work · I · I.07');
+  await rt.note.nextItems();
+  assert.match(rt.window.document.querySelector('[role="alert"]')?.textContent || '', /BUNCH_NOTE_HEADER_INVALID/);
+  rt.note.wizardField('default_house_plan', '');
+  assert.equal(rt.window.document.querySelector('[role="alert"]'), null, 'editing clears the stale header error immediately');
+  await rt.note.nextItems();
+  assert.equal(rt.savedBody.block, 'I');
+  assert.equal(rt.savedBody.locations[0].location, 'I.07.000');
+  assert.equal(rt.savedBody.locations[0].source_location, 'I.07.000');
+  assert.equal(rt.savedBody.locations[0].work_type, 'LOC. Bunch Notes');
+  assert.equal(rt.savedBody.locations[0].purpose_thread, 'Early Winter Protect');
+  assert.equal(rt.savedBody.locations[0].direction, 'East → West');
+  assert.equal(rt.savedBody.locations[0].default_house_plan, '');
+  assert.equal(rt.savedBody.locations[0].schedule_banner.length, 2000);
+  assert.equal(rt.savedBody.locations[0].instructions.length, 8000);
+  assert.match(rt.savedBody.locations[0].schedule_banner, /^First line\n/);
+  rt.dom.window.close();
+});
+
+test('app API normalizes Bunch Note save payloads before the database command', () => {
+  const source = read('supabase/functions/app-api/index.ts');
+  assert.match(source, /function normalizeBunchNoteSavePayload/);
+  assert.match(source, /operation === "save" \? normalizeBunchNoteSavePayload\(payload\.payload\)/);
+  assert.match(source, /source_location: location, format_version: 5/);
 });
 
 test('editable Work Type title and Purpose thread persist independently through save and preview', async () => {

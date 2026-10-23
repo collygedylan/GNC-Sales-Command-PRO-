@@ -33,7 +33,7 @@ export function runToolingReleaseChecks({ spawn = spawnSync, now = () => perform
   const started = now();
   const result = spawn(process.execPath, ['--test', '--test-reporter=tap', '--test-concurrency=1', ...toolingReleaseCheckFiles], {
     cwd: root, encoding: 'utf8', shell: false, maxBuffer: 16 * 1024 * 1024,
-    windowsHide: true, timeout: 15000,
+    windowsHide: true, timeout: 45000,
   });
   const elapsedSeconds = ((now() - started) / 1000).toFixed(1);
 

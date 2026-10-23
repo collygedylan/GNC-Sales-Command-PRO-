@@ -164,6 +164,8 @@ test('watchdog normalizes every supported role alias and emits bounded incident 
   assert.equal(event.owning_skill, 'agdata-drive-and-av-specialist');
   assert.equal(window.GncRuntimeWatchdog.capture({ name: 'AbortError' }, 'view.cancel'), false);
   assert.equal(reported.length, 1, 'expected view cancellation is not an incident');
+  assert.equal(window.GncRuntimeWatchdog.capture({ code: 'NATIVE_PROFILE_RETRY_REQUIRED' }, 'cycle'), false);
+  assert.equal(reported.length, 1, 'native profile retries are silent recovery signals');
   assert.equal(window.GncRuntimeWatchdog.capture(new Error('secret token and row contents'), 'queue.persist'), true);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(reported[1].event_type, 'OPERATIONAL_FAILURE');

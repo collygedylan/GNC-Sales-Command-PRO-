@@ -229,6 +229,10 @@ function deterministicInventoryTool(question: string, active: ReturnType<typeof 
     return null;
   }
 }
+export function isDeterministicAuraInventoryQuestion(value: unknown): boolean {
+  const question = String(value || "").normalize("NFKC").trim();
+  return !!question && deterministicInventoryTool(question, { season: "F1", salesyear: 27, settingRevision: 0 }) !== null;
+}
 function recordAction(title: string, rows: ObjectValue[]): ObjectValue[] {
   const labels: Record<string, string> = { commonName: "Common Name", commonname: "Common Name", itemcode: "Item Code", contSize: "Size", contsize: "Size",
     locationCode: "Location", locationcode: "Location", lotCode: "Lot", lotcode: "Lot", ptravailable: "Available", ptronhand: "On Hand", s_lts: "Open Stock", quantity: "Quantity",

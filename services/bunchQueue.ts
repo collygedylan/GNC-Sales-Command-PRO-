@@ -150,6 +150,7 @@ export function createBunchQueueClient({ scopeKey, cacheScopeKey = scopeKey, tra
     try {
       const data = await call(reviews ? 'list_discrepancies' : 'queue', { filter, offset, limit: 100 });
       if (generation !== loadingId || disposed) return;
+      if (data?.retained === true) return;
       const page = reviews ? parseBunchReviews(data) : parseBunchQueue(data);
       persist(suffix, page);
       publish(reviews ? { reviews: page as BunchReviewPage } : { page: page as BunchQueuePage, loadedFilter: filter });

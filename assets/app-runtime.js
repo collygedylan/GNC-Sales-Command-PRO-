@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.44';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.45';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -494,6 +494,13 @@
                 salesYear
             };
         }
+
+        function auraCommandRetryResponse(requestId = '') {
+            const reply = 'Aura could not finish that command, but your conversation is ready to retry.';
+            return { ok: true, requestId: requestId || null, reply, speech: reply, actions: [], retryable: true,
+                interpretation: { engine: 'router-fallback-v1', complete: false }, source: { kind: 'router-fallback', complete: false } };
+        }
+
         function buildAuraDeterministicInventoryAnswer(query, rows = [], options = {}) {
             if (!query || !Array.isArray(rows)) return null;
             const text = value => String(value ?? '').normalize('NFKC').trim();
@@ -623,7 +630,7 @@
             if (auraRouterCapabilities?.configured !== true) {
                 const fallback = deterministicQuery ? await requestAuraDeterministicInventoryAnswer(body.text, request) : null;
                 if (fallback) return fallback;
-                throw Object.assign(new Error('Aura is not configured yet. Contact your administrator.'), { status: 503, code: 'AURA_LLM_UNAVAILABLE' });
+                return auraCommandRetryResponse(request.requestId);
             }
 
             const identity = getSupabaseReadIdentityScope();
@@ -636,12 +643,17 @@
             };
             const command = { ...body, turnId: originalTurnId, appContext };
             try {
-                return await callAuraLlmRouter(command, { ...request, requestId: originalTurnId });
+                const routed = await callAuraLlmRouter(command, { ...request, requestId: originalTurnId });
+                if (routed?.deterministicFallbackRequired && deterministicQuery) {
+                    return await requestAuraDeterministicInventoryAnswer(body.text, { ...request, requestId: originalTurnId });
+                }
+                return routed;
             } catch (error) {
                 if (String(error?.code || '').toUpperCase() !== 'AURA_APP_CONTEXT_STALE'
                     || Number(error?.status) !== 409) {
                     const fallback = deterministicQuery ? await requestAuraDeterministicInventoryAnswer(body.text, { ...request, requestId: originalTurnId }) : null;
                     if (fallback) return fallback;
+                    if (Number(error?.status) === 503) return auraCommandRetryResponse(originalTurnId);
                     throw error;
                 }
                 if (!isAuraRouterWidgetAuthorized() || identity !== getSupabaseReadIdentityScope()
@@ -696,10 +708,15 @@
                 // addresses this command after its single context refresh.
                 const retryBody = { ...body, turnId: originalTurnId, appContext: refreshedContext };
                 try {
-                    return await callAuraLlmRouter(retryBody, { ...request, requestId: originalTurnId });
+                    const routed = await callAuraLlmRouter(retryBody, { ...request, requestId: originalTurnId });
+                    if (routed?.deterministicFallbackRequired && deterministicQuery) {
+                        return await requestAuraDeterministicInventoryAnswer(body.text, { ...request, requestId: originalTurnId });
+                    }
+                    return routed;
                 } catch (retryError) {
                     const fallback = deterministicQuery ? await requestAuraDeterministicInventoryAnswer(body.text, { ...request, requestId: originalTurnId }) : null;
                     if (fallback) return fallback;
+                    if (Number(retryError?.status) === 503) return auraCommandRetryResponse(originalTurnId);
                     throw retryError;
                 }
             }
@@ -955,6 +972,10 @@
             retryError.code = 'NATIVE_PROFILE_RETRY_REQUIRED';
             if (error) retryError.cause = error;
             return retryError;
+        }
+
+        function isNativeProfileRetryRequired(error = null) {
+            return String(error?.code || error?.payload?.code || '').trim().toUpperCase() === 'NATIVE_PROFILE_RETRY_REQUIRED';
         }
 
         function nativeReadRequiresRls() {
@@ -17891,6 +17912,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const status = Number(error && error.status || 0);
             const message = String(error && error.message || error || '');
             if (error?.name === 'AbortError' || ['REQUEST_ABORTED', 'DATASET_READ_SCOPE_CHANGED', 'SUPABASE_READ_COOLDOWN'].includes(code)) return false;
+            if (isInventoryRevisionAdoptionError(error)) return true;
             if (isInventorySourceReadinessError(error)) return false;
             if ([400, 401, 403, 404, 409].includes(status)) return false;
             if (/permission denied|not authorized|\bforbidden\b|failed \((401|403|404|409)\)/i.test(message)) return false;
@@ -17906,8 +17928,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 || /\b(LOC_ON_HAND_SOURCE_NOT_READY|LOC_SOURCE_NOT_READY|DATASET_NOT_READY|LOC_ON_HAND_REVISION_CHANGED|LOC_REVISION_CHANGED|MANAGER_REPORT_SOURCE_REVISION_CHANGED|LOC_SOURCE_READ_SUSPENDED)\b/i.test(message);
         }
 
+        function isInventoryRevisionAdoptionError(error = null) {
+            const code = getSupabaseReadErrorCode(error);
+            const message = String(error && error.message || error || '');
+            return ['LOC_ON_HAND_REVISION_CHANGED', 'LOC_REVISION_CHANGED'].includes(code)
+                || /\b(?:LOC_ON_HAND_REVISION_CHANGED|LOC_REVISION_CHANGED)\b/i.test(message);
+        }
+
         function suspendProductionInventoryReadForReadiness(error = null) {
-            if (!isInventorySourceReadinessError(error) || getSupabaseReadErrorCode(error) === 'LOC_SOURCE_READ_SUSPENDED') return false;
+            if (!isInventorySourceReadinessError(error) || isInventoryRevisionAdoptionError(error) || getSupabaseReadErrorCode(error) === 'LOC_SOURCE_READ_SUSPENDED') return false;
             let coordinator = productionLiveSyncCoordinator;
             if (!coordinator && canUseProductionLiveSync()) coordinator = getProductionLiveSyncCoordinator();
             return !!coordinator?.suspendSourceReads?.(error, ['ph_master_inventory']);
@@ -21365,15 +21394,26 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const cache = requestAuthorizedDatasetReadPage.cache;
             const cacheKey = JSON.stringify([config.dataset, params]);
             const cached = cache.get(cacheKey);
+            const cacheable = ['soc', 'cav', 'reserves', 'suspend_tag'].includes(config.dataset);
             if (cached && ['soc', 'cav', 'reserves'].includes(config.dataset)) params.ifRevision = cached.revision;
-            const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
-                action: 'dataset_read', dataset: config.dataset, params
-            }, {
-                timeoutMs: Number(options.timeoutMs) || SUPABASE_READ_TIMEOUT_MS,
-                signal: options.signal,
-                label: `${config.dataset} data`
-            });
+            let payload;
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+                try {
+                    payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                        action: 'dataset_read', dataset: config.dataset, params
+                    }, {
+                        timeoutMs: Number(options.timeoutMs) || SUPABASE_READ_TIMEOUT_MS,
+                        signal: options.signal,
+                        label: `${config.dataset} data`
+                    });
+                    break;
+                } catch (error) {
+                    if (attempt === 0 && isInventoryRevisionAdoptionError(error) && !options.signal?.aborted) continue;
+                    throw error;
+                }
+            }
             if (identityScope !== getSupabaseReadIdentityScope() || permissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
+            if (payload?.ok === true && payload.data?.retained === true && cached) return { ...structuredClone(cached), retained: true };
             if (payload?.ok === true && payload.data?.up_to_date === true && cached
                 && String(payload.data.revision) === cached.revision) return structuredClone(cached);
             if (!payload || payload.ok !== true || !payload.data || !Array.isArray(payload.data.rows)
@@ -21385,7 +21425,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 error.payload = payload;
                 throw error;
             }
-            if (config.dataset === 'suspend_tag' && params.offset === 0) {
+            if (config.dataset === 'suspend_tag' && params.offset === 0 && payload.data.retained !== true) {
                 const hasSourceFreshness = Object.prototype.hasOwnProperty.call(payload.data, 'sourceFreshness');
                 const sourceFreshness = hasSourceFreshness && payload.data.sourceFreshness && typeof payload.data.sourceFreshness === 'object'
                     ? payload.data.sourceFreshness : {};
@@ -21401,7 +21441,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (inventoryRevision && acceptCardLocationOnHandSourceReceipt(identityScope, permissionVersion, inventoryRevision)) {
                 payload.data.rows.forEach(row => stampCardLocationOnHandReceipt(row, identityScope, permissionVersion, inventoryRevision));
             }
-            if (['soc', 'cav', 'reserves'].includes(config.dataset) && /^\d+$/.test(String(payload.data.revision || ''))) {
+            if (cacheable && (config.dataset === 'suspend_tag' || /^\d+$/.test(String(payload.data.revision || '')))) {
                 cache.delete(cacheKey);
                 cache.set(cacheKey, structuredClone(payload.data));
                 while (cache.size > 32) cache.delete(cache.keys().next().value);
@@ -26061,7 +26101,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.44').trim() || 'AgData v2.3.44';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.45').trim() || 'AgData v2.3.45';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29072,6 +29112,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && isDriveCommonNamePreparationCurrent(pending));
         }
 
+        function normalizeOptionalBunchRevisionMetadata(metadata, keys = []) {
+            if (!metadata || metadata.contractVersion !== 1 || !Array.isArray(metadata.sources)) return metadata;
+            const optional = new Set(['bunch_note_private.jobs', 'bunch_note_private.previews']);
+            const requested = new Set((keys || []).filter(key => optional.has(key)));
+            if (!requested.size) return metadata;
+            const sources = metadata.sources.map(source => requested.has(source?.key) && source.state === 'unavailable'
+                ? { ...source, revision: String(source.revision ?? '0'), state: 'ready', optional: true }
+                : source);
+            const present = new Set(sources.map(source => source?.key));
+            requested.forEach(key => { if (!present.has(key)) sources.push({ key, revision: '0', state: 'ready', optional: true }); });
+            return { ...metadata, sources };
+        }
+
         function getProductionLiveSyncCoordinator() {
             if (productionLiveSyncCoordinator) return productionLiveSyncCoordinator;
             if (!canUseProductionLiveSync()) return null;
@@ -29096,6 +29149,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     let metadata;
                     try {
                         metadata = await supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 15000, signal });
+                        metadata = normalizeOptionalBunchRevisionMetadata(metadata, keys);
                         if (metadata?.contractVersion === 1 && Array.isArray(metadata.sources)) {
                             window.GncRuntimeWatchdog?.setDatasetRevisions(Object.fromEntries(metadata.sources.map(source => [String(source.key || ''), { revision: String(source.revision ?? ''), state: String(source.state || '') }])));
                         }
@@ -34978,6 +35032,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function showViewErrorState(viewId, message = 'Could not load data.', force = false, error = null) {
+            if (isNativeProfileRetryRequired(error)) {
+                nativeAuthProfileRestorePending = true;
+                void retryNativeAuthRestoreOnForeground();
+                return false;
+            }
             if (viewId === 'av' || viewId === 'drive') return showAvReadUnavailableState(error || new Error(message), hasProgressiveViewData(), viewId);
             const ui = VIEW_LOAD_UI[viewId];
             if (!ui) return;
@@ -35181,6 +35240,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (canUseProductionLiveSync()) {
                 const context = getProductionLiveSyncContext();
                 if (!context.adapters.length) return false;
+                const optionalBunchView = viewId === 'bunch-note'
+                    || viewId === 'request' && ['bunch-notes', 'bunch-count-review'].includes(String(activeReqTab || '').trim().toLowerCase());
+                if (optionalBunchView) {
+                    void getProductionLiveSyncCoordinator().check('visible-view').catch(() => false);
+                    return false;
+                }
                 if (getCurrentVisibleViewId() !== viewId) return true;
                 const key = productionVerifiedViewKey(context);
                 if (productionLiveSyncVerifiedView === key
