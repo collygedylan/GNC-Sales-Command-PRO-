@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -126,6 +126,17 @@ test('migration target is the configured Supabase project and never a browser ke
   assert.match(validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres',api),/sslmode=verify-full/);
   assert.throws(()=>validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres?host=other.example',api),/TARGET_INVALID/);
   assert.throws(()=>validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres?sslmode=disable',api),/TLS_REQUIRED/);
+});
+
+test('Drive evidence reconciliation is registered with durable location and request contracts', () => {
+  assert.equal(driveLocationEvidenceMigrationName, '20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1), driveLocationEvidenceMigrationName);
+  assert.deepEqual(normalizeScopedMigrationPaths([`supabase/migrations/${driveLocationEvidenceMigrationName}`]),
+    [driveLocationEvidenceMigrationName]);
+  const query = migrationContractQuery(driveLocationEvidenceMigrationName);
+  for (const marker of ['inventory_location_evidence_v1', 'save_drive_evidence_v3',
+    'request_lifecycle_tombstones_v1', 'reconcile_active_requests_from_outbox_v1',
+    "'''previewHasMore'',false", 'eval_work_natural_sort_key_v1(p.lotcode)']) assert.ok(query.includes(marker), marker);
 });
 
 test('mapping publication is release-registered and protects raw source data and writes', () => {
