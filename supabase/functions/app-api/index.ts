@@ -5947,8 +5947,9 @@ function normalizeBunchNoteSavePayload(value: unknown): Record<string, unknown> 
   const payload = value && typeof value === "object" && !Array.isArray(value) ? { ...(value as Record<string, unknown>) } : {};
   const bodyValue = payload.body;
   if (!bodyValue || typeof bodyValue !== "object" || Array.isArray(bodyValue)) return payload;
-  const body = { ...(bodyValue as Record<string, unknown>), format_version: 5 };
-  const locations = (Array.isArray(body.locations) ? body.locations : []).filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object" && !Array.isArray(entry)).map(entry => {
+  const body: Record<string, unknown> = { ...(bodyValue as Record<string, unknown>), format_version: 5 };
+  const locationValues: unknown[] = Array.isArray(body.locations) ? body.locations : [];
+  const locations: Record<string, unknown>[] = locationValues.filter((entry: unknown): entry is Record<string, unknown> => !!entry && typeof entry === "object" && !Array.isArray(entry)).map((entry: Record<string, unknown>) => {
     const location = canonicalBunchNoteLocation(entry.location || entry.source_location);
     const next: Record<string, unknown> = { ...entry, location, source_location: location, format_version: 5 };
     const workType = cleanBunchNoteText(entry.work_type || entry.title || entry.purposes || `${location.replace(/\.000$/, "")} Bunch Notes`, 500);
@@ -5957,11 +5958,12 @@ function normalizeBunchNoteSavePayload(value: unknown): Record<string, unknown> 
     for (const [key, limit] of [["title", 500], ["purpose_thread", 500], ["default_house_plan", 800], ["schedule_banner", 2000], ["direction", 200], ["instructions", 8000], ["prerequisites", 8000]] as const) {
       if (key in entry || !["title"].includes(key)) next[key] = cleanBunchNoteText(entry[key], limit);
     }
-    next.rule_chips = (Array.isArray(entry.rule_chips) ? entry.rule_chips : []).map(chip => cleanBunchNoteText(chip, 500)).filter(Boolean).slice(0, 20);
-    if (Array.isArray(entry.cards)) next.cards = entry.cards.map(card => card && typeof card === "object" && !Array.isArray(card) ? { ...(card as Record<string, unknown>), location_code: location } : card);
+    const ruleChips: unknown[] = Array.isArray(entry.rule_chips) ? entry.rule_chips : [];
+    next.rule_chips = ruleChips.map((chip: unknown) => cleanBunchNoteText(chip, 500)).filter(Boolean).slice(0, 20);
+    if (Array.isArray(entry.cards)) next.cards = entry.cards.map((card: unknown) => card && typeof card === "object" && !Array.isArray(card) ? { ...(card as Record<string, unknown>), location_code: location } : card);
     return next;
   });
-  const firstBlock = locations.map(location => canonicalBunchNoteLocation(location.location).split(".")[0]).find(Boolean) || "";
+  const firstBlock = locations.map((location: Record<string, unknown>) => canonicalBunchNoteLocation(location.location).split(".")[0]).find(Boolean) || "";
   body.locations = locations;
   body.block = cleanBunchNoteText(body.block, 100).toUpperCase().replace(/\.+$/, "") || firstBlock;
   payload.body = body;
