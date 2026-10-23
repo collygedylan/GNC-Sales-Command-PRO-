@@ -91795,6 +91795,20 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "reconcile_active_requests_from_outbox_v1": {
+      "oneOf": [
+        {
+          "object": {}
+        }
+      ]
+    },
+    "reconcile_inventory_location_evidence_v1": {
+      "oneOf": [
+        {
+          "object": {}
+        }
+      ]
+    },
     "reconcile_inventory_row_assignments_batch_v1": {
       "oneOf": [
         {
@@ -92905,6 +92919,94 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "save_drive_evidence_v2": {
+      "oneOf": [
+        {
+          "object": {
+            "p_baseline": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_complete": {
+              "schema": {
+                "oneOf": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            },
+            "p_evidence": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_itemcode": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_locationcode": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_lotcode": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_signature": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_idempotency_key": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_master_uid": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_workflow": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "save_drive_evidence_v3": {
       "oneOf": [
         {
           "object": {
@@ -102203,6 +102305,16 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "reconcile_active_requests_from_outbox_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "reconcile_inventory_location_evidence_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "reconcile_inventory_row_assignments_batch_v1": {
       "oneOf": [
         "json"
@@ -103238,6 +103350,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "save_drive_evidence_v2": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "save_drive_evidence_v3": {
       "oneOf": [
         "json"
       ]
