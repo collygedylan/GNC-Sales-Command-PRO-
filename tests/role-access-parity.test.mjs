@@ -98,6 +98,7 @@ test('transient reads retain UI data while genuine reclass conflicts stay enforc
   assert.match(api, /MASTER_IDENTITY_SOURCE_NOT_READY[^]*retained:true, retryable:true/);
   assert.match(api, /DRIVE_RECLASS_SOURCE_CHANGED" \}\);/);
   assert.match(html, /expectedPolicyOrConflict/);
+  assert.match(html, /response\.status === 401 && \(isLoginScreenVisible\(\) \|\| !getCurrentAppSessionToken\(\)\)/);
   assert.match(html, /\[409, 423\]\.includes\(response\.status\)/);
 });
 

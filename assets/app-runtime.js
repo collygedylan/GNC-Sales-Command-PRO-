@@ -21308,7 +21308,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (!response.ok) {
                 const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
                 const responseCode = String(payload && (payload.code || payload.sqlstate || payload.sqlState) || '').trim().toUpperCase();
-                const expectedPreLoginAuthFailure = response.status === 401 && isLoginScreenVisible();
+                const expectedPreLoginAuthFailure = response.status === 401 && (isLoginScreenVisible() || !getCurrentAppSessionToken());
                 const expectedPolicyOrConflict = response.status === 403 && /FORBIDDEN|NOT_ENABLED|UNAVAILABLE/.test(responseCode)
                     || [409, 423].includes(response.status) && /SOURCE_CHANGED|REVISION_CHANGED|REFRESH|NOT_READY/.test(responseCode);
                 if (body?.action !== 'watchdog_log_event' && !expectedPreLoginAuthFailure && !expectedPolicyOrConflict) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: `${String(body?.action || safeOptions.label || 'app-api')} returned ${response.status}: ${message}` });

@@ -199,6 +199,8 @@ test('watchdog queues reports per account, retries after transport recovery and 
   class MutationObserver { observe() {} }
   vm.runInNewContext(source, { window, document, MutationObserver, setTimeout, clearTimeout, Map, Set, Object, String, Number, Array });
   const watchdog = window.GncRuntimeWatchdog;
+  const legacyKey = 'agdata.runtime-watchdog.pending.v1:dylan_collyge';
+  storage.set(legacyKey, '[{"app_version":"AgData v2.3.52"}]');
   let rejectFirstReport;
   const dylanReports = [];
   watchdog.configure({ username: 'dylan_collyge', role: 'Admin', getSubModule: () => 'home-dashboard', reportEvent: event => {
@@ -206,10 +208,11 @@ test('watchdog queues reports per account, retries after transport recovery and 
     return new Promise((_, reject) => { rejectFirstReport = reject; });
   } });
   watchdog.inspect();
+  assert.equal(storage.has(legacyKey), false, 'same-version queues from the retired runtime are purged');
   assert.equal(storage.size, 0, 'an already-rendered first view must not create a load-stall incident');
   watchdog.setDatasetRevisions({ inventory: { revision: '7', state: 'ready' } });
   watchdog.record('OPERATIONAL_FAILURE', { view_id: 'home', error_message: 'bounded failure' });
-  const dylanKey = 'agdata.runtime-watchdog.pending.v1:dylan_collyge';
+  const dylanKey = 'agdata.runtime-watchdog.pending.v2:dylan_collyge';
   assert.equal(JSON.parse(storage.get(dylanKey)).length, 1, 'inflight delivery remains durable in the account queue');
 
   const otherAccountReports = [];
@@ -332,6 +335,8 @@ test('watchdog persistence is RLS protected and privileged actions are server au
 
 test('watchdog keeps only current-release queued events and resolves prior releases on privileged reads', () => {
   const api = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /agdata\.runtime-watchdog\.pending\.v2:/);
+  assert.match(source, /LEGACY_REPORT_QUEUE_PREFIXES\.forEach\(prefix => global\.localStorage\?\.removeItem/);
   assert.match(source, /String\(event\.app_version\) === currentVersion/);
   assert.match(source, /state\.reportQueue\.length !== parsed\.length\) persistReportQueue\(\)/);
   assert.match(api, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.52"/);
