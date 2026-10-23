@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.45";
+const APP_RUNTIME_RELEASE = "AgData v2.3.52";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -430,8 +430,8 @@ function inventoryLocationReadFailureResponse(error: unknown): Response | null {
   const code = String(error instanceof Error ? error.message : error || "");
   if (!/LOC_ON_HAND/.test(code)) return null;
   if (code.includes("LOC_ON_HAND_SOURCE_NOT_READY")) {
-    return errorResponse("Inventory is refreshing. The last verified snapshot remains available.", 423,
-      { code: "LOC_ON_HAND_SOURCE_NOT_READY", source: "ph_master_inventory", retryable: false, retryAfterMs: 30_000 });
+    return jsonResponse({ ok: true, code: "LOC_ON_HAND_SOURCE_NOT_READY", retained: true, retryable: true,
+      data: { rows: [], total: 0, retained: true, retryable: true, source: "ph_master_inventory" } });
   }
   if (code.includes("LOC_ON_HAND_REVISION_CHANGED")) return null;
   return errorResponse("Inventory totals could not be verified.", 503, { code, retryable: false });
@@ -747,6 +747,10 @@ const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
 };
 type DatasetReadRelation = (keyof Database["public"]["Tables"] | keyof Database["public"]["Views"]) & string;
 const DATASET_READ_SOURCES: Record<string, { table: DatasetReadRelation; permission: string; key: string; fields: string; signatures?: string; filterFields: Set<string>; orderFields: Set<string> }> = {
+  app_user_directory: {
+    table: "profiles", permission: "ph_app_users", key: "username", fields: "username,display_name,role,division,language",
+    filterFields: new Set(["username", "role", "division", "language"]), orderFields: new Set(["username", "display_name", "role"]),
+  },
   inventory_edits: {
     table: "ph_inventory_edit_requests", permission: "ph_inventory_edit_requests", key: "id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_inventory_edit_requests,
     filterFields: new Set(["id", "status", "workflow_stage", "stage", "source_unique_id", "master_unique_id", "itemcode", "locationcode", "lotcode", "stage_updated_at", "updated_at"]),
@@ -826,6 +830,7 @@ const PRODUCTIVITY_HISTORY_ENTRY_FIELDS = new Set(["event_key", "completed_by_us
 function normalizeDatasetReadAlias(value: unknown): string {
   const key = String(value || "").trim().toLowerCase().replace(/-/g, "_");
   const aliases: Record<string, string> = {
+    ph_app_users: "app_user_directory",
     ph_master_inventory: "master_inventory", ph_soc_master: "soc", suspend: "suspend_tag",
     ph_soc_suspend_tag_rows: "suspend_tag", ph_active_request: "active_request",
     ph_active_request_live_rows: "active_request", ph_reserves: "reserves", ph_cav_import: "cav",
@@ -1118,7 +1123,7 @@ async function handleDatasetRead(
   const canonicalDatasetAccess = dataset !== "suspend_tag" && canonicalDatasetReadAllowed(canonicalAccess, dataset);
   if (dataset === "suspend_tag"
     ? !SUSPEND_TAG_EDITORS.has(username)
-    : !hasTableReadAccess(role, source.permission, username) && !canonicalDatasetAccess) {
+    : dataset !== "app_user_directory" && !hasTableReadAccess(role, source.permission, username) && !canonicalDatasetAccess) {
     return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
   }
   if (dataset === "suspend_tag") {
@@ -1134,6 +1139,7 @@ async function handleDatasetRead(
   try {
     const query = new URLSearchParams();
     query.set("select", fields);
+    if (dataset === "app_user_directory") query.set("disabled_at", "is.null");
     const filters = datasetReadFilterParts(source, parsed.filters);
     for (const filter of filters) {
       const value = Array.isArray(filter.value) ? `(${filter.value.map(datasetReadOrLiteral).join(",")})` : datasetReadOrLiteral(filter.value);
@@ -3478,12 +3484,12 @@ export async function handleManagerReportReadAction(
     } catch (error) {
       const message = String((error as { message?: unknown })?.message || (error instanceof Error ? error.message : error || ""));
       if (/manager_report_source_revision_changed|LOC_ON_HAND_REVISION_CHANGED/i.test(message)) {
-        return errorResponse("The report source changed while paging. Restart the page request.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED", retryable: false,
-          ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
+        return transientOkResponse("MANAGER_REPORT_SOURCE_REVISION_CHANGED", "The report source changed while paging; retained rows remain visible.",
+          { rows: [], total: 0, revisionChanged: true, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
       }
       if (/manager_report_source_not_ready|LOC_ON_HAND_SOURCE_NOT_READY/i.test(message)) {
-        return errorResponse("The report source is refreshing. Try again shortly.", 423, { code: "DATASET_NOT_READY", retryable: false, retryAfterMs: 30_000,
-          ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
+        return transientOkResponse("DATASET_NOT_READY", "The report source is refreshing; retained rows remain visible.",
+          { rows: [], total: 0, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
       }
       return errorResponse("Could not load manager report data.", 409, { code: "MANAGER_REPORT_READ_FAILED" });
     }
@@ -3560,14 +3566,16 @@ export async function handleManagerReportReadAction(
         });
         if (afterError || !afterSummary || typeof afterSummary !== "object") throw afterError || new Error("MANAGER_REPORT_SOURCE_NOT_READY");
         if (String((afterSummary as Record<string, unknown>).sourceRevision || "") !== sourceRevision) {
-          return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
+          return transientOkResponse("MANAGER_REPORT_SOURCE_REVISION_CHANGED", "The approval queue changed while paging; retained rows remain visible.",
+            { rows: [], total: 0, revisionChanged: true });
         }
         outboxSummary = afterSummary as Record<string, unknown>;
       } else {
         const afterRevision = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
         if (afterRevision.error || !afterRevision.data || !/^[1-9]\d*$/.test(String(afterRevision.data.revision ?? ""))) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
         if (String(afterRevision.data.revision) !== sourceRevision) {
-          return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
+          return transientOkResponse("MANAGER_REPORT_SOURCE_REVISION_CHANGED", "The approval queue changed while paging; retained rows remain visible.",
+            { rows: [], total: 0, revisionChanged: true });
         }
       }
       const total = queue === "outbox" ? Number(outboxSummary?.total || 0) : count ?? 0;
@@ -3576,8 +3584,8 @@ export async function handleManagerReportReadAction(
           ...(queue === "outbox" ? { activeLineCount: Number(outboxSummary?.activeLineCount || 0) } : {}) } } });
     } catch (error) {
       const message = String((error as { message?: unknown })?.message || error || "");
-      if (/manager_report_source_revision_changed|LOC_ON_HAND_REVISION_CHANGED/i.test(message)) return errorResponse("The report source changed while paging. Restart the page request.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED", retryable: false, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
-      if (/manager_report_source_not_ready|LOC_ON_HAND_SOURCE_NOT_READY/i.test(message)) return errorResponse("The report source is refreshing. Try again shortly.", 423, { code: "DATASET_NOT_READY", retryable: false, retryAfterMs: 30_000, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
+      if (/manager_report_source_revision_changed|LOC_ON_HAND_REVISION_CHANGED/i.test(message)) return transientOkResponse("MANAGER_REPORT_SOURCE_REVISION_CHANGED", "The report source changed while paging; retained rows remain visible.", { rows: [], total: 0, revisionChanged: true, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
+      if (/manager_report_source_not_ready|LOC_ON_HAND_SOURCE_NOT_READY/i.test(message)) return transientOkResponse("DATASET_NOT_READY", "The report source is refreshing; retained rows remain visible.", { rows: [], total: 0, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
       return errorResponse("Could not load approval queue.", 409, { code: "MANAGER_REPORT_APPROVAL_READ_FAILED" });
     }
   }
@@ -3613,8 +3621,8 @@ export async function handleManagerReportReadAction(
   } catch (error) {
     const message = String((error as { message?: unknown })?.message || (error instanceof Error ? error.message : error || ""));
     if (message.includes("manager_report_eval1_forbidden") || message.includes("manager_report_eval2_forbidden")) return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
-    if (/manager_report_source_revision_changed|LOC_ON_HAND_REVISION_CHANGED/i.test(message)) return errorResponse("The report source changed while paging. Restart the page request.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED", retryable: false, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
-    if (/manager_report_source_not_ready|LOC_ON_HAND_SOURCE_NOT_READY/i.test(message)) return errorResponse("The report source is refreshing. Try again shortly.", 423, { code: "DATASET_NOT_READY", retryable: false, retryAfterMs: 30_000, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
+    if (/manager_report_source_revision_changed|LOC_ON_HAND_REVISION_CHANGED/i.test(message)) return transientOkResponse("MANAGER_REPORT_SOURCE_REVISION_CHANGED", "The report source changed while paging; retained rows remain visible.", { rows: [], total: 0, revisionChanged: true, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
+    if (/manager_report_source_not_ready|LOC_ON_HAND_SOURCE_NOT_READY/i.test(message)) return transientOkResponse("DATASET_NOT_READY", "The report source is refreshing; retained rows remain visible.", { rows: [], total: 0, ...(/LOC_ON_HAND/i.test(message) ? { source: "ph_master_inventory" } : {}) });
     return errorResponse("Could not load manager report data.", 409, { code: "MANAGER_REPORT_READ_FAILED" });
   }
 }
@@ -4719,8 +4727,8 @@ async function handleInventoryRead(
     }
     const locationFailure = inventoryLocationReadFailureResponse(error);
     if (locationFailure) return locationFailure;
-    if (message.includes("MASTER_IDENTITY_SOURCE_NOT_READY")) return errorResponse("Inventory is refreshing. The last verified snapshot remains available.", 423,
-      { code: "MASTER_IDENTITY_SOURCE_NOT_READY", source: "ph_master_inventory", retryable: false, retryAfterMs: 30_000 });
+    if (message.includes("MASTER_IDENTITY_SOURCE_NOT_READY")) return jsonResponse({ ok:true, code:"MASTER_IDENTITY_SOURCE_NOT_READY",
+      retained:true, retryable:true, data:{ rows:[], total:0, retained:true, retryable:true, source:"ph_master_inventory" } });
     if (message.includes("MASTER_IDENTITY_REVISION_CHANGED")) return jsonResponse({ ok:true, data:{ rows:[], total:0, retained:true, retryable:true } });
     if (/PAYLOAD_INVALID|PARAMETERS_INVALID|PAGE_INVALID|OPERATION_INVALID|FILTER_INVALID|FILTER_REQUIRED|PROJECTION_INVALID|SINCE_INVALID|TYPE_INVALID|VERIFICATION_INVALID|IDENTITY_BATCH_INVALID|IDENTITY_REVISION_INVALID|IDENTITY_QUEUE_INVALID/.test(message)) {
       return errorResponse("Invalid inventory read request.", 400, { code: message });
@@ -6192,6 +6200,22 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
             || payload.includeResolved !== undefined && typeof payload.includeResolved !== "boolean") throw new Error("WATCHDOG_PARAMETERS_INVALID");
         const offset = Number(payload.offset ?? 0);
         if (!Number.isSafeInteger(offset) || offset < 0 || offset > 2_000_000) throw new Error("WATCHDOG_PARAMETERS_INVALID");
+        const currentVersion = APP_RUNTIME_RELEASE.match(/v(\d+)\.(\d+)\.(\d+)/i)?.slice(1).map(Number) || [];
+        const { data: openVersions, error: openVersionsError } = await supabase.from("app_runtime_watchdog_events" as never)
+          .select("id,app_version").eq("status", "open").limit(1000);
+        if (openVersionsError) throw openVersionsError;
+        const priorIds = ((openVersions || []) as Array<Record<string, unknown>>).filter((row) => {
+          const version = String(row.app_version || "").match(/v(\d+)\.(\d+)\.(\d+)/i)?.slice(1).map(Number) || [];
+          if (version.length !== 3 || currentVersion.length !== 3) return false;
+          return version.some((value, index) => value !== currentVersion[index]
+            && (value < currentVersion[index] || version.slice(0, index).some((part, priorIndex) => part < currentVersion[priorIndex])))
+            && !version.slice(0, index).some((part, priorIndex) => part > currentVersion[priorIndex]);
+        }).map((row) => Number(row.id)).filter(Number.isSafeInteger);
+        if (priorIds.length) {
+          const { error: resolveError } = await supabase.from("app_runtime_watchdog_events" as never)
+            .update({ status: "resolved" } as never).in("id", priorIds as never[]);
+          if (resolveError) throw resolveError;
+        }
         let query = supabase.from("app_runtime_watchdog_events" as never).select("*", { count:"exact" });
         if (payload.includeResolved !== true) query = query.eq("status", "open");
         const { data, error, count } = await query.order("last_seen_at", { ascending:false }).order("id", { ascending:false }).range(offset, offset + 249);

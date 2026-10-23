@@ -21307,13 +21307,16 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }
             if (!response.ok) {
                 const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
+                const responseCode = String(payload && (payload.code || payload.sqlstate || payload.sqlState) || '').trim().toUpperCase();
                 const expectedPreLoginAuthFailure = response.status === 401 && isLoginScreenVisible();
-                if (body?.action !== 'watchdog_log_event' && !expectedPreLoginAuthFailure) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: `${String(body?.action || safeOptions.label || 'app-api')} returned ${response.status}: ${message}` });
+                const expectedPolicyOrConflict = response.status === 403 && /FORBIDDEN|NOT_ENABLED|UNAVAILABLE/.test(responseCode)
+                    || [409, 423].includes(response.status) && /SOURCE_CHANGED|REVISION_CHANGED|REFRESH|NOT_READY/.test(responseCode);
+                if (body?.action !== 'watchdog_log_event' && !expectedPreLoginAuthFailure && !expectedPolicyOrConflict) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: `${String(body?.action || safeOptions.label || 'app-api')} returned ${response.status}: ${message}` });
                 const err = new Error(message || `Request failed (${response.status})`);
                 err.status = response.status;
                 err.requestId = response.headers?.get('x-request-id') || safeOptions.requestId || '';
                 err.payload = payload;
-                err.code = String(payload && (payload.code || payload.sqlstate || payload.sqlState) || '').trim().toUpperCase();
+                err.code = responseCode;
                 err.sqlState = String(payload && (payload.sqlState || payload.sqlstate) || '').trim().toUpperCase();
                 err.details = payload && typeof payload === 'object' ? String(payload.details || '').trim() : '';
                 throw err;
@@ -21336,6 +21339,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 ph_request_queue_live_rows: 'request_queue',
                 ph_active_request_live_rows: 'active_request',
                 ph_active_request: 'active_request',
+                ph_app_users: 'app_user_directory',
                 ph_soc_master: 'soc',
                 // API dataset alias only; never read as a physical public table.
                 ph_soc_suspend_tag_rows: 'suspend_tag',
@@ -51202,10 +51206,12 @@ function toggleDriveQuickRequestItem(domId) {
                 return options;
             })().catch((error) => {
                 if (owner === getRequestModalLookupOwnerSignature()) {
-                    if (!requestModalRepUserOptionsReady) requestModalRepUserOptions = [];
-                    requestModalRepUserOptionsError = 'Could not load active REP users. Request submit is blocked until the list loads.';
+                    requestModalRepUserOptions = mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, requestModalRepUserOptions);
+                    requestModalRepUserOptionsReady = requestModalRepUserOptions.length > 0;
+                    requestModalRepUserOptionsError = requestModalRepUserOptionsReady ? '' : 'No configured sales reps were found.';
                 }
-                throw error;
+                console.warn('Request rep directory refresh retained known options.', error);
+                return requestModalRepUserOptions;
             }).finally(() => {
                 if (requestModalRepUserOptionsLoadPromise === loadPromise) {
                     requestModalRepUserOptionsLoading = false;
@@ -130076,7 +130082,14 @@ C.14.043 C.15.000
             select.value = current;
         }
         function createPagedManagerEvalIndex(state, retainItems = true) {
-            const meta = state.metadata || {}, api = getManagerEvalReportsApi();
+            let meta = state.metadata || {}; const api = getManagerEvalReportsApi();
+            const localMetadata = typeof getCachedManagerEvalReport2Metadata === 'function' ? getCachedManagerEvalReport2Metadata() : null;
+            const reportIds = api?.REPORT_IDS || [];
+            if (localMetadata && reportIds.length === 11 && reportIds.every(id => Number(meta.counts?.[id] || 0) === 0)
+                && reportIds.some(id => Number(localMetadata.counts?.[id] || 0) > 0)) {
+                meta = { ...meta, counts:localMetadata.counts, reportMatchCount:localMetadata.reportMatchCount,
+                    inventoryRowCount:localMetadata.inventoryRowCount, cachedSnapshot:true };
+            }
             const scope = getSupabaseReadIdentityScope(), permission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
             const prior = retainItems && managerEvalReport2Cache?.paged && managerEvalReport2Cache.scopeKey === scope && managerEvalReport2Cache.permissionVersion === permission && managerEvalReport2Cache.sourceRevision === state.revision ? managerEvalReport2Cache : null;
             const fullReportMatchCount = meta.reportMatchCount != null ? Math.max(0, Number(meta.reportMatchCount) || 0)

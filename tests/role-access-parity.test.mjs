@@ -79,6 +79,36 @@ test('Desktop Browser Dylan login opens Home when optional initialization fails'
   assert.doesNotMatch(shellFunction('openAppShellAfterLogin'), /App could not load|Reload app/);
 });
 
+test('authenticated app directory reads stay sanitized and Request rep fallback never rejects', () => {
+  assert.match(api, /app_user_directory:\s*\{[^}]*table: "profiles"[^}]*fields: "username,display_name,role,division,language"/s);
+  assert.match(api, /ph_app_users: "app_user_directory"/);
+  assert.match(api, /dataset !== "app_user_directory" && !hasTableReadAccess/);
+  assert.match(api, /dataset === "app_user_directory"\) query\.set\("disabled_at", "is\.null"\)/);
+  assert.doesNotMatch(api.match(/const COMMON_AUTH_READ_TABLES = new Set\(\[[^]*?\]\);/)?.[0] || '', /ph_app_users/);
+  assert.match(html, /ph_app_users: 'app_user_directory'/);
+  const requestDirectory = shellFunction('ensureRequestRepUserOptionsReady');
+  assert.match(requestDirectory, /Request rep directory refresh retained known options/);
+  assert.match(requestDirectory, /return requestModalRepUserOptions/);
+  assert.doesNotMatch(requestDirectory, /throw error/);
+});
+
+test('transient reads retain UI data while genuine reclass conflicts stay enforced', () => {
+  assert.match(api, /transientOkResponse\("MANAGER_REPORT_SOURCE_REVISION_CHANGED"/);
+  assert.match(api, /transientOkResponse\("DATASET_NOT_READY"/);
+  assert.match(api, /MASTER_IDENTITY_SOURCE_NOT_READY[^]*retained:true, retryable:true/);
+  assert.match(api, /DRIVE_RECLASS_SOURCE_CHANGED" \}\);/);
+  assert.match(html, /expectedPolicyOrConflict/);
+  assert.match(html, /\[409, 423\]\.includes\(response\.status\)/);
+});
+
+test('Eval Reports 2 replaces contradictory zero counts from a complete same-account snapshot', () => {
+  const build = shellFunction('createPagedManagerEvalIndex');
+  assert.match(build, /getCachedManagerEvalReport2Metadata\(\)/);
+  assert.match(build, /reportIds\.length === 11/);
+  assert.match(build, /localMetadata\.counts/);
+  assert.match(build, /cachedSnapshot:true/);
+});
+
 test('Home sync always renders four named cards while partial metadata refreshes', () => {
   const nodes = Object.fromEntries(['dashboard-sync-accordion', 'dashboard-sync-stamp', 'dashboard-sync-summary', 'dashboard-sync-files'].map(id => [id, { classList: { toggle() {} }, innerHTML: '', innerText: '' }]));
   const ctx = vm.createContext({ document: { getElementById: id => nodes[id] }, canViewDashboardSyncStatus: () => true,

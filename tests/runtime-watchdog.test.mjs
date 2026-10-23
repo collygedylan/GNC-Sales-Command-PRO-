@@ -330,6 +330,21 @@ test('watchdog persistence is RLS protected and privileged actions are server au
   assert.match(api, /supabase\.from\("app_runtime_watchdog_events" as never\)\.upsert/);
 });
 
+test('watchdog keeps only current-release queued events and resolves prior releases on privileged reads', () => {
+  const api = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /String\(event\.app_version\) === currentVersion/);
+  assert.match(source, /state\.reportQueue\.length !== parsed\.length\) persistReportQueue\(\)/);
+  assert.match(api, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.52"/);
+  assert.match(api, /select\("id,app_version"\)\.eq\("status", "open"\)\.limit\(1000\)/);
+  assert.match(api, /update\(\{ status: "resolved" \} as never\)\.in\("id", priorIds as never\[\]\)/);
+});
+
+test('view stalls require a visible loading indicator', () => {
+  assert.match(source, /function findVisibleLoadingIndicator\(root\)/);
+  assert.match(source, /\.find\(isVisibleParityNode\)/);
+  assert.match(source, /if \(view\(\) === current && findVisibleLoadingIndicator\(nextRoot\)\)/);
+});
+
 test('signed watchdog email embeds the same complete fix brief returned to the copy button', () => {
   const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
   const module = { exports: {} };
