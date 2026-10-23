@@ -148,7 +148,7 @@ export function createBunchQueueClient({ scopeKey, cacheScopeKey = scopeKey, tra
     publish({ filter, offset, loading: online(), offline: !online(), error: outboxBlocked ? 'Saved pending work could not be read. It has been retained on this device.' : '' });
     if (!online()) return;
     try {
-      const data = await call(reviews ? 'list_discrepancies' : 'queue', { filter, offset, limit: 100 });
+      const data = object(await call(reviews ? 'list_discrepancies' : 'queue', { filter, offset, limit: 100 }));
       if (generation !== loadingId || disposed) return;
       if (data?.retained === true) return;
       const page = reviews ? parseBunchReviews(data) : parseBunchQueue(data);
