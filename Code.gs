@@ -669,6 +669,7 @@ const SUPABASE_KEY = resolveSupabaseServiceRoleKey_('__SUPABASE_SERVICE_ROLE_KEY
 const REQUEST_DELIVERY_RECEIPT_PREFIX = 'REQ_DELIVERY_RECEIPT_V1_';
 const RECLASS_BACKGROUND_DELIVERY_ENABLED_ = true;
 const RECLASS_DELIVERY_EVENT_TYPE_ = 'reclass_inquiry';
+const RECLASS_RECOUNT_COMPLETION_EVENT_TYPE_ = 'reclass_recount_completed';
 const EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ = 'eval_work_assignment';
 const EVAL_WORK_COMPLETION_EVENT_TYPE_ = 'eval_work_completion';
 const SHEAR_LOCATION_INQUIRY_EVENT_TYPE_ = 'shear_location_inquiry';
@@ -21089,6 +21090,73 @@ function handleSignedLocationWorkDelivery_(delivery) {
   }
 }
 
+function handleSignedReclassRecountCompletion_(delivery) {
+  const messageIdHeader = String(delivery && delivery.messageIdHeader || '').trim();
+  if (!messageIdHeader) throw new Error('REQUEST_DELIVERY_MESSAGE_ID_REQUIRED');
+  const savedReceipt = getRequestDeliveryReceipt_(messageIdHeader);
+  if (savedReceipt) return buildRecoveredDeliveryResult_(messageIdHeader, savedReceipt, 'apps_script_receipt_recovery');
+  const alreadySent = findSentRequestDeliveryByMessageId_(messageIdHeader);
+  if (alreadySent) {
+    const recovered = buildRecoveredDeliveryResult_(messageIdHeader, alreadySent, 'gmail_api_idempotent_recovery');
+    saveRequestDeliveryReceipt_(messageIdHeader, recovered);
+    return recovered;
+  }
+  const payload = delivery && delivery.payload && typeof delivery.payload === 'object' ? delivery.payload : {};
+  const lots = Array.isArray(payload.lots) ? payload.lots : [];
+  const recipients = dedupeEmailAddresses_([payload.deliveryRecipients]);
+  const countedTotal = Number(payload.countedTotal);
+  const systemOnHand = Number(payload.systemOnHandTotal);
+  const variance = Number(payload.variance);
+  if (String(payload.contractVersion || '') !== 'reclass-recount-completed-v1'
+      || !String(payload.jobId || '').trim() || !String(payload.itemcode || '').trim()
+      || !String(payload.locationcode || '').trim() || !lots.length || lots.length > 500
+      || !Number.isFinite(countedTotal) || !Number.isFinite(systemOnHand) || !Number.isFinite(variance)
+      || recipients.length < 2 || recipients.length > 4) {
+    throw new Error('RECLASS_RECOUNT_VALIDATION:PAYLOAD_INVALID');
+  }
+  const lotRowsHtml = lots.map(function(line) {
+    return '<tr><td>' + escapeEmailHtml_(line.lotcode || '') + '</td><td>' + escapeEmailHtml_(line.season || '')
+      + '</td><td style="text-align:right;">' + escapeEmailHtml_(line.onHand == null ? 0 : line.onHand)
+      + '</td><td style="text-align:right;">' + escapeEmailHtml_(line.available == null ? 0 : line.available)
+      + '</td><td style="text-align:right;">' + escapeEmailHtml_(line.review == null ? 0 : line.review) + '</td></tr>';
+  }).join('');
+  const title = [payload.commonname, payload.contsize].filter(Boolean).join(' ') || payload.itemcode;
+  const subject = '[External] GNC PH Recount Completed - ' + String(payload.locationcode || '').trim() + ' - ' + String(payload.itemcode || '').trim();
+  const htmlBody = buildPhoneSizedEmailHtml_('<div style="font-family:Arial,sans-serif;padding:20px;color:#17221d;">'
+    + '<h2 style="margin:0 0 6px;color:#007a4d;">Recount Completed</h2><div style="font-weight:700;">'
+    + escapeEmailHtml_(title) + '</div><div style="margin-top:4px;">Item ' + escapeEmailHtml_(payload.itemcode)
+    + ' &middot; Location ' + escapeEmailHtml_(payload.locationcode) + '</div>'
+    + '<table style="width:100%;margin:18px 0;border-collapse:collapse;"><tr><td style="padding:10px;border:1px solid #cbd5e1;"><strong>Counted</strong><br>'
+    + escapeEmailHtml_(countedTotal) + '</td><td style="padding:10px;border:1px solid #cbd5e1;"><strong>System On Hand</strong><br>'
+    + escapeEmailHtml_(systemOnHand) + '</td><td style="padding:10px;border:1px solid #cbd5e1;"><strong>Variance</strong><br>'
+    + escapeEmailHtml_(variance) + '</td></tr></table>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr><th style="text-align:left;border:1px solid #cbd5e1;padding:7px;">Lotcode</th>'
+    + '<th style="text-align:left;border:1px solid #cbd5e1;padding:7px;">Season</th><th style="border:1px solid #cbd5e1;padding:7px;">On Hand</th>'
+    + '<th style="border:1px solid #cbd5e1;padding:7px;">Available</th><th style="border:1px solid #cbd5e1;padding:7px;">Review</th></tr></thead><tbody>'
+    + lotRowsHtml + '</tbody></table><p>Requested by ' + escapeEmailHtml_(payload.requestedByUsername || '')
+    + '; completed by ' + escapeEmailHtml_(payload.submittedByDisplayName || payload.submittedByUsername || '') + '.</p></div>');
+  const textRows = lots.map(function(line) {
+    return [line.lotcode || '-', line.season || '-', 'On Hand ' + (line.onHand == null ? 0 : line.onHand),
+      'Available ' + (line.available == null ? 0 : line.available), 'Review ' + (line.review == null ? 0 : line.review)].join(' | ');
+  }).join('\n');
+  if (!isGmailAdvancedServiceAvailable_()) throw new Error('RECLASS_RECOUNT_EMAIL_GMAIL_SERVICE_UNAVAILABLE');
+  try {
+    const result = sendGmailApiMessage_({
+      toList: recipients.join(','), toArray: recipients, subject: subject,
+      textBody: 'Recount Completed\n' + title + '\nItem ' + payload.itemcode + ' | Location ' + payload.locationcode
+        + '\nCounted ' + countedTotal + ' | System On Hand ' + systemOnHand + ' | Variance ' + variance + '\n\n' + textRows,
+      htmlBody: htmlBody, fromName: 'GNC PH Recount', fromAddress: resolveAutomatedEmailSenderAddress_(),
+      messageIdHeader: messageIdHeader
+    });
+    result.subject = subject;
+    result.messageIdHeader = messageIdHeader;
+    saveRequestDeliveryReceipt_(messageIdHeader, result);
+    return result;
+  } catch (error) {
+    throw new Error('RECLASS_RECOUNT_EMAIL_SEND_FAILED');
+  }
+}
+
 // Block Clearing PDFs use a frozen inventory snapshot; they do not change inventory.
 const BLOCK_CLEARING_PDF_CONTRACT_ = 'block-clearing-pdf-v1';
 
@@ -22161,6 +22229,9 @@ function handleSignedRequestDeliveryEvent_(payload) {
   if (eventType === 'photo_history_share') return handleSignedPhotoHistoryShare_(delivery);
   if (eventType === RECLASS_DELIVERY_EVENT_TYPE_) {
     return handleSignedReclassInquiryDelivery_(delivery);
+  }
+  if (eventType === RECLASS_RECOUNT_COMPLETION_EVENT_TYPE_) {
+    return handleSignedReclassRecountCompletion_(delivery);
   }
   if (eventType === EVAL_WORK_ASSIGNMENT_EVENT_TYPE_ || eventType === EVAL_WORK_COMPLETION_EVENT_TYPE_) {
     return handleSignedEvalWorkDelivery_(delivery);

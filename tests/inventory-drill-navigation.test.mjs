@@ -9,6 +9,32 @@ test('inventory projects expose folder and row workflows', () => {
   assert.match(html, /id="batch-btn-project"/);
   for (const action of ['projects_read','project_save','project_add_rows','project_update_row','project_delete']) assert.match(runtime, new RegExp(action));
 });
+
+test('Item Inquiry Recount groups location lots and queues counted-total email', () => {
+  const context = vm.createContext({ Array, Number, String });
+  vm.runInContext(source('buildReclassRecountLocationGroups'), context);
+  const groups = context.buildReclassRecountLocationGroups([{
+    id: '11111111-1111-4111-8111-111111111111', itemcode: '006737.070.1', commonname: 'Test Plant',
+    locationcode: 'A.05.000', requested_by_username: 'requester', lines: [
+      { source_unique_id: 's1', lotcode: '27.S1', season: 'S1', on_hand: 5, available: 4, review: 1 },
+      { source_unique_id: 'u1', lotcode: '27.U1', season: 'U1', on_hand: 5, available: 3, review: 2 }
+    ]
+  }]);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].locationcode, 'A.05.000');
+  assert.equal(groups[0].system_on_hand, 10);
+  assert.deepEqual(Array.from(groups[0].lines, line => [line.lotcode, line.on_hand, line.available, line.review]), [
+    ['27.S1', 5, 4, 1], ['27.U1', 5, 3, 2]
+  ]);
+  assert.match(source('renderReclassItemInquiryRecountCard'), /Location On Hand[^]*On Hand[^]*Available[^]*Review[^]*data-reclass-recount-input[^]*Complete Recount/);
+  const completionSource = html.match(/        async function completeReclassItemInquiryRecount\([^]*?^        }/m)?.[0] || assert.fail('completeReclassItemInquiryRecount');
+  assert.match(completionSource, /reclassRecountApi\('complete'[^]*countedTotal[^]*lot breakdown email was queued/);
+  const migration = readFileSync(new URL('../supabase/migrations/20261023203000_dashboard_warning_cleanup_and_reclass_recount_v1.sql', import.meta.url), 'utf8');
+  assert.match(migration, /sum\(on_hand\)[^]*group by itemcode, locationcode/);
+  assert.match(migration, /'dylan_collyge', 'megan_kelly'[^]*'lots',lots/);
+  const appsScript = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+  assert.match(appsScript, /reclass-recount-completed-v1[^]*Counted[^]*System On Hand[^]*Variance[^]*Lotcode[^]*Available[^]*Review/);
+});
 import assert from 'node:assert/strict';
 import fs, { readFileSync } from 'node:fs';
 import vm from 'node:vm';

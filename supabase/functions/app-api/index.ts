@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.52";
+const APP_RUNTIME_RELEASE = "AgData v2.3.53";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -651,13 +651,15 @@ function sanitizeStorageFileName(value = "") {
 }
 
 async function uploadImmutablePhotoObject(bucketName: string, path: string, part: ValidatedPhotoPart) {
+  if (!new Set(Object.values(PHOTO_BUCKETS)).has(bucketName) || !["image/jpeg", "image/webp"].includes(part.mimeType)) {
+    throw new Error("PHOTO_STORAGE_TARGET_INVALID");
+  }
   const result = await supabase.storage.from(bucketName).upload(path, part.bytes, {
     contentType: part.mimeType,
     cacheControl: "31536000",
-    upsert: false,
+    upsert: true,
   });
-  const duplicate = !!(result.error && /already exists|duplicate/i.test(String(result.error.message || "")));
-  if (result.error && !duplicate) throw new Error("PHOTO_STORAGE_UNAVAILABLE");
+  if (result.error) throw new Error("PHOTO_STORAGE_UNAVAILABLE");
 }
 
 function hasTableReadAccess(role = "", table = "", username = "") {
@@ -2205,6 +2207,94 @@ export async function handleDriveReclassAction(
     return jsonResponse(Object.keys(result).length ? result : { ok: false, status: "missing" });
   } catch (_) {
     return driveReclassErrorResponse("DRIVE_RECLASS_SERVICE_UNAVAILABLE");
+  }
+}
+
+async function requestReclassRecountRest(path: string, init: RequestInit = {}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  const value = await readResponsePayload(response);
+  if (!response.ok) throw new Error(String(jsonObject(value).message || jsonObject(value).code || "RECLASS_RECOUNT_DATABASE_UNAVAILABLE"));
+  return value;
+}
+
+async function handleReclassRecountAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session || session.mustChangePassword) return transientOkResponse("RECLASS_RECOUNT_PROFILE_PENDING", "Recount is waiting for the active profile.", { jobs: [] });
+  const actor = await resolveActiveSessionProfile(session).catch(() => null);
+  if (!actor) return transientOkResponse("RECLASS_RECOUNT_PROFILE_PENDING", "Recount is waiting for the active profile.", { jobs: [] });
+  const operation = String(payload.operation || "list").trim().toLowerCase();
+  try {
+    if (operation === "list") {
+      const jobsValue = await requestReclassRecountRest("ph_reclass_recount_jobs?select=id,itemcode,commonname,contsize,locationcode,requested_by_username,requested_at,system_on_hand,status&status=eq.pending&order=locationcode.asc,itemcode.asc,requested_at.asc&limit=1000");
+      const jobs = Array.isArray(jobsValue) ? jobsValue as Record<string, unknown>[] : [];
+      const ids = jobs.map((job) => String(job.id || "")).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+      let lines: Record<string, unknown>[] = [];
+      if (ids.length) {
+        const lineQuery = `ph_reclass_recount_lines?select=job_id,source_unique_id,lotcode,season,on_hand,available,review&job_id=in.(${ids.join(",")})&order=lotcode.asc,season.asc`;
+        const linesValue = await requestReclassRecountRest(lineQuery);
+        lines = Array.isArray(linesValue) ? linesValue as Record<string, unknown>[] : [];
+      }
+      return jsonResponse({ ok: true, data: jobs.map((job) => ({
+        ...job,
+        lines: lines.filter((line) => String(line.job_id || "") === String(job.id || "")),
+      })) });
+    }
+    if (operation === "complete") {
+      const jobId = String(payload.jobId || payload.job_id || "").trim();
+      const commandId = String(payload.commandId || payload.command_id || "").trim();
+      const countedTotal = Number(payload.countedTotal ?? payload.counted_total);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)
+        || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commandId)
+        || !Number.isSafeInteger(countedTotal) || countedTotal < 0) {
+        return jsonResponse({ ok: false, code: "RECLASS_RECOUNT_INPUT_INVALID", message: "Enter a whole counted amount of zero or more." });
+      }
+      const data = await requestReclassRecountRest("rpc/complete_reclass_recount_v1", {
+        method: "POST",
+        body: JSON.stringify({ p_actor_id: actor.id, p_job_id: jobId, p_counted_total: countedTotal, p_idempotency_token: commandId }),
+      });
+      const result = jsonObject(data);
+      if (result.deliveryEventId) dispatchReclassDeliveryNow(result, "", "");
+      return jsonResponse({ ok: true, data: result });
+    }
+    return jsonResponse({ ok: false, code: "RECLASS_RECOUNT_OPERATION_INVALID", message: "Unsupported Recount operation." });
+  } catch (error) {
+    const code = String(error instanceof Error ? error.message : error || "RECLASS_RECOUNT_UNAVAILABLE").toUpperCase();
+    return transientOkResponse(code.slice(0, 120), "Recount is temporarily unavailable; displayed rows remain available.", { jobs: [] });
+  }
+}
+
+async function handleDatasetRevisionsAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  const keys = Array.isArray(payload.datasetKeys)
+    ? [...new Set(payload.datasetKeys.map((value) => String(value || "").trim()).filter(Boolean))]
+    : [];
+  const allowedKeys = new Set(["ph_master_inventory", "ph_soc_master"]);
+  if (!keys.length || keys.length > 2 || keys.some((key) => !allowedKeys.has(key))) {
+    return jsonResponse({ ok: false, code: "DATASET_KEYS_INVALID", message: "Dataset revision request is invalid." });
+  }
+  if (!session || session.mustChangePassword) return transientOkResponse("DATASET_PROFILE_PENDING", "Dataset revisions are waiting for the active profile.", { sources: [] });
+  const actor = await resolveActiveSessionProfile(session).catch(() => null);
+  if (!actor) return transientOkResponse("DATASET_PROFILE_PENDING", "Dataset revisions are waiting for the active profile.", { sources: [] });
+  try {
+    const rpc = supabase.rpc.bind(supabase) as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message?: string } | null }>;
+    const { data, error } = await rpc("dataset_revisions_for_actor_v1", { p_actor_id: actor.id, p_dataset_keys: keys });
+    if (error) throw new Error(error.message || "DATASET_REVISIONS_UNAVAILABLE");
+    return jsonResponse({ ok: true, data });
+  } catch (_error) {
+    return transientOkResponse("DATASET_REVISIONS_UNAVAILABLE", "Dataset revisions are temporarily unavailable.", { sources: [] });
   }
 }
 
@@ -4600,6 +4690,11 @@ async function handleInventoryRead(
       });
       if (error) throw new Error(/MASTER_IDENTITY/i.test(error.message) ? error.message : "MASTER_IDENTITY_READ_FAILED");
       const result = jsonObject(data);
+      if (result.retryable === true) return jsonResponse({ ok: true, data: {
+        rows: [], total: 0, retained: true, retryable: true,
+        revisionChanged: result.revisionChanged === true, sourceNotReady: result.sourceNotReady === true,
+        inventoryRevision: String(result.inventoryRevision || requestedRevision || ""),
+      } });
       const inventoryRevision = String(result?.inventoryRevision || "");
       if (!/^[1-9]\d*$/.test(inventoryRevision) || (requestedRevision !== null && requestedRevision !== inventoryRevision)
         || !result || !Array.isArray(result.rows)
@@ -6054,6 +6149,8 @@ function canonicalActionGate(action: string, payload: Record<string, unknown>): 
     return String(payload.operation || "create").trim().toLowerCase() === "create"
       ? { flag: "can_submit_reclass" } : { flag: "can_access_drive_mode" };
   }
+  if (action === "reclass_recount") return { flag: "can_access_que" };
+  if (action === "dataset_revisions") return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] };
   if (action === "inventory_reclass_move") return { flag: "can_submit_reclass" };
   if (["request_work", "request_history", "sales_credit", "request_queue_remove", "request_archive", "bunch_note", "bunch_note_workflow"].includes(action)) {
     return { flag: "can_access_que" };
@@ -6410,6 +6507,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "report_read_v2") return await handleManagerReportReadAction(session, payload, canonicalAccessForRequest, activeProfileForRequest);
   if (action === "photo_history") return await handlePhotoHistoryAction(session, payload);
   if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
+  if (action === "reclass_recount") return await handleReclassRecountAction(session, payload);
+  if (action === "dataset_revisions") return await handleDatasetRevisionsAction(session, payload);
   if (action === "season_sales_office") return await handleSeasonSalesOfficeAction(session, payload);
   if (action === "shear_location_work") return await handleShearLocationAction(session, payload);
   if (action === "bunch_note_workflow") {

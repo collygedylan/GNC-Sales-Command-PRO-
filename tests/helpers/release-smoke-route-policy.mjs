@@ -93,6 +93,14 @@ export function releaseSnapshotReadFixture(body, mappings = [], approvals = [], 
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   if (body.action === 'location_work' && body.operation === 'list' && body.status === 'all'
       && Object.keys(body).sort().join(',') === 'action,operation,status') return {ok:true,data:[]};
+  if (body.action === 'reclass_recount' && body.operation === 'list'
+      && Object.keys(body).sort().join(',') === 'action,operation') return {ok:true,data:[]};
+  if (body.action === 'dataset_revisions' && Array.isArray(body.datasetKeys)
+      && body.datasetKeys.length >= 1 && body.datasetKeys.length <= 2
+      && body.datasetKeys.every(key => ['ph_master_inventory','ph_soc_master'].includes(key))
+      && Object.keys(body).sort().join(',') === 'action,datasetKeys') {
+    return {ok:true,data:{contractVersion:1,permissionVersion:'fixture-permissions-v1',sources:body.datasetKeys.map(key => ({key,revision:'1',state:'ready'}))}};
+  }
   if (body.action === 'bunch_note_workflow' && ['queue','list_discrepancies'].includes(body.operation)
       && Object.keys(body).sort().join(',') === 'action,operation,payload'
       && body.payload && !Array.isArray(body.payload) && Object.keys(body.payload).sort().join(',') === 'filter,limit,offset'

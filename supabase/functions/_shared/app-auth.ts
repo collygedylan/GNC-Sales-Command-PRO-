@@ -228,6 +228,9 @@ export async function readSupabaseOrAppSessionFromRequest(
   req: Request,
   supabaseAdmin: SupabaseClient<Database>,
 ): Promise<AppSessionClaims | null> {
+  if (req.headers.get("x-gnc-session") || req.headers.get("x-app-session")) {
+    return await readAppSessionFromRequest(req, supabaseAdmin);
+  }
   const bearer = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (bearer && supabaseAdmin) try {
     const { data, error } = await supabaseAdmin.auth.getUser(bearer);

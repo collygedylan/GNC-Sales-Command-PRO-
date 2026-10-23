@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.52';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.53';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -911,7 +911,7 @@
                     global: { fetch: (input, init) => window.GncLoginTrace?.fetch(input, init) ?? window.fetch(input, init) },
                     auth: {
                         persistSession: true,
-                        autoRefreshToken: true,
+                        autoRefreshToken: false,
                         detectSessionInUrl: false,
                         storageKey: 'gnc_supabase_auth_v1',
                         experimental: { passkey: true }
@@ -1048,7 +1048,7 @@
             const task = (async () => {
                 let session = await getNativeAuthSession().catch(() => null);
                 if (epoch !== nativeAuthRecoveryEpoch) return null;
-                if (!session?.access_token && NATIVE_AUTH_ENABLED) {
+                if (!session?.access_token && session?.refresh_token && NATIVE_AUTH_ENABLED) {
                     const client = getSupabaseBrowserClient();
                     const refreshed = await client?.auth?.refreshSession?.().catch(() => null);
                     session = refreshed?.error ? null : refreshed?.data?.session;
@@ -2125,6 +2125,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         async function uploadOptimizedBlobToStorage(bucketName, requestedPath, blob, options = {}) {
+            const normalizedBucket = String(bucketName || '').trim();
+            if (!Object.values(PHOTO_BUCKETS).includes(normalizedBucket)) throw new Error('Photo storage bucket is invalid.');
             if (HIGH_VOLUME_PLANT_PHOTO_BUCKETS.has(String(bucketName || '').trim())) {
                 throw new Error('Secure plant-photo upload is required. Refresh the app and retry.');
             }
@@ -2134,14 +2136,16 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const requestedName = slashIndex >= 0 ? path.slice(slashIndex + 1) : path;
             const optimized = await optimizePhotoBlobForUpload(blob, requestedName || 'photo.jpg');
             const actualPath = `${folder}${optimized.fileName || requestedName}`;
+            const contentType = String(optimized.contentType || options.contentType || blob.type || '').toLowerCase().replace('image/jpg', 'image/jpeg');
+            if (!['image/jpeg', 'image/webp'].includes(contentType)) throw new Error('Photo encoding is invalid.');
             const storage = getSupabaseStorageClient();
             const uploadResult = await withTimeout(storage.from(bucketName).upload(actualPath, optimized.blob || blob, {
-                contentType: optimized.contentType || options.contentType || blob.type || 'application/octet-stream',
+                contentType,
                 cacheControl: String(options.cacheControl || '31536000'),
-                upsert: false
+                upsert: true
             }), Math.max(1000, Number(options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS), String(options.label || 'Photo upload'));
             const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
-            if (uploadError && !/already exists|duplicate/i.test(String(uploadError.message || ''))) throw uploadError;
+            if (uploadError) throw uploadError;
             const { data: publicUrlData } = storage.from(bucketName).getPublicUrl(actualPath);
             return {
                 publicUrl: String(publicUrlData && publicUrlData.publicUrl || '').trim(),
@@ -19194,6 +19198,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const rpcName = String(functionName || '').trim();
             assertEvalDataSourceAllowed(rpcName);
             if (!rpcName) throw new Error('RPC name is required.');
+            if (rpcName === 'get_my_dataset_revisions_v1') {
+                const result = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                    action: 'dataset_revisions',
+                    datasetKeys: Array.isArray(body.p_dataset_keys) ? body.p_dataset_keys : []
+                }, { timeoutMs: Math.max(1000, Number(requestOptions.timeoutMs) || 15000), signal: requestOptions.signal, label: 'Dataset revisions' });
+                if (!result || result.ok !== true || !result.data) throw new Error(String(result && result.code || 'DATASET_REVISIONS_UNAVAILABLE'));
+                return result.data;
+            }
             const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (requestOptions.requestSubmissionOwnerKey && (requestOptions.requestSubmissionOwnerKey !== getRequestSubmissionOwnerKey()
                 || requestOptions.requestSubmissionGeneration !== requestSubmissionGeneration)) {
@@ -24198,6 +24210,7 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
         let selectedLocationMoveItems=[]; let selectedLocationMoveDestinationBySourceId=new Map();
         let locationWorkLineDrafts=new Map(); let locationWorkRecipientOptions=[]; let locationWorkSelectedRecipientIds=new Set(); let locationWorkCreateToken='';
         let locationWorkRows=[]; let locationWorkLoaded=false; let locationWorkLoading=false; let locationWorkError=''; let activeLocationWorkJobId='';
+        let reclassRecountJobs=[]; let reclassRecountLoaded=false; let reclassRecountLoading=false; let reclassRecountError=''; let reclassRecountOwner='';
         const MOVES_COMPLETED_STORAGE_PREFIX = 'gnc_moves_completed_v1';
         const MOVES_ACTUAL_MOVED_STORAGE_PREFIX = 'gnc_moves_actual_moved_v1';
         const MOVES_TA_STORAGE_PREFIX = 'gnc_moves_ta_v1';
@@ -26147,7 +26160,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.52').trim() || 'AgData v2.3.52';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.53').trim() || 'AgData v2.3.53';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29403,6 +29416,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function resetProductionLiveSync() {
             locationWorkRows = []; locationWorkLoaded = false; locationWorkLoading = false; locationWorkError = ''; activeLocationWorkJobId = '';
+            reclassRecountJobs = []; reclassRecountLoaded = false; reclassRecountLoading = false; reclassRecountError = ''; reclassRecountOwner = '';
             managerEvalReport2LocalBrowseCache = null;
             resetRequestArchivePageState();
             resetAssignableUserDirectory();
@@ -45356,6 +45370,11 @@ let avTopControlsRenderToken = 0;
                             || (inquiryPayload.rowOverlays || []).some((overlay) => (overlay.fieldEdits || []).length > 0
                                 || (overlay.proposals || []).some((proposal) => proposal.action === 'priority_change')));
                     rememberQueuedReclassDelivery(inquiryPayload, inquiryResult, submitActorUsername, submitSourceView);
+                    if (Array.isArray(inquiryPayload.transaction && inquiryPayload.transaction.requestActions)
+                        && inquiryPayload.transaction.requestActions.includes('recount')) {
+                        reclassRecountLoaded = false;
+                        void loadReclassRecountJobs(true);
+                    }
                     if (!submitIdentityIsCurrent()) return false;
                     const liveEditResult = liveEditRequested
                         ? applyConfirmedArgosReclassLiveEdits(inquiryResult, submitIdentityKey)
@@ -55024,26 +55043,51 @@ function toggleDriveQuickRequestItem(domId) {
         async function finalizeLogin(user,pass,isBiometricLogin,options = {}) {
             const loginOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const isRestoredSession = !!loginOptions.restoredSession;
-            setBootingSession(false);
-            clearExplicitLogoutMarker();
-            localStorage.setItem('gnc_user_v3',user);
-            localStorage.setItem('gnc_role_v3',currentRole);
-            localStorage.setItem('gnc_division_v1',currentUserDivision || '10');
-            localStorage.setItem('gnc_language_v1',normalizeAppUserLanguage(currentUserLanguage));
-            localStorage.setItem(LOGIN_DISPLAY_NAME_STORAGE_KEY, currentUserDisplay || currentUser || user);
+            const runPostLoginBootstrapStep = (label, task) => {
+                try { return task(); }
+                catch (error) { console.warn(`${label} deferred after login.`, error); return null; }
+            };
+            runPostLoginBootstrapStep('Session boot state', () => setBootingSession(false));
+            runPostLoginBootstrapStep('Explicit logout marker', () => clearExplicitLogoutMarker());
+            runPostLoginBootstrapStep('Session cache', () => {
+                localStorage.setItem('gnc_user_v3',user);
+                localStorage.setItem('gnc_role_v3',currentRole);
+                localStorage.setItem('gnc_division_v1',currentUserDivision || '10');
+                localStorage.setItem('gnc_language_v1',normalizeAppUserLanguage(currentUserLanguage));
+                localStorage.setItem(LOGIN_DISPLAY_NAME_STORAGE_KEY, currentUserDisplay || currentUser || user);
+            });
             try { configureRuntimeWatchdogForCurrentSession(); }
             catch (error) { console.warn('Runtime watchdog initialization deferred after login.', error); }
             if (nativeAuthSessionActive) {
-                localStorage.removeItem('gnc_pin_v3');
-                localStorage.removeItem(VERIFIED_LOGIN_STORAGE_KEY);
+                runPostLoginBootstrapStep('Native session cache', () => {
+                    localStorage.removeItem('gnc_pin_v3');
+                    localStorage.removeItem(VERIFIED_LOGIN_STORAGE_KEY);
+                });
             } else {
-                localStorage.setItem('gnc_pin_v3',pass);
-                persistVerifiedLoginRecord(user, pass, currentRole, currentUserDisplay || currentUser || user, currentUserDivision || '10', currentUserLanguage || 'English');
+                runPostLoginBootstrapStep('Access-code session cache', () => {
+                    localStorage.setItem('gnc_pin_v3',pass);
+                    persistVerifiedLoginRecord(user, pass, currentRole, currentUserDisplay || currentUser || user, currentUserDivision || '10', currentUserLanguage || 'English');
+                });
             }
-            applyCurrentUserLanguagePreference();
-            document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
+            runPostLoginBootstrapStep('Language preference', () => applyCurrentUserLanguagePreference());
+            runPostLoginBootstrapStep('Header identity', () => {
+                const headerUser = document.getElementById('header-user');
+                if (headerUser) headerUser.innerText=currentUserDisplay || currentUser;
+            });
             // The authenticated identity is already verified; data and policy refreshes run behind Home.
-            openAppShellAfterLogin(hasWarmAppData());
+            const shellOpened = runPostLoginBootstrapStep('Authenticated shell', () => {
+                openAppShellAfterLogin(hasWarmAppData());
+                return true;
+            });
+            if (!shellOpened) {
+                runPostLoginBootstrapStep('Authenticated shell fallback', () => {
+                    const loginView = document.getElementById('view-login');
+                    const appWrapper = document.getElementById('app-wrapper');
+                    if (appWrapper) { appWrapper.classList.remove('hidden'); appWrapper.hidden = false; appWrapper.style.removeProperty('display'); }
+                    if (loginView) loginView.style.display = 'none';
+                    finishInitialAppLoad();
+                });
+            }
             try {
             const readCapabilities = () => initializeRequestCapabilities({ render: false, reason: isRestoredSession ? 'restored-login' : 'login' });
             if (canUseProductionLiveSync()) {
@@ -112621,6 +112665,102 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             };
         }
 
+        function buildReclassRecountLocationGroups(rows = []) {
+            const quantity = (value) => {
+                const number = Number(String(value == null ? '' : value).replace(/,/g, ''));
+                return Number.isFinite(number) ? number : 0;
+            };
+            return (Array.isArray(rows) ? rows : []).map((job) => {
+                const lines = (Array.isArray(job && job.lines) ? job.lines : []).map((line) => ({
+                    source_unique_id: String(line && (line.source_unique_id || line.sourceUniqueId) || '').trim(),
+                    lotcode: String(line && line.lotcode || '').trim(),
+                    season: String(line && line.season || '').trim(),
+                    on_hand: quantity(line && (line.on_hand ?? line.onHand)),
+                    available: quantity(line && line.available),
+                    review: quantity(line && line.review)
+                }));
+                const systemOnHand = lines.reduce((sum, line) => sum + line.on_hand, 0);
+                const locationcode = String(job && job.locationcode || '').trim();
+                return {
+                    id: String(job && job.id || '').trim(),
+                    source: 'reclass-item-inquiry',
+                    source_unique_id: String(job && job.id || '').trim(),
+                    itemcode: String(job && job.itemcode || '').trim(),
+                    commonname: String(job && job.commonname || 'Unknown').trim() || 'Unknown',
+                    contsize: String(job && job.contsize || '').trim(),
+                    locationcode,
+                    from_locationcode: locationcode,
+                    to_locationcode: locationcode,
+                    ptronhand: systemOnHand,
+                    system_on_hand: systemOnHand,
+                    requested_by_username: String(job && job.requested_by_username || '').trim(),
+                    requested_at: String(job && job.requested_at || '').trim(),
+                    lines
+                };
+            }).filter((job) => job.id && job.itemcode && job.locationcode && job.lines.length)
+                .sort((left, right) => left.locationcode.localeCompare(right.locationcode, undefined, { numeric: true, sensitivity: 'base' })
+                    || left.itemcode.localeCompare(right.itemcode, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        async function reclassRecountApi(operation = 'list', payload = {}, options = {}) {
+            return await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                ...(payload && typeof payload === 'object' ? payload : {}),
+                action: 'reclass_recount',
+                operation: String(operation || '').trim().toLowerCase()
+            }, {
+                timeoutMs: Math.max(3000, Number(options && options.timeoutMs) || 20000),
+                label: `Reclass Recount ${operation}`,
+                idempotencyKey: String(options && options.idempotencyKey || '').trim()
+            });
+        }
+
+        async function loadReclassRecountJobs(force = false) {
+            const owner = getSupabaseReadIdentityScope();
+            if (reclassRecountLoading) return reclassRecountJobs;
+            if (reclassRecountLoaded && reclassRecountOwner === owner && !force) return reclassRecountJobs;
+            reclassRecountLoading = true;
+            reclassRecountError = '';
+            try {
+                const result = await reclassRecountApi('list');
+                if (owner !== getSupabaseReadIdentityScope()) return reclassRecountJobs;
+                if (!result || result.ok !== true || !Array.isArray(result.data)) throw new Error(String(result && result.message || 'Recount could not be refreshed.'));
+                reclassRecountJobs = result.data;
+                reclassRecountLoaded = true;
+                reclassRecountOwner = owner;
+                return reclassRecountJobs;
+            } catch (error) {
+                if (owner === getSupabaseReadIdentityScope()) reclassRecountError = String(error && error.message || 'Recount could not be refreshed.');
+                return reclassRecountJobs;
+            } finally {
+                if (owner === getSupabaseReadIdentityScope()) reclassRecountLoading = false;
+                if (isViewVisible('request') && activeReqTab === 'recount') scheduleRequestRender(0, 44, true);
+            }
+        }
+
+        async function completeReclassItemInquiryRecount(jobId = '', button = null) {
+            const id = String(jobId || '').trim();
+            const input = document.querySelector(`[data-reclass-recount-input="${id.replace(/"/g, '\\"')}"]`);
+            const countedTotal = Number(String(input && input.value || '').trim());
+            if (!Number.isSafeInteger(countedTotal) || countedTotal < 0) {
+                showToast('Count Required', 'Enter a whole counted amount of zero or more.', true);
+                return false;
+            }
+            if (button) { button.disabled = true; button.classList.add('opacity-70', 'pointer-events-none'); }
+            try {
+                const commandId = crypto.randomUUID();
+                const result = await reclassRecountApi('complete', { jobId: id, countedTotal, commandId }, { timeoutMs: 30000, idempotencyKey: commandId });
+                if (!result || result.ok !== true) throw new Error(String(result && result.message || 'Recount could not be completed.'));
+                reclassRecountJobs = reclassRecountJobs.filter((job) => String(job && job.id || '') !== id);
+                scheduleRequestRender(0, 0, true);
+                showToast('Recount Completed', 'The counted total was saved and the lot breakdown email was queued.');
+            } catch (error) {
+                showToast('Could Not Complete Recount', String(error && error.message || 'Retry with the same counted amount.'), true);
+            } finally {
+                if (button) { button.disabled = false; button.classList.remove('opacity-70', 'pointer-events-none'); }
+            }
+            return false;
+        }
+
         function getLocationMoveRecountRowsForCurrentUser() {
             const access = getRoleAccessState();
             if (!(access && (access.isAdmin || canUseMovesModule() || isMoveRequestCompleterUser()))) return [];
@@ -112659,11 +112799,40 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 .map((row, index) => buildNcrApprovalRecountQueueRecord(row, index))
                 .filter(Boolean)
                 .forEach(addRecord);
+            buildReclassRecountLocationGroups(reclassRecountJobs).forEach((record) => {
+                const key = `RECLASS|${record.id}`;
+                if (!byKey.has(key)) byKey.set(key, record);
+            });
             return Array.from(byKey.values()).sort((a, b) => String(a.to_locationcode || '').localeCompare(String(b.to_locationcode || ''), undefined, { numeric: true, sensitivity: 'base' })
                 || String(a.commonname || '').localeCompare(String(b.commonname || ''), undefined, { sensitivity: 'base' }));
         }
 
+        function renderReclassItemInquiryRecountCard(record = {}) {
+            const rows = (Array.isArray(record.lines) ? record.lines : []).map((line) => `<tr>
+                <td class="border border-red-100 px-2 py-2 font-black text-slate-900">${esc(line.lotcode || '-')}</td>
+                <td class="border border-red-100 px-2 py-2 text-slate-600">${esc(line.season || '-')}</td>
+                <td class="border border-red-100 px-2 py-2 text-right font-black">${esc(normalizeCardQuantityValue(line.on_hand))}</td>
+                <td class="border border-red-100 px-2 py-2 text-right font-black">${esc(normalizeCardQuantityValue(line.available))}</td>
+                <td class="border border-red-100 px-2 py-2 text-right font-black">${esc(normalizeCardQuantityValue(line.review))}</td>
+            </tr>`).join('');
+            return `<div class="mb-3 rounded-2xl border-2 border-red-200 bg-red-50 p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-red-700">Item Inquiry Recount</div>
+                <div class="mt-1 text-xl font-black leading-tight text-slate-900 break-words">${esc(record.commonname || 'Unknown')} ${esc(record.contsize || '')}</div>
+                <div class="mt-2 text-xs font-black text-slate-600">Item ${esc(record.itemcode)} &middot; Location ${esc(record.locationcode)}</div></div>
+                <div class="rounded-xl border border-red-200 bg-white px-3 py-2 text-right"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-red-500">Location On Hand</div>
+                <div class="mt-1 text-2xl font-black text-red-700">${esc(normalizeCardQuantityValue(record.system_on_hand))}</div></div></div>
+                <div class="mt-3 overflow-x-auto"><table class="w-full border-collapse bg-white text-xs"><thead><tr class="text-left text-[9px] uppercase tracking-[0.12em] text-slate-500">
+                <th class="border border-red-100 px-2 py-2">Lotcode</th><th class="border border-red-100 px-2 py-2">Season</th><th class="border border-red-100 px-2 py-2 text-right">On Hand</th>
+                <th class="border border-red-100 px-2 py-2 text-right">Available</th><th class="border border-red-100 px-2 py-2 text-right">Review</th></tr></thead><tbody>${rows}</tbody></table></div>
+                <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end"><label class="flex-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">Counted at ${esc(record.locationcode)}
+                <input data-reclass-recount-input="${esc(record.id)}" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-xl border-2 border-red-200 bg-white px-3 py-3 text-lg font-black text-slate-900" placeholder="Enter counted amount"></label>
+                <button type="button" class="rounded-xl bg-red-700 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white" onclick="return completeReclassItemInquiryRecount('${escJsAttrValue(record.id)}',this)">Complete Recount</button></div>
+                <div class="mt-2 text-[10px] font-bold text-slate-500">Requested by ${esc(record.requested_by_username || '-')} &middot; Completion emails the requester, Dylan, Megan, and the submitting user.</div>
+            </div>`;
+        }
+
         function renderLocationMoveRecountCard(record = {}) {
+            if (record && record.source === 'reclass-item-inquiry') return renderReclassItemInquiryRecountCard(record);
             const isApprovalRecount = !!(record && (record.approval_recount_queue || record.ncr_recount_queue || record.source === 'approval-recount'));
             const quantityLabel = isApprovalRecount ? 'Re-Count' : 'Moved';
             const quantityValue = isApprovalRecount ? normalizeCardQuantityValue(firstNonEmptyValue(record.ptronhand, record.ptravailable, '-')) : (record.actual_moved || '-');
@@ -113303,14 +113472,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
             if (activeReqTab === 'recount') {
                 const crumbText = 'Recount';
+                if (!reclassRecountLoaded && !reclassRecountLoading) void loadReclassRecountJobs(false);
                 const recountRows = getLocationMoveRecountRowsForCurrentUser();
                 if (!recountRows.length) {
-                    applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No recount rows.</div>`, 'request:recount:empty');
+                    const emptyText = reclassRecountLoading ? 'Loading recount rows...' : reclassRecountError ? 'Saved recount rows remain available while refresh retries.' : 'No recount rows.';
+                    applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${esc(emptyText)}</div>`, `request:recount:empty:${reclassRecountLoading}:${reclassRecountError}`);
                     return;
                 }
                 const renderKey = [
                     'request:recount',
-                    recountRows.map((row) => [row.id, row.actual_moved, row.ptravailable, row.to_locationcode, row.note].join(':')).join('|')
+                    recountRows.map((row) => [row.id, row.actual_moved, row.ptravailable, row.to_locationcode, row.note,
+                        row.system_on_hand, (row.lines || []).map((line) => [line.lotcode,line.season,line.on_hand,line.available,line.review].join(',')).join(';')].join(':')).join('|')
                 ].join('::');
                 renderMarkupChunkedByKey('request-main', container, crumb, recountRows, crumbText, (record) => renderLocationMoveRecountCard(record), getRequestChunkRenderOptions({
                     renderSignature: renderKey,

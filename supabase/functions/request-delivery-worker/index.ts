@@ -487,7 +487,7 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           continue;
         }
 
-        if (["photo_history_share", "reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType)) {
+        if (["photo_history_share", "reclass_inquiry", "reclass_recount_completed", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType)) {
           if (!event.email_delivered_at) {
             const emailResult = await callAppsScript(event, [], null);
             channelResults.email = {
@@ -587,7 +587,7 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           });
           if (knownFailure && error.retryable) await failEvent(eventId, leaseToken, error);
           else await failEventPermanent(eventId, leaseToken, new Error(knownFailure ? code : "HL_ORDER_DELIVERY_UNKNOWN"), event.attempt_count);
-        } else if (["reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(String(event.event_type || ""))
+        } else if (["reclass_inquiry", "reclass_recount_completed", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(String(event.event_type || ""))
           && ["RECLASS_CONFLICT", "RECLASS_VALIDATION", "EVAL_WORK_CONFLICT", "EVAL_WORK_VALIDATION", "SHEAR_CONFLICT", "SHEAR_VALIDATION"].includes(code)) {
           await failEventPermanent(eventId, leaseToken, error, event.attempt_count);
         } else {
