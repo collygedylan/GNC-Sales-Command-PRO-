@@ -119,6 +119,9 @@ test('cloud production smoke requires 403 on query, history and deletion in both
   });
   assert.equal(result.assertions, 16);
   assert.equal(requests.length, 16);
+  const handler = read('supabase/functions/_shared/aura-query-handler.ts');
+  assert.doesNotMatch(handler, /admin\.auth\.getUser/);
+  assert.match(handler, /const session = await readSupabaseOrAppSessionFromRequest\(request, admin\)/);
   await assert.rejects(checkAuraAuthorization('https://abcdefghijklmnopqrst.supabase.co', async () => new Response('{}')), /AUTHORIZATION_REFUSAL_REQUIRED/);
   assert.match(read('.github/workflows/apps-script-sync.yml'), /node scripts\/aura-query-production-smoke.mjs/);
   assert.match(read('playwright.config.ts'), /grep: \/@local-e2e\//);

@@ -158,11 +158,9 @@ async function legacyTurnId(request: Request) {
 async function authorize(request: Request, admin: QueryClient): Promise<AuthResult | null> {
   const bearer = bearerFrom(request);
   if (!bearer) return null;
-  const { data, error } = await admin.auth.getUser(bearer);
-  const actorId = String(data?.user?.id || "");
-  if (error || !UUID.test(actorId)) return null;
   const session = await readSupabaseOrAppSessionFromRequest(request, admin);
-  if (!session || String(session.authUserId || "") !== actorId || session.mustChangePassword
+  const actorId = String(session?.authUserId || "");
+  if (!session || !UUID.test(actorId) || session.mustChangePassword
     || normalizeUsername(session.username) !== "dylan_collyge") return null;
   const { data: profile, error: profileError } = await admin.from("profiles")
     .select("id,username,display_name,role,disabled_at,locked_until,must_change_password")
