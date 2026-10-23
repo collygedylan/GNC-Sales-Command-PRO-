@@ -1502,7 +1502,7 @@
         }
 
         async function ensureNativeAppSessionBridge(force = false) {
-            if (!NATIVE_AUTH_ENABLED || !nativeAuthSessionActive) return null;
+            if (!NATIVE_AUTH_ENABLED || !nativeAuthSessionActive || !nativeAuthProfile?.id) return null;
             const bridgeEpoch = nativeAuthRecoveryEpoch;
             const bridgeSubject = String(nativeAuthSessionUserId || nativeAuthProfile?.id || '').trim();
             const stillOwnsBridge = () => bridgeEpoch === nativeAuthRecoveryEpoch
@@ -21258,8 +21258,30 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return '';
         }
 
+        function hasActiveAppApiProfile() {
+            const username = String(currentUser || '').trim().toLowerCase();
+            return !!(username && nativeAuthSessionActive === true && nativeAuthProfile?.id
+                && nativeAuthSessionUserId === nativeAuthProfile.id
+                && String(nativeAuthProfile.username || '').trim().toLowerCase() === username
+                && nativeAuthProfile.active !== false && !nativeAuthProfile.disabled_at
+                && nativeAuthProfile.must_change_password !== true);
+        }
+
+        function profilelessAppApiFallback(body = {}) {
+            const action = String(body.action || '').trim().toLowerCase();
+            if (action === 'navigation_preferences' || action === 'user_access') return { ok: false, data: null, retained: true, profilePending: true };
+            if (action === 'request_work') return String(body.operation || '') === 'capabilities'
+                ? { ok: true, data: { canViewQueue: false, canEditRequest: false, retained: true }, retained: true, profilePending: true }
+                : { ok: false, data: null, retained: true, retryable: true, profilePending: true };
+            if (action === 'native_session_bridge') return { ok: true, session: null, retained: true, profilePending: true };
+            return { ok: true, eligible: false, monitoringEligible: false, flags: {}, preferences: null, monitoring: null, retained: true, profilePending: true };
+        }
+
         async function postAppFunctionJson(url, body, options = {}) {
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const action = String(body?.action || '').trim().toLowerCase();
+            if (new Set(['navigation_preferences', 'get_user_preferences', 'user_access', 'request_work', 'native_session_bridge']).has(action)
+                && !hasActiveAppApiProfile()) return profilelessAppApiFallback(body);
             const headers = { 'Content-Type': 'application/json' };
             if (SUPABASE_KEY) {
                 headers['apikey'] = SUPABASE_KEY;
@@ -24915,6 +24937,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return true;
             } catch (error) {
                 if (options.state) options.state.error = String(error && error.message || error);
+                if (String(error && error.message || error) === 'Current data could not be verified. Previous data has been retained.') return false;
                 throw error;
             } finally {
                 if (options.state) options.state.loading = false;
@@ -35245,7 +35268,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (!context.adapters.length) return false;
                 const optionalBunchView = viewId === 'bunch-note'
                     || viewId === 'request' && ['bunch-notes', 'bunch-count-review'].includes(String(activeReqTab || '').trim().toLowerCase());
-                if (optionalBunchView) {
+                if (optionalBunchView || viewId === 'docks') {
                     void getProductionLiveSyncCoordinator().check('visible-view').catch(() => false);
                     return false;
                 }

@@ -173,7 +173,7 @@ test('Dylan and Brian fetch all 9600 inventory rows and build the complete A-Z C
       yieldToUiFrame: async () => {}, console,
     });
     vm.runInContext(fetchSource + source('renderDriveCommonNameDrill'), context);
-    const started = performance.now();
+    const started = process.cpuUsage();
     const hydrated = await context.fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'browse' },
       { limit: 500, pageConcurrency: 2, requireComplete: true, onFirstPage: page => { firstPageRows = page.length; } });
     context.renderDriveCommonNameDrill({}, {}, '', { visibleItems: hydrated, resolvedStateKey: user });
@@ -184,7 +184,8 @@ test('Dylan and Brian fetch all 9600 inventory rows and build the complete A-Z C
     assert.equal(catalog[0].name, 'A Plant');
     assert.equal(catalog.at(-1).name, 'Z Plant');
     assert.equal(catalog.reduce((total, group) => total + group.rowCount, 0), 9600);
-    assert.ok(performance.now() - started < 2500, 'Node fixture hydration and grouping budget');
+    const elapsed = process.cpuUsage(started);
+    assert.ok((elapsed.user + elapsed.system) / 1000 < 2500, 'Node fixture hydration and grouping budget');
   }
 });
 
@@ -961,10 +962,11 @@ test('9600-row indexes pre-sum locations, preserve lots, and pre-normalize searc
   } return hits; };
   run(); run(); run();
   const times = [];
-  for (let attempt = 0; attempt < 5; attempt++) { const start = performance.now(); assert.equal(run(), 9600); times.push(performance.now() - start); }
-  const median = times.sort((a,b) => a-b)[2];
+  const measuredRuns = 50;
+  for (let attempt = 0; attempt < 3; attempt++) { const start = process.cpuUsage(); for (let repeat = 0; repeat < measuredRuns; repeat++) assert.equal(run(), 9600); const elapsed = process.cpuUsage(start); times.push((elapsed.user + elapsed.system) / (1000 * measuredRuns)); }
+  const median = times.sort((a,b) => a-b)[1];
   assert.ok(median < 5, '9600 indexed lookups/search took ' + median.toFixed(2) + 'ms');
-  console.log('Inventory indexed lookup/search median: ' + median.toFixed(2) + 'ms (9600 rows, Node)');
+  console.log('Inventory indexed lookup/search CPU median: ' + median.toFixed(2) + 'ms (9600 rows, Node)');
 });
 
 

@@ -39,12 +39,12 @@ test('v2.3.46 assets and worker upgrade purge previous cache generations', () =>
   for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
     assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.46', match[1]);
   }
-  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.46'/);
+  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.46-r2'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
-  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.46' });
+  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.46-r2' });
   vm.runInContext(sw.match(/function isRetiredRootCacheName\([^]*?^}/m)[0], ctx);
-  for (const key of ['agdata-v2.3.34', 'agdata-v2.3.43', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'ag-data-runtime-images-v2', 'legacy-shell']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);
-  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.46'), false);
+  for (const key of ['agdata-v2.3.34', 'agdata-v2.3.43', 'agdata-v2.3.46', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'ag-data-runtime-images-v2', 'legacy-shell']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);
+  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.46-r2'), false);
   const worker = vm.createContext({ self: { addEventListener() {}, location: { href: 'https://agmetricapp.com/sw.js', origin: 'https://agmetricapp.com' }, registration: { scope: 'https://agmetricapp.com/' } }, URL });
   vm.runInContext(sw + '\nglobalThis.assets = ASSETS_TO_CACHE;', worker);
   for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.46', asset);

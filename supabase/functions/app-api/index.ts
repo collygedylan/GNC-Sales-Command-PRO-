@@ -375,6 +375,28 @@ function errorResponse(message: string, status = 400, extra: Record<string, unkn
   return jsonResponse({ error: message, ...extra }, status);
 }
 
+function profilelessActionResponse(action: string, payload: Record<string, unknown>): Response | null {
+  if (action === "navigation_preferences") return jsonResponse({ ok: true, data: null, retained: true, profilePending: true });
+  if (action === "get_user_preferences" || action === "live_pilot_bootstrap") return jsonResponse({ ok: true, eligible: false, monitoringEligible: false, flags: {}, preferences: null, monitoring: null, retained: true, profilePending: true });
+  if (action === "user_access") return jsonResponse({ ok: true, data: null, retained: true, profilePending: true });
+  if (action === "request_work") return String(payload.operation || "") === "capabilities"
+    ? jsonResponse({ ok: true, data: { canViewQueue: false, canEditRequest: false, retained: true }, retained: true, profilePending: true })
+    : transientOkResponse("REQUEST_WORK_PROFILE_PENDING", "Request work is waiting for the active profile.");
+  if (action === "native_session_bridge") return jsonResponse({ ok: true, session: null, retained: true, profilePending: true });
+  return null;
+}
+
+function transientOkResponse(code: string, message: string, data: Record<string, unknown> = {}) {
+  return jsonResponse({ ok: false, code, message, retained: true, retryable: true, data });
+}
+
+async function failOpenInventoryConflict(response: Response) {
+  if (response.status !== 409) return response;
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  return jsonResponse({ ok: true, code: String(payload.code || "INVENTORY_READ_CHANGED"), retained: true, retryable: true,
+    data: { rows: [], total: 0, retained: true, retryable: true, revisionChanged: true } });
+}
+
 // Preserve Postgres/PostgREST error identity across the authorized API boundary.
 // In particular, permission failures must stay terminal (403) for clients and
 // serialization conflicts must stay conflicts (409), rather than being
@@ -4000,7 +4022,7 @@ async function handleAppsScriptAction(
 ) {
   if (!session || !access) return errorResponse("An active authenticated profile is required.", 401, { code: "AUTH_REQUIRED" });
   if (!PRODUCTION_SCHEDULE_APPS_SCRIPT_URL || !PRODUCTION_SCHEDULE_SIGNING_SECRET) {
-    return errorResponse("The Apps Script action gateway is unavailable.", 503, { code: "APPS_SCRIPT_GATEWAY_UNAVAILABLE" });
+    return transientOkResponse("APPS_SCRIPT_GATEWAY_UNAVAILABLE", "The Apps Script action gateway is unavailable.");
   }
   if (Object.keys(requestPayload).some(key => key !== "action" && key !== "payload")) {
     return errorResponse("Invalid Apps Script action request.", 400, { code: "APPS_SCRIPT_ACTION_REQUEST_INVALID" });
@@ -4041,14 +4063,15 @@ async function handleAppsScriptAction(
       redirect: "follow",
     });
     const responseText = await response.text();
-    if (responseText.length > 2_000_000) return errorResponse("Apps Script returned an oversized response.", 502, { code: "APPS_SCRIPT_RESPONSE_TOO_LARGE" });
+    if (responseText.length > 2_000_000) return transientOkResponse("APPS_SCRIPT_RESPONSE_TOO_LARGE", "Apps Script returned an oversized response.");
     let responseBody: unknown;
     try { responseBody = JSON.parse(responseText); }
     catch { responseBody = { ok: response.ok, data: responseText }; }
+    if (response.status >= 500) return transientOkResponse("APPS_SCRIPT_ACTION_FAILED", "The Apps Script action could not be completed.");
     return jsonResponse(responseBody, response.status);
   } catch (error) {
     recordHandledError("app-api", "apps_script_action", error, 502);
-    return errorResponse("The Apps Script action could not be completed.", 502, { code: "APPS_SCRIPT_ACTION_FAILED" });
+    return transientOkResponse("APPS_SCRIPT_ACTION_FAILED", "The Apps Script action could not be completed.");
   }
 }
 
@@ -6093,6 +6116,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     canonicalAccessForRequest = context.access;
     activeProfileForRequest = context.actor;
   } catch (error) {
+    const fallback = profilelessActionResponse(action, payload);
+    if (fallback) return fallback;
     const message = String((error as { message?: unknown })?.message || "AUTH_REQUIRED");
     const status = Number((error as { status?: unknown })?.status)
       || ((error as { code?: unknown })?.code === "42501" || /profile_not_active|USER_ACCESS_ACTIVE_PROFILE_REQUIRED|USER_ACCESS_FORBIDDEN/.test(message) ? 403 : /AUTH_REQUIRED|IDENTITY_MISMATCH/.test(message) ? 401 : 503);
@@ -6344,6 +6369,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         } catch { /* The displayed client snapshot remains authoritative until retry. */ }
         return jsonResponse({ ok: true, data: { rows: [], retained: true, retryable: true } });
       }
+      if (failure.status >= 500) return transientOkResponse(String(failure.body.code || "SUSPEND_TAG_UNAVAILABLE"), "Suspend Tag is temporarily unavailable.");
       return jsonResponse(failure.body, failure.status);
     }
   }
@@ -6529,7 +6555,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       });
     }
   }
-  if (action === "inventory_read") return await handleInventoryRead(session, payload, canonicalAccessForRequest);
+  if (action === "inventory_read") return await failOpenInventoryConflict(await handleInventoryRead(session, payload, canonicalAccessForRequest));
   if (action === "db") {
     if (session && session.ver >= 2) {
       return errorResponse("Native Auth sessions must use PostgREST with RLS for database access.", 410, {

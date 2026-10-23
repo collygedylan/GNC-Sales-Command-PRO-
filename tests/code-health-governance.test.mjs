@@ -96,6 +96,26 @@ test('v2.3.46 keeps AURA open-stock resolution scoped and deterministic', () => 
   assert.match(router, /scopeAuraOpenStock[^]*strictInventoryIdentityMatch[^]*seasonLevelOpenStockTotal/);
 });
 
+test('v2.3.46 keeps Bunch Notes flexible without picker paging or option lock-in', () => {
+  const bunchNote = read('assets/bunch-note.js');
+  const styles = read('assets/bunch-note.css');
+  const cardBoard = read('components/bunch-notes/CardBoard.jsx');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  assert.match(bunchNote, /cardWizardGroups\(location,sortBy='commonname'\)[^]*?sortBy==='itemcode'/);
+  assert.match(bunchNote, /sortPickerCards[^]*selectAllPickerCards[^]*clearPickerCards/);
+  assert.doesNotMatch(bunchNote, /visibleLimit|Load more cards|loadMorePickerCards/);
+  assert.match(bunchNote, /pickerUserSearch[^]*updatePickerAssignments/);
+  assert.match(bunchNote, /Group selected cards together[^]*Individual cards[^]*pickerCardDraft/);
+  assert.match(bunchNote, /groupSelectedCards[^]*ungroupSelectedCards/);
+  assert.match(bunchNote, /function hybridField[^]*Type or choose/);
+  assert.match(bunchNote, /Custom bulk Bunch house[^]*Enter a Move destination/);
+  assert.doesNotMatch(bunchNote, /Choose a verified Move destination/);
+  assert.match(cardBoard, /Quick Editor[^]*Group Selected[^]*Ungroup/);
+  assert.match(cardBoard, /const listId = `bn-board-/);
+  assert.match(styles, /background:rgba\(234,179,8,\.14\);border:1\.5px solid #facc15;color:#fef08a;font-weight:600/);
+  assert.match(appApi, /cleanBunchNoteText\(entry\.work_type[^]*purpose_thread[^]*default_house_plan[^]*schedule_banner[^]*direction/);
+});
+
 test('ten architecture clusters and twelve registered skills stay synchronized with source layout', () => {
   const inventory = JSON.parse(read('docs/architecture/agdata-static-inventory.json'));
   const layout = inventory.sourceLayout;
