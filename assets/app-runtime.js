@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.45';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.46';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12788,7 +12788,10 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             item.LOTCODE = String(item.lotcode ?? item.LOTCODE ?? '').trim();
             item.ASSIGNMENT_REASON = String(item.assignment_reason ?? item.ASSIGNMENT_REASON ?? '');
             item.assignedto = item.ASSIGNEDTO;
-            item.WAREHOUSEI = String(firstNonEmptyValue(item.WAREHOUSEI, item.warehousei, item.WAREHOUSEID, item.warehouseid, '') ?? '').trim();
+            const compositeKey = String(firstNonEmptyValue(item.MASTER_UNIQUE_ID, item.master_unique_id, item.UNIQUE_ID, item.unique_id, '') ?? '').trim();
+            const compositeWarehouse = /^\d+$/.test(compositeKey.split('_')[3] || '') ? compositeKey.split('_')[3] : '';
+            item.WAREHOUSEI = String(firstNonEmptyValue(item.WAREHOUSEI, item.warehousei, item.WAREHOUSE, item.warehouse,
+                item.WAREHOUSEID, item.warehouseid, item.WAREHOUSE_ID, item.warehouse_id, item.WHSE, item.whse, compositeWarehouse, '') ?? '').trim();
             item.warehousei = item.WAREHOUSEI;
             item.ITEMCODE = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, item.item, '') ?? '').trim();
             item.itemcode = item.ITEMCODE;
@@ -26101,7 +26104,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.45').trim() || 'AgData v2.3.45';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.46').trim() || 'AgData v2.3.46';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -126148,6 +126151,7 @@ C.14.043 C.15.000
             if (getCurrentVisibleViewId() === 'managers' && previousTab !== nextTab) managersSearchTerm = '';
             if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && previousTab !== nextTab) {
                 const assignedState = getManagerAssignedColumnState();
+                managerEvalAssignmentSelection.clear();
                 managersSearchTerm = assignedState.search || '';
                 assignedState.restoreScroll = true;
             }
@@ -134025,6 +134029,12 @@ C.14.043 C.15.000
             return Array.from(codes).every(code => state.rowsByCode.get(code)?.history_ready === true);
         }
 
+        function isManagerAssignedItemHistoryProcessing() {
+            const state = getManagerItemLowStockTargetsState();
+            return Array.from(state.rowsByCode.values()).some(target => target?.history_ready !== true
+                && Number(target?.history_pending_files || 0) > 0);
+        }
+
         async function loadManagerItemLowStockTargets(force = false) {
             if (!canReadItemLowStockTargets()) return null;
             const state = getManagerItemLowStockTargetsState();
@@ -134622,6 +134632,10 @@ C.14.043 C.15.000
             rememberManagerAssignedColumnLabels(sourceRows);
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             const cacheKey = JSON.stringify([activeKey, managersSearchTerm, state.filters, state.sort, exceptField]);
+            if (!exceptField && state.selectionFilterKey !== cacheKey) {
+                state.selectionFilterKey = cacheKey;
+                managerEvalAssignmentSelection.clear();
+            }
             if (state.filteredSource !== sourceRows) { state.filteredSource = sourceRows; state.filteredCache = new Map(); }
             if (state.filteredCache.has(cacheKey)) return state.filteredCache.get(cacheKey);
             const filtered = sourceRows.filter((row) => {
@@ -134876,24 +134890,17 @@ C.14.043 C.15.000
             const state = getManagerAssignedColumnState();
             if (state.view && state.viewHost?.isConnected) state.view.update(getManagerAssignedItemsViewProps(state.viewRows, state.viewTotalRows));
             const bulk = document.querySelector('[data-manager-assign-selected]');
-            if (bulk) bulk.disabled = Array.from(managerEvalAssignmentSelection).some(code => state.defaultPending?.has(code));
+            if (bulk) {
+                const selectionCount = managerEvalAssignmentSelection.size;
+                bulk.textContent = `Assign Selected (${selectionCount})`;
+                bulk.disabled = selectionCount === 0 || Array.from(managerEvalAssignmentSelection).some(code => state.defaultPending?.has(code));
+            }
         }
 
         async function mountManagerAssignedItemsView(host, rows = null, totalRows = null) {
             if (!host || !canViewAssignedItemsExport()) return null;
             const state = getManagerAssignedColumnState();
             let pageSource = null;
-            if (useManagerReportPages('assigned-items')) {
-                const controller = getManagerReportPageController();
-                try {
-                    await controller.initialize();
-                    if (controller.enabled('assigned-items')) {
-                        const session = controller.getSession?.();
-                        if (session) pageSource = { session, query: buildManagerReportPageQuery('assigned-items', 'rows'), pageSize: 100,
-                            normalizeRow: (row, index) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), index) };
-                    }
-                } catch (error) { console.warn('Assigned Items page session unavailable; preserving the existing reader.', error); }
-            }
             if (!host.isConnected || !canViewAssignedItemsExport()) return null;
             state.viewPageSource = pageSource;
             state.viewRows = pageSource ? [] : rows;
@@ -134960,7 +134967,7 @@ C.14.043 C.15.000
             if (!canViewAssignedItemsExport()) {
                 return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">AssignedTo export is available to managers only.</div>';
             }
-            const paged = useManagerReportPages('assigned-items');
+            const paged = false;
             if (!paged && !isDatasetLoaded('warehouseAssignedItems', 'full') && !(canUseProductionLiveSync() && hasProgressiveViewData())) {
                 ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
                 return '<div class="rounded-2xl border border-emerald-100 bg-white/80 p-8 text-center text-sm font-black uppercase tracking-[0.14em] text-slate-400">Loading AssignedTo rows...</div>';
@@ -134979,6 +134986,8 @@ C.14.043 C.15.000
             const assignees = getManagerAssignedItemsAssigneeOptions(allRows);
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             const pageMetadata = getManagerAssignedColumnState().viewMetadata || {};
+            const historyReady = areManagerAssignedItemTargetsHistoryReady();
+            const historyProcessing = isManagerAssignedItemHistoryProcessing();
             const totalCount = paged ? Number(pageMetadata.inventoryRowCount || pageMetadata.filteredRowCount || 0) : allRows.length;
             const assignedCount = assignees.reduce((count, option) => count + option.count, 0);
             const unassignedCount = paged ? Math.max(0, totalCount - assignedCount) : allRows.length - assignedCount;
@@ -134999,14 +135008,15 @@ C.14.043 C.15.000
                         </label>
                         <button type="button" class="min-h-[48px] rounded-xl border border-emerald-100 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#007a4d] shadow-sm transition hover:bg-emerald-50 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return refreshManagerAssignedItemsExport()"><i class="ph ph-arrow-clockwise mr-1 sm:mr-2"></i>Refresh</button>
                         <button type="button" class="ops-view-option-action min-h-[48px] rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#1d4ed8] shadow-sm transition hover:bg-blue-100 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return exportManagerAssignedItemsToExcel()"><i class="ph ph-download-simple mr-1 sm:mr-2"></i>Export Excel</button>
-                        ${canReadItemLowStockTargets() ? `<button type="button" class="min-h-[48px] rounded-xl border border-violet-100 bg-violet-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-violet-800 shadow-sm transition hover:bg-violet-100 disabled:cursor-wait disabled:opacity-50 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return exportManagerAssignedAverageSummaryToExcel()" ${areManagerAssignedItemTargetsHistoryReady() ? '' : 'disabled'}><i class="ph ph-chart-line-up mr-1 sm:mr-2"></i>${areManagerAssignedItemTargetsHistoryReady() ? 'Average Summary' : 'History Processing'}</button>` : ''}
+                        ${canReadItemLowStockTargets() && historyReady ? '<button type="button" class="min-h-[48px] rounded-xl border border-violet-100 bg-violet-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-violet-800 shadow-sm transition hover:bg-violet-100 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return exportManagerAssignedAverageSummaryToExcel()"><i class="ph ph-chart-line-up mr-1 sm:mr-2"></i>Average Summary</button>' : ''}
+                        ${canReadItemLowStockTargets() && historyProcessing ? '<button type="button" class="min-h-[48px] cursor-wait rounded-xl border border-violet-100 bg-violet-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-violet-800 opacity-60 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" disabled><i class="ph ph-spinner-gap mr-1 animate-spin sm:mr-2"></i>History Processing</button>' : ''}
                     </div>
                     ${lowStockState.loading ? '<div class="mt-3 text-[10px] font-bold text-blue-700" role="status">Loading order history and low-stock targets…</div>' : ''}
-                    ${canReadItemLowStockTargets() && !lowStockState.loading && !areManagerAssignedItemTargetsHistoryReady() ? '<div class="mt-3 text-[10px] font-bold text-blue-700" role="status">Order-history suggestions are processing. Existing item targets remain active; new items use manual targets or the shared fallback.</div>' : ''}
+                    ${canReadItemLowStockTargets() && !lowStockState.loading && historyProcessing ? '<div class="mt-3 text-[10px] font-bold text-blue-700" role="status">Order-history suggestions are processing. Existing item targets remain active; new items use manual targets or the shared fallback.</div>' : ''}
                     ${lowStockState.error ? `<div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-900" role="status">${escapeHtml(lowStockState.error)} ${canReadItemLowStockTargets() ? '<button type="button" class="ml-2 underline" onclick="loadManagerItemLowStockTargets(true).catch(()=>{})">Retry</button>' : ''}</div>` : ''}
                     ${canManageEvalItemcodeAssignments() ? `<div class="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-[11px] font-bold leading-4 text-blue-800"><span class="font-black">Itemcode Default Owner:</span> changing the menu saves the default for that itemcode. Effective workers are calculated per inventory row. Use checkboxes and Assign Selected for bulk defaults.</div><div class="mt-3 grid gap-2 md:grid-cols-[minmax(220px,360px)_auto]">
                         <select id="manager-eval-bulk-assignee" class="w-full rounded-xl border border-blue-100 bg-white px-3 py-3 text-sm font-black text-slate-900">${getManagerEvalAssigneeOptionsHtml('')}</select>
-                        <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes()" ${Array.from(managerEvalAssignmentSelection).some(code => getManagerAssignedColumnState().defaultPending?.has(code)) ? 'disabled' : ''}>Assign Selected</button>
+                        <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes()" ${managerEvalAssignmentSelection.size === 0 || Array.from(managerEvalAssignmentSelection).some(code => getManagerAssignedColumnState().defaultPending?.has(code)) ? 'disabled' : ''}>Assign Selected (${managerEvalAssignmentSelection.size})</button>
                     </div><div class="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Defaults use Itemcode only and apply outside the Perennial Area. Zoe and Mitch overrides remain automatic.</div>` : ''}
                 </div>
                 ${renderManagerAssignedColumnControls(allRows, filteredRows)}

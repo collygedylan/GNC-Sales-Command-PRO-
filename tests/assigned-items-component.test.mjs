@@ -37,13 +37,18 @@ function setupDom(width = 1024) {
   window.ResizeObserver = ResizeObserverMock;
   const originalRect = dom.window.HTMLElement.prototype.getBoundingClientRect;
   Object.defineProperty(dom.window.HTMLElement.prototype, 'offsetHeight', { configurable: true, get() {
+    if (this.hasAttribute?.('data-manager-assigned-table-scroll')) return 600;
     if (this.hasAttribute?.('data-manager-assigned-group')) return 42;
     if (this.hasAttribute?.('data-manager-assigned-item-row')) return 56;
     if (this.hasAttribute?.('data-manager-assigned-item-card')) return 280;
     return 0;
   } });
   Object.defineProperty(dom.window.HTMLElement.prototype, 'offsetWidth', { configurable: true, get() { return 900; } });
+  Object.defineProperty(dom.window.HTMLElement.prototype, 'scrollHeight', { configurable: true, get() {
+    return this.hasAttribute?.('data-manager-assigned-table-scroll') ? 900000 : 0;
+  } });
   dom.window.HTMLElement.prototype.getBoundingClientRect = function () {
+    if (this.hasAttribute?.('data-manager-assigned-table-scroll')) return { top: 100, bottom: 700, height: 600, left: 0, right: 900, width: 900, x: 0, y: 100, toJSON() {} };
     if (this.tagName === 'THEAD') return { top: 100, bottom: 144, height: 44, left: 0, right: 900, width: 900, x: 0, y: 100, toJSON() {} };
     if (this.tagName === 'TR') return { top: 150, bottom: 206, height: 56, left: 0, right: 900, width: 900, x: 0, y: 150, toJSON() {} };
     if (this.tagName === 'ARTICLE') return { top: 150, bottom: 430, height: 280, left: 0, right: 900, width: 900, x: 0, y: 150, toJSON() {} };
@@ -78,7 +83,8 @@ test('Assigned Items mounts once, renders a bounded desktop window, and shows an
   const historyTarget = { mean_quantity: 11.8, history_ready: true, qualifying_line_count: 2, qualifying_day_count: 4, source_file_count: 1, suggested_qty: 12, effective_qty: 12 };
   const viewProps = overrides => baseProps(data, { uiState, lowStock: { targets: new Map([['CD-200', historyTarget]]), drafts: new Map(), saving: new Set(), canEdit: false, fallback: 150 }, onDefaultChange: (...args) => changes.push(args), ...overrides });
   await act(async () => { mounted = mountAssignedItems(host, viewProps()); });
-  assert.ok(ResizeObserverMock.observed.has(document.getElementById('layout')), 'layout above the list is observed for height changes');
+  const scroll = host.querySelector('[data-manager-assigned-table-scroll]');
+  assert.ok(ResizeObserverMock.observed.has(scroll), 'bounded table scroll viewport is observed');
   assert.equal(host.dataset.logicalRowCount, '10000');
   assert.equal(host.dataset.totalRowCount, '10000');
   assert.equal(host.querySelector('[data-manager-assigned-layout="desktop"]') != null, true);
@@ -97,7 +103,6 @@ test('Assigned Items mounts once, renders a bounded desktop window, and shows an
   firstOwner.value = 'zoe_green';
   await act(async () => { firstOwner.dispatchEvent(new window.Event('change', { bubbles: true })); });
   assert.deepEqual(changes[0], ['CD-200', 'zoe_green']);
-  const scroll = document.getElementById('main-scroll-area');
   await act(async () => { scroll.scrollTop = 899000; scroll.dispatchEvent(new window.Event('scroll')); await new Promise(resolve => setTimeout(resolve, 0)); });
   assert.ok(host.querySelector('[data-inventory-id="row-9999"]'), 'the virtual list can render its final inventory row');
   await act(async () => { scroll.scrollTop = 0; scroll.dispatchEvent(new window.Event('scroll')); await new Promise(resolve => setTimeout(resolve, 0)); });

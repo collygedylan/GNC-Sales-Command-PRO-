@@ -228,3 +228,30 @@ test('v2.3.45 watchdog remediations preserve authorized views with ready fallbac
   assert.match(appRuntime, /normalizeOptionalBunchRevisionMetadata[^]*?bunch_note_private\.previews/);
   assert.match(bunchQueue, /data\?\.retained === true/);
 });
+
+test('v2.3.46 keeps Warehouse Assigned Items synchronous, clean, and bounded', () => {
+  const appRuntime = read('assets/app-runtime.js');
+  const component = read('components/assigned-items/AssignedItems.jsx');
+  const styles = read('assets/assigned-items.css');
+  assert.match(appRuntime, /const paged = false;[^]*?getManagerAssignedItemsDisplayRows\(\)/);
+  assert.doesNotMatch(component, /Loading row/);
+  assert.match(component, /if \(field === 'LOTCODE'\) return <span>\{textOf\(row\.LOTCODE\)\}<\/span>/);
+  assert.doesNotMatch(component, /LOTCODE[^\n]+rowId/);
+  assert.match(styles, /max-height:calc\(100dvh - 230px\);overflow-x:auto;overflow-y:auto/);
+  assert.match(styles, /thead th\{position:sticky;top:0;z-index:12;background:#062115/);
+
+  const normalization = vm.createContext({
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+    normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase(),
+  });
+  vm.runInContext(shellFunction('normalizeWarehouseAssignedItemRow'), normalization);
+  const row = normalization.normalizeWarehouseAssignedItemRow({ master_unique_id: '007148_030_1_10_C_02_015_25_F1_0_--', itemcode: '007148', lotcode: '25.F1' });
+  assert.equal(row.WAREHOUSEI, '10');
+  assert.equal(row.LOTCODE, '25.F1');
+
+  const history = vm.createContext({ getManagerItemLowStockTargetsState: () => ({ rowsByCode: new Map([['A', { history_ready: false, history_pending_files: 0 }]]) }) });
+  vm.runInContext(shellFunction('isManagerAssignedItemHistoryProcessing'), history);
+  assert.equal(history.isManagerAssignedItemHistoryProcessing(), false);
+  history.getManagerItemLowStockTargetsState = () => ({ rowsByCode: new Map([['A', { history_ready: false, history_pending_files: 2 }]]) });
+  assert.equal(history.isManagerAssignedItemHistoryProcessing(), true);
+});

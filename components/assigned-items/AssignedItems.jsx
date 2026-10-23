@@ -39,6 +39,7 @@ function History({ target, error = '', expanded = false, historyKey = '', onTogg
   const lines = Number(target.qualifying_line_count || 0), days = Number(target.qualifying_day_count || 0), files = Number(target.source_file_count || 0);
   if (target.history_ready !== true) {
     const pending = Math.max(0, Number(target.history_pending_files || 0)), total = Math.max(0, Number(target.history_total_files || 0));
+    if (!pending) return null;
     const hasSuggestion = target.suggested_qty != null && Number.isFinite(Number(target.suggested_qty));
     return <div role="status" className="mt-1 text-[10px] font-bold text-blue-700">{hasSuggestion ? 'Refreshing history; active targets remain in effect' : 'Processing order history; manual targets and fallback remain in effect'}{total ? ` · ${pending} of ${total} files pending` : ''}</div>;
   }
@@ -51,11 +52,9 @@ const DefaultOwner = memo(function DefaultOwner({ code, rowId, value, options, d
   const ownerOptions = options.some(option => String(option.value) === String(selectedValue)) || !selectedValue
     ? options : [{ value: selectedValue, label: `${selectedValue} (inactive; review)` }, ...options];
   return <div className="ai-owner-control" aria-busy={pending || undefined}>
-    <label className="block text-[10px] font-black text-slate-500">Itemcode Default Owner
-      <select className="mt-1 min-h-[48px] w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-black text-slate-900 disabled:opacity-60" aria-label={`Itemcode Default Owner ${code} row ${rowId}`} data-itemcode={code} value={selectedValue} disabled={disabled || pending} onChange={event => onChange(code, event.target.value)}>
-        {ownerOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-    </label>
+    <select className="min-h-[40px] w-full rounded-lg border border-emerald-200 bg-white px-2 py-1 text-xs font-black text-slate-900 disabled:opacity-60" aria-label={`Itemcode Default Owner ${code} row ${rowId}`} data-itemcode={code} value={selectedValue} disabled={disabled || pending} onChange={event => onChange(code, event.target.value)}>
+      {ownerOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select>
     {override && <div className="mt-1 inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-900" title={`The location rule sets this row to ${override}. The itemcode default applies outside the override area.`}>Location Override: {override}</div>}
     {draft?.error && <div role="alert" className="mt-1 text-xs text-red-700">{draft.error} Your choice is retained. Refresh and review current ownership before retrying.<button type="button" className="mt-2 min-h-[44px] rounded-lg border border-red-300 bg-white px-3 text-[10px] font-black uppercase text-red-800 disabled:opacity-50" aria-label={`Retry owner save for ${code}`} data-retry-owner-save={code} disabled={disabled || pending} onMouseDown={event => event.preventDefault()} onClick={() => onChange(code, draft.assignedto)}>Retry owner save</button></div>}
   </div>;
@@ -81,7 +80,7 @@ const Row = memo(function Row({ row, columns, canManageAssignments, snapshotCurr
     if (field === 'AVG_ORDER_QTY') { const target = lowStockState.targets?.get(code) || null; return <div><span data-manager-item-average={code} className="font-black text-slate-900">{numberOf(target?.mean_quantity)}</span><History target={target} error={lowStockState.error} expanded={historyExpanded} historyKey={`history:${rowId}`} onToggle={onToggleHistory} /></div>; }
     if (field === 'LOW_STOCK_TARGET') return <LowStock code={code} state={{ ...lowStockState, snapshotCurrent }} onDraft={handlers.onLowStockDraft} onSave={handlers.onLowStockSave} onReset={handlers.onLowStockReset} />;
     if (field === 'ASSIGNMENT_REASON') return <div data-assignment-reason={row.assignment_reason || row.ASSIGNMENT_REASON || ''} className={`text-[10px] font-bold ${row.review_required ? 'text-amber-800' : 'text-emerald-700'}`}>{String(getReason?.(row) || row.assignment_reason || row.ASSIGNMENT_REASON || 'Assignment pending reconciliation')}</div>;
-    if (field === 'LOTCODE') return <span>{textOf(row.LOTCODE)}<span className="mt-1 block max-w-[220px] break-all text-[10px]">{rowId}</span></span>;
+    if (field === 'LOTCODE') return <span>{textOf(row.LOTCODE)}</span>;
     return <span>{field === 'ASSIGNEDTO' ? textOf(row[field] || 'Unassigned') : textOf(row[field])}</span>;
   };
   const checked = selected.has(code);
@@ -98,7 +97,7 @@ const Card = memo(function Card({ row, columns, canManageAssignments, snapshotCu
     <div className="flex w-full min-w-0 items-start justify-between gap-3 text-left"><span className="min-w-0"><span className="block break-all text-[12px] font-black text-[#1d4ed8]">{code || '—'}</span><span className="mt-1 block break-words text-base font-black leading-5 text-slate-900">{textOf(row.COMMONNAME)}</span></span><span className="shrink-0 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-[#007a4d]">{textOf(row.CONTSIZE)}</span></div>
     <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 text-[11px] font-bold"><Info label="Location" value={row.LOCATIONCODE} /><Info label="Warehouse" value={row.WAREHOUSEI} /></div>
     <div className="mt-3 grid min-w-0 grid-cols-2 gap-2"><div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"><div className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">Average Order Qty</div><div data-manager-item-average={code} className="mt-0.5 break-all text-slate-800">{numberOf(lowStockState.targets?.get(code)?.mean_quantity)}</div><History target={lowStockState.targets?.get(code)} error={lowStockState.error} expanded={historyExpanded} historyKey={`history:${rowId}`} onToggle={onToggleHistory} /></div><div className="min-w-0 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2"><div className="text-[9px] font-black uppercase tracking-[0.1em] text-emerald-800">Low Stock Qty</div><LowStock code={code} state={{ ...lowStockState, snapshotCurrent }} onDraft={handlers.onLowStockDraft} onSave={handlers.onLowStockSave} onReset={handlers.onLowStockReset} /></div></div>
-    <div className="mt-3 min-w-0"><div className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Effective Worker</div><div className="mt-1 break-all text-sm font-black text-slate-900">{textOf(row.ASSIGNEDTO || 'Unassigned')}</div><div data-assignment-reason={row.assignment_reason || row.ASSIGNMENT_REASON || ''} className={`mt-1 text-[10px] font-bold ${row.review_required ? 'text-amber-800' : 'text-emerald-700'}`}>{String(getReason?.(row) || row.assignment_reason || row.ASSIGNMENT_REASON || 'Assignment pending reconciliation')}</div><div className="mt-3"><DefaultOwner code={code} rowId={rowId} value={row.DEFAULT_ASSIGNEDTO} options={options} draft={ownerDraft} disabled={!canManageAssignments || !snapshotCurrent} pending={pendingOwner} override={override} onChange={handlers.onDefaultChange} /></div><div className="mt-2 break-all text-xs text-slate-500">Lot: {textOf(row.LOTCODE)} · Row: {rowId || '—'}</div></div>
+    <div className="mt-3 min-w-0"><div className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Effective Worker</div><div className="mt-1 break-all text-sm font-black text-slate-900">{textOf(row.ASSIGNEDTO || 'Unassigned')}</div><div data-assignment-reason={row.assignment_reason || row.ASSIGNMENT_REASON || ''} className={`mt-1 text-[10px] font-bold ${row.review_required ? 'text-amber-800' : 'text-emerald-700'}`}>{String(getReason?.(row) || row.assignment_reason || row.ASSIGNMENT_REASON || 'Assignment pending reconciliation')}</div><div className="mt-3"><DefaultOwner code={code} rowId={rowId} value={row.DEFAULT_ASSIGNEDTO} options={options} draft={ownerDraft} disabled={!canManageAssignments || !snapshotCurrent} pending={pendingOwner} override={override} onChange={handlers.onDefaultChange} /></div><div className="mt-2 text-xs text-slate-500">Lot: {textOf(row.LOTCODE)}</div></div>
     {canManageAssignments && <label className="mt-3 flex min-h-[46px] items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.1em] text-slate-700"><input type="checkbox" className="h-6 w-6 shrink-0" data-itemcode={code} checked={selected.has(code)} disabled={!snapshotCurrent} onChange={event => handlers.onSelect(code, event.target.checked)} /><span>Select for bulk assignment</span></label>}
     <button type="button" className="mt-3 min-h-[44px] rounded-lg border border-slate-200 px-3 text-[10px] font-black uppercase text-slate-600" aria-expanded={expanded} onClick={() => onToggle(rowId)}>More item details</button>
     {expanded && <dl className="mt-2 grid min-w-0 grid-cols-1 gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 text-[11px]" aria-label={`Details for ${label}`}><Info label="Genus" value={row.GENUSNAME} /><Info label="Source" value={row.SOURCE} /></dl>}
@@ -108,7 +107,7 @@ const Card = memo(function Card({ row, columns, canManageAssignments, snapshotCu
 function Info({ label, value }) { return <div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"><div className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">{label}</div><div className="mt-0.5 break-all text-slate-800">{textOf(value)}</div></div>; }
 
 function AssignedItemsView(props) {
-  const hostRef = useRef(null), propsRef = useRef(props), [layout, setLayout] = useState('desktop'), [scrollMargin, setScrollMargin] = useState(0), [expanded, setExpanded] = useState(() => new Set(props.uiState?.expanded || [])), [pinnedRowId, setPinnedRowId] = useState('');
+  const hostRef = useRef(null), tableScrollRef = useRef(null), propsRef = useRef(props), [layout, setLayout] = useState('desktop'), [scrollMargin, setScrollMargin] = useState(0), [expanded, setExpanded] = useState(() => new Set(props.uiState?.expanded || [])), [pinnedRowId, setPinnedRowId] = useState('');
   const pageSource = props.pageSource || null, pageSize = Math.max(1, Math.min(100, Number(pageSource?.pageSize) || 100));
   const pageQueryKey = pageSource ? pageSource.session.key(pageSource.query) : '';
   const [pageCollection, setPageCollection] = useState(() => ({ key: pageQueryKey, pages: new Map(), total: null, revision: '', error: null }));
@@ -170,7 +169,7 @@ function AssignedItemsView(props) {
   // Empty server-page slots have no record yet; their query/offset identity is
   // deliberately different from the database identity used when a row arrives.
   const getItemKey = useCallback(index => entries[index]?.key || `page-slot:${pageQueryKey}:${index}`, [entries, pageQueryKey]);
-  const getScrollElement = useCallback(() => props.scrollElement || document.getElementById('main-scroll-area'), [props.scrollElement]);
+  const getScrollElement = useCallback(() => mobile ? props.scrollElement || document.getElementById('main-scroll-area') : tableScrollRef.current, [mobile, props.scrollElement]);
   const estimateSize = useCallback(index => entries[index]?.type === 'group' ? 42 : mobile ? 360 : 64, [entries, mobile]);
   const virtualizer = useVirtualizer({ count: entries.length, getItemKey, getScrollElement, estimateSize, overscan: 2, gap: mobile ? 12 : 0, scrollMargin });
   entriesRef.current = entries; virtualizerRef.current = virtualizer; rowIndexByIdRef.current = rowIndexById;
@@ -207,7 +206,7 @@ function AssignedItemsView(props) {
   const measure = useCallback(element => { if (element) virtualizer.measureElement(element); }, [virtualizer]);
   const onToggle = useCallback((id, open = undefined) => setExpanded(current => { const next = new Set(current); const shouldOpen = open === undefined ? !current.has(id) : open; shouldOpen ? next.add(id) : next.delete(id); if (propsRef.current.uiState) propsRef.current.uiState.expanded = next; return next; }), []);
   useLayoutEffect(() => {
-    const scroll = propsRef.current.scrollElement || document.getElementById('main-scroll-area');
+    const scroll = getScrollElement();
     const root = hostRef.current;
     if (!scroll || !root) return undefined;
     const update = () => {
@@ -215,7 +214,9 @@ function AssignedItemsView(props) {
       setLayout(width < 768 ? 'mobile' : 'desktop');
       const scrollTop = scroll.scrollTop || 0;
       const tableHead = root.querySelector('thead');
-      const margin = root.getBoundingClientRect().top + (!mobile && tableHead ? tableHead.getBoundingClientRect().height : 0) - scroll.getBoundingClientRect().top + scrollTop;
+      const margin = mobile
+        ? root.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scrollTop
+        : tableHead?.getBoundingClientRect().height || 0;
       setScrollMargin(Math.max(0, margin));
     };
     update();
@@ -224,14 +225,16 @@ function AssignedItemsView(props) {
     // A change to controls above this list can move the host while keeping its
     // own dimensions unchanged. Observe intervening layout boxes so their size
     // changes refresh the virtualizer's scroll margin.
-    let ancestor = root.parentElement;
-    while (ancestor && ancestor !== scroll) {
-      observer?.observe(ancestor);
-      ancestor = ancestor.parentElement;
+    if (mobile) {
+      let ancestor = root.parentElement;
+      while (ancestor && ancestor !== scroll) {
+        observer?.observe(ancestor);
+        ancestor = ancestor.parentElement;
+      }
     }
     window.addEventListener('resize', update);
     return () => { observer?.disconnect(); window.removeEventListener('resize', update); };
-  }, [props.scrollElement, mobile]);
+  }, [getScrollElement, mobile]);
   useLayoutEffect(() => {
     const root = hostRef.current;
     if (!root) return undefined;
@@ -280,7 +283,7 @@ function AssignedItemsView(props) {
     return () => { root.removeEventListener('focusin', focusIn); root.removeEventListener('focusout', focusOut); root.removeEventListener('keydown', keydown); for (const id of frames) cancelAnimationFrame(id); };
   }, []);
   useLayoutEffect(() => {
-    const scroll = propsRef.current.scrollElement || document.getElementById('main-scroll-area');
+    const scroll = getScrollElement();
     if (!scroll) return undefined;
     const capture = () => {
       scrollRevisionRef.current += 1;
@@ -294,12 +297,12 @@ function AssignedItemsView(props) {
     };
     scroll.addEventListener('scroll', capture, { passive: true });
     return () => scroll.removeEventListener('scroll', capture);
-  }, [props.scrollElement]);
+  }, [getScrollElement]);
   useLayoutEffect(() => {
     const previous = priorEntriesRef.current;
     priorEntriesRef.current = entries;
     if (previous === entries) return;
-    const scroll = propsRef.current.scrollElement || document.getElementById('main-scroll-area');
+    const scroll = getScrollElement();
     if (!scroll) return;
     const anchor = previous ? anchorRef.current : props.uiState?.anchor || anchorRef.current;
     if (!anchor && !previous) return;
@@ -312,14 +315,12 @@ function AssignedItemsView(props) {
     });
     anchorFrameRef.current = frame;
     return () => { if (anchorFrameRef.current) cancelAnimationFrame(anchorFrameRef.current); anchorFrameRef.current = 0; };
-  }, [entries, virtualizer, rowIndexById, props.scrollElement, props.uiState]);
+  }, [entries, virtualizer, rowIndexById, getScrollElement, props.uiState]);
   const groupCount = canManageGroupColumn(props) ? 1 : 0;
   const colSpan = columns.length + groupCount;
   const renderEntry = index => {
     const entry = entries[index];
-    if (!entry) return pageSource ? (mobile
-      ? <div key={getItemKey(index)} ref={measure} data-index={index} data-virtual-index={index} role="status" className="rounded-xl border border-slate-100 bg-white p-4 text-xs text-slate-500">Loading row…</div>
-      : <tr key={getItemKey(index)} ref={measure} data-index={index} data-virtual-index={index}><td colSpan={colSpan} className="px-3 py-3 text-xs font-semibold text-slate-500">Loading row…</td></tr>) : null;
+    if (!entry) return null;
     if (entry.type === 'group') return mobile ? <div key={entry.key} ref={measure} data-index={index} data-virtual-index={index} data-manager-assigned-group={entry.assigned ? 'assigned' : 'unassigned'} className={`rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${entry.assigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{entry.assigned ? 'Assigned' : 'Unassigned'}</div> : <tr key={entry.key} ref={measure} data-index={index} data-virtual-index={index} data-manager-assigned-group={entry.assigned ? 'assigned' : 'unassigned'}><td colSpan={colSpan} className={`border-y px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${entry.assigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{entry.assigned ? 'Assigned' : 'Unassigned'}</td></tr>;
     const code = codeOf(entry.row);
     const rowId = idOf(entry.row), rowProps = { row: entry.row, columns, canManageAssignments: props.canManageAssignments, snapshotCurrent, options, ownerDraft: props.ownerDrafts?.[code], pendingOwner: props.pendingCodes?.has(code), selected: props.selectedCodes || EMPTY_SET, lowStockState: lowStock, handlers, getReason: props.getReason, index, measure, historyExpanded: expanded.has(`history:${rowId}`), onToggleHistory: onToggle };
@@ -343,7 +344,7 @@ function AssignedItemsView(props) {
     {pageSource && pageOffsets.map(offset => <AssignedItemsReportPage key={`${pageQueryKey}:${offset}`} source={{ ...pageSource, sourceRevision: pageState.revision }} offset={offset} onPage={onPage} />)}
     {pageError && !pageRows.size && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{pageError.message || 'Assigned Items could not be loaded.'}</div>}
     <div className="sr-only" aria-live="polite">Showing {pageSource ? [...pageRows.values()].reduce((sum, page) => sum + page.rows.length, 0) : rows.length} matching rows from {pageState.total ?? props.totalRows ?? rows.length} rows.</div>
-    {mobile ? <div data-manager-assigned-mobile-list className="ai-mobile-list">{indexes.length ? indexes.map((index, position) => <React.Fragment key={getItemKey(index)}>{gaps[position] > 0 && <div aria-hidden="true" style={{ height: `${gaps[position]}px` }} />}{renderEntry(index)}</React.Fragment>) : <p>No rows match. Change or clear filters above.</p>}{tailGap > 0 && <div aria-hidden="true" style={{ height: `${tailGap}px` }} />}</div> : <div data-manager-assigned-desktop-table className="overflow-x-auto rounded-2xl border border-emerald-100 bg-white shadow-sm"><table className="min-w-full text-left text-xs font-bold text-slate-600"><thead className="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><tr>{groupCount > 0 && <th className="px-3 py-3">Bulk</th>}{columns.map(([field, label]) => { const filter = props.columnFilters?.[field] || {}, sorted = props.sort?.field === field, active = filter.active || sorted; return <th key={field} aria-sort={sorted ? props.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}><button type="button" data-assigned-filter-trigger={field} aria-label={`Filter and sort ${label}`} aria-expanded={!!filter.open} className={`assigned-column-trigger min-h-[44px] px-3 py-2 text-left ${active ? 'is-filtered' : ''}`} onClick={event => handlers.onColumnFilter(field, event)}><span>{label}</span><span className={`assigned-filter-value ${filter.active ? '' : 'is-inactive'}`}>{filter.label || 'All'}</span><span aria-hidden="true" className="assigned-filter-icon">⏷</span>{sorted && <span aria-hidden="true" className="assigned-sort-icon">{props.sort.direction === 'asc' ? '↑' : '↓'}</span>}</button></th>; })}</tr></thead><tbody>{indexes.length ? <>{indexes.map((index, position) => <React.Fragment key={getItemKey(index)}>{gaps[position] > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${gaps[position]}px`, padding: 0 }} /></tr>}{renderEntry(index)}</React.Fragment>)}{tailGap > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${tailGap}px`, padding: 0 }} /></tr>}</> : <tr><td colSpan={colSpan} className="p-4">No rows match. Change or clear filters above.</td></tr>}</tbody></table></div>}
+    {mobile ? <div data-manager-assigned-mobile-list className="ai-mobile-list">{indexes.length ? indexes.map((index, position) => <React.Fragment key={getItemKey(index)}>{gaps[position] > 0 && <div aria-hidden="true" style={{ height: `${gaps[position]}px` }} />}{renderEntry(index)}</React.Fragment>) : <p>No rows match. Change or clear filters above.</p>}{tailGap > 0 && <div aria-hidden="true" style={{ height: `${tailGap}px` }} />}</div> : <div ref={tableScrollRef} data-manager-assigned-desktop-table data-manager-assigned-table-scroll className="ai-desktop-scroll rounded-2xl border border-emerald-100 bg-white shadow-sm" tabIndex="0" role="region" aria-label="Scrollable Warehouse Assigned Items table"><table className="min-w-full text-left text-xs font-bold text-slate-600"><thead className="text-[10px] font-black uppercase tracking-[0.14em]"><tr>{groupCount > 0 && <th className="px-3 py-2">Bulk</th>}{columns.map(([field, label]) => { const filter = props.columnFilters?.[field] || {}, sorted = props.sort?.field === field, active = filter.active || sorted; return <th key={field} aria-sort={sorted ? props.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}><button type="button" data-assigned-filter-trigger={field} aria-label={`Filter and sort ${label}`} aria-expanded={!!filter.open} className={`assigned-column-trigger min-h-[40px] px-3 py-1.5 text-left ${active ? 'is-filtered' : ''}`} onClick={event => handlers.onColumnFilter(field, event)}><span>{label}</span><span className={`assigned-filter-value ${filter.active ? '' : 'is-inactive'}`}>{filter.label || 'All'}</span><span aria-hidden="true" className="assigned-filter-icon">⏷</span>{sorted && <span aria-hidden="true" className="assigned-sort-icon">{props.sort.direction === 'asc' ? '↑' : '↓'}</span>}</button></th>; })}</tr></thead><tbody>{indexes.length ? <>{indexes.map((index, position) => <React.Fragment key={getItemKey(index)}>{gaps[position] > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${gaps[position]}px`, padding: 0 }} /></tr>}{renderEntry(index)}</React.Fragment>)}{tailGap > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${tailGap}px`, padding: 0 }} /></tr>}</> : <tr><td colSpan={colSpan} className="p-4">No rows match. Change or clear filters above.</td></tr>}</tbody></table></div>}
     <div data-manager-assigned-full-list-status className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-800">Showing {pageSource ? pageState.total ?? props.totalRows ?? rows.length : rows.length} matching row{(pageState.total ?? rows.length) === 1 ? '' : 's'}. Search checks the complete {pageState.total ?? props.totalRows ?? rows.length}-row list.</div>
   </div>;
 }
