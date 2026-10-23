@@ -38,6 +38,16 @@ test('native JWT cannot bypass an effective cutoff even before profile disable w
   assert.equal(after.calls[0][1].p_profile_id, 'e2584b32-472c-4888-b592-394235050b5b');
 });
 
+test('public Supabase bearer skips the user endpoint without becoming a session', async () => {
+  const bearer = `e30.${Buffer.from(JSON.stringify({ role: 'anon' })).toString('base64url')}.signature`;
+  const api = client(true);
+  let getUserCalls = 0;
+  api.auth.getUser = async () => { getUserCalls += 1; return { data: { user: null } }; };
+  const request = new Request('https://example.invalid', { headers: { authorization: `Bearer ${bearer}` } });
+  assert.equal(await auth.readSupabaseOrAppSessionFromRequest(request, api), null);
+  assert.equal(getUserCalls, 0);
+});
+
 test('previously signed legacy token is live checked; no client or lookup means denial', async () => {
   const signed = await auth.createAppSession({ username: 'kayla_knepp', role: 'ADMIN' });
   const request = new Request('https://example.invalid', { headers: { 'x-gnc-session': signed.token } });

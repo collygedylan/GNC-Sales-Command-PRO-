@@ -224,6 +224,18 @@ export async function readAppSessionFromRequest(req: Request, supabaseAdmin?: Ac
   return session;
 }
 
+function isNonUserSupabaseBearer(token: string) {
+  const parts = String(token || "").split(".");
+  if (parts.length !== 3) return false;
+  try {
+    const claims = JSON.parse(decoder.decode(decodeBase64Url(parts[1]))) as { role?: unknown };
+    const role = String(claims?.role || "").trim().toLowerCase();
+    return role === "anon" || role === "service_role";
+  } catch {
+    return false;
+  }
+}
+
 export async function readSupabaseOrAppSessionFromRequest(
   req: Request,
   supabaseAdmin: SupabaseClient<Database>,
@@ -232,6 +244,7 @@ export async function readSupabaseOrAppSessionFromRequest(
     return await readAppSessionFromRequest(req, supabaseAdmin);
   }
   const bearer = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (isNonUserSupabaseBearer(bearer)) return null;
   if (bearer && supabaseAdmin) try {
     const { data, error } = await supabaseAdmin.auth.getUser(bearer);
     const user = data?.user;
