@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.56';
+const APP_SHELL_BUILD = 'AgData v2.3.57';
 const APP_SHELL_RUNTIME_REVISION = 'watchdog-hotfix-r2';
-const APP_ASSET_VERSION = '2.3.56';
+const APP_ASSET_VERSION = '2.3.57';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.56';
+const CACHE_NAME = 'agdata-v2.3.57';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
@@ -68,7 +68,10 @@ const BRANDING_CANONICAL_ASSETS = Object.freeze([
 const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/bunch-note-cards.css",
   "./assets/bunch-note-chunks/CardBoard-O7NWXZWB.js",
+  "./assets/bunch-note-chunks/CardBoard-PN34Q75I.js",
   "./assets/bunch-note-chunks/StructuredBunchNote-OLDSEG5D.js",
+  "./assets/bunch-note-chunks/StructuredBunchNote-QNJK473M.js",
+  "./assets/bunch-note-chunks/chunk-46YKMRUS.js",
   "./assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
   "./assets/bunch-note-structured.js",
   "./assets/bunch-note.css",
@@ -76,10 +79,14 @@ const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/bunch-queue.css",
   "./assets/bunch-queue.js",
   "./assets/field-counting-chunks/FieldCountingView-CBZQJHBV.js",
+  "./assets/field-counting-chunks/FieldCountingView-PBPNYFTR.js",
   "./assets/field-counting-chunks/chunk-4U4VUOO3.js",
+  "./assets/field-counting-chunks/chunk-C5JZPQWQ.js",
   "./assets/field-counting.css",
   "./assets/field-counting.js",
+  "./assets/historical-requests-chunks/HistoricalRequestsView-2SDVJKBX.js",
   "./assets/historical-requests-chunks/HistoricalRequestsView-MMF43IVA.js",
+  "./assets/historical-requests-chunks/chunk-34HXWUAQ.js",
   "./assets/historical-requests-chunks/chunk-HXYT2SBZ.js",
   "./assets/historical-requests.css",
   "./assets/historical-requests.js",
@@ -108,6 +115,7 @@ const ASSETS_TO_CACHE = [
   './assets/live-sync-adapters.js',
   './assets/live-sync-coordinator.js',
   './assets/request-submission.js',
+  './assets/request-sales-impact.js',
   './assets/inventory-list-contract.js',
   './assets/queue-inventory-hydration.js',
   './assets/av-derived-rows.js',
