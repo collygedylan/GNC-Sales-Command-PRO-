@@ -59,18 +59,26 @@ Queue card taps open Item Detail. Camera file inputs must obey the click-through
 
 Active Request card quantity accepts qty/request_qty/requested_qty/quantity/order_qty/payload.qty and persisted REQ_QTY/req_qty aliases. Render N/A | N/A as N/A only in card presentation; retain the durable customer mapping payload contract.
 
+## Dylan-only Request Sales Impact
+
+`Request Sales Impact ($)` is a dynamically mounted, `dylan_collyge`-only executive view reached from Historical Requests, Sales, Sales Office, Smart Sales & Move Intelligence and Menu without changing the Home tile grid. `public.get_request_sales_impact_v1()` unifies `ph_request_history`, `ph_active_request` and structured/HTML `ph_request_delivery_outbox` evidence, deduplicates normalized `(request key, itemcode, locationcode, lotcode)`, prefers completed/enriched records and resolves positive list price from the request row, `ph_master_inventory`, `ph_view_av_hot_price`, then `ph_cav_import`. The reporting-only effective quantity is exact positive Request Qty or `25` when blank/null/zero; it never writes that fallback into Request rows.
+
+`request_sales_impact` must resolve the active server profile before checking `username === 'dylan_collyge'`. Every other authenticated account receives only `{ ok: true, enabled: false, visible: false, rows: [] }`; the service-role-only RPC is never exposed to `authenticated`. The client creates both entry controls and `#view-request-sales-impact` only for the same verified Dylan account, removes them on account change, retains already loaded same-account results on transient refresh failure, and exports Summary, Sales Rep, Customer/Consignee and Line Item worksheets.
+
 ## Owned Files, Canonical Functions & SQL Contracts
 
-- `assets/app-runtime.js`: `renderBloomPickerTrayRows`, `submitRequestWithQtys`, `forceRefreshRequestsForView`, `buildPendingRequestRenderPlan`; `assets/request-submission.js`: durable controller and acknowledgment validation.
-- `supabase/functions/app-api/index.ts`: `handleCustomerRepMappingAction`, `handleRequestRecipientDirectory`, `handleDatasetRead`; SQL: `public.ph_active_request`, `app_dataset_revisions`, `public.ph_request_delivery_outbox`, and `reconcile_active_requests_from_outbox_v1`; `Code.gs`: `collectRequestRecipients_`, `handleSignedRequestDeliveryEvent_`.
+- `assets/app-runtime.js`: `renderBloomPickerTrayRows`, `submitRequestWithQtys`, `forceRefreshRequestsForView`, `buildPendingRequestRenderPlan`, `openRequestSalesImpact`, `renderRequestSalesImpact`; `assets/request-submission.js`: durable controller and acknowledgment validation; `assets/request-sales-impact.js`: `aggregateRequestSalesImpactLines`, `buildRequestSalesImpactViewModel`, `mountRequestSalesImpact`.
+- `supabase/functions/app-api/index.ts`: `handleCustomerRepMappingAction`, `handleRequestRecipientDirectory`, `handleDatasetRead`, `handleRequestSalesImpactAction`; SQL: `public.ph_active_request`, `public.ph_request_history`, `public.ph_request_delivery_outbox`, `reconcile_active_requests_from_outbox_v1`, and `get_request_sales_impact_v1`; `Code.gs`: `collectRequestRecipients_`, `handleSignedRequestDeliveryEvent_`.
 
 ## Cross-Layer Blast Radius
 
 - A Plant Request acknowledgment must synchronously preserve a `Pending` `ph_active_request` row and revision, while outbox reconciliation repairs unfulfilled `New Plant Request Submitted` events. DriveAround publication must not wipe or auto-complete active requests.
 - Opening Que or REQUEST uses `force_fresh: true`, `cache: 'no-store'`, and the eight-second visible poll; retained UI data and exact server-side tuple validation remain separate.
+- Request Sales Impact reads are foreground-only and service-gated. Keep the SQL set-based over the bounded Request sources and small canonical price catalogs; never scan the 8.7M-row DriveAround history or add the action to anonymous/startup fixtures.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
 - Never skip a Que/REQUEST refresh because a client TTL or revision appears current, delete pending requests during import, clear a draft before validated acknowledgment, or duplicate the canonical location sorter.
 - Never copy Reclass, Bunch, HL, or inventory-purpose recipient lists into the Plant Request lifecycle contract.
 - Never await outbox reconciliation inside `dataset_read`, scan unbounded delivery history, or replace an optional Request quantity with an invented default; recover only the indexed newest 100 events outside the response path.
+- Never expose Request dollar totals, controls, DOM roots or RPC execution to a non-`dylan_collyge` account, and never persist the analytics-only default quantity of `25` back to any Request source.

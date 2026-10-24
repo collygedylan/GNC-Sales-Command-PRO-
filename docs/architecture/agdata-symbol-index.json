@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.56",
+  "release": "AgData v2.3.57",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -152,6 +152,22 @@
           "symbol": "switchView"
         }
       ]
+    },
+    "requestSalesImpactGate": {
+      "primary": {
+        "file": "supabase/functions/app-api/index.ts",
+        "symbol": "handleRequestSalesImpactAction"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "openRequestSalesImpact"
+        },
+        {
+          "file": "assets/request-sales-impact.js",
+          "symbol": "mountRequestSalesImpact"
+        }
+      ]
     }
   },
   "domains": {
@@ -189,18 +205,28 @@
         "renderBloomPickerTrayRows",
         "submitRequestWithQtys",
         "forceRefreshRequestsForView",
-        "buildPendingRequestRenderPlan"
+        "buildPendingRequestRenderPlan",
+        "openRequestSalesImpact",
+        "renderRequestSalesImpact"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
         "handleCustomerRepMappingAction",
         "handleRequestRecipientDirectory",
-        "handleSeasonSalesOfficeAction"
+        "handleSeasonSalesOfficeAction",
+        "handleRequestSalesImpactAction"
       ],
       "Code.gs": [
         "collectRequestRecipients_",
         "handleSignedRequestDeliveryEvent_"
-      ]
+      ],
+      "supportingFiles": {
+        "assets/request-sales-impact.js": [
+          "aggregateRequestSalesImpactLines",
+          "buildRequestSalesImpactViewModel",
+          "mountRequestSalesImpact"
+        ]
+      }
     },
     "agdata-docks-and-orders-specialist": {
       "assets/app-runtime.js": [

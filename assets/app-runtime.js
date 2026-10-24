@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.56';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.57';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -131,6 +131,10 @@
         let historicalRequestsMount = null;
         let historicalRequestsOwner = '';
         let historicalRequestsGeneration = 0;
+        let requestSalesImpactModulePromise = null;
+        let requestSalesImpactModule = null;
+        let requestSalesImpactMount = null;
+        let requestSalesImpactOwner = '';
         let auraWidgetHandle = null;
         let auraWidgetOwnerKey = '';
         let auraWidgetModulePromise = null;
@@ -26183,7 +26187,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.56').trim() || 'AgData v2.3.56';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.57').trim() || 'AgData v2.3.57';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -59999,6 +60003,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (historicalRequestsMount && historicalRequestsOwner === owner && historicalRequestsModule) {
                 historicalRequestsMount.update(historicalRequestsModule.createHistoricalRequestsBridge({ scopeKey: owner, revisionKey, role: nativeAuthProfile?.role || '', transport: historicalRequestsTransport }));
                 renderHistoricalRequestArchive();
+                syncRequestSalesImpactEntrypoints();
                 return;
             }
             destroyHistoricalRequestsIsland();
@@ -60022,12 +60027,173 @@ function toggleDriveQuickRequestItem(domId) {
                 historicalRequestsMount = module.mountHistoricalRequests(historyHost, module.createHistoricalRequestsBridge({ scopeKey: owner, revisionKey, role: nativeAuthProfile?.role || '', transport: historicalRequestsTransport }));
                 historicalRequestsOwner = owner;
                 renderHistoricalRequestArchive();
+                syncRequestSalesImpactEntrypoints();
             } catch (error) {
                 if (generation !== historicalRequestsGeneration || !host.isConnected) return;
                 host.innerHTML = `<div role="alert">${escapeHtml(error?.message || 'Historical Requests could not load.')} <button type="button" onclick="return retryHistoricalRequestsIsland()">Retry Historical Requests</button></div>`;
+                syncRequestSalesImpactEntrypoints();
             }
         }
         window.ensureHistoricalRequestsIsland = ensureHistoricalRequestsIsland;
+
+        function isRequestSalesImpactOwner() {
+            return isAuthenticatedDylanCollyge()
+                && String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase() === 'dylan_collyge';
+        }
+
+        function getRequestSalesImpactOwnerKey() {
+            if (!isRequestSalesImpactOwner()) return '';
+            return JSON.stringify([nativeAuthProfile?.id || '', nativeAuthProfile?.username || '', currentUser || '']);
+        }
+
+        function ensureRequestSalesImpactViewElement() {
+            if (!isRequestSalesImpactOwner()) return null;
+            let view = document.getElementById('view-request-sales-impact');
+            if (view) return view;
+            const wrapper = document.getElementById('view-wrapper');
+            if (!wrapper) return null;
+            view = document.createElement('div');
+            view.id = 'view-request-sales-impact';
+            view.className = 'hidden';
+            const content = document.createElement('div');
+            content.id = 'request-sales-impact-content';
+            content.setAttribute('aria-live', 'polite');
+            view.appendChild(content);
+            wrapper.appendChild(view);
+            return view;
+        }
+
+        function createRequestSalesImpactEntry(container, id, variant = 'standard', prepend = false) {
+            if (!container || !isRequestSalesImpactOwner()) return null;
+            let button = document.getElementById(id);
+            if (!button) {
+                button = document.createElement('button');
+                button.type = 'button';
+                button.id = id;
+                button.dataset.requestSalesImpactEntry = 'true';
+                button.addEventListener('click', openRequestSalesImpact);
+            }
+            button.className = `request-sales-impact-entry request-sales-impact-entry-${variant}`;
+            button.innerHTML = '<i class="ph-bold ph-currency-dollar" aria-hidden="true"></i><span>Request Sales Impact ($)</span>';
+            if (button.parentElement !== container) {
+                if (prepend) container.prepend(button);
+                else container.appendChild(button);
+            }
+            return button;
+        }
+
+        function syncRequestSalesImpactEntrypoints() {
+            if (!isRequestSalesImpactOwner()) {
+                document.querySelectorAll('[data-request-sales-impact-entry="true"]').forEach((element) => element.remove());
+                return;
+            }
+            const drawerAnchor = document.getElementById('drawer-historical-requests-btn');
+            if (drawerAnchor?.parentElement) {
+                const drawerEntry = createRequestSalesImpactEntry(drawerAnchor.parentElement, 'drawer-request-sales-impact-btn', 'drawer');
+                if (drawerEntry && drawerEntry.previousElementSibling !== drawerAnchor) drawerAnchor.after(drawerEntry);
+            }
+            createRequestSalesImpactEntry(document.getElementById('historical-requests-content'), 'historical-request-sales-impact-btn', 'historical', true);
+            createRequestSalesImpactEntry(document.getElementById('sales-hub-grid'), 'sales-open-request-impact', 'hub');
+            createRequestSalesImpactEntry(document.querySelector('#view-sales-office > .freeze-panel'), 'sales-office-request-impact-btn', 'sales-office');
+            createRequestSalesImpactEntry(document.querySelector('#smart-moves-intelligence-panel .sales-intelligence-heading'), 'smart-moves-request-impact-btn', 'smart-moves');
+        }
+
+        function clearRequestSalesImpactSurface() {
+            requestSalesImpactMount?.destroy();
+            requestSalesImpactMount = null;
+            requestSalesImpactOwner = '';
+            requestSalesImpactModule?.clearRequestSalesImpactAccountState?.();
+            document.querySelectorAll('[data-request-sales-impact-entry="true"]').forEach((element) => element.remove());
+            document.getElementById('view-request-sales-impact')?.remove();
+        }
+
+        function syncRequestSalesImpactOwnership() {
+            if (!isRequestSalesImpactOwner()) {
+                clearRequestSalesImpactSurface();
+                return false;
+            }
+            ensureRequestSalesImpactViewElement();
+            syncRequestSalesImpactEntrypoints();
+            return true;
+        }
+
+        function exportRequestSalesImpactWorkbook(sheets = []) {
+            const workbookSheets = (Array.isArray(sheets) ? sheets : []).map((sheet) => ({
+                name: sheet.name,
+                title: sheet.title,
+                rows: Array.isArray(sheet.rows) ? sheet.rows : [],
+                columns: (Array.isArray(sheet.columns) ? sheet.columns : []).map((column) => ({
+                    label: column.label,
+                    value: (row) => row?.[column.key]
+                })),
+                options: { includePrintArea: true, repeatHeaderOnPrint: true }
+            }));
+            const workbookBlob = buildExcelMultiSheetWorkbookBlob(workbookSheets, { includePrintArea: true });
+            const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+            const url = URL.createObjectURL(workbookBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `AgData Request Sales Impact ${timestamp}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+                link.remove();
+            }, 0);
+            return false;
+        }
+
+        function createRequestSalesImpactBridge() {
+            return {
+                scopeKey: getRequestSalesImpactOwnerKey(),
+                transport: (payload) => postAppFunctionJson(APP_API_FUNCTION_URL, payload, {
+                    timeoutMs: 60000,
+                    label: 'Request Sales Impact'
+                }),
+                exportWorkbook: exportRequestSalesImpactWorkbook,
+                toast: (title, message) => showToast(title, message),
+                onForbidden: () => {
+                    clearRequestSalesImpactSurface();
+                    if (getCurrentVisibleViewId() === 'request-sales-impact') switchView('home', { force: true });
+                }
+            };
+        }
+
+        async function renderRequestSalesImpact() {
+            if (!syncRequestSalesImpactOwnership()) return false;
+            const host = document.getElementById('request-sales-impact-content');
+            const owner = getRequestSalesImpactOwnerKey();
+            if (!host || !owner) return false;
+            if (requestSalesImpactMount && requestSalesImpactOwner === owner && requestSalesImpactModule) {
+                requestSalesImpactMount.update(createRequestSalesImpactBridge());
+                return false;
+            }
+            if (!requestSalesImpactModulePromise) {
+                requestSalesImpactModulePromise = import(new URL('./assets/request-sales-impact.js?v=' + encodeURIComponent(APP_SHELL_BUILD), document.baseURI).href)
+                    .catch((error) => { requestSalesImpactModulePromise = null; throw error; });
+            }
+            host.innerHTML = '<div class="request-impact-loading"><strong>Loading Request Sales Impactâ€¦</strong></div>';
+            try {
+                const module = await requestSalesImpactModulePromise;
+                if (!isRequestSalesImpactOwner() || owner !== getRequestSalesImpactOwnerKey() || !host.isConnected
+                    || getCurrentVisibleViewId() !== 'request-sales-impact') return false;
+                requestSalesImpactModule = module;
+                requestSalesImpactMount?.destroy();
+                requestSalesImpactMount = module.mountRequestSalesImpact(host, createRequestSalesImpactBridge());
+                requestSalesImpactOwner = owner;
+            } catch (error) {
+                if (host.isConnected) host.innerHTML = `<div class="request-impact-loading"><strong>Request Sales Impact could not load.</strong><span>${escapeHtml(error?.message || 'Retry from the menu.')}</span></div>`;
+            }
+            return false;
+        }
+
+        function openRequestSalesImpact() {
+            if (!syncRequestSalesImpactOwnership()) return false;
+            ensureRequestSalesImpactViewElement();
+            switchView('request-sales-impact', { force: true });
+            return false;
+        }
+        window.openRequestSalesImpact = openRequestSalesImpact;
 
         function navigationPreferencesAllowed(view, baseline) {
             const preferences = window.GncNavigationPreferences;
@@ -60038,6 +60204,7 @@ function toggleDriveQuickRequestItem(domId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
             if (targetView === 'smart-moves') return (!userOverride || String(userOverride).trim().toLowerCase() === 'dylan_collyge') && isAuthenticatedDylanCollyge();
+            if (targetView === 'request-sales-impact') return (!userOverride || String(userOverride).trim().toLowerCase() === 'dylan_collyge') && isRequestSalesImpactOwner();
             if (isFullAppAdministrator(userOverride)) return true;
             if (isEvalSensitiveDataRestricted() && ['managers', 'reports', 'request-history', 'historical-requests', 'po-management'].includes(targetView)) return false;
             if (targetView === 'building') return false;
@@ -60307,6 +60474,7 @@ function toggleDriveQuickRequestItem(domId) {
                 homeGrid.dataset.authorizedModuleCount = String(authorizedHomeModules);
                 homeGrid.dataset.renderedModuleCount = String(homeGrid.querySelectorAll('[data-home-module-view]:not([hidden])').length);
             }
+            if (typeof syncRequestSalesImpactOwnership === 'function') syncRequestSalesImpactOwnership();
             scheduleHomeDashboardFitSettle('role-access-ui');
         }
         function isDrawerOpen() {
@@ -62788,7 +62956,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['bunch-note','drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','smart-moves','historical-requests','request-history','sales-credit','credit-request','managers','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','hl-order','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['bunch-note','drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','smart-moves','request-sales-impact','historical-requests','request-history','sales-credit','credit-request','managers','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','hl-order','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -70161,6 +70329,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!root) return;
             warmSalesIntelligenceData();
             if (!salesIntelligenceRequiredDataReady()) {
+                setTimeout(syncRequestSalesImpactEntrypoints, 0);
                 root.innerHTML = '<section class="sales-intelligence-shell"><div class="sales-intelligence-empty" role="status">Hydrating live inventory, SOC, and reserves values…</div></section>';
                 return;
             }
@@ -70195,6 +70364,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             root.innerHTML = `<section class="sales-intelligence-shell" data-sales-intelligence-mode="${escapeHtml(mode)}"><div class="sales-intelligence-heading"><div><span>Smart Sales & Inventory Move Intelligence</span><h2>${mode === 'admin' ? 'Make the Correct Move' : 'Missed Sales & Geographical Leverage'}</h2><p>Live 13-week rolling position · ${escapeHtml(SALES_INTELLIGENCE_HORIZON.join(' → '))}</p></div><div class="sales-intelligence-mode-toggle"><button type="button" class="${mode === 'admin' ? 'active' : ''}" ${isAdmin ? '' : 'disabled'} onclick="return setSalesIntelligenceMode('admin')">ADMIN / INVENTORY COMMAND</button><button type="button" class="${mode === 'rep' ? 'active' : ''}" onclick="return setSalesIntelligenceMode('rep')">SALES REP VIEW</button></div></div>${filtersHtml}${kpis}
                 <div class="sales-intelligence-section-title"><strong>${mode === 'admin' ? 'Prioritized Smart Move Cards' : 'MISSED SALES & GEO OPPORTUNITIES · MY CUSTOMERS, RESERVES & OPEN ORDERS'}</strong><span>${cards.length} prioritized</span></div>
                 <div class="sales-intelligence-cards">${cards.map((card) => renderSalesIntelligenceCard(card, mode)).join('') || '<div class="sales-intelligence-empty">No verified opportunities match the active filters.</div>'}</div></section>`;
+            syncRequestSalesImpactEntrypoints();
         }
 
         function refreshSalesInventoryIntelligence() {
@@ -70283,6 +70453,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             ].filter(Boolean).length;
             const emptyState = document.getElementById('sales-empty-state');
             if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
+            syncRequestSalesImpactEntrypoints();
         }
 
         function renderQcHub() {
@@ -77042,6 +77213,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 }
             } else if (viewId === 'historical-requests') {
                 void ensureHistoricalRequestsIsland();
+            } else if (viewId === 'request-sales-impact') {
+                void renderRequestSalesImpact();
             } else if (window.SalesWorkspace?.isView(viewId)) {
                 void SalesWorkspace.open(viewId);
             } else if (viewId === 'sales') {
@@ -77669,6 +77842,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const switchOptions = (options && typeof options === 'object') ? options : {};
             const fromHistory = !!switchOptions.fromHistory;
             const requestedViewId = String(viewId || 'home').trim();
+            if (typeof syncRequestSalesImpactOwnership === 'function') syncRequestSalesImpactOwnership();
+            if (requestedViewId === 'request-sales-impact') ensureRequestSalesImpactViewElement();
             if (requestedViewId === 'request' && switchOptions.managerSalesReps !== true && requestSalesRepsManagerMode) {
                 requestSalesRepsManagerMode = false;
                 if (activeReqTab === 'reps') activeReqTab = 'pending';
@@ -108692,6 +108867,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const container = document.getElementById('sales-office-content');
             const crumb = document.getElementById('sales-office-crumb');
             if (!container) return;
+            syncRequestSalesImpactEntrypoints();
             bumpChunkRenderTokenByKey('sales-office-main');
             updateSalesOfficeTabButtons();
 

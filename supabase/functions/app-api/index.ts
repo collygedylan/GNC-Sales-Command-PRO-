@@ -2362,6 +2362,32 @@ function seasonSalesOfficeErrorResponse(error: unknown) {
   return errorResponse("Season Sales Notes could not be updated. Retry with the same action.", 503, { code });
 }
 
+async function handleRequestSalesImpactAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  actorProfile: Record<string, unknown> | null = null,
+) {
+  if (!session || session.mustChangePassword) {
+    return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+  }
+  const actor = actorProfile || await resolveActiveSessionProfile(session);
+  const username = normalizeUsername(String(actor.username || ""));
+  if (username !== "dylan_collyge") {
+    return jsonResponse({ ok: true, enabled: false, visible: false, rows: [] });
+  }
+  const { data, error } = await supabase.rpc("get_request_sales_impact_v1");
+  if (error) {
+    return jsonResponse({
+      ok: false,
+      enabled: true,
+      visible: true,
+      retained: true,
+      retryable: true,
+      code: "REQUEST_SALES_IMPACT_UNAVAILABLE",
+    });
+  }
+  return jsonResponse({ ok: true, enabled: true, visible: true, ...jsonObject(data) });
+}
+
 async function handleSeasonSalesOfficeAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -6501,6 +6527,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
   }
 
+  if (action === "request_sales_impact") {
+    return await handleRequestSalesImpactAction(session, activeProfileForRequest);
+  }
   if (action === "request_history" || action === "sales_credit") {
     return await handleSalesWorkflow({ session, payload, supabase, resolveActiveSessionProfile, headers: corsHeaders });
   }

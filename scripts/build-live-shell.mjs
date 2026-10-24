@@ -5,7 +5,7 @@ import { minify } from 'terser';
 import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'AgData v2.3.56';
+const RELEASE = 'AgData v2.3.57';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
@@ -44,7 +44,7 @@ await mkdir(path.dirname(runtimeTarget), { recursive: true });
 await writeFile(runtimeTarget, `${minified.code}\n;window.__gncAppRuntimeExecuted = true;\n`, 'utf8');
 // These synchronous dependencies must accompany the extracted production
 // runtime in local verification as well as the Pages artifact.
-await Promise.all(['sales-workspace.js', 'sales-workspace.css', 'mobile-workspace.js', 'mobile-workspace.css', 'navigation-preferences.js', 'navigation-preferences.css', 'user-access-control.js', 'user-access-control.css', 'location-code.js', 'bunch-note.js', 'bunch-queue-shell.js', 'bunch-queue.js', 'bunch-queue.css', 'bunch-note.css', 'bunch-note-cards.css', 'bunch-note-structured.js', 'assigned-items-table.js', 'assigned-items.css', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'request-submission.js', 'inventory-list-contract.js', 'queue-inventory-hydration.js', 'master-detail-snapshots.js', 'runtime-watchdog-panel.js'].map((name) =>
+await Promise.all(['sales-workspace.js', 'sales-workspace.css', 'mobile-workspace.js', 'mobile-workspace.css', 'navigation-preferences.js', 'navigation-preferences.css', 'user-access-control.js', 'user-access-control.css', 'location-code.js', 'bunch-note.js', 'bunch-queue-shell.js', 'bunch-queue.js', 'bunch-queue.css', 'bunch-note.css', 'bunch-note-cards.css', 'bunch-note-structured.js', 'assigned-items-table.js', 'assigned-items.css', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'request-submission.js', 'request-sales-impact.js', 'inventory-list-contract.js', 'queue-inventory-hydration.js', 'master-detail-snapshots.js', 'runtime-watchdog-panel.js'].map((name) =>
   copyFile(path.join(root, 'assets', name), path.join(siteRoot, 'assets', name))));
 await prepareLiveIslandAssets({ root, site: siteRoot });
 await mkdir(path.join(siteRoot, 'assets', 'vendor'), { recursive: true });

@@ -360,7 +360,7 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
   const document = { hidden: false, body: { ...rootNode, dataset: { currentView: 'drive' } }, documentElement: null,
     querySelector: () => null, getElementById: () => null, addEventListener() {} };
   const reports = [];
-  const window = { __APP_RELEASE_VERSION__: 'AgData v2.3.56', activeHomeTab: '',
+  const window = { __APP_RELEASE_VERSION__: 'AgData v2.3.57', activeHomeTab: '',
     localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     setTimeout, clearTimeout, addEventListener() {} };
   const context = vm.createContext({ window, document, MutationObserver: class { observe() {} }, setTimeout, clearTimeout, console });
@@ -373,7 +373,7 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
   ];
   for (const [viewId, symbol] of cases) {
     const event = window.GncRuntimeWatchdog.record('GOLDEN_TRIAGE', { view_id: viewId, suspected_functions: [symbol] });
-    assert.equal(event.app_version, 'AgData v2.3.56');
+    assert.equal(event.app_version, 'AgData v2.3.57');
     const skillPath = path.join(root, '.codex', 'skills', event.owning_skill, 'SKILL.md');
     assert.equal(readFileSync(skillPath, 'utf8').length > 0, true);
     const domain = index.domains[event.owning_skill];
@@ -382,7 +382,7 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
   }
   await new Promise(resolve => setImmediate(resolve));
   assert.equal([...storage.values()].some(value => String(value).includes('AgData v2.3.54')), false);
-  assert.equal(reports.every(event => event.app_version === 'AgData v2.3.56'), true);
+  assert.equal(reports.every(event => event.app_version === 'AgData v2.3.57'), true);
 });
 
 test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
@@ -437,4 +437,43 @@ test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
   assert.match(migration, /app_dataset_revision_updated/);
   assert.doesNotMatch(migration, /update\s+public\.ph_request_delivery_outbox/i);
   assert.match(runner, /requestQuantityRecoveryMigrationName[^]*20261023234500_request_quantity_recovery_v3\.sql/);
+});
+
+test('Invariant 20 (Dylan-Only Request Sales Dollar Impact)', async () => {
+  const impact = await import(new URL('../assets/request-sales-impact.js', import.meta.url));
+  const rows = [
+    { folder_id: 'REQ-A', itemcode: 'ITEM-1', locationcode: 'A.01', lotcode: 'L1', qty: 10, list_price: 100,
+      status: 'Pending', sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One' },
+    { folder_id: 'REQ-A', itemcode: 'ITEM-1', locationcode: 'A.01', lotcode: 'L1', qty: 10, list_price: 100,
+      status: 'Completed', sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One' },
+    { folder_id: 'REQ-B', itemcode: 'ITEM-2', locationcode: 'B.02', lotcode: 'L2', qty: null, list_price: 8.75,
+      status: 'Pending', sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One' },
+    { folder_id: 'REQ-B', itemcode: 'ITEM-2', locationcode: 'B.02', lotcode: 'L2', qty: 0, list_price: 8.75,
+      status: 'Completed', sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One' },
+  ];
+  const result = impact.aggregateRequestSalesImpactLines(rows);
+  assert.equal(result.summary.total_line_items, 2);
+  assert.equal(result.summary.total_requests, 2);
+  assert.equal(result.summary.total_units_requested, 35);
+  assert.equal(result.summary.explicit_qty_line_count, 1);
+  assert.equal(result.summary.default_25_qty_line_count, 1);
+  assert.equal(result.summary.total_dollar_value, 1218.75);
+  assert.equal(result.summary.completed_dollar_value, 1218.75);
+  assert.equal(result.by_sales_rep[0].total_dollar_value, 1218.75);
+  assert.equal(result.by_customer_consignee[0].items.find(item => item.itemcode === 'ITEM-1').line_dollar_value, 1000);
+  assert.equal(result.by_customer_consignee[0].items.find(item => item.itemcode === 'ITEM-2').line_dollar_value, 218.75);
+
+  const migration = read('supabase/migrations/20261023235900_request_sales_impact_v1.sql');
+  const api = functionSource('supabase/functions/app-api/index.ts', 'handleRequestSalesImpactAction');
+  const runtime = read('assets/app-runtime.js');
+  for (const marker of ['ph_active_request', 'ph_request_history', 'ph_request_delivery_outbox',
+    'request_key_norm,dedupe_item_key,location_key,lot_key', 'coalesce(d.raw_qty,25::numeric)',
+    'ph_master_inventory', 'ph_view_av_hot_price', 'ph_cav_import']) assert.ok(migration.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
+  assert.match(migration, /revoke all on function public\.get_request_sales_impact_v1\(\) from public,anon,authenticated/);
+  assert.match(migration, /grant execute on function public\.get_request_sales_impact_v1\(\) to service_role/);
+  assert.match(api, /username\s*!==\s*"dylan_collyge"[^]*enabled:\s*false[^]*visible:\s*false[^]*rows:\s*\[\]/);
+  assert.match(api, /supabase\.rpc\("get_request_sales_impact_v1"\)/);
+  assert.match(runtime, /function isRequestSalesImpactOwner\(\)[^]*dylan_collyge/);
+  assert.match(runtime, /document\.getElementById\('view-request-sales-impact'\)\?\.remove\(\)/);
+  assert.doesNotMatch(read('index.html'), /id="view-request-sales-impact"|drawer-request-sales-impact-btn/);
 });

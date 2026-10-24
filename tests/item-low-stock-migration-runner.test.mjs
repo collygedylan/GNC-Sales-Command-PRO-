@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -23,7 +23,7 @@ import { discoverTests } from '../scripts/test-discovery.mjs';
 test('Reclass scope restoration is registered and verifies secure delegation to the current policy', () => {
   assert.equal(reclassRepScopeMigrationName, '20261020233500_reclass_rep_scope_preservation_v1.sql');
   assert.ok(releaseDatabaseMigrations.indexOf(reclassRepScopeMigrationName) < releaseDatabaseMigrations.indexOf(auraDylanOwnerOnlyMigrationName));
-  assert.equal(releaseDatabaseMigrations.at(-1), auraDylanOwnerOnlyMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(auraDylanOwnerOnlyMigrationName) < releaseDatabaseMigrations.indexOf(requestSalesImpactMigrationName));
   assert.deepEqual(normalizeScopedMigrationPaths([`supabase/migrations/${reclassRepScopeMigrationName}`]),
     [reclassRepScopeMigrationName]);
   const sql = fs.readFileSync(new URL(`../supabase/migrations/${reclassRepScopeMigrationName}`, import.meta.url), 'utf8');
@@ -170,7 +170,7 @@ test('exact pending Request quantities are release-registered without rewriting 
 
 test('location evidence lifecycle is release-registered with exact depletion and expiry contracts', () => {
   assert.equal(inventoryLocationEvidenceLifecycleMigrationName, '20261023235500_inventory_location_evidence_lifecycle_v2.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), inventoryLocationEvidenceLifecycleMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(inventoryLocationEvidenceLifecycleMigrationName) < releaseDatabaseMigrations.indexOf(requestSalesImpactMigrationName));
   const sql = fs.readFileSync(new URL(`../supabase/migrations/${inventoryLocationEvidenceLifecycleMigrationName}`, import.meta.url), 'utf8');
   for (const marker of ['baseline_on_hand', 'loc_match_pct', 'initial_photo_match_qty', 'current_photo_match_qty',
     "America/Chicago", "time '23:59:59'", 'request-history-harvest-v2', 'inventory_location_evidence_lifecycle_v2']) assert.match(sql, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
@@ -179,6 +179,18 @@ test('location evidence lifecycle is release-registered with exact depletion and
   const contract = migrationContractQuery(inventoryLocationEvidenceLifecycleMigrationName);
   for (const marker of ['baseline_on_hand', 'current_photo_match_qty', 'America/Chicago',
     'inventory_location_evidence_lifecycle_v2']) assert.ok(contract.includes(marker), marker);
+});
+
+test('Request Sales Impact RPC is release-registered and service-role-only', () => {
+  assert.equal(requestSalesImpactMigrationName, '20261023235900_request_sales_impact_v1.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1), requestSalesImpactMigrationName);
+  const sql = fs.readFileSync(new URL(`../supabase/migrations/${requestSalesImpactMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['get_request_sales_impact_v1', 'ph_request_history', 'ph_request_delivery_outbox',
+    'coalesce(d.raw_qty,25::numeric)', 'request_key_norm,dedupe_item_key,location_key,lot_key']) assert.ok(sql.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
+  assert.match(sql, /revoke all on function public\.get_request_sales_impact_v1\(\) from public,anon,authenticated/);
+  assert.match(sql, /grant execute on function public\.get_request_sales_impact_v1\(\) to service_role/);
+  const contract = migrationContractQuery(requestSalesImpactMigrationName);
+  for (const marker of ['get_request_sales_impact_v1', 'ph_request_history', 'ph_request_delivery_outbox', 'service_role']) assert.ok(contract.includes(marker), marker);
 });
 
 test('mapping publication is release-registered and protects raw source data and writes', () => {
