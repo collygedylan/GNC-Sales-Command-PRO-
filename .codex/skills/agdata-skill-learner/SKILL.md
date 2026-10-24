@@ -50,6 +50,8 @@ Eval2 extends the existing authorized report_read_v2 response with compact brows
 
 Queue badge startup registers only location_work/list/status=all and bunch_note_workflow queue/list_discrepancies with filter=mine, offset=0, limit=100 in releaseSnapshotReadFixture. Unknown keys, forged actor IDs and mutations remain rejected. No browser validation is implied.
 
+The v2.3.60 request repair adds no startup route: it preserves the existing queue and metadata fixtures, registers the scoped SQL migration, and ratchets exact-ID ledgering plus four-proof lifecycle recovery into the golden invariants.
+
 ## Owned Files, Canonical Functions & SQL Contracts
 
 - Own `docs/architecture/agdata-symbol-index.json`, `.codex/skills/*/SKILL.md`, `AGENTS.md`, `tests/golden-invariants.test.mjs`, governance registration, and the dependency map. Every listed symbol must resolve in its declared source file.

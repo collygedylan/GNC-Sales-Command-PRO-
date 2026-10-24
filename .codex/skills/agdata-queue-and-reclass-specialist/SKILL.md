@@ -77,6 +77,8 @@ Every Reclass Item Inquiry has the same white/black 14-column HTML table and one
 
 Que contains only active operational tabs; ARCHIVED is absent. Archived/completed request pages and Restore mount inside Home Historical Requests via renderHistoricalRequestArchive, retaining account/permission ownership and idempotent restore. Queue cards paint their owned memory rows while refreshRequestViewInBackground runs; Location Work must not wait on requests/master. Reset transport cooldowns on explicit tab/Retry while preserving authorization fences. Request-only normalizeRequestCardMetrics repairs OH=0 with AVL>0 to AVL+REV and raises Loc OH to that value without mutating source rows. Collapse N/A | N/A and resolve all stored Qty aliases. Suspend candidate projection fields must match database.types.ts and its generated contracts; backend faults return retryable 503, never mislabeled parameter errors.
 
+Every submitted regular Request keeps a permanent history snapshot while its unfulfilled active copy remains visible. History overlap is required, not a completion signal; only completion outbox, history photo+spec, current valid master evidence, or explicit queue removal may remove the active copy. Authenticated direct reads of the security-invoker queue views require `ph_master_inventory` SELECT plus its existing RLS policies.
+
 ## Owned Files, Canonical Functions & SQL Contracts
 
 - `assets/app-runtime.js`: `renderRequest`, `buildPendingRequestRenderPlan`, `buildReclassRecountLocationGroups`, `buildOptimisticInventoryReclassMoveModel`, and the atomic Reclass modal/receipt publishers.
@@ -91,3 +93,4 @@ Que contains only active operational tabs; ARCHIVED is absent. Archived/complete
 
 - Never group Recount by physical UID/lot alone, omit lot metrics from completion delivery, update only one destination-season Open Stock row, add Action columns to the nine-column report, or move the proposal box outside OH.
 - Never collapse physical Suspend rows, infer mutation authority from cached UI state, add JD/Sunday as fixed Reclass recipients, or block opening a displayed-card Reclass draft on a background refresh.
+- Never treat request age, status text, completion-date text, tombstone presence, or history membership alone as proof that an active Request is fulfilled.

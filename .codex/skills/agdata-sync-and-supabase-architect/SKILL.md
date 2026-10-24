@@ -78,6 +78,8 @@ Home renders stable DRIVE/CAV/RESERVES/SOC filename cards even when only one met
 
 Home filename summaries persist under gnc_sync_filenames_v1 scoped by profile ID, username and permission version; restore them synchronously before background metadata refresh. Dark Home summary/cards/buttons use #062115 and light text. Footer queue adapters include actor-scoped Location Work and Bunch queue reads; none may gate the visible active queue. Historical backfills and the 15-minute historical trigger remain PAUSED.
 
+Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and retain already rendered same-account filenames. Que reads try `ph_request_queue_live_rows`, then `ph_active_request_live_rows`, then retained active rows; a single PostgREST warning must not abort startup or zero unrelated queue tabs. Security-invoker queue views retain RLS and require the authenticated table privilege on joined `ph_master_inventory`.
+
 ## Owned Files, Canonical Functions & SQL Contracts
 
 - `assets/app-runtime.js`: `runGoogleAppsScriptTrigger`, `refreshDashboardSyncMetadata`, `selectDashboardSyncFilename`; `supabase/functions/app-api/index.ts`: `handleDatasetRevisionsAction`, `handleAppsScriptAction`; `Code.gs`: `getManualSyncStageOrder_`, `queueManualSyncRequest_`, `runQueuedManualSyncStage_`, `moveAndNormalizeDriveAroundProcessedFiles_`.
@@ -91,4 +93,5 @@ Home filename summaries persist under gnc_sync_filenames_v1 scoped by profile ID
 ## Forbidden Anti-Patterns (Never Repeat)
 
 - Never answer a forced manual run with `The import processor is finishing its current work.`, acquire a fence for an unchanged file, leave a published `.xlsx` in Drop, show multiple stale filenames, create a public definer view, or execute `SET LOCAL` outside `BEGIN`/`COMMIT`.
+- Never let one startup dataset rejection cancel sibling metadata/queue reads, and never grant a security-invoker view without the matching RLS-protected underlying-table privilege.
 - Never run or enable historical backfill outside 23:30–06:15 America/Chicago or while explicitly paused.

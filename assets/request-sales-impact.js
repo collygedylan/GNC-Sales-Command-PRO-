@@ -66,33 +66,13 @@ function requestSourceTable(row = {}) {
 }
 
 export function requestSalesImpactDedupKey(row = {}) {
-  const explicitIdentity = text(firstValue(row, ['line_identity_key', 'lineIdentityKey'], ''));
-  if (explicitIdentity) return explicitIdentity;
   const uniqueId = normalized(firstValue(row, ['unique_id', 'request_unique_id', 'master_unique_id'], ''));
-  const folder = normalized(firstValue(row, ['folder_id', 'request_folder', 'folderId', 'request_key', 'requestKey'], ''));
-  const itemcode = normalized(firstValue(row, ['itemcode', 'item_code'], ''));
-  const commonname = normalized(firstValue(row, ['commonname', 'common_name'], ''));
-  const contsize = normalized(firstValue(row, ['contsize', 'container_size', 'size'], ''));
-  const locationcode = normalized(firstValue(row, ['locationcode', 'location_code'], ''));
-  const lotcode = normalized(firstValue(row, ['lotcode', 'lot_code'], ''));
+  if (uniqueId) return `uid:${uniqueId}`;
   const rowIndex = normalized(firstValue(row, ['row_index', 'rowIndex'], '1')) || '1';
   const sourceRowId = normalized(firstValue(row, ['source_row_id', 'sourceRowId'], ''));
-  const emailThreadId = normalized(firstValue(row, ['email_thread_id', 'gmail_thread_id', 'thread_id'], ''));
-  const lineage = uniqueId ? `uid:${uniqueId}` : folder ? `folder:${folder}|row:${rowIndex}`
-    : `source:${emailThreadId || sourceRowId || requestCalendarDay(row) || 'unknown'}|row:${rowIndex}`;
-  const rawQuantity = number(firstValue(row, ['raw_qty', 'req_qty', 'qty', 'quantity', 'request_qty', 'requested_qty'], 0));
-  const strictFields = [
-    requestCalendarDay(row),
-    normalized(firstValue(row, ['sales_rep', 'primary_sales_rep', 'request_selected_rep_username', 'request_selected_rep_display'], 'Unassigned')),
-    normalized(firstValue(row, ['customer_name', 'customername'], 'Unknown Customer')),
-    normalized(firstValue(row, ['consignee_name', 'consigneename'], 'N/A')),
-    itemcode || `name:${commonname}`,
-    contsize,
-    locationcode,
-    lotcode,
-    rawQuantity === 0 ? -1 : rawQuantity,
-  ];
-  return `${lineage}|fields:${JSON.stringify(strictFields)}`;
+  if (sourceRowId) return `source:${sourceRowId}|row:${rowIndex}`;
+  const explicitIdentity = normalized(firstValue(row, ['line_identity_key', 'lineIdentityKey'], ''));
+  return explicitIdentity ? `line:${explicitIdentity}` : '';
 }
 
 function canonicalRequestLine(row = {}) {
@@ -162,17 +142,9 @@ function mergeCanonicalLines(current, candidate) {
 
 export function aggregateRequestSalesImpactLines(rows = []) {
   const deduplicated = new Map();
-  const sourceOccurrences = new Map();
-  for (const rawRow of Array.isArray(rows) ? rows : []) {
+  for (const [index, rawRow] of (Array.isArray(rows) ? rows : []).entries()) {
     const candidate = canonicalRequestLine(rawRow);
-    const baseKey = requestSalesImpactDedupKey(candidate);
-    let key = baseKey;
-    if (!candidate.line_identity_key && candidate.source_table) {
-      const sourceKey = `${baseKey}|source:${candidate.source_table}`;
-      const sourceOccurrence = sourceOccurrences.get(sourceKey) || 0;
-      sourceOccurrences.set(sourceKey, sourceOccurrence + 1);
-      key = `${baseKey}|copy:${sourceOccurrence}`;
-    }
+    const key = requestSalesImpactDedupKey(candidate) || `occurrence:${index}`;
     deduplicated.set(key, deduplicated.has(key) ? mergeCanonicalLines(deduplicated.get(key), candidate) : candidate);
   }
   const lineItems = [...deduplicated.values()].sort((left, right) =>
@@ -407,6 +379,12 @@ function renderKpis(summary) {
 }
 
 function renderSourceAudit(audit = {}, summary = {}) {
+  if (audit.dedupe_contract === 'zero_cross_request_dedupe_v1') {
+    const lineCount = number(audit.line_count ?? summary.total_line_items);
+    const uniqueCount = number(audit.distinct_unique_ids ?? lineCount);
+    const lifecycleCount = number(audit.lifecycle_unique_ids ?? uniqueCount);
+    return `<details class="request-impact-audit"><summary><span><i class="ph-bold ph-database"></i><strong>Permanent Request Ledger Audit</strong></span><small>${numberFormatter.format(lineCount)} exact-ID lines &middot; ${currencyFormatter.format(number(summary.total_dollar_value))}</small></summary><div class="request-impact-audit-body"><div class="request-impact-audit-totals"><span><strong>${numberFormatter.format(lineCount)}</strong> ledger lines</span><span><strong>${numberFormatter.format(uniqueCount)}</strong> unique request IDs</span><span><strong>${numberFormatter.format(lifecycleCount)}</strong> lifecycle IDs represented</span><span><strong>${audit.requested_minimum_met ? 'Met' : 'Actual shown'}</strong> requested threshold audit</span></div><p>Lifecycle copies merge only when they carry the same stable request ID. Separate requests are never merged by item, location, folder, date, quantity, customer, consignee, or sales rep.</p></div></details>`;
+  }
   const tables = Array.isArray(audit.tables) ? audit.tables : [];
   const rows = tables.map(row => `<tr><td><strong>${escapeHtml(`${row.schema_name || 'public'}.${row.table_name || ''}`)}</strong><small>${escapeHtml(row.note || '')}</small></td><td>${row.total_raw_rows === null || row.total_raw_rows === undefined ? 'Not present' : numberFormatter.format(number(row.total_raw_rows))}</td><td>${numberFormatter.format(number(row.request_related_rows))}</td><td>${numberFormatter.format(number(row.extracted_line_items))}</td><td>${numberFormatter.format(number(row.exact_mirror_rows_merged ?? row.duplicate_rows_merged))}</td></tr>`).join('');
   const outboxEvents = (Array.isArray(audit.outbox_event_types) ? audit.outbox_event_types : []).map(row => {
@@ -471,7 +449,7 @@ function renderDashboard() {
   const selectedRep = dashboardState.filters.salesRep;
   const results = activeTab === 'sales-rep' ? renderSalesRepRows(model) : activeTab === 'customer' ? renderCustomerRows(model) : renderAllItems(model);
   host.innerHTML = `<section class="request-impact-shell">
-    <header class="request-impact-hero"><div><span>Private Executive Analytics Â· Dylan Collyge Only</span><h1>Request Sales Impact ($)</h1><p>Deduplicated active, completed, historical, and delivery evidence using populated Qty or default 25 Ã— List Price.</p></div><div class="request-impact-hero-actions"><button type="button" data-impact-action="refresh" ${dashboardState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise"></i>${dashboardState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" data-impact-action="export"><i class="ph-bold ph-download-simple"></i>Export Excel / CSV</button></div></header>
+    <header class="request-impact-hero"><div><span>Permission-Controlled Executive Analytics</span><h1>Request Sales Impact ($)</h1><p>One permanent line per exact request ID using populated Qty or default 25 Ã— List Price.</p></div><div class="request-impact-hero-actions"><button type="button" data-impact-action="refresh" ${dashboardState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise"></i>${dashboardState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" data-impact-action="export"><i class="ph-bold ph-download-simple"></i>Export Excel / CSV</button></div></header>
     ${dashboardState.error ? `<div class="request-impact-retained" role="status">Showing retained same-account results. ${escapeHtml(dashboardState.error)}</div>` : ''}
     ${renderSourceAudit(dashboardState.payload.source_table_audit, model.summary)}
     ${renderKpis(model.summary)}

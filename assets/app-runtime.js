@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.59';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.60';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25148,14 +25148,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         const entries = [];
                         for (let offset = 0; offset < tables.length; offset += 2) {
                             const batch = await Promise.all(tables.slice(offset, offset + 2).map(async table => {
-                                const query = `select=filename,last_updated&last_updated=not.is.null&order=last_updated.desc&limit=${DASHBOARD_SYNC_METADATA_LIMIT}&offset=0`;
-                                const page = await runDedupeSupabaseRead(`home-sync-metadata:${table}:${query}`,
-                                    ({ signal }) => fetchAuthenticatedSupabaseReadPage(table, query, { signal, timeoutMs: SUPABASE_READ_TIMEOUT_MS }),
-                                    { signal: ctx.signal });
-                                const rows = api.rows(page?.rows, `Home ${table} metadata`);
-                                return { table, rows: rows.slice(0, DASHBOARD_SYNC_METADATA_LIMIT).map(row => ({
-                                    filename: String(row?.filename || ''), last_updated: String(row?.last_updated || '')
-                                })) };
+                                try {
+                                    const query = `select=filename,last_updated&last_updated=not.is.null&order=last_updated.desc&limit=${DASHBOARD_SYNC_METADATA_LIMIT}&offset=0`;
+                                    const page = await runDedupeSupabaseRead(`home-sync-metadata:${table}:${query}`,
+                                        ({ signal }) => fetchAuthenticatedSupabaseReadPage(table, query, { signal, timeoutMs: SUPABASE_READ_TIMEOUT_MS }),
+                                        { signal: ctx.signal });
+                                    const rows = api.rows(page?.rows, `Home ${table} metadata`);
+                                    return { table, rows: rows.slice(0, DASHBOARD_SYNC_METADATA_LIMIT).map(row => ({
+                                        filename: String(row?.filename || ''), last_updated: String(row?.last_updated || '')
+                                    })) };
+                                } catch (error) {
+                                    window.GncRuntimeWatchdog?.capture?.(error, `homeSyncMetadata:${table}`);
+                                    return { table, rows: [], retained: true };
+                                }
                             }));
                             entries.push(...batch);
                         }
@@ -26206,7 +26211,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.59').trim() || 'AgData v2.3.59';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.60').trim() || 'AgData v2.3.60';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -34088,18 +34093,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 } catch (error) {
                     requireActiveDocument();
                     if (error && error.code === 'REQUEST_ABORTED') throw error;
-                    if (!isRequestQueueLiveRowsViewMissingError(error)) throw error;
                     activeRequestLiveRowsViewReady = false;
                     if (!activeRequestLiveRowsViewWarningShown) {
                         activeRequestLiveRowsViewWarningShown = true;
-                        console.warn('Request delivery-status view is unavailable; falling back to pending active requests.', error);
+                        console.warn('Request delivery-status view is unavailable; retaining queue rows while the direct active view retries.', error);
                     }
+                    window.GncRuntimeWatchdog?.capture?.(error, 'fetchActiveRequestLiveRows:requestQueue');
                 }
             }
             requireActiveDocument();
-            const rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_LIVE_ROWS_TABLE, 'select=*&date_completed=is.null&order=unique_id.desc', { signal });
-            requireActiveDocument();
-            return rows;
+            try {
+                const rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_LIVE_ROWS_TABLE, 'select=*&date_completed=is.null&order=unique_id.desc', { signal });
+                requireActiveDocument();
+                return rows;
+            } catch (error) {
+                requireActiveDocument();
+                if (error && error.code === 'REQUEST_ABORTED') throw error;
+                window.GncRuntimeWatchdog?.capture?.(error, 'fetchActiveRequestLiveRows:activeRequest');
+                return (Array.isArray(requestsInventory) ? requestsInventory : []).filter((row) => row && !row.REQUEST_HISTORY);
+            }
         }
 
         async function fetchSupabasePage(table, query = 'select=*', limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
@@ -60079,8 +60091,8 @@ function toggleDriveQuickRequestItem(domId) {
         window.ensureHistoricalRequestsIsland = ensureHistoricalRequestsIsland;
 
         function isRequestSalesImpactOwner() {
-            return isAuthenticatedDylanCollyge()
-                && String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase() === 'dylan_collyge';
+            const username = String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
+            return !!username && navigationPreferencesAllowed('request-sales-impact', username === 'dylan_collyge');
         }
 
         function getRequestSalesImpactOwnerKey() {
@@ -60246,7 +60258,11 @@ function toggleDriveQuickRequestItem(domId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
             if (targetView === 'smart-moves') return (!userOverride || String(userOverride).trim().toLowerCase() === 'dylan_collyge') && isAuthenticatedDylanCollyge();
-            if (targetView === 'request-sales-impact') return (!userOverride || String(userOverride).trim().toLowerCase() === 'dylan_collyge') && isRequestSalesImpactOwner();
+            if (targetView === 'request-sales-impact') {
+                const requestedUser = String(userOverride || nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
+                const activeUser = String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
+                return requestedUser === activeUser && isRequestSalesImpactOwner();
+            }
             if (isFullAppAdministrator(userOverride)) return true;
             if (isEvalSensitiveDataRestricted() && ['managers', 'reports', 'request-history', 'historical-requests', 'po-management'].includes(targetView)) return false;
             if (targetView === 'building') return false;

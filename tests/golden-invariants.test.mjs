@@ -133,6 +133,9 @@ test('Invariant 3 (Exact Two-Trigger Season Evidence Lifecycle)', () => {
   assert.equal(day10Expired.currentPhotoMatchQty, 200);
   assert.equal(day10Expired.active, false);
   assert.deepEqual([day10Expired.photo, day10Expired.spec, day10Expired.avNote, day10Expired.pickNote, day10Expired.salesNote], [null, null, null, null, null]);
+  const unifiedMigration = read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql');
+  assert.match(unifiedMigration, /request_master_has_valid_evidence_v1\(master,clock_timestamp\(\)\)/);
+  assert.doesNotMatch(unifiedMigration, /delete from public\.ph_request_history/);
   const day4Depleted = lifecycle(250, Date.parse('2026-10-27T17:00:00Z'));
   assert.equal(day4Depleted.currentPhotoMatchQty, 0);
   assert.equal(day4Depleted.active, false);
@@ -265,14 +268,12 @@ test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () 
   assert.match(legacyMigration, /outbox_recovery[^]*insert into public\.ph_active_request[^]*REQUEST_LEGACY_PENDING_ROWS_MISSING/);
   const legacyFunction = legacyMigration.slice(legacyMigration.indexOf('create or replace function private.reconcile_legacy_pending_requests_from_outbox_v4'), legacyMigration.indexOf('revoke all on function private.reconcile_legacy_pending_requests_from_outbox_v4'));
   assert.doesNotMatch(legacyFunction, /customeridentityid|consigneeidentityid/);
-  const lifecycleMigration = read('supabase/migrations/20261024183000_request_lifecycle_state_machine_v1.sql');
-  assert.match(lifecycleMigration, /request_master_has_valid_evidence_v1[^]*photo_link[^]*spec[^]*loc_match_qty[^]*America\/Chicago/);
-  assert.match(lifecycleMigration, /effective_qty[^]*listprice[^]*line_dollar_value[^]*photo_date[^]*loc_match_pct[^]*loc_photo_match/);
-  assert.match(lifecycleMigration, /persist_completed_request_history_v1[^]*request_completed[^]*delete from public\.ph_active_request/);
-  assert.match(lifecycleMigration, /req_status='Pending'[^]*delete from public\.ph_request_history/);
-  assert.match(lifecycleMigration, /request-completed:auto-evidence:/);
-  assert.match(lifecycleMigration, /update public\.ph_master_inventory master set[^]*initial_ptr[^]*date_completed[^]*sales_note/);
-  assert.match(lifecycleMigration, /app_dataset_revisions[^]*ph_active_request[^]*ph_request_history/);
+  const lifecycleMigration = read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql');
+  assert.match(lifecycleMigration, /request_completion_proof_v1[^]*request_completed[^]*request_history_has_valid_evidence_v1[^]*request_master_has_valid_evidence_v1[^]*ph_request_queue_removal_commands/);
+  assert.match(lifecycleMigration, /recover_unfulfilled_requests_v1[^]*insert into public\.ph_active_request[^]*pending_recovered/);
+  assert.match(lifecycleMigration, /req_status='Pending'[^]*upsert_request_history\(candidate\.unique_id,'pending_snapshot'/);
+  assert.match(lifecycleMigration, /ph_request_history_block_delete_v2360[^]*ph_request_history_block_truncate_v2360/);
+  assert.match(lifecycleMigration, /grant select on public\.ph_master_inventory to authenticated/);
   assert.match(lifecycleMigration, /app_runtime_watchdog_events set status='resolved'/);
   assert.match(functionSource('assets/app-runtime.js', 'isReadyRequestDataForAutoComplete'), /effectiveSpec[^]*effectiveLocPhotoMatch[^]*<= 0/);
   assert.match(functionSource('assets/app-runtime.js', 'isPhotoDateMsExpired'), /getDate\(\) \+ retentionDays \+ 1/);
@@ -343,6 +344,8 @@ test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', () => {
   assert.ok(mobileStart >= 0 && desktopStart > mobileStart);
   const mobileStyles = styles.slice(mobileStart, desktopStart);
   assert.match(mobileStyles, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important/);
+  assert.match(mobileStyles, /grid-auto-rows:\s*clamp\(/);
+  assert.match(mobileStyles, /gap:\s*8px\s*!important/);
   assert.match(mobileStyles, /grid-template-rows:\s*none\s*!important/);
   assert.match(mobileStyles, /grid-auto-rows:\s*clamp\(54px,\s*calc\(\(100dvh - 265px\) \/ 6\),\s*72px\)\s*!important/);
   assert.match(mobileStyles, /\.home-module-tile\s*\{[^}]*min-height:\s*0\s*!important[^}]*height:\s*100%\s*!important[^}]*max-height:\s*100%\s*!important/);
@@ -430,14 +433,16 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
 
 test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   const api = read('supabase/functions/app-api/index.ts');
-  const migration = read('supabase/migrations/20261024060000_request_queue_pending_reconciliation_v3.sql');
+  const migration = read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql');
   const runtime = read('assets/app-runtime.js');
   assert.match(api, /Promise\.resolve\(supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)\)[^]*runtime\.waitUntil\(reconciliationTask\)/);
   assert.doesNotMatch(api, /await supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)/);
-  assert.doesNotMatch(migration, /order by o\.created_at desc,o\.event_id desc[^]*limit 100/);
-  assert.match(migration, /jsonb_array_elements[^]*regexp_matches[^]*insert into public\.ph_active_request/);
+  assert.match(migration, /scope','all-history-four-proof/);
+  assert.match(migration, /jsonb_array_elements[^]*insert into public\.ph_active_request/);
   assert.match(migration, /request_source[^]*customeridentityid[^]*consigneeidentityid/);
-  assert.match(migration, /perform private\.upsert_request_history[^]*delete from public\.ph_active_request[^]*reconcile_active_requests_from_outbox_v1/);
+  assert.match(migration, /perform private\.upsert_request_history[^]*pending_snapshot/);
+  assert.match(runtime, /fetchActiveRequestLiveRows:requestQueue[^]*fetchActiveRequestLiveRows:activeRequest/);
+  assert.match(runtime, /homeSyncMetadata:\$\{table\}[^]*retained:\s*true/);
   assert.match(runtime, /syncPanel\.open = window\.innerWidth >= 768/);
   assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
 });
@@ -482,16 +487,16 @@ test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
   assert.match(runner, /requestQuantityRecoveryMigrationName[^]*20261023234500_request_quantity_recovery_v3\.sql/);
 });
 
-test('Invariant 20 (Dylan-Only Full-Table Request Sales Dollar Impact)', async () => {
+test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', async () => {
   const impact = await import(new URL('../assets/request-sales-impact.js', import.meta.url));
   const rows = [
-    { folder_id: 'REQ-A', itemcode: 'ITEM-1', locationcode: 'A.01', lotcode: 'L1', qty: 10, list_price: 100,
+    { unique_id: 'LINE-A', folder_id: 'REQ-A', itemcode: 'ITEM-1', locationcode: 'A.01', lotcode: 'L1', qty: 10, list_price: 100,
       status: 'Pending', sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One' },
-    { folder_id: 'REQ-A', itemcode: 'ITEM-1', locationcode: 'A.01', lotcode: 'L1', qty: 10, list_price: 100,
+    { unique_id: 'LINE-A', folder_id: 'REQ-A', itemcode: 'ITEM-1', locationcode: 'A.01', lotcode: 'L1', qty: 10, list_price: 100,
       status: 'Completed', sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One' },
-    { folder_id: 'REQ-B', itemcode: 'ITEM-2', locationcode: 'B.02', lotcode: 'L2', qty: null, list_price: 8.75,
+    { unique_id: 'LINE-B', folder_id: 'REQ-B', itemcode: 'ITEM-2', locationcode: 'B.02', lotcode: 'L2', qty: null, list_price: 8.75,
       status: 'Pending', sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One' },
-    { folder_id: 'REQ-B', itemcode: 'ITEM-2', locationcode: 'B.02', lotcode: 'L2', qty: 0, list_price: 8.75,
+    { unique_id: 'LINE-B', folder_id: 'REQ-B', itemcode: 'ITEM-2', locationcode: 'B.02', lotcode: 'L2', qty: 0, list_price: 8.75,
       status: 'Completed', sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One' },
   ];
   const result = impact.aggregateRequestSalesImpactLines(rows);
@@ -524,43 +529,42 @@ test('Invariant 20 (Dylan-Only Full-Table Request Sales Dollar Impact)', async (
     { folder_id: 'REQ-MULTI', itemcode: 'ITEM-5', locationcode: 'D.01', lotcode: 'L5', row_index: 2,
       qty: 1, list_price: 7, status: 'Completed' },
   ]);
-  assert.equal(preserved.summary.total_line_items, 6);
+  assert.equal(preserved.summary.total_line_items, 7);
   assert.equal(preserved.line_items.filter(item => item.folder_id === 'REQ-SAME').length, 2);
   assert.equal(preserved.line_items.filter(item => item.folder_id.startsWith('ph_request_history:')).length, 2);
-  assert.equal(preserved.line_items.filter(item => item.folder_id === 'REQ-MULTI').length, 2);
+  assert.equal(preserved.line_items.filter(item => item.folder_id === 'REQ-MULTI').length, 3);
   assert.equal(preserved.line_items.find(item => item.unique_id === 'UID-SHARED').status, 'Completed');
 
-  const migration = read('supabase/migrations/20261024023000_request_sales_impact_strict_dedupe_v3.sql');
+  const migration = read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql');
   const api = functionSource('supabase/functions/app-api/index.ts', 'handleRequestSalesImpactAction');
   const databaseTypes = read('supabase/functions/_shared/database.types.ts');
   const databaseContracts = read('services/database-contracts.generated.ts');
   const runtime = read('assets/app-runtime.js');
   const moduleSource = read('assets/request-sales-impact.js');
   for (const marker of ['ph_active_request', 'ph_request_history', 'ph_request_delivery_outbox',
-    'jsonb_array_elements', 'with ordinality', "regexp_matches(event.html,'<tr[^>]*>(.*?)</tr>','gis')",
-    'line_identity_key', 'source_row_id', 'request_day', 'catalog_by_size', 'source_table_audit',
-    'strict_9_field_cross_table_v1', 'strict_business_key', 'source_copy_ordinal',
-    'exact_9_field_cross_table_mirrors_merged', 'outbox_event_types', 'ph_request_email_threads',
-    'ph_master_inventory', 'ph_view_av_hot_price', 'ph_cav_import']) assert.ok(migration.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
-  assert.match(migration, /set statement_timeout='60s'/);
-  assert.doesNotMatch(migration, /\blimit\b/i);
+    'jsonb_array_elements', 'with ordinality', 'ph_request_sales_impact_ledger',
+    'line_identity_key', 'source_row_id', 'source_table_audit', 'zero_cross_request_dedupe_v1',
+    'ph_master_inventory', 'ph_view_av_hot_price', 'ph_cav_import', '00_app_view_table_map']) {
+    assert.ok(migration.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
+  }
+  assert.match(migration, /set statement_timeout='10s'/);
   assert.doesNotMatch(migration, /\.select\s*\(/);
   assert.match(migration, /revoke all on function public\.get_request_sales_impact_v2\(\) from public,anon,authenticated/);
   assert.match(migration, /grant execute on function public\.get_request_sales_impact_v2\(\) to service_role/);
-  assert.match(api, /username\s*!==\s*"dylan_collyge"[^]*enabled:\s*false[^]*visible:\s*false[^]*rows:\s*\[\]/);
+  assert.match(api, /resolveModuleAllowed\(supabase, actor, "request-sales-impact"\)[^]*enabled:\s*false[^]*visible:\s*false[^]*rows:\s*\[\]/);
   assert.match(api, /supabase\.rpc\("get_request_sales_impact_v2"\)/);
   assert.match(databaseTypes, /get_request_sales_impact_v2:\s*\{ Args: never; Returns: Json \}/);
   assert.match(databaseContracts, /"get_request_sales_impact_v2":\s*\{[^]*?"json"/);
   assert.match(moduleSource, /Source Table & Row Audit/);
   assert.match(moduleSource, /payload\.source_table_audit \|\| payload\.source_audit/);
-  assert.match(moduleSource, /exact 9-field mirrors merged/);
+  assert.match(moduleSource, /Lifecycle copies merge only when they carry the same stable request ID/);
   assert.match(api, /REQUEST_SALES_IMPACT_CONTRACT_STALE/);
-  assert.match(runtime, /function isRequestSalesImpactOwner\(\)[^]*dylan_collyge/);
+  assert.match(runtime, /function isRequestSalesImpactOwner\(\)[^]*navigationPreferencesAllowed\('request-sales-impact'/);
   assert.match(runtime, /document\.getElementById\('view-request-sales-impact'\)\?\.remove\(\)/);
   assert.doesNotMatch(read('index.html'), /id="view-request-sales-impact"|drawer-request-sales-impact-btn/);
 });
 
-test('Invariant 21 (Strict Nine-Field Cross-Table Request Deduplication)', async () => {
+test('Invariant 21 (Zero Cross-Request Deduplication)', async () => {
   const impact = await import(new URL('../assets/request-sales-impact.js', import.meta.url));
   const shared = {
     unique_id: 'STRICT-SHARED', folder_id: 'REQ-SHARED', itemcode: 'ITEM-9', contsize: '#5',
@@ -570,19 +574,14 @@ test('Invariant 21 (Strict Nine-Field Cross-Table Request Deduplication)', async
   const result = impact.aggregateRequestSalesImpactLines([
     { ...shared, source_row_id: 'ph_request_history:1', status: 'Completed' },
     { ...shared, source_row_id: 'ph_active_request:1', status: 'Pending' },
-    { ...shared, source_row_id: 'ph_request_history:2', status: 'Completed' },
-    { ...shared, source_row_id: 'ph_request_history:3', request_date: '2026-10-21T15:00:00Z' },
-    { ...shared, source_row_id: 'ph_request_history:4', sales_rep: 'Rep Two' },
-    { ...shared, source_row_id: 'ph_request_history:5', customer_name: 'Customer Two' },
-    { ...shared, source_row_id: 'ph_request_history:6', consignee_name: 'Consignee Two' },
-    { ...shared, source_row_id: 'ph_request_history:7', qty: 3 },
+    { ...shared, unique_id: 'STRICT-SEPARATE-1', source_row_id: 'ph_request_history:2', status: 'Completed' },
+    { ...shared, unique_id: 'STRICT-SEPARATE-2', source_row_id: 'ph_request_history:3', status: 'Completed' },
   ]);
-  assert.equal(result.summary.total_line_items, 7);
-  assert.equal(result.summary.total_dollar_value, 150);
+  assert.equal(result.summary.total_line_items, 3);
+  assert.equal(result.summary.total_dollar_value, 60);
   assert.equal(result.line_items.filter(row => row.source_row_id === 'ph_request_history:1').length, 1);
-  assert.equal(result.line_items.some(row => row.sales_rep === 'Rep Two'), true);
-  assert.equal(result.line_items.some(row => row.customer_name === 'Customer Two'), true);
-  assert.equal(result.line_items.some(row => row.consignee_name === 'Consignee Two'), true);
+  assert.equal(result.line_items.filter(row => row.folder_id === 'REQ-SHARED').length, 3);
+  assert.equal(new Set(result.line_items.map(row => row.unique_id)).size, 3);
 });
 
 test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)', () => {
@@ -625,6 +624,26 @@ test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)'
   const migration = read('supabase/migrations/20261024070000_escaped_display_text_normalization_v1.sql');
   for (const marker of ['normalize_escaped_display_text_v1', 'a000_normalize_escaped_display_text_v1',
     'ph_master_inventory', 'ph_active_request', 'ph_request_history', 'ph_soc_master', 'ph_reserves', 'ph_cav_import']) assert.match(migration, new RegExp(marker));
-  assert.match(read('supabase/migrations/20261024023000_request_sales_impact_strict_dedupe_v3.sql'), /strict_9_field_cross_table_v1/);
+  assert.match(read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql'), /zero_cross_request_dedupe_v1/);
   assert.match(read('supabase/functions/app-api/index.ts'), /\["request_queue", "active_request"\]\.includes\(dataset\)\) query\.set\("date_completed", "is\.null"\)/);
+});
+
+test('Invariant 23 (Permanent Request History, Exact-ID Ledger & Isolated Sync)', () => {
+  const migration = read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql');
+  const runtime = read('assets/app-runtime.js');
+  const navigation = read('assets/navigation-preferences.js');
+  const api = read('supabase/functions/app-api/index.ts');
+  assert.match(migration, /grant select on public\.ph_master_inventory to authenticated/);
+  assert.match(migration, /ph_request_history_block_delete_v2360[^]*ph_request_history_block_truncate_v2360/);
+  assert.match(migration, /request_completion_proof_v1/);
+  for (const proof of ['request_completed', 'history_photo_spec', 'current_master_evidence', 'explicit_queue_removal']) {
+    assert.match(migration, new RegExp(proof));
+  }
+  assert.match(migration, /ph_request_sales_impact_ledger[^]*zero_cross_request_dedupe_v1/);
+  assert.doesNotMatch(migration, /strict_9_field_cross_table_v1|strict_business_key|source_copy_ordinal/);
+  assert.match(runtime, /fetchActiveRequestLiveRows:requestQueue[^]*fetchActiveRequestLiveRows:activeRequest[^]*requestsInventory/);
+  assert.match(runtime, /homeSyncMetadata:\$\{table\}[^]*retained:\s*true/);
+  assert.doesNotMatch(navigation, /Existing default/);
+  assert.match(navigation, /Allow view[^]*Hide view/);
+  assert.match(api, /resolveModuleAllowed\(supabase, actor, "request-sales-impact"\)/);
 });

@@ -75,6 +75,8 @@ The explicit v2.3.38 cache upgrade uses agdata-v2.3.38, skipWaiting, all-prior C
 
 Queue rendering bypasses shared full-screen loading/error gates and refreshes through its existing authorized coordinator. Explicit navigation/Retry clears transport cooldowns without granting access or changing mutation authorization. Retain same-account row snapshots and complete inventory receipts during refresh.
 
+Request startup isolates the delivery-status view, direct active view and retained same-account rows. A failure in either network read is telemetry, not authority to replace a non-empty Queue with zero rows; confirmed server-side account revocation remains the only access-removal path.
+
 ## Owned Files, Canonical Functions & SQL Contracts
 
 - `assets/app-runtime.js`: `getNativeAuthSession`, `initializeAppAccessSnapshot`, `showOnlyPrimaryView`, retained snapshot/cache ownership; `assets/runtime-watchdog.js`: `capture`; app-api: `handleNativeSessionBridge`, `handleInventoryRead`, `handleDatasetRead` and fail-open read responses.
@@ -90,3 +92,4 @@ Queue rendering bypasses shared full-screen loading/error gates and refreshes th
 - Never render a banned lockout banner, clear same-account rows on transient refresh, disable navigation during import, delay Row Details/Reclass opening, or return transient forbidden/conflict/locked statuses where a retained authorized response is possible.
 - Never use fail-open display continuity to bypass RLS, confirmed revocation, exact mutation identity, recipient policy, or account isolation.
 - Never make an authorized `dataset_read` wait for best-effort repair work; schedule bounded reconciliation with `EdgeRuntime.waitUntil` and contain both synchronous and asynchronous failures.
+- Never translate an underlying-table grant omission on a security-invoker view into an empty successful dataset or clear the retained Queue after that isolated read fails.

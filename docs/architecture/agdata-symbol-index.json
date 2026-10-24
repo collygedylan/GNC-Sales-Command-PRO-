@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.59",
+  "release": "AgData v2.3.60",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -170,7 +170,7 @@
       ],
       "contracts": [
         {
-          "file": "supabase/migrations/20261024023000_request_sales_impact_strict_dedupe_v3.sql",
+          "file": "supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql",
           "symbol": "get_request_sales_impact_v2"
         },
         {
@@ -237,8 +237,11 @@
           "normalizeRequestSalesImpactResponse",
           "mountRequestSalesImpact"
         ],
-        "supabase/migrations/20261024023000_request_sales_impact_strict_dedupe_v3.sql": [
-          "get_request_sales_impact_v2"
+        "supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql": [
+          "get_request_sales_impact_v2",
+          "recover_unfulfilled_requests_v1",
+          "request_completion_proof_v1",
+          "refresh_request_sales_impact_line_v1"
         ]
       }
     },

@@ -2413,8 +2413,7 @@ async function handleRequestSalesImpactAction(
     return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
   }
   const actor = actorProfile || await resolveActiveSessionProfile(session);
-  const username = normalizeUsername(String(actor.username || ""));
-  if (username !== "dylan_collyge") {
+  if (!await resolveModuleAllowed(supabase, actor, "request-sales-impact")) {
     return jsonResponse({ ok: true, enabled: false, visible: false, rows: [] });
   }
   const { data, error } = await supabase.rpc("get_request_sales_impact_v2");
@@ -2431,7 +2430,7 @@ async function handleRequestSalesImpactAction(
   const result = jsonObject(data);
   const sourceAudit = jsonObject(result.source_table_audit || result.source_audit);
   const dedupeContract = String(result.dedupe_contract || sourceAudit.dedupe_contract || "");
-  if (dedupeContract !== "strict_9_field_cross_table_v1") {
+  if (dedupeContract !== "zero_cross_request_dedupe_v1") {
     return jsonResponse({
       ok: false,
       enabled: true,
