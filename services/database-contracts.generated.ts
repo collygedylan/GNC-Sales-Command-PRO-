@@ -89652,6 +89652,13 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "get_request_sales_impact_v1": {
+      "oneOf": [
+        {
+          "object": {}
+        }
+      ]
+    },
     "get_request_schema_compatibility": {
       "oneOf": [
         {
@@ -100480,6 +100487,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "get_request_drive_evidence_health_snapshot_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "get_request_sales_impact_v1": {
       "oneOf": [
         "json"
       ]

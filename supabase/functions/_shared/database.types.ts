@@ -17985,6 +17985,7 @@ export type Database = {
         Args: never
         Returns: Json
       }
+      get_request_sales_impact_v1: { Args: never; Returns: Json }
       get_request_schema_compatibility: { Args: never; Returns: Json }
       get_season_sales_note_access_v1: {
         Args: { p_actor_username: string }

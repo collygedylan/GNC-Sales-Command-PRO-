@@ -465,6 +465,8 @@ test('Invariant 20 (Dylan-Only Request Sales Dollar Impact)', async () => {
 
   const migration = read('supabase/migrations/20261023235900_request_sales_impact_v1.sql');
   const api = functionSource('supabase/functions/app-api/index.ts', 'handleRequestSalesImpactAction');
+  const databaseTypes = read('supabase/functions/_shared/database.types.ts');
+  const databaseContracts = read('services/database-contracts.generated.ts');
   const runtime = read('assets/app-runtime.js');
   for (const marker of ['ph_active_request', 'ph_request_history', 'ph_request_delivery_outbox',
     'request_key_norm,dedupe_item_key,location_key,lot_key', 'coalesce(d.raw_qty,25::numeric)',
@@ -473,6 +475,8 @@ test('Invariant 20 (Dylan-Only Request Sales Dollar Impact)', async () => {
   assert.match(migration, /grant execute on function public\.get_request_sales_impact_v1\(\) to service_role/);
   assert.match(api, /username\s*!==\s*"dylan_collyge"[^]*enabled:\s*false[^]*visible:\s*false[^]*rows:\s*\[\]/);
   assert.match(api, /supabase\.rpc\("get_request_sales_impact_v1"\)/);
+  assert.match(databaseTypes, /get_request_sales_impact_v1:\s*\{ Args: never; Returns: Json \}/);
+  assert.match(databaseContracts, /"get_request_sales_impact_v1":\s*\{[^]*?"json"/);
   assert.match(runtime, /function isRequestSalesImpactOwner\(\)[^]*dylan_collyge/);
   assert.match(runtime, /document\.getElementById\('view-request-sales-impact'\)\?\.remove\(\)/);
   assert.doesNotMatch(read('index.html'), /id="view-request-sales-impact"|drawer-request-sales-impact-btn/);
