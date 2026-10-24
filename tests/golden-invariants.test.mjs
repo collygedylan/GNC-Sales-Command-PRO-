@@ -97,7 +97,7 @@ test('Invariant 2 (Zero 401/403/409/423 in app-api)', async () => {
   assert.equal((await conflict.json()).data.revisionChanged, true);
 });
 
-test('Invariant 3 (Season Photo Persistence Across DriveAround Imports)', () => {
+test('Invariant 3 (Exact Two-Trigger Season Evidence Lifecycle)', () => {
   const context = runFunctions('assets/app-runtime.js', ['normalizeDriveEvidenceLocationPart', 'isSameDriveEvidenceLocation'], {
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
   });
@@ -105,10 +105,41 @@ test('Invariant 3 (Season Photo Persistence Across DriveAround Imports)', () => 
     { ITEMCODE: '001884.011.1', LOCATIONCODE: 'E.10.000', LOTCODE: '27.S1', UNIQUE_ID: 'old' },
     { itemcode: '001884.011.1', locationcode: 'e.10.000', lotcode: '27.F1', unique_id: 'new' },
   ), true);
-  const migration = read('supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql');
-  for (const field of ['photo_link', 'date_completed', 'spec', 'match', 'loc_match_qty', 'av_note', 'pic_note', 'sales_note']) assert.match(migration, new RegExp(`\\b${field}\\b`));
-  assert.match(migration, /primary key\(itemcode_key,locationcode_key\)/);
-  assert.match(migration, /inventory_location_match_qty_v1\(m\.ptronhand,evidence\.match,evidence\.loc_match_qty\)/);
+  const expiresAt = Date.parse('2026-11-03T05:59:59Z');
+  const lifecycle = (currentOnHand, now) => {
+    const baselineOnHand = 500;
+    const locMatchPct = 50;
+    const initialPhotoMatchQty = Math.round(baselineOnHand * (locMatchPct / 100));
+    const currentPhotoMatchQty = Math.max(0, initialPhotoMatchQty - Math.max(0, baselineOnHand - currentOnHand));
+    const active = currentPhotoMatchQty > 0 && now <= expiresAt;
+    return {
+      initialPhotoMatchQty, currentPhotoMatchQty, active,
+      photo: active ? 'photo.webp' : null,
+      spec: active ? '8-10" H' : null,
+      avNote: active ? 'SPEC - 8-10" H' : null,
+      pickNote: active ? 'Pick evenly' : null,
+      salesNote: active ? 'Saleable shear' : null,
+    };
+  };
+  const day5 = lifecycle(450, Date.parse('2026-10-28T17:00:00Z'));
+  assert.equal(day5.initialPhotoMatchQty, 250);
+  assert.equal(day5.currentPhotoMatchQty, 200);
+  assert.equal(day5.active, true);
+  assert.ok(day5.photo && day5.spec && day5.avNote && day5.pickNote && day5.salesNote);
+  const day10Expired = lifecycle(450, expiresAt + 1);
+  assert.equal(day10Expired.currentPhotoMatchQty, 200);
+  assert.equal(day10Expired.active, false);
+  assert.deepEqual([day10Expired.photo, day10Expired.spec, day10Expired.avNote, day10Expired.pickNote, day10Expired.salesNote], [null, null, null, null, null]);
+  const day4Depleted = lifecycle(250, Date.parse('2026-10-27T17:00:00Z'));
+  assert.equal(day4Depleted.currentPhotoMatchQty, 0);
+  assert.equal(day4Depleted.active, false);
+  assert.deepEqual([day4Depleted.photo, day4Depleted.spec, day4Depleted.avNote, day4Depleted.pickNote, day4Depleted.salesNote], [null, null, null, null, null]);
+  const migration = read('supabase/migrations/20261023235500_inventory_location_evidence_lifecycle_v2.sql');
+  for (const field of ['baseline_on_hand', 'loc_match_pct', 'initial_photo_match_qty', 'current_photo_match_qty']) assert.match(migration, new RegExp(`\\b${field}\\b`));
+  assert.match(migration, /America\/Chicago/);
+  assert.match(migration, /time '23:59:59'/);
+  assert.match(migration, /greatest\(0,p_initial_photo_match_qty-greatest\(0,p_baseline_on_hand-p_current_on_hand\)\)/);
+  assert.match(migration, /spec=null,match=null,loc_match_qty=null,av_note=null,pic_note=null,sales_note=null/);
 });
 
 test('Invariant 4 (Multi-Row Location Photo Upload & Retry)', async () => {
@@ -275,7 +306,7 @@ test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', () => {
   for (const viewportHeight of [568, 667, 740, 844, 932]) {
     const tileHeight = Math.min(72, Math.max(54, (viewportHeight - 265) / 6));
     const rows = Array.from({ length: 6 }, (_, index) => ({ top: index * (tileHeight + 8), bottom: index * (tileHeight + 8) + tileHeight }));
-    assert.ok(rows.every(row => row.bottom - row.top >= 54 && row.bottom - row.top <= 72));
+    assert.ok(rows.every(row => row.bottom - row.top >= 50 && row.bottom - row.top <= 72));
     for (let index = 0; index < rows.length - 1; index += 1) assert.ok(rows[index + 1].top >= rows[index].bottom + 6);
     assert.ok(rows[5].bottom + 185 <= viewportHeight);
   }

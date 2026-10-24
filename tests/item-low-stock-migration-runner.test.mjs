@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -156,7 +156,8 @@ test('bounded Request recovery is registered and preserves the atomic submission
 
 test('exact pending Request quantities are release-registered without rewriting delivery history', () => {
   assert.equal(requestQuantityRecoveryMigrationName, '20261023234500_request_quantity_recovery_v3.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), requestQuantityRecoveryMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(requestQuantityRecoveryMigrationName)
+    < releaseDatabaseMigrations.indexOf(inventoryLocationEvidenceLifecycleMigrationName));
   const sql = fs.readFileSync(new URL(`../supabase/migrations/${requestQuantityRecoveryMigrationName}`, import.meta.url), 'utf8');
   for (const marker of ['REQ-mvlgbfl7p8r8zxrj97j', 'REQ-mvlg4t85vlzf7053pv', 'REQ-mvlfib5eqwa3typzcqq',
     'REQ-mvlfib5evawvlvvx09', 'REQ-mvlex5bay7ngnehzi7', 'REQ-mvlbp5hkkk58akaubms', 'REQ-mvk1xgv2ty9fttuqj2']) assert.match(sql, new RegExp(marker));
@@ -165,6 +166,19 @@ test('exact pending Request quantities are release-registered without rewriting 
   assert.doesNotMatch(sql, /update\s+public\.ph_request_delivery_outbox/i);
   const contract = migrationContractQuery(requestQuantityRecoveryMigrationName);
   for (const marker of ['app_dataset_revision_updated', 'REQ-mvlgbfl7p8r8zxrj97j', "'10'::text", "'4'::text"]) assert.ok(contract.includes(marker), marker);
+});
+
+test('location evidence lifecycle is release-registered with exact depletion and expiry contracts', () => {
+  assert.equal(inventoryLocationEvidenceLifecycleMigrationName, '20261023235500_inventory_location_evidence_lifecycle_v2.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1), inventoryLocationEvidenceLifecycleMigrationName);
+  const sql = fs.readFileSync(new URL(`../supabase/migrations/${inventoryLocationEvidenceLifecycleMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['baseline_on_hand', 'loc_match_pct', 'initial_photo_match_qty', 'current_photo_match_qty',
+    "America/Chicago", "time '23:59:59'", 'request-history-harvest-v2', 'inventory_location_evidence_lifecycle_v2']) assert.match(sql, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(sql, /greatest\(0,p_initial_photo_match_qty-greatest\(0,p_baseline_on_hand-p_current_on_hand\)\)/);
+  assert.match(sql, /spec=null,match=null,loc_match_qty=null,av_note=null,pic_note=null,sales_note=null/);
+  const contract = migrationContractQuery(inventoryLocationEvidenceLifecycleMigrationName);
+  for (const marker of ['baseline_on_hand', 'current_photo_match_qty', 'America/Chicago',
+    'inventory_location_evidence_lifecycle_v2']) assert.ok(contract.includes(marker), marker);
 });
 
 test('mapping publication is release-registered and protects raw source data and writes', () => {
