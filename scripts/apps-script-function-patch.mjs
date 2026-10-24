@@ -32,6 +32,9 @@ const liveImportFunctions = new Set([
   'processLatestFileOnlyFolderLocked_', 'processSiteSplitMasterSnapshotBatchFolderLocked_', 'doPost',
   "syncWarehouseAssignedItemsSheet_", "readWarehouseAssignmentExportRevision_", "exportWarehouseAssignedItemsToSheet_",
   "getMasterBulkSnapshotStageConfig_",
+  "canonicalizeMasterBulkPayloadValue_",
+  "normalizeEscapedImportText_",
+  "normalizeEscapedImportRow_",
   "masterBulkSnapshotStageCheckpointKey_",
   "masterBulkSnapshotSyncTimestampKey_",
   "getOrCreateMasterBulkSnapshotSyncTimestamp_",
@@ -53,6 +56,9 @@ const liveImportFunctions = new Set([
   "validateMasterBulkStageFinalize_",
   "callMasterBulkSnapshotImport_",
   "buildMasterBulkSnapshotPayload_",
+  "buildStandardPayload",
+  "buildMasterPayload",
+  "buildCavPayload",
   "processSnapshotBatchFolderLocked_",
   "assertRoutedPendingSourceSelection_",
   "assertDriveAroundSourceContract_",
@@ -92,6 +98,7 @@ const liveImportFunctions = new Set([
   "processCustomerRepMapSnapshotLocked_",
 ]);
 const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_", "requestNaMappingDigest_", "ensureProtectedRequestNaCustomerMappings_", "handleRuntimeWatchdogAlert_"]);
+for (const name of ['normalizeEscapedImportText_', 'normalizeEscapedImportRow_']) additiveFunctions.add(name);
 for (const name of ['removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_', 'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync']) additiveFunctions.add(name);
 for (const name of ['publishManualSyncStatus_', 'scheduleRequestIntegrityMaintenance_', 'runQueuedRequestIntegrityMaintenance_']) additiveFunctions.add(name);
 additiveFunctions.add('setDatasetImportSourceMetadata_');

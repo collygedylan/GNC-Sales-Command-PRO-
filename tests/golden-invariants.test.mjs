@@ -81,8 +81,11 @@ test('Invariant 1 (PC & Mobile Login Bootstrap)', () => {
 });
 
 test('Invariant 2 (Zero 401/403/409/423 in app-api)', async () => {
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['jsonResponse', 'transientOkResponse', 'failOpenInventoryConflict'], {
-    Response, corsHeaders: {}, JSON,
+  const context = runFunctions('supabase/functions/app-api/index.ts', [
+    'escapedDisplayTextFieldKey', 'normalizeEscapedDisplayText', 'escapedDisplayTextJsonReplacer',
+    'jsonResponse', 'transientOkResponse', 'failOpenInventoryConflict'
+  ], {
+    Response, corsHeaders: {}, JSON, ESCAPED_DISPLAY_TEXT_FIELDS:new Set(['commonname']),
   });
   const roles = ['admin', 'sales_rep', 'supervisor', 'evaluator', 'kier', 'dock_office', 'qc_supervisor', 'shipping', 'data_entry', 'foreman', 'take_backs'];
   const actions = ['user_access', 'native_session_bridge', 'season_sales_office', 'dataset_read', 'av_read', 'customer-rep-map', 'aura_inventory_v2', 'report_read_v2', 'inventory_read', 'drive_reclass_inquiry', 'inventory_reclass_move'];
@@ -569,4 +572,48 @@ test('Invariant 21 (Strict Nine-Field Cross-Table Request Deduplication)', async
   assert.equal(result.line_items.some(row => row.sales_rep === 'Rep Two'), true);
   assert.equal(result.line_items.some(row => row.customer_name === 'Customer Two'), true);
   assert.equal(result.line_items.some(row => row.consignee_name === 'Consignee Two'), true);
+});
+
+test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)', () => {
+  const samples = [
+    [String.raw`Alexander\'s Great Siberian Bugloss`, "Alexander's Great Siberian Bugloss"],
+    [String.raw`Alice \\'N Wonderland Dwarf Oakleaf Hydrangea`, "Alice 'N Wonderland Dwarf Oakleaf Hydrangea"],
+    [String.raw`Endless Summer® Twist N\\\' Shout® Hydrangea`, "Endless Summer® Twist N' Shout® Hydrangea"],
+  ];
+  const runtime = runFunctions('assets/app-runtime.js', ['normalizeEscapedDisplayText', 'normalizeSearchValue']);
+  const appsScript = runFunctions('Code.gs', ['normalizeEscapedImportText_', 'normalizeEscapedImportRow_', 'canonicalizeMasterBulkPayloadValue_']);
+  const api = runFunctions('supabase/functions/app-api/index.ts', [
+    'escapedDisplayTextFieldKey', 'normalizeEscapedDisplayText', 'normalizeEscapedDisplayPayload', 'escapedDisplayTextJsonReplacer'
+  ], { ESCAPED_DISPLAY_TEXT_FIELDS:new Set(['commonname', 'reqsalesnote']) });
+  for (const [escaped, clean] of samples) {
+    assert.equal(runtime.normalizeEscapedDisplayText(escaped), clean);
+    assert.equal(runtime.normalizeSearchValue(escaped), runtime.normalizeSearchValue(clean));
+    assert.equal(appsScript.normalizeEscapedImportText_(escaped), clean);
+    assert.equal(api.normalizeEscapedDisplayText(escaped), clean);
+  }
+  assert.equal(appsScript.canonicalizeMasterBulkPayloadValue_({ commonname:samples[1][0] }).commonname, samples[1][1]);
+  const inbound = { request:{ commonname:samples[2][0], req_sales_note:String.raw`Customer said \"hold\"` }, untouched:String.raw`C:\Plants` };
+  api.normalizeEscapedDisplayPayload(inbound);
+  assert.equal(inbound.request.commonname, samples[2][1]);
+  assert.equal(inbound.request.req_sales_note, 'Customer said "hold"');
+  assert.equal(inbound.untouched, String.raw`C:\Plants`);
+  assert.equal(JSON.parse(JSON.stringify({ COMMONNAME:samples[0][0] }, api.escapedDisplayTextJsonReplacer)).COMMONNAME, samples[0][1]);
+
+  const queue = runFunctions('assets/app-runtime.js', ['isRequestPendingVisible', 'buildPendingRequestRenderPlan'], {
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+    normalizeRequestStatus: value => String(value || '').trim(), isTruthishHistoryValue: value => value === true,
+    isRequestVisibleForCurrentUser: () => true, isMoveRequestRow: () => false,
+    hasCompletionDateValue: item => Boolean(item?.DATE_COMPLETED || item?.date_completed), isRegularRequestQueueItem: () => true,
+    compareLocationCodeValues: () => 0, naturalCompare: () => 0, getItemUniqueId: item => item.UNIQUE_ID,
+    buildRequestPagedRenderPlan: (mode, crumbText, items) => ({ empty:!items.length, mode, crumbText, items, rows:items }),
+  });
+  const pending = { UNIQUE_ID:'pending-1', REQ_STATUS:'Pending', DATE_COMPLETED:null, REQ_QTY:'', LOCATIONCODE:'D.09.013', LOTCODE:'27.F1' };
+  assert.equal(queue.isRequestPendingVisible(pending), true);
+  assert.equal(queue.buildPendingRequestRenderPlan([pending]).rows.length > 0, true);
+
+  const migration = read('supabase/migrations/20261024070000_escaped_display_text_normalization_v1.sql');
+  for (const marker of ['normalize_escaped_display_text_v1', 'a000_normalize_escaped_display_text_v1',
+    'ph_master_inventory', 'ph_active_request', 'ph_request_history', 'ph_soc_master', 'ph_reserves', 'ph_cav_import']) assert.match(migration, new RegExp(marker));
+  assert.match(read('supabase/migrations/20261024023000_request_sales_impact_strict_dedupe_v3.sql'), /strict_9_field_cross_table_v1/);
+  assert.match(read('supabase/functions/app-api/index.ts'), /\["request_queue", "active_request"\]\.includes\(dataset\)\) query\.set\("date_completed", "is\.null"\)/);
 });

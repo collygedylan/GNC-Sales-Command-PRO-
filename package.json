@@ -161,6 +161,13 @@
     "URGENT_DRIVE_AROUND_REQUEST_KEY_",
     "URGENT_DRIVE_AROUND_RETRY_MS_",
     "URGENT_DRIVE_AROUND_STALE_MS_",
-    "URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_"
+    "URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_",
+    "canonicalizeMasterBulkPayloadValue_",
+    "normalizeEscapedImportText_",
+    "normalizeEscapedImportRow_",
+    "buildMasterBulkSnapshotPayload_",
+    "buildStandardPayload",
+    "buildMasterPayload",
+    "buildCavPayload"
   ]
 }

@@ -175,7 +175,9 @@ test('ingestion deployment selects every changed function and preserves remote s
     'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync',
     'failDatasetImportFence_', 'runQueuedManualSyncStage_', 'URGENT_DRIVE_AROUND_TRIGGER_HANDLER_',
     'URGENT_DRIVE_AROUND_REQUEST_KEY_', 'URGENT_DRIVE_AROUND_RETRY_MS_', 'URGENT_DRIVE_AROUND_STALE_MS_',
-    'URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_',
+    'URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_', 'canonicalizeMasterBulkPayloadValue_',
+    'normalizeEscapedImportText_', 'normalizeEscapedImportRow_', 'buildMasterBulkSnapshotPayload_',
+    'buildStandardPayload', 'buildMasterPayload', 'buildCavPayload',
   ]);
   assert.equal(manifest.appsScriptPatchRelease, true);
   const untouched = 'const HISTORICAL_BACKFILL_PAUSED = true;\nconst AUTO_SYNC_PAUSED = true;';

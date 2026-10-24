@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -235,7 +235,7 @@ test('all-event Request reconciliation is release-registered and preserves only 
 
 test('legacy Request outbox recovery ignores inferred removals and absent customer identity enrichment', () => {
   assert.equal(requestQueueLegacyOutboxReconciliationMigrationName, '20261024061500_request_queue_legacy_outbox_reconciliation_v4.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), requestQueueLegacyOutboxReconciliationMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(requestQueueLegacyOutboxReconciliationMigrationName) < releaseDatabaseMigrations.indexOf(escapedDisplayTextNormalizationMigrationName));
   const sql = fs.readFileSync(new URL(`../supabase/migrations/${requestQueueLegacyOutboxReconciliationMigrationName}`, import.meta.url), 'utf8');
   for (const marker of ['reconcile_legacy_pending_requests_from_outbox_v4', 'legacy-explicit-removal', 'outbox_recovery',
     'REQUEST_LEGACY_PENDING_ROWS_MISSING', 'REQUEST_FALSE_LEGACY_TOMBSTONES_REMAIN',
@@ -245,6 +245,20 @@ test('legacy Request outbox recovery ignores inferred removals and absent custom
   const contract = migrationContractQuery(requestQueueLegacyOutboxReconciliationMigrationName);
   for (const marker of ['reconcile_legacy_pending_requests_from_outbox_v4', 'legacy-explicit-removal', 'outbox_recovery',
     'customeridentityid', 'request_completed', 'ph_request_queue_removal_commands', 'service_role']) assert.ok(contract.includes(marker), marker);
+});
+
+test('escaped display text cleanup is release-registered and guards every import table', () => {
+  assert.equal(escapedDisplayTextNormalizationMigrationName, '20261024070000_escaped_display_text_normalization_v1.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1), escapedDisplayTextNormalizationMigrationName);
+  const sql = fs.readFileSync(new URL(`../supabase/migrations/${escapedDisplayTextNormalizationMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['normalize_escaped_display_text_v1', 'Alexander', 'Alice', 'Endless Summer',
+    'ph_master_inventory', 'ph_active_request', 'ph_request_history', 'ph_soc_master', 'ph_reserves', 'ph_cav_import',
+    'ESCAPED_COMMONNAME_CLEANUP_INCOMPLETE']) assert.ok(sql.includes(marker), marker);
+  assert.equal((sql.match(/create trigger a000_normalize_escaped_display_text_v1/g) || []).length, 6);
+  assert.match(sql, /regexp_replace\(p_value/);
+  const contract = migrationContractQuery(escapedDisplayTextNormalizationMigrationName);
+  for (const marker of ['normalize_escaped_display_text_v1', 'a000_normalize_escaped_display_text_v1',
+    'ph_master_inventory', 'ph_active_request', 'ph_request_history', 'ph_soc_master', 'ph_reserves', 'ph_cav_import']) assert.ok(contract.includes(marker), marker);
 });
 
 test('mapping publication is release-registered and protects raw source data and writes', () => {

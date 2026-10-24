@@ -364,8 +364,47 @@ const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+const ESCAPED_DISPLAY_TEXT_FIELDS = new Set([
+  "commonname", "description", "plantname", "productdescription",
+  "avnote", "picnote", "picknote", "locationnote", "locnote", "salesnote",
+  "requestnote", "reqpicnote", "reqsalesnote", "reqcomments",
+  "customer", "customername", "reqcustomer", "requestcustomer", "consignee", "consigneename",
+  "requestfolder", "reqfolder", "holdstopreason", "holdreason", "docknote", "flyernotes",
+  "inventorynote", "internalinvnote", "tagdeptnote",
+]);
+
+function escapedDisplayTextFieldKey(value: unknown) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeEscapedDisplayText(value: unknown) {
+  if (typeof value !== "string" || !value.includes("\\")) return value;
+  return value.replace(/\\+(["'])/g, "$1");
+}
+
+function normalizeEscapedDisplayPayload(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => { value[index] = normalizeEscapedDisplayPayload(entry); });
+    return value;
+  }
+  if (!value || typeof value !== "object") return value;
+  const record = value as Record<string, unknown>;
+  Object.entries(record).forEach(([key, entry]) => {
+    record[key] = ESCAPED_DISPLAY_TEXT_FIELDS.has(escapedDisplayTextFieldKey(key)) && typeof entry === "string"
+      ? normalizeEscapedDisplayText(entry)
+      : normalizeEscapedDisplayPayload(entry);
+  });
+  return record;
+}
+
+function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
+  return ESCAPED_DISPLAY_TEXT_FIELDS.has(escapedDisplayTextFieldKey(key))
+    ? normalizeEscapedDisplayText(value)
+    : value;
+}
+
 function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
+  return new Response(JSON.stringify(body, escapedDisplayTextJsonReplacer), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "private, no-store" },
   });
@@ -890,6 +929,9 @@ function datasetReadFilterParts(source: typeof DATASET_READ_SOURCES[string], fil
       value = datasetReadScalar(value);
       if ((op === "ilike" || op === "not.ilike") && typeof value !== "string") throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
       if ((op === "is" || op === "not.is") && value !== null && typeof value !== "boolean") throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
+    }
+    if (ESCAPED_DISPLAY_TEXT_FIELDS.has(escapedDisplayTextFieldKey(field))) {
+      value = Array.isArray(value) ? value.map(normalizeEscapedDisplayText) : normalizeEscapedDisplayText(value);
     }
     return { field, op, value };
   });
@@ -6311,7 +6353,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
   }
 
-  const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
+  const payload = normalizeEscapedDisplayPayload(await req.json().catch(() => ({}))) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
 
   // Login credentials, the native bridge, and the dedicated password reconciliation flow have

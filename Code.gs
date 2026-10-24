@@ -7009,6 +7009,7 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
 }
 
 function canonicalizeMasterBulkPayloadValue_(value) {
+  if (typeof value === 'string') return normalizeEscapedImportText_(value);
   if (Array.isArray(value)) return value.map(canonicalizeMasterBulkPayloadValue_);
   if (!value || typeof value !== 'object') return value;
   const result = {};
@@ -7016,6 +7017,23 @@ function canonicalizeMasterBulkPayloadValue_(value) {
     result[key] = canonicalizeMasterBulkPayloadValue_(value[key]);
   });
   return result;
+}
+
+function normalizeEscapedImportText_(value) {
+  if (typeof value !== 'string' || value.indexOf('\\') === -1) return value;
+  return value.replace(/\\+(["'])/g, '$1');
+}
+
+function normalizeEscapedImportRow_(row) {
+  if (!Array.isArray(row)) return row;
+  let normalized = row;
+  for (let index = 0; index < row.length; index++) {
+    const value = normalizeEscapedImportText_(row[index]);
+    if (value === row[index]) continue;
+    if (normalized === row) normalized = row.slice();
+    normalized[index] = value;
+  }
+  return normalized;
 }
 
 function masterBulkSha256Hex_(value) {
@@ -7475,7 +7493,7 @@ function buildMasterBulkSnapshotPayload_(tableName, parsedFiles, payloadBuilderF
       });
       const idTracker = {};
       for (let rowIndex = 1; rowIndex < entry.rawData.length; rowIndex++) {
-        const row = entry.rawData[rowIndex] || [];
+        const row = normalizeEscapedImportRow_(entry.rawData[rowIndex] || []);
         const identity = getMasterRowIdentity_(row, sourceContext, idTracker);
         if (!identity.valid) continue;
         const values = {};
@@ -8179,7 +8197,7 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
   stats.sourceRows = Math.max(0, (rawData.length || 1) - 1);
 
   for (let i = 1; i < rawData.length; i++) {
-    let row = rawData[i];
+    let row = normalizeEscapedImportRow_(rawData[i]);
     let itemCodeVal = String(row[iIdx] || '').trim();
     let custVal = custIdx > -1 ? String(row[custIdx] || '').trim() : '';
     let dockVal = dockIdx > -1 ? String(row[dockIdx] || '').trim() : '';
@@ -8389,7 +8407,7 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
   stats.sourceRows = Math.max(0, (rawData.length || 1) - 1);
 
   for (let i = 1; i < rawData.length; i++) {
-    const row = rawData[i];
+    const row = normalizeEscapedImportRow_(rawData[i]);
     const identity = getMasterRowIdentity_(row, context, idTracker);
     if (!identity.valid) {
       stats.skippedRows++;
@@ -8468,7 +8486,7 @@ function buildCavPayload(rawData, tableName, existingRows, syncStartTime, fileNa
   stats.sourceRows = Math.max(0, (rawData.length || 1) - 1);
 
   for (let i = 1; i < rawData.length; i++) {
-    let row = rawData[i];
+    let row = normalizeEscapedImportRow_(rawData[i]);
     let itemCodeVal = itemIdx > -1 ? String(row[itemIdx] || '').trim() : '';
     let descriptionVal = descIdx > -1 ? String(row[descIdx] || '').trim() : '';
     let brandCodeVal = brandCodeIdx > -1 ? String(row[brandCodeIdx] || '').trim() : '';

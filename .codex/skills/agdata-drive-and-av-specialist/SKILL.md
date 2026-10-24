@@ -83,8 +83,10 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 - Persist Season Photos (`photo_link`/`photo_name`/`date_completed`), `spec`, `match`/`loc_match_qty`, `av_note`, `pic_note`, and `sales_note` by normalized `(itemcode, locationcode)` and merge that overlay into every DriveAround import and `inventory_read`/`av_read`/`report_read_v2` projection. Recompute Loc Photo Match as rounded On Hand times percent.
 - Multi-row `(itemcode, locationcode, lotcode)` photo save/delete/retry and MARK DONE select the canonical location row, upload with `upsert: true`, retry busy saves, and never reject merely because a standard and `DESIGITEM #` row coexist.
 - Drive cards, AV photo cards, and the lightbox resolve URLs only through `resolveCanonicalPhotoUrls`; Drive, AV, Eval Reports #2, and Que consume the canonical natural location comparator.
+- Canonical DriveAround, SOC, Reserves, CAV, request, API-response, display, and drill-key text removes only repeated literal backslashes immediately before `'` or `"`. Preserve valid standalone backslashes and normalize before deriving identities, hashes, grouping keys, or search keys.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
 - Never key durable photo/spec evidence only by physical UID or lot, overwrite it from a new DriveAround UID, use divergent thumbnail parsing, or display `Photo unavailable` when the canonical resolver returned a URL.
 - Never restore inline `localeCompare` location copies, reject a duplicate-location photo save with `403`/`404`/`409`, truncate complete exports, or replace known metrics with `--`.
+- Never repair escaped apostrophes only in rendered HTML; that leaves import hashes, Common Name groups, drill filters, Que, Bloom, and Eval #2 on divergent keys.

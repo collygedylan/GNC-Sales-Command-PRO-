@@ -11525,8 +11525,25 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             'HOLDSTOPREASON',
             'AV_NOTE',
             'SALES_NOTE',
+            'SALESNOTE',
+            'PIC_NOTE',
+            'PICK_NOTE',
+            'PICKNOTE',
+            'LOCATION_NOTE',
+            'LOCATIONNOTE',
+            'LOC_NOTE',
+            'PRODUCT_DESCRIPTION',
+            'REQ_PIC_NOTE',
+            'REQ_SALES_NOTE',
+            'REQ_COMMENTS',
+            'REQUEST_NOTE',
             'GENUS'
         ];
+
+        function normalizeEscapedDisplayText(value) {
+            if (typeof value !== 'string' || !value.includes('\\')) return value;
+            return value.replace(/\\+(["'])/g, '$1');
+        }
 
         function countDisplayMojibakeMarkers(value) {
             const text = String(value == null ? '' : value);
@@ -11563,8 +11580,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
 
         function repairDisplayMojibake(value) {
             if (typeof value !== 'string') return value;
-            const text = value;
-            if (!text || !hasDisplayMojibake(text) || typeof TextDecoder !== 'function') return value;
+            const text = normalizeEscapedDisplayText(value);
+            if (!text || !hasDisplayMojibake(text) || typeof TextDecoder !== 'function') return text;
             let current = text;
             for (let pass = 0; pass < 3; pass += 1) {
                 let repaired = '';
@@ -53443,7 +53460,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function normalizeSearchValue(value) {
-            return String(value || '').toLowerCase().replace(/[.'’™®]/g, '').replace(/[-\s]+/g, ' ').trim();
+            const normalizedValue = typeof normalizeEscapedDisplayText === 'function'
+                ? normalizeEscapedDisplayText(value)
+                : (typeof value === 'string' ? value.replace(/\\+(["'])/g, '$1') : value);
+            return String(normalizedValue || '').toLowerCase().replace(/[.'’™®]/g, '').replace(/[-\s]+/g, ' ').trim();
         }
 
         function tokenizeSearchValue(value) {
@@ -130653,7 +130673,7 @@ C.14.043 C.15.000
             Object.entries(row || {}).forEach(([key, value]) => { normalized[key.toUpperCase()] = value; });
             normalized.DOM_ID = normalized.DOM_ID || normalized.UNIQUE_ID || normalized.MASTER_UNIQUE_ID;
             normalized.ASSIGNEDTO_USERS = row.assignedToUsers || row.assignedto_users || [row.assignedto || '(Unassigned)'];
-            return normalized;
+            return repairDisplayFieldsOnRow(normalized);
         }
         function normalizePagedNcrOutboxRow(value, index, approvalType) {
             const row = normalizePagedManagerRow(value || {});
@@ -130667,7 +130687,7 @@ C.14.043 C.15.000
             return { ...group, itemCode, kind:group.kind || group.groupBy, key:group.key || 'item:' + itemCode,
                 rows:(group.rows || []).map(normalizePagedManagerRow), reportRows:(group.reportRows || []).map(normalizePagedManagerRow),
                 representativeRow:normalizePagedManagerRow(group.representativeRow || { itemcode:itemCode, commonname:group.commonName || group.commonname }),
-                commonName:group.commonName || group.commonname || itemCode, containerSizes:group.containerSizes || [], assignedToUsers:group.assignedToUsers || [], reportIds:group.reportIds || [] };
+                commonName:repairDisplayMojibake(group.commonName || group.commonname || itemCode), containerSizes:group.containerSizes || [], assignedToUsers:group.assignedToUsers || [], reportIds:group.reportIds || [] };
         }
         function mountPagedManagerReport(host, query, renderRow, extra = {}) {
             if (!host) return;
