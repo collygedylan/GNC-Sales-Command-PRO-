@@ -149,7 +149,7 @@
                 try {
                     const snapshot = await call('user_access', { profileId: target });
                     if (request !== requestNumber) return;
-                    detail.innerHTML = `<div class="gnc-navigation-access-list">${snapshot.views.map(row => `<label class="gnc-navigation-access-row"><span><strong>${esc(row.label)}</strong><small>${row.allowed ? 'Currently allowed' : 'Currently unavailable'}${row.protectedReason ? ` · ${esc(row.protectedReason)}` : ''}</small></span><select data-nav-view="${esc(row.view)}"${lockedView(row, snapshot.username) ? ' disabled data-protected="true"' : ''}><option value=""${row.override == null ? ' selected' : ''}>Existing default</option><option value="true"${row.override === true ? ' selected' : ''}>Allow view</option><option value="false"${row.override === false ? ' selected' : ''}>Hide view</option></select></label>`).join('')}</div><label>Reason for change<textarea data-nav-reason maxlength="500" rows="2"></textarea></label><p data-nav-status role="status"></p><div class="gnc-navigation-actions"><button type="button" data-nav-save>Save user access</button><button type="button" data-nav-reload>Reload saved access</button></div>`;
+                    detail.innerHTML = `<div class="gnc-navigation-access-list">${snapshot.views.map(row => `<label class="gnc-navigation-access-row"><span><strong>${esc(row.label)}</strong><small>${row.allowed ? 'Currently allowed' : 'Currently unavailable'}${row.protectedReason ? ` · ${esc(row.protectedReason)}` : ''}</small></span><select data-nav-view="${esc(row.view)}"${lockedView(row, snapshot.username) ? ' disabled data-protected="true"' : ''}><option value="true"${row.allowed === true ? ' selected' : ''}>Allow view</option><option value="false"${row.allowed !== true ? ' selected' : ''}>Hide view</option></select></label>`).join('')}</div><label>Reason for change<textarea data-nav-reason maxlength="500" rows="2"></textarea></label><p data-nav-status role="status"></p><div class="gnc-navigation-actions"><button type="button" data-nav-save>Save user access</button><button type="button" data-nav-reload>Reload saved access</button></div>`;
                     let pending = null;
                     detail.oninput = () => { pending = null; };
                     detail.onchange = () => { pending = null; };
@@ -157,8 +157,8 @@
                     detail.querySelector('[data-nav-save]').onclick = async () => {
                         if (detail.getAttribute('aria-busy') === 'true') return;
                         const reason = detail.querySelector('[data-nav-reason]').value.trim();
-                        const changes = Array.from(detail.querySelectorAll('[data-nav-view]')).filter(node => !node.disabled).map(node => ({ view: node.dataset.navView, allowed: node.value === '' ? null : node.value === 'true' }))
-                            .filter(change => snapshot.views.find(row => row.view === change.view).override !== change.allowed);
+                        const changes = Array.from(detail.querySelectorAll('[data-nav-view]')).filter(node => !node.disabled).map(node => ({ view: node.dataset.navView, allowed: node.value === 'true' }))
+                            .filter(change => snapshot.views.find(row => row.view === change.view).allowed !== change.allowed);
                         if (!changes.length) { status(detail, 'No access changes to save.'); return; }
                         if (reason.length < 4) { status(detail, 'Enter a reason for the access change.', true); return; }
                         pending ||= { commandId: commandId(), expectedRevision: snapshot.accessRevision };
