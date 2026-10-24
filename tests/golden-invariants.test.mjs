@@ -224,6 +224,12 @@ test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () => {
 });
 
 test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () => {
+  const moveContext = runFunctions('assets/app-runtime.js', [
+    'firstNonEmptyValue', 'getMoveRequestRowBatchId', 'getMoveRequestRowAssignment', 'isMoveRequestRow',
+  ], { MOVE_REQUEST_ASSIGNMENT: 'moves' });
+  assert.equal(moveContext.isMoveRequestRow({ unique_id: 'move_req_legacy_row' }), true);
+  assert.equal(moveContext.isMoveRequestRow({ req_customer: 'Location Move' }), true);
+  assert.equal(moveContext.isMoveRequestRow({ unique_id: 'request_row', req_customer: 'Customer' }), false);
   const context = locationContext({
     isRequestVisibleForCurrentUser: () => true, isMoveRequestRow: row => Boolean(row?.MOVE_BATCH_ID),
     isRegularRequestQueueItem: () => true,

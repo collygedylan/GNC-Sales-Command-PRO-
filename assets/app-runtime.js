@@ -91993,7 +91993,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function isMoveRequestRow(row = null) {
             const assignment = getMoveRequestRowAssignment(row);
-            return assignment === MOVE_REQUEST_ASSIGNMENT || !!getMoveRequestRowBatchId(row);
+            const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim().toLowerCase();
+            const requestCustomer = String(firstNonEmptyValue(row && row.REQ_CUSTOMER, row && row.req_customer, '') || '').trim().toLowerCase();
+            return assignment === MOVE_REQUEST_ASSIGNMENT
+                || !!getMoveRequestRowBatchId(row)
+                || uniqueId.indexOf('move_req_') === 0
+                || requestCustomer === 'location move';
         }
 
         function isCompletedMoveRequestRow(row = null) {
