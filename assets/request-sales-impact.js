@@ -37,22 +37,62 @@ export function effectiveRequestQuantity(value) {
   return parsed > 0 ? parsed : 25;
 }
 
+function requestCalendarDay(row = {}) {
+  const timestamp = text(firstValue(row, ['request_date', 'requested_at', 'date', 'created_at'], ''));
+  if (/^\d{4}-\d{2}-\d{2}$/.test(timestamp)) return timestamp;
+  if (/^\d{4}-\d{2}-\d{2}[T ]/.test(timestamp)) {
+    const parsed = new Date(timestamp);
+    if (Number.isFinite(parsed.getTime())) {
+      const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit',
+      }).formatToParts(parsed).filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+      return `${parts.year}-${parts.month}-${parts.day}`;
+    }
+  }
+  const folder = text(firstValue(row, ['folder_id', 'request_folder', 'folderId', 'request_key', 'requestKey'], ''));
+  const isoFolderDay = folder.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  if (isoFolderDay) return isoFolderDay;
+  const monthFirst = folder.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+  return monthFirst ? `${monthFirst[3]}-${monthFirst[1].padStart(2, '0')}-${monthFirst[2].padStart(2, '0')}` : '';
+}
+
+function requestSourceTable(row = {}) {
+  const explicit = normalized(firstValue(row, ['source_table', 'sourceTable'], ''));
+  if (explicit) return explicit;
+  const sourceRowId = normalized(firstValue(row, ['source_row_id', 'sourceRowId'], ''));
+  const inferred = sourceRowId.split(':')[0];
+  return ['ph_request_history', 'ph_active_request', 'ph_request_delivery_outbox', 'ph_request_email_threads'].includes(inferred)
+    ? inferred : '';
+}
+
 export function requestSalesImpactDedupKey(row = {}) {
   const explicitIdentity = text(firstValue(row, ['line_identity_key', 'lineIdentityKey'], ''));
   if (explicitIdentity) return explicitIdentity;
   const uniqueId = normalized(firstValue(row, ['unique_id', 'request_unique_id', 'master_unique_id'], ''));
-  if (uniqueId) return `uid:${uniqueId}`;
   const folder = normalized(firstValue(row, ['folder_id', 'request_folder', 'folderId', 'request_key', 'requestKey'], ''));
   const itemcode = normalized(firstValue(row, ['itemcode', 'item_code'], ''));
+  const commonname = normalized(firstValue(row, ['commonname', 'common_name'], ''));
+  const contsize = normalized(firstValue(row, ['contsize', 'container_size', 'size'], ''));
   const locationcode = normalized(firstValue(row, ['locationcode', 'location_code'], ''));
   const lotcode = normalized(firstValue(row, ['lotcode', 'lot_code'], ''));
   const rowIndex = normalized(firstValue(row, ['row_index', 'rowIndex'], '1')) || '1';
-  if (folder) return [`folder:${folder}`, itemcode, locationcode, lotcode, `row:${rowIndex}`].join('|');
   const sourceRowId = normalized(firstValue(row, ['source_row_id', 'sourceRowId'], ''));
   const emailThreadId = normalized(firstValue(row, ['email_thread_id', 'gmail_thread_id', 'thread_id'], ''));
-  const requestDate = normalized(firstValue(row, ['request_date', 'requested_at', 'date', 'created_at'], ''));
-  return [`source:${sourceRowId || emailThreadId || requestDate || 'unknown'}`, `date:${requestDate}`,
-    itemcode, locationcode, lotcode, `row:${rowIndex}`].join('|');
+  const lineage = uniqueId ? `uid:${uniqueId}` : folder ? `folder:${folder}|row:${rowIndex}`
+    : `source:${emailThreadId || sourceRowId || requestCalendarDay(row) || 'unknown'}|row:${rowIndex}`;
+  const rawQuantity = number(firstValue(row, ['raw_qty', 'req_qty', 'qty', 'quantity', 'request_qty', 'requested_qty'], 0));
+  const strictFields = [
+    requestCalendarDay(row),
+    normalized(firstValue(row, ['sales_rep', 'primary_sales_rep', 'request_selected_rep_username', 'request_selected_rep_display'], 'Unassigned')),
+    normalized(firstValue(row, ['customer_name', 'customername'], 'Unknown Customer')),
+    normalized(firstValue(row, ['consignee_name', 'consigneename'], 'N/A')),
+    itemcode || `name:${commonname}`,
+    contsize,
+    locationcode,
+    lotcode,
+    rawQuantity === 0 ? -1 : rawQuantity,
+  ];
+  return `${lineage}|fields:${JSON.stringify(strictFields)}`;
 }
 
 function canonicalRequestLine(row = {}) {
@@ -74,6 +114,7 @@ function canonicalRequestLine(row = {}) {
     folder_id: folderId || sourceRowId || 'Unknown Request',
     source_row_id: sourceRowId,
     source_row_ids: text(firstValue(row, ['source_row_ids', 'sourceRowIds'], sourceRowId)),
+    source_table: requestSourceTable(row),
     row_index: number(firstValue(row, ['row_index', 'rowIndex'], 1)) || 1,
     email_thread_id: text(firstValue(row, ['email_thread_id', 'gmail_thread_id', 'thread_id'], '')),
     request_date: requestDate,
@@ -121,9 +162,17 @@ function mergeCanonicalLines(current, candidate) {
 
 export function aggregateRequestSalesImpactLines(rows = []) {
   const deduplicated = new Map();
+  const sourceOccurrences = new Map();
   for (const rawRow of Array.isArray(rows) ? rows : []) {
     const candidate = canonicalRequestLine(rawRow);
-    const key = requestSalesImpactDedupKey(candidate);
+    const baseKey = requestSalesImpactDedupKey(candidate);
+    let key = baseKey;
+    if (!candidate.line_identity_key && candidate.source_table) {
+      const sourceKey = `${baseKey}|source:${candidate.source_table}`;
+      const sourceOccurrence = sourceOccurrences.get(sourceKey) || 0;
+      sourceOccurrences.set(sourceKey, sourceOccurrence + 1);
+      key = `${baseKey}|copy:${sourceOccurrence}`;
+    }
     deduplicated.set(key, deduplicated.has(key) ? mergeCanonicalLines(deduplicated.get(key), candidate) : candidate);
   }
   const lineItems = [...deduplicated.values()].sort((left, right) =>
@@ -359,9 +408,14 @@ function renderKpis(summary) {
 
 function renderSourceAudit(audit = {}, summary = {}) {
   const tables = Array.isArray(audit.tables) ? audit.tables : [];
-  const rows = tables.map(row => `<tr><td><strong>${escapeHtml(`${row.schema_name || 'public'}.${row.table_name || ''}`)}</strong><small>${escapeHtml(row.note || '')}</small></td><td>${row.total_raw_rows === null || row.total_raw_rows === undefined ? 'Not present' : numberFormatter.format(number(row.total_raw_rows))}</td><td>${numberFormatter.format(number(row.request_related_rows))}</td><td>${numberFormatter.format(number(row.extracted_line_items))}</td><td>${numberFormatter.format(number(row.duplicate_rows_merged))}</td></tr>`).join('');
+  const rows = tables.map(row => `<tr><td><strong>${escapeHtml(`${row.schema_name || 'public'}.${row.table_name || ''}`)}</strong><small>${escapeHtml(row.note || '')}</small></td><td>${row.total_raw_rows === null || row.total_raw_rows === undefined ? 'Not present' : numberFormatter.format(number(row.total_raw_rows))}</td><td>${numberFormatter.format(number(row.request_related_rows))}</td><td>${numberFormatter.format(number(row.extracted_line_items))}</td><td>${numberFormatter.format(number(row.exact_mirror_rows_merged ?? row.duplicate_rows_merged))}</td></tr>`).join('');
+  const outboxEvents = (Array.isArray(audit.outbox_event_types) ? audit.outbox_event_types : []).map(row => {
+    const keys = Object.entries(row.payload_key_counts || {}).map(([key, count]) => `${key} (${numberFormatter.format(number(count))})`).join(', ');
+    return `<tr><td><strong>${escapeHtml(row.event_type || 'Unknown')}</strong><small>${escapeHtml(keys || 'No payload keys')}</small></td><td>${numberFormatter.format(number(row.total_raw_rows))}</td><td>${numberFormatter.format(number(row.extracted_line_items))}</td><td>${numberFormatter.format(number(row.exact_mirror_rows_merged))}</td></tr>`;
+  }).join('');
+  const previous = audit.previous_v2_merge_audit || {};
   const revision = audit.revision_46957 || {};
-  return `<details class="request-impact-audit"><summary><span><i class="ph-bold ph-database"></i><strong>Source Table & Row Audit</strong></span><small>${numberFormatter.format(number(audit.final_deduplicated_line_items ?? summary.total_line_items))} final lines · ${currencyFormatter.format(number(audit.grand_total_dollar_impact ?? summary.total_dollar_value))}</small></summary><div class="request-impact-audit-body"><div class="request-impact-audit-totals"><span><strong>${numberFormatter.format(number(audit.total_extracted_line_items))}</strong> extracted</span><span><strong>${numberFormatter.format(number(audit.duplicate_source_rows_merged))}</strong> duplicate source rows merged</span><span><strong>${numberFormatter.format(number(audit.duplicate_submitted_completed_pairs_merged))}</strong> submitted/completed pairs</span><span><strong>${numberFormatter.format(number(audit.final_deduplicated_line_items ?? summary.total_line_items))}</strong> deduplicated lines</span></div><div class="request-impact-audit-table-wrap"><table><thead><tr><th>Source table</th><th>Raw rows</th><th>Request rows</th><th>Extracted lines</th><th>Duplicates</th></tr></thead><tbody>${rows}</tbody></table></div><p><strong>Revision 46,957:</strong> ${escapeHtml(revision.relationship || 'A dataset revision marker, not a request row count.')} Current matches: ${numberFormatter.format(number(revision.matching_current_rows))}; current maximum revision: ${numberFormatter.format(number(revision.current_max_revision))}.</p></div></details>`;
+  return `<details class="request-impact-audit"><summary><span><i class="ph-bold ph-database"></i><strong>Source Table & Row Audit</strong></span><small>${numberFormatter.format(number(audit.final_distinct_request_line_items ?? audit.final_deduplicated_line_items ?? summary.total_line_items))} final lines · ${currencyFormatter.format(number(audit.grand_total_dollar_impact ?? summary.total_dollar_value))}</small></summary><div class="request-impact-audit-body"><div class="request-impact-audit-totals"><span><strong>${numberFormatter.format(number(audit.total_extracted_line_items))}</strong> extracted</span><span><strong>${numberFormatter.format(number(audit.exact_9_field_cross_table_mirrors_merged))}</strong> exact 9-field mirrors merged</span><span><strong>${numberFormatter.format(number(previous.previous_v2_differing_rows))}</strong> prior differing rows restored</span><span><strong>${numberFormatter.format(number(audit.final_distinct_request_line_items ?? audit.final_deduplicated_line_items ?? summary.total_line_items))}</strong> final distinct lines</span></div><div class="request-impact-audit-table-wrap"><table><thead><tr><th>Source table</th><th>Raw rows</th><th>Request rows</th><th>Extracted lines</th><th>Exact mirrors</th></tr></thead><tbody>${rows}</tbody></table></div>${outboxEvents ? `<h3>Delivery Outbox by Event Type</h3><div class="request-impact-audit-table-wrap"><table><thead><tr><th>Event type / payload keys</th><th>Raw rows</th><th>Plant lines</th><th>Exact mirrors</th></tr></thead><tbody>${outboxEvents}</tbody></table></div>` : ''}<p><strong>Previous v2 merge audit:</strong> ${numberFormatter.format(number(previous.previous_v2_exact_nine_field_mirrors))} exact mirrors and ${numberFormatter.format(number(previous.previous_v2_differing_rows))} rows differing on at least one strict field.</p><p><strong>Revision 46,957:</strong> ${escapeHtml(revision.relationship || 'A dataset revision marker, not a request row count.')} Current matches: ${numberFormatter.format(number(revision.matching_current_rows))}; current maximum revision: ${numberFormatter.format(number(revision.current_max_revision))}.</p></div></details>`;
 }
 
 function renderSalesRepRows(model) {
