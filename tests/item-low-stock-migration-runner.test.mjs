@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -207,7 +207,7 @@ test('Request Sales Impact v2 audits full tables and preserves physical request 
   for (const marker of ['get_request_sales_impact_v2', 'statement_timeout=60s', 'line_identity_key', 'source_table_audit', 'service_role']) assert.ok(contract.includes(marker), marker);
 
   assert.equal(requestSalesImpactStrictDedupeMigrationName, '20261024023000_request_sales_impact_strict_dedupe_v3.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), requestSalesImpactStrictDedupeMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(requestSalesImpactStrictDedupeMigrationName) < releaseDatabaseMigrations.indexOf(requestQueuePendingReconciliationMigrationName));
   const strictSql = fs.readFileSync(new URL(`../supabase/migrations/${requestSalesImpactStrictDedupeMigrationName}`, import.meta.url), 'utf8');
   for (const marker of ['strict_9_field_cross_table_v1', 'strict_business_key', 'source_copy_ordinal',
     'exact_9_field_cross_table_mirrors_merged', 'outbox_event_types', 'previous_v2_merge_audit',
@@ -217,6 +217,34 @@ test('Request Sales Impact v2 audits full tables and preserves physical request 
   const strictContract = migrationContractQuery(requestSalesImpactStrictDedupeMigrationName);
   for (const marker of ['strict_9_field_cross_table_v1', 'strict_business_key', 'source_copy_ordinal',
     'outbox_event_types', 'previous_v2_merge_audit', 'service_role']) assert.ok(strictContract.includes(marker), marker);
+});
+
+test('all-event Request reconciliation is release-registered and preserves only pending active rows', () => {
+  assert.equal(requestQueuePendingReconciliationMigrationName, '20261024060000_request_queue_pending_reconciliation_v3.sql');
+  assert.ok(releaseDatabaseMigrations.indexOf(requestQueuePendingReconciliationMigrationName) < releaseDatabaseMigrations.indexOf(requestQueueLegacyOutboxReconciliationMigrationName));
+  const sql = fs.readFileSync(new URL(`../supabase/migrations/${requestQueuePendingReconciliationMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['request_completed', 'ph_request_queue_removal_commands', 'request_lifecycle_tombstones_v1',
+    'REQUEST_TERMINAL_HISTORY_PRESERVATION_INCOMPLETE', 'REQUEST_CREATED_RECONCILIATION_INCOMPLETE',
+    'delete from public.ph_active_request', 'request_queue_expected_pending_v3']) assert.ok(sql.includes(marker), marker);
+  assert.doesNotMatch(sql, /order by o\.created_at desc,o\.event_id desc\s+limit 100/);
+  assert.match(sql, /perform private\.upsert_request_history[^]*delete from public\.ph_active_request/);
+  const contract = migrationContractQuery(requestQueuePendingReconciliationMigrationName);
+  for (const marker of ['ph_request_delivery_outbox_request_completed_recent_idx', 'ph_request_queue_removal_commands_request_uid_idx',
+    'request_completed', 'request_lifecycle_tombstones_v1', 'statement_timeout=30s', 'service_role']) assert.ok(contract.includes(marker), marker);
+});
+
+test('legacy Request outbox recovery ignores inferred removals and absent customer identity enrichment', () => {
+  assert.equal(requestQueueLegacyOutboxReconciliationMigrationName, '20261024061500_request_queue_legacy_outbox_reconciliation_v4.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1), requestQueueLegacyOutboxReconciliationMigrationName);
+  const sql = fs.readFileSync(new URL(`../supabase/migrations/${requestQueueLegacyOutboxReconciliationMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['reconcile_legacy_pending_requests_from_outbox_v4', 'legacy-explicit-removal', 'outbox_recovery',
+    'REQUEST_LEGACY_PENDING_ROWS_MISSING', 'REQUEST_FALSE_LEGACY_TOMBSTONES_REMAIN',
+    'reconcile_active_requests_from_outbox_v1']) assert.ok(sql.includes(marker), marker);
+  const functionBody = sql.slice(sql.indexOf('create or replace function private.reconcile_legacy_pending_requests_from_outbox_v4'), sql.indexOf('revoke all on function private.reconcile_legacy_pending_requests_from_outbox_v4'));
+  assert.doesNotMatch(functionBody, /customeridentityid|consigneeidentityid/);
+  const contract = migrationContractQuery(requestQueueLegacyOutboxReconciliationMigrationName);
+  for (const marker of ['reconcile_legacy_pending_requests_from_outbox_v4', 'legacy-explicit-removal', 'outbox_recovery',
+    'customeridentityid', 'request_completed', 'ph_request_queue_removal_commands', 'service_role']) assert.ok(contract.includes(marker), marker);
 });
 
 test('mapping publication is release-registered and protects raw source data and writes', () => {

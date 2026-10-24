@@ -219,20 +219,49 @@ test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () => {
 
 test('Invariant 8 (Que REQUEST Live Uncached Fetch & Outbox Reconciliation)', () => {
   const context = locationContext({
-    isRequestPendingVisible: () => true, isRegularRequestQueueItem: () => true,
+    isRequestVisibleForCurrentUser: () => true, isMoveRequestRow: row => Boolean(row?.MOVE_BATCH_ID),
+    isRegularRequestQueueItem: () => true,
     naturalCompare: (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true, sensitivity: 'base' }),
     getItemUniqueId: row => row.id, buildRequestPagedRenderPlan: (_mode, _crumb, items) => ({ rows: items }),
   });
-  vm.runInContext(functionSource('assets/app-runtime.js', 'compareLocationCodeValues') + '\n' + functionSource('assets/app-runtime.js', 'buildPendingRequestRenderPlan'), context);
-  const plan = context.buildPendingRequestRenderPlan([
-    { id: 'c12', LOCATIONCODE: 'C.12.019', LOTCODE: '27.F1' },
-    { id: 'c2', LOCATIONCODE: 'C.2.000', LOTCODE: '27.S1' },
-    { id: 'c5', LOCATIONCODE: 'C.05.000', LOTCODE: '27.U1' },
-  ]);
+  vm.runInContext([
+    functionSource('assets/app-runtime.js', 'firstNonEmptyValue'),
+    functionSource('assets/app-runtime.js', 'normalizeRequestStatus'),
+    functionSource('assets/app-runtime.js', 'hasCompletionDateValue'),
+    functionSource('assets/app-runtime.js', 'isTruthishHistoryValue'),
+    functionSource('assets/app-runtime.js', 'isRequestPendingVisible'),
+    functionSource('assets/app-runtime.js', 'compareLocationCodeValues'),
+    functionSource('assets/app-runtime.js', 'buildPendingRequestRenderPlan'),
+    functionSource('assets/app-runtime.js', 'buildActiveRequestLiveRowsQuery'),
+  ].join('\n'), context);
+  const active = [
+    { id: 'c12', LOCATIONCODE: 'C.12.019', LOTCODE: '27.F1', REQ_STATUS: 'Pending', DATE_COMPLETED: null, REQ_QTY: null, REQUEST_ACTIVE: true },
+    { id: 'c2', LOCATIONCODE: 'C.2.000', LOTCODE: '27.S1', REQ_STATUS: 'Pending', DATE_COMPLETED: null, REQ_QTY: '', REQUEST_ACTIVE: true },
+    { id: 'c5', LOCATIONCODE: 'C.05.000', LOTCODE: '27.U1', REQ_STATUS: 'Pending', DATE_COMPLETED: null, REQ_QTY: 0, REQUEST_ACTIVE: true, REQUEST_HISTORY: true },
+  ];
+  const history = Array.from({ length: 4001 }, (_, index) => ({
+    id: `history-${index}`, LOCATIONCODE: 'Z.99.999', REQ_STATUS: 'Pending', DATE_COMPLETED: null,
+    REQUEST_ACTIVE: false, REQUEST_HISTORY: true, REQUEST_HISTORY_ONLY: true,
+  }));
+  assert.equal(active.every(row => context.isRequestPendingVisible(row)), true);
+  assert.equal(history.every(row => !context.isRequestPendingVisible(row)), true);
+  const plan = context.buildPendingRequestRenderPlan([...history, ...active]);
   assert.deepEqual(Array.from(plan.rows, row => row.id), ['c2', 'c5', 'c12']);
+  assert.match(context.buildActiveRequestLiveRowsQuery('*'), /date_completed=is\.null[^]*order=created_at\.desc,unique_id\.desc/);
   assert.match(functionSource('assets/app-runtime.js', 'forceRefreshRequestsForView'), /force_fresh: true, cache: 'no-store'/);
   assert.match(functionSource('assets/app-runtime.js', 'fetchAllSupabaseRows'), /forceFresh[^]*:fresh:/);
-  assert.match(read('supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql'), /ph_request_delivery_outbox[^]*event_type='request_created'[^]*insert into public\.ph_active_request/);
+  const appApiSource = read('supabase/functions/app-api/index.ts');
+  assert.match(appApiSource, /\["request_queue", "active_request"\]\.includes\(dataset\)\) query\.set\("date_completed", "is\.null"\)/);
+  assert.match(appApiSource, /request_queue:\s*\{[^]*filterFields:\s*new Set\(\[[^\]]*"date_completed"/);
+  const migration = read('supabase/migrations/20261024060000_request_queue_pending_reconciliation_v3.sql');
+  assert.match(migration, /event_type='request_created'[^]*request_completed[^]*ph_request_queue_removal_commands[^]*insert into public\.ph_active_request/);
+  assert.match(migration, /request_queue_expected_pending_v3[^]*REQUEST_CREATED_RECONCILIATION_INCOMPLETE/);
+  assert.doesNotMatch(migration, /order by o\.created_at desc,o\.event_id desc\s+limit 100/);
+  const legacyMigration = read('supabase/migrations/20261024061500_request_queue_legacy_outbox_reconciliation_v4.sql');
+  assert.match(legacyMigration, /legacy-explicit-removal/);
+  assert.match(legacyMigration, /outbox_recovery[^]*insert into public\.ph_active_request[^]*REQUEST_LEGACY_PENDING_ROWS_MISSING/);
+  const legacyFunction = legacyMigration.slice(legacyMigration.indexOf('create or replace function private.reconcile_legacy_pending_requests_from_outbox_v4'), legacyMigration.indexOf('revoke all on function private.reconcile_legacy_pending_requests_from_outbox_v4'));
+  assert.doesNotMatch(legacyFunction, /customeridentityid|consigneeidentityid/);
 });
 
 test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () => {
@@ -387,14 +416,14 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
 
 test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   const api = read('supabase/functions/app-api/index.ts');
-  const migration = read('supabase/migrations/20261023233000_bounded_request_queue_reconciliation_v2.sql');
+  const migration = read('supabase/migrations/20261024060000_request_queue_pending_reconciliation_v3.sql');
   const runtime = read('assets/app-runtime.js');
   assert.match(api, /Promise\.resolve\(supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)\)[^]*runtime\.waitUntil\(reconciliationTask\)/);
   assert.doesNotMatch(api, /await supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)/);
-  assert.match(migration, /order by o\.created_at desc,o\.event_id desc[^]*limit 100/);
+  assert.doesNotMatch(migration, /order by o\.created_at desc,o\.event_id desc[^]*limit 100/);
   assert.match(migration, /jsonb_array_elements[^]*regexp_matches[^]*insert into public\.ph_active_request/);
   assert.match(migration, /request_source[^]*customeridentityid[^]*consigneeidentityid/);
-  assert.match(migration, /insert into public\.ph_active_request[^]*insert into public\.ph_request_delivery_outbox/);
+  assert.match(migration, /perform private\.upsert_request_history[^]*delete from public\.ph_active_request[^]*reconcile_active_requests_from_outbox_v1/);
   assert.match(runtime, /syncPanel\.open = window\.innerWidth >= 768/);
   assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
 });

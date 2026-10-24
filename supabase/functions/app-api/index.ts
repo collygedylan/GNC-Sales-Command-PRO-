@@ -766,7 +766,7 @@ const DATASET_READ_SOURCES: Record<string, { table: DatasetReadRelation; permiss
   request_queue: {
     table: "ph_request_queue_live_rows", permission: "ph_request_queue_live_rows", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_request_queue_live_rows,
     signatures: "unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,desired_spec,desired_caliper,req_pic_note,request_note,req_comments,av_note,req_photo_link,req_photo_name,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,delivery_status,delivery_attempt_count,delivery_error_code,delivery_display_state,delivery_delivered_at",
-    filterFields: new Set(["unique_id", "master_id", "itemcode", "locationcode", "lotcode", "requested_by", "request_selected_rep_username", "request_folder", "req_status", "req_archived", "req_rep_action", "app_tab_assignment", "master_app_tab_assignment", "request_source", "created_at", "updated_at", "delivery_status"]),
+    filterFields: new Set(["unique_id", "master_id", "itemcode", "locationcode", "lotcode", "requested_by", "request_selected_rep_username", "request_folder", "req_status", "req_archived", "req_rep_action", "app_tab_assignment", "master_app_tab_assignment", "request_source", "created_at", "updated_at", "date_completed", "delivery_status"]),
     orderFields: new Set(["unique_id", "created_at", "updated_at", "req_status", "delivery_status"]),
   },
   active_request: {
@@ -1156,6 +1156,7 @@ async function handleDatasetRead(
     const query = new URLSearchParams();
     query.set("select", fields);
     if (dataset === "app_user_directory") query.set("disabled_at", "is.null");
+    if (["request_queue", "active_request"].includes(dataset)) query.set("date_completed", "is.null");
     const filters = datasetReadFilterParts(source, parsed.filters);
     for (const filter of filters) {
       const value = Array.isArray(filter.value) ? `(${filter.value.map(datasetReadOrLiteral).join(",")})` : datasetReadOrLiteral(filter.value);

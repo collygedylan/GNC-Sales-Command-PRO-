@@ -29735,10 +29735,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function isRequestPendingVisible(item) {
             const status = normalizeRequestStatus(firstNonEmptyValue(item && item.REQ_STATUS, item && item.req_status, item && item.STATUS, item && item.status, '')).toLowerCase();
+            const historyOnly = isTruthishHistoryValue(item && item.REQUEST_HISTORY_ONLY)
+                || (isTruthishHistoryValue(item && item.REQUEST_HISTORY) && !isTruthishHistoryValue(item && item.REQUEST_ACTIVE));
             return !!(item
                 && isRequestVisibleForCurrentUser(item)
                 && !isMoveRequestRow(item)
-                && !item.REQUEST_HISTORY
+                && !historyOnly
                 && !item.REQ_ARCHIVED
                 && !hasCompletionDateValue(item)
                 && ['', 'pending', 'open'].includes(status));
@@ -30133,6 +30135,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const item = Object.assign({}, snapshot, rawRow);
             applyRequestCustomerContextAliases(item, getRequestCustomerContext(item));
             item.SOURCE_TABLE = 'ph_active_request';
+            item.REQUEST_ACTIVE = false;
+            item.REQUEST_HISTORY_ONLY = true;
             item.UNIQUE_ID = uniqueId;
             item.MASTER_ID = String(firstNonEmptyValue(rawRow.MASTER_ID, rawRow.master_id, snapshot.MASTER_ID, snapshot.MASTER_UNIQUE_ID, '') || '').trim();
             item.MASTER_UNIQUE_ID = String(firstNonEmptyValue(rawRow.MASTER_UNIQUE_ID, rawRow.master_unique_id, item.MASTER_ID, '') || '').trim();
@@ -30809,6 +30813,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             (Array.isArray(activeRows) ? activeRows : []).forEach((row) => {
                 if (!row) return;
                 const id = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+                row.REQUEST_ACTIVE = true;
+                row.REQUEST_HISTORY = false;
+                row.REQUEST_HISTORY_ONLY = false;
                 if (id && !activeIndexById.has(id)) activeIndexById.set(id, merged.length);
                 merged.push(row);
             });
@@ -30824,7 +30831,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const activeRow = merged[activeIndex];
                 if (activeRow && isTruthishHistoryValue(activeRow.REQ_ARCHIVED)) {
                     merged[activeIndex] = Object.assign({}, activeRow, historyRow, {
+                        REQUEST_ACTIVE: false,
                         REQUEST_HISTORY: true,
+                        REQUEST_HISTORY_ONLY: true,
                         REQUEST_HISTORY_ARCHIVED: true,
                         REQ_ARCHIVED: false
                     });
@@ -33532,6 +33541,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
                 obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || '-';
                 if (normalizedSourceTable === 'ph_active_request') {
+                    obj.REQUEST_ACTIVE = true;
+                    obj.REQUEST_HISTORY = false;
+                    obj.REQUEST_HISTORY_ONLY = false;
                     obj.REQ_DESIRED_SPEC = normalizeRequestDesiredMeasurementValue(firstNonEmptyValue(obj.REQ_DESIRED_SPEC, obj.DESIRED_SPEC, ''));
                     obj.REQ_DESIRED_CALIPER = normalizeRequestDesiredMeasurementValue(firstNonEmptyValue(obj.REQ_DESIRED_CALIPER, obj.DESIRED_CALIPER, ''));
                     obj.DESIRED_SPEC = obj.REQ_DESIRED_SPEC;
@@ -34035,7 +34047,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let activeRequestLiveRowsViewWarningShown = false;
         function buildActiveRequestLiveRowsQuery(selectFields = '*') {
             const fields = String(selectFields || '*').trim() || '*';
-            return `select=${fields}&order=unique_id.desc`;
+            return `select=${fields}&date_completed=is.null&order=created_at.desc,unique_id.desc`;
         }
 
         async function fetchActiveRequestLiveRows(selectFields = '*', options = {}) {
