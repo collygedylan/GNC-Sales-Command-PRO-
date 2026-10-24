@@ -165,6 +165,7 @@ test('Request reuse behavior accepts photo plus N/A Spec while keeping a missing
     SAVED_PHOTO_NAME: 'photo 9/2/26',
     SPEC: 'N/A',
     MATCH: '50',
+    LOC_MATCH_QTY: '12',
   };
   const partial = context.getRequestReusableData(row);
   assert.equal(partial.hasReusableEvidence, true);
@@ -175,6 +176,7 @@ test('Request reuse behavior accepts photo plus N/A Spec while keeping a missing
   const complete = context.getRequestReusableData({ ...row, AV_NOTE: 'Current valid row' });
   assert.equal(complete.hasReusableEvidence, true);
   assert.equal(complete.readyForAutoComplete, true);
+  assert.equal(context.getRequestReusableData({ ...row, LOC_MATCH_QTY: '0', AV_NOTE: 'Current valid row' }).readyForAutoComplete, false);
   assert.equal(context.getRequestReusableData({ ...row, SPEC: '', ITEMSPEC: 'CATALOG SPEC', MATCH: '' }).hasReusableEvidence, false);
   assert.equal(context.getRequestReusableData({ ...row, EXPIRED: true }).hasReusableEvidence, false);
   assert.equal(context.getRequestReusableData({ ...row, INVALID: true }).hasReusableEvidence, false);

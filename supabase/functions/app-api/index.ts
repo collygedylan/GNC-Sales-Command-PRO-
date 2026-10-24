@@ -6776,6 +6776,14 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     const {data,error} = await supabase.rpc("request_work_command_v1", {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
       ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})});
     if (error) return errorResponse(error.message, error.code === "42501" ? 403 : error.code === "PT409" ? 409 : 422,{code:error.message.match(/REQUEST_[A-Z_]+/)?.[0] || "REQUEST_WORK_FAILED"});
+    if (operation === "save") {
+      const receipt = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+      const expectedLifecycle = payload.complete === true ? "completed_history" : "pending_active";
+      if (String(receipt.lifecycle_state || "") !== expectedLifecycle) {
+        recordHandledError("app-api", action, new Error("REQUEST_LIFECYCLE_UNCONFIRMED"), 503);
+        return errorResponse("The Request lifecycle acknowledgment could not be verified.",503,{code:"REQUEST_LIFECYCLE_UNCONFIRMED"});
+      }
+    }
     return jsonResponse({ok:true,data});
   }
   if (action === "manual_sync_status") {

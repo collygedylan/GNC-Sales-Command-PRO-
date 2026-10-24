@@ -3,7 +3,7 @@
 */
 
 const APP_SHELL_BUILD = 'AgData v2.3.59';
-const APP_SHELL_RUNTIME_REVISION = 'escaped-text-hotfix-r4';
+const APP_SHELL_RUNTIME_REVISION = 'request-state-machine-r5';
 const APP_ASSET_VERSION = '2.3.59';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);

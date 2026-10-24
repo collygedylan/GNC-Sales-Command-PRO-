@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -249,7 +249,7 @@ test('legacy Request outbox recovery ignores inferred removals and absent custom
 
 test('escaped display text cleanup is release-registered and guards every import table', () => {
   assert.equal(escapedDisplayTextNormalizationMigrationName, '20261024070000_escaped_display_text_normalization_v1.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), escapedDisplayTextNormalizationMigrationName);
+  assert.equal(releaseDatabaseMigrations.indexOf(requestLifecycleStateMachineMigrationName), releaseDatabaseMigrations.indexOf(escapedDisplayTextNormalizationMigrationName) + 1);
   const sql = fs.readFileSync(new URL(`../supabase/migrations/${escapedDisplayTextNormalizationMigrationName}`, import.meta.url), 'utf8');
   for (const marker of ['normalize_escaped_display_text_v1', 'Alexander', 'Alice', 'Endless Summer',
     'ph_master_inventory', 'ph_active_request', 'ph_request_history', 'ph_soc_master', 'ph_reserves', 'ph_cav_import',
@@ -1226,6 +1226,17 @@ test('navigation role repair is release-registered with an exact function-body c
 });
 
 test('history drilldown release contract checks ownership, financial redaction, orders, catalog pricing, dates and restricted grants',()=>{assert.ok(releaseDatabaseMigrations.includes(requestHistoryDrilldownMigrationName));const query=migrationContractQuery(requestHistoryDrilldownMigrationName);for(const marker of ['ph_historical_orders','history-v3:','catalog_prices','date_from_stamp','request_financial_values_v1','history_redact_financial_v1','ph_request_history_owner_isolation','ph_active_request_rep_isolation',"permissive='RESTRICTIVE'"])assert.ok(query.includes(marker),marker);});
+
+test('request lifecycle migration is registered with permanent history and active-only contracts',()=>{
+  assert.equal(requestLifecycleStateMachineMigrationName,'20261024183000_request_lifecycle_state_machine_v1.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1),requestLifecycleStateMachineMigrationName);
+  const source=fs.readFileSync(new URL(`../supabase/migrations/${requestLifecycleStateMachineMigrationName}`,import.meta.url),'utf8');
+  for(const marker of ['request_master_has_valid_evidence_v1','persist_completed_request_history_v1','completed_history','line_dollar_value','enforce_request_lifecycle_v1','request-completed:auto-evidence:']) assert.ok(source.includes(marker),marker);
+  const contract=migrationContractQuery(requestLifecycleStateMachineMigrationName);
+  for(const marker of ['effective_qty','completed_history','enforce_request_lifecycle_v1','request_work_command_v1']) assert.ok(contract.includes(marker),marker);
+  assert.match(source,/^begin;\s/i);
+  assert.match(source,/commit;\s*$/i);
+});
 
 test('enterprise Aura release guards forced RLS, own preferences, normalized roles and private form predicates', () => {
   assert.ok(releaseDatabaseMigrations.includes(auraEnterpriseDomainVoiceMigrationName));

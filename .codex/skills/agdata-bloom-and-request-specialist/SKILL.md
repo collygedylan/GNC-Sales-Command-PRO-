@@ -72,7 +72,7 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 
 ## Cross-Layer Blast Radius
 
-- A Plant Request acknowledgment must synchronously preserve a `Pending` `ph_active_request` row and revision, while outbox reconciliation repairs unfulfilled `New Plant Request Submitted` events. DriveAround publication must not wipe or auto-complete active requests.
+- A Plant Request acknowledgment is server-classified atomically: rows without current photo + spec + positive location-photo quantity remain only as `Pending` in `ph_active_request`; rows with qualifying evidence complete directly into permanent `ph_request_history`. MARK DONE persists the frozen photo/spec/notes and financial snapshot, queues completion delivery, then deletes the active row in the same transaction. Reconciliation may complete an active request only from qualifying current master evidence and must never let imports erase history.
 - Opening Que or REQUEST uses `force_fresh: true`, `cache: 'no-store'`, and the eight-second visible poll; retained UI data and exact server-side tuple validation remain separate.
 - Request Sales Impact reads are foreground-only and service-gated. Keep the SQL set-based over the bounded Request sources and small canonical price catalogs; never scan the 8.7M-row DriveAround history or add the action to anonymous/startup fixtures.
 
@@ -80,5 +80,5 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 
 - Never skip a Que/REQUEST refresh because a client TTL or revision appears current, delete pending requests during import, clear a draft before validated acknowledgment, or duplicate the canonical location sorter.
 - Never copy Reclass, Bunch, HL, or inventory-purpose recipient lists into the Plant Request lifecycle contract.
-- Never await outbox reconciliation inside `dataset_read`, scan unbounded delivery history, or replace an optional Request quantity with an invented default; recover only the indexed newest 100 events outside the response path.
+- Never await outbox reconciliation inside `dataset_read`, scan unbounded delivery history, or write the effective quantity fallback into an active Request row. The permanent history/financial snapshot uses positive Request Qty or `25`, while source quantity remains unchanged.
 - Never expose Request dollar totals, controls, DOM roots or RPC execution to a non-`dylan_collyge` account, and never persist the analytics-only default quantity of `25` back to any Request source.

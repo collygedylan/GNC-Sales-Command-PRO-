@@ -220,7 +220,7 @@ test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () => {
   assert.equal(context.LocationCode.normalize('c.05.017').startsWith('C'), true);
 });
 
-test('Invariant 8 (Que REQUEST Live Uncached Fetch & Outbox Reconciliation)', () => {
+test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () => {
   const context = locationContext({
     isRequestVisibleForCurrentUser: () => true, isMoveRequestRow: row => Boolean(row?.MOVE_BATCH_ID),
     isRegularRequestQueueItem: () => true,
@@ -265,6 +265,17 @@ test('Invariant 8 (Que REQUEST Live Uncached Fetch & Outbox Reconciliation)', ()
   assert.match(legacyMigration, /outbox_recovery[^]*insert into public\.ph_active_request[^]*REQUEST_LEGACY_PENDING_ROWS_MISSING/);
   const legacyFunction = legacyMigration.slice(legacyMigration.indexOf('create or replace function private.reconcile_legacy_pending_requests_from_outbox_v4'), legacyMigration.indexOf('revoke all on function private.reconcile_legacy_pending_requests_from_outbox_v4'));
   assert.doesNotMatch(legacyFunction, /customeridentityid|consigneeidentityid/);
+  const lifecycleMigration = read('supabase/migrations/20261024183000_request_lifecycle_state_machine_v1.sql');
+  assert.match(lifecycleMigration, /request_master_has_valid_evidence_v1[^]*photo_link[^]*spec[^]*loc_match_qty[^]*America\/Chicago/);
+  assert.match(lifecycleMigration, /effective_qty[^]*listprice[^]*line_dollar_value[^]*photo_date[^]*loc_match_pct[^]*loc_photo_match/);
+  assert.match(lifecycleMigration, /persist_completed_request_history_v1[^]*request_completed[^]*delete from public\.ph_active_request/);
+  assert.match(lifecycleMigration, /req_status='Pending'[^]*delete from public\.ph_request_history/);
+  assert.match(lifecycleMigration, /request-completed:auto-evidence:/);
+  assert.match(lifecycleMigration, /update public\.ph_master_inventory master set[^]*initial_ptr[^]*date_completed[^]*sales_note/);
+  assert.match(lifecycleMigration, /app_dataset_revisions[^]*ph_active_request[^]*ph_request_history/);
+  assert.match(lifecycleMigration, /app_runtime_watchdog_events set status='resolved'/);
+  assert.match(functionSource('assets/app-runtime.js', 'isReadyRequestDataForAutoComplete'), /effectiveSpec[^]*effectiveLocPhotoMatch[^]*<= 0/);
+  assert.match(functionSource('assets/app-runtime.js', 'isPhotoDateMsExpired'), /getDate\(\) \+ retentionDays \+ 1/);
 });
 
 test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () => {

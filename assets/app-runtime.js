@@ -11316,7 +11316,11 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return '';
         }
         function isPhotoDateMsExpired(stamp = NaN) {
-            return Number.isFinite(stamp) && (Date.now() - stamp) > PHOTO_RETENTION_MAX_AGE_MS;
+            if (!Number.isFinite(stamp)) return false;
+            const captured = new Date(stamp);
+            const retentionDays = Math.round(PHOTO_RETENTION_MAX_AGE_MS / (24 * 60 * 60 * 1000));
+            const expiresAt = new Date(captured.getFullYear(), captured.getMonth(), captured.getDate() + retentionDays + 1);
+            return Date.now() >= expiresAt.getTime();
         }
         function getPhotoDateMsFromText_(value = '') {
             const text = String(value || '').trim();
@@ -11756,8 +11760,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
 
         function isAvRulePayloadStillActiveForHoldInvalidation(item = null, avUpdatedMs = NaN) {
             if (!item || !hasTrackedAvPayload(item) || !Number.isFinite(avUpdatedMs)) return false;
-            const ageMs = Date.now() - avUpdatedMs;
-            if (ageMs > AV_RULE_MAX_AGE_MS) return false;
+            if (isPhotoDateMsExpired(avUpdatedMs)) return false;
             const hasInvalidMatch = isInvalidLocMatchPercent(firstNonEmptyValue(item && item.MATCH, item && item.MATCHPCT, item && item.MATCH_PCT, ''));
             const effectiveLocMatchQty = hasInvalidMatch ? null : (calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY));
             return effectiveLocMatchQty == null || effectiveLocMatchQty > 0;
@@ -12159,8 +12162,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (effectiveLocMatchQty != null) item.LOC_MATCH_QTY = effectiveLocMatchQty;
             if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
             if (bundleUpdatedAt) {
-                const ageMs = Date.now() - Date.parse(bundleUpdatedAt);
-                if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_10_day');
+                if (isPhotoDateMsExpired(Date.parse(bundleUpdatedAt))) reasons.push('stale_10_day');
             }
             return [...new Set(reasons)];
         }
@@ -53330,6 +53332,10 @@ function toggleDriveQuickRequestItem(domId) {
                 : firstNonEmptyValue(sharedPick, '')).trim();
             const rawMatch = String(isRequestRow ? firstNonEmptyValue(item.REQ_MATCH, item.req_match, '') : firstNonEmptyValue(sharedMatch, sharedHidden ? '' : item.MATCHPCT, '')).trim();
             const match = parseLocMatchPercent(rawMatch) == null ? '' : rawMatch;
+            const rawLocPhotoMatch = String(firstNonEmptyValue(
+                item.LOC_MATCH_QTY, item.loc_match_qty, item.REQ_LOC_MATCH_QTY, item.req_loc_match_qty, ''
+            ) || '').trim();
+            const locPhotoMatch = rawLocPhotoMatch !== '' && Number.isFinite(Number(rawLocPhotoMatch)) ? Number(rawLocPhotoMatch) : null;
             const sharedPhotoLink = isRequestRow ? '' : getSharedAppPhotoLinkCsv(item, { includePending: false });
             const rowPhotoName = (!isRequestRow && !sharedHidden) ? String(firstNonEmptyValue(item.ROW_PHOTO_NAME, item.row_photo_name, getSharedAppPhotoName(item), '') || '').trim() : '';
             const rowPhotoLink = (!isRequestRow && !sharedHidden)
@@ -53352,6 +53358,7 @@ function toggleDriveQuickRequestItem(domId) {
                 spec,
                 caliper,
                 photoLink,
+                locPhotoMatch,
                 sourceItem: item,
                 plantGroupCode: firstNonEmptyValue(item.PLANTGROUPCODE, item.plantgroupcode, ''),
                 contSize: firstNonEmptyValue(item.CONTSIZE, item.contsize, '')
@@ -53375,14 +53382,17 @@ function toggleDriveQuickRequestItem(domId) {
             const effectiveMatch = parseLocMatchPercent(firstNonEmptyValue(seed && seed.match, ''));
             const effectiveAvNote = String(firstNonEmptyValue(seed && seed.avNote, '')).trim();
             const effectiveCaliper = String(firstNonEmptyValue(seed && seed.caliper, '')).trim();
+            const effectiveSpec = String(firstNonEmptyValue(seed && seed.spec, '')).trim();
             const effectivePhotoLink = String(firstNonEmptyValue(seed && seed.photoLink, '')).trim();
+            const effectiveLocPhotoMatch = Number(firstNonEmptyValue(seed && seed.locPhotoMatch, ''));
             const effectiveSourceItem = (seed && (seed.sourceItem || seed.item)) || null;
             const effectivePlantGroup = String(firstNonEmptyValue(seed && seed.plantGroupCode, '')).trim();
             const effectiveContSize = String(firstNonEmptyValue(seed && seed.contSize, '')).trim();
             const needsCaliper = false;
             const requiresAvNote = effectiveSourceItem ? requiresAvNoteForCompletion(effectiveSourceItem) : true;
             if (effectiveMatch == null) return false;
-            if ((requiresAvNote && !effectiveAvNote) || !effectivePhotoLink) return false;
+            if ((requiresAvNote && !effectiveAvNote) || !effectivePhotoLink || !effectiveSpec) return false;
+            if (!Number.isFinite(effectiveLocPhotoMatch) || effectiveLocPhotoMatch <= 0) return false;
             if (needsCaliper && !effectiveCaliper) return false;
             return true;
         }
