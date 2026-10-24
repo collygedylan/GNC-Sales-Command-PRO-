@@ -108,7 +108,7 @@ test('Request and sync startup reads reject forged parameters and all mutations'
  assert.equal(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities',actorId:'forged'},[],[],{}),null);
  assert.deepEqual(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities'},[],[],{username:'dylan_collyge'}).data,{username:'dylan_collyge'});
  const runner=read('scripts/apply-item-low-stock-migration.mjs');
- assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName]'));
+ assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName]'));
  assert.ok(runner.includes('if (name === requestWorkSyncStatusMigrationName)'));
 });
 
@@ -145,7 +145,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.57'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'watchdog-hotfix-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.57'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.58'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'watchdog-hotfix-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.58'/);assert.match(sw,/cache: 'reload'/);
 });
 
 

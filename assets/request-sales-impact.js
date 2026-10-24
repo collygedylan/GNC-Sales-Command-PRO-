@@ -38,11 +38,21 @@ export function effectiveRequestQuantity(value) {
 }
 
 export function requestSalesImpactDedupKey(row = {}) {
-  const folder = normalized(firstValue(row, ['folder_id', 'request_folder', 'folderId', 'request_key', 'requestKey'], 'unknown-request'));
+  const explicitIdentity = text(firstValue(row, ['line_identity_key', 'lineIdentityKey'], ''));
+  if (explicitIdentity) return explicitIdentity;
+  const uniqueId = normalized(firstValue(row, ['unique_id', 'request_unique_id', 'master_unique_id'], ''));
+  if (uniqueId) return `uid:${uniqueId}`;
+  const folder = normalized(firstValue(row, ['folder_id', 'request_folder', 'folderId', 'request_key', 'requestKey'], ''));
   const itemcode = normalized(firstValue(row, ['itemcode', 'item_code'], ''));
   const locationcode = normalized(firstValue(row, ['locationcode', 'location_code'], ''));
   const lotcode = normalized(firstValue(row, ['lotcode', 'lot_code'], ''));
-  return [folder, itemcode, locationcode, lotcode].join('|');
+  const rowIndex = normalized(firstValue(row, ['row_index', 'rowIndex'], '1')) || '1';
+  if (folder) return [`folder:${folder}`, itemcode, locationcode, lotcode, `row:${rowIndex}`].join('|');
+  const sourceRowId = normalized(firstValue(row, ['source_row_id', 'sourceRowId'], ''));
+  const emailThreadId = normalized(firstValue(row, ['email_thread_id', 'gmail_thread_id', 'thread_id'], ''));
+  const requestDate = normalized(firstValue(row, ['request_date', 'requested_at', 'date', 'created_at'], ''));
+  return [`source:${sourceRowId || emailThreadId || requestDate || 'unknown'}`, `date:${requestDate}`,
+    itemcode, locationcode, lotcode, `row:${rowIndex}`].join('|');
 }
 
 function canonicalRequestLine(row = {}) {
@@ -54,9 +64,19 @@ function canonicalRequestLine(row = {}) {
     ? 'Completed' : 'Pending';
   const customerName = text(firstValue(row, ['customer_name', 'customername'], 'Unknown Customer')) || 'Unknown Customer';
   const consigneeName = text(firstValue(row, ['consignee_name', 'consigneename'], 'N/A')) || 'N/A';
+  const requestDate = text(firstValue(row, ['request_date', 'requested_at', 'date', 'created_at'], ''));
+  const sourceRowId = text(firstValue(row, ['source_row_id', 'sourceRowId'], ''));
+  const folderId = text(firstValue(row, ['folder_id', 'request_folder', 'request_key'], ''));
   return {
-    folder_id: text(firstValue(row, ['folder_id', 'request_folder', 'request_key'], 'Unknown Request')) || 'Unknown Request',
-    request_date: text(firstValue(row, ['request_date', 'requested_at', 'date', 'created_at'], '')),
+    line_identity_key: text(firstValue(row, ['line_identity_key', 'lineIdentityKey'], '')),
+    request_identity: text(firstValue(row, ['request_identity', 'requestIdentity'], '')) || folderId || sourceRowId || requestDate || 'Unknown Request',
+    unique_id: text(firstValue(row, ['unique_id', 'request_unique_id', 'master_unique_id'], '')),
+    folder_id: folderId || sourceRowId || 'Unknown Request',
+    source_row_id: sourceRowId,
+    source_row_ids: text(firstValue(row, ['source_row_ids', 'sourceRowIds'], sourceRowId)),
+    row_index: number(firstValue(row, ['row_index', 'rowIndex'], 1)) || 1,
+    email_thread_id: text(firstValue(row, ['email_thread_id', 'gmail_thread_id', 'thread_id'], '')),
+    request_date: requestDate,
     status,
     sales_rep: text(firstValue(row, ['sales_rep', 'primary_sales_rep', 'request_selected_rep_display'], 'Unassigned')) || 'Unassigned',
     customer_name: customerName,
@@ -71,6 +91,7 @@ function canonicalRequestLine(row = {}) {
     effective_qty: effectiveQuantity,
     is_default_qty: rawQuantity === null,
     list_price: listPrice,
+    price_source: text(firstValue(row, ['price_source', 'priceSource'], '')),
     line_dollar_value: money(effectiveQuantity * listPrice),
     source_tables: text(row.source_tables),
   };
@@ -89,8 +110,9 @@ function mergeCanonicalLines(current, candidate) {
     merged.is_default_qty = false;
   }
   if (!(current.list_price > 0) && candidate.list_price > 0) merged.list_price = candidate.list_price;
-  for (const key of ['folder_id', 'request_date', 'sales_rep', 'customer_name', 'consignee_name', 'customer_consignee_label',
-    'itemcode', 'commonname', 'contsize', 'lotcode', 'locationcode', 'source_tables']) {
+  for (const key of ['line_identity_key', 'request_identity', 'unique_id', 'folder_id', 'source_row_id', 'source_row_ids',
+    'email_thread_id', 'request_date', 'sales_rep', 'customer_name', 'consignee_name', 'customer_consignee_label',
+    'itemcode', 'commonname', 'contsize', 'lotcode', 'locationcode', 'price_source', 'source_tables']) {
     merged[key] = preferText(current[key], candidate[key]);
   }
   merged.line_dollar_value = money(merged.effective_qty * merged.list_price);
@@ -122,7 +144,7 @@ export function aggregateRequestSalesImpactLines(rows = []) {
     default_25_qty_line_count: 0,
   };
   for (const item of lineItems) {
-    requestKeys.add(normalized(item.folder_id));
+    requestKeys.add(normalized(item.request_identity));
     summary.total_dollar_value += item.line_dollar_value;
     summary.total_units_requested += item.effective_qty;
     summary[item.status === 'Completed' ? 'completed_dollar_value' : 'pending_dollar_value'] += item.line_dollar_value;
@@ -141,7 +163,7 @@ export function aggregateRequestSalesImpactLines(rows = []) {
     };
     rep.total_dollar_value += item.line_dollar_value;
     rep[item.status === 'Completed' ? 'completed_dollar_value' : 'pending_dollar_value'] += item.line_dollar_value;
-    rep.requestKeys.add(normalized(item.folder_id));
+    rep.requestKeys.add(normalized(item.request_identity));
     rep.line_item_count += 1;
     rep.total_units += item.effective_qty;
     rep.customerKeys.add(`${normalized(item.customer_name)}|${normalized(item.consignee_name)}`);
@@ -164,7 +186,7 @@ export function aggregateRequestSalesImpactLines(rows = []) {
     };
     customer.total_dollar_value += item.line_dollar_value;
     customer[item.status === 'Completed' ? 'completed_dollar_value' : 'pending_dollar_value'] += item.line_dollar_value;
-    customer.requestKeys.add(normalized(item.folder_id));
+    customer.requestKeys.add(normalized(item.request_identity));
     customer.line_item_count += 1;
     customer.total_units += item.effective_qty;
     customer.items.push(item);
@@ -217,10 +239,12 @@ export function normalizeRequestSalesImpactResponse(response = {}) {
     sales_rep: firstValue(item, ['sales_rep'], firstValue(group, ['sales_rep', 'primary_sales_rep'], 'Unassigned')),
   })));
   const lineItems = Array.isArray(payload.line_items) && payload.line_items.length ? payload.line_items : nestedLines;
+  const sourceTableAudit = payload.source_table_audit || payload.source_audit || {};
   return {
     visible: payload.visible !== false,
     enabled: payload.enabled !== false,
-    source_audit: payload.source_audit || {},
+    source_table_audit: sourceTableAudit,
+    source_audit: sourceTableAudit,
     canonical: aggregateRequestSalesImpactLines(lineItems),
   };
 }
@@ -333,6 +357,13 @@ function renderKpis(summary) {
   </div>`;
 }
 
+function renderSourceAudit(audit = {}, summary = {}) {
+  const tables = Array.isArray(audit.tables) ? audit.tables : [];
+  const rows = tables.map(row => `<tr><td><strong>${escapeHtml(`${row.schema_name || 'public'}.${row.table_name || ''}`)}</strong><small>${escapeHtml(row.note || '')}</small></td><td>${row.total_raw_rows === null || row.total_raw_rows === undefined ? 'Not present' : numberFormatter.format(number(row.total_raw_rows))}</td><td>${numberFormatter.format(number(row.request_related_rows))}</td><td>${numberFormatter.format(number(row.extracted_line_items))}</td><td>${numberFormatter.format(number(row.duplicate_rows_merged))}</td></tr>`).join('');
+  const revision = audit.revision_46957 || {};
+  return `<details class="request-impact-audit"><summary><span><i class="ph-bold ph-database"></i><strong>Source Table & Row Audit</strong></span><small>${numberFormatter.format(number(audit.final_deduplicated_line_items ?? summary.total_line_items))} final lines · ${currencyFormatter.format(number(audit.grand_total_dollar_impact ?? summary.total_dollar_value))}</small></summary><div class="request-impact-audit-body"><div class="request-impact-audit-totals"><span><strong>${numberFormatter.format(number(audit.total_extracted_line_items))}</strong> extracted</span><span><strong>${numberFormatter.format(number(audit.duplicate_source_rows_merged))}</strong> duplicate source rows merged</span><span><strong>${numberFormatter.format(number(audit.duplicate_submitted_completed_pairs_merged))}</strong> submitted/completed pairs</span><span><strong>${numberFormatter.format(number(audit.final_deduplicated_line_items ?? summary.total_line_items))}</strong> deduplicated lines</span></div><div class="request-impact-audit-table-wrap"><table><thead><tr><th>Source table</th><th>Raw rows</th><th>Request rows</th><th>Extracted lines</th><th>Duplicates</th></tr></thead><tbody>${rows}</tbody></table></div><p><strong>Revision 46,957:</strong> ${escapeHtml(revision.relationship || 'A dataset revision marker, not a request row count.')} Current matches: ${numberFormatter.format(number(revision.matching_current_rows))}; current maximum revision: ${numberFormatter.format(number(revision.current_max_revision))}.</p></div></details>`;
+}
+
 function renderSalesRepRows(model) {
   const rows = model.by_sales_rep.slice(0, dashboardState.visibleLimits['sales-rep']);
   const cards = rows.map((row, index) => `<button type="button" class="request-impact-rank-card" data-impact-action="select-rep" data-impact-value="${escapeHtml(row.sales_rep)}">
@@ -388,6 +419,7 @@ function renderDashboard() {
   host.innerHTML = `<section class="request-impact-shell">
     <header class="request-impact-hero"><div><span>Private Executive Analytics Â· Dylan Collyge Only</span><h1>Request Sales Impact ($)</h1><p>Deduplicated active, completed, historical, and delivery evidence using populated Qty or default 25 Ã— List Price.</p></div><div class="request-impact-hero-actions"><button type="button" data-impact-action="refresh" ${dashboardState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise"></i>${dashboardState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" data-impact-action="export"><i class="ph-bold ph-download-simple"></i>Export Excel / CSV</button></div></header>
     ${dashboardState.error ? `<div class="request-impact-retained" role="status">Showing retained same-account results. ${escapeHtml(dashboardState.error)}</div>` : ''}
+    ${renderSourceAudit(dashboardState.payload.source_table_audit, model.summary)}
     ${renderKpis(model.summary)}
     <div class="request-impact-controls"><label class="request-impact-search"><span>Search</span><input id="request-impact-search" type="search" value="${escapeHtml(dashboardState.filters.search)}" placeholder="Sales rep, customer, consignee, plant, item code" data-impact-filter="search"></label><label><span>Status</span><select data-impact-filter="status"><option${dashboardState.filters.status === 'All' ? ' selected' : ''}>All</option><option${dashboardState.filters.status === 'Completed' ? ' selected' : ''}>Completed</option><option${dashboardState.filters.status === 'Pending' ? ' selected' : ''}>Pending</option></select></label><label><span>From</span><input type="date" value="${escapeHtml(dashboardState.filters.dateStart)}" data-impact-filter="dateStart"></label><label><span>Through</span><input type="date" value="${escapeHtml(dashboardState.filters.dateEnd)}" data-impact-filter="dateEnd"></label>${selectedRep ? `<button type="button" class="request-impact-selected-rep" data-impact-action="clear-rep"><span>Sales Rep</span><strong>${escapeHtml(selectedRep)}</strong><i class="ph-bold ph-x"></i></button>` : ''}<button type="button" class="request-impact-clear" data-impact-action="clear-filters">Clear Filters</button></div>
     <nav class="request-impact-tabs" aria-label="Request impact breakdown"><button type="button" class="${activeTab === 'sales-rep' ? 'active' : ''}" data-impact-action="tab" data-impact-value="sales-rep">By Sales Rep ($)</button><button type="button" class="${activeTab === 'customer' ? 'active' : ''}" data-impact-action="tab" data-impact-value="customer">By Customer / Consignee ($)</button><button type="button" class="${activeTab === 'items' ? 'active' : ''}" data-impact-action="tab" data-impact-value="items">All Request Line Items</button></nav>

@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -183,7 +183,7 @@ test('location evidence lifecycle is release-registered with exact depletion and
 
 test('Request Sales Impact RPC is release-registered and service-role-only', () => {
   assert.equal(requestSalesImpactMigrationName, '20261023235900_request_sales_impact_v1.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), requestSalesImpactMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(requestSalesImpactMigrationName) < releaseDatabaseMigrations.indexOf(requestSalesImpactV2MigrationName));
   const sql = fs.readFileSync(new URL(`../supabase/migrations/${requestSalesImpactMigrationName}`, import.meta.url), 'utf8');
   for (const marker of ['get_request_sales_impact_v1', 'ph_request_history', 'ph_request_delivery_outbox',
     'coalesce(d.raw_qty,25::numeric)', 'request_key_norm,dedupe_item_key,location_key,lot_key']) assert.ok(sql.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
@@ -191,6 +191,20 @@ test('Request Sales Impact RPC is release-registered and service-role-only', () 
   assert.match(sql, /grant execute on function public\.get_request_sales_impact_v1\(\) to service_role/);
   const contract = migrationContractQuery(requestSalesImpactMigrationName);
   for (const marker of ['get_request_sales_impact_v1', 'ph_request_history', 'ph_request_delivery_outbox', 'service_role']) assert.ok(contract.includes(marker), marker);
+});
+
+test('Request Sales Impact v2 audits full tables and preserves physical request rows', () => {
+  assert.equal(requestSalesImpactV2MigrationName, '20261024010000_request_sales_impact_v2.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1), requestSalesImpactV2MigrationName);
+  const sql = fs.readFileSync(new URL(`../supabase/migrations/${requestSalesImpactV2MigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['get_request_sales_impact_v2', "set statement_timeout='60s'", 'jsonb_array_elements',
+    'with ordinality', "regexp_matches(event.html,'<tr[^>]*>(.*?)</tr>','gis')", 'line_identity_key',
+    'catalog_by_size', 'source_table_audit', 'duplicate_submitted_completed_pairs_merged']) assert.ok(sql.toLowerCase().includes(marker.toLowerCase()), marker);
+  assert.doesNotMatch(sql, /\blimit\b/i);
+  assert.match(sql, /revoke all on function public\.get_request_sales_impact_v2\(\) from public,anon,authenticated/);
+  assert.match(sql, /grant execute on function public\.get_request_sales_impact_v2\(\) to service_role/);
+  const contract = migrationContractQuery(requestSalesImpactV2MigrationName);
+  for (const marker of ['get_request_sales_impact_v2', 'statement_timeout=60s', 'line_identity_key', 'source_table_audit', 'service_role']) assert.ok(contract.includes(marker), marker);
 });
 
 test('mapping publication is release-registered and protects raw source data and writes', () => {

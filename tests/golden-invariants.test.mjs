@@ -439,7 +439,7 @@ test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
   assert.match(runner, /requestQuantityRecoveryMigrationName[^]*20261023234500_request_quantity_recovery_v3\.sql/);
 });
 
-test('Invariant 20 (Dylan-Only Request Sales Dollar Impact)', async () => {
+test('Invariant 20 (Dylan-Only Full-Table Request Sales Dollar Impact)', async () => {
   const impact = await import(new URL('../assets/request-sales-impact.js', import.meta.url));
   const rows = [
     { folder_id: 'REQ-A', itemcode: 'ITEM-1', locationcode: 'A.01', lotcode: 'L1', qty: 10, list_price: 100,
@@ -463,20 +463,51 @@ test('Invariant 20 (Dylan-Only Request Sales Dollar Impact)', async () => {
   assert.equal(result.by_customer_consignee[0].items.find(item => item.itemcode === 'ITEM-1').line_dollar_value, 1000);
   assert.equal(result.by_customer_consignee[0].items.find(item => item.itemcode === 'ITEM-2').line_dollar_value, 218.75);
 
-  const migration = read('supabase/migrations/20261023235900_request_sales_impact_v1.sql');
+  const preserved = impact.aggregateRequestSalesImpactLines([
+    { unique_id: 'UID-SHARED', source_row_id: 'ph_request_history:1', folder_id: 'REQ-SAME', itemcode: 'ITEM-3',
+      locationcode: 'C.01', lotcode: 'L3', row_index: 1, qty: 2, list_price: 10, status: 'Pending' },
+    { unique_id: 'UID-SHARED', source_row_id: 'ph_active_request:9', folder_id: 'REQ-SAME', itemcode: 'ITEM-3',
+      locationcode: 'C.01', lotcode: 'L3', row_index: 1, qty: 2, list_price: 10, status: 'Completed' },
+    { unique_id: 'UID-SEPARATE', source_row_id: 'ph_request_history:2', folder_id: 'REQ-SAME', itemcode: 'ITEM-3',
+      locationcode: 'C.01', lotcode: 'L3', row_index: 1, qty: 3, list_price: 10, status: 'Completed' },
+    { source_row_id: 'ph_request_history:3', folder_id: '', request_date: '2026-01-01', itemcode: 'ITEM-4',
+      locationcode: '', lotcode: '', row_index: 1, qty: 1, list_price: 5, status: 'Completed' },
+    { source_row_id: 'ph_request_history:4', folder_id: '', request_date: '2026-02-01', itemcode: 'ITEM-4',
+      locationcode: '', lotcode: '', row_index: 1, qty: 1, list_price: 5, status: 'Completed' },
+    { folder_id: 'REQ-MULTI', itemcode: 'ITEM-5', locationcode: 'D.01', lotcode: 'L5', row_index: 1,
+      qty: 1, list_price: 7, status: 'Pending' },
+    { folder_id: 'REQ-MULTI', itemcode: 'ITEM-5', locationcode: 'D.01', lotcode: 'L5', row_index: 1,
+      qty: 1, list_price: 7, status: 'Completed' },
+    { folder_id: 'REQ-MULTI', itemcode: 'ITEM-5', locationcode: 'D.01', lotcode: 'L5', row_index: 2,
+      qty: 1, list_price: 7, status: 'Completed' },
+  ]);
+  assert.equal(preserved.summary.total_line_items, 6);
+  assert.equal(preserved.line_items.filter(item => item.folder_id === 'REQ-SAME').length, 2);
+  assert.equal(preserved.line_items.filter(item => item.folder_id.startsWith('ph_request_history:')).length, 2);
+  assert.equal(preserved.line_items.filter(item => item.folder_id === 'REQ-MULTI').length, 2);
+  assert.equal(preserved.line_items.find(item => item.unique_id === 'UID-SHARED').status, 'Completed');
+
+  const migration = read('supabase/migrations/20261024010000_request_sales_impact_v2.sql');
   const api = functionSource('supabase/functions/app-api/index.ts', 'handleRequestSalesImpactAction');
   const databaseTypes = read('supabase/functions/_shared/database.types.ts');
   const databaseContracts = read('services/database-contracts.generated.ts');
   const runtime = read('assets/app-runtime.js');
+  const moduleSource = read('assets/request-sales-impact.js');
   for (const marker of ['ph_active_request', 'ph_request_history', 'ph_request_delivery_outbox',
-    'request_key_norm,dedupe_item_key,location_key,lot_key', 'coalesce(d.raw_qty,25::numeric)',
-    'ph_master_inventory', 'ph_view_av_hot_price', 'ph_cav_import']) assert.ok(migration.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
-  assert.match(migration, /revoke all on function public\.get_request_sales_impact_v1\(\) from public,anon,authenticated/);
-  assert.match(migration, /grant execute on function public\.get_request_sales_impact_v1\(\) to service_role/);
+    'jsonb_array_elements', 'with ordinality', "regexp_matches(event.html,'<tr[^>]*>(.*?)</tr>','gis')",
+    'line_identity_key', 'source_row_id', 'request_date', 'catalog_by_size', 'source_table_audit',
+    'duplicate_submitted_completed_pairs_merged', 'ph_master_inventory', 'ph_view_av_hot_price', 'ph_cav_import']) assert.ok(migration.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
+  assert.match(migration, /set statement_timeout='60s'/);
+  assert.doesNotMatch(migration, /\blimit\b/i);
+  assert.doesNotMatch(migration, /\.select\s*\(/);
+  assert.match(migration, /revoke all on function public\.get_request_sales_impact_v2\(\) from public,anon,authenticated/);
+  assert.match(migration, /grant execute on function public\.get_request_sales_impact_v2\(\) to service_role/);
   assert.match(api, /username\s*!==\s*"dylan_collyge"[^]*enabled:\s*false[^]*visible:\s*false[^]*rows:\s*\[\]/);
-  assert.match(api, /supabase\.rpc\("get_request_sales_impact_v1"\)/);
-  assert.match(databaseTypes, /get_request_sales_impact_v1:\s*\{ Args: never; Returns: Json \}/);
-  assert.match(databaseContracts, /"get_request_sales_impact_v1":\s*\{[^]*?"json"/);
+  assert.match(api, /supabase\.rpc\("get_request_sales_impact_v2"\)/);
+  assert.match(databaseTypes, /get_request_sales_impact_v2:\s*\{ Args: never; Returns: Json \}/);
+  assert.match(databaseContracts, /"get_request_sales_impact_v2":\s*\{[^]*?"json"/);
+  assert.match(moduleSource, /Source Table & Row Audit/);
+  assert.match(moduleSource, /payload\.source_table_audit \|\| payload\.source_audit/);
   assert.match(runtime, /function isRequestSalesImpactOwner\(\)[^]*dylan_collyge/);
   assert.match(runtime, /document\.getElementById\('view-request-sales-impact'\)\?\.remove\(\)/);
   assert.doesNotMatch(read('index.html'), /id="view-request-sales-impact"|drawer-request-sales-impact-btn/);

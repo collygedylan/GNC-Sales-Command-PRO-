@@ -2374,7 +2374,7 @@ async function handleRequestSalesImpactAction(
   if (username !== "dylan_collyge") {
     return jsonResponse({ ok: true, enabled: false, visible: false, rows: [] });
   }
-  const { data, error } = await supabase.rpc("get_request_sales_impact_v1");
+  const { data, error } = await supabase.rpc("get_request_sales_impact_v2");
   if (error) {
     return jsonResponse({
       ok: false,
