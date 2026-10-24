@@ -2385,7 +2385,20 @@ async function handleRequestSalesImpactAction(
       code: "REQUEST_SALES_IMPACT_UNAVAILABLE",
     });
   }
-  return jsonResponse({ ok: true, enabled: true, visible: true, ...jsonObject(data) });
+  const result = jsonObject(data);
+  const sourceAudit = jsonObject(result.source_table_audit || result.source_audit);
+  const dedupeContract = String(result.dedupe_contract || sourceAudit.dedupe_contract || "");
+  if (dedupeContract !== "strict_9_field_cross_table_v1") {
+    return jsonResponse({
+      ok: false,
+      enabled: true,
+      visible: true,
+      retained: true,
+      retryable: true,
+      code: "REQUEST_SALES_IMPACT_CONTRACT_STALE",
+    });
+  }
+  return jsonResponse({ ok: true, enabled: true, visible: true, ...result });
 }
 
 async function handleSeasonSalesOfficeAction(

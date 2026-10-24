@@ -487,7 +487,7 @@ test('Invariant 20 (Dylan-Only Full-Table Request Sales Dollar Impact)', async (
   assert.equal(preserved.line_items.filter(item => item.folder_id === 'REQ-MULTI').length, 2);
   assert.equal(preserved.line_items.find(item => item.unique_id === 'UID-SHARED').status, 'Completed');
 
-  const migration = read('supabase/migrations/20261024010000_request_sales_impact_v2.sql');
+  const migration = read('supabase/migrations/20261024023000_request_sales_impact_strict_dedupe_v3.sql');
   const api = functionSource('supabase/functions/app-api/index.ts', 'handleRequestSalesImpactAction');
   const databaseTypes = read('supabase/functions/_shared/database.types.ts');
   const databaseContracts = read('services/database-contracts.generated.ts');
@@ -495,8 +495,10 @@ test('Invariant 20 (Dylan-Only Full-Table Request Sales Dollar Impact)', async (
   const moduleSource = read('assets/request-sales-impact.js');
   for (const marker of ['ph_active_request', 'ph_request_history', 'ph_request_delivery_outbox',
     'jsonb_array_elements', 'with ordinality', "regexp_matches(event.html,'<tr[^>]*>(.*?)</tr>','gis')",
-    'line_identity_key', 'source_row_id', 'request_date', 'catalog_by_size', 'source_table_audit',
-    'duplicate_submitted_completed_pairs_merged', 'ph_master_inventory', 'ph_view_av_hot_price', 'ph_cav_import']) assert.ok(migration.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
+    'line_identity_key', 'source_row_id', 'request_day', 'catalog_by_size', 'source_table_audit',
+    'strict_9_field_cross_table_v1', 'strict_business_key', 'source_copy_ordinal',
+    'exact_9_field_cross_table_mirrors_merged', 'outbox_event_types', 'ph_request_email_threads',
+    'ph_master_inventory', 'ph_view_av_hot_price', 'ph_cav_import']) assert.ok(migration.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
   assert.match(migration, /set statement_timeout='60s'/);
   assert.doesNotMatch(migration, /\blimit\b/i);
   assert.doesNotMatch(migration, /\.select\s*\(/);
@@ -508,7 +510,34 @@ test('Invariant 20 (Dylan-Only Full-Table Request Sales Dollar Impact)', async (
   assert.match(databaseContracts, /"get_request_sales_impact_v2":\s*\{[^]*?"json"/);
   assert.match(moduleSource, /Source Table & Row Audit/);
   assert.match(moduleSource, /payload\.source_table_audit \|\| payload\.source_audit/);
+  assert.match(moduleSource, /exact 9-field mirrors merged/);
+  assert.match(api, /REQUEST_SALES_IMPACT_CONTRACT_STALE/);
   assert.match(runtime, /function isRequestSalesImpactOwner\(\)[^]*dylan_collyge/);
   assert.match(runtime, /document\.getElementById\('view-request-sales-impact'\)\?\.remove\(\)/);
   assert.doesNotMatch(read('index.html'), /id="view-request-sales-impact"|drawer-request-sales-impact-btn/);
+});
+
+test('Invariant 21 (Strict Nine-Field Cross-Table Request Deduplication)', async () => {
+  const impact = await import(new URL('../assets/request-sales-impact.js', import.meta.url));
+  const shared = {
+    unique_id: 'STRICT-SHARED', folder_id: 'REQ-SHARED', itemcode: 'ITEM-9', contsize: '#5',
+    locationcode: 'Z.09', lotcode: 'LOT-9', request_date: '2026-10-20T15:00:00Z',
+    sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One', qty: 2, list_price: 10,
+  };
+  const result = impact.aggregateRequestSalesImpactLines([
+    { ...shared, source_row_id: 'ph_request_history:1', status: 'Completed' },
+    { ...shared, source_row_id: 'ph_active_request:1', status: 'Pending' },
+    { ...shared, source_row_id: 'ph_request_history:2', status: 'Completed' },
+    { ...shared, source_row_id: 'ph_request_history:3', request_date: '2026-10-21T15:00:00Z' },
+    { ...shared, source_row_id: 'ph_request_history:4', sales_rep: 'Rep Two' },
+    { ...shared, source_row_id: 'ph_request_history:5', customer_name: 'Customer Two' },
+    { ...shared, source_row_id: 'ph_request_history:6', consignee_name: 'Consignee Two' },
+    { ...shared, source_row_id: 'ph_request_history:7', qty: 3 },
+  ]);
+  assert.equal(result.summary.total_line_items, 7);
+  assert.equal(result.summary.total_dollar_value, 150);
+  assert.equal(result.line_items.filter(row => row.source_row_id === 'ph_request_history:1').length, 1);
+  assert.equal(result.line_items.some(row => row.sales_rep === 'Rep Two'), true);
+  assert.equal(result.line_items.some(row => row.customer_name === 'Customer Two'), true);
+  assert.equal(result.line_items.some(row => row.consignee_name === 'Consignee Two'), true);
 });

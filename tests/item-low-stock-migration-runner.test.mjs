@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -195,7 +195,7 @@ test('Request Sales Impact RPC is release-registered and service-role-only', () 
 
 test('Request Sales Impact v2 audits full tables and preserves physical request rows', () => {
   assert.equal(requestSalesImpactV2MigrationName, '20261024010000_request_sales_impact_v2.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1), requestSalesImpactV2MigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(requestSalesImpactV2MigrationName) < releaseDatabaseMigrations.indexOf(requestSalesImpactStrictDedupeMigrationName));
   const sql = fs.readFileSync(new URL(`../supabase/migrations/${requestSalesImpactV2MigrationName}`, import.meta.url), 'utf8');
   for (const marker of ['get_request_sales_impact_v2', "set statement_timeout='60s'", 'jsonb_array_elements',
     'with ordinality', "regexp_matches(event.html,'<tr[^>]*>(.*?)</tr>','gis')", 'line_identity_key',
@@ -205,6 +205,18 @@ test('Request Sales Impact v2 audits full tables and preserves physical request 
   assert.match(sql, /grant execute on function public\.get_request_sales_impact_v2\(\) to service_role/);
   const contract = migrationContractQuery(requestSalesImpactV2MigrationName);
   for (const marker of ['get_request_sales_impact_v2', 'statement_timeout=60s', 'line_identity_key', 'source_table_audit', 'service_role']) assert.ok(contract.includes(marker), marker);
+
+  assert.equal(requestSalesImpactStrictDedupeMigrationName, '20261024023000_request_sales_impact_strict_dedupe_v3.sql');
+  assert.equal(releaseDatabaseMigrations.at(-1), requestSalesImpactStrictDedupeMigrationName);
+  const strictSql = fs.readFileSync(new URL(`../supabase/migrations/${requestSalesImpactStrictDedupeMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['strict_9_field_cross_table_v1', 'strict_business_key', 'source_copy_ordinal',
+    'exact_9_field_cross_table_mirrors_merged', 'outbox_event_types', 'previous_v2_merge_audit',
+    'ph_request_email_threads']) assert.ok(strictSql.includes(marker), marker);
+  assert.doesNotMatch(strictSql, /\blimit\b/i);
+  assert.match(strictSql, /revoke all on function public\.get_request_sales_impact_v2\(\) from public,anon,authenticated/);
+  const strictContract = migrationContractQuery(requestSalesImpactStrictDedupeMigrationName);
+  for (const marker of ['strict_9_field_cross_table_v1', 'strict_business_key', 'source_copy_ordinal',
+    'outbox_event_types', 'previous_v2_merge_audit', 'service_role']) assert.ok(strictContract.includes(marker), marker);
 });
 
 test('mapping publication is release-registered and protects raw source data and writes', () => {
