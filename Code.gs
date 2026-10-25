@@ -13044,7 +13044,7 @@ function fetchRequestRowsForEmailFolder_(folderId) {
   if (!safeFolderId) return [];
   const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-    const requestTableNames = ['ph_requests_pending'];
+  const requestTableNames = ['ph_requests_pending'];
   const loadRows = function(selectFields, requestTableName) {
     const url = `${SUPABASE_URL}/rest/v1/${requestTableName}?select=${selectFields}&request_folder=eq.${encodeURIComponent(safeFolderId)}`;
     const result = UrlFetchApp.fetch(url, {
@@ -13129,7 +13129,7 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
   if (!safeIds.length) return [];
   const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-    const requestTableNames = ['ph_requests_pending'];
+  const requestTableNames = ['ph_requests_pending'];
   const buildInFilter = function(ids) {
     return ids.map(function(id) {
       return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
