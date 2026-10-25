@@ -56,7 +56,7 @@ export async function collectRecoveryDiagnostics({ fetchImpl = fetch, db, appOri
         lastSuccessfulImport: lastSuccess || null, migrationCount: versions.length, migrationDigest: migrationDigest(versions) };
     } finally { await db.query('ROLLBACK'); }
   })];
-  for (const [name, table, key] of [['Drive', 'ph_master_inventory', 'unique_id'], ['Requests', 'ph_active_request', 'id'], ['AV', 'ph_cav_import', 'unique_id']]) {
+  for (const [name, table, key] of [['Drive', 'ph_master_inventory', 'unique_id'], ['Requests', 'ph_requests_pending', 'id'], ['AV', 'ph_cav_import', 'unique_id']]) {
     jobs.push(check(`api${name}`, async () => {
       if (!supabaseUrl || !serviceKey) throw Object.assign(new Error(), { code: 'CONFIGURATION_MISSING' });
       const rows = await json(`${supabaseUrl.replace(/\/$/, '')}/rest/v1/${table}?select=${key}&limit=1`, {

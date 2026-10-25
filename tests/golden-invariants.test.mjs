@@ -146,6 +146,15 @@ test('Invariant 3 (Exact Two-Trigger Season Evidence Lifecycle)', () => {
   assert.match(migration, /time '23:59:59'/);
   assert.match(migration, /greatest\(0,p_initial_photo_match_qty-greatest\(0,p_baseline_on_hand-p_current_on_hand\)\)/);
   assert.match(migration, /spec=null,match=null,loc_match_qty=null,av_note=null,pic_note=null,sales_note=null/);
+  const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
+  for (const field of ['photos', 'photo_url', 'photo_date', 'loc_match_pct', 'baseline_on_hand',
+    'initial_photo_match_qty', 'loc_photo_match', 'pick_note', 'photo_expires_at']) {
+    assert.match(canonicalMigration, new RegExp(`add column if not exists ${field}\\b`));
+  }
+  for (const field of ['spec', 'caliper', 'av_note', 'sales_note']) assert.match(canonicalMigration, new RegExp(`new\\.${field}:=`));
+  assert.match(canonicalMigration, /round\(canonical_baseline\*canonical_match\/100\.0\)/);
+  assert.match(canonicalMigration, /inventory_location_evidence_qty_v2\([^]*canonical_baseline,canonical_initial,current_on_hand/);
+  assert.match(canonicalMigration, /clock_timestamp\(\)<=canonical_expiry/);
 });
 
 test('Invariant 4 (Multi-Row Location Photo Upload & Retry)', async () => {
@@ -287,7 +296,30 @@ test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () 
   assert.match(surgicalMigration, /ph_active_request_retirement_v2361[^]*delete from public\.ph_active_request/);
   assert.doesNotMatch(surgicalMigration.slice(surgicalMigration.indexOf('create or replace function private.recover_unfulfilled_requests_v1'), surgicalMigration.indexOf('create or replace function public.reconcile_active_requests_from_outbox_v1')), /history_without_evidence|history_recovery/);
   assert.match(surgicalMigration, /information_schema\.tables[^]*table_schema = 'archive_backup'[^]*alter table archive_backup/);
-  assert.match(functionSource('assets/app-runtime.js', 'setReqTab'), /preferImmediate:\s*true[^]*interactiveCritical:\s*true/);
+  const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
+  const cleanupMigration = read('supabase/migrations/20261025014500_agdata_v2362_remove_legacy_request_objects.sql');
+  assert.match(canonicalMigration, /alter table public\.ph_active_request rename to ph_requests_pending/);
+  assert.match(canonicalMigration, /alter table public\.ph_request_history rename to ph_requests_completed_history/);
+  assert.match(canonicalMigration, /update public\.ph_requests_completed_history history set[^]*canonical_migration_reason','pending-history-overlap-v2362'[^]*from public\.ph_requests_pending pending/);
+  assert.match(canonicalMigration, /replace\(definition,'public\.ph_request_history','public\.ph_requests_completed_history'\)/);
+  assert.match(canonicalMigration, /recipient_emails jsonb not null default '\[\]'::jsonb/);
+  for (const field of ['status', 'request_qty', 'effective_qty', 'is_default_qty', 'line_dollar_value',
+    'request_spec', 'request_caliper', 'flag_color', 'ns_grade', 'ld_flag', 'hold_stop_since']) {
+    assert.match(canonicalMigration, new RegExp(`add column if not exists ${field}\\b`));
+  }
+  assert.match(canonicalMigration, /set local session_replication_role='replica'[^]*set local session_replication_role='origin'/);
+  assert.match(cleanupMigration, /drop view if exists public\.ph_request_queue_live_rows/);
+  assert.match(cleanupMigration, /drop table if exists public\.ph_request_sales_impact_ledger cascade/);
+  assert.match(cleanupMigration, /private\.ph_request_folder_delivery_state/);
+  assert.match(cleanupMigration, /LEGACY_REQUEST_FUNCTION_REFERENCE_REMAINED/);
+  const submitSource = functionSource('assets/app-runtime.js', 'finalizeRequestAction');
+  for (const field of ['recipient_emails', 'request_qty', 'effective_qty', 'is_default_qty', 'line_dollar_value',
+    'request_spec', 'request_caliper', 'flag_color', 'ns_grade', 'ld_flag', 'hold_stop_since']) {
+    assert.match(submitSource, new RegExp(`${field}:`));
+  }
+  const tabSource = functionSource('assets/app-runtime.js', 'setReqTab');
+  assert.match(tabSource, /activeReqTab = nextTab;[^]*renderViewContent\('request', false, true\);[^]*runDirectTrackedNavigation/);
+  assert.match(tabSource, /preferImmediate:\s*true[^]*interactiveCritical:\s*true/);
   assert.match(functionSource('assets/app-runtime.js', 'renderRequest'), /request_queue_row_render_failed[^]*renderRequestQueueFallbackCard/);
   assert.match(functionSource('assets/app-runtime.js', 'isReadyRequestDataForAutoComplete'), /effectiveSpec[^]*effectiveLocPhotoMatch[^]*<= 0/);
   assert.match(functionSource('assets/app-runtime.js', 'isPhotoDateMsExpired'), /getDate\(\) \+ retentionDays \+ 1/);
@@ -313,6 +345,11 @@ test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () =>
   assert.equal(groups[0].system_on_hand, 10);
   assert.deepEqual(groups[0].lines.map(line => [line.lotcode, line.on_hand, line.available, line.review]), [['27.S1', 5, 4, 1], ['27.U1', 5, 3, 2]]);
   assert.match(functionSource('Code.gs', 'handleSignedReclassRecountCompletion_'), /On Hand[^]*Available[^]*Review[^]*countedTotal/);
+  const surgicalMigration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
+  const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
+  assert.match(surgicalMigration, /ph_reclass_recount_jobs_pending_item_location_v2361_idx/);
+  assert.match(surgicalMigration, /RECOUNT_NAME_UNRESOLVED/);
+  assert.doesNotMatch(canonicalMigration, /drop table[^;]*ph_reclass_recount_jobs/i);
 });
 
 test('Invariant 10 (Reclass Move Up / Move Down Season-Wide Open Stock & Loc Photo Match Math)', () => {
@@ -454,6 +491,7 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
 test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   const api = read('supabase/functions/app-api/index.ts');
   const migration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
+  const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
   const runtime = read('assets/app-runtime.js');
   assert.match(api, /Promise\.resolve\(supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)\)[^]*runtime\.waitUntil\(reconciliationTask\)/);
   assert.doesNotMatch(api, /await supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)/);
@@ -461,7 +499,8 @@ test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   assert.match(migration, /jsonb_array_elements[^]*insert into public\.ph_active_request/);
   assert.match(migration, /request_source[^]*customeridentityid[^]*consigneeidentityid/);
   assert.match(migration, /perform private\.upsert_request_history[^]*pending_recovered/);
-  assert.match(runtime, /fetchActiveRequestLiveRows:requestQueue[^]*fetchActiveRequestLiveRows:activeRequest/);
+  assert.match(runtime, /fetchAllSupabaseRows\(ACTIVE_REQUEST_TABLE, query, readOptions\)/);
+  assert.match(runtime, /fetchActiveRequestLiveRows:canonicalPending/);
   assert.match(runtime, /homeSyncMetadata:\$\{table\}[^]*retained:\s*true/);
   assert.match(runtime, /\['DRIVE', 'CAV', 'RESERVES', 'SOC'\]\.map/);
   assert.match(runtime, /\['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import'\]/);
@@ -470,6 +509,10 @@ test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   assert.match(runtime, /clearPersistedManualSyncStartupState\(\)[^]*manualSyncStatusState = null/);
   assert.match(api, /currentStage:"idle"[^]*message:"Connected • ready"/);
   assert.match(migration, /stageIndex',0[^]*currentStage','idle'/);
+  assert.match(canonicalMigration, /table_schema='archive_backup'[^]*alter table archive_backup/);
+  assert.match(canonicalMigration, /MANUAL_SYNC_NOT_IDLE/);
+  assert.match(canonicalMigration, /when 'drive' then array\['public\.ph_master_inventory'\]/);
+  assert.match(canonicalMigration, /when 'request' then array\['public\.ph_requests_pending'\]/);
 });
 
 test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => {
@@ -535,17 +578,25 @@ test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', asyn
   assert.equal(result.by_sales_rep[0].total_dollar_value, 2437.5);
   assert.equal(result.by_customer_consignee[0].items.find(item => item.itemcode === 'ITEM-1').line_dollar_value, 1000);
   assert.equal(result.by_customer_consignee[0].items.find(item => item.itemcode === 'ITEM-2').line_dollar_value, 218.75);
+  const billyBobs = impact.aggregateRequestSalesImpactLines([
+    { unique_id: 'BILLY-1', source_row_id: 'ph_requests_completed_history:BILLY-1', folder_id: 'Billy Bobs',
+      sales_rep: 'Sammy Cult', itemcode: '001723.030.1', qty: 35, list_price: 3, status: 'Completed' },
+    { unique_id: 'BILLY-2', source_row_id: 'ph_requests_completed_history:BILLY-2', folder_id: 'Billy Bobs',
+      sales_rep: 'Sammy Cult', itemcode: '009372.010.1', qty: null, list_price: 2, status: 'Completed' },
+  ]);
+  assert.equal(billyBobs.summary.total_dollar_value, 155);
+  assert.deepEqual(billyBobs.line_items.map(item => item.effective_qty), [35, 25]);
 
   const preserved = impact.aggregateRequestSalesImpactLines([
-    { unique_id: 'UID-SHARED', source_row_id: 'ph_request_history:1', folder_id: 'REQ-SAME', itemcode: 'ITEM-3',
+    { unique_id: 'UID-SHARED', source_row_id: 'ph_requests_completed_history:1', folder_id: 'REQ-SAME', itemcode: 'ITEM-3',
       locationcode: 'C.01', lotcode: 'L3', row_index: 1, qty: 2, list_price: 10, status: 'Pending' },
-    { unique_id: 'UID-SHARED', source_row_id: 'ph_active_request:9', folder_id: 'REQ-SAME', itemcode: 'ITEM-3',
+    { unique_id: 'UID-SHARED', source_row_id: 'ph_requests_pending:9', folder_id: 'REQ-SAME', itemcode: 'ITEM-3',
       locationcode: 'C.01', lotcode: 'L3', row_index: 1, qty: 2, list_price: 10, status: 'Completed' },
-    { unique_id: 'UID-SEPARATE', source_row_id: 'ph_request_history:2', folder_id: 'REQ-SAME', itemcode: 'ITEM-3',
+    { unique_id: 'UID-SEPARATE', source_row_id: 'ph_requests_completed_history:2', folder_id: 'REQ-SAME', itemcode: 'ITEM-3',
       locationcode: 'C.01', lotcode: 'L3', row_index: 1, qty: 3, list_price: 10, status: 'Completed' },
-    { source_row_id: 'ph_request_history:3', folder_id: '', request_date: '2026-01-01', itemcode: 'ITEM-4',
+    { source_row_id: 'ph_requests_completed_history:3', folder_id: '', request_date: '2026-01-01', itemcode: 'ITEM-4',
       locationcode: '', lotcode: '', row_index: 1, qty: 1, list_price: 5, status: 'Completed' },
-    { source_row_id: 'ph_request_history:4', folder_id: '', request_date: '2026-02-01', itemcode: 'ITEM-4',
+    { source_row_id: 'ph_requests_completed_history:4', folder_id: '', request_date: '2026-02-01', itemcode: 'ITEM-4',
       locationcode: '', lotcode: '', row_index: 1, qty: 1, list_price: 5, status: 'Completed' },
     { folder_id: 'REQ-MULTI', itemcode: 'ITEM-5', locationcode: 'D.01', lotcode: 'L5', row_index: 1,
       qty: 1, list_price: 7, status: 'Pending' },
@@ -556,20 +607,19 @@ test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', asyn
   ]);
   assert.equal(preserved.summary.total_line_items, 8);
   assert.equal(preserved.line_items.filter(item => item.folder_id === 'REQ-SAME').length, 3);
-  assert.equal(preserved.line_items.filter(item => item.folder_id.startsWith('ph_request_history:')).length, 2);
+  assert.equal(preserved.line_items.filter(item => item.folder_id.startsWith('ph_requests_completed_history:')).length, 2);
   assert.equal(preserved.line_items.filter(item => item.folder_id === 'REQ-MULTI').length, 3);
   assert.deepEqual(new Set(preserved.line_items.filter(item => item.unique_id === 'UID-SHARED').map(item => item.status)), new Set(['Pending', 'Completed']));
 
-  const migration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
+  const migration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
   const api = functionSource('supabase/functions/app-api/index.ts', 'handleRequestSalesImpactAction');
   const databaseTypes = read('supabase/functions/_shared/database.types.ts');
   const databaseContracts = read('services/database-contracts.generated.ts');
   const runtime = read('assets/app-runtime.js');
   const moduleSource = read('assets/request-sales-impact.js');
-  for (const marker of ['ph_active_request', 'ph_request_history', 'ph_request_delivery_outbox',
-    'jsonb_array_elements', 'with ordinality', 'ph_request_sales_impact_ledger',
-    'line_identity_key', 'source_row_id', 'source_table_audit', 'source-row-line-identity-v2361',
-    'ph_master_inventory', 'private.request_sales_price_v2360', '00_app_view_table_map']) {
+  for (const marker of ['ph_requests_pending', 'ph_requests_completed_history', 'line_identity_key',
+    'source_row_id', 'source_table_audit', 'canonical-three-table-v2362', 'ph_master_inventory',
+    'request_qty', 'effective_qty', 'unit_list_price', '00_app_view_table_map']) {
     assert.ok(migration.replaceAll(' ', '').includes(marker.replaceAll(' ', '')), marker);
   }
   assert.match(migration, /set statement_timeout='10s'/);
@@ -578,11 +628,13 @@ test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', asyn
   assert.match(migration, /grant execute on function public\.get_request_sales_impact_v2\(\) to service_role/);
   assert.match(api, /resolveModuleAllowed\(supabase, actor, "request-sales-impact"\)[^]*enabled:\s*false[^]*visible:\s*false[^]*rows:\s*\[\]/);
   assert.match(api, /supabase\.rpc\("get_request_sales_impact_v2"\)/);
+  assert.match(databaseTypes, /ph_requests_pending:\s*\{/);
+  assert.match(databaseTypes, /ph_requests_completed_history:\s*\{/);
   assert.match(databaseTypes, /get_request_sales_impact_v2:\s*\{ Args: never; Returns: Json \}/);
   assert.match(databaseContracts, /"get_request_sales_impact_v2":\s*\{[^]*?"json"/);
-  assert.match(moduleSource, /Source Table & Row Audit/);
+  assert.match(moduleSource, /canonical-three-table-v2362/);
   assert.match(moduleSource, /payload\.source_table_audit \|\| payload\.source_audit/);
-  assert.match(moduleSource, /One permanent line per source table row and item index/);
+  assert.match(moduleSource, /One permanent line per request/);
   assert.match(api, /REQUEST_SALES_IMPACT_CONTRACT_STALE/);
   assert.match(runtime, /function isRequestSalesImpactOwner\(\)[^]*navigationPreferencesAllowed\('request-sales-impact'/);
   assert.match(runtime, /document\.getElementById\('view-request-sales-impact'\)\?\.remove\(\)/);
@@ -597,14 +649,14 @@ test('Invariant 21 (Zero Cross-Request Deduplication)', async () => {
     sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One', qty: 2, list_price: 10,
   };
   const result = impact.aggregateRequestSalesImpactLines([
-    { ...shared, source_row_id: 'ph_request_history:1', status: 'Completed' },
-    { ...shared, source_row_id: 'ph_active_request:1', status: 'Pending' },
-    { ...shared, unique_id: 'STRICT-SEPARATE-1', source_row_id: 'ph_request_history:2', status: 'Completed' },
-    { ...shared, unique_id: 'STRICT-SEPARATE-2', source_row_id: 'ph_request_history:3', status: 'Completed' },
+    { ...shared, source_row_id: 'ph_requests_completed_history:1', status: 'Completed' },
+    { ...shared, source_row_id: 'ph_requests_pending:1', status: 'Pending' },
+    { ...shared, unique_id: 'STRICT-SEPARATE-1', source_row_id: 'ph_requests_completed_history:2', status: 'Completed' },
+    { ...shared, unique_id: 'STRICT-SEPARATE-2', source_row_id: 'ph_requests_completed_history:3', status: 'Completed' },
   ]);
   assert.equal(result.summary.total_line_items, 4);
   assert.equal(result.summary.total_dollar_value, 80);
-  assert.equal(result.line_items.filter(row => row.source_row_id === 'ph_request_history:1').length, 1);
+  assert.equal(result.line_items.filter(row => row.source_row_id === 'ph_requests_completed_history:1').length, 1);
   assert.equal(result.line_items.filter(row => row.folder_id === 'REQ-SHARED').length, 4);
   assert.equal(new Set(result.line_items.map(row => row.unique_id)).size, 3);
 });
@@ -654,16 +706,18 @@ test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)'
 });
 
 test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Sync)', () => {
-  const migration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
+  const migration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
+  const cleanup = read('supabase/migrations/20261025014500_agdata_v2362_remove_legacy_request_objects.sql');
   const runtime = read('assets/app-runtime.js');
   const navigation = read('assets/navigation-preferences.js');
   const api = read('supabase/functions/app-api/index.ts');
-  assert.match(migration, /grant select on public\.ph_active_request[^]*to anon, authenticated/);
-  assert.match(migration, /ph_active_request_retirement_v2361/);
-  assert.match(migration, /drop index if exists public\.ph_request_sales_impact_ledger_unique_id_idx/);
-  assert.match(migration, /source_table\|\|':'\|\|source_row_id\|\|':'\|\|row_index/);
-  assert.match(migration, /source-row-line-identity-v2361/);
-  assert.match(runtime, /fetchActiveRequestLiveRows:requestQueue[^]*fetchActiveRequestLiveRows:activeRequest[^]*requestsInventory/);
+  assert.match(migration, /grant select on public\.ph_master_inventory,public\.ph_requests_pending[^]*to anon,authenticated/);
+  assert.match(migration, /canonical-three-table-v2362/);
+  assert.match(migration, /ph_requests_completed_history:'\|\|history\.unique_id/);
+  assert.match(migration, /ph_requests_pending:'\|\|pending\.unique_id/);
+  assert.match(cleanup, /drop table if exists public\.ph_request_sales_impact_ledger cascade/);
+  assert.match(cleanup, /drop table if exists private\.request_financial_values_v1 cascade/);
+  assert.match(runtime, /fetchActiveRequestLiveRows:canonicalPending[^]*requestsInventory/);
   assert.match(runtime, /homeSyncMetadata:\$\{table\}[^]*retained:\s*true/);
   assert.doesNotMatch(navigation, /Existing default/);
   assert.match(navigation, /Allow view[^]*Hide view/);

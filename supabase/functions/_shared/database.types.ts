@@ -4869,7 +4869,7 @@ export type Database = {
         }
         Relationships: []
       }
-      ph_active_request: {
+      ph_requests_pending: {
         Row: {
           app_tab_assignment: string | null
           av_note: string | null
@@ -12053,7 +12053,7 @@ export type Database = {
         }
         Relationships: []
       }
-      ph_request_history: {
+      ph_requests_completed_history: {
         Row: {
           app_tab_assignment: string | null
           assigned_rep_id: string | null

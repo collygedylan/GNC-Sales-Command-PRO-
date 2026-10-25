@@ -61,7 +61,7 @@ function requestSourceTable(row = {}) {
   if (explicit) return explicit;
   const sourceRowId = normalized(firstValue(row, ['source_row_id', 'sourceRowId'], ''));
   const inferred = sourceRowId.split(':')[0];
-  return ['ph_request_history', 'ph_active_request', 'ph_request_delivery_outbox', 'ph_request_email_threads'].includes(inferred)
+  return ['ph_requests_completed_history', 'ph_requests_pending', 'ph_request_delivery_outbox', 'ph_request_email_threads'].includes(inferred)
     ? inferred : '';
 }
 
@@ -373,12 +373,12 @@ function renderKpis(summary) {
     <article class="request-impact-kpi request-impact-kpi-primary"><span>Total App Request Impact</span><strong>${currencyFormatter.format(number(summary.total_dollar_value))}</strong></article>
     <article class="request-impact-kpi"><span>Completed / Pending</span><strong>${currencyFormatter.format(number(summary.completed_dollar_value))}</strong><small>${currencyFormatter.format(number(summary.pending_dollar_value))} pending</small></article>
     <article class="request-impact-kpi"><span>Requests / Line Items</span><strong>${numberFormatter.format(number(summary.total_requests))} / ${numberFormatter.format(number(summary.total_line_items))}</strong><small>folders / requested rows</small></article>
-    <article class="request-impact-kpi"><span>Total Plants Requested</span><strong>${numberFormatter.format(number(summary.total_units_requested))}</strong><small>${numberFormatter.format(number(summary.explicit_qty_line_count))} populated Qty Â· ${numberFormatter.format(number(summary.default_25_qty_line_count))} default 25</small></article>
+    <article class="request-impact-kpi"><span>Total Plants Requested</span><strong>${numberFormatter.format(number(summary.total_units_requested))}</strong><small>${numberFormatter.format(number(summary.explicit_qty_line_count))} populated Qty \u2022 ${numberFormatter.format(number(summary.default_25_qty_line_count))} default 25</small></article>
   </div>`;
 }
 
 function renderSourceAudit(audit = {}, summary = {}) {
-  if (audit.dedupe_contract === 'zero_cross_request_dedupe_v1') {
+  if (['zero_cross_request_dedupe_v1', 'canonical-three-table-v2362'].includes(audit.dedupe_contract)) {
     const lineCount = number(audit.line_count ?? summary.total_line_items);
     const uniqueCount = number(audit.distinct_unique_ids ?? lineCount);
     const lifecycleCount = number(audit.lifecycle_unique_ids ?? uniqueCount);
@@ -398,8 +398,8 @@ function renderSourceAudit(audit = {}, summary = {}) {
 function renderSalesRepRows(model) {
   const rows = model.by_sales_rep.slice(0, dashboardState.visibleLimits['sales-rep']);
   const cards = rows.map((row, index) => `<button type="button" class="request-impact-rank-card" data-impact-action="select-rep" data-impact-value="${escapeHtml(row.sales_rep)}">
-    <span class="request-impact-rank">#${index + 1}</span><span class="request-impact-rank-main"><strong>${escapeHtml(row.sales_rep)}</strong><small>${numberFormatter.format(row.request_count)} requests Â· ${numberFormatter.format(row.line_item_count)} items Â· ${numberFormatter.format(row.total_units)} plants</small></span>
-    <span class="request-impact-rank-values"><strong>${currencyFormatter.format(row.total_dollar_value)}</strong><small>${currencyFormatter.format(row.completed_dollar_value)} completed Â· ${currencyFormatter.format(row.pending_dollar_value)} pending</small></span>
+    <span class="request-impact-rank">#${index + 1}</span><span class="request-impact-rank-main"><strong>${escapeHtml(row.sales_rep)}</strong><small>${numberFormatter.format(row.request_count)} requests \u2022 ${numberFormatter.format(row.line_item_count)} items \u2022 ${numberFormatter.format(row.total_units)} plants</small></span>
+    <span class="request-impact-rank-values"><strong>${currencyFormatter.format(row.total_dollar_value)}</strong><small>${currencyFormatter.format(row.completed_dollar_value)} completed \u2022 ${currencyFormatter.format(row.pending_dollar_value)} pending</small></span>
   </button>`).join('');
   const more = model.by_sales_rep.length > rows.length ? `<button type="button" class="request-impact-more" data-impact-action="show-more" data-impact-value="sales-rep">Show More (${model.by_sales_rep.length - rows.length})</button>` : '';
   return (cards || '<div class="request-impact-empty">No sales reps match these filters.</div>') + more;
@@ -420,7 +420,7 @@ function renderCustomerRows(model) {
   const cards = rows.map((row, index) => {
     const expanded = dashboardState.expandedCustomers.has(row.key);
     return `<article class="request-impact-customer-card"><button type="button" class="request-impact-customer-summary" data-impact-action="toggle-customer" data-impact-value="${escapeHtml(row.key)}" aria-expanded="${expanded}">
-      <span class="request-impact-rank">#${index + 1}</span><span class="request-impact-rank-main"><strong>${escapeHtml(row.customer_consignee_label)}</strong><small>${escapeHtml(row.sales_rep)} Â· ${numberFormatter.format(row.request_count)} requests Â· ${numberFormatter.format(row.line_item_count)} items Â· ${numberFormatter.format(row.total_units)} plants</small></span>
+      <span class="request-impact-rank">#${index + 1}</span><span class="request-impact-rank-main"><strong>${escapeHtml(row.customer_consignee_label)}</strong><small>${escapeHtml(row.sales_rep)} \u2022 ${numberFormatter.format(row.request_count)} requests \u2022 ${numberFormatter.format(row.line_item_count)} items \u2022 ${numberFormatter.format(row.total_units)} plants</small></span>
       <span class="request-impact-rank-values"><strong>${currencyFormatter.format(row.total_dollar_value)}</strong><small>${expanded ? 'Hide item detail' : 'Show item detail'}</small></span>
     </button>${expanded ? renderItemTable(row.items) : ''}</article>`;
   }).join('');
@@ -439,7 +439,7 @@ function renderDashboard() {
   if (!host) return;
   const focus = rememberFocus();
   if (!dashboardState.payload) {
-    host.innerHTML = `<div class="request-impact-loading"><i class="ph-bold ph-chart-line-up"></i><strong>${dashboardState.loading ? 'Calculating Request Sales Impactâ€¦' : 'Request Sales Impact is unavailable.'}</strong>${dashboardState.error ? `<span>${escapeHtml(dashboardState.error)}</span>` : ''}<button type="button" data-impact-action="refresh">Retry</button></div>`;
+    host.innerHTML = `<div class="request-impact-loading"><i class="ph-bold ph-chart-line-up"></i><strong>${dashboardState.loading ? 'Calculating Request Sales Impact\u2026' : 'Request Sales Impact is unavailable.'}</strong>${dashboardState.error ? `<span>${escapeHtml(dashboardState.error)}</span>` : ''}<button type="button" data-impact-action="refresh">Retry</button></div>`;
     restoreFocus(focus);
     return;
   }
@@ -448,13 +448,13 @@ function renderDashboard() {
   const selectedRep = dashboardState.filters.salesRep;
   const results = activeTab === 'sales-rep' ? renderSalesRepRows(model) : activeTab === 'customer' ? renderCustomerRows(model) : renderAllItems(model);
   host.innerHTML = `<section class="request-impact-shell">
-    <header class="request-impact-hero"><div><span>Permission-Controlled Executive Analytics</span><h1>Request Sales Impact ($)</h1><p>One permanent line per source table row and item index using populated Qty or default 25 Ã— List Price.</p></div><div class="request-impact-hero-actions"><button type="button" data-impact-action="refresh" ${dashboardState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise"></i>${dashboardState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" data-impact-action="export"><i class="ph-bold ph-download-simple"></i>Export Excel / CSV</button></div></header>
+    <header class="request-impact-hero"><div><span>Permission-Controlled Executive Analytics</span><h1>Request Sales Impact ($)</h1><p>One permanent line per request using populated Qty or default 25 \u00D7 List Price.</p></div><div class="request-impact-hero-actions"><button type="button" data-impact-action="refresh" ${dashboardState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise"></i>${dashboardState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" data-impact-action="export"><i class="ph-bold ph-download-simple"></i>Export Excel / CSV</button></div></header>
     ${dashboardState.error ? `<div class="request-impact-retained" role="status">Showing retained same-account results. ${escapeHtml(dashboardState.error)}</div>` : ''}
     ${renderSourceAudit(dashboardState.payload.source_table_audit, model.summary)}
     ${renderKpis(model.summary)}
     <div class="request-impact-controls"><label class="request-impact-search"><span>Search</span><input id="request-impact-search" type="search" value="${escapeHtml(dashboardState.filters.search)}" placeholder="Sales rep, customer, consignee, plant, item code" data-impact-filter="search"></label><label><span>Status</span><select data-impact-filter="status"><option${dashboardState.filters.status === 'All' ? ' selected' : ''}>All</option><option${dashboardState.filters.status === 'Completed' ? ' selected' : ''}>Completed</option><option${dashboardState.filters.status === 'Pending' ? ' selected' : ''}>Pending</option></select></label><label><span>From</span><input type="date" value="${escapeHtml(dashboardState.filters.dateStart)}" data-impact-filter="dateStart"></label><label><span>Through</span><input type="date" value="${escapeHtml(dashboardState.filters.dateEnd)}" data-impact-filter="dateEnd"></label>${selectedRep ? `<button type="button" class="request-impact-selected-rep" data-impact-action="clear-rep"><span>Sales Rep</span><strong>${escapeHtml(selectedRep)}</strong><i class="ph-bold ph-x"></i></button>` : ''}<button type="button" class="request-impact-clear" data-impact-action="clear-filters">Clear Filters</button></div>
     <nav class="request-impact-tabs" aria-label="Request impact breakdown"><button type="button" class="${activeTab === 'sales-rep' ? 'active' : ''}" data-impact-action="tab" data-impact-value="sales-rep">By Sales Rep ($)</button><button type="button" class="${activeTab === 'customer' ? 'active' : ''}" data-impact-action="tab" data-impact-value="customer">By Customer / Consignee ($)</button><button type="button" class="${activeTab === 'items' ? 'active' : ''}" data-impact-action="tab" data-impact-value="items">All Request Line Items</button></nav>
-    <div class="request-impact-result-meta"><strong>${numberFormatter.format(model.summary.total_line_items)} line items</strong><span>${numberFormatter.format(model.summary.total_requests)} requests Â· ${currencyFormatter.format(model.summary.total_dollar_value)}</span></div>
+    <div class="request-impact-result-meta"><strong>${numberFormatter.format(model.summary.total_line_items)} line items</strong><span>${numberFormatter.format(model.summary.total_requests)} requests \u2022 ${currencyFormatter.format(model.summary.total_dollar_value)}</span></div>
     <div class="request-impact-results">${results}</div>
   </section>`;
   restoreFocus(focus);

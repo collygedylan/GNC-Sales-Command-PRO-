@@ -428,7 +428,7 @@ export const contracts: RuntimeContracts<Database> = {
         }
       }
     },
-    "ph_active_request": {
+    "ph_requests_pending": {
       "row": {
         "object": {
           "av_note": {

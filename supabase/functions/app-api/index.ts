@@ -81,6 +81,10 @@ const PROTECTED_DRIVE_PHOTO_PREFIXES = new Set(["ssn-", "lsn-", "na-", "flyer-"]
 const LEGACY_TABLE_ALIASES: Record<string, string> = {
   v2_cav: "ph_cav_import",
   ph_cav: "ph_cav_import",
+  ph_active_request: "ph_requests_pending",
+  ph_active_request_live_rows: "ph_requests_pending",
+  ph_request_queue_live_rows: "ph_requests_pending",
+  ph_request_history: "ph_requests_completed_history",
 };
 const AV_OPTION_EVAL_REQUESTS_TABLE = "ph_av_option_eval_requests";
 const AV_OPTION_EVAL_MANAGER_USERS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
@@ -166,16 +170,14 @@ function doesLoginPasswordMatch(dbPassword = "", inputPassword = "") {
 
 const READABLE_TABLES = new Set([
   "ph_master_inventory",
-  "ph_active_request_live_rows",
-  "ph_request_queue_live_rows",
+  "ph_requests_pending",
   "ph_request_delivery_status",
   "ph_crop_roll_drive_rows",
   "ph_crop_roll_open_rows",
   "ph_crop_roll_runs",
   "ph_crop_roll_rows",
-  "ph_active_request",
   "ph_customer_consignee_sales_reps",
-  "ph_request_history",
+  "ph_requests_completed_history",
   "ph_sales_credit_requests",
   "ph_request_email_threads",
   "ph_reserves",
@@ -234,12 +236,11 @@ const WRITABLE_TABLES = new Set([
   "ph_soc_master",
   "ph_av_notes",
   "ph_reserves",
-  "ph_active_request_live_rows",
+  "ph_requests_pending",
   "ph_crop_roll_drive_rows",
   "ph_crop_roll_runs",
   "ph_crop_roll_rows",
-  "ph_active_request",
-  "ph_request_history",
+  "ph_requests_completed_history",
   "ph_sales_credit_requests",
   "ph_request_email_threads",
   "ph_sales_office",
@@ -304,12 +305,10 @@ const COMMON_AUTH_READ_TABLES = new Set([
 const REP_READ_TABLES = new Set([
   ...COMMON_AUTH_READ_TABLES,
   "ph_master_inventory",
-  "ph_active_request",
-  "ph_active_request_live_rows",
-  "ph_request_queue_live_rows",
+  "ph_requests_pending",
   "ph_request_delivery_status",
   "ph_customer_consignee_sales_reps",
-  "ph_request_history",
+  "ph_requests_completed_history",
   "ph_sales_credit_requests",
   "ph_request_email_threads",
   "ph_reserves",
@@ -343,8 +342,8 @@ const SALES_MARKETING_READ_TABLES = new Set([
 ]);
 const REP_WRITE_TABLES = new Set([
   ...COMMON_AUTH_WRITE_TABLES,
-  "ph_active_request",
-  "ph_request_history",
+  "ph_requests_pending",
+  "ph_requests_completed_history",
   "ph_sales_credit_requests",
   "ph_request_email_threads",
   "ph_sales_office",
@@ -510,7 +509,7 @@ function buildRestHeaders(method = "GET", table = "") {
     "Content-Type": "application/json",
   };
   if (method === "POST") {
-    headers.Prefer = table === "ph_active_request" ? "return=minimal" : "return=minimal,resolution=merge-duplicates";
+    headers.Prefer = table === "ph_requests_pending" ? "return=minimal" : "return=minimal,resolution=merge-duplicates";
   } else if (method === "PATCH" || method === "DELETE") {
     headers.Prefer = "return=minimal";
   }
@@ -570,7 +569,7 @@ function stampInternalCustomerRequestSource(body: unknown) {
 }
 
 function protectCustomerRequestDbWrite(table: string, method: string, body: unknown) {
-  if (table !== "ph_active_request") return null;
+  if (table !== "ph_requests_pending") return null;
   if (method === "POST") {
     // Move approvals and Eval assignments are legacy internal workflows. Keep
     // their narrow row contracts working; handleDb rechecks the active actor
@@ -773,8 +772,7 @@ function canonicalInventoryReadAllowed(access: CanonicalUserAccess | null, opera
 const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
   ph_inventory_edit_requests: "id,status,workflow_stage,stage,previous_stage,stage_before_terminal,request_type,priority_flag,inventory_edit_done,inventory_edit_completed_by,inventory_edit_completed_by_display,inventory_edit_completed_at,photo_data_done,photo_data_completed_by,photo_data_completed_by_display,photo_data_completed_at,source_unique_id,master_unique_id,source_view,commonname,contsize,itemcode,locationcode,lotcode,source,ptravailable,s_lts,assignedto,current_priority,current_locationnote,current_pulltagnotes,current_holdstopcode,current_holdreason,requested,changes,snapshot,holdreason,reason,supervisor_note,approved_qty,jd_approved_qty,approved_by,approved_by_display,approved_at,sent_by,sent_by_display,sent_at,edited_by,edited_by_display,edited_at,stage_updated_by,stage_updated_by_display,stage_updated_at,handled_by,handled_by_display,handled_at,handler_note,notification_stage,notification_sent_at,inventory_edit_live,created_at,updated_at",
   ph_shear_list: "unique_id,source_table,source_unique_id,status,percent_to_shear,itemcode,commonname,contsize,locationcode,lotcode,season,blockalpha,ptravailable,holdstopcode,holdstopreason,snapshot,created_by_username,created_by_display,created_at,updated_by_username,updated_by_display,updated_at,completed_by_username,completed_by_display,completed_at,instructions",
-  ph_request_queue_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,delivery_event_id,delivery_status,delivery_attempt_count,delivery_next_attempt_at,delivery_first_attempt_at,delivery_last_attempt_at,delivery_lease_expires_at,delivery_error_code,delivery_email_delivered_at,delivery_push_delivered_at,delivery_delivered_at,delivery_mode,delivery_age_seconds,delivery_display_state",
-  ph_active_request_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,customeridentityid,customername,consigneeidentityid,consigneename",
+  ph_requests_pending: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,customeridentityid,customername,consigneeidentityid,consigneename,photos,photo_url,photo_date,spec,caliper,loc_match_pct,baseline_on_hand,initial_photo_match_qty,loc_photo_match,pick_note,sales_note,photo_expires_at,sales_rep,customer_name,consignee_name,customer_consignee_label,recipient_emails,status,request_qty,effective_qty,is_default_qty,unit_list_price,line_dollar_value,request_spec,request_caliper,estimated_ship,reserve_flag,request_notes,on_hand,review_qty,available_qty,open_stock,loc_on_hand,pri,flag_color,ns_grade,ld_flag,hold_stop_code,hold_stop_reason,hold_stop_since,source_snapshot,fulfillment_status,fulfilled_qty,fulfilled_by,fulfillment_updated_at",
   ph_soc_master: "unique_id,concat,last_updated,assignedto,date_completed,dock_photo_link,dock_photo_name,dock_spec,dock_caliper,dock_note,contsize,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccount,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortnamevariety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landed,retailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,dock_num,source,desigitem,desigcust,desigloc,filename,suspend_candidate_group,suspend_candidate_state,suspend_order_quantity,suspend_origin_uid",
   suspend_tag: "unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode,suspend_candidate_group,suspend_candidate_state,suspend_order_quantity,suspend_origin_uid",
   ph_cav_import: "unique_id,last_updated,filename,itemcode,commonname,contsize,season,ptravailable,brand,spec,hz,unitprice,holdstopreason,ordertotal,product_description,brand_code,h,available,reserved_qty,order_qty,unit_price,n_star,hot_price,hold_reason,ext_item_total,created_at",
@@ -803,13 +801,13 @@ const DATASET_READ_SOURCES: Record<string, { table: DatasetReadRelation; permiss
     orderFields: new Set(["unique_id", "created_at", "updated_at", "completed_at"]),
   },
   request_queue: {
-    table: "ph_request_queue_live_rows", permission: "ph_request_queue_live_rows", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_request_queue_live_rows,
-    signatures: "unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,desired_spec,desired_caliper,req_pic_note,request_note,req_comments,av_note,req_photo_link,req_photo_name,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,delivery_status,delivery_attempt_count,delivery_error_code,delivery_display_state,delivery_delivered_at",
-    filterFields: new Set(["unique_id", "master_id", "itemcode", "locationcode", "lotcode", "requested_by", "request_selected_rep_username", "request_folder", "req_status", "req_archived", "req_rep_action", "app_tab_assignment", "master_app_tab_assignment", "request_source", "created_at", "updated_at", "date_completed", "delivery_status"]),
-    orderFields: new Set(["unique_id", "created_at", "updated_at", "req_status", "delivery_status"]),
+    table: "ph_requests_pending", permission: "ph_requests_pending", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_requests_pending,
+    signatures: "unique_id,status,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,request_qty,effective_qty,is_default_qty,line_dollar_value,date_completed,req_match,loc_match_pct,loc_photo_match,req_spec,request_spec,spec,req_caliper,request_caliper,caliper,desired_spec,desired_caliper,req_pic_note,pick_note,request_note,request_notes,req_comments,av_note,sales_note,req_photo_link,photo_url,photos,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by",
+    filterFields: new Set(["unique_id", "master_id", "itemcode", "locationcode", "lotcode", "requested_by", "request_selected_rep_username", "request_folder", "req_status", "req_archived", "req_rep_action", "app_tab_assignment", "master_app_tab_assignment", "request_source", "move_batch_id", "created_at", "updated_at", "date_completed"]),
+    orderFields: new Set(["unique_id", "created_at", "updated_at", "req_status"]),
   },
   active_request: {
-    table: "ph_active_request_live_rows", permission: "ph_active_request_live_rows", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_active_request_live_rows,
+    table: "ph_requests_pending", permission: "ph_requests_pending", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_requests_pending,
     signatures: "unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,desired_spec,desired_caliper,req_pic_note,request_note,req_comments,av_note,req_photo_link,req_photo_name,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by",
     filterFields: new Set(["unique_id", "master_id", "itemcode", "locationcode", "lotcode", "requested_by", "request_selected_rep_username", "request_folder", "req_status", "req_archived", "req_rep_action", "app_tab_assignment", "master_app_tab_assignment", "request_source", "created_at", "updated_at", "date_completed"]),
     orderFields: new Set(["unique_id", "created_at", "updated_at", "date_completed", "req_status"]),
@@ -874,7 +872,8 @@ function normalizeDatasetReadAlias(value: unknown): string {
     ph_app_users: "app_user_directory",
     ph_master_inventory: "master_inventory", ph_soc_master: "soc", suspend: "suspend_tag",
     ph_soc_suspend_tag_rows: "suspend_tag", ph_active_request: "active_request",
-    ph_active_request_live_rows: "active_request", ph_reserves: "reserves", ph_cav_import: "cav",
+    ph_active_request_live_rows: "active_request", ph_requests_pending: "active_request",
+    ph_reserves: "reserves", ph_cav_import: "cav",
     requests: "request_queue", ph_request_queue_live_rows: "request_queue", docks: "dock_team",
     location_move: "location_moves", recount: "sales_office", shear_list: "shear",
     bunch_count_review: "count_review", access_control: "access_control",
@@ -1760,7 +1759,7 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   if (table === "ph_warehouse_assigned_items" || table === "ph_inventory_row_assignments" || table === "ph_itemcode_default_owners" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
   if (table === "ph_dock_team_status") return false;
   if (table === "ph_soc_master") return false; // Native column grants / protected Suspend Tag command own SOC writes.
-  if (table === "ph_active_request" && access.isRep) return false;
+  if (table === "ph_requests_pending" && access.isRep) return false;
   if (FULL_ACCESS_USER_KEYS.has(userKey)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return ["POST", "PATCH", "DELETE"].includes(method);
   if (access.isAdmin) return true;
@@ -2488,7 +2487,7 @@ async function handleRequestSalesImpactAction(
   const result = jsonObject(data);
   const sourceAudit = jsonObject(result.source_table_audit || result.source_audit);
   const dedupeContract = String(result.dedupe_contract || sourceAudit.dedupe_contract || "");
-  if (dedupeContract !== "source-row-line-identity-v2361") {
+  if (dedupeContract !== "canonical-three-table-v2362") {
     return jsonResponse({
       ok: false,
       enabled: true,
@@ -4628,7 +4627,7 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   const protectedTable = String(payload.table || "").trim().toLowerCase();
   const protectedMethod = String(payload.method || "GET").toUpperCase();
   if (protectedTable === "ph_sales_credit_requests" || protectedTable.startsWith("ph_credit_") || protectedTable === "ph_inventory_transactions"
-    || (protectedTable === "ph_request_history" && protectedMethod === "GET")
+    || (["ph_request_history", "ph_requests_completed_history"].includes(protectedTable) && protectedMethod === "GET")
     || protectedTable === "ph_production_workflow_rows") {
     return errorResponse("Update the app to use the protected workflow.", 410, { code: "SALES_WORKFLOW_API_REQUIRED" });
   }
@@ -4684,7 +4683,7 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   } else if (!hasTableWriteAccess(session.role, table, method, body, session.username)) {
     return errorResponse("Forbidden", 403);
   }
-  if (table === "ph_active_request" && method === "POST") {
+  if (table === "ph_requests_pending" && method === "POST") {
     const internalRequestError = await authorizeInternalCustomerRequestInsert(session, body);
     if (internalRequestError) return internalRequestError;
     body = stampInternalCustomerRequestSource(body);

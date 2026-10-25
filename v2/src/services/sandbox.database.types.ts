@@ -69,7 +69,7 @@ export type Database = {
         }
         Relationships: []
       }
-      ph_active_request: {
+      ph_requests_pending: {
         Row: {
           av_note: string | null
           commonname: string | null
@@ -1199,4 +1199,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

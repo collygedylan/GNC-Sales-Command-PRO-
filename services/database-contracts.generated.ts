@@ -15208,7 +15208,7 @@ export const contracts: RuntimeContracts<Database> = {
         }
       }
     },
-    "ph_active_request": {
+    "ph_requests_pending": {
       "row": {
         "object": {
           "app_tab_assignment": {
@@ -57983,7 +57983,7 @@ export const contracts: RuntimeContracts<Database> = {
         }
       }
     },
-    "ph_request_history": {
+    "ph_requests_completed_history": {
       "row": {
         "object": {
           "app_tab_assignment": {

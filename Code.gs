@@ -1059,7 +1059,7 @@ function getDatasetImportFenceSources_(sourceTables) {
     // across multiple HTTP transactions, so their views share the same fence.
     keys.push('ph_master_inventory', 'ph_sales_office', 'ph_warehouse_assigned_items',
       'ph_eval_work', 'ph_eval_work_origin_rows', 'ph_eval_work_events',
-      'ph_active_request', 'ph_request_delivery_outbox', 'ph_crop_roll_drive_rows', 'ph_hold_learning_events');
+      'ph_requests_pending', 'ph_request_delivery_outbox', 'ph_crop_roll_drive_rows', 'ph_hold_learning_events');
   }
   return Array.from(new Set(keys)).sort();
 }
@@ -2069,8 +2069,6 @@ const SITE_SPLIT_SITE_BY_WAREHOUSE_ = Object.freeze({
 });
 const SITE_SPLIT_TABLE_BASE_BY_LEGACY_ = Object.freeze({
   ph_master_inventory: 'master_inventory',
-  ph_active_request: 'active_request',
-  ph_request_history: 'request_history',
   ph_reserves: 'reserves',
   ph_soc_master: 'soc_master',
   ph_cav_import: 'cav_import',
@@ -2335,7 +2333,7 @@ function getAppLiveEventAreaForTable_(tableName) {
   if (safeTable === 'ph_cav_import') return 'av';
   if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === DRIVE_AROUND_HISTORY_ROW_TABLE || safeTable === 'ph_hold_release_cycles' || safeTable === HOLD_STOP_ITEMCODE_SUMMARY_TABLE) return 'weather-hold';
   if (safeTable === 'ph_sales_office') return 'sales-office';
-  if (safeTable === 'ph_active_request') return 'request';
+  if (safeTable === 'ph_requests_pending') return 'request';
   if (safeTable === TRANSACTIONS_KEYED_FILES_TABLE || safeTable === TRANSACTIONS_KEYED_ROWS_TABLE) return 'transactions-keyed';
   return '';
 }
@@ -13046,7 +13044,7 @@ function fetchRequestRowsForEmailFolder_(folderId) {
   if (!safeFolderId) return [];
   const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-    const requestTableNames = ['ph_active_request_live_rows'];
+    const requestTableNames = ['ph_requests_pending'];
   const loadRows = function(selectFields, requestTableName) {
     const url = `${SUPABASE_URL}/rest/v1/${requestTableName}?select=${selectFields}&request_folder=eq.${encodeURIComponent(safeFolderId)}`;
     const result = UrlFetchApp.fetch(url, {
@@ -13131,7 +13129,7 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
   if (!safeIds.length) return [];
   const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-    const requestTableNames = ['ph_active_request_live_rows'];
+    const requestTableNames = ['ph_requests_pending'];
   const buildInFilter = function(ids) {
     return ids.map(function(id) {
       return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
@@ -13192,7 +13190,7 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
 function fetchRequestHistoryRowsForEmailFolder_(folderId) {
   const safeFolderId = String(folderId || '').trim();
   if (!safeFolderId) return [];
-  const requestHistoryTableNames = getRequestEmailTableCandidates_('ph_request_history', 'PH');
+  const requestHistoryTableNames = getRequestEmailTableCandidates_('ph_requests_completed_history', 'PH');
   for (let tableIndex = 0; tableIndex < requestHistoryTableNames.length; tableIndex++) {
     const requestHistoryTableName = requestHistoryTableNames[tableIndex];
     const url = `${SUPABASE_URL}/rest/v1/${requestHistoryTableName}?select=*&request_folder=eq.${encodeURIComponent(safeFolderId)}&order=updated_at.desc`;
@@ -13230,7 +13228,7 @@ function fetchRequestHistoryRowsForEmailFolder_(folderId) {
 function fetchRequestHistoryRowsForEmailRequestIds_(requestIds) {
   const safeIds = normalizeRequestGalleryIdList_(requestIds);
   if (!safeIds.length) return [];
-  const requestHistoryTableNames = getRequestEmailTableCandidates_('ph_request_history', 'PH');
+  const requestHistoryTableNames = getRequestEmailTableCandidates_('ph_requests_completed_history', 'PH');
   const buildInFilter = function(ids) {
     return ids.map(function(id) {
       return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
@@ -22516,7 +22514,7 @@ function processRequestDeliveryOutbox_(limit) {
           sanitized_error_code: null
         });
         if (claimed.request_id) {
-          requestDeliveryRest_('ph_request_history', 'PATCH',
+          requestDeliveryRest_('ph_requests_completed_history', 'PATCH',
             'unique_id=eq.' + encodeURIComponent(String(claimed.request_id)),
             { delivery_state: 'delivered' }, 'return=minimal');
         }

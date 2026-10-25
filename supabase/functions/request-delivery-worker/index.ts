@@ -140,8 +140,8 @@ async function loadRequestRows(event: JsonRecord) {
   const ids = requestIdsForEvent(event);
   if (!ids.length) return [];
   const result = eventType === "request_completed"
-    ? await supabase.from("ph_request_history").select("*").in("unique_id", ids)
-    : await supabase.from("ph_active_request_live_rows").select("*").in("unique_id", ids);
+    ? await supabase.from("ph_requests_completed_history").select("*").in("unique_id", ids)
+    : await supabase.from("ph_requests_pending").select("*").in("unique_id", ids);
   const { data, error } = result;
   if (error) throw new Error(`REQUEST_SNAPSHOT_LOAD_FAILED:${error.code || "unknown"}`);
   return Array.isArray(data) ? data : [];

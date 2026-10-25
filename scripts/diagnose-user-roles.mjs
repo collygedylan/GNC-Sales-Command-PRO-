@@ -35,7 +35,10 @@ export async function probeRoleBaseline(account, { supabaseURL, key, fetcher = f
   const history = await fetcher(`${supabaseURL}/rest/v1/rpc/historical_requests_read_v1`, { method: 'POST', headers,
     body: JSON.stringify({ p_query: { operation: 'customers', pageSize: 1 } }) });
   const historyBody = await history.json();
-  const requests = await fetcher(`${supabaseURL}/rest/v1/ph_active_request_live_rows?select=unique_id&limit=1`, { headers });
+  const requests = await fetcher(
+    `${supabaseURL}/rest/v1/ph_requests_pending?select=unique_id&limit=1`,
+    { headers },
+  );
   const requestsBody = await requests.json();
   const safeCode = body => /^[A-Z0-9_]+$/.test(body?.code || '') ? body.code : undefined;
   return {

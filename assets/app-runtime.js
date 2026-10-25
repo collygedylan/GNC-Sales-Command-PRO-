@@ -4,11 +4,11 @@
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
         const PUSH_SUBSCRIPTIONS_TABLE = 'ph_push_subscriptions';
         const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
-        const ACTIVE_REQUEST_TABLE = 'ph_active_request';
-        const ACTIVE_REQUEST_LIVE_ROWS_TABLE = 'ph_active_request_live_rows';
-        const REQUEST_QUEUE_LIVE_ROWS_TABLE = 'ph_request_queue_live_rows';
+        const ACTIVE_REQUEST_TABLE = 'ph_requests_pending';
+        const ACTIVE_REQUEST_LIVE_ROWS_TABLE = ACTIVE_REQUEST_TABLE;
+        const REQUEST_QUEUE_LIVE_ROWS_TABLE = ACTIVE_REQUEST_TABLE;
         const FLYER_FOLDER_ROWS_TABLE = 'ph_flyer_folder_rows';
-        const REQUEST_HISTORY_TABLE = 'ph_request_history';
+        const REQUEST_HISTORY_TABLE = 'ph_requests_completed_history';
         const SALES_CREDIT_REQUESTS_TABLE = 'ph_sales_credit_requests';
         const FLYER_FOLDER_HISTORY_TABLE = 'ph_flyer_folder_history';
         const GROWER_SCOUT_REPORTS_TABLE = 'ph_grower_scout_reports';
@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.61';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.62';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1793,8 +1793,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             chat: { realtimeTables: ['ph_chat_conversations', 'ph_chat_participants', 'ph_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'crop-roll': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            tasks: { realtimeTables: ['ph_active_request', 'ph_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE, 'ph_app_settings'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            request: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_inventory_edit_requests', 'ph_av_option_eval_requests', SHEAR_LIST_TABLE, 'ph_sales_office', 'ph_soc_master'], pollMs: REQUEST_VISIBLE_POLL_MS },
+            tasks: { realtimeTables: [ACTIVE_REQUEST_TABLE, 'ph_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE, 'ph_app_settings'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            request: { realtimeTables: [ACTIVE_REQUEST_TABLE, REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_inventory_edit_requests', 'ph_av_option_eval_requests', SHEAR_LIST_TABLE, 'ph_sales_office', 'ph_soc_master'], pollMs: REQUEST_VISIBLE_POLL_MS },
             'sales-office': { realtimeTables: ['ph_sales_office', 'ph_app_settings'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             moves: { realtimeTables: ['ph_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'take-back': { realtimeTables: ['ph_take_back_queue'], pollMs: 'visible-default' },
@@ -1802,8 +1802,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             reserves: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'hl-order': { realtimeTables: ['ph_soc_master'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             docks: { realtimeTables: ['ph_dock_item_status', 'ph_dock_issue_status', 'ph_dock_issue_allocations'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            reports: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_soc_master'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            'historical-requests': { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, 'ph_master_inventory'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            reports: { realtimeTables: [ACTIVE_REQUEST_TABLE, REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_soc_master'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            'historical-requests': { realtimeTables: [ACTIVE_REQUEST_TABLE, REQUEST_HISTORY_TABLE, 'ph_master_inventory'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'po-management': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             advertisement: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             review: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -2906,7 +2906,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getRealtimeSignatureFieldList(tableName = '') {
             const safeTable = String(tableName || '').trim().toLowerCase();
-            if (safeTable === 'ph_active_request') {
+            if (safeTable === ACTIVE_REQUEST_TABLE) {
                 return ['UNIQUE_ID','DATE_COMPLETED','REQ_STATUS','REQ_ARCHIVED','REQ_REP_ACTION','REQUESTED_BY','REQUEST_FOLDER','REQ_CUSTOMER','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_DESIRED_SPEC','REQ_DESIRED_CALIPER','DESIRED_SPEC','DESIRED_CALIPER','REQ_PICK','REQUEST_NOTE','REQ_COMMENTS','REQ_RESERVE','AV_NOTE','REQ_PHOTO_LINK','REQ_PHOTO_NAME','REQUEST_PHOTO_LINK','REQUEST_PHOTO_NAME','PHOTO_LINK','PHOTO_NAME','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','MASTER_APP_TAB_ASSIGNMENT','APP_TAB_ASSIGNMENT','ASSIGNEDTO','SOURCE','MASTER_SOURCE','MOVE_BATCH_ID','MOVE_APPROVAL_STAGE','MOVE_STATUS','MOVE_GROUP_KEY','MOVE_FROM_LOCATIONCODE','MOVE_TO_LOCATIONCODE','MOVE_PLANNED_QTY','MOVE_ACTUAL_QTY','MOVE_DESTINATION_NEEDS_ROW','MOVE_DYLAN_APPROVED_AT','MOVE_JD_APPROVED_AT','MOVE_COMPLETED_AT','MOVE_COMPLETED_BY','UPDATED_AT','CREATED_AT'];
             }
             if (safeTable === 'ph_sales_office') {
@@ -4038,6 +4038,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const raw = String(value || '').trim().toLowerCase();
             if (!raw) return '';
             if (raw === 'v2_cav' || raw === 'ph_cav') return 'ph_cav_import';
+            if (['ph_active_request', 'ph_active_request_live_rows', 'ph_request_queue_live_rows'].includes(raw)) return ACTIVE_REQUEST_TABLE;
+            if (raw === 'ph_request_history') return REQUEST_HISTORY_TABLE;
             if (raw.startsWith('v2_')) return `ph_${raw.slice(3)}`;
             return raw;
         }
@@ -4220,7 +4222,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function buildRequestWriteStatusHint(tableName = '', method = '', body = null) {
             const safeTable = String(tableName || '').trim();
             const safeMethod = String(method || '').trim().toUpperCase();
-            if (safeTable !== 'ph_active_request' || (safeMethod !== 'PATCH' && safeMethod !== 'POST')) return null;
+            if (safeTable !== ACTIVE_REQUEST_TABLE || (safeMethod !== 'PATCH' && safeMethod !== 'POST')) return null;
             const rows = Array.isArray(body) ? body : (body && typeof body === 'object' ? [body] : []);
             let hint = null;
             rows.some((row) => {
@@ -4243,7 +4245,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function getAppLiveEventAreaForTable(tableName = '') {
             const safeTable = String(tableName || '').trim();
             if (!safeTable || safeTable === APP_LIVE_EVENTS_TABLE) return '';
-            if (safeTable === 'ph_active_request') return 'request';
+            if (safeTable === ACTIVE_REQUEST_TABLE) return 'request';
             if (safeTable === REQUEST_HISTORY_TABLE) return 'request';
             if (safeTable === 'ph_inventory_edit_requests') return 'request';
             if (safeTable === AV_OPTION_EVAL_REQUESTS_TABLE) return 'request';
@@ -4466,7 +4468,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getAlwaysOnRealtimeTablesForView(viewId = '') {
             const tables = [];
-            if (shouldKeepRequestRealtimeSubscribed()) tables.push('ph_active_request');
+            if (shouldKeepRequestRealtimeSubscribed()) tables.push(ACTIVE_REQUEST_TABLE);
             return tables;
         }
 
@@ -10259,7 +10261,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!item) return false;
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).trim().toLowerCase();
             if (!sourceTable || sourceTable === 'ph_master_inventory') return false;
-            if (sourceTable === 'ph_active_request') return true;
+            if (sourceTable === ACTIVE_REQUEST_TABLE) return true;
             return !!firstNonEmptyValue(item.REQUEST_FOLDER, item.request_folder, item.REQ_QTY, item.req_qty, item.REQ_STATUS, item.req_status, item.REQ_CUSTOMER, item.req_customer, '');
         }
 
@@ -12520,7 +12522,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const isOrderSnapshot = (row) => String(firstNonEmptyValue(row && row.SO_SOURCE, row && row.so_source, '')).toLowerCase() === 'bloom_picker';
             const isRequestSnapshot = (row) => {
                 const sourceTable = String(firstNonEmptyValue(row && row.SOURCE_TABLE, row && row.source_table, '')).toLowerCase();
-                return sourceTable === 'ph_active_request' || String(firstNonEmptyValue(row && row.REQ_STATUS, row && row.REQUEST_FOLDER, row && row.REQ_CUSTOMER, '')).trim() !== '';
+                return sourceTable === ACTIVE_REQUEST_TABLE || String(firstNonEmptyValue(row && row.REQ_STATUS, row && row.REQUEST_FOLDER, row && row.REQ_CUSTOMER, '')).trim() !== '';
             };
 
             fullInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
@@ -12614,7 +12616,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (tableName === 'ph_master_inventory') return ['master', 'avOpen'];
             if (tableName === CROP_ROLL_DRIVE_SOURCE_TABLE || tableName === CROP_ROLL_DRIVE_OPEN_ROWS_TABLE) return ['cropRollDrive'];
             if (tableName === 'ph_crop_roll_rows') return ['cropRollDrive'];
-            if (tableName === 'ph_active_request') return ['requests'];
+            if (tableName === ACTIVE_REQUEST_TABLE) return ['requests'];
             if (tableName === REQUEST_HISTORY_TABLE) return ['requestHistory'];
             if (tableName === SALES_CREDIT_REQUESTS_TABLE) return ['salesCredits'];
             if (tableName === 'ph_inventory_edit_requests') return ['inventoryEditRequests'];
@@ -13234,7 +13236,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 changedDatasetKeys.add('cropRollDrive');
                 if (tableSet.has('ph_crop_roll_rows')) queueDatasetLoad('cropRollDrive', 'full', 0);
             }
-            if (tableSet.has('ph_active_request') && !changedDatasetKeys.has('requests')) {
+            if (tableSet.has(ACTIVE_REQUEST_TABLE) && !changedDatasetKeys.has('requests')) {
                 syncRealtimeRequestRows();
                 changedDatasetKeys.add('requests');
             }
@@ -13303,7 +13305,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const pendingEdits = getPendingEditsCache();
             if (pendingEdits && Object.keys(pendingEdits).length) applyLocalEdits();
             if (changedDatasetKeys.size) {
-                propagateCommittedEdit(changedDatasetKeys.has('requests') ? 'ph_active_request' : '', null, Array.from(changedDatasetKeys), getVisibleAffectedViewIds(Array.from(changedDatasetKeys)), { delay: 4, typingDelay: 120, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
+                propagateCommittedEdit(changedDatasetKeys.has('requests') ? ACTIVE_REQUEST_TABLE : '', null, Array.from(changedDatasetKeys), getVisibleAffectedViewIds(Array.from(changedDatasetKeys)), { delay: 4, typingDelay: 120, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
                 if (changedDatasetKeys.has('requests')) flushPendingRequestArchives().catch(() => {});
             }
             updateDashboardSyncSummary();
@@ -13473,7 +13475,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function queueAppLiveEventRefresh(eventRow = null) {
             const event = normalizeAppLiveEventRow(eventRow);
             if (!event || !event.sourceTable) return false;
-            if (event.sourceTable === 'ph_active_request' && currentUser && canAccessView('request') && navigator.onLine !== false && !document.hidden) {
+            if (event.sourceTable === ACTIVE_REQUEST_TABLE && currentUser && canAccessView('request') && navigator.onLine !== false && !document.hidden) {
                 const method = String((event.payload && event.payload.method) || event.eventType.split(':').pop() || '').trim().toUpperCase();
                 const entry = {
                     sourceTable: event.sourceTable,
@@ -13564,10 +13566,10 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 date_completed: statusHint.date_completed,
                 req_archived: statusHint.req_archived
             })), { reason: 'request-live-status-hint' }));
-            markAppLiveEventDatasetsDirty('ph_active_request', entry.lastEvent);
+            markAppLiveEventDatasetsDirty(ACTIVE_REQUEST_TABLE, entry.lastEvent);
             if (isDelete) {
-                rowIds.forEach((id) => applyRealtimeChange('ph_active_request', { eventType: 'DELETE', old: { unique_id: id, UNIQUE_ID: id } }, true));
-                queueRealtimeDatasetFlush(['ph_active_request'], 0);
+                rowIds.forEach((id) => applyRealtimeChange(ACTIVE_REQUEST_TABLE, { eventType: 'DELETE', old: { unique_id: id, UNIQUE_ID: id } }, true));
+                queueRealtimeDatasetFlush([ACTIVE_REQUEST_TABLE], 0);
                 touchSyncTimestamp();
                 return true;
             }
@@ -13577,7 +13579,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 }
                 return true;
             }
-            const rows = await fetchAppLiveEventRowsByIds('ph_active_request', rowIds);
+            const rows = await fetchAppLiveEventRowsByIds(ACTIVE_REQUEST_TABLE, rowIds);
             if (!rows.length) {
                 if (isViewVisible('request') || isViewVisible('reports')) {
                     forceRefreshRequestsForView('request-live-miss', { force: true, minIntervalMs: 0, allowWhileInteractive: true }).catch(() => {});
@@ -13586,12 +13588,12 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 return appliedStatusHint;
             }
             rows.forEach((row) => {
-                applyRealtimeChange('ph_active_request', { eventType: 'UPDATE', new: row }, true);
+                applyRealtimeChange(ACTIVE_REQUEST_TABLE, { eventType: 'UPDATE', new: row }, true);
             });
             requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
             markViewDirty('request');
             markViewDirty('reports');
-            queueRealtimeDatasetFlush(['ph_active_request'], 0);
+            queueRealtimeDatasetFlush([ACTIVE_REQUEST_TABLE], 0);
             if (isViewVisible('request')) queueInteractiveViewRender('request', false, true, 0, REQUEST_REALTIME_UI_DELAY_MS);
             if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, 0, 160);
             persistCurrentCache(false, 'request-live-event');
@@ -13602,7 +13604,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         async function applyAppLiveEventTargetedRefresh(entry = null) {
             if (!entry || !entry.sourceTable) return false;
             const sourceTable = String(entry.sourceTable || '').trim();
-            if (sourceTable === 'ph_active_request') return applyRequestAppLiveEventRefresh(entry);
+            if (sourceTable === ACTIVE_REQUEST_TABLE) return applyRequestAppLiveEventRefresh(entry);
             if (sourceTable === 'ph_dock_trip_status') {
                 await ensureDockTeamStatusLoaded(true);
                 markViewDirty('docks');
@@ -13632,7 +13634,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             }
             const rows = await fetchAppLiveEventRowsByIds(sourceTable, rowIds);
             if (!rows.length) {
-                if (sourceTable === 'ph_active_request' && (isViewVisible('request') || isViewVisible('reports'))) {
+                if (sourceTable === ACTIVE_REQUEST_TABLE && (isViewVisible('request') || isViewVisible('reports'))) {
                     forceRefreshRequestsForView('app-live-request-miss', { force: true, minIntervalMs: 0, allowWhileInteractive: true }).catch(() => {});
                     return true;
                 }
@@ -13867,7 +13869,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 changed = true;
                 clearCropRollDriveViewCaches();
                 queueDatasetLoad('cropRollDrive', 'full', 0);
-            } else if (tableName === 'ph_active_request') {
+            } else if (tableName === ACTIVE_REQUEST_TABLE) {
                 if (eventType === 'DELETE') {
                     clearOptimisticRequestIds([uniqueId]);
                     discardPendingLocalEdits([uniqueId], true);
@@ -13984,7 +13986,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (changed) refreshRealtimeDetailLookupIndexes(tableName);
 
             if (isLocalEcho) {
-                if (tableName === 'ph_active_request') requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                if (tableName === ACTIVE_REQUEST_TABLE) requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                 recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, `${tableName}:echo`);
                 return false;
             }
@@ -14026,7 +14028,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                     if (isViewVisible('crop-roll')) queueInteractiveViewRender('crop-roll', false, false, 0, 120);
                     if (isViewVisible('moves')) queueInteractiveViewRender('moves', false, false, 0, 160);
                 }
-            } else if (tableName === 'ph_active_request') {
+            } else if (tableName === ACTIVE_REQUEST_TABLE) {
                 invalidateResolvedViewStateCaches();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                 refreshActiveRequestDetailFromRealtimeRow(nextRow || oldRow, eventType);
@@ -14759,7 +14761,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                                 liveSyncMode = 'queued';
                                 updateSyncDiagnostics('queued');
                             }
-                            if (tableName === 'ph_active_request') syncAlwaysOnRequestData(0, { minIntervalMs: 0 });
+                            if (tableName === ACTIVE_REQUEST_TABLE) syncAlwaysOnRequestData(0, { minIntervalMs: 0 });
                             if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_inventory_edit_requests' || tableName === 'ph_av_option_eval_requests' || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
                                 refreshActiveRequestQueueSideData('realtime-subscribed', {
                                     force: true,
@@ -14770,7 +14772,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                             if (!isQuotaSafeRealtimeMode()) queueVisibleDatasetCatchup(160);
                         }
                         if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
-                            if (tableName === 'ph_active_request') syncAlwaysOnRequestData(140, { minIntervalMs: 0 });
+                            if (tableName === ACTIVE_REQUEST_TABLE) syncAlwaysOnRequestData(140, { minIntervalMs: 0 });
                             if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_inventory_edit_requests' || tableName === 'ph_av_option_eval_requests' || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
                                 refreshActiveRequestQueueSideData('realtime-recovery', {
                                     allowWhileInteractive: true,
@@ -18811,7 +18813,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const safeTable = String(table || '').trim().toLowerCase();
             const safeMethod = String(method || '').trim().toUpperCase();
             let normalizedBody = body;
-            if (safeTable === 'ph_active_request' && (safeMethod === 'POST' || safeMethod === 'PATCH')) {
+            if (safeTable === ACTIVE_REQUEST_TABLE && (safeMethod === 'POST' || safeMethod === 'PATCH')) {
                 normalizedBody = normalizeActiveRequestWriteBody(body);
             }
             if (safeTable === 'ph_master_inventory' && safeMethod !== 'GET') {
@@ -19168,7 +19170,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 let normalizedBody = body;
                 const hasWriteBody = body !== null && body !== undefined;
                 if (hasWriteBody) {
-                    if (['ph_master_inventory','ph_active_request'].includes(table)) {
+                    if (['ph_master_inventory',ACTIVE_REQUEST_TABLE].includes(table)) {
                         const stripDerived = (row) => {
                             if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
                             return Object.fromEntries(Object.entries(row).filter(([key]) => !/^loc_on_hand(?:_|$)/i.test(String(key))));
@@ -19873,7 +19875,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const opts = options || {};
             const writeTable = String(table || '').trim().toLowerCase();
             const writeMethod = String(method || '').trim().toUpperCase();
-            if (writeMethod && writeMethod !== 'GET' && ['ph_master_inventory', 'ph_active_request', 'ph_sales_office', String(FLYER_FOLDER_ROWS_TABLE || '').trim().toLowerCase()].includes(writeTable)) {
+            if (writeMethod && writeMethod !== 'GET' && ['ph_master_inventory', ACTIVE_REQUEST_TABLE, 'ph_sales_office', String(FLYER_FOLDER_ROWS_TABLE || '').trim().toLowerCase()].includes(writeTable)) {
                 markLocalRowSaveRefreshQuiet(`write:${writeTable}`);
             }
             const retryAuthorized = !!(String(opts.idempotencyKey || '').trim() || opts.offlineQueueRecord === true);
@@ -21389,14 +21391,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function getAuthorizedDatasetRead(table = '') {
-            const aliases = { suspend:'ph_soc_suspend_tag_rows', suspend_tag:'ph_soc_suspend_tag_rows', requests:'ph_request_queue_live_rows', request_queue:'ph_request_queue_live_rows', shear_list:'ph_shear_list', recount:'ph_sales_office', location_move:'location_moves' };
+            const aliases = { suspend:'ph_soc_suspend_tag_rows', suspend_tag:'ph_soc_suspend_tag_rows', requests:ACTIVE_REQUEST_TABLE, request_queue:ACTIVE_REQUEST_TABLE, shear_list:'ph_shear_list', recount:'ph_sales_office', location_move:'location_moves' };
             const value = String(table || '').trim().toLowerCase().replace(/-/g, '_');
             const normalized = aliases[value] || value;
             const datasets = {
                 location_moves:'location_moves', eval_work:'eval_work', bunch_notes:'bunch_notes', count_review:'count_review', request_history:'request_history',
-                ph_request_queue_live_rows: 'request_queue',
-                ph_active_request_live_rows: 'active_request',
-                ph_active_request: 'active_request',
+                ph_requests_pending: 'request_queue',
                 ph_app_users: 'app_user_directory',
                 ph_soc_master: 'soc',
                 // API dataset alias only; never read as a physical public table.
@@ -23487,7 +23487,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         persistCurrentCache(false, 'request-submit-confirmed');
                     });
                     safely(() => {
-                        queueAppLiveEventForWrite('ph_active_request', 'POST', result.rows.map(row => ({ unique_id: row.unique_id || row.UNIQUE_ID })), '');
+                        queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'POST', result.rows.map(row => ({ unique_id: row.unique_id || row.UNIQUE_ID })), '');
                         flushQueuedAppLiveEvents().catch(() => {});
                     });
                     showToast('Requests saved', 'Requests saved; email queued', false);
@@ -26211,7 +26211,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.61').trim() || 'AgData v2.3.61';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.62').trim() || 'AgData v2.3.62';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27975,7 +27975,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             cropRollDrive: { table: CROP_ROLL_DRIVE_OPEN_ROWS_TABLE, sourceTable: CROP_ROLL_DRIVE_SOURCE_TABLE, initialQuery: buildCropRollDriveDatasetQuery, fullQuery: buildCropRollDriveDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit, initialFetchAll: true },
             avOpen: { table: 'ph_master_inventory', sourceTable: 'ph_master_inventory', initialQuery: buildAvSeasonDatasetQuery, fullQuery: buildAvSeasonDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit },
             requests: { table: REQUEST_QUEUE_LIVE_ROWS_TABLE, sourceTable: ACTIVE_REQUEST_TABLE, initialQuery: () => buildActiveRequestLiveRowsQuery('*'), fullQuery: () => buildActiveRequestLiveRowsQuery('*') },
-            requestHistory: { table: REQUEST_HISTORY_TABLE, sourceTable: 'ph_active_request', initialQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
+            requestHistory: { table: REQUEST_HISTORY_TABLE, sourceTable: ACTIVE_REQUEST_TABLE, initialQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
             salesCredits: { table: SALES_CREDIT_REQUESTS_TABLE, sourceTable: SALES_CREDIT_REQUESTS_TABLE, initialQuery: 'select=*&order=updated_at.desc', fullQuery: 'select=*&order=updated_at.desc' },
             inventoryEditRequests: { table: INVENTORY_EDIT_REQUESTS_TABLE, sourceTable: INVENTORY_EDIT_REQUESTS_TABLE, initialQuery: 'select=*&order=stage_updated_at.desc', fullQuery: 'select=*&order=stage_updated_at.desc', initialFetchAll: true },
             reserves: { table: 'ph_reserves', sourceTable: 'ph_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
@@ -30062,7 +30062,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const photoLink = getRequestHistoryPhotoLink(source);
             const photoName = getRequestHistoryPhotoName(source);
             return {
-                SOURCE_TABLE: 'ph_active_request',
+                SOURCE_TABLE: ACTIVE_REQUEST_TABLE,
                 UNIQUE_ID: String(firstNonEmptyValue(source.UNIQUE_ID, source.unique_id, '') || '').trim(),
                 MASTER_ID: masterId,
                 MASTER_UNIQUE_ID: masterId,
@@ -30121,7 +30121,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 unique_id: uniqueId,
                 master_id: snapshot.MASTER_ID || null,
                 master_unique_id: snapshot.MASTER_UNIQUE_ID || null,
-                source_table: 'ph_active_request',
+                source_table: ACTIVE_REQUEST_TABLE,
                 request_folder: snapshot.REQUEST_FOLDER || null,
                 request_customer: snapshot.REQ_CUSTOMER || null,
                 ...getRequestCustomerContext(snapshot),
@@ -30173,7 +30173,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!uniqueId) return null;
             const item = Object.assign({}, snapshot, rawRow);
             applyRequestCustomerContextAliases(item, getRequestCustomerContext(item));
-            item.SOURCE_TABLE = 'ph_active_request';
+            item.SOURCE_TABLE = ACTIVE_REQUEST_TABLE;
             item.REQUEST_ACTIVE = false;
             item.REQUEST_HISTORY_ONLY = true;
             item.UNIQUE_ID = uniqueId;
@@ -33579,7 +33579,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 obj.PTRAVAILABLE = obj.PTRAVAILABLE || 0;
                 obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
                 obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || '-';
-                if (normalizedSourceTable === 'ph_active_request') {
+                if (normalizedSourceTable === ACTIVE_REQUEST_TABLE) {
                     obj.REQUEST_ACTIVE = true;
                     obj.REQUEST_HISTORY = false;
                     obj.REQUEST_HISTORY_ONLY = false;
@@ -34082,11 +34082,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }, { signal: opts.signal || null });
         }
 
-        let activeRequestLiveRowsViewReady = null;
-        let activeRequestLiveRowsViewWarningShown = false;
         function buildActiveRequestLiveRowsQuery(selectFields = '*') {
             const fields = String(selectFields || '*').trim() || '*';
-            return `select=${fields}&date_completed=is.null&order=created_at.desc,unique_id.desc`;
+            return `select=${fields}&date_completed=is.null&move_batch_id=is.null&order=created_at.desc,unique_id.desc`;
         }
 
         async function fetchActiveRequestLiveRows(selectFields = '*', options = {}) {
@@ -34099,32 +34097,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requireActiveDocument();
             const query = buildActiveRequestLiveRowsQuery(selectFields);
             const readOptions = { ...(options && typeof options === 'object' ? options : {}), signal };
-            if (activeRequestLiveRowsViewReady !== false) {
-                try {
-                    const rows = await fetchAllSupabaseRows(REQUEST_QUEUE_LIVE_ROWS_TABLE, query, readOptions);
-                    requireActiveDocument();
-                    activeRequestLiveRowsViewReady = true;
-                    return rows;
-                } catch (error) {
-                    requireActiveDocument();
-                    if (error && error.code === 'REQUEST_ABORTED') throw error;
-                    activeRequestLiveRowsViewReady = false;
-                    if (!activeRequestLiveRowsViewWarningShown) {
-                        activeRequestLiveRowsViewWarningShown = true;
-                        console.warn('Request delivery-status view is unavailable; retaining queue rows while the direct active view retries.', error);
-                    }
-                    window.GncRuntimeWatchdog?.capture?.(error, 'fetchActiveRequestLiveRows:requestQueue');
-                }
-            }
-            requireActiveDocument();
             try {
-                const rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_LIVE_ROWS_TABLE, 'select=*&date_completed=is.null&order=unique_id.desc', { signal });
+                const rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, query, readOptions);
                 requireActiveDocument();
                 return rows;
             } catch (error) {
                 requireActiveDocument();
                 if (error && error.code === 'REQUEST_ABORTED') throw error;
-                window.GncRuntimeWatchdog?.capture?.(error, 'fetchActiveRequestLiveRows:activeRequest');
+                window.GncRuntimeWatchdog?.capture?.(error, 'fetchActiveRequestLiveRows:canonicalPending');
                 return (Array.isArray(requestsInventory) ? requestsInventory : []).filter((row) => row && !row.REQUEST_HISTORY);
             }
         }
@@ -35830,7 +35810,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const safeTableName = String(tableName || '').trim();
             if (!safeTableName) return;
             const invalidateLookup = () => invalidateInventoryDomIdLookup();
-            if (safeTableName === 'ph_active_request') {
+            if (safeTableName === ACTIVE_REQUEST_TABLE) {
                 rebuildRequestInventoryIndexes();
                 invalidateLookup();
                 return;
@@ -56126,7 +56106,7 @@ function toggleDriveQuickRequestItem(domId) {
                             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'ph_master_inventory')).toLowerCase();
                             const masterItem = masterById.get(uniqueId) || findLinkedMasterRow(item);
                             if (masterItem) {
-                                if (sourceTable === 'ph_active_request') syncMasterFieldsToRequestRow(masterItem, item);
+                                if (sourceTable === ACTIVE_REQUEST_TABLE) syncMasterFieldsToRequestRow(masterItem, item);
                                 else syncMasterFieldsToRow(masterItem, item, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false });
                             }
                         }
@@ -63119,7 +63099,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 // Only the subsequent canonical master read can publish linked evidence.
                 if (!options.sourceRowOnly) {
                     syncRowDataAcrossViews(changedRow);
-                    broadcastRowSyncSnapshot(changedRow, options.prefix || '', { linkedRowsAlreadyApplied: safeSourceTable === 'ph_active_request' });
+                    broadcastRowSyncSnapshot(changedRow, options.prefix || '', { linkedRowsAlreadyApplied: safeSourceTable === ACTIVE_REQUEST_TABLE });
                 }
                 if (safeSourceTable) rememberLocalRealtimeWrite(safeSourceTable, changedRow);
             }
@@ -63132,9 +63112,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 // Request cards consume the same item/location aggregate. Refresh
                 // their queue when the master source revision changes even if the
                 // request row itself did not change.
-                getAffectedViewsForDatasets(getDatasetKeysForTable('ph_active_request')).forEach((viewId) => markViewDirty(viewId));
+                getAffectedViewsForDatasets(getDatasetKeysForTable(ACTIVE_REQUEST_TABLE)).forEach((viewId) => markViewDirty(viewId));
             }
-            if (safeSourceTable === 'ph_active_request') {
+            if (safeSourceTable === ACTIVE_REQUEST_TABLE) {
                 if (!changedRow) invalidateResolvedViewStateCaches();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                 triggerRequestRealtimeUiRefresh(Math.max(REQUEST_REALTIME_UI_DELAY_MS, Number(options.requestUiDelay) || 0));
@@ -64157,7 +64137,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const typeLabel = getNcrApprovalTypeLabel(safeType);
             const customerLabel = safeType === 'new-crop' ? 'JD Jones' : typeLabel;
             return {
-                SOURCE_TABLE: 'ph_active_request',
+                SOURCE_TABLE: ACTIVE_REQUEST_TABLE,
                 UNIQUE_ID: payload.unique_id,
                 unique_id: payload.unique_id,
                 SOURCE_UNIQUE_ID: payload.unique_id,
@@ -66109,7 +66089,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function buildHoldReleaseEmailShareItem(item = activeItem, photoUrls = [], completedItem = null, prefix = '') {
             const payload = buildHoldReleaseEmailItemPayload(item, photoUrls, completedItem, prefix);
             return {
-                SOURCE_TABLE: 'ph_active_request',
+                SOURCE_TABLE: ACTIVE_REQUEST_TABLE,
                 REQUEST_FOLDER: 'Take off Hold',
                 REQ_CUSTOMER: 'Hold Release',
                 COMMONNAME: payload.commonname,
@@ -79403,6 +79383,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const nextTab = normalizeRequestTabValue(tab);
             if (nextTab !== 'eval-work') unsubscribeEvalWorkRealtime();
             if (nextTab !== 'reps') requestSalesRepsManagerMode = false;
+            activeReqTab = nextTab;
+            syncRequestTabButtons();
+            if (isViewVisible('request')) renderViewContent('request', false, true);
             const scheduled = runDirectTrackedNavigation('request', `request-tab:${nextTab}`, () => {
                 activeReqTab = nextTab;
                 if (nextTab === 'eval-work') subscribeEvalWorkRealtime();
@@ -91002,7 +90985,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function isRequestLikeItem(item) {
             if (!item) return false;
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase();
-            if (sourceTable === 'ph_active_request') return true;
+            if (sourceTable === ACTIVE_REQUEST_TABLE) return true;
             const domId = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, '') || '').trim().toLowerCase();
             if (domId.startsWith('req_') || domId.startsWith('reqhist_')) return true;
             if (item.REQUEST_HISTORY === true) return true;
@@ -92121,7 +92104,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function buildMoveApprovalRequestClone(record = {}, payload = null) {
             if (!record || !payload) return null;
             const clone = {
-                SOURCE_TABLE: 'ph_active_request',
+                SOURCE_TABLE: ACTIVE_REQUEST_TABLE,
                 UNIQUE_ID: payload.unique_id,
                 DOM_ID: `req_${payload.unique_id}`,
                 MASTER_ID: payload.master_id,
@@ -92218,10 +92201,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 trackOptimisticRequestIds(requestIds);
                 refreshLocalRequestViewState('move-batch-created', { renderHiddenRequest: true, renderVisible: true, forceRender: true });
                 for (const entry of entries) {
-                    await supabaseFetch('ph_active_request', 'POST', sanitizeMoveRequestWritePayload(entry.payload));
+                    await supabaseFetch(ACTIVE_REQUEST_TABLE, 'POST', sanitizeMoveRequestWritePayload(entry.payload));
                 }
                 if (requestIds.length) {
-                    queueAppLiveEventForWrite('ph_active_request', 'POST', requestIds.map((id) => ({ unique_id: id })), '');
+                    queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'POST', requestIds.map((id) => ({ unique_id: id })), '');
                     flushQueuedAppLiveEvents().catch(() => {});
                 }
                 movesRecordsCacheKey = '';
@@ -92320,13 +92303,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 for (const entry of rowPayloads) {
                     const rowId = String(firstNonEmptyValue(entry.row.UNIQUE_ID, entry.row.unique_id, '') || '').trim();
                     if (!rowId) throw new Error('Move approval row is missing unique_id.');
-                    await runDetailWriteWithRetry('ph_active_request', 'PATCH', sanitizeMoveRequestWritePayload(entry.payload), `unique_id=eq.${encodeURIComponent(rowId)}`, {
+                    await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', sanitizeMoveRequestWritePayload(entry.payload), `unique_id=eq.${encodeURIComponent(rowId)}`, {
                         timeoutMs: getDetailRowWriteTimeoutMs(),
                         retries: DETAIL_ROW_WRITE_RETRY_COUNT,
                         retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
                     });
                 }
-                queueAppLiveEventForWrite('ph_active_request', 'UPDATE', rows.map((row) => ({ unique_id: String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim() })).filter((row) => row.unique_id), '');
+                queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'UPDATE', rows.map((row) => ({ unique_id: String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim() })).filter((row) => row.unique_id), '');
                 flushQueuedAppLiveEvents().catch(() => {});
                 showToast('Sent To Que', `${rows.length} location move row${rows.length === 1 ? '' : 's'} ${rows.length === 1 ? 'is' : 'are'} in Que > Location Move.`);
             } catch (error) {
@@ -92390,13 +92373,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 for (const entry of rowPayloads) {
                     const rowId = String(firstNonEmptyValue(entry.row.UNIQUE_ID, entry.row.unique_id, '') || '').trim();
                     if (!rowId) throw new Error('Move approval row is missing unique_id.');
-                    await runDetailWriteWithRetry('ph_active_request', 'PATCH', sanitizeMoveRequestWritePayload(entry.payload), `unique_id=eq.${encodeURIComponent(rowId)}`, {
+                    await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', sanitizeMoveRequestWritePayload(entry.payload), `unique_id=eq.${encodeURIComponent(rowId)}`, {
                         timeoutMs: getDetailRowWriteTimeoutMs(),
                         retries: DETAIL_ROW_WRITE_RETRY_COUNT,
                         retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
                     });
                 }
-                queueAppLiveEventForWrite('ph_active_request', 'UPDATE', rows.map((row) => ({ unique_id: String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim() })).filter((row) => row.unique_id), '');
+                queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'UPDATE', rows.map((row) => ({ unique_id: String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim() })).filter((row) => row.unique_id), '');
                 flushQueuedAppLiveEvents().catch(() => {});
                 showToast('Move Session Approved', `${rows.length} location move row${rows.length === 1 ? '' : 's'} sent to Que > Location Move.`);
             } catch (error) {
@@ -94031,7 +94014,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const safeAssignee = normalizeEvalAssignableUser(assignee || payload.requested_by || '');
             clone.UNIQUE_ID = payload.unique_id;
             clone.DOM_ID = `req_${payload.unique_id}`;
-            clone.SOURCE_TABLE = 'ph_active_request';
+            clone.SOURCE_TABLE = ACTIVE_REQUEST_TABLE;
             clone.MASTER_ID = payload.master_id;
             clone.MASTER_UNIQUE_ID = payload.master_id;
             clone.MASTER_APP_TAB_ASSIGNMENT = EVAL_TASK_ASSIGNMENT;
@@ -94092,7 +94075,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             try {
                 for (const entry of entries) {
                     try {
-                        await supabaseFetch('ph_active_request', 'POST', entry.payload);
+                        await supabaseFetch(ACTIVE_REQUEST_TABLE, 'POST', entry.payload);
                     } catch (writeError) {
                         if (!isRequestNoteColumnMissingError(writeError) || entry.payload.request_note === undefined) throw writeError;
                         const fallbackNote = String(entry.payload.request_note || '').trim();
@@ -94103,7 +94086,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                                 entry.clone.REQ_COMMENTS = [fallbackNote, entry.clone.REQ_COMMENTS].filter(Boolean).join('\n');
                             }
                         }
-                        await supabaseFetch('ph_active_request', 'POST', entry.payload);
+                        await supabaseFetch(ACTIVE_REQUEST_TABLE, 'POST', entry.payload);
                     }
                     savedCount += 1;
                 }
@@ -94112,7 +94095,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 throw error;
             }
             if (requestIds.length) {
-                queueAppLiveEventForWrite('ph_active_request', 'POST', requestIds.map((id) => ({ unique_id: id })), '');
+                queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'POST', requestIds.map((id) => ({ unique_id: id })), '');
                 flushQueuedAppLiveEvents().catch(() => {});
             }
             upsertRequestHistoryRows(entries.map((entry) => entry.clone), 'eval-task-created').catch(() => {});
@@ -103358,7 +103341,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function isRequestDetailItem(item = null, detailSourceView = '') {
             const sourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
             const sourceTable = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, '') || '').trim().toLowerCase();
-            return sourceView === 'request' || sourceTable === 'ph_active_request' || !!firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, item && item.REQ_STATUS, item && item.req_status, '');
+            return sourceView === 'request' || sourceTable === ACTIVE_REQUEST_TABLE || !!firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, item && item.REQ_STATUS, item && item.req_status, '');
         }
 
         function getRequestDesiredSpecValue(item = null) {
@@ -103724,7 +103707,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const sourceCandidate = (value) => {
                     const text = String(value || '').trim();
                     const lower = text.toLowerCase();
-                    return text && lower !== EVAL_TASK_ASSIGNMENT && lower !== 'ph_active_request' ? text : '';
+                    return text && lower !== EVAL_TASK_ASSIGNMENT && lower !== ACTIVE_REQUEST_TABLE ? text : '';
                 };
                 const sourceValue = String(firstNonEmptyValue(
                     sourceCandidate(item && item.SOURCE),
@@ -104070,7 +104053,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function getRequestItemCodeOptionMasterId(item = null) {
             if (!item) return '';
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'ph_master_inventory') || '').trim().toLowerCase();
-            if (sourceTable === 'ph_active_request') {
+            if (sourceTable === ACTIVE_REQUEST_TABLE) {
                 return String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, '') || '').trim();
             }
             return String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, '') || '').trim();
@@ -104143,7 +104126,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const sameItemCode = !!(sourceItemCode && candidateItemCode === sourceItemCode);
             if (!sameItemCode && !isRequestItemCodeOptionSamePlantSize(candidate, source)) return blocked('Different plant/size');
             const sourceTable = String(firstNonEmptyValue(candidate.SOURCE_TABLE, candidate.source_table, 'ph_master_inventory') || '').trim().toLowerCase();
-            if (sourceTable === 'ph_active_request') return blocked('Request row');
+            if (sourceTable === ACTIVE_REQUEST_TABLE) return blocked('Request row');
             if (typeof isEvalScopedDataRowVisibleToCurrentUser === 'function' && !isEvalScopedDataRowVisibleToCurrentUser(candidate)) return blocked('Restricted row');
             const suspendTagContext = isDockSuspendDcRequestMirrorRow(source);
             if (suspendTagContext && isDockSuspendDcOptionAlreadyAdded(source, candidate)) return blocked('Already in Suspend Tag');
@@ -104796,7 +104779,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const status = String(result.status || '').trim().toLowerCase();
                 const changedIds = mergeConfirmedRequestOptionRows(result.rows);
                 if (changedIds.length) {
-                    queueAppLiveEventForWrite('ph_active_request', 'POST', changedIds.map((uniqueId) => ({ unique_id: uniqueId })), '');
+                    queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'POST', changedIds.map((uniqueId) => ({ unique_id: uniqueId })), '');
                     await flushQueuedAppLiveEvents();
                 }
                 requestOptionAppendBatchIds.delete(appendSignature);
@@ -105181,7 +105164,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             ), { includeStandard: false });
             const sharedSalesNoteValue = String(firstNonEmptyValue(getItemDisplayValue(item, 'SALES_NOTE', detailSourceView), item.SALESNOTE, '') || '').trim();
             const sharedAvNoteValue = getItemDisplayValue(item, 'AV_NOTE', detailSourceView);
-            const isRequestSourceRow = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').toLowerCase() === 'ph_active_request';
+            const isRequestSourceRow = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').toLowerCase() === ACTIVE_REQUEST_TABLE;
             const requestAvNoteValue = isRequestSourceRow ? firstNonEmptyValue(item.AV_NOTE, item.REQ_AV_NOTE, item.req_av_note, '') : sharedAvNoteValue;
             if (safePrefix === 'req-') applyRequestOverSeasonNoReservePickNote(item, findLinkedMasterRow(item) || null);
 
@@ -107296,7 +107279,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 ), { includeStandard: false });
                 const sharedSalesNoteValue = String(firstNonEmptyValue(getItemDisplayValue(activeItem, 'SALES_NOTE', detailSourceView), activeItem.SALESNOTE, '') || '').trim();
                 const sharedAvNoteValue = getItemDisplayValue(activeItem, 'AV_NOTE', detailSourceView);
-                const isRequestSourceRow = String(firstNonEmptyValue(activeItem.SOURCE_TABLE, activeItem.source_table, '') || '').toLowerCase() === 'ph_active_request';
+                const isRequestSourceRow = String(firstNonEmptyValue(activeItem.SOURCE_TABLE, activeItem.source_table, '') || '').toLowerCase() === ACTIVE_REQUEST_TABLE;
                 const requestAvNoteValue = isRequestSourceRow ? firstNonEmptyValue(activeItem.AV_NOTE, activeItem.REQ_AV_NOTE, activeItem.req_av_note, '') : sharedAvNoteValue;
                 if (p === 'req-') applyRequestOverSeasonNoReservePickNote(activeItem, findLinkedMasterRow(activeItem) || null);
                 if (match) match.value = getEditableLocMatchPercentValue(p === 'req-' ? firstNonEmptyValue(activeItem.REQ_MATCH, activeItem.req_match, '') : (p === 'flyer-' ? firstNonEmptyValue(activeItem.FLYER_MATCH, activeItem.MATCH, '') : sharedMatchValue));
@@ -107345,7 +107328,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 showToast('Restricted', 'Only Dylan, JD, Megan, Morgan, or Kayla can clear completed row data.', true);
                 return false;
             }
-            const targetTable = prefix === 'req-' ? 'ph_active_request' : (activeItem.SOURCE_TABLE || 'ph_master_inventory');
+            const targetTable = prefix === 'req-' ? ACTIVE_REQUEST_TABLE : (activeItem.SOURCE_TABLE || 'ph_master_inventory');
             const isFlyerFolderRowClear = prefix === 'flyer-' && isFlyerFolderRow(activeItem);
             const beforeState = JSON.parse(JSON.stringify(activeItem));
             const setNull = (value) => (value === '' || value === undefined ? null : value);
@@ -113277,12 +113260,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 applyMoveRequestPatchToLocalRow(row, requestPayload);
                 refreshLocalRequestViewState('move-request-complete', { renderVisible: true, forceRender: true });
                 try {
-                    await runDetailWriteWithRetry('ph_active_request', 'PATCH', sanitizeMoveRequestWritePayload(requestPayload), `unique_id=eq.${encodeURIComponent(uid)}`, {
+                    await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', sanitizeMoveRequestWritePayload(requestPayload), `unique_id=eq.${encodeURIComponent(uid)}`, {
                         timeoutMs: getDetailRowWriteTimeoutMs(),
                         retries: DETAIL_ROW_WRITE_RETRY_COUNT,
                         retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
                     });
-                    queueAppLiveEventForWrite('ph_active_request', 'UPDATE', [{ unique_id: uid }], '');
+                    queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'UPDATE', [{ unique_id: uid }], '');
                 } catch (syncError) {
                     console.warn('Move request cleanup sync failed after Inventory Office publish', syncError);
                 }
@@ -114536,7 +114519,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const isRequestContextVisible = isPrimaryRequestContext
                 || allowAlwaysOn
                 || (currentVisibleView && currentVisibleView !== 'home' && TRACKED_VIEW_IDS.includes(currentVisibleView));
-            const realtimeNeedsCatchup = safeOptions.allowHealthyRealtime === true || allowAlwaysOn || !isRealtimeTableHealthy('ph_active_request');
+            const realtimeNeedsCatchup = safeOptions.allowHealthyRealtime === true || allowAlwaysOn || !isRealtimeTableHealthy(ACTIVE_REQUEST_TABLE);
             const visibleEnoughForMode = allowAlwaysOn ? true : (safeOptions.allowHealthyRealtime === true ? isPrimaryRequestContext : isRequestContextVisible);
             return !!(currentUser && canSeeRequests && requestReadyEnough && visibleEnoughForMode && navigator.onLine !== false && !document.hidden && realtimeNeedsCatchup);
         }
@@ -115357,7 +115340,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function getProductivityCompletionContextFromItem(item = null, fallback = 'task') {
             if (!item) return fallback;
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).toLowerCase();
-            if (sourceTable === 'ph_active_request' || String(firstNonEmptyValue(item.REQ_STATUS, item.REQUEST_FOLDER, item.REQ_CUSTOMER, '')).trim() !== '') return 'request';
+            if (sourceTable === ACTIVE_REQUEST_TABLE || String(firstNonEmptyValue(item.REQ_STATUS, item.REQUEST_FOLDER, item.REQ_CUSTOMER, '')).trim() !== '') return 'request';
             if (isFlyerTaskItem(item)) return 'flyer';
             if (isBloomPickerSalesOfficeItem(item)) return 'sales_office_order';
             const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim().toLowerCase();
@@ -115396,7 +115379,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const resolvedOriginKind = resolveProductivityOriginKind(item);
             if (resolvedOriginKind) return resolvedOriginKind;
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).toLowerCase();
-            if (sourceTable === 'ph_active_request' || String(firstNonEmptyValue(item.REQ_STATUS, item.REQUEST_FOLDER, item.REQ_CUSTOMER, '')).trim() !== '') return 'request';
+            if (sourceTable === ACTIVE_REQUEST_TABLE || String(firstNonEmptyValue(item.REQ_STATUS, item.REQUEST_FOLDER, item.REQ_CUSTOMER, '')).trim() !== '') return 'request';
             if (isFlyerTaskItem(item)) return 'flyer';
             if (isBloomPickerSalesOfficeItem(item)) return 'sales_office_order';
             const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim().toLowerCase();
@@ -115576,7 +115559,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             );
             const isRequestCompletion = isTruthyProductivitySnapshotFlag(snapshot.is_request)
                 || String(completionContext || '').toLowerCase() === 'request'
-                || sourceTableToken === 'ph_active_request'
+                || sourceTableToken === ACTIVE_REQUEST_TABLE
                 || !!String(requestFieldValue || '').trim();
             const normalizedWorkflowLabels = normalizeProductivityLabelList(snapshot.workflow_labels);
             if (isRequestCompletion) appendUniqueProductivityLabel(normalizedWorkflowLabels, 'Request');
@@ -115651,7 +115634,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const completionContext = String(firstNonEmptyValue(opts.completionContext, getProductivityCompletionContextFromItem(item, ''), '')).trim().toLowerCase();
             const sourceKind = String(firstNonEmptyValue(opts.sourceKind, getProductivitySourceKindFromItem(item), '')).trim().toLowerCase();
             if (!isSupportedProductivitySourceKind(sourceKind)) return null;
-            const sourceTable = String(firstNonEmptyValue(opts.sourceTable, item.SOURCE_TABLE, item.source_table, completionContext === 'request' ? 'ph_active_request' : 'ph_master_inventory')).trim();
+            const sourceTable = String(firstNonEmptyValue(opts.sourceTable, item.SOURCE_TABLE, item.source_table, completionContext === 'request' ? ACTIVE_REQUEST_TABLE : 'ph_master_inventory')).trim();
             const completedByDisplay = String(firstNonEmptyValue(opts.completedByDisplay, item.COMPLETED_BY, item.completed_by, item.ORDER_SUBMITTED_BY, item.order_submitted_by, completedByUsername)).trim();
             const sourceAssignment = String(firstNonEmptyValue(opts.sourceAssignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).trim();
             const masterRow = opts.masterRow || findLinkedMasterRow(item) || null;
@@ -115756,7 +115739,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (!item || !completedAt || !isRequestComplete(item)) return;
                 const completedByUsername = deriveProductivityBackfillUsername(item);
                 if (!completedByUsername) return;
-                pushEntry(item, { sourceTable: 'ph_active_request', sourceKind: getProductivitySourceKindFromItem(item), completionContext: 'request', completedAt, completedByUsername, completedByDisplay: deriveProductivityBackfillDisplay(item, completedByUsername), sourceAssignment: firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') });
+                pushEntry(item, { sourceTable: ACTIVE_REQUEST_TABLE, sourceKind: getProductivitySourceKindFromItem(item), completionContext: 'request', completedAt, completedByUsername, completedByDisplay: deriveProductivityBackfillDisplay(item, completedByUsername), sourceAssignment: firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') });
             });
             return mergeProductivityHistoryRows([], entries);
         }
@@ -127561,7 +127544,7 @@ C.14.043 C.15.000
             const requestFields = firstNonEmptyValue(safeSnapshot.requested_by, safeSnapshot.sales_rep, safeSnapshot.req_customer, safeSnapshot.request_folder, safeSnapshot.request_qty, safeSnapshot.request_note, '');
             return isTruthyProductivitySnapshotFlag(safeSnapshot.is_request)
                 || completionContext === 'request'
-                || sourceTable === 'ph_active_request'
+                || sourceTable === ACTIVE_REQUEST_TABLE
                 || !!String(requestFields || '').trim();
         }
 
@@ -139773,10 +139756,10 @@ C.14.043 C.15.000
                 trackOptimisticRequestIds(requestIds);
                 refreshLocalRequestViewState('manager-item-move-queued', { renderHiddenRequest: true, renderVisible: true, forceRender: true });
                 await runLimitedConcurrent(entries, async (entry) => {
-                    await supabaseFetch('ph_active_request', 'POST', sanitizeMoveRequestWritePayload(entry.payload));
+                    await supabaseFetch(ACTIVE_REQUEST_TABLE, 'POST', sanitizeMoveRequestWritePayload(entry.payload));
                 }, 4);
                 if (requestIds.length) {
-                    queueAppLiveEventForWrite('ph_active_request', 'POST', requestIds.map((id) => ({ unique_id: id })), '');
+                    queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'POST', requestIds.map((id) => ({ unique_id: id })), '');
                     flushQueuedAppLiveEvents().catch(() => {});
                 }
                 entries.forEach((entry) => {
@@ -139924,10 +139907,10 @@ C.14.043 C.15.000
                 trackOptimisticRequestIds(requestIds);
                 refreshLocalRequestViewState('manager-card-move-queued', { renderHiddenRequest: true, renderVisible: true, forceRender: true });
                 await runLimitedConcurrent(entries, async (entry) => {
-                    await supabaseFetch('ph_active_request', 'POST', sanitizeMoveRequestWritePayload(entry.payload));
+                    await supabaseFetch(ACTIVE_REQUEST_TABLE, 'POST', sanitizeMoveRequestWritePayload(entry.payload));
                 }, 4);
                 if (requestIds.length) {
-                    queueAppLiveEventForWrite('ph_active_request', 'POST', requestIds.map((id) => ({ unique_id: id })), '');
+                    queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'POST', requestIds.map((id) => ({ unique_id: id })), '');
                     flushQueuedAppLiveEvents().catch(() => {});
                 }
                 entries.forEach((entry) => {
@@ -140104,9 +140087,9 @@ C.14.043 C.15.000
                 trackOptimisticRequestIds(requestIds);
                 refreshLocalRequestViewState('manual-move-batch-created', { renderHiddenRequest: true, renderVisible: true, forceRender: true });
                 for (const entry of entries) {
-                        await supabaseFetch('ph_active_request', 'POST', sanitizeMoveRequestWritePayload(entry.payload));
+                        await supabaseFetch(ACTIVE_REQUEST_TABLE, 'POST', sanitizeMoveRequestWritePayload(entry.payload));
                 }
-                queueAppLiveEventForWrite('ph_active_request', 'POST', entries.map((entry) => ({ unique_id: entry.payload.unique_id })), '');
+                queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'POST', entries.map((entry) => ({ unique_id: entry.payload.unique_id })), '');
                 flushQueuedAppLiveEvents().catch(() => {});
                 let emailSent = true;
                 try {
@@ -144324,9 +144307,15 @@ C.14.043 C.15.000
 
         function normalizeRequestCardMetrics(row = {}) {
             const result = { ...row };
-            const onHand = Number(row.PTRONHAND ?? row.ptronhand);
-            const available = Number(row.PTRAVAILABLE ?? row.ptravailable);
-            const review = Number(row.PTRREVIEWED ?? row.ptrreviewed ?? 0);
+            const onHand = Number(firstNonEmptyValue(row.PTRONHAND, row.ptronhand, row.ON_HAND, row.on_hand, 0));
+            const available = Number(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, row.AVAILABLE_QTY, row.available_qty, 0));
+            const review = Number(firstNonEmptyValue(row.PTRREVIEWED, row.ptrreviewed, row.REVIEW_QTY, row.review_qty, 0));
+            result.PTRONHAND = Number.isFinite(onHand) ? onHand : 0;
+            result.PTRAVAILABLE = Number.isFinite(available) ? available : 0;
+            result.PTRREVIEWED = Number.isFinite(review) ? review : 0;
+            result.S_LTS = firstNonEmptyValue(row.S_LTS, row.s_lts, row.OPEN_STOCK, row.open_stock, 0);
+            result.LOC_ON_HAND = firstNonEmptyValue(row.LOC_ON_HAND, row.loc_on_hand, row.ON_HAND, row.on_hand, result.PTRONHAND);
+            result.LOC_MATCH_QTY = firstNonEmptyValue(row.LOC_MATCH_QTY, row.loc_match_qty, row.LOC_PHOTO_MATCH, row.loc_photo_match, 0);
             if (onHand === 0 && available > 0 && Number.isFinite(review)) {
                 result.PTRONHAND = available + review;
                 result.LOC_ON_HAND = Math.max(Number(row.LOC_ON_HAND ?? row.loc_on_hand) || 0, result.PTRONHAND);
@@ -144904,11 +144893,11 @@ C.14.043 C.15.000
                 const requestCustomer = normalizeRequestCardCustomer(firstNonEmptyValue(item.CUSTOMERNAME, item.customername, item.REQ_CUSTOMER, item.req_customer, item.CUSTOMER_NAME, cust, 'Unknown'));
                 const requestConsignee = String(firstNonEmptyValue(item.CONSIGNEENAME, item.consigneename, item.REQ_CONSIGNEE, item.req_consignee, item.CONSIGNEE_NAME, '') || '').trim();
                 const requestSalesRep = String(getRequestAssignedRep(item) || 'Unknown').trim();
-                const requestCaliper = String(firstNonEmptyValue(item.REQ_CALIPER, item.req_caliper, item.CALIPER, item.caliper, item.DESIRED_CALIPER, item.desired_caliper, '') || '').trim();
+                const requestCaliper = String(firstNonEmptyValue(item.REQUEST_CALIPER, item.request_caliper, item.REQ_CALIPER, item.req_caliper, item.CALIPER, item.caliper, item.DESIRED_CALIPER, item.desired_caliper, '') || '').trim();
                 const requestMetaChip = (label, value) => `<span class="app-request-card-meta-chip"><span>${label}</span><strong>${esc(value || '—')}</strong></span>`;
                 const requestSubmitter = String(firstNonEmptyValue(item.REQUEST_CREATED_BY_DISPLAY, item.request_created_by_display, item.REQUEST_CREATED_BY_USERNAME, item.request_created_by_username, item.CREATED_BY_DISPLAY, item.created_by_display, item.CREATED_BY, item.created_by, requestSalesRep));
                 const meaningfulRequestDetail = value => value && !/^(?:N\/?A|GENERAL|-)$/i.test(String(value).trim());
-                const requestDetail = firstNonEmptyValue(item.DESIRED_SPEC, item.desired_spec, item.REQUEST_NOTE, item.request_note, '');
+                const requestDetail = firstNonEmptyValue(item.REQUEST_SPEC, item.request_spec, item.DESIRED_SPEC, item.desired_spec, item.REQUEST_NOTE, item.request_note, '');
                 const requestMetaHtml = `<div class="app-request-card-metadata"><div>${requestMetaChip('Customer', requestCustomer)}${requestMetaChip('Consignee', requestConsignee)}</div><div>${requestMetaChip('Sales Rep', requestSalesRep)}${requestMetaChip('Submitted By', requestSubmitter)}</div>${meaningfulRequestDetail(requestDetail) || meaningfulRequestDetail(requestCaliper) ? `<div class="app-request-card-note">${esc([requestDetail, requestCaliper].filter(meaningfulRequestDetail).join(' · '))}</div>` : ''}</div>`;
                 const requestHoldBar = cleanHoldCode || holdReasonText ? `<div class="app-request-card-hold" title="${esc(holdReasonText || '')}">${esc(cleanHoldCode || 'Hold/Stop')} · ${esc(holdReasonText || '—')}</div>` : '';
                 const suspendSalesRep = String(firstNonEmptyValue(item.REQUESTED_BY, item.SALESREPNAME, item.SALESREP, item.SALESREPID, '') || '').trim();
@@ -145460,14 +145449,14 @@ C.14.043 C.15.000
             const previousRepAction = item.REQ_REP_ACTION;
             const previousArchived = item.REQ_ARCHIVED;
             let folderId = getRequestFolderName(item);
-            const changedDatasetKeys = getDatasetKeysForTable('ph_active_request');
+            const changedDatasetKeys = getDatasetKeysForTable(ACTIVE_REQUEST_TABLE);
             const visibleAffectedViews = getVisibleAffectedViewIds(changedDatasetKeys);
             item.REQ_REP_ACTION = action;
             item.REQ_ARCHIVED = true;
-            propagateCommittedEdit('ph_active_request', item, changedDatasetKeys, visibleAffectedViews, { delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
+            propagateCommittedEdit(ACTIVE_REQUEST_TABLE, item, changedDatasetKeys, visibleAffectedViews, { delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
             showToast("Saving...", `Marked as ${action}`, false);
 
-            supabaseFetch('ph_active_request', 'PATCH', { req_rep_action: action, req_archived: true }, `unique_id=eq.${uid}`)
+            supabaseFetch(ACTIVE_REQUEST_TABLE, 'PATCH', { req_rep_action: action, req_archived: true }, `unique_id=eq.${uid}`)
             .then(() => {
                 upsertRequestHistoryRows([item], String(action || '').toLowerCase() || 'reviewed').catch(() => {});
                 showToast("Saved", `Item ${action}`);
@@ -145475,7 +145464,7 @@ C.14.043 C.15.000
             }).catch(() => {
                 item.REQ_REP_ACTION = previousRepAction;
                 item.REQ_ARCHIVED = previousArchived;
-                propagateCommittedEdit('ph_active_request', item, changedDatasetKeys, visibleAffectedViews, { delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
+                propagateCommittedEdit(ACTIVE_REQUEST_TABLE, item, changedDatasetKeys, visibleAffectedViews, { delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
                 showToast("Error", "Network Error", true);
             });
         }
@@ -147211,7 +147200,7 @@ C.14.043 C.15.000
             try {
                 const encodedIds = ids.map((id) => encodeURIComponent(id)).join(',');
                 const rows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&unique_id=in.(${encodedIds})`, Math.max(50, ids.length), 0);
-                const formattedRows = formatFetchedRows(rows || [], 'ph_active_request');
+                const formattedRows = formatFetchedRows(rows || [], ACTIVE_REQUEST_TABLE);
                 if (formattedRows.length) {
                     const existingById = new Map((requestsInventory || []).map((item) => [String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim(), item]).filter(([id]) => id));
                     formattedRows.forEach((row) => {
@@ -147791,6 +147780,11 @@ C.14.043 C.15.000
                     const requestPhotoLink=useExistingData?reusable.photoLink:'';
                     const requestPhotoName=useExistingData?reusable.photoName:'';
                     const requestAvNote=useExistingData?reusable.avNote:'';
+                    const requestRawQty=window.AgMetricRequestSubmission.normalizeOptionalQuantity(dataObj.qty);
+                    const requestQtyNumber=parseAppNumber(requestRawQty);
+                    const requestEffectiveQty=requestQtyNumber!=null&&requestQtyNumber>0?requestQtyNumber:25;
+                    const requestUnitListPrice=Math.max(0,parseAppNumber(firstNonEmptyValue(item.LISTPRICE,item.listprice,item.UNIT_LIST_PRICE,item.unit_list_price,0))||0);
+                    const requestRecipientEmails=emailChainRecipients.map((recipient)=>String(firstNonEmptyValue(recipient&&recipient.email,recipient&&recipient.address,'')||'').trim().toLowerCase()).filter(Boolean);
                     const sourceAppTabAssignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, item.MASTER_APP_TAB_ASSIGNMENT, item.master_app_tab_assignment, '') || '').trim().toLowerCase();
                     const autoCompleteEligible = useExistingData && reusable.readyForAutoComplete;
                     const autoCompleteOnCreate = autoCompleteEligible && useExistingData;
@@ -147818,7 +147812,7 @@ C.14.043 C.15.000
                         desired_spec:desiredSpec,
                         desired_caliper:desiredCaliper,
                         est_ship:dataObj.estShip||'',
-                        req_qty:window.AgMetricRequestSubmission.normalizeOptionalQuantity(dataObj.qty),
+                        req_qty:requestRawQty,
                         req_reserve:dataObj.reserve||'NO',
                         req_match:requestMatch!==''?requestMatch:null,
                         req_spec:requestSpec||null,
@@ -147832,7 +147826,48 @@ C.14.043 C.15.000
                         date_completed:requestCompletedAt,
                         req_status:requestStatus,
                         app_tab_assignment:sourceAppTabAssignment||null,
-                        master_app_tab_assignment:sourceAppTabAssignment||null
+                        master_app_tab_assignment:sourceAppTabAssignment||null,
+                        photos:requestPhotoLink?requestPhotoLink.split(',').map((url)=>({url:String(url||'').trim()})).filter((entry)=>entry.url):[],
+                        photo_url:requestPhotoLink||null,
+                        photo_date:useExistingData?firstNonEmptyValue(item.PHOTO_DATE,item.photo_date,item.DATE_COMPLETED,item.date_completed,null):null,
+                        spec:requestSpec||null,
+                        caliper:requestCaliper||null,
+                        loc_match_pct:requestMatch!==''?parseAppNumber(requestMatch):null,
+                        baseline_on_hand:useExistingData?parseAppNumber(firstNonEmptyValue(item.BASELINE_ON_HAND,item.baseline_on_hand,item.INITIAL_PTR,item.initial_ptr,item.PTRONHAND,item.ptronhand,'')):null,
+                        initial_photo_match_qty:useExistingData?parseAppNumber(firstNonEmptyValue(item.INITIAL_PHOTO_MATCH_QTY,item.initial_photo_match_qty,'')):null,
+                        loc_photo_match:useExistingData?parseAppNumber(firstNonEmptyValue(item.LOC_PHOTO_MATCH,item.loc_photo_match,item.LOC_MATCH_QTY,item.loc_match_qty,'')):null,
+                        pick_note:requestPick||null,
+                        sales_note:useExistingData?firstNonEmptyValue(item.SALES_NOTE,item.sales_note,null):null,
+                        photo_expires_at:useExistingData?firstNonEmptyValue(item.PHOTO_EXPIRES_AT,item.photo_expires_at,null):null,
+                        sales_rep:requestedBy,
+                        customer_name:firstNonEmptyValue(requestMappingPayload.customername,requestCustomerContext.customername,cust,'Unknown Customer'),
+                        consignee_name:firstNonEmptyValue(requestMappingPayload.consigneename,requestCustomerContext.consigneename,'N/A'),
+                        customer_consignee_label:[firstNonEmptyValue(requestMappingPayload.customername,requestCustomerContext.customername,cust,'Unknown Customer'),firstNonEmptyValue(requestMappingPayload.consigneename,requestCustomerContext.consigneename,'N/A')].join(' / '),
+                        recipient_emails:requestRecipientEmails,
+                        status:requestStatus,
+                        request_qty:requestQtyNumber!=null&&requestQtyNumber>0?requestQtyNumber:null,
+                        effective_qty:requestEffectiveQty,
+                        is_default_qty:requestQtyNumber==null||requestQtyNumber<=0,
+                        unit_list_price:requestUnitListPrice,
+                        line_dollar_value:Math.round(requestEffectiveQty*requestUnitListPrice*100)/100,
+                        request_spec:desiredSpec||null,
+                        request_caliper:desiredCaliper||null,
+                        estimated_ship:dataObj.estShip||null,
+                        reserve_flag:dataObj.reserve||'NO',
+                        request_notes:requestNote||null,
+                        on_hand:parseAppNumber(firstNonEmptyValue(item.PTRONHAND,item.ptronhand,item.ON_HAND,item.on_hand,'')),
+                        review_qty:parseAppNumber(firstNonEmptyValue(item.PTRREVIEWED,item.ptrreviewed,item.REVIEW_QTY,item.review_qty,'')),
+                        available_qty:parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE,item.ptravailable,item.AVAILABLE_QTY,item.available_qty,'')),
+                        open_stock:parseAppNumber(firstNonEmptyValue(item.S_LTS,item.s_lts,item.OPEN_STOCK,item.open_stock,'')),
+                        loc_on_hand:parseAppNumber(firstNonEmptyValue(item.LOC_ON_HAND,item.loc_on_hand,item.PTRONHAND,item.ptronhand,'')),
+                        pri:firstNonEmptyValue(item.PRIORITY,item.priority,null),
+                        flag_color:firstNonEmptyValue(item.FLAG_COLOR,item.flag_color,item.FIELDTAGCOLOR,item.fieldtagcolor,item.FIELD_TAG_COLOR,item.field_tag_color,null),
+                        ns_grade:firstNonEmptyValue(item.NS_GRADE,item.ns_grade,item.QUALITYCODE,item.qualitycode,null),
+                        ld_flag:firstNonEmptyValue(item.LD_FLAG,item.ld_flag,item.LD,item.ld,null),
+                        hold_stop_code:firstNonEmptyValue(item.HOLDSTOPCODE,item.holdstopcode,null),
+                        hold_stop_reason:firstNonEmptyValue(item.HOLDSTOPREASON,item.holdstopreason,null),
+                        hold_stop_since:firstNonEmptyValue(item.HOLDSTOPBEGINDATE,item.holdstopbegindate,item.HOLD_STOP_SINCE,item.hold_stop_since,null),
+                        source_snapshot:{unique_id:item.UNIQUE_ID,itemcode:item.ITEMCODE,locationcode:item.LOCATIONCODE,lotcode:item.LOTCODE,commonname:item.COMMONNAME,contsize:item.CONTSIZE}
                     };
                     newReq.request_source = requestSource;
                     applyRequestCreatorAuditFields(newReq, requestCreatorAudit);
@@ -147988,15 +148023,15 @@ C.14.043 C.15.000
             if (!safeFolderName || navigator.onLine === false) return fallbackItems;
             try {
                 const rows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&request_folder=eq.${encodeURIComponent(safeFolderName)}&order=unique_id.asc`, 1000, 0);
-                const formattedRows = formatFetchedRows(rows || [], 'ph_active_request')
+                const formattedRows = formatFetchedRows(rows || [], ACTIVE_REQUEST_TABLE)
                     .filter((item) => item && (includeArchivedRows || !isRequestRowArchivedForCompletion(item)));
                 const mergedRows = mergeRequestCompletionEmailRows(completedItem ? [completedItem] : [], formattedRows);
                 if (mergedRows.length) {
                     formattedRows.forEach((item) => {
-                        upsertRealtimeRow(requestsInventory, item, 'ph_active_request');
+                        upsertRealtimeRow(requestsInventory, item, ACTIVE_REQUEST_TABLE);
                     });
                     if (formattedRows.length) {
-                        refreshRealtimeDetailLookupIndexes('ph_active_request');
+                        refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
                         requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                     }
                     return mergedRows;
@@ -156062,8 +156097,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     clone.master_source = firstNonEmptyValue(clone.master_source, clone.MASTER_SOURCE, masterSource);
                 }
             }
-            clone.SOURCE_TABLE = 'ph_active_request';
-            clone.source_table = 'ph_active_request';
+            clone.SOURCE_TABLE = ACTIVE_REQUEST_TABLE;
+            clone.source_table = ACTIVE_REQUEST_TABLE;
             clone.REQUEST_UNIQUE_ID = requestUid || String(firstNonEmptyValue(clone.REQUEST_UNIQUE_ID, '') || '').trim();
             clone.EVAL_TASK_REQUEST_MIRROR = '1';
             clone.eval_task_request_mirror = '1';
@@ -163478,7 +163513,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const encodedId = encodeURIComponent(sourceId);
                 try {
                     const rawRows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&or=(unique_id.eq.${encodedId},master_id.eq.${encodedId})`, 500, 0);
-                    formatFetchedRows(rawRows, 'ph_active_request').forEach((row) => {
+                    formatFetchedRows(rawRows, ACTIVE_REQUEST_TABLE).forEach((row) => {
                         const rowSourceIds = new Set([sourceId].filter(Boolean));
                         const directLinked = isDirectLinkedRequestSourceMatch(rowSourceIds, row);
                         const fieldMatch = isLinkedRequestCompletionFieldMatch(sourceItem, row);
@@ -163491,7 +163526,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             for (const query of fallbackQueries) {
                 try {
                     const rawRows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, query, 1000, 0);
-                    formatFetchedRows(rawRows || [], 'ph_active_request')
+                    formatFetchedRows(rawRows || [], ACTIVE_REQUEST_TABLE)
                         .filter((row) => isLinkedRequestCompletionFieldMatch(sourceItem, row))
                         .forEach((row) => addPendingLinkedRequestRow(rows, seenIds, row));
                 } catch (error) {
@@ -163755,7 +163790,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function refreshLinkedRequestUpdateState(rows = []) {
             const updatedRows = (Array.isArray(rows) ? rows : []).filter(Boolean);
             if (!updatedRows.length) return;
-            updatedRows.forEach((row) => upsertRealtimeRow(requestsInventory, row, 'ph_active_request'));
+            updatedRows.forEach((row) => upsertRealtimeRow(requestsInventory, row, ACTIVE_REQUEST_TABLE));
             rebuildRequestInventoryIndexes();
             requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
             invalidateResolvedViewStateCaches();
@@ -163797,7 +163832,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     continue;
                 }
                 try {
-                    await runDetailWriteWithRetry('ph_active_request', 'PATCH', requestPayload, `unique_id=eq.${encodeURIComponent(rowId)}`, requestOptions);
+                    await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', requestPayload, `unique_id=eq.${encodeURIComponent(rowId)}`, requestOptions);
                     updatedRows.push(applyLinkedRequestUpdateToLocalRow(requestRow, sourceItem, requestPayload));
                 } catch (error) {
                     console.warn('Linked pending request update write failed', rowId, error);
@@ -163901,7 +163936,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             payload.completed_by_email = sourceCompletionUser.email || null;
                         }
                     }
-                    await runDetailWriteWithRetry('ph_active_request', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(rowId)}`, {});
+                    await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(rowId)}`, {});
                     completedRows.push(applyLinkedRequestCompletionToLocalRow(entry.row, entry.source, { ...payload, _preserveCompletionUser: true }));
                     await yieldToUiFrame();
                 }
@@ -163957,7 +163992,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function refreshLinkedRequestCompletionState(rows = []) {
             const completedRows = (Array.isArray(rows) ? rows : []).filter(Boolean);
             if (!completedRows.length) return;
-            completedRows.forEach((row) => upsertRealtimeRow(requestsInventory, row, 'ph_active_request'));
+            completedRows.forEach((row) => upsertRealtimeRow(requestsInventory, row, ACTIVE_REQUEST_TABLE));
             rebuildRequestInventoryIndexes();
             const rowIds = completedRows.map((row) => String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim()).filter(Boolean);
             discardPendingLocalEdits(rowIds, true);
@@ -164007,7 +164042,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
             const uniqueRowIds = Array.from(new Set(rowIds));
             if (!uniqueRowIds.length) return false;
-            touchedRows.forEach((row) => upsertRealtimeRow(requestsInventory, row, 'ph_active_request'));
+            touchedRows.forEach((row) => upsertRealtimeRow(requestsInventory, row, ACTIVE_REQUEST_TABLE));
             trackOptimisticCompletedRows(uniqueRowIds);
             rebuildRequestInventoryIndexes();
             requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
@@ -164049,7 +164084,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!isLinkedRequestCompletionFreshForRequest(sourceItem, savePayload, requestRow)) continue;
                 const requestPayload = buildLinkedRequestCompletionPayload(sourceItem, savePayload, requestRow, canPersistCompletionUser);
                 try {
-                    await runDetailWriteWithRetry('ph_active_request', 'PATCH', requestPayload, `unique_id=eq.${encodeURIComponent(rowId)}`, requestOptions);
+                    await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', requestPayload, `unique_id=eq.${encodeURIComponent(rowId)}`, requestOptions);
                     completedRows.push(applyLinkedRequestCompletionToLocalRow(requestRow, sourceItem, requestPayload));
                 } catch (error) {
                     console.warn('Linked pending request completion write failed', rowId, error);
@@ -164273,7 +164308,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!folderName) return [];
             try {
                 const rawRows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&request_folder=eq.${encodeURIComponent(folderName)}`, 1000, 0);
-                return formatFetchedRows(rawRows || [], 'ph_active_request');
+                return formatFetchedRows(rawRows || [], ACTIVE_REQUEST_TABLE);
             } catch (error) {
                 console.warn('Could not fetch request folder rows for correction', error);
                 return [];
@@ -164440,7 +164475,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function refreshRequestCorrectionState(rows = [], reason = 'request-correction') {
             const changedRows = (Array.isArray(rows) ? rows : []).filter(Boolean);
-            changedRows.forEach((row) => upsertRealtimeRow(requestsInventory, row, 'ph_active_request'));
+            changedRows.forEach((row) => upsertRealtimeRow(requestsInventory, row, ACTIVE_REQUEST_TABLE));
             rebuildRequestInventoryIndexes();
             const rowIds = changedRows.map(getRequestCorrectionUniqueId).filter(Boolean);
             discardPendingLocalEdits(rowIds, true);
@@ -164489,7 +164524,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (button) button.innerText = 'REOPENING...';
             try {
                 const payload = buildRequestCorrectionReopenPayload(sourceItem);
-                await runDetailWriteWithRetry('ph_active_request', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(sourceId)}`, {});
+                await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(sourceId)}`, {});
                 applyRequestCorrectionPayloadToLocalRow(sourceItem, payload);
                 refreshRequestCorrectionState([sourceItem], 'request-reopen-correction');
                 showToast('Reopened', 'The row is back in Pending.');
@@ -164539,9 +164574,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (button) button.innerText = 'MOVING...';
                 const targetPayload = buildRequestCorrectionTargetPayload(sourceItem, targetRow);
                 const sourcePayload = buildRequestCorrectionReopenPayload(sourceItem);
-                await runDetailWriteWithRetry('ph_active_request', 'PATCH', targetPayload, `unique_id=eq.${encodeURIComponent(targetId)}`, {});
+                await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', targetPayload, `unique_id=eq.${encodeURIComponent(targetId)}`, {});
                 try {
-                    await runDetailWriteWithRetry('ph_active_request', 'PATCH', sourcePayload, `unique_id=eq.${encodeURIComponent(sourceId)}`, {});
+                    await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', sourcePayload, `unique_id=eq.${encodeURIComponent(sourceId)}`, {});
                 } catch (sourceError) {
                     console.error('Request source reopen failed after target correction write', sourceError);
                     showToast('Needs Reopen', 'The correct row was filled, but the original row did not reopen. Tap Reopen Row on it.', true);
@@ -164570,7 +164605,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function refreshSameDriveRequestReviewCarryoverState(row = null) {
             if (!row) return;
-            upsertRealtimeRow(requestsInventory, row, 'ph_active_request');
+            upsertRealtimeRow(requestsInventory, row, ACTIVE_REQUEST_TABLE);
             rebuildRequestInventoryIndexes();
             requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
             invalidateResolvedViewStateCaches();
@@ -164593,7 +164628,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const hasPayload = payload && Object.keys(payload).length > 0;
             if (!rowId || !hasPayload || navigator.onLine === false) return { payload, persisted: false };
             try {
-                await runDetailWriteWithRetry('ph_active_request', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(rowId)}`, requestOptions || {});
+                await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(rowId)}`, requestOptions || {});
                 persistCurrentCache(false, 'same-drive-request-review-carryover');
                 return { payload, persisted: true };
             } catch (error) {
@@ -164997,7 +165032,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return candidates
                 .filter((row) => {
                     const sourceTable = String(firstNonEmptyValue(row.SOURCE_TABLE, row.source_table, 'ph_master_inventory') || '').trim().toLowerCase();
-                    if (sourceTable === 'ph_active_request') return false;
+                    if (sourceTable === ACTIVE_REQUEST_TABLE) return false;
                     if (typeof isEvalScopedDataRowVisibleToCurrentUser === 'function' && !isEvalScopedDataRowVisibleToCurrentUser(row)) return false;
                     return hasRequestItemCodeOptionValidPhotoData(row);
                 })
@@ -167465,7 +167500,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                     artifacts.masterSyncPayload.app_tab_assignment = 'season';
                                 }
                                 artifacts.applyAvSync = true;
-                                artifacts.skipRemoteMasterSync = String(firstNonEmptyValue(itemToSave.SOURCE_TABLE, itemToSave.source_table, prefix === 'req-' ? 'ph_active_request' : 'ph_master_inventory')).toLowerCase() === 'ph_master_inventory'
+                                artifacts.skipRemoteMasterSync = String(firstNonEmptyValue(itemToSave.SOURCE_TABLE, itemToSave.source_table, prefix === 'req-' ? ACTIVE_REQUEST_TABLE : 'ph_master_inventory')).toLowerCase() === 'ph_master_inventory'
                                     && String(firstNonEmptyValue(itemToSave.UNIQUE_ID, '')).trim() === String(artifacts.masterSyncId).trim();
                             } else if (isSeasonQualifiedCompletion && !artifacts.masterSyncItem) {
                                 artifacts.masterSyncMissing = true;
@@ -167514,7 +167549,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let linkedRequestCompletionResult = null;
                 let linkedRequestUpdateResult = null;
                 let requestMasterUpdateResult = null;
-                const targetTable = (prefix === 'req-') ? 'ph_active_request' : (itemToSave.SOURCE_TABLE || 'ph_master_inventory');
+                const targetTable = (prefix === 'req-') ? ACTIVE_REQUEST_TABLE : (itemToSave.SOURCE_TABLE || 'ph_master_inventory');
                 const pendingUploads = isComplete ? getPendingPhotoUploadsForItem(itemToSave, prefix) : [];
                 let savePayloadSignature = '';
                 const savePerfStartedAt = beginInternalPerfMeasure();
@@ -167533,10 +167568,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                         getDatasetKeysForTable('ph_sales_office').forEach((key) => changedKeys.add(key));
                     }
                     if (linkedRequestCompletionResult && Array.isArray(linkedRequestCompletionResult.completedRows) && linkedRequestCompletionResult.completedRows.length) {
-                        getDatasetKeysForTable('ph_active_request').forEach((key) => changedKeys.add(key));
+                        getDatasetKeysForTable(ACTIVE_REQUEST_TABLE).forEach((key) => changedKeys.add(key));
                     }
                     if (linkedRequestUpdateResult && Array.isArray(linkedRequestUpdateResult.updatedRows) && linkedRequestUpdateResult.updatedRows.length) {
-                        getDatasetKeysForTable('ph_active_request').forEach((key) => changedKeys.add(key));
+                        getDatasetKeysForTable(ACTIVE_REQUEST_TABLE).forEach((key) => changedKeys.add(key));
                     }
                     return Array.from(changedKeys);
                 };
@@ -167558,7 +167593,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (!requestId || navigator.onLine === false) return null;
                     try {
                         const rows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&unique_id=eq.${encodeURIComponent(requestId)}`, 1, 0);
-                        const formattedRows = formatFetchedRows(rows || [], 'ph_active_request');
+                        const formattedRows = formatFetchedRows(rows || [], ACTIVE_REQUEST_TABLE);
                         return formattedRows[0] || null;
                     } catch (error) {
                         return null;
@@ -167590,8 +167625,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     normalizeRowPhotoFields(itemToSave);
                     buildSearchIndex(itemToSave);
                     confirmQueueCompletion(itemToSave);
-                    upsertRealtimeRow(requestsInventory, itemToSave, 'ph_active_request');
-                    refreshRealtimeDetailLookupIndexes('ph_active_request');
+                    upsertRealtimeRow(requestsInventory, itemToSave, ACTIVE_REQUEST_TABLE);
+                    refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
                     requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                     stopAlreadyCompletedRequestSave('That request was just completed by another user.');
                     return true;
@@ -167831,7 +167866,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         showToast('Publish Warning', 'Completed in Sales Office, but the linked app row was not found so AV could not update yet.', true);
                     }
                     const shouldQueueGenericCatchup = !isLagSensitiveDetailPrefix(prefix)
-                        && !['ph_master_inventory', 'ph_active_request'].includes(String(targetTable || '').trim().toLowerCase());
+                        && !['ph_master_inventory', ACTIVE_REQUEST_TABLE].includes(String(targetTable || '').trim().toLowerCase());
                     if (shouldQueueGenericCatchup) deferNonCriticalWork('dataset-catchup', () => queueVisibleDatasetCatchup(POST_SAVE_DATASET_CATCHUP_MS), 96);
 
 
@@ -168043,7 +168078,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             }
                             if (!acknowledgedRequestWorkDraft) discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
                             deleteAcknowledgedRequestBlobs(itemToSave.UNIQUE_ID).catch(() => {});
-                            queueAppLiveEventForWrite('ph_active_request', 'PATCH', [{ unique_id: itemToSave.UNIQUE_ID }], '');
+                            queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'PATCH', [{ unique_id: itemToSave.UNIQUE_ID }], '');
                             const finalizeRpcSave = () => handleSaveSuccess(atomicRequestArtifacts);
                             if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeRpcSave, 0);
                             else finalizeRpcSave();
@@ -168099,7 +168134,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             if (Object.prototype.hasOwnProperty.call(payload, 'completed_by_username')) requestConfirmationPayload.completed_by_username = payload.completed_by_username;
                             if (Object.prototype.hasOwnProperty.call(payload, 'completed_by_display')) requestConfirmationPayload.completed_by_display = payload.completed_by_display;
                             if (Object.prototype.hasOwnProperty.call(payload, 'completed_by_email')) requestConfirmationPayload.completed_by_email = payload.completed_by_email;
-                            runDetailWriteWithRetry('ph_active_request', 'PATCH', requestConfirmationPayload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions).catch((error) => {
+                            runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', requestConfirmationPayload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions).catch((error) => {
                                 console.warn('Request completion confirmation write skipped', error);
                             });
                         }
@@ -168363,7 +168398,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const cache = getPendingEditsCache();
             const previous = cache[requestId] && typeof cache[requestId] === 'object' ? cache[requestId] : {};
             const entry = {
-                ...previous, timestamp: Date.now(), sourceTable: 'ph_active_request', data: item,
+                ...previous, timestamp: Date.now(), sourceTable: ACTIVE_REQUEST_TABLE, data: item,
                 requestWorkDraft: draft, ...extra
             };
             cache[requestId] = entry;
@@ -168589,7 +168624,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function isRequestLikeLocalEditRow(item = null) {
             if (!item || typeof item !== 'object') return false;
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase();
-            if (sourceTable === 'ph_active_request') return true;
+            if (sourceTable === ACTIVE_REQUEST_TABLE) return true;
             const domId = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, '') || '').trim().toLowerCase();
             if (domId.startsWith('req_') || domId.startsWith('req-')) return true;
             return Object.prototype.hasOwnProperty.call(item, 'REQ_STATUS')
@@ -168639,7 +168674,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             pendingEdits[requestId || item.UNIQUE_ID] = {
                 ...previous,
                 timestamp: new Date().getTime(),
-                sourceTable: isRequestLikeLocalEditRow(item) ? 'ph_active_request' : String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim(),
+                sourceTable: isRequestLikeLocalEditRow(item) ? ACTIVE_REQUEST_TABLE : String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim(),
                 data: item,
                 ...(requestWorkDraft ? { requestWorkDraft } : {})
             };

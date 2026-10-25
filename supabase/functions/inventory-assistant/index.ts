@@ -124,7 +124,7 @@ const TABLE_LABELS: Record<DatasetKey, string> = {
 const TABLE_NAMES = {
   master: "ph_master_inventory",
   reserves: "ph_reserves",
-  requests: "ph_active_request",
+  requests: "ph_requests_pending",
   "sales-office": "ph_sales_office",
   docks: "ph_soc_master",
   "dock-team": "ph_dock_team_status",
@@ -510,7 +510,7 @@ async function fetchRows(tableName: AssistantTableName, intent: Intent): Promise
     const fieldOptions: Record<string, string[]> = {
       ph_master_inventory: ["commonname", "itemcode", "locationcode"],
       ph_reserves: ["commonname", "itemcode", "customername", "consigneename", "salesrepname"],
-      ph_active_request: ["commonname", "itemcode", "requested_by", "req_customer", "request_folder"],
+      "ph_requests_pending": ["commonname", "itemcode", "requested_by", "req_customer", "request_folder"],
       ph_sales_office: ["commonname", "itemcode", "order_customer", "order_folder"],
       ph_soc_master: ["commonname", "itemcode", "locationcode", "dock_note", "dock_num", "customername", "salesrepname"],
     };
@@ -527,12 +527,12 @@ async function fetchRows(tableName: AssistantTableName, intent: Intent): Promise
   }
   const salesRepFieldMap: Record<string, string> = {
     ph_reserves: "salesrepname",
-    ph_active_request: "requested_by",
+    "ph_requests_pending": "requested_by",
     ph_soc_master: "salesrepname",
   };
   const customerFieldMap: Record<string, string> = {
     ph_reserves: "customername",
-    ph_active_request: "req_customer",
+    "ph_requests_pending": "req_customer",
     ph_sales_office: "order_customer",
     ph_soc_master: "customername",
   };
