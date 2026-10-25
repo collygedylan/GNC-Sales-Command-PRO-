@@ -1930,7 +1930,7 @@ export function migrationContractQuery(name) {
     and (select count(*) from public.ph_location_moves_history)>=4
     and (select count(*) from public.ph_eval_work_history)>=7
     and (select count(*) from public.ph_request_history)>=4042
-    and (select coalesce(sum(line_dollar_value),0) from public.ph_request_history)>=6067786.53
+    and coalesce((public.get_request_sales_impact_v2()->'summary'->>'completed_dollar_value')::numeric,0)>=6067786.53
     and not exists(select 1 from public.ph_active_recount
       group by upper(btrim(itemcode)),upper(btrim(locationcode)) having count(*)>1)
     and not exists(select 1 from public.ph_active_recount

@@ -50,7 +50,7 @@ test('v2.3.63 uniform active and history migration is registered', () => {
     [agdataV2363UniformActiveHistoryMigrationName]);
   const contract = migrationContractQuery(agdataV2363UniformActiveHistoryMigrationName);
   for (const marker of ['ph_00_table_directory', 'ph_active_location_moves', 'ph_active_recount',
-    'ph_eval_work_history', 'canonical-active-history-v2363', '4042', '6067786.53']) {
+    'ph_eval_work_history', 'canonical-active-history-v2363', 'completed_dollar_value', '4042', '6067786.53']) {
     assert.match(contract, new RegExp(marker.replace('.', '\\.')));
   }
 });
