@@ -2334,7 +2334,7 @@ function mergeReclassRecountJobs(jobs: Record<string, unknown>[], lines: Record<
     current.job_ids = [...new Set([...jobIds.map(value => String(value || "").trim()), String(job.id || "").trim()].filter(Boolean))];
     current.lines = [...lineMap.values()];
   }
-  return [...groups.values()].map((job) => ({
+  return [...groups.values()].map((job): Record<string, unknown> => ({
     ...job,
     system_on_hand: (Array.isArray(job.lines) ? job.lines as Record<string, unknown>[] : []).reduce((sum, line) => {
       const value = Number(String(line.on_hand ?? "").replace(/,/g, "").trim());
