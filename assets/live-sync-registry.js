@@ -68,6 +68,29 @@
         codex: ['private.codex_ops_tasks', 'private.codex_ops_messages', 'private.codex_ops_events', 'private.codex_ops_attachments', 'private.codex_ops_approvals', 'ph_runtime_feature_flags'],
         pendingOrders: ['bloomscapes_private.orders', 'bloomscapes_private.order_lines']
     };
+    const canonical = {
+        requests: { active: 'ph_active_request', history: 'ph_request_history', support: 'ph_delivery_outbox' },
+        driveMode: { active: 'ph_active_drive_mode', history: 'ph_drive_mode_history', support: 'ph_historical_inventory_dimensions' },
+        locationMoves: { active: 'ph_active_location_moves', history: 'ph_location_moves_history', support: 'ph_location_work_jobs' },
+        suspend: { active: 'ph_active_suspend', history: 'ph_suspend_history', support: 'ph_master_inventory' },
+        recount: { active: 'ph_active_recount', history: 'ph_recount_history', support: 'ph_reclass_recount_lines' },
+        countReview: { active: 'ph_active_count_review', history: 'ph_count_review_history', support: 'ph_bunch_counts' },
+        shearList: { active: 'ph_active_shear_list', history: 'ph_shear_list_history', support: 'ph_shear_location_inquiries' },
+        evalWork: { active: 'ph_active_eval_work', history: 'ph_eval_work_history', support: 'ph_eval_work_events' },
+        bunchNotes: { active: 'ph_active_bunch_notes', history: 'ph_bunch_notes_history', support: 'bunch_note_private.previews' },
+        docks: { active: 'ph_active_docks', history: 'ph_docks_history', support: 'ph_dock_item_status' },
+        orders: { active: 'ph_active_orders', history: 'ph_orders_history', support: 'ph_pikes_order_batches' },
+        reserves: { active: 'ph_active_reserves', history: 'ph_reserves_history', support: 'ph_master_inventory' },
+        hlOrder: { active: 'ph_active_hl_order', history: 'ph_hl_order_history', support: 'ph_27f1_hl_po' },
+        salesOffice: { active: 'ph_active_sales_office', history: 'ph_sales_office_history', support: 'ph_season_sales_office_state' },
+        flyer: { active: 'ph_active_flyer', history: 'ph_flyer_history', support: 'ph_delivery_outbox' },
+        cropRoll: { active: 'ph_active_crop_roll', history: 'ph_crop_roll_history', support: 'ph_crop_roll_rows' },
+        production: { active: 'ph_active_production', history: 'ph_production_history', support: 'ph_productivity_history' },
+        productionSchedule: { active: 'ph_active_production_schedule', history: 'ph_production_schedule_history', support: 'production_schedule_rows' },
+        holdLearning: { active: 'ph_active_hold_learning', history: 'ph_hold_learning_history', support: 'ph_hold_stop_itemcode_summaries' },
+        chat: { active: 'ph_active_chat', history: 'ph_chat_history', support: 'ph_chat_participants' },
+        walkie: { active: 'ph_active_walkie', history: 'ph_walkie_history', support: 'ph_walkie_signal_events' }
+    };
     const data = (datasets, adapters = []) => ({ kind: 'data', datasets, adapters });
     const navigation = { kind: 'navigation', datasets: [], adapters: [] };
     const staticView = { kind: 'static', datasets: [], adapters: [] };
@@ -258,12 +281,12 @@
     function getCoreKeys(viewId, context) {
         return getViewAdapters(viewId, context).filter((id) => id.startsWith('core:')).map((id) => id.slice(5));
     }
-    [core, side, views, surfaces, adapters].forEach((group) => {
+    [core, side, canonical, views, surfaces, adapters].forEach((group) => {
         Object.values(group).forEach((entry) => {
             if (Array.isArray(entry)) Object.freeze(entry);
             else { Object.values(entry).filter(Array.isArray).forEach(Object.freeze); Object.freeze(entry); }
         });
         Object.freeze(group);
     });
-    return Object.freeze({ core, side, views, surfaces, adapters, sourceKeys: getSourceKeys(Object.keys(adapters)), getViewAdapters, getCoreKeys, getSourceKeys });
+    return Object.freeze({ core, side, canonical, views, surfaces, adapters, sourceKeys: getSourceKeys(Object.keys(adapters)), getViewAdapters, getCoreKeys, getSourceKeys });
 });
