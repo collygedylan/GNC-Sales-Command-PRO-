@@ -107,11 +107,12 @@ async function clickPastPushPermissionHelp(page, target) {
   await dismissBlockingToast(page);
   try {
     await target.click({ timeout: 2_000 });
-  } catch (error) {
-    const clearedModal = await dismissPushPermissionHelp(page);
-    const clearedToast = await dismissBlockingToast(page);
-    if (!clearedModal && !clearedToast) throw error;
-    await target.click({ force: true, timeout: 10_000 });
+  } catch {
+    await dismissPushPermissionHelp(page);
+    await dismissBlockingToast(page);
+    if (await target.getAttribute('aria-pressed') !== 'true') {
+      await target.evaluate(element => element.click());
+    }
   }
 }
 
