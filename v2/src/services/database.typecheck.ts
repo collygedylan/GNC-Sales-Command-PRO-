@@ -12,9 +12,7 @@ export async function databaseTypeProof(production: SupabaseClient<Database>, sa
   // @ts-expect-error RPC argument names are part of the generated contract.
   production.rpc('aura_resolve_season_v1', { wrong_actor: 'id' });
   // @ts-expect-error The sandbox quantity column is numeric.
-  sandbox
-    .from('ph_requests_pending')
-    .update({ req_qty: 'not a quantity' });
+  sandbox.from('ph_requests_pending').update({ req_qty: 'not a quantity' });
   const invalid = await production.from('ph_master_inventory').select('unique_id,missing_column');
   // @ts-expect-error SelectQueryError must not satisfy an application row DTO.
   const rows: Array<{ unique_id: string }> = invalid.data || [];
