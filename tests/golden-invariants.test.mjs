@@ -704,7 +704,7 @@ test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', asyn
   assert.match(databaseTypes, /ph_requests_completed_history:\s*\{/);
   assert.match(databaseTypes, /get_request_sales_impact_v2:\s*\{ Args: never; Returns: Json \}/);
   assert.match(databaseContracts, /"get_request_sales_impact_v2":\s*\{[^]*?"json"/);
-  assert.match(moduleSource, /canonical-three-table-v2362/);
+  assert.match(moduleSource, /canonical-active-history-v2363/);
   assert.match(moduleSource, /payload\.source_table_audit \|\| payload\.source_audit/);
   assert.match(moduleSource, /One permanent line per request/);
   assert.match(api, /REQUEST_SALES_IMPACT_CONTRACT_STALE/);
@@ -826,4 +826,61 @@ test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Syn
   assert.doesNotMatch(navigation, /Existing default/);
   assert.match(navigation, /Allow view[^]*Hide view/);
   assert.match(api, /resolveModuleAllowed\(supabase, actor, "request-sales-impact"\)/);
+});
+
+test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser Gate)', () => {
+  const migration = read('supabase/migrations/20261025080000_agdata_v2365_anon_security_hardening.sql');
+  assert.match(migration, /revoke insert, update, delete, truncate on all tables in schema public from anon/);
+  assert.match(migration, /permissive = 'PERMISSIVE'[^]*cmd in \('ALL', 'INSERT', 'UPDATE', 'DELETE'\)/);
+  assert.match(migration, /ZERO_TRUST_ANON_WRITE_GRANT_REMAINED/);
+  assert.match(migration, /ZERO_TRUST_ANON_MUTATION_POLICY_REMAINED/);
+  assert.match(migration, /ZERO_TRUST_ANON_SENSITIVE_READ_REMAINED/);
+  for (const relation of ['ph_app_users', 'profiles', 'user_access_control', 'role_access_baselines',
+    'ph_request_delivery_outbox', 'ph_request_email_threads', 'ph_requests_pending',
+    'ph_requests_completed_history', 'ph_request_history']) {
+    assert.match(migration, new RegExp(`'${relation}'`));
+  }
+  assert.doesNotMatch(migration, /\bdrop\s+table\b|\btruncate\s+table\b/i);
+
+  const authenticatedRead = functionSource('assets/app-runtime.js', 'fetchAuthenticatedSupabaseReadPage');
+  assert.match(authenticatedRead, /requestAuthorizedDatasetReadPage/);
+  assert.doesNotMatch(authenticatedRead, /fetchPublicActiveRequestFallbackPage|anon-compatibility/);
+  assert.doesNotMatch(read('assets/app-runtime.js'), /rest\/v1\/ph_active_request/);
+  assert.match(functionSource('assets/app-runtime.js', 'historicalRequestsTransport'),
+    /postAppFunctionJson[^]*action:\s*'historical_requests_read'/);
+
+  const historyHandler = functionSource('supabase/functions/app-api/index.ts', 'handleHistoricalRequestsReadAction');
+  assert.match(historyHandler, /session\.authUserId[^]*actorId/);
+  assert.match(historyHandler, /rest\/v1\/rpc\/historical_requests_read_v1/);
+  assert.match(historyHandler, /SUPABASE_SERVICE_ROLE_KEY[^]*Authorization:\s*authorization/);
+  assert.match(functionSource('supabase/functions/app-api/index.ts', 'handleRequestSalesImpactAction'),
+    /canonical-active-history-v2363/);
+
+  const impactFix = read('supabase/migrations/20261025081000_agdata_v2365_sales_impact_union_fix.sql');
+  assert.doesNotMatch(impactFix, /select history\.\*,/);
+  assert.match(impactFix, /history\.unique_id, history\.request_folder[^]*explicit-completed-history-union-v2365/);
+  assert.match(impactFix, /completed_dollar_value'\)::numeric, 0\) < 6067786\.53/);
+
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const projectionFields = appApi.match(/ph_requests_pending:\s*"([^"]+)"/)?.[1].split(',') || [];
+  const contracts = read('services/database-contracts.generated.ts');
+  const requestContractStart = contracts.indexOf('"ph_requests_pending":');
+  const requestContractEnd = contracts.indexOf('"insert":', requestContractStart);
+  const requestRowContract = contracts.slice(requestContractStart, requestContractEnd);
+  assert.ok(projectionFields.length >= 116, 'the complete request projection stays guarded');
+  for (const field of projectionFields) assert.match(requestRowContract, new RegExp(`"${field}"\\s*:`));
+  assert.match(read('supabase/functions/_shared/database.types.ts'), /ph_requests_pending:[^]*photos: Json[^]*source_snapshot: Json/);
+
+  const verifier = read('scripts/verify-live-request-queue.mjs');
+  for (const marker of ['ph_app_users', 'user_access_control', 'ph_request_delivery_outbox',
+    'ph_requests_completed_history', "['POST'", "['PATCH'", "['DELETE'", '#historical-requests-title',
+    '#historical-request-sales-impact-btn', 'requestSalesImpactTotal', 'minimumRequestImpact', "release.includes('2.3.65')"]) {
+    assert.match(verifier, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(verifier, /response\.ok[^]*payload\.length !== 0/);
+  assert.match(verifier, /!\[401, 403\]\.includes\(response\.status\)/);
+
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  assert.match(runner, /agdataV2365AnonSecurityHardeningMigrationName[^]*registeredReleaseDatabaseMigrations/);
+  assert.match(runner, /agdataV2365SalesImpactUnionFixMigrationName[^]*registeredReleaseDatabaseMigrations/);
 });

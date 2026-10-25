@@ -11,6 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const envFile = path.join(root, '.env');
 const caFile = path.join(root, 'scripts', 'certs', 'supabase-prod-ca-2021.crt');
 const username = 'dylan_collyge';
+const minimumRequestImpact = 6_067_786.53;
 const expectedCards = [
   ['003139.250.1', 'Oakland® Red Holly', 'A.08.000'],
   ['008280.150.1', 'Sunburst® Honeylocust', 'C.05.000'],
@@ -79,17 +80,67 @@ function normalizeCardText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
+function parseCurrency(value) {
+  const amount = Number(String(value || '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+async function probeAnonSecurity({ supabaseUrl, anonKey, existingRequestId }) {
+  if (!anonKey || !existingRequestId) fail('Anon security probe prerequisites are unavailable.');
+  const headers = { apikey: anonKey, authorization: `Bearer ${anonKey}`, 'Cache-Control': 'no-store' };
+  const reads = [
+    ['ph_app_users', 'username,password_hash'],
+    ['user_access_control', 'username,canonical_role'],
+    ['ph_request_delivery_outbox', 'event_id'],
+    ['ph_requests_completed_history', 'unique_id'],
+  ];
+  const readResults = {};
+  for (const [table, select] of reads) {
+    const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}&limit=1`, {
+      headers, signal: AbortSignal.timeout(10_000),
+    });
+    const payload = await readJson(response);
+    if (response.ok && (!Array.isArray(payload) || payload.length !== 0)) fail(`Anonymous read exposed ${table}.`);
+    if (!response.ok && ![401, 403].includes(response.status)) fail(`Anonymous read probe for ${table} returned ${response.status}.`);
+    readResults[table] = { status: response.status, rows: Array.isArray(payload) ? payload.length : 0 };
+  }
+
+  const impossibleId = `__anon_security_probe_${Date.now()}__`;
+  const mutations = [
+    ['POST', '', { unique_id: existingRequestId }],
+    ['PATCH', `?unique_id=eq.${encodeURIComponent(impossibleId)}`, { comments: 'blocked' }],
+    ['DELETE', `?unique_id=eq.${encodeURIComponent(impossibleId)}`, null],
+  ];
+  const mutationResults = {};
+  for (const [method, query, body] of mutations) {
+    const response = await fetch(`${supabaseUrl}/rest/v1/ph_requests_pending${query}`, {
+      method,
+      headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal,tx=rollback' },
+      ...(body === null ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    await response.text();
+    if (![401, 403].includes(response.status)) fail(`Anonymous ${method} mutation probe returned ${response.status}.`);
+    mutationResults[method] = response.status;
+  }
+  return { reads: readResults, mutations: mutationResults };
+}
+
 async function runVerification(page, origin, accessCode) {
   let stage = 'navigate';
   try {
   const pageErrors = [];
   const failedResponses = [];
   page.on('pageerror', error => pageErrors.push(String(error?.message || error)));
-  page.on('response', response => {
+  page.on('response', async response => {
     if (response.status() < 400) return;
     try {
       const url = new URL(response.url());
-      if (url.hostname.endsWith('.supabase.co')) failedResponses.push(`${response.status()} ${url.pathname}`);
+      if (url.hostname.endsWith('.supabase.co')) {
+        const body = await response.text().catch(() => '');
+        const detail = body.replace(/\s+/g, ' ').replace(/(?:bearer\s+)[A-Za-z0-9._~+\/-]+/gi, 'Bearer [redacted]').slice(0, 180);
+        failedResponses.push(`${response.status()} ${url.pathname}${detail ? ` ${detail}` : ''}`);
+      }
     } catch {}
   });
   await page.goto(`${origin}/?request-queue-verifier=${Date.now()}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -156,11 +207,49 @@ async function runVerification(page, origin, accessCode) {
     }
   }
   if (requestBadgeCount < 6 || noPendingVisible) fail('Request queue retained its empty state.');
+  const activeRequestId = String(await page.locator('#request-content [data-request-uid]').first().getAttribute('data-request-uid') || '').trim();
+  if (!activeRequestId) fail('A live Request card identifier was not rendered.');
+
+  stage = 'historical-requests';
+  const historyFailureOffset = failedResponses.length;
+  await page.evaluate(() => window.switchView('home', { force: true }));
+  if (await pushHelp.isVisible()) await pushHelp.getByRole('button', { name: 'Close' }).click();
+  await page.locator('#home-tile-historical-requests').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator('#home-tile-historical-requests').click();
+  await page.locator('#historical-requests-title').waitFor({ state: 'visible', timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const host = document.getElementById('historical-requests-content');
+    return !!host && !host.querySelector('[role="alert"]')
+      && !!host.querySelector('.historical-requests__groups .historical-requests__group')
+      && !!host.querySelector('.historical-requests__summary strong');
+  }, undefined, { timeout: 30_000 });
+  const historicalPricedValue = normalizeCardText(await page.locator('.historical-requests__summary > div').nth(1).locator('strong').textContent());
+  const historyFailures = failedResponses.slice(historyFailureOffset).filter(value => value.includes('/functions/v1/app-api'));
+  if (historyFailures.length) fail(`Historical Requests app-api failure: ${historyFailures[0]}`);
+
+  stage = 'request-sales-impact';
+  await page.locator('#historical-request-sales-impact-btn').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator('#historical-request-sales-impact-btn').click();
+  const impactValue = page.locator('#request-sales-impact-content .request-impact-kpi-primary strong');
+  try {
+    await impactValue.waitFor({ state: 'visible', timeout: 60_000 });
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      view: document.querySelector('.view:not(.hidden)')?.id || '',
+      text: String(document.getElementById('request-sales-impact-content')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 320),
+    }));
+    throw new Error(`${String(error?.message || error)} state=${JSON.stringify(state)} failed=${failedResponses.slice(-8).join('|')}`);
+  }
+  const requestSalesImpactText = normalizeCardText(await impactValue.textContent());
+  const requestSalesImpactTotal = parseCurrency(requestSalesImpactText);
+  if (requestSalesImpactTotal < minimumRequestImpact) fail(`Request Sales Impact was ${requestSalesImpactText || 'missing'}.`);
+  if (await page.locator('#request-sales-impact-content [role="alert"]').count()) fail('Request Sales Impact rendered an error alert.');
   if (pageErrors.length) fail(`Browser page error: ${pageErrors[0]}`);
   const release = normalizeCardText(await page.locator('#header-version').textContent());
-  if (!release.includes('2.3.64')) fail(`Unexpected release version: ${release || 'missing'}.`);
-  return { release, homeMetadataMs, filenames, requestBadgeCount, cardDomText: expectedCards.map(([itemcode, , locationcode]) =>
-    cardDomText.find(text => text.includes(itemcode) && text.includes(locationcode))) };
+  if (!release.includes('2.3.65')) fail(`Unexpected release version: ${release || 'missing'}.`);
+  return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, historicalPricedValue,
+    requestSalesImpactText, requestSalesImpactTotal, cardDomText: expectedCards.map(([itemcode, , locationcode]) =>
+      cardDomText.find(text => text.includes(itemcode) && text.includes(locationcode))) };
   } catch (error) {
     throw new Error(`${stage}: ${String(error?.message || error)}`);
   }
@@ -169,7 +258,9 @@ async function runVerification(page, origin, accessCode) {
 async function main() {
   const source = readComposedAppSource();
   const supabaseUrl = String(source.match(/const SUPABASE_URL = "([^"]+)"/)?.[1] || '').replace(/\/+$/, '');
+  const anonKey = String(source.match(/const SUPABASE_KEY = "([^"]+)"/)?.[1] || '').trim();
   if (!supabaseUrl.includes('kzrnyjsosryejjejliii.supabase.co')) fail('Unexpected Supabase project.');
+  if (!anonKey) fail('Supabase anon key is unavailable.');
   const localEnv = readLocalEnv();
   const accessCode = await resolveAccessCode({ supabaseUrl, localEnv });
   let server;
@@ -184,7 +275,8 @@ async function main() {
     const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1440, height: 1000 } });
     const page = await context.newPage();
     const result = await runVerification(page, origin, accessCode);
-    console.log(JSON.stringify({ status: 'passed', origin, ...result }, null, 2));
+    const anonSecurity = await probeAnonSecurity({ supabaseUrl, anonKey, existingRequestId: result.activeRequestId });
+    console.log(JSON.stringify({ status: 'passed', origin, ...result, anonSecurity }, null, 2));
   } finally {
     await browser?.close().catch(() => {});
     if (server) await new Promise(resolve => server.close(resolve));
@@ -194,6 +286,6 @@ async function main() {
 main().catch(error => {
   const safe = String(error?.message || error).replace(/(?:bearer\s+)[A-Za-z0-9._~+\/-]+/gi, 'Bearer [redacted]')
     .replace(/(token|apikey|password|secret|access[_ -]?code)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]');
-  console.error(`REQUEST_QUEUE_BROWSER_VERIFY_FAILED ${safe.slice(0, 320)}`);
+  console.error(`REQUEST_QUEUE_BROWSER_VERIFY_FAILED ${safe.slice(0, 1000)}`);
   process.exitCode = 1;
 });

@@ -12,8 +12,9 @@ function harness(profile = {}) {
     nativeAuthSessionActive: true, currentUser: profile.username || 'rep_a', Date, Number, String, JSON,
     historicalRequestsGeneration: 0, historicalRequestsMount: null, historicalRequestsOwner: '',
     document: { getElementById: () => null },
-    window: { GncDatabase: { readHistoricalRequests: async () => ({ scope: 'own' }) } },
-    getSupabaseBrowserClient: () => ({}), getNativeAuthSession: async () => ({ user: { id: profile.id || 'rep-id' } }),
+    window: {}, APP_API_FUNCTION_URL: 'https://example.test/app-api',
+    postAppFunctionJson: async () => ({ ok: true, data: { scope: 'own' } }),
+    getNativeAuthSession: async () => ({ user: { id: profile.id || 'rep-id' } }),
   });
   vm.runInContext(source, context);
   return context;
@@ -46,6 +47,7 @@ test('Eval cannot inherit administrator privileges from usernames or role substr
   const context = vm.createContext({ currentRole: '', safeRole: '', currentUser: 'privileged_user',
     firstNonEmptyValue: (...values) => values.find(value => value !== '' && value != null),
     isPrivilegedManagerUser: () => true, canUseRequestRepScopedAccess: () => false,
+    isFullAppAdministrator: () => false,
     getRequestCapabilities: () => ({ canViewQueue: true }), canSeeEvalWorkRequestTab: () => false,
     isStrictDylanCollygeUser: () => false, ROLE_ACCESS_VIEWS: ['managers', 'reports', 'request-history', 'drive'],
   });
@@ -66,10 +68,10 @@ test('Eval cannot inherit administrator privileges from usernames or role substr
 
 test('financial reads reject replaced identities and cancelled responses', async () => {
   const runtime = harness();
-  runtime.window.GncDatabase.readHistoricalRequests = async () => { runtime.nativeAuthProfile = { ...runtime.nativeAuthProfile, role: 'Manager' }; return { scope: 'all' }; };
+  runtime.postAppFunctionJson = async () => { runtime.nativeAuthProfile = { ...runtime.nativeAuthProfile, role: 'Manager' }; return { ok: true, data: { scope: 'all' } }; };
   await assert.rejects(runtime.historicalRequestsTransport({ operation: 'customers' }), /account changed/);
   const cancelled = harness();
-  cancelled.window.GncDatabase.readHistoricalRequests = () => assert.fail('Cancelled reads never reach the database');
+  cancelled.postAppFunctionJson = () => assert.fail('Cancelled reads never reach app-api');
   await assert.rejects(cancelled.historicalRequestsTransport({ operation: 'customers' }, { aborted: true }), /cancelled/);
   const replaced = harness(); replaced.getNativeAuthSession = async () => ({ user: { id: 'other' } });
   await assert.rejects(replaced.historicalRequestsTransport({ operation: 'customers' }), /session changed/);
@@ -98,6 +100,7 @@ test('actual identity cleanup destroys historical memory before other account st
   const end = html.indexOf('        const APP_SESSION_RECORD_STORAGE_KEY', start);
   const calls = [];
   const context = vm.createContext({
+    document: { getElementById: () => null },
     destroyHistoricalRequestsIsland: () => calls.push('destroy-history'),
     resetDashboardSyncMetadataForPermissionChange: () => { calls.push('reset-other-state'); throw new Error('stop after cleanup'); },
   });

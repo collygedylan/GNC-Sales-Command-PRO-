@@ -15227,7 +15227,39 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "available_qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "baseline_on_hand": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "caliper": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "client_batch_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "comments": {
             "schema": {
               "oneOf": [
                 "string",
@@ -15267,6 +15299,22 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "consignee": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consignee_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "consigneeidentityid": {
             "schema": {
               "oneOf": [
@@ -15292,12 +15340,26 @@ export const contracts: RuntimeContracts<Database> = {
             }
           },
           "created_at": {
+            "schema": "string"
+          },
+          "customer": {
             "schema": {
               "oneOf": [
                 "string",
                 "null"
               ]
             }
+          },
+          "customer_consignee_label": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "customer_name": {
+            "schema": "string"
           },
           "customeridentityid": {
             "schema": {
@@ -15347,7 +15409,18 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "effective_qty": {
+            "schema": "number"
+          },
           "est_ship": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "estimated_ship": {
             "schema": {
               "oneOf": [
                 "string",
@@ -15363,13 +15436,113 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
-          "id": {
-            "schema": "number"
-          },
-          "itemcode": {
+          "flag_color": {
             "schema": {
               "oneOf": [
                 "string",
+                "null"
+              ]
+            }
+          },
+          "fulfilled_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "fulfilled_qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "fulfillment_status": {
+            "schema": "string"
+          },
+          "fulfillment_updated_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "hold_stop_code": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "hold_stop_reason": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "hold_stop_since": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "id": {
+            "schema": "number"
+          },
+          "initial_photo_match_qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "is_default_qty": {
+            "schema": "boolean"
+          },
+          "itemcode": {
+            "schema": "string"
+          },
+          "ld_flag": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "line_dollar_value": {
+            "schema": "number"
+          },
+          "loc_match_pct": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "loc_on_hand": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
                 "null"
               ]
             }
@@ -15399,6 +15572,14 @@ export const contracts: RuntimeContracts<Database> = {
             }
           },
           "master_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "measure_spec": {
             "schema": {
               "oneOf": [
                 "string",
@@ -15510,7 +15691,74 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "ns_grade": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "on_hand": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "open_stock": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "photo_date": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "photo_expires_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "photo_url": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "photos": {
+            "schema": "json"
+          },
+          "pick_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "plantgroupcode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "pri": {
             "schema": {
               "oneOf": [
                 "string",
@@ -15534,6 +15782,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
           "qualitycode": {
             "schema": {
               "oneOf": [
@@ -15541,6 +15797,9 @@ export const contracts: RuntimeContracts<Database> = {
                 "null"
               ]
             }
+          },
+          "recipient_emails": {
+            "schema": "json"
           },
           "req_archived": {
             "schema": {
@@ -15662,6 +15921,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "request_caliper": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "request_created_by_display": {
             "schema": {
               "oneOf": [
@@ -15687,6 +15954,9 @@ export const contracts: RuntimeContracts<Database> = {
             }
           },
           "request_folder": {
+            "schema": "string"
+          },
+          "request_note": {
             "schema": {
               "oneOf": [
                 "string",
@@ -15694,10 +15964,18 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
-          "request_note": {
+          "request_notes": {
             "schema": {
               "oneOf": [
                 "string",
+                "null"
+              ]
+            }
+          },
+          "request_qty": {
+            "schema": {
+              "oneOf": [
+                "number",
                 "null"
               ]
             }
@@ -15737,6 +16015,14 @@ export const contracts: RuntimeContracts<Database> = {
           "request_source": {
             "schema": "string"
           },
+          "request_spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "requested_by": {
             "schema": {
               "oneOf": [
@@ -15745,8 +16031,35 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "reserve_flag": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "review_qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
           "row_version": {
             "schema": "number"
+          },
+          "sales_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "sales_rep": {
+            "schema": "string"
           },
           "season_supply": {
             "schema": {
@@ -15756,8 +16069,25 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "source_snapshot": {
+            "schema": "json"
+          },
+          "spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "status": {
+            "schema": "string"
+          },
           "unique_id": {
             "schema": "string"
+          },
+          "unit_list_price": {
+            "schema": "number"
           },
           "updated_at": {
             "schema": "string"

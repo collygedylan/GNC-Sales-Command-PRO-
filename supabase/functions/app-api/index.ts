@@ -2605,7 +2605,7 @@ async function handleRequestSalesImpactAction(
   const result = jsonObject(data);
   const sourceAudit = jsonObject(result.source_table_audit || result.source_audit);
   const dedupeContract = String(result.dedupe_contract || sourceAudit.dedupe_contract || "");
-  if (dedupeContract !== "canonical-three-table-v2362") {
+  if (dedupeContract !== "canonical-active-history-v2363") {
     return jsonResponse({
       ok: false,
       enabled: true,
@@ -2616,6 +2616,65 @@ async function handleRequestSalesImpactAction(
     });
   }
   return jsonResponse({ ok: true, enabled: true, visible: true, ...result });
+}
+
+async function handleHistoricalRequestsReadAction(
+  req: Request,
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+  actorProfile: Record<string, unknown> | null = null,
+) {
+  if (!session || session.mustChangePassword) {
+    return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+  }
+  if (Object.keys(payload).some((key) => !["action", "query"].includes(key))
+      || !payload.query || typeof payload.query !== "object" || Array.isArray(payload.query)) {
+    return errorResponse("Historical Requests query is invalid.", 400, { code: "HISTORICAL_REQUESTS_QUERY_INVALID" });
+  }
+  const query = payload.query as Record<string, unknown>;
+  if (JSON.stringify(query).length > 4096) {
+    return errorResponse("Historical Requests query is invalid.", 400, { code: "HISTORICAL_REQUESTS_QUERY_INVALID" });
+  }
+  const actor = actorProfile || await resolveActiveSessionProfile(session);
+  const actorId = String(actor.id || "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId)
+      || String(session.authUserId || "").trim() !== actorId) {
+    return errorResponse("Sign in again.", 401, { code: "HISTORICAL_REQUESTS_AUTH_REQUIRED" });
+  }
+  const authorization = String(req.headers.get("authorization") || "").trim();
+  if (!/^Bearer\s+\S+$/i.test(authorization)) {
+    return errorResponse("Sign in again.", 401, { code: "HISTORICAL_REQUESTS_AUTH_REQUIRED" });
+  }
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/historical_requests_read_v1`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: authorization,
+        "Content-Type": "application/json",
+        "Cache-Control": "private, no-store",
+      },
+      body: JSON.stringify({ p_query: query }),
+      signal: AbortSignal.timeout(12000),
+    });
+    const text = await response.text();
+    let data: unknown = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+    if (!response.ok) {
+      const detail = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+      const code = String(detail.code || detail.message || "HISTORICAL_REQUESTS_UNAVAILABLE").trim().toUpperCase();
+      const status = response.status === 401 ? 401
+        : response.status === 403 || code === "42501" || code.includes("FORBIDDEN") ? 403
+        : response.status >= 500 || code === "55000" ? 503 : 400;
+      return errorResponse(status === 503 ? "Historical Requests is refreshing. Previous data remains available." : "Historical Requests could not load.", status, { code });
+    }
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return errorResponse("Historical Requests returned an invalid response.", 503, { code: "HISTORICAL_REQUESTS_RESPONSE_INVALID" });
+    }
+    return jsonResponse({ ok: true, data });
+  } catch {
+    return errorResponse("Historical Requests is temporarily unavailable. Previous data remains available.", 503, { code: "HISTORICAL_REQUESTS_UNAVAILABLE" });
+  }
 }
 
 async function handleSeasonSalesOfficeAction(
@@ -6788,6 +6847,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
   }
 
+  if (action === "historical_requests_read") {
+    return await handleHistoricalRequestsReadAction(req, session, payload, activeProfileForRequest);
+  }
   if (action === "request_sales_impact") {
     return await handleRequestSalesImpactAction(session, activeProfileForRequest);
   }

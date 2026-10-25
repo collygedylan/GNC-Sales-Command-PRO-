@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.64';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.65';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26243,7 +26243,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.64').trim() || 'AgData v2.3.64';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.65').trim() || 'AgData v2.3.65';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33949,41 +33949,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return 'DATASET_LOAD_FAILED';
         }
 
-        function buildPublicActiveRequestFallbackQuery(queryString = '') {
-            const params = new URLSearchParams(String(queryString || '').replace(/^\?/, ''));
-            const select = String(params.get('select') || '*').trim();
-            if (select !== '*') {
-                const appApiOnlyFields = new Set([
-                    'delivery_status', 'delivery_attempt_count', 'delivery_error_code',
-                    'delivery_display_state', 'delivery_delivered_at', 'loc_on_hand_revision'
-                ]);
-                const fields = select.split(',').map(field => field.trim()).filter(field => field && !appApiOnlyFields.has(field));
-                params.set('select', fields.length ? fields.join(',') : 'unique_id');
-            }
-            return params.toString();
-        }
-
-        async function fetchPublicActiveRequestFallbackPage(queryString = '', options = {}) {
-            if (!SUPABASE_KEY) throw new Error('Public Request compatibility read is unavailable.');
-            const timeoutMs = Math.max(1000, Number(options.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);
-            const query = buildPublicActiveRequestFallbackQuery(queryString);
-            const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/ph_active_request${query ? `?${query}` : ''}`, {
-                method: 'GET',
-                headers: {
-                    apikey: SUPABASE_KEY,
-                    Authorization: 'Bearer ' + SUPABASE_KEY,
-                    Prefer: 'count=exact',
-                    'Cache-Control': 'private, no-store'
-                },
-                signal: options.signal
-            }, timeoutMs, 'Request compatibility read');
-            if (!response.ok) throw await createSupabaseReadResponseError(response, 'Request compatibility read failed');
-            const text = await response.text();
-            const rows = text ? JSON.parse(text) : [];
-            if (!Array.isArray(rows)) throw new Error('Request compatibility read returned an invalid row response.');
-            return { rows, total: parseSupabaseContentRangeTotal(response) ?? rows.length, authSource: 'anon-compatibility' };
-        }
-
         async function fetchAuthenticatedSupabaseReadPage(table, queryString = '', options = {}) {
             const safeTable = normalizeAppTableName(table);
             if (safeTable === 'ph_master_inventory' && /^\s*select=filename,last_updated(?:&|$)/i.test(String(queryString || ''))) {
@@ -33996,25 +33961,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const params = new URLSearchParams(String(queryString || '').replace(/^\?/, ''));
                 const requestedLimit = Math.max(1, Math.min(500, Number(params.get('limit')) || 500));
                 const requestedOffset = Math.max(0, Number(params.get('offset')) || 0);
-                let primaryError = null;
-                let primaryPage = null;
-                try {
-                    primaryPage = await requestAuthorizedDatasetReadPage(safeTable, queryString, requestedLimit, requestedOffset, options);
-                } catch (error) {
-                    if (options.signal?.aborted || safeTable !== ACTIVE_REQUEST_TABLE) throw error;
-                    primaryError = error;
-                }
-                if (safeTable === ACTIVE_REQUEST_TABLE && (!primaryPage || (!primaryPage.rows.length && Number(primaryPage.total) === 0))) {
-                    try {
-                        const fallbackPage = await fetchPublicActiveRequestFallbackPage(queryString, options);
-                        if (fallbackPage.rows.length || !primaryPage) return fallbackPage;
-                    } catch (fallbackError) {
-                        if (primaryError) throw primaryError;
-                        window.GncRuntimeWatchdog?.capture?.(fallbackError, 'fetchAuthenticatedSupabaseReadPage:activeRequestFallback');
-                    }
-                }
-                if (primaryError) throw primaryError;
-                return primaryPage;
+                return await requestAuthorizedDatasetReadPage(safeTable, queryString, requestedLimit, requestedOffset, options);
             }
             if (getAvReadDataset(safeTable, queryString)) return requestAvReadPage(safeTable, queryString, options);
             if (safeTable === 'ph_master_inventory') throw new Error('Raw browser inventory reads are disabled; use inventory_read operations.');
@@ -60120,7 +60067,17 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (signal?.aborted) throw new Error('Historical Requests was cancelled.');
             const view = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : 'historical-requests';
-            const data = await window.GncDatabase.readHistoricalRequests(getSupabaseBrowserClient(), { ...query, view }, signal);
+            const response = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                action: 'historical_requests_read',
+                query: { ...query, view }
+            }, { timeoutMs: 15000, label: 'Historical Requests', signal });
+            if (!response?.ok || !response.data || typeof response.data !== 'object' || Array.isArray(response.data)) {
+                const error = new Error(response?.error || 'Historical Requests could not load for this account.');
+                error.status = Number(response?.status || 0);
+                error.code = String(response?.code || '').trim().toUpperCase();
+                throw error;
+            }
+            const data = response.data;
             if (signal?.aborted || owner !== getHistoricalRequestsOwnerKey() || !canUseHistoricalRequests()) {
                 throw new Error('Historical Requests was cancelled because the account changed.');
             }

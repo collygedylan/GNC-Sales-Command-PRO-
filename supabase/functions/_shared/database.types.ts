@@ -4885,29 +4885,56 @@ export type Database = {
         Row: {
           app_tab_assignment: string | null
           av_note: string | null
+          available_qty: number | null
+          baseline_on_hand: number | null
+          caliper: string | null
           client_batch_id: string | null
+          comments: string | null
           commonname: string | null
           completed_by_display: string | null
           completed_by_email: string | null
           completed_by_username: string | null
+          consignee: string | null
+          consignee_name: string | null
           consigneeidentityid: string | null
           consigneename: string | null
           contsize: string | null
-          created_at: string | null
+          created_at: string
+          customer: string | null
+          customer_consignee_label: string | null
+          customer_name: string
           customeridentityid: string | null
           customername: string | null
           date_completed: string | null
           desired_caliper: string | null
           desired_spec: string | null
           dock: string | null
+          effective_qty: number
           est_ship: string | null
+          estimated_ship: string | null
           field_tag_color: string | null
+          flag_color: string | null
+          fulfilled_by: string | null
+          fulfilled_qty: number | null
+          fulfillment_status: string
+          fulfillment_updated_at: string | null
+          hold_stop_code: string | null
+          hold_stop_reason: string | null
+          hold_stop_since: string | null
           id: number
-          itemcode: string | null
+          initial_photo_match_qty: number | null
+          is_default_qty: boolean
+          itemcode: string
+          ld_flag: string | null
+          line_dollar_value: number
+          loc_match_pct: number | null
+          loc_on_hand: number | null
+          loc_photo_match: number | null
           locationcode: string | null
           lotcode: string | null
           master_app_tab_assignment: string | null
           master_id: string | null
+          measure_spec: string | null
           move_actual_qty: number | null
           move_approval_stage: string | null
           move_batch_id: string | null
@@ -4921,10 +4948,21 @@ export type Database = {
           move_planned_qty: number | null
           move_status: string | null
           move_to_locationcode: string | null
+          ns_grade: string | null
+          on_hand: number | null
+          open_stock: number | null
+          photo_date: string | null
+          photo_expires_at: string | null
+          photo_url: string | null
+          photos: Json
+          pick_note: string | null
           plantgroupcode: string | null
+          pri: string | null
           priority: string | null
           ptravailable: string | null
+          qty: number | null
           qualitycode: string | null
+          recipient_emails: Json
           req_archived: boolean | null
           req_caliper: string | null
           req_comments: string | null
@@ -4940,20 +4978,32 @@ export type Database = {
           req_sales_note: string | null
           req_spec: string | null
           req_status: string | null
+          request_caliper: string | null
           request_created_by_display: string | null
           request_created_by_email: string | null
           request_created_by_username: string | null
-          request_folder: string | null
+          request_folder: string
           request_note: string | null
+          request_notes: string | null
+          request_qty: number | null
           request_selected_rep_display: string | null
           request_selected_rep_email: string | null
           request_selected_rep_username: string | null
           request_selected_salesrep_id: string | null
           request_source: string
+          request_spec: string | null
           requested_by: string | null
+          reserve_flag: string | null
+          review_qty: number | null
           row_version: number
+          sales_note: string | null
+          sales_rep: string
           season_supply: string | null
+          source_snapshot: Json
+          spec: string | null
+          status: string
           unique_id: string
+          unit_list_price: number
           updated_at: string
         }
         Insert: {
