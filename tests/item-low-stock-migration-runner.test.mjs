@@ -12,7 +12,8 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, unifiedRequestSyncSalesImpactMigrationName, agdataV2361SurgicalRestoreMigrationName, agdataV2362CanonicalRequestsMigrationName, agdataV2362LegacyCleanupMigrationName, agdataV2363UniformActiveHistoryMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, unifiedRequestSyncSalesImpactMigrationName, agdataV2361SurgicalRestoreMigrationName, agdataV2362CanonicalRequestsMigrationName, agdataV2362LegacyCleanupMigrationName, agdataV2363UniformActiveHistoryMigrationName, agdataV2366HistoricalArchiveMigrationName,
+  agdataV2366FastHistoricalRequestsMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -53,6 +54,30 @@ test('v2.3.63 uniform active and history migration is registered', () => {
     'ph_eval_work_history', 'canonical-active-history-v2363', 'completed_dollar_value', '4042', '6067786.53']) {
     assert.match(contract, new RegExp(marker.replace('.', '\\.')));
   }
+});
+
+test('v2.3.66 archive migrations are registered and guarded', () => {
+  assert.equal(agdataV2366HistoricalArchiveMigrationName, '20261025220000_agdata_v2366_historical_archive.sql');
+  assert.equal(agdataV2366FastHistoricalRequestsMigrationName, '20261025223000_agdata_v2366_fast_historical_requests_read.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([
+    agdataV2366HistoricalArchiveMigrationName,
+    agdataV2366FastHistoricalRequestsMigrationName,
+  ]), [agdataV2366HistoricalArchiveMigrationName, agdataV2366FastHistoricalRequestsMigrationName]);
+  const contract = migrationContractQuery(agdataV2366HistoricalArchiveMigrationName);
+  for (const marker of ['ph_orders_history', 'ph_reserves_history', 'ph_drive_mode_history_files',
+    'historical_archive_read_v1', 'row.file_id=path_2', 'source.itemcode=dimension.itemcode']) assert.match(contract, new RegExp(marker));
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366HistoricalArchiveMigrationName}`, import.meta.url), 'utf8');
+  assert.match(source, /create table if not exists public\.ph_orders_history/);
+  assert.match(source, /HISTORICAL_ARCHIVE_RETENTION_PROTECTED/);
+  assert.doesNotMatch(source, /\bdrop\s+table\b/i);
+  assert.doesNotMatch(source, /(?:^|\n)\s*truncate\s/i);
+  const fastContract = migrationContractQuery(agdataV2366FastHistoricalRequestsMigrationName);
+  for (const marker of ['history-fast-v2366', 'ph_requests_completed_history_rep_fast_v2366', 'ph_master_inventory']) {
+    assert.match(fastContract, new RegExp(marker));
+  }
+  const fastSource = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366FastHistoricalRequestsMigrationName}`, import.meta.url), 'utf8');
+  assert.match(fastSource, /set statement_timeout='2s'/);
+  assert.doesNotMatch(fastSource, /public\.ph_master_inventory/);
 });
 import { perennialPreviewSql, runPerennialAssignmentPreview, getPerennialPreviewFailure } from '../scripts/preview-perennial-assignment.mjs';
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';

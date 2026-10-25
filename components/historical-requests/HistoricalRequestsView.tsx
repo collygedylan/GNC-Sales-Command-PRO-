@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SWRConfig, type Cache, type State } from 'swr';
 import { useRevisionedSnapshot } from '../../services/useRevisionedSnapshot';
 import { readHistoricalReportingDirectory } from '../../services/historicalRequests';
+import { HistoricalArchiveView } from './HistoricalArchiveView';
 import type {
+  HistoricalArchiveKind,
   HistoricalRequestGroup,
   HistoricalRequestRow,
   HistoricalRequestsBridge,
@@ -10,6 +12,8 @@ import type {
   HistoricalRequestsQuery,
 } from './contract';
 import { historicalRequestsRoleCanViewFinancials } from './contract';
+import { historicalPhotoUrls } from './photoUrls';
+export { historicalPhotoUrls } from './photoUrls';
 
 const PAGE_SIZE = 25;
 type Level = 'reps' | 'customers' | 'requests';
@@ -106,20 +110,6 @@ function SummaryCards({ page }: { page: HistoricalRequestsPage }) {
   </section>;
 }
 
-export function historicalPhotoUrls(values: Array<string | null>): string[] {
-  const urls = new Set<string>();
-  const add = (value: unknown, depth = 0) => {
-    if (depth > 3 || urls.size >= 20) return;
-    if (Array.isArray(value)) { value.slice(0, 20).forEach(item => add(item, depth + 1)); return; }
-    if (typeof value !== 'string') return;
-    const text = value.trim();
-    if (text.startsWith('[')) { try { add(JSON.parse(text), depth + 1); } catch {} return; }
-    if (/^https:\/\/[^\s]+$/i.test(text) || /^\/[^/\s][^\s]*$/.test(text)) urls.add(text);
-  };
-  values.forEach(value => add(value));
-  return [...urls];
-}
-
 function ExecutiveReports({ bridge, recordKind, repKey, customerKey, dateFrom, dateTo, onDates, onScopeInvalid }:
   { bridge: HistoricalRequestsBridge; recordKind: 'requests' | 'orders'; repKey?: string; customerKey?: string;
     dateFrom: string; dateTo: string; onDates(from: string, to: string): void; onScopeInvalid(): void }) {
@@ -192,11 +182,11 @@ function ExecutiveReports({ bridge, recordKind, repKey, customerKey, dateFrom, d
   </section>;
 }
 
-function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge }) {
+function RequestHistoryBrowser({ bridge }: { bridge: HistoricalRequestsBridge }) {
   const [level, setLevel] = useState<Level>('reps');
   const [rep, setRep] = useState<HistoricalRequestGroup | null>(null);
   const [folder, setFolder] = useState<HistoricalRequestGroup | null>(null);
-  const [recordKind, setRecordKind] = useState<'requests' | 'orders'>('requests');
+  const recordKind = 'requests' as const;
   const [page, setPage] = useState(0);
   const [repPage, setRepPage] = useState(0);
   const [establishedScope, setEstablishedScope] = useState<HistoricalRequestsPage['scope'] | null>(null);
@@ -239,25 +229,16 @@ function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge })
     if (level === 'requests') { setFolder(null); setLevel('customers'); }
     else if (scope === 'all') { setRep(null); setLevel('reps'); }
   };
-  const selectKind = (kind: 'requests' | 'orders') => {
-    setRecordKind(kind); setFolder(null); setPage(0); setRepPage(0); setLevel(rep ? 'customers' : 'reps');
-  };
   const selectGroup = (group: HistoricalRequestGroup) => {
     setPage(0);
     if (level === 'reps') { setRep(group); setFolder(null); setLevel('customers'); }
     else if (group.customerKey && group.consigneeKey) { setFolder(group); setLevel('requests'); }
   };
-  const noun = recordKind === 'orders' ? 'orders' : 'requests';
+  const noun = 'requests';
 
-  return <main className="historical-requests" aria-labelledby="historical-requests-title">
-    <header className="historical-requests__header"><div>
-      <p className="historical-requests__eyebrow">Sales workspace</p><h1 id="historical-requests-title">Request History</h1>
-      <p className="historical-requests__description">{rep ? rep.label + ' · ' : ''}Browse customer and consignee folders.</p>
-    </div>{(level === 'requests' || level === 'customers' && scope === 'all') && <button className="historical-requests__back" type="button" onClick={goBack}>Back</button>}</header>
-    <nav className="historical-requests__tabs" aria-label="History record type">
-      <button type="button" aria-pressed={recordKind === 'requests'} onClick={() => selectKind('requests')}>Requests</button>
-      <button type="button" aria-pressed={recordKind === 'orders'} onClick={() => selectKind('orders')}>Orders</button>
-    </nav>
+  return <>
+    {(level === 'requests' || level === 'customers' && scope === 'all') && <div className="historical-archive__local-back">
+      <button className="historical-requests__back" type="button" onClick={goBack}>Back</button></div>}
     {(scopeGuardFailed || ownerMismatch) && <div className="historical-requests__state historical-requests__state--error" role="alert">
       {level === 'reps' ? 'Dashboard scope could not be confirmed.' : 'Data scope could not be confirmed.'}
       <button type="button" onClick={recoverScope}>{level === 'reps' ? 'Refresh dashboard' : 'Return to customers and refresh'}</button>
@@ -267,7 +248,7 @@ function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge })
       onScopeInvalid={() => { setReportScopeInvalid(true); reps.retry(); }} />}
     <section className="historical-requests__panel" aria-labelledby="historical-browse-title">
       <div className="historical-requests__section-heading"><h2 id="historical-browse-title">
-        {level === 'reps' ? 'Sales Reps' : level === 'customers' ? 'Customers' : `${folder?.label || 'Customer'} · ${folder?.consigneeName || 'Consignee'} · ${recordKind === 'orders' ? 'Orders' : 'Requests'}`}
+        {level === 'reps' ? 'Sales Reps' : level === 'customers' ? 'Customers' : `${folder?.label || 'Customer'} · ${folder?.consigneeName || 'Consignee'} · Requests`}
       </h2><span>{currentCanDisplay ? current.data?.total.toLocaleString() : '—'} {level === 'reps' ? 'reps' : level === 'customers' ? 'folders' : noun}</span>
         {current.data && <button className="historical-requests__refresh" type="button" onClick={() => { reps.retry(); current.retry(); }}>Refresh</button>}</div>
       {financials && <p className="historical-requests__pricing-note">Value uses the active catalog item-code list price × request quantity. Blank or zero quantity defaults to 25. Unavailable prices are excluded from totals.</p>}
@@ -293,6 +274,41 @@ function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge })
       </article>)}</div>}
       {currentCanDisplay && !ownerMismatch && current.data && current.data.total > current.data.pageSize && <Pager page={current.data.page} pageSize={current.data.pageSize} total={current.data.total} onPage={level === 'reps' ? setRepPage : setPage} />}
     </section>
+  </>;
+}
+
+const ARCHIVE_TABS: Array<{ kind: HistoricalArchiveKind; label: string }> = [
+  { kind: 'requests', label: 'Historical Requests' },
+  { kind: 'orders', label: 'Historical SOC Open Orders' },
+  { kind: 'reserves', label: 'Historical SOC Reserves' },
+  { kind: 'drive', label: 'Historical Drive Around' },
+];
+
+function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge }) {
+  const [recordKind, setRecordKind] = useState<HistoricalArchiveKind>('requests');
+  const [searchDraft, setSearchDraft] = useState('');
+  const [search, setSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchDraft.trim().length >= 2 ? searchDraft.trim() : ''), 250);
+    return () => clearTimeout(timer);
+  }, [searchDraft]);
+  const selectTab = (kind: HistoricalArchiveKind) => { setRecordKind(kind); };
+  return <main className="historical-requests historical-archive" aria-labelledby="historical-requests-title" data-archive-kind={recordKind}>
+    <header className="historical-requests__header"><div>
+      <p className="historical-requests__eyebrow">Unified historical archive</p><h1 id="historical-requests-title">Historical Requests</h1>
+      <p className="historical-requests__description">Browse permanent Request, SOC, Reserve, and Drive Around snapshots.</p>
+    </div></header>
+    <nav className="historical-requests__tabs historical-archive__tabs" aria-label="Historical archive domains">
+      {ARCHIVE_TABS.map(tab => <button type="button" key={tab.kind} data-archive-tab={tab.kind}
+        aria-pressed={recordKind === tab.kind} onClick={() => selectTab(tab.kind)}>{tab.label}</button>)}
+    </nav>
+    <label className="historical-archive__search"><span>Search this archive</span><div>
+      <input type="search" value={searchDraft} onChange={event => setSearchDraft(event.target.value)}
+        placeholder="Plant name, ItemCode, customer, trip, file, or location" />
+      {searchDraft && <button type="button" onClick={() => { setSearchDraft(''); setSearch(''); }}>Clear</button>}
+    </div></label>
+    {recordKind === 'requests' && !search ? <RequestHistoryBrowser bridge={bridge} />
+      : <HistoricalArchiveView bridge={bridge} recordKind={recordKind} search={search} />}
   </main>;
 }
 

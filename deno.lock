@@ -63,6 +63,7 @@
     "npm:web-push@3.6.7": "3.6.7",
     "npm:web-vitals@6.1.0": "6.1.0",
     "npm:workbox-window@7.4.1": "7.4.1",
+    "npm:yauzl@2.10.0": "2.10.0",
     "npm:zod@4.4.3": "4.4.3"
   },
   "jsr": {
@@ -8460,6 +8461,7 @@
         "npm:vitest@4.1.10",
         "npm:web-vitals@6.1.0",
         "npm:workbox-window@7.4.1",
+        "npm:yauzl@2.10.0",
         "npm:zod@4.4.3"
       ],
       "overrides": {

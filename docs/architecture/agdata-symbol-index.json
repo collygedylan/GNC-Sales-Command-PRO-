@@ -178,6 +178,36 @@
           "symbol": "normalizeRequestSalesImpactResponse"
         }
       ]
+    },
+    "historicalArchiveHub": {
+      "primary": {
+        "file": "components/historical-requests/HistoricalRequestsView.tsx",
+        "symbol": "HistoricalRequestsView"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "ensureHistoricalRequestsIsland"
+        },
+        {
+          "file": "services/historicalRequests.ts",
+          "symbol": "createHistoricalRequestsBridge"
+        },
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "handleHistoricalRequestsReadAction"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "supabase/migrations/20261025220000_agdata_v2366_historical_archive.sql",
+          "symbol": "historical_archive_read_v1"
+        },
+        {
+          "file": "scripts/fast-historical-archive-import.mjs",
+          "symbol": "runHistoricalArchiveImport"
+        }
+      ]
     }
   },
   "domains": {
@@ -216,6 +246,7 @@
         "submitRequestWithQtys",
         "forceRefreshRequestsForView",
         "buildPendingRequestRenderPlan",
+        "ensureHistoricalRequestsIsland",
         "openRequestSalesImpact",
         "renderRequestSalesImpact"
       ],
@@ -224,6 +255,7 @@
         "handleCustomerRepMappingAction",
         "handleRequestRecipientDirectory",
         "handleSeasonSalesOfficeAction",
+        "handleHistoricalRequestsReadAction",
         "handleRequestSalesImpactAction"
       ],
       "Code.gs": [
@@ -242,6 +274,23 @@
           "recover_unfulfilled_requests_v1",
           "request_completion_proof_v1",
           "refresh_request_sales_impact_line_v1"
+        ],
+        "components/historical-requests/HistoricalRequestsView.tsx": [
+          "HistoricalRequestsView"
+        ],
+        "components/historical-requests/HistoricalArchiveView.tsx": [
+          "HistoricalArchiveView"
+        ],
+        "services/historicalRequests.ts": [
+          "createHistoricalRequestsBridge",
+          "historicalArchiveQuery",
+          "parseHistoricalArchivePage"
+        ],
+        "supabase/migrations/20261025220000_agdata_v2366_historical_archive.sql": [
+          "historical_archive_read_v1"
+        ],
+        "scripts/fast-historical-archive-import.mjs": [
+          "runHistoricalArchiveImport"
         ]
       }
     },

@@ -85,6 +85,24 @@ function parseCurrency(value) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
+async function dismissPushPermissionHelp(page) {
+  const modal = page.locator('#push-permission-help-modal');
+  if (!await modal.isVisible().catch(() => false)) return false;
+  await modal.getByRole('button', { name: 'Close' }).click({ force: true });
+  await modal.waitFor({ state: 'hidden', timeout: 5_000 });
+  return true;
+}
+
+async function clickPastPushPermissionHelp(page, target) {
+  await dismissPushPermissionHelp(page);
+  try {
+    await target.click({ timeout: 2_000 });
+  } catch (error) {
+    if (!await dismissPushPermissionHelp(page)) throw error;
+    await target.click({ timeout: 10_000 });
+  }
+}
+
 async function probeAnonSecurity({ supabaseUrl, anonKey, existingRequestId }) {
   if (!anonKey || !existingRequestId) fail('Anon security probe prerequisites are unavailable.');
   const headers = { apikey: anonKey, authorization: `Bearer ${anonKey}`, 'Cache-Control': 'no-store' };
@@ -124,6 +142,138 @@ async function probeAnonSecurity({ supabaseUrl, anonKey, existingRequestId }) {
     mutationResults[method] = response.status;
   }
   return { reads: readResults, mutations: mutationResults };
+}
+
+async function readArchiveDatabaseCounts(localEnv) {
+  const databaseUrl = String(process.env.GNC_REQUEST_QUEUE_DB_URL || localEnv.GNC_SUPABASE_DB_URL
+    || process.env.GNC_SUPABASE_DB_URL || '').trim();
+  if (!databaseUrl || !fs.existsSync(caFile)) fail('The protected production database URL is required for archive counts.');
+  const client = new Client(createDatabaseClientOptions(databaseUrl));
+  try {
+    await client.connect();
+    await client.query('begin read only');
+    await client.query("set local statement_timeout = '3000ms'");
+    const result = await client.query(`select
+      (select count(*) from public.ph_requests_completed_history)::bigint requests,
+      (select count(*) from public.ph_orders_history)::bigint orders,
+      (select count(*) from public.ph_reserves_history)::bigint reserves,
+      (select count(*) from public.ph_drive_mode_history_files)::bigint drive_files,
+      (select coalesce(sum(row_count),0) from public.ph_drive_mode_history_files)::bigint drive_rows_indexed,
+      (select count(*) from public.ph_drive_mode_history)::bigint drive_evidence,
+      (select count(*) from public.ph_orders_history where source_kind in ('trip','trip_audit'))::bigint dock_records,
+      (select count(*) from public.ph_orders_history where nullif(checker,'') is not null)::bigint checker_records,
+      (select count(*) from public.ph_orders_history where nullif(inspector,'') is not null)::bigint inspector_records,
+      (select count(*) from public.ph_orders_history where nullif(mistake,'') is not null)::bigint mistake_records`);
+    await client.query('commit');
+    return Object.fromEntries(Object.entries(result.rows[0] || {}).map(([key, value]) => [key, Number(value)]));
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+function archiveCount(value) {
+  return Number((String(value || '').replaceAll(',', '').match(/\d+/) || ['0'])[0]);
+}
+
+function archiveRecordCount(value) {
+  const match = String(value || '').match(/([\d,]+)\s+records?\b/i);
+  return Number(String(match?.[1] || '0').replaceAll(',', ''));
+}
+
+function archiveFolderDataCount(value) {
+  const text = String(value || '');
+  const rowMatch = text.match(/([\d,]+)\s+(?:indexed\s+)?rows?\b/i);
+  return rowMatch ? Number(rowMatch[1].replaceAll(',', '')) : archiveRecordCount(text);
+}
+
+async function verifyArchiveSearch(page, recordKind) {
+  const card = page.locator('[data-archive-record]').first();
+  await card.waitFor({ state: 'visible', timeout: 30_000 });
+  const recordText = normalizeCardText(await card.textContent());
+  const metadata = normalizeCardText(await card.locator('.historical-requests__request-meta').first().textContent());
+  const searchTerm = metadata.split(/\s+/)[0];
+  if (!searchTerm || searchTerm.length < 2) fail(`${recordKind} did not expose a searchable record identity.`);
+  const search = page.getByRole('searchbox', { name: 'Search this archive' });
+  await search.fill(searchTerm);
+  await page.getByRole('heading', { name: /Search results for/ }).waitFor({ state: 'visible', timeout: 30_000 });
+  await page.locator('[data-archive-record]').first().waitFor({ state: 'visible', timeout: 30_000 });
+  const searchText = normalizeCardText(await page.locator('[data-archive-record]').first().textContent());
+  if (!searchText.toLowerCase().includes(searchTerm.toLowerCase())) fail(`${recordKind} search did not return ${searchTerm}.`);
+  await page.getByRole('button', { name: 'Clear' }).click();
+  await page.locator('[data-archive-folder]').first().waitFor({ state: 'visible', timeout: 30_000 });
+  return { searchTerm, recordText: recordText.slice(0, 240) };
+}
+
+async function verifyRequestArchiveSearch(page) {
+  await page.getByRole('heading', { name: 'Sales Reps' }).waitFor({ state: 'visible', timeout: 30_000 });
+  await page.locator('.historical-requests__group-button').first().click();
+  await page.getByRole('heading', { name: 'Customers' }).waitFor({ state: 'visible', timeout: 30_000 });
+  await page.locator('.historical-requests__group-button').first().click();
+  const card = page.locator('.historical-requests__request').first();
+  await card.waitFor({ state: 'visible', timeout: 30_000 });
+  const recordText = normalizeCardText(await card.textContent());
+  const metadata = normalizeCardText(await card.locator('.historical-requests__request-meta').first().textContent());
+  const searchTerm = metadata.split(/\s+/)[0];
+  if (!searchTerm || searchTerm.length < 2) fail('Requests did not expose a searchable record identity.');
+  await page.getByRole('searchbox', { name: 'Search this archive' }).fill(searchTerm);
+  await page.getByRole('heading', { name: /Search results for/ }).waitFor({ state: 'visible', timeout: 30_000 });
+  const result = page.locator('[data-archive-record]').first();
+  await result.waitFor({ state: 'visible', timeout: 30_000 });
+  if (!normalizeCardText(await result.textContent()).toLowerCase().includes(searchTerm.toLowerCase())) {
+    fail(`Requests search did not return ${searchTerm}.`);
+  }
+  await page.getByRole('button', { name: 'Clear' }).click();
+  await page.getByRole('heading', { name: 'Sales Reps' }).waitFor({ state: 'visible', timeout: 30_000 });
+  return { searchTerm, recordText: recordText.slice(0, 240) };
+}
+
+async function verifyGenericArchiveTab(page, { kind, label, depth }) {
+  await page.locator(`[data-archive-tab="${kind}"]`).click();
+  await page.locator(`.historical-archive[data-archive-kind="${kind}"]`).waitFor({ state: 'visible', timeout: 10_000 });
+  const rootFolder = page.locator('[data-archive-folder]').first();
+  await rootFolder.waitFor({ state: 'visible', timeout: 30_000 });
+  const rootFolderCount = archiveCount(await page.locator('.historical-archive__heading-actions > span').textContent());
+  const visibleRecordCount = (await page.locator('[data-archive-folder]').allTextContents())
+    .reduce((total, text) => total + archiveRecordCount(text), 0);
+  for (let level = 0; level < depth; level += 1) {
+    let folders = page.locator('[data-archive-folder]');
+    let folderTexts = await folders.allTextContents();
+    let populatedIndex = folderTexts.findIndex(text => archiveFolderDataCount(text) > 0);
+    for (let pageAttempt = 0; populatedIndex < 0 && kind === 'drive' && level === depth - 1 && pageAttempt < 10; pageAttempt += 1) {
+      const next = page.locator(`.historical-archive[data-archive-kind="${kind}"]`).getByRole('button', { name: 'Next' });
+      if (!await next.isVisible().catch(() => false) || await next.isDisabled()) break;
+      const priorKey = await folders.first().getAttribute('data-archive-folder');
+      await next.click();
+      await page.waitForFunction(({ archiveKind, previous }) => {
+        const nextFolder = document.querySelector(`.historical-archive[data-archive-kind="${archiveKind}"] [data-archive-folder]`);
+        return !!nextFolder && nextFolder.getAttribute('data-archive-folder') !== previous;
+      }, { archiveKind: kind, previous: priorKey }, { timeout: 30_000 });
+      folders = page.locator('[data-archive-folder]');
+      folderTexts = await folders.allTextContents();
+      populatedIndex = folderTexts.findIndex(text => archiveFolderDataCount(text) > 0);
+    }
+    const folder = folders.nth(populatedIndex >= 0 ? populatedIndex : 0);
+    await folder.waitFor({ state: 'visible', timeout: 30_000 });
+    const priorKey = await folder.getAttribute('data-archive-folder');
+    await folder.click();
+    try {
+      await page.waitForFunction(previous => {
+        const record = document.querySelector('[data-archive-record]');
+        const next = document.querySelector('[data-archive-folder]');
+        return !!record || (!!next && next.getAttribute('data-archive-folder') !== previous);
+      }, priorKey, { timeout: 30_000 });
+    } catch (error) {
+      const state = await page.locator(`.historical-archive[data-archive-kind="${kind}"]`).evaluate(host => ({
+        text: String(host.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 600),
+        alert: host.querySelector('[role="alert"]')?.textContent?.trim() || '',
+        folders: host.querySelectorAll('[data-archive-folder]').length,
+        records: host.querySelectorAll('[data-archive-record]').length,
+      }));
+      throw new Error(`${kind} level ${level + 1}: ${String(error?.message || error)} state=${JSON.stringify(state)}`);
+    }
+  }
+  const search = await verifyArchiveSearch(page, kind);
+  return { label, rootFolderCount, visibleRecordCount, ...search };
 }
 
 async function runVerification(page, origin, accessCode) {
@@ -169,14 +319,13 @@ async function runVerification(page, origin, accessCode) {
     card.getAttribute('data-sync-source'), card.querySelector('.dashboard-sync-filename')?.textContent?.trim() || '',
   ])));
 
-  const pushHelp = page.locator('#push-permission-help-modal');
-  if (await pushHelp.isVisible()) await pushHelp.getByRole('button', { name: 'Close' }).click();
+  await dismissPushPermissionHelp(page);
   stage = 'queue-navigation';
   await page.locator('#footer-request-btn').waitFor({ state: 'visible', timeout: 10_000 });
-  await page.locator('#footer-request-btn').click();
+  await clickPastPushPermissionHelp(page, page.locator('#footer-request-btn'));
   const requestPill = page.locator('#request-filter-toolbar [data-request-category="pending"]');
   await requestPill.waitFor({ state: 'visible', timeout: 10_000 });
-  await requestPill.click();
+  await clickPastPushPermissionHelp(page, requestPill);
   stage = 'request-cards';
   try {
     await page.waitForFunction(() => {
@@ -213,17 +362,38 @@ async function runVerification(page, origin, accessCode) {
   stage = 'historical-requests';
   const historyFailureOffset = failedResponses.length;
   await page.evaluate(() => window.switchView('home', { force: true }));
-  if (await pushHelp.isVisible()) await pushHelp.getByRole('button', { name: 'Close' }).click();
+  await dismissPushPermissionHelp(page);
   await page.locator('#home-tile-historical-requests').waitFor({ state: 'visible', timeout: 10_000 });
   await page.locator('#home-tile-historical-requests').click();
   await page.locator('#historical-requests-title').waitFor({ state: 'visible', timeout: 30_000 });
-  await page.waitForFunction(() => {
-    const host = document.getElementById('historical-requests-content');
-    return !!host && !host.querySelector('[role="alert"]')
-      && !!host.querySelector('.historical-requests__groups .historical-requests__group')
-      && !!host.querySelector('.historical-requests__summary strong');
-  }, undefined, { timeout: 30_000 });
+  try {
+    await page.waitForFunction(() => {
+      const host = document.getElementById('historical-requests-content');
+      return !!host && !host.querySelector('[role="alert"]')
+        && !!host.querySelector('.historical-requests__groups .historical-requests__group')
+        && !!host.querySelector('.historical-requests__summary strong');
+    }, undefined, { timeout: 30_000 });
+  } catch (error) {
+    const state = await page.locator('#historical-requests-content').evaluate(host => ({
+      text: String(host.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 600),
+      alert: host.querySelector('[role="alert"]')?.textContent?.trim() || '',
+      groups: host.querySelectorAll('.historical-requests__groups .historical-requests__group').length,
+      summary: host.querySelectorAll('.historical-requests__summary strong').length,
+    })).catch(() => ({ text: '', alert: '', groups: 0, summary: 0 }));
+    throw new Error(`${String(error?.message || error)} state=${JSON.stringify(state)} failed=${failedResponses.slice(-8).join('|')}`);
+  }
   const historicalPricedValue = normalizeCardText(await page.locator('.historical-requests__summary > div').nth(1).locator('strong').textContent());
+  const tabLabels = (await page.locator('[data-archive-tab]').allTextContents()).map(normalizeCardText);
+  const expectedTabLabels = ['Historical Requests', 'Historical SOC Open Orders', 'Historical SOC Reserves', 'Historical Drive Around'];
+  if (JSON.stringify(tabLabels) !== JSON.stringify(expectedTabLabels)) fail(`Historical archive tabs were ${JSON.stringify(tabLabels)}.`);
+  const requestRootFolderCount = archiveCount(await page.locator('.historical-requests__section-heading > span').first().textContent());
+  const requestSearch = await verifyRequestArchiveSearch(page);
+  const archiveTabs = {
+    requests: { label: expectedTabLabels[0], rootFolderCount: requestRootFolderCount, ...requestSearch },
+    orders: await verifyGenericArchiveTab(page, { kind: 'orders', label: expectedTabLabels[1], depth: 3 }),
+    reserves: await verifyGenericArchiveTab(page, { kind: 'reserves', label: expectedTabLabels[2], depth: 4 }),
+    drive: await verifyGenericArchiveTab(page, { kind: 'drive', label: expectedTabLabels[3], depth: 3 }),
+  };
   const historyFailures = failedResponses.slice(historyFailureOffset).filter(value => value.includes('/functions/v1/app-api'));
   if (historyFailures.length) fail(`Historical Requests app-api failure: ${historyFailures[0]}`);
 
@@ -246,9 +416,9 @@ async function runVerification(page, origin, accessCode) {
   if (await page.locator('#request-sales-impact-content [role="alert"]').count()) fail('Request Sales Impact rendered an error alert.');
   if (pageErrors.length) fail(`Browser page error: ${pageErrors[0]}`);
   const release = normalizeCardText(await page.locator('#header-version').textContent());
-  if (!release.includes('2.3.65')) fail(`Unexpected release version: ${release || 'missing'}.`);
+  if (!release.includes('2.3.66')) fail(`Unexpected release version: ${release || 'missing'}.`);
   return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, historicalPricedValue,
-    requestSalesImpactText, requestSalesImpactTotal, cardDomText: expectedCards.map(([itemcode, , locationcode]) =>
+    archiveTabs, requestSalesImpactText, requestSalesImpactTotal, cardDomText: expectedCards.map(([itemcode, , locationcode]) =>
       cardDomText.find(text => text.includes(itemcode) && text.includes(locationcode))) };
   } catch (error) {
     throw new Error(`${stage}: ${String(error?.message || error)}`);
@@ -276,7 +446,8 @@ async function main() {
     const page = await context.newPage();
     const result = await runVerification(page, origin, accessCode);
     const anonSecurity = await probeAnonSecurity({ supabaseUrl, anonKey, existingRequestId: result.activeRequestId });
-    console.log(JSON.stringify({ status: 'passed', origin, ...result, anonSecurity }, null, 2));
+    const archiveCounts = await readArchiveDatabaseCounts(localEnv);
+    console.log(JSON.stringify({ status: 'passed', origin, ...result, archiveCounts, anonSecurity }, null, 2));
   } finally {
     await browser?.close().catch(() => {});
     if (server) await new Promise(resolve => server.close(resolve));

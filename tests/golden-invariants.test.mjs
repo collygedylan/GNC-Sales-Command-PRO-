@@ -851,7 +851,7 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
 
   const historyHandler = functionSource('supabase/functions/app-api/index.ts', 'handleHistoricalRequestsReadAction');
   assert.match(historyHandler, /session\.authUserId[^]*actorId/);
-  assert.match(historyHandler, /rest\/v1\/rpc\/historical_requests_read_v1/);
+  assert.match(historyHandler, /operation\.startsWith\("archive-"\)[^]*historical_archive_read_v1[^]*historical_requests_read_v1/);
   assert.match(historyHandler, /SUPABASE_SERVICE_ROLE_KEY[^]*Authorization:\s*authorization/);
   assert.match(functionSource('supabase/functions/app-api/index.ts', 'handleRequestSalesImpactAction'),
     /canonical-active-history-v2363/);
@@ -874,7 +874,7 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
   const verifier = read('scripts/verify-live-request-queue.mjs');
   for (const marker of ['ph_app_users', 'user_access_control', 'ph_request_delivery_outbox',
     'ph_requests_completed_history', "['POST'", "['PATCH'", "['DELETE'", '#historical-requests-title',
-    '#historical-request-sales-impact-btn', 'requestSalesImpactTotal', 'minimumRequestImpact', "release.includes('2.3.65')"]) {
+    '#historical-request-sales-impact-btn', 'requestSalesImpactTotal', 'minimumRequestImpact', "release.includes('2.3.66')"]) {
     assert.match(verifier, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.match(verifier, /response\.ok[^]*payload\.length !== 0/);
@@ -883,4 +883,30 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
   const runner = read('scripts/apply-item-low-stock-migration.mjs');
   assert.match(runner, /agdataV2365AnonSecurityHardeningMigrationName[^]*registeredReleaseDatabaseMigrations/);
   assert.match(runner, /agdataV2365SalesImpactUnionFixMigrationName[^]*registeredReleaseDatabaseMigrations/);
+});
+
+test('Invariant 25 (Indexed Four-Domain Historical Archive)', () => {
+  const migration = read('supabase/migrations/20261025220000_agdata_v2366_historical_archive.sql');
+  for (const table of ['ph_orders_history', 'ph_reserves_history', 'ph_drive_mode_history_files', 'ph_drive_mode_history']) {
+    assert.match(migration, new RegExp(`create table if not exists public\\.${table}`));
+    assert.match(migration, new RegExp(`${table}[^]*create index|create index[^]*${table}`));
+  }
+  for (const marker of ['historical_archive_read_v1', 'ph_soc_master_archive_v2366', 'ph_reserves_archive_v2366',
+    'ph_drive_files_archive_v2366', 'ph_drive_evidence_archive_v2366', 'HISTORICAL_ARCHIVE_RETENTION_PROTECTED',
+    'HISTORICAL_PHOTO_RETENTION_PROTECTED', 'row.file_id=path_2', 'source.itemcode=dimension.itemcode']) assert.match(migration, new RegExp(marker));
+  assert.doesNotMatch(migration, /\bdrop\s+table\b/i);
+  assert.doesNotMatch(migration, /(?:^|\n)\s*truncate\s/i);
+  assert.doesNotMatch(migration, /count\(\*\)[^;]*ph_drive_around_report_rows/i);
+
+  const view = read('components/historical-requests/HistoricalRequestsView.tsx');
+  for (const label of ['Historical Requests', 'Historical SOC Open Orders', 'Historical SOC Reserves', 'Historical Drive Around']) {
+    assert.match(view, new RegExp(label));
+  }
+  assert.match(view, /Search this archive/);
+  const importer = read('scripts/fast-historical-archive-import.mjs');
+  for (const marker of ['defaultBatchSize = 2_000', 'defaultWorkers = 16', 'jsonb_to_recordset', 'sha256',
+    'historicalImportWindowOpen', 'application\/vnd\.google-apps\.spreadsheet', 'supportedExtensions = new Set']) assert.match(importer, new RegExp(marker));
+  assert.match(importer, /'\.csv', '\.xlsx'/);
+  assert.match(read('assets/app-runtime.js'), /\['master', 'soc', 'reserves', 'requests', 'requestHistory', 'customerRepMap'\]/);
+  assert.match(read('scripts/apply-item-low-stock-migration.mjs'), /agdataV2366HistoricalArchiveMigrationName[^]*registeredReleaseDatabaseMigrations/);
 });

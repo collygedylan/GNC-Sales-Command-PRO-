@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createHistoricalRequestsBridge, historicalRequestsQuery, parseHistoricalRequestsPage } from '../services/historicalRequests';
+import { createHistoricalRequestsBridge, historicalArchiveQuery, historicalRequestsQuery,
+  parseHistoricalArchivePage, parseHistoricalRequestsPage } from '../services/historicalRequests';
 
 const customerPage = {
   scope: 'all', financials: true, recordKind: 'all', ownRepKey: 'rep:50000000-0000-4000-8000-000000000001', revision: 'history-r7', generatedAt: '2026-10-10T12:00:00Z', page: 0, pageSize: 25, total: 1,
@@ -11,6 +12,14 @@ const requestRow = {
   itemcode: '00123', commonname: 'Red Maple ®', location: 'A.01', requestedAt: null, status: 'Completed', requestQty: 0,
   effectiveQty: 25, listPrice: null, totalValue: null, unresolvedReason: 'Current master list price is unavailable.',
   dock: null, spec: '', caliper: '', comments: '', photoNotes: '', photoLinks: [], sentAt: null, deliveryState: 'unknown',
+};
+const archiveQuery = { operation: 'archive-records' as const, recordKind: 'orders' as const, path: ['Customer', 'Yard', 'Trip 1'] };
+const archivePage = {
+  scope: 'all', financials: true, recordKind: 'orders', operation: 'archive-records', path: archiveQuery.path,
+  depth: 3, maxDepth: 3, revision: 'orders:r1', generatedAt: '2026-10-10T12:00:00Z', page: 0, pageSize: 25, total: 1,
+  rows: [{ kind: 'record', id: 'order-1', title: 'Red Maple', subtitle: 'Trip 1', status: 'Archived', occurredAt: '2026-10-10T12:00:00Z',
+    itemcode: '00123', commonname: 'Red Maple', contsize: '10G', locationcode: 'A.01', lotcode: 'L1', quantity: -2,
+    unitListPrice: 12.5, lineDollarValue: -25, photoLinks: ['https://example.invalid/photo.jpg'], facts: { Dock: '0' }, notes: ['Credit row'] }],
 };
 
 describe('historical requests typed API boundary', () => {
@@ -50,6 +59,17 @@ describe('historical requests typed API boundary', () => {
     expect(() => historicalRequestsQuery({ operation: 'requests', customerKey: 'c' })).toThrow(/consignee/);
   });
 
+  it('sanitizes archive paths and parses signed historical records without leaking financials', () => {
+    expect(historicalArchiveQuery({ ...archiveQuery, page: 0, pageSize: 25, actorId: 'forged' })).toEqual({ ...archiveQuery, page: 0, pageSize: 25 });
+    expect(parseHistoricalArchivePage(archivePage, archiveQuery).rows[0]).toMatchObject({ quantity: -2, lineDollarValue: -25 });
+    const ownPage = { ...archivePage, scope: 'own', financials: false,
+      rows: archivePage.rows.map(row => ({ ...row, unitListPrice: null, lineDollarValue: null })) };
+    expect(parseHistoricalArchivePage(ownPage, archiveQuery).financials).toBe(false);
+    expect(() => parseHistoricalArchivePage({ ...ownPage, rows: archivePage.rows }, archiveQuery)).toThrow(/not authorized/);
+    expect(() => historicalArchiveQuery({ operation: 'archive-records', recordKind: 'requests', path: [] })).toThrow(/protected Request/);
+    expect(() => historicalArchiveQuery({ operation: 'archive-search', recordKind: 'drive', query: 'x' })).toThrow(/two search/);
+  });
+
   it('parses server scope, hierarchy values, revision and unresolved prices without trusting loose JSON', () => {
     expect(parseHistoricalRequestsPage(customerPage)).toEqual(customerPage);
     const parsed = parseHistoricalRequestsPage({ ...customerPage, rows: [requestRow], total: 1 });
@@ -75,6 +95,14 @@ describe('historical requests typed API boundary', () => {
     expect(transport).toHaveBeenCalledWith({ operation: 'customers', page: 0, pageSize: 25 }, signal);
     const own = createHistoricalRequestsBridge({ scopeKey: 'profile-a:rep:own', role: 'Sales Rep', revisionKey: 'r7', transport });
     expect(own.scopeKey).not.toBe(bridge.scopeKey);
+  });
+
+  it('forwards archive queries through the same protected transport boundary', async () => {
+    const transport = vi.fn().mockResolvedValue(archivePage);
+    const bridge = createHistoricalRequestsBridge({ scopeKey: 'profile-a:admin:all', role: 'Admin', revisionKey: 'r7', transport });
+    const signal = new AbortController().signal;
+    await bridge.readArchive({ ...archiveQuery, actorId: 'forged' } as never, signal);
+    expect(transport).toHaveBeenCalledWith(archiveQuery, signal);
   });
 
   it('rejects RPC failures and malformed envelopes instead of rendering cached financial data', async () => {

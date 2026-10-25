@@ -2646,7 +2646,9 @@ async function handleHistoricalRequestsReadAction(
     return errorResponse("Sign in again.", 401, { code: "HISTORICAL_REQUESTS_AUTH_REQUIRED" });
   }
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/historical_requests_read_v1`, {
+    const operation = String(query.operation || "");
+    const rpcName = operation.startsWith("archive-") ? "historical_archive_read_v1" : "historical_requests_read_v1";
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
       method: "POST",
       headers: {
         apikey: SUPABASE_SERVICE_ROLE_KEY,

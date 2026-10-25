@@ -38,10 +38,19 @@ function pageFor(query,scope,rows,total=rows.length){return {scope,financials:sc
  revision:'rev1',generatedAt:'2026-10-10T12:00:00Z',page:query.page||0,pageSize:25,total,
  rows:rows.map(row=>scope==='own'?{...row,totalValue:null,unpricedCount:null,listPrice:'listPrice' in row?null:undefined,unresolvedReason:'unresolvedReason' in row?null:undefined}:row),
  summary:{requestCount:10,totalValue:scope==='all'?2500:null,unpricedCount:scope==='all'?2:null}};}
+const archiveFolder=(value,label)=>({kind:'folder',key:`folder:${value}`,value,label,subtitle:'1 indexed record',recordCount:1,totalValue:null});
+const archiveRecord=kind=>({kind:'record',id:`${kind}-1`,title:`${kind} Red Maple`,subtitle:'Indexed history',status:'Archived',occurredAt:'2026-10-10T12:00:00Z',
+ itemcode:'00012',commonname:'Red Maple',contsize:'10G',locationcode:'A.01',lotcode:'L1',quantity:0,unitListPrice:null,lineDollarValue:null,
+ photoLinks:['https://example.invalid/archive.jpg'],facts:{Dock:'0'},notes:['Permanent snapshot']});
+function archivePage(query,rows){return {scope:'all',financials:false,recordKind:query.recordKind,operation:query.operation,path:query.path||[],
+ depth:(query.path||[]).length,maxDepth:query.recordKind==='reserves'?4:3,revision:'archive-r1',generatedAt:'2026-10-10T12:00:00Z',
+ page:query.page||0,pageSize:25,total:rows.length,rows};}
 function makeBridge(scopeKey,overrides={}){const calls=[];return {calls,bridge:{scopeKey,role:scopeKey.startsWith('dylan:')?'Admin':scopeKey.startsWith('eval:')?'Eval':'Sales Rep',revisionKey:overrides.revisionKey||'rev1',read:async(query,signal)=>{
  calls.push({query,signal});if(overrides.read){const data=await overrides.read(query,signal);return query.operation==='summary'?{...data,rows:[],total:0}:data;}const scope=overrides.scope||'own';
  return pageFor(query,scope,query.operation==='reps'?[group(REP,'Molly Dixon')]:query.operation==='folders'?[folder()]:query.operation==='requests'?[requestRow()]:[]);
-}}};}
+},readArchive:async(query,signal)=>{calls.push({query,signal});if(overrides.readArchive)return overrides.readArchive(query,signal);
+ const depth=(query.path||[]).length;const rows=query.operation==='archive-search'||query.operation==='archive-records'?[archiveRecord(query.recordKind)]:[archiveFolder(`${depth+1}`,`Folder ${depth+1}`)];
+ return archivePage(query,rows);}}};}
 async function openFolder(all=false){if(all)fireEvent.click(await screen.findByRole('button',{name:/Molly Dixon/}));fireEvent.click(await screen.findByRole('button',{name:/Customer 001/}));}
 
 test('report lookup choices retain their DOM and options while a revision refresh is pending', async () => {
@@ -122,11 +131,19 @@ test('requests next server folder page instead of aggregating only the initial p
  render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));fireEvent.click(await screen.findByRole('button',{name:/Molly Dixon/}));await screen.findByRole('button',{name:/North Nursery/});fireEvent.click(screen.getByRole('button',{name:'Next'}));await screen.findByRole('button',{name:/South Nursery/});
  assert.ok(fixture.calls.some(call=>call.query.operation==='folders'&&call.query.page===1));
 });
-test('Orders toggle keeps rep identity, distinguishes zero and blank dock values and excludes prior Requests cache',async()=>{
- const fixture=makeBridge('rep:own',{read:async query=>pageFor(query,'own',query.operation==='reps'?[group(REP,'Molly Dixon')]:query.operation==='folders'?[folder()]:[{...requestRow(),dock:query.recordKind==='orders'?'0':null}])});
- render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await openFolder();await screen.findByText('Red Maple');fireEvent.click(screen.getByRole('button',{name:'Orders',exact:true}));
- await screen.findByRole('button',{name:/Customer 001/});assert.equal(screen.queryByText('Red Maple'),null);await openFolder();await screen.findByText(/Dock 0/);assert.equal(document.body.textContent.includes('$'),false);
- assert.ok(fixture.calls.some(call=>call.query.recordKind==='orders'&&call.query.repKey===REP));
+test('exposes exactly four archive tabs with indexed drilldown and per-domain search',async()=>{
+ const fixture=makeBridge('rep:own');render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));
+ const tabNames=['Historical Requests','Historical SOC Open Orders','Historical SOC Reserves','Historical Drive Around'];
+ assert.deepEqual(tabNames.map(name=>screen.getByRole('button',{name}).textContent),tabNames);
+ const search=screen.getByRole('searchbox',{name:'Search this archive'});fireEvent.change(search,{target:{value:'maple'}});
+ await screen.findByText('requests Red Maple');assert.ok(fixture.calls.some(call=>call.query.operation==='archive-search'&&call.query.recordKind==='requests'));
+ for(const [name,kind] of [['Historical SOC Open Orders','orders'],['Historical SOC Reserves','reserves'],['Historical Drive Around','drive']]){
+  fireEvent.click(screen.getByRole('button',{name}));await screen.findByText(`${kind} Red Maple`);
+  assert.ok(fixture.calls.some(call=>call.query.operation==='archive-search'&&call.query.recordKind===kind));
+ }
+ fireEvent.click(screen.getByRole('button',{name:'Clear'}));await screen.findByRole('button',{name:/Folder 1/});
+ for(let depth=1;depth<=3;depth++)fireEvent.click(await screen.findByRole('button',{name:new RegExp(`Folder ${depth}`)}));
+ await screen.findByText('drive Red Maple');assert.ok(fixture.calls.some(call=>call.query.operation==='archive-records'&&call.query.recordKind==='drive'&&call.query.path.length===3));
 });
 test('rejects foreign-owner detail rows and unsafe photo links without weakening displayed ownership checks',async()=>{
  const fixture=makeBridge('rep:own',{read:async query=>pageFor(query,'own',query.operation==='reps'?[group(REP,'Molly Dixon')]:query.operation==='folders'?[folder()]:[{...requestRow(),salesrepUserId:OTHER.slice(4),commonname:'Other Rep Secret'}])});

@@ -1,4 +1,9 @@
 import type {
+  HistoricalArchiveFolder,
+  HistoricalArchiveOperation,
+  HistoricalArchivePage,
+  HistoricalArchiveQuery,
+  HistoricalArchiveRecord,
   HistoricalRequestGroup,
   HistoricalRequestRow,
   HistoricalRequestsBridge,
@@ -9,7 +14,7 @@ import type {
 } from '../components/historical-requests/contract';
 import { historicalRequestsRoleCanViewFinancials } from '../components/historical-requests/contract';
 
-export type HistoricalRequestsTransport = (query: HistoricalRequestsQuery, signal?: AbortSignal) => Promise<unknown>;
+export type HistoricalRequestsTransport = (query: HistoricalRequestsQuery | HistoricalArchiveQuery, signal?: AbortSignal) => Promise<unknown>;
 
 export function historicalRequestsQuery(value: unknown): HistoricalRequestsQuery {
   const input = object(value, 'query');
@@ -49,6 +54,49 @@ export function historicalRequestsQuery(value: unknown): HistoricalRequestsQuery
   return result;
 }
 
+export function historicalArchiveQuery(value: unknown): HistoricalArchiveQuery {
+  const input = object(value, 'archive query');
+  const operation = input.operation;
+  if (typeof operation !== 'string' || !['archive-folders', 'archive-records', 'archive-search'].includes(operation)) {
+    throw new Error('Invalid historical archive operation.');
+  }
+  if (typeof input.recordKind !== 'string' || !['requests', 'orders', 'reserves', 'drive'].includes(input.recordKind)) {
+    throw new Error('Invalid historical archive record kind.');
+  }
+  const result: HistoricalArchiveQuery = {
+    operation: operation as HistoricalArchiveOperation,
+    recordKind: input.recordKind as HistoricalArchiveQuery['recordKind'],
+  };
+  if ('path' in input) {
+    if (!Array.isArray(input.path) || input.path.length > 5) throw new Error('Invalid historical archive path.');
+    result.path = input.path.map((value) => {
+      const pathPart = string(value, 'archive path', 500);
+      if (!pathPart) throw new Error('Invalid historical archive path.');
+      return pathPart;
+    });
+  }
+  if (result.operation === 'archive-search') {
+    const query = string(input.query, 'archive search', 100).trim();
+    if (query.length < 2) throw new Error('Enter at least two search characters.');
+    result.query = query;
+  } else if ('query' in input) {
+    throw new Error('Invalid historical archive search.');
+  }
+  if (result.recordKind === 'requests' && result.operation !== 'archive-search') {
+    throw new Error('Request folders use the protected Request history reader.');
+  }
+  if ('view' in input) {
+    if (input.view !== 'historical-requests' && input.view !== 'request-history') throw new Error('Invalid historical archive view.');
+    result.view = input.view;
+  }
+  if ('page' in input) result.page = natural(input.page, 'archive page number');
+  if ('pageSize' in input) {
+    result.pageSize = natural(input.pageSize, 'archive page size');
+    if (result.pageSize < 1 || result.pageSize > 100) throw new Error('Invalid historical archive page size.');
+  }
+  return result;
+}
+
 function object(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Invalid historical requests ${label}.`);
   return value as Record<string, unknown>;
@@ -77,6 +125,36 @@ function privateMoney(value: unknown, label: string, financials: boolean, redact
     return null;
   }
   return money(value, label);
+}
+
+function nullableMoney(value: unknown, label: string): number | null {
+  return value === null ? null : money(value, label);
+}
+
+function nullableFiniteNumber(value: unknown, label: string): number | null {
+  if (value === null) return null;
+  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > Number.MAX_SAFE_INTEGER) {
+    throw new Error(`Invalid historical requests ${label}.`);
+  }
+  return value;
+}
+
+function privateNullableMoney(value: unknown, label: string, financials: boolean, redactUnauthorized = false): number | null {
+  if (!financials) {
+    if (redactUnauthorized) return null;
+    if (value !== null) throw new Error('Historical archive financial data is not authorized.');
+    return null;
+  }
+  return nullableMoney(value, label);
+}
+
+function privateNullableFiniteNumber(value: unknown, label: string, financials: boolean, redactUnauthorized = false): number | null {
+  if (!financials) {
+    if (redactUnauthorized) return null;
+    if (value !== null) throw new Error('Historical archive financial data is not authorized.');
+    return null;
+  }
+  return nullableFiniteNumber(value, label);
 }
 function summary(value: unknown, financials: boolean, redactUnauthorized = false): HistoricalRequestsPage['summary'] {
   const row = object(value, 'summary');
@@ -202,6 +280,94 @@ export function parseHistoricalRequestsPage(value: unknown, operation?: Historic
   };
 }
 
+function archiveFolder(value: unknown, financials: boolean, redactUnauthorized: boolean): HistoricalArchiveFolder {
+  const row = object(value, 'archive folder');
+  if (row.kind !== 'folder') throw new Error('Invalid historical archive folder.');
+  return {
+    kind: 'folder',
+    key: string(row.key, 'archive folder key', 300),
+    value: string(row.value, 'archive folder value', 500),
+    label: string(row.label, 'archive folder label', 1000),
+    subtitle: string(row.subtitle, 'archive folder subtitle', 1000),
+    recordCount: natural(row.recordCount, 'archive folder count'),
+    totalValue: privateNullableFiniteNumber(row.totalValue, 'archive folder value', financials, redactUnauthorized),
+  };
+}
+
+function archiveRecord(value: unknown, financials: boolean, redactUnauthorized: boolean): HistoricalArchiveRecord {
+  const row = object(value, 'archive record');
+  if (row.kind !== 'record') throw new Error('Invalid historical archive record.');
+  const occurredAt = nullableString(row.occurredAt, 'archive record date', 80);
+  if (occurredAt !== null && !Number.isFinite(Date.parse(occurredAt))) throw new Error('Invalid historical archive record date.');
+  if (!Array.isArray(row.photoLinks) || row.photoLinks.length > 20) throw new Error('Invalid historical archive photos.');
+  if (!Array.isArray(row.notes) || row.notes.length > 20) throw new Error('Invalid historical archive notes.');
+  const factsValue = object(row.facts, 'archive facts');
+  if (Object.keys(factsValue).length > 30 || Object.values(factsValue).some(item => item !== null
+      && typeof item !== 'string' && typeof item !== 'number' && typeof item !== 'boolean')) {
+    throw new Error('Invalid historical archive facts.');
+  }
+  return {
+    kind: 'record',
+    id: string(row.id, 'archive record ID', 300),
+    title: string(row.title, 'archive record title', 1000),
+    subtitle: string(row.subtitle, 'archive record subtitle', 2000),
+    status: string(row.status, 'archive record status', 300),
+    occurredAt,
+    itemcode: string(row.itemcode, 'archive item code', 200),
+    commonname: string(row.commonname, 'archive common name', 1000),
+    contsize: string(row.contsize, 'archive container size', 200),
+    locationcode: string(row.locationcode, 'archive location', 200),
+    lotcode: string(row.lotcode, 'archive lot', 200),
+    quantity: nullableFiniteNumber(row.quantity, 'archive quantity'),
+    unitListPrice: privateNullableFiniteNumber(row.unitListPrice, 'archive list price', financials, redactUnauthorized),
+    lineDollarValue: privateNullableFiniteNumber(row.lineDollarValue, 'archive line value', financials, redactUnauthorized),
+    photoLinks: row.photoLinks.map(item => nullableString(item, 'archive photo link', 20000)),
+    facts: Object.fromEntries(Object.entries(factsValue).map(([key, item]) => [string(key, 'archive fact name', 100),
+      typeof item === 'string' ? string(item, 'archive fact value', 10000) : item])) as HistoricalArchiveRecord['facts'],
+    notes: row.notes.map(item => string(item, 'archive note', 10000)),
+  };
+}
+
+export function parseHistoricalArchivePage(value: unknown, query: HistoricalArchiveQuery,
+  options?: { canViewFinancials?: boolean }): HistoricalArchivePage {
+  const data = object(value, 'archive response');
+  if (data.scope !== 'all' && data.scope !== 'own') throw new Error('Invalid historical archive scope.');
+  if (typeof data.financials !== 'boolean' || data.financials !== (data.scope === 'all')) {
+    throw new Error('Invalid historical archive financial scope.');
+  }
+  if (data.recordKind !== query.recordKind || data.operation !== query.operation) {
+    throw new Error('Historical archive response does not match its query.');
+  }
+  if (!Array.isArray(data.path) || data.path.length > 5 || data.path.some(item => typeof item !== 'string' || item.length > 500)) {
+    throw new Error('Invalid historical archive response path.');
+  }
+  const depth = natural(data.depth, 'archive depth');
+  const maxDepth = natural(data.maxDepth, 'archive maximum depth');
+  if (depth !== data.path.length || maxDepth > 5 || depth > maxDepth) throw new Error('Invalid historical archive depth.');
+  const revision = string(data.revision, 'archive revision', 500);
+  if (!revision) throw new Error('Missing historical archive revision.');
+  const generatedAt = string(data.generatedAt, 'archive generated time', 80);
+  if (!Number.isFinite(Date.parse(generatedAt))) throw new Error('Invalid historical archive generated time.');
+  if (!Array.isArray(data.rows) || data.rows.length > 100) throw new Error('Invalid historical archive rows.');
+  const page = natural(data.page, 'archive page number');
+  const pageSize = natural(data.pageSize, 'archive page size');
+  const total = natural(data.total, 'archive total');
+  if (pageSize < 1 || pageSize > 100 || data.rows.length > pageSize || data.rows.length > total) {
+    throw new Error('Invalid historical archive pagination.');
+  }
+  const redactUnauthorized = options?.canViewFinancials === false;
+  const financials = data.financials && options?.canViewFinancials !== false;
+  const rows = data.rows.map(row => {
+    const candidate = object(row, 'archive row');
+    return candidate.kind === 'folder' ? archiveFolder(candidate, financials, redactUnauthorized)
+      : archiveRecord(candidate, financials, redactUnauthorized);
+  });
+  const identities = rows.map(row => `${row.kind}:${row.kind === 'folder' ? row.key : row.id}`);
+  if (new Set(identities).size !== identities.length) throw new Error('Historical archive page contains duplicate identities.');
+  return { scope: data.scope, financials, recordKind: query.recordKind, operation: query.operation,
+    path: data.path as string[], depth, maxDepth, revision, generatedAt, page, pageSize, total, rows };
+}
+
 function isGroupValue(row: HistoricalRequestGroup | HistoricalRequestRow): row is HistoricalRequestGroup {
   return 'requestCount' in row;
 }
@@ -251,7 +417,19 @@ export function createHistoricalRequestsBridge({
       }
       return parseHistoricalRequestsPage(raw, safeQuery.operation, { canViewFinancials });
     },
+    async readArchive(query, signal) {
+      const safeQuery = historicalArchiveQuery(query);
+      let raw: unknown;
+      try { raw = await transport(safeQuery, signal); }
+      catch (error) {
+        if (error instanceof Error && /HISTORICAL_ARCHIVE_(?:AUTH_REQUIRED|FORBIDDEN)/.test(error.message)) {
+          error.message = 'Historical Archive is not available to this account. Refresh your access or sign in again.';
+        }
+        throw error;
+      }
+      return parseHistoricalArchivePage(raw, safeQuery, { canViewFinancials });
+    },
   };
 }
 
-export type { HistoricalRequestsOperation };
+export type { HistoricalArchiveOperation, HistoricalRequestsOperation };

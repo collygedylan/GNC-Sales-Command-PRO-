@@ -1,5 +1,7 @@
 export type HistoricalRequestsOperation = 'customers' | 'consignees' | 'requests' | 'reps' | 'folders' | 'months' | 'summary';
 export type HistoricalRecordKind = 'all' | 'requests' | 'orders';
+export type HistoricalArchiveKind = 'requests' | 'orders' | 'reserves' | 'drive';
+export type HistoricalArchiveOperation = 'archive-folders' | 'archive-records' | 'archive-search';
 
 export type HistoricalRequestsQuery = {
   operation: HistoricalRequestsOperation;
@@ -67,6 +69,62 @@ export type HistoricalRequestsPage = {
   summary: { requestCount: number; totalValue: number | null; unpricedCount: number | null };
 };
 
+export type HistoricalArchiveQuery = {
+  operation: HistoricalArchiveOperation;
+  recordKind: HistoricalArchiveKind;
+  path?: string[];
+  query?: string;
+  view?: 'historical-requests' | 'request-history';
+  page?: number;
+  pageSize?: number;
+};
+
+export type HistoricalArchiveFolder = {
+  kind: 'folder';
+  key: string;
+  value: string;
+  label: string;
+  subtitle: string;
+  recordCount: number;
+  totalValue: number | null;
+};
+
+export type HistoricalArchiveRecord = {
+  kind: 'record';
+  id: string;
+  title: string;
+  subtitle: string;
+  status: string;
+  occurredAt: string | null;
+  itemcode: string;
+  commonname: string;
+  contsize: string;
+  locationcode: string;
+  lotcode: string;
+  quantity: number | null;
+  unitListPrice: number | null;
+  lineDollarValue: number | null;
+  photoLinks: Array<string | null>;
+  facts: Record<string, string | number | boolean | null>;
+  notes: string[];
+};
+
+export type HistoricalArchivePage = {
+  scope: 'all' | 'own';
+  financials: boolean;
+  recordKind: HistoricalArchiveKind;
+  operation: HistoricalArchiveOperation;
+  path: string[];
+  depth: number;
+  maxDepth: number;
+  revision: string;
+  generatedAt: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  rows: Array<HistoricalArchiveFolder | HistoricalArchiveRecord>;
+};
+
 export type HistoricalRequestsBridge = {
   /** Must change on identity, role, account, or server-visible-scope changes. */
   scopeKey: string;
@@ -74,6 +132,7 @@ export type HistoricalRequestsBridge = {
   role: string;
   revisionKey: string;
   read(query: HistoricalRequestsQuery, signal?: AbortSignal): Promise<HistoricalRequestsPage>;
+  readArchive(query: HistoricalArchiveQuery, signal?: AbortSignal): Promise<HistoricalArchivePage>;
 };
 
 export function historicalRequestsRoleCanViewFinancials(role: unknown): boolean {
