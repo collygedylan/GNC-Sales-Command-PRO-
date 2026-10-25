@@ -20,6 +20,7 @@ const expectedCards = [
   ['001711.030.1', 'Purple Pride Beautyberry', 'D.26.000'],
   ['001711.070.1', 'Purple Pride Beautyberry', 'F.05.000'],
 ];
+const expectedSuspendCard = ['Pink Delight Butterfly Bush', 'D.26.000'];
 
 function fail(message) {
   const error = new Error(message);
@@ -93,14 +94,42 @@ async function dismissPushPermissionHelp(page) {
   return true;
 }
 
+async function dismissBlockingToast(page) {
+  return page.locator('#toast-notification.show').evaluate(toast => {
+    toast.classList.remove('show');
+    toast.setAttribute('data-dismiss-reason', 'browser-verifier');
+    return true;
+  }).catch(() => false);
+}
+
 async function clickPastPushPermissionHelp(page, target) {
   await dismissPushPermissionHelp(page);
+  await dismissBlockingToast(page);
   try {
     await target.click({ timeout: 2_000 });
   } catch (error) {
-    if (!await dismissPushPermissionHelp(page)) throw error;
-    await target.click({ timeout: 10_000 });
+    const clearedModal = await dismissPushPermissionHelp(page);
+    const clearedToast = await dismissBlockingToast(page);
+    if (!clearedModal && !clearedToast) throw error;
+    await target.click({ force: true, timeout: 10_000 });
   }
+}
+
+async function openQueueCategory(page, category) {
+  const pill = page.locator(`#request-filter-toolbar [data-request-category="${category}"]`);
+  await pill.waitFor({ state: 'visible', timeout: 10_000 });
+  await clickPastPushPermissionHelp(page, pill);
+  await page.waitForFunction(key => document.querySelector(
+    `#request-filter-toolbar [data-request-category="${key}"]`,
+  )?.getAttribute('aria-pressed') === 'true', category, { timeout: 10_000 });
+  return page.locator(`#request-filter-toolbar [data-request-category="${category}"]`);
+}
+
+async function queueCategoryCount(page, category) {
+  const text = await page.locator(
+    `#request-filter-toolbar [data-request-category="${category}"] .request-category-chip__count`,
+  ).textContent();
+  return Number((String(text || '').match(/\d+/) || ['0'])[0]);
 }
 
 async function probeAnonSecurity({ supabaseUrl, anonKey, existingRequestId }) {
@@ -359,6 +388,63 @@ async function runVerification(page, origin, accessCode) {
   const activeRequestId = String(await page.locator('#request-content [data-request-uid]').first().getAttribute('data-request-uid') || '').trim();
   if (!activeRequestId) fail('A live Request card identifier was not rendered.');
 
+  const queueProof = {
+    request: { label: `REQUEST ${requestBadgeCount}`, badge: requestBadgeCount, cards: cardDomText.length },
+  };
+
+  stage = 'recount-queue';
+  await openQueueCategory(page, 'recount');
+  await page.waitForFunction(() => {
+    const content = document.getElementById('request-content');
+    const count = Number((document.querySelector(
+      '#request-filter-toolbar [data-request-category="recount"] .request-category-chip__count',
+    )?.textContent?.match(/\d+/) || ['0'])[0]);
+    return count === 0 && String(content?.textContent || '').includes('No recount rows.');
+  }, undefined, { timeout: 30_000 });
+  const recountBadgeCount = await queueCategoryCount(page, 'recount');
+  const recountCardCount = await page.locator('#request-content > .mb-3').count();
+  if (recountBadgeCount !== 0 || recountCardCount !== 0) fail(`Recount remained at ${recountBadgeCount} with ${recountCardCount} cards.`);
+  queueProof.recount = { label: `RECOUNT ${recountBadgeCount}`, badge: recountBadgeCount, cards: recountCardCount };
+
+  stage = 'bunch-notes-queue';
+  await openQueueCategory(page, 'bunch-notes');
+  await page.waitForFunction(() => {
+    const content = document.getElementById('request-content');
+    const count = Number((document.querySelector(
+      '#request-filter-toolbar [data-request-category="bunch-notes"] .request-category-chip__count',
+    )?.textContent?.match(/\d+/) || ['0'])[0]);
+    return count === 0 && String(content?.textContent || '').includes('No Bunch Notes in this filter.')
+      && content?.querySelectorAll('[data-bunch-card]').length === 0
+      && Array.from(content?.querySelectorAll('.bq-toolbar button') || []).some(button => button.textContent?.trim() === 'Refresh');
+  }, undefined, { timeout: 30_000 });
+  await page.waitForTimeout(500);
+  const bunchBadgeCount = await queueCategoryCount(page, 'bunch-notes');
+  const bunchCardCount = await page.locator('#request-content [data-bunch-card]').count();
+  if (bunchBadgeCount !== 0 || bunchCardCount !== 0) fail(`Bunch Notes remained at ${bunchBadgeCount} with ${bunchCardCount} cards.`);
+  queueProof.bunchNotes = { label: `BUNCH NOTES ${bunchBadgeCount}`, badge: bunchBadgeCount, cards: bunchCardCount };
+
+  stage = 'suspend-queue';
+  await openQueueCategory(page, 'suspend-tag');
+  await page.waitForFunction(([commonname, locationcode]) => {
+    const content = document.getElementById('request-content');
+    const count = Number((document.querySelector(
+      '#request-filter-toolbar [data-request-category="suspend-tag"] .request-category-chip__count',
+    )?.textContent?.match(/\d+/) || ['0'])[0]);
+    const text = String(content?.textContent || '').replace(/\s+/g, ' ');
+    return count >= 1 && text.includes(commonname) && text.includes(locationcode);
+  }, expectedSuspendCard, { timeout: 30_000 });
+  const suspendBadgeCount = await queueCategoryCount(page, 'suspend-tag');
+  const suspendText = normalizeCardText(await page.locator('#request-content').textContent());
+  if (suspendBadgeCount < 1 || !expectedSuspendCard.every(value => suspendText.includes(value))) {
+    fail(`Suspend proof was ${suspendBadgeCount}: ${suspendText.slice(0, 240)}.`);
+  }
+  queueProof.suspend = {
+    label: `SUSPEND ${suspendBadgeCount}`,
+    badge: suspendBadgeCount,
+    cards: await page.locator('#request-content [data-request-uid]').count(),
+    requiredCard: expectedSuspendCard.join(' | '),
+  };
+
   stage = 'historical-requests';
   const historyFailureOffset = failedResponses.length;
   await page.evaluate(() => window.switchView('home', { force: true }));
@@ -417,7 +503,7 @@ async function runVerification(page, origin, accessCode) {
   if (pageErrors.length) fail(`Browser page error: ${pageErrors[0]}`);
   const release = normalizeCardText(await page.locator('#header-version').textContent());
   if (!release.includes('2.3.66')) fail(`Unexpected release version: ${release || 'missing'}.`);
-  return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, historicalPricedValue,
+  return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, queueProof, historicalPricedValue,
     archiveTabs, requestSalesImpactText, requestSalesImpactTotal, cardDomText: expectedCards.map(([itemcode, , locationcode]) =>
       cardDomText.find(text => text.includes(itemcode) && text.includes(locationcode))) };
   } catch (error) {

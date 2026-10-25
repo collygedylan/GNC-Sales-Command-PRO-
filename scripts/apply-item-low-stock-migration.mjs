@@ -138,6 +138,7 @@ export const agdataV2365AnonSecurityHardeningMigrationName = '20261025080000_agd
 export const agdataV2365SalesImpactUnionFixMigrationName = '20261025081000_agdata_v2365_sales_impact_union_fix.sql';
 export const agdataV2366HistoricalArchiveMigrationName = '20261025220000_agdata_v2366_historical_archive.sql';
 export const agdataV2366FastHistoricalRequestsMigrationName = '20261025223000_agdata_v2366_fast_historical_requests_read.sql';
+export const agdataV2366QueueResolutionCleanupMigrationName = '20261025234500_agdata_v2366_queue_resolution_cleanup.sql';
 export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName, managerPublishedReadMigrationName, importSourceMetadataMigrationName, masterPrioritySplitMigrationName, fullAppAdministratorsMigrationName, protectedRequestNaMigrationName, zeroTrustRlsMigrationName, appLoginRateLimitMigrationName, managerReportSetBasedReadMigrationName, managerEval2BatchedPreviewMigrationName, auraDylanOwnerOnlyMigrationName, suspendExistingReviewMigrationName, suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName]);
 
 export const registeredReleaseDatabaseMigrations = Object.freeze([
@@ -153,6 +154,7 @@ export const registeredReleaseDatabaseMigrations = Object.freeze([
   agdataV2365SalesImpactUnionFixMigrationName,
   agdataV2366HistoricalArchiveMigrationName,
   agdataV2366FastHistoricalRequestsMigrationName,
+  agdataV2366QueueResolutionCleanupMigrationName,
 ]);
 
 export function normalizeScopedMigrationPaths(migrationPaths) {
@@ -2040,6 +2042,32 @@ export function migrationContractQuery(name) {
     and not has_function_privilege('anon','public.historical_requests_read_v1(jsonb)','execute')
     and exists(select 1 from pg_indexes where schemaname='public' and indexname='ph_requests_completed_history_rep_fast_v2366')
     and exists(select 1 from pg_indexes where schemaname='public' and indexname='ph_requests_completed_history_customer_fast_v2366')
+    as installed`;
+  if (name === agdataV2366QueueResolutionCleanupMigrationName) return `select
+    not exists(select 1 from public.ph_active_recount)
+    and not exists(select 1 from public.ph_active_bunch_notes)
+    and not exists(select 1 from bunch_note_private.bunch_note_work_cards card
+      join bunch_note_private.bunch_notes note on note.id=card.bunch_note_id
+      join bunch_note_private.jobs job on job.id=note.job_id
+      where card.active and card.status='open' and job.status='open')
+    and (select count(*) from public.ph_active_request)=6
+    and (select count(*) from public.ph_active_request where unique_id=any(array[
+      'REQ-mvk1xgv2ty9fttuqj2','REQ-mvlbp5hkkk58akaubms','REQ-mvlfib5eqwa3typzcqq',
+      'REQ-mvlfib5evawvlvvx09','REQ-mvlg4t85vlzf7053pv','REQ-mvlgbfl7p8r8zxrj97j']))=6
+    and exists(select 1 from public.ph_active_suspend
+      where commonname='Pink Delight Butterfly Bush' and locationcode='D.26.000')
+    and exists(select 1 from public.ph_sales_office
+      where unique_id='moves_001360_010_1-_1-J_05_000-26_U2-LD----_C_17_000'
+        and lower(btrim(coalesce(order_status,'')))='completed')
+    and exists(select 1 from public.ph_recount_history)
+    and exists(select 1 from public.ph_bunch_notes_history)
+    and not exists(select 1 from public.ph_reclass_recount_jobs job
+      join public.ph_request_delivery_outbox outbox on outbox.request_id=job.id::text
+      where job.status='completed' and job.completed_by_username='dylan_collyge'
+        and job.delivery_event_id is null and outbox.event_type='reclass_recount_completed')
+    and to_regprocedure('public.complete_reclass_recount_v1(uuid,uuid,numeric,uuid)') is not null
+    and exists(select 1 from pg_trigger where tgrelid='public.ph_request_delivery_outbox'::regclass
+      and tgname='capture_reclass_recount_outbox_v1' and tgenabled='O')
     as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }

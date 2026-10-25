@@ -13,7 +13,7 @@ import {
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
   auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, unifiedRequestSyncSalesImpactMigrationName, agdataV2361SurgicalRestoreMigrationName, agdataV2362CanonicalRequestsMigrationName, agdataV2362LegacyCleanupMigrationName, agdataV2363UniformActiveHistoryMigrationName, agdataV2366HistoricalArchiveMigrationName,
-  agdataV2366FastHistoricalRequestsMigrationName,
+  agdataV2366FastHistoricalRequestsMigrationName, agdataV2366QueueResolutionCleanupMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -78,6 +78,25 @@ test('v2.3.66 archive migrations are registered and guarded', () => {
   const fastSource = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366FastHistoricalRequestsMigrationName}`, import.meta.url), 'utf8');
   assert.match(fastSource, /set statement_timeout='2s'/);
   assert.doesNotMatch(fastSource, /public\.ph_master_inventory/);
+});
+
+test('v2.3.66 queue resolution cleanup is registered and protected', () => {
+  assert.equal(agdataV2366QueueResolutionCleanupMigrationName, '20261025234500_agdata_v2366_queue_resolution_cleanup.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2366QueueResolutionCleanupMigrationName]),
+    [agdataV2366QueueResolutionCleanupMigrationName]);
+  const contract = migrationContractQuery(agdataV2366QueueResolutionCleanupMigrationName);
+  for (const marker of ['ph_active_recount', 'ph_active_bunch_notes', 'REQ-mvk1xgv2ty9fttuqj2',
+    'Pink Delight Butterfly Bush', 'reclass_recount_completed', 'capture_reclass_recount_outbox_v1']) {
+    assert.match(contract, new RegExp(marker));
+  }
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366QueueResolutionCleanupMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['queue-resolution-cleanup-v2366', 'QUEUE_CLEANUP_REQUEST_DATA_CHANGED',
+    'QUEUE_CLEANUP_SUSPEND_DATA_CHANGED', 'QUEUE_CLEANUP_OUTBOX_CHANGED', 'ph_ncr_completions']) {
+    assert.match(source, new RegExp(marker));
+  }
+  assert.doesNotMatch(source, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_request_delivery_outbox/i);
+  assert.doesNotMatch(source, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_requests_pending/i);
+  assert.doesNotMatch(source, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_soc_master/i);
 });
 import { perennialPreviewSql, runPerennialAssignmentPreview, getPerennialPreviewFailure } from '../scripts/preview-perennial-assignment.mjs';
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
