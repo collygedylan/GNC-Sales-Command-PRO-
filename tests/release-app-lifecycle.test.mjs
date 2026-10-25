@@ -33,30 +33,30 @@ test('shell layout has explicit desktop and mobile structural rules independent 
   for (const label of ['Menu', 'Home', 'Drive', 'Docks', 'Que', 'Bloom', 'Comm']) assert.ok(shell.includes(`<span>${label}</span>`));
 });
 
-test('v2.3.60 assets and worker upgrade purge previous cache generations', () => {
+test('v2.3.61 assets and worker upgrade purge previous cache generations', () => {
   const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
-    assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.60', match[1]);
+    assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.61', match[1]);
   }
-  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.60'/);
+  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.61'/);
   assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'request-state-machine-r5'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*window\.reloadForServiceWorkerUpdate\(\)[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
-  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.60' });
+  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.61' });
   vm.runInContext(sw.match(/function isRetiredRootCacheName\([^]*?^}/m)[0], ctx);
   for (const key of ['agdata-v2.3.34', 'agdata-v2.3.43', 'agdata-v2.3.46', 'agdata-v2.3.46-r2', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'ag-data-runtime-images-v2', 'legacy-shell']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);
   assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.58'), true);
-  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.60'), false);
+  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.61'), false);
   const worker = vm.createContext({ self: { addEventListener() {}, location: { href: 'https://agmetricapp.com/sw.js', origin: 'https://agmetricapp.com' }, registration: { scope: 'https://agmetricapp.com/' } }, URL });
   vm.runInContext(sw + '\nglobalThis.assets = ASSETS_TO_CACHE;', worker);
-  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.60', asset);
+  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.61', asset);
   const build = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
   assert.match(build, /shellStylesheetMarkup\(`\.\/assets\/live-app-styles-base/);
   assert.match(build, /shellStylesheetMarkup\(pilotStylesheetHref\)/);
 });
 
-test('v2.3.60 keeps access-code login and native bridging reachable before profile hydration', () => {
+test('v2.3.61 keeps access-code login and native bridging reachable before profile hydration', () => {
   const config = readFileSync(new URL('../supabase/config.toml', import.meta.url), 'utf8');
   const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
   const agents = readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
@@ -674,18 +674,18 @@ test('runtime readiness cancels recovery while a load failure purges stale shell
   let unregistered = 0;
   let replacement = '';
   const storage = new Map();
-  failed.window.__APP_SHELL_VERSION__ = 'AgData v2.3.60';
+  failed.window.__APP_SHELL_VERSION__ = 'AgData v2.3.61';
   failed.window.navigator = { serviceWorker: { getRegistrations: async () => [{
     scope: 'https://agmetricapp.com/', active: { scriptURL: 'https://agmetricapp.com/sw.js' },
     unregister: async () => { unregistered += 1; },
   }] } };
-  failed.window.caches = { keys: async () => ['agdata-v2.3.50', 'agdata-v2.3.53', 'agdata-v2.3.56', 'agdata-v2.3.57', 'agdata-v2.3.58', 'agdata-v2.3.59', 'agdata-v2.3.60', 'other-cache'], delete: async key => { deleted.push(key); return true; } };
+  failed.window.caches = { keys: async () => ['agdata-v2.3.50', 'agdata-v2.3.53', 'agdata-v2.3.56', 'agdata-v2.3.57', 'agdata-v2.3.58', 'agdata-v2.3.59', 'agdata-v2.3.61', 'other-cache'], delete: async key => { deleted.push(key); return true; } };
   failed.window.sessionStorage = { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) };
   failed.window.location = { href: 'https://agmetricapp.com/index.html', replace: value => { replacement = value; }, reload() {} };
   await failed.window.recoverAppLoadFailure('login-runtime-failure');
   assert.equal(unregistered, 1);
-  assert.deepEqual(deleted.sort(), ['agdata-v2.3.50', 'agdata-v2.3.53', 'agdata-v2.3.56', 'agdata-v2.3.57', 'agdata-v2.3.58', 'agdata-v2.3.59', 'agdata-v2.3.60']);
-  assert.match(replacement, /shellv=AgData(?:\+|%20)v2\.3\.60/);
+  assert.deepEqual(deleted.sort(), ['agdata-v2.3.50', 'agdata-v2.3.53', 'agdata-v2.3.56', 'agdata-v2.3.57', 'agdata-v2.3.58', 'agdata-v2.3.59', 'agdata-v2.3.61']);
+  assert.match(replacement, /shellv=AgData(?:\+|%20)v2\.3\.61/);
   assert.match(replacement, /shellts=\d+/);
 });
 

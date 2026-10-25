@@ -12,10 +12,20 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, unifiedRequestSyncSalesImpactMigrationName, agdataV2361SurgicalRestoreMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
+
+test('v2.3.61 surgical restore is registered after unified request sync', () => {
+  assert.equal(unifiedRequestSyncSalesImpactMigrationName, '20261024203000_unified_request_sync_sales_impact_v1.sql');
+  assert.equal(agdataV2361SurgicalRestoreMigrationName, '20261025003000_agdata_v2361_surgical_restore.sql');
+  const registered = normalizeScopedMigrationPaths([agdataV2361SurgicalRestoreMigrationName]);
+  assert.deepEqual(registered, [agdataV2361SurgicalRestoreMigrationName]);
+  const contract = migrationContractQuery(agdataV2361SurgicalRestoreMigrationName);
+  for (const marker of ['archive_backup', 'recent-outbox-cutoff-v2361', 'source-row-line-identity-v2361',
+    'ph_reclass_recount_jobs_pending_item_location_v2361_idx', '8982', '10000000']) assert.match(contract, new RegExp(marker));
+});
 import { perennialPreviewSql, runPerennialAssignmentPreview, getPerennialPreviewFailure } from '../scripts/preview-perennial-assignment.mjs';
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';

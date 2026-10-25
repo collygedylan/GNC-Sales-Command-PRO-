@@ -66,13 +66,12 @@ function requestSourceTable(row = {}) {
 }
 
 export function requestSalesImpactDedupKey(row = {}) {
-  const uniqueId = normalized(firstValue(row, ['unique_id', 'request_unique_id', 'master_unique_id'], ''));
-  if (uniqueId) return `uid:${uniqueId}`;
+  const explicitIdentity = normalized(firstValue(row, ['line_identity_key', 'lineIdentityKey'], ''));
+  if (explicitIdentity) return `line:${explicitIdentity}`;
   const rowIndex = normalized(firstValue(row, ['row_index', 'rowIndex'], '1')) || '1';
   const sourceRowId = normalized(firstValue(row, ['source_row_id', 'sourceRowId'], ''));
-  if (sourceRowId) return `source:${sourceRowId}|row:${rowIndex}`;
-  const explicitIdentity = normalized(firstValue(row, ['line_identity_key', 'lineIdentityKey'], ''));
-  return explicitIdentity ? `line:${explicitIdentity}` : '';
+  const sourceTable = requestSourceTable(row);
+  return sourceRowId ? `source:${sourceTable}:${sourceRowId}|row:${rowIndex}` : '';
 }
 
 function canonicalRequestLine(row = {}) {
@@ -449,7 +448,7 @@ function renderDashboard() {
   const selectedRep = dashboardState.filters.salesRep;
   const results = activeTab === 'sales-rep' ? renderSalesRepRows(model) : activeTab === 'customer' ? renderCustomerRows(model) : renderAllItems(model);
   host.innerHTML = `<section class="request-impact-shell">
-    <header class="request-impact-hero"><div><span>Permission-Controlled Executive Analytics</span><h1>Request Sales Impact ($)</h1><p>One permanent line per exact request ID using populated Qty or default 25 Ã— List Price.</p></div><div class="request-impact-hero-actions"><button type="button" data-impact-action="refresh" ${dashboardState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise"></i>${dashboardState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" data-impact-action="export"><i class="ph-bold ph-download-simple"></i>Export Excel / CSV</button></div></header>
+    <header class="request-impact-hero"><div><span>Permission-Controlled Executive Analytics</span><h1>Request Sales Impact ($)</h1><p>One permanent line per source table row and item index using populated Qty or default 25 Ã— List Price.</p></div><div class="request-impact-hero-actions"><button type="button" data-impact-action="refresh" ${dashboardState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise"></i>${dashboardState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" data-impact-action="export"><i class="ph-bold ph-download-simple"></i>Export Excel / CSV</button></div></header>
     ${dashboardState.error ? `<div class="request-impact-retained" role="status">Showing retained same-account results. ${escapeHtml(dashboardState.error)}</div>` : ''}
     ${renderSourceAudit(dashboardState.payload.source_table_audit, model.summary)}
     ${renderKpis(model.summary)}

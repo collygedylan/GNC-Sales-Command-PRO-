@@ -1115,7 +1115,7 @@ async function enrichSuspendTagMetricRows(rows: Array<Record<string, Json | unde
   const masterByItem = groupByItem(masterRows), cavByItem = groupByItem(cavRows);
   return rows.map((row) => {
     const key = normalizeSuspendTagMetricKey(row.itemcode ?? row.ITEMCODE);
-    return { ...row, [metricKey]: buildSuspendTagMetricFallback(row, masterByItem.get(key) || [], cavByItem.get(key) || [], true, metricKey === "request_inventory_metrics") as unknown as Json };
+    return { ...row, [metricKey]: buildSuspendTagMetricFallback(row, masterByItem.get(key) || [], cavByItem.get(key) || [], true, true) as unknown as Json };
   });
 }
 
@@ -2283,6 +2283,67 @@ async function requestReclassRecountRest(path: string, init: RequestInit = {}) {
   return value;
 }
 
+function deriveReclassRecountContainerSize(itemcode: unknown) {
+  const sizeCode = String(itemcode || "").trim().split(".")[1] || "";
+  const sizes: Record<string, string> = {
+    "250":"#25", "150":"#15", "100":"#10", "070":"#7", "050":"#5", "030":"#3",
+    "031":"3DP", "021":"2DP", "020":"#2", "013":"1GP", "011":"#1", "010":"#1",
+  };
+  return sizes[sizeCode] || "";
+}
+
+function mergeReclassRecountJobs(jobs: Record<string, unknown>[], lines: Record<string, unknown>[]) {
+  const lineBuckets = new Map<string, Record<string, unknown>[]>();
+  for (const line of lines) {
+    const jobId = String(line.job_id || "").trim();
+    if (!jobId) continue;
+    const bucket = lineBuckets.get(jobId) || [];
+    bucket.push(line);
+    lineBuckets.set(jobId, bucket);
+  }
+  const groups = new Map<string, Record<string, unknown>>();
+  for (const job of jobs) {
+    const itemcode = String(job.itemcode || "").trim();
+    const locationcode = String(job.locationcode || "").trim();
+    if (!itemcode || !locationcode) continue;
+    const key = `${itemcode.toUpperCase()}\u0000${locationcode.toUpperCase()}`;
+    const current = groups.get(key);
+    const incomingLines = lineBuckets.get(String(job.id || "").trim()) || [];
+    if (!current) {
+      const commonname = String(job.commonname || "").trim();
+      groups.set(key, {
+        ...job,
+        commonname: commonname && commonname.toLowerCase() !== "unknown" ? commonname : `Item ${itemcode}`,
+        contsize: String(job.contsize || "").trim() || deriveReclassRecountContainerSize(itemcode),
+        job_ids: [String(job.id || "").trim()].filter(Boolean),
+        lines: incomingLines,
+      });
+      continue;
+    }
+    const jobIds = Array.isArray(current.job_ids) ? current.job_ids as unknown[] : [];
+    const lineMap = new Map<string, Record<string, unknown>>();
+    for (const line of [...(Array.isArray(current.lines) ? current.lines as Record<string, unknown>[] : []), ...incomingLines]) {
+      const lineKey = String(line.source_unique_id || "").trim()
+        || [line.lotcode, line.season, line.itemcode, line.locationcode].map(value => String(value || "").trim().toUpperCase()).join("|");
+      if (!lineMap.has(lineKey)) lineMap.set(lineKey, line);
+    }
+    const incomingName = String(job.commonname || "").trim();
+    if ((!String(current.commonname || "").trim() || /^unknown$|^item\s/i.test(String(current.commonname)))
+      && incomingName && incomingName.toLowerCase() !== "unknown") current.commonname = incomingName;
+    if (!String(current.contsize || "").trim() && String(job.contsize || "").trim()) current.contsize = String(job.contsize).trim();
+    current.job_ids = [...new Set([...jobIds.map(value => String(value || "").trim()), String(job.id || "").trim()].filter(Boolean))];
+    current.lines = [...lineMap.values()];
+  }
+  return [...groups.values()].map((job) => ({
+    ...job,
+    system_on_hand: (Array.isArray(job.lines) ? job.lines as Record<string, unknown>[] : []).reduce((sum, line) => {
+      const value = Number(String(line.on_hand ?? "").replace(/,/g, "").trim());
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0),
+  })).sort((left, right) => String(left.locationcode || "").localeCompare(String(right.locationcode || ""), undefined, { numeric:true, sensitivity:"base" })
+    || String(left.itemcode || "").localeCompare(String(right.itemcode || ""), undefined, { numeric:true, sensitivity:"base" }));
+}
+
 async function handleReclassRecountAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -2302,10 +2363,7 @@ async function handleReclassRecountAction(
         const linesValue = await requestReclassRecountRest(lineQuery);
         lines = Array.isArray(linesValue) ? linesValue as Record<string, unknown>[] : [];
       }
-      return jsonResponse({ ok: true, data: jobs.map((job) => ({
-        ...job,
-        lines: lines.filter((line) => String(line.job_id || "") === String(job.id || "")),
-      })) });
+      return jsonResponse({ ok: true, data: mergeReclassRecountJobs(jobs, lines) });
     }
     if (operation === "complete") {
       const jobId = String(payload.jobId || payload.job_id || "").trim();
@@ -2430,7 +2488,7 @@ async function handleRequestSalesImpactAction(
   const result = jsonObject(data);
   const sourceAudit = jsonObject(result.source_table_audit || result.source_audit);
   const dedupeContract = String(result.dedupe_contract || sourceAudit.dedupe_contract || "");
-  if (dedupeContract !== "zero_cross_request_dedupe_v1") {
+  if (dedupeContract !== "source-row-line-identity-v2361") {
     return jsonResponse({
       ok: false,
       enabled: true,
@@ -6791,7 +6849,12 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     const data = await readResponsePayload(response);
     if (!response.ok) return databaseFailureResponse("Sync status is unavailable.",data,"MANUAL_SYNC_STATUS_UNAVAILABLE");
     const rows = Array.isArray(data) ? data : [];
-    return jsonResponse({ok:true,data:rows[0]?.status || {active:false,currentStage:"idle"}});
+    const status = jsonObject(rows[0]?.status);
+    const active = status.active === true;
+    return jsonResponse({ok:true,data:active ? status : {
+      ...status, active:false, source:"startup", currentStage:"idle", currentStageLabel:"Idle",
+      stageIndex:0, stageOrder:[], completedStages:[], message:"Connected • ready", error:"",
+    }});
   }
   if (action === "request_queue_remove") return await handleRequestQueueRemove(session, payload);
   if (action === "request_archive") return await handleRequestArchive(session, payload);

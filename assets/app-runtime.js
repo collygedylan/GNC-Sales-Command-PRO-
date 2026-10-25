@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.60';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.61';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26211,7 +26211,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.60').trim() || 'AgData v2.3.60';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.61').trim() || 'AgData v2.3.61';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27324,6 +27324,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return true;
         }
 
+        function clearPersistedManualSyncStartupState() {
+            manualSyncStatusState = null;
+            window.googleScriptRunInFlight = false;
+            try {
+                const staleKeys = [];
+                for (let index = 0; index < localStorage.length; index += 1) {
+                    const key = String(localStorage.key(index) || '');
+                    if (/^(?:agdata|gnc)[.:_-].*(?:manual[.:_-]?sync|sync[.:_-]?(?:in[.:_-]?progress|status))$/i.test(key)) staleKeys.push(key);
+                }
+                staleKeys.forEach(key => localStorage.removeItem(key));
+            } catch (_) {}
+            return true;
+        }
+
         function hasActiveManualSync() {
             releaseStaleManualSyncClientStateIfNeeded();
             return !!(manualSyncStatusState && manualSyncStatusState.active);
@@ -27886,6 +27900,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             initializeInteractiveChrome();
             initializeDetailFieldFocusSupport();
             installAmazonHeaderChrome();
+            clearPersistedManualSyncStartupState();
             updateSyncDiagnostics();
             initializeCartUi();
         }
@@ -79419,6 +79434,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 delay: 0,
                 typingDelay: 32,
                 forceRender: true,
+                preferImmediate: true,
+                yieldToPaint: false,
+                interactiveCritical: true,
                 resetScrollTopAfterRender: true,
                 scrollResetKey: `request-tab:${nextTab}`,
                 touchDelayMs: 8,
@@ -112963,34 +112981,51 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const number = Number(String(value == null ? '' : value).replace(/,/g, ''));
                 return Number.isFinite(number) ? number : 0;
             };
-            return (Array.isArray(rows) ? rows : []).map((job) => {
-                const lines = (Array.isArray(job && job.lines) ? job.lines : []).map((line) => ({
-                    source_unique_id: String(line && (line.source_unique_id || line.sourceUniqueId) || '').trim(),
-                    lotcode: String(line && line.lotcode || '').trim(),
-                    season: String(line && line.season || '').trim(),
-                    on_hand: quantity(line && (line.on_hand ?? line.onHand)),
-                    available: quantity(line && line.available),
-                    review: quantity(line && line.review)
-                }));
-                const systemOnHand = lines.reduce((sum, line) => sum + line.on_hand, 0);
+            const sizeFromItemcode = (itemcode) => ({
+                '250':'#25', '150':'#15', '100':'#10', '070':'#7', '050':'#5', '030':'#3',
+                '031':'3DP', '021':'2DP', '020':'#2', '013':'1GP', '011':'#1', '010':'#1'
+            })[String(itemcode || '').trim().split('.')[1] || ''] || '';
+            const groups = new Map();
+            (Array.isArray(rows) ? rows : []).forEach((job) => {
+                const id = String(job && job.id || '').trim();
+                const itemcode = String(job && job.itemcode || '').trim();
                 const locationcode = String(job && job.locationcode || '').trim();
-                return {
-                    id: String(job && job.id || '').trim(),
-                    source: 'reclass-item-inquiry',
-                    source_unique_id: String(job && job.id || '').trim(),
-                    itemcode: String(job && job.itemcode || '').trim(),
-                    commonname: String(job && job.commonname || 'Unknown').trim() || 'Unknown',
-                    contsize: String(job && job.contsize || '').trim(),
-                    locationcode,
-                    from_locationcode: locationcode,
-                    to_locationcode: locationcode,
-                    ptronhand: systemOnHand,
-                    system_on_hand: systemOnHand,
-                    requested_by_username: String(job && job.requested_by_username || '').trim(),
-                    requested_at: String(job && job.requested_at || '').trim(),
-                    lines
+                if (!id || !itemcode || !locationcode) return;
+                const groupKey = `${itemcode.toUpperCase()}\u0000${locationcode.toUpperCase()}`;
+                const group = groups.get(groupKey) || {
+                    id, source: 'reclass-item-inquiry', source_unique_id: id, job_ids: [], itemcode,
+                    commonname: '', contsize: '', locationcode, from_locationcode: locationcode,
+                    to_locationcode: locationcode, requested_by_username: '', requested_at: '', lineMap: new Map()
                 };
-            }).filter((job) => job.id && job.itemcode && job.locationcode && job.lines.length)
+                group.job_ids.push(id);
+                const commonname = String(job && job.commonname || '').trim();
+                if ((!group.commonname || /^unknown$/i.test(group.commonname)) && commonname && !/^unknown$/i.test(commonname)) group.commonname = commonname;
+                group.contsize = group.contsize || String(job && job.contsize || '').trim() || sizeFromItemcode(itemcode);
+                group.requested_by_username = group.requested_by_username || String(job && job.requested_by_username || '').trim();
+                const requestedAt = String(job && job.requested_at || '').trim();
+                if (!group.requested_at || (requestedAt && requestedAt < group.requested_at)) group.requested_at = requestedAt;
+                (Array.isArray(job && job.lines) ? job.lines : []).forEach((line) => {
+                    const normalizedLine = {
+                        source_unique_id: String(line && (line.source_unique_id || line.sourceUniqueId) || '').trim(),
+                        lotcode: String(line && line.lotcode || '').trim(),
+                        season: String(line && line.season || '').trim(),
+                        on_hand: quantity(line && (line.on_hand ?? line.onHand)),
+                        available: quantity(line && line.available),
+                        review: quantity(line && line.review)
+                    };
+                    const lineKey = normalizedLine.source_unique_id || [normalizedLine.lotcode, normalizedLine.season].join('|').toUpperCase();
+                    if (!group.lineMap.has(lineKey)) group.lineMap.set(lineKey, normalizedLine);
+                });
+                groups.set(groupKey, group);
+            });
+            return Array.from(groups.values()).map((group) => {
+                const lines = Array.from(group.lineMap.values()).sort((left, right) => left.lotcode.localeCompare(right.lotcode, undefined, { numeric: true, sensitivity: 'base' })
+                    || left.season.localeCompare(right.season, undefined, { numeric: true, sensitivity: 'base' }));
+                const systemOnHand = lines.reduce((sum, line) => sum + line.on_hand, 0);
+                const { lineMap, ...job } = group;
+                return { ...job, commonname: group.commonname || `Item ${group.itemcode}`,
+                    contsize: group.contsize || sizeFromItemcode(group.itemcode), ptronhand: systemOnHand, system_on_hand: systemOnHand, lines };
+            }).filter((job) => job.lines.length)
                 .sort((left, right) => left.locationcode.localeCompare(right.locationcode, undefined, { numeric: true, sensitivity: 'base' })
                     || left.itemcode.localeCompare(right.itemcode, undefined, { numeric: true, sensitivity: 'base' }));
         }
@@ -113876,22 +113911,36 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
             if (activeReqTab === 'pending') {
                 completedPendingRequestRender = null;
-                const plan = buildPendingRequestRenderPlan(items);
-                if (plan.empty) {
-                    const crumbText = `All Request Que${requestFilterSuffix}`;
-                    applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No pending requests.</div>`, 'request:pending:empty');
-                    return;
-                }
-                const contextSnapshot = plan && !plan.empty ? getRequestPendingReuseContextSnapshot() : null;
-                renderMarkupChunkedByKey('request-main', container, crumb, plan.rows, plan.crumbText, (item) => generateCard(item, 'request', 'status-purple'), getPendingRequestChunkRenderOptions({
-                    renderSignature: plan.renderSignature,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">No pending requests.</div>`,
-                    onComplete: () => {
-                        decorateRequestRows();
-                        syncRequestBrowseFooter(container, plan.footerMarkup);
-                        rememberCompletedPendingRequestRender(container, plan, contextSnapshot);
+                try {
+                    const plan = buildPendingRequestRenderPlan(items);
+                    if (plan.empty) {
+                        const crumbText = `All Request Que${requestFilterSuffix}`;
+                        applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No pending requests.</div>`, 'request:pending:empty');
+                        return;
                     }
-                }));
+                    const contextSnapshot = getRequestPendingReuseContextSnapshot();
+                    renderMarkupChunkedByKey('request-main', container, crumb, plan.rows, plan.crumbText, (item) => {
+                        try { return generateCard(item, 'request', 'status-purple'); }
+                        catch (error) {
+                            reportSemanticHealthEvent('request_queue_row_render_failed', 'request_queue', getItemUniqueId(item) || 'ROW_RENDER_FAILED');
+                            return renderRequestQueueFallbackCard(item);
+                        }
+                    }, getPendingRequestChunkRenderOptions({
+                        renderSignature: plan.renderSignature,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No pending requests.</div>`,
+                        onComplete: () => {
+                            decorateRequestRows();
+                            syncRequestBrowseFooter(container, plan.footerMarkup);
+                            rememberCompletedPendingRequestRender(container, plan, contextSnapshot);
+                        }
+                    }));
+                } catch (error) {
+                    reportSemanticHealthEvent('request_queue_render_failed', 'request_queue', error && error.message ? error.message : 'REQUEST_RENDER_FAILED');
+                    const fallbackRows = (Array.isArray(items) ? items : []).filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
+                    applyRequestRenderMarkup(container, crumb, `All Request Que${requestFilterSuffix}`,
+                        fallbackRows.map(renderRequestQueueFallbackCard).join('') || `<div class="p-8 text-center text-gray-400">No pending requests.</div>`,
+                        `request:pending:fallback:${fallbackRows.map(getItemUniqueId).join('|')}`);
+                }
                 return;
 
             } else if (activeReqTab === 'reps') {
