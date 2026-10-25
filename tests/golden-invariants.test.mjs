@@ -299,6 +299,7 @@ test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () 
   const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
   const cleanupMigration = read('supabase/migrations/20261025014500_agdata_v2362_remove_legacy_request_objects.sql');
   const uniformMigration = read('supabase/migrations/20261025023000_agdata_v2363_uniform_active_history_architecture.sql');
+  const browserCompatibilityMigration = read('supabase/migrations/20261025040000_agdata_v2364_request_browser_compatibility.sql');
   assert.match(canonicalMigration, /alter table public\.ph_active_request rename to ph_requests_pending/);
   assert.match(canonicalMigration, /alter table public\.ph_request_history rename to ph_requests_completed_history/);
   assert.match(canonicalMigration, /update public\.ph_requests_completed_history history set[^]*canonical_migration_reason','pending-history-overlap-v2362'[^]*from public\.ph_requests_pending pending/);
@@ -324,6 +325,16 @@ test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () 
   assert.match(uniformMigration, /ph_location_moves_history[^]*ph_eval_work_history[^]*delete from public\.ph_requests_pending[^]*delete from public\.ph_requests_completed_history/);
   assert.match(uniformMigration, /canonical-active-history-v2363/);
   assert.doesNotMatch(uniformMigration, /\bdrop\s+table\b|\btruncate\s+table\b/i);
+  for (const field of ['customer', 'consignee', 'qty', 'measure_spec', 'comments']) {
+    assert.match(browserCompatibilityMigration, new RegExp(`add column if not exists ${field}\\b`));
+  }
+  for (const view of ['ph_active_request', 'ph_active_request_live_rows', 'ph_request_queue_live_rows', 'ph_request_history']) {
+    assert.match(browserCompatibilityMigration, new RegExp(`view public\\.${view} with \\(security_invoker = false\\)`));
+  }
+  assert.match(browserCompatibilityMigration, /grant execute on function public\.guard_active_app_session_v1\(\) to anon/);
+  assert.match(browserCompatibilityMigration, /least\([^]*greatest\(0, p_current_on_hand\)[^]*p_initial_photo_match_qty - greatest/);
+  assert.match(browserCompatibilityMigration, /select public\.reconcile_inventory_location_evidence_v1\(\)/);
+  assert.doesNotMatch(browserCompatibilityMigration, /\bdrop\s+table\b|\btruncate\s+table\b/i);
   const submitSource = functionSource('assets/app-runtime.js', 'finalizeRequestAction');
   for (const field of ['recipient_emails', 'request_qty', 'effective_qty', 'is_default_qty', 'line_dollar_value',
     'request_spec', 'request_caliper', 'flag_color', 'ns_grade', 'ld_flag', 'hold_stop_since']) {
@@ -749,15 +760,47 @@ test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)'
     compareLocationCodeValues: () => 0, naturalCompare: () => 0, getItemUniqueId: item => item.UNIQUE_ID,
     buildRequestPagedRenderPlan: (mode, crumbText, items) => ({ empty:!items.length, mode, crumbText, items, rows:items }),
   });
-  const pending = { UNIQUE_ID:'pending-1', REQ_STATUS:'Pending', DATE_COMPLETED:null, REQ_QTY:'', LOCATIONCODE:'D.09.013', LOTCODE:'27.F1' };
-  assert.equal(queue.isRequestPendingVisible(pending), true);
-  assert.equal(queue.buildPendingRequestRenderPlan([pending]).rows.length > 0, true);
+  const pendingRows = [
+    { UNIQUE_ID:'pending-1', REQ_STATUS:'Pending', DATE_COMPLETED:null, REQ_QTY:'1', LOCATIONCODE:'D.09.013', LOTCODE:'27.F1' },
+    { UNIQUE_ID:'pending-25', STATUS:'Pending', DATE_COMPLETED:null, QTY:25, LOCATIONCODE:'D.09.044', LOTCODE:'27.F1', REQUEST_FOLDER:'delivered-folder' },
+    { UNIQUE_ID:'pending-null', STATUS:'Pending', DATE_COMPLETED:null, REQUEST_QTY:null, LOCATIONCODE:'F.05.000', LOTCODE:'27.F1' },
+  ];
+  assert.equal(pendingRows.every(queue.isRequestPendingVisible), true);
+  assert.equal(queue.buildPendingRequestRenderPlan(pendingRows).rows.length, 3);
+
+  const compatibility = runFunctions('assets/app-runtime.js', ['normalizeRequestBrowserCompatibilityRow'], {
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+  });
+  const compatibleRow = compatibility.normalizeRequestBrowserCompatibilityRow({
+    CUSTOMER:'Legacy Customer', CONSIGNEE:'Legacy Consignee', QTY:25, MEASURE_SPEC:'5 ft',
+    REQUEST_CALIPER:'2 in', COMMENTS:'Legacy note', DATE_COMPLETED:null,
+  });
+  assert.equal(compatibleRow.CUSTOMER_NAME, 'Legacy Customer');
+  assert.equal(compatibleRow.CONSIGNEE_NAME, 'Legacy Consignee');
+  assert.equal(compatibleRow.REQUEST_QTY, 25);
+  assert.equal(compatibleRow.REQUEST_SPEC, '5 ft');
+  assert.equal(compatibleRow.REQUEST_NOTES, 'Legacy note');
+
+  const depletion = runFunctions('assets/app-runtime.js', ['getDepletedLocPhotoMatchQtyValue'], {
+    parseAppNumber: value => value === null || value === undefined || value === '' ? null : Number(value),
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+    findLinkedMasterRow: () => null,
+  });
+  assert.equal(depletion.getDepletedLocPhotoMatchQtyValue({ PTRONHAND:25, BASELINE_ON_HAND:250, INITIAL_PHOTO_MATCH_QTY:125 }, 125), 0);
+  assert.equal(depletion.getDepletedLocPhotoMatchQtyValue({ PTRONHAND:25 }, 125), 25);
 
   const migration = read('supabase/migrations/20261024070000_escaped_display_text_normalization_v1.sql');
   for (const marker of ['normalize_escaped_display_text_v1', 'a000_normalize_escaped_display_text_v1',
     'ph_master_inventory', 'ph_active_request', 'ph_request_history', 'ph_soc_master', 'ph_reserves', 'ph_cav_import']) assert.match(migration, new RegExp(marker));
   assert.match(read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql'), /zero_cross_request_dedupe_v1/);
   assert.match(read('supabase/functions/app-api/index.ts'), /\["request_queue", "active_request"\]\.includes\(dataset\)\) query\.set\("date_completed", "is\.null"\)/);
+  const appApi = read('supabase/functions/app-api/index.ts');
+  assert.match(appApi, /function normalizeRequestBrowserCompatibilityRow[^]*customer:[^]*customer_name:[^]*qty:[^]*request_qty:/);
+  assert.match(appApi, /keys\.length > 64[^]*dataset_revisions_for_actor_v1/);
+  assert.doesNotMatch(functionSource('supabase/functions/app-api/index.ts', 'handleDatasetRevisionsAction'), /allowedKeys/);
+  const browserVerifier = read('scripts/verify-live-request-queue.mjs');
+  for (const marker of ['headless: true', '#footer-request-btn', 'data-request-category="pending"',
+    'No pending requests.', 'Oakland® Red Holly', 'Sunburst® Honeylocust', 'homeMetadataMs']) assert.match(browserVerifier, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });
 
 test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Sync)', () => {

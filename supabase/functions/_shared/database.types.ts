@@ -20,18 +20,30 @@ export type Database = {
           changed_at: string
           key: string
           revision: number
+          source_file_id: string | null
+          source_file_name: string | null
+          source_import_run_id: string | null
+          source_imported_at: string | null
           state: string
         }
         Insert: {
           changed_at?: string
           key: string
           revision?: number
+          source_file_id?: string | null
+          source_file_name?: string | null
+          source_import_run_id?: string | null
+          source_imported_at?: string | null
           state?: string
         }
         Update: {
           changed_at?: string
           key?: string
           revision?: number
+          source_file_id?: string | null
+          source_file_name?: string | null
+          source_import_run_id?: string | null
+          source_imported_at?: string | null
           state?: string
         }
         Relationships: []

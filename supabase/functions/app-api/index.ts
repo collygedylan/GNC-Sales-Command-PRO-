@@ -817,6 +817,41 @@ function canonicalInventoryReadAllowed(access: CanonicalUserAccess | null, opera
   return false;
 }
 
+function firstRequestCompatibilityValue(...values: unknown[]): Json | undefined {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "string" && !value.trim()) continue;
+    return value as Json;
+  }
+  return undefined;
+}
+
+function normalizeRequestBrowserCompatibilityRow(row: Record<string, Json | undefined>) {
+  const customer = firstRequestCompatibilityValue(row.customer_name, row.customer, row.customername, row.req_customer);
+  const consignee = firstRequestCompatibilityValue(row.consignee_name, row.consignee, row.consigneename);
+  const quantity = firstRequestCompatibilityValue(row.request_qty, row.qty, row.req_qty);
+  const measureSpec = firstRequestCompatibilityValue(row.request_spec, row.measure_spec, row.req_spec, row.desired_spec);
+  const requestCaliper = firstRequestCompatibilityValue(row.request_caliper, row.caliper, row.req_caliper, row.desired_caliper);
+  const comments = firstRequestCompatibilityValue(row.request_notes, row.comments, row.request_note, row.req_comments);
+  return {
+    ...row,
+    customer: customer ?? null,
+    customer_name: customer ?? null,
+    consignee: consignee ?? null,
+    consignee_name: consignee ?? null,
+    qty: quantity ?? null,
+    request_qty: quantity ?? null,
+    measure_spec: measureSpec ?? null,
+    request_spec: measureSpec ?? null,
+    caliper: requestCaliper ?? null,
+    request_caliper: requestCaliper ?? null,
+    comments: comments ?? null,
+    request_notes: comments ?? null,
+    date_completed: row.date_completed ?? null,
+    status: firstRequestCompatibilityValue(row.status, row.req_status) ?? "Pending",
+  } satisfies Record<string, Json | undefined>;
+}
+
 // This read boundary deliberately accepts dataset and typed filter names rather
 // than PostgREST query strings. The table, projection, stable key, and filter
 // fields are all selected by this server-owned map.
@@ -1314,7 +1349,13 @@ async function handleDatasetRead(
     }
     const includeLocationTotals = parsed.projection === "default" && ["request_queue", "active_request"].includes(dataset)
       && hasTableReadAccess(role, "ph_master_inventory", username);
-    const inventoryRevision = includeLocationTotals ? await captureReadyInventoryLocationRevision(String(actor.id || "")) : null;
+    let inventoryRevision: string | null = null;
+    if (includeLocationTotals) {
+      try { inventoryRevision = await captureReadyInventoryLocationRevision(String(actor.id || "")); }
+      catch (error) {
+        console.warn("REQUEST_INVENTORY_REVISION_RETAINED", error instanceof Error ? error.message : String(error));
+      }
+    }
     const sourceFreshnessPromise = dataset === "suspend_tag" && parsed.offset === 0
       ? databaseBridge.fetchTable(SUPABASE_URL, source.table, suspendSourceFreshnessQuery(), {
         method: "GET", headers: buildRestHeaders("GET", source.table),
@@ -1362,11 +1403,23 @@ async function handleDatasetRead(
       try { metricRows = await enrichSuspendTagMetricRows(data, String(actor.id || ""),dataset === "suspend_tag" ? "suspend_tag_metrics" : "request_inventory_metrics"); }
       catch { metricRows = data; }
     }
-    const rows = inventoryRevision === null ? metricRows
-      : await enrichInventoryLocationRows(supabase, String(actor.id || ""), metricRows, inventoryRevision);
+    let deliveredInventoryRevision = inventoryRevision;
+    let enrichedRows: Json[] = metricRows;
+    if (inventoryRevision !== null) {
+      try {
+        enrichedRows = await enrichInventoryLocationRows(supabase, String(actor.id || ""), metricRows, inventoryRevision);
+      } catch (error) {
+        if (!["request_queue", "active_request"].includes(dataset)) throw error;
+        deliveredInventoryRevision = null;
+        console.warn("REQUEST_INVENTORY_ENRICHMENT_RETAINED", error instanceof Error ? error.message : String(error));
+      }
+    }
+    const rows = ["request_queue", "active_request"].includes(dataset)
+      ? enrichedRows.map((row) => normalizeRequestBrowserCompatibilityRow(jsonObject(row)))
+      : enrichedRows;
     return jsonResponse({ ok: true, data: { rows, total, revision, up_to_date: false, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < total,
       ...(sourceFreshnessResponse ? { sourceFreshness } : {}),
-      ...(inventoryRevision === null ? {} : { inventoryRevision }) } });
+      ...(deliveredInventoryRevision === null ? {} : { inventoryRevision: deliveredInventoryRevision }) } });
   } catch (error) {
     const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
     if (code.includes("LOC_ON_HAND_REVISION_CHANGED")) {
@@ -2446,8 +2499,7 @@ async function handleDatasetRevisionsAction(
   const keys = Array.isArray(payload.datasetKeys)
     ? [...new Set(payload.datasetKeys.map((value) => String(value || "").trim()).filter(Boolean))]
     : [];
-  const allowedKeys = new Set(["ph_master_inventory", "ph_soc_master"]);
-  if (!keys.length || keys.length > 2 || keys.some((key) => !allowedKeys.has(key))) {
+  if (!keys.length || keys.length > 64 || keys.some((key) => !/^[a-z][a-z0-9_]{1,127}$/.test(key))) {
     return jsonResponse({ ok: false, code: "DATASET_KEYS_INVALID", message: "Dataset revision request is invalid." });
   }
   if (!session || session.mustChangePassword) return transientOkResponse("DATASET_PROFILE_PENDING", "Dataset revisions are waiting for the active profile.", { sources: [] });
@@ -2455,9 +2507,24 @@ async function handleDatasetRevisionsAction(
   if (!actor) return transientOkResponse("DATASET_PROFILE_PENDING", "Dataset revisions are waiting for the active profile.", { sources: [] });
   try {
     const rpc = supabase.rpc.bind(supabase) as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message?: string } | null }>;
-    const { data, error } = await rpc("dataset_revisions_for_actor_v1", { p_actor_id: actor.id, p_dataset_keys: keys });
+    const [{ data, error }, metadata] = await Promise.all([
+      rpc("dataset_revisions_for_actor_v1", { p_actor_id: actor.id, p_dataset_keys: keys }),
+      supabase.from("app_dataset_revisions").select("key,source_file_name,source_imported_at").in("key", keys),
+    ]);
     if (error) throw new Error(error.message || "DATASET_REVISIONS_UNAVAILABLE");
-    return jsonResponse({ ok: true, data });
+    const payload = jsonObject(data);
+    const metadataByKey = new Map((metadata.error ? [] : metadata.data || []).map((row) => [String(row.key || ""), row]));
+    const sources = (Array.isArray(payload.sources) ? payload.sources : []).map((value) => {
+      const source = jsonObject(value);
+      const row = metadataByKey.get(String(source.key || ""));
+      if (!row || source.state === "unavailable") return source;
+      return {
+        ...source,
+        sourceFileName: row.source_file_name || null,
+        sourceImportedAt: row.source_imported_at || null,
+      };
+    });
+    return jsonResponse({ ok: true, data: { ...payload, sources } });
   } catch (_error) {
     return transientOkResponse("DATASET_REVISIONS_UNAVAILABLE", "Dataset revisions are temporarily unavailable.", { sources: [] });
   }
@@ -4420,6 +4487,29 @@ async function handleAppsScriptAction(
   }
 }
 
+const HOME_SYNC_METADATA_USERS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
+const HOME_SYNC_METADATA_KEYS = ["ph_master_inventory", "ph_soc_master", "ph_reserves", "ph_cav_import"];
+
+async function readLoginHomeSyncMetadata(username: string) {
+  if (!HOME_SYNC_METADATA_USERS.has(normalizeUsername(username))) return null;
+  const { data, error } = await supabase.from("app_dataset_revisions")
+    .select("key,revision,state,changed_at,source_file_name,source_imported_at")
+    .in("key", HOME_SYNC_METADATA_KEYS);
+  if (error || !Array.isArray(data)) return null;
+  return {
+    contractVersion: 1,
+    serverTime: new Date().toISOString(),
+    sources: data.map((row) => ({
+      key: row.key,
+      revision: String(row.revision),
+      state: row.state,
+      changedAt: row.changed_at,
+      sourceFileName: row.source_file_name,
+      sourceImportedAt: row.source_imported_at,
+    })),
+  };
+}
+
 async function handleLogin(payload: Record<string, unknown>, req: Request) {
   const username = String(payload.username || "").trim();
   const password = String(payload.password || "").trim();
@@ -4490,12 +4580,15 @@ async function handleLogin(payload: Record<string, unknown>, req: Request) {
   const language = String(matchedUser.language || matchedUser.LANGUAGE || "English").trim() || "English";
   const matchedDbPassword = String(matchedUser.password || matchedUser.PASSWORD || "").trim();
   const mustChangePassword = isForcedPasswordValue(matchedDbPassword) || isForcedPasswordValue(password);
-  const session = await createAppSession({
-    username: dbUsername,
-    displayName: dbUsername,
-    role,
-    mustChangePassword,
-  });
+  const [session, homeSyncMetadata] = await Promise.all([
+    createAppSession({
+      username: dbUsername,
+      displayName: dbUsername,
+      role,
+      mustChangePassword,
+    }),
+    readLoginHomeSyncMetadata(dbUsername),
+  ]);
 
   return jsonResponse({
     ok: true,
@@ -4508,6 +4601,7 @@ async function handleLogin(payload: Record<string, unknown>, req: Request) {
       expiresAt: session.claims.exp * 1000,
       mustChangePassword: session.claims.mustChangePassword,
     },
+    homeSyncMetadata,
   });
 }
 
@@ -4519,14 +4613,17 @@ async function handleNativeSessionBridge(
     return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
   }
 
-  const bridgedSession = await createAppSession({
-    username: session.username,
-    displayName: session.displayName || session.username,
-    role: normalizeUsername(session.username) === "dylan_collyge"
-      ? "admin"
-      : String((session as typeof session & { displayRole?: string }).displayRole || session.role),
-    mustChangePassword: false,
-  });
+  const [bridgedSession, homeSyncMetadata] = await Promise.all([
+    createAppSession({
+      username: session.username,
+      displayName: session.displayName || session.username,
+      role: normalizeUsername(session.username) === "dylan_collyge"
+        ? "admin"
+        : String((session as typeof session & { displayRole?: string }).displayRole || session.role),
+      mustChangePassword: false,
+    }),
+    readLoginHomeSyncMetadata(session.username),
+  ]);
 
   return jsonResponse({
     ok: true,
@@ -4538,6 +4635,7 @@ async function handleNativeSessionBridge(
       expiresAt: bridgedSession.claims.exp * 1000,
       mustChangePassword: false,
     },
+    homeSyncMetadata,
   });
 }
 

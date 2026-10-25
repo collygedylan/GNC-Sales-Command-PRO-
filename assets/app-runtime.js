@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.63';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.64';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1544,7 +1544,7 @@
                 role: String(firstNonEmptyValue(payload.session.role, nativeAuthProfile && nativeAuthProfile.role, currentRole) || '').trim(),
                 mustChangePassword: payload.session.mustChangePassword === true
             });
-            return { ok: true, token: payload.session.token, source: 'native-bridge' };
+            return { ok: true, token: payload.session.token, source: 'native-bridge', homeSyncMetadata: payload.homeSyncMetadata || null };
         }
 
         function syncPasskeyPilotUi(profile = nativeAuthProfile) {
@@ -10420,15 +10420,45 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return getEditorLocMatchQtyValue(item, match);
         }
 
+        function getDepletedLocPhotoMatchQtyValue(item = null, persistedQty = null) {
+            const persisted = parseAppNumber(persistedQty);
+            if (!item || persisted == null) return null;
+            const linkedMaster = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+            const row = linkedMaster || item;
+            const currentOnHand = parseAppNumber(firstNonEmptyValue(
+                row.PTRONHAND, row.ptronhand, item.PTRONHAND, item.ptronhand,
+                row.ON_HAND, row.on_hand, item.ON_HAND, item.on_hand,
+                row.PTRAVAILABLE, row.ptravailable, item.PTRAVAILABLE, item.ptravailable, ''
+            ));
+            const baselineOnHand = parseAppNumber(firstNonEmptyValue(
+                item.BASELINE_ON_HAND, item.baseline_on_hand, row.BASELINE_ON_HAND, row.baseline_on_hand,
+                item.INITIAL_PTR, item.initial_ptr, row.INITIAL_PTR, row.initial_ptr, ''
+            ));
+            const initialPhotoMatch = parseAppNumber(firstNonEmptyValue(
+                item.INITIAL_PHOTO_MATCH_QTY, item.initial_photo_match_qty,
+                row.INITIAL_PHOTO_MATCH_QTY, row.initial_photo_match_qty, persisted
+            ));
+            let depleted = Math.max(0, persisted);
+            if (currentOnHand != null && baselineOnHand != null && initialPhotoMatch != null) {
+                depleted = Math.max(0, initialPhotoMatch - Math.max(0, baselineOnHand - currentOnHand));
+            }
+            if (currentOnHand != null) depleted = Math.min(depleted, Math.max(0, currentOnHand));
+            return depleted;
+        }
+
         function getDisplayLocMatchQtyValue(item, sourceView = '') {
             const view = shouldPreferFlyerOwnedFields(item, sourceView) ? 'flyer' : sourceView;
             const evidence = getLocPhotoEvidenceState(item, view);
             const qualifiedQty = getPhotoQualifiedLocMatchQtyValue(item, view);
             const hasPublishedPhotos = evidence.qualified === true;
-            const persistedQty = parseAppNumber(firstNonEmptyValue(
+            const persistedSource = firstNonEmptyValue(
+                item && item.LOC_PHOTO_MATCH, item && item.loc_photo_match,
+                item && item.CURRENT_PHOTO_MATCH_QTY, item && item.current_photo_match_qty,
                 item && item.LOC_MATCH_QTY, item && item.loc_match_qty,
                 item && item.REQ_LOC_MATCH_QTY, item && item.req_loc_match_qty, ''
-            ));
+            );
+            const hasPersistedQty = parseAppNumber(persistedSource) != null;
+            const persistedQty = getDepletedLocPhotoMatchQtyValue(item, persistedSource);
             const metricMatch = evidence.context === 'request'
                 ? getLocPhotoOwnedValue(item, ['REQ_MATCH','req_match'])
                 : evidence.context === 'flyer'
@@ -10438,12 +10468,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 ? (persistedQty ?? getEditorLocMatchQtyValue(item, metricMatch))
                 : null;
             const enteredRequestQty = view === 'request' && String(metricMatch ?? '').trim() !== '' ? getEditorLocMatchQtyValue(item, metricMatch) : null;
-            const qty = enteredRequestQty ?? qualifiedQty ?? publishedQty;
+            const qty = enteredRequestQty ?? (hasPersistedQty ? publishedQty : (qualifiedQty ?? publishedQty));
             // Preserve existing visibility rules without letting their legacy math mutate observations.
             if (qualifiedQty != null && qty > 0 && getLocPhotoEvidenceContext(item, view) === 'shared'
                 && typeof shouldHideSharedAppPayloadForInvalidAvRules === 'function'
                 && shouldHideSharedAppPayloadForInvalidAvRules({ ...item }, { locMatchQty: qty })) return '';
-            return qty == null ? '' : String(qty);
+            return qty == null || qty <= 0 ? '' : String(qty);
         }
 
         function getCurrentCardLocPhotoMatchQtyValue(item, sourceView = '') {
@@ -22983,6 +23013,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         source: 'native-auth',
                         session: readPersistedAppSessionRecord(),
                         nativeSession: nativeResult.session,
+                        homeSyncMetadata: bridge.homeSyncMetadata || null,
                         mustChangePassword: nativeResult.mustChangePassword === true
                     };
                 }
@@ -23025,6 +23056,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 source: nativeResult ? 'native-auth' : 'remote',
                 session: payload && payload.session ? payload.session : null,
                 nativeSession: nativeResult ? nativeResult.session : null,
+                homeSyncMetadata: nativeResult ? null : (payload && payload.homeSyncMetadata ? payload.homeSyncMetadata : null),
                 mustChangePassword: nativeResult
                     ? nativeResult.mustChangePassword === true
                     : !!(payload && payload.session && payload.session.mustChangePassword === true)
@@ -26211,7 +26243,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.63').trim() || 'AgData v2.3.63';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.64').trim() || 'AgData v2.3.64';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33550,6 +33582,31 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, !!safeOptions.forceReportsRender, 0, 140);
         }
+        function normalizeRequestBrowserCompatibilityRow(item = null) {
+            if (!item || typeof item !== 'object') return item;
+            const customer = firstNonEmptyValue(item.CUSTOMER_NAME, item.CUSTOMER, item.CUSTOMERNAME, item.REQ_CUSTOMER, 'Unknown Customer');
+            const consignee = firstNonEmptyValue(item.CONSIGNEE_NAME, item.CONSIGNEE, item.CONSIGNEENAME, 'N/A');
+            const quantity = firstNonEmptyValue(item.REQUEST_QTY, item.QTY, item.REQ_QTY, null);
+            const measureSpec = firstNonEmptyValue(item.REQUEST_SPEC, item.MEASURE_SPEC, item.REQ_SPEC, item.DESIRED_SPEC, '');
+            const requestCaliper = firstNonEmptyValue(item.REQUEST_CALIPER, item.CALIPER, item.REQ_CALIPER, item.DESIRED_CALIPER, '');
+            const comments = firstNonEmptyValue(item.REQUEST_NOTES, item.COMMENTS, item.REQUEST_NOTE, item.REQ_COMMENTS, '');
+            item.CUSTOMER = customer;
+            item.CUSTOMER_NAME = customer;
+            item.CONSIGNEE = consignee;
+            item.CONSIGNEE_NAME = consignee;
+            item.QTY = quantity;
+            item.REQUEST_QTY = quantity;
+            item.MEASURE_SPEC = measureSpec;
+            item.REQUEST_SPEC = measureSpec;
+            item.CALIPER = firstNonEmptyValue(item.CALIPER, requestCaliper, '');
+            item.REQUEST_CALIPER = requestCaliper;
+            item.COMMENTS = comments;
+            item.REQUEST_NOTES = comments;
+            item.DATE_COMPLETED = item.DATE_COMPLETED ?? null;
+            item.STATUS = firstNonEmptyValue(item.STATUS, item.REQ_STATUS, 'Pending');
+            return item;
+        }
+
         function formatFetchedRows(items, sourceTable) {
             if (!Array.isArray(items)) return [];
             items = redactEvalSensitiveData(items);
@@ -33580,6 +33637,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 obj.SEASONSUPPLY = obj.SEASON_SUPPLY || obj.SEASONSUPPLY || 0;
                 obj.FIELDTAGCOLOR = obj.FIELD_TAG_COLOR || obj.FIELDTAGCOLOR || '-';
                 if (normalizedSourceTable === ACTIVE_REQUEST_TABLE) {
+                    normalizeRequestBrowserCompatibilityRow(obj);
                     obj.REQUEST_ACTIVE = true;
                     obj.REQUEST_HISTORY = false;
                     obj.REQUEST_HISTORY_ONLY = false;
@@ -33891,6 +33949,41 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return 'DATASET_LOAD_FAILED';
         }
 
+        function buildPublicActiveRequestFallbackQuery(queryString = '') {
+            const params = new URLSearchParams(String(queryString || '').replace(/^\?/, ''));
+            const select = String(params.get('select') || '*').trim();
+            if (select !== '*') {
+                const appApiOnlyFields = new Set([
+                    'delivery_status', 'delivery_attempt_count', 'delivery_error_code',
+                    'delivery_display_state', 'delivery_delivered_at', 'loc_on_hand_revision'
+                ]);
+                const fields = select.split(',').map(field => field.trim()).filter(field => field && !appApiOnlyFields.has(field));
+                params.set('select', fields.length ? fields.join(',') : 'unique_id');
+            }
+            return params.toString();
+        }
+
+        async function fetchPublicActiveRequestFallbackPage(queryString = '', options = {}) {
+            if (!SUPABASE_KEY) throw new Error('Public Request compatibility read is unavailable.');
+            const timeoutMs = Math.max(1000, Number(options.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);
+            const query = buildPublicActiveRequestFallbackQuery(queryString);
+            const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/ph_active_request${query ? `?${query}` : ''}`, {
+                method: 'GET',
+                headers: {
+                    apikey: SUPABASE_KEY,
+                    Authorization: 'Bearer ' + SUPABASE_KEY,
+                    Prefer: 'count=exact',
+                    'Cache-Control': 'private, no-store'
+                },
+                signal: options.signal
+            }, timeoutMs, 'Request compatibility read');
+            if (!response.ok) throw await createSupabaseReadResponseError(response, 'Request compatibility read failed');
+            const text = await response.text();
+            const rows = text ? JSON.parse(text) : [];
+            if (!Array.isArray(rows)) throw new Error('Request compatibility read returned an invalid row response.');
+            return { rows, total: parseSupabaseContentRangeTotal(response) ?? rows.length, authSource: 'anon-compatibility' };
+        }
+
         async function fetchAuthenticatedSupabaseReadPage(table, queryString = '', options = {}) {
             const safeTable = normalizeAppTableName(table);
             if (safeTable === 'ph_master_inventory' && /^\s*select=filename,last_updated(?:&|$)/i.test(String(queryString || ''))) {
@@ -33903,7 +33996,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const params = new URLSearchParams(String(queryString || '').replace(/^\?/, ''));
                 const requestedLimit = Math.max(1, Math.min(500, Number(params.get('limit')) || 500));
                 const requestedOffset = Math.max(0, Number(params.get('offset')) || 0);
-                return requestAuthorizedDatasetReadPage(safeTable, queryString, requestedLimit, requestedOffset, options);
+                let primaryError = null;
+                let primaryPage = null;
+                try {
+                    primaryPage = await requestAuthorizedDatasetReadPage(safeTable, queryString, requestedLimit, requestedOffset, options);
+                } catch (error) {
+                    if (options.signal?.aborted || safeTable !== ACTIVE_REQUEST_TABLE) throw error;
+                    primaryError = error;
+                }
+                if (safeTable === ACTIVE_REQUEST_TABLE && (!primaryPage || (!primaryPage.rows.length && Number(primaryPage.total) === 0))) {
+                    try {
+                        const fallbackPage = await fetchPublicActiveRequestFallbackPage(queryString, options);
+                        if (fallbackPage.rows.length || !primaryPage) return fallbackPage;
+                    } catch (fallbackError) {
+                        if (primaryError) throw primaryError;
+                        window.GncRuntimeWatchdog?.capture?.(fallbackError, 'fetchAuthenticatedSupabaseReadPage:activeRequestFallback');
+                    }
+                }
+                if (primaryError) throw primaryError;
+                return primaryPage;
             }
             if (getAvReadDataset(safeTable, queryString)) return requestAvReadPage(safeTable, queryString, options);
             if (safeTable === 'ph_master_inventory') throw new Error('Raw browser inventory reads are disabled; use inventory_read operations.');
@@ -54606,6 +54717,7 @@ function toggleDriveQuickRequestItem(domId) {
                     currentRole=userRecord.role||userRecord.ROLE||'User';
                     currentUserDivision=String(firstNonEmptyValue(userRecord.division, userRecord.DIVISION, localStorage.getItem('gnc_division_v1'), '10') || '10').trim() || '10';
                     currentUserLanguage=normalizeAppUserLanguage(firstNonEmptyValue(userRecord.language, userRecord.LANGUAGE, localStorage.getItem('gnc_language_v1'), 'English'));
+                    if (result.homeSyncMetadata) applyDashboardPublishedRevisionMetadata(result.homeSyncMetadata, getSupabaseReadIdentityScope());
                     applyCurrentUserLanguagePreference();
                     if (result.source === 'verified-cache') {
                         if (result.warning) console.warn('Login remote fetch failed; using verified cache.', result.warning);
@@ -55189,6 +55301,7 @@ function toggleDriveQuickRequestItem(domId) {
                     finishInitialAppLoad();
                 });
             }
+            void prefetchDashboardSyncMetadataAfterLogin().catch(() => false);
             try {
             const readCapabilities = () => initializeRequestCapabilities({ render: false, reason: isRestoredSession ? 'restored-login' : 'login' });
             if (canUseProductionLiveSync()) {
@@ -114983,6 +115096,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const context = getProductionLiveSyncContext();
             return (context.surfaces || []).includes('home:sync-metadata')
                 && (context.adapters || []).some((adapter) => adapter.id === 'side:homeSyncMetadata');
+        }
+
+        async function prefetchDashboardSyncMetadataAfterLogin() {
+            if (!currentUser || navigator.onLine === false || !canViewDashboardSyncStatus()) return false;
+            const username = String(currentUser || '').trim().toLowerCase();
+            const profileId = String(nativeAuthProfile?.id || '').trim();
+            const keys = ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import'];
+            const metadata = await supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 2500 });
+            if (username !== String(currentUser || '').trim().toLowerCase()
+                || profileId !== String(nativeAuthProfile?.id || '').trim()) return false;
+            return applyDashboardPublishedRevisionMetadata(metadata, getSupabaseReadIdentityScope());
         }
 
         function applyDashboardPublishedRevisionMetadata(metadata, owner) {

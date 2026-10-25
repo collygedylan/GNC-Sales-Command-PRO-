@@ -77,15 +77,15 @@ test('current inline shell, runtime and watchdog module have no duplicate global
   assert.deepEqual(duplicates, [], `duplicate declarations: ${JSON.stringify(duplicates)}`);
 });
 
-test('v2.3.63 keeps watchdog status rendering modular and cache-busted', () => {
+test('v2.3.64 keeps watchdog status rendering modular and cache-busted', () => {
   const shell = read('index.html');
   const panel = read('assets/runtime-watchdog-panel.js');
-  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.63/);
+  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.64/);
   assert.match(panel, /data-watchdog-tab="open"[^]*Resolved Fixes/);
   assert.match(panel, /RESOLVED_SKILL_FOLDERS/);
 });
 
-test('v2.3.63 keeps AURA open-stock resolution scoped and deterministic', () => {
+test('v2.3.64 keeps AURA open-stock resolution scoped and deterministic', () => {
   const appRuntime = read('assets/app-runtime.js');
   const runtime = appRuntime.slice(0, appRuntime.indexOf('async function openAuraQueryAction'));
   const appApi = read('supabase/functions/app-api/index.ts');
@@ -97,7 +97,7 @@ test('v2.3.63 keeps AURA open-stock resolution scoped and deterministic', () => 
   assert.match(router, /scopeAuraOpenStock[^]*strictInventoryIdentityMatch[^]*seasonLevelOpenStockTotal/);
 });
 
-test('v2.3.63 keeps Bunch Notes flexible without picker paging or option lock-in', () => {
+test('v2.3.64 keeps Bunch Notes flexible without picker paging or option lock-in', () => {
   const bunchNote = read('assets/bunch-note.js');
   const styles = read('assets/bunch-note.css');
   const cardBoard = read('components/bunch-notes/CardBoard.jsx');
@@ -117,7 +117,7 @@ test('v2.3.63 keeps Bunch Notes flexible without picker paging or option lock-in
   assert.match(appApi, /cleanBunchNoteText\(entry\.work_type[^]*purpose_thread[^]*default_house_plan[^]*schedule_banner[^]*direction/);
 });
 
-test('v2.3.63 release governance prevents JWT gateway login lockout', () => {
+test('v2.3.64 release governance prevents JWT gateway login lockout', () => {
   const config = read('supabase/config.toml');
   const runtime = read('assets/app-runtime.js');
   const appApi = read('supabase/functions/app-api/index.ts');
@@ -158,9 +158,9 @@ test('ten architecture clusters and twelve registered skills stay synchronized w
   const moduleTags = [...html.matchAll(/<script\b([^>]*\bdata-runtime-watchdog-panel\b[^>]*)><\/script>/gi)];
   assert.deepEqual(layout.classicModules, ['assets/runtime-watchdog-panel.js']);
   assert.equal(moduleTags.length, layout.classicModules.length);
-  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.63"`));
+  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.64"`));
   assert.ok(html.indexOf('data-runtime-watchdog-panel') < html.indexOf('id="app-script-source"'), 'watchdog module loads before app runtime');
-  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.63"/);
+  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.64"/);
   assert.equal(layout.classicRuntime, 'assets/app-runtime.js');
   assert.equal(INDEX_HTML_BUDGET.maxLines, 3000);
 });
@@ -222,7 +222,7 @@ test('canonical symbol index resolves every registered domain symbol', () => {
   }
 });
 
-test('latest SQL lineage keeps public views invoker-secure and SET LOCAL transactional', () => {
+test('latest SQL lineage scopes security-definer compatibility views and keeps SET LOCAL transactional', () => {
   const migrationNames = readdirSync(path.join(root, 'supabase', 'migrations')).filter(name => name.endsWith('.sql')).sort();
   const securityMigrationName = '20261023203000_dashboard_warning_cleanup_and_reclass_recount_v1.sql';
   const securityIndex = migrationNames.indexOf(securityMigrationName);
@@ -236,10 +236,20 @@ test('latest SQL lineage keeps public views invoker-secure and SET LOCAL transac
       assert.ok(prefix.lastIndexOf('begin;') > Math.max(prefix.lastIndexOf('commit;'), prefix.lastIndexOf('rollback;')), `${name}:${match.index}`);
     }
   }
+  const compatibilityMigrationName = '20261025040000_agdata_v2364_request_browser_compatibility.sql';
+  const compatibilityViews = new Set(['ph_active_request', 'ph_active_request_live_rows', 'ph_request_queue_live_rows', 'ph_request_history']);
   for (const name of migrationNames.slice(securityIndex + 1)) {
     const source = read(`supabase/migrations/${name}`);
-    for (const match of source.matchAll(/create(?:\s+or\s+replace)?\s+view\s+public\.[a-z0-9_]+([^]*?)\bas\b/gi)) {
-      assert.match(match[0], /security_invoker\s*=\s*(?:true|'true')/i, `${name}:${match[0].slice(0, 100)}`);
+    for (const match of source.matchAll(/create(?:\s+or\s+replace)?\s+view\s+public\.([a-z0-9_]+)([^]*?)\bas\b/gi)) {
+      const viewName = match[1].toLowerCase();
+      if (name === compatibilityMigrationName && compatibilityViews.has(viewName)) {
+        assert.match(match[0], /security_invoker\s*=\s*(?:false|'false')/i, `${name}:${match[0].slice(0, 100)}`);
+        assert.match(source, new RegExp(`alter view public\\.${viewName} owner to postgres`));
+      } else {
+        assert.match(match[0], /security_invoker\s*=\s*(?:true|'true')/i, `${name}:${match[0].slice(0, 100)}`);
+      }
     }
   }
+  const compatibilityMigration = read(`supabase/migrations/${compatibilityMigrationName}`);
+  assert.match(compatibilityMigration, /grant select on public\.ph_requests_pending, public\.ph_active_request[^]*to anon, authenticated, service_role/);
 });
