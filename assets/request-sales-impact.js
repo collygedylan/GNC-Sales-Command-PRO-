@@ -378,7 +378,7 @@ function renderKpis(summary) {
 }
 
 function renderSourceAudit(audit = {}, summary = {}) {
-  if (['zero_cross_request_dedupe_v1', 'canonical-three-table-v2362'].includes(audit.dedupe_contract)) {
+  if (['zero_cross_request_dedupe_v1', 'canonical-three-table-v2362', 'canonical-active-history-v2363'].includes(audit.dedupe_contract)) {
     const lineCount = number(audit.line_count ?? summary.total_line_items);
     const uniqueCount = number(audit.distinct_unique_ids ?? lineCount);
     const lifecycleCount = number(audit.lifecycle_unique_ids ?? uniqueCount);
