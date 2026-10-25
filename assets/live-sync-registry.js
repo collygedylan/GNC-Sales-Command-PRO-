@@ -7,8 +7,8 @@
     const unique = (values) => Array.from(new Set(values));
     const core = {
         master: ['ph_master_inventory'], cropRollDrive: ['ph_crop_roll_drive_rows', 'ph_crop_roll_completed_drive_keys'],
-        avOpen: ['ph_master_inventory'], requests: ['ph_active_request', 'ph_master_inventory', 'ph_request_delivery_outbox'],
-        requestHistory: ['ph_request_history'], salesCredits: ['ph_sales_credit_requests'],
+        avOpen: ['ph_master_inventory'], requests: ['ph_requests_pending', 'ph_master_inventory', 'ph_request_delivery_outbox'],
+        requestHistory: ['ph_requests_completed_history'], salesCredits: ['ph_sales_credit_requests'],
         inventoryEditRequests: ['ph_inventory_edit_requests', 'ph_inventory_edit_request_events'],
         reserves: ['ph_reserves', 'ph_master_inventory'], customerRepMap: ['ph_customer_consignee_sales_reps'],
         // Raw SOC caches do not change when inventory enrichment changes.
@@ -19,7 +19,7 @@
         avHotPriceKeys: ['ph_cav_import', 'ph_master_inventory'], avNotes: ['ph_av_notes']
     };
     const side = {
-        salesWorkspace: ['ph_request_history','ph_credit_sources','ph_credit_submissions','ph_sales_credit_requests','ph_credit_attachments'],
+        salesWorkspace: ['ph_requests_completed_history','ph_credit_sources','ph_credit_submissions','ph_sales_credit_requests','ph_credit_attachments'],
         settings: ['ph_app_settings'],
         driveReserves: ['ph_reserves', 'ph_master_inventory'],
         driveOpenOrders: ['ph_soc_master', 'ph_master_inventory'],
