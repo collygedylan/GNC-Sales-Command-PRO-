@@ -85,6 +85,44 @@ const LEGACY_TABLE_ALIASES: Record<string, string> = {
   ph_active_request_live_rows: "ph_requests_pending",
   ph_request_queue_live_rows: "ph_requests_pending",
   ph_request_history: "ph_requests_completed_history",
+  ph_active_drive_mode: "ph_master_inventory",
+  ph_drive_mode_history: "ph_drive_around_report_rows",
+  ph_active_suspend: "ph_soc_master",
+  ph_active_docks: "ph_dock_trip_status",
+  ph_docks_history: "ph_dock_trip_status_audit",
+  ph_active_orders: "ph_soc_master",
+  ph_orders_history: "ph_historical_orders",
+  ph_active_reserves: "ph_reserves",
+  ph_active_hl_order: "ph_hl_po",
+  ph_hl_order_history: "ph_hl_order_previews",
+  ph_active_sales_office: "ph_sales_office",
+  ph_sales_office_history: "ph_season_sales_office_events",
+  ph_active_flyer: "ph_flyer_folder_rows",
+  ph_flyer_history: "ph_flyer_folder_history",
+  ph_active_crop_roll: "ph_crop_roll_drive_rows",
+  ph_crop_roll_history: "ph_crop_roll_runs",
+  ph_active_production: "ph_production_workflow_rows",
+  ph_active_production_schedule: "production_schedule_active",
+  ph_production_schedule_history: "production_schedule_snapshots",
+  ph_active_hold_learning: "ph_hold_learning_profiles",
+  ph_hold_learning_history: "ph_hold_learning_events",
+  ph_active_chat: "ph_chat_conversations",
+  ph_chat_history: "ph_chat_messages",
+  ph_active_walkie: "ph_walkie_channels",
+  ph_walkie_history: "ph_walkie_calls",
+  ph_delivery_outbox: "ph_request_delivery_outbox",
+  ph_hr_employees: "core_employees",
+  ph_hr_events: "hr_events",
+  ph_hr_job_codes: "hr_job_codes",
+  ph_hr_timesheets: "labor_timesheets",
+  ph_hr_calendar_outbox: "hr_calendar_reminder_outbox",
+  ph_marketing_materials: "marketing_materials",
+  ph_active_inventory_projects: "inventory_projects",
+  ph_inventory_project_rows: "inventory_project_rows",
+  ph_watchdog_events: "app_runtime_watchdog_events",
+  ph_dataset_revisions: "app_dataset_revisions",
+  ph_manual_sync_status: "app_manual_sync_status",
+  ph_aura_domain_glossary: "aura_domain_glossary",
 };
 const AV_OPTION_EVAL_REQUESTS_TABLE = "ph_av_option_eval_requests";
 const AV_OPTION_EVAL_MANAGER_USERS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
@@ -171,6 +209,19 @@ function doesLoginPasswordMatch(dbPassword = "", inputPassword = "") {
 const READABLE_TABLES = new Set([
   "ph_master_inventory",
   "ph_requests_pending",
+  "ph_00_table_directory",
+  "ph_active_location_moves",
+  "ph_location_moves_history",
+  "ph_active_recount",
+  "ph_recount_history",
+  "ph_active_count_review",
+  "ph_count_review_history",
+  "ph_active_shear_list",
+  "ph_shear_list_history",
+  "ph_active_eval_work",
+  "ph_eval_work_history",
+  "ph_active_bunch_notes",
+  "ph_bunch_notes_history",
   "ph_request_delivery_status",
   "ph_crop_roll_drive_rows",
   "ph_crop_roll_open_rows",
@@ -2353,7 +2404,7 @@ async function handleReclassRecountAction(
   const operation = String(payload.operation || "list").trim().toLowerCase();
   try {
     if (operation === "list") {
-      const jobsValue = await requestReclassRecountRest("ph_reclass_recount_jobs?select=id,itemcode,commonname,contsize,locationcode,requested_by_username,requested_at,system_on_hand,status&status=eq.pending&order=locationcode.asc,itemcode.asc,requested_at.asc&limit=1000");
+      const jobsValue = await requestReclassRecountRest("ph_active_recount?select=id,itemcode,commonname,contsize,locationcode,requested_by_username,requested_at,system_on_hand,status&order=locationcode.asc,itemcode.asc,requested_at.asc&limit=1000");
       const jobs = Array.isArray(jobsValue) ? jobsValue as Record<string, unknown>[] : [];
       const ids = jobs.map((job) => String(job.id || "")).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
       let lines: Record<string, unknown>[] = [];

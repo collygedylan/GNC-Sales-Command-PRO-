@@ -298,6 +298,7 @@ test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () 
   assert.match(surgicalMigration, /information_schema\.tables[^]*table_schema = 'archive_backup'[^]*alter table archive_backup/);
   const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
   const cleanupMigration = read('supabase/migrations/20261025014500_agdata_v2362_remove_legacy_request_objects.sql');
+  const uniformMigration = read('supabase/migrations/20261025023000_agdata_v2363_uniform_active_history_architecture.sql');
   assert.match(canonicalMigration, /alter table public\.ph_active_request rename to ph_requests_pending/);
   assert.match(canonicalMigration, /alter table public\.ph_request_history rename to ph_requests_completed_history/);
   assert.match(canonicalMigration, /update public\.ph_requests_completed_history history set[^]*canonical_migration_reason','pending-history-overlap-v2362'[^]*from public\.ph_requests_pending pending/);
@@ -312,21 +313,59 @@ test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () 
   assert.match(cleanupMigration, /drop table if exists public\.ph_request_sales_impact_ledger cascade/);
   assert.match(cleanupMigration, /private\.ph_request_folder_delivery_state/);
   assert.match(cleanupMigration, /LEGACY_REQUEST_FUNCTION_REFERENCE_REMAINED/);
+  for (const relation of ['ph_00_table_directory', 'ph_active_request', 'ph_request_history',
+    'ph_active_drive_mode', 'ph_drive_mode_history', 'ph_active_location_moves',
+    'ph_location_moves_history', 'ph_active_recount', 'ph_recount_history',
+    'ph_active_eval_work', 'ph_eval_work_history', 'ph_delivery_outbox']) {
+    assert.match(uniformMigration, new RegExp(`public\\.${relation}\\b`));
+  }
+  assert.match(uniformMigration, /ph_requests_pending_sales_request_only_v2363[^]*unique_id not like 'move_req_%'[^]*unique_id not like 'EVAL-%'/);
+  assert.match(uniformMigration, /ph_active_request_retirement_v2361[^]*2026-10-22 00:00:00 America\/Chicago[^]*request_completed[^]*ph_active_request/);
+  assert.match(uniformMigration, /ph_location_moves_history[^]*ph_eval_work_history[^]*delete from public\.ph_requests_pending[^]*delete from public\.ph_requests_completed_history/);
+  assert.match(uniformMigration, /canonical-active-history-v2363/);
+  assert.doesNotMatch(uniformMigration, /\bdrop\s+table\b|\btruncate\s+table\b/i);
   const submitSource = functionSource('assets/app-runtime.js', 'finalizeRequestAction');
   for (const field of ['recipient_emails', 'request_qty', 'effective_qty', 'is_default_qty', 'line_dollar_value',
     'request_spec', 'request_caliper', 'flag_color', 'ns_grade', 'ld_flag', 'hold_stop_since']) {
     assert.match(submitSource, new RegExp(`${field}:`));
   }
   const tabSource = functionSource('assets/app-runtime.js', 'setReqTab');
-  assert.match(tabSource, /activeReqTab = nextTab;[^]*renderViewContent\('request', false, true\);[^]*runDirectTrackedNavigation/);
+  assert.match(tabSource, /nextTab === 'pending'[^]*forcePendingRequestRoot\(\{ clearSelection: true \}\)[^]*renderViewContent\('request', false, true\);[^]*runDirectTrackedNavigation/);
   assert.match(tabSource, /preferImmediate:\s*true[^]*interactiveCritical:\s*true/);
+  const tabEvents = [];
+  let tabContext;
+  tabContext = runFunctions('assets/app-runtime.js', ['setReqTab'], {
+    activeReqTab: 'recount', requestSalesRepsManagerMode: false, lastViewSwitchAt: 0,
+    activeLocationMoveQueDetailUid: 'move', activeLocationWorkJobId: 'job', activeShearQueDetailId: 'shear',
+    activeAvOptionEvalDetailId: 'eval', activeEvalWorkDetailId: '', requestViewLevel: 2,
+    selectedReqFolder: 'folder', selectedReqRepView: null, selectedReqCustView: null,
+    selectedReqConsigneeView: null, selectedReqFolderView: null, requestFolderSearchTerm: '',
+    requestRepSearchTerm: '', requestCustomerSearchTerm: '', requestConsigneeSearchTerm: '',
+    requestFolderDateFilter: '', requestDylanFilterMode: 'all', requestDylanFilterValue: '',
+    requestDylanSalesRepValue: '', requestDylanFilterMenuOpen: '',
+    window: { BunchNote: { disposeView() {} }, BunchQueueShell: { isTab: () => false } },
+    Date, normalizeRequestTabValue: value => value === 'pending' ? 'pending' : value,
+    resetQueueReadCooldowns() {}, unsubscribeEvalWorkRealtime() {}, subscribeEvalWorkRealtime() {},
+    forcePendingRequestRoot() { tabContext.activeReqTab = 'pending'; tabContext.requestViewLevel = 0; tabEvents.push('root'); },
+    syncRequestTabButtons() {}, isViewVisible: () => true,
+    renderViewContent() { tabEvents.push(`render:${tabContext.activeReqTab}:${tabContext.requestViewLevel}`); },
+    runDirectTrackedNavigation(_view, _key, callback) { callback(); return true; },
+    clearSelection() {}, forceRefreshRequestsForView: async () => true,
+    loadRequestArchivePage: async () => true, loadEvalWorkAssignments: async () => true,
+    switchView() { throw new Error('unexpected view'); }
+  });
+  assert.equal(tabContext.setReqTab('pending'), true);
+  assert.deepEqual(tabEvents.slice(0, 2), ['root', 'render:pending:0']);
   assert.match(functionSource('assets/app-runtime.js', 'renderRequest'), /request_queue_row_render_failed[^]*renderRequestQueueFallbackCard/);
   assert.match(functionSource('assets/app-runtime.js', 'isReadyRequestDataForAutoComplete'), /effectiveSpec[^]*effectiveLocPhotoMatch[^]*<= 0/);
   assert.match(functionSource('assets/app-runtime.js', 'isPhotoDateMsExpired'), /getDate\(\) \+ retentionDays \+ 1/);
 });
 
 test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () => {
-  const context = runFunctions('assets/app-runtime.js', ['buildReclassRecountLocationGroups'], { Array, Number, String });
+  const context = runFunctions('assets/app-runtime.js', ['buildReclassRecountLocationGroups'], {
+    Array, Number, String, requestsInventory: [],
+    fullInventory: [{ ITEMCODE: '000745.250.9', COMMONNAME: 'Taylor Juniper', CONTSIZE: '#25' }]
+  });
   const groups = plain(context.buildReclassRecountLocationGroups([{
     id: 'job-1', itemcode: '006737.070.1', commonname: 'Unknown', locationcode: 'A.05.000', requested_by_username: 'requester',
     lines: [{ source_unique_id: 's1', lotcode: '27.S1', season: 'S1', on_hand: 5, available: 4, review: 1 }],
@@ -336,19 +375,28 @@ test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () =>
       { source_unique_id: 's1', lotcode: '27.S1', season: 'S1', on_hand: 5, available: 4, review: 1 },
       { source_unique_id: 'u1', lotcode: '27.U1', season: 'U1', on_hand: 5, available: 3, review: 2 },
     ],
+  }, {
+    id: 'job-3', itemcode: '000745.250.1', commonname: 'Unknown', locationcode: 'B.05.000', requested_by_username: 'requester',
+    lines: [{ source_unique_id: 't1', lotcode: '27.F1', season: 'F1', on_hand: 8, available: 6, review: 2 }],
   }]));
-  assert.equal(groups.length, 1);
+  assert.equal(groups.length, 2);
   assert.equal(groups[0].job_ids.length, 2);
   assert.equal(groups[0].commonname, 'Test Plant');
   assert.equal(groups[0].contsize, '#7');
   assert.equal(groups[0].locationcode, 'A.05.000');
   assert.equal(groups[0].system_on_hand, 10);
   assert.deepEqual(groups[0].lines.map(line => [line.lotcode, line.on_hand, line.available, line.review]), [['27.S1', 5, 4, 1], ['27.U1', 5, 3, 2]]);
+  assert.equal(groups[1].commonname, 'Taylor Juniper');
+  assert.equal(groups[1].contsize, '#25');
+  assert.equal(new Set(groups.map(group => `${group.itemcode.toUpperCase()}|${group.locationcode.toUpperCase()}`)).size, groups.length);
   assert.match(functionSource('Code.gs', 'handleSignedReclassRecountCompletion_'), /On Hand[^]*Available[^]*Review[^]*countedTotal/);
   const surgicalMigration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
   const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
+  const uniformMigration = read('supabase/migrations/20261025023000_agdata_v2363_uniform_active_history_architecture.sql');
   assert.match(surgicalMigration, /ph_reclass_recount_jobs_pending_item_location_v2361_idx/);
   assert.match(surgicalMigration, /RECOUNT_NAME_UNRESOLVED/);
+  assert.match(uniformMigration, /ph_active_recount[^]*ph_historical_inventory_dimensions[^]*regexp_replace[^]*identity_rank = 1/);
+  assert.match(read('supabase/functions/app-api/index.ts'), /ph_active_recount\?select=id,itemcode,commonname/);
   assert.doesNotMatch(canonicalMigration, /drop table[^;]*ph_reclass_recount_jobs/i);
 });
 
@@ -492,6 +540,7 @@ test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   const api = read('supabase/functions/app-api/index.ts');
   const migration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
   const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
+  const uniformMigration = read('supabase/migrations/20261025023000_agdata_v2363_uniform_active_history_architecture.sql');
   const runtime = read('assets/app-runtime.js');
   assert.match(api, /Promise\.resolve\(supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)\)[^]*runtime\.waitUntil\(reconciliationTask\)/);
   assert.doesNotMatch(api, /await supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)/);
@@ -507,12 +556,18 @@ test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   assert.match(runtime, /syncPanel\.open = window\.innerWidth >= 768/);
   assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
   assert.match(runtime, /clearPersistedManualSyncStartupState\(\)[^]*manualSyncStatusState = null/);
+  assert.match(functionSource('assets/app-runtime.js', 'renderHome'), /syncGoogleScriptButton\(\);[^]*updateDashboardSyncSummary\(\);/);
   assert.match(api, /currentStage:"idle"[^]*message:"Connected • ready"/);
   assert.match(migration, /stageIndex',0[^]*currentStage','idle'/);
   assert.match(canonicalMigration, /table_schema='archive_backup'[^]*alter table archive_backup/);
   assert.match(canonicalMigration, /MANUAL_SYNC_NOT_IDLE/);
   assert.match(canonicalMigration, /when 'drive' then array\['public\.ph_master_inventory'\]/);
   assert.match(canonicalMigration, /when 'request' then array\['public\.ph_requests_pending'\]/);
+  assert.match(uniformMigration, /ph_00_table_directory[^]*\(210, 'Walkie'/);
+  const malformedMiddleDot = String.fromCodePoint(0x00c3, 0x201a, 0x00c2, 0x00b7);
+  assert.equal(read('assets/request-sales-impact.js').includes(malformedMiddleDot), false);
+  assert.equal(runtime.includes(malformedMiddleDot), false);
+  assert.match(read('assets/request-sales-impact.js'), /final lines \\u2022/);
 });
 
 test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => {

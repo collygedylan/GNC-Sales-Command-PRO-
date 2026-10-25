@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.62';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.63';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26211,7 +26211,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.62').trim() || 'AgData v2.3.62';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.63').trim() || 'AgData v2.3.63';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32656,6 +32656,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const requested = String(tab || '').trim().toLowerCase();
             const capabilities = getRequestCapabilities();
             const canUseGeneralQueue = !!(capabilities && capabilities.canViewQueue);
+            if (requested === 'pending' && canSeeRegularRequestTabs(access)) return 'pending';
             if (requested === 'bunch-notes' && canUseInvBunchNotes()) return 'bunch-notes';
             if (requested === 'bunch-count-review' && canUseInvBunchNotes() && window.BunchQueueShell?.counts().canReview) return 'bunch-count-review';
 
@@ -32665,7 +32666,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (canUseGeneralQueue && requested === 'moves' && canSeeMovesRequestTab(access)) return 'moves';
             if (canUseGeneralQueue && requested === 'recount' && canSeeRecountRequestTab(access)) return 'recount';
             if (canUseGeneralQueue && requested === 'shear-list' && canSeeShearListRequestTab(access)) return 'shear-list';
-            if (canUseGeneralQueue && requested === 'pending' && canSeeRegularRequestTabs(access)) return 'pending';
             if (canSeeEvalWorkRequestTab()) return 'eval-work';
             if (canUseGeneralQueue && canSeeMovesRequestTab(access)) return 'moves';
             if (canUseGeneralQueue && canSeeRecountRequestTab(access)) return 'recount';
@@ -32687,7 +32687,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const evalWorkTab = document.getElementById('tab-req-eval-work');
             const capabilities = getRequestCapabilities();
             const canUseGeneralQueue = !!(capabilities && capabilities.canViewQueue);
-            const showRegularTabs = canUseGeneralQueue && canSeeRegularRequestTabs(access);
+            const showRegularTabs = canSeeRegularRequestTabs(access);
             const showSuspendTagTab = canUseGeneralQueue && canSeeSuspendTagRequestTab(access);
             const showMovesTab = canUseGeneralQueue && canSeeMovesRequestTab(access);
             const showRecountTab = canUseGeneralQueue && canSeeRecountRequestTab(access);
@@ -79383,8 +79383,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const nextTab = normalizeRequestTabValue(tab);
             if (nextTab !== 'eval-work') unsubscribeEvalWorkRealtime();
             if (nextTab !== 'reps') requestSalesRepsManagerMode = false;
-            activeReqTab = nextTab;
-            syncRequestTabButtons();
+            if (nextTab === 'pending') forcePendingRequestRoot({ clearSelection: true });
+            else {
+                activeReqTab = nextTab;
+                syncRequestTabButtons();
+            }
             if (isViewVisible('request')) renderViewContent('request', false, true);
             const scheduled = runDirectTrackedNavigation('request', `request-tab:${nextTab}`, () => {
                 activeReqTab = nextTab;
@@ -112968,6 +112971,33 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 '250':'#25', '150':'#15', '100':'#10', '070':'#7', '050':'#5', '030':'#3',
                 '031':'3DP', '021':'2DP', '020':'#2', '013':'1GP', '011':'#1', '010':'#1'
             })[String(itemcode || '').trim().split('.')[1] || ''] || '';
+            const inventoryIdentityByItem = new Map();
+            const inventoryIdentityByPrefix = new Map();
+            const identitySources = [
+                ...(typeof fullInventory !== 'undefined' && Array.isArray(fullInventory) ? fullInventory : []),
+                ...(typeof requestsInventory !== 'undefined' && Array.isArray(requestsInventory) ? requestsInventory : [])
+            ];
+            identitySources.forEach((row) => {
+                const itemcode = String(row && (row.ITEMCODE || row.itemcode) || '').trim();
+                const commonname = String(row && (row.COMMONNAME || row.commonname) || '').trim();
+                if (!itemcode || !commonname || /^unknown$/i.test(commonname)) return;
+                const identity = { commonname, contsize: String(row && (row.CONTSIZE || row.contsize) || '').trim() };
+                const itemKey = itemcode.toUpperCase();
+                const prefixKey = itemcode.replace(/[^0-9]/g, '').slice(0, 6);
+                if (!inventoryIdentityByItem.has(itemKey)) inventoryIdentityByItem.set(itemKey, identity);
+                if (prefixKey && !inventoryIdentityByPrefix.has(prefixKey)) inventoryIdentityByPrefix.set(prefixKey, identity);
+            });
+            const resolveIdentity = (job, itemcode) => {
+                const directName = String(job && job.commonname || '').trim();
+                const directSize = String(job && job.contsize || '').trim();
+                const prefixKey = String(itemcode || '').replace(/[^0-9]/g, '').slice(0, 6);
+                const fallback = inventoryIdentityByItem.get(String(itemcode || '').toUpperCase())
+                    || inventoryIdentityByPrefix.get(prefixKey) || {};
+                return {
+                    commonname: directName && !/^unknown$/i.test(directName) ? directName : String(fallback.commonname || '').trim(),
+                    contsize: directSize || String(fallback.contsize || '').trim() || sizeFromItemcode(itemcode)
+                };
+            };
             const groups = new Map();
             (Array.isArray(rows) ? rows : []).forEach((job) => {
                 const id = String(job && job.id || '').trim();
@@ -112981,9 +113011,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     to_locationcode: locationcode, requested_by_username: '', requested_at: '', lineMap: new Map()
                 };
                 group.job_ids.push(id);
-                const commonname = String(job && job.commonname || '').trim();
+                const identity = resolveIdentity(job, itemcode);
+                const commonname = identity.commonname;
                 if ((!group.commonname || /^unknown$/i.test(group.commonname)) && commonname && !/^unknown$/i.test(commonname)) group.commonname = commonname;
-                group.contsize = group.contsize || String(job && job.contsize || '').trim() || sizeFromItemcode(itemcode);
+                group.contsize = group.contsize || identity.contsize;
                 group.requested_by_username = group.requested_by_username || String(job && job.requested_by_username || '').trim();
                 const requestedAt = String(job && job.requested_at || '').trim();
                 if (!group.requested_at || (requestedAt && requestedAt < group.requested_at)) group.requested_at = requestedAt;
@@ -140954,6 +140985,7 @@ C.14.043 C.15.000
             const dashboardContent = document.getElementById('home-dashboard-content');
             if (!dynamicContent || !dashboardContent) return;
             syncGoogleScriptButton();
+            if (typeof updateDashboardSyncSummary === 'function') updateDashboardSyncSummary();
             auditLocalRequestDurability('home').catch(() => {});
             const dashboardSticky = document.getElementById('home-dashboard-sticky');
             const dashboardHero = document.getElementById('home-dashboard-hero');
@@ -144302,7 +144334,27 @@ C.14.043 C.15.000
             }
             const source = findDockSuspendDcRequestSourceRow(item) || item;
             const identity = helper.identity(getSuspendTagInventoryIdentity(item, source));
-            return queueCardInventoryIndex.resolveSuspendTagDisplay(identity, cavInventory);
+            const resolved = queueCardInventoryIndex.resolveSuspendTagDisplay(identity, cavInventory);
+            if (resolved && resolved.row) return resolved;
+            const itemCode = String(identity && identity.itemCode || '').trim().toUpperCase();
+            const locationCode = String(identity && identity.locationCode || '').trim().toUpperCase();
+            const candidates = masterInventoryByNormalizedItemLocation.get(JSON.stringify([itemCode, locationCode])) || [];
+            if (!candidates.length) return resolved;
+            const metric = (row, keys) => {
+                for (const key of keys) {
+                    const value = Number(String(row && row[key] != null ? row[key] : '').replace(/,/g, '').trim());
+                    if (Number.isFinite(value)) return value;
+                }
+                return 0;
+            };
+            const aggregate = { ...candidates[0] };
+            aggregate.PTRONHAND = candidates.reduce((sum, row) => sum + metric(row, ['PTRONHAND', 'ptronhand', 'ON_HAND', 'on_hand']), 0);
+            aggregate.PTRREVIEWED = candidates.reduce((sum, row) => sum + metric(row, ['PTRREVIEWED', 'ptrreviewed', 'REVIEW_QTY', 'review_qty']), 0);
+            aggregate.PTRAVAILABLE = candidates.reduce((sum, row) => sum + metric(row, ['PTRAVAILABLE', 'ptravailable', 'AVAILABLE_QTY', 'available_qty']), 0);
+            aggregate.S_LTS = candidates.reduce((sum, row) => sum + metric(row, ['S_LTS', 's_lts', 'OPEN_STOCK', 'open_stock']), 0);
+            aggregate.LOC_ON_HAND = aggregate.PTRONHAND;
+            aggregate.LOC_MATCH_QTY = candidates.reduce((sum, row) => sum + metric(row, ['LOC_MATCH_QTY', 'loc_match_qty', 'LOC_PHOTO_MATCH', 'loc_photo_match']), 0);
+            return { status: 'ready', row: aggregate };
         }
 
         function normalizeRequestCardMetrics(row = {}) {

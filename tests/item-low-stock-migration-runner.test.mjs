@@ -12,7 +12,7 @@ import {
   suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName,
   masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName,
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
-  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, unifiedRequestSyncSalesImpactMigrationName, agdataV2361SurgicalRestoreMigrationName, agdataV2362CanonicalRequestsMigrationName, agdataV2362LegacyCleanupMigrationName,
+  auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, unifiedRequestSyncSalesImpactMigrationName, agdataV2361SurgicalRestoreMigrationName, agdataV2362CanonicalRequestsMigrationName, agdataV2362LegacyCleanupMigrationName, agdataV2363UniformActiveHistoryMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -41,6 +41,17 @@ test('v2.3.62 canonical request migrations are registered in order', () => {
   const cleanupContract = migrationContractQuery(agdataV2362LegacyCleanupMigrationName);
   for (const marker of ['ph_active_request', 'ph_request_queue_live_rows', 'ph_request_sales_impact_ledger', 'request_financial_values_v1']) {
     assert.match(cleanupContract, new RegExp(marker));
+  }
+});
+
+test('v2.3.63 uniform active and history migration is registered', () => {
+  assert.equal(agdataV2363UniformActiveHistoryMigrationName, '20261025023000_agdata_v2363_uniform_active_history_architecture.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2363UniformActiveHistoryMigrationName]),
+    [agdataV2363UniformActiveHistoryMigrationName]);
+  const contract = migrationContractQuery(agdataV2363UniformActiveHistoryMigrationName);
+  for (const marker of ['ph_00_table_directory', 'ph_active_location_moves', 'ph_active_recount',
+    'ph_eval_work_history', 'canonical-active-history-v2363', '4042', '6067786.53']) {
+    assert.match(contract, new RegExp(marker.replace('.', '\\.')));
   }
 });
 import { perennialPreviewSql, runPerennialAssignmentPreview, getPerennialPreviewFailure } from '../scripts/preview-perennial-assignment.mjs';
