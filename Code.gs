@@ -6910,6 +6910,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   let skippedFiles = 0;
   let fatalFailure = false;
   let fatalErrorCode = '';
+  let failurePhase = 'source_scan';
   let revisionFence = null;
   let writePhaseStarted = false;
 
@@ -8044,6 +8045,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       };
     }
 
+    failurePhase = 'payload_build';
     let upserts = [];
     let deletes = [];
 
@@ -8108,6 +8110,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       upserts: upsertCount
     }));
 
+    failurePhase = 'publication';
     if (canonicalPhMasterBulk) revalidateCanonicalMasterSnapshotSources_(parsedFiles);
     if (options && options.historyDataset) assertRoutedPendingSourceSelection_(options.historyDataset, parsedFiles[0].sourceIdentity);
     assertImportTimeBudget_('snapshot_publication', 65000);
@@ -8132,6 +8135,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
     }
 
+    failurePhase = 'reconciliation';
     if (isMasterInventoryTable_(tableName)) {
       if (tableName === 'ph_master_inventory') {
         const locationEvidence = callSupabaseRpc_('reconcile_inventory_location_evidence_v1', {});
@@ -8161,9 +8165,11 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       }
     }
 
+    failurePhase = 'history';
     if (options && options.historyDataset) {
       parsedFiles.forEach(function(entry) { persistImportedFileHistory_(options.historyDataset, entry.file, entry.rawData, 0, entry.sourceIdentity); });
     }
+    failurePhase = 'finalization';
     closeDatasetImportFence_(revisionFence, true, canonicalPhMasterBulk && canonicalPhMasterPublished ? function() {
       try {
         revalidateCanonicalMasterSnapshotSources_(parsedFiles);
@@ -8179,6 +8185,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       markMasterBulkSnapshotPublished_(canonicalPhMasterCheckpointKey, canonicalPhMasterRequestId,
         masterBulkPayload && masterBulkPayload.publicationReceipt, 'ready_to_archive');
     }
+    failurePhase = 'archive';
     let namingSummary = null;
     if (isMasterInventoryTable_(tableName) && String(processedFolderId || '') === String(FOLDERS.MASTER_PROCESSED || '')) {
       namingSummary = moveAndNormalizeDriveAroundProcessedFiles_(parsedFiles, processedFolder, { nowIso: syncStartTime });
@@ -8203,7 +8210,11 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     const errorMessage = err && err.message ? err.message : String(err);
     const caughtErrorCode = getSafeImportFailureCode_(err);
     fatalFailure = !isImportSourceValidationErrorCode_(err && err.errorCode);
-    fatalErrorCode = fatalFailure ? caughtErrorCode : '';
+    fatalErrorCode = fatalFailure
+      ? (caughtErrorCode === 'MANUAL_SYNC_STAGE_FAILED'
+        ? 'MANUAL_SYNC_' + String(failurePhase || 'stage').toUpperCase() + '_FAILED'
+        : caughtErrorCode)
+      : '';
     upsertCount = 0;
     deleteCount = 0;
     pendingFiles.forEach(function(file) {
