@@ -118,6 +118,11 @@
         const APP_SHELL_MANIFEST_CHECK_TTL_MS = 15000;
         const APP_SHELL_VISIBLE_RELOAD_STARTUP_GRACE_MS = 8000;
         const APP_SHELL_RUNTIME_BOOTED_AT = Date.now();
+        const APP_VERSION_ENFORCEMENT_INTERVAL_MS = 60000;
+        const checkCurrentAppVersion = reason => window.checkAgDataVersion?.(String(reason || 'runtime')) || Promise.resolve(false);
+        window.addEventListener('focus', () => { void checkCurrentAppVersion('focus'); });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) void checkCurrentAppVersion('visibilitychange'); });
+        window.setInterval(() => { void checkCurrentAppVersion('interval'); }, APP_VERSION_ENFORCEMENT_INTERVAL_MS);
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
         let supabaseClient = null;
@@ -14108,6 +14113,11 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             } else if (tableName === 'ph_app_settings') {
                 const settingRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
                 const settingKey = String(firstNonEmptyValue(settingRow.key, settingRow.KEY, '') || '').trim();
+                if (settingKey === 'app_version' && eventType !== 'DELETE') {
+                    const settingValue = settingRow.value && typeof settingRow.value === 'object' ? settingRow.value : {};
+                    const remoteVersion = String(firstNonEmptyValue(settingValue.app_version, settingValue.version, settingRow.value, '') || '').trim();
+                    if (remoteVersion) void window.forceAgDataVersionUpgrade?.(remoteVersion, APP_SHELL_VERSION, { reason: 'app-settings-realtime' });
+                }
                 if (settingKey === AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY) {
                     avBlanksPhotoBypassRemoteLoaded = false;
                     avBlanksPhotoBypassAccessCache = null;
@@ -21508,6 +21518,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 body: JSON.stringify(body || {}),
                 signal: safeOptions.signal
             }, Number(safeOptions.timeoutMs || 18000), String(safeOptions.label || 'App Function'));
+            const responseVersion = String(response.headers?.get('x-agdata-app-version') || '').trim();
+            if (responseVersion) await window.forceAgDataVersionUpgrade?.(responseVersion, APP_SHELL_VERSION, { reason: 'app-api-response' });
             const text = await response.text();
             let payload = null;
             try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }

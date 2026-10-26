@@ -1336,3 +1336,25 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   assert.ok(runner.includes(migrationName));
   assert.match(read('.codex/skills/agdata-runtime-watchdog/SKILL.md'), /Never record navigation\/scope cancellation codes/);
 });
+
+test('Invariant 41 (Canonical Version Mismatch Forces One-Time Newest-Shell Login)', () => {
+  const lifecycle = read('assets/app-lifecycle.js');
+  const runtime = read('assets/app-runtime.js');
+  const shell = read('index.html');
+  const worker = read('sw.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  assert.match(lifecycle, /FORCED_VERSION_UPGRADE_STORAGE_KEY = 'agdata_forced_version_upgrade'/);
+  assert.match(lifecycle, /Promise\.all\(keys\.map\(key => root\.caches\.delete\(key\)\)\)/);
+  assert.match(lifecycle, /Promise\.all\(registrations\.map\(registration => registration\.unregister\(\)\)\)/);
+  assert.match(lifecycle, /next\.searchParams\.set\('_reload', String\(Date\.now\(\)\)\)/);
+  assert.match(lifecycle, /deployment-fingerprint\.json\?t=\$\{Date\.now\(\)\}[^]*cache: 'no-store'/);
+  assert.match(shell, /forceupgrade[^]*forceAgDataVersionUpgrade[^]*checkAgDataVersion\?\.\('boot'\)/);
+  assert.match(runtime, /APP_VERSION_ENFORCEMENT_INTERVAL_MS = 60000/);
+  assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
+  assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
+  assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.70"/);
+  assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
+  assert.match(appApi, /const appVersion = "2\.3\.70"[^]*app_version: appVersion/);
+  assert.match(read('.codex/skills/agdata-zero-lockout-guard/SKILL.md'), /Never defer a confirmed canonical app-version mismatch/);
+});

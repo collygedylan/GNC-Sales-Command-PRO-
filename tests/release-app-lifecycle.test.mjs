@@ -690,13 +690,23 @@ test('runtime readiness cancels recovery while a load failure purges stale shell
   assert.match(replacement, /shellts=\d+/);
 });
 
-test('an active session defers worker updates and mismatch recovery without changing the screen', async () => {
-  const h = harness(); let reloads = 0;
-  h.window.location = { reload() { reloads++; } };
+test('an active session defers a worker reload but a confirmed version mismatch forces upgrade', async () => {
+  const h = harness(); let reloads = 0; let replacement = ''; let unregistered = 0;
+  const storage = new Map(); const deleted = [];
+  h.window.localStorage = { get length() { return storage.size; }, key: index => [...storage.keys()][index] || null,
+    getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
+  h.window.sessionStorage = { clear: () => {} };
+  h.window.caches = { keys: async () => ['agdata-v2.3.69', 'other-cache'], delete: async key => { deleted.push(key); return true; } };
+  h.window.navigator = { onLine: true, serviceWorker: { getRegistrations: async () => [{ unregister: async () => { unregistered += 1; } }] } };
+  h.window.location = { href: 'https://agmetricapp.com/index.html?shellv=AgData%20v2.3.69', reload() { reloads++; }, replace(value) { replacement = value; } };
   h.window.isAuthenticatedAppSessionActive = () => true;
-  assert.equal(h.window.reloadForServiceWorkerUpdate('AgData v2.3.33'), false);
-  assert.equal(await h.window.recoverShellVersionMismatch('AgData v2.3.32', 'AgData v2.3.33'), false);
+  assert.equal(h.window.reloadForServiceWorkerUpdate('AgData v2.3.70'), false);
+  assert.equal(await h.window.recoverShellVersionMismatch('AgData v2.3.69', 'AgData v2.3.70'), true);
   assert.equal(h.window.__gncShellUpdateReady, true);
+  assert.deepEqual(deleted.sort(), ['agdata-v2.3.69', 'other-cache']);
+  assert.equal(unregistered, 1); assert.equal(storage.get('agdata_forced_version_upgrade'), '2.3.70');
+  assert.equal(storage.get('gnc_explicit_logout_v1'), '1');
+  assert.match(replacement, /v=2\.3\.70[^]*shellv=AgData\+v2\.3\.70[^]*_reload=\d+/);
   assert.equal(h.timers.length, 0); assert.equal(reloads, 0);
 });
 

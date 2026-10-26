@@ -569,7 +569,16 @@
         "handleInventoryRead",
         "handleDatasetRead"
       ],
-      "Code.gs": []
+      "Code.gs": [],
+      "supportingFiles": {
+        "assets/app-lifecycle.js": [
+          "forceAgDataVersionUpgrade",
+          "checkAgDataVersion"
+        ],
+        "sw.js": [
+          "navigateClientToForcedUpgrade"
+        ]
+      }
     }
   }
 }

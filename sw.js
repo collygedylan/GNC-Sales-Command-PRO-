@@ -433,6 +433,19 @@ async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'ina
   }
 }
 
+async function navigateClientToForcedUpgrade(client, reason = 'sw-activated') {
+  if (!client || typeof client.navigate !== 'function' || !isProductionShellUrl(client.url)) return false;
+  try {
+    const clientUrl = getRequestUrl(client.url);
+    const clientBuild = String(clientUrl?.searchParams.get(APP_SHELL_QUERY_PARAM) || '').trim();
+    if (clientBuild === APP_SHELL_BUILD) return false;
+    await client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason, true));
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-update') {
   try {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -444,11 +457,12 @@ async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-up
   } catch (error) {}
 }
 
-function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '') {
+function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '', forceUpgrade = false) {
   const shellUrl = new URL(buildShellUrl(build), self.registration.scope);
   shellUrl.searchParams.set('shellr', APP_SHELL_RUNTIME_REVISION);
   shellUrl.searchParams.set('shellts', String(Date.now()));
   if (reason) shellUrl.searchParams.set('shellreason', String(reason || '').slice(0, 48));
+  if (forceUpgrade) shellUrl.searchParams.set('forceupgrade', APP_ASSET_VERSION);
   return shellUrl.href;
 }
 
@@ -472,6 +486,8 @@ self.addEventListener('activate', (event) => {
       })
       .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clientList) => Promise.all(clientList.map(client => navigateClientToForcedUpgrade(client, 'sw-activated'))))
       .then(() => navigateInactiveClientsToCurrentShell('sw-activated'))
   );
 });

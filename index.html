@@ -70,6 +70,11 @@
       window.__APP_RELEASE_VERSION__ = 'AgData v2.3.70';
       window.__APP_SHELL_VERSION__ = 'AgData v2.3.70';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
+        (function enforceBootVersion() {
+            const forcedTarget = new URL(window.location.href).searchParams.get('forceupgrade') || '';
+            if (forcedTarget) void window.forceAgDataVersionUpgrade?.(forcedTarget, window.__APP_SHELL_VERSION__, { force: true, reason: 'service-worker-activation' });
+            void window.checkAgDataVersion?.('boot');
+        })();
         (function() {
             const manifestLink = document.createElement('link');
             manifestLink.rel = 'manifest';

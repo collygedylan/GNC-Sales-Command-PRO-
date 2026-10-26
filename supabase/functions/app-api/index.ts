@@ -1,5 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
+const APP_RUNTIME_VERSION = "2.3.70";
 const APP_RUNTIME_RELEASE = "AgData v2.3.70";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
@@ -50,6 +51,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key, x-gnc-session, x-app-session, x-request-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Max-Age": "86400",
+  "Access-Control-Expose-Headers": "x-agdata-app-version, x-request-id",
+  "X-AgData-App-Version": APP_RUNTIME_VERSION,
   "Cache-Control": "private, no-store",
 };
 const databaseBridge = createDatabaseRestBridge(async (url, init, timeout) => fetch(url, {
@@ -454,7 +457,11 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body, escapedDisplayTextJsonReplacer), {
+  const appVersion = "2.3.70";
+  const versionedBody = body && typeof body === "object" && !Array.isArray(body)
+    ? { ...(body as Record<string, unknown>), app_version: appVersion }
+    : body;
+  return new Response(JSON.stringify(versionedBody, escapedDisplayTextJsonReplacer), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "private, no-store" },
   });

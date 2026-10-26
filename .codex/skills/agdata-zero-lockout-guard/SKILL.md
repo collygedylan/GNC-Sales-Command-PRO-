@@ -63,13 +63,13 @@ After identity verification, finalizeLogin reveals Home before awaiting capabili
 
 ## Request completion and foreground continuity
 
-Active same-account sessions defer Service Worker reload and mismatch recovery, including a reload queued before login completed. Transient token/session refresh loss retains the visible shell and cached identity; confirmed disabled or locked profiles still clear access. Foreground restoration preserves the current view. Request save receipt acceptance checks account scope without rejecting a committed result solely because permission revision advanced. Focused coverage: release-app-lifecycle.test.mjs and request-submission-durability.test.mjs.
+Active same-account sessions defer same-version Service Worker reloads, including a reload queued before login completed. A confirmed canonical app-version mismatch is the explicit exception: clear the active session, CacheStorage and Service Worker registrations, record the one-time target version, and redirect to the newest login shell. Transient token/session refresh loss otherwise retains the visible shell and cached identity; confirmed disabled or locked profiles still clear access. Foreground restoration preserves the current view. Request save receipt acceptance checks account scope without rejecting a committed result solely because permission revision advanced. Focused coverage: release-app-lifecycle.test.mjs and request-submission-durability.test.mjs.
 
 Same-version runtime releases must advance the service-worker runtime/cache revision while retaining the visible AgData badge. Reclass stock r1 refreshes shell assets with the existing reload-cache installer and preserves authenticated account data, drafts, and inactive-client navigation rules.
 
 ## Desktop shell recovery
 
-The explicit v2.3.38 cache upgrade uses agdata-v2.3.38, skipWaiting, all-prior Cache Storage deletion and clients.claim. Version every shell CSS/JS URL consistently, including compiled assets and precache entries. This release clears Cache Storage only; retain authenticated snapshots, session storage, IndexedDB and drafts. Existing active-session reload deferral and shared router/Back ownership remain unchanged.
+The explicit v2.3.38 cache upgrade uses agdata-v2.3.38, skipWaiting, all-prior Cache Storage deletion and clients.claim. Version every shell CSS/JS URL consistently, including compiled assets and precache entries. Same-version cache refreshes retain authenticated snapshots, session storage, IndexedDB and drafts; a confirmed newer canonical app version follows the forced-login exception above. Shared router/Back ownership remains unchanged.
 
 ## Watchdog and active queue continuity
 
@@ -101,3 +101,4 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Never make an authorized `dataset_read` wait for best-effort repair work; schedule bounded reconciliation with `EdgeRuntime.waitUntil` and contain both synchronous and asynchronous failures.
 - Never translate an underlying-table grant omission on a security-invoker view into an empty successful dataset or clear the retained Queue after that isolated read fails.
 - Never convert a transient active-profile, dataset, inventory, historical-request, or consolidation read fault into a `400`, `403`, or `503` lockout response; return an authorized retained `200` shape without weakening mutation checks.
+- Never defer a confirmed canonical app-version mismatch behind active-session continuity or rely on an old worker cache to self-correct; force the one-time logout, full CacheStorage/Service Worker purge, and cache-busted newest-shell redirect.
