@@ -97,6 +97,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never collapse a structured master-bulk or SQLSTATE failure into `MANUAL_SYNC_STAGE_FAILED`; retain the bounded code without exposing database details or source rows.
+
 - Never send a complete Drive snapshot through one Apps Script HTTP request when the guarded publication exceeds the URL Fetch ceiling; use the canonical resumable 2,000-row staging publisher.
 
 - Never give the outer Drive fast-ingest RPC a shorter timeout than the measured guarded master snapshot publication, and never exclude Drive from resumable Excel extraction checkpoints.

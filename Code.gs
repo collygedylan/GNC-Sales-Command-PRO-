@@ -2994,7 +2994,7 @@ function getSafeImportFailureCode_(error) {
   const explicitCode = String(error && (error.errorCode || error.error_code) || '').trim().toUpperCase();
   if (isImportSourceValidationErrorCode_(explicitCode)) return explicitCode;
   if (explicitCode === 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED') return explicitCode;
-  if (explicitCode === 'MASTER_BULK_PUBLISHED_SOURCE_CHANGED') return explicitCode;
+  if (/^MASTER_BULK_[A-Z0-9_]+$/.test(explicitCode)) return explicitCode;
   const message = String(error && error.message || error || '');
   // Publish only a structured SQLSTATE, never database details or source rows.
   const databaseError = /^Supabase (?:upsert|delete) failed for [a-zA-Z0-9_]+ \(\d{3}\):\s*(\{[\s\S]*\})$/.exec(message);
@@ -3002,6 +3002,12 @@ function getSafeImportFailureCode_(error) {
     const code = extractSupabaseErrorCode_(databaseError[1]);
     if (/^[A-Z0-9]{5}$/.test(code)) return 'IMPORT_DATABASE_' + code;
   }
+  const rpcError = /^Supabase RPC [a-zA-Z0-9_]+ failed \(\d{3}\):\s*(\{[\s\S]*\})$/.exec(message);
+  if (rpcError) {
+    const code = extractSupabaseErrorCode_(rpcError[1]);
+    if (/^[A-Z0-9]{5}$/.test(code)) return 'IMPORT_DATABASE_' + code;
+  }
+  if (/^MASTER_BULK_[A-Z0-9_]+$/.test(message)) return message;
   if (/^(?:DATASET_IMPORT|SEASON_SALES_RECONCILIATION|EVAL_REPORT2_RECONCILIATION)_[A-Z0-9_]+$/.test(message)) return message;
   return 'MANUAL_SYNC_STAGE_FAILED';
 }

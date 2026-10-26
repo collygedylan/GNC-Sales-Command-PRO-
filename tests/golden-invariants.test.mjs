@@ -1439,3 +1439,11 @@ test('Invariant 47 (Drive Publication Uses Resumable Bounded Chunks)', () => {
   assert.match(code, /chunkSize: 2000/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never send a complete Drive snapshot through one Apps Script HTTP request/);
 });
+
+test('Invariant 48 (Drive Failures Retain Structured Safe Codes)', () => {
+  const failureCode = functionSource('Code.gs', 'getSafeImportFailureCode_');
+  assert.match(failureCode, /\^MASTER_BULK_\[A-Z0-9_\]\+\$/);
+  assert.match(failureCode, /Supabase RPC \[a-zA-Z0-9_\]\+ failed/);
+  assert.match(failureCode, /IMPORT_DATABASE_/);
+  assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never collapse a structured master-bulk or SQLSTATE failure/);
+});
