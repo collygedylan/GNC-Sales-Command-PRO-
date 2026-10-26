@@ -68,6 +68,8 @@ const liveImportFunctions = new Set([
   "processFastLiveFile_",
   "runWarehouseAssignedOnly",
   "runCavOnly",
+  "resolveSupabaseServiceRoleKey_",
+  "getSupabaseHeaders_",
   "assertDriveAroundSourceContract_",
   "processCustomerRepMapSnapshotLocked_",
   "getAppsScriptActionSigningKeys_",
@@ -108,6 +110,7 @@ const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "ge
 for (const name of ['normalizeEscapedImportText_', 'normalizeEscapedImportRow_']) additiveFunctions.add(name);
 for (const name of ['getFastLiveIngestDatasetKey_', 'getFastLiveIngestRpc_', 'getFastLiveFileMeta_',
   'getFastLiveIngestRows_', 'processFastLiveFile_', 'runWarehouseAssignedOnly']) additiveFunctions.add(name);
+additiveFunctions.add('resolveSupabaseServiceRoleKey_');
 for (const name of ['removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_', 'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync']) additiveFunctions.add(name);
 for (const name of ['publishManualSyncStatus_', 'scheduleRequestIntegrityMaintenance_', 'runQueuedRequestIntegrityMaintenance_']) additiveFunctions.add(name);
 additiveFunctions.add('setDatasetImportSourceMetadata_');
