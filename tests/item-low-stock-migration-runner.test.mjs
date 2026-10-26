@@ -23,9 +23,28 @@ import {
   agdataV2367HistoricalDriveFastReadMigrationName,
   agdataV2368HistoricalPhotoDateKeyFixMigrationName,
   agdataV2369FastLiveErpIngestionMigrationName,
+  agdataV2372RequestCompletionAcknowledgmentMigrationName,
+  agdataV2372RequestCompletionDeliveryMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
+
+test('v2.3.72 request completion acknowledgment is release-registered', () => {
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2372RequestCompletionAcknowledgmentMigrationName]),
+    [agdataV2372RequestCompletionAcknowledgmentMigrationName]);
+  const contract = migrationContractQuery(agdataV2372RequestCompletionAcknowledgmentMigrationName);
+  for (const marker of ['ph_requests_pending', 'request_completion_receipt_v2372', 'REQ-mvp9cdc5mc3uk7hltrd', '2.3.72']) {
+    assert.match(contract, new RegExp(marker.replaceAll('.', '\\.')));
+  }
+});
+
+test('v2.3.72 request completion delivery includes completed membership', () => {
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2372RequestCompletionDeliveryMigrationName]),
+    [agdataV2372RequestCompletionDeliveryMigrationName]);
+  const contract = migrationContractQuery(agdataV2372RequestCompletionDeliveryMigrationName);
+  for (const marker of ['ph_requests_completed_history', 'reconcile_request_folder_completion_v2',
+    'prepare_request_folder_completion_v2', 'request-folder-completion-v2']) assert.match(contract, new RegExp(marker));
+});
 
 test('v2.3.61 surgical restore is registered after unified request sync', () => {
   assert.equal(unifiedRequestSyncSalesImpactMigrationName, '20261024203000_unified_request_sync_sales_impact_v1.sql');

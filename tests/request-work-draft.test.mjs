@@ -115,6 +115,24 @@ test('mocked save treats an already-applied value as acknowledged without replay
     assert.equal(sends, 1);
 });
 
+test('completion retries one ambiguous REQUEST_NOT_FOUND acknowledgment', async () => {
+    let sends = 0;
+    const completionDraft = draft({ req_spec: '18-20" H' });
+    completionDraft.complete = true;
+    const outcome = await sandbox.window.AgMetricRequestSubmission.saveRequestWorkWithReconciliation({
+        draft: completionDraft, expectedVersion: 16, initialPatch: { req_spec: '18-20" H' },
+        send: async () => {
+            sends += 1;
+            if (sends === 1) throw Object.assign(new Error('REQUEST_NOT_FOUND'), { code: 'P0002' });
+            return { lifecycle_state: 'completed_history', row: { unique_id: 'REQ-blue' } };
+        },
+        readCanonical: async () => null
+    });
+    assert.equal(outcome.status, 'saved');
+    assert.equal(outcome.replayedCompletion, true);
+    assert.equal(sends, 2);
+});
+
 test('successful acknowledgment clears sent values but retains edits typed while the save was in flight', () => {
     const original = draft({ req_spec: 'sent spec' });
     const merged = mergeRequestWorkAcknowledgment({

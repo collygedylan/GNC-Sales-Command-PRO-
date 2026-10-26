@@ -1328,7 +1328,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.71"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.72"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1353,9 +1353,9 @@ test('Invariant 41 (Canonical Version Mismatch Forces One-Time Newest-Shell Logi
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.71"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.72"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.71"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.72"[^]*app_version: appVersion/);
   assert.match(read('.codex/skills/agdata-zero-lockout-guard/SKILL.md'), /Never defer a confirmed canonical app-version mismatch/);
 });
 
@@ -1389,4 +1389,21 @@ test('Invariant 43 (Request, Suspend, Reclass, Import, Outbox, and AV Boundaries
   assert.match(reclass, /insert into public\.ph_master_inventory/);
   assert.match(read('supabase/functions/_shared/production-workflow.ts'), /Inventory identity changed before this move could be confirmed\. Your draft is retained\./);
   assert.match(read('.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md'), /Never repair a missing worker credential by granting anonymous operational writes/);
+});
+
+test('Invariant 44 (Request Completion Persists Before Active-View Eviction)', () => {
+  const migration = read('supabase/migrations/20261026183000_agdata_v2372_request_completion_acknowledgment.sql');
+  const deliveryMigration = read('supabase/migrations/20261026184500_agdata_v2372_request_completion_delivery.sql');
+  const requestSubmission = read('assets/request-submission.js');
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  assert.match(migration, /from public\.ph_requests_pending where unique_id=p_request_id for update/);
+  assert.match(migration, /delete from public\.ph_requests_pending where unique_id=request_id/);
+  assert.match(migration, /request_completion_receipt_v2372/);
+  assert.match(deliveryMigration, /reconcile_request_folder_completion_v2[^]*prepare_request_folder_completion_v2/);
+  assert.match(deliveryMigration, /from public\.ph_requests_completed_history history/g);
+  assert.doesNotMatch(runtime, /Save Needs Retry/);
+  assert.match(requestSubmission, /detail\.includes\('REQUEST_NOT_FOUND'\)[^]*completionReplayUsed/);
+  assert.match(appApi, /REQUEST_NOT_FOUND[^]*request_completion_receipt_v2372/);
+  assert.match(read('.codex/skills/agdata-request-lifecycle-and-lock-guard/SKILL.md'), /Never re-read or delete a just-completed Request through `ph_active_request`/);
 });

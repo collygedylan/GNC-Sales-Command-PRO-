@@ -1,7 +1,7 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.71";
-const APP_RUNTIME_RELEASE = "AgData v2.3.71";
+const APP_RUNTIME_VERSION = "2.3.72";
+const APP_RUNTIME_RELEASE = "AgData v2.3.72";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -457,7 +457,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.71";
+  const appVersion = "2.3.72";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -7252,8 +7252,15 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     let sessionId: string;
     try { sessionId = await verifySuspendTagSession(supabase, actor, req); }
     catch { return errorResponse("A verified session is required.",403,{code:"REQUEST_WORK_SESSION_REQUIRED"}); }
-    const {data,error} = await supabase.rpc("request_work_command_v1", {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
-      ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})});
+    const requestWorkArgs = {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
+      ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})};
+    let {data,error} = await supabase.rpc("request_work_command_v1", requestWorkArgs);
+    if (error && operation === "save" && payload.complete === true && /REQUEST_NOT_FOUND/.test(error.message)) {
+      const replay = await supabase.rpc("request_completion_receipt_v2372", {
+        p_actor_id:String(actor.id), p_session_id:sessionId, p_request_id:String(payload.requestId),
+      });
+      if (!replay.error && replay.data) { data = replay.data; error = null; }
+    }
     if (error) return errorResponse(error.message, error.code === "42501" ? 403 : error.code === "PT409" ? 409 : 422,{code:error.message.match(/REQUEST_[A-Z_]+/)?.[0] || "REQUEST_WORK_FAILED"});
     if (operation === "save") {
       const receipt = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};

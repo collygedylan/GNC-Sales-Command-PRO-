@@ -151,6 +151,7 @@
         let draft = options.draft;
         let expectedVersion = Number(options.expectedVersion);
         let patch = { ...(options.initialPatch || {}) };
+        let completionReplayUsed = false;
         const maxRebases = Math.max(0, Math.min(1, Number(options.maxRebases ?? 1) || 0));
         for (let attempt = 0; attempt <= maxRebases; attempt += 1) {
             try {
@@ -162,18 +163,29 @@
                 const result = await options.send({ expectedVersion, patch, complete: !!(draft && draft.complete), attempt });
                 return { status: 'saved', result, draft, expectedVersion, patch, attempts: attempt + 1 };
             } catch (error) {
-                const detail = `${String(error && error.message || error || '')} ${String(error && error.code || '')}`.toUpperCase();
+                let activeError = error;
+                let detail = `${String(activeError && activeError.message || activeError || '')} ${String(activeError && activeError.code || '')}`.toUpperCase();
+                if (draft && draft.complete && detail.includes('REQUEST_NOT_FOUND') && !completionReplayUsed) {
+                    completionReplayUsed = true;
+                    try {
+                        const result = await options.send({ expectedVersion, patch, complete: true, attempt: attempt + 1 });
+                        return { status: 'saved', result, draft, expectedVersion, patch, attempts: attempt + 2, replayedCompletion: true };
+                    } catch (replayError) {
+                        activeError = replayError;
+                        detail = `${String(activeError && activeError.message || activeError || '')} ${String(activeError && activeError.code || '')}`.toUpperCase();
+                    }
+                }
                 const conflict = detail.includes('REQUEST_VERSION_CONFLICT') || detail.includes('40001') || Number(error && error.status) === 409;
-                if (!conflict) return { status: 'error', error, draft, attempts: attempt + 1 };
+                if (!conflict) return { status: 'error', error: activeError, draft, attempts: attempt + 1 + Number(completionReplayUsed) };
                 let canonical = null;
-                try { canonical = await options.readCanonical(); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'saveRequestWorkWithReconciliation');}
-                if (!canonical) return { status: 'review-required', reason: 'canonical-row-unavailable', error, draft, attempts: attempt + 1 };
+                try { canonical = await options.readCanonical(); } catch (readError) { globalThis.GncRuntimeWatchdog?.capture?.(readError, 'saveRequestWorkWithReconciliation');}
+                if (!canonical) return { status: 'review-required', reason: 'canonical-row-unavailable', error: activeError, draft, attempts: attempt + 1 };
                 const plan = planRequestWorkConflictRebase(draft, canonical);
-                if (plan.status !== 'rebase') return { status: 'review-required', error, draft, plan, canonical, attempts: attempt + 1 };
+                if (plan.status !== 'rebase') return { status: 'review-required', error: activeError, draft, plan, canonical, attempts: attempt + 1 };
                 if (!Object.keys(plan.patch).length) {
                     return { status: 'saved', result: { row: canonical.row, row_version: canonical.rowVersion }, draft, expectedVersion: canonical.rowVersion, patch: {}, attempts: attempt + 1, alreadyApplied: true };
                 }
-                if (attempt >= maxRebases) return { status: 'review-required', error, draft, plan, canonical, attempts: attempt + 1 };
+                if (attempt >= maxRebases) return { status: 'review-required', error: activeError, draft, plan, canonical, attempts: attempt + 1 };
                 expectedVersion = plan.expectedVersion;
                 patch = { ...plan.patch };
                 draft = { ...draft, baseVersion: canonical.rowVersion, baseValues: { ...canonical.values }, dirtyValues: { ...plan.patch } };

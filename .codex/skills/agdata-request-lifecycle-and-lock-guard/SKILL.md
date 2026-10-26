@@ -36,3 +36,5 @@ node --test tests/request-work-draft.test.mjs tests/request-submission-durabilit
 
 - Never merge completed history into the active Request queue, retain a completed row in `ph_requests_pending`, render approval decisions on a regular Request, or expose a conflict/protected banner that blocks completion.
 - Never use one lock rule across Request and published Drive/AV data; authorization context and Admin bypass must be explicit.
+- Never re-read or delete a just-completed Request through `ph_active_request`; completion makes that active-only view hide the row, so atomic persistence must retain and mutate the locked `ph_requests_pending` row until history and outbox acknowledgment finish.
+- Never validate folder-completion delivery from pending rows alone after atomic completion deletes them; both queue reconciliation and worker preparation must derive membership from pending rows plus completed history.
