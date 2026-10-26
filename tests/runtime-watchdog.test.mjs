@@ -339,7 +339,7 @@ test('watchdog keeps only current-release queued events and resolves prior relea
   assert.match(source, /LEGACY_REPORT_QUEUE_PREFIXES\.forEach\(prefix => global\.localStorage\?\.removeItem/);
   assert.match(source, /String\(event\.app_version\) === currentVersion/);
   assert.match(source, /state\.reportQueue\.length !== parsed\.length\) persistReportQueue\(\)/);
-  assert.match(api, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.70"/);
+  assert.match(api, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.71"/);
   assert.match(api, /select\("id,app_version"\)\.eq\("status", "open"\)\.limit\(1000\)/);
   assert.match(api, /update\(\{ status: "resolved" \} as never\)\.in\("id", priorIds as never\[\]\)/);
 });

@@ -651,17 +651,15 @@ function resolveSupabaseServiceRoleKey_(sourceFallbackKey) {
     const props = PropertiesService.getScriptProperties();
     const propertyKey = String(
       props.getProperty('SUPABASE_SERVICE_ROLE_KEY') ||
-      props.getProperty('SUPABASE_KEY') ||
-      props.getProperty('SUPABASE_API_KEY') ||
       props.getProperty('SUPABASE_SERVICE_KEY') ||
       ''
     ).trim();
-    if (propertyKey) return propertyKey;
+    if (propertyKey && !/^sb_publishable_/i.test(propertyKey)) return propertyKey;
   } catch (err) {
     console.warn('[SUPABASE] Could not read script properties for service role key: ' + (err && err.message ? err.message : err));
   }
   const fallbackKey = String(sourceFallbackKey || '').trim();
-  return fallbackKey && fallbackKey !== '__SUPABASE_SERVICE_ROLE_KEY__' ? fallbackKey : '';
+  return fallbackKey && fallbackKey !== '__SUPABASE_SERVICE_ROLE_KEY__' && !/^sb_publishable_/i.test(fallbackKey) ? fallbackKey : '';
 }
 
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
@@ -23392,7 +23390,9 @@ function reconcileAppsScriptActionSigningKey_(candidateKey) {
   let body;
   try { body = JSON.parse(response.getContentText() || ''); } catch (ignored) { throw new Error('APPS_SCRIPT_SIGNING_KEY_SERVICE_AUTH_REQUIRED'); }
   if (!body || !Array.isArray(body.users)) throw new Error('APPS_SCRIPT_SIGNING_KEY_SERVICE_AUTH_REQUIRED');
-  PropertiesService.getScriptProperties().setProperty('AGDATA_ACTION_SIGNING_KEY_V1', candidateKey);
+  const properties = PropertiesService.getScriptProperties();
+  properties.setProperty('AGDATA_ACTION_SIGNING_KEY_V1', candidateKey);
+  properties.setProperty('SUPABASE_SERVICE_ROLE_KEY', candidateKey);
 }
 
 function verifyAppsScriptLifecycleCanary_(action, payload) {

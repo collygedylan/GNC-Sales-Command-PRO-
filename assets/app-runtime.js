@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.70';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.71';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26566,7 +26566,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.70').trim() || 'AgData v2.3.70';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.71').trim() || 'AgData v2.3.71';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -54316,6 +54316,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function isProtectedSectionLocked(prefix, item = activeItem) {
+            if (prefix === 'req-') return false;
+            if (isDriveModePhotoDataEditContext(prefix, item)) {
+                if (getRoleAccessState()?.isAdmin) return false;
+                return sectionHasProtectedData(prefix, item);
+            }
             return isProtectedSectionCompleted(prefix, item) && sectionHasProtectedData(prefix, item);
         }
 
@@ -54382,6 +54387,10 @@ function toggleDriveQuickRequestItem(domId) {
                 return;
             }
             bar.classList.remove('hidden');
+            if (isDriveModePhotoDataEditContext(prefix)) {
+                bar.innerHTML = `<div class="bg-gray-50 border border-gray-200 rounded-xl p-3"><div class="text-[10px] font-black text-gray-600 uppercase tracking-wider">Published Data</div><div class="text-xs font-semibold text-gray-700 mt-1">Published evaluation fields are read-only for non-Admin users.</div></div>`;
+                return;
+            }
             if (isProtectedUnlocked(prefix)) {
                 bar.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black text-amber-700 uppercase tracking-wider">Protected Data Unlocked</div><div class="text-xs font-semibold text-amber-900">Completed data stays editable until you lock it again.</div></div><button class="bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm" onclick="lockProtectedSection('${prefix}')">LOCK NOW</button></div>`;
             } else if (!canUnlockProtectedData()) {
@@ -105989,7 +105998,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const globalAvContainer = document.getElementById('global-av-container');
             if (globalAvContainer) globalAvContainer.classList.add('hidden');
             const globalAvNote = document.getElementById('global-av-note');
-            if (globalAvNote) globalAvNote.value = getItemDisplayValue(item, 'AV_NOTE', safeDetailSourceView) || "";
+            if (globalAvNote) globalAvNote.value = sanitizeAvNoteWithoutSpecCaliper(getItemDisplayValue(item, 'AV_NOTE', safeDetailSourceView));
 
             resetDetailOverviewShellState(detailSourceView);
             renderInventoryEditDetailAction(item, safeDetailSourceView);
@@ -106040,7 +106049,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     : firstNonEmptyValue(sharedPickValue, standardPick, ''));
             if (comments) comments.value = safePrefix === 'req-' ? getRequestEditableCommentsValue(item) : sharedSalesNoteValue;
             if (desc) desc.value = item.DOCK_NOTE || '';
-            if (avNote) avNote.value = safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_AV_NOTE, item.AV_NOTE, '') : (safePrefix === 'req-' ? requestAvNoteValue : sharedAvNoteValue);
+            if (avNote) avNote.value = sanitizeAvNoteWithoutSpecCaliper(safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_AV_NOTE, item.AV_NOTE, '') : (safePrefix === 'req-' ? requestAvNoteValue : sharedAvNoteValue));
             applyAvNoteFieldVisibilityForPrefix(safePrefix, item);
 
             if (safePrefix === 'req-') {
@@ -144011,7 +144020,7 @@ C.14.043 C.15.000
             const saveBtn = document.getElementById('sales-office-av-save-btn');
             const uid = String(uidField && uidField.value || '').trim();
             if (!uid || !textField) return;
-            const nextValue = String(textField.value || '').trim().toUpperCase();
+            const nextValue = sanitizeAvNoteWithoutSpecCaliper(textField.value).toUpperCase();
             const salesOfficeRow = salesOfficeInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === uid);
             if (!salesOfficeRow) {
                 showToast('Not Found', 'That Sales Office row could not be found.', true);
@@ -145842,16 +145851,7 @@ C.14.043 C.15.000
                 const historyBadge = item.REQUEST_HISTORY
                     ? `<span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">History</span>`
                     : '';
-                let actionBadge = '';
-                if (requestDone && !isDockSuspendDcRequestMirrorRow(item) && !requestDeliverySending && !requestDeliveryNeedsAttention && !item.REQ_ARCHIVED && !item.REQUEST_HISTORY) {
-                    if (item.REQ_REP_ACTION === 'Approved') {
-                        actionBadge = `<div class="mt-3 text-[10px] font-black text-green-700 bg-green-100 text-center py-2 rounded-lg border border-green-200 uppercase tracking-widest">APPROVED</div>`;
-                    } else if (item.REQ_REP_ACTION === 'Rejected') {
-                        actionBadge = `<div class="mt-3 text-[10px] font-black text-red-700 bg-red-100 text-center py-2 rounded-lg border border-red-200 uppercase tracking-widest">REJECTED</div>`;
-                    } else {
-                        actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`;
-                    }
-                }
+                const actionBadge = '';
                 const nestedDockActionPressAttrs = 'data-fast-press-ignore onpointerdown="return stopNestedCardActionPress(event)" ontouchstart="return stopNestedCardActionPress(event)" onmousedown="return stopNestedCardActionPress(event)"';
                 const requestRemoveButtonHtml = '';
                 const dockSuspendTagActionHtml = isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag'
@@ -167806,7 +167806,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
-                    if (avEl) { itemToSave.AV_NOTE = normalizeDetailSpecTextForSave(avEl.value).toUpperCase(); }
+                    if (avEl) { itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(avEl.value).toUpperCase(); }
 
                     let descEl = prefix === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                     if (descEl && prefix === 'dock-') {
@@ -167842,7 +167842,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
                         itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value;
                     } else if (prefix === 'flyer-') {
-                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) itemToSave.AV_NOTE = flyerAvEl.value.toUpperCase();
+                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(flyerAvEl.value).toUpperCase();
                         let flyerMatchEl = document.getElementById('flyer-match'); if (flyerMatchEl) itemToSave.MATCH = getEditableLocMatchPercentValue(flyerMatchEl.value);
                         let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) { const normalizedSpec = normalizeDetailSpecTextForSave(flyerSpecEl.value); flyerSpecEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
                         let flyerCalEl = document.getElementById('flyer-caliper'); if (flyerCalEl) itemToSave.CALIPER = flyerCalEl.value;
@@ -168972,8 +168972,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                             const requestWorkFormValuesAtDispatch = getRequestWorkFormValues(itemToSave) || {};
                             const requestWorkCacheEntryTimestampAtDispatch = Number(getPendingEditsCache()[String(itemToSave.UNIQUE_ID || '').trim()]?.timestamp || 0);
                             const requestSaveIdentityScope = getSupabaseReadIdentityScope();
+                            const requestSavePermissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
                             const assertRequestSaveScope = () => {
-                                if (requestSaveIdentityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                                if (requestSaveIdentityScope !== getSupabaseReadIdentityScope()
+                                    || requestSavePermissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
                             };
                             const requestSaveOutcome = await saveRequestWorkWithReconciliation({
                                 assertScope: assertRequestSaveScope,
@@ -169484,6 +169486,10 @@ ${folderNote ? `Folder Note: ${folderNote}
         function updateRequestWorkConflictReview(item = activeItem) {
             const panel = document.getElementById('req-version-conflict-review');
             if (!panel) return;
+            void item;
+            panel.replaceChildren();
+            panel.classList.add('hidden');
+            return;
             const requestId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
             const entry = requestId ? getPendingEditsCache()[requestId] : null;
             const draft = entry && entry.requestWorkDraft;

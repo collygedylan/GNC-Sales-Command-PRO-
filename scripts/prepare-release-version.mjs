@@ -7,6 +7,7 @@ export function prepareReleaseVersion(root=process.cwd(), check=false) {
   const read=p=>fs.readFileSync(path.join(root,p),'utf8');
   const packageManifest=JSON.parse(read('package.json'));
   const version=packageManifest.version;
+  const previousVersion=String(process.env.PREVIOUS_RELEASE_VERSION || '').trim();
   const preservedScriptRelease=packageManifest.appsScriptRelease;
   if (preservedScriptRelease !== undefined && normalizeRelease(preservedScriptRelease) !== preservedScriptRelease) throw new Error('RELEASE_APPS_SCRIPT_PIN_INVALID');
   const next=normalizeRelease(`V${version}`), changes=[];
@@ -32,6 +33,9 @@ export function prepareReleaseVersion(root=process.cwd(), check=false) {
     if (!normalizeRelease(previous) && !/^V\d{4}\.\d{2}\.\d{2}\.v2\.\d+$/.test(previous || '')) throw new Error(`RELEASE_MARKER_MISSING:${file}`);
     if (file==='v2/public/manifest.webmanifest' && JSON.parse(before).start_url!==`./?shellv=${encodeURIComponent(previous)}`) throw new Error('RELEASE_V2_START_URL_MISMATCH');
     let after=before.replaceAll(previous,next);
+    if (/^\d+\.\d+\.\d+$/.test(previousVersion)) {
+      after=after.replaceAll(`AgData v${previousVersion}`,next).replaceAll(previousVersion,version);
+    }
     if (file==='index.html') after=after.replace(/(window\.__APP_RELEASE_VERSION__\s*=\s*['"])[^'"]+(['"])/, `$1${next}$2`);
     if (encodeURIComponent(previous)!==previous) after=after.replaceAll(encodeURIComponent(previous),encodeURIComponent(next));
     after=after.replaceAll(`?v=${next}`,`?v=${encodeURIComponent(next)}`).replaceAll(`&v=${next}`,`&v=${encodeURIComponent(next)}`);
@@ -47,6 +51,16 @@ export function prepareReleaseVersion(root=process.cwd(), check=false) {
   if (!check) {
     lock.version=version; lock.packages[''].version=version;
     changes.push(['package-lock.json',JSON.stringify(lock,null,2)+'\n']);
+    if (/^\d+\.\d+\.\d+$/.test(previousVersion)) {
+      for (const file of ['tests/code-health-governance.test.mjs','tests/release-app-lifecycle.test.mjs',
+        'tests/agdata-governance.test.mjs','tests/golden-invariants.test.mjs','supabase/functions/app-api/index.ts',
+        'assets/runtime-watchdog.js']) {
+        if (!fs.existsSync(path.join(root,file))) continue;
+        const before=read(file);
+        const after=before.replaceAll(`AgData v${previousVersion}`,next).replaceAll(previousVersion,version);
+        if (before!==after) changes.push([file,after]);
+      }
+    }
     for (const [file,contents] of changes) fs.writeFileSync(path.join(root,file),contents);
   }
   return next;

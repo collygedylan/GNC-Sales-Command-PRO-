@@ -41,6 +41,9 @@ Before modifying any module, load and follow the corresponding domain skill(s) f
 10. `.codex/skills/agdata-app-shell-and-navigation/SKILL.md` — Shared view router, Home/Menu/footer, header/search/Back ownership, breadcrumb/history stack, modal delegation and theme chrome; load with a feature skill whenever navigation changes.
 11. `.codex/skills/agdata-aura-assistant/SKILL.md` — AURA voice/query lifecycle, per-account capabilities, bounded inventory/history/SOC analytics, reviewed draft actions and the separate legacy assistant boundary.
 12. `.codex/skills/agdata-runtime-watchdog/SKILL.md` — Passive runtime load/error telemetry, bounded incident persistence and the authorized Manager review panel.
+13. `.codex/skills/agdata-request-lifecycle-and-lock-guard/SKILL.md` — Pending-only Request lifecycle, completion archival, draft continuity and role-correct published evaluation locks.
+14. `.codex/skills/agdata-suspend-tag-approval-specialist/SKILL.md` — Suspend-only assigned-rep/Admin decisions, physical tag identity and immutable approval receipts.
+15. `.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md` — Private durable outbox writes, service-role Apps Script workers, immediate wake/retry and confirmed recipient contracts.
 
 Use [the canonical module dependency map](docs/architecture/agdata-module-dependency-map.md) for exact functions, shared state, backend contracts and the 1–3 focused Node targets for each cluster. Its source inventory is an audit snapshot, not a release receipt or permission to skip current checks. Register skill additions in `scripts/run-tooling-release-checks.mjs`; preserve shared Back/navigation dependencies in every domain skill.
 

@@ -156,9 +156,9 @@ export function inventoryReclassMoveError(error: unknown) {
   const code = /^(?:INVENTORY_RECLASS|DRIVE_RECLASS)_[A-Z0-9_]+$/.test(message) ? message : 'INVENTORY_RECLASS_UNAVAILABLE';
   const forbidden = /FORBIDDEN|PERMISSION_REQUIRED|PROFILE_INACTIVE|ACTOR_REQUIRED/.test(code) || source.code === '42501';
   const conflict = /CONFLICT|CHANGED|MISSING|AMBIGUOUS|MISMATCH|REFRESH_REQUIRED/.test(code) || (source.code === "40001" || source.code === "PT409");
-  const status = forbidden ? 403 : conflict ? 400 : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 503 : 400;
+  const status = forbidden ? 403 : conflict ? 409 : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 503 : 400;
   return { status, body: { ok: false, code, message: forbidden ? 'You do not have access to Reclass this inventory.'
-    : conflict ? 'The exact source or destination row no longer matches this move. Your draft is retained.'
+    : conflict ? 'Inventory identity changed before this move could be confirmed. Your draft is retained.'
       : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 'The inventory movement could not be saved. Retry with the same command.'
         : 'Review the movement details and try again.' } };
 }

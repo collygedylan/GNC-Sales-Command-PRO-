@@ -106,3 +106,4 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 - Never collapse physical Suspend rows, infer mutation authority from cached UI state, add JD/Sunday as fixed Reclass recipients, or block opening a displayed-card Reclass draft on a background refresh.
 - Never treat request age, status text, completion-date text, tombstone presence, or history membership alone as proof that an active Request is fulfilled.
 - Never write the legacy master `pick` field without synchronizing canonical `pick_note`, or collapse Request rows that share an item but have distinct location/lot identities.
+- Never reject an otherwise authorized Reclass move because mutable On Hand or Available changed after the draft opened; lock the current source, retain stable physical identity checks, auto-create missing destination lots, and rely on command receipts for idempotency.

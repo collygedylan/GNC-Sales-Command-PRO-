@@ -1328,7 +1328,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.70"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.71"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1353,9 +1353,9 @@ test('Invariant 41 (Canonical Version Mismatch Forces One-Time Newest-Shell Logi
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.70"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.71"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.70"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.71"[^]*app_version: appVersion/);
   assert.match(read('.codex/skills/agdata-zero-lockout-guard/SKILL.md'), /Never defer a confirmed canonical app-version mismatch/);
 });
 
@@ -1367,4 +1367,26 @@ test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', 
   assert.match(writer, /writeFile\(path\.join\(siteRoot, 'deployments', `\$\{fingerprint\.commit\}\.json`\), serialized, 'utf8'\)/);
   assert.match(lifecycle, /fetch\(`\.\/deployment-fingerprint\.json\?t=\$\{Date\.now\(\)\}`/);
   assert.match(read('.codex/skills/agdata-release-governor/SKILL.md'), /Never add a runtime release-descriptor fetch path without emitting that exact path/);
+});
+
+test('Invariant 43 (Request, Suspend, Reclass, Import, Outbox, and AV Boundaries Stay Separated)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const codeGs = read('Code.gs');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_suspend_email_and_lock_cleanup.sql');
+  const reclass = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
+  assert.match(runtime, /const actionBadge = '';/);
+  assert.match(runtime, /function updateRequestWorkConflictReview[^]*panel\.classList\.add\('hidden'\);[^]*return;/);
+  assert.match(runtime, /if \(prefix === 'req-'\) return false/);
+  assert.match(runtime, /isDriveModePhotoDataEditContext\(prefix, item\)[^]*getRoleAccessState\(\)\?\.isAdmin/);
+  assert.match(runtime, /sanitizeAvNoteWithoutSpecCaliper/);
+  assert.match(codeGs, /setProperty\('SUPABASE_SERVICE_ROLE_KEY', candidateKey\)/);
+  assert.doesNotMatch(functionSource('Code.gs', 'resolveSupabaseServiceRoleKey_'), /SUPABASE_KEY|SUPABASE_API_KEY/);
+  assert.match(migration, /revoke all privileges on table public\.ph_request_delivery_outbox from public, anon, authenticated/);
+  assert.match(migration, /grant all privileges on table public\.ph_request_delivery_outbox to service_role/);
+  assert.match(migration, /lower\(btrim\(coalesce\(pending\.req_status, 'Pending'\)\)\) in \('', 'pending', 'open'\)/);
+  assert.match(migration, /RECLASS_STALE_QUANTITY_GUARD_NOT_FOUND/);
+  assert.match(reclass, /insert into public\.ph_master_inventory/);
+  assert.match(read('supabase/functions/_shared/production-workflow.ts'), /Inventory identity changed before this move could be confirmed\. Your draft is retained\./);
+  assert.match(read('.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md'), /Never repair a missing worker credential by granting anonymous operational writes/);
 });

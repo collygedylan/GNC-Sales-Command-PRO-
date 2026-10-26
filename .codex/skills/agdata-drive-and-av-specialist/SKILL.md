@@ -100,6 +100,8 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never persist or prefill AV Note measurement fragments containing SPEC or CALIPER, and never make Admin users press-and-hold to edit published evaluation data; sanitize load/save while keeping non-Admin published fields read-only.
+
 - Never let a delayed AV view reset erase a focused search that the user entered after the view became visible; explicit Reset/Home actions may clear it, background startup rendering may not.
 
 - Never make an exact AV itemcode search wait for a near-tail full-cohort page or a native-session header refresh; hydrate that bounded public-read item directly into the partial same-account view while complete keyset hydration continues in the background.

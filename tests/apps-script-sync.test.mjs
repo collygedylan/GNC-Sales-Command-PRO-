@@ -180,7 +180,8 @@ test('ingestion deployment selects every changed function and preserves remote s
     'buildStandardPayload', 'buildMasterPayload', 'buildCavPayload',
     'getFastLiveIngestDatasetKey_', 'getFastLiveIngestRpc_', 'getFastLiveFileMeta_',
     'getFastLiveIngestRows_', 'processFastLiveFile_', 'runRoutedDropImport_',
-    'runWarehouseAssignedOnly', 'runCavOnly', 'verifyAppsScriptActionEnvelope_', 'doPost',
+    'runWarehouseAssignedOnly', 'runCavOnly', 'resolveSupabaseServiceRoleKey_', 'getSupabaseHeaders_',
+    'reconcileAppsScriptActionSigningKey_', 'verifyAppsScriptActionEnvelope_', 'doPost',
   ]);
   assert.equal(manifest.appsScriptPatchRelease, true);
   const untouched = 'const HISTORICAL_BACKFILL_PAUSED = true;\nconst AUTO_SYNC_PAUSED = true;';

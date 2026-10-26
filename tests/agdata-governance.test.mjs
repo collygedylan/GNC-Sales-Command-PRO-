@@ -22,6 +22,9 @@ const domains = {
   'app-shell-and-navigation': ['goBackUniversal', 'switchView', 'viewHistoryStack', 'global-header-inline-back', 'data-secondary-back', 'Home'],
   'aura-assistant': ['callAuraLlmRouter', 'requestAuraQuery', 'switchView', 'aura_voice_access_v1', 'legacy'],
   'runtime-watchdog': ['GncRuntimeWatchdog', 'VIEW_LOAD_STALL', 'watchdog_log_event', 'watchdog_list_events', 'COPY AI FIX BRIEF', 'switchView', 'goBackUniversal'],
+  'request-lifecycle-and-lock-guard': ['Que -> REQUEST', 'Pending', 'MARK DONE', 'Admin', 'ph_active_request'],
+  'suspend-tag-approval-specialist': ['Suspend Tag', 'assigned rep', 'Admin', 'canDecide', 'suspend_tag_command_v1'],
+  'email-outbox-and-worker-guard': ['ph_request_delivery_outbox', 'service-role', 'Code.gs', 'processRequestDeliveryOutbox_', 'Dylan', 'Megan', 'Sharon'],
 };
 
 test('all AgData domain skills have valid unique manifests and requested contracts', () => {
@@ -48,7 +51,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    '09bb1c6ad3bfd5798d87d949bb3cdf07590917316042f2da64e81e2a4ced42ea');
+    '1e96e35c8185ec1965a0814ef206d46d7f1eec235b311420e68f3e3cfc04b509');
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));
@@ -147,7 +150,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.70'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'canonical-version-enforcement-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.70'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.71'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'canonical-version-enforcement-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.71'/);assert.match(sw,/cache: 'reload'/);
 });
 
 

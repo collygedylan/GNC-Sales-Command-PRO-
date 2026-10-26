@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.70",
+  "release": "AgData v2.3.71",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -551,6 +551,59 @@
         "supabase/migrations/20261026140000_agdata_v2369_emergency_recovery.sql": [
           "claim_request_delivery_events",
           "safe_parse_timestamptz"
+        ]
+      }
+    },
+    "agdata-request-lifecycle-and-lock-guard": {
+      "assets/app-runtime.js": [
+        "renderRequest",
+        "buildPendingRequestRenderPlan",
+        "updateRequestWorkConflictReview",
+        "isProtectedSectionLocked"
+      ],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [
+        "request_work_command_v1"
+      ],
+      "Code.gs": [],
+      "supportingFiles": {
+        "supabase/migrations/20261026170000_agdata_v2371_request_suspend_email_and_lock_cleanup.sql": [
+          "ph_active_request",
+          "persist_completed_request_history_v1"
+        ]
+      }
+    },
+    "agdata-suspend-tag-approval-specialist": {
+      "assets/app-runtime.js": [
+        "buildSuspendTagActions",
+        "openSuspendTagApproval"
+      ],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": [],
+      "supportingFiles": {
+        "supabase/functions/_shared/suspend-tag.ts": [
+          "handleSuspendTag",
+          "verifySuspendTagSession"
+        ]
+      }
+    },
+    "agdata-email-outbox-and-worker-guard": {
+      "assets/app-runtime.js": [],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [
+        "dispatchRequestDeliveryWorkerNow"
+      ],
+      "Code.gs": [
+        "resolveSupabaseServiceRoleKey_",
+        "getSupabaseHeaders_",
+        "reconcileAppsScriptActionSigningKey_",
+        "processRequestDeliveryOutbox_"
+      ],
+      "supportingFiles": {
+        "supabase/migrations/20261026170000_agdata_v2371_request_suspend_email_and_lock_cleanup.sql": [
+          "claim_request_delivery_events",
+          "ph_request_delivery_outbox"
         ]
       }
     },

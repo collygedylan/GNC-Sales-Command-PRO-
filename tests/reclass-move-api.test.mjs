@@ -75,11 +75,11 @@ test('Reclass API rejects unsupported receipt codecs before RPC dispatch', async
 
 test('Reclass API errors are sanitized and route registration remains in the app-api entrypoint', () => {
   assert.deepEqual(inventoryReclassMoveError({ code: '40001', message: 'INVENTORY_RECLASS_SOURCE_CHANGED', details: 'sensitive SQL' }), {
-    status: 400,
+    status: 409,
     body: { ok: false, code: 'INVENTORY_RECLASS_SOURCE_CHANGED',
-      message: 'The exact source or destination row no longer matches this move. Your draft is retained.' },
+      message: 'Inventory identity changed before this move could be confirmed. Your draft is retained.' },
   });
-  assert.equal(inventoryReclassMoveError({ code: '40001', message: 'INVENTORY_RECLASS_DESTINATION_SEASON_MISMATCH' }).status, 400);
+  assert.equal(inventoryReclassMoveError({ code: '40001', message: 'INVENTORY_RECLASS_DESTINATION_SEASON_MISMATCH' }).status, 409);
   assert.equal(inventoryReclassMoveError({ message: 'secret database detail' }).body.code, 'INVENTORY_RECLASS_UNAVAILABLE');
   const entrypoint = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
   assert.match(entrypoint, /action === "inventory_reclass_move"/);

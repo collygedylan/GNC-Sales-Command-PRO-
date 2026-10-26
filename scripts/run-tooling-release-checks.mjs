@@ -11,15 +11,19 @@ export const toolingSkillManifests = Object.freeze([
   'agdata-docks-and-orders-specialist',
   'agdata-drive-and-av-specialist',
   'agdata-field-ops-and-qc',
+  'agdata-email-outbox-and-worker-guard',
   'agdata-queue-and-reclass-specialist',
   'agdata-release-governor',
+  'agdata-request-lifecycle-and-lock-guard',
   'agdata-runtime-watchdog',
   'agdata-skill-learner',
+  'agdata-suspend-tag-approval-specialist',
   'agdata-sync-and-supabase-architect',
   'agdata-zero-lockout-guard',
 ].map(name => `.codex/skills/${name}/SKILL.md`));
 
 export const toolingReleaseCheckFiles = Object.freeze([
+  'scripts/enforce-all-14-gems-gate.mjs',
   'tests/golden-invariants.test.mjs',
   'tests/release-scope.test.mjs',
   'tests/main-release-registration.test.mjs',

@@ -52,7 +52,7 @@ test('manual Done can supersede an earlier edit conflict and background retries 
     for (const guard of guards) assert.match(guard, /!isComplete/);
     const flush = html.slice(html.indexOf('        async function flushPendingRequestWorkEdits('));
     assert.match(flush, /entry\.conflictType = blocked\.complete && blocked\.intentPolicy === 'local-command' \? 'request-completion' : 'request-work'/);
-    assert.match(flush, /if \(complete && isRequestComplete\(formatted\)\) confirmQueueCompletion\(formatted\)/);
+    assert.match(flush, /if \(complete && isRequestComplete\(formatted\)\) \{[^]*confirmQueueCompletion\(formatted\)/);
 });
 
 test('overlapping edits require explicit per-field choices and retain completion intent', () => {
