@@ -64,7 +64,14 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 - Keep all 12 Dylan Home tiles above the bottom navigation with no clipped sixth row; `Production` and `Smart Sales & Move` are permanent acceptance tiles. `switchView('smart-moves')` must start `warmSalesIntelligenceData` and render the view immediately while datasets hydrate.
 - Navigation changes must be traced through shell DOM/CSS, feature state, app-api reads, and any SQL readiness contract without inventing a local router or blocking the current authenticated view.
 
+## Mandatory 4-Caller & All-11-Gems Impact Contract
+
+- Before any migration, RLS/trigger, app-api, Apps Script, or runtime hydration change, verify browser direct operational reads, the `Code.gs` delivery worker, bounded app-api startup work, and typed/guarded Postgres triggers across every Gem domain.
+- Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never hide a loaded view behind a dataset/access refresh, add a duplicate Back implementation, clip Home row 6, or leave Smart Moves on its hydration placeholder after navigation.
 - Never repair a feature by directly toggling unrelated `#view-*` roots or by returning transient `401`/`403`/`409`/`423` responses to an already authorized fail-open read.

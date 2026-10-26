@@ -173,6 +173,15 @@ function mergeAppsScriptPostGate(remote, local) {
   return remote.replace(oldEntry, guardedEntry);
 }
 
+function mergeRequestDeliveryWakeDispatch(remote, local) {
+  const route = "    if (payload.type === 'wake_delivery_worker') {\n      const deliveryLimit = Math.max(1, Math.min(100, Number(payload.limit) || 40));\n      return jsonOutput_(processRequestDeliveryOutbox_(deliveryLimit));\n    }";
+  const anchor = "    if (payload.type === 'photo_history_thumbnail') {";
+  if (!local.includes(route)) return remote;
+  if (remote.includes(route)) return remote;
+  if (remote.split(anchor).length !== 2) fail('DELIVERY_WAKE_REMOTE_ANCHOR');
+  return remote.replace(anchor, route + '\n' + anchor);
+}
+
 /** Preserve remote source verbatim outside the explicitly authorized functions. */
 export function patchAppsScriptFunctions({ remoteSource, localSource, functionNames, includeRelease = false }) {
   if (!Array.isArray(functionNames) || !functionNames.length
@@ -206,6 +215,7 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
       if (replacement.includes("if (payload.type === 'manual_continue')")) remoteBlock = mergeManualContinuation(remoteBlock, replacement);
       if (replacement.includes("if (payload.type === 'runtime_watchdog_alert_v1')")) remoteBlock = mergeRuntimeWatchdogDispatch(remoteBlock, replacement);
       if (replacement.includes('authorizeAppsScriptPost_(JSON.parse(e.postData.contents))')) remoteBlock = mergeAppsScriptPostGate(remoteBlock, replacement);
+      remoteBlock = mergeRequestDeliveryWakeDispatch(remoteBlock, replacement);
       replacement = remoteBlock;
     }
     return { name, ...remote.get(name), replacement };

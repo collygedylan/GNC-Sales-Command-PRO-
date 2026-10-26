@@ -21531,6 +21531,18 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return Object.prototype.hasOwnProperty.call(datasets, table) ? datasets[table] : '';
         }
 
+        const DIRECT_POSTGREST_READ_TABLES = new Set([
+            'ph_master_inventory',
+            'ph_cav_import',
+            'ph_reserves',
+            'ph_soc_master',
+            'ph_customer_consignee_sales_reps'
+        ]);
+
+        function isDirectPostgrestReadTable(table = '') {
+            return DIRECT_POSTGREST_READ_TABLES.has(normalizeAppTableName(table));
+        }
+
         function getAuthorizedDatasetRead(table = '') {
             const aliases = { suspend:'ph_soc_suspend_tag_rows', suspend_tag:'ph_soc_suspend_tag_rows', requests:ACTIVE_REQUEST_TABLE, request_queue:ACTIVE_REQUEST_TABLE, shear_list:'ph_shear_list', recount:'ph_sales_office', location_move:'location_moves' };
             const value = String(table || '').trim().toLowerCase().replace(/-/g, '_');
@@ -21749,6 +21761,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function fetchInventoryReadPage(operation, params = {}, limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
             const safeLimit = Math.max(1, Math.min(1000, Math.floor(Number(limit) || INITIAL_PAGE_LIMIT)));
             const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
+            if (operation === 'master_page' && String(params.dataset || '').trim().toLowerCase() === 'master'
+                && ['browse', 'full'].includes(String(params.projection || '').trim().toLowerCase())) {
+                return fetchDirectMasterInventoryPage(params, safeLimit, safeOffset, options);
+            }
             const result = await requestInventoryRead(operation, { ...params, limit: safeLimit, offset: safeOffset }, options);
             if (!result || !Array.isArray(result.rows)) throw new Error('Inventory data returned an invalid page; verified cached rows were retained.');
             validateInventoryReadProjection(result, params);
@@ -21773,6 +21789,34 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 throw new Error(`${requested === 'full' ? 'Full' : 'Browse'} inventory field coverage was missing or invalid; the partial snapshot was discarded.`);
             }
             return true;
+        }
+
+        async function fetchDirectMasterInventoryPage(params = {}, limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
+            const projection = String(params.projection || '').trim().toLowerCase();
+            const contract = window.AgMetricInventoryList;
+            const columns = projection === 'full' ? contract?.physicalColumns : contract?.columns;
+            if (!['browse', 'full'].includes(projection) || !Array.isArray(columns) || !columns.length) {
+                throw new Error('Direct inventory projection is unavailable.');
+            }
+            const safeLimit = Math.max(1, Math.min(1000, Math.floor(Number(limit) || INITIAL_PAGE_LIMIT)));
+            const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
+            const query = `select=${columns.join(',')}&order=unique_id.asc&limit=${safeLimit}&offset=${safeOffset}`;
+            const page = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory', query, {
+                timeoutMs: Number(options.timeoutMs) || SUPABASE_READ_TIMEOUT_MS,
+                count: true,
+                signal: options.signal
+            });
+            const total = page.total == null ? null : Number(page.total);
+            return {
+                rows: page.rows,
+                total: Number.isFinite(total) ? total : null,
+                offset: safeOffset,
+                limit: safeLimit,
+                hasMore: Number.isFinite(total) ? safeOffset + page.rows.length < total : page.rows.length === safeLimit,
+                projection,
+                fieldCoverage: projection,
+                columns: columns.slice()
+            };
         }
 
         async function fetchAllInventoryReadRows(operation, params = {}, options = {}) {
@@ -23568,6 +23612,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return owned;
         }
 
+        function scheduleRequestDeliveryWake(source = 'request_action') {
+            if (!currentUser || navigator.onLine === false) return false;
+            const deliverySource = String(source || 'request_action').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 80);
+            Promise.resolve().then(() => postAppFunctionJson(APP_API_FUNCTION_URL, {
+                action: 'delivery_wake', source: deliverySource
+            }, { timeoutMs: 5000, label: 'Request delivery wake' })).catch(() => false);
+            return true;
+        }
+
         function getRequestSubmissionController() {
             if (requestSubmissionController) return requestSubmissionController;
             const generation = requestSubmissionGeneration;
@@ -23633,6 +23686,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'POST', result.rows.map(row => ({ unique_id: row.unique_id || row.UNIQUE_ID })), '');
                         flushQueuedAppLiveEvents().catch(() => {});
                     });
+                    scheduleRequestDeliveryWake('request_created');
                     showToast('Requests saved', 'Requests saved; email queued', false);
                 }
             });
@@ -26383,8 +26437,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return appendEvalMasterScopeToQuery(`select=${getMasterInitialSelectFields()}&order=unique_id.asc`);
         }
 
+        function getMasterFullSelectFields() {
+            const columns = window.AgMetricInventoryList?.physicalColumns;
+            return Array.isArray(columns) && columns.length ? columns.join(',') : getMasterInitialSelectFields();
+        }
+
         function buildMasterFullDatasetQuery() {
-            return appendEvalMasterScopeToQuery('select=*&order=unique_id.asc');
+            return appendEvalMasterScopeToQuery(`select=${getMasterFullSelectFields()}&order=unique_id.asc`);
         }
 
         function buildAvSeasonDatasetQuery() {
@@ -28798,7 +28857,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             // Optional AV enhancements still refresh, but an unopened notes or
             // customer/hot-price surface must not hold the catalog at its preview.
             if (view === 'av') {
-                for (const key of ['customerRepMap', 'avHotPriceKeys', 'avNotes']) {
+                for (const key of ['customerRepMap', 'avHotPriceKeys']) {
                     if (!foregroundIds.has(`core:${key}`) && !backgroundAdapters.some(adapter => adapter.id === `core:${key}`)) {
                         backgroundAdapters.push(createProductionCoreLiveAdapter(key,
                             getProductionCoreLiveProjection(key, view, foregroundContext), { pageConcurrency: 1 }));
@@ -31766,7 +31825,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function renderEvalWorkAvNoteChoices(search = '') {
             const host = document.getElementById('eval-work-av-note-choices');
             if (!host) return false;
-            if (!ensureVerifiedAvNoteChoices(host, 'eval-sheet', () => renderEvalWorkAvNoteChoices(document.getElementById('eval-work-av-note-search')?.value || ''))) return false;
+            const contextItem = getEvalWorkAvNoteContextItem();
+            void ensureItemcodeAvNoteOptions(contextItem, () => renderEvalWorkAvNoteChoices(document.getElementById('eval-work-av-note-search')?.value || ''));
             const needle = normalizeSearchValue(search);
             const values = getEvalWorkAvNoteValues().filter((value) => !needle || normalizeSearchValue(value).includes(needle));
             host.innerHTML = values.length ? values.map((value) => `<button type="button" data-eval-av-note="${escapeHtml(value)}" onclick="return selectEvalWorkAvNote(this.dataset.evalAvNote)">${escapeHtml(value)}</button>`).join('') : '<p>No AV Notes match this search.</p>';
@@ -31834,16 +31894,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const list = document.getElementById('eval-work-av-dropdown-list');
             const work = getEvalWorkById(activeEvalWorkDetailId);
             if (!input || !list || !work) return false;
-            if (!ensureVerifiedAvNoteChoices(list, 'eval-inline', () => filterEvalWorkAvNotes(input.value))) return false;
-            if (!isDatasetLoaded('avNotes', 'initial')) {
-                ensureDatasetLoaded('avNotes', 'full').then(() => filterEvalWorkAvNotes(search)).catch(() => {});
-                return false;
-            }
             const origin = getEvalWorkOriginEntries(work).find((entry) => entry.origin_unique_id === evalWorkActiveOriginUid) || {};
             const row = getEvalWorkOriginSourceRow(work, origin);
-            const commonKey = String(firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, work.commonname, '') || '').trim().toUpperCase();
+            const contextItem = {
+                ITEMCODE: firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, work.itemcode, ''),
+                COMMONNAME: firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, work.commonname, '')
+            };
+            void ensureItemcodeAvNoteOptions(contextItem, () => filterEvalWorkAvNotes(input.value));
             const needle = String(search === undefined ? input.value : search || '').trim().toUpperCase();
-            const values = getIndexedAvNotes(commonKey).filter((note) => !needle || String(note || '').toUpperCase().includes(needle)).slice(0, 120);
+            const values = getIndexedAvNotes(contextItem).filter((note) => !needle || String(note || '').toUpperCase().includes(needle)).slice(0, 120);
             list.innerHTML = values.length
                 ? values.map((value) => `<button type="button" data-eval-av-note="${escapeHtml(value)}" onmousedown="event.preventDefault()" onclick="return selectEvalWorkInlineAvNote(this.dataset.evalAvNote)">${escapeHtml(value)}</button>`).join('')
                 : `<p>${needle ? 'No saved AV Notes match. Keep typing to use your custom note.' : 'No saved AV Notes for this row. Type a custom note.'}</p>`;
@@ -34131,9 +34190,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getFullDatasetPageLimit(table = '') {
-            if (getAuthorizedDatasetRead(String(table || '').trim())) return 500;
-            if (getAvReadDataset(String(table || '').trim())) return 500;
             const normalizedTable = String(table || '').trim();
+            if (isDirectPostgrestReadTable(normalizedTable)) return 1000;
+            if (getAuthorizedDatasetRead(normalizedTable)) return 500;
+            if (getAvReadDataset(normalizedTable)) return 500;
             if (normalizedTable === 'ph_master_inventory') return (isIOSDevice() || isStandaloneApp()) ? 900 : 1000;
             if (normalizedTable === 'ph_reserves') return (isIOSDevice() || isStandaloneApp()) ? 4000 : 5000;
             return 1000;
@@ -34141,6 +34201,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getFullDatasetPageConcurrency(table = '') {
             const normalizedTable = String(table || '').trim();
+            if (normalizedTable === 'ph_master_inventory' || normalizedTable === 'ph_customer_consignee_sales_reps') return 4;
+            if (isDirectPostgrestReadTable(normalizedTable)) return 3;
             if (normalizedTable === 'ph_master_inventory' || normalizedTable === 'ph_reserves') return 2;
             if (normalizedTable === CROP_ROLL_DRIVE_OPEN_ROWS_TABLE || normalizedTable === CROP_ROLL_DRIVE_SOURCE_TABLE) return 2;
             return 1;
@@ -34156,6 +34218,30 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             } catch (error) {
                 return null;
             }
+        }
+
+        async function fetchDirectPostgrestReadPage(table, queryString = '', options = {}, allowAnonFallback = false) {
+            const safeTable = normalizeAppTableName(table);
+            const opts = options && typeof options === 'object' ? options : {};
+            const timeoutMs = Math.max(1000, Number(opts.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);
+            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            if (opts.signal?.aborted) throw Object.assign(new Error(`${safeTable} read cancelled.`), { code: 'REQUEST_ABORTED' });
+            if (!nativeHeaders && !allowAnonFallback) return null;
+            const headers = nativeHeaders ? { ...nativeHeaders } : {
+                apikey: SUPABASE_KEY,
+                Authorization: 'Bearer ' + SUPABASE_KEY,
+                'Content-Type': 'application/json'
+            };
+            headers['Cache-Control'] = 'private, no-store';
+            if (opts.count === true) headers.Prefer = 'count=exact';
+            const response = await window.GncDatabase.fetchTable(SUPABASE_URL, safeTable, String(queryString || '').trim(), {
+                method: 'GET', headers, signal: opts.signal
+            }, timeoutMs, `${safeTable} direct read`);
+            if (!response.ok) throw await createSupabaseReadResponseError(response, 'Supabase direct read failed');
+            const text = await response.text();
+            const rows = text ? JSON.parse(text) : [];
+            if (!Array.isArray(rows)) throw new Error(`${safeTable} returned an invalid row response; previous verified data was retained.`);
+            return { rows, total: parseSupabaseContentRangeTotal(response), authSource: nativeHeaders ? 'native' : 'anon' };
         }
 
         function classifyDatasetLoadFailureCode(error = null) {
@@ -34175,6 +34261,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const row = hasFreshness ? freshness : null;
                 return { rows: row ? [row] : [], total: row ? 1 : 0, authSource: 'app-api' };
             }
+            if (isDirectPostgrestReadTable(safeTable)) {
+                return await fetchDirectPostgrestReadPage(safeTable, queryString, options, true);
+            }
             if (getAuthorizedDatasetRead(safeTable)) {
                 const params = new URLSearchParams(String(queryString || '').replace(/^\?/, ''));
                 const requestedLimit = Math.max(1, Math.min(500, Number(params.get('limit')) || 500));
@@ -34185,26 +34274,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (safeTable === 'ph_master_inventory') throw new Error('Raw browser inventory reads are disabled; use inventory_read operations.');
             const opts = options && typeof options === 'object' ? options : {};
             const timeoutMs = Math.max(1000, Number(opts.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);
-            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (opts.signal?.aborted) throw Object.assign(new Error(`${safeTable} read cancelled.`), { code: 'REQUEST_ABORTED' });
-            if (!nativeHeaders && nativeReadRequiresRls()) throw nativeSessionRecoveryError();
-            if (nativeHeaders) {
-                const headers = {
-                    ...nativeHeaders,
-                    'Cache-Control': 'private, no-store'
-                };
-                if (opts.count === true) headers.Prefer = 'count=exact';
-                const response = await window.GncDatabase.fetchTable(SUPABASE_URL, safeTable, String(queryString || '').trim(), { method: 'GET', headers, signal: opts.signal }, timeoutMs, `${safeTable} authenticated read`);
-                if (!response.ok) throw await createSupabaseReadResponseError(response, 'Supabase authenticated read failed');
-                const text = await response.text();
-                const rows = text ? JSON.parse(text) : [];
-                if (!Array.isArray(rows)) throw new Error(`${safeTable} returned an invalid row response; previous verified data was retained.`);
-                return {
-                    rows,
-                    total: parseSupabaseContentRangeTotal(response),
-                    authSource: 'native'
-                };
-            }
+            const direct = await fetchDirectPostgrestReadPage(safeTable, queryString, opts, false);
+            if (direct) return direct;
+            if (nativeReadRequiresRls()) throw nativeSessionRecoveryError();
 
             const rows = await runAppApiSupabaseWrite(safeTable, 'GET', null, String(queryString || '').trim(), { timeoutMs, signal: opts.signal });
             if (!Array.isArray(rows)) throw new Error(`${safeTable} returned an invalid row response; previous verified data was retained.`);
@@ -34218,7 +34291,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function fetchSupabaseRowsPage(table, query = 'select=*', limit = 1000, offset = 0, options = {}) {
             if (options.signal?.aborted) throw Object.assign(new Error('Data page read cancelled.'), { code: 'REQUEST_ABORTED' });
             table = normalizeAppTableName(table);
-            const safeLimit = Math.max(1, Math.min(getAuthorizedDatasetRead(table) ? 500 : 5000, Number(limit) || 1000));
+            const maxLimit = isDirectPostgrestReadTable(table) ? 1000 : (getAuthorizedDatasetRead(table) ? 500 : 5000);
+            const safeLimit = Math.max(1, Math.min(maxLimit, Number(limit) || 1000));
             const safeOffset = Math.max(0, Number(offset) || 0);
             const queryString = query ? `${query}&limit=${safeLimit}&offset=${safeOffset}` : `limit=${safeLimit}&offset=${safeOffset}`;
             const result = await fetchAuthenticatedSupabaseReadPage(table, queryString, {
@@ -34235,7 +34309,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function fetchSupabaseRowsPageBatch(table, query, limit, offsets, concurrency, options = {}) {
             const safeOffsets = Array.isArray(offsets) ? offsets : [];
-            const safeConcurrency = Math.max(1, Math.min(2, Number(concurrency) || 1));
+            const safeConcurrency = Math.max(1, Math.min(4, Number(concurrency) || 1));
             const pages = new Array(safeOffsets.length);
             let index = 0;
             const workers = Array.from({ length: Math.min(safeConcurrency, safeOffsets.length) }, async () => {
@@ -34253,7 +34327,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function fetchAllSupabaseRows(table, query = 'select=*', options = {}) {
             if ([REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE].includes(table)) return readSalesCompatibilityRows(table, query, options);
-            if (table === 'ph_customer_consignee_sales_reps') return fetchRequestCustomerMapRows(options);
+            if (table === 'ph_customer_consignee_sales_reps' && options.skipCustomerMapShortcut !== true) return fetchRequestCustomerMapRows(options);
             const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             if (opts.signal?.aborted) throw Object.assign(new Error('Data snapshot read cancelled.'), { code: 'REQUEST_ABORTED' });
             const forceFresh = opts.force_fresh === true || opts.forceFresh === true;
@@ -35377,7 +35451,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const isAvBlankTaskView = activeTaskView === 'av-blanks';
                 const required = [{ key: 'master', mode: 'full' }, { key: 'warehouseAssignedItems', mode: 'full' }];
                 if (isFlyerTaskView) required.push({ key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' });
-                const background = [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
+                const background = [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' }];
                 const activeEvalSimpleFilter = getActiveEvalSimpleTaskFilterValue();
                 const needsTaskHotPriceKeys = activeTaskView === 'hot-price' || activeEvalSimpleFilter === 'hot-price' || activeEvalSimpleFilter === 'hot-price-ssn';
                 if (needsTaskHotPriceKeys) {
@@ -51843,24 +51917,17 @@ function toggleDriveQuickRequestItem(domId) {
             const inflightKey = JSON.stringify([salesrepId, signature]);
             if (loads.has(inflightKey)) return loads.get(inflightKey);
             const load = (async () => {
-                let rows = [], revision = null, total = null;
-                for (let page = 0; page <= 1000; page++) {
-                    if (typeof isCurrent === 'function' && !isCurrent()) return null;
-                    if (securityEpoch !== requestMappingSecurityEpoch || owner !== getRequestModalLookupOwnerSignature()) return null;
-                    if (signature !== getRequestModalCustomerMappingCacheSignature()) throw new Error('Customer mappings changed during loading. Refresh to retry.');
-                    const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'customer-rep-map', operation: 'options', salesrepId, page, pageSize: 200 }, { timeoutMs: 30000, label: 'Request customers' });
-                    if (result?.ok !== true || !Array.isArray(result.rows) || result.rows.length > 200 || !Number.isSafeInteger(result.total) || result.total < 0 || typeof result.revision !== 'string') throw new Error('Customer mapping response is invalid. Refresh before submitting.');
-                    if (revision !== null && (revision !== result.revision || total !== result.total)) throw new Error('Customer mappings changed during loading. Refresh to retry.');
-                    revision = result.revision; total = result.total;
-                    if (!result.rows.every(row => isActiveRequestCustomerMapping(row)
-                        && normalizeRequestSalesrepId(row.salesrepid) === normalizeRequestSalesrepId(salesrepId))) throw new Error('Customer mapping response did not match the selected rep.');
-                    rows.push(...result.rows);
-                    if (rows.length >= total) { if (rows.length !== total) throw new Error('Customer mapping page count is invalid.'); break; }
-                    if (!result.rows.length || page === 1000) throw new Error('Customer mappings could not be loaded completely.');
-                }
+                const fields = 'unique_id,customername,consigneename,salesrepname,salesrepid,customeridentityid,consigneeid,territorycode,territorydesc,customerstatus,consigneestatus';
+                const query = `select=${fields}&salesrepid=eq.${encodeURIComponent(salesrepId)}&order=customername.asc,consigneename.asc`;
+                const rows = await fetchAllSupabaseRows('ph_customer_consignee_sales_reps', query, {
+                    count: true, requireComplete: true, skipCustomerMapShortcut: true
+                });
+                const revision = signature;
                 if (typeof isCurrent === 'function' && !isCurrent()) return null;
                 if (securityEpoch !== requestMappingSecurityEpoch || owner !== getRequestModalLookupOwnerSignature()) return null;
                 if (signature !== getRequestModalCustomerMappingCacheSignature()) throw new Error('Customer mappings changed during loading. Refresh to retry.');
+                if (!rows.every(row => isActiveRequestCustomerMapping(row)
+                    && normalizeRequestSalesrepId(row.salesrepid) === normalizeRequestSalesrepId(salesrepId))) throw new Error('Customer mapping response did not match the selected rep.');
                 const identities = rows.map(row => JSON.stringify([row.salesrepid, row.customeridentityid, row.consigneeid]));
                 if (new Set(identities).size !== rows.length) throw new Error('Customer mapping identities are ambiguous.');
                 const entry = { rows, revision, signature, owner, stale: false };
@@ -51889,21 +51956,14 @@ function toggleDriveQuickRequestItem(domId) {
             const signature = getRequestModalCustomerMappingCacheSignature();
             const key = JSON.stringify([owner, signature]);
             if (fetchRequestCustomerMapRows.key === key && fetchRequestCustomerMapRows.pending) return fetchRequestCustomerMapRows.pending;
-            const pending = postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'customer-rep-map', operation: 'preload' }, {
-                timeoutMs: 20000, label: 'Request customer choices'
-            }).then(result => {
+            const fields = 'unique_id,customername,consigneename,salesrepname,salesrepid,customeridentityid,consigneeid,territorycode,territorydesc,customerstatus,consigneestatus';
+            const pending = fetchAllSupabaseRows('ph_customer_consignee_sales_reps', `select=${fields}&order=customername.asc,consigneename.asc`, {
+                ...options, count: true, requireComplete: true, skipCustomerMapShortcut: true
+            }).then(rows => {
                 if (owner !== getRequestModalLookupOwnerSignature()) throw new Error('Request customer account changed.');
-                if (result?.ok !== true || !Array.isArray(result.reps) || typeof result.revision !== 'string') throw new Error('Customer mapping response is invalid.');
-                const rows = [];
-                for (const rep of result.reps) {
-                    if (!rep || !rep.salesrepid || !rep.salesrepname || !Array.isArray(rep.rows)) throw new Error('Customer mapping response is invalid.');
-                    for (const tuple of rep.rows) {
-                        if (!Array.isArray(tuple) || tuple.length !== 4 || !tuple.every(value => typeof value === 'string' && value.trim())) throw new Error('Customer mapping identity is invalid.');
-                        rows.push({ salesrepid: rep.salesrepid, salesrepname: rep.salesrepname, customeridentityid: tuple[0], customername: tuple[1], consigneeid: tuple[2], consigneename: tuple[3], customerstatus: 'A', consigneestatus: 'A', unique_id: JSON.stringify([rep.salesrepid, tuple[0], tuple[2]]) });
-                    }
-                }
-                if (rows.length !== result.total || new Set(rows.map(row => row.unique_id)).size !== rows.length) throw new Error('Customer mapping snapshot is incomplete.');
-                Object.defineProperty(rows, 'mappingRevision', { value: result.revision });
+                if (!Array.isArray(rows) || !rows.every(isActiveRequestCustomerMapping)
+                    || new Set(rows.map(row => row.unique_id)).size !== rows.length) throw new Error('Customer mapping snapshot is incomplete.');
+                Object.defineProperty(rows, 'mappingRevision', { value: signature });
                 return rows;
             }).finally(() => { if (fetchRequestCustomerMapRows.pending === pending) fetchRequestCustomerMapRows.pending = null; });
             fetchRequestCustomerMapRows.key = key;
@@ -55222,96 +55282,26 @@ function toggleDriveQuickRequestItem(domId) {
         function getLoginWarmupPlan(openedFromCache = false, options = {}) {
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const restoreSession = !!nextOptions.restoredSession;
-            const cacheAlreadyOpened = !!openedFromCache;
             const access = getRoleAccessState();
             const allowedViews = access.allowedViews instanceof Set ? access.allowedViews : new Set(access.allowedViews || []);
             const initialTargets = new Map();
-            const fullTargets = new Map();
-            const reserveInitialMode = 'initial';
             const prefersDeferredWarm = isTouchConstrainedDevice();
-            const shouldWarmEvalInventoryChecks = !!(access && access.isEval && !access.isAdmin);
-            const shouldWarmWarehouseAssignments = allowedViews.has('drive') || allowedViews.has('tasks');
-
             addLoginWarmupTarget(initialTargets, 'master', 'initial');
-            addLoginWarmupTarget(fullTargets, 'master', 'full');
-            if (shouldWarmWarehouseAssignments) {
-                addLoginWarmupTarget(initialTargets, 'warehouseAssignedItems', 'initial');
-                addLoginWarmupTarget(fullTargets, 'warehouseAssignedItems', 'full');
-            }
-            if (shouldWarmEvalInventoryChecks) {
-                addLoginWarmupTarget(initialTargets, 'inventoryEditRequests', 'initial');
-                addLoginWarmupTarget(fullTargets, 'inventoryEditRequests', 'full');
-            }
-
-            if (allowedViews.has('av')) {
-                addLoginWarmupTarget(initialTargets, 'avOpen', 'initial');
-                addLoginWarmupTarget(fullTargets, 'avOpen', 'full');
-                addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
-                addLoginWarmupTarget(fullTargets, 'reserves', 'full');
-            }
             if (allowedViews.has('request') || allowedViews.has('reports') || canUseRequestRepScopedAccess()) {
                 addLoginWarmupTarget(initialTargets, 'requests', 'initial');
-                addLoginWarmupTarget(fullTargets, 'requests', 'full');
-            }
-            if (allowedViews.has('docks') || allowedViews.has('reports')) {
-                addLoginWarmupTarget(initialTargets, 'soc', 'initial');
-                addLoginWarmupTarget(fullTargets, 'soc', 'full');
-            }
-            if (allowedViews.has('sales-office')) {
-                addLoginWarmupTarget(initialTargets, 'salesOffice', 'initial');
-                addLoginWarmupTarget(fullTargets, 'salesOffice', 'full');
-            }
-            if (allowedViews.has('tasks')) {
-                addLoginWarmupTarget(initialTargets, 'avNotes', 'initial');
-                addLoginWarmupTarget(fullTargets, 'avNotes', 'full');
-                addLoginWarmupTarget(initialTargets, 'cavAvBlankKeys', 'initial');
-                addLoginWarmupTarget(fullTargets, 'cavAvBlankKeys', 'full');
-                addLoginWarmupTarget(initialTargets, 'cav', 'initial');
-                addLoginWarmupTarget(fullTargets, 'cav', 'full');
-            }
-            if (allowedViews.has('reserves')) {
-                addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
-                addLoginWarmupTarget(fullTargets, 'reserves', 'full');
             }
 
-            const initialPriority = ['master', 'warehouseAssignedItems', 'requests', 'avOpen', 'soc', 'salesOffice', 'avNotes', 'cavAvBlankKeys', 'cav', 'reserves'];
+            const initialPriority = ['master', 'requests'];
             const initialKeys = initialPriority.concat(Array.from(initialTargets.keys()).filter((key) => !initialPriority.includes(key)));
             const initialQueue = [];
-            const initialStart = prefersDeferredWarm ? (openedFromCache ? 80 : (restoreSession ? 220 : 120)) : 30;
+            const initialStart = prefersDeferredWarm ? (openedFromCache ? 180 : (restoreSession ? 220 : 120)) : 30;
             const initialStep = prefersDeferredWarm ? (restoreSession ? 260 : 180) : 140;
-            if (!cacheAlreadyOpened) {
-                initialKeys.forEach((key) => {
-                    const target = initialTargets.get(key);
-                    if (!target) return;
-                    initialQueue.push({ key, mode: target.mode, delay: initialStart + (initialQueue.length * initialStep) });
-                });
-            }
-
-            const fullPriority = ['master', 'warehouseAssignedItems', 'avOpen', 'requests', 'soc', 'salesOffice', 'avNotes', 'cavAvBlankKeys', 'cav', 'reserves'];
-            const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
-            const fullQueue = [];
-            const fullStart = openedFromCache
-                ? (prefersDeferredWarm ? 1400 : 420)
-                : (prefersDeferredWarm ? (restoreSession ? 1200 : 650) : 900);
-            const quotaSafePacing = isQuotaSafeRealtimeMode();
-            const fullStep = openedFromCache
-                ? (prefersDeferredWarm ? (quotaSafePacing ? 1800 : 1200) : (quotaSafePacing ? 1400 : 1600))
-                : (prefersDeferredWarm ? (restoreSession ? (quotaSafePacing ? 2000 : 1200) : (quotaSafePacing ? 1700 : 900)) : (quotaSafePacing ? 1400 : 900));
-            fullKeys.forEach((key) => {
-                const target = fullTargets.get(key);
+            initialKeys.forEach((key) => {
+                const target = initialTargets.get(key);
                 if (!target) return;
-                const extraDelay = key === 'reserves' && (isIOSDevice() || isStandaloneApp()) ? (openedFromCache ? 350 : 180) : 0;
-                let targetDelay = fullStart + (fullQueue.length * fullStep) + extraDelay;
-                if (key === 'master' || key === 'warehouseAssignedItems') {
-                    const fastDelay = key === 'master'
-                        ? (openedFromCache ? (prefersDeferredWarm ? 360 : 220) : (prefersDeferredWarm ? 300 : 220))
-                        : (openedFromCache ? (prefersDeferredWarm ? 520 : 320) : (prefersDeferredWarm ? 420 : 280));
-                    targetDelay = Math.min(targetDelay, fastDelay);
-                }
-                fullQueue.push({ key, mode: target.mode, delay: targetDelay });
+                initialQueue.push({ key, mode: target.mode, delay: initialStart + (initialQueue.length * initialStep) });
             });
-
-            return { initialQueue, fullQueue };
+            return { initialQueue, fullQueue: [] };
         }
 
         function primeLoginDataLoad(openedFromCache = false, options = {}) {
@@ -55325,62 +55315,16 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getLoginReadyDatasetTargets() {
             const targetMap = new Map();
-            const addTarget = (key, mode = 'full') => {
+            const addTarget = (key, mode = 'initial') => {
                 const safeKey = String(key || '').trim();
                 if (!safeKey || !DATASET_DEFINITIONS[safeKey]) return;
                 addLoginWarmupTarget(targetMap, safeKey, mode);
             };
             const access = getRoleAccessState();
             const allowedViews = access.allowedViews instanceof Set ? access.allowedViews : new Set(access.allowedViews || []);
-            const hasView = (viewId) => allowedViews.has(viewId);
-            const addViewTargets = (viewId) => {
-                const config = getViewLoadingConfig(viewId);
-                if (!config) return;
-                [...(config.required || []), ...(config.background || [])].forEach((item) => {
-                    if (item && item.key) addTarget(item.key, item.mode || 'full');
-                });
-            };
-            addTarget('master', 'full');
-            if (access && access.isEval && !access.isAdmin) addTarget('inventoryEditRequests', 'full');
-            allowedViews.forEach((viewId) => addViewTargets(viewId));
-            if (hasView('drive') || hasView('av') || hasView('tasks') || hasView('managers') || hasView('low-stock') || hasView('review') || hasView('move-up') || hasView('reports') || hasView('moves') || hasView('advertisement') || hasView('shear-list') || hasView('production') || hasView('production-workflow') || hasView('sales-inventory') || hasView('weather-hold')) addTarget('master', 'full');
-            if (hasView('av') || hasView('tasks') || hasView('sales')) {
-                addTarget('avOpen', 'full');
-                addTarget('avHotPriceKeys', 'full');
-                addTarget('avNotes', 'full');
-            }
-            if (hasView('request') || hasView('reports') || canUseRequestRepScopedAccess()) {
-                addTarget('requests', 'full');
-                addTarget('requestHistory', 'full');
-                addTarget('customerRepMap', 'full');
-                addTarget('reserves', 'full');
-            }
-            if (hasView('docks') || hasView('reports')) addTarget('soc', 'full');
-            if (hasView('reserves') || hasView('av') || hasView('tasks') || hasView('reports') || hasView('shear-list') || hasView('sales')) {
-                addTarget('reserves', 'full');
-                addTarget('customerRepMap', 'full');
-            }
-            if (hasView('sales-office') || hasView('moves') || hasView('reports') || hasView('sales') || hasView('office') || hasView('managers')) addTarget('salesOffice', 'full');
-            if (hasView('tasks')) {
-                addTarget('flyerRows', 'full');
-                addTarget('flyerHistory', 'full');
-                addTarget('cav', 'full');
-                addTarget('cavAvBlankKeys', 'full');
-                addTarget('reserves', 'full');
-                addTarget('customerRepMap', 'full');
-            }
-            if (hasView('managers')) {
-                addTarget('master', 'full');
-                addTarget('salesOffice', 'full');
-            }
-            if (hasView('advertisement')) {
-                addTarget('master', 'full');
-                addTarget('flyerRows', 'full');
-                addTarget('flyerHistory', 'full');
-            }
-            if (hasView('grower') || hasView('pest-management')) {
-                addTarget('growerScoutReports', 'full');
-                addTarget('growerScoutAssets', 'full');
+            addTarget('master', 'initial');
+            if (allowedViews.has('request') || allowedViews.has('reports') || canUseRequestRepScopedAccess()) {
+                addTarget('requests', 'initial');
             }
             return Array.from(targetMap.values());
         }
@@ -99753,10 +99697,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function filterPaperNcrSalesNotes(pkgIndex = 0, rowIndex = 0) {
-            if (!isDatasetLoaded('avNotes', 'initial')) {
-                ensureDatasetLoaded('avNotes', 'full').then(() => filterPaperNcrSalesNotes(pkgIndex, rowIndex)).catch(() => {});
-                return false;
-            }
             const input = document.getElementById(getPaperNcrSalesNoteInputId(pkgIndex, rowIndex));
             const list = document.getElementById(getPaperNcrSalesNoteListId(pkgIndex, rowIndex));
             if (!input || !list) return false;
@@ -99764,8 +99704,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const pkg = context && context.packages ? context.packages[pkgIndex] : null;
             const snapshot = pkg && pkg.allRows ? pkg.allRows[rowIndex] : null;
             const commonName = String(firstNonEmptyValue(snapshot && snapshot.commonName, pkg && pkg.commonName, '') || '').trim().toUpperCase();
+            const contextItem = {
+                ITEMCODE: firstNonEmptyValue(snapshot && snapshot.itemcode, snapshot && snapshot.ITEMCODE, pkg && pkg.itemcode, ''),
+                COMMONNAME: commonName
+            };
+            void ensureItemcodeAvNoteOptions(contextItem, () => filterPaperNcrSalesNotes(pkgIndex, rowIndex));
             const inputVal = String(input.value || '').trim().toUpperCase();
-            let matchingNotes = getIndexedAvNotes(commonName).map((note) => normalizePaperNcrSalesNoteValue(note)).filter(Boolean);
+            let matchingNotes = getIndexedAvNotes(contextItem).map((note) => normalizePaperNcrSalesNoteValue(note)).filter(Boolean);
             matchingNotes = [...new Set(matchingNotes)];
             if (inputVal) matchingNotes = matchingNotes.filter((note) => String(note).toUpperCase().includes(inputVal));
             if (!matchingNotes.length) {
@@ -168819,6 +168764,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             if (!acknowledgedRequestWorkDraft) discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
                             deleteAcknowledgedRequestBlobs(itemToSave.UNIQUE_ID).catch(() => {});
                             queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'PATCH', [{ unique_id: itemToSave.UNIQUE_ID }], '');
+                            if (isComplete) scheduleRequestDeliveryWake('request_completed');
                             const finalizeRpcSave = () => handleSaveSuccess(atomicRequestArtifacts);
                             if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeRpcSave, 0);
                             else finalizeRpcSave();
@@ -168885,6 +168831,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             }
                         }
                         if (isComplete) flushQueuedAppLiveEvents().catch(() => {});
+                        if (prefix === 'req-' && isComplete) scheduleRequestDeliveryWake('request_completed');
                         const finalizeSave = () => handleSaveSuccess(completionArtifacts || buildCompletionArtifacts());
                         if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
                         else finalizeSave();
@@ -169602,7 +169549,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const requestWorkValuesAtResponse = getRequestWorkFormValues(local || row) || {};
                         if (local && formatted) Object.assign(local, formatted);
                         if (formatted) {
-                            if (complete && isRequestComplete(formatted)) confirmQueueCompletion(formatted);
+                            if (complete && isRequestComplete(formatted)) {
+                                confirmQueueCompletion(formatted);
+                                scheduleRequestDeliveryWake('request_completed_retry');
+                            }
                             if (draft) finalizeRequestWorkDraftAfterSuccess(local || row, reconciliation.draft, { ...(reconciliation.draft.dirtyValues || {}) }, formatted, requestWorkFormValuesAtDispatch, requestWorkCacheEntryTimestampAtDispatch, requestWorkValuesAtResponse);
                             else { delete pendingEdits[requestId]; cacheChanged = true; }
                             await deleteAcknowledgedRequestBlobs(requestId).catch(() => {});
@@ -169669,9 +169619,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                 filterAvNotes(safePrefix, safeOptions);
             });
             const hasVerifiedServerOptions = avNoteServerOptionsCache.get(serverKey)?.verified === true;
-            if (!hasVerifiedServerOptions && !ensureVerifiedAvNoteChoices(list, safePrefix, () => filterAvNotes(safePrefix, safeOptions))) return;
-            if (!hasVerifiedServerOptions && !isDatasetLoaded('avNotes', 'initial')) {
-                ensureDatasetLoaded('avNotes', 'full').then(() => filterAvNotes(prefix, safeOptions)).catch(() => {});
+            const serverOptionsLoaded = avNoteServerOptionsCache.get(serverKey)?.loaded === true;
+            if (!hasVerifiedServerOptions && !serverOptionsLoaded) {
+                list.innerHTML = '<p class="p-3 text-xs font-semibold text-slate-500">Loading item AV Notes...</p>';
+                list.classList.remove('hidden');
                 return;
             }
             const inputEl = document.getElementById(safePrefix + 'av-note');

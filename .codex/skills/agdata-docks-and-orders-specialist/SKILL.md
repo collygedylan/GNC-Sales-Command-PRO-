@@ -49,7 +49,14 @@ Generic SOC detail saves also route through the authenticated dock_review comman
 
 - Dock/Drop/SOC physical identity crosses imported `Code.gs` rows, Supabase snapshots/RPC commands, app-api authorization, Docks/HL/Office cards, Comm presence, and shared shell navigation. Retained previews never establish write proof.
 
+## Mandatory 4-Caller & All-11-Gems Impact Contract
+
+- Before any migration, RLS/trigger, app-api, Apps Script, or runtime hydration change, verify browser direct operational reads, the `Code.gs` delivery worker, bounded app-api startup work, and typed/guarded Postgres triggers across every Gem domain.
+- Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never collapse physical tag lines, blend ordered/reserved/available quantities, reuse another module's email recipients, block Docks on an optional join, or let a late account response repaint Comm.
 - Never create a second inventory or navigation source inside Office, HL, or Comm.

@@ -72,7 +72,14 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 - Eval Reports #2 sorts `locationcode` naturally as the first key in both app-api preview rows and client rows; location groups remain contiguous and every current item row renders without a `.slice(0, 8)` cap.
 - BLOCK / LOCATION drill-down is exactly BLOCK ALPHA -> base LOCATIONCODE (`C.05`, `C.06`) -> ITEMCODE cards ordered by full numeric bay. Global Back unwinds those two levels before leaving Manager.
 
+## Mandatory 4-Caller & All-11-Gems Impact Contract
+
+- Before any migration, RLS/trigger, app-api, Apps Script, or runtime hydration change, verify browser direct operational reads, the `Code.gs` delivery worker, bounded app-api startup work, and typed/guarded Postgres triggers across every Gem domain.
+- Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never let lot, priority, assignment, or season precede `locationcode`, reintroduce `Showing the first 8 inventory rows`, expose `.017`/`.018` as separate level-two tiles, or replace last-good Eval rows with a loading gate.
 - Never use a Manager refresh to erase field drafts, app-owned notes, task identities, or the shared shell's Back/header state.

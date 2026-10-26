@@ -178,6 +178,9 @@ test('ingestion deployment selects every changed function and preserves remote s
     'URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_', 'canonicalizeMasterBulkPayloadValue_',
     'normalizeEscapedImportText_', 'normalizeEscapedImportRow_', 'buildMasterBulkSnapshotPayload_',
     'buildStandardPayload', 'buildMasterPayload', 'buildCavPayload',
+    'getFastLiveIngestDatasetKey_', 'getFastLiveIngestRpc_', 'getFastLiveFileMeta_',
+    'getFastLiveIngestRows_', 'processFastLiveFile_', 'runRoutedDropImport_',
+    'runWarehouseAssignedOnly', 'runCavOnly', 'verifyAppsScriptActionEnvelope_', 'doPost',
   ]);
   assert.equal(manifest.appsScriptPatchRelease, true);
   const untouched = 'const HISTORICAL_BACKFILL_PAUSED = true;\nconst AUTO_SYNC_PAUSED = true;';
@@ -194,7 +197,9 @@ test('ingestion deployment selects every changed function and preserves remote s
   const start = localDispatch.indexOf("    if (payload.type === 'manual_continue') {");
   const next = localDispatch.indexOf("    if (payload.type === 'manual_run') {", start);
   const remoteOnly = "    if (payload.type === 'remote_only') return jsonOutput_({ preserved: true });\n\n";
+  const wakeRoute = "    if (payload.type === 'wake_delivery_worker') {\n      const deliveryLimit = Math.max(1, Math.min(100, Number(payload.limit) || 40));\n      return jsonOutput_(processRequestDeliveryOutbox_(deliveryLimit));\n    }\n";
   const priorDispatch = (localDispatch.slice(0, start) + remoteOnly + localDispatch.slice(next))
+    .replace(wakeRoute, '')
     .replace("['manual_run', 'manual_continue', 'manual_clear_status', 'manual_clear_stale_status']",
       "['manual_run', 'manual_clear_status', 'manual_clear_stale_status']");
   const prefix = "const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = 'old';\n";
@@ -202,6 +207,7 @@ test('ingestion deployment selects every changed function and preserves remote s
     localSource: prefix + localDispatch, functionNames: ['doPost'] });
   assert.ok(merged.source.includes(remoteOnly), 'remote-only dispatch remains byte-for-byte intact');
   assert.match(merged.source, /type === 'manual_continue'/);
+  assert.match(merged.source, /type === 'wake_delivery_worker'/);
   assert.equal(patchAppsScriptFunctions({ remoteSource: merged.source,
     localSource: prefix + localDispatch, functionNames: ['doPost'] }).source, merged.source);
 });

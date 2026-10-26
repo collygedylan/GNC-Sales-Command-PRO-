@@ -53,7 +53,14 @@ Revision conflicts must use PT409, never custom 40001. The v2.3.34 application_c
 
 - Trace voice/query state through account capability, app-api/Edge authorization, bounded SQL readers, reviewed navigation/drafts, shared modal/Back ownership, and watchdog incident mapping. AURA availability must never delay Home or another authorized module.
 
+## Mandatory 4-Caller & All-11-Gems Impact Contract
+
+- Before any migration, RLS/trigger, app-api, Apps Script, or runtime hydration change, verify browser direct operational reads, the `Code.gs` delivery worker, bounded app-api startup work, and typed/guarded Postgres triggers across every Gem domain.
+- Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never broaden AURA beyond canonical `dylan_collyge`, execute model text as SQL, auto-submit a mutation, expose provider keys, or merge the legacy assistant permission path into AURA.
 - Never turn provider, capability, or conversation refresh failure into a shell lockout or a production source write by an AI/watchdog path.

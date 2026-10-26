@@ -177,6 +177,8 @@
     "processFastLiveFile_",
     "runRoutedDropImport_",
     "runWarehouseAssignedOnly",
-    "runCavOnly"
+    "runCavOnly",
+    "verifyAppsScriptActionEnvelope_",
+    "doPost"
   ]
 }

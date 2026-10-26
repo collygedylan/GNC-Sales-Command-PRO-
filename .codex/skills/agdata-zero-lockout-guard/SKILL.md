@@ -87,7 +87,14 @@ Request startup isolates the delivery-status view, direct active view and retain
 - For authorized same-account flows, `user_access`, `native_session_bridge`, `season_sales_office`, `dataset_read`, `av_read`, customer mapping, AURA, `report_read_v2`, `inventory_read`, `drive_reclass_inquiry`, and `inventory_reclass_move` preserve a `200` retained/success path instead of transient `401`/`403`/`409`/`423` lockouts. Confirmed denial and genuine mutation authorization remain enforced.
 - Session/cache changes cross login bootstrap, shell visibility, account/permission epoch, READY revisions, Row Details/Reclass drafts, Service Worker upgrades, and watchdog evidence.
 
+## Mandatory 4-Caller & All-11-Gems Impact Contract
+
+- Before any migration, RLS/trigger, app-api, Apps Script, or runtime hydration change, verify browser direct operational reads, the `Code.gs` delivery worker, bounded app-api startup work, and typed/guarded Postgres triggers across every Gem domain.
+- Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never render a banned lockout banner, clear same-account rows on transient refresh, disable navigation during import, delay Row Details/Reclass opening, or return transient forbidden/conflict/locked statuses where a retained authorized response is possible.
 - Never use fail-open display continuity to bypass RLS, confirmed revocation, exact mutation identity, recipient policy, or account isolation.

@@ -22958,6 +22958,10 @@ function doPost(e) {
     if (payload.type === 'request_delivery_event') {
       return jsonOutput_(handleSignedRequestDeliveryEvent_(payload));
     }
+    if (payload.type === 'wake_delivery_worker') {
+      const deliveryLimit = Math.max(1, Math.min(100, Number(payload.limit) || 40));
+      return jsonOutput_(processRequestDeliveryOutbox_(deliveryLimit));
+    }
     if (payload.type === 'photo_history_thumbnail') {
       return jsonOutput_(handleSignedPhotoHistoryThumbnail_(payload));
     }
@@ -23325,7 +23329,7 @@ function verifyAppsScriptActionEnvelope_(envelope) {
     'reclass_inquiry_status', 'reclass_inquiry_retry', 'clear_request_gallery_cache',
     'drivearound_name_preview', 'drivearound_name_cleanup', 'manual_continue', 'manual_run', 'manual_clear_status',
     'manual_clear_stale_status', 'manual_status', 'inventory_transaction_history',
-    'reclass_inquiry_email', 'inventory_transaction', 'email', 'image'
+    'reclass_inquiry_email', 'inventory_transaction', 'email', 'image', 'wake_delivery_worker'
   ];
   if (allowed.indexOf(action) < 0 || action === 'drivearound_history_backfill') {
     throw new Error('APPS_SCRIPT_ACTION_FORBIDDEN');

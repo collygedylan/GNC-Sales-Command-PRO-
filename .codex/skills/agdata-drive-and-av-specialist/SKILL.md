@@ -93,7 +93,14 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 - Drive cards, AV photo cards, and the lightbox resolve URLs only through `resolveCanonicalPhotoUrls`; Drive, AV, Eval Reports #2, and Que consume the canonical natural location comparator.
 - Canonical DriveAround, SOC, Reserves, CAV, request, API-response, display, and drill-key text removes only repeated literal backslashes immediately before `'` or `"`. Preserve valid standalone backslashes and normalize before deriving identities, hashes, grouping keys, or search keys.
 
+## Mandatory 4-Caller & All-11-Gems Impact Contract
+
+- Before any migration, RLS/trigger, app-api, Apps Script, or runtime hydration change, verify browser direct operational reads, the `Code.gs` delivery worker, bounded app-api startup work, and typed/guarded Postgres triggers across every Gem domain.
+- Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never key durable photo/spec evidence only by physical UID or lot, overwrite it from a new DriveAround UID, use divergent thumbnail parsing, or display `Photo unavailable` when the canonical resolver returned a URL.
 - Never restore inline `localeCompare` location copies, reject a duplicate-location photo save with `403`/`404`/`409`, truncate complete exports, or replace known metrics with `--`.

@@ -208,6 +208,36 @@
           "symbol": "runHistoricalArchiveImport"
         }
       ]
+    },
+    "operationalHydrationAndDeliveryRecovery": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "fetchDirectPostgrestReadPage"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "fetchDirectMasterInventoryPage"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "fetchRequestCustomerMapRows"
+        },
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "dispatchAuthenticatedDeliveryWake"
+        },
+        {
+          "file": "Code.gs",
+          "symbol": "processRequestDeliveryOutbox_"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "supabase/migrations/20261026140000_agdata_v2369_emergency_recovery.sql",
+          "symbol": "claim_request_delivery_events"
+        }
+      ]
     }
   },
   "domains": {
@@ -270,7 +300,10 @@
         "buildPendingRequestRenderPlan",
         "ensureHistoricalRequestsIsland",
         "openRequestSalesImpact",
-        "renderRequestSalesImpact"
+        "renderRequestSalesImpact",
+        "fetchRequestCustomerMapRows",
+        "loadRequestModalCustomerOptionsForRep",
+        "scheduleRequestDeliveryWake"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -278,11 +311,13 @@
         "handleRequestRecipientDirectory",
         "handleSeasonSalesOfficeAction",
         "handleHistoricalRequestsReadAction",
-        "handleRequestSalesImpactAction"
+        "handleRequestSalesImpactAction",
+        "dispatchAuthenticatedDeliveryWake"
       ],
       "Code.gs": [
         "collectRequestRecipients_",
-        "handleSignedRequestDeliveryEvent_"
+        "handleSignedRequestDeliveryEvent_",
+        "processRequestDeliveryOutbox_"
       ],
       "supportingFiles": {
         "assets/request-sales-impact.js": [
@@ -342,6 +377,8 @@
         "getRowPhotoLink",
         "resolveCanonicalPhotoUrls",
         "getDetailPhotoUrls",
+        "fetchDirectPostgrestReadPage",
+        "fetchDirectMasterInventoryPage",
         "scheduleInventoryConsolidationWarmup",
         "renderInventoryConsolidationContent",
         "getInventoryConsolidationValidDestinations",
@@ -411,10 +448,19 @@
       "assets/app-runtime.js": [],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [],
-      "Code.gs": [],
+      "Code.gs": [
+        "verifyAppsScriptActionEnvelope_",
+        "doPost"
+      ],
       "supportingFiles": {
         "scripts/run-tooling-release-checks.mjs": [
           "runToolingReleaseChecks"
+        ],
+        "scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV2369EmergencyRecoveryMigrationName"
+        ],
+        "scripts/apps-script-function-patch.mjs": [
+          "mergeRequestDeliveryWakeDispatch"
         ]
       }
     },
@@ -442,17 +488,20 @@
     "agdata-sync-and-supabase-architect": {
       "assets/app-runtime.js": [
         "runGoogleAppsScriptTrigger",
-        "refreshDashboardSyncMetadata"
+        "refreshDashboardSyncMetadata",
+        "fetchDirectPostgrestReadPage"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
         "handleDatasetRevisionsAction",
         "handleAppsScriptAction",
+        "dispatchRequestDeliveryWorkerNow",
         "fast_erp_ingest"
       ],
       "Code.gs": [
         "getFastLiveIngestRpc_",
         "processFastLiveFile_",
+        "processRequestDeliveryOutbox_",
         "getManualSyncStageOrder_",
         "queueManualSyncRequest_",
         "runQueuedManualSyncStage_"
@@ -469,6 +518,10 @@
           "fast_ingest_soc_reserves_v1",
           "fast_ingest_cav_v1",
           "fast_ingest_warehouse_assigned_v1"
+        ],
+        "supabase/migrations/20261026140000_agdata_v2369_emergency_recovery.sql": [
+          "claim_request_delivery_events",
+          "safe_parse_timestamptz"
         ]
       }
     },
@@ -476,7 +529,8 @@
       "assets/app-runtime.js": [
         "getNativeAuthSession",
         "initializeAppAccessSnapshot",
-        "showOnlyPrimaryView"
+        "showOnlyPrimaryView",
+        "fetchDirectPostgrestReadPage"
       ],
       "assets/runtime-watchdog.js": [
         "capture"

@@ -131,7 +131,7 @@ const APPS_SCRIPT_PROXY_ACTIONS = new Set([
   "email", "image", "block_clearing_pdf", "bunch_note_preview", "hl_order_preview", "inventory_transaction", "inventory_transaction_history",
   "reclass_inquiry_status", "reclass_inquiry_retry", "reclass_inquiry_email",
   "clear_request_gallery_cache", "drivearound_name_preview", "drivearound_name_cleanup",
-  "manual_continue", "manual_run", "manual_clear_status", "manual_clear_stale_status", "manual_status",
+  "manual_continue", "manual_run", "manual_clear_status", "manual_clear_stale_status", "manual_status", "wake_delivery_worker",
 ]);
 const APPS_SCRIPT_EMAIL_TYPES = new Set([
   "new_request", "request_complete", "ncr_complete", "ncr_approval", "hold_release_request",
@@ -2238,21 +2238,25 @@ async function handlePhotoHistoryAction(
   }
 }
 
-async function invokeReclassDeliveryWorkerNow() {
+async function invokeRequestDeliveryWorkerNow(source = "app_api_immediate") {
   return await fetch(SUPABASE_URL + "/functions/v1/request-delivery-worker", {
     method: "POST", headers: { Authorization: "Bearer " + SUPABASE_SERVICE_ROLE_KEY,
       apikey: SUPABASE_SERVICE_ROLE_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ source: "reclass_immediate" }), signal: AbortSignal.timeout(20000),
+    body: JSON.stringify({ source }), signal: AbortSignal.timeout(20000),
   });
+}
+
+function dispatchRequestDeliveryWorkerNow(source = "app_api_immediate") {
+  const task = invokeRequestDeliveryWorkerNow(source).then(() => {}).catch(() => {});
+  const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (task: Promise<void>) => void } }).EdgeRuntime;
+  if (runtime) runtime.waitUntil(task);
 }
 
 function dispatchReclassDeliveryNow(result: Record<string, unknown>, _actorUsername: string, _token: string) {
   if ((!result.jobId && !result.deliveryEventId) || result.status === "delivered") return result;
   // The transaction already owns a durable outbox entry. Never hold the save
   // response open for PDF/Gmail; the leased worker and status RPC own recovery.
-  const task = invokeReclassDeliveryWorkerNow().then(() => {}).catch(() => {});
-  const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (task: Promise<void>) => void } }).EdgeRuntime;
-  if (runtime) runtime.waitUntil(task);
+  dispatchRequestDeliveryWorkerNow("reclass_immediate");
   return result;
 }
 
@@ -4514,6 +4518,7 @@ function authorizeAppsScriptProxyAction(action: string, payload: Record<string, 
   }
   // Home status is an existing read for every active authenticated nursery role.
   if (action === "manual_status") return;
+  if (action === "wake_delivery_worker") return requireAny(["can_access_que", "can_access_manager_tab", "can_submit_reclass"]);
   if (action === "drivearound_name_preview") return requireAny(["can_access_drive_mode"]);
   if (action === "inventory_transaction" || action === "inventory_transaction_history") return requireAny(["can_access_drive_mode"]);
   if (action === "block_clearing_pdf") return requireAny(["can_access_manager_tab", "can_access_drive_mode"]);
@@ -4611,6 +4616,24 @@ async function handleAppsScriptAction(
     recordHandledError("app-api", "apps_script_action", error, 502);
     return transientOkResponse("APPS_SCRIPT_ACTION_FAILED", "The Apps Script action could not be completed.");
   }
+}
+
+function dispatchAuthenticatedDeliveryWake(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  access: CanonicalUserAccess | null,
+  sourceValue: unknown,
+) {
+  if (!session || !access) return errorResponse("An active authenticated profile is required.", 401, { code: "AUTH_REQUIRED" });
+  const source = String(sourceValue || "browser_request").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-").slice(0, 80) || "browser_request";
+  const appsScriptWake = handleAppsScriptAction(session, {
+    action: "wake_delivery_worker",
+    payload: { type: "wake_delivery_worker", source, limit: 40 },
+  }, access).then(() => {}).catch(() => {});
+  const edgeWake = invokeRequestDeliveryWorkerNow(source).then(() => {}).catch(() => {});
+  const task = Promise.allSettled([appsScriptWake, edgeWake]).then(() => {});
+  const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (task: Promise<void>) => void } }).EdgeRuntime;
+  if (runtime) runtime.waitUntil(task);
+  return jsonResponse({ ok: true, scheduled: true, source });
 }
 
 const HOME_SYNC_METADATA_USERS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
@@ -6900,6 +6923,13 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
   }
 
+  if (action === "delivery_wake") {
+    if (Object.keys(payload).some(key => key !== "action" && key !== "source")) {
+      return errorResponse("Invalid delivery wake request.", 400, { code: "DELIVERY_WAKE_REQUEST_INVALID" });
+    }
+    return dispatchAuthenticatedDeliveryWake(session, canonicalAccessForRequest, payload.source);
+  }
+
   if (action === "apps_script_action") {
     if (Object.keys(payload).some(key => key !== "action" && key !== "payload")) {
       return errorResponse("Invalid Apps Script action request.", 400, { code: "APPS_SCRIPT_ACTION_REQUEST_INVALID" });
@@ -7093,14 +7123,26 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "set_user_preferences" || action === "live_pilot_preferences_save") {
     return await handleSetUserPreferences(session, payload);
   }
-  if (action === "eval_work") return await handleEvalWorkAction(session, payload, canonicalAccessForRequest);
+  if (action === "eval_work") {
+    const response = await handleEvalWorkAction(session, payload, canonicalAccessForRequest);
+    if (response.ok && ["create", "create_batch", "submit", "reassign"].includes(String(payload.operation || "").trim().toLowerCase())) {
+      dispatchRequestDeliveryWorkerNow(`eval_work_${String(payload.operation || "mutation").trim().toLowerCase()}`);
+    }
+    return response;
+  }
   if (action === "report_read_v2") return await handleManagerReportReadAction(session, payload, canonicalAccessForRequest, activeProfileForRequest);
   if (action === "photo_history") return await handlePhotoHistoryAction(session, payload);
   if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
   if (action === "reclass_recount") return await handleReclassRecountAction(session, payload);
   if (action === "dataset_revisions") return await handleDatasetRevisionsAction(session, payload);
   if (action === "season_sales_office") return await handleSeasonSalesOfficeAction(session, payload);
-  if (action === "shear_location_work") return await handleShearLocationAction(session, payload);
+  if (action === "shear_location_work") {
+    const response = await handleShearLocationAction(session, payload);
+    if (response.ok && ["create", "complete", "retry"].includes(String(payload.operation || "").trim().toLowerCase())) {
+      dispatchRequestDeliveryWorkerNow(`shear_location_${String(payload.operation || "mutation").trim().toLowerCase()}`);
+    }
+    return response;
+  }
   if (action === "bunch_note_workflow") {
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
     try {
@@ -7177,7 +7219,13 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     return await handleFieldCountAction(session, payload);
   }
   if (action === "inventory_consolidation") return await handleInventoryConsolidationAction(req, session, payload);
-  if (action === "location_work") return await handleLocationWorkAction(session, payload);
+  if (action === "location_work") {
+    const response = await handleLocationWorkAction(session, payload);
+    if (response.ok && ["create", "resolve_line", "retry"].includes(String(payload.operation || "").trim().toLowerCase())) {
+      dispatchRequestDeliveryWorkerNow(`location_work_${String(payload.operation || "mutation").trim().toLowerCase()}`);
+    }
+    return response;
+  }
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
   if (action === "aura_inventory_v2") return await handleAuraInventoryV2(session, payload, {
     signal: req.signal,

@@ -62,7 +62,14 @@ The v2.3.60 request repair adds no startup route: it preserves the existing queu
 - **Mandatory Step N — `+1 Ratchet Learning Loop`:** every bug or Watchdog incident fix appends its root-cause anti-pattern to the owning skill's forbidden section and appends one new active `Invariant N` behavior test to `tests/golden-invariants.test.mjs` in the same commit.
 - New functions/RPCs/background reads update the symbol index, exact fixtures, owning skill, focused checks, and deployment registration together; documentation never substitutes for executable coverage.
 
+## Mandatory 4-Caller & All-11-Gems Impact Contract
+
+- Before any migration, RLS/trigger, app-api, Apps Script, or runtime hydration change, verify browser direct operational reads, the `Code.gs` delivery worker, bounded app-api startup work, and typed/guarded Postgres triggers across every Gem domain.
+- Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never edit before the Step 0 read, leave a new canonical function unindexed, add a wildcard fixture, teach an unverified assumption, or close a bug without the `+1` invariant and root-cause entry.
 - Never delete, renumber, skip, todo, or weaken an existing golden invariant; the ratchet is append-only.

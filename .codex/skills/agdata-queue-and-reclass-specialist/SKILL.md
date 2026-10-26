@@ -89,7 +89,14 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 - Recount groups one card per `(itemcode, locationcode)`, sums On Hand across every lot, and sends per-lot On Hand/Available/Review plus the submitted location total.
 - Move Up/Down applies the quantity delta to Open Stock on every destination-season row and recomputes Loc Photo Match on first save. The report table remains exactly nine columns, with starting OH and `UP <QTY> TO <SEASON>` inside the OH cell.
 
+## Mandatory 4-Caller & All-11-Gems Impact Contract
+
+- Before any migration, RLS/trigger, app-api, Apps Script, or runtime hydration change, verify browser direct operational reads, the `Code.gs` delivery worker, bounded app-api startup work, and typed/guarded Postgres triggers across every Gem domain.
+- Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never group Recount by physical UID/lot alone, omit lot metrics from completion delivery, update only one destination-season Open Stock row, add Action columns to the nine-column report, or move the proposal box outside OH.
 - Never collapse physical Suspend rows, infer mutation authority from cached UI state, add JD/Sunday as fixed Reclass recipients, or block opening a displayed-card Reclass draft on a background refresh.

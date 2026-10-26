@@ -50,6 +50,17 @@ Use [the canonical module dependency map](docs/architecture/agdata-module-depend
 
 **Permanent Golden Contracts:** Preserve the zero-scroll 12-tile `#view-home` fit (including `Production` and `Smart Sales & Move`), immediate `#view-smart-moves` hydration, authorized fail-open `200` responses instead of transient `401`/`403`/`409`/`423` lockouts, `security_invoker = true` on every public SQL view, transactional `SET LOCAL`, and manual `RUN SCRIPT` `force: true` stale-lock override with successfully published `.xlsx` files moved to `Processed`.
 
+## Mandatory 4-Caller & All-11-Gems Impact Contract
+
+Every migration, RLS/trigger edit, `app-api` update, `Code.gs` change, or `assets/app-runtime.js` change must verify all four callers and every Gem domain before release:
+1. **Browser PostgREST (`anon` / `authenticated`):** Preserve direct `SELECT` plus SWR/LKG access for operational inventory, queue, and lookup relations; never expose `ph_app_users` or `user_access_control`, and never grant anonymous operational mutations outside the reviewed delivery exception.
+2. **Google Apps Script:** Preserve read/claim/status/thread access for request delivery outbox, worker state, email threads, pending requests, and completed history; every durable email event must remain immediately wakeable and retryable.
+3. **`app-api` Edge:** Keep startup responses bounded below `300 ms`; never proxy a startup bulk download above `2,000` rows when direct read-only PostgREST or an item/folder-scoped RPC exists.
+4. **Postgres Triggers/Functions:** Never mix `timestamptz` and `text` in `COALESCE`, and never add an unguarded per-row cross-table trigger to `ph_master_inventory`; use exact changed-column/row guards and set-based import paths.
+
+The release gate must prove Drive/AV, Bloom/Request, Queue/Reclass, Email/Outbox, Docks/Archive, Shell/Navigation, Sync, Zero-Lockout, Watchdog/role parity, AURA, and Skill Learner/Release Governor behavior without weakening another domain.
+Every modified `Code.gs` entrypoint and authorization dependency must be registered in `package.json#appsScriptPatchFunctions`, with a scoped merger test proving remote-only production routes remain intact.
+
 ---
 
 # 🛑 PILLAR 1: STRICT SCOPE AND WORKSPACE HYGIENE

@@ -1113,3 +1113,52 @@ test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => {
     'fast_ingest_drive_around_v1', 'FAST_LIVE_ERP_DATABASE_URL', 'Promise.all']) assert.ok(fastSync.includes(marker), marker);
   assert.match(read('assets/app-runtime.js'), /type: 'manual_run'[^]*fast: true/);
 });
+
+test('Invariant 31 (Four-Caller Delivery and Direct Hydration Recovery)', () => {
+  const migrationName = '20261026140000_agdata_v2369_emergency_recovery.sql';
+  const migration = read(`supabase/migrations/${migrationName}`);
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const appsScript = read('Code.gs');
+  for (const relation of ['ph_master_inventory', 'ph_cav_import', 'ph_reserves', 'ph_soc_master',
+    'ph_customer_consignee_sales_reps', 'ph_request_delivery_outbox', 'ph_request_delivery_worker_state',
+    'ph_request_email_threads', 'ph_requests_pending', 'ph_requests_completed_history']) {
+    assert.ok(migration.includes(relation), relation);
+  }
+  for (const marker of ['grant select on table public.%I to anon,authenticated',
+    'agdata_v2369_operational_read', 'security_invoker=true', 'claim_request_delivery_events(integer,text)',
+    'safe_parse_timestamptz', "status='pending',attempt_count=0", "event_type<>'delivery_canary'",
+    'old.photo_url is distinct from new.photo_url', 'old.ptronhand is distinct from new.ptronhand',
+    'when (old is distinct from new)']) assert.ok(migration.includes(marker), marker);
+  assert.doesNotMatch(migration, /\b(?:drop\s+table|truncate)\b/i);
+  assert.match(migration, /revoke all on table public\.ph_app_users from anon[^]*revoke all on table public\.user_access_control from anon/);
+  for (const marker of ['DIRECT_POSTGREST_READ_TABLES', 'fetchDirectPostgrestReadPage',
+    'fetchDirectMasterInventoryPage', 'skipCustomerMapShortcut', "scheduleRequestDeliveryWake('request_created')",
+    "scheduleRequestDeliveryWake('request_completed')"]) assert.ok(runtime.includes(marker), marker);
+  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'getLoginWarmupPlan'), /avNotes|requestHistory|reserves|soc|cav/);
+  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'getLoginReadyDatasetTargets'), /avNotes|requestHistory|reserves|soc|cav/);
+  for (const name of ['filterEvalWorkAvNotes', 'filterPaperNcrSalesNotes', 'filterAvNotes']) {
+    assert.doesNotMatch(functionSource('assets/app-runtime.js', name), /ensureDatasetLoaded\('avNotes'/);
+  }
+  for (const marker of ['delivery_wake', 'wake_delivery_worker', 'dispatchAuthenticatedDeliveryWake',
+    'dispatchRequestDeliveryWorkerNow', 'eval_work_', 'shear_location_', 'location_work_']) assert.ok(appApi.includes(marker), marker);
+  assert.match(appsScript, /payload\.type === 'wake_delivery_worker'[^]*processRequestDeliveryOutbox_/);
+  const manifest = JSON.parse(read('package.json'));
+  for (const name of ['verifyAppsScriptActionEnvelope_', 'doPost']) assert.ok(manifest.appsScriptPatchFunctions.includes(name), name);
+  assert.match(read('scripts/apps-script-function-patch.mjs'), /mergeRequestDeliveryWakeDispatch[^]*DELIVERY_WAKE_REMOTE_ANCHOR/);
+  const impactHeading = 'Mandatory 4-Caller & All-11-Gems Impact Contract';
+  assert.ok(read('AGENTS.md').includes(impactHeading));
+  for (const skill of ['agdata-app-shell-and-navigation', 'agdata-aura-assistant',
+    'agdata-bloom-and-request-specialist', 'agdata-docks-and-orders-specialist',
+    'agdata-drive-and-av-specialist', 'agdata-field-ops-and-qc',
+    'agdata-queue-and-reclass-specialist', 'agdata-release-governor',
+    'agdata-runtime-watchdog', 'agdata-skill-learner',
+    'agdata-sync-and-supabase-architect', 'agdata-zero-lockout-guard']) {
+    const body = read(`.codex/skills/${skill}/SKILL.md`);
+    assert.ok(body.includes(impactHeading), skill);
+    assert.ok(body.includes("Never approve a cross-layer change from one caller's tests alone"), skill);
+  }
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  assert.match(runner, /agdataV2369EmergencyRecoveryMigrationName[^]*registeredReleaseDatabaseMigrations/);
+  assert.ok(runner.includes(migrationName));
+});

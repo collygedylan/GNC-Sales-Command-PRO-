@@ -152,6 +152,7 @@ export const agdataV2368MasterPhotoDatePreservationMigrationName = '202610260510
 export const agdataV2368AvNoteSanitizerMigrationName = '20261026054000_agdata_v2368_av_note_sanitizer.sql';
 export const agdataV2368HistoricalPhotoDateKeyFixMigrationName = '20261026055000_agdata_v2368_historical_photo_date_key_fix.sql';
 export const agdataV2369FastLiveErpIngestionMigrationName = '20261026070000_agdata_v2369_fast_live_erp_ingestion.sql';
+export const agdataV2369EmergencyRecoveryMigrationName = '20261026140000_agdata_v2369_emergency_recovery.sql';
 export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName, managerPublishedReadMigrationName, importSourceMetadataMigrationName, masterPrioritySplitMigrationName, fullAppAdministratorsMigrationName, protectedRequestNaMigrationName, zeroTrustRlsMigrationName, appLoginRateLimitMigrationName, managerReportSetBasedReadMigrationName, managerEval2BatchedPreviewMigrationName, auraDylanOwnerOnlyMigrationName, suspendExistingReviewMigrationName, suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName]);
 
 export const registeredReleaseDatabaseMigrations = Object.freeze([
@@ -181,6 +182,7 @@ export const registeredReleaseDatabaseMigrations = Object.freeze([
   agdataV2368AvNoteSanitizerMigrationName,
   agdataV2368HistoricalPhotoDateKeyFixMigrationName,
   agdataV2369FastLiveErpIngestionMigrationName,
+  agdataV2369EmergencyRecoveryMigrationName,
 ]);
 
 export function normalizeScopedMigrationPaths(migrationPaths) {
@@ -2280,6 +2282,24 @@ export function migrationContractQuery(name) {
     and not has_function_privilege('authenticated','public.check_erp_file_sync_needed_v1(text,text,text,text,text)','execute')
     and has_function_privilege('service_role','public.fast_ingest_drive_around_v1(jsonb,jsonb)','execute')
     and not has_function_privilege('authenticated','public.fast_ingest_drive_around_v1(jsonb,jsonb)','execute')
+    as installed`;
+  if (name === agdataV2369EmergencyRecoveryMigrationName) return `select
+    has_table_privilege('anon','public.ph_master_inventory','select')
+    and has_table_privilege('authenticated','public.ph_customer_consignee_sales_reps','select')
+    and has_table_privilege('anon','public.ph_request_delivery_outbox','update')
+    and has_table_privilege('authenticated','public.ph_request_email_threads','update')
+    and has_column_privilege('anon','public.ph_requests_completed_history','delivery_state','update')
+    and has_function_privilege('anon','public.claim_request_delivery_events(integer,text)','execute')
+    and not has_table_privilege('anon','public.ph_app_users','select')
+    and not has_table_privilege('anon','public.user_access_control','select')
+    and exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relname='ph_active_request'
+        and coalesce(c.reloptions,'{}'::text[])@>array['security_invoker=true'])
+    and position('old.photo_url is distinct from new.photo_url' in lower(pg_get_triggerdef(
+      (select oid from pg_trigger where tgrelid='public.ph_master_inventory'::regclass
+        and tgname='ph_drive_evidence_archive_v2366' and not tgisinternal))))>0
+    and position('safe_parse_timestamptz' in lower(pg_get_functiondef(
+      'private.persist_completed_request_history_v1(text,text,text,boolean)'::regprocedure)))>0
     as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }
