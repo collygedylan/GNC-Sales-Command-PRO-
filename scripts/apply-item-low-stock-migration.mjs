@@ -2391,6 +2391,10 @@ export function migrationContractQuery(name) {
     and not has_table_privilege('authenticated','public.ph_master_inventory','insert,update,delete')
     and (select value->>'app_version' from public.ph_app_settings where key='app_version')='2.3.73'
     as installed`;
+  if (name === agdataV2373DriveTimeoutRecoveryMigrationName) return `select
+    coalesce((select proconfig @> array['statement_timeout=120s']
+      from pg_proc where oid='public.fast_ingest_drive_around_v1(jsonb,jsonb)'::regprocedure),false)
+    as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }
 
