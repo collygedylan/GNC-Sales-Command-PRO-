@@ -6,7 +6,7 @@
     'use strict';
     // V1 positions are a wire contract. Never reorder/extend this array without
     // changing the version; canonical cache identity must include that version.
-    const version = 'master-list-v1';
+    const version = 'master-list-v2';
     const columns = Object.freeze([
         'a_lts', 'ai_lts', 'app_tab_assignment', 'assignedto', 'av_note',
         'av_rule_av_note_updated_at', 'av_rule_bundle_updated_at', 'av_rule_caliper_updated_at', 'av_rule_holdstop_snapshot', 'av_rule_last_clear_reason',
@@ -30,8 +30,8 @@
         'listprice', 'loc_match_qty', 'locationcode', 'locationnote', 'locationnotedate',
         'locationptn1', 'locationptn2', 'lochold', 'lotcode', 'match',
         'maxorderquantity', 'mcstatus', 'ncr_approval_message', 'ncr_approval_type', 'ncr_requested_at',
-        'ncr_requested_by_display', 'ncr_requested_by_email', 'ncr_requested_by_username', 'oversellpercentage', 'photo_link',
-        'photo_name', 'pic_note', 'picknote', 'planstart', 'plantgroupcode',
+        'ncr_requested_by_display', 'ncr_requested_by_email', 'ncr_requested_by_username', 'oversellpercentage', 'photo_date',
+        'photo_link', 'photo_name', 'pic_note', 'picknote', 'planstart', 'plantgroupcode',
         'printedcontainercode', 'priority', 'prisetby', 'priupdated', 'ptravailable',
         'ptronhand', 'ptrreviewed', 'pullerresponsibility', 'pulltagnote1', 'pulltagnote2',
         'qa_code', 'qualitycode', 'reversecommon', 's_lts', 'sales_note',

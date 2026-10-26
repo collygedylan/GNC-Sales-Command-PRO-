@@ -243,7 +243,17 @@
         }
         function isRetainableTransientError(error) {
             const status = Number(error?.status || error?.payload?.status || 0);
-            return status === 409 || status === 422 || status === 423;
+            const code = String(error?.code || error?.payload?.code || error?.payload?.sqlState || '').trim().toUpperCase();
+            const message = String(error?.message || error || '').toLowerCase();
+            return status === 408 || status === 409 || status === 422 || status === 423 || status === 429 || status >= 500
+                || code === 'SUPABASE_READ_COOLDOWN'
+                || /timed out|timeout|failed to fetch|network(?:error| request)?|connection (?:closed|reset|interrupted)/i.test(message);
+        }
+        function getTransientRetryDelay(error) {
+            const retryAfterMs = Number(error?.retryAfterMs || error?.payload?.retryAfterMs || 0);
+            if (Number.isFinite(retryAfterMs) && retryAfterMs > 0) return Math.min(60000, Math.max(250, retryAfterMs + 50));
+            const status = Number(error?.status || error?.payload?.status || 0);
+            return status === 429 || status >= 500 || /timed out|timeout/i.test(String(error?.message || error || '')) ? 10000 : 1000;
         }
         function isSilentBackgroundRetry(error) {
             return String(error?.code || error?.payload?.code || '').trim().toUpperCase() === 'NATIVE_PROFILE_RETRY_REQUIRED';
@@ -678,6 +688,15 @@
                     run.controller?.abort(error);
                     return;
                 }
+                if (isRetainableTransientError(error) && !sourceReadinessCode(error)) {
+                    const retained = retainDisplay(ctx);
+                    if (current()) emit('Syncing', 'The connection was interrupted. Retrying current data in the background.', retained
+                        ? { dataReadable: true, readContextKey: readContextKey(ctx), retryable: true }
+                        : { retryable: true });
+                    signal('transient-read-retry', getTransientRetryDelay(error));
+                    run.controller?.abort(error);
+                    return;
+                }
                 const permissionDenied = discardAppliedAfterDenial(ctx, error);
                 suspendForSourceReadiness(error, adapter, before, ctx);
                 if (current()) emit('Needs attention', error?.message || String(error), permissionDenied
@@ -867,10 +886,16 @@
                                 result = false;
                                 break;
                             }
-                            if (isRetainableTransientError(error)) {
-                                retainDisplay(run.context || {});
+                            if (isRetainableTransientError(error) && !sourceReadinessCode(error)) {
+                                const retryContext = run.context || {};
+                                const retained = retainDisplay(retryContext);
+                                publish('Syncing', 'The connection was interrupted. Retrying current data in the background.', {
+                                    contextKey: identity(retryContext), retryable: true,
+                                    ...(retained ? { dataReadable: true, readContextKey: readContextKey(retryContext) } : {})
+                                });
+                                signal('transient-read-retry', getTransientRetryDelay(error));
                                 result = false;
-                                continue;
+                                break;
                             }
                             const permissionDenied = discardAppliedAfterDenial(run.context, error);
                             publish('Needs attention', error.message || String(error), {
