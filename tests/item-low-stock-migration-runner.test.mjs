@@ -20,6 +20,7 @@ import {
   agdataV2366HistoricalArchivePageDedupMigrationName,
   agdataV2366DriveArchiveSearchHashFixMigrationName,
   agdataV2367CropTierAuraGlossaryMigrationName,
+  agdataV2367HistoricalDriveFastReadMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -169,12 +170,26 @@ test('v2.3.67 strict crop tiers and AURA glossary are registered', () => {
   assert.deepEqual(normalizeScopedMigrationPaths([agdataV2367CropTierAuraGlossaryMigrationName]),
     [agdataV2367CropTierAuraGlossaryMigrationName]);
   const contract = migrationContractQuery(agdataV2367CropTierAuraGlossaryMigrationName);
-  for (const marker of ['get_consolidation_move_candidates_v1', 'aura_inventory_crop_tier_v1', 'historical_drive_file_page_v2367',
+  for (const marker of ['get_consolidation_move_candidates_v1', 'aura_inventory_crop_tier_v1',
     '006138.021.1', '008404.010.1', 'aura_domain_glossary']) assert.match(contract, new RegExp(marker));
   const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2367CropTierAuraGlossaryMigrationName}`, import.meta.url), 'utf8');
   for (const marker of ['CARRY_OVER', 'CURRENT_CROP', 'FUTURE_CROP', 'source_profile.max_sales_year',
     'destination_profile.max_sales_year', 'candidate.sales_year=source.sales_year']) assert.match(source, new RegExp(marker.replace('.', '\\.')));
   assert.doesNotMatch(source, /insert\s+into\s+public\.ph_requests_pending/i);
+});
+
+test('v2.3.67 Drive archive fast read is forward-only and registered', () => {
+  assert.equal(agdataV2367HistoricalDriveFastReadMigrationName,
+    '20261026034500_agdata_v2367_historical_drive_fast_read.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2367HistoricalDriveFastReadMigrationName]),
+    [agdataV2367HistoricalDriveFastReadMigrationName]);
+  const contract = migrationContractQuery(agdataV2367HistoricalDriveFastReadMigrationName);
+  assert.match(contract, /historical_drive_file_page_v2367/);
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2367HistoricalDriveFastReadMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['item_key_v2367', 'state_hash_v2367', 'historical_drive_file_page_v2367(path_value->>2']) {
+    assert.match(source, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.doesNotMatch(source, /update\s+public\.ph_drive_around_report_rows/i);
 });
 
 test('v2.3.66 archive pages dedupe business state before rendering', () => {

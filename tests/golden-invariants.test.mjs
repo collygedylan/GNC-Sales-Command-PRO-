@@ -975,12 +975,14 @@ test('Invariant 28 (Strict Crop Tiers and Canonical AURA Nursery Glossary)', () 
     'source_profile.max_sales_year<settings.current_sales_year', 'source_profile.min_sales_year=settings.current_sales_year',
     'destination_profile.max_sales_year<settings.current_sales_year', 'destination_profile.min_sales_year=settings.current_sales_year',
     'candidate.sales_year=source.sales_year', 'get_consolidation_move_candidates_v1() candidate',
-    'aura_inventory_crop_tier_v1', 'historical_drive_file_page_v2367', 'definition text', "synonyms text[]"]) {
+    'aura_inventory_crop_tier_v1', 'definition text', "synonyms text[]"]) {
     assert.match(migration, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   for (const term of ['carry over','current crop','future crop','inv consolidation','loc photo match','request sales impact',
     'mistake guy','historical orders','historical reserves','historical drive around','location moves','suspend tag',
     'recount','bunch notes','eval work','shear list']) assert.match(migration, new RegExp(`'${term}'`));
+  assert.match(read('supabase/migrations/20261026034500_agdata_v2367_historical_drive_fast_read.sql'),
+    /historical_drive_file_page_v2367[^]*item_key_v2367[^]*state_hash_v2367/);
 
   const runner = read('scripts/apply-item-low-stock-migration.mjs');
   for (const marker of ['006138.021.1', 'G.15.000', 'E.22.000', '008404.010.1', 'C.11.034', 'C.11.054']) {

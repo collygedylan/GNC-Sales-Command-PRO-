@@ -360,7 +360,9 @@
         "supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql": [
           "get_consolidation_move_candidates_v1",
           "refresh_inventory_consolidation_cache_v2366",
-          "inventory_consolidation_suggestions_v1",
+          "inventory_consolidation_suggestions_v1"
+        ],
+        "supabase/migrations/20261026034500_agdata_v2367_historical_drive_fast_read.sql": [
           "historical_drive_file_page_v2367"
         ]
       }
