@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "6df903052bfb01df3bcceb75c09d029007578330",
+  "commit": "09903fb69c73b6cba8442b71767a31c6aa85d523",
   "release": "AgData v2.3.70",
   "files": [
     {
@@ -889,14 +889,19 @@
       "sha256": "08a86248bcd5a51489099450d31a5068d0ecb66a9fa835bb966102a7b15e8221"
     },
     {
-      "path": "deployment.json",
+      "path": "deployment-fingerprint.json",
       "bytes": 187,
-      "sha256": "c17da7b8a435b0c2b34a7f715f7cbef3f70007fd369227dbfe470c811e4d90e7"
+      "sha256": "136f1edc67e2d75fed9fed63a3e0faf3518d33bbb6e4d0883c7de5ec30cc70a4"
     },
     {
-      "path": "deployments/6df903052bfb01df3bcceb75c09d029007578330.json",
+      "path": "deployment.json",
       "bytes": 187,
-      "sha256": "c17da7b8a435b0c2b34a7f715f7cbef3f70007fd369227dbfe470c811e4d90e7"
+      "sha256": "136f1edc67e2d75fed9fed63a3e0faf3518d33bbb6e4d0883c7de5ec30cc70a4"
+    },
+    {
+      "path": "deployments/09903fb69c73b6cba8442b71767a31c6aa85d523.json",
+      "bytes": 187,
+      "sha256": "136f1edc67e2d75fed9fed63a3e0faf3518d33bbb6e4d0883c7de5ec30cc70a4"
     },
     {
       "path": "index.html",
@@ -940,8 +945,8 @@
     },
     {
       "path": "sw.js",
-      "bytes": 36972,
-      "sha256": "271edaeef1f67484938adf1e313a78ad0b0e18296ab2fb32f6bbe58c84a22abd"
+      "bytes": 36983,
+      "sha256": "40e221a7ff95bef0f64c40b6202191aa2932115e5299435ef18bb1779f06ba67"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -1171,7 +1176,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "23d50033b01c7fdd6d04a41a8fd75dddf4ed16658b8052b6ac3b6dbf22254036"
+      "sha256": "81b3aa380bcfc1d970b026b0107bebece0139f999bad404751f811c52bb188af"
     },
     {
       "path": "v2/v2-cache-migration.js",
