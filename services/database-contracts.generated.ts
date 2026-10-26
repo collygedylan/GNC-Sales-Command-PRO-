@@ -93847,6 +93847,38 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "request_completion_receipt_v2372": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_request_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_session_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "request_work_command_v1": {
       "oneOf": [
         {
@@ -105287,6 +105319,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "save_limited_access_override_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "request_completion_receipt_v2372": {
       "oneOf": [
         "json"
       ]
