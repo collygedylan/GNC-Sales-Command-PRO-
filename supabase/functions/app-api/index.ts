@@ -1,7 +1,7 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.76";
-const APP_RUNTIME_RELEASE = "AgData v2.3.76";
+const APP_RUNTIME_VERSION = "2.3.77";
+const APP_RUNTIME_RELEASE = "AgData v2.3.77";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -457,7 +457,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.76";
+  const appVersion = "2.3.77";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -1274,10 +1274,6 @@ async function handleDatasetRead(
     : dataset !== "app_user_directory" && !hasTableReadAccess(role, source.permission, username) && !canonicalDatasetAccess) {
     return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
   }
-  if (dataset === "suspend_tag") {
-    try { actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, request); }
-    catch { return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" }); }
-  }
   let parsed: ReturnType<typeof validateDatasetReadParams>;
   try { parsed = validateDatasetReadParams(payload); }
   catch (error) { return errorResponse(String(error instanceof Error ? error.message : error), 400, { code: String(error instanceof Error ? error.message : error) }); }
@@ -1312,8 +1308,8 @@ async function handleDatasetRead(
       // Mirror the Suspend Tag eligibility normalization in index.html, but
       // enforce it in PostgREST before exact count/paging so callers cannot
       // widen the result or receive inconsistent page totals.
-      query.append("suspend", "imatch.^[[:space:]\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]*[s\\u017f]uspend[[:space:]\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]*$");
-      query.append("suspend_to", "imatch.^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$");
+      query.append("suspend", "eq.SUSPEND");
+      query.append("suspend_to", "eq.dc");
     }
     const anyOf = datasetReadFilterParts(source, parsed.anyOf);
     if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");

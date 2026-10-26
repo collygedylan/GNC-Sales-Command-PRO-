@@ -163,6 +163,7 @@ export const agdataV2373DriveTimeoutRecoveryMigrationName = '20261026190000_agda
 export const agdataV2374UnifiedFastBaselineSuspendReclassEmailMigrationName = '20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql';
 export const agdataV2375SuspendCardsFastBatchSyncMigrationName = '20261026210000_agdata_v2375_suspend_17_cards_and_fast_batch_sync.sql';
 export const agdataV2376InstantLoginFastSuspendMigrationName = '20261026220000_agdata_v2376_instant_login_and_fast_suspend_view.sql';
+export const agdataV2377SuspendReadContinuityMigrationName = '20261026230000_agdata_v2377_suspend_read_continuity.sql';
 export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName, managerPublishedReadMigrationName, importSourceMetadataMigrationName, masterPrioritySplitMigrationName, fullAppAdministratorsMigrationName, protectedRequestNaMigrationName, zeroTrustRlsMigrationName, appLoginRateLimitMigrationName, managerReportSetBasedReadMigrationName, managerEval2BatchedPreviewMigrationName, auraDylanOwnerOnlyMigrationName, suspendExistingReviewMigrationName, suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName]);
 
 export const registeredReleaseDatabaseMigrations = Object.freeze([
@@ -203,6 +204,7 @@ export const registeredReleaseDatabaseMigrations = Object.freeze([
   agdataV2374UnifiedFastBaselineSuspendReclassEmailMigrationName,
   agdataV2375SuspendCardsFastBatchSyncMigrationName,
   agdataV2376InstantLoginFastSuspendMigrationName,
+  agdataV2377SuspendReadContinuityMigrationName,
 ]);
 
 export function normalizeScopedMigrationPaths(migrationPaths) {
@@ -2408,7 +2410,7 @@ export function migrationContractQuery(name) {
       where oid='public.ph_active_suspend'::regclass),false)
     and has_function_privilege('service_role','public.fast_ingest_drive_around_v1(jsonb,jsonb)','execute')
     and not has_function_privilege('anon','public.fast_ingest_drive_around_v1(jsonb,jsonb)','execute')
-    and (select value->>'app_version' from public.ph_app_settings where key='app_version') in ('2.3.74','2.3.75','2.3.76')
+    and (select value->>'app_version' from public.ph_app_settings where key='app_version') in ('2.3.74','2.3.75','2.3.76','2.3.77')
     as installed`;
   if (name === agdataV2375SuspendCardsFastBatchSyncMigrationName) return `select
     coalesce((select reloptions @> array['security_invoker=true'] from pg_class
@@ -2419,7 +2421,7 @@ export function migrationContractQuery(name) {
         and date_completed is null
         and lower(btrim(coalesce(suspend_candidate_state,'pending'))) not in ('complete','completed','approved','rejected'))
     and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_active_suspend' and column_name='is_suspend_tag')
-    and (select value->>'app_version' from public.ph_app_settings where key='app_version') in ('2.3.75','2.3.76')
+    and (select value->>'app_version' from public.ph_app_settings where key='app_version') in ('2.3.75','2.3.76','2.3.77')
     as installed`;
   if (name === agdataV2376InstantLoginFastSuspendMigrationName) return `select
     coalesce((select reloptions @> array['security_invoker=true'] from pg_class
@@ -2428,6 +2430,17 @@ export function migrationContractQuery(name) {
     and to_regclass('public.ph_soc_master_suspend_dc_v2376_idx') is not null
     and has_table_privilege('anon','public.ph_active_suspend','select')
     and has_table_privilege('authenticated','public.ph_master_inventory','select')
+    as installed`;
+  if (name === agdataV2377SuspendReadContinuityMigrationName) return `select
+    coalesce((select reloptions @> array['security_invoker=true'] from pg_class
+      where oid='public.ph_active_suspend'::regclass),false)
+    and has_table_privilege('anon','public.ph_active_suspend','select')
+    and (select count(*) from public.ph_active_suspend)=(select count(*) from public.ph_soc_master
+      where upper(btrim(coalesce(suspend,'')))='SUSPEND'
+        and lower(btrim(coalesce(suspend_to,'')))='dc'
+        and date_completed is null
+        and lower(btrim(coalesce(suspend_candidate_state,'pending'))) not in ('complete','completed','approved','rejected'))
+    and (select value->>'app_version' from public.ph_app_settings where key='app_version')='2.3.77'
     as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }

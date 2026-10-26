@@ -77774,6 +77774,1262 @@ export const contracts: RuntimeContracts<Database> = {
         }
       }
     },
+    "ph_active_suspend": {
+      "row": {
+        "object": {
+          "unique_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "concat": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "last_updated": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "assignedto": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "date_completed": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dock_photo_link": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dock_photo_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dock_spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dock_caliper": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dock_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "contsize": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "warehouseid": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "warehousename": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "isreserve": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "salesrepid": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "salesrepname": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "nationalaccount": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "idgroup": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "customeridentityid": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "customername": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consigneeidentityid": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consigneename": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consigneecity": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consigneestate": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consigneezip": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "tripnumber": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "stopnumber": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "zonecode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "tagcode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "transactionnumber": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "purchaseordernumber": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "extunitprice": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "ordertotal": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "requestdate": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "stagename": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "step": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "customersku": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "formattedupc": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "printedcontainercode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "lotcode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "locationcode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "descriptorcode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "itemcode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "plantgroupcode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "sortnamevariety": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "containersort": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "qualitycode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "commonname": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "quantityordered": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "quantityshipped": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "listprice": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "unitprice": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "handlingchargeperitem": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "taggingchargeperitem": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "combinedprice": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "freightrateperitem": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "landed": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "retailprice": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "holdstopcode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "holdstopreason": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "salesnote": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "fnsalesnote": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "picknote": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "planstart": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "generalloadinstr": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "invoicedate": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consigneeaddress_1": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consigneeaddress_2": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "altshipcomment": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "shiptotelephone_1": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "okloadinstructions": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "txloadinstructions": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "ncloadinstructions": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "hlloadinstructions": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dock": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "equiv_unit": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "equiv_uom": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "wingdingunits": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dropweight": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "internalinvnote": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "hardinesszone": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "brand": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "tagdeptnote": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "ext_unit_merch_shipped": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "ext_eunit_shipped": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "avg_price_eunit_shipped": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "requestdateweek": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "carrier": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "suspend": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "suspend_to": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "qa_code": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "grower": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "priority": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "ptronhand": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "ptrreviewed": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "ptravailable": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "season_supply": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "s_lts": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "itemspec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "season": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "mcstatus": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "hz": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "intercopo": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "insurancegroup": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "si_lts": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "a_lts": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "ai_lts": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "si_available": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "holdstopenddate": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "salesnote_1": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "caliper": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "pic_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "sales_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "av_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "photo_link": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "photo_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "flyer_cat": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "flyer_title": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "flyer_inst": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "flyer_assigned": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "flyer_notes": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "flyer_photo_link": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "flyer_photo_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "flyer_completed": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "initial_ptr": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "loc_match_qty": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "end_cap_folder": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "end_cap_qty": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "end_cap_level": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "match": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dock_num": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "source": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "desigitem": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "desigcust": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "desigloc": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "filename": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "suspend_candidate_group": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "suspend_candidate_state": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "suspend_order_quantity": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "suspend_origin_uid": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "on_hand": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "review": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "available": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "open_stock": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "loc_on_hand": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "status": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "request_type": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "is_suspend_tag": {
+            "schema": {
+              "oneOf": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "suspendto": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "drop_number": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "consignee": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "customer": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "sales_rep": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "insert": "never",
+      "update": "never"
+    },
     "ph_active_request_live_rows": {
       "row": {
         "object": {

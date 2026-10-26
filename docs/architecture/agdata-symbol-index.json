@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.76",
+  "release": "AgData v2.3.77",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -453,6 +453,8 @@
         "renderRequest",
         "buildPendingRequestRenderPlan",
         "isDockSuspendDcRequestMirrorRow",
+        "getDockSuspendDcSourceRows",
+        "getDockSuspendDcSourceRowLookupRevision",
         "getSuspendTagRequestItems",
         "buildSuspendTagRenderPlan",
         "buildReclassRecountLocationGroups",
@@ -475,6 +477,12 @@
         "services/liveDatabase.ts": [
           "browserDatabaseTableAliases",
           "createLegacyDatabaseBridge"
+        ],
+        "services/database-contracts.generated.ts": [
+          "ph_active_suspend"
+        ],
+        "supabase/functions/_shared/database.types.ts": [
+          "ph_active_suspend"
         ]
       }
     },
@@ -576,6 +584,9 @@
         "supabase/migrations/20261026220000_agdata_v2376_instant_login_and_fast_suspend_view.sql": [
           "ph_active_suspend",
           "ph_soc_suspend_tag_rows"
+        ],
+        "supabase/migrations/20261026230000_agdata_v2377_suspend_read_continuity.sql": [
+          "ph_active_suspend"
         ]
       }
     },

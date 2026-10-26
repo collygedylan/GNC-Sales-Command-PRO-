@@ -1209,7 +1209,7 @@ test('Invariant 33 (Suspend Queue Uses Authorized Direct LKG Read)', () => {
   const refreshSource = functionSource('assets/app-runtime.js', 'refreshActiveRequestQueueSideData');
   assert.match(refreshSource, /requestQueueSideRefreshPending\s*=\s*\{/);
   assert.match(refreshSource, /refreshActiveRequestQueueSideData\(pending\.reason, pending\.options\)/);
-  assert.match(functionSource('assets/app-runtime.js', 'setReqTab'), /loadDatasetTargetsWithLimit\(\[\{ key: 'suspendTag', mode: 'full' \}\]/);
+  assert.match(functionSource('assets/app-runtime.js', 'setReqTab'), /loadDatasetTargetsWithLimit\(\[\{ key: 'suspendTag', mode: 'full' \}, \{ key: 'soc', mode: 'full' \}\]/);
   assert.match(read('.codex/skills/agdata-queue-and-reclass-specialist/SKILL.md'), /Never render `Que -> SUSPEND` from a synthetic API dataset/);
 });
 
@@ -1329,7 +1329,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.76"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.77"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1356,9 +1356,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.76"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.77"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.76"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.77"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -1494,4 +1494,21 @@ test('Invariant 51 (Login Restore Cannot Enter a Version Reload Loop)', () => {
   assert.doesNotMatch(migration, /left join lateral/);
   assert.match(migration, /alter role anon set statement_timeout='120s'/);
   assert.match(migration, /notify pgrst,'reload config'/);
+});
+
+test('Invariant 52 (Suspend Reads Fail Open Without Weakening Mutations)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const migration = read('supabase/migrations/20261026230000_agdata_v2377_suspend_read_continuity.sql');
+  const readStart = appApi.indexOf('async function handleDatasetRead(');
+  const readEnd = appApi.indexOf('function hasTableWriteAccess(', readStart);
+  assert.doesNotMatch(appApi.slice(readStart, readEnd), /verifySuspendTagSession/);
+  assert.match(appApi, /if \(action === "suspend_tag"\)[^]*session\?\.authUserId[^]*verifySuspendTagSession/);
+  assert.match(appApi, /table: "ph_active_suspend", permission: "ph_soc_master"/);
+  assert.match(read('supabase/functions/_shared/database.types.ts'), /ph_active_suspend:/);
+  assert.match(read('services/database-contracts.generated.ts'), /"ph_active_suspend":/);
+  assert.match(runtime, /socRows\.filter\(isDockSuspendDcRequestSource\)[^]*directRows\.filter\(isDockSuspendDcRequestSource\)/);
+  assert.match(runtime, /\{ key: 'suspendTag', mode: 'full' \}, \{ key: 'soc', mode: 'full' \}/);
+  assert.match(migration, /grant select on public\.ph_active_suspend to anon,authenticated,service_role/);
+  assert.match(migration, /SUSPEND_ACTIVE_COUNT_MISMATCH/);
 });

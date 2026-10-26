@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.76';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.77';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26568,7 +26568,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.76').trim() || 'AgData v2.3.76';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.77').trim() || 'AgData v2.3.77';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35408,7 +35408,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (safeTab === 'suspend-tag') {
                 return {
-                    required: [{ key: 'suspendTag', mode: 'full' }],
+                    required: [{ key: 'suspendTag', mode: 'full' }, { key: 'soc', mode: 'full' }],
                     background: [{ key: 'master', mode: 'initial' }, { key: 'customerRepMap', mode: 'full' }],
                     label: 'Loading suspend tag rows...'
                 };
@@ -56355,13 +56355,30 @@ function toggleDriveQuickRequestItem(domId) {
                 row && getDockSuspendValue(row) === 'SUSPEND' && getDockSuspendToValue(row) === 'dc');
         }
 
+        let dockSuspendDcMergedSourceRowsCache = { key: '', rows: [] };
         function getDockSuspendDcSourceRows() {
             const view = getCurrentVisibleViewId();
             const isSuspendView = activeReqTab === 'suspend-tag' && (view === 'request'
                 || view === 'detail' && activeDetailSourceView === 'request');
             if (view === 'docks' || view === 'detail' && activeDetailSourceView === 'docks') return socInventory;
-            if (suspendTagInventoryScope === getSupabaseReadIdentityScope()) return suspendTagInventory;
-            return isSuspendView ? EMPTY_DOCK_SUSPEND_SOURCE_ROWS : socInventory;
+            if (!isSuspendView) return socInventory;
+            const scope = getSupabaseReadIdentityScope();
+            const directRows = suspendTagInventoryScope === scope && Array.isArray(suspendTagInventory) ? suspendTagInventory : [];
+            const socRows = Array.isArray(socInventory) ? socInventory : [];
+            const cacheKey = JSON.stringify([scope, getDatasetLoadSignature('suspendTag'), getDatasetLoadSignature('soc'), directRows.length, socRows.length]);
+            if (dockSuspendDcMergedSourceRowsCache.key === cacheKey) return dockSuspendDcMergedSourceRowsCache.rows;
+            const byId = new Map();
+            socRows.filter(isDockSuspendDcRequestSource).forEach((row) => {
+                const id = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (id) byId.set(id, row);
+            });
+            directRows.filter(isDockSuspendDcRequestSource).forEach((row) => {
+                const id = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (id) byId.set(id, row);
+            });
+            const rows = Array.from(byId.values());
+            dockSuspendDcMergedSourceRowsCache = { key: cacheKey, rows };
+            return rows.length ? rows : EMPTY_DOCK_SUSPEND_SOURCE_ROWS;
         }
 
         function processAndLoadData(res) {
@@ -80323,7 +80340,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return scheduled;
             }
             if (nextTab === 'suspend-tag') {
-                loadDatasetTargetsWithLimit([{ key: 'suspendTag', mode: 'full' }], {
+                loadDatasetTargetsWithLimit([{ key: 'suspendTag', mode: 'full' }, { key: 'soc', mode: 'full' }], {
                     force: true,
                     preserveRequestedMode: true,
                     allowWhileInteractive: true,
@@ -110493,10 +110510,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function getDockSuspendDcSourceRowLookupRevision(sourceRows = getDockSuspendDcSourceRows()) {
-            const dataset = sourceRows === socInventory ? 'soc' : 'suspendTag';
+            const dataset = sourceRows === socInventory ? getDatasetLoadSignature('soc')
+                : `${getDatasetLoadSignature('suspendTag')}|${getDatasetLoadSignature('soc')}`;
             // Global view invalidations include unrelated side-data commits. Source
             // identity, dataset revision and explicit source invalidation own this cache.
-            return JSON.stringify([dataset, getDatasetLoadSignature(dataset),
+            return JSON.stringify([dataset,
                 getSupabaseReadIdentityScope(), normalizePushUsername(currentUser)]);
         }
 
@@ -115389,6 +115407,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const targets = [];
                 if (safeTab === 'suspend-tag' && (force || shouldRefreshQueueDataset('suspendTag', REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS))) {
                     targets.push({ key: 'suspendTag', mode: 'full' });
+                }
+                if (safeTab === 'suspend-tag' && (force || shouldRefreshQueueDataset('soc', REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS))) {
+                    targets.push({ key: 'soc', mode: 'full' });
                 }
                 if (safeTab === 'recount') {
                     if (force || shouldRefreshQueueDataset('salesOffice', REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS)) {
