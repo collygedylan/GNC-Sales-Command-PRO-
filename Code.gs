@@ -1414,7 +1414,8 @@ function getImportHistoryRoute_(dataset) {
   const routes = {
     drive: { dropFolderId: FOLDERS.MASTER_DROP, archiveFolderId: FOLDERS.MASTER_PROCESSED, tableName: 'ph_master_inventory' },
     soc: { dropFolderId: FOLDERS.SOC_DROP, archiveFolderId: FOLDERS.SOC_PROCESSED, tableName: getRuntimeSiteSplitTableName_('ph_soc_master', 'PH') },
-    reserves: { dropFolderId: FOLDERS.RESERVES_DROP, archiveFolderId: FOLDERS.RESERVES_PROCESSED, tableName: getRuntimeSiteSplitTableName_('ph_reserves', 'PH') }
+    reserves: { dropFolderId: FOLDERS.RESERVES_DROP, archiveFolderId: FOLDERS.RESERVES_PROCESSED, tableName: getRuntimeSiteSplitTableName_('ph_reserves', 'PH') },
+    cav: { dropFolderId: FOLDERS.CAV_DROP, archiveFolderId: FOLDERS.CAV_PROCESSED, tableName: getRuntimeSiteSplitTableName_('ph_cav_import', 'PH') }
   };
   if (!Object.prototype.hasOwnProperty.call(routes, dataset)) throw new Error('IMPORT_HISTORY_DATASET_INVALID');
   return routes[dataset];
@@ -1556,17 +1557,25 @@ function persistImportedFileHistory_(dataset, file, rawData, startedAt, expected
 
 function isLiveImportTemporaryFile_(name) {
   const fileName = String(name || '').trim();
-  return fileName.startsWith('TEMP_') || fileName.startsWith('~$');
+  return /^(?:TEMP_IMPORT_|TEMP_|~\$)/i.test(fileName);
 }
 
 function listRoutedDropFiles_(route, dataset) {
   const folder = getDriveFolderByIdWithRetry_(route.dropFolderId, 'Routed import source');
   const iterator = listDriveFilesWithRetry_(folder, 'Routed import source');
   const watermark = dataset ? readManualSyncLiveSourceWatermark_(dataset) : null;
+  const checkpoint = typeof readImportExtractionCheckpoint_ === 'function' ? readImportExtractionCheckpoint_() : null;
   const files = [];
   while (iterator.hasNext()) {
     const file = iterator.next();
-    if (isLiveImportTemporaryFile_(file.getName()) || !isDriveAroundHistoricalFileSupported_(file.getName(), file.getMimeType())) continue;
+    if (isLiveImportTemporaryFile_(file.getName())) {
+      if (!checkpoint || String(checkpoint.tempSheetId || '') !== String(file.getId() || '')) {
+        try { trashDriveFileWithRetry_(file, 'orphaned live import temporary file'); }
+        catch (error) { console.warn('[LIVE IMPORT] Temporary file cleanup deferred: ' + getSafeImportFailureCode_(error)); }
+      }
+      continue;
+    }
+    if (!isDriveAroundHistoricalFileSupported_(file.getName(), file.getMimeType())) continue;
     const fileId = String(file.getId() || '');
     const modifiedAt = Number(file.getLastUpdated().getTime());
     if (watermark && (modifiedAt < watermark.modifiedAt || (modifiedAt === watermark.modifiedAt && fileId <= watermark.fileId))) continue;
@@ -1583,7 +1592,6 @@ function listRoutedDropFiles_(route, dataset) {
       && typeof loadManualSyncStatus_ === 'function' && typeof readImportExtractionCheckpoint_ === 'function'
       && typeof getImportSourceIdentity_ === 'function' && typeof importSourceIdentityMatches_ === 'function') {
     const status = loadManualSyncStatus_();
-    const checkpoint = readImportExtractionCheckpoint_();
     const activeStage = status && status.active === true && String(status.currentStage || '') === dataset
       && checkpoint && String(checkpoint.stage || '') === dataset
       && String(checkpoint.tableName || '') === route.tableName;
@@ -2138,15 +2146,8 @@ function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
 
 function runCavOnly() {
   return withDatasetImportProcessorLock_(function() {
-    const route = {
-      dropFolderId: FOLDERS.CAV_DROP,
-      archiveFolderId: FOLDERS.CAV_PROCESSED,
-      tableName: getRuntimeSiteSplitTableName_('ph_cav_import', 'PH')
-    };
-    const folder = getDriveFolderByIdWithRetry_(route.dropFolderId, route.tableName + ' drop folder');
-    const iterator = listDriveFilesWithRetry_(folder, route.tableName + ' drop folder');
-    const files = [];
-    while (iterator.hasNext()) files.push(iterator.next());
+    const route = getImportHistoryRoute_('cav');
+    const files = listRoutedDropFiles_(route, 'cav');
     return processFastLiveFile_('cav', route, files, buildCavPayload, function(context) {
       return reconcileSeasonSalesOfficeAfterImport_(context && context.syncStartTime, 'cav_import');
     });

@@ -25,6 +25,7 @@ import {
   agdataV2369FastLiveErpIngestionMigrationName,
   agdataV2372RequestCompletionAcknowledgmentMigrationName,
   agdataV2372RequestCompletionDeliveryMigrationName,
+  agdataV2373FastAppsScriptErpImportUnblockMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -44,6 +45,14 @@ test('v2.3.72 request completion delivery includes completed membership', () => 
   const contract = migrationContractQuery(agdataV2372RequestCompletionDeliveryMigrationName);
   for (const marker of ['ph_requests_completed_history', 'reconcile_request_folder_completion_v2',
     'prepare_request_folder_completion_v2', 'request-folder-completion-v2']) assert.match(contract, new RegExp(marker));
+});
+
+test('v2.3.73 fast ERP import unblock is release-registered', () => {
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2373FastAppsScriptErpImportUnblockMigrationName]),
+    [agdataV2373FastAppsScriptErpImportUnblockMigrationName]);
+  const contract = migrationContractQuery(agdataV2373FastAppsScriptErpImportUnblockMigrationName);
+  for (const marker of ['ph_drive_around_report_state_merge_v2366', 'ph_master_bulk_crop_roll_defer_active_v1',
+    'service_role', '2.3.73']) assert.match(contract, new RegExp(marker.replaceAll('.', '\\.')));
 });
 
 test('v2.3.61 surgical restore is registered after unified request sync', () => {

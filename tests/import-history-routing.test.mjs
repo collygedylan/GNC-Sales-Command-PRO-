@@ -164,10 +164,15 @@ test('live routed source selection skips TEMP and Excel lock files and orders th
   ctx.getDriveFolderByIdWithRetry_ = id => ({ id });
   ctx.listDriveFilesWithRetry_ = () => iterator(files);
   ctx.isDriveAroundHistoricalFileSupported_ = name => /\.xlsx$/i.test(name);
+  const trashed = [];
+  ctx.trashDriveFileWithRetry_ = file => trashed.push(file.getId());
+  ctx.readImportExtractionCheckpoint_ = () => null;
 
   const selected = ctx.listRoutedDropFiles_(route);
   assert.deepEqual(Array.from(selected, file => file.getId()), ['z-tie-id', 'newer-id', 'older-id']);
+  assert.deepEqual(trashed, ['temp-id', 'lock-id']);
   assert.equal(ctx.isLiveImportTemporaryFile_('TEMP_DriveAround.xlsx'), true);
+  assert.equal(ctx.isLiveImportTemporaryFile_('TEMP_IMPORT_ph_soc_master_orphan'), true);
   assert.equal(ctx.isLiveImportTemporaryFile_('~$DriveAround.xlsx'), true);
   assert.equal(ctx.isLiveImportTemporaryFile_('DriveAround.xlsx'), false);
 });

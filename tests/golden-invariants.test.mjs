@@ -1328,7 +1328,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.72"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.73"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1353,9 +1353,9 @@ test('Invariant 41 (Canonical Version Mismatch Forces One-Time Newest-Shell Logi
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.72"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.73"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.72"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.73"[^]*app_version: appVersion/);
   assert.match(read('.codex/skills/agdata-zero-lockout-guard/SKILL.md'), /Never defer a confirmed canonical app-version mismatch/);
 });
 
@@ -1406,4 +1406,14 @@ test('Invariant 44 (Request Completion Persists Before Active-View Eviction)', (
   assert.match(requestSubmission, /detail\.includes\('REQUEST_NOT_FOUND'\)[^]*completionReplayUsed/);
   assert.match(appApi, /REQUEST_NOT_FOUND[^]*request_completion_receipt_v2372/);
   assert.match(read('.codex/skills/agdata-request-lifecycle-and-lock-guard/SKILL.md'), /Never re-read or delete a just-completed Request through `ph_active_request`/);
+});
+
+test('Invariant 45 (Bulk ERP Imports Cannot Re-enter Per-Row Archive Locks)', () => {
+  const migration = read('supabase/migrations/20261026180000_agdata_v2373_fast_apps_script_erp_import_unblock.sql');
+  const code = read('Code.gs');
+  assert.match(migration, /drop trigger if exists ph_drive_around_report_state_merge_v2366/);
+  assert.match(migration, /ph_master_bulk_crop_roll_defer_active_v1/);
+  assert.match(code, /TEMP_IMPORT_\|TEMP_\|~\\\$/);
+  assert.match(code, /trashDriveFileWithRetry_\(file, 'orphaned live import temporary file'\)/);
+  assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never retain orphaned `TEMP_IMPORT_\*`/);
 });
