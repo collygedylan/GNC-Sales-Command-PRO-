@@ -97,6 +97,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never give the outer Drive fast-ingest RPC a shorter timeout than the measured guarded master snapshot publication, and never exclude Drive from resumable Excel extraction checkpoints.
+
 - Never retain orphaned `TEMP_IMPORT_*` or `~$*` files during live drop-folder scans, and never run per-row historical dedup locks while publishing a complete Drive archive snapshot.
 
 - Never let Apps Script import or delivery code fall back to an anon/publishable Supabase key; reconcile and store a validated service-role secret instead of widening browser-role mutations.

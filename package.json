@@ -172,6 +172,7 @@
     "buildCavPayload",
     "getImportHistoryRoute_",
     "isLiveImportTemporaryFile_",
+    "isCheckpointedLatestImportTable_",
     "listRoutedDropFiles_",
     "getFastLiveIngestDatasetKey_",
     "getFastLiveIngestRpc_",

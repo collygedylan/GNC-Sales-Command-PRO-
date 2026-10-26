@@ -8732,7 +8732,7 @@ function getImportSourceIdentity_(file, tableName) {
 
 function isCheckpointedLatestImportTable_(tableName) {
   const logical = getSiteSplitLegacyTableName_(tableName);
-  return logical === 'ph_soc_master' || logical === 'ph_reserves';
+  return logical === 'ph_master_inventory' || logical === 'ph_soc_master' || logical === 'ph_reserves';
 }
 
 function assertLatestPendingSourceSelection_(folderId, expectedIdentity, tableName) {

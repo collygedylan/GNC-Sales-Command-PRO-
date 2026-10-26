@@ -1417,3 +1417,14 @@ test('Invariant 45 (Bulk ERP Imports Cannot Re-enter Per-Row Archive Locks)', ()
   assert.match(code, /trashDriveFileWithRetry_\(file, 'orphaned live import temporary file'\)/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never retain orphaned `TEMP_IMPORT_\*`/);
 });
+
+test('Invariant 46 (Drive Fast Ingest Outlives Its Guarded Snapshot Publication)', () => {
+  const migration = read('supabase/migrations/20261026190000_agdata_v2373_drive_timeout_recovery.sql');
+  const code = read('Code.gs');
+  const packageJson = JSON.parse(read('package.json'));
+  assert.match(migration, /alter function public\.fast_ingest_drive_around_v1\(jsonb,jsonb\)[^]*statement_timeout='120s'/);
+  assert.match(migration, /V2373_DRIVE_TIMEOUT_RECOVERY_MISSING/);
+  assert.match(code, /return logical === 'ph_master_inventory' \|\| logical === 'ph_soc_master' \|\| logical === 'ph_reserves'/);
+  assert.ok(packageJson.appsScriptPatchFunctions.includes('isCheckpointedLatestImportTable_'));
+  assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never give the outer Drive fast-ingest RPC a shorter timeout/);
+});
