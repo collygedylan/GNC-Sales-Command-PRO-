@@ -19186,6 +19186,10 @@ export type Database = {
         Args: { p_changes: Json; p_expected_revision: number; p_reason: string }
         Returns: Json
       }
+      request_completion_receipt_v2372: {
+        Args: { p_actor_id: string; p_request_id: string; p_session_id: string }
+        Returns: Json
+      }
       request_work_command_v1: {
         Args: { p_actor_id: string; p_session_id: string; p_operation: string; p_request_id?: string; p_expected_version?: number; p_patch?: Json; p_complete?: boolean }
         Returns: Json
