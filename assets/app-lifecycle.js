@@ -111,7 +111,27 @@
 
     const isShellRelease = value => /^(?:V?\d{4}\.\d{2}\.\d{2}\.\d+|AgData v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.test(value);
     const FORCED_VERSION_UPGRADE_STORAGE_KEY = 'agdata_forced_version_upgrade';
+    const VERSION_RELOAD_FUSE_STORAGE_KEY = 'gnc_version_reload_fuse_v1';
+    const VERSION_RELOAD_FUSE_MS = 5 * 60 * 1000;
     const normalizeAgDataVersion = value => String(value || '').trim().match(/(?:AgData\s+v|v)?((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))/i)?.[1] || '';
+    const isAuthTransitionActive = () => {
+        const spinner = doc.getElementById?.('loading-spinner');
+        const loginView = doc.getElementById?.('view-login');
+        const spinnerVisible = !!spinner && !spinner.classList?.contains?.('hidden') && spinner.style?.display !== 'none';
+        return !!doc.documentElement?.classList?.contains?.('booting-session')
+            || (spinnerVisible && (!loginView || loginView.style?.display !== 'none'));
+    };
+    root.isAgDataAuthTransitionActive = isAuthTransitionActive;
+    const recentlyReloadedForVersion = target => {
+        try {
+            const marker = JSON.parse(root.localStorage.getItem(VERSION_RELOAD_FUSE_STORAGE_KEY) || 'null');
+            return marker?.target === target && Date.now() - Number(marker.at || 0) < VERSION_RELOAD_FUSE_MS;
+        } catch (_) { return false; }
+    };
+    const markVersionReload = target => {
+        try { root.localStorage.setItem(VERSION_RELOAD_FUSE_STORAGE_KEY, JSON.stringify({ target, at: Date.now() })); }
+        catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+    };
     const clearVersionUpgradeSession = () => {
         const exactKeys = new Set([
             'gnc_user_v3', 'gnc_pin_v3', 'gnc_role_v3', 'gnc_division_v1', 'gnc_language_v1',
@@ -130,6 +150,14 @@
         const target = normalizeAgDataVersion(targetVersion);
         const current = normalizeAgDataVersion(currentVersion || root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__);
         if (!target || (!options.force && (!current || current === target)) || root.navigator?.onLine === false) return Promise.resolve(false);
+        if (isAuthTransitionActive() || activeSession()) {
+            root.__gncShellUpdateReady = true;
+            return Promise.resolve(false);
+        }
+        if (recentlyReloadedForVersion(target)) {
+            root.__gncShellUpdateReady = true;
+            return Promise.resolve(false);
+        }
         try {
             if (current === target && root.localStorage.getItem(FORCED_VERSION_UPGRADE_STORAGE_KEY) === target) return Promise.resolve(false);
             root.localStorage.setItem(FORCED_VERSION_UPGRADE_STORAGE_KEY, target);
@@ -138,6 +166,7 @@
         forcedVersionUpgrade = (async () => {
             suspendNavigation();
             clearVersionUpgradeSession();
+            markVersionReload(target);
             try {
                 const keys = typeof root.caches?.keys === 'function' ? await root.caches.keys() : [];
                 await Promise.all(keys.map(key => root.caches.delete(key)));
@@ -200,7 +229,7 @@
     root.reloadForServiceWorkerUpdate = targetBuild => {
         const target = String(targetBuild || '').trim();
         if (isShellRelease(target)) root.__gncPwaTargetBuild = target;
-        if (activeSession()) { root.__gncShellUpdateReady = true; return false; }
+        if (activeSession() || isAuthTransitionActive()) { root.__gncShellUpdateReady = true; return false; }
         if (root.__gncPwaReloadPending) return false;
         root.__gncPwaReloadPending = true;
         if (!root.__gncShellUpdateToastShown && typeof root.showToast === 'function') {
@@ -268,6 +297,10 @@
 
     let appLoadRecovery = null;
     root.recoverAppLoadFailure = reason => {
+        if (isAuthTransitionActive() || activeSession()) {
+            root.__gncShellUpdateReady = true;
+            return Promise.resolve(false);
+        }
         if (appLoadRecovery) return appLoadRecovery;
         const safeReason = String(reason || 'runtime-load-failure').trim().slice(0, 48) || 'runtime-load-failure';
         const marker = `${root.__APP_SHELL_VERSION__ || 'current'}:${safeReason}`;
@@ -307,7 +340,9 @@
         if (root.__AGDATA_RUNTIME_READY__ === true || runtimeRecoveryTimer) return;
         runtimeRecoveryTimer = root.setTimeout(() => {
             runtimeRecoveryTimer = null;
-            if (root.__AGDATA_RUNTIME_READY__ !== true) void root.recoverAppLoadFailure('runtime-not-ready');
+            if (root.__AGDATA_RUNTIME_READY__ !== true && !isAuthTransitionActive() && !activeSession()) {
+                void root.recoverAppLoadFailure('runtime-not-ready');
+            }
         }, 8000);
     };
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', armRuntimeRecovery, { once: true });

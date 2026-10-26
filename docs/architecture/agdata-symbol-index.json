@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.75",
+  "release": "AgData v2.3.76",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -493,7 +493,8 @@
         "scripts/apply-item-low-stock-migration.mjs": [
           "agdataV2369EmergencyRecoveryMigrationName",
           "agdataV2370WatchdogRequestRecoveryMigrationName",
-          "agdataV2375SuspendCardsFastBatchSyncMigrationName"
+          "agdataV2375SuspendCardsFastBatchSyncMigrationName",
+          "agdataV2376InstantLoginFastSuspendMigrationName"
         ],
         "scripts/apps-script-function-patch.mjs": [
           "mergeRequestDeliveryWakeDispatch"
@@ -571,6 +572,10 @@
         "supabase/migrations/20261026210000_agdata_v2375_suspend_17_cards_and_fast_batch_sync.sql": [
           "ph_active_suspend",
           "ph_soc_suspend_tag_rows"
+        ],
+        "supabase/migrations/20261026220000_agdata_v2376_instant_login_and_fast_suspend_view.sql": [
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
         ]
       }
     },
@@ -646,7 +651,9 @@
       "supportingFiles": {
         "assets/app-lifecycle.js": [
           "forceAgDataVersionUpgrade",
-          "checkAgDataVersion"
+          "checkAgDataVersion",
+          "isAuthTransitionActive",
+          "recoverAppLoadFailure"
         ],
         "sw.js": [
           "navigateClientToForcedUpgrade"

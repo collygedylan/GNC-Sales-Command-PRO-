@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.75';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.76';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1918,7 +1918,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let pendingAppLiveEventRefreshes = new Map();
         let appLiveEventSeenKeys = new Map();
         const SUPABASE_READ_TIMEOUT_MS = 30000;
-        const LOGIN_READ_TIMEOUT_MS = 15000;
+        const LOGIN_READ_TIMEOUT_MS = 6000;
         const LOGIN_FETCH_RETRY_COUNT = 1;
         const LOGIN_FETCH_RETRY_DELAY_MS = 650;
         const VERIFIED_LOGIN_STORAGE_KEY = 'gnc_verified_login_v1';
@@ -6893,7 +6893,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function isShellReloadBlocked() {
             return !!(
-                (document.body && document.body.classList.contains('detail-field-active'))
+                document.documentElement?.classList?.contains('booting-session')
+                || (document.body && document.body.classList.contains('detail-field-active'))
                 || hasActiveTextEntryFocus()
                 || shouldDeferInteractiveBackgroundWork()
                 || (window.pendingPhotoUploads && window.pendingPhotoUploads.size)
@@ -26567,7 +26568,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.75').trim() || 'AgData v2.3.75';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.76').trim() || 'AgData v2.3.76';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

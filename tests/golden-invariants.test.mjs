@@ -1329,7 +1329,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.75"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.76"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1338,7 +1338,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   assert.match(read('.codex/skills/agdata-runtime-watchdog/SKILL.md'), /Never record navigation\/scope cancellation codes/);
 });
 
-test('Invariant 41 (Canonical Version Mismatch Forces One-Time Newest-Shell Login)', () => {
+test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () => {
   const lifecycle = read('assets/app-lifecycle.js');
   const runtime = read('assets/app-runtime.js');
   const shell = read('index.html');
@@ -1348,16 +1348,17 @@ test('Invariant 41 (Canonical Version Mismatch Forces One-Time Newest-Shell Logi
   assert.match(lifecycle, /Promise\.all\(keys\.map\(key => root\.caches\.delete\(key\)\)\)/);
   assert.match(lifecycle, /Promise\.all\(registrations\.map\(registration => registration\.unregister\(\)\)\)/);
   assert.match(lifecycle, /next\.searchParams\.set\('_reload', String\(Date\.now\(\)\)\)/);
+  assert.match(lifecycle, /VERSION_RELOAD_FUSE_MS = 5 \* 60 \* 1000/);
+  assert.match(lifecycle, /isAuthTransitionActive\(\) \|\| activeSession\(\)/);
   assert.match(lifecycle, /deployment-fingerprint\.json\?t=\$\{Date\.now\(\)\}[^]*cache: 'no-store'/);
   assert.match(shell, /forceupgrade[^]*forceAgDataVersionUpgrade[^]*checkAgDataVersion\?\.\('boot'\)/);
   assert.match(runtime, /APP_VERSION_ENFORCEMENT_INTERVAL_MS = 60000/);
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.75"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.76"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.75"[^]*app_version: appVersion/);
-  assert.match(read('.codex/skills/agdata-zero-lockout-guard/SKILL.md'), /Never defer a confirmed canonical app-version mismatch/);
+  assert.match(appApi, /const appVersion = "2\.3\.76"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -1475,4 +1476,22 @@ test('Invariant 50 (Suspend Active View Renders Every Physical Line)', () => {
   assert.match(sync, /FAST_LIVE_BATCH_SIZE = 1000/);
   assert.match(sync, /disable trigger user[^]*enable trigger user/);
   assert.doesNotMatch(sync, /from 'pg'|GNC_SUPABASE_DB_URL|new Pool/);
+});
+
+test('Invariant 51 (Login Restore Cannot Enter a Version Reload Loop)', () => {
+  const lifecycle = read('assets/app-lifecycle.js');
+  const runtime = read('assets/app-runtime.js');
+  const shell = read('index.html');
+  const migration = read('supabase/migrations/20261026220000_agdata_v2376_instant_login_and_fast_suspend_view.sql');
+  assert.match(lifecycle, /VERSION_RELOAD_FUSE_MS = 5 \* 60 \* 1000/);
+  assert.match(lifecycle, /isAuthTransitionActive\(\) \|\| activeSession\(\)/);
+  assert.match(lifecycle, /!isAuthTransitionActive\(\)[^]*!activeSession\(\)[^]*runtime-not-ready/);
+  assert.match(runtime, /LOGIN_READ_TIMEOUT_MS = 6000/);
+  assert.match(runtime, /document\.documentElement\?\.classList\?\.contains\('booting-session'\)/);
+  assert.match(shell, /isAgDataAuthTransitionActive\?\.\(\)[^]*__gncShellUpdateReady = true/);
+  assert.match(migration, /open_stock_by_item as materialized/);
+  assert.match(migration, /loc_totals_by_item_loc as materialized/);
+  assert.doesNotMatch(migration, /left join lateral/);
+  assert.match(migration, /alter role anon set statement_timeout='120s'/);
+  assert.match(migration, /notify pgrst,'reload config'/);
 });

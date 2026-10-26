@@ -150,7 +150,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.75'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'canonical-version-enforcement-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.75'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.76'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'canonical-version-enforcement-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.76'/);assert.match(sw,/cache: 'reload'/);
 });
 
 
