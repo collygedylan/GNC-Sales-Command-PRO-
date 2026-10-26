@@ -659,7 +659,8 @@ function resolveSupabaseServiceRoleKey_(sourceFallbackKey) {
     console.warn('[SUPABASE] Could not read script properties for service role key: ' + (err && err.message ? err.message : err));
   }
   const fallbackKey = String(sourceFallbackKey || '').trim();
-  return fallbackKey && fallbackKey !== '__SUPABASE_SERVICE_ROLE_KEY__' && !/^sb_publishable_/i.test(fallbackKey) ? fallbackKey : '';
+  if (!fallbackKey || fallbackKey === '__SUPABASE_SERVICE_ROLE_KEY__' || /^sb_publishable_/i.test(fallbackKey)) return '';
+  return fallbackKey;
 }
 
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
