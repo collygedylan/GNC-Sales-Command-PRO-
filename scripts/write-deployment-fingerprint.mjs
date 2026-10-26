@@ -32,6 +32,7 @@ await mkdir(path.join(siteRoot, 'deployments'), { recursive: true });
 const serialized = `${JSON.stringify(fingerprint, null, 2)}\n`;
 await Promise.all([
   writeFile(path.join(siteRoot, 'deployment.json'), serialized, 'utf8'),
+  writeFile(path.join(siteRoot, 'deployment-fingerprint.json'), serialized, 'utf8'),
   writeFile(path.join(siteRoot, 'deployments', `${fingerprint.commit}.json`), serialized, 'utf8')
 ]);
 

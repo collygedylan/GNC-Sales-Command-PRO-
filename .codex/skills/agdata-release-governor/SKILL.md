@@ -87,3 +87,4 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 
 - Never skip the golden invariant file, weaken its active count, add `.skip`/`.todo`, deploy app-api without `--no-verify-jwt`, run unrequested browser/Docker/Deno checks, or replay unchanged backend work.
 - Never create versioned throwaway validators, amend/force-push, claim unmeasured evidence, or continue refactoring after the required gate passes.
+- Never add a runtime release-descriptor fetch path without emitting that exact path in the prepared Pages artifact and covering it in the focused release contract.

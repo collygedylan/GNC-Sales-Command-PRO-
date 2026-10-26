@@ -1358,3 +1358,13 @@ test('Invariant 41 (Canonical Version Mismatch Forces One-Time Newest-Shell Logi
   assert.match(appApi, /const appVersion = "2\.3\.70"[^]*app_version: appVersion/);
   assert.match(read('.codex/skills/agdata-zero-lockout-guard/SKILL.md'), /Never defer a confirmed canonical app-version mismatch/);
 });
+
+test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
+  const writer = read('scripts/write-deployment-fingerprint.mjs');
+  const lifecycle = read('assets/app-lifecycle.js');
+  assert.match(writer, /writeFile\(path\.join\(siteRoot, 'deployment-fingerprint\.json'\), serialized, 'utf8'\)/);
+  assert.match(writer, /writeFile\(path\.join\(siteRoot, 'deployment\.json'\), serialized, 'utf8'\)/);
+  assert.match(writer, /writeFile\(path\.join\(siteRoot, 'deployments', `\$\{fingerprint\.commit\}\.json`\), serialized, 'utf8'\)/);
+  assert.match(lifecycle, /fetch\(`\.\/deployment-fingerprint\.json\?t=\$\{Date\.now\(\)\}`/);
+  assert.match(read('.codex/skills/agdata-release-governor/SKILL.md'), /Never add a runtime release-descriptor fetch path without emitting that exact path/);
+});
