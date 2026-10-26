@@ -1749,8 +1749,12 @@ function runRoutedDropImport_(dataset) {
       }).map(function(file) { return { file: file, identity: getImportSourceIdentity_(file, route.tableName) }; }) : [];
     if (!sourceFile && !superseded.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' };
     const result = !sourceFile ? { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' }
-      : processFastLiveFile_(dataset, route, dataset === 'drive' ? [sourceFile] : files,
-        dataset === 'drive' ? buildMasterPayload : buildStandardPayload);
+      : dataset === 'drive'
+        ? processSnapshotBatchFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildMasterPayload, {
+          historyDataset: dataset,
+          historyFileId: String(sourceFile.getId() || '')
+        })
+        : processFastLiveFile_(dataset, route, files, buildStandardPayload);
     if (!result.failedFiles && !result.fatalFailure && (result.filesProcessed > 0 || result.code === 'UP_TO_DATE' || !sourceFile)) {
       if (sourceFile) saveManualSyncLiveSourceWatermark_(dataset, sourceWatermark);
       if (superseded.length) {

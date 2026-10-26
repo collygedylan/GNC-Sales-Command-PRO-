@@ -1429,3 +1429,13 @@ test('Invariant 46 (Drive Fast Ingest Outlives Its Guarded Snapshot Publication)
   assert.ok(packageJson.appsScriptPatchFunctions.includes('isCheckpointedLatestImportTable_'));
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never give the outer Drive fast-ingest RPC a shorter timeout/);
 });
+
+test('Invariant 47 (Drive Publication Uses Resumable Bounded Chunks)', () => {
+  const code = read('Code.gs');
+  const routedImport = functionSource('Code.gs', 'runRoutedDropImport_');
+  assert.match(routedImport, /dataset === 'drive'[^]*processSnapshotBatchFolderLocked_/);
+  assert.match(routedImport, /historyDataset: dataset[^]*historyFileId: String\(sourceFile\.getId\(\) \|\| ''\)/);
+  assert.doesNotMatch(routedImport, /processFastLiveFile_\(dataset, route, dataset === 'drive'/);
+  assert.match(code, /chunkSize: 2000/);
+  assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never send a complete Drive snapshot through one Apps Script HTTP request/);
+});
