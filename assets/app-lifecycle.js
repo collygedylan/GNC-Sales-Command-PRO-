@@ -110,6 +110,66 @@
     };
 
     const isShellRelease = value => /^(?:V?\d{4}\.\d{2}\.\d{2}\.\d+|AgData v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.test(value);
+    const FORCED_VERSION_UPGRADE_STORAGE_KEY = 'agdata_forced_version_upgrade';
+    const normalizeAgDataVersion = value => String(value || '').trim().match(/(?:AgData\s+v|v)?((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))/i)?.[1] || '';
+    const clearVersionUpgradeSession = () => {
+        const exactKeys = new Set([
+            'gnc_user_v3', 'gnc_pin_v3', 'gnc_role_v3', 'gnc_division_v1', 'gnc_language_v1',
+            'gnc_user_display_v1', 'gnc_verified_login_v1', 'gnc_native_auth_profile_v1', 'gnc_app_session_v1'
+        ]);
+        try {
+            const keys = [];
+            for (let index = 0; index < root.localStorage.length; index += 1) keys.push(root.localStorage.key(index));
+            keys.filter(key => exactKeys.has(key) || /^sb-.+-auth-token$/i.test(key || '')).forEach(key => root.localStorage.removeItem(key));
+            root.localStorage.setItem('gnc_explicit_logout_v1', '1');
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+        try { root.sessionStorage.clear(); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+    };
+    let forcedVersionUpgrade = null;
+    root.forceAgDataVersionUpgrade = (targetVersion, currentVersion = '', options = {}) => {
+        const target = normalizeAgDataVersion(targetVersion);
+        const current = normalizeAgDataVersion(currentVersion || root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__);
+        if (!target || (!options.force && (!current || current === target)) || root.navigator?.onLine === false) return Promise.resolve(false);
+        try {
+            if (current === target && root.localStorage.getItem(FORCED_VERSION_UPGRADE_STORAGE_KEY) === target) return Promise.resolve(false);
+            root.localStorage.setItem(FORCED_VERSION_UPGRADE_STORAGE_KEY, target);
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+        if (forcedVersionUpgrade) return forcedVersionUpgrade;
+        forcedVersionUpgrade = (async () => {
+            suspendNavigation();
+            clearVersionUpgradeSession();
+            try {
+                const keys = typeof root.caches?.keys === 'function' ? await root.caches.keys() : [];
+                await Promise.all(keys.map(key => root.caches.delete(key)));
+            } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+            try {
+                const registrations = typeof root.navigator?.serviceWorker?.getRegistrations === 'function'
+                    ? await root.navigator.serviceWorker.getRegistrations() : [];
+                await Promise.all(registrations.map(registration => registration.unregister()));
+            } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+            const next = new URL(root.location.href);
+            next.search = '';
+            next.searchParams.set('v', target);
+            next.searchParams.set('shellv', `AgData v${target}`);
+            next.searchParams.set('_reload', String(Date.now()));
+            root.location.replace(`${next.pathname}?${next.searchParams.toString()}${next.hash}`);
+            return true;
+        })();
+        return forcedVersionUpgrade;
+    };
+    let versionCheck = null;
+    root.checkAgDataVersion = reason => {
+        if (versionCheck || root.navigator?.onLine === false) return versionCheck || Promise.resolve(false);
+        versionCheck = Promise.resolve().then(async () => {
+            const response = await root.fetch(`./deployment-fingerprint.json?t=${Date.now()}`, {
+                cache: 'no-store', credentials: 'same-origin', headers: { Accept: 'application/json' }
+            });
+            if (!response?.ok) return false;
+            const payload = await response.json();
+            return root.forceAgDataVersionUpgrade(payload?.release, root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__, { reason });
+        }).catch(() => false).finally(() => { versionCheck = null; });
+        return versionCheck;
+    };
     // Filters are disposable UI state. Auth, inventory, drafts and outboxes are not.
     root.invalidateAppFiltersForVersion = targetBuild => {
         const target = String(targetBuild || '').trim();
@@ -277,12 +337,12 @@
     // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
     let shellRecovery = null;
     root.recoverShellVersionMismatch = (currentBuild, targetBuild) => {
-        if (activeSession()) { root.__gncPwaTargetBuild = targetBuild; root.__gncShellUpdateReady = true; return Promise.resolve(false); }
         if (root.__gncPwaReloadPending) return Promise.resolve(false);
         const current = String(currentBuild || '').trim();
         const target = String(targetBuild || '').trim();
         if (!current || current === target || !isShellRelease(target)
             || root.navigator?.onLine === false) return Promise.resolve(false);
+        if (activeSession()) return root.forceAgDataVersionUpgrade(target, current, { reason: 'service-worker-version-mismatch' });
         if (shellRecovery) return Promise.resolve(false);
         const marker = `${current}:${target}`;
         const next = new URL(root.location.href);
