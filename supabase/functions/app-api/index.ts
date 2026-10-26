@@ -886,7 +886,7 @@ const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
   ph_dock_issue_allocations: "allocation_unique_id,issue_source_unique_id,alt_master_unique_id,alt_master_id,allocated_qty,alt_locationcode,alt_lotcode,alt_itemcode,alt_commonname,alt_contsize,alt_ptravailable,updated_by,updated_at",
   ph_productivity_history: "id,event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot",
 };
-type DatasetReadRelation = (keyof Database["public"]["Tables"] | keyof Database["public"]["Views"]) & string;
+type DatasetReadRelation = ((keyof Database["public"]["Tables"] | keyof Database["public"]["Views"]) & string) | "ph_active_suspend";
 const DATASET_READ_SOURCES: Record<string, { table: DatasetReadRelation; permission: string; key: string; fields: string; signatures?: string; filterFields: Set<string>; orderFields: Set<string> }> = {
   app_user_directory: {
     table: "profiles", permission: "ph_app_users", key: "username", fields: "username,display_name,role,division,language",
