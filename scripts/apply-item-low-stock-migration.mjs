@@ -2408,7 +2408,7 @@ export function migrationContractQuery(name) {
       where oid='public.ph_active_suspend'::regclass),false)
     and has_function_privilege('service_role','public.fast_ingest_drive_around_v1(jsonb,jsonb)','execute')
     and not has_function_privilege('anon','public.fast_ingest_drive_around_v1(jsonb,jsonb)','execute')
-    and (select value->>'app_version' from public.ph_app_settings where key='app_version')='2.3.74'
+    and (select value->>'app_version' from public.ph_app_settings where key='app_version') in ('2.3.74','2.3.75','2.3.76')
     as installed`;
   if (name === agdataV2375SuspendCardsFastBatchSyncMigrationName) return `select
     coalesce((select reloptions @> array['security_invoker=true'] from pg_class
@@ -2419,7 +2419,7 @@ export function migrationContractQuery(name) {
         and date_completed is null
         and lower(btrim(coalesce(suspend_candidate_state,'pending'))) not in ('complete','completed','approved','rejected'))
     and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_active_suspend' and column_name='is_suspend_tag')
-    and (select value->>'app_version' from public.ph_app_settings where key='app_version')='2.3.75'
+    and (select value->>'app_version' from public.ph_app_settings where key='app_version') in ('2.3.75','2.3.76')
     as installed`;
   if (name === agdataV2376InstantLoginFastSuspendMigrationName) return `select
     coalesce((select reloptions @> array['security_invoker=true'] from pg_class
