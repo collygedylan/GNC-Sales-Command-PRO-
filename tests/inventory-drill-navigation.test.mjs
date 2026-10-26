@@ -1072,7 +1072,7 @@ test('cold Drive withholds a partial 27-name catalog and retains the complete ca
  complete=false;ctx.renderDrive();assert.equal(container.innerHTML,'1613 names');assert.equal(painted,1);
  const commonName=source('renderDriveCommonNameDrill');assert.ok(!commonName.includes('driveViewLevel > 3) driveViewLevel = 3'));
  const renderContent=html.match(/        function renderViewContent\([^]*?^        }/m)[0];
- assert.ok(renderContent.includes('!selectedDriveName && !selectedDriveLoc && driveViewLevel === 0'));
+ assert.ok(renderContent.includes("!state.initialized && activeDriveTab === 'name' && !selectedDriveName && !selectedDriveLoc && driveViewLevel === 0"));
 });
 
 test('phone footer, Bloom clear and dark missing-photo surfaces have high contrast without filename clipping', () => {

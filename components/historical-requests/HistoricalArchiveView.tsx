@@ -8,6 +8,7 @@ import type {
   HistoricalArchiveRecord,
   HistoricalRequestsBridge,
 } from './contract';
+import { historicalPhotoDate } from './contract';
 import { historicalPhotoUrls } from './photoUrls';
 
 const PAGE_SIZE = 25;
@@ -70,8 +71,11 @@ function RecordCard({ row }: { row: HistoricalArchiveRecord }) {
     {facts.length > 0 && <dl className="historical-requests__facts">{facts.map(([label, value]) =>
       <div key={label}><dt>{label}</dt><dd>{String(value)}</dd></div>)}</dl>}
     {row.notes.map((note, index) => <p className="historical-requests__request-meta" key={`${row.id}:note:${index}`}>{note}</p>)}
-    {photos.length > 0 && <div className="historical-requests__photos">{photos.map((url, index) =>
-      <a key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} loading="lazy" alt={`Archive photo ${index + 1}`} /></a>)}</div>}
+    {photos.length > 0 && <div className="historical-requests__photos">{photos.map((url, index) => {
+      const photoDate = historicalPhotoDate(url, row.photoDate || row.occurredAt);
+      return <a className="historical-requests__photo photo-date-badge-host" key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} loading="lazy" alt={`Archive photo ${index + 1}`} />
+        {photoDate && <span className="photo-thumb-date" data-photo-taken-date={photoDate}>{photoDate}</span>}</a>;
+    })}</div>}
     {row.lineDollarValue !== null && <p className="historical-requests__request-value">{currency(row.lineDollarValue)}
       {row.unitListPrice !== null && <span> at {currency(row.unitListPrice)} each</span>}</p>}
   </article>;

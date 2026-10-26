@@ -108,6 +108,7 @@
         'hl-order': data(['soc', 'master']),
         'bunch-note': data([], ['bunchNotes']),
         'historical-requests': data([], []), // Narrow authenticated RPC; never materialize all requests in the shell.
+        'request-sales-impact': data([], []),
         'request-history': data([], ['salesWorkspace']),
         'sales-credit': data([], ['salesWorkspace']),
         'credit-request': data([], ['salesWorkspace']),
@@ -125,6 +126,8 @@
         'take-back': data(['master'], ['takeBack']),
         'production-workflow': data(['master'], ['productionWorkflow']),
         'sales-inventory': data(['master', 'salesOffice']),
+        'inventory-suggestion': navigation,
+        'inv-consolidation': data([], []),
         'weather-hold': data(['master', 'reserves'], ['weather']),
         'po-management': data([], ['po']), chat: data([], ['chat']),
         'department-calendar': data([], ['calendar', 'users']), communication: data([], ['chat', 'calendar']),

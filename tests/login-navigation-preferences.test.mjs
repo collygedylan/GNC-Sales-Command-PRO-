@@ -33,6 +33,7 @@ function accessHarness({ preferences, overrides = {} } = {}) {
     canSeeEvalWorkRequestTab: () => false,
     canUseInvBunchNotes: () => true,
     canUseMovesModule: () => false,
+    isFullAppAdministrator: () => false,
     getRoleAccessState: () => ({ isRepLike: false, isAdmin: false, allowedViews: new Set(['tasks', 'moves']) }),
     canViewManagerSalesReps: () => false,
     ...overrides,
@@ -101,6 +102,7 @@ test('role UI initialization runs actual access checks with the navigation modul
     document: { getElementById: () => element() },
     ROLE_VIEW_ELEMENT_IDS: { request: ['request-button'], moves: ['moves-button'], 'crop-roll': ['crop-button'] },
     HOME_MODULE_REGISTRY: [{ view: 'request' }, { view: 'reports' }, { view: 'moves' }],
+    getHomeModuleRegistry: () => [{ view: 'request' }, { view: 'reports' }, { view: 'moves' }],
     ensureHomeModuleRegistry: () => ({ dataset: {}, querySelectorAll: () => [] }),
     isSalesShellAccess: () => false,
     scheduleHomeDashboardFitSettle() {},
@@ -189,7 +191,7 @@ test('post-login shell completes role initialization without the optional prefer
 test('primary view visibility, cached identity and body marker agree before lifecycle and Back chrome hooks', () => {
   const makeElement = (...initialClasses) => {
     const classes = new Set(initialClasses);
-    return { dataset: {}, classList: {
+    return { dataset: {}, style: {}, classList: {
       add: name => classes.add(name), remove: name => classes.delete(name),
       contains: name => classes.has(name), [Symbol.iterator]: () => classes.values(),
     } };
@@ -233,9 +235,26 @@ test('primary view visibility, cached identity and body marker agree before life
   }
 });
 
-test('navigation module URL and service worker cache use the current shell build', () => {
-  const build = worker.match(/const APP_SHELL_BUILD = '([^']+)'/);
-  assert.ok(build, 'service worker build marker should exist');
-  assert.ok(html.includes(`./assets/navigation-preferences.js?v=${encodeURIComponent(build[1])}`));
+test('navigation module URL and service worker cache use the current asset version', () => {
+  const version = worker.match(/const APP_ASSET_VERSION = '([^']+)'/);
+  assert.ok(version, 'service worker asset version should exist');
+  assert.ok(html.includes(`./assets/navigation-preferences.js?v=${encodeURIComponent(version[1])}`));
   assert.ok(worker.includes(`'./assets/navigation-preferences.js?v=' + encodeURIComponent(APP_SHELL_BUILD)`));
+});
+
+test('saved admin shortcuts and nested quick-access routes remain selectable', () => {
+  assert.match(preferencesSource, /usesAdminShortcuts\(\) && Array\.isArray\(saved\) && saved\.length === 1 && text\(saved\[0\]\)\.trim\(\) === 'tasks'/);
+  assert.match(preferencesSource, /staleAdminShortcuts \|\| !Array\.isArray\(saved\) \|\| !saved\.length \? fallbackShortcuts : saved/);
+  assert.doesNotMatch(preferencesSource, /value = \{ \.\.\.value, shortcuts: \[\.\.\.ADMIN_SHORTCUTS\] \}/);
+  for (const marker of ['eval_reports_2', 'Eval Reports #2', 'archive-drive', 'queue-bunch-count-review', 'inv-consolidation']) {
+    assert.ok(preferencesSource.includes(marker), marker);
+  }
+  for (const marker of ['function canAccessQuickAccessView', 'function navigateQuickAccessView',
+    'quickAccessNestedBackState', 'quickAccessRoute: safeView',
+    "eval_reports_2: { parent: 'managers', tab: 'eval-reports-2' }",
+    "'archive-orders': { parent: 'historical-requests', archiveTab: 'orders' }",
+    "'queue-pending': { parent: 'request', tab: 'pending' }",
+    "'qc-docks': { parent: 'docks', access: 'qc' }",
+    "'office-orders': { parent: 'sales-office', tab: 'orders', access: 'office' }",
+    "'sales-drive': { parent: 'drive', access: 'sales' }"]) assert.ok(html.includes(marker), marker);
 });

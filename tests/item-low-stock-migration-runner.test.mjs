@@ -21,6 +21,7 @@ import {
   agdataV2366DriveArchiveSearchHashFixMigrationName,
   agdataV2367CropTierAuraGlossaryMigrationName,
   agdataV2367HistoricalDriveFastReadMigrationName,
+  agdataV2368HistoricalPhotoDateKeyFixMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -190,6 +191,22 @@ test('v2.3.67 Drive archive fast read is forward-only and registered', () => {
     assert.match(source, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.doesNotMatch(source, /update\s+public\.ph_drive_around_report_rows/i);
+});
+
+test('v2.3.68 historical photo dates use canonical Drive history keys', () => {
+  assert.equal(agdataV2368HistoricalPhotoDateKeyFixMigrationName,
+    '20261026055000_agdata_v2368_historical_photo_date_key_fix.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2368HistoricalPhotoDateKeyFixMigrationName]),
+    [agdataV2368HistoricalPhotoDateKeyFixMigrationName]);
+  const contract = migrationContractQuery(agdataV2368HistoricalPhotoDateKeyFixMigrationName);
+  for (const marker of ['history.source_unique_id', 'history.history_key']) {
+    assert.match(contract, new RegExp(marker.replace('.', '\\.')));
+  }
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2368HistoricalPhotoDateKeyFixMigrationName}`, import.meta.url), 'utf8');
+  assert.match(source, /history\.source_unique_id=p_row->>'id'/);
+  assert.match(source, /history\.history_key=p_row->>'id'/);
+  assert.doesNotMatch(source, /from public\.ph_drive_mode_history history\s+where history\.unique_id/);
+  assert.doesNotMatch(source, /(?:insert|update|delete|truncate)\s+(?:into\s+|from\s+)?public\./i);
 });
 
 test('v2.3.66 archive pages dedupe business state before rendering', () => {

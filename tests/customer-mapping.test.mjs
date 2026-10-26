@@ -39,13 +39,13 @@ function requestFixture() {
   context.reservesInventory=[{...row,customername:'Reserve only',customeridentityid:'reserve'}];
   return context;
 }
-test('Request options require active mapped identities; reserve and custom fallbacks are excluded',()=>{
+test('Request options include active full-directory identities while reserve and custom fallbacks stay excluded',()=>{
   const c=requestFixture();
   const options=c.getRequestModalCustomerOptionsForRep('Rep One');
-  assert.equal(options.length,2);
-  assert.deepEqual(Array.from(options, o=>o.customeridentityid),['00012','00013']);
-  assert.equal(c.buildRequestCustomerPickerGroups(options).length,2,'identical display names stay distinct');
-  assert.equal(c.getRequestModalCustomerOptionsForRep('Unknown Rep').length,0);
+  assert.equal(options.length,3);
+  assert.deepEqual(Array.from(options, o=>o.customeridentityid).sort(),['00012','00013','other']);
+  assert.equal(c.buildRequestCustomerPickerGroups(options).length,3,'identical display names stay distinct');
+  assert.equal(c.getRequestModalCustomerOptionsForRep('Unknown User').length,3);
   c.processCustStep(); assert.equal(c.qtyCalls.length,0); assert.equal(c.toasts.length,1);
 });
 test('Request matching uses production normalization for rep aliases, statuses, duplicate names, and leading-zero IDs',()=>{
@@ -60,12 +60,12 @@ test('Request matching uses production normalization for rep aliases, statuses, 
   c.customerRepMapRows=mollyRows;
   for (const rep of ['Molly Dixon','Dixon, Molly','molly_dixon','  MOLLY   DIXON  ']) {
     const options=c.getRequestModalCustomerOptionsForRep(rep);
-    assert.deepEqual(Array.from(options,option=>[option.customeridentityid,option.consigneeidentityid]),[['000041','000071'],['000042','000072']],rep);
+    assert.deepEqual(Array.from(options,option=>[option.customeridentityid,option.consigneeidentityid]),[['000045','000075'],['000041','000071'],['000042','000072']],rep);
     const groups=c.buildRequestCustomerPickerGroups(options);
-    assert.equal(groups.length,2,'same customer label with distinct IDs stays distinct');
+    assert.equal(groups.length,3,'same customer label with distinct IDs stays distinct');
   }
-  assert.equal(c.getRequestModalCustomerOptionsForRep('Morgan Smith').length,1);
-  assert.equal(c.getRequestModalCustomerOptionsForRep('Molly D').length,0,'partial names cannot identify an external sales rep');
+  assert.equal(c.getRequestModalCustomerOptionsForRep('Morgan Smith').length,3);
+  assert.equal(c.getRequestModalCustomerOptionsForRep('Molly D').length,3,'unmapped users retain the full customer directory');
 });
 test('Request membership rechecks both IDs, names and the current map revision',()=>{
   const c=requestFixture(); const context={customeridentityid:row.customeridentityid,consigneeidentityid:row.consigneeid,customername:row.customername,consigneename:row.consigneename,request_selected_salesrep_id:'01'};
@@ -106,17 +106,18 @@ test('payload resolver rejects missing, ambiguous, inactive, or unverified mappi
   const expected=requestSubmissionApi.resolveCustomerMappingPayload(context,options,true);
   assert.deepEqual({ ...expected },{
     customeridentityid:'00012',customername:'Garden ®',consigneeidentityid:'00007',consigneename:'North ™',
-    request_selected_salesrep_id:'01',requested_by:'Rep One',request_selected_rep_display:'Rep One',request_selected_rep_username:null
+    request_selected_salesrep_id:'01'
   });
   const contextBefore=JSON.stringify(context);
   const optionBefore=JSON.stringify(option);
-  for (const field of ['customeridentityid','customername','consigneeidentityid','consigneename','request_selected_salesrep_id']) {
+  for (const field of ['customeridentityid','customername','consigneeidentityid','consigneename']) {
     assert.equal(requestSubmissionApi.resolveCustomerMappingPayload({...context,[field]:' '},options,true),null,`missing ${field} is rejected`);
   }
   assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,[option,{...option}],true),null,'duplicate candidates are ambiguous');
   assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,[{...option,customerstatus:'I'}],true),null);
   assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,[{...option,consigneestatus:'I'}],true),null);
-  assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,[{...option,salesrepname:' '}],true),null);
+  assert.equal(requestSubmissionApi.resolveCustomerMappingPayload({...context,request_selected_salesrep_id:''},
+    [{...option,request_selected_salesrep_id:''}],true).request_selected_salesrep_id,'','full-directory choices do not impersonate the mapped rep');
   assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,options,false),null,'cached options must be ready');
   assert.equal(JSON.stringify(context),contextBefore);
   assert.equal(JSON.stringify(option),optionBefore);
@@ -136,7 +137,7 @@ test('verified mapping metadata survives grouping and permits an exact new folde
   assert.equal(c.isCurrentRequestCustomerContext(c.tempRequestCustomerSelectedContext),true);
   assert.deepEqual({ ...resolveMappedPayload(c) }, {
     customeridentityid:'00012', customername:'Garden ®', consigneeidentityid:'00007', consigneename:'North ™',
-    request_selected_salesrep_id:'01', requested_by:'Rep One', request_selected_rep_display:'Rep One', request_selected_rep_username:null
+    request_selected_salesrep_id:'01'
   });
 });
 
@@ -150,7 +151,7 @@ test('ordinary customer selection resolves the complete mapping by IDs within th
   assert.equal(c.isCurrentRequestCustomerContext(c.tempRequestCustomerSelectedContext),true);
   assert.deepEqual({ ...resolveMappedPayload(c) }, {
     customeridentityid:'00012', customername:'Garden ®', consigneeidentityid:'00007', consigneename:'North ™',
-    request_selected_salesrep_id:'01', requested_by:'Rep One', request_selected_rep_display:'Rep One', request_selected_rep_username:null
+    request_selected_salesrep_id:'01'
   });
   c.customerRepMapRows=[{...row,salesrepid:'02',salesrepname:'Rep Two'}];
   c.tempSelectedReqRep='Rep Two';

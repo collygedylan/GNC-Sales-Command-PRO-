@@ -51,6 +51,7 @@ export type HistoricalRequestRow = {
   comments: string;
   photoNotes: string;
   photoLinks: Array<string | null>;
+  photoDate?: string | null;
   sentAt: string | null;
   deliveryState: string;
 };
@@ -105,9 +106,21 @@ export type HistoricalArchiveRecord = {
   unitListPrice: number | null;
   lineDollarValue: number | null;
   photoLinks: Array<string | null>;
+  photoDate?: string | null;
   facts: Record<string, string | number | boolean | null>;
   notes: string[];
 };
+
+export function historicalPhotoDate(url: string, fallback?: string | null) {
+  const source = `${url || ''} ${fallback || ''}`;
+  const iso = source.match(/(?:^|[/_%-])(20\d{2})[-_/](\d{1,2})[-_/](\d{1,2})(?:[/_%-]|$)/i);
+  if (iso) return `${String(iso[2]).padStart(2, '0')}/${String(iso[3]).padStart(2, '0')}/${iso[1].slice(-2)}`;
+  const slash = source.match(/(?:^|[^\d])(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})(?=$|[^\d])/);
+  if (slash) return `${String(slash[1]).padStart(2, '0')}/${String(slash[2]).padStart(2, '0')}/${slash[3].slice(-2)}`;
+  const stamp = Date.parse(String(fallback || ''));
+  if (!Number.isFinite(stamp)) return '';
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: '2-digit', day: '2-digit', year: '2-digit' }).format(new Date(stamp));
+}
 
 export type HistoricalArchivePage = {
   scope: 'all' | 'own';

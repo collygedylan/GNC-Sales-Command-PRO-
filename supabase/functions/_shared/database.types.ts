@@ -10558,6 +10558,7 @@ export type Database = {
           okloadinstructions: string | null
           ordertotal: string | null
           oversellpercentage: string | null
+          photo_date: string | null
           photo_link: string | null
           photo_name: string | null
           pic_note: string | null
@@ -10773,6 +10774,7 @@ export type Database = {
           okloadinstructions?: string | null
           ordertotal?: string | null
           oversellpercentage?: string | null
+          photo_date?: string | null
           photo_link?: string | null
           photo_name?: string | null
           pic_note?: string | null
@@ -10988,6 +10990,7 @@ export type Database = {
           okloadinstructions?: string | null
           ordertotal?: string | null
           oversellpercentage?: string | null
+          photo_date?: string | null
           photo_link?: string | null
           photo_name?: string | null
           pic_note?: string | null
@@ -13022,6 +13025,7 @@ export type Database = {
           order_status: string | null
           order_submitted_at: string | null
           order_submitted_by: string | null
+          photo_date: string | null
           photo_link: string | null
           photo_name: string | null
           priority: string | null
@@ -13063,6 +13067,7 @@ export type Database = {
           order_status?: string | null
           order_submitted_at?: string | null
           order_submitted_by?: string | null
+          photo_date?: string | null
           photo_link?: string | null
           photo_name?: string | null
           priority?: string | null
@@ -13104,6 +13109,7 @@ export type Database = {
           order_status?: string | null
           order_submitted_at?: string | null
           order_submitted_by?: string | null
+          photo_date?: string | null
           photo_link?: string | null
           photo_name?: string | null
           priority?: string | null

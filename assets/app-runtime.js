@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.67';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.68';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11338,14 +11338,59 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return sharedLink;
         }
 
+        const photoTakenDateByUrl = new Map();
+        function photoDateLookupKey_(value = '') {
+            return String(value || '').trim().replace(/[?#].*$/, '').toLowerCase();
+        }
+        function rememberPhotoTakenDate_(url = '', label = '') {
+            const safeLabel = String(label || '').trim();
+            const key = photoDateLookupKey_(url);
+            if (!key || !safeLabel) return;
+            photoTakenDateByUrl.set(key, safeLabel);
+            if (photoTakenDateByUrl.size > 5000) photoTakenDateByUrl.delete(photoTakenDateByUrl.keys().next().value);
+        }
+        function resolveAndFormatPhotoDate(row = null, photoItem = null) {
+            const photoUrl = String(typeof photoItem === 'string'
+                ? photoItem
+                : firstNonEmptyValue(photoItem && photoItem.url, photoItem && photoItem.photo_url, photoItem && photoItem.link, '') || '').trim();
+            const remembered = photoTakenDateByUrl.get(photoDateLookupKey_(photoUrl));
+            if (remembered) return remembered;
+            const source = row && typeof row === 'object' ? row : {};
+            const item = photoItem && typeof photoItem === 'object' ? photoItem : {};
+            const candidate = firstNonEmptyValue(
+                extractPhotoDateIsoFromText_(photoUrl),
+                item.photo_date, item.photoDate, item.taken_at, item.takenAt, item.photo_at, item.photoAt,
+                source.PHOTO_DATE, source.photo_date, source.photoDate,
+                source.AV_RULE_PHOTO_UPDATED_AT, source.av_rule_photo_updated_at,
+                source.PHOTO_UPLOADED_AT, source.photo_uploaded_at,
+                source.ROW_PHOTO_UPLOADED_AT, source.row_photo_uploaded_at,
+                source.DATE_COMPLETED, source.date_completed, source.COMPLETED_AT, source.completed_at,
+                source.OCCURRED_AT, source.occurredAt, source.REQUESTED_AT, source.requestedAt,
+                ''
+            );
+            const label = formatPhotoDateLabel_(candidate);
+            if (photoUrl && label) {
+                rememberPhotoTakenDate_(photoUrl, label);
+                rememberPhotoTakenDate_(getDirectImageUrl(photoUrl, 'thumb'), label);
+                rememberPhotoTakenDate_(getExpandedImageUrl(photoUrl), label);
+            }
+            return label;
+        }
+        function buildPhotoTakenDateBadge(row = null, photoItem = null) {
+            const label = resolveAndFormatPhotoDate(row, photoItem);
+            return label ? `<span class="photo-thumb-date" data-photo-taken-date="${esc(label)}">${esc(label)}</span>` : '';
+        }
+
         function resolveCanonicalPhotoUrls(item, sourceView='') {
             if (!item) return [];
             const seen = new Set();
-            return getPhotoUrlList(getRowPhotoLink(item, sourceView)).map((url) => String(url || '').trim()).filter((url) => {
+            const urls = getPhotoUrlList(getRowPhotoLink(item, sourceView)).map((url) => String(url || '').trim()).filter((url) => {
                 if (!url || seen.has(url)) return false;
                 seen.add(url);
                 return true;
             });
+            urls.forEach((url) => resolveAndFormatPhotoDate(item, url));
+            return urls;
         }
 
         function extractPhotoDateIsoFromText_(value = '') {
@@ -11396,7 +11441,9 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const stamp = getPhotoDateMsFromText_(value);
             if (!Number.isFinite(stamp)) return '';
             try {
-                return new Date(stamp).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
+                return new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'America/Chicago', month: '2-digit', day: '2-digit', year: '2-digit'
+                }).format(new Date(stamp));
             } catch (error) {
                 return '';
             }
@@ -11428,6 +11475,33 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const fallbackDateMs = getPhotoDateMsFromText_(fallbackStamp);
             return isPhotoDateMsExpired(fallbackDateMs) ? '' : formatPhotoDateLabel_(fallbackDateMs);
         }
+
+        function ensurePhotoTakenDateBadges(root = document) {
+            const candidates = [];
+            if (root && root.nodeType === 1 && root.matches && root.matches('img')) candidates.push(root);
+            if (root && root.querySelectorAll) candidates.push(...root.querySelectorAll('img'));
+            candidates.forEach((image) => {
+                if (!image || image.closest('.photo-modal-slide')) return;
+                const rawUrl = String(image.getAttribute('data-full-src') || image.getAttribute('src') || image.currentSrc || '').trim();
+                const label = resolveAndFormatPhotoDate(null, rawUrl);
+                if (!label) return;
+                const host = image.closest('.app-inline-thumb-column, .eval-work-photo-thumb, .historical-requests__photo, button, .app-inline-thumb-box') || image.parentElement;
+                if (!host || host.querySelector('.photo-thumb-date')) return;
+                host.classList.add('photo-date-badge-host');
+                host.insertAdjacentHTML('beforeend', `<span class="photo-thumb-date" data-photo-taken-date="${esc(label)}">${esc(label)}</span>`);
+            });
+        }
+
+        function initializePhotoTakenDateBadgeObserver() {
+            ensurePhotoTakenDateBadges(document);
+            if (!document.body || typeof MutationObserver !== 'function') return;
+            const observer = new MutationObserver((records) => records.forEach((record) => record.addedNodes.forEach((node) => {
+                if (node && node.nodeType === 1) ensurePhotoTakenDateBadges(node);
+            })));
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializePhotoTakenDateBadgeObserver, { once: true });
+        else initializePhotoTakenDateBadgeObserver();
         const PHOTO_RETENTION_MAX_AGE_DAYS = 10;
         const PHOTO_RETENTION_MAX_AGE_MS = PHOTO_RETENTION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
         const AV_RULE_MAX_AGE_DAYS = PHOTO_RETENTION_MAX_AGE_DAYS;
@@ -23996,7 +24070,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             };
         }
 
-        let fullInventory=[]; let cropRollDriveInventory=[]; let cropRollDriveSchemaReady=null; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let salesCreditRequestsInventory=[]; let inventoryEditRequestInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let warehouseAssignedItemsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
+        let fullInventory=[]; let cropRollDriveInventory=[]; let cropRollDriveSchemaReady=null; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let salesCreditRequestsInventory=[]; let inventoryEditRequestInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let warehouseAssignedItemsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesItemcodeIndex=new Map(); let avNotesPlantPrefixIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let avNoteServerOptionsCache=new Map(); let diagnosticIssueCardTabs=new Map();
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatMessageSendInFlight=false; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let chatBackgroundPollAttempt=0; let foregroundChatNotificationIds=new Set(); let foregroundDepartmentCalendarNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
         let masterInventoryById=new Map();
         let masterInventoryLookup = null;
@@ -24283,29 +24357,107 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
         function invalidateAvNotesCommonNameIndex() {
             avNotesCommonNameIndexVersion = -1;
             avNotesCommonNameIndex = new Map();
+            avNotesItemcodeIndex = new Map();
+            avNotesPlantPrefixIndex = new Map();
             avNoteFilterResultCache = new Map();
             avNoteRenderedKeys = {};
         }
 
+        function sanitizeAvNoteWithoutSpecCaliper(value = '') {
+            const withoutNa = String(value || '').replace(/\bN\s*\/\s*A\b/gi, '');
+            const measurement = String.raw`\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?`;
+            const measurementUnit = String.raw`(?:h\s*x\s*w|height|high|h|width|wide|w|tall|t|caliper|cal)`;
+            const measurementSuffix = String.raw`(?:["']|in(?:ch(?:es)?)?)?`;
+            const leadingMeasurement = new RegExp(`^\\s*${measurement}\\s*${measurementSuffix}\\s*${measurementUnit}(?:\\s*(?:x|-|by)\\s*${measurement}\\s*${measurementSuffix}\\s*(?:height|high|h|width|wide|w|tall|t)?)?\\s*[-,:;]*\\s*`, 'i');
+            const measurementOnly = new RegExp(`^\\s*${measurement}\\s*${measurementSuffix}(?:\\s*${measurementUnit})?(?:\\s*(?:x|-|by)\\s*${measurement}\\s*${measurementSuffix}\\s*(?:height|high|h|width|wide|w|tall|t)?)?\\s*$`, 'i');
+            const parts = withoutNa.split(/\s*\/\s*/).map((part) => {
+                const trimmed = part.trim();
+                if (!trimmed || /(^|[^a-z])(spec|caliper|cal)([^a-z]|$)/i.test(trimmed)) return '';
+                const clean = trimmed.replace(leadingMeasurement, '').trim();
+                return measurementOnly.test(clean) ? '' : clean;
+            }).filter(Boolean);
+            const clean = parts.join(' / ').replace(/\s{2,}/g, ' ').replace(/^\s*[/,-]+|[/,-]+\s*$/g, '').trim();
+            return clean && !/^N\s*\/?\s*A$/i.test(clean) ? clean : '';
+        }
+
+        function normalizeAvNoteItemcode(value = '') {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function getAvNotePlantPrefix(value = '') {
+            return normalizeAvNoteItemcode(value).replace(/[^A-Z0-9]/g, '').slice(0, 6);
+        }
+
+        function addIndexedAvNote(index, key, note) {
+            if (!key || !note) return;
+            if (!index.has(key)) index.set(key, []);
+            const bucket = index.get(key);
+            if (!bucket.includes(note)) bucket.push(note);
+        }
+
         function ensureAvNotesCommonNameIndex() {
-            const sourceVersion = `${avNotesDb.length}:${avNotesDb.length ? (avNotesDb[0].UNIQUE_ID || avNotesDb[0].unique_id || '') : ''}:${avNotesDb.length ? (avNotesDb[avNotesDb.length - 1].UNIQUE_ID || avNotesDb[avNotesDb.length - 1].unique_id || '') : ''}`;
+            const sourceVersion = `${avNotesDb.length}:${fullInventory.length}:${requestsInventory.length}:${salesOfficeInventory.length}:${avNotesDb.length ? (avNotesDb[0].UNIQUE_ID || avNotesDb[0].unique_id || '') : ''}:${avNotesDb.length ? (avNotesDb[avNotesDb.length - 1].UNIQUE_ID || avNotesDb[avNotesDb.length - 1].unique_id || '') : ''}`;
             if (avNotesCommonNameIndexVersion === sourceVersion) return;
-            const nextIndex = new Map();
-            avNotesDb.forEach((row) => {
-                const key = String(row.COMMONNAME || row.commonname || '').trim().toUpperCase();
-                const note = String(row.SALESNOTE || row.SALES_NOTE || row.salesnote || row.sales_note || '').trim();
-                if (!key || !note) return;
-                if (!nextIndex.has(key)) nextIndex.set(key, []);
-                const bucket = nextIndex.get(key);
-                if (!bucket.includes(note)) bucket.push(note);
+            const commonIndex = new Map();
+            const itemIndex = new Map();
+            const prefixIndex = new Map();
+            const indexRows = (rows) => (Array.isArray(rows) ? rows : []).forEach((row) => {
+                const commonKey = String(firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, '') || '').trim().toUpperCase();
+                const itemKey = normalizeAvNoteItemcode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''));
+                const notes = [row && row.AV_NOTE, row && row.av_note, row && row.SALESNOTE, row && row.SALES_NOTE, row && row.salesnote, row && row.sales_note, row && row.NOTE, row && row.note]
+                    .map(sanitizeAvNoteWithoutSpecCaliper).filter(Boolean);
+                notes.forEach((note) => {
+                    addIndexedAvNote(commonIndex, commonKey, note);
+                    addIndexedAvNote(itemIndex, itemKey, note);
+                    addIndexedAvNote(prefixIndex, getAvNotePlantPrefix(itemKey), note);
+                });
             });
-            avNotesCommonNameIndex = nextIndex;
+            [avNotesDb, fullInventory, requestsInventory, salesOfficeInventory].forEach(indexRows);
+            avNotesCommonNameIndex = commonIndex;
+            avNotesItemcodeIndex = itemIndex;
+            avNotesPlantPrefixIndex = prefixIndex;
             avNotesCommonNameIndexVersion = sourceVersion;
         }
 
-        function getIndexedAvNotes(commonName) {
+        function getIndexedAvNotes(itemOrCommonName) {
             ensureAvNotesCommonNameIndex();
-            return avNotesCommonNameIndex.get(String(commonName || '').trim().toUpperCase()) || [];
+            const item = itemOrCommonName && typeof itemOrCommonName === 'object' ? itemOrCommonName : null;
+            const itemcode = normalizeAvNoteItemcode(item ? firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') : '');
+            const commonName = String(item ? firstNonEmptyValue(item.COMMONNAME, item.commonname, '') : itemOrCommonName || '').trim().toUpperCase();
+            const key = `${itemcode}|${commonName}`;
+            const serverOptions = avNoteServerOptionsCache.get(key)?.options || [];
+            return Array.from(new Set([
+                ...(avNotesItemcodeIndex.get(itemcode) || []),
+                ...(avNotesPlantPrefixIndex.get(getAvNotePlantPrefix(itemcode)) || []),
+                ...(avNotesCommonNameIndex.get(commonName) || []),
+                ...serverOptions
+            ].map(sanitizeAvNoteWithoutSpecCaliper).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+        }
+
+        function ensureItemcodeAvNoteOptions(item = null, onReady = null) {
+            const itemcode = normalizeAvNoteItemcode(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''));
+            const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, '') || '').trim();
+            if (!itemcode && !commonName) return Promise.resolve([]);
+            const key = `${itemcode}|${commonName.toUpperCase()}`;
+            const cached = avNoteServerOptionsCache.get(key);
+            if (cached?.loaded) return Promise.resolve(cached.options);
+            if (cached?.promise) return cached.promise;
+            const entry = cached || { options: [], loaded: false, verified: false, promise: null };
+            entry.promise = postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'av_note_options', itemcode, commonname: commonName }, { timeoutMs: 15000, label: 'AV Note options' })
+                .then((result) => {
+                    entry.options = Array.from(new Set((Array.isArray(result?.options) ? result.options : []).map(sanitizeAvNoteWithoutSpecCaliper).filter(Boolean))).slice(0, 120);
+                    entry.loaded = true;
+                    entry.verified = true;
+                    avNoteFilterResultCache = new Map();
+                    if (typeof onReady === 'function') onReady();
+                    return entry.options;
+                }).catch(() => {
+                    entry.loaded = true;
+                    entry.verified = false;
+                    return entry.options;
+                }).finally(() => { entry.promise = null; });
+            avNoteServerOptionsCache.set(key, entry);
+            return entry.promise;
         }
 
         function debouncedFilterAvNotes(prefix) {
@@ -24488,6 +24640,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let requestMappedRepOptions = [];
         let requestMappedRepIdsByName = new Map();
         let requestMappedRowsBySalesrepId = new Map();
+        let requestGlobalCustomerOptionsCacheKey = '';
+        let requestGlobalCustomerOptionsCache = [];
         let requestMappingRpcCacheOwner = '';
         let requestMappingSecurityEpoch = 0;
         let requestReserveFallbackSource = null;
@@ -26283,7 +26437,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.67').trim() || 'AgData v2.3.67';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.68').trim() || 'AgData v2.3.68';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28559,6 +28713,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return backgroundAdapters;
         }
 
+        function partitionSalesOfficeLiveAdapters(adapters = [], view = '', surfaces = []) {
+            const source = Array.isArray(adapters) ? adapters : [];
+            const hasDialog = (Array.isArray(surfaces) ? surfaces : []).some(surface => String(surface || '').startsWith('dialog:'));
+            if (view !== 'sales-office' || hasDialog) return { foreground: source, background: [] };
+            const foreground = source.filter(adapter => adapter?.id === 'core:salesOffice');
+            if (!foreground.length) return { foreground: source, background: [] };
+            return { foreground, background: source.filter(adapter => adapter?.id !== 'core:salesOffice') };
+        }
+
         function getProductionLiveSyncContext() {
             const accessReady = appAccessSnapshotState.status === 'ready' && !appAccessSnapshotState.stale
                 && appAccessSnapshotState.username === getRequestCapabilityUsernameKey(currentUser);
@@ -28596,7 +28759,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 return result;
             };
-            const adapters = descriptors(view, foregroundContext);
+            const describedAdapters = descriptors(view, foregroundContext);
+            const salesOfficeAdapters = partitionSalesOfficeLiveAdapters(describedAdapters, view, foregroundContext.surfaces);
+            const adapters = salesOfficeAdapters.foreground;
             if (view === 'home' && (canAccessView('drive') || canAccessView('av')) && !adapters.some(adapter => adapter.id === 'core:master')) {
                 adapters.unshift(createProductionCoreLiveAdapter('master', 'browse', { pageConcurrency: 4 }));
             }
@@ -28616,6 +28781,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const foregroundIds = new Set(adapters.map(adapter => adapter.id));
             const backgroundContext = { ...context, surfaces: context.surfaces.filter(id => id.startsWith('badge:')) };
             const backgroundAdapters = context.pagedReportSurface ? [] : descriptors('home', backgroundContext).filter(adapter => !foregroundIds.has(adapter.id));
+            salesOfficeAdapters.background.forEach((adapter) => {
+                if (!foregroundIds.has(adapter.id) && !backgroundAdapters.some(item => item.id === adapter.id)) backgroundAdapters.push(adapter);
+            });
             // Assignment reads authorize card actions, not catalog visibility.
             // Until loaded the existing action checks remain denied.
             if ((view === 'drive' || view === 'detail' && context.driveDetail) && context.driveAssignmentsRequired
@@ -31561,13 +31729,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }).join('')}</div>`;
         }
 
+        function getEvalWorkAvNoteContextItem() {
+            const work = getEvalWorkById(activeEvalWorkDetailId) || {};
+            const origin = getEvalWorkOriginEntries(work).find((entry) => String(entry && entry.origin_unique_id || '') === String(evalWorkActiveOriginUid || '')) || {};
+            return {
+                ITEMCODE: firstNonEmptyValue(origin.itemcode, origin.ITEMCODE, work.itemcode, work.ITEMCODE, ''),
+                COMMONNAME: firstNonEmptyValue(origin.commonname, origin.COMMONNAME, work.commonname, work.COMMONNAME, '')
+            };
+        }
+
         function getEvalWorkAvNoteOptionsHtml() {
-            const notes = new Set();
-            (Array.isArray(avNotesDb) ? avNotesDb : []).forEach((row) => {
-                const value = String(firstNonEmptyValue(row && row.AV_NOTE, row && row.av_note, row && row.NOTE, row && row.note, '') || '').trim();
-                if (value) notes.add(value);
+            const contextItem = getEvalWorkAvNoteContextItem();
+            void ensureItemcodeAvNoteOptions(contextItem, () => {
+                if (document.body.classList.contains('eval-work-av-note-open')) renderEvalWorkAvNoteChoices(document.getElementById('eval-work-av-note-search')?.value || '');
             });
-            return Array.from(notes).sort((a, b) => a.localeCompare(b)).map((value) => `<option value="${escapeHtml(value)}"></option>`).join('');
+            return getIndexedAvNotes(contextItem).map((value) => `<option value="${escapeHtml(value)}"></option>`).join('');
         }
 
         function getEvalWorkAvNoteValues() {
@@ -51149,14 +51325,14 @@ function toggleDriveQuickRequestItem(domId) {
 
         function normalizeRequestRepUserOption(row = null) {
             if (!row || typeof row !== 'object') return null;
-            if (!isRequestRepRoleValue(firstNonEmptyValue(row.role, row.ROLE, ''))) return null;
             const username = normalizePushUsername(firstNonEmptyValue(row.username, row.USERNAME, ''));
             if (!username) return null;
             const displayName = String(firstNonEmptyValue(row.display_name, row.displayName, row.name, '') || '').trim();
             const label = resolveStaticRequestRepLabel(username) || normalizeRepDisplayOrder(displayName || username.replace(/_/g, ' '));
             return buildRequestModalRepOption(label, {
                 username,
-                role: String(firstNonEmptyValue(row.role, row.ROLE, 'REP') || 'REP').trim()
+                role: String(firstNonEmptyValue(row.role, row.ROLE, '') || '').trim(),
+                salesrepId: String(firstNonEmptyValue(row.salesrep_id, row.salesrepId, row.SALESREP_ID, '') || '').trim()
             });
         }
 
@@ -51310,7 +51486,9 @@ function toggleDriveQuickRequestItem(domId) {
             const idKey = normalizeRequestSalesrepId(raw);
             const currentKey = normalizeRepMatchToken(normalizeRepDisplayOrder(tempSelectedReqRep));
             const directory = getRequestMappedRepDirectory();
-            const ids = new Set([...(directory.idsByName.get(key) || []), ...(directory.idsByName.get(idKey) || [])]);
+            const selectedOption = getAllRequestModalRepOptions().find((option) => option.token === key || option.collapsedToken === key.replace(/\s+/g, ''));
+            const ids = new Set([...(directory.idsByName.get(key) || []), ...(directory.idsByName.get(idKey) || []),
+                ...(selectedOption?.salesrepIds || []), selectedOption?.salesrepId].filter(Boolean));
             if (key === currentKey && tempSelectedReqSalesrepId && ids.has(tempSelectedReqSalesrepId)) return tempSelectedReqSalesrepId;
             return ids.size === 1 ? Array.from(ids)[0] : '';
         }
@@ -51332,6 +51510,8 @@ function toggleDriveQuickRequestItem(domId) {
             requestMappingRpcCache.clear();
             requestModalCustomerOptionRowsCache.clear();
             requestModalCustomerOptionsByRepCache = new Map();
+            requestGlobalCustomerOptionsCacheKey = '';
+            requestGlobalCustomerOptionsCache = [];
             requestModalCustomerOptionsCacheKey = '';
             requestModalCustomerOptionsReady = false;
             requestModalCustomerOptionsLoading = false;
@@ -51370,7 +51550,6 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function ensureRequestRepUserOptionsReady(force = false) {
-            if (!isCsrRequestAssistantUser() && !force) return requestModalRepUserOptions;
             const owner = getRequestModalLookupOwnerSignature();
             if (ensureRequestRepUserOptionsReady.cacheOwner !== owner) {
                 ensureRequestRepUserOptionsReady.cacheOwner = owner;
@@ -51411,13 +51590,13 @@ function toggleDriveQuickRequestItem(domId) {
                 const options = mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, directoryRepOptions);
                 requestModalRepUserOptions = options;
                 requestModalRepUserOptionsReady = options.length > 0;
-                requestModalRepUserOptionsError = options.length ? '' : 'No configured sales reps were found.';
+                requestModalRepUserOptionsError = options.length ? '' : 'No active users were found.';
                 return options;
             })().catch((error) => {
                 if (owner === getRequestModalLookupOwnerSignature()) {
                     requestModalRepUserOptions = mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, requestModalRepUserOptions);
                     requestModalRepUserOptionsReady = requestModalRepUserOptions.length > 0;
-                    requestModalRepUserOptionsError = requestModalRepUserOptionsReady ? '' : 'No configured sales reps were found.';
+                    requestModalRepUserOptionsError = requestModalRepUserOptionsReady ? '' : 'No active users were found.';
                 }
                 console.warn('Request rep directory refresh retained known options.', error);
                 return requestModalRepUserOptions;
@@ -51458,7 +51637,8 @@ function toggleDriveQuickRequestItem(domId) {
             const cached = requestMappingRpcCache.get(id);
             // Same-account complete choices remain usable while revisions refresh.
             // The request transaction revalidates the selected active tuple.
-            return !!id && !!cached && cached.owner === owner && Array.isArray(cached.rows);
+            if (!id) return Array.isArray(customerRepMapRows) && customerRepMapRows.some(isActiveRequestCustomerMapping);
+            return !!cached && cached.owner === owner && Array.isArray(cached.rows);
         }
         function refreshRequestModalCustomerStepIfVisible() {
             if (isRequestModalCustomerMapReady() && tempRequestCustomerSelectedContext && !isCurrentRequestCustomerContext(tempRequestCustomerSelectedContext)) {
@@ -51483,12 +51663,16 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getRequestCustomerContext(row = {}) {
             const read = (...keys) => String(firstNonEmptyValue(...keys.map((key) => row && row[key]), '') || '').trim();
+            const hasSelectedSalesrepId = Object.prototype.hasOwnProperty.call(row || {}, 'request_selected_salesrep_id')
+                || Object.prototype.hasOwnProperty.call(row || {}, 'REQUEST_SELECTED_SALESREP_ID');
             return {
                 customeridentityid: read('customeridentityid', 'CUSTOMERIDENTITYID', 'customerId'),
                 customername: read('customername', 'CUSTOMERNAME', 'customerName'),
                 consigneeidentityid: read('consigneeidentityid', 'CONSIGNEEIDENTITYID', 'consigneeid', 'CONSIGNEEID', 'consigneeId'),
                 consigneename: read('consigneename', 'CONSIGNEENAME', 'consigneeName'),
-                request_selected_salesrep_id: read('request_selected_salesrep_id', 'REQUEST_SELECTED_SALESREP_ID', 'salesrepid', 'SALESREPID')
+                request_selected_salesrep_id: hasSelectedSalesrepId
+                    ? read('request_selected_salesrep_id', 'REQUEST_SELECTED_SALESREP_ID')
+                    : read('salesrepid', 'SALESREPID')
             };
         }
 
@@ -51574,7 +51758,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function isCurrentRequestCustomerContext(context, rep = tempSelectedReqRep) {
-            if (!context || !context.customeridentityid || !context.consigneeidentityid || !context.request_selected_salesrep_id || !isRequestModalCustomerMapReady()) return false;
+            if (!context || !context.customeridentityid || !context.consigneeidentityid || !isRequestModalCustomerMapReady()) return false;
             return getRequestModalCustomerOptionsForRep(rep).some(option => option.request_selected_salesrep_id === context.request_selected_salesrep_id && option.customeridentityid === context.customeridentityid
                 && option.consigneeidentityid === context.consigneeidentityid && option.customerName === context.customername && option.consigneeName === context.consigneename);
         }
@@ -51606,21 +51790,42 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        function getRequestGlobalCustomerOptions() {
+            const signature = getRequestModalCustomerMappingCacheSignature();
+            if (requestGlobalCustomerOptionsCacheKey === signature && Array.isArray(requestGlobalCustomerOptionsCache)) {
+                return requestGlobalCustomerOptionsCache;
+            }
+            const options = new Map();
+            (Array.isArray(customerRepMapRows) ? customerRepMapRows : []).forEach((row) => {
+                if (!isActiveRequestCustomerMapping(row)) return;
+                const option = buildRequestModalCustomerSearchOption(getCustomerRepMapCustomerValue(row), getCustomerRepMapConsigneeValue(row), row);
+                if (!option) return;
+                const globalOption = { ...option, request_selected_salesrep_id: '' };
+                const optionKey = requestCustomerOptionKey(globalOption);
+                if (optionKey && !options.has(optionKey)) options.set(optionKey, globalOption);
+            });
+            requestGlobalCustomerOptionsCacheKey = signature;
+            requestGlobalCustomerOptionsCache = mergeRequestModalCustomerOptions(Array.from(options.values()));
+            return requestGlobalCustomerOptionsCache;
+        }
+
 
         function buildRequestModalCustomerOptionsCache(force = false) {
             const signature = getRequestModalCustomerMappingCacheSignature();
             const owner = syncRequestModalCustomerMappingOwner();
             const id = getRequestSelectedSalesrepId();
             const cached = requestMappingRpcCache.get(id);
+            const globalReady = Array.isArray(customerRepMapRows) && customerRepMapRows.some(isActiveRequestCustomerMapping);
             const sameOwnerEntry = !!id && !!cached && cached.owner === owner && Array.isArray(cached.rows) && cached.rows.length > 0;
-            requestModalCustomerOptionsReady = sameOwnerEntry;
-            requestModalCustomerOptionsCacheKey = sameOwnerEntry ? id + ':' + String(cached.revision || 'stale') : '';
+            requestModalCustomerOptionsReady = sameOwnerEntry || globalReady;
+            requestModalCustomerOptionsCacheKey = requestModalCustomerOptionsReady
+                ? `${id || 'all'}:${String(cached?.revision || customerRepMapRows.mappingRevision || 'stale')}` : '';
             if (force) {
                 requestModalCustomerGroupCacheKey = '';
                 requestExistingFolderGroupsCacheKey = '';
             }
             if (requestModalCustomerOptionsReady && tempRequestCustomerSelectedContext && !isCurrentRequestCustomerContext(tempRequestCustomerSelectedContext)) resetRequestCustomerSelectionState();
-            return sameOwnerEntry ? getRequestModalCustomerOptionsForRep(tempSelectedReqRep) : [];
+            return requestModalCustomerOptionsReady ? getRequestModalCustomerOptionsForRep(tempSelectedReqRep) : [];
         }
 
         function loadRequestModalCustomerOptionsForRep(repName = '', force = false, isCurrent = () => true) {
@@ -51628,7 +51833,10 @@ function toggleDriveQuickRequestItem(domId) {
             const securityEpoch = requestMappingSecurityEpoch;
             const signature = getRequestModalCustomerMappingCacheSignature();
             const salesrepId = getRequestSelectedSalesrepId(repName);
-            if (!salesrepId) return Promise.reject(new Error('Choose an unambiguous mapped Sales Rep ID before selecting a customer.'));
+            if (!salesrepId && Array.isArray(customerRepMapRows) && customerRepMapRows.some(isActiveRequestCustomerMapping)) {
+                return Promise.resolve({ rows: getRequestGlobalCustomerOptions(), revision: customerRepMapRows.mappingRevision || '0', signature, owner, stale: false });
+            }
+            if (!salesrepId) return Promise.reject(new Error('The full customer directory is not ready yet.'));
             const cached = requestMappingRpcCache.get(salesrepId);
             if (!force && cached?.owner === owner && Array.isArray(cached.rows)) return Promise.resolve(cached);
             const loads = loadRequestModalCustomerOptionsForRep.inflight || (loadRequestModalCustomerOptionsForRep.inflight = new Map());
@@ -51713,6 +51921,8 @@ function toggleDriveQuickRequestItem(domId) {
             const promise = fetchRequestCustomerMapRows().then(rows => {
                 if (owner !== getRequestModalLookupOwnerSignature() || epoch !== requestMappingSecurityEpoch) return false;
                 customerRepMapRows = rows;
+                requestGlobalCustomerOptionsCacheKey = '';
+                requestGlobalCustomerOptionsCache = [];
                 const directory = getRequestMappedRepDirectory();
                 requestModalCustomerOptionRowsCache.clear();
                 requestExistingFolderGroupsByRepCache.clear();
@@ -51835,11 +52045,11 @@ function toggleDriveQuickRequestItem(domId) {
                     () => requestGeneration === requestModalAsyncGeneration && generation === requestMappingReadGeneration && rep === tempSelectedReqRep);
                 if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration || rep !== tempSelectedReqRep) return false;
                 tempSelectedReqSalesrepId = id;
-                requestModalCustomerOptionsCacheKey = id + ':' + entry.revision;
+                requestModalCustomerOptionsCacheKey = `${id || 'all'}:${entry.revision}`;
                 requestExistingFolderGroupsCacheKey = '';
                 requestModalCustomerGroupCacheKey = '';
-                requestModalCustomerOptionsReady = true;
-                return true;
+                requestModalCustomerOptionsReady = getRequestModalCustomerOptionsForRep(rep).length > 0;
+                return requestModalCustomerOptionsReady;
             })().catch(error => {
                 if (generation === requestMappingReadGeneration && rep === tempSelectedReqRep) {
                     if (isRequestModalCustomerAuthorizationFailure(error)) {
@@ -51868,27 +52078,27 @@ function toggleDriveQuickRequestItem(domId) {
         function getRequestModalCustomerOptionsForRep(repName = '') {
             const owner = syncRequestModalCustomerMappingOwner();
             const id = getRequestSelectedSalesrepId(repName);
-            if (!id) return [];
             const signature = getRequestModalCustomerMappingCacheSignature();
-            const cachedOptions = requestModalCustomerOptionRowsCache.get(id);
+            const cacheId = id || '__all__';
+            const cachedOptions = requestModalCustomerOptionRowsCache.get(cacheId);
             if (cachedOptions?.owner === owner && Array.isArray(cachedOptions.rows)
                 && (cachedOptions.signature === signature || cachedOptions.stale === true)) return cachedOptions.rows;
-            const cached = requestMappingRpcCache.get(id);
+            const cached = id ? requestMappingRpcCache.get(id) : null;
             const sameOwnerEntry = cached?.owner === owner && Array.isArray(cached.rows);
-            const mapReady = isRequestModalCustomerMapReady();
+            const mapReady = Array.isArray(customerRepMapRows) && customerRepMapRows.some(isActiveRequestCustomerMapping);
             const rows = sameOwnerEntry ? cached.rows
-                : mapReady ? (getRequestMappedRepDirectory().rowsBySalesrepId.get(id) || []) : [];
+                : id && mapReady ? (getRequestMappedRepDirectory().rowsBySalesrepId.get(id) || []) : [];
             const options = new Map();
             (rows || []).forEach(row => {
                 if (!isActiveRequestCustomerMapping(row)
                     || normalizeRequestSalesrepId(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '')) !== normalizeRequestSalesrepId(id)) return;
                 appendCustomerRepMapOption(options, row);
             });
-            if (mapReady) {
+            if (mapReady && id) {
                 getRequestAuthorizedReserveFallbackMappings(id).forEach(row => appendCustomerRepMapOption(options, row));
             }
-            const merged = mergeRequestModalCustomerOptions(Array.from(options.values()));
-            requestModalCustomerOptionRowsCache.set(id, { signature, owner, rows: merged, stale: !mapReady || !!sameOwnerEntry && cached.signature !== signature });
+            const merged = mergeRequestModalCustomerOptions(Array.from(options.values()), mapReady ? getRequestGlobalCustomerOptions() : []);
+            requestModalCustomerOptionRowsCache.set(cacheId, { signature, owner, rows: merged, stale: !mapReady || !!sameOwnerEntry && cached.signature !== signature });
             while (requestModalCustomerOptionRowsCache.size > 32) requestModalCustomerOptionRowsCache.delete(requestModalCustomerOptionRowsCache.keys().next().value);
             return merged;
         }
@@ -51903,7 +52113,8 @@ function toggleDriveQuickRequestItem(domId) {
             const id = getRequestSelectedSalesrepId(repName);
             const owner = syncRequestModalCustomerMappingOwner();
             const entry = id ? requestMappingRpcCache.get(id) : null;
-            return entry && entry.owner === owner && Array.isArray(entry.rows) ? entry.rows : [];
+            if (entry && entry.owner === owner && Array.isArray(entry.rows)) return getRequestModalCustomerOptionsForRep(repName);
+            return Array.isArray(customerRepMapRows) && customerRepMapRows.length ? getRequestModalCustomerOptionsForRep(repName) : [];
         }
 
         function getRequestModalActiveTextState() {
@@ -52046,6 +52257,8 @@ function toggleDriveQuickRequestItem(domId) {
             requestMappingRpcCache.clear();
             requestModalCustomerOptionsCacheKey = '';
             requestModalCustomerOptionsByRepCache = new Map();
+            requestGlobalCustomerOptionsCacheKey = '';
+            requestGlobalCustomerOptionsCache = [];
             requestExistingFolderGroupsCacheKey = '';
             requestExistingFolderGroupsCache = [];
             detailRequestSourceDomIds = [fixture.DOM_ID];
@@ -52105,7 +52318,7 @@ function toggleDriveQuickRequestItem(domId) {
             buildRequestModalCustomerOptionsCache(true);
             if (repPickerLocked && tempSelectedReqRep) ensureRequestModalCustomerOptionsReady();
             else prefetchRequestModalCustomerOptions().catch(() => {});
-            const repOptionsPromise = isCsrRequestAssistantUser() ? ensureRequestRepUserOptionsReady() : null;
+            const repOptionsPromise = ensureRequestRepUserOptionsReady();
             if (repPickerLocked) {
                 renderExistingRequestFolderPicker();
             } else {
@@ -52147,6 +52360,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
             requestModalCustomerOptionsCacheKey = '';
             requestModalCustomerOptionsByRepCache = new Map();
+            requestGlobalCustomerOptionsCacheKey = '';
+            requestGlobalCustomerOptionsCache = [];
             requestModalCustomerOptionsLoading = false;
             requestModalCustomerOptionsReady = false;
             requestModalCustomerOptionsError = '';
@@ -54264,7 +54479,7 @@ function toggleDriveQuickRequestItem(domId) {
             photoModalState.urls = urls;
             photoModalState.displayUrls = displayUrls;
             photoModalState.index = initialIndex;
-            gallery.innerHTML = displayUrls.map((url, index) => `<div class="photo-modal-slide" data-photo-index="${index}"><img src="${esc(url)}" data-full-src="${esc(urls[index] || url)}" sizes="100vw" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${Math.abs(index - initialIndex) <= 1 ? 'eager' : 'lazy'}" decoding="async" fetchpriority="${Math.abs(index - initialIndex) <= 1 ? 'high' : 'low'}" draggable="false"></div>`).join('');
+            gallery.innerHTML = displayUrls.map((url, index) => `<div class="photo-modal-slide photo-date-badge-host" data-photo-index="${index}"><img src="${esc(url)}" data-full-src="${esc(urls[index] || url)}" sizes="100vw" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${Math.abs(index - initialIndex) <= 1 ? 'eager' : 'lazy'}" decoding="async" fetchpriority="${Math.abs(index - initialIndex) <= 1 ? 'high' : 'low'}" draggable="false">${buildPhotoTakenDateBadge(null, urls[index] || url)}</div>`).join('');
             photoModalState.scrollHandler = () => {
                 markScrollActivity();
                 if (photoModalState.scrollFrame) return;
@@ -77591,7 +77806,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (viewId === 'home') {
                 renderHome();
             } else if (viewId === 'drive') {
-                if (forceReset || (!state.initialized && !selectedDriveName && !selectedDriveLoc && driveViewLevel === 0)) resetDriveView(false);
+                if (forceReset || (!state.initialized && activeDriveTab === 'name' && !selectedDriveName && !selectedDriveLoc && driveViewLevel === 0)) resetDriveView(false);
                 renderDrive();
             } else if (viewId === 'crop-roll') {
                 renderCropRollModule();
@@ -78087,6 +78302,87 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (host) window.GncUserAccessControl?.mountManager(host);
         }
         let navigationPreferencesAccount = '';
+        let quickAccessNestedBackState = null;
+        const QUICK_ACCESS_NESTED_ROUTES = Object.freeze({
+            eval_reports_2: { parent: 'managers', tab: 'eval-reports-2' },
+            'manager-eval-reports': { parent: 'managers', tab: 'eval-reports' },
+            'manager-approval': { parent: 'managers', tab: 'approval' },
+            'manager-crop-roll': { parent: 'managers', tab: 'crop-roll' },
+            'manager-moves': { parent: 'managers', tab: 'moves' },
+            'manager-season-settings': { parent: 'managers', tab: 'app-season-settings' },
+            'manager-season-priority': { parent: 'managers', tab: 'season-priority' },
+            'manager-production-schedule': { parent: 'managers', tab: 'production-schedule' },
+            'manager-hr-command': { parent: 'managers', tab: 'hr-command' },
+            'manager-company-directory': { parent: 'managers', tab: 'company-directory' },
+            'manager-av-note-users': { parent: 'managers', tab: 'av-blanks-photo-bypass' },
+            'manager-inquiry-coverage': { parent: 'managers', tab: 'item-inquiry-coverage' },
+            'manager-transactions': { parent: 'managers', tab: 'inventory-transaction-history' },
+            'manager-transactions-keyed': { parent: 'managers', tab: 'transactions-keyed' },
+            'manager-orders': { parent: 'managers', tab: 'orders' },
+            'manager-assigned-items': { parent: 'managers', tab: 'assigned-items-export' },
+            'manager-customer-assignments': { parent: 'managers', tab: 'customer-rep-map' },
+            'manager-historical-report': { parent: 'managers', tab: 'historical-report' },
+            'manager-shortage-cancel': { parent: 'managers', tab: 'shortage-cancel' },
+            'manager-block-clearing': { parent: 'managers', tab: 'block-clearing' },
+            'manager-access-control': { parent: 'managers', tab: 'access-control' },
+            'manager-codex-operations': { parent: 'managers', tab: 'codex-operations' },
+            'manager-delivery-recovery': { parent: 'managers', tab: 'delivery-recovery' },
+            'manager-hours': { parent: 'managers', tab: 'hours' },
+            'queue-pending': { parent: 'request', tab: 'pending' },
+            'queue-suspend': { parent: 'request', tab: 'suspend-tag' },
+            'queue-moves': { parent: 'request', tab: 'moves' },
+            'queue-recount': { parent: 'request', tab: 'recount' },
+            'queue-eval-work': { parent: 'request', tab: 'eval-work' },
+            'queue-shear-list': { parent: 'request', tab: 'shear-list' },
+            'queue-bunch-notes': { parent: 'request', tab: 'bunch-notes' },
+            'queue-bunch-count-review': { parent: 'request', tab: 'bunch-count-review' },
+            'archive-requests': { parent: 'historical-requests', archiveTab: 'requests' },
+            'archive-orders': { parent: 'historical-requests', archiveTab: 'orders' },
+            'archive-reserves': { parent: 'historical-requests', archiveTab: 'reserves' },
+            'archive-drive': { parent: 'historical-requests', archiveTab: 'drive' },
+            'sales-office-season': { parent: 'sales-office', tab: 'season' },
+            'sales-office-orders': { parent: 'sales-office', tab: 'orders' },
+            'qc-docks': { parent: 'docks', access: 'qc' },
+            'qc-eval-work': { parent: 'request', tab: 'eval-work', access: 'qc' },
+            'qc-approvals': { parent: 'review', access: 'qc' },
+            'office-orders': { parent: 'sales-office', tab: 'orders', access: 'office' },
+            'office-reserves': { parent: 'reserves', access: 'office' },
+            'office-assigned-items': { parent: 'managers', tab: 'assigned-items-export', access: 'office' },
+            'sales-drive': { parent: 'drive', access: 'sales' },
+            'sales-av': { parent: 'av', access: 'sales' },
+            'sales-docks': { parent: 'docks', access: 'sales' },
+            'sales-communication': { parent: 'communication', access: 'sales' },
+            'sales-request': { parent: 'request', access: 'sales' },
+            'sales-sales-office': { parent: 'sales-office', access: 'sales' },
+            'sales-advertisement': { parent: 'advertisement', access: 'sales' },
+            'sales-tasks': { parent: 'tasks', access: 'sales' },
+            'sales-weather-hold': { parent: 'weather-hold', access: 'sales' }
+        });
+        function canAccessQuickAccessView(view = '') {
+            const safeView = String(view || '').trim();
+            if (safeView === 'bloom') return !!currentUser;
+            if (safeView.startsWith('production:')) return canAccessView('production-workflow') && navigationPreferencesAllowed(safeView, true);
+            const nested = QUICK_ACCESS_NESTED_ROUTES[safeView];
+            return nested ? canAccessView(nested.access || nested.parent) && canAccessView(nested.parent) : canAccessView(safeView);
+        }
+        function navigateQuickAccessView(view = '') {
+            const safeView = String(view || '').trim();
+            if (safeView === 'bloom') return toggleCartPanel();
+            if (safeView.startsWith('production:')) return openProductionWorkflow(safeView.split(':')[1]);
+            const nested = QUICK_ACCESS_NESTED_ROUTES[safeView];
+            if (!nested) return switchView(safeView);
+            const originView = getCurrentVisibleViewId();
+            const openNested = () => {
+                if (nested.parent === 'managers' && nested.tab) setHomeTab(nested.tab);
+                else if (nested.parent === 'request' && nested.tab) setReqTab(nested.tab);
+                else if (nested.parent === 'sales-office' && nested.tab) setSalesOfficeTab(nested.tab);
+                else if (nested.archiveTab) document.querySelector(`[data-archive-tab="${nested.archiveTab}"]`)?.click();
+            };
+            switchView(nested.parent, { quickAccessRoute: safeView, quickAccessOrigin: originView, quickAccessTab: nested.tab || nested.archiveTab || '' });
+            openNested();
+            setTimeout(openNested, 80);
+            return false;
+        }
         function configureNavigationPreferences() {
             configureCanonicalUserAccess();
             const preferences = window.GncNavigationPreferences;
@@ -78096,8 +78392,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             preferences.configure({
                 username: () => currentUser,
                 call: envelope => postAppFunctionJson(APP_API_FUNCTION_URL, envelope, { timeoutMs: 30000, label: 'Navigation preferences', idempotencyKey: envelope.commandId || undefined }),
-                canAccess: view => view === 'bloom' ? !!currentUser : view.startsWith('production:') ? canAccessView('production-workflow') && navigationPreferencesAllowed(view, true) : canAccessView(view),
-                navigate: view => view === 'bloom' ? toggleCartPanel() : view.startsWith('production:') ? openProductionWorkflow(view.split(':')[1]) : switchView(view),
+                canAccess: canAccessQuickAccessView,
+                navigate: navigateQuickAccessView,
                 onChange: () => {
                     applyRolePermissions();
                     ['sales','qc','production','office','sales-inventory','managers'].forEach(view => GncMobileWorkspace.syncHub(view));
@@ -78274,6 +78570,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
+            if (switchOptions.quickAccessRoute && currentViewId !== nextViewId) {
+                quickAccessNestedBackState = {
+                    account: String(currentUser || '').trim().toLowerCase(),
+                    origin: String(switchOptions.quickAccessOrigin || currentViewId || 'home').trim(),
+                    parent: nextViewId,
+                    route: String(switchOptions.quickAccessRoute || '').trim(),
+                    tab: String(switchOptions.quickAccessTab || '').trim().toLowerCase()
+                };
+            } else if (!fromHistory && currentViewId !== nextViewId) quickAccessNestedBackState = null;
             if (nextViewId === 'smart-moves') warmSalesIntelligenceData();
             if (nextViewId === 'av' && currentViewId === 'home') clearAvSearchForHomeEntry();
             if (!['historical-requests', 'request-history'].includes(nextViewId)) destroyHistoricalRequestsIsland();
@@ -78481,6 +78786,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
                     && (managerEvalReport2DetailItemKey || managerEvalReport2BrowseMode === 'location' && managerEvalReport2DrillLevel > 0)) {
                     backManagerEvalReport2Drill(); updateGlobalBackButton(); return false;
+                }
+                const quickAccessBack = typeof quickAccessNestedBackState !== 'undefined' ? quickAccessNestedBackState : null;
+                if (quickAccessBack?.parent === 'managers'
+                    && quickAccessBack.account === String(currentUser || '').trim().toLowerCase()
+                    && quickAccessBack.tab === String(activeHomeTab || '').trim().toLowerCase()) {
+                    quickAccessNestedBackState = null;
+                    if (restorePreviousViewFromHistory()) return false;
+                    fastBackToView(quickAccessBack.origin || 'home', { fromHistory: true });
+                    return false;
                 }
                 if (String(activeHomeTab || '').trim().toLowerCase() !== 'dashboard') return openManagersModules();
                 fastBackHome();
@@ -81543,8 +81857,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function isRequestRepPickerLockedForCurrentUser() {
-            const access = getRoleAccessState();
-            return !!(access.isRep || access.isRequestRepScopedUser && !access.isAdmin && !canUseGlobalRequestAccess());
+            return false;
         }
 
         function getLockedRequestRepNameForCurrentUser() {
@@ -81557,45 +81870,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAllowedRequestModalRepOptions() {
-            if (isCsrRequestAssistantUser()) return Array.isArray(requestModalRepUserOptions) ? requestModalRepUserOptions : [];
-            if (!isRequestRepPickerLockedForCurrentUser()) return getAllRequestModalRepOptions();
-            const lockedRepName = getLockedRequestRepNameForCurrentUser();
-            if (!lockedRepName) return [];
-            const lockedToken = normalizeRepMatchToken(lockedRepName);
-            const lockedCollapsedToken = lockedToken.replace(/\s+/g, '');
-            const matchedOption = REQUEST_MODAL_REP_OPTIONS.find((option) => (
-                option.token === lockedToken ||
-                option.collapsedToken === lockedCollapsedToken ||
-                doesRequestRepMatchValue(option.label, lockedRepName)
-            ));
-            return matchedOption ? [matchedOption] : [{
-                label: lockedRepName,
-                token: lockedToken,
-                collapsedToken: lockedCollapsedToken
-            }];
+            return getAllRequestModalRepOptions();
         }
 
         function resolveRequestRepSelectionForCurrentUser(repName = '', options = {}) {
             const requestedRepName = resolveCanonicalRequestRepName(repName);
-            if (isCsrRequestAssistantUser()) {
-                if (!requestModalRepUserOptionsReady || !Array.isArray(requestModalRepUserOptions) || !requestModalRepUserOptions.length) {
-                    if (options && options.showToast) showToast('Rep List Required', requestModalRepUserOptionsError || 'Active REP users are still loading. Try again in a moment.', true);
-                    return '';
-                }
-                const matchedRep = requestModalRepUserOptions.find((option) => requestedRepName && doesRequestRepMatchValue(option.label, requestedRepName));
-                if (!matchedRep) {
-                    if (options && options.showToast) showToast('Select REP', 'Choose an active REP from the list.', true);
-                    return '';
-                }
-                return matchedRep.label;
-            }
-            if (!isRequestRepPickerLockedForCurrentUser()) return requestedRepName;
-            const lockedRepName = getLockedRequestRepNameForCurrentUser();
-            if (!lockedRepName) return '';
-            if (requestedRepName && !doesRequestRepMatchValue(requestedRepName, lockedRepName) && options && options.showToast) {
-                showToast('Restricted', 'Sales reps can only create requests for themselves.', true);
-            }
-            return lockedRepName;
+            if (requestedRepName) return requestedRepName;
+            if (options && options.showToast) showToast('Select REP', 'Choose an active sales rep from the list.', true);
+            return '';
         }
 
         function resetHoursView() {
@@ -82290,9 +82572,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             normalizeRowPhotoFields(item);
             const safeUidJs = esc(item.UNIQUE_ID);
             let thumbHtml = '';
-            const photoLink = getRowPhotoLink(item, 'drive');
-            const photoDateLabel = getRowPhotoDateLabel(item, 'drive', photoLink);
-            const photoDateHtml = photoDateLabel ? `<div class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Photo ${photoDateLabel}</div>` : '';
+            const photoUrls = resolveCanonicalPhotoUrls(item, 'drive');
+            const photoLink = photoUrls.join(',');
+            const photoDateLabel = resolveAndFormatPhotoDate(item, photoUrls[0] || photoLink);
+            const photoDateHtml = photoDateLabel ? `<span class="photo-thumb-date" data-photo-taken-date="${esc(photoDateLabel)}">${esc(photoDateLabel)}</span>` : '';
             if (photoLink) {
                 let firstUrl = photoUrls[0] || '';
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
@@ -82613,8 +82896,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
             let thumbHtml = '';
             const photoLink = getRowPhotoLink(item, 'av');
-            const photoDateLabel = getRowPhotoDateLabel(item, 'av', photoLink);
-            const photoDateHtml = photoDateLabel ? `<div class="text-center text-[9px] font-black text-slate-500 mt-1 uppercase tracking-[0.14em] bg-white px-2 py-0.5 rounded-md border border-slate-200">PHOTO ${photoDateLabel}</div>` : '';
+            const photoDateLabel = resolveAndFormatPhotoDate(item, String(photoLink).split(',')[0] || photoLink);
+            const photoDateHtml = photoDateLabel ? `<span class="photo-thumb-date" data-photo-taken-date="${esc(photoDateLabel)}">${esc(photoDateLabel)}</span>` : '';
             if (photoLink) {
                 let firstUrl = String(photoLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
@@ -82655,8 +82938,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">${label}</div><div class="mt-1 text-[13px] font-bold text-slate-700 break-words">${esc(displayValue)}</div></div>`;
             };
             let thumbHtml = '';
-            const photoDateLabel = getRowPhotoDateLabel(item, 'drive', photoLink);
-            const photoDateHtml = photoDateLabel ? `<div class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Photo ${photoDateLabel}</div>` : '';
+            const photoDateLabel = resolveAndFormatPhotoDate(item, photoUrls[0] || photoLink);
+            const photoDateHtml = photoDateLabel ? `<span class="photo-thumb-date" data-photo-taken-date="${esc(photoDateLabel)}">${esc(photoDateLabel)}</span>` : '';
             if (photoLink) {
                 let firstUrl = String(photoLink).split(',')[0].trim();
                 let urlMatch = firstUrl.match(/(https?:\/\/[^"\s>]+)/);
@@ -145066,7 +145349,7 @@ C.14.043 C.15.000
             if (['tasks', 'crop-roll'].includes(String(sourceView || '').trim().toLowerCase())) rememberTaskRenderedRow(item);
             const cardSourceViewKey = String(sourceView || '').trim().toLowerCase();
             const safeCardSourceViewKey = escJsAttrValue(cardSourceViewKey);
-            let thumbHtml=''; const canonicalCardPhotoUrls=resolveCanonicalPhotoUrls(item, sourceView); let photoLink=canonicalCardPhotoUrls.join(','); const photoDateLabel = getRowPhotoDateLabel(item, sourceView, photoLink); const photoDateHtml = photoDateLabel ? `<div class="app-inline-thumb-label app-inline-thumb-date">PHOTO ${photoDateLabel}</div>` : '';
+            let thumbHtml=''; const canonicalCardPhotoUrls=resolveCanonicalPhotoUrls(item, sourceView); let photoLink=canonicalCardPhotoUrls.join(','); const photoDateLabel = resolveAndFormatPhotoDate(item, canonicalCardPhotoUrls[0] || photoLink); const photoDateHtml = photoDateLabel ? `<span class="photo-thumb-date app-inline-thumb-date" data-photo-taken-date="${esc(photoDateLabel)}">${esc(photoDateLabel)}</span>` : '';
             const hasCardPhotoEvidence = canonicalCardPhotoUrls.length > 0;
 
             const isChecked=selectedItems.has(item.DOM_ID)?'checked':'';
@@ -145211,8 +145494,8 @@ C.14.043 C.15.000
                     const photoStatusHtml = '<span class="app-av-catalog-photo-status app-av-catalog-photo-loading" role="status">Loading…</span><span class="app-av-catalog-photo-status app-av-catalog-photo-error">Photo unavailable</span>';
                     const label = escapeHtml(`View ${photoCount} photo${photoCount === 1 ? '' : 's'} of ${item.COMMONNAME || 'AV Item'}`);
                     const previewHtml = isReserveAvCard
-                        ? `<div class="app-av-photo-slide" data-av-photo-index="0" aria-label="${label}">${imgHtml}${photoStatusHtml}</div>`
-                        : `<button type="button" class="app-av-photo-slide" data-fast-press-ignore data-av-photo-index="0" aria-label="${label}" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', 0); return false;">${imgHtml}${photoStatusHtml}</button>`;
+                        ? `<div class="app-av-photo-slide" data-av-photo-index="0" aria-label="${label}">${imgHtml}${photoDateHtml}${photoStatusHtml}</div>`
+                        : `<button type="button" class="app-av-photo-slide" data-fast-press-ignore data-av-photo-index="0" aria-label="${label}" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', 0); return false;">${imgHtml}${photoDateHtml}${photoStatusHtml}</button>`;
                     heroHtml = `<div class="app-av-hero"><div class="app-av-photo-carousel"${isReserveAvCard ? '' : ' data-fast-press-ignore'}><div class="app-av-photo-track">${previewHtml}</div>${photoCount > 1 ? `<span class="app-av-photo-count" aria-hidden="true">1 / ${photoCount}</span>` : ''}</div></div>`;
                 }
                 const domIdText = String(firstNonEmptyValue(item.DOM_ID, '') || '').trim();
@@ -145467,9 +145750,11 @@ C.14.043 C.15.000
                 const isSeasonSalesNote = isSeasonSalesOfficeItem(item);
                 const seasonSalesEntryAllowed = !isSeasonSalesNote || isAvBlanksPhotoBypassUserAllowed();
                 const salesOfficeDoneHandler = isSeasonSalesNote ? 'markSeasonSalesOfficeComplete' : 'markSalesOfficeComplete';
-                const seasonSalesEntryActionsHtml = seasonSalesEntryAllowed
+                let seasonSalesEntryActionsHtml = seasonSalesEntryAllowed
                     ? `<div class="grid grid-cols-3 gap-2 mt-3"><button class="min-h-[44px] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[9px] sm:text-[10px] font-black py-2 rounded-lg transition-colors flex items-center justify-center gap-1 active:bg-indigo-200 uppercase tracking-[0.08em]" onclick="event.stopPropagation(); return copyTextToClipboard('${safeItemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-base"></i> Itemcode</button><button class="min-h-[44px] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[9px] sm:text-[10px] font-black py-2 rounded-lg transition-colors flex items-center justify-center gap-1 active:bg-purple-200 uppercase tracking-[0.08em]" onclick="event.stopPropagation(); return copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-base"></i> AV Note</button><button class="min-h-[44px] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[9px] sm:text-[10px] font-black py-2 rounded-lg transition-colors flex items-center justify-center gap-1 active:bg-blue-200 uppercase tracking-[0.08em]" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}'); return false;"><i class="ph-bold ph-pencil-simple-line text-base"></i> Edit</button></div><button class="mt-2 w-full min-h-[48px] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-black py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95 uppercase tracking-[0.14em]" onclick="event.stopPropagation(); return ${salesOfficeDoneHandler}('${safeUidJs}', '${safeDomId}', this)"><i class="ph-bold ph-check-circle text-lg"></i> Done</button>`
                     : `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.1em] text-slate-500"><i class="ph-bold ph-lock-key mr-1 text-base align-middle"></i> Read only — not assigned for Season Sales Note entry</div>`;
+                const salesOfficeCardPhotoHtml = hasCardPhotoEvidence ? `<div class="mt-3 flex justify-end">${inlineThumbHtml}</div>` : '';
+                seasonSalesEntryActionsHtml = `${salesOfficeCardPhotoHtml}${seasonSalesEntryActionsHtml}`;
                 if (salesOfficeSource === 'moves' || salesOfficeSource === 'move') {
                     const actualMoved = String(firstNonEmptyValue(item.MOVE_ACTUAL_MOVED, item.ORDER_QTY, '0') || '0').trim() || '0';
                     const taQty = String(firstNonEmptyValue(item.MOVE_TA_QTY, item.ORDER_RESERVE, '0') || '0').trim() || '0';
@@ -145989,16 +146274,12 @@ C.14.043 C.15.000
         function renderRequestModalRepPickerOnOpen(repOptionsPromise = null) {
             const render = () => filterRepList('');
             const directoryReady = !isCsrRequestAssistantUser() || requestModalRepUserOptionsReady;
-            if (directoryReady) {
-                render();
-                return true;
-            }
-            scheduleRequestModalSearchRender('rep', '', render, { force: true, skipDebounce: true });
+            render();
             if (repOptionsPromise && typeof repOptionsPromise.then === 'function') {
                 repOptionsPromise.then(() => scheduleRequestModalSearchRender('rep', '', render, { force: true, skipDebounce: true }))
                     .catch(() => scheduleRequestModalSearchRender('rep', '', render, { force: true, skipDebounce: true }));
             }
-            return false;
+            return directoryReady;
         }
 
         function filterRepList(searchValue = null) {
@@ -146010,19 +146291,6 @@ C.14.043 C.15.000
             const customBtn = document.getElementById('custom-rep-btn');
             if (!container || !customBtn) return;
             const repPickerLocked = isRequestRepPickerLockedForCurrentUser();
-            const csrPicker = isCsrRequestAssistantUser();
-            if (csrPicker && !requestModalRepUserOptionsReady) {
-                customBtn.classList.add('hidden');
-                container.innerHTML = `<div class="request-empty-state">${esc(requestModalRepUserOptionsLoading ? 'Loading active REP users...' : (requestModalRepUserOptionsError || 'Active REP users are not loaded yet.'))}</div>`;
-                if (!requestModalRepUserOptionsLoading) {
-                    ensureRequestRepUserOptionsReady().then(() => {
-                        scheduleRequestModalSearchRender('rep', rawVal, () => filterRepList(rawVal), { force: true, skipDebounce: true });
-                    }).catch(() => {
-                        scheduleRequestModalSearchRender('rep', rawVal, () => filterRepList(rawVal), { force: true, skipDebounce: true });
-                    });
-                }
-                return;
-            }
             const mappedRepOptions = getAllRequestModalRepOptions();
             const allowedRepOptions = getAllowedRequestModalRepOptions().flatMap(option => {
                 const key = normalizeRepMatchToken(normalizeRepDisplayOrder(option.label));
@@ -146040,9 +146308,7 @@ C.14.043 C.15.000
             }).join('') + buildRequestModalMoreResultsHtml(visibleOptions);
             const repListHtml = html || (repPickerLocked
                 ? `<div class="request-empty-state">Requests are locked to ${esc(getLockedRequestRepNameForCurrentUser() || 'your login')}.</div>`
-                : (csrPicker
-                    ? `<div class="request-empty-state">No matching active REP users found.</div>`
-                    : `<div class="request-empty-state">No matching sales reps found.</div>`));
+                : `<div class="request-empty-state">${esc(requestModalRepUserOptionsLoading ? 'Loading active users...' : (requestModalRepUserOptionsError || 'No matching active users found.'))}</div>`);
             const repListTemplate = document.createElement('template');
             repListTemplate.innerHTML = repListHtml;
             if (window.AgMetricStableViewDom) window.AgMetricStableViewDom.apply(container, repListTemplate.content);
@@ -147033,7 +147299,8 @@ C.14.043 C.15.000
                     folderContextEl.innerHTML = `<div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-700">Adding to Existing Folder</div><div class="mt-1">${esc(cust || 'Unknown')}</div><div class="mt-1 text-[11px] text-yellow-800">Date: ${esc(meta.dateLabel || '-')} | Request #: ${esc(meta.requestNumber || folderId)}</div>`;
                     folderContextEl.classList.remove('hidden');
                 } else if (String(fromStepId || '') === 'step-1.5-folder' && cust) {
-                    folderContextEl.innerHTML = `<div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-700">Creating New Folder</div><div class="mt-1">${esc(cust || 'Unknown')}</div>`;
+                    const standardFolderName = createStandardRequestFolderName(cust, tempRequestCustomerSelectedContext, tempSelectedReqRep);
+                    folderContextEl.innerHTML = `<div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-700">Creating New Folder</div><div class="mt-1" data-request-folder-name="${esc(standardFolderName)}">${esc(standardFolderName)}</div>`;
                     folderContextEl.classList.remove('hidden');
                 } else {
                     folderContextEl.innerHTML = '';
@@ -148127,6 +148394,20 @@ C.14.043 C.15.000
             return `${safeCustName}-${dateStr}-REQ-${timeStr}${millis}-${uniqueSuffix}`;
         }
 
+        function createStandardRequestFolderName(customerLabel = '', context = null, repDisplay = '') {
+            const safeContext = context && typeof context === 'object' ? context : {};
+            const labelParts = String(customerLabel || '').split('|').map((part) => part.trim()).filter(Boolean);
+            const customerName = String(firstNonEmptyValue(safeContext.customername, labelParts[0], '') || '').trim();
+            const consigneeName = String(firstNonEmptyValue(safeContext.consigneename, labelParts[1], '') || '').trim();
+            const validCustomer = customerName && customerName.toUpperCase() !== 'N/A' ? customerName : '';
+            const validConsignee = consigneeName && consigneeName.toUpperCase() !== 'N/A' ? consigneeName : '';
+            const validRep = String(resolveCanonicalRequestRepName(repDisplay) || repDisplay || '').trim();
+            const prefix = validCustomer ? [validCustomer, validConsignee].filter(Boolean).join(' - ') : (validRep || 'Request');
+            const now = new Date();
+            const dateLabel = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${String(now.getFullYear()).slice(-2)}`;
+            return `${prefix} - ${dateLabel}`;
+        }
+
         async function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj,resolvedRequestEntriesOverride = null) {
             const ownerKey = getRequestSubmissionOwnerKey();
             const generation = requestSubmissionGeneration;
@@ -148135,10 +148416,11 @@ C.14.043 C.15.000
             let cust=existingCust;let folderId=String(existingFolderId || '').trim();
             const appendingToExistingFolder = !!folderId;
             const quickMode = isQuickDriveRequestMode();
-            const requestedBy = resolveRequestRepSelectionForCurrentUser(String(tempSelectedReqRep || getDefaultRequestRepName() || '').trim(), { showToast: false });
-            if (requestedBy) tempSelectedReqRep = requestedBy;
+            const selectedRepName = resolveRequestRepSelectionForCurrentUser(String(tempSelectedReqRep || getDefaultRequestRepName() || '').trim(), { showToast: false });
+            if (selectedRepName) tempSelectedReqRep = selectedRepName;
             syncRequestEmailChainSelectionFromInputs();
-            const requestCreatorAudit = requestedBy ? buildRequestCreatorAuditInfo(requestedBy) : null;
+            const requestCreatorAudit = selectedRepName ? buildRequestCreatorAuditInfo(selectedRepName) : null;
+            const requestedBy = String(firstNonEmptyValue(requestCreatorAudit && requestCreatorAudit.creatorUsername, currentUser, '') || '').trim();
 
             const emailChainRecipients = canUseRequestEmailChainPicker() ? getRequestEmailChainSelectedRecipients() : [];
             const overrideEntries = Array.isArray(resolvedRequestEntriesOverride) ? resolvedRequestEntriesOverride.filter((entry) => entry && entry.item) : null;
@@ -148162,7 +148444,7 @@ C.14.043 C.15.000
             const requestCapabilities = getRequestEntryCapabilities();
             if (requestSourceEntries.length > 100) { showToast('Too Many Rows', 'Submit at most 100 rows per Request. Your cart and form are unchanged.', true); return false; }
             if(!requestSourceEntries.length){showToast("Required","Please select a row first.",true);return}
-            if(!requestedBy){showToast("Required","Please choose a sales rep for this request.",true);return}
+            if(!selectedRepName){showToast("Required","Please choose a sales rep for this request.",true);return}
             const missingReuseEntry = requestSourceEntries.find((entry) => {
                 const reusable = getRequestReusableData(entry && entry.item);
                 if (!reusable.hasReusableEvidence) return false;
@@ -148184,8 +148466,8 @@ C.14.043 C.15.000
                 return false;
             }
             const requestCustomerContext = resolveRequestCustomerContext(cust, appendingToExistingFolder ? folderId : '');
-            const resolveMappingPayload = () => isCurrentRequestCustomerContext(requestCustomerContext, requestedBy)
-                ? window.AgMetricRequestSubmission.resolveCustomerMappingPayload(requestCustomerContext, getRequestModalCustomerOptionsForRep(requestedBy), true)
+            const resolveMappingPayload = () => isCurrentRequestCustomerContext(requestCustomerContext, selectedRepName)
+                ? window.AgMetricRequestSubmission.resolveCustomerMappingPayload(requestCustomerContext, getRequestModalCustomerOptionsForRep(selectedRepName), true)
                 : null;
             let requestMappingPayload = resolveMappingPayload();
             if (!requestMappingPayload) {
@@ -148213,7 +148495,7 @@ C.14.043 C.15.000
                 return false;
             }
             if(!appendingToExistingFolder){
-                folderId = createRequestFolderId(cust);
+                folderId = createStandardRequestFolderName(cust, requestCustomerContext, selectedRepName);
             }
 
             const uuidGen=()=>Date.now().toString(36)+Math.random().toString(36).substring(2);
@@ -148297,7 +148579,7 @@ C.14.043 C.15.000
                         pick_note:requestPick||null,
                         sales_note:useExistingData?firstNonEmptyValue(item.SALES_NOTE,item.sales_note,null):null,
                         photo_expires_at:useExistingData?firstNonEmptyValue(item.PHOTO_EXPIRES_AT,item.photo_expires_at,null):null,
-                        sales_rep:requestedBy,
+                        sales_rep:selectedRepName,
                         customer_name:firstNonEmptyValue(requestMappingPayload.customername,requestCustomerContext.customername,cust,'Unknown Customer'),
                         consignee_name:firstNonEmptyValue(requestMappingPayload.consigneename,requestCustomerContext.consigneename,'N/A'),
                         customer_consignee_label:[firstNonEmptyValue(requestMappingPayload.customername,requestCustomerContext.customername,cust,'Unknown Customer'),firstNonEmptyValue(requestMappingPayload.consigneename,requestCustomerContext.consigneename,'N/A')].join(' / '),
@@ -148328,8 +148610,8 @@ C.14.043 C.15.000
                         source_snapshot:{unique_id:item.UNIQUE_ID,itemcode:item.ITEMCODE,locationcode:item.LOCATIONCODE,lotcode:item.LOTCODE,commonname:item.COMMONNAME,contsize:item.CONTSIZE}
                     };
                     newReq.request_source = requestSource;
-                    applyRequestCreatorAuditFields(newReq, requestCreatorAudit);
                     Object.assign(newReq, requestMappingPayload);
+                    applyRequestCreatorAuditFields(newReq, requestCreatorAudit);
                     if (autoCompleteUser) {
                         newReq.completed_by_username = autoCompleteUser.username || currentUser || null;
                         newReq.completed_by_display = autoCompleteUser.display || currentUserDisplay || currentUser || null;
@@ -148343,7 +148625,7 @@ C.14.043 C.15.000
             const outboxEntry = {
                 clientBatchId, ownerKey, requestSource, requests: insertPayloads,
                 supersedesBatchId: rejected && ['review-required', 'mapping-review'].includes(rejected.status) ? rejected.clientBatchId : null,
-                folderId, customer: cust, requestedBy: requestMappingPayload.requested_by, createdAt: requestCreatedAt,
+                folderId, customer: cust, requestedBy, createdAt: requestCreatedAt,
                 status: 'pending', attempts: 0, selectionSnapshot, formSnapshot, emailChainRecipients
             };
             return await performRequestSubmission(outboxEntry, { navigate: true });
@@ -159919,9 +160201,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return `<div class="app-inline-thumb-column"><div class="app-inline-thumb-box px-1 text-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
             }
             const caption = `${firstNonEmptyValue(previewRow && previewRow.commonName, pkg && pkg.commonName, item && item.COMMONNAME, 'Item Inquiry')} - ${firstNonEmptyValue(previewRow && previewRow.contSize, pkg && pkg.contSize, item && item.CONTSIZE, '-')}`;
-            const photoDateLabel = getRowPhotoDateLabel(rowPhotoItem, 'drive', photoCsv);
+            const photoDateLabel = resolveAndFormatPhotoDate(rowPhotoItem, firstPhotoUrl || photoCsv);
             const photoLabelHtml = photoDateLabel
-                ? `<span class="app-inline-thumb-label">Photo<br>${escapeHtml(photoDateLabel)}</span>`
+                ? `<span class="photo-thumb-date" data-photo-taken-date="${escapeHtml(photoDateLabel)}">${escapeHtml(photoDateLabel)}</span>`
                 : '<span class="app-inline-thumb-label">Photo</span>';
             return `<button type="button" class="app-inline-thumb-column" data-fast-press-ignore onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv)}', '${escJsAttrValue(caption)}'); return false;"><div class="app-inline-thumb-box">${buildDeferredCardPhotoImg(thumbUrl)}</div>${photoLabelHtml}</button>`;
         }
@@ -169373,10 +169655,22 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeOptions = options && typeof options === 'object' ? options : {};
             const avNoteContextItem = safePrefix === 'hold-release-' && holdReleasePromptItem ? holdReleasePromptItem : activeItem;
             if (!avNoteContextItem) return;
-            if (!ensureVerifiedAvNoteChoices(document.getElementById(safePrefix + 'av-dropdown-list'), safePrefix, () => {
-                if ((safePrefix === 'hold-release-' ? holdReleasePromptItem : activeItem) === avNoteContextItem) filterAvNotes(prefix, safeOptions);
-            })) return;
-            if (!isDatasetLoaded('avNotes', 'initial')) {
+            const list = document.getElementById(safePrefix + 'av-dropdown-list');
+            if (!list) return;
+            const itemcodeKey = normalizeAvNoteItemcode(firstNonEmptyValue(avNoteContextItem.ITEMCODE, avNoteContextItem.itemcode, ''));
+            const commonKey = String(firstNonEmptyValue(avNoteContextItem.COMMONNAME, avNoteContextItem.commonname, '') || '').trim().toUpperCase();
+            const serverKey = `${itemcodeKey}|${commonKey}`;
+            void ensureItemcodeAvNoteOptions(avNoteContextItem, () => {
+                const currentItem = safePrefix === 'hold-release-' && holdReleasePromptItem ? holdReleasePromptItem : activeItem;
+                const currentItemcode = normalizeAvNoteItemcode(firstNonEmptyValue(currentItem && currentItem.ITEMCODE, currentItem && currentItem.itemcode, ''));
+                const currentCommonName = String(firstNonEmptyValue(currentItem && currentItem.COMMONNAME, currentItem && currentItem.commonname, '') || '').trim().toUpperCase();
+                if (`${currentItemcode}|${currentCommonName}` !== serverKey) return;
+                avNoteRenderedKeys[safePrefix] = '';
+                filterAvNotes(safePrefix, safeOptions);
+            });
+            const hasVerifiedServerOptions = avNoteServerOptionsCache.get(serverKey)?.verified === true;
+            if (!hasVerifiedServerOptions && !ensureVerifiedAvNoteChoices(list, safePrefix, () => filterAvNotes(safePrefix, safeOptions))) return;
+            if (!hasVerifiedServerOptions && !isDatasetLoaded('avNotes', 'initial')) {
                 ensureDatasetLoaded('avNotes', 'full').then(() => filterAvNotes(prefix, safeOptions)).catch(() => {});
                 return;
             }
@@ -169408,13 +169702,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (mobileLocked) restoreAvNoteScrollState(scrollState);
                 });
             };
-            const list = document.getElementById(safePrefix + 'av-dropdown-list');
-            if (!list) return;
-            const commonKey = String(firstNonEmptyValue(avNoteContextItem.COMMONNAME, avNoteContextItem.commonname, '') || '').trim().toUpperCase();
-            const cacheKey = `${commonKey}::${inputVal}`;
+            const cacheKey = `${itemcodeKey}::${commonKey}::${inputVal}`;
             let matchingNotes = avNoteFilterResultCache.get(cacheKey);
             if (!matchingNotes) {
-                matchingNotes = getIndexedAvNotes(commonKey).slice();
+                matchingNotes = getIndexedAvNotes(avNoteContextItem).slice();
                 if (inputVal) matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal));
                 if (avNoteFilterResultCache.size >= 500) {
                     avNoteFilterResultCache.delete(avNoteFilterResultCache.keys().next().value);

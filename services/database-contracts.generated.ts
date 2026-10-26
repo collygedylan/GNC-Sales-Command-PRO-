@@ -49085,6 +49085,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "photo_date": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "photo_link": {
             "schema": {
               "oneOf": [
@@ -50928,6 +50936,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "oversellpercentage": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photo_date": {
             "schema": {
               "oneOf": [
                 "string",
@@ -52843,6 +52860,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "oversellpercentage": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photo_date": {
             "schema": {
               "oneOf": [
                 "string",
@@ -65347,6 +65373,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "photo_date": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "photo_link": {
             "schema": {
               "oneOf": [
@@ -65660,6 +65694,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "order_submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photo_date": {
             "schema": {
               "oneOf": [
                 "string",
@@ -65994,6 +66037,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "order_submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photo_date": {
             "schema": {
               "oneOf": [
                 "string",

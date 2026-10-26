@@ -147,6 +147,10 @@ export const agdataV2366HistoricalArchivePageDedupMigrationName = '2026102601300
 export const agdataV2366DriveArchiveSearchHashFixMigrationName = '20261026014500_agdata_v2366_drive_archive_search_hash_fix.sql';
 export const agdataV2367CropTierAuraGlossaryMigrationName = '20261026020000_agdata_v2367_crop_tier_aura_glossary.sql';
 export const agdataV2367HistoricalDriveFastReadMigrationName = '20261026034500_agdata_v2367_historical_drive_fast_read.sql';
+export const agdataV2368RequestPhotoAvNavigationMigrationName = '20261026050000_agdata_v2368_request_photo_av_navigation.sql';
+export const agdataV2368MasterPhotoDatePreservationMigrationName = '20261026051000_agdata_v2368_master_photo_date_preservation.sql';
+export const agdataV2368AvNoteSanitizerMigrationName = '20261026054000_agdata_v2368_av_note_sanitizer.sql';
+export const agdataV2368HistoricalPhotoDateKeyFixMigrationName = '20261026055000_agdata_v2368_historical_photo_date_key_fix.sql';
 export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName, managerPublishedReadMigrationName, importSourceMetadataMigrationName, masterPrioritySplitMigrationName, fullAppAdministratorsMigrationName, protectedRequestNaMigrationName, zeroTrustRlsMigrationName, appLoginRateLimitMigrationName, managerReportSetBasedReadMigrationName, managerEval2BatchedPreviewMigrationName, auraDylanOwnerOnlyMigrationName, suspendExistingReviewMigrationName, suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName]);
 
 export const registeredReleaseDatabaseMigrations = Object.freeze([
@@ -171,6 +175,10 @@ export const registeredReleaseDatabaseMigrations = Object.freeze([
   agdataV2366DriveArchiveSearchHashFixMigrationName,
   agdataV2367CropTierAuraGlossaryMigrationName,
   agdataV2367HistoricalDriveFastReadMigrationName,
+  agdataV2368RequestPhotoAvNavigationMigrationName,
+  agdataV2368MasterPhotoDatePreservationMigrationName,
+  agdataV2368AvNoteSanitizerMigrationName,
+  agdataV2368HistoricalPhotoDateKeyFixMigrationName,
 ]);
 
 export function normalizeScopedMigrationPaths(migrationPaths) {
@@ -2205,6 +2213,55 @@ export function migrationContractQuery(name) {
     and not has_function_privilege('authenticated','private.historical_drive_file_page_v2367(text,integer,integer)','execute')
     and has_function_privilege('authenticated','public.historical_archive_read_v2(jsonb)','execute')
     and not has_function_privilege('anon','public.historical_archive_read_v2(jsonb)','execute')
+    as installed`;
+  if (name === agdataV2368RequestPhotoAvNavigationMigrationName) return `select
+    to_regprocedure('public.safe_parse_timestamptz(text,timestamp with time zone)') is not null
+    and to_regprocedure('public.verify_request_batch_submission_v2368(uuid,jsonb)') is not null
+    and to_regprocedure('public.sanitize_av_note_without_spec_caliper(text)') is not null
+    and to_regprocedure('public.get_itemcode_av_note_options_v1(text,text)') is not null
+    and to_regprocedure('public.historical_requests_read_v2368(jsonb)') is not null
+    and to_regprocedure('public.historical_archive_read_v2368(jsonb)') is not null
+    and public.sanitize_av_note_without_spec_caliper('HEAVY BUD / SPEC - 3.5-4''H')='HEAVY BUD'
+    and public.sanitize_av_note_without_spec_caliper('SPEC - 16-18" HXW') is null
+    and position('to_char(photo_at at time zone' in lower(pg_get_functiondef(
+      'private.persist_completed_request_history_v1(text,text,text,boolean)'::regprocedure)))>0
+    and position('request_created_by_email' in pg_get_functiondef('private.stamp_request_batch_creator(jsonb)'::regprocedure))>0
+    and has_function_privilege('authenticated','public.verify_request_batch_submission_v2368(uuid,jsonb)','execute')
+    and not has_function_privilege('anon','public.verify_request_batch_submission_v2368(uuid,jsonb)','execute')
+    and has_function_privilege('service_role','public.get_itemcode_av_note_options_v1(text,text)','execute')
+    and not has_function_privilege('authenticated','public.get_itemcode_av_note_options_v1(text,text)','execute')
+    and has_function_privilege('authenticated','public.historical_requests_read_v2368(jsonb)','execute')
+    and has_function_privilege('authenticated','public.historical_archive_read_v2368(jsonb)','execute')
+    and exists(select 1 from private.navigation_view_catalog where view_key='eval_reports_2' and selectable)
+    and not exists(select 1 from private.navigation_view_catalog where selectable is distinct from true)
+    and (select count(*) from information_schema.columns where table_schema='public'
+      and table_name in ('ph_sales_office','ph_flyer_folder_rows','ph_flyer_folder_history','ph_dock_issue_status')
+      and column_name='photo_date')=4
+    as installed`;
+  if (name === agdataV2368MasterPhotoDatePreservationMigrationName) return `select
+    position('concat_ws(' in pg_get_functiondef(
+      'private.sync_master_inventory_canonical_v2362()'::regprocedure))>0
+    and not exists(select 1 from public.ph_master_inventory row
+      where row.photo_date is null
+        and nullif(btrim(concat_ws(',',row.photo_link,row.dock_photo_link,row.flyer_photo_link)),'') is not null)
+    as installed`;
+  if (name === agdataV2368AvNoteSanitizerMigrationName) return `select
+    public.sanitize_av_note_without_spec_caliper('16-18" HxW') is null
+    and public.sanitize_av_note_without_spec_caliper('20" H X 30" W') is null
+    and public.sanitize_av_note_without_spec_caliper('14-16" H - 18-20" W') is null
+    and public.sanitize_av_note_without_spec_caliper('24" T GOOD BRANCHING')='GOOD BRANCHING'
+    and not exists(
+      select 1 from public.get_itemcode_av_note_options_v1('008866.031.1','Alice ''N Wonderland Dwarf Oakleaf Hydrangea') option_row
+      where option_row.note ~* '(^|[^a-z])(spec|caliper|cal)([^a-z]|$)'
+        or option_row.note ~* '^[[:space:]]*[0-9]+([.][0-9]+)?([[:space:]]*-[[:space:]]*[0-9]+([.][0-9]+)?)?[[:space:]]*[''"]?[[:space:]]*(h[[:space:]]*x[[:space:]]*w|height|high|h|width|wide|w|tall|t)([[:space:]]|$)'
+    ) as installed`;
+  if (name === agdataV2368HistoricalPhotoDateKeyFixMigrationName) return `select
+    position('history.source_unique_id' in pg_get_functiondef(
+      'private.historical_photo_date_for_record_v2368(text,jsonb)'::regprocedure))>0
+    and position('history.history_key' in pg_get_functiondef(
+      'private.historical_photo_date_for_record_v2368(text,jsonb)'::regprocedure))>0
+    and not has_function_privilege('authenticated',
+      'private.historical_photo_date_for_record_v2368(text,jsonb)','execute')
     as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }

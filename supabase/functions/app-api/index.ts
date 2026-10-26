@@ -760,7 +760,7 @@ function hasTableReadAccess(role = "", table = "", username = "") {
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
   if (COMMON_AUTH_READ_TABLES.has(table)) return true;
-  if (table === "ph_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin || access.isSalesAssistant;
+  if (table === "ph_app_users") return true;
   if (access.isSalesMarketing) return SALES_MARKETING_READ_TABLES.has(table);
   if (access.isRepLike) {
     return REP_READ_TABLES.has(table);
@@ -863,10 +863,10 @@ const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
   suspend_tag: "unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode,suspend_candidate_group,suspend_candidate_state,suspend_order_quantity,suspend_origin_uid",
   ph_cav_import: "unique_id,last_updated,filename,itemcode,commonname,contsize,season,ptravailable,brand,spec,hz,unitprice,holdstopreason,ordertotal,product_description,brand_code,h,available,reserved_qty,order_qty,unit_price,n_star,hot_price,hold_reason,ext_item_total,created_at",
   ph_reserves: "unique_id,concat,last_updated,assigned_to,assignedto,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,date_completed,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,item,size,container,location,lot,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccountidgroup,national_account_idgroup,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortname,variety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landedretailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit,merch_shipped,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,nationalaccount,sortnamevariety,landed,retailprice,dock_num,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,contsize,source,desigitem,desigcust,desigloc,filename",
-  ph_sales_office: "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,priority,sales_note,photo_link,completed_by,completed_at,master_id,so_source,order_folder,order_number,order_customer,order_qty,order_desired_spec,order_desired_caliper,order_reserve,order_submitted_by,order_submitted_at,order_status,av_note,spec,caliper,photo_name,move_batch_id,move_from_locationcode,move_to_locationcode,move_actual_qty,workflow_status,workflow_detail,state_revision,reopen_reason,source_revision,updated_at,arrived_at",
+  ph_sales_office: "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,priority,sales_note,photo_link,photo_date,completed_by,completed_at,master_id,so_source,order_folder,order_number,order_customer,order_qty,order_desired_spec,order_desired_caliper,order_reserve,order_submitted_by,order_submitted_at,order_status,av_note,spec,caliper,photo_name,move_batch_id,move_from_locationcode,move_to_locationcode,move_actual_qty,workflow_status,workflow_detail,state_revision,reopen_reason,source_revision,updated_at,arrived_at",
   ph_dock_team_status: "dock_num,checker,inspector,mistake,status,updated_by,updated_at",
   ph_dock_item_status: "unique_id,checker_done,inspector_done,checker_completed_by,inspector_completed_by,updated_by,updated_at",
-  ph_dock_issue_status: "issue_source_unique_id,source_master_unique_id,source_master_id,dock_num,stop_number,source_locationcode,source_itemcode,source_commonname,source_contsize,source_lotcode,source_qty,source_salesrep,source_customername,source_consigneename,issue_note,issue_state,flagged_by,flagged_at,resolved_by,resolved_at,updated_by,updated_at,source_match_key,issue_photo_link,issue_photo_name,source_photo_link,source_photo_name,source_loc_match_qty,source_spec,source_caliper",
+  ph_dock_issue_status: "issue_source_unique_id,source_master_unique_id,source_master_id,dock_num,stop_number,source_locationcode,source_itemcode,source_commonname,source_contsize,source_lotcode,source_qty,source_salesrep,source_customername,source_consigneename,issue_note,issue_state,flagged_by,flagged_at,resolved_by,resolved_at,updated_by,updated_at,source_match_key,issue_photo_link,issue_photo_name,source_photo_link,source_photo_name,photo_date,source_loc_match_qty,source_spec,source_caliper",
   ph_dock_issue_allocations: "allocation_unique_id,issue_source_unique_id,alt_master_unique_id,alt_master_id,allocated_qty,alt_locationcode,alt_lotcode,alt_itemcode,alt_commonname,alt_contsize,alt_ptravailable,updated_by,updated_at",
   ph_productivity_history: "id,event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot",
 };
@@ -2647,7 +2647,7 @@ async function handleHistoricalRequestsReadAction(
   }
   try {
     const operation = String(query.operation || "");
-    const rpcName = operation.startsWith("archive-") ? "historical_archive_read_v2" : "historical_requests_read_v1";
+    const rpcName = operation.startsWith("archive-") ? "historical_archive_read_v2368" : "historical_requests_read_v2368";
     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
       method: "POST",
       headers: {
@@ -4966,15 +4966,11 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   }
 
   if (table === "ph_app_users" && method === "GET") {
-    const access = getRoleAccessState(session.role);
     query = withSelect(query, "username,role");
-    if (access.isSalesAssistant && !access.isAdmin) {
-      const params = new URLSearchParams(query);
-      params.set("role", "in.(REP,Rep,rep)");
-      params.set("order", "username.asc");
-      params.set("limit", "1000");
-      query = params.toString();
-    }
+    const params = new URLSearchParams(query);
+    params.set("order", "username.asc");
+    params.set("limit", "1000");
+    query = params.toString();
   }
 
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) {
@@ -6914,6 +6910,32 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
   if (action === "request_recipient_directory") return await handleRequestRecipientDirectory(session, payload);
   if (action === "customer-rep-map") return await handleCustomerRepMappingAction(session, payload);
+  if (action === "av_note_options") {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+    if (Object.keys(payload).some(key => !["action", "itemcode", "commonname"].includes(key))) {
+      return errorResponse("Invalid AV Note options request.", 400, { code: "AV_NOTE_OPTIONS_REQUEST_INVALID" });
+    }
+    const itemcode = String(payload.itemcode || "").trim();
+    const commonname = String(payload.commonname || "").trim();
+    if ((!itemcode && !commonname) || itemcode.length > 80 || commonname.length > 240) {
+      return errorResponse("Invalid AV Note options request.", 400, { code: "AV_NOTE_OPTIONS_REQUEST_INVALID" });
+    }
+    try {
+      await resolveActiveSessionProfile(session);
+      const { data, error } = await supabase.rpc("get_itemcode_av_note_options_v1" as never, {
+        p_itemcode: itemcode, p_commonname: commonname || null,
+      } as never);
+      if (error) throw error;
+      const options = (Array.isArray(data) ? data : []).map((row: unknown) => {
+        if (typeof row === "string") return row;
+        if (row && typeof row === "object") return String((row as Record<string, unknown>).note || "");
+        return "";
+      }).map(value => value.trim()).filter(Boolean).slice(0, 120);
+      return jsonResponse({ ok: true, options });
+    } catch (error) {
+      return databaseFailureResponse("AV Note options are temporarily unavailable.", error, "AV_NOTE_OPTIONS_FAILED");
+    }
+  }
   if (["projects_read", "project_save", "project_add_rows", "project_update_row", "project_delete"].includes(action)) {
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401);
     try { return jsonResponse({ ok:true, data:await handleInventoryProjects(await resolveActiveSessionProfile(session), payload) }); }

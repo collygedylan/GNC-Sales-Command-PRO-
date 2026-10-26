@@ -11,7 +11,7 @@ import type {
   HistoricalRequestsPage,
   HistoricalRequestsQuery,
 } from './contract';
-import { historicalRequestsRoleCanViewFinancials } from './contract';
+import { historicalPhotoDate, historicalRequestsRoleCanViewFinancials } from './contract';
 import { historicalPhotoUrls } from './photoUrls';
 export { historicalPhotoUrls } from './photoUrls';
 
@@ -268,7 +268,11 @@ function RequestHistoryBrowser({ bridge }: { bridge: HistoricalRequestsBridge })
         <dl className="historical-requests__facts"><div><dt>Spec</dt><dd>{row.spec || 'Not recorded'}</dd></div><div><dt>Caliper</dt><dd>{row.caliper || 'Not recorded'}</dd></div>
           <div><dt>Sent</dt><dd>{row.sentAt ? new Date(row.sentAt).toLocaleString() : 'Not recorded'}</dd></div><div><dt>Delivery</dt><dd>{row.deliveryState}</dd></div></dl>
         {row.comments && <p className="historical-requests__request-meta">{row.comments}</p>}{row.photoNotes && <p className="historical-requests__request-meta">{row.photoNotes}</p>}
-        <div className="historical-requests__photos">{historicalPhotoUrls(row.photoLinks).map((url, index) => <a key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} loading="lazy" alt={`Request photo ${index + 1}`} /></a>)}</div>
+        <div className="historical-requests__photos">{historicalPhotoUrls(row.photoLinks).map((url, index) => {
+          const photoDate = historicalPhotoDate(url, row.photoDate || row.requestedAt);
+          return <a className="historical-requests__photo photo-date-badge-host" key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} loading="lazy" alt={`Request photo ${index + 1}`} />
+            {photoDate && <span className="photo-thumb-date" data-photo-taken-date={photoDate}>{photoDate}</span>}</a>;
+        })}</div>
         {financials && (row.totalValue === null ? <p className="historical-requests__unpriced">Unresolved value: {unresolvedValueMessage(row.unresolvedReason)}</p>
           : <p className="historical-requests__request-value">{currency(row.totalValue)} <span>at current price {row.listPrice === null ? '—' : currency(row.listPrice)}</span></p>)}
       </article>)}</div>}

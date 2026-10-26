@@ -20,7 +20,7 @@ export const INVENTORY_MASTER_INITIAL_COLUMNS = [
   "av_rule_priority_snapshot", "av_rule_holdstop_snapshot", "av_rule_last_clear_reason", "av_rule_last_cleared_at",
   "eval_task_type", "eval_task_status", "eval_task_instructions", "eval_task_assigned_by", "eval_task_assigned_at", "eval_task_completed_by", "eval_task_completed_at",
   "eval_task_recount_qty", "eval_task_moved_up_qty", "eval_task_hold_action", "eval_task_hold_code", "eval_task_hold_reason", "eval_task_result_note",
-  "photo_link", "photo_name", "dock_photo_link", "dock_photo_name", "flyer_photo_link", "flyer_photo_name", "flyer_completed",
+  "photo_link", "photo_name", "photo_date", "dock_photo_link", "dock_photo_name", "flyer_photo_link", "flyer_photo_name", "flyer_completed",
   "flyer_av_note", "flyer_match", "flyer_loc_match_qty", "flyer_spec", "flyer_caliper", "flyer_pick", "flyer_initial_ptr",
 ] as const satisfies readonly InventoryColumn[];
 
@@ -33,7 +33,7 @@ export const INVENTORY_MASTER_FULL_COLUMNS = [
   "season_supply", "priority", "qualitycode", "field_tag_color", "s_lts", "season", "plantgroupcode",
   "listprice", "concat", "last_updated", "assignedto", "date_completed", "end_cap_folder", "end_cap_qty",
   "end_cap_level", "match", "spec", "caliper", "pic_note", "sales_note", "av_note",
-  "photo_link", "photo_name", "dock_spec", "dock_caliper", "dock_note", "dock_photo_link", "dock_photo_name",
+  "photo_link", "photo_name", "photo_date", "dock_spec", "dock_caliper", "dock_note", "dock_photo_link", "dock_photo_name",
   "flyer_cat", "flyer_title", "flyer_inst", "flyer_assigned", "flyer_notes", "flyer_photo_link", "flyer_photo_name",
   "flyer_completed", "initial_ptr", "loc_match_qty", "warehousei", "desigitem", "desigcust", "desigloc",
   "ptronhand", "ptrreviewed", "holdstopcode", "holdstopbegindate", "holdstopreason", "hsreasonbegin", "season_oh",
@@ -72,7 +72,7 @@ export const INVENTORY_MASTER_BROWSE_COLUMNS = [
   "caliper", "av_rule_bundle_updated_at", "av_rule_av_note_updated_at", "av_rule_spec_updated_at", "av_rule_match_updated_at", "av_rule_caliper_updated_at", "av_rule_photo_updated_at",
   "av_rule_priority_snapshot", "av_rule_holdstop_snapshot", "av_rule_last_clear_reason", "av_rule_last_cleared_at", "eval_task_type", "eval_task_status", "eval_task_instructions",
   "eval_task_assigned_by", "eval_task_assigned_at", "eval_task_completed_by", "eval_task_completed_at", "eval_task_recount_qty", "eval_task_moved_up_qty", "eval_task_hold_action",
-  "eval_task_hold_code", "eval_task_hold_reason", "eval_task_result_note", "photo_link", "photo_name", "dock_photo_link", "dock_photo_name",
+  "eval_task_hold_code", "eval_task_hold_reason", "eval_task_result_note", "photo_link", "photo_name", "photo_date", "dock_photo_link", "dock_photo_name",
   "flyer_photo_link", "flyer_photo_name", "flyer_completed", "flyer_av_note", "flyer_match", "flyer_loc_match_qty", "flyer_spec",
   "flyer_caliper", "flyer_pick", "flyer_initial_ptr", "warehousei", "ptronhand", "ptrreviewed", "hsreasonbegin",
   "season_oh", "season_demand", "oversellpercentage", "suspend", "suspendto", "specialpuller", "pulltagnote1",

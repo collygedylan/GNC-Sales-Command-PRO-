@@ -404,6 +404,22 @@ test('Suspend Tag customer and rep mapping is background-only and deduplicated',
   assert.equal(factoryCalls, 1, 'existing adapters and unrelated request tabs do not duplicate the read');
 });
 
+test('Sales Office rows verify before optional enrichment cohorts', () => {
+  const context = vm.createContext({ Array, String });
+  vm.runInContext(functionSource('partitionSalesOfficeLiveAdapters'), context);
+  const adapters = ['side:settings', 'core:flyerHistory', 'core:master', 'core:salesOffice', 'core:inventoryEditRequests']
+    .map(id => ({ id }));
+  const list = context.partitionSalesOfficeLiveAdapters(adapters, 'sales-office', []);
+  assert.deepEqual(Array.from(list.foreground, adapter => adapter.id), ['core:salesOffice']);
+  assert.deepEqual(Array.from(list.background, adapter => adapter.id), [
+    'side:settings', 'core:flyerHistory', 'core:master', 'core:inventoryEditRequests'
+  ]);
+  const dialog = context.partitionSalesOfficeLiveAdapters(adapters, 'sales-office', ['dialog:item-inquiry']);
+  assert.deepEqual(Array.from(dialog.foreground, adapter => adapter.id), adapters.map(adapter => adapter.id),
+    'an opened workflow keeps its complete authorization cohort');
+  assert.deepEqual(Array.from(dialog.background), []);
+});
+
 test('Drive verifies its displayed stock without waiting for unopened detail sources', () => {
   const context = harness(), registry = context.AgMetricLiveSyncRegistry;
   assert.deepEqual(Array.from(registry.getViewAdapters('drive')), ['core:master', 'side:settings']);

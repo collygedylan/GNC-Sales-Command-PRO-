@@ -11,7 +11,7 @@ export function requestMappingFunctions() {
   const names = ['normalizeRepMatchToken','normalizeRepDisplayOrder','getRepNameLookupTokens','getRequestRepMatchTokens','doesRequestRepMatchValue',
     'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName','isRequestRepRoleValue','normalizeRequestRepUserOption','ensureRequestRepUserOptionsReady','getRequestModalLookupOwnerSignature','getRequestModalCustomerMappingCacheSignature','normalizeRequestSalesrepId','syncRequestModalCustomerMappingOwner','clearRequestModalCustomerMappingOwnerState',
     'getRequestMappedRepDirectory','getRequestReserveFallbackDirectory','getRequestAuthorizedReserveFallbackMappings','getReserveSalesRepLabel','getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue','isRequestModalCustomerAuthorizationFailure',
-    'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions',
+    'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions','getRequestGlobalCustomerOptions',
     'isActiveRequestCustomerMapping','fetchRequestCustomerMapRows','isRequestModalCustomerMapReady','buildRequestModalCustomerOptionsCache','loadRequestModalCustomerOptionsForRep','prefetchRequestModalCustomerOptions','scheduleRequestModalReferencePrefetch','scheduleGlobalReferencePrefetch','ensureDockAssignableUsers','prepareRequestModalChoicesForStartup','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
     'isCurrentRequestCustomerContext','getRequestModalCachedCustomerOptionsForRep','isRequestNaCustomerValue','buildRequestCustomerPickerGroups','getExistingRequestFolderRepRows','getExistingRequestFolderRowsSignature','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep','renderRequestModalRepPickerOnOpen',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
@@ -38,6 +38,7 @@ var normalizeRequestCustomerFolderKey=value=>normalizeRepMatchToken(value);
 var requestModalCustomerOptionsCacheKey='',requestModalCustomerOptionsByRepCache=new Map(),requestModalCustomerGroupCacheKey='',requestModalCustomerGroupCache=[];
 var requestMappingRpcCacheOwner='',requestMappingSecurityEpoch=0,requestReserveFallbackSource=null,requestReserveFallbackRevision='',requestReserveFallbackRowsBySalesrepId=new Map(),requestReserveFallbackOptionsByKey=new Map();
 var requestModalCustomerOptionRowsCache=new Map(),requestExistingFolderGroupsByRepCache=new Map();
+var requestGlobalCustomerOptionsCacheKey='',requestGlobalCustomerOptionsCache=[];
 var mappingRevision='1',resolvedViewStateEpoch=0;
 var getDatasetLoadSignature=key=>String(key)==='customerRepMap'?'customerRepMap:'+mappingRevision:String(key)+':1';
 var isDatasetLoaded=()=>true;

@@ -281,6 +281,43 @@ function archiveFolderDataCount(value) {
   return rowMatch ? Number(rowMatch[1].replaceAll(',', '')) : archiveRecordCount(text);
 }
 
+async function readPhotoBadgeProof(page, selector, label, minimumPhotos = 1) {
+  const root = page.locator(selector).first();
+  await root.waitFor({ state: 'visible', timeout: 30_000 });
+  const proof = await root.evaluate((node, proofLabel) => {
+    const images = Array.from(node.querySelectorAll('img')).filter(image => {
+      const source = String(image.getAttribute('data-full-src') || image.getAttribute('src') || '').trim();
+      return source && !/placeholder|no[-_ ]photo/i.test(source);
+    });
+    const rows = images.map(image => {
+      const host = image.closest('.app-inline-thumb-column, .app-drive-card-photo, .app-av-photo-slide, .historical-requests__photo, .photo-modal-slide, .eval-work-photo-thumb, button') || image.parentElement;
+      const badge = host?.querySelector('.photo-thumb-date[data-photo-taken-date]');
+      return { source: String(image.getAttribute('data-full-src') || image.getAttribute('src') || '').slice(0, 160), date: String(badge?.getAttribute('data-photo-taken-date') || badge?.textContent || '').trim() };
+    });
+    return { label: proofLabel, photos: rows.length, missing: rows.filter(row => !/^\d{2}\/\d{2}\/\d{2}$/.test(row.date)), dates: [...new Set(rows.map(row => row.date).filter(Boolean))] };
+  }, label);
+  if (proof.photos < minimumPhotos) fail(`${label} rendered ${proof.photos} valid photos.`);
+  if (proof.missing.length) fail(`${label} rendered ${proof.missing.length} photos without MM/DD/YY badges.`);
+  return proof;
+}
+
+async function findArchivePhotoBadgeProof(page, kind) {
+  const archive = page.locator(`.historical-archive[data-archive-kind="${kind}"]`);
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const recordWithPhoto = page.locator('[data-archive-record]').filter({ has: page.locator('.historical-requests__photo img') }).first();
+    if (await recordWithPhoto.count()) return readPhotoBadgeProof(page, '[data-archive-record]:has(.historical-requests__photo img)', `${kind} archive`);
+    const next = archive.getByRole('button', { name: 'Next' });
+    if (!await next.isVisible().catch(() => false) || await next.isDisabled()) break;
+    const priorId = await page.locator('[data-archive-record]').first().getAttribute('data-archive-record');
+    await next.click();
+    await page.waitForFunction(previous => {
+      const row = document.querySelector('[data-archive-record]');
+      return !!row && row.getAttribute('data-archive-record') !== previous;
+    }, priorId, { timeout: 30_000 });
+  }
+  fail(`${kind} archive did not render a valid photo for badge verification.`);
+}
+
 async function assertVisibleArchiveRecordsUnique(page, recordKind, phase) {
   const signatures = await page.locator('[data-archive-record]').evaluateAll(cards => cards.map(card => {
     const heading = Array.from(card.querySelectorAll('.historical-requests__request-heading')).map(node => node.textContent?.trim() || '').join('|');
@@ -327,6 +364,7 @@ async function verifyRequestArchiveSearch(page) {
   await page.locator('.historical-requests__group-button').first().click();
   const card = page.locator('.historical-requests__request').first();
   await card.waitFor({ state: 'visible', timeout: 30_000 });
+  const photoProof = await readPhotoBadgeProof(page, '.historical-requests__request:has(.historical-requests__photo img)', 'requests archive');
   const recordText = normalizeCardText(await card.textContent());
   const metadata = normalizeCardText(await card.locator('.historical-requests__request-meta').first().textContent());
   const searchTerm = metadata.split(/\s+/)[0];
@@ -340,10 +378,10 @@ async function verifyRequestArchiveSearch(page) {
   }
   await page.getByRole('button', { name: 'Clear' }).click();
   await page.getByRole('heading', { name: 'Sales Reps' }).waitFor({ state: 'visible', timeout: 30_000 });
-  return { searchTerm, recordText: recordText.slice(0, 240) };
+  return { searchTerm, recordText: recordText.slice(0, 240), photoProof };
 }
 
-async function verifyGenericArchiveTab(page, { kind, label, depth }) {
+async function verifyGenericArchiveTab(page, { kind, label, depth }, failedResponses = []) {
   await page.locator(`[data-archive-tab="${kind}"]`).click();
   await page.locator(`.historical-archive[data-archive-kind="${kind}"]`).waitFor({ state: 'visible', timeout: 10_000 });
   const rootFolder = page.locator('[data-archive-folder]').first();
@@ -385,11 +423,293 @@ async function verifyGenericArchiveTab(page, { kind, label, depth }) {
         folders: host.querySelectorAll('[data-archive-folder]').length,
         records: host.querySelectorAll('[data-archive-record]').length,
       }));
-      throw new Error(`${kind} level ${level + 1}: ${String(error?.message || error)} state=${JSON.stringify(state)}`);
+      throw new Error(`${kind} level ${level + 1}: ${String(error?.message || error)} state=${JSON.stringify(state)} failed=${failedResponses.slice(-8).join('|')}`);
     }
   }
+  const photoProof = await findArchivePhotoBadgeProof(page, kind);
   const search = await verifyArchiveSearch(page, kind);
-  return { label, rootFolderCount, visibleRecordCount, ...search };
+  return { label, rootFolderCount, visibleRecordCount, photoProof, ...search };
+}
+
+async function verifyRequestSubmissionCanary(page, origin, accessCode) {
+  let exchange = null;
+  const routePattern = '**/rest/v1/rpc/create_request_batch';
+  await page.route(routePattern, async route => {
+    const request = route.request();
+    const requestBody = JSON.parse(request.postData() || '{}');
+    const canaryUrl = request.url().replace('/rpc/create_request_batch', '/rpc/verify_request_batch_submission_v2368');
+    const response = await route.fetch({ url: canaryUrl });
+    const responseText = await response.text();
+    let responseBody = null;
+    try { responseBody = responseText ? JSON.parse(responseText) : null; } catch {}
+    exchange = { status: response.status(), requestBody, responseBody, responseText };
+    await route.fulfill({ response, body: responseText });
+  });
+  try {
+    await page.evaluate(() => switchView('drive', { force: true }));
+    await page.locator('#view-drive').waitFor({ state: 'visible', timeout: 15_000 });
+    try {
+      await page.waitForFunction(() => Array.isArray(fullInventory) && fullInventory.some(row => row?.DOM_ID), undefined, { timeout: 15_000 });
+    } catch {
+      const exactRowLoaded = await page.evaluate(async () => {
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            const lookup = await requestInventoryRead('master_page', {
+              dataset: 'lookup', projection: 'full', itemCode: '008866.031.1', locationCode: 'E.06.000', limit: 1, offset: 0
+            }, { label: 'Request canary inventory row' });
+            const raw = Array.isArray(lookup?.data?.rows) ? lookup.data.rows[0] : Array.isArray(lookup?.rows) ? lookup.rows[0] : null;
+            if (!raw) return false;
+            const item = formatFetchedRows([raw], 'ph_master_inventory')[0];
+            item.DOM_ID = `request_canary_${String(item.UNIQUE_ID || raw.unique_id || 'row').replace(/[^a-z0-9_-]/gi, '_')}`;
+            fullInventory.push(item);
+            invalidateInventoryDomIdLookup();
+            return true;
+          } catch (error) {
+            if (!/cancel|abort/i.test(String(error?.message || error)) || attempt === 2) throw error;
+            await new Promise(resolve => setTimeout(resolve, 250));
+          }
+        }
+        return false;
+      });
+      if (!exactRowLoaded) fail('Request canary could not load an exact inventory row.');
+    }
+    const selected = await page.evaluate(() => {
+      const item = fullInventory.find(row => String(row.ITEMCODE || '').trim() === '008866.031.1'
+        && String(row.LOCATIONCODE || '').trim() === 'E.06.000') || fullInventory.find(row => Number(row.PTRAVAILABLE || 0) > 0);
+      if (!item || !item.DOM_ID) return null;
+      detailRequestSourceDomIds = [];
+      selectedItems.clear();
+      selectedItemSources.clear();
+      selectedItems.add(item.DOM_ID);
+      selectedItemSources.set(item.DOM_ID, 'drive');
+      showRequestModalBase();
+      return { itemcode: item.ITEMCODE, locationcode: item.LOCATIONCODE, domId: item.DOM_ID };
+    });
+    if (!selected) fail('Request canary could not select an inventory row.');
+    await page.locator('#request-rep-modal').waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('#rep-search-input').fill('Josh Ringleb');
+    const josh = page.locator('.request-rep-option').filter({ hasText: 'Josh Ringleb' }).first();
+    await josh.waitFor({ state: 'visible', timeout: 15_000 });
+    await josh.click();
+    await page.waitForFunction(() => buildExistingRequestFolderCustomerGroups(tempSelectedReqRep).some(group =>
+      (group.consignees || []).some(consignee => new Map((consignee.mapRows || []).filter(isActiveRequestCustomerMapping)
+        .map(row => { const context = getRequestCustomerContext(row); return [JSON.stringify(context), context]; })).size === 1)), undefined, { timeout: 30_000 });
+    const mappedPair = await page.evaluate(() => {
+      for (const group of buildExistingRequestFolderCustomerGroups(tempSelectedReqRep)) {
+        for (const consignee of group.consignees || []) {
+          const identities = new Map((consignee.mapRows || []).filter(isActiveRequestCustomerMapping)
+            .map(row => { const context = getRequestCustomerContext(row); return [JSON.stringify(context), context]; }));
+          if (identities.size === 1) return { customer: String(group.label || '').trim(), consignee: String(consignee.consigneeLabel || 'No Consignee').trim() };
+        }
+      }
+      return null;
+    });
+    if (!mappedPair) fail('Request canary could not find an unambiguous active customer and consignee.');
+    const customer = page.getByRole('button', { name: `Open customer ${mappedPair.customer}`, exact: true }).first();
+    await customer.waitFor({ state: 'visible', timeout: 30_000 });
+    await customer.click();
+    const consignee = page.getByRole('button', { name: `Open consignee ${mappedPair.consignee}`, exact: true }).first();
+    await consignee.waitFor({ state: 'visible', timeout: 10_000 });
+    await consignee.click();
+    await page.getByRole('button', { name: 'Create new folder for selected customer and consignee' }).click();
+    const folder = String(await page.locator('[data-request-folder-name]').textContent() || '').trim();
+    if (!folder || /(^|\s)N\/?A($|\s)/i.test(folder) || !/\d{2}\/\d{2}\/\d{2}$/.test(folder)) {
+      fail(`Request canary generated an invalid folder: ${folder || 'blank'}.`);
+    }
+    await page.locator('.item-qty-input').fill('1');
+    const reuse = page.locator('.item-reuse-data-input');
+    if (await reuse.count()) await reuse.selectOption('NO');
+    for (let attempt = 0; attempt < 3 && !exchange; attempt += 1) {
+      await page.locator('#request-submit-btn').click();
+      for (let wait = 0; wait < 40 && !exchange; wait += 1) await page.waitForTimeout(100);
+    }
+    if (!exchange) fail('Request wizard did not dispatch the rollback canary.');
+    if (exchange.status !== 200 || /42804|coalesce types timestamp with time zone and text/i.test(exchange.responseText)) {
+      fail(`Request canary failed with HTTP ${exchange.status}: ${exchange.responseText.slice(0, 300)}.`);
+    }
+    const receipt = exchange.responseBody || {};
+    const proof = receipt.canary_proof || {};
+    const payloadRows = Array.isArray(exchange.requestBody.requests) ? exchange.requestBody.requests : [];
+    if (receipt.canary_rolled_back !== true || receipt.client_batch_id !== exchange.requestBody.client_batch_id
+        || receipt.rows?.length !== payloadRows.length || !payloadRows.length) fail('Request canary acknowledgment was invalid.');
+    if (String(proof.requested_by || '').toLowerCase() !== username
+        || String(proof.request_created_by_username || '').toLowerCase() !== username
+        || String(proof.request_selected_rep_username || '').toLowerCase() !== 'josh_ringleb'
+        || String(proof.request_selected_rep_display || '').toLowerCase() !== 'josh ringleb'
+        || !String(proof.request_created_by_email || '').includes('@')
+        || !String(proof.request_selected_rep_email || '').includes('@')
+        || String(proof.request_folder || '') !== folder) fail(`Request creator/rep proof was ${JSON.stringify(proof)}.`);
+    return { httpStatus: exchange.status, rolledBack: true, selected, folder, rows: payloadRows.length,
+      actor: proof.requested_by, selectedRep: proof.request_selected_rep_username, creatorEmail: true, selectedRepEmail: true, coalesce42804: false };
+  } finally {
+    await page.unroute(routePattern).catch(() => {});
+    await page.goto(`${origin}/?request-queue-verifier-canary-reset=${Date.now()}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    if (await page.locator('#view-login').isVisible().catch(() => true)) {
+      await page.locator('#username-input').fill(username);
+      await page.locator('#pin-code').fill(accessCode);
+      await page.waitForFunction(() => {
+        const login = document.querySelector('#view-login');
+        const button = document.querySelector('#login-button');
+        return !login || getComputedStyle(login).display === 'none' || !button?.disabled;
+      }, undefined, { timeout: 20_000 });
+      await page.evaluate(() => {
+        const login = document.querySelector('#view-login');
+        const button = document.querySelector('#login-button');
+        if (login && getComputedStyle(login).display !== 'none' && button && !button.disabled) button.click();
+      });
+    }
+    await page.locator('#view-login').waitFor({ state: 'hidden', timeout: 20_000 });
+    await page.locator('#footer-request-btn').waitFor({ state: 'visible', timeout: 20_000 });
+  }
+}
+
+async function verifyPhotoAndAvNoteProof(page, failedResponses = []) {
+  const target = { itemcode: '008866.031.1', locationcode: 'E.06.000', photoDate: '10/20/26' };
+  await page.evaluate(() => { window.switchView('av', { force: true }); setAVTab('open'); setAvOpenTab('name'); });
+  await page.locator('#view-av').waitFor({ state: 'visible', timeout: 15_000 });
+  await page.locator('#av-search').fill(target.itemcode);
+  try {
+    await page.waitForFunction(({ itemcode, locationcode }) => Array.from(document.querySelectorAll('#av-content [data-dom-id]'))
+      .some(card => String(card.textContent || '').includes(itemcode) && String(card.textContent || '').includes(locationcode)), target, { timeout: 30_000 });
+  } catch (error) {
+    const state = await page.locator('#view-av').evaluate(node => ({
+      cards: node.querySelectorAll('#av-content [data-dom-id]').length,
+      text: String(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 400),
+    }));
+    throw new Error(`AV Alice card wait: ${String(error?.message || error)} state=${JSON.stringify(state)}`);
+  }
+  const avCard = page.locator('#av-content [data-dom-id]').filter({ hasText: target.itemcode }).filter({ hasText: target.locationcode }).first();
+  const av = await readPhotoBadgeProof(page, '#av-content [data-dom-id]:has-text("008866.031.1"):has-text("E.06.000")', 'AV Alice card');
+  if (!av.dates.includes(target.photoDate)) fail(`AV Alice photo date was ${JSON.stringify(av.dates)}.`);
+  await avCard.locator('.app-av-photo-slide, .app-inline-thumb-column').first().click();
+  await page.locator('#photo-modal').waitFor({ state: 'visible', timeout: 10_000 });
+  const lightbox = await readPhotoBadgeProof(page, '#photo-modal-gallery', 'View Photos lightbox');
+  if (!lightbox.dates.includes(target.photoDate)) fail(`View Photos date was ${JSON.stringify(lightbox.dates)}.`);
+  await page.locator('#photo-modal-close').click();
+
+  await page.evaluate(() => window.switchView('drive', { force: true }));
+  await page.locator('#view-drive').waitFor({ state: 'visible', timeout: 15_000 });
+  await page.evaluate(() => { resetDriveView(false); setDriveTab('card'); });
+  await page.locator('#tab-drive-card.active').waitFor({ state: 'visible', timeout: 15_000 });
+  await page.locator('#drive-search').fill(target.itemcode);
+  try {
+    await page.waitForFunction(({ itemcode, locationcode }) => Array.from(document.querySelectorAll('#drive-content [data-dom-id]'))
+      .some(card => String(card.textContent || '').includes(itemcode) && String(card.textContent || '').includes(locationcode)), target, { timeout: 30_000 });
+  } catch (error) {
+    const state = await page.locator('#view-drive').evaluate(node => ({
+      cards: node.querySelectorAll('#drive-content [data-dom-id]').length,
+      text: String(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 400),
+    }));
+    throw new Error(`Drive Alice card wait: ${String(error?.message || error)} state=${JSON.stringify(state)}`);
+  }
+  const driveCard = page.locator('#drive-content [data-dom-id]').filter({ hasText: target.itemcode }).filter({ hasText: target.locationcode }).first();
+  const drive = await readPhotoBadgeProof(page, '#drive-content [data-dom-id]:has-text("008866.031.1"):has-text("E.06.000")', 'Drive Alice card');
+  if (!drive.dates.includes(target.photoDate)) fail(`Drive Alice photo date was ${JSON.stringify(drive.dates)}.`);
+  const driveDomId = String(await driveCard.getAttribute('data-dom-id') || '');
+  await page.evaluate(id => {
+    const item = findItemByDomId(id);
+    if (!item) throw new Error('AV_NOTE_TARGET_MISSING');
+    openDetail(item.UNIQUE_ID, 'drive', { sourceDomId: id });
+  }, driveDomId);
+  await page.locator('#view-detail').waitFor({ state: 'visible', timeout: 15_000 });
+  const noteEditor = await page.evaluate(() => {
+    const candidates = [
+      { tab: 'season', prefix: 'ssn-' },
+      { tab: 'location', prefix: 'lsn-' },
+      { tab: 'not-on-inventory', prefix: 'na-' },
+      { tab: 'request', prefix: 'req-' },
+      { tab: 'flyer', prefix: 'flyer-' },
+    ];
+    const editor = candidates.find(candidate => {
+      const tab = document.getElementById(`dtab-${candidate.tab}`);
+      return !!tab && !tab.classList.contains('hidden');
+    }) || null;
+    if (editor) switchDetailTab(editor.tab);
+    return editor;
+  });
+  if (!noteEditor) fail('Drive detail did not expose an editable AV Note tab.');
+  await page.locator(`#det-${noteEditor.tab}-content`).waitFor({ state: 'visible', timeout: 15_000 });
+  const avNoteTrigger = page.locator(`[data-av-note-dropdown-trigger="${noteEditor.prefix}"]`);
+  await avNoteTrigger.waitFor({ state: 'visible', timeout: 15_000 });
+  await avNoteTrigger.click();
+  const avNoteOptions = page.locator(`#${noteEditor.prefix}av-dropdown-list [data-av-note-option]`);
+  await avNoteOptions.first().waitFor({ state: 'visible', timeout: 20_000 });
+  const avNotes = (await avNoteOptions.allTextContents()).map(normalizeCardText);
+  const rejectedNote = avNotes.find(note => /(^|[^a-z])(spec|caliper|cal)([^a-z]|$)/i.test(note)
+    || /^\s*\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?\s*(?:["']|in(?:ch(?:es)?)?)?\s*(?:h\s*x\s*w|height|high|h|width|wide|w|tall|t)(?:\s|$)/i.test(note));
+  if (!avNotes.length || rejectedNote) fail(`ItemCode AV Note options failed: ${rejectedNote || 'none rendered'}.`);
+
+  await page.evaluate(() => { window.switchView('sales-office', { force: true }); window.setSalesOfficeTab('season'); });
+  await page.locator('#view-sales-office').waitFor({ state: 'visible', timeout: 15_000 });
+  try {
+    await page.locator('#sales-office-content [data-dom-id]:has(img)').first().waitFor({ state: 'visible', timeout: 30_000 });
+  } catch (error) {
+    const state = await page.locator('#view-sales-office').evaluate(node => ({
+      cards: node.querySelectorAll('#sales-office-content [data-dom-id]').length,
+      images: node.querySelectorAll('#sales-office-content [data-dom-id] img').length,
+      text: String(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 500),
+    }));
+    throw new Error(`Sales Office photo wait: ${String(error?.message || error)} state=${JSON.stringify(state)} failed=${failedResponses.slice(-8).join('|')}`);
+  }
+  const salesOffice = await readPhotoBadgeProof(page, '#sales-office-content [data-dom-id]:has(img)', 'Sales Office card');
+  await page.evaluate(() => window.switchView('home', { force: true }));
+  await page.locator('#view-home').waitFor({ state: 'visible', timeout: 15_000 });
+  return { target, av, drive, salesOffice, lightbox, avNotes: { itemcode: target.itemcode, count: avNotes.length, rejected: 0 } };
+}
+
+async function verifyQuickAccessEvalReports(page) {
+  const requiredViews = ['eval_reports_2','inventory-suggestion','inv-consolidation','request-sales-impact',
+    'archive-requests','archive-orders','archive-reserves','archive-drive','queue-pending','queue-suspend',
+    'queue-moves','queue-recount','queue-eval-work','queue-shear-list','queue-bunch-notes','queue-bunch-count-review',
+    'manager-eval-reports','manager-approval','qc-docks','qc-eval-work','qc-approvals',
+    'office-orders','office-reserves','office-assigned-items','sales-drive','sales-av','sales-docks','sales-request'];
+  let original = [];
+  let changed = false;
+  const openEditor = async () => {
+    await page.evaluate(() => window.openFooterShortcutSettings());
+    await page.locator('#footer-shortcut-modal').waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('#footer-shortcut-content [data-nav-slot]').first().waitFor({ state: 'visible', timeout: 30_000 });
+  };
+  const save = async values => {
+    const slots = page.locator('#footer-shortcut-content [data-nav-slot]');
+    const count = await slots.count();
+    for (let index = 0; index < count; index += 1) await slots.nth(index).selectOption(values[index] || '');
+    await page.locator('#footer-shortcut-content [data-nav-status]').evaluate(node => { node.textContent = ''; });
+    await page.locator('#footer-shortcut-content [data-nav-save]').click();
+    await page.waitForFunction(() => document.querySelector('#footer-shortcut-content [data-nav-status]')?.textContent?.includes('Shortcuts saved'), undefined, { timeout: 30_000 });
+  };
+  try {
+    await openEditor();
+    const slots = page.locator('#footer-shortcut-content [data-nav-slot]');
+    original = await slots.evaluateAll(nodes => nodes.map(node => node.value).filter(Boolean));
+    const options = await slots.first().locator('option').evaluateAll(nodes => nodes.map(node => ({ value: node.value, label: String(node.textContent || '').trim() })).filter(row => row.value));
+    const available = new Set(options.map(row => row.value));
+    const missing = requiredViews.filter(view => !available.has(view));
+    if (missing.length) fail(`Quick Access is missing ${missing.join(', ')}.`);
+    const expectedOptionCount = await page.evaluate(() => window.GncNavigationPreferences.snapshot.views
+      .filter(row => row.selectable && canAccessQuickAccessView(row.view)).length);
+    if (options.length < expectedOptionCount) fail(`Quick Access listed ${options.length} of ${expectedOptionCount} selectable views.`);
+    const desired = ['eval_reports_2', ...original.filter(view => view !== 'eval_reports_2')].slice(0, 5);
+    await save(desired);
+    changed = JSON.stringify(desired) !== JSON.stringify(original);
+    await page.evaluate(() => window.closeFooterShortcutSettings());
+    const shortcut = page.locator('[data-footer-view="eval_reports_2"]');
+    await shortcut.waitFor({ state: 'visible', timeout: 10_000 });
+    await shortcut.click();
+    await page.locator('#view-managers').waitFor({ state: 'visible', timeout: 15_000 });
+    await page.waitForFunction(() => document.getElementById('manager-module-title')?.textContent?.trim() === 'Eval Reports #2', undefined, { timeout: 20_000 });
+    const openedTitle = normalizeCardText(await page.locator('#manager-module-title').textContent());
+    await page.locator('#global-header-inline-back').click();
+    await page.locator('#view-home').waitFor({ state: 'visible', timeout: 15_000 });
+    return { availableViews: options.length, requiredViews: requiredViews.length, pinned: true, openedTitle, oneClick: true, backView: 'home' };
+  } finally {
+    if (!await page.locator('#footer-shortcut-modal').isVisible().catch(() => false)) await openEditor().catch(() => {});
+    if (original.length && await page.locator('#footer-shortcut-content [data-nav-slot]').count().catch(() => 0)) {
+      await save(original).catch(() => {});
+    }
+    await page.evaluate(() => window.closeFooterShortcutSettings()).catch(() => {});
+    if (changed) await page.waitForTimeout(200);
+  }
 }
 
 async function runVerification(page, origin, accessCode) {
@@ -480,6 +800,18 @@ async function runVerification(page, origin, accessCode) {
   const queueProof = {
     request: { label: `REQUEST ${requestBadgeCount}`, badge: requestBadgeCount, cards: cardDomText.length },
   };
+
+  stage = 'request-submission-canary';
+  const requestCanary = await verifyRequestSubmissionCanary(page, origin, accessCode);
+  await dismissPushPermissionHelp(page);
+  await clickPastPushPermissionHelp(page, page.locator('#footer-request-btn'));
+  const postCanaryRequestPill = page.locator('#request-filter-toolbar [data-request-category="pending"]');
+  await postCanaryRequestPill.waitFor({ state: 'visible', timeout: 15_000 });
+  await clickPastPushPermissionHelp(page, postCanaryRequestPill);
+  await page.waitForFunction(() => {
+    const badge = Number((document.querySelector('#request-filter-toolbar [data-request-category="pending"] .request-category-chip__count')?.textContent?.match(/\d+/) || ['0'])[0]);
+    return badge === 6 && document.querySelectorAll('#request-content [data-request-uid]').length === 6;
+  }, undefined, { timeout: 30_000 });
 
   stage = 'recount-queue';
   await openQueueCategory(page, 'recount');
@@ -606,6 +938,11 @@ async function runVerification(page, origin, accessCode) {
     currentCropSample: { source: `${currentCrop.sourceLocation} SY ${currentCrop.sourceSalesYear}`, destination: currentCrop.options.find(option => option.selected)?.text, badge: currentCrop.badge },
     automaticQueueWrites: 0 };
 
+  stage = 'photo-and-av-note-proof';
+  const photoAndAvNoteProof = await verifyPhotoAndAvNoteProof(page, failedResponses);
+  stage = 'quick-access-eval-reports-2';
+  const quickAccessProof = await verifyQuickAccessEvalReports(page);
+
   stage = 'historical-requests';
   const historyFailureOffset = failedResponses.length;
   await dismissPushPermissionHelp(page);
@@ -636,11 +973,11 @@ async function runVerification(page, origin, accessCode) {
   const requestSearch = await verifyRequestArchiveSearch(page);
   const archiveTabs = { requests: { label: expectedTabLabels[0], rootFolderCount: requestRootFolderCount, ...requestSearch } };
   stage = 'historical-orders';
-  archiveTabs.orders = await verifyGenericArchiveTab(page, { kind: 'orders', label: expectedTabLabels[1], depth: 3 });
+  archiveTabs.orders = await verifyGenericArchiveTab(page, { kind: 'orders', label: expectedTabLabels[1], depth: 3 }, failedResponses);
   stage = 'historical-reserves';
-  archiveTabs.reserves = await verifyGenericArchiveTab(page, { kind: 'reserves', label: expectedTabLabels[2], depth: 4 });
+  archiveTabs.reserves = await verifyGenericArchiveTab(page, { kind: 'reserves', label: expectedTabLabels[2], depth: 4 }, failedResponses);
   stage = 'historical-drive';
-  archiveTabs.drive = await verifyGenericArchiveTab(page, { kind: 'drive', label: expectedTabLabels[3], depth: 3 });
+  archiveTabs.drive = await verifyGenericArchiveTab(page, { kind: 'drive', label: expectedTabLabels[3], depth: 3 }, failedResponses);
   stage = 'historical-requests';
   const historyFailures = failedResponses.slice(historyFailureOffset).filter(value => value.includes('/functions/v1/app-api'));
   if (historyFailures.length) fail(`Historical Requests app-api failure: ${historyFailures[0]}`);
@@ -664,8 +1001,9 @@ async function runVerification(page, origin, accessCode) {
   if (await page.locator('#request-sales-impact-content [role="alert"]').count()) fail('Request Sales Impact rendered an error alert.');
   if (pageErrors.length) fail(`Browser page error: ${pageErrors[0]}`);
   const release = normalizeCardText(await page.locator('#header-version').textContent());
-  if (!release.includes('2.3.67')) fail(`Unexpected release version: ${release || 'missing'}.`);
-  return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, queueProof, consolidationProof, historicalPricedValue,
+  if (!release.includes('2.3.68')) fail(`Unexpected release version: ${release || 'missing'}.`);
+  return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, requestCanary, queueProof, consolidationProof,
+    photoAndAvNoteProof, quickAccessProof, historicalPricedValue,
     archiveTabs, requestSalesImpactText, requestSalesImpactTotal, cardDomText: expectedCards.map(([itemcode, , locationcode]) =>
       cardDomText.find(text => text.includes(itemcode) && text.includes(locationcode))) };
   } catch (error) {
@@ -682,6 +1020,10 @@ async function main() {
     const localEnv = readLocalEnv();
     const accessCode = await resolveAccessCode({ supabaseUrl, localEnv });
     const queueCountsBefore = await readQueueInvariantCounts(localEnv);
+    if (queueCountsBefore.active_request !== 6 || queueCountsBefore.active_recount !== 0
+        || queueCountsBefore.active_bunch_notes !== 0 || queueCountsBefore.active_suspend < 1) {
+      fail(`Protected queue baseline was ${JSON.stringify(queueCountsBefore)}.`);
+    }
   let server;
   let browser;
   try {
@@ -695,8 +1037,8 @@ async function main() {
     const page = await context.newPage();
     const result = await runVerification(page, origin, accessCode);
     const queueCountsAfter = await readQueueInvariantCounts(localEnv);
-    if (queueCountsAfter.active_location_moves !== queueCountsBefore.active_location_moves) {
-      fail(`Inventory Consolidation navigation changed Location Moves from ${queueCountsBefore.active_location_moves} to ${queueCountsAfter.active_location_moves}.`);
+    for (const [key, value] of Object.entries(queueCountsBefore)) if (queueCountsAfter[key] !== value) {
+      fail(`Protected queue ${key} changed from ${value} to ${queueCountsAfter[key]}.`);
     }
     const anonSecurity = await probeAnonSecurity({ supabaseUrl, anonKey, existingRequestId: result.activeRequestId });
     const archiveCounts = await readArchiveDatabaseCounts(localEnv);

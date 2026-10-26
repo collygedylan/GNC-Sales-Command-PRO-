@@ -411,8 +411,23 @@ test('interrupted imports retain verified rows and never become ready from a soc
 test('network failures keep old data visibly stale instead of committing an empty list', async () => {
     const f = fixture(); await f.coordinator.check(); f.revision = '2'; f.fault = new Error('Read timed out');
     await f.coordinator.check(); assert.equal(f.commits.length, 1);
-    assert.equal(f.coordinator.getStatus().state, 'Needs attention');
-    assert.match(f.coordinator.getStatus().message, /timed out/);
+    assert.equal(f.coordinator.getStatus().state, 'Syncing');
+    assert.match(f.coordinator.getStatus().message, /Retrying current data/);
+    assert.ok(Array.from(f.timers.values()).some(timer => timer.at - f.clock === 10000));
+});
+
+test('a cold 503 waits for the transport cooldown and then hydrates automatically', async () => {
+    const f = fixture();
+    f.fault = Object.assign(new Error('Edge function temporarily unavailable'), { status: 503 });
+    assert.equal(await f.coordinator.check('visible-view'), false);
+    assert.equal(f.commits.length, 0);
+    assert.equal(f.coordinator.getStatus().state, 'Syncing');
+    assert.ok(Array.from(f.timers.values()).some(timer => timer.at - f.clock === 10000));
+    f.fault = null;
+    await f.advance(10000);
+    assert.deepEqual(f.commits.at(-1), [{ id: 'dock-28' }]);
+    assert.equal(f.coordinator.getStatus().state, 'Up to date');
+    f.coordinator.reset();
 });
 
 test('forced refresh keeps the same verified display available through import and transient failure without masking status', async () => {
@@ -427,8 +442,8 @@ test('forced refresh keeps the same verified display available through import an
 
     f.state = 'ready'; f.revision = '3'; f.fault = new Error('Read timed out');
     assert.equal(await f.coordinator.ensure(f.adapter, true), true, 'a transient read error keeps the same authorized display usable');
-    assert.equal(f.coordinator.getStatus().state, 'Needs attention');
-    assert.match(f.coordinator.getStatus().message, /timed out/);
+    assert.equal(f.coordinator.getStatus().state, 'Syncing');
+    assert.match(f.coordinator.getStatus().message, /Retrying current data/);
     assert.deepEqual(f.commits.at(-1), [{ id: 'dock-28' }], 'the failed replacement is never committed');
 });
 
@@ -625,7 +640,7 @@ test('the first required-read failure publishes promptly, aborts siblings and le
     const adapters = [
         { id: 'core:primary', cacheKey: 'primary/all', sourceKeys: ['primary'], stage: async () => {
             attempts.push('primary'); await siblingStarted.promise;
-            if (shouldFail) throw new Error('Primary request timed out');
+            if (shouldFail) throw new Error('Primary response was malformed');
             return ['primary'];
         }, commit: value => commits.push(value) },
         { id: 'core:sibling', cacheKey: 'sibling/all', sourceKeys: ['sibling'], stage: async ({ signal }) => {
@@ -648,7 +663,7 @@ test('the first required-read failure publishes promptly, aborts siblings and le
 
     assert.equal(await coordinator.check(), false);
     assert.equal(statusAtAbort, 'Needs attention', 'failure status must publish before sibling cancellation settles');
-    assert.equal(statuses.at(-1).message, 'Primary request timed out', 'a sibling abort must not replace the original error');
+    assert.equal(statuses.at(-1).message, 'Primary response was malformed', 'a sibling abort must not replace the original error');
     assert.equal(statuses.at(-1).contextKey, JSON.stringify([context.scope, '', context.viewKey,
         adapters.map(adapter => [adapter.id, adapter.cacheKey])]));
     assert.equal(queuedReads, 0, 'no queued sibling may start after the first failure');
