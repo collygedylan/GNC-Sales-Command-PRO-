@@ -18,7 +18,7 @@
   function normalizedRole(value) { const key = String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); return ROLE_ALIASES[key] || key.replace(/\W+/g, '_').replace(/^_+|_+$/g, '') || 'unknown'; }
   function view() { return String(document.body?.dataset?.currentView || document.querySelector('[id^="view-"]:not(.hidden)')?.id?.replace(/^view-/, '') || 'unknown').toLowerCase(); }
   function subModule() { try { return String(typeof state.getSubModule === 'function' ? state.getSubModule() || '' : global.activeHomeTab || ''); } catch (_) { return ''; } }
-  function isIgnorableRuntimeNoise(value) { return /ResizeObserver loop (?:limit exceeded|completed with undelivered notifications)|NATIVE_PROFILE_RETRY_REQUIRED/i.test(String(value || '')); }
+  function isIgnorableRuntimeNoise(value) { return /ResizeObserver loop (?:limit exceeded|completed with undelivered notifications)|NATIVE_PROFILE_RETRY_REQUIRED|REQUEST_ABORTED|DATASET_READ_SCOPE_CHANGED/i.test(String(value || '')); }
   function fingerprint(event) { return [event.event_type, event.view_id, event.sub_module, event.error_message].join('|').toLowerCase().slice(0, 400); }
   function reportKey(event) { return `${event.username}:${event.fingerprint}:${event.app_version}`; }
   function reportStorageKey(username = state.username) { return `${REPORT_QUEUE_PREFIX}${String(username || '').trim().toLowerCase()}`; }

@@ -96,8 +96,13 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never add a direct operational view to the runtime allowlist without a finite typed browser alias to its exact canonical row contract; otherwise the database bridge rejects the table before transport and a healthy queue renders empty.
+
+- Never render `Que -> SUSPEND` from a synthetic API dataset that can fail open to an empty result while authorized rows exist; hydrate `ph_active_suspend` directly, retain the prior snapshot, and replay the latest tab refresh when a shared single-flight is busy.
+
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never group Recount by physical UID/lot alone, omit lot metrics from completion delivery, update only one destination-season Open Stock row, add Action columns to the nine-column report, or move the proposal box outside OH.
 - Never collapse physical Suspend rows, infer mutation authority from cached UI state, add JD/Sunday as fixed Reclass recipients, or block opening a displayed-card Reclass draft on a background refresh.
 - Never treat request age, status text, completion-date text, tombstone presence, or history membership alone as proof that an active Request is fulfilled.
+- Never write the legacy master `pick` field without synchronizing canonical `pick_note`, or collapse Request rows that share an item but have distinct location/lot identities.

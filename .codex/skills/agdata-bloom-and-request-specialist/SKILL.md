@@ -83,6 +83,10 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never restore a delivery worker by granting browser roles access to private outbox, worker-state, email-thread, completed-history tables or worker RPCs; `Code.gs` and app-api use the service role while browser history stays on its authorized reader.
+
+- Never block Customer/Consignee selection on a full mapping download or assume a rep button already has `salesrepId`; resolve the selected rep through a bounded direct name query, then load only that rep's rows.
+
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never skip a Que/REQUEST refresh because a client TTL or revision appears current, delete pending requests during import, clear a draft before validated acknowledgment, or duplicate the canonical location sorter.
@@ -90,3 +94,4 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 - Never await outbox reconciliation inside `dataset_read`, scan unbounded delivery history, or write the effective quantity fallback into an active Request row. The permanent history/financial snapshot uses positive Request Qty or `25`, while source quantity remains unchanged.
 - Never infer completion from age, a terminal-looking status/date alone, or history membership; never delete a pending history snapshot or suppress an active request because the same ID exists in history.
 - Never merge different request IDs in sales-impact reporting, bypass the navigation permission gate, or persist the analytics-only default quantity of `25` back to a Request source.
+- Never derive `Sales Rep` from `requested_by` before the selected-rep fields or derive `Submitted By` from the selected rep; these are separate durable identities on every request row and delivery payload.

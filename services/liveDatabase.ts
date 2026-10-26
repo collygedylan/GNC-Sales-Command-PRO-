@@ -13,13 +13,17 @@ import { historicalRequestsQuery } from './historicalRequests';
 import { createInventoryStatusSync } from './inventoryStatusSync';
 import { createRequestArchivePagesService, type RequestArchivePageReader } from './requestArchivePages';
 export { tableName, rpcName, validateQuery, tableRequest } from './databaseRest';
+export const browserDatabaseTableAliases = Object.freeze({
+  ph_active_suspend: 'ph_soc_master',
+} as const);
+
 type Profile = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'legacy_user_id' | 'username' | 'display_name' | 'role' | 'division' | 'language' | 'disabled_at' | 'locked_until' | 'must_change_password' | 'passkey_pilot'>;
 export function databaseClient(url: string, key: string, options?: SupabaseClientOptions<'public'>) {
   return createClient<Database>(url, key, options);
 }
 export function createLegacyDatabaseBridge(fetcher: FetchWithTimeout) {
   return {
-    ...createDatabaseRestBridge(fetcher),
+    ...createDatabaseRestBridge(fetcher, browserDatabaseTableAliases),
     confirmedDriveEvidence, driveEvidenceRevision, driveEvidenceColumns,
     requestRecipientDirectoryFromResult,
     reclassShearedProposal,

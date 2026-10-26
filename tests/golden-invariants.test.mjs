@@ -5,6 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { databaseBridge } from './helpers/database-bridge.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceCache = new Map();
@@ -1161,4 +1162,177 @@ test('Invariant 31 (Four-Caller Delivery and Direct Hydration Recovery)', () => 
   const runner = read('scripts/apply-item-low-stock-migration.mjs');
   assert.match(runner, /agdataV2369EmergencyRecoveryMigrationName[^]*registeredReleaseDatabaseMigrations/);
   assert.ok(runner.includes(migrationName));
+});
+
+test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', async () => {
+  const calls = [];
+  const context = runFunctions('assets/app-runtime.js', ['fetchRequestCustomerMapRowsForRepName'], {
+    resolveCanonicalRequestRepName: value => value,
+    normalizeRepDisplayOrder: value => String(value || '').trim(),
+    normalizeRepMatchToken: value => String(value || '').trim().toLowerCase(),
+    fetchAllSupabaseRows: async (table, query, options) => {
+      calls.push({ table, query, options });
+      if (calls.length === 1) throw Object.assign(new Error('direct read cancelled'), { code: 'REQUEST_ABORTED' });
+      return [
+        { unique_id: 'one', salesrepid: 'S27', salesrepname: 'Josh Ringleb' },
+        { unique_id: 'two', salesrepid: 'S27', salesrepname: 'Josh Ringleb' },
+      ];
+    },
+    isActiveRequestCustomerMapping: () => true,
+    getCustomerRepMapRepValue: row => row.salesrepname,
+    window: { setTimeout },
+  });
+  const result = await context.fetchRequestCustomerMapRowsForRepName('Josh Ringleb');
+  assert.equal(result.salesrepId, 'S27');
+  assert.equal(result.rows.length, 2);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].table, 'ph_customer_consignee_sales_reps');
+  assert.match(calls[1].query, /salesrepname=eq\.Josh%20Ringleb/);
+  assert.match(calls[1].query, /customerstatus=eq\.A&consigneestatus=eq\.A/);
+  assert.equal(calls[1].options.requireComplete, true);
+  assert.equal(calls[1].options.skipCustomerMapShortcut, true);
+  assert.equal(calls[1].options.forceFresh, true);
+  const ensureSource = functionSource('assets/app-runtime.js', 'ensureRequestModalCustomerOptionsReady');
+  assert.match(ensureSource, /if \(!rep\) await prefetchRequestModalCustomerOptions\(force\)/);
+  assert.ok(ensureSource.indexOf('await loadRequestModalCustomerOptionsForRep') < ensureSource.indexOf('const id = getRequestSelectedSalesrepId'));
+  assert.match(read('.codex/skills/agdata-bloom-and-request-specialist/SKILL.md'), /Never block Customer\/Consignee selection on a full mapping download/);
+});
+
+test('Invariant 33 (Suspend Queue Uses Authorized Direct LKG Read)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const directSet = runtime.match(/const DIRECT_POSTGREST_READ_TABLES = new Set\(\[[^]*?\]\);/)?.[0] || '';
+  const context = vm.createContext({ normalizeAppTableName: value => String(value || '').trim().toLowerCase() });
+  vm.runInContext(`${directSet}\n${functionSource('assets/app-runtime.js', 'isDirectPostgrestReadTable')}`, context);
+  assert.equal(context.isDirectPostgrestReadTable('ph_active_suspend'), true);
+  assert.match(runtime, /suspendTag:\s*\{\s*table:\s*'ph_active_suspend',\s*sourceTable:\s*'ph_soc_master'/);
+  const refreshSource = functionSource('assets/app-runtime.js', 'refreshActiveRequestQueueSideData');
+  assert.match(refreshSource, /requestQueueSideRefreshPending\s*=\s*\{/);
+  assert.match(refreshSource, /refreshActiveRequestQueueSideData\(pending\.reason, pending\.options\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'setReqTab'), /loadDatasetTargetsWithLimit\(\[\{ key: 'suspendTag', mode: 'full' \}\]/);
+  assert.match(read('.codex/skills/agdata-queue-and-reclass-specialist/SKILL.md'), /Never render `Que -> SUSPEND` from a synthetic API dataset/);
+});
+
+test('Invariant 34 (Suspend Direct View Retains Typed Browser Boundary)', async () => {
+  const calls = [];
+  const bridge = databaseBridge(async (...args) => {
+    calls.push(args);
+    return new Response('[]');
+  });
+  await bridge.fetchTable('https://fixture.invalid', 'ph_active_suspend',
+    'select=unique_id,commonname,locationcode&order=unique_id.asc&limit=1', { method: 'GET' }, 1000, 'suspend queue');
+  assert.equal(new URL(calls[0][0]).pathname, '/rest/v1/ph_active_suspend');
+  await assert.rejects(bridge.fetchTable('https://fixture.invalid', 'ph_active_suspend',
+    'select=unknown_suspend_field', { method: 'GET' }, 1000, 'suspend queue'), /Unknown.*column/);
+  assert.equal(calls.length, 1);
+  assert.match(read('.codex/skills/agdata-queue-and-reclass-specialist/SKILL.md'), /Never add a direct operational view to the runtime allowlist without a finite typed browser alias/);
+});
+
+test('Invariant 35 (AV Uses One Canonical Master Hydration)', () => {
+  const context = runFunctions('assets/app-runtime.js', ['canonicalizeProductionCoreLiveKeys'], { Array, Set });
+  assert.deepEqual(Array.from(context.canonicalizeProductionCoreLiveKeys(['avOpen', 'master', 'reserves', 'master'])),
+    ['master', 'reserves']);
+  const liveContext = functionSource('assets/app-runtime.js', 'getProductionLiveSyncContext');
+  assert.match(liveContext, /canonicalizeProductionCoreLiveKeys\(registry\.getCoreKeys\(targetView, targetContext\)\)/);
+  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never let `avOpen` and `master` create duplicate live-sync adapters/);
+});
+
+test('Invariant 36 (Master Hydration Avoids Exact Count Timeouts)', () => {
+  const directSource = functionSource('assets/app-runtime.js', 'fetchDirectMasterInventoryPage');
+  const pagingSource = functionSource('assets/app-runtime.js', 'fetchAllInventoryReadRows');
+  const adapterSource = functionSource('assets/app-runtime.js', 'createProductionCoreLiveAdapter');
+  assert.match(directSource, /count:\s*false/);
+  assert.doesNotMatch(directSource, /count:\s*true/);
+  assert.match(directSource, /unique_id=gt\.\$\{encodeURIComponent\(afterUniqueId\)\}/);
+  assert.match(pagingSource, /afterUniqueId \? \{ \.\.\.options, afterUniqueId \} : options/);
+  assert.match(pagingSource, /nextUniqueId = String\(page\.rows\.at\(-1\)\?\.unique_id/);
+  assert.match(adapterSource, /Math\.min\(2, Math\.max\(1, Math\.floor\(Number\(stageOptions\.pageConcurrency\) \|\| 1\)\)\)/);
+  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never request `count=exact` or use deep offsets on wide `ph_master_inventory` pages/);
+});
+
+test('Invariant 37 (Exact AV Search Does Not Wait For Full Hydration)', () => {
+  const directSource = functionSource('assets/app-runtime.js', 'fetchDirectMasterInventoryItemRows');
+  const scheduleSource = functionSource('assets/app-runtime.js', 'scheduleExactAvSearchHydration');
+  const searchSource = functionSource('assets/app-runtime.js', 'handleAVSearch');
+  assert.match(directSource, /fetchDirectMasterInventoryPage\(\{ projection: 'full', itemCode: safeItemCode \}, 100/);
+  assert.match(directSource, /new Set\(ids\)\.size !== ids\.length/);
+  assert.match(scheduleSource, /invalidateResolvedViewStateCaches\(\{ preserveAvPreparation: true \}\)/);
+  assert.match(scheduleSource, /owner === getSupabaseReadIdentityScope\(\)/);
+  assert.match(scheduleSource, /installExactAvSearchHydrationRows\(rows, owner, permissionVersion, itemCode\)/);
+  assert.match(scheduleSource, /isViewVisible\('av'\) && remainsCurrent\(\)\) renderAV\(\)/);
+  assert.match(scheduleSource, /preferAnon: true/);
+  assert.doesNotMatch(scheduleSource, /setTimeout\(async/);
+  assert.match(searchSource, /scheduleExactAvSearchHydration\(term\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'fetchDirectPostgrestReadPage'), /opts\.preferAnon === true \? null : await getNativeAuthRequestHeaders/);
+  assert.match(functionSource('assets/app-runtime.js', 'canUseDatasetForImmediateRender'), /hasCurrentExactAvSearchHydration\(\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'previewProductionSnapshots'), /mergeExactAvSearchRowsIntoPreview\(payload\.data, context\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'getCurrentExactAvSearchHydrationRows'), /context\.readIdentity/);
+  assert.match(functionSource('assets/app-runtime.js', 'buildResolvedAVBaseState'), /getAvSalesRowsForBucket\(activeAvSalesBucket, exactSearchRows\)/);
+  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never make an exact AV itemcode search wait for a near-tail full-cohort page/);
+});
+
+test('Invariant 38 (Visible Focused AV Search Survives Startup Reset)', () => {
+  const resetSource = functionSource('assets/app-runtime.js', 'resetAVView');
+  assert.match(resetSource, /preserveFocusedSearch = isViewVisible\('av'\) && document\.activeElement === searchInput/);
+  assert.match(resetSource, /if \(!preserveFocusedSearch && searchInput\) searchInput\.value=""/);
+  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never let a delayed AV view reset erase a focused search/);
+});
+
+test('Invariant 39 (Delivery Recovery Keeps Private Worker Boundary)', () => {
+  const migrationName = '20261026150000_agdata_v2369_private_delivery_boundary.sql';
+  const migration = read(`supabase/migrations/${migrationName}`);
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const appsScript = read('Code.gs');
+  for (const relation of ['ph_request_delivery_outbox', 'ph_request_delivery_worker_state',
+    'ph_request_email_threads', 'ph_requests_completed_history', 'ph_delivery_outbox',
+    'ph_request_delivery_status']) {
+    assert.match(migration, new RegExp(`revoke all privileges on table public\\.${relation} from public, anon, authenticated`));
+    assert.match(migration, new RegExp(`grant all privileges on table public\\.${relation} to service_role`));
+  }
+  for (const worker of ['claim_request_delivery_events', 'complete_request_delivery_event',
+    'fail_request_delivery_event', 'heartbeat_request_delivery_worker',
+    'record_request_delivery_channel_result', 'requeue_request_delivery',
+    'get_request_delivery_recovery_queue']) {
+    assert.match(migration, new RegExp(`revoke all privileges on function public\\.${worker}`));
+    assert.match(migration, new RegExp(`grant execute on function public\\.${worker}`));
+  }
+  assert.doesNotMatch(migration, /(?:insert\s+into|update|delete\s+from)\s+public\./i);
+  assert.match(runner, /agdataV2369PrivateDeliveryBoundaryMigrationName[^]*registeredReleaseDatabaseMigrations/);
+  assert.ok(runner.includes(migrationName));
+  const directSet = runtime.match(/const DIRECT_POSTGREST_READ_TABLES = new Set\(\[[^]*?\]\);/)?.[0] || '';
+  assert.doesNotMatch(directSet, /ph_request_delivery|ph_request_email_threads|ph_requests_completed_history/);
+  assert.match(appApi, /createClient<Database>\(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(appsScript, /resolveSupabaseServiceRoleKey_[^]*const SUPABASE_KEY = resolveSupabaseServiceRoleKey_/);
+  assert.match(read('.codex/skills/agdata-bloom-and-request-specialist/SKILL.md'), /Never restore a delivery worker by granting browser roles access/);
+});
+
+test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', () => {
+  const migrationName = '20261026160000_agdata_v2370_watchdog_and_request_recovery.sql';
+  const migration = read(`supabase/migrations/${migrationName}`);
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const watchdog = read('assets/runtime-watchdog.js');
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  assert.match(migration, /add column if not exists pick text/);
+  assert.match(migration, /add column if not exists submitted_by text/);
+  assert.match(migration, /pick_note=coalesce/);
+  assert.match(migration, /lock_timeout to '15s'/);
+  assert.match(migration, /statement_timeout to '30s'/);
+  assert.match(migration, /inventory_consolidation_suggestions_v2370/);
+  assert.match(migration, /historical_requests_read_v2370/);
+  assert.match(migration, /set status = 'resolved'/);
+  assert.match(runtime, /function naturalCompare\(a, b\)/);
+  assert.match(runtime, /window\.naturalCompare = naturalCompare/);
+  assert.match(runtime, /globalThis\.naturalCompare = naturalCompare/);
+  const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
+  assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
+  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.70"/);
+  assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
+  assert.match(appApi, /historical_requests_read_v2370/);
+  assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
+  assert.match(watchdog, /REQUEST_ABORTED\|DATASET_READ_SCOPE_CHANGED/);
+  assert.ok(runner.includes(migrationName));
+  assert.match(read('.codex/skills/agdata-runtime-watchdog/SKILL.md'), /Never record navigation\/scope cancellation codes/);
 });

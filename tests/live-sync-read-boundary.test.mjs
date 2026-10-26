@@ -837,6 +837,16 @@ test('foreground full-master consumers keep live refreshes full without widening
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'request', { surfaces: ['request:eval-work'] }), 'full');
 });
 
+test('AV canonicalizes its master aliases before building live adapters', () => {
+    const context = { Array, Set };
+    vm.createContext(context);
+    vm.runInContext(extractAppFunction('canonicalizeProductionCoreLiveKeys'), context);
+    assert.deepEqual(Array.from(context.canonicalizeProductionCoreLiveKeys(['avOpen', 'master', 'reserves', 'master'])),
+        ['master', 'reserves']);
+    assert.match(extractAppFunction('getProductionLiveSyncContext'),
+        /canonicalizeProductionCoreLiveKeys\(registry\.getCoreKeys\(targetView, targetContext\)\)/);
+});
+
 test('full row hydration pins its projection across refreshes and clears after success, failure, and scope changes', async () => {
     for (const outcome of ['success', 'failure', 'account-change', 'navigation-change']) {
         const gate = deferred(), map = new Map();
@@ -2470,6 +2480,94 @@ test('AV small cold preview continues from its exact first-page offset and verif
   assert.equal(rows.length, sourceRows.length);
   assert.deepEqual(Array.from(rows, row => row.unique_id), sourceRows.map(row => row.unique_id));
   assert.equal(rows.readMeta.fieldCoverage, 'browse');
+});
+
+test('AV no-count paging finds the terminal page through ordered keyset reads', async () => {
+  const sourceRows = Array.from({ length: 9638 }, (_, index) => ({ unique_id: `inventory-${String(index + 1).padStart(5, '0')}` }));
+  const calls = [];
+  let activeReads = 0;
+  let maximumActiveReads = 0;
+  const ctx = {
+    fetchInventoryReadPage: async (_operation, _params, limit, offset, options = {}) => {
+      calls.push({ limit, offset, afterUniqueId: options.afterUniqueId || '' });
+      activeReads += 1;
+      maximumActiveReads = Math.max(maximumActiveReads, activeReads);
+      await new Promise(resolve => setTimeout(resolve, 1));
+      activeReads -= 1;
+      const start = options.afterUniqueId
+        ? sourceRows.findIndex(row => row.unique_id > options.afterUniqueId)
+        : offset;
+      const rows = sourceRows.slice(start < 0 ? sourceRows.length : start, (start < 0 ? sourceRows.length : start) + limit);
+      return { rows, total: null, hasMore: rows.length === limit,
+        projection: 'full', fieldCoverage: 'full', columns: ['unique_id'] };
+    },
+    yieldToUiFrame: async () => {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractMasterPagingFunction(), ctx);
+  const rows = await ctx.fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'full' }, {
+    firstPageLimit: 200, limit: 1000, pageConcurrency: 2, requireComplete: true
+  });
+
+  assert.deepEqual(calls.slice(0, 2).map(({ offset, limit }) => [offset, limit]), [[0, 200], [200, 1000]]);
+  assert.equal(calls[1].afterUniqueId, 'inventory-00200');
+  assert.equal(maximumActiveReads, 1);
+  assert.ok(calls.some(call => call.afterUniqueId === 'inventory-09200' && call.limit === 1000));
+  assert.equal(rows.length, sourceRows.length);
+  assert.equal(rows.at(-1).unique_id, 'inventory-09638');
+  assert.equal(rows.readMeta.total, sourceRows.length);
+  assert.equal(rows.readMeta.rowCompleteness, 'complete');
+});
+
+test('AV exact item hydration uses a bounded full-field keyset read', async () => {
+  const sourceRows = Array.from({ length: 125 }, (_, index) => ({
+    unique_id: `item-${String(index + 1).padStart(3, '0')}`,
+    itemcode: '008866.031.1'
+  }));
+  const calls = [];
+  const ctx = {
+    fetchDirectMasterInventoryPage: async (params, limit, _offset, options = {}) => {
+      calls.push({ params, limit, afterUniqueId: options.afterUniqueId || '' });
+      const start = options.afterUniqueId
+        ? sourceRows.findIndex(row => row.unique_id > options.afterUniqueId)
+        : 0;
+      return { rows: sourceRows.slice(start < 0 ? sourceRows.length : start, (start < 0 ? sourceRows.length : start) + limit),
+        limit, projection: 'full', fieldCoverage: 'full', columns: ['unique_id', 'itemcode'] };
+    },
+    validateInventoryReadProjection: () => true,
+    yieldToUiFrame: async () => {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('fetchDirectMasterInventoryItemRows'), ctx);
+  const rows = await ctx.fetchDirectMasterInventoryItemRows('008866.031.1');
+  assert.equal(rows.length, 125);
+  assert.deepEqual(calls.map(call => [call.params.projection, call.params.itemCode, call.limit, call.afterUniqueId]), [
+    ['full', '008866.031.1', 100, ''],
+    ['full', '008866.031.1', 100, 'item-100']
+  ]);
+});
+
+test('AV exact item overlay survives the first partial master preview for the same account', () => {
+  const ctx = {
+    exactAvSearchHydrationRows: [{ UNIQUE_ID: 'alice-1', ITEMCODE: '008866.031.1' }],
+    exactAvSearchHydrationOwner: 'owner-1',
+    exactAvSearchHydrationPermission: 'permission-1',
+    exactAvSearchHydrationItemCode: '008866.031.1',
+    getSupabaseReadIdentityScope: () => 'owner-1',
+    appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'permission-1' } },
+    document: { getElementById: () => ({ value: '008866.031.1' }) },
+    getExactAvSearchItemCode: value => String(value || '').trim(),
+    firstNonEmptyValue: (...values) => values.find(value => value != null && value !== '')
+  };
+  vm.createContext(ctx);
+  vm.runInContext(`${extractAppFunction('getCurrentExactAvSearchHydrationRows')}\n${extractAppFunction('mergeExactAvSearchRowsIntoPreview')}`, ctx);
+  const merged = ctx.mergeExactAvSearchRowsIntoPreview([{ UNIQUE_ID: 'preview-1' }], {
+    readIdentity: 'owner-1', dataPermissionVersion: 'permission-1'
+  });
+  assert.deepEqual(Array.from(merged, row => row.UNIQUE_ID), ['preview-1', 'alice-1']);
+  assert.equal(ctx.mergeExactAvSearchRowsIntoPreview([{ UNIQUE_ID: 'preview-1' }], {
+    readIdentity: 'owner-2', dataPermissionVersion: 'permission-1'
+  }).length, 1);
 });
 
 test('complete concurrent paging rejects a short continuation page instead of publishing a partial snapshot', async () => {

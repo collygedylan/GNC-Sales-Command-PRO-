@@ -195,6 +195,17 @@ test('existing inventory/request views remain readable and cannot be written thr
   assert.equal(sent.length, 1);
 });
 
+test('browser bridge validates the active Suspend view through the canonical SOC contract', async () => {
+  const sent = [];
+  const bridge = databaseBridge(async (...args) => { sent.push(args); return new Response('[]'); });
+  await bridge.fetchTable('https://fixture.invalid', 'ph_active_suspend',
+    'select=unique_id,commonname,locationcode&order=unique_id.asc&limit=1', { method: 'GET' }, 1000, 'suspend queue');
+  assert.equal(new URL(sent[0][0]).pathname, '/rest/v1/ph_active_suspend');
+  await assert.rejects(bridge.fetchTable('https://fixture.invalid', 'ph_active_suspend',
+    'select=unreviewed_secret_column', { method: 'GET' }, 1000, 'suspend queue'), /Unknown.*column/);
+  assert.equal(sent.length, 1);
+});
+
 test('only the app-api bridge accepts schema-derived v2 compatibility table aliases', async () => {
   const sent = [];
   const browserBridge = databaseBridge(async (...args) => { sent.push(args); return new Response('[]'); });

@@ -14,7 +14,7 @@ test('Inventory Suggestion routes to manual 16-size consolidation', () => {
     assert.match(runtime, new RegExp(label));
   }
   assert.match(runtime, /getInventoryConsolidationValidDestinations/);
-  assert.match(runtime, /scheduleInventoryConsolidationWarmup\(touchShell \? 900 : 120\)/);
+  assert.doesNotMatch(runtime, /scheduleInventoryConsolidationWarmup\(touchShell \? 900 : 120\)/);
   assert.match(runtime, /ownerKey !== getInventoryConsolidationCacheKey\(\)/);
   assert.doesNotMatch(runtime, /Current SY -> Same SY|Older SY -> Any SY/);
   assert.match(runtime, /Nothing enters Location Moves until you click Send\./);
@@ -225,6 +225,7 @@ test('Drive accepts the first authorized master page while settings and remainin
     productionDisplayGroups: new Set(), productionDisplayVerifiedAt: new Map(),
     productionLiveSyncCoordinator: { getStatus: () => ({ state: 'Syncing' }) },
     renderProductionDataFreshness() {}, invalidateResolvedViewStateCaches() {},
+    mergeExactAvSearchRowsIntoPreview: data => data,
     scheduleProductionLiveSyncRender: () => calls.push('render'),
   });
   vm.runInContext(source('previewProductionSnapshots'), context);
@@ -692,6 +693,7 @@ test('AV search clear resets stored item drill and common-name column filters', 
     avResolvedBaseStateKey: 'old', avResolvedBaseStateCache: {},
     document: { getElementById: () => ({ value: 'Maple', classList: { add() {} } }) },
     resetAvSearchDrilldownState: () => { f.avOpenLevel = 0; },
+    scheduleExactAvSearchHydration() {},
     scheduleTrackedSearchViewRender() {}, isTouchConstrainedDevice: () => false });
   vm.runInContext(source('clearAVSearch'), f); f.clearAVSearch();
   assert.equal(f.avOpenLevel, 0); assert.equal(f.selectedAvOpenName, null); assert.equal(f.selectedAvOpenSeason, null);

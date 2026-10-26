@@ -21,12 +21,12 @@ test('request login does not await customer map hydration', () => {
  assert.doesNotMatch(login,/await prepareRequestModalChoicesForStartup/);
 });
 
-test('Apps Script scoped patch ships grouped Suspend email and preserves protected functions',()=>{
+test('Apps Script scoped patch ships the release manifest and preserves protected functions',()=>{
  const manifest=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  const remoteSource=execFileSync('git',['show','HEAD:Code.gs'],{encoding:'utf8',maxBuffer:16*1024*1024})
   +"\nfunction protectedRemoteOnly_() { return 'unchanged'; }\n";
  const patch=patchAppsScriptFunctions({remoteSource,localSource:codeSource,functionNames:manifest.appsScriptPatchFunctions});
- assert.deepEqual(patch.functions,['buildSuspendTagApprovalEmail_']);
+ assert.deepEqual(patch.functions,manifest.appsScriptPatchFunctions);
  for(const name of patch.functions)assert.ok(patch.source.includes(`function ${name}(`),`${name} is included in the scoped patch`);
  assert.equal(patch.source.split("return jsonOutput_(handleRuntimeWatchdogAlert_(payload));").length-1,1,'the watchdog handler dispatch is present exactly once');
  assert.match(patch.source,/const payload = authorizeAppsScriptPost_\(JSON\.parse\(e\.postData\.contents\)\)/,'the scoped patch installs the doPost authentication entry gate');
@@ -47,6 +47,21 @@ function fixture(fetchPage) {
  c.customerRepMapRows=[mappingFixtureRow];
  return c;
 }
+test('Request reader resolves a rep ID with a bounded direct name query when the picker has no ID',async()=>{
+ const calls=[];
+ const rows=[mappingFixtureRow,{...mappingFixtureRow,unique_id:'map-2',customeridentityid:'00013',consigneeid:'00008'}];
+ const c=fixture(async()=>({ok:true,rows:[],total:0,revision:'9'}));
+ c.fetchAllSupabaseRows=async(table,query,options)=>{calls.push({table,query,options});return rows;};
+ c.customerRepMapRows=[];
+ c.tempSelectedReqRep='Rep One';
+ const result=await c.loadRequestModalCustomerOptionsForRep('Rep One');
+ assert.equal(result.rows.length,2);
+ assert.equal(calls[0].table,'ph_customer_consignee_sales_reps');
+ assert.match(calls[0].query,/salesrepname=eq\.Rep%20One/);
+ assert.equal(c.tempSelectedReqSalesrepId,'01');
+ assert.equal(c.getRequestSelectedSalesrepId('Rep One'),'01');
+ assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,2);
+});
 test('Request reader loads every rep-ID page before publishing choices',async()=>{
  const calls=[];
  const rows=Array.from({length:201},(_,i)=>({...mappingFixtureRow,unique_id:'m'+i,customeridentityid:String(i).padStart(5,'0'),consigneeid:'C'+i}));

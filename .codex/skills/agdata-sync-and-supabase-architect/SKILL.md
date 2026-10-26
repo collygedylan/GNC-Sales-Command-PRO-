@@ -101,4 +101,5 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 - Never answer a forced manual run with `The import processor is finishing its current work.`, acquire a fence for an unchanged file, leave a published `.xlsx` in Drop, show multiple stale filenames, create a public definer view, or execute `SET LOCAL` outside `BEGIN`/`COMMIT`.
 - Never let one startup dataset rejection cancel sibling metadata/queue reads, and never grant a security-invoker view without the matching RLS-protected underlying-table privilege.
+- Never short-circuit a forced Home RUN SCRIPT through the fast-ingest file-check RPC; dispatch DRIVE, SOC, RESERVES, and CAV through the authenticated `apps_script_action` gateway.
 - Never run or enable historical backfill outside 23:30–06:15 America/Chicago or while explicitly paused.

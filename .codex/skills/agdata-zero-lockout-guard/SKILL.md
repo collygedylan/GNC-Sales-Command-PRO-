@@ -100,3 +100,4 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Never use fail-open display continuity to bypass RLS, confirmed revocation, exact mutation identity, recipient policy, or account isolation.
 - Never make an authorized `dataset_read` wait for best-effort repair work; schedule bounded reconciliation with `EdgeRuntime.waitUntil` and contain both synchronous and asynchronous failures.
 - Never translate an underlying-table grant omission on a security-invoker view into an empty successful dataset or clear the retained Queue after that isolated read fails.
+- Never convert a transient active-profile, dataset, inventory, historical-request, or consolidation read fault into a `400`, `403`, or `503` lockout response; return an authorized retained `200` shape without weakening mutation checks.

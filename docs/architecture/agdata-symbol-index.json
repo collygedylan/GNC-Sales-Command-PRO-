@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.69",
+  "release": "AgData v2.3.70",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -302,6 +302,7 @@
         "openRequestSalesImpact",
         "renderRequestSalesImpact",
         "fetchRequestCustomerMapRows",
+        "fetchRequestCustomerMapRowsForRepName",
         "loadRequestModalCustomerOptionsForRep",
         "scheduleRequestDeliveryWake"
       ],
@@ -348,6 +349,11 @@
         ],
         "scripts/fast-historical-archive-import.mjs": [
           "runHistoricalArchiveImport"
+        ],
+        "supabase/migrations/20261026160000_agdata_v2370_watchdog_and_request_recovery.sql": [
+          "historical_requests_read_v2370",
+          "historical_archive_read_v2370",
+          "sync_request_actor_fields_v2370"
         ]
       }
     },
@@ -374,11 +380,22 @@
         "compareLocationCodeValues",
         "sortDriveCardItems",
         "sortAvOpenItems",
+        "createAvSalesRowsDerivation",
+        "buildResolvedAVBaseState",
         "getRowPhotoLink",
         "resolveCanonicalPhotoUrls",
         "getDetailPhotoUrls",
+        "canonicalizeProductionCoreLiveKeys",
         "fetchDirectPostgrestReadPage",
         "fetchDirectMasterInventoryPage",
+        "fetchDirectMasterInventoryItemRows",
+        "fetchAllInventoryReadRows",
+        "scheduleExactAvSearchHydration",
+        "installExactAvSearchHydrationRows",
+        "getCurrentExactAvSearchHydrationRows",
+        "hasCurrentExactAvSearchHydration",
+        "mergeExactAvSearchRowsIntoPreview",
+        "resetAVView",
         "scheduleInventoryConsolidationWarmup",
         "renderInventoryConsolidationContent",
         "getInventoryConsolidationValidDestinations",
@@ -401,6 +418,10 @@
         ],
         "supabase/migrations/20261026034500_agdata_v2367_historical_drive_fast_read.sql": [
           "historical_drive_file_page_v2367"
+        ],
+        "supabase/migrations/20261026160000_agdata_v2370_watchdog_and_request_recovery.sql": [
+          "inventory_consolidation_suggestions_v2370",
+          "sync_master_inventory_pick_v2370"
         ]
       }
     },
@@ -429,7 +450,8 @@
         "renderRequest",
         "buildPendingRequestRenderPlan",
         "buildReclassRecountLocationGroups",
-        "buildOptimisticInventoryReclassMoveModel"
+        "buildOptimisticInventoryReclassMoveModel",
+        "fetchDirectPostgrestReadPage"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -442,7 +464,13 @@
       "Code.gs": [
         "buildReclassItemInquiryTable_",
         "handleSignedReclassRecountCompletion_"
-      ]
+      ],
+      "supportingFiles": {
+        "services/liveDatabase.ts": [
+          "browserDatabaseTableAliases",
+          "createLegacyDatabaseBridge"
+        ]
+      }
     },
     "agdata-release-governor": {
       "assets/app-runtime.js": [],
@@ -457,7 +485,8 @@
           "runToolingReleaseChecks"
         ],
         "scripts/apply-item-low-stock-migration.mjs": [
-          "agdataV2369EmergencyRecoveryMigrationName"
+          "agdataV2369EmergencyRecoveryMigrationName",
+          "agdataV2370WatchdogRequestRecoveryMigrationName"
         ],
         "scripts/apps-script-function-patch.mjs": [
           "mergeRequestDeliveryWakeDispatch"

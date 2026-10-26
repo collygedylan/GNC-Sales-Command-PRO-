@@ -1,6 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_RELEASE = "AgData v2.3.54";
+const APP_RUNTIME_RELEASE = "AgData v2.3.70";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -467,6 +467,9 @@ function errorResponse(message: string, status = 400, extra: Record<string, unkn
 function profilelessActionResponse(action: string, payload: Record<string, unknown>): Response | null {
   if (action === "navigation_preferences") return jsonResponse({ ok: true, data: null, retained: true, profilePending: true });
   if (action === "get_user_preferences" || action === "live_pilot_bootstrap") return jsonResponse({ ok: true, eligible: false, monitoringEligible: false, flags: {}, preferences: null, monitoring: null, retained: true, profilePending: true });
+  if (["dataset_read", "inventory_read", "historical_requests_read", "inventory_consolidation"].includes(action)) {
+    return retainedReadResponse(`${action.toUpperCase()}_PROFILE_PENDING`, { profilePending: true });
+  }
   if (action === "request_work") return String(payload.operation || "") === "capabilities"
     ? jsonResponse({ ok: true, data: { canViewQueue: false, canEditRequest: false, retained: true }, retained: true, profilePending: true })
     : transientOkResponse("REQUEST_WORK_PROFILE_PENDING", "Request work is waiting for the active profile.");
@@ -475,6 +478,12 @@ function profilelessActionResponse(action: string, payload: Record<string, unkno
 
 function transientOkResponse(code: string, message: string, data: Record<string, unknown> = {}) {
   return jsonResponse({ ok: false, code, message, retained: true, retryable: true, data });
+}
+
+function retainedReadResponse(code: string, data: Record<string, unknown> = {}) {
+  return jsonResponse({ ok: true, code, retained: true, retryable: true, data: {
+    rows: [], total: 0, offset: 0, limit: 0, hasMore: false, retained: true, retryable: true, ...data,
+  } });
 }
 
 async function failOpenInventoryConflict(response: Response) {
@@ -1216,14 +1225,14 @@ async function handleDatasetRead(
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
   let actor: Record<string, unknown>;
   try { actor = verifiedActor || await resolveActiveSessionProfile(session); }
-  catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
+  catch { return retainedReadResponse("DATASET_READ_PROFILE_PENDING", { dataset: normalizeDatasetReadAlias(payload.dataset) }); }
   const username = normalizeUsername(String(actor.username || ""));
   const role = String(session.role || "");
   const dataset = normalizeDatasetReadAlias(payload.dataset);
   if (["location_moves", "eval_work", "bunch_notes", "count_review", "request_history"].includes(dataset)) {
     let params: ReturnType<typeof validateDatasetReadParams>;
     try { params = validateDatasetReadParams(payload); }
-    catch { return errorResponse("Unsupported queue read parameters.", 400, { code:"DATASET_READ_PARAMETERS_INVALID" }); }
+    catch { return retainedReadResponse("DATASET_READ_PARAMETERS_INVALID", { dataset }); }
     // Delegate to the existing actor-scoped read. No service-role table alias is introduced.
     let response: Response;
     if (dataset === "location_moves") response = await handleLocationWorkAction(session, { operation:"list", status:"active" });
@@ -1232,7 +1241,7 @@ async function handleDatasetRead(
     else {
       const rpc = supabase.rpc.bind(supabase) as unknown as BunchNoteRpc;
       const result = await rpc("bunch_note_workflow_command_v1", { p_actor_id:actor.id, p_operation:dataset === "count_review" ? "list_discrepancies" : "queue", p_payload:{ filter:"mine", offset:params.offset, limit:Math.min(params.limit, 100) } });
-      if (result.error) return databaseFailureResponse("Queue refresh is temporarily unavailable.", result.error, "DATASET_READ_UNAVAILABLE");
+      if (result.error) return retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset });
       response = jsonResponse({ ok:true, data:result.data });
     }
     if (!response.ok) return response;
@@ -1369,8 +1378,7 @@ async function handleDatasetRead(
     ]);
     const responseData = await readResponsePayload(response);
     if (!response.ok) {
-      if (dataset === "suspend_tag") return jsonResponse({ ok: true, data: { rows: [], total: 0, offset: parsed.offset, limit: parsed.limit, hasMore: false, retained: true, retryable: true } });
-      return databaseFailureResponse("Dataset read failed.", responseData, "DATASET_READ_UNAVAILABLE");
+      return retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset, offset: parsed.offset, limit: parsed.limit });
     }
     let sourceFreshness: ReturnType<typeof suspendSourceFreshnessFromRows> | undefined;
     if (sourceFreshnessResponse) {
@@ -1381,11 +1389,11 @@ async function handleDatasetRead(
       }
     }
     const checkedData = jsonValue(responseData);
-    if (!Array.isArray(checkedData) || checkedData.some((row) => !row || typeof row !== "object" || Array.isArray(row))) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
+    if (!Array.isArray(checkedData) || checkedData.some((row) => !row || typeof row !== "object" || Array.isArray(row))) return retainedReadResponse("DATASET_READ_INVALID_PAGE", { dataset, offset: parsed.offset, limit: parsed.limit });
     const data: Array<Record<string, Json | undefined>> = checkedData.map((row) => jsonObject(row));
     const range = response.headers.get("content-range") || "";
     const total = Number(range.match(/\/(\d+)$/)?.[1]);
-    if (!Number.isInteger(total) || total < 0) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
+    if (!Number.isInteger(total) || total < 0) return retainedReadResponse("DATASET_READ_INVALID_PAGE", { dataset, offset: parsed.offset, limit: parsed.limit });
     if (dataset === "suspend_tag") {
       const ids = data.map((row) => row.unique_id).filter((value): value is string => typeof value === "string");
       try {
@@ -1435,7 +1443,7 @@ async function handleDatasetRead(
       return errorResponse("Unsupported dataset filter or ordering.", 400, { code });
     }
     console.warn("DATASET_READ_UNAVAILABLE", dataset, code);
-    return errorResponse("Dataset refresh is temporarily unavailable. Retry to refresh the saved rows.", 503, { code:"DATASET_READ_UNAVAILABLE" });
+    return retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset, offset: parsed.offset, limit: parsed.limit });
   }
 }
 
@@ -1909,14 +1917,22 @@ async function resolveActiveSessionProfile(
 ) {
   const username = normalizeUsername(session?.username || session?.displayName || "");
   if (!username) throw new Error("profile_identity_required");
-  let query = supabase
+  const baseQuery = () => supabase
     .from("profiles")
     .select("id,username,display_name,role,disabled_at,locked_until,must_change_password");
-  query = session?.authUserId
-    ? query.eq("id", String(session.authUserId))
-    : query.eq("username", username);
-  const { data: profile, error } = await query.maybeSingle();
-  if (error) throw error;
+  let profile: Record<string, unknown> | null = null;
+  let profileError: unknown = null;
+  if (session?.authUserId) {
+    const byId = await baseQuery().eq("id", String(session.authUserId)).maybeSingle();
+    profile = byId.data as Record<string, unknown> | null;
+    profileError = byId.error;
+  }
+  if (!profile) {
+    const byUsername = await baseQuery().eq("username", username).maybeSingle();
+    profile = byUsername.data as Record<string, unknown> | null;
+    profileError = byUsername.error;
+  }
+  if (profileError && !profile) throw profileError;
   const lockedUntil = Date.parse(String(profile?.locked_until || ""));
   if (!profile?.id || profile.disabled_at || profile.must_change_password
     || (Number.isFinite(lockedUntil) && lockedUntil > Date.now())) {
@@ -2633,58 +2649,44 @@ async function handleHistoricalRequestsReadAction(
   }
   if (Object.keys(payload).some((key) => !["action", "query"].includes(key))
       || !payload.query || typeof payload.query !== "object" || Array.isArray(payload.query)) {
-    return errorResponse("Historical Requests query is invalid.", 400, { code: "HISTORICAL_REQUESTS_QUERY_INVALID" });
+    return retainedReadResponse("HISTORICAL_REQUESTS_QUERY_INVALID");
   }
   const query = payload.query as Record<string, unknown>;
   if (JSON.stringify(query).length > 4096) {
-    return errorResponse("Historical Requests query is invalid.", 400, { code: "HISTORICAL_REQUESTS_QUERY_INVALID" });
+    return retainedReadResponse("HISTORICAL_REQUESTS_QUERY_INVALID");
   }
   const actor = actorProfile || await resolveActiveSessionProfile(session);
   const actorId = String(actor.id || "").trim();
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId)
-      || String(session.authUserId || "").trim() !== actorId) {
-    return errorResponse("Sign in again.", 401, { code: "HISTORICAL_REQUESTS_AUTH_REQUIRED" });
-  }
-  const authorization = String(req.headers.get("authorization") || "").trim();
-  if (!/^Bearer\s+\S+$/i.test(authorization)) {
-    return errorResponse("Sign in again.", 401, { code: "HISTORICAL_REQUESTS_AUTH_REQUIRED" });
+      || (session.authUserId && String(session.authUserId).trim() !== actorId)) {
+    return retainedReadResponse("HISTORICAL_REQUESTS_PROFILE_PENDING");
   }
   try {
     const operation = String(query.operation || "");
-    const rpcName = operation.startsWith("archive-") ? "historical_archive_read_v2368" : "historical_requests_read_v2368";
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: authorization,
-        "Content-Type": "application/json",
-        "Cache-Control": "private, no-store",
-      },
-      body: JSON.stringify({ p_query: query }),
-      signal: AbortSignal.timeout(12000),
-    });
-    const text = await response.text();
-    let data: unknown = null;
-    try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-    if (!response.ok) {
-      const detail = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
-      const code = String(detail.code || detail.message || "HISTORICAL_REQUESTS_UNAVAILABLE").trim().toUpperCase();
-      const status = response.status === 401 ? 401
-        : response.status === 403 || code === "42501" || code.includes("FORBIDDEN") ? 403
-        : response.status >= 500 || code === "55000" ? 503 : 400;
-      return errorResponse(status === 503 ? "Historical Requests is refreshing. Previous data remains available." : "Historical Requests could not load.", status, { code });
+    const rpcName = operation.startsWith("archive-") ? "historical_archive_read_v2370" : "historical_requests_read_v2370";
+    const legacyRpcNames = ["historical_archive_read_v2368", "historical_requests_read_v2368"] as const;
+    let { data, error } = await supabase.rpc(rpcName as never, { p_actor_id: actorId, p_query: query } as never);
+    if (error?.code === "PGRST202") {
+      const legacyRpcName = operation.startsWith("archive-") ? legacyRpcNames[0] : legacyRpcNames[1];
+      const authorization = String(req.headers.get("authorization") || "").trim();
+      const authenticatedSupabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        global: { headers: { Authorization: authorization } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      ({ data, error } = await authenticatedSupabase.rpc(legacyRpcName as never, { p_query: query } as never));
     }
+    if (error) return retainedReadResponse("HISTORICAL_REQUESTS_UNAVAILABLE");
     if (!data || typeof data !== "object" || Array.isArray(data)) {
-      return errorResponse("Historical Requests returned an invalid response.", 503, { code: "HISTORICAL_REQUESTS_RESPONSE_INVALID" });
+      return retainedReadResponse("HISTORICAL_REQUESTS_RESPONSE_INVALID");
     }
     return jsonResponse({ ok: true, data });
   } catch {
-    return errorResponse("Historical Requests is temporarily unavailable. Previous data remains available.", 503, { code: "HISTORICAL_REQUESTS_UNAVAILABLE" });
+    return retainedReadResponse("HISTORICAL_REQUESTS_UNAVAILABLE");
   }
 }
 
 async function handleInventoryConsolidationAction(
-  req: Request,
+  _req: Request,
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
 ) {
@@ -2693,56 +2695,35 @@ async function handleInventoryConsolidationAction(
   }
   if (Object.keys(payload).some((key) => !["action", "query"].includes(key))
       || (payload.query !== undefined && (!payload.query || typeof payload.query !== "object" || Array.isArray(payload.query)))) {
-    return errorResponse("Inventory Consolidation query is invalid.", 400, { code: "INVENTORY_CONSOLIDATION_QUERY_INVALID" });
+    return retainedReadResponse("INVENTORY_CONSOLIDATION_QUERY_INVALID");
   }
   const query = payload.query && typeof payload.query === "object" ? payload.query as Record<string, unknown> : {};
   if (Object.keys(query).some((key) => !["block", "containerSize", "cropTier", "salesYearRule", "query"].includes(key))
       || JSON.stringify(query).length > 2048) {
-    return errorResponse("Inventory Consolidation query is invalid.", 400, { code: "INVENTORY_CONSOLIDATION_QUERY_INVALID" });
+    return retainedReadResponse("INVENTORY_CONSOLIDATION_QUERY_INVALID");
   }
   const actor = await resolveActiveSessionProfile(session).catch(() => null);
   const actorId = String(actor?.id || "").trim();
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId)
-      || String(session.authUserId || "").trim() !== actorId) {
-    return errorResponse("Sign in again.", 401, { code: "INVENTORY_CONSOLIDATION_AUTH_REQUIRED" });
-  }
-  const authorization = String(req.headers.get("authorization") || "").trim();
-  if (!/^Bearer\s+\S+$/i.test(authorization)) {
-    return errorResponse("Sign in again.", 401, { code: "INVENTORY_CONSOLIDATION_AUTH_REQUIRED" });
+      || (session.authUserId && String(session.authUserId).trim() !== actorId)) {
+    return retainedReadResponse("INVENTORY_CONSOLIDATION_PROFILE_PENDING");
   }
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/inventory_consolidation_suggestions_v1`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: authorization,
-        "Content-Type": "application/json",
-        "Cache-Control": "private, no-store",
-      },
-      body: JSON.stringify({ p_query: query }),
-      signal: AbortSignal.timeout(12000),
-    });
-    const text = await response.text();
-    let data: unknown = null;
-    try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-    if (!response.ok) {
-      const detail = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
-      const code = String(detail.code || detail.message || "INVENTORY_CONSOLIDATION_UNAVAILABLE").trim().toUpperCase();
-      const status = response.status === 401 ? 401
-        : response.status === 403 || code === "42501" || code.includes("FORBIDDEN") ? 403
-        : response.status >= 500 || code === "55000" ? 503 : 400;
-      return errorResponse(status === 503
-        ? "Inventory Consolidation is refreshing. Saved suggestions remain available."
-        : "Inventory Consolidation could not load.", status, { code });
+    let { data, error } = await supabase.rpc("inventory_consolidation_suggestions_v2370" as never, {
+      p_actor_id: actorId, p_query: query,
+    } as never);
+    if (error?.code === "PGRST202") {
+      ({ data, error } = await supabase.rpc("inventory_consolidation_suggestions_v1" as never, {
+        p_query: query,
+      } as never));
     }
+    if (error) return retainedReadResponse("INVENTORY_CONSOLIDATION_UNAVAILABLE");
     if (!data || typeof data !== "object" || Array.isArray(data)) {
-      return errorResponse("Inventory Consolidation returned an invalid response.", 503, { code: "INVENTORY_CONSOLIDATION_RESPONSE_INVALID" });
+      return retainedReadResponse("INVENTORY_CONSOLIDATION_RESPONSE_INVALID");
     }
     return jsonResponse({ ok: true, data });
   } catch {
-    return errorResponse("Inventory Consolidation is temporarily unavailable. Saved suggestions remain available.", 503, {
-      code: "INVENTORY_CONSOLIDATION_UNAVAILABLE",
-    });
+    return retainedReadResponse("INVENTORY_CONSOLIDATION_UNAVAILABLE");
   }
 }
 
@@ -5087,7 +5068,7 @@ async function handleInventoryRead(
   try {
     actor = await resolveActiveSessionProfile(session);
   } catch {
-    return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" });
+    return retainedReadResponse("INVENTORY_READ_PROFILE_PENDING");
   }
   const username = normalizeUsername(String(actor.username || ""));
   const role = String(session.role || "");
@@ -5324,7 +5305,7 @@ async function handleInventoryRead(
     if (/PAYLOAD_INVALID|PARAMETERS_INVALID|PAGE_INVALID|OPERATION_INVALID|FILTER_INVALID|FILTER_REQUIRED|PROJECTION_INVALID|SINCE_INVALID|TYPE_INVALID|VERIFICATION_INVALID|IDENTITY_BATCH_INVALID|IDENTITY_REVISION_INVALID|IDENTITY_QUEUE_INVALID/.test(message)) {
       return errorResponse("Invalid inventory read request.", 400, { code: message });
     }
-    return errorResponse("Inventory data is temporarily unavailable.", 503, { code: "INVENTORY_READ_FAILED", retryable: true });
+    return retainedReadResponse("INVENTORY_READ_FAILED");
   }
 }
 
@@ -6864,6 +6845,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const denied = message.startsWith("USER_ACCESS_FORBIDDEN:") || message === "USER_ACCESS_SHARED_READ_FORBIDDEN";
       const status = denied ? 403 : /profile_not_active|USER_ACCESS_PROFILE_REQUIRED|AUTH_REQUIRED/.test(message) ? 401 : 503;
       const code = denied ? "USER_ACCESS_FORBIDDEN" : status === 401 ? "ACTIVE_PROFILE_REQUIRED" : "USER_ACCESS_UNAVAILABLE";
+      if (["dataset_read", "inventory_read"].includes(action)) return retainedReadResponse(code);
       return errorResponse(denied ? "This feature is not enabled for your active profile." : "Access could not be verified. Retry when the service is available.", status, { code });
     }
   }

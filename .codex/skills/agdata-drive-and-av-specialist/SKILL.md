@@ -100,9 +100,18 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never let a delayed AV view reset erase a focused search that the user entered after the view became visible; explicit Reset/Home actions may clear it, background startup rendering may not.
+
+- Never make an exact AV itemcode search wait for a near-tail full-cohort page or a native-session header refresh; hydrate that bounded public-read item directly into the partial same-account view while complete keyset hydration continues in the background.
+
+- Never request `count=exact` or use deep offsets on wide `ph_master_inventory` pages; walk the indexed `unique_id` keyset until a short no-count terminal page and verify the ordered unique IDs before publishing.
+
+- Never let `avOpen` and `master` create duplicate live-sync adapters for the same full inventory cohort; canonicalize aliases before staging or concurrent wide reads can exhaust the PostgREST statement timeout and leave AV loading forever.
+
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never key durable photo/spec evidence only by physical UID or lot, overwrite it from a new DriveAround UID, use divergent thumbnail parsing, or display `Photo unavailable` when the canonical resolver returned a URL.
 - Never restore inline `localeCompare` location copies, reject a duplicate-location photo save with `403`/`404`/`409`, truncate complete exports, or replace known metrics with `--`.
 - Never repair escaped apostrophes only in rendered HTML; that leaves import hashes, Common Name groups, drill filters, Que, Bloom, and Eval #2 on divergent keys.
 - Never rank a Carry Over source against unrestricted destination years, expose mixed-tier source/destination locations, or trust stale client destination arrays without repeating the crop-tier guard.
+- Never prefetch Inventory Consolidation from Home, Drive, login, or Request; load it only after the foreground Inv Consolidation view opens and retain cached suggestions on actor-bound read failure.
