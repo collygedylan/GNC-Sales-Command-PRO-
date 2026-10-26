@@ -83,10 +83,13 @@ jobs:
         if: inputs.target == 'manual-drive'
         env:
           APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}
+          APPS_SCRIPT_CLASPRC_JSON: ${{ secrets.APPS_SCRIPT_CLASPRC_JSON }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           node --input-type=module <<'NODE'
+          import { google } from 'googleapis';
           import { createSignedAppsScriptActionEnvelope } from './scripts/apps-script-signing.mjs';
           const deploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
           const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
@@ -119,6 +122,33 @@ jobs:
           const result = { status: response.status, ok: response.ok && payload?.active === false && !payload?.errorCode,
             elapsedMs: Date.now() - started, runId: String(payload?.runId || ''), stage: String(payload?.currentStage || ''),
             errorCode: String(payload?.errorCode || '') };
+          if (!result.ok) {
+            const clasp = JSON.parse(String(process.env.APPS_SCRIPT_CLASPRC_JSON || '{}'));
+            const tokens = clasp.tokens && typeof clasp.tokens === 'object' ? clasp.tokens : {};
+            const token = clasp.token || (tokens.refresh_token ? tokens : Object.values(tokens).find(value => value?.refresh_token)) || {};
+            const settings = clasp.oauth2ClientSettings || clasp.oauth2Client || {};
+            const auth = new google.auth.OAuth2(settings.clientId || settings.client_id || token.client_id,
+              settings.clientSecret || settings.client_secret || token.client_secret,
+              settings.redirectUri || settings.redirect_uri || token.redirect_uri || 'http://localhost');
+            auth.setCredentials({ refresh_token: token.refresh_token, access_token: token.access_token,
+              token_type: token.token_type || 'Bearer', expiry_date: token.expiry_date });
+            try {
+              const execution = await google.script({ version: 'v1', auth }).scripts.run({
+                scriptId: String(process.env.APPS_SCRIPT_SCRIPT_ID || '').trim(),
+                requestBody: { function: 'runDriveAroundOnly', devMode: false }
+              });
+              const direct = execution.data?.response?.result || null;
+              result.direct = { done: execution.data?.done === true, filesProcessed: Number(direct?.filesProcessed || 0),
+                failedFiles: Number(direct?.failedFiles || 0), errorCode: String(direct?.errorCode || '') };
+              result.ok = result.direct.done && result.direct.filesProcessed > 0 && result.direct.failedFiles === 0;
+            } catch (error) {
+              const message = String(error?.response?.data?.error?.details?.[0]?.errorMessage || error?.message || '');
+              const sqlstate = /"code"\s*:\s*"([A-Z0-9]{5})"/i.exec(message)?.[1]?.toUpperCase() || '';
+              const safeCode = sqlstate ? `IMPORT_DATABASE_${sqlstate}`
+                : (/\b(MASTER_BULK_[A-Z0-9_]+)\b/.exec(message)?.[1] || 'APPS_SCRIPT_EXECUTION_FAILED');
+              result.direct = { done: false, filesProcessed: 0, failedFiles: 1, errorCode: safeCode };
+            }
+          }
           console.log(JSON.stringify(result));
           if (!result.ok) process.exitCode = 1;
           NODE
