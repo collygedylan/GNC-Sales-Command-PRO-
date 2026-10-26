@@ -1445,5 +1445,6 @@ test('Invariant 48 (Drive Failures Retain Structured Safe Codes)', () => {
   assert.match(failureCode, /\^MASTER_BULK_\[A-Z0-9_\]\+\$/);
   assert.match(failureCode, /Supabase RPC \[a-zA-Z0-9_\]\+ failed/);
   assert.match(failureCode, /IMPORT_DATABASE_/);
+  assert.match(failureCode, /masterBulkError\[1\]/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never collapse a structured master-bulk or SQLSTATE failure/);
 });

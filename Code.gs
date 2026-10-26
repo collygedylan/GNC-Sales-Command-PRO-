@@ -3007,7 +3007,8 @@ function getSafeImportFailureCode_(error) {
     const code = extractSupabaseErrorCode_(rpcError[1]);
     if (/^[A-Z0-9]{5}$/.test(code)) return 'IMPORT_DATABASE_' + code;
   }
-  if (/^MASTER_BULK_[A-Z0-9_]+$/.test(message)) return message;
+  const masterBulkError = /\b(MASTER_BULK_[A-Z0-9_]+)\b/.exec(message);
+  if (masterBulkError) return masterBulkError[1];
   if (/^(?:DATASET_IMPORT|SEASON_SALES_RECONCILIATION|EVAL_REPORT2_RECONCILIATION)_[A-Z0-9_]+$/.test(message)) return message;
   return 'MANUAL_SYNC_STAGE_FAILED';
 }
