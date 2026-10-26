@@ -1111,7 +1111,8 @@ test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => {
     'FAST_ERP_COMPLETE_SNAPSHOT_REQUIRED', 'runWarehouseAssignedOnly']) assert.ok(appsScript.includes(marker), marker);
   assert.match(appApi, /action === "fast_erp_ingest"[^]*FULL_ACCESS_USER_KEYS[^]*check_erp_file_sync_needed_v1[^]*rpcByDataset/);
   for (const marker of ['objectRows', 'latestSources', 'check_erp_file_sync_needed_v1',
-    'fast_ingest_drive_around_v1', 'FAST_LIVE_ERP_DATABASE_URL', 'Promise.all']) assert.ok(fastSync.includes(marker), marker);
+    'FAST_LIVE_BATCH_SIZE', 'shouldIncludeSocLiveRow', 'disable trigger user', "'--linked'", 'supabase.js']) assert.ok(fastSync.includes(marker), marker);
+  assert.doesNotMatch(fastSync, /FAST_LIVE_ERP_DATABASE_URL|GNC_SUPABASE_DB_URL|new Pool|from 'pg'/);
   assert.match(read('assets/app-runtime.js'), /type: 'manual_run'[^]*fast: true/);
 });
 
@@ -1328,7 +1329,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.73"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.75"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1353,9 +1354,9 @@ test('Invariant 41 (Canonical Version Mismatch Forces One-Time Newest-Shell Logi
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.73"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.75"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.73"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.75"[^]*app_version: appVersion/);
   assert.match(read('.codex/skills/agdata-zero-lockout-guard/SKILL.md'), /Never defer a confirmed canonical app-version mismatch/);
 });
 
@@ -1459,4 +1460,19 @@ test('Invariant 49 (Unified Fast Import Preserves Physical Orders, Metrics, Recl
   assert.match(read('Code.gs'), /tagVal[^]*qtyVal[^]*consVal/);
   assert.match(runtime, /normalizedKey === 'AV_NOTE'\) return sanitizeAvNoteWithoutSpecCaliper/);
   assert.match(read('assets/app-shell-style-05.css'), /\.photo-date-badge-host[^]*flex-direction: column[^]*\.photo-thumb-date \{[^]*position: static/);
+});
+
+test('Invariant 50 (Suspend Active View Renders Every Physical Line)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const migration = read('supabase/migrations/20261026210000_agdata_v2375_suspend_17_cards_and_fast_batch_sync.sql');
+  assert.match(runtime, /isSuspendTag \|\| requestType === 'suspend_tag' \|\| isDockSuspendDcRequestSource\(item\)/);
+  assert.match(runtime, /sourceRows\.length <= DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE/);
+  assert.match(runtime, /rows: filteredItems,[^]*footerMarkup: ''/);
+  assert.match(appApi, /table: "ph_active_suspend", permission: "ph_soc_master"/);
+  assert.match(migration, /ph_active_suspend with \(security_invoker=true\)[^]*'Pending'::text as status[^]*true as is_suspend_tag/);
+  const sync = read('scripts/fast-live-erp-sync.mjs');
+  assert.match(sync, /FAST_LIVE_BATCH_SIZE = 1000/);
+  assert.match(sync, /disable trigger user[^]*enable trigger user/);
+  assert.doesNotMatch(sync, /from 'pg'|GNC_SUPABASE_DB_URL|new Pool/);
 });

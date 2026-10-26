@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.74",
+  "release": "AgData v2.3.75",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -452,6 +452,9 @@
       "assets/app-runtime.js": [
         "renderRequest",
         "buildPendingRequestRenderPlan",
+        "isDockSuspendDcRequestMirrorRow",
+        "getSuspendTagRequestItems",
+        "buildSuspendTagRenderPlan",
         "buildReclassRecountLocationGroups",
         "buildOptimisticInventoryReclassMoveModel",
         "fetchDirectPostgrestReadPage"
@@ -489,7 +492,8 @@
         ],
         "scripts/apply-item-low-stock-migration.mjs": [
           "agdataV2369EmergencyRecoveryMigrationName",
-          "agdataV2370WatchdogRequestRecoveryMigrationName"
+          "agdataV2370WatchdogRequestRecoveryMigrationName",
+          "agdataV2375SuspendCardsFastBatchSyncMigrationName"
         ],
         "scripts/apps-script-function-patch.mjs": [
           "mergeRequestDeliveryWakeDispatch"
@@ -540,7 +544,10 @@
       ],
       "supportingFiles": {
         "scripts/fast-live-erp-sync.mjs": [
+          "shouldIncludeSocLiveRow",
           "prepareLiveRows",
+          "buildFastBatchSql",
+          "buildFastAtomicSwapSql",
           "runFastLiveErpSync"
         ],
         "supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql": [
@@ -558,6 +565,10 @@
         "supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql": [
           "bulk_import_master_snapshot_v1",
           "fast_ingest_drive_around_v1",
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
+        ],
+        "supabase/migrations/20261026210000_agdata_v2375_suspend_17_cards_and_fast_batch_sync.sql": [
           "ph_active_suspend",
           "ph_soc_suspend_tag_rows"
         ]

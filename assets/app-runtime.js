@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.74';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.75';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26567,7 +26567,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.74').trim() || 'AgData v2.3.74';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.75').trim() || 'AgData v2.3.75';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -110474,8 +110474,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (!item) return false;
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase();
             const requestSource = String(firstNonEmptyValue(item.REQUEST_SOURCE, item.request_source, '') || '').trim().toLowerCase();
+            const requestType = String(firstNonEmptyValue(item.REQUEST_TYPE, item.request_type, '') || '').trim().toLowerCase();
+            const isSuspendTag = item.IS_SUSPEND_TAG === true || item.is_suspend_tag === true
+                || ['true', '1', 'yes'].includes(String(firstNonEmptyValue(item.IS_SUSPEND_TAG, item.is_suspend_tag, '') || '').trim().toLowerCase());
             const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
-            return item.DOCK_SUSPEND_DC_REQUEST === true
+            return isSuspendTag || requestType === 'suspend_tag' || isDockSuspendDcRequestSource(item)
+                || item.DOCK_SUSPEND_DC_REQUEST === true
                 || String(item.DOCK_SUSPEND_DC_REQUEST || '').trim().toLowerCase() === 'true'
                 || (sourceTable === 'ph_soc_master' && requestSource === 'docks' && uniqueId.indexOf('dock_suspend_dc_') === 0);
         }
@@ -110920,6 +110924,22 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 && dockSuspendDcRequestMirrorRowsCacheOwner === owner
                 && Array.isArray(dockSuspendDcRequestMirrorRowsCache)) {
                 return dockSuspendDcRequestMirrorRowsCache.slice();
+            }
+            if (sourceRows.length <= DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE) {
+                const seen = new Set();
+                const rows = sourceRows.map(buildDockSuspendDcRequestMirrorRow).filter((row) => {
+                    const id = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                    if (!id || seen.has(id)) return false;
+                    seen.add(id);
+                    return true;
+                });
+                dockSuspendDcRequestMirrorRowsCacheKey = cacheKey;
+                dockSuspendDcRequestMirrorRowsCacheSource = sourceRows;
+                dockSuspendDcRequestMirrorRowsCacheOwner = owner;
+                dockSuspendDcRequestMirrorRowsCache = rows;
+                dockSuspendDcRequestMirrorRowsByIdCache = null;
+                dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+                return rows.slice();
             }
             const prior = dockSuspendDcRequestMirrorRowsPreparation;
             if (!prior || prior.sourceRows !== sourceRows || prior.revision !== cacheKey || prior.owner !== owner) {
@@ -111381,7 +111401,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 latestSourceWatermark.filename,
                 latestSourceWatermark.lastUpdated
             ]);
-            const plan = buildRequestPagedRenderPlan(`request:suspend-tag:${filterKey}`, 'Suspend Tag', filteredItems);
+            const mode = `request:suspend-tag:${filterKey}`;
+            const renderKey = buildRequestChunkRenderKey(mode, 'Suspend Tag', filteredItems);
+            const plan = {
+                empty: !filteredItems.length,
+                crumbText: 'Suspend Tag',
+                items: filteredItems,
+                rows: filteredItems,
+                pageIndex: 0,
+                renderKey,
+                renderSignature: `${renderKey}:all:${buildRequestBrowseMembershipKey(mode, filteredItems)}`,
+                footerMarkup: ''
+            };
             const planstartSignature = plan.rows.map((item) => {
                 const info = getDockSuspendDcRequestPlanstartInfo(item);
                 return [getItemUniqueId(item), info.value, info.tone, info.valid];

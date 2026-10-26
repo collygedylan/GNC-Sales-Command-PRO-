@@ -316,11 +316,12 @@ export async function xlsxValueRows(filePath) {
   const rows = [];
   for (const rowMatch of sheet.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/gi)) {
     const values = [];
-    for (const cell of rowMatch[1].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/gi)) {
+    for (const cell of rowMatch[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/gi)) {
       const reference = cell[1].match(/\br="([^"]+)"/i)?.[1];
       const type = cell[1].match(/\bt="([^"]+)"/i)?.[1];
-      const raw = cell[2].match(/<v\b[^>]*>([\s\S]*?)<\/v>/i)?.[1];
-      const inline = [...cell[2].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/gi)].map(match => match[1]).join('');
+      const content = cell[2] || '';
+      const raw = content.match(/<v\b[^>]*>([\s\S]*?)<\/v>/i)?.[1];
+      const inline = [...content.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/gi)].map(match => match[1]).join('');
       const value = type === 's' ? shared[Number(raw)] ?? '' : type === 'inlineStr' ? decodeXml(inline) : decodeXml(raw || inline || '');
       values[Math.max(0, columnIndex(reference))] = value;
     }
@@ -329,13 +330,17 @@ export async function xlsxValueRows(filePath) {
   return rows;
 }
 
-export async function* objectRows(filePath) {
+export async function* objectRows(filePath, options = {}) {
   const extension = path.extname(filePath).toLowerCase();
   const values = extension === '.csv' ? parseCsvRows(fs.createReadStream(filePath)) : await xlsxValueRows(filePath);
   let headers = null;
+  const requiredHeaders = (Array.isArray(options.requiredHeaders) ? options.requiredHeaders : [])
+    .map(normalizeHeader).filter(Boolean);
   for await (const row of values) {
     if (!headers) {
-      headers = row.map((value, index) => normalizeHeader(value) || `column${index + 1}`);
+      const candidates = row.map((value, index) => normalizeHeader(value) || `column${index + 1}`);
+      if (requiredHeaders.some(header => !candidates.includes(header))) continue;
+      headers = candidates;
       continue;
     }
     if (!row.some(value => String(value ?? '').trim())) continue;

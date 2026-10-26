@@ -1,19 +1,22 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { Pool } from 'pg';
-import { createDatabaseClientOptions } from './apply-item-low-stock-migration.mjs';
+import { promisify } from 'node:util';
 import { driveSources, hashFile, localSources, normalizeHeader, objectRows } from './fast-historical-archive-import.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const execFileAsync = promisify(execFile);
+export const FAST_LIVE_BATCH_SIZE = 1000;
 const datasets = new Set(['auto', 'drive_around', 'soc', 'reserves', 'cav', 'warehouse_assigned']);
 const contracts = {
-  drive_around: { table: 'ph_master_inventory', rpc: 'fast_ingest_drive_around_v1' },
-  soc: { table: 'ph_soc_master', rpc: 'fast_ingest_soc_orders_v1' },
-  reserves: { table: 'ph_reserves', rpc: 'fast_ingest_soc_reserves_v1' },
-  cav: { table: 'ph_cav_import', rpc: 'fast_ingest_cav_v1' },
-  warehouse_assigned: { table: 'ph_warehouse_assigned_items', rpc: 'fast_ingest_warehouse_assigned_v1' },
+  drive_around: { table: 'ph_master_inventory', preserve: ['date_completed','end_cap_folder','end_cap_qty','end_cap_level','pic_note','sales_note','av_note','photo_link','photo_name','dock_spec','dock_caliper','dock_note','dock_photo_link','dock_photo_name','flyer_cat','flyer_title','flyer_inst','flyer_assigned','flyer_notes','flyer_photo_link','flyer_photo_name','flyer_completed','initial_ptr','loc_match_qty','app_tab_assignment','ncr_approval_type','ncr_requested_by_username','ncr_requested_by_display','ncr_requested_by_email','ncr_requested_at','ncr_approval_message','hold_release_approved_at','hold_release_approved_by','hold_release_approved_by_display','hold_release_approved_holdstopbegindate','flyer_av_note','flyer_match','flyer_loc_match_qty','flyer_spec','flyer_caliper','flyer_pick','flyer_initial_ptr','eval_task_type','eval_task_status','eval_task_instructions','eval_task_assigned_by','eval_task_assigned_at','eval_task_completed_by','eval_task_completed_at','eval_task_recount_qty','eval_task_moved_up_qty','eval_task_hold_action','eval_task_hold_code','eval_task_hold_reason','eval_task_result_note','photo_url','photo_date','loc_match_pct','baseline_on_hand','initial_photo_match_qty','loc_photo_match','pick_note','photo_expires_at','photos','pick','assignedto','match','spec','caliper'] },
+  soc: { table: 'ph_soc_master', preserve: ['date_completed','assignedto','dock_photo_link','dock_photo_name','dock_spec','dock_caliper','dock_note','pic_note','sales_note','av_note','photo_link','photo_name','initial_ptr','loc_match_qty','app_tab_assignment','suspend_candidate_group','suspend_candidate_state','suspend_order_quantity','suspend_origin_uid','spec','caliper','match'] },
+  reserves: { table: 'ph_reserves', preserve: ['date_completed','assignedto','pic_note','sales_note','av_note','photo_link','photo_name','initial_ptr','loc_match_qty','app_tab_assignment','spec','caliper','match'] },
+  cav: { table: 'ph_cav_import', preserve: [] },
+  warehouse_assigned: { table: 'ph_warehouse_assigned_items', preserve: [] },
 };
 
 function fail(message) {
@@ -42,24 +45,6 @@ export function parseFastLiveArguments(argv) {
   return options;
 }
 
-function readEnvFile() {
-  const filePath = path.join(root, '.env');
-  if (!fs.existsSync(filePath)) return;
-  for (const line of fs.readFileSync(filePath, 'utf8').split(/\r?\n/)) {
-    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-    if (!match || process.env[match[1]] !== undefined) continue;
-    const raw = match[2].replace(/^(['"])(.*)\1$/, '$2');
-    process.env[match[1]] = raw;
-  }
-}
-
-function liveDatabaseUrl() {
-  const value = String(process.env.FAST_LIVE_ERP_DATABASE_URL || process.env.GNC_SUPABASE_DB_URL
-    || process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || '').trim();
-  if (!value) fail('FAST_LIVE_ERP_DATABASE_URL_MISSING');
-  return value;
-}
-
 export function inferLiveDataset(fileName) {
   const name = String(fileName || '').toLowerCase();
   if (/^~\$|^temp_/i.test(name)) return null;
@@ -83,6 +68,11 @@ function first(row, ...keys) {
     if (value !== null) return value;
   }
   return '';
+}
+
+export function shouldIncludeSocLiveRow(row) {
+  return first(row, 'dock') !== '' || first(row, 'suspend').toUpperCase() === 'SUSPEND'
+    && first(row, 'suspend-to', 'suspend_to', 'suspendto').toLowerCase() === 'dc';
 }
 
 function safeIdentity(parts) {
@@ -132,7 +122,10 @@ function cavAliases(row) {
 export async function prepareLiveRows(filePath, dataset, allowedColumns) {
   const rows = [];
   const identities = new Map();
-  for await (const source of objectRows(filePath)) {
+  for await (const source of objectRows(filePath, { requiredHeaders: ['itemcode'] })) {
+    if (dataset === 'soc') {
+      if (!shouldIncludeSocLiveRow(source)) continue;
+    }
     const normalized = {};
     for (const [key, value] of Object.entries(source)) {
       const target = normalizeHeader(key);
@@ -169,17 +162,113 @@ function latestSources(sources, selectedDataset) {
   return latest;
 }
 
-async function tableColumns(client, table) {
-  const result = await client.query(`select column_name from information_schema.columns
-    where table_schema='public' and table_name=$1 and is_generated='NEVER'
-    order by (position('_' in column_name)>0) desc,ordinal_position`, [table]);
-  const columns = new Map(result.rows.map(row => [normalizeHeader(row.column_name), row.column_name]));
-  columns.exact = new Set(result.rows.map(row => row.column_name));
+function quoteIdentifier(value) {
+  return `"${String(value).replaceAll('"', '""')}"`;
+}
+
+function quoteLiteral(value) {
+  return `'${String(value ?? '').replaceAll("'", "''")}'`;
+}
+
+function jsonDollarLiteral(value) {
+  const json = JSON.stringify(value);
+  let tag = '$rows$';
+  while (json.includes(tag)) tag = `$rows${tag.length}$`;
+  return `${tag}${json}${tag}`;
+}
+
+function parseLinkedRows(stdout) {
+  const text = String(stdout || '').trim();
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end < start) fail('FAST_LIVE_ERP_LINKED_QUERY_INVALID');
+  const payload = JSON.parse(text.slice(start, end + 1));
+  return Array.isArray(payload.rows) ? payload.rows : [];
+}
+
+async function runLinkedSql(sql, label) {
+  const directory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'agdata-fast-live-'));
+  const filePath = path.join(directory, `${String(label || 'query').replace(/[^a-z0-9_-]/gi, '-')}.sql`);
+  const startedAt = Date.now();
+  const progressFile = String(process.env.FAST_LIVE_PROGRESS_FILE || '').trim();
+  if (progressFile) fs.appendFileSync(progressFile, `START ${label} ${new Date().toISOString()}\n`);
+  try {
+    await fs.promises.writeFile(filePath, sql, 'utf8');
+    const argumentsList = ['db', 'query', '--linked', '--file', filePath];
+    const command = process.platform === 'win32'
+      ? process.execPath
+      : 'supabase';
+    const commandArguments = process.platform === 'win32'
+      ? [path.join(process.env.APPDATA || '', 'npm', 'node_modules', 'supabase', 'dist', 'supabase.js'), ...argumentsList]
+      : argumentsList;
+    const { stdout } = await execFileAsync(command, commandArguments, {
+      cwd: root, windowsHide: true, maxBuffer: 64 * 1024 * 1024,
+      env: { ...process.env, SUPABASE_TELEMETRY_ENABLED: 'false' }
+    });
+    const rows = parseLinkedRows(stdout);
+    process.stderr.write(`FAST_LIVE_SQL ${label} ${Date.now() - startedAt}ms\n`);
+    if (progressFile) fs.appendFileSync(progressFile, `DONE ${label} ${Date.now() - startedAt}ms\n`);
+    return rows;
+  } catch (error) {
+    if (progressFile) fs.appendFileSync(progressFile, `FAIL ${label} ${Date.now() - startedAt}ms ${String(error?.message || error).split('\n')[0]}\n`);
+    throw error;
+  } finally {
+    await fs.promises.rm(directory, { recursive: true, force: true });
+  }
+}
+
+function resultObject(rows) {
+  const value = rows?.[0]?.result;
+  if (value && typeof value === 'object') return value;
+  if (typeof value === 'string') return JSON.parse(value);
+  return {};
+}
+
+async function tableColumns(table) {
+  const rows = await runLinkedSql(`select json_build_object('columns',coalesce(json_agg(column_name order by ordinal_position),'[]'::json))::text result
+from information_schema.columns where table_schema='public' and table_name=${quoteLiteral(table)} and is_generated='NEVER';\n`, `${table}-columns`);
+  const names = resultObject(rows).columns || [];
+  const columns = new Map(names.map(column => [normalizeHeader(column), column]));
+  columns.exact = new Set(names);
   return columns;
 }
 
+export function buildFastBatchSql(stageTable, rows, columns) {
+  const identifiers = columns.map(quoteIdentifier).join(',');
+  return `begin; set local statement_timeout='45s';\ninsert into public.${quoteIdentifier(stageTable)} (${identifiers})\nselect ${identifiers} from jsonb_populate_recordset(null::public.${quoteIdentifier(stageTable)},${jsonDollarLiteral(rows)}::jsonb);\ncommit;\n`;
+}
+
+export function buildFastAtomicSwapSql({ dataset, contract, stageTable, mergedTable, rowCount, columns, usedColumns, meta }) {
+  const identifiers = columns.map(quoteIdentifier).join(',');
+  const preserve = new Set(contract.preserve.filter(column => columns.includes(column)));
+  const expressions = columns.map(column => preserve.has(column)
+    ? `coalesce(live.${quoteIdentifier(column)},stage.${quoteIdentifier(column)})`
+    : `stage.${quoteIdentifier(column)}`).join(',');
+  const metadata = jsonDollarLiteral(meta);
+  return `begin;
+set local statement_timeout='110s'; set local lock_timeout='10s';
+do $validate$ begin
+  if (select count(*) from public.${quoteIdentifier(stageTable)})<>${rowCount} then raise exception 'FAST_LIVE_STAGE_COUNT_MISMATCH'; end if;
+  if (select count(distinct unique_id) from public.${quoteIdentifier(stageTable)})<>${rowCount} then raise exception 'FAST_LIVE_STAGE_IDENTITY_MISMATCH'; end if;
+end $validate$;
+create temp table ${quoteIdentifier(mergedTable)} (like public.${quoteIdentifier(contract.table)} including defaults) on commit drop;
+insert into ${quoteIdentifier(mergedTable)} (${identifiers})
+select ${expressions} from public.${quoteIdentifier(stageTable)} stage
+left join public.${quoteIdentifier(contract.table)} live on live.unique_id=stage.unique_id;
+alter table public.${quoteIdentifier(contract.table)} disable trigger user;
+truncate table public.${quoteIdentifier(contract.table)};
+insert into public.${quoteIdentifier(contract.table)} (${identifiers}) select ${identifiers} from ${quoteIdentifier(mergedTable)};
+alter table public.${quoteIdentifier(contract.table)} enable trigger user;
+update public.app_dataset_revisions set revision=revision+1,changed_at=clock_timestamp(),state='ready',
+  source_file_id=(${metadata}::jsonb)->>'file_id',source_file_name=(${metadata}::jsonb)->>'file_name',source_import_run_id=gen_random_uuid(),
+  source_imported_at=clock_timestamp(),source_modified_at=((${metadata}::jsonb)->>'modified_at')::timestamptz,source_content_hash=(${metadata}::jsonb)->>'content_hash'
+where key=${quoteLiteral(contract.table)};
+drop table public.${quoteIdentifier(stageTable)};
+commit;
+select json_build_object('dataset',${quoteLiteral(dataset)},'rows',(select count(*) from public.${quoteIdentifier(contract.table)}),'batches',${Math.ceil(rowCount / FAST_LIVE_BATCH_SIZE)},'used_columns',${usedColumns.length})::text result;\n`;
+}
+
 export async function runFastLiveErpSync(options) {
-  readEnvFile();
   const bundle = await sourceBundle(options);
   const selected = latestSources(bundle.sources, options.dataset);
   if (!selected.size) fail('FAST_LIVE_ERP_SOURCE_NOT_FOUND');
@@ -190,54 +279,49 @@ export async function runFastLiveErpSync(options) {
     return { ok: true, execute: false, sources: preview };
   }
   const entries = [...selected];
-  const pool = new Pool({ ...createDatabaseClientOptions(liveDatabaseUrl()), max: Math.min(entries.length, 5) });
   try {
-    const output = await Promise.all(entries.map(async ([dataset, source]) => {
+    const output = [];
+    for (const [dataset, source] of entries) {
       const contract = contracts[dataset];
       try {
         const contentHash = await hashFile(source.filePath);
         const meta = { file_id: source.fileId || contentHash, file_name: source.fileName,
           modified_at: source.modifiedTime || new Date().toISOString(), content_hash: contentHash };
-        let columns;
-        const checkClient = await pool.connect();
-        try {
-          await checkClient.query('begin');
-          await checkClient.query("select set_config('request.jwt.claim.role','service_role',true)");
-          const check = await checkClient.query('select public.check_erp_file_sync_needed_v1($1,$2,$3,$4,$5) result',
-            [dataset, meta.file_id, meta.file_name, meta.modified_at, meta.content_hash]);
-          if (check.rows[0].result.skip) {
-            await checkClient.query('commit');
-            return { dataset, fileName: source.fileName, ...check.rows[0].result };
-          }
-          columns = await tableColumns(checkClient, contract.table);
-          await checkClient.query('commit');
-        } catch (error) {
-          await checkClient.query('rollback');
-          throw error;
-        } finally {
-          checkClient.release();
-        }
+        const columns = await tableColumns(contract.table);
         const rows = await prepareLiveRows(source.filePath, dataset, columns);
-        const ingestClient = await pool.connect();
+        const checkRows = await runLinkedSql(`select set_config('request.jwt.claim.role','service_role',false);
+select json_build_object(
+  'sync',public.check_erp_file_sync_needed_v1(${quoteLiteral(dataset)},${quoteLiteral(meta.file_id)},${quoteLiteral(meta.file_name)},${quoteLiteral(meta.modified_at)},${quoteLiteral(meta.content_hash)}),
+  'row_count',(select count(*) from public.${quoteIdentifier(contract.table)}))::text result;\n`, `${dataset}-check`);
+        const checkResult = resultObject(checkRows);
+        const check = checkResult.sync || {};
+        if (check.skip && Number(checkResult.row_count) === rows.length) {
+          output.push({ dataset, fileName: source.fileName, ...check, rowCount: rows.length });
+          continue;
+        }
+        const allColumns = [...columns.exact];
+        const usedColumns = allColumns.filter(column => rows.some(row => Object.hasOwn(row, column)));
+        const suffix = createHash('sha256').update(`${dataset}:${meta.content_hash}:${process.pid}`).digest('hex').slice(0, 12);
+        const stageTable = `_fast_live_${dataset}_${suffix}`;
+        const mergedTable = `_fast_live_merged_${suffix}`;
         try {
-          await ingestClient.query('begin');
-          await ingestClient.query("select set_config('request.jwt.claim.role','service_role',true)");
-          const result = await ingestClient.query(`select public.${contract.rpc}($1::jsonb,$2::jsonb) result`, [meta, rows]);
-          await ingestClient.query('commit');
-          return { dataset, fileName: source.fileName, ...result.rows[0].result };
+          await runLinkedSql(`drop table if exists public.${quoteIdentifier(stageTable)};\ncreate unlogged table public.${quoteIdentifier(stageTable)} (like public.${quoteIdentifier(contract.table)} including defaults);\nrevoke all on public.${quoteIdentifier(stageTable)} from public,anon,authenticated;\n`, `${dataset}-stage`);
+          for (let offset = 0; offset < rows.length; offset += FAST_LIVE_BATCH_SIZE) {
+            await runLinkedSql(buildFastBatchSql(stageTable, rows.slice(offset, offset + FAST_LIVE_BATCH_SIZE), usedColumns), `${dataset}-batch-${offset / FAST_LIVE_BATCH_SIZE + 1}`);
+          }
+          const result = resultObject(await runLinkedSql(buildFastAtomicSwapSql({ dataset, contract, stageTable, mergedTable,
+            rowCount: rows.length, columns: allColumns, usedColumns, meta }), `${dataset}-swap`));
+          output.push({ dataset, fileName: source.fileName, ...result });
         } catch (error) {
-          await ingestClient.query('rollback');
+          await runLinkedSql(`drop table if exists public.${quoteIdentifier(stageTable)};\n`, `${dataset}-cleanup`).catch(() => {});
           throw error;
-        } finally {
-          ingestClient.release();
         }
       } finally {
         await source.cleanup();
       }
-    }));
+    }
     return { ok: true, execute: true, results: output };
   } finally {
-    await pool.end();
     await bundle.cleanup();
   }
 }
