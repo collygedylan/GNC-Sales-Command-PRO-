@@ -212,14 +212,16 @@ function buildPushPayload(event: JsonRecord, rows: JsonRecord[]) {
   const payload = event.payload && typeof event.payload === "object" ? event.payload as JsonRecord : {};
   const first = rows[0] || {};
   const eventType = String(event.event_type || "");
+  const repName = String(first.sales_rep || first.request_selected_rep_display || first.requested_by || "");
   return {
     eventType: eventType === "request_created" ? "new_request"
       : eventType === "request_completed" ? "request_complete" : eventType,
     folderId: String(event.request_folder || first.request_folder || ""),
-    repName: String(first.requested_by || ""),
-    requestedBy: String(first.requested_by || ""),
+    repName,
+    requestedBy: repName,
     requestedByUsername: String(first.request_selected_rep_username || first.requested_by || "")
       .trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+    submittedBy: String(first.submitted_by || first.request_created_by_display || first.request_created_by_username || ""),
     customer: String(first.req_customer || ""),
     itemsCount: rows.length,
     requestIds: rows.map((row) => String(row.unique_id || "")).filter(Boolean),

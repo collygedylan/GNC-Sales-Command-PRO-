@@ -77,7 +77,7 @@ test('Reclass API errors are sanitized and route registration remains in the app
   assert.deepEqual(inventoryReclassMoveError({ code: '40001', message: 'INVENTORY_RECLASS_SOURCE_CHANGED', details: 'sensitive SQL' }), {
     status: 409,
     body: { ok: false, code: 'INVENTORY_RECLASS_SOURCE_CHANGED',
-      message: 'Inventory identity changed before this move could be confirmed. Your draft is retained.' },
+      message: 'The physical inventory row could not be confirmed. Your draft is retained for retry.' },
   });
   assert.equal(inventoryReclassMoveError({ code: '40001', message: 'INVENTORY_RECLASS_DESTINATION_SEASON_MISMATCH' }).status, 409);
   assert.equal(inventoryReclassMoveError({ message: 'secret database detail' }).body.code, 'INVENTORY_RECLASS_UNAVAILABLE');

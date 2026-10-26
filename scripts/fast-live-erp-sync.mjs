@@ -91,9 +91,10 @@ function safeIdentity(parts) {
 
 function fallbackIdentity(dataset, row) {
   if (dataset === 'soc') return safeIdentity([
-    first(row, 'dock'), first(row, 'transactionnumber'), first(row, 'customername'), first(row, 'consigneename'),
-    first(row, 'stopnumber'), first(row, 'itemcode'), first(row, 'contsize', 'printedcontainercode'),
-    first(row, 'locationcode'), first(row, 'lotcode'), first(row, 'source'), first(row, 'priority'), first(row, 'desigitem'),
+    first(row, 'dock'), first(row, 'transactionnumber'), first(row, 'tagcode'), first(row, 'stopnumber'),
+    first(row, 'itemcode'), first(row, 'locationcode'), first(row, 'lotcode'),
+    first(row, 'quantityshipped', 'quantityordered'), first(row, 'consigneename'), first(row, 'customername'),
+    first(row, 'contsize', 'printedcontainercode'), first(row, 'source'), first(row, 'priority'), first(row, 'desigitem'),
   ]);
   if (dataset === 'reserves') return safeIdentity([
     first(row, 'transactionnumber'), first(row, 'customername'), first(row, 'consigneename'), first(row, 'salesrepname'),

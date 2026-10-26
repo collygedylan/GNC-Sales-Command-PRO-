@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.73';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.74';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10332,6 +10332,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (normalizedKey === 'PICK' || normalizedKey === 'PIC_NOTE' || normalizedKey === 'PICKNOTE') {
                 return getCorrectedPickNoteValue(item, value, { includeStandard: false });
             }
+            if (normalizedKey === 'AV_NOTE') return sanitizeAvNoteWithoutSpecCaliper(value);
             return value;
         }
 
@@ -26566,7 +26567,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.73').trim() || 'AgData v2.3.73';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.74').trim() || 'AgData v2.3.74';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -145331,7 +145332,7 @@ C.14.043 C.15.000
             const falseBlock = isSuspendTagCard && String(item.LOCATIONCODE || item.locationcode || '') === '0.00.111';
             const zeroMetrics = falseBlock ? { PTRONHAND:0, PTRREVIEWED:0, PTRAVAILABLE:0, S_LTS:0, LOC_ON_HAND:0, LOC_MATCH_QTY:0 } : {};
             const sourceMetrics = { ...zeroMetrics, ...(displayRow || {}), ...(suspendMetrics || {}) };
-            const metricRow = sourceView === 'request' && !isSuspendTagCard ? normalizeRequestCardMetrics(sourceMetrics) : sourceMetrics;
+            const metricRow = sourceView === 'request' ? normalizeRequestCardMetrics(sourceMetrics) : sourceMetrics;
             if (item.ITEMCODE || item.itemcode) metricRow.ITEMCODE = item.ITEMCODE || item.itemcode;
             if (item.LOCATIONCODE || item.locationcode) metricRow.LOCATIONCODE = item.LOCATIONCODE || item.locationcode;
             // These quantities and photo observations belong to the verified

@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.73",
+  "version": "2.3.74",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -180,6 +180,7 @@
     "getFastLiveIngestRows_",
     "processFastLiveFile_",
     "runRoutedDropImport_",
+    "buildRequestDeliveryEmailPayload_",
     "runSOCOnly",
     "runDriveAroundOnly",
     "runWarehouseAssignedOnly",

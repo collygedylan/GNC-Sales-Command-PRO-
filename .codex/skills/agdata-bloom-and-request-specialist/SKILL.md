@@ -95,3 +95,4 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 - Never infer completion from age, a terminal-looking status/date alone, or history membership; never delete a pending history snapshot or suppress an active request because the same ID exists in history.
 - Never merge different request IDs in sales-impact reporting, bypass the navigation permission gate, or persist the analytics-only default quantity of `25` back to a Request source.
 - Never derive `Sales Rep` from `requested_by` before the selected-rep fields or derive `Submitted By` from the selected rep; these are separate durable identities on every request row and delivery payload.
+- Never overwrite the submitter with the selected sales rep or omit either address from submitted/completed delivery; greeting and `requested_by` follow the rep while `submitted_by` remains the actor.

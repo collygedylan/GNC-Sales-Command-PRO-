@@ -99,13 +99,14 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 - Never collapse a structured master-bulk or SQLSTATE failure into `MANUAL_SYNC_STAGE_FAILED`; retain the bounded code without exposing database details or source rows.
 
-- Never send a complete Drive snapshot through one Apps Script HTTP request when the guarded publication exceeds the URL Fetch ceiling; use the canonical resumable 2,000-row staging publisher.
+- Never send a complete Drive snapshot through a per-row-triggered Apps Script publication; use trigger-suppressed fast ingest, retaining resumable staging as the failure-recovery path.
 
 - Never give the outer Drive fast-ingest RPC a shorter timeout than the measured guarded master snapshot publication, and never exclude Drive from resumable Excel extraction checkpoints.
 
 - Never retain orphaned `TEMP_IMPORT_*` or `~$*` files during live drop-folder scans, and never run per-row historical dedup locks while publishing a complete Drive archive snapshot.
 
 - Never let Apps Script import or delivery code fall back to an anon/publishable Supabase key; reconcile and store a validated service-role secret instead of widening browser-role mutations.
+- Never leave USER triggers disabled after a bulk ingest exception; every trigger-suppressed wrapper must restore them before returning or rethrowing.
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 

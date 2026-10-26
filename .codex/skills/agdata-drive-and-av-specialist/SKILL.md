@@ -117,3 +117,4 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 - Never repair escaped apostrophes only in rendered HTML; that leaves import hashes, Common Name groups, drill filters, Que, Bloom, and Eval #2 on divergent keys.
 - Never rank a Carry Over source against unrestricted destination years, expose mixed-tier source/destination locations, or trust stale client destination arrays without repeating the crop-tier guard.
 - Never prefetch Inventory Consolidation from Home, Drive, login, or Request; load it only after the foreground Inv Consolidation view opens and retain cached suggestions on actor-bound read failure.
+- Never render a photo date as an absolute thumbnail overlay or expose SPEC/CALIPER-only fragments through cards, persisted AV notes, or lifecycle emails.

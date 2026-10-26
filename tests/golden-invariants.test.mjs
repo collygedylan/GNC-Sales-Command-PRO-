@@ -1387,7 +1387,7 @@ test('Invariant 43 (Request, Suspend, Reclass, Import, Outbox, and AV Boundaries
   assert.match(migration, /lower\(btrim\(coalesce\(pending\.req_status, 'Pending'\)\)\) in \('', 'pending', 'open'\)/);
   assert.match(migration, /RECLASS_STALE_QUANTITY_GUARD_NOT_FOUND/);
   assert.match(reclass, /insert into public\.ph_master_inventory/);
-  assert.match(read('supabase/functions/_shared/production-workflow.ts'), /Inventory identity changed before this move could be confirmed\. Your draft is retained\./);
+  assert.doesNotMatch(read('supabase/functions/_shared/production-workflow.ts'), /Inventory identity changed before this move could be confirmed/);
   assert.match(read('.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md'), /Never repair a missing worker credential by granting anonymous operational writes/);
 });
 
@@ -1430,14 +1430,13 @@ test('Invariant 46 (Drive Fast Ingest Outlives Its Guarded Snapshot Publication)
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never give the outer Drive fast-ingest RPC a shorter timeout/);
 });
 
-test('Invariant 47 (Drive Publication Uses Resumable Bounded Chunks)', () => {
+test('Invariant 47 (Drive Publication Uses Trigger-Suppressed Fast Ingest)', () => {
   const code = read('Code.gs');
   const routedImport = functionSource('Code.gs', 'runRoutedDropImport_');
-  assert.match(routedImport, /dataset === 'drive'[^]*processSnapshotBatchFolderLocked_/);
-  assert.match(routedImport, /historyDataset: dataset[^]*historyFileId: String\(sourceFile\.getId\(\) \|\| ''\)/);
-  assert.doesNotMatch(routedImport, /processFastLiveFile_\(dataset, route, dataset === 'drive'/);
-  assert.match(code, /chunkSize: 2000/);
-  assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never send a complete Drive snapshot through one Apps Script HTTP request/);
+  assert.match(routedImport, /processFastLiveFile_\(dataset, route, files, dataset === 'drive' \? buildMasterPayload : buildStandardPayload\)/);
+  assert.doesNotMatch(routedImport, /processSnapshotBatchFolderLocked_/);
+  assert.match(read('supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql'), /disable trigger user[^]*enable trigger user/);
+  assert.match(code, /MANUAL_SYNC_EXECUTION_BUDGET_MS = 330000/);
 });
 
 test('Invariant 48 (Drive Failures Retain Structured Safe Codes)', () => {
@@ -1448,4 +1447,16 @@ test('Invariant 48 (Drive Failures Retain Structured Safe Codes)', () => {
   assert.match(failureCode, /masterBulkError\[1\]/);
   assert.match(functionSource('Code.gs', 'processSnapshotBatchFolderLocked_'), /MANUAL_SYNC_' \+ String\(failurePhase \|\| 'stage'\)\.toUpperCase\(\) \+ '_FAILED'/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never collapse a structured master-bulk or SQLSTATE failure/);
+});
+
+test('Invariant 49 (Unified Fast Import Preserves Physical Orders, Metrics, Reclass, and Email Actors)', () => {
+  const migration = read('supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql');
+  const runtime = read('assets/app-runtime.js');
+  assert.match(migration, /ph_soc_suspend_tag_rows with \(security_invoker=true\)/);
+  assert.match(migration, /sum\(coalesce\(private\.request_numeric_v2362\(master\.ptravailable\),0\)\) open_stock/);
+  assert.match(migration, /repaired like '%INVENTORY_RECLASS_REVISION_CONFLICT%'/);
+  assert.match(migration, /new\.requested_by:=coalesce\(selected_rep,new\.requested_by\)/);
+  assert.match(read('Code.gs'), /tagVal[^]*qtyVal[^]*consVal/);
+  assert.match(runtime, /normalizedKey === 'AV_NOTE'\) return sanitizeAvNoteWithoutSpecCaliper/);
+  assert.match(read('assets/app-shell-style-05.css'), /\.photo-date-badge-host[^]*flex-direction: column[^]*\.photo-thumb-date \{[^]*position: static/);
 });

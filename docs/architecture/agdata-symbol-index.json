@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.73",
+  "release": "AgData v2.3.74",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -354,6 +354,9 @@
           "historical_requests_read_v2370",
           "historical_archive_read_v2370",
           "sync_request_actor_fields_v2370"
+        ],
+        "supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql": [
+          "sync_request_actor_fields_v2370"
         ]
       }
     },
@@ -551,6 +554,12 @@
         "supabase/migrations/20261026140000_agdata_v2369_emergency_recovery.sql": [
           "claim_request_delivery_events",
           "safe_parse_timestamptz"
+        ],
+        "supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql": [
+          "bulk_import_master_snapshot_v1",
+          "fast_ingest_drive_around_v1",
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
         ]
       }
     },

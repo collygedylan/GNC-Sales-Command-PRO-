@@ -1749,12 +1749,7 @@ function runRoutedDropImport_(dataset) {
       }).map(function(file) { return { file: file, identity: getImportSourceIdentity_(file, route.tableName) }; }) : [];
     if (!sourceFile && !superseded.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' };
     const result = !sourceFile ? { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' }
-      : dataset === 'drive'
-        ? processSnapshotBatchFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildMasterPayload, {
-          historyDataset: dataset,
-          historyFileId: String(sourceFile.getId() || '')
-        })
-        : processFastLiveFile_(dataset, route, files, buildStandardPayload);
+      : processFastLiveFile_(dataset, route, files, dataset === 'drive' ? buildMasterPayload : buildStandardPayload);
     if (!result.failedFiles && !result.fatalFailure && (result.filesProcessed > 0 || result.code === 'UP_TO_DATE' || !sourceFile)) {
       if (sourceFile) saveManualSyncLiveSourceWatermark_(dataset, sourceWatermark);
       if (superseded.length) {
@@ -2305,8 +2300,8 @@ function isSiteSplitPhysicalTable_(tableName) {
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
 const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'cav', 'pikes_orders', 'stine_lumber_orders', 'customer_rep_map', 'warehouse_assigned_items', 'transactions_keyed', 'hl_po_parsed']);
-const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
-const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
+const MANUAL_SYNC_EXECUTION_BUDGET_MS = 330000;
+const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 300000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
 const MANUAL_SYNC_ACTIVE_STALE_MS = 12 * 60 * 1000;
 const MANUAL_SYNC_STAGE_WATCHDOG_MS_ = 4 * 60 * 1000;
@@ -8352,7 +8347,8 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
   let cIdx = getIdx('CONTSIZE');
   if (cIdx === -1) cIdx = getIdx('PRINTEDCONTAINERCODE');
 
-  let transIdx = getIdx('TRANSACTIONNUMBER');
+  let transIdx = getIdx('TRANSACTIONNUMBER'), tagIdx = getIdx('TAGCODE');
+  let qtyShippedIdx = getIdx('QUANTITYSHIPPED'), qtyOrderedIdx = getIdx('QUANTITYORDERED');
   let locIdx = getIdx('LOCATIONCODE'), lotIdx = getIdx('LOTCODE'), priIdx = getIdx('PRIORITY');
   let srcIdx = getIdx('SOURCE'), dItemIdx = getIdx('DESIGITEM');
   let reserveStableIdIdx = logicalTable === 'ph_reserves' ? findReserveStableRowIdIndex_(cleanHeaders) : -1;
@@ -8376,6 +8372,9 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
     let stopVal = stopIdx > -1 ? String(row[stopIdx] || '').trim() : '';
     let repVal = repIdx > -1 ? String(row[repIdx] || '').trim() : '';
     let transVal = transIdx > -1 ? String(row[transIdx] || '').trim() : '';
+    let tagVal = tagIdx > -1 ? String(row[tagIdx] || '').trim() : '';
+    let qtyVal = qtyShippedIdx > -1 ? String(row[qtyShippedIdx] || '').trim()
+      : qtyOrderedIdx > -1 ? String(row[qtyOrderedIdx] || '').trim() : '';
     let locVal = locIdx > -1 ? String(row[locIdx] || '').trim() : '';
     let lotVal = lotIdx > -1 ? String(row[lotIdx] || '').trim() : '';
     let priVal = priIdx > -1 ? String(row[priIdx] || '').trim() : '';
@@ -8388,7 +8387,7 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
     if (!uniqueId) {
       let baseId = logicalTable === 'ph_reserves'
         ? `${transVal}-${custVal}-${consVal}-${repVal}-${itemCodeVal}-${contSizeVal}-${locVal}-${lotVal}-${srcVal}-${priVal}-${dItemVal}`
-        : `${dockVal}-${transVal}-${custVal}-${consVal}-${stopVal}-${itemCodeVal}-${contSizeVal}-${locVal}-${lotVal}-${srcVal}-${priVal}-${dItemVal}`;
+        : `${dockVal}-${transVal}-${tagVal}-${stopVal}-${itemCodeVal}-${locVal}-${lotVal}-${qtyVal}-${consVal}-${custVal}-${contSizeVal}-${srcVal}-${priVal}-${dItemVal}`;
       let cleanId = baseId.replace(/[^a-zA-Z0-9-]/g, '_');
       if (idTracker[cleanId] === undefined) idTracker[cleanId] = 0; else idTracker[cleanId]++;
       uniqueId = cleanId;
@@ -20415,21 +20414,32 @@ function buildRequestDeliveryEmailPayload_(eventRow, rows) {
   const requestCreatedByDisplay = String(firstRow.request_created_by_display || '');
   const requestCreatedByEmail = String(firstRow.request_created_by_email || '');
   const deliveryPayload = eventRow && eventRow.payload && typeof eventRow.payload === 'object' ? eventRow.payload : {};
+  const safeRows = (Array.isArray(rows) ? rows : []).map(function(row) {
+    const next = Object.assign({}, row || {});
+    const clean = String(next.av_note || next.AV_NOTE || '').split(/\s*\/\s*/).filter(function(part) {
+      return part && !/(^|[^a-z])(spec|caliper|cal)([^a-z]|$)/i.test(part)
+        && !/^\s*\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?\s*(?:["']|in(?:ches?)?)?\s*(?:h|w|t|height|width|tall)?(?:\s*x\s*\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?\s*(?:["']|in(?:ches?)?)?\s*(?:h|w|t|height|width|tall)?)?\s*$/i.test(part);
+    }).join(' / ').trim();
+    next.av_note = clean;
+    next.AV_NOTE = clean;
+    return next;
+  });
+  const repName = String(firstRow.sales_rep || firstRow.request_selected_rep_display || firstRow.requested_by || '');
   const updatedCompletion = eventType === 'request_completed' && deliveryPayload.updatedCompletion === true;
   return {
     type: 'email',
     emailType: eventType === 'request_completed' ? 'request_complete' : 'new_request',
     folderId: String(eventRow && eventRow.request_folder || firstRow.request_folder || ''),
     requestFolder: String(eventRow && eventRow.request_folder || firstRow.request_folder || ''),
-    repName: String(firstRow.requested_by || ''),
-    requestedBy: String(firstRow.requested_by || ''),
+    repName: repName,
+    requestedBy: repName,
     customer: String(firstRow.req_customer || ''),
     customerName: String(firstRow.customername || firstRow.customerName || ''),
     consigneeName: String(firstRow.consigneename || firstRow.consigneeName || ''),
-    itemsCount: Array.isArray(rows) ? rows.length : 0,
-    requestItems: Array.isArray(rows) ? rows : [],
-    items: Array.isArray(rows) ? rows : [],
-    requestIds: Array.isArray(rows) ? rows.map(function(row) { return row.unique_id; }).filter(Boolean) : [],
+    itemsCount: safeRows.length,
+    requestItems: safeRows,
+    items: safeRows,
+    requestIds: safeRows.map(function(row) { return row.unique_id; }).filter(Boolean),
     requestCreatedByUsername: requestCreatedByUsername,
     requestCreatedByDisplay: requestCreatedByDisplay,
     requestCreatedByEmail: requestCreatedByEmail,

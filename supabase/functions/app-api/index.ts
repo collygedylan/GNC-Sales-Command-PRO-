@@ -1170,6 +1170,7 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
   const metric = (keys: string[], fallbackKeys: string[] = keys) => sumSuspendTagMetric(selectedRows, keys)
     ?? sumSuspendTagMetric(cavFallbackRows, fallbackKeys);
   const locationRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode);
+  const openStockRows = itemMaster.filter((candidate) => /\.(?:F1|S1)$/i.test(normalizeSuspendTagMetricKey(candidate.lotcode)));
   const locOnHand = locationRows.length ? sumSuspendTagMetric(locationRows, ["ptronhand"])
     : sumSuspendTagMetric([row], ["ptronhand", "PTRONHAND"]) ?? metric(["ptronhand"]) ?? (masterSourceAuthoritative ? 0 : null);
   const locPhotoMatch = locationRows.length ? sumSuspendTagMetric(locationRows, ["loc_match_qty"])
@@ -1178,7 +1179,7 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
     PTRONHAND: metric(["ptronhand"]) ?? absentSourceValue,
     PTRREVIEWED: metric(["ptrreviewed"]) ?? (sumSuspendTagMetric(selectedRows, ["ptronhand"]) !== null ? 0 : absentSourceValue),
     PTRAVAILABLE: sumSuspendTagAvailable(selectedRows) ?? sumSuspendTagAvailable(cavFallbackRows) ?? absentSourceValue,
-    S_LTS: sumSuspendTagOpenStock(selectedRows) ?? (preferLocation ? sumSuspendTagOpenStock(cavFallbackRows) : null) ?? absentSourceValue,
+    S_LTS: sumSuspendTagAvailable(openStockRows) ?? 0,
     LOC_ON_HAND: locOnHand ?? absentSourceValue,
     LOC_MATCH_QTY: locPhotoMatch,
     HOLDSTOPCODE: firstSuspendTagMetricValue(selectedRows, ["holdstopcode"]) ?? row.holdstopcode ?? null,

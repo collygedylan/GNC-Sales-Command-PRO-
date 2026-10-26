@@ -142,7 +142,7 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
   const command = normalizeReclassMoveCommand(commandPayload);
   const { data, error } = await supabase.rpc('apply_inventory_reclass_moves_with_delivery_v1', {
     p_actor_id: String(actorProfile.id), p_command_id: command.commandId,
-    ...(command.expectedRevision === null ? {} : { p_expected_revision: command.expectedRevision }),
+    p_expected_revision: command.expectedRevision ?? 0,
     p_moves: jsonValue(command.moves),
     ...(compactReceipt ? { p_receipt_encoding: 'master-null-elision-v1' } : {}),
   });
@@ -158,7 +158,7 @@ export function inventoryReclassMoveError(error: unknown) {
   const conflict = /CONFLICT|CHANGED|MISSING|AMBIGUOUS|MISMATCH|REFRESH_REQUIRED/.test(code) || (source.code === "40001" || source.code === "PT409");
   const status = forbidden ? 403 : conflict ? 409 : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 503 : 400;
   return { status, body: { ok: false, code, message: forbidden ? 'You do not have access to Reclass this inventory.'
-    : conflict ? 'Inventory identity changed before this move could be confirmed. Your draft is retained.'
+    : conflict ? 'The physical inventory row could not be confirmed. Your draft is retained for retry.'
       : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 'The inventory movement could not be saved. Retry with the same command.'
         : 'Review the movement details and try again.' } };
 }
