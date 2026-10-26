@@ -98,7 +98,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.66';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.67';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -461,7 +461,10 @@
         }
         function parseAuraDeterministicInventoryQuestion(value = '') {
             const question = String(value || '').normalize('NFKC').trim();
-            if (!question || !/\b(?:inventory|stock|available|on[ -]?hand|review|location|lot|where|how many)\b/i.test(question)) return null;
+            if (!question || !/\b(?:inventory|stock|available|on[ -]?hand|review|location|lot|where|how many|carry[ -]?over|current crop|future crop|consolidat(?:e|ion))\b/i.test(question)) return null;
+            const cropTier = /\b(?:carry[ -]?over|older sales year)\b/i.test(question) ? 'CARRY_OVER'
+                : /\b(?:current crop|current sales year)\b/i.test(question) ? 'CURRENT_CROP'
+                    : /\b(?:future crop|future sales year|next year crop)\b/i.test(question) ? 'FUTURE_CROP' : '';
             const sizeMatch = question.match(/(?:^|\s)(#\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*(?:DP|GP|SP|QT|PT|GAL|G))(?![A-Z0-9])/i);
             const locationMatch = question.match(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/i);
             const itemCodeMatch = question.match(/\b(?:item\s*code|itemcode)\s*(?:#|:)?\s*([A-Z0-9][A-Z0-9._-]{1,99})\b/i);
@@ -470,7 +473,7 @@
             const metric = /\bopen stock\b/i.test(question) ? 'openStock'
                 : /\bon[ -]?hand\b/i.test(question) ? 'onHand'
                     : /\breview(?:ed)?\b/i.test(question) ? 'review' : /\blocations?|\bwhere\b/i.test(question) ? 'locations' : 'available';
-            const needsSeasonScope = metric === 'openStock' || /\b(?:how many|how much|count|inventory count)\b/i.test(question);
+            const needsSeasonScope = !cropTier && (metric === 'openStock' || /\b(?:how many|how much|count|inventory count)\b/i.test(question));
             const rawSalesYear = String(seasonMatch?.[1] || salesYearMatch?.[1] || '');
             const parsedSalesYear = rawSalesYear ? Number(rawSalesYear) : NaN;
             const salesYear = Number.isInteger(parsedSalesYear) && parsedSalesYear > 0
@@ -482,11 +485,12 @@
                 .replace(/\b[A-Z]\.\d{2}(?:\.\d{3})?\b/ig, ' ')
                 .replace(/\b(?:(?:\d{2,4})[.\s-]?)?(?:S1|F1|U1|U2|U3|X|Y|Z)\b/ig, ' ')
                 .replace(/\b(?:sales\s*year|salesyear|year)\s*(?:<=?\s*)?\d{1,4}\b/ig, ' ')
+                .replace(/\b(?:carry[ -]?over|older sales year|current crop|current sales year|future crop|future sales year|next year crop|inventory consolidation|inv consolidation|consolidate locations)\b/ig, ' ')
                 .replace(/\b(?:how many|how much|show me|find|check|what is|what are|do we have|are there|in open stock|open stock|on[ -]?hand|available|reviewed?|inventory|stock|locations?|lots?|where|current|total|units?|plants?|items?|of|the|for|at|in|by|please)\b/ig, ' ')
                 .replace(/[^A-Z0-9._#-]+/ig, ' ')
                 .trim();
             const plantTerms = stripped.toLowerCase().split(/\s+/).filter(term => term.length > 1).slice(0, 8);
-            if (!itemCodeMatch && !plantTerms.length) return null;
+            if (!itemCodeMatch && !plantTerms.length && !cropTier) return null;
             return {
                 question,
                 itemcode: String(itemCodeMatch?.[1] || '').trim().toUpperCase(),
@@ -495,7 +499,8 @@
                 locationCode: String(locationMatch?.[0] || '').trim().toUpperCase(),
                 metric,
                 season,
-                salesYear
+                salesYear,
+                cropTier
             };
         }
 
@@ -519,7 +524,7 @@
                 const lotMatch = lotcode.match(/(?:^|[^0-9])(\d{2,4})[.\s-](S1|F1|U1|U2|U3|X|Y|Z)(?:$|[^A-Z0-9])/i);
                 return {
                     season: String(lotMatch?.[2] || firstNonEmptyValue(row.SEASON, row.season, '')).trim().toUpperCase(),
-                    salesYear: salesYear(lotMatch?.[1] || firstNonEmptyValue(row.SALEYEAR, row.saleyear, ''))
+                    salesYear: salesYear(lotMatch?.[1] || firstNonEmptyValue(row.SALEYEAR, row.saleyear, row.salesYear, ''))
                 };
             };
             const number = value => {
@@ -542,6 +547,11 @@
                 if (query.locationCode && !locationcode.toUpperCase().startsWith(query.locationCode)) return;
                 if (query.season && scope.season !== query.season) return;
                 if (query.salesYear != null && (scope.salesYear == null || scope.salesYear > query.salesYear)) return;
+                if (query.cropTier) {
+                    const activeYear = salesYear(options.currentSalesYear ?? getCurrentAppSeasonSettings().salesYear);
+                    const rowTier = scope.salesYear == null || activeYear == null ? '' : scope.salesYear < activeYear ? 'CARRY_OVER' : scope.salesYear === activeYear ? 'CURRENT_CROP' : 'FUTURE_CROP';
+                    if (rowTier !== query.cropTier) return;
+                }
                 if (/SHFT/i.test(text(firstNonEmptyValue(row.DESIGITEM, row.desigitem, '')))) return;
                 const assignment = text(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '')).toLowerCase();
                 if (['not_on_inventory_dylan', 'not_on_inventory_jd', 'not_on_inventory_denied'].includes(assignment)) return;
@@ -579,20 +589,23 @@
                 total.available += row.available; total.onHand += row.onHand;
                 seasons.set(key, total);
             });
-            const label = matchedRows[0]?.commonname || query.itemcode || query.plantTerms.join(' ') || 'Inventory';
+            const tierLabel = ({ CARRY_OVER:'Carry Over', CURRENT_CROP:'Current Crop', FUTURE_CROP:'Future Crop' })[query.cropTier] || '';
+            const label = matchedRows[0]?.commonname || query.itemcode || query.plantTerms.join(' ') || tierLabel || 'Inventory';
             const sizeLabel = matchedRows[0]?.contsize || query.contSize;
             const format = value => new Intl.NumberFormat('en-US').format(Number(value) || 0);
             const seasonSummary = [...seasons].map(([season, total]) => `${season}: ${format(total.openStock)} Open Stock`).join('; ');
             const scopeLabel = query.season ? ` for Season ${query.season} (Sales Year <= ${query.salesYear})` : '';
-            const reply = matchedRows.length
+            const reply = query.cropTier
+                ? `I found ${format(options.total ?? matchedRows.length)} active ${tierLabel} inventory rows relative to Sales Year ${format(options.currentSalesYear ?? getCurrentAppSeasonSettings().salesYear)}${options.total > matchedRows.length ? `; showing ${matchedRows.length}` : ''}.`
+                : matchedRows.length
                 ? `${label}${sizeLabel ? ` · ${sizeLabel}` : ''}: ${format(totals.openStock)} Open Stock${scopeLabel}, ${format(totals.available)} Available, ${format(totals.onHand)} On Hand, and ${format(totals.review)} Review across ${matchedRows.length} location/lot row${matchedRows.length === 1 ? '' : 's'}${seasonSummary ? `. ${seasonSummary}` : ''}.`
                 : `I found no matching inventory rows for ${query.itemcode || query.plantTerms.join(' ')}${query.contSize ? ` · ${query.contSize}` : ''}.`;
             return {
                 ok: true, requestId: options.requestId || null, reply, speech: reply,
-                actions: matchedRows.length ? [{ type: 'records', title: 'Inventory', rows: matchedRows.slice(0, 50), columns: [
+                actions: [...(matchedRows.length ? [{ type: 'records', title: 'Inventory', rows: matchedRows.slice(0, 50), columns: [
                     { key: 'season', label: 'Season' }, { key: 'locationcode', label: 'Location' }, { key: 'lotcode', label: 'Lot' },
                     { key: 'openStock', label: 'Open Stock' }, { key: 'available', label: 'Available' }, { key: 'onHand', label: 'On Hand' }, { key: 'review', label: 'Review' }
-                ] }] : [],
+                ] }] : []), ...(query.cropTier ? [{ type: 'navigation', view: 'inv-consolidation', filters: { cropTier: query.cropTier } }] : [])],
                 interpretation: { engine: 'deterministic-inventory-v1', intent: 'inventory', metric: query.metric, season: query.season, salesYear: query.salesYear, complete: options.complete !== false },
                 source: { kind: options.source || 'local-inventory', checkedAt: options.checkedAt || new Date().toISOString(), complete: options.complete !== false },
                 deterministic: true
@@ -602,11 +615,14 @@
             const query = parseAuraDeterministicInventoryQuestion(text);
             if (!query) return null;
             try {
-                const response = await requestAuraV2Inventory({ operation: 'resolve_query', question: query.question }, { ...options, explicitRetry: true });
+                const response = await requestAuraV2Inventory(query.cropTier
+                    ? { operation: 'crop_tier', cropTier: query.cropTier, itemcode: query.itemcode || undefined, commonName: query.itemcode ? undefined : query.plantTerms.join(' ') || undefined, limit: 50 }
+                    : { operation: 'resolve_query', question: query.question }, { ...options, explicitRetry: true });
                 const data = response?.data ?? response;
                 const serverRows = Array.isArray(data?.rows) ? data.rows : [];
                 const answer = buildAuraDeterministicInventoryAnswer(query, serverRows, {
-                    requestId: options.requestId, source: 'ph_master_inventory', checkedAt: data?.checkedAt, complete: data?.complete !== false
+                    requestId: options.requestId, source: 'ph_master_inventory', checkedAt: data?.checkedAt, complete: data?.complete !== false,
+                    total: Number(data?.total), currentSalesYear: Number(data?.currentSalesYear || data?.salesYear)
                 });
                 if (answer && (serverRows.length || data?.complete === true)) return answer;
             } catch (error) {
@@ -730,9 +746,22 @@
             if (!authorize()) throw new Error('Sign in with your active account.');
             if (!action || !['navigation', 'review'].includes(action.type)) throw new Error('Unsupported Aura action.');
             const view = String(action.view || '');
-            const views = new Set(['home','drive','tasks','docks','request','bloom','communication','department-calendar','chat','sales','sales-office','historical-requests','request-history','sales-credit','credit-request','av','reserves','advertisement','sales-inventory','weather-hold','bunch-note','hl-order','po-management','crop-roll','office','production','production-workflow','take-back','shear-list','grower','qc','moves','hours','low-stock','review','move-up','managers','reports','inventory-transaction-history','access-control','disease-pest','pest-management']);
+            const views = new Set(['home','drive','tasks','docks','request','bloom','communication','department-calendar','chat','sales','sales-office','historical-requests','request-history','request-sales-impact','sales-credit','credit-request','av','reserves','advertisement','sales-inventory','inventory-suggestion','inv-consolidation','weather-hold','bunch-note','hl-order','po-management','crop-roll','office','production','production-workflow','take-back','shear-list','grower','qc','moves','hours','low-stock','review','move-up','managers','reports','inventory-transaction-history','access-control','disease-pest','pest-management']);
             if (!views.has(view) || !canAccessView(view) || (options.allowedViews && !options.allowedViews.has(view))) throw new Error('This screen is unavailable to the active account.');
             switchView(view);
+            if (view === 'inv-consolidation' && ['CARRY_OVER','CURRENT_CROP','FUTURE_CROP'].includes(String(action.filters?.cropTier || '').toUpperCase())) {
+                setInventoryConsolidationFilter('cropTier', String(action.filters.cropTier).toUpperCase());
+            }
+            if (view === 'request' && ['suspend-tag','recount','bunch-notes'].includes(String(action.filters?.queueCategory || ''))) {
+                document.querySelector(`#request-filter-toolbar [data-request-category="${String(action.filters.queueCategory)}"]`)?.click();
+            }
+            if (view === 'tasks' && typeof action.filters?.taskView === 'string') setTaskView(action.filters.taskView);
+            if (view === 'historical-requests' && ['requests','orders','reserves','drive'].includes(String(action.filters?.archiveTab || ''))) {
+                const activateArchiveTab = () => document.querySelector(`[data-archive-tab="${String(action.filters.archiveTab)}"]`)?.click();
+                activateArchiveTab();
+                setTimeout(activateArchiveTab, 250);
+                setTimeout(activateArchiveTab, 750);
+            }
             if (view === 'managers' && action.filters?.operations === true) {
                 if (!canViewCodexOperations()) throw new Error('Operations review is unavailable to the active account.');
                 setHomeTab(MANAGER_CODEX_OPERATIONS_VIEW);
@@ -781,13 +810,13 @@
             const capabilities = auraRouterCapabilities || {};
             const permitted = action?.type === 'review'
                 ? view === 'request' && capabilities.drafts === true
-                : action?.type === 'navigation' && (view === 'drive' && capabilities.inventory === true
-                    || view === 'historical-requests' && capabilities.history === true
-                    || view === 'request' && capabilities.drafts === true);
+                : action?.type === 'navigation' && (['drive','inv-consolidation','tasks','moves','shear-list'].includes(view) && capabilities.inventory === true
+                    || ['historical-requests','request-sales-impact'].includes(view) && capabilities.history === true
+                    || view === 'request' && (capabilities.drafts === true || capabilities.inventory === true));
             if (!permitted) throw new Error('That AURA action is outside this account’s available screens.');
             return openAuraQueryAction(action, {
                 authorize: isAuraRouterWidgetAuthorized,
-                allowedViews: new Set(['drive', 'historical-requests', 'request']),
+                allowedViews: new Set(['drive', 'inv-consolidation', 'tasks', 'moves', 'shear-list', 'historical-requests', 'request-sales-impact', 'request']),
             });
         }
         async function resolveAuraOrderParty(name, options = {}) {
@@ -24298,7 +24327,7 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
         let locationWorkRows=[]; let locationWorkLoaded=false; let locationWorkLoading=false; let locationWorkError=''; let activeLocationWorkJobId='';
         const INVENTORY_CONSOLIDATION_SIZES=Object.freeze(['#2','#3','#1','2DP','3DP','1GP','8DP','8 IN.','5DP','7DP','QT','2QTD','6QTD','8" P','3GP','1DP']);
         let inventoryConsolidationRows=[]; let inventoryConsolidationLoaded=false; let inventoryConsolidationLoading=false; let inventoryConsolidationError=''; let inventoryConsolidationCurrentSalesYear=null;
-        let inventoryConsolidationFilters={block:'',containerSize:'',salesYearRule:'',query:''}; let inventoryConsolidationDestinationByKey=new Map();
+        let inventoryConsolidationFilters={block:'',containerSize:'',cropTier:'',query:''}; let inventoryConsolidationDestinationByKey=new Map();
         let reclassRecountJobs=[]; let reclassRecountLoaded=false; let reclassRecountLoading=false; let reclassRecountError=''; let reclassRecountOwner='';
         const MOVES_COMPLETED_STORAGE_PREFIX = 'gnc_moves_completed_v1';
         const MOVES_ACTUAL_MOVED_STORAGE_PREFIX = 'gnc_moves_actual_moved_v1';
@@ -26254,7 +26283,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.66').trim() || 'AgData v2.3.66';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.67').trim() || 'AgData v2.3.67';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -54848,6 +54877,7 @@ function toggleDriveQuickRequestItem(domId) {
             runLoginInitializationStep('Header chrome', () => syncGlobalHeaderChrome({ reason: 'login-home-mount', force: true }));
             runAfterShellInteractive(() => scheduleRequestModalReferencePrefetch(), touchShell ? 180 : 40);
             runAfterShellInteractive(() => scheduleGlobalReferencePrefetch(), touchShell ? 260 : 80);
+            if (typeof scheduleInventoryConsolidationWarmup === 'function') scheduleInventoryConsolidationWarmup(touchShell ? 900 : 120);
             runLoginInitializationStep('Home readiness', () => ensureHomeDashboardReadyAfterLogin('login-shell-open'));
             if (loginView) loginView.style.display = 'none';
             runLoginInitializationStep('Home readiness confirmation', () => ensureHomeDashboardReadyAfterLogin('login-shell-open'));
@@ -72678,7 +72708,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function getInventoryConsolidationCacheKey() {
             const account = String(nativeAuthProfile?.username || currentUser || 'account').trim().toLowerCase() || 'account';
-            return `gnc_inventory_consolidation_v1:${account}`;
+            return `gnc_inventory_consolidation_v2:${account}`;
         }
 
         function hydrateInventoryConsolidationCache() {
@@ -72712,22 +72742,37 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return result.data;
         }
 
+        function scheduleInventoryConsolidationWarmup(delayMs = 0) {
+            const ownerKey = getInventoryConsolidationCacheKey();
+            if (!nativeAuthSessionActive || !canAccessView('inv-consolidation') || inventoryConsolidationLoaded || inventoryConsolidationLoading) return false;
+            runAfterShellInteractive(() => {
+                if (!nativeAuthSessionActive || ownerKey !== getInventoryConsolidationCacheKey() || !canAccessView('inv-consolidation')) return;
+                hydrateInventoryConsolidationCache();
+                if (!inventoryConsolidationLoaded && !inventoryConsolidationLoading) void loadInventoryConsolidationSuggestions(false);
+            }, delayMs);
+            return true;
+        }
+
         async function loadInventoryConsolidationSuggestions(force = false) {
             if (inventoryConsolidationLoading || (inventoryConsolidationLoaded && !force)) return false;
+            const ownerKey = getInventoryConsolidationCacheKey();
             inventoryConsolidationLoading = true;
             inventoryConsolidationError = '';
-            renderInventoryConsolidationContent();
+            if (isViewVisible('inv-consolidation')) renderInventoryConsolidationContent();
             try {
                 const data = await inventoryConsolidationApi();
+                if (ownerKey !== getInventoryConsolidationCacheKey()) return false;
                 inventoryConsolidationRows = Array.isArray(data.rows) ? data.rows : [];
                 inventoryConsolidationCurrentSalesYear = Number(data.currentSalesYear) || null;
                 inventoryConsolidationLoaded = true;
                 persistInventoryConsolidationCache();
             } catch (error) {
-                inventoryConsolidationError = String(error && error.message || 'Inventory Consolidation could not refresh.');
+                if (ownerKey === getInventoryConsolidationCacheKey()) {
+                    inventoryConsolidationError = String(error && error.message || 'Inventory Consolidation could not refresh.');
+                }
             } finally {
                 inventoryConsolidationLoading = false;
-                if (isViewVisible('inv-consolidation')) renderInventoryConsolidationView();
+                if (ownerKey === getInventoryConsolidationCacheKey() && isViewVisible('inv-consolidation')) renderInventoryConsolidationView();
             }
             return false;
         }
@@ -72738,7 +72783,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function setInventoryConsolidationFilter(field = '', value = '') {
-            if (!['block','containerSize','salesYearRule','query'].includes(field)) return false;
+            if (!['block','containerSize','cropTier','query'].includes(field)) return false;
             inventoryConsolidationFilters = { ...inventoryConsolidationFilters, [field]: String(value || '').trim() };
             renderInventoryConsolidationContent();
             return false;
@@ -72752,8 +72797,35 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return false;
         }
 
+        function getInventoryConsolidationCropTier(row = null) {
+            const explicit = String(row && row.cropTier || '').trim().toUpperCase();
+            if (['CARRY_OVER','CURRENT_CROP','FUTURE_CROP'].includes(explicit)) return explicit;
+            const sourceYear = Number(row && row.salesYear);
+            const currentYear = Number(inventoryConsolidationCurrentSalesYear);
+            if (!Number.isFinite(sourceYear) || !Number.isFinite(currentYear)) return '';
+            return sourceYear < currentYear ? 'CARRY_OVER' : sourceYear === currentYear ? 'CURRENT_CROP' : 'FUTURE_CROP';
+        }
+
+        function getInventoryConsolidationTierLabel(tier = '') {
+            return ({ CARRY_OVER:'Carry Over', CURRENT_CROP:'Current Crop', FUTURE_CROP:'Future Crop' })[String(tier || '').toUpperCase()] || 'Unknown Crop Tier';
+        }
+
+        function getInventoryConsolidationValidDestinations(row = null) {
+            const tier = getInventoryConsolidationCropTier(row);
+            const sourceYear = Number(row && row.salesYear);
+            const currentYear = Number(inventoryConsolidationCurrentSalesYear);
+            return (Array.isArray(row && row.destinations) ? row.destinations : []).filter((destination) => {
+                const destinationYear = Number(destination && destination.salesYear);
+                const destinationTier = String(destination && destination.cropTier || tier).trim().toUpperCase();
+                if (!Number.isFinite(destinationYear) || !Number.isFinite(currentYear) || destinationTier !== tier) return false;
+                if (tier === 'CARRY_OVER') return destinationYear < currentYear;
+                if (tier === 'CURRENT_CROP') return destinationYear === currentYear;
+                return tier === 'FUTURE_CROP' && destinationYear === sourceYear;
+            });
+        }
+
         function getInventoryConsolidationDestination(row = null) {
-            const destinations = Array.isArray(row && row.destinations) ? row.destinations : [];
+            const destinations = getInventoryConsolidationValidDestinations(row);
             if (!destinations.length) return null;
             const selected = String(inventoryConsolidationDestinationByKey.get(String(row.suggestionKey || '')) || '').trim();
             const match = destinations.find((destination) => `${String(destination.locationcode || '')}|||${String(destination.salesYear || '')}` === selected);
@@ -72765,14 +72837,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function inventoryConsolidationRowsForDisplay() {
             const block = String(inventoryConsolidationFilters.block || '').toUpperCase();
             const size = String(inventoryConsolidationFilters.containerSize || '').toUpperCase();
-            const rule = String(inventoryConsolidationFilters.salesYearRule || '').toLowerCase();
+            const cropTier = String(inventoryConsolidationFilters.cropTier || '').toUpperCase();
             const query = String(inventoryConsolidationFilters.query || '').trim().toLowerCase();
             return inventoryConsolidationRows.filter((row) => {
                 if (block && String(row.block || '').toUpperCase() !== block) return false;
                 if (size && String(row.contsize || '').toUpperCase() !== size) return false;
-                if (rule && String(row.salesYearRule || '').toLowerCase() !== rule) return false;
+                if (cropTier && getInventoryConsolidationCropTier(row) !== cropTier) return false;
                 if (query && !`${row.commonname || ''} ${row.itemcode || ''} ${row.fromLocationcode || ''}`.toLowerCase().includes(query)) return false;
-                return Number(row.locOnHand) > 0 && Number(row.locOnHand) < 100 && Array.isArray(row.destinations) && row.destinations.length > 0;
+                return Number(row.locOnHand) > 0 && Number(row.locOnHand) < 100 && getInventoryConsolidationValidDestinations(row).length > 0;
             });
         }
 
@@ -72794,17 +72866,21 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const cards = visibleRows.map((row) => {
                 const destination = getInventoryConsolidationDestination(row);
                 const destinationValue = destination ? `${String(destination.locationcode || '')}|||${String(destination.salesYear || '')}` : '';
-                const destinationOptions = (Array.isArray(row.destinations) ? row.destinations : []).map((entry) => {
+                const cropTier = getInventoryConsolidationCropTier(row);
+                const tierLabel = getInventoryConsolidationTierLabel(cropTier);
+                const destinationOptions = getInventoryConsolidationValidDestinations(row).map((entry) => {
                     const value = `${String(entry.locationcode || '')}|||${String(entry.salesYear || '')}`;
-                    const label = `${entry.locationcode || '-'} | ${entry.lotcode || '-'} | SY ${entry.salesYear || '-'} | On Hand ${entry.locOnHand ?? 0} | Combined ${entry.combinedLocOnHand ?? 0}`;
+                    const label = `${entry.locationcode || '-'} | ${entry.lotcode || '-'} | SY ${entry.salesYear || '-'} (${tierLabel}) | On Hand ${entry.locOnHand ?? 0} | Combined ${entry.combinedLocOnHand ?? 0}`;
                     return `<option value="${escapeHtml(value)}" ${value === destinationValue ? 'selected' : ''}>${escapeHtml(label)}</option>`;
                 }).join('');
-                const currentRule = String(row.salesYearRule || '') === 'current';
+                const tierClasses = cropTier === 'CURRENT_CROP' ? 'border-blue-200 bg-blue-50 text-blue-700'
+                    : cropTier === 'FUTURE_CROP' ? 'border-violet-200 bg-violet-50 text-violet-700'
+                        : 'border-amber-200 bg-amber-50 text-amber-800';
                 const buttonDisabled = !canCreateLocationWorkJob() || !destination;
-                return `<article class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" data-inv-consolidation-card data-consolidation-contsize="${escapeHtml(String(row.contsize || ''))}" data-consolidation-sales-year-rule="${currentRule ? 'current' : 'older'}">
-                    <div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-lg font-black text-slate-900">${escapeHtml(String(row.commonname || row.itemcode || 'Inventory'))}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(row.contsize || '-'))} &middot; ${escapeHtml(String(row.itemcode || '-'))}</div></div><span class="rounded-full border ${currentRule ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-amber-200 bg-amber-50 text-amber-800'} px-3 py-1 text-[9px] font-black uppercase tracking-[0.1em]">${currentRule ? 'Current SY -> Same SY' : 'Older SY -> Any SY'}</span></div>
-                    <div class="mt-4 grid gap-3 lg:grid-cols-2"><section class="rounded-xl border border-amber-100 bg-amber-50/60 p-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-amber-800">Move From</div><div class="mt-1 text-base font-black text-slate-900">${escapeHtml(String(row.fromLocationcode || '-'))}</div><div class="mt-2 grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-600"><span>Lot ${escapeHtml(String(row.fromLotcode || '-'))}</span><span>SalesYear ${escapeHtml(String(row.salesYear || '-'))}</span><span>Loc On Hand <strong>${escapeHtml(String(row.locOnHand ?? 0))}</strong></span><span>Available ${escapeHtml(String(row.available ?? 0))}</span><span>Open Stock ${escapeHtml(String(row.openStock ?? 0))}</span></div></section>
-                    <section class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Move To</div><select class="input-field !mb-0 mt-2" aria-label="Suggested destination for ${escapeHtml(String(row.itemcode || 'item'))}" onchange="return selectInventoryConsolidationDestination('${escJsAttrValue(String(row.suggestionKey || ''))}',this.value)">${destinationOptions}</select>${destination ? `<div class="mt-2 grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-600"><span>To ${escapeHtml(String(destination.locationcode || '-'))}</span><span>Lot ${escapeHtml(String(destination.lotcode || '-'))}</span><span>To SalesYear ${escapeHtml(String(destination.salesYear || '-'))}</span><span>Dest Loc On Hand ${escapeHtml(String(destination.locOnHand ?? 0))}</span><span class="col-span-2">Combined Loc On Hand ${escapeHtml(String(destination.combinedLocOnHand ?? 0))}</span></div>` : ''}</section></div>
+                return `<article class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" data-inv-consolidation-card data-consolidation-contsize="${escapeHtml(String(row.contsize || ''))}" data-consolidation-crop-tier="${escapeHtml(cropTier)}">
+                    <div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-lg font-black text-slate-900">${escapeHtml(String(row.commonname || row.itemcode || 'Inventory'))}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(row.contsize || '-'))} &middot; ${escapeHtml(String(row.itemcode || '-'))}</div></div><span class="rounded-full border ${tierClasses} px-3 py-1 text-[9px] font-black uppercase tracking-[0.1em]">${escapeHtml(tierLabel.toUpperCase())} -&gt; ${escapeHtml(tierLabel.toUpperCase())}</span></div>
+                    <div class="mt-4 grid gap-3 lg:grid-cols-2"><section class="rounded-xl border border-amber-100 bg-amber-50/60 p-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-amber-800">Move From</div><div class="mt-1 text-base font-black text-slate-900">${escapeHtml(String(row.fromLocationcode || '-'))}</div><div class="mt-2 grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-600"><span>Lot ${escapeHtml(String(row.fromLotcode || '-'))}</span><span>SalesYear ${escapeHtml(String(row.salesYear || '-'))} (${escapeHtml(tierLabel)})</span><span>Loc On Hand <strong>${escapeHtml(String(row.locOnHand ?? 0))}</strong></span><span>Available ${escapeHtml(String(row.available ?? 0))}</span><span>Open Stock ${escapeHtml(String(row.openStock ?? 0))}</span></div></section>
+                    <section class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Move To</div><select class="input-field !mb-0 mt-2" aria-label="Suggested destination for ${escapeHtml(String(row.itemcode || 'item'))}" onchange="return selectInventoryConsolidationDestination('${escJsAttrValue(String(row.suggestionKey || ''))}',this.value)">${destinationOptions}</select>${destination ? `<div class="mt-2 grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-600"><span>To ${escapeHtml(String(destination.locationcode || '-'))}</span><span>Lot ${escapeHtml(String(destination.lotcode || '-'))}</span><span>To SalesYear ${escapeHtml(String(destination.salesYear || '-'))} (${escapeHtml(tierLabel)})</span><span>Dest Loc On Hand ${escapeHtml(String(destination.locOnHand ?? 0))}</span><span class="col-span-2">Combined Loc On Hand ${escapeHtml(String(destination.combinedLocOnHand ?? 0))}</span></div>` : ''}</section></div>
                     <button type="button" class="mt-4 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-[.99] ${buttonDisabled ? 'pointer-events-none opacity-50' : ''}" ${buttonDisabled ? 'disabled' : ''} onclick="return openInventoryConsolidationLocationMove('${escJsAttrValue(String(row.suggestionKey || ''))}')"><i class="ph-bold ph-plus-circle mr-1"></i>Send to Location Moves</button>
                 </article>`;
             }).join('');
@@ -72830,7 +72906,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (sizeSelect.innerHTML !== options) sizeSelect.innerHTML = options;
                 sizeSelect.value = inventoryConsolidationFilters.containerSize;
             }
-            if (ruleSelect) ruleSelect.value = inventoryConsolidationFilters.salesYearRule;
+            if (ruleSelect) {
+                const currentYear = escapeHtml(String(inventoryConsolidationCurrentSalesYear || '-'));
+                const options = `<option value="">All Crop Tiers</option><option value="CARRY_OVER">Carry Over (&lt; SY ${currentYear})</option><option value="CURRENT_CROP">Current Crop (SY ${currentYear})</option><option value="FUTURE_CROP">Future Crop (&gt; SY ${currentYear})</option>`;
+                if (ruleSelect.innerHTML !== options) ruleSelect.innerHTML = options;
+                ruleSelect.value = inventoryConsolidationFilters.cropTier;
+            }
             if (searchInput && document.activeElement !== searchInput) searchInput.value = inventoryConsolidationFilters.query;
             renderInventoryConsolidationContent();
             if (!inventoryConsolidationLoaded && !inventoryConsolidationLoading) void loadInventoryConsolidationSuggestions(false);
@@ -72843,11 +72924,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 showToast('Destination Required', 'Choose an eligible destination before sending this suggestion.', true);
                 return false;
             }
-            const destinationRows = (Array.isArray(row.destinations) ? row.destinations : []).map((entry, index) => ({
+            const destinationRows = getInventoryConsolidationValidDestinations(row).map((entry, index) => ({
                 UNIQUE_ID: `consolidation-destination-${row.itemcode}-${entry.locationcode}-${entry.salesYear}-${index}`,
                 ITEMCODE: row.itemcode, COMMONNAME: row.commonname, CONTSIZE: row.contsize,
                 LOCATIONCODE: entry.locationcode, LOTCODE: entry.lotcode, SALESYEAR: String(entry.salesYear || ''),
-                PTRONHAND: String(entry.locOnHand ?? 0)
+                PTRONHAND: String(entry.locOnHand ?? 0), CROP_TIER: getInventoryConsolidationCropTier(row)
             }));
             const items = (Array.isArray(row.sourceRows) ? row.sourceRows : []).filter((source) => Number(source.onHand) > 0).map((source) => ({
                 UNIQUE_ID: source.uniqueId, ITEMCODE: source.itemcode || row.itemcode, COMMONNAME: source.commonname || row.commonname,
@@ -72857,6 +72938,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 INVENTORY_CONSOLIDATION: true, CONSOLIDATION_DESTINATIONS: destinationRows,
                 CONSOLIDATION_DESTINATION_LOCATION: destination.locationcode,
                 CONSOLIDATION_DESTINATION_SALES_YEAR: String(destination.salesYear || ''),
+                CONSOLIDATION_CROP_TIER: getInventoryConsolidationCropTier(row),
                 CONSOLIDATION_JOB_TITLE: `Inv Consolidation - ${row.commonname || row.itemcode} - ${row.fromLocationcode}`,
                 CONSOLIDATION_JOB_INSTRUCTIONS: `Move the listed on-hand quantity from ${row.fromLocationcode} to ${destination.locationcode}. Verify the physical quantity before completion.`
             }));

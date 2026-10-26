@@ -874,7 +874,7 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
   const verifier = read('scripts/verify-live-request-queue.mjs');
   for (const marker of ['ph_app_users', 'user_access_control', 'ph_request_delivery_outbox',
     'ph_requests_completed_history', "['POST'", "['PATCH'", "['DELETE'", '#historical-requests-title',
-    '#historical-request-sales-impact-btn', 'requestSalesImpactTotal', 'minimumRequestImpact', "release.includes('2.3.66')"]) {
+    '#historical-request-sales-impact-btn', 'requestSalesImpactTotal', 'minimumRequestImpact', "release.includes('2.3.67')"]) {
     assert.match(verifier, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.match(verifier, /response\.ok[^]*payload\.length !== 0/);
@@ -967,4 +967,35 @@ test('Invariant 27 (Historical State Deduplication and Manual Inventory Consolid
   assert.match(read('supabase/migrations/20261026014500_agdata_v2366_drive_archive_search_hash_fix.sql'),
     /drive-search-row-alias-v2366[^]*drive_around_report_state_hash_v2366\(raw_row\)/);
   assert.match(read('scripts/apply-item-low-stock-migration.mjs'), /agdataV2366HistoricalStateDedupMigrationName[^]*agdataV2366InventoryConsolidationMigrationName[^]*registeredReleaseDatabaseMigrations/);
+});
+
+test('Invariant 28 (Strict Crop Tiers and Canonical AURA Nursery Glossary)', () => {
+  const migration = read('supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql');
+  for (const marker of ['get_consolidation_move_candidates_v1', "'CARRY_OVER'", "'CURRENT_CROP'", "'FUTURE_CROP'",
+    'source_profile.max_sales_year<settings.current_sales_year', 'source_profile.min_sales_year=settings.current_sales_year',
+    'destination_profile.max_sales_year<settings.current_sales_year', 'destination_profile.min_sales_year=settings.current_sales_year',
+    'candidate.sales_year=source.sales_year', 'get_consolidation_move_candidates_v1() candidate',
+    'aura_inventory_crop_tier_v1', 'historical_drive_file_page_v2367', 'definition text', "synonyms text[]"]) {
+    assert.match(migration, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  for (const term of ['carry over','current crop','future crop','inv consolidation','loc photo match','request sales impact',
+    'mistake guy','historical orders','historical reserves','historical drive around','location moves','suspend tag',
+    'recount','bunch notes','eval work','shear list']) assert.match(migration, new RegExp(`'${term}'`));
+
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  for (const marker of ['006138.021.1', 'G.15.000', 'E.22.000', '008404.010.1', 'C.11.034', 'C.11.054']) {
+    assert.match(runner, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  const runtime = read('assets/app-runtime.js');
+  for (const marker of ['getInventoryConsolidationValidDestinations', 'All Crop Tiers', 'Carry Over (&lt; SY',
+    'Current Crop (SY', 'Future Crop (&gt; SY', 'CARRY_OVER', 'CURRENT_CROP', 'FUTURE_CROP']) assert.ok(runtime.includes(marker), marker);
+  assert.doesNotMatch(runtime, /OLDER SY -> ANY SY|Current SY -> Same SY|Older SY -> Any SY/);
+
+  const parser = runFunctions('supabase/functions/app-api/index.ts', ['parseAuraDeterministicInventoryQuestion'], { exports: {} });
+  assert.equal(parser.parseAuraDeterministicInventoryQuestion('show carry-over boxwood').cropTier, 'CARRY_OVER');
+  assert.equal(parser.parseAuraDeterministicInventoryQuestion('show current crop').cropTier, 'CURRENT_CROP');
+  assert.equal(parser.parseAuraDeterministicInventoryQuestion('show future crop').cropTier, 'FUTURE_CROP');
+  const verifier = read('scripts/verify-live-request-queue.mjs');
+  for (const marker of ['requestBadgeCount !== 6', 'badPairExcluded', 'CARRY OVER -> CARRY OVER',
+    'CURRENT CROP -> CURRENT CROP', 'auraGlossaryTerms']) assert.match(verifier, new RegExp(marker));
 });

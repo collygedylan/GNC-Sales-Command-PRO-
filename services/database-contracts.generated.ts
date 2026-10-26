@@ -62,6 +62,38 @@ export const contracts: RuntimeContracts<Database> = {
           "revision": {
             "schema": "number"
           },
+          "source_file_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "source_file_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "source_import_run_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "source_imported_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "state": {
             "schema": "string"
           }
@@ -78,6 +110,42 @@ export const contracts: RuntimeContracts<Database> = {
           },
           "revision": {
             "schema": "number",
+            "optional": true
+          },
+          "source_file_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "source_file_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "source_import_run_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "source_imported_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
             "optional": true
           },
           "state": {
@@ -98,6 +166,42 @@ export const contracts: RuntimeContracts<Database> = {
           },
           "revision": {
             "schema": "number",
+            "optional": true
+          },
+          "source_file_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "source_file_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "source_import_run_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "source_imported_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
             "optional": true
           },
           "state": {
@@ -428,6 +532,14 @@ export const contracts: RuntimeContracts<Database> = {
           "canonical_entity": {
             "schema": "string"
           },
+          "definition": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "id": {
             "schema": "string"
           },
@@ -437,6 +549,11 @@ export const contracts: RuntimeContracts<Database> = {
                 "string",
                 "null"
               ]
+            }
+          },
+          "synonyms": {
+            "schema": {
+              "array": "string"
             }
           },
           "target_filter": {
@@ -452,6 +569,15 @@ export const contracts: RuntimeContracts<Database> = {
           "canonical_entity": {
             "schema": "string"
           },
+          "definition": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "id": {
             "schema": "string",
             "optional": true
@@ -462,6 +588,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "string",
                 "null"
               ]
+            },
+            "optional": true
+          },
+          "synonyms": {
+            "schema": {
+              "array": "string"
             },
             "optional": true
           },
@@ -479,6 +611,15 @@ export const contracts: RuntimeContracts<Database> = {
             "schema": "string",
             "optional": true
           },
+          "definition": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "id": {
             "schema": "string",
             "optional": true
@@ -489,6 +630,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "string",
                 "null"
               ]
+            },
+            "optional": true
+          },
+          "synonyms": {
+            "schema": {
+              "array": "string"
             },
             "optional": true
           },
@@ -86729,6 +86876,40 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "aura_inventory_crop_tier_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_crop_tier": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_limit": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_query": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "aura_inventory_lot_lookup_v1": {
       "oneOf": [
         {
@@ -95141,6 +95322,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "aura_domain_context_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "aura_inventory_crop_tier_v1": {
       "oneOf": [
         "json"
       ]

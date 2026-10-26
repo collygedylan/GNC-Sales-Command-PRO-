@@ -15,12 +15,19 @@ type AuraInventoryInput = {
   cursor?: unknown;
   limit?: number;
   lines?: unknown[];
+  cropTier?: "CARRY_OVER" | "CURRENT_CROP" | "FUTURE_CROP";
 };
 
 type AuraClient = Pick<SupabaseClient<Database>, "rpc">;
 
 export function auraInventoryV2Rpc(client: AuraClient, input: AuraInventoryInput, signal?: AbortSignal) {
-  const rpc = input.operation === "match"
+  const rpc = input.operation === "crop_tier"
+    ? client.rpc("aura_inventory_crop_tier_v1", {
+      p_crop_tier: input.cropTier || "",
+      ...((input.itemcode || input.commonName || input.locationCode) ? { p_query: input.itemcode || input.commonName || input.locationCode } : {}),
+      p_limit: Math.min(50, input.limit ?? 50),
+    })
+    : input.operation === "match"
     ? client.rpc("aura_inventory_v2_match_v1", {
       p_common_name: input.commonName || "",
       ...(input.contSize ? { p_contsize: input.contSize } : {}),

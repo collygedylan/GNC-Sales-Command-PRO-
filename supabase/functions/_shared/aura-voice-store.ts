@@ -92,6 +92,15 @@ export function createAuraVoiceStore(bearer: string): AuraVoiceStore {
     },
     async inventory(operation, filters, cursor, signal) {
       verifyActor(verifiedId);
+      if (operation === "crop_tier") {
+        const query = filters.itemcode || filters.commonName || filters.productText || filters.genus || filters.locationCode;
+        const { data, error } = await user.rpc("aura_inventory_crop_tier_v1", {
+          p_crop_tier: String(filters.cropTier || ""),
+          ...(query ? { p_query: String(query) } : {}),
+          p_limit: 50,
+        }).abortSignal(signal);
+        if (error) throw error; return data;
+      }
       const { data, error } = await user.rpc("aura_voice_inventory_read_v1", {
         p_operation: operation, p_filters: jsonValue(filters), ...(cursor == null ? {} : { p_cursor: jsonValue(cursor) }), p_limit: 50,
       }).abortSignal(signal);

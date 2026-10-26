@@ -11,6 +11,14 @@ export function isManualStatusAppsScriptProxyRead(body) {
     && Object.keys(payload).sort().join(',') === 'type' && payload.type === 'manual_status';
 }
 
+function isInventoryConsolidationSnapshotRead(body) {
+  return !!body && typeof body === 'object' && !Array.isArray(body)
+    && Object.keys(body).sort().join(',') === 'action,query'
+    && body.action === 'inventory_consolidation'
+    && body.query && typeof body.query === 'object' && !Array.isArray(body.query)
+    && Object.keys(body.query).length === 0;
+}
+
 const SUPABASE_METHODS = new Map([
   ['/functions/v1/app-api', new Set(['POST'])],
   ['/rest/v1/rpc/get_app_user_directory', new Set(['POST'])],
@@ -79,6 +87,7 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
   // A read action with an explicit write operation must still fail closed.
   const write = /(?:^|_)(?:create|update|delete|remove|insert|upsert|submit|apply|save|set|complete|close|send|enqueue|command|move|approve|deny|reclass)(?:_|$)/i;
   if (write.test(action) || write.test(operation)) return false;
+  if (isInventoryConsolidationSnapshotRead(body)) return true;
   if (action === 'manual_sync_status' && !operation && Object.keys(body).length === 1) return true;
   if (action === 'customer-rep-map' && operation === 'preload') return true;
   if (action === 'suspend_tag' && operation === 'inbox') return true;
@@ -91,6 +100,7 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
  * return null so the caller's existing rejection path remains authoritative. */
 export function releaseSnapshotReadFixture(body, mappings = [], approvals = [], capabilities = null) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  if (isInventoryConsolidationSnapshotRead(body)) return {ok:true,data:{rows:[],currentSalesYear:null,generatedAt:null}};
   if (body.action === 'location_work' && body.operation === 'list' && body.status === 'all'
       && Object.keys(body).sort().join(',') === 'action,operation,status') return {ok:true,data:[]};
   if (body.action === 'reclass_recount' && body.operation === 'list'

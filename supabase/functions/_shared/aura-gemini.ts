@@ -1,4 +1,4 @@
-import { type AuraForm } from "./aura-domain.ts";
+import { type AuraCropTier, type AuraForm } from "./aura-domain.ts";
 /** Gemini proposes one bounded nursery tool call. It never grants access or supplies facts. */
 export const AURA_GEMINI_MODEL = "gemini-3.8-flash";
 export const AURA_PROVIDER_TIMEOUT_MS = 20000;
@@ -11,8 +11,9 @@ export type InventoryFilters = {
   metric?: "ptravailable" | "ptronhand" | "s_lts" | "loc_on_hand" | "allocated" | "held";
   requestedVariants?: AuraForm[]; expectedSettingRevision?: number; countMode?: "quantity" | "physical_rows" | "unique_items";
   openStockOnly?: boolean; zone?: string; assignee?: string; assigneeText?: string; selectionId?: string;
+  cropTier?: AuraCropTier;
 };
-export type InventoryOperation = "stock" | "locations" | "ownership" | "unassigned" | "lot" | "maximum";
+export type InventoryOperation = "stock" | "locations" | "ownership" | "unassigned" | "lot" | "maximum" | "crop_tier";
 export type SocToolName = "soc_reserves" | "soc_open_orders";
 export type SocFilters = { commonname: string; contsize: string; customername: string; consigneename?: string; season?: string;
   customerId?: string; consigneeId?: string; requestedVariants?: AuraForm[]; expectedSettingRevision?: number };
@@ -21,6 +22,7 @@ export type AuraTool =
   | { name: "inventory"; operation: InventoryOperation; filters: InventoryFilters }
   | { name: "history"; operation: "customers" | "consignees" | "requests" | "reps" | "summary"; customerName?: string; consigneeName?: string }
   | { name: "draft_request"; filters: InventoryFilters; quantity: number; customerName?: string; consigneeName?: string }
+  | { name: "domain"; term: string }
   | { name: "clarify"; reason: "plant" | "customer" | "consignee" | "quantity" | "ambiguous" }
   | { name: "refuse" };
 
@@ -28,6 +30,7 @@ const FILTER_STRINGS = new Set(["productText", "commonName", "itemcode", "genus"
 const ENUMS: Record<string, readonly string[]> = {
   locationMode: ["exact", "prefix", "contains"], seasonReference: ["current", "next"],
   metric: ["ptravailable", "ptronhand", "s_lts", "loc_on_hand", "allocated", "held"], countMode: ["quantity", "physical_rows", "unique_items"],
+  cropTier: ["CARRY_OVER", "CURRENT_CROP", "FUTURE_CROP"],
 };
 export function auraObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("AURA_TOOL_INVALID");
@@ -67,6 +70,11 @@ export function validateAuraTool(name: unknown, value: unknown, trustedContext =
     exactKeys(args, ["reason"]);
     return { name, reason: member(args.reason, ["plant", "customer", "consignee", "quantity", "ambiguous"]) };
   }
+  if (name === "domain") {
+    if (!trustedContext) throw new Error("AURA_TOOL_INVALID");
+    exactKeys(args, ["term"]);
+    return { name, term: boundedText(args.term, 80).toLowerCase() };
+  }
   if (name === "soc_reserves" || name === "soc_open_orders") {
     exactKeys(args, ["commonname", "contsize", "customername", "consigneename", "season"]);
     return { name, commonname: boundedText(args.commonname), contsize: boundedText(args.contsize, 100), customername: boundedText(args.customername, 500),
@@ -79,7 +87,7 @@ export function validateAuraTool(name: unknown, value: unknown, trustedContext =
   }
   if (name === "inventory") {
     exactKeys(args, ["operation", "filters"]);
-    return { name, operation: member(args.operation, ["stock", "locations", "ownership", "unassigned", "lot", "maximum"]), filters: validateInventoryFilters(args.filters) };
+    return { name, operation: member(args.operation, ["stock", "locations", "ownership", "unassigned", "lot", "maximum", "crop_tier"]), filters: validateInventoryFilters(args.filters) };
   }
   if (name === "history") {
     exactKeys(args, ["operation", "customerName", "consigneeName"]);
@@ -122,7 +130,7 @@ export const AURA_TOOL_DECLARATIONS = [
     parameters: { type: "OBJECT", required: ["commonname", "contsize", "customername"], properties: { commonname: string, contsize: string, customername: string, consigneename: string, season: { type: "STRING", enum: ["F1", "S1", "U1", "U2", "U3", "X", "Y", "Z"] } } } })),
   { name: "inventory", description: "Read current authorized nursery stock, locations, lots or ownership. Never answer general plant knowledge.",
     parameters: { type: "OBJECT", required: ["operation", "filters"], properties: {
-      operation: { type: "STRING", enum: ["stock", "locations", "ownership", "unassigned", "lot", "maximum"] }, filters: filtersSchema } } },
+      operation: { type: "STRING", enum: ["stock", "locations", "ownership", "unassigned", "lot", "maximum", "crop_tier"] }, filters: filtersSchema } } },
   { name: "history", description: "Read authorized Historical Requests and current-price totals. Customer and consignee names are exact lookup hints, never authorization filters.",
     parameters: { type: "OBJECT", required: ["operation"], properties: {
       operation: { type: "STRING", enum: ["customers", "consignees", "requests", "reps", "summary"] }, customerName: string, consigneeName: string } } },
@@ -140,6 +148,7 @@ You are strictly forbidden from guessing inventory counts, block locations, or l
 You are an elite, conversational nursery operations intelligence assistant, fluent in commercial growing, concise and direct.
 Never output database column headers, snake_case keys, SQL, or JSON unless the user explicitly asks to show raw data. The server synthesizes verified results; answer the requested quantity in the first sentence and use at most two or three concise operational lines for locations.
 Resolve container aliases using the database glossary in the trusted query context. Interpret size_spec as a catalog size, base_cultivar as the user-named plant, form_modifier as an explicitly requested specialty form, and target_metric as open_stock, loc_on_hand, allocated or held. An ordinary plant query excludes cones, spirals, pom poms, topiary, tree forms, and espalier; an explicit form query includes only that form. Open stock is verified S_LTS, never an inferred allocation or guessed count.
+Carry Over means SalesYear below the live current SalesYear, Current Crop means equal to it, and Future Crop means above it. Crop-tier questions use the server-resolved glossary and cropTier filter; never substitute a fixed calendar year or mix tiers.
 Golden calibration: "How many 3DP Baby Gem Boxwood are in open stock?" means base shrub, 3DP container, verified open stock, excluding cones and spirals. "What do we have in Baby Gem cones?" explicitly means cone forms. "Are there any on hold in Block D?" refers to the active cultivar and current held stock in Block D. "What about in 7 gallon?" keeps the active cultivar and changes only the catalog size. Fetch current database facts on every follow-up; these examples contain no inventory facts.
 1. OPEN STOCK: If asked 'how many do we have', use the Inventory Tool to return the exact season-level s_lts count for F1 with sales year <= 27 unless the user explicitly supplies another season or sales year.
 2. RESERVES: If asked 'how many does [customer] have on reserve?', use the SOC Reserves tool (Ordered minus Shipped).

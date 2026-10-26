@@ -63,22 +63,28 @@ export type Database = {
       aura_domain_glossary: {
         Row: {
           canonical_entity: string
+          definition: string | null
           id: string
           notes: string | null
+          synonyms: string[]
           target_filter: Json
           term: string
         }
         Insert: {
           canonical_entity: string
+          definition?: string | null
           id?: string
           notes?: string | null
+          synonyms?: string[]
           target_filter: Json
           term: string
         }
         Update: {
           canonical_entity?: string
+          definition?: string | null
           id?: string
           notes?: string | null
+          synonyms?: string[]
           target_filter?: Json
           term?: string
         }
@@ -16808,6 +16814,10 @@ export type Database = {
         Returns: Json
       }
       aura_domain_context_v1: { Args: never; Returns: Json }
+      aura_inventory_crop_tier_v1: {
+        Args: { p_crop_tier: string; p_limit?: number; p_query?: string }
+        Returns: Json
+      }
       aura_inventory_lot_lookup_v1: {
         Args: { p_after_uid?: string; p_limit?: number; p_lotcode: string }
         Returns: Json

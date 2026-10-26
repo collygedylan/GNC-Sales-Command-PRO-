@@ -19,6 +19,7 @@ import {
   agdataV2366InventoryConsolidationCacheMigrationName,
   agdataV2366HistoricalArchivePageDedupMigrationName,
   agdataV2366DriveArchiveSearchHashFixMigrationName,
+  agdataV2367CropTierAuraGlossaryMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -160,6 +161,20 @@ test('v2.3.66 inventory consolidation reads an atomic SWR cache', () => {
   assert.match(source, /background refresh never creates Queue work/);
   assert.doesNotMatch(source, /insert\s+into\s+public\.ph_requests_pending/i);
   assert.doesNotMatch(source, /insert\s+into\s+public\.ph_location_work_/i);
+});
+
+test('v2.3.67 strict crop tiers and AURA glossary are registered', () => {
+  assert.equal(agdataV2367CropTierAuraGlossaryMigrationName,
+    '20261026020000_agdata_v2367_crop_tier_aura_glossary.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2367CropTierAuraGlossaryMigrationName]),
+    [agdataV2367CropTierAuraGlossaryMigrationName]);
+  const contract = migrationContractQuery(agdataV2367CropTierAuraGlossaryMigrationName);
+  for (const marker of ['get_consolidation_move_candidates_v1', 'aura_inventory_crop_tier_v1', 'historical_drive_file_page_v2367',
+    '006138.021.1', '008404.010.1', 'aura_domain_glossary']) assert.match(contract, new RegExp(marker));
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2367CropTierAuraGlossaryMigrationName}`, import.meta.url), 'utf8');
+  for (const marker of ['CARRY_OVER', 'CURRENT_CROP', 'FUTURE_CROP', 'source_profile.max_sales_year',
+    'destination_profile.max_sales_year', 'candidate.sales_year=source.sales_year']) assert.match(source, new RegExp(marker.replace('.', '\\.')));
+  assert.doesNotMatch(source, /insert\s+into\s+public\.ph_requests_pending/i);
 });
 
 test('v2.3.66 archive pages dedupe business state before rendering', () => {

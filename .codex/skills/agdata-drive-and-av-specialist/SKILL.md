@@ -23,6 +23,14 @@ Use this skill for Drive Mode, AV, Inventory and EXPORT EXCEL. Read the zero-loc
 
 Before changing metric math, sorting or hydration, trace ERP → published Supabase snapshot → fixture projection → rendered card. Cover aggregation across lots, full pagination, A–Z completeness and export parity with focused Node cases. Apply the release governor for changed rendering and update this skill when its contracts change.
 
+## Inventory Consolidation crop tiers
+
+- `Inv Consolidation` derives the live current SalesYear from season settings and separates every eligible source into `CARRY_OVER` (`< current`), `CURRENT_CROP` (`= current`), or `FUTURE_CROP` (`> current`). A source location must be tier-pure; unresolved or mixed-tier active lots are not suggestions.
+- Carry Over destinations for the same ItemCode must have zero active Current/Future rows and stay below the current year. Rank exact source year first, then other Carry Over years, same block, highest destination Loc On Hand, distance, and natural location identity.
+- Current Crop destinations must be pure current year. Future Crop destinations must be pure and match the source's exact future year. `getInventoryConsolidationValidDestinations` repeats the year guard in the browser so stale cached options cannot cross tiers.
+- `public.get_consolidation_move_candidates_v1()` owns strict candidates; `private.refresh_inventory_consolidation_cache_v2366()` atomically publishes them; `public.inventory_consolidation_suggestions_v1(jsonb)` and app-api `handleInventoryConsolidationAction` expose bounded authenticated reads. The authenticated shell warms this read after it becomes interactive without blocking Home, and the response is fenced to the initiating account. Nothing enters Location Moves until the user explicitly sends a card.
+- Historical Drive Around file pages use the private `historical_drive_file_page_v2367` single-pass ID deduplication helper; preserve exact state hashes, the authenticated archive wrapper, and zero historical-row backfill during daytime releases.
+
 ## Owned seams and shared dependencies
 
 - `assets/app-runtime.js`: `rebuildMasterInventoryIndexes`, `getMasterInventoryExactKey`, `getCardLocationOnHandValue`, `getCardLocationOnHandServerAggregate`, `renderAV`, `renderDrive`, `buildAVExportContext`, `exportCurrentAVToExcel`, `buildDriveCurrentExportContext`, `exportCurrentDriveModeToExcel`. Drill navigation uses `backToDriveNames`, `backToDriveSizes`, `backToDriveSeasons`, `backToDriveBlocks`, `backToDriveLocations` and the corresponding selected Drive/AV state. These functions own the feature state, not the shared shell.
@@ -76,7 +84,7 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 ## Owned Files, Canonical Functions & SQL Contracts
 
 - `assets/location-code.js`: `compareLocationCodeNatural`; `assets/app-runtime.js`: `compareLocationCodeValues`, `sortDriveCardItems`, `sortAvOpenItems`, `getRowPhotoLink`, `resolveCanonicalPhotoUrls`, `getDetailPhotoUrls`, `renderDrive`, and `renderAV`.
-- `supabase/functions/app-api/index.ts`: `handleInventoryRead`; `Code.gs`: `buildMasterPayload`, `buildMasterBulkSnapshotPayload_`; SQL: `app_sync_private.inventory_location_evidence_v1`, `private.apply_inventory_location_evidence_v1`, `public.save_drive_evidence_v3`, and `public.reconcile_inventory_location_evidence_v1`.
+- `supabase/functions/app-api/index.ts`: `handleInventoryRead`, `handleInventoryConsolidationAction`; `Code.gs`: `buildMasterPayload`, `buildMasterBulkSnapshotPayload_`; SQL: `app_sync_private.inventory_location_evidence_v1`, `private.apply_inventory_location_evidence_v1`, `public.save_drive_evidence_v3`, `public.reconcile_inventory_location_evidence_v1`, `public.get_consolidation_move_candidates_v1`, and `public.inventory_consolidation_suggestions_v1`.
 
 ## Cross-Layer Blast Radius
 
@@ -90,3 +98,4 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 - Never key durable photo/spec evidence only by physical UID or lot, overwrite it from a new DriveAround UID, use divergent thumbnail parsing, or display `Photo unavailable` when the canonical resolver returned a URL.
 - Never restore inline `localeCompare` location copies, reject a duplicate-location photo save with `403`/`404`/`409`, truncate complete exports, or replace known metrics with `--`.
 - Never repair escaped apostrophes only in rendered HTML; that leaves import hashes, Common Name groups, drill filters, Que, Bloom, and Eval #2 on divergent keys.
+- Never rank a Carry Over source against unrestricted destination years, expose mixed-tier source/destination locations, or trust stale client destination arrays without repeating the crop-tier guard.

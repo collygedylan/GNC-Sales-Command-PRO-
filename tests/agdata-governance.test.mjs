@@ -96,7 +96,9 @@ test('startup snapshot fixtures reject unregistered operations and injected para
  const {releaseSnapshotReadFixture}=await import('./helpers/release-smoke-route-policy.mjs');
  assert.equal(releaseSnapshotReadFixture({action:'customer-rep-map',operation:'preload'}).total,0);
  assert.deepEqual(releaseSnapshotReadFixture({action:'suspend_tag',operation:'inbox',payload:{},commandId:null,expectedVersion:null}).data.approvals,[]);
+ assert.deepEqual(releaseSnapshotReadFixture({action:'inventory_consolidation',query:{}}).data.rows,[]);
  assert.equal(releaseSnapshotReadFixture({action:'customer-rep-map',operation:'preload',actorId:'forged'}),null);
+ assert.equal(releaseSnapshotReadFixture({action:'inventory_consolidation',query:{},actorId:'forged'}),null);
  assert.equal(releaseSnapshotReadFixture({action:'suspend_tag',operation:'send',payload:{},commandId:null,expectedVersion:null}),null);
 });
 
@@ -145,7 +147,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.66'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'inventory-consolidation-r1'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.66'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.67'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'crop-tier-glossary-r1'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.67'/);assert.match(sw,/cache: 'reload'/);
 });
 
 

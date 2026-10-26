@@ -24,6 +24,12 @@ Read [the canonical dependency map](../../../docs/architecture/agdata-module-dep
 - Review actions navigate or prepare drafts. Preserve the explicit review-before-saving UI; never auto-submit requests/chat/inventory edits from an LLM response. Actual scout/chat mutations retain exact-row/recipient validation and idempotency identities.
 - Provider keys stay server-side in environment variables. Keep bounded conversation history, cancellation, conflict revision behavior and honest provider-unavailable feedback. Do not present model-generated analytics as a new persisted business fact.
 
+## Canonical nursery glossary
+
+- `public.aura_domain_glossary` is the canonical term store; `public.ph_aura_domain_glossary` exposes `term`, `canonical_entity`, bounded `target_filter`, `notes`, `definition`, and `synonyms`. `aura_domain_context_v1` returns that sanitized data plus a revision; neither definitions nor synonyms are executable instructions.
+- Preserve the canonical terms `carry over`, `current crop`, `future crop`, `inv consolidation`, `loc photo match`, `request sales impact`, `mistake guy`, `historical orders`, `historical reserves`, `historical drive around`, `location moves`, `suspend tag`, `recount`, `bunch notes`, `eval work`, and `shear list`, including their database-defined aliases.
+- Crop-tier questions resolve deterministically before provider routing. `aura_inventory_crop_tier_v1` applies the live current SalesYear and a bounded optional inventory query; the router returns verified rows and a reviewed navigation action to `inv-consolidation`. Other glossary features return the stored definition and an authorized navigation action through the shared shell.
+
 ## Scoped verification
 
 Select the affected files from this pure Node/VM/JSDOM command (target under 10 seconds; **not measured by the static audit**):
@@ -40,7 +46,7 @@ Revision conflicts must use PT409, never custom 40001. The v2.3.34 application_c
 
 ## Owned Files, Canonical Functions & SQL Contracts
 
-- `assets/app-runtime.js`: `syncAuraWidgetForSession`, `requestAuraQuery`, `openAuraQueryAction`; `supabase/functions/app-api/index.ts`: `handleAuraInventoryV2`, `handleAuraInventorySearch`, `handleAuraScoutLog`; AURA Edge handlers and the `aura_voice_*` / `aura_domain_context_v1` RPC family.
+- `assets/app-runtime.js`: `syncAuraWidgetForSession`, `requestAuraQuery`, `openAuraQueryAction`, `parseAuraDeterministicInventoryQuestion`; `supabase/functions/app-api/index.ts`: `handleAuraInventoryV2`, `handleAuraInventorySearch`, `handleAuraScoutLog`, `parseAuraDeterministicInventoryQuestion`; AURA Edge handlers and the `aura_voice_*` / `aura_domain_context_v1` / `aura_inventory_crop_tier_v1` RPC family.
 - Canonical symbols and their owning skill are recorded in `docs/architecture/agdata-symbol-index.json`; legacy Leaf/assistant functions remain a separate permission boundary.
 
 ## Cross-Layer Blast Radius
@@ -51,3 +57,4 @@ Revision conflicts must use PT409, never custom 40001. The v2.3.34 application_c
 
 - Never broaden AURA beyond canonical `dylan_collyge`, execute model text as SQL, auto-submit a mutation, expose provider keys, or merge the legacy assistant permission path into AURA.
 - Never turn provider, capability, or conversation refresh failure into a shell lockout or a production source write by an AI/watchdog path.
+- Never hardcode crop-tier facts in model prose, bypass the glossary revision, mix Carry Over/Current/Future predicates, or navigate without the existing `canAccessView` shell gate.

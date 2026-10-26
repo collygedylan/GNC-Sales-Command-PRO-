@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.60",
+  "release": "AgData v2.3.67",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -230,15 +230,37 @@
     "agdata-aura-assistant": {
       "assets/app-runtime.js": [
         "syncAuraWidgetForSession",
-        "requestAuraQuery"
+        "requestAuraQuery",
+        "parseAuraDeterministicInventoryQuestion",
+        "requestAuraDeterministicInventoryAnswer",
+        "openAuraRouterAction"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
         "handleAuraInventoryV2",
         "handleAuraInventorySearch",
-        "handleAuraScoutLog"
+        "handleAuraScoutLog",
+        "parseAuraDeterministicInventoryQuestion"
       ],
-      "Code.gs": []
+      "Code.gs": [],
+      "supportingFiles": {
+        "supabase/functions/_shared/aura-domain.ts": [
+          "parseAuraGlossary",
+          "matchesAuraGlossaryEntry",
+          "extractAuraEntity"
+        ],
+        "supabase/functions/_shared/aura-voice-handler.ts": [
+          "deterministicGlossaryTool",
+          "domainOutcome"
+        ],
+        "supabase/functions/_shared/aura-inventory.ts": [
+          "auraInventoryV2Rpc"
+        ],
+        "supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql": [
+          "aura_domain_context_v1",
+          "aura_inventory_crop_tier_v1"
+        ]
+      }
     },
     "agdata-bloom-and-request-specialist": {
       "assets/app-runtime.js": [
@@ -319,16 +341,29 @@
         "sortAvOpenItems",
         "getRowPhotoLink",
         "resolveCanonicalPhotoUrls",
-        "getDetailPhotoUrls"
+        "getDetailPhotoUrls",
+        "scheduleInventoryConsolidationWarmup",
+        "renderInventoryConsolidationContent",
+        "getInventoryConsolidationValidDestinations",
+        "openInventoryConsolidationLocationMove"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
-        "handleInventoryRead"
+        "handleInventoryRead",
+        "handleInventoryConsolidationAction"
       ],
       "Code.gs": [
         "buildMasterPayload",
         "buildMasterBulkSnapshotPayload_"
-      ]
+      ],
+      "supportingFiles": {
+        "supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql": [
+          "get_consolidation_move_candidates_v1",
+          "refresh_inventory_consolidation_cache_v2366",
+          "inventory_consolidation_suggestions_v1",
+          "historical_drive_file_page_v2367"
+        ]
+      }
     },
     "agdata-field-ops-and-qc": {
       "assets/app-runtime.js": [

@@ -10,8 +10,13 @@ test('Inventory Suggestion routes to manual 16-size consolidation', () => {
   assert.match(html, /id="view-inv-consolidation"/);
   assert.match(runtime, /INVENTORY_CONSOLIDATION_SIZES=Object\.freeze\(\[[^\]]+\]\)/);
   assert.match(runtime, /Number\(row\.locOnHand\) > 0 && Number\(row\.locOnHand\) < 100/);
-  assert.match(runtime, /Current SY -> Same SY/);
-  assert.match(runtime, /Older SY -> Any SY/);
+  for (const label of ['All Crop Tiers', 'Carry Over', 'Current Crop', 'Future Crop', 'CARRY_OVER', 'CURRENT_CROP', 'FUTURE_CROP']) {
+    assert.match(runtime, new RegExp(label));
+  }
+  assert.match(runtime, /getInventoryConsolidationValidDestinations/);
+  assert.match(runtime, /scheduleInventoryConsolidationWarmup\(touchShell \? 900 : 120\)/);
+  assert.match(runtime, /ownerKey !== getInventoryConsolidationCacheKey\(\)/);
+  assert.doesNotMatch(runtime, /Current SY -> Same SY|Older SY -> Any SY/);
   assert.match(runtime, /Nothing enters Location Moves until you click Send\./);
   assert.match(runtime, /openInventoryConsolidationLocationMove/);
 });

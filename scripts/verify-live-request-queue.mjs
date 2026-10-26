@@ -223,6 +223,49 @@ async function readQueueInvariantCounts(localEnv) {
   }
 }
 
+async function readAuraGlossaryTerms(localEnv) {
+  const databaseUrl = String(process.env.GNC_REQUEST_QUEUE_DB_URL || localEnv.GNC_SUPABASE_DB_URL
+    || process.env.GNC_SUPABASE_DB_URL || '').trim();
+  if (!databaseUrl || !fs.existsSync(caFile)) fail('The protected production database URL is required for AURA glossary verification.');
+  const client = new Client(createDatabaseClientOptions(databaseUrl));
+  try {
+    await client.connect();
+    await client.query('begin read only');
+    await client.query("set local statement_timeout = '3000ms'");
+    const result = await client.query('select term from public.aura_domain_glossary order by term');
+    await client.query('commit');
+    const terms = result.rows.map(row => String(row.term || '').trim()).filter(Boolean);
+    const required = ['carry over','current crop','future crop','inv consolidation','loc photo match','request sales impact',
+      'mistake guy','historical orders','historical reserves','historical drive around','location moves','suspend tag',
+      'recount','bunch notes','eval work','shear list'];
+    const missing = required.filter(term => !terms.includes(term));
+    if (missing.length) fail(`AURA glossary is missing ${missing.join(', ')}.`);
+    return terms;
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+async function readConsolidationCards(page) {
+  return page.locator('[data-inv-consolidation-card]').evaluateAll(cards => cards.map(card => {
+    const text = String(card.textContent || '').replace(/\s+/g, ' ').trim();
+    const sourceSalesYear = Number((text.match(/SalesYear\s+(\d+)/i) || [])[1]);
+    const locOnHand = Number(String((text.match(/Loc On Hand\s+([\d,.]+)/i) || [])[1] || '').replaceAll(',', ''));
+    const options = Array.from(card.querySelectorAll('select option')).map(option => ({
+      locationcode: String(option.textContent?.split('|')[0] || '').trim(),
+      salesYear: Number((option.textContent?.match(/SY\s+(\d+)/i) || [])[1]),
+      text: String(option.textContent || '').replace(/\s+/g, ' ').trim(),
+      selected: option.selected,
+    })).filter(option => Number.isFinite(option.salesYear));
+    const tier = card.getAttribute('data-consolidation-crop-tier') || '';
+    const tierLabel = ({ CARRY_OVER: 'CARRY OVER', CURRENT_CROP: 'CURRENT CROP', FUTURE_CROP: 'FUTURE CROP' })[tier] || '';
+    return { contsize: card.getAttribute('data-consolidation-contsize') || '', tier, text, sourceSalesYear, locOnHand, options,
+      sourceLocation: String((text.match(/Move From\s*([A-Z]\.\d{2}(?:\.\d{3})?)/i) || [])[1] || ''),
+      badge: tierLabel && text.includes(`${tierLabel} -> ${tierLabel}`) ? `${tierLabel} -> ${tierLabel}` : '',
+      sendButtons: Array.from(card.querySelectorAll('button')).filter(button => button.textContent?.includes('Send to Location Moves')).length };
+  }));
+}
+
 function archiveCount(value) {
   return Number((String(value || '').replaceAll(',', '').match(/\d+/) || ['0'])[0]);
 }
@@ -428,7 +471,9 @@ async function runVerification(page, origin, accessCode) {
       fail(`Required Request card is missing: ${itemcode} at ${locationcode}.`);
     }
   }
-  if (requestBadgeCount < 6 || noPendingVisible) fail('Request queue retained its empty state.');
+  if (requestBadgeCount !== 6 || cardDomText.length !== 6 || noPendingVisible) {
+    fail(`Request queue rendered badge ${requestBadgeCount} with ${cardDomText.length} cards.`);
+  }
   const activeRequestId = String(await page.locator('#request-content [data-request-uid]').first().getAttribute('data-request-uid') || '').trim();
   if (!activeRequestId) fail('A live Request card identifier was not rendered.');
 
@@ -506,22 +551,47 @@ async function runVerification(page, origin, accessCode) {
   const expectedSizes = ['#2','#3','#1','2DP','3DP','1GP','8DP','8 IN.','5DP','7DP','QT','2QTD','6QTD','8" P','3GP','1DP'];
   const sizeLabels = (await page.locator('[data-consolidation-size-contract] span').allTextContents()).map(normalizeCardText);
   if (JSON.stringify(sizeLabels) !== JSON.stringify(expectedSizes)) fail(`Inventory Consolidation sizes were ${JSON.stringify(sizeLabels)}.`);
-  const consolidationCards = await page.locator('[data-inv-consolidation-card]').evaluateAll(cards => cards.map(card => {
-    const text = String(card.textContent || '').replace(/\s+/g, ' ').trim();
-    const sourceSalesYear = Number((text.match(/SalesYear\s+(\d+)/i) || [])[1]);
-    const locOnHand = Number(String((text.match(/Loc On Hand\s+([\d,.]+)/i) || [])[1] || '').replaceAll(',', ''));
-    const destinationYears = Array.from(card.querySelectorAll('select option')).map(option => Number((option.textContent?.match(/SY\s+(\d+)/i) || [])[1])).filter(Number.isFinite);
-    return { contsize: card.getAttribute('data-consolidation-contsize') || '', rule: card.getAttribute('data-consolidation-sales-year-rule') || '',
-      sourceSalesYear, locOnHand, destinationYears, sendButtons: Array.from(card.querySelectorAll('button')).filter(button => button.textContent?.includes('Send to Location Moves')).length };
-  }));
-  if (!consolidationCards.length || consolidationCards.some(card => !expectedSizes.includes(card.contsize)
-      || !(card.locOnHand > 0 && card.locOnHand < 100) || !card.destinationYears.length || card.sendButtons !== 1
-      || (card.rule === 'current' && card.destinationYears.some(year => year !== card.sourceSalesYear))
-      || !['current','older'].includes(card.rule))) fail('Inventory Consolidation card contract failed.');
   const consolidationSummary = normalizeCardText(await page.locator('#inv-consolidation-content').textContent());
+  const currentSalesYear = Number((consolidationSummary.match(/Current SalesYear\s+(\d+)/i) || [])[1]);
+  const cropTierOptions = (await page.locator('#inv-consolidation-rule option').allTextContents()).map(normalizeCardText);
+  const expectedTierOptions = ['All Crop Tiers', `Carry Over (< SY ${currentSalesYear})`, `Current Crop (SY ${currentSalesYear})`, `Future Crop (> SY ${currentSalesYear})`];
+  if (!Number.isInteger(currentSalesYear) || JSON.stringify(cropTierOptions) !== JSON.stringify(expectedTierOptions)) {
+    fail(`Inventory Consolidation crop-tier filters were ${JSON.stringify(cropTierOptions)}.`);
+  }
+  const consolidationCards = await readConsolidationCards(page);
+  if (!consolidationCards.length || consolidationCards.some(card => !expectedSizes.includes(card.contsize)
+      || !(card.locOnHand > 0 && card.locOnHand < 100) || !card.options.length || card.sendButtons !== 1 || !card.badge
+      || (card.tier === 'CARRY_OVER' && card.options.some(option => option.salesYear >= currentSalesYear))
+      || (card.tier === 'CURRENT_CROP' && card.options.some(option => option.salesYear !== currentSalesYear))
+      || (card.tier === 'FUTURE_CROP' && card.options.some(option => option.salesYear !== card.sourceSalesYear))
+      || !['CARRY_OVER','CURRENT_CROP','FUTURE_CROP'].includes(card.tier))) fail('Inventory Consolidation card contract failed.');
   const consolidationTotal = Number((consolidationSummary.match(/([\d,]+) matching locations?/) || [,'0'])[1].replaceAll(',', ''));
   if (consolidationTotal < consolidationCards.length || !consolidationSummary.includes('Nothing enters Location Moves until you click Send.')) {
     fail(`Inventory Consolidation summary was ${consolidationSummary.slice(0, 240)}.`);
+  }
+  const search = page.locator('#inv-consolidation-search');
+  await search.fill('006138.021.1');
+  const fuchsiaCards = await readConsolidationCards(page);
+  const badPairVisible = fuchsiaCards.some(card => card.sourceLocation === 'G.15.000' && card.sourceSalesYear === 2025
+    && card.options.some(option => option.locationcode === 'E.22.000' && option.salesYear === 2027));
+  if (badPairVisible) fail('Fuchsia Glow Carry Over still points to E.22.000 Current Crop.');
+
+  await search.fill('008404.010.1');
+  const greenBeautyCards = await readConsolidationCards(page);
+  const greenBeauty = greenBeautyCards.find(card => card.sourceLocation === 'C.11.034' && card.sourceSalesYear === 2026);
+  const greenBeautyDestination = greenBeauty?.options.find(option => option.locationcode === 'C.11.054' && option.salesYear === 2026);
+  if (!greenBeauty || greenBeauty.badge !== 'CARRY OVER -> CARRY OVER' || !greenBeautyDestination) {
+    fail(`Green Beauty Carry Over proof failed: ${JSON.stringify(greenBeautyCards).slice(0, 800)}.`);
+  }
+
+  await search.fill('');
+  await page.locator('#inv-consolidation-rule').selectOption('CURRENT_CROP');
+  const currentCropCards = await readConsolidationCards(page);
+  const currentCrop = currentCropCards[0];
+  if (!currentCrop || currentCrop.badge !== 'CURRENT CROP -> CURRENT CROP'
+      || currentCrop.sourceSalesYear !== currentSalesYear
+      || currentCrop.options.some(option => option.salesYear !== currentSalesYear)) {
+    fail('Current Crop card proof failed.');
   }
   await page.evaluate(() => window.goBackUniversal());
   await page.locator('#view-inventory-suggestion').waitFor({ state: 'visible', timeout: 10_000 });
@@ -530,7 +600,11 @@ async function runVerification(page, origin, accessCode) {
   await page.evaluate(() => window.goBackUniversal());
   await page.locator('#view-home').waitFor({ state: 'visible', timeout: 10_000 });
   const consolidationProof = { hierarchy: ['Inventory','Inventory Suggestion','Inv Consolidation'], total: consolidationTotal,
-    renderedCards: consolidationCards.length, sizeCount: sizeLabels.length, consolidationRenderMs, automaticQueueWrites: 0 };
+    renderedCards: consolidationCards.length, sizeCount: sizeLabels.length, currentSalesYear, cropTierOptions, consolidationRenderMs,
+    badPairExcluded: '006138.021.1 G.15.000 SY 2025 -> E.22.000 SY 2027',
+    carryOverSample: { source: '008404.010.1 C.11.034 SY 2026', destination: greenBeautyDestination.text, badge: greenBeauty.badge },
+    currentCropSample: { source: `${currentCrop.sourceLocation} SY ${currentCrop.sourceSalesYear}`, destination: currentCrop.options.find(option => option.selected)?.text, badge: currentCrop.badge },
+    automaticQueueWrites: 0 };
 
   stage = 'historical-requests';
   const historyFailureOffset = failedResponses.length;
@@ -590,7 +664,7 @@ async function runVerification(page, origin, accessCode) {
   if (await page.locator('#request-sales-impact-content [role="alert"]').count()) fail('Request Sales Impact rendered an error alert.');
   if (pageErrors.length) fail(`Browser page error: ${pageErrors[0]}`);
   const release = normalizeCardText(await page.locator('#header-version').textContent());
-  if (!release.includes('2.3.66')) fail(`Unexpected release version: ${release || 'missing'}.`);
+  if (!release.includes('2.3.67')) fail(`Unexpected release version: ${release || 'missing'}.`);
   return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, queueProof, consolidationProof, historicalPricedValue,
     archiveTabs, requestSalesImpactText, requestSalesImpactTotal, cardDomText: expectedCards.map(([itemcode, , locationcode]) =>
       cardDomText.find(text => text.includes(itemcode) && text.includes(locationcode))) };
@@ -626,7 +700,8 @@ async function main() {
     }
     const anonSecurity = await probeAnonSecurity({ supabaseUrl, anonKey, existingRequestId: result.activeRequestId });
     const archiveCounts = await readArchiveDatabaseCounts(localEnv);
-    console.log(JSON.stringify({ status: 'passed', origin, ...result, queueCountsBefore, queueCountsAfter, archiveCounts, anonSecurity }, null, 2));
+    const auraGlossaryTerms = await readAuraGlossaryTerms(localEnv);
+    console.log(JSON.stringify({ status: 'passed', origin, ...result, queueCountsBefore, queueCountsAfter, archiveCounts, auraGlossaryTerms, anonSecurity }, null, 2));
   } finally {
     await browser?.close().catch(() => {});
     if (server) await new Promise(resolve => server.close(resolve));

@@ -145,6 +145,7 @@ export const agdataV2366InventoryConsolidationSalesYearFixMigrationName = '20261
 export const agdataV2366InventoryConsolidationCacheMigrationName = '20261026011500_agdata_v2366_inventory_consolidation_cache.sql';
 export const agdataV2366HistoricalArchivePageDedupMigrationName = '20261026013000_agdata_v2366_historical_archive_page_dedup.sql';
 export const agdataV2366DriveArchiveSearchHashFixMigrationName = '20261026014500_agdata_v2366_drive_archive_search_hash_fix.sql';
+export const agdataV2367CropTierAuraGlossaryMigrationName = '20261026020000_agdata_v2367_crop_tier_aura_glossary.sql';
 export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName, managerPublishedReadMigrationName, importSourceMetadataMigrationName, masterPrioritySplitMigrationName, fullAppAdministratorsMigrationName, protectedRequestNaMigrationName, zeroTrustRlsMigrationName, appLoginRateLimitMigrationName, managerReportSetBasedReadMigrationName, managerEval2BatchedPreviewMigrationName, auraDylanOwnerOnlyMigrationName, suspendExistingReviewMigrationName, suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName]);
 
 export const registeredReleaseDatabaseMigrations = Object.freeze([
@@ -167,6 +168,7 @@ export const registeredReleaseDatabaseMigrations = Object.freeze([
   agdataV2366InventoryConsolidationCacheMigrationName,
   agdataV2366HistoricalArchivePageDedupMigrationName,
   agdataV2366DriveArchiveSearchHashFixMigrationName,
+  agdataV2367CropTierAuraGlossaryMigrationName,
 ]);
 
 export function normalizeScopedMigrationPaths(migrationPaths) {
@@ -2152,6 +2154,51 @@ export function migrationContractQuery(name) {
     and position('drive_around_report_state_hash_v2366(raw_row)' in pg_get_functiondef('public.historical_archive_read_v2(jsonb)'::regprocedure))>0
     and has_function_privilege('authenticated','public.historical_archive_read_v2(jsonb)','execute')
     and not has_function_privilege('anon','public.historical_archive_read_v2(jsonb)','execute')
+    as installed`;
+  if (name === agdataV2367CropTierAuraGlossaryMigrationName) return `select
+    to_regprocedure('public.get_consolidation_move_candidates_v1()') is not null
+    and to_regprocedure('public.aura_inventory_crop_tier_v1(text,text,integer)') is not null
+    and position('destination_profile.max_sales_year<settings.current_sales_year' in
+      pg_get_functiondef('public.get_consolidation_move_candidates_v1()'::regprocedure))>0
+    and position('destination_profile.min_sales_year=settings.current_sales_year' in
+      pg_get_functiondef('public.get_consolidation_move_candidates_v1()'::regprocedure))>0
+    and position('candidate.sales_year=source.sales_year' in
+      pg_get_functiondef('public.get_consolidation_move_candidates_v1()'::regprocedure))>0
+    and position('get_consolidation_move_candidates_v1() candidate' in
+      pg_get_functiondef('public.create_location_work_job_v1(jsonb)'::regprocedure))>0
+    and position('source_sales_year>current_sales_year' in
+      pg_get_functiondef('public.create_location_work_job_v1(jsonb)'::regprocedure))=0
+    and exists(select 1 from information_schema.columns where table_schema='public'
+      and table_name='aura_domain_glossary' and column_name='definition')
+    and exists(select 1 from information_schema.columns where table_schema='public'
+      and table_name='aura_domain_glossary' and column_name='synonyms' and data_type='ARRAY')
+    and (select count(*) from public.aura_domain_glossary where term=any(array[
+      'carry over','current crop','future crop','inv consolidation','loc photo match','request sales impact',
+      'mistake guy','historical orders','historical reserves','historical drive around','location moves',
+      'suspend tag','recount','bunch notes','eval work','shear list']))=16
+    and not exists(select 1 from private.inventory_consolidation_cache_v2366 cache
+      cross join lateral jsonb_array_elements(cache.destinations) destination
+      where (cache.crop_tier='CARRY_OVER' and (destination->>'salesYear')::integer>=cache.current_sales_year)
+        or (cache.crop_tier='CURRENT_CROP' and (destination->>'salesYear')::integer<>cache.current_sales_year)
+        or (cache.crop_tier='FUTURE_CROP' and (destination->>'salesYear')::integer<>cache.source_sales_year))
+    and not exists(select 1 from private.inventory_consolidation_cache_v2366 cache
+      cross join lateral jsonb_array_elements(cache.destinations) destination
+      where cache.itemcode='006138.021.1' and cache.source_locationcode='G.15.000'
+        and cache.source_sales_year=2025 and destination->>'locationcode'='E.22.000'
+        and (destination->>'salesYear')::integer=2027)
+    and exists(select 1 from private.inventory_consolidation_cache_v2366 cache
+      cross join lateral jsonb_array_elements(cache.destinations) destination
+      where cache.itemcode='008404.010.1' and cache.source_locationcode='C.11.034'
+        and cache.source_sales_year=2026 and cache.crop_tier='CARRY_OVER'
+        and destination->>'locationcode'='C.11.054' and (destination->>'salesYear')::integer=2026)
+    and has_function_privilege('authenticated','public.aura_inventory_crop_tier_v1(text,text,integer)','execute')
+    and not has_function_privilege('anon','public.aura_inventory_crop_tier_v1(text,text,integer)','execute')
+    and has_function_privilege('authenticated','public.inventory_consolidation_suggestions_v1(jsonb)','execute')
+    and has_function_privilege('service_role','public.create_location_work_job_v1(jsonb)','execute')
+    and to_regprocedure('private.historical_drive_file_page_v2367(text,integer,integer)') is not null
+    and position('historical_drive_file_page_v2367(path_value->>2' in
+      pg_get_functiondef('public.historical_archive_read_v2(jsonb)'::regprocedure))>0
+    and not has_function_privilege('authenticated','private.historical_drive_file_page_v2367(text,integer,integer)','execute')
     as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }

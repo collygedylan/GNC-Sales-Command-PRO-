@@ -3,7 +3,7 @@ import { resolveAuraIntent } from "./aura-query.ts";
 
 import { parseAuraAppContext, requestedAuraVariants, spokenAuraSeason, signedAuraQuantity } from "./aura-voice-scope.ts";
 import { socData, socOutcome, socStamp, socFingerprint } from "./aura-voice-soc.ts";
-import { auraVoice, extractAuraEntity, auraInventorySummary, type AuraGlossaryEntry, type AuraVoice } from "./aura-domain.ts";
+import { auraVoice, extractAuraEntity, matchesAuraGlossaryEntry, auraInventorySummary, type AuraCropTier, type AuraGlossaryEntry, type AuraVoice } from "./aura-domain.ts";
 import { synthesizeAuraSpeech } from "./aura-speech.ts";
 
 type ObjectValue = Record<string, unknown>;
@@ -136,6 +136,24 @@ function modelContext(context: ObjectValue): ObjectValue {
   if (safe.filters) safe.filters = Object.fromEntries(Object.entries(optionalObject(safe.filters)).filter(([key]) => !["requestedVariants", "expectedSettingRevision", "selectionId"].includes(key)));
   return { previousTool: safe };
 }
+function deterministicGlossaryTool(question: string, glossary: AuraGlossaryEntry[]): AuraTool | null {
+  const matches = glossary.filter(entry => matchesAuraGlossaryEntry(question, entry)).sort((left, right) =>
+    Math.max(right.term.length, ...right.synonyms.map(value => value.length)) - Math.max(left.term.length, ...left.synonyms.map(value => value.length)));
+  const cropTiers = [...new Set(matches.map(entry => entry.target_filter.cropTier).filter((tier): tier is AuraCropTier => Boolean(tier)))];
+  if (cropTiers.length > 1) throw new Error("AURA_CROP_TIER_AMBIGUOUS");
+  if (cropTiers.length === 1) return { name: "inventory", operation: "crop_tier", filters: { cropTier: cropTiers[0] } };
+  const entry = matches.find(candidate => candidate.target_filter.view);
+  return entry ? { name: "domain", term: entry.term } : null;
+}
+function domainOutcome(tool: Extract<AuraTool, { name: "domain" }>, glossary: AuraGlossaryEntry[]): Outcome {
+  const entry = glossary.find(candidate => candidate.term === tool.term);
+  if (!entry || !entry.definition) throw new Error("AURA_GLOSSARY_INVALID");
+  const target = entry.target_filter;
+  const filters = Object.fromEntries(Object.entries({ archiveTab: target.archiveTab, queueCategory: target.queueCategory, taskView: target.taskView })
+    .filter(([, value]) => typeof value === "string" && value));
+  const actions = target.view ? [{ type: "navigation", view: target.view, filters }] : [];
+  return { reply: entry.definition, actions, context: { version: 1, tool }, sources: [] };
+}
 function knownOutsideDomain(text: string) {
   // Protect literal common names while rejecting obvious unrelated instructions before any provider call.
   const syntax = text.replace(/["“][^"”]*["”]/g, "quoted plant");
@@ -209,7 +227,7 @@ function deterministicInventoryTool(question: string, active: ReturnType<typeof 
     const intent = resolveAuraIntent(question, {});
     if (intent.mode !== "inventory") return null;
     const operation = String(intent.operation || "stock") as InventoryOperation;
-    if (!["stock", "locations", "ownership", "unassigned", "lot", "maximum"].includes(operation)) return null;
+    if (!["stock", "locations", "ownership", "unassigned", "lot", "maximum", "crop_tier"].includes(operation)) return null;
     const filters = validateInventoryFilters(intent.filters);
     if (!filters.itemcode && !filters.commonName && !filters.productText && !filters.genus) return null;
     if (operation === "stock") {
@@ -236,7 +254,8 @@ export function isDeterministicAuraInventoryQuestion(value: unknown): boolean {
 function recordAction(title: string, rows: ObjectValue[]): ObjectValue[] {
   const labels: Record<string, string> = { commonName: "Common Name", commonname: "Common Name", itemcode: "Item Code", contSize: "Size", contsize: "Size",
     locationCode: "Location", locationcode: "Location", lotCode: "Lot", lotcode: "Lot", ptravailable: "Available", ptronhand: "On Hand", s_lts: "Open Stock", quantity: "Quantity",
-    assignedTo: "Assigned To", assignedDisplayName: "Assigned To", ownerStatus: "Ownership", customerName: "Customer", consigneeName: "Consignee" };
+    assignedTo: "Assigned To", assignedDisplayName: "Assigned To", ownerStatus: "Ownership", customerName: "Customer", consigneeName: "Consignee",
+    salesYear: "Sales Year", cropTier: "Crop Tier" };
   return rows.length ? [{ type: "records", title, rows, columns: Object.keys(rows[0]).filter(key => labels[key]).map(key => ({ key, label: labels[key] })) }] : [];
 }
 function label(row: ObjectValue) { return [row.commonName || row.commonname || row.itemcode || row.label || row.username, row.contSize || row.contsize, row.locationCode || row.locationcode, row.lotCode || row.lotcode].filter(Boolean).join(" · "); }
@@ -293,7 +312,8 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
   const rows = array(data.rows), choices = array(data.candidateChoices).slice(0, 5);
   const unresolved = number(data.unresolvedCount ?? 0);
   const sourceFingerprint = await inventoryFingerprint(data);
-  const scope = `season ${String(data.season || "unresolved")}, sales year ≤ ${String(data.salesYear || "unresolved")}`;
+  const scope = operation === "crop_tier" ? `${String(data.cropTier || filters.cropTier || "crop tier").replaceAll("_", " ")} relative to Sales Year ${String(data.currentSalesYear || data.salesYear || "unresolved")}`
+    : `season ${String(data.season || "unresolved")}, sales year ≤ ${String(data.salesYear || "unresolved")}`;
   const nextContext: ObjectValue = { version: 1, tool: { ...tool, filters }, cursor: data.nextCursor ?? null, inventoryStamp: inventoryStamp(data), choices: [] };
   const sources = [{ kind: "inventory", operation, filters, cursor, stamp: inventoryStamp(data), fingerprint: sourceFingerprint, policy: policy(actor) }];
   const metadata = { resolvedSeason: { seasonCode: data.season, salesYear: data.salesYear }, settingRevision: data.settingRevision,
@@ -347,6 +367,13 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
     reply = filters.countMode && filters.countMode !== "quantity" ? `I found ${format(total)} ${metric} in ${scope}.`
       : auraInventorySummary(total, String(data.metric), rows, data.hasMore === true);
     actions = recordAction("Inventory", rows);
+  } else if (operation === "crop_tier") {
+    const tier = String(filters.cropTier || "");
+    if (data.cropTier !== tier || !["CARRY_OVER", "CURRENT_CROP", "FUTURE_CROP"].includes(tier)) throw new Error("AURA_RESULT_INVALID");
+    const total = number(data.total);
+    const tierLabel = tier.replaceAll("_", " ").replace(/\b\w/g, value => value.toUpperCase());
+    reply = `I found ${format(total)} active ${tierLabel} inventory rows relative to Sales Year ${String(data.currentSalesYear || data.salesYear)}${data.hasMore === true ? "; showing the first 50" : ""}.`;
+    actions = [...recordAction(`${tierLabel} Inventory`, rows), { type: "navigation", view: "inv-consolidation", filters: { cropTier: tier } }];
   } else {
     reply = `Found ${format(rows.length)} matching inventory rows in ${scope}${data.hasMore ? "; more are available" : ""}.`;
     const details = rows.slice(0, 3).map(row => {
@@ -489,7 +516,14 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
   const history = validateAuraHistory(body.history);
   const domain = await store.domain(signal);
   const active = parseAuraAppContext(await store.appContext(signal));
-  const deterministicTool = deterministicInventoryTool(question, active);
+  const glossaryTool = deterministicGlossaryTool(question, domain.glossary);
+  const parsedInventoryTool = deterministicInventoryTool(question, active);
+  if (glossaryTool?.name === "inventory" && glossaryTool.operation === "crop_tier" && parsedInventoryTool) {
+    for (const key of ["itemcode", "commonName", "productText", "genus", "contSize", "locationCode"] as const) {
+      if (parsedInventoryTool.filters[key]) Object.assign(glossaryTool.filters, { [key]: parsedInventoryTool.filters[key] });
+    }
+  }
+  const deterministicTool = glossaryTool || parsedInventoryTool;
   if (body.appContext !== undefined && !same(parseAuraAppContext(body.appContext), active) && !deterministicTool) {
     throw Object.assign(new Error("AURA_APP_CONTEXT_STALE"), { appContext: active });
   }
@@ -537,10 +571,11 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       if ((more || selection) && oldTool.name) { const { name, ...values } = oldTool; tool = validateAuraTool(name, values, true); }
       else if (selectionNumber) tool = { name: "clarify", reason: "ambiguous" };
       else if (knownOutsideDomain(question)) tool = { name: "refuse" };
+      else if (glossaryTool) tool = glossaryTool;
       else {
         try {
           tool = await routeAuraWithGemini({ text: question, history, actor, context: { ...modelContext(context), appContext: active,
-            glossary: domain.glossary.filter(entry => question.toLowerCase().includes(entry.term)).slice(0, 30) }, apiKey: deps.apiKey(),
+            glossary: domain.glossary.filter(entry => matchesAuraGlossaryEntry(question, entry)).slice(0, 30) }, apiKey: deps.apiKey(),
             signal: AbortSignal.any([signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: deps.fetcher, reserve: bytes => store.reserve(bytes, signal) });
         } catch (error) {
           if (!deterministicTool || signal.aborted) throw error;
@@ -555,6 +590,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       : validateInventoryFilters({ requestedVariants: previousVariants ?? [] }).requestedVariants || [];
     if (tool.name === "inventory" || tool.name === "draft_request") {
       if (confirmingDraft && tool.name === "draft_request") tool.filters = validateInventoryFilters(tool.filters);
+      else if (tool.name === "inventory" && tool.operation === "crop_tier") tool.filters = validateInventoryFilters({ cropTier: tool.filters.cropTier });
       else if (!(more || selection)) tool.filters = explicitFilters(question, tool.filters);
       if (!selection) delete tool.filters.selectionId;
       if (follow && !tool.filters.commonName && !tool.filters.productText && !tool.filters.itemcode) {
@@ -568,7 +604,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       tool.filters.requestedVariants = confirmingDraft ? tool.filters.requestedVariants || [] : variants;
       tool.filters.expectedSettingRevision = active.settingRevision;
       const questionSyntax = question.replace(/["“][^"”]*["”]/g, " ");
-      if (tool.name === "inventory" && /\bhow many\b/i.test(questionSyntax)
+      if (tool.name === "inventory" && tool.operation !== "crop_tier" && /\bhow many\b/i.test(questionSyntax)
         && !/\b(?:most|maximum|highest)\b/i.test(questionSyntax)) tool.operation = "stock";
       if (tool.name === "inventory" && tool.operation === "stock") {
         if (/\b(?:physical rows?|inventory rows?)\b/i.test(question)) tool.filters.countMode = "physical_rows";
@@ -582,6 +618,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       if (!confirmingDraft && !(more || selection)) {
         const entity = proposedEntity;
         if (entity.size_spec) tool.filters.contSize = entity.size_spec;
+        if (entity.crop_tier) tool.filters.cropTier = entity.crop_tier;
         if (tool.name === "inventory" && (!tool.filters.countMode || tool.filters.countMode === "quantity")
           && (tool.operation === "stock" || /\b(?:open stock|on[ -]hand|allocated|held|on hold)\b/i.test(question))) {
           tool.filters.metric = ({ open_stock: "s_lts", loc_on_hand: "loc_on_hand", allocated: "allocated", held: "held" } as const)[entity.target_metric];
@@ -602,6 +639,8 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
     else if (tool.name === "clarify") {
       const messages = { plant: "Which plant, item code, location, or lot should I look up?", customer: "Which customer’s requests should I look up?", consignee: "Which consignee should I look up?", quantity: "How many whole units should I prepare for review?", ambiguous: "Please identify one nursery record or choose an option from the latest results." };
       outcome = { reply: messages[tool.reason], actions: [], context, sources: [] };
+    } else if (tool.name === "domain") {
+      outcome = domainOutcome(tool, domain.glossary);
     } else if (tool.name === "soc_reserves" || tool.name === "soc_open_orders") {
       outcome = await socOutcome(tool, context, actor, store, signal, active, variants, more, selection);
     } else if (tool.name === "history") {
@@ -613,7 +652,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       const next = more || selection || inherit ? context : { ...context, customerKey: undefined, consigneeKey: undefined, page: 0 };
       outcome = await historyOutcome(tool, next, actor, store, signal, more, selection);
     } else outcome = await inventoryOutcome(tool, context, actor, store, signal, more, selection, expectedDraft);
-    if (outcome.sources.length) outcome.sources.push({ kind: "domain", revision: domain.revision, policy: policy(actor) });
+    if (!outcome.sources.some(source => source.kind === "domain")) outcome.sources.push({ kind: "domain", revision: domain.revision, policy: policy(actor) });
     const completedContext = { ...outcome.context, entity: context.entity, domainRevision: domain.revision, appContext: active, version: 1, policy: policy(actor) };
     const response = { ok: true, requestId: turnId, conversationId, revision, reply: outcome.reply, speech: outcome.reply, actions: outcome.actions,
       interpretation: { engine: "gemini-tools-v1", intent: tool.name, ...outcome.metadata },
@@ -669,7 +708,7 @@ export async function handleAuraVoiceRequest(request: Request, deps: AuraVoiceDe
     const code = signal.aborted ? "AURA_QUERY_TIMEOUT" : failure.code === "42501" ? "AURA_FORBIDDEN"
       : (failure.code === "40001" || failure.code === "PT409") || failure.code === "55P03" ? "AURA_REVISION_CONFLICT"
       : /^AURA_[A-Z0-9_]+$/.test(raw) ? raw : "AURA_UNAVAILABLE";
-    const status = /FORBIDDEN/.test(code) ? 403 : /INVALID|SEASON_AMBIGUOUS|SIZE_AMBIGUOUS/.test(code) ? 400 : /STALE|CONFLICT|CANCELLED|IN_PROGRESS|LEASE/.test(code) ? 409 : /BUSY|QUOTA/.test(code) ? 429 : /TIMEOUT/.test(code) ? 504 : 503;
+    const status = /FORBIDDEN/.test(code) ? 403 : /INVALID|SEASON_AMBIGUOUS|SIZE_AMBIGUOUS|CROP_TIER_AMBIGUOUS/.test(code) ? 400 : /STALE|CONFLICT|CANCELLED|IN_PROGRESS|LEASE/.test(code) ? 409 : /BUSY|QUOTA/.test(code) ? 429 : /TIMEOUT/.test(code) ? 504 : 503;
     const errorMessage = code === "AURA_GEMINI_CONFIGURATION_UNAVAILABLE" ? "Aura’s connection is not configured. Ask your administrator to configure the Edge Function secret."
       : code === "AURA_SEASON_AMBIGUOUS" ? "Please choose one season for this SOC lookup."
       : code === "AURA_SIZE_AMBIGUOUS" ? "Please choose one plant size for this lookup."
