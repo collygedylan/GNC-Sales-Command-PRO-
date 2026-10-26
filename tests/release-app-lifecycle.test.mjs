@@ -40,7 +40,7 @@ test('v2.3.70 assets and worker upgrade purge previous cache generations', () =>
     assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.70', match[1]);
   }
   assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.70'/);
-  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'crop-tier-glossary-r1'/);
+  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'canonical-version-enforcement-r2'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*window\.reloadForServiceWorkerUpdate\(\)[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
   const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.70' });
