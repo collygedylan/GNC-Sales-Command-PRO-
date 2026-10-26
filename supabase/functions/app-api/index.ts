@@ -6623,6 +6623,7 @@ export async function renderBunchNotePreview(options: {
 type CanonicalActionGate = { flag: CanonicalUserAccessFlag } | { any: readonly CanonicalUserAccessFlag[] };
 
 function canonicalActionGate(action: string, payload: Record<string, unknown>): CanonicalActionGate | null {
+  if (action === "fast_erp_ingest") return { flag: "can_access_manager_tab" };
   if (action === "manual_sync_status") return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] };
   if (action === "av_read") return { flag: "can_access_av" };
   if (action === "dataset_read") {
@@ -6905,6 +6906,70 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
     return await handleAppsScriptAction(session, payload.payload && typeof payload.payload === "object" && !Array.isArray(payload.payload)
       ? payload.payload as Record<string, unknown> : {}, canonicalAccessForRequest);
+  }
+
+  if (action === "fast_erp_ingest") {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+    const actor = activeProfileForRequest || await resolveActiveSessionProfile(session);
+    if (!FULL_ACCESS_USER_KEYS.has(normalizeUsername(String(actor.username || "")))) {
+      return errorResponse("Only designated administrators can run live ERP ingestion.", 403, { code: "FAST_ERP_INGEST_FORBIDDEN" });
+    }
+    const allowedKeys = new Set(["action", "operation", "dataset", "fileMeta", "rows"]);
+    if (Object.keys(payload).some(key => !allowedKeys.has(key))) {
+      return errorResponse("Invalid live ERP ingestion request.", 400, { code: "FAST_ERP_INGEST_INVALID" });
+    }
+    const operation = String(payload.operation || "ingest").trim().toLowerCase();
+    const dataset = String(payload.dataset || "").trim().toLowerCase();
+    const fileMeta = payload.fileMeta && typeof payload.fileMeta === "object" && !Array.isArray(payload.fileMeta)
+      ? payload.fileMeta as Record<string, unknown> : null;
+    const rpcByDataset: Record<string, string> = {
+      drive: "fast_ingest_drive_around_v1", drive_around: "fast_ingest_drive_around_v1",
+      soc: "fast_ingest_soc_orders_v1", soc_orders: "fast_ingest_soc_orders_v1",
+      reserves: "fast_ingest_soc_reserves_v1", soc_reserves: "fast_ingest_soc_reserves_v1",
+      cav: "fast_ingest_cav_v1", warehouse_assigned: "fast_ingest_warehouse_assigned_v1",
+      warehouse_assigned_items: "fast_ingest_warehouse_assigned_v1",
+    };
+    const readMeta = (...keys: string[]) => {
+      for (const key of keys) {
+        const value = String(fileMeta?.[key] || "").trim();
+        if (value) return value;
+      }
+      return "";
+    };
+    const fileId = readMeta("file_id", "fileId");
+    const fileName = readMeta("file_name", "fileName");
+    if (!fileMeta || !rpcByDataset[dataset] || !["check", "ingest"].includes(operation)
+      || !fileId || !fileName || fileId.length > 512 || fileName.length > 1024) {
+      return errorResponse("Invalid live ERP ingestion request.", 400, { code: "FAST_ERP_INGEST_INVALID" });
+    }
+    try {
+      const { data: check, error: checkError } = await supabase.rpc("check_erp_file_sync_needed_v1" as never, {
+        p_dataset_key: dataset,
+        p_file_id: fileId,
+        p_file_name: fileName,
+        p_modified_at: readMeta("modified_at", "modifiedAt"),
+        p_content_hash: readMeta("content_hash", "contentHash") || null,
+      } as never);
+      if (checkError) throw checkError;
+      if (operation === "check" || (check && typeof check === "object" && !Array.isArray(check)
+          && (check as Record<string, unknown>).skip === true)) {
+        return jsonResponse({ ok: true, data: check });
+      }
+      const rows = Array.isArray(payload.rows) ? payload.rows : null;
+      if (!rows || rows.length < 1 || rows.length > 50_000 || JSON.stringify(rows).length > 64 * 1024 * 1024) {
+        return errorResponse("Invalid live ERP row batch.", 400, { code: "FAST_ERP_ROWS_INVALID" });
+      }
+      const { data, error } = await supabase.rpc(rpcByDataset[dataset] as never, {
+        p_file_meta: fileMeta,
+        p_rows: rows,
+      } as never);
+      if (error) throw error;
+      return jsonResponse({ ok: true, data });
+    } catch (error) {
+      const source = error as Record<string, unknown>;
+      const code = String(source.message || "FAST_ERP_INGEST_FAILED");
+      return errorResponse("Live ERP ingestion failed.", source.code === "42501" ? 403 : 422, { code });
+    }
   }
 
   if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);

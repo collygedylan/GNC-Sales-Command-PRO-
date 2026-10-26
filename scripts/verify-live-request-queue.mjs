@@ -1001,7 +1001,7 @@ async function runVerification(page, origin, accessCode) {
   if (await page.locator('#request-sales-impact-content [role="alert"]').count()) fail('Request Sales Impact rendered an error alert.');
   if (pageErrors.length) fail(`Browser page error: ${pageErrors[0]}`);
   const release = normalizeCardText(await page.locator('#header-version').textContent());
-  if (!release.includes('2.3.68')) fail(`Unexpected release version: ${release || 'missing'}.`);
+  if (!release.includes('2.3.69')) fail(`Unexpected release version: ${release || 'missing'}.`);
   return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, requestCanary, queueProof, consolidationProof,
     photoAndAvNoteProof, quickAccessProof, historicalPricedValue,
     archiveTabs, requestSalesImpactText, requestSalesImpactTotal, cardDomText: expectedCards.map(([itemcode, , locationcode]) =>

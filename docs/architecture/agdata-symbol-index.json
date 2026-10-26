@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.68",
+  "release": "AgData v2.3.69",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -447,13 +447,30 @@
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
         "handleDatasetRevisionsAction",
-        "handleAppsScriptAction"
+        "handleAppsScriptAction",
+        "fast_erp_ingest"
       ],
       "Code.gs": [
+        "getFastLiveIngestRpc_",
+        "processFastLiveFile_",
         "getManualSyncStageOrder_",
         "queueManualSyncRequest_",
         "runQueuedManualSyncStage_"
-      ]
+      ],
+      "supportingFiles": {
+        "scripts/fast-live-erp-sync.mjs": [
+          "prepareLiveRows",
+          "runFastLiveErpSync"
+        ],
+        "supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql": [
+          "check_erp_file_sync_needed_v1",
+          "fast_ingest_drive_around_v1",
+          "fast_ingest_soc_orders_v1",
+          "fast_ingest_soc_reserves_v1",
+          "fast_ingest_cav_v1",
+          "fast_ingest_warehouse_assigned_v1"
+        ]
+      }
     },
     "agdata-zero-lockout-guard": {
       "assets/app-runtime.js": [

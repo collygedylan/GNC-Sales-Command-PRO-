@@ -22,6 +22,7 @@ import {
   agdataV2367CropTierAuraGlossaryMigrationName,
   agdataV2367HistoricalDriveFastReadMigrationName,
   agdataV2368HistoricalPhotoDateKeyFixMigrationName,
+  agdataV2369FastLiveErpIngestionMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -207,6 +208,23 @@ test('v2.3.68 historical photo dates use canonical Drive history keys', () => {
   assert.match(source, /history\.history_key=p_row->>'id'/);
   assert.doesNotMatch(source, /from public\.ph_drive_mode_history history\s+where history\.unique_id/);
   assert.doesNotMatch(source, /(?:insert|update|delete|truncate)\s+(?:into\s+|from\s+)?public\./i);
+});
+
+test('v2.3.69 fast live ERP ingestion is registered and service-role only', () => {
+  assert.equal(agdataV2369FastLiveErpIngestionMigrationName,
+    '20261026070000_agdata_v2369_fast_live_erp_ingestion.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2369FastLiveErpIngestionMigrationName]),
+    [agdataV2369FastLiveErpIngestionMigrationName]);
+  const contract = migrationContractQuery(agdataV2369FastLiveErpIngestionMigrationName);
+  for (const marker of ['check_erp_file_sync_needed_v1', 'fast_ingest_drive_around_v1',
+    'fast_ingest_soc_orders_v1', 'fast_ingest_soc_reserves_v1', 'fast_ingest_cav_v1',
+    'fast_ingest_warehouse_assigned_v1', 'source_modified_at', 'source_content_hash']) {
+    assert.match(contract, new RegExp(marker));
+  }
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2369FastLiveErpIngestionMigrationName}`, import.meta.url), 'utf8');
+  assert.match(source, /jsonb_populate_record\(null::%s,source_row\.value\)/);
+  assert.match(source, /row_state_hash/);
+  assert.doesNotMatch(source, /\b(?:drop\s+table|truncate)\b/i);
 });
 
 test('v2.3.66 archive pages dedupe business state before rendering', () => {

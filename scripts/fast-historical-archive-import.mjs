@@ -99,7 +99,7 @@ export function historicalImportWindowOpen(date = new Date()) {
   return minutes >= 23 * 60 + 30 || minutes < 6 * 60 + 15;
 }
 
-function normalizeHeader(value) {
+export function normalizeHeader(value) {
   return String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
@@ -300,7 +300,7 @@ async function readZipEntries(filePath) {
   return entries;
 }
 
-async function xlsxValueRows(filePath) {
+export async function xlsxValueRows(filePath) {
   const entries = await readZipEntries(filePath);
   const workbook = entries.get('xl/workbook.xml') || '';
   const relationships = entries.get('xl/_rels/workbook.xml.rels') || '';
@@ -329,7 +329,7 @@ async function xlsxValueRows(filePath) {
   return rows;
 }
 
-async function* objectRows(filePath) {
+export async function* objectRows(filePath) {
   const extension = path.extname(filePath).toLowerCase();
   const values = extension === '.csv' ? parseCsvRows(fs.createReadStream(filePath)) : await xlsxValueRows(filePath);
   let headers = null;
@@ -344,13 +344,13 @@ async function* objectRows(filePath) {
   if (!headers) fail('ARCHIVE_IMPORT_HEADER_MISSING');
 }
 
-async function hashFile(filePath) {
+export async function hashFile(filePath) {
   const hash = createHash('sha256');
   for await (const chunk of fs.createReadStream(filePath)) hash.update(chunk);
   return hash.digest('hex');
 }
 
-async function localSources(input) {
+export async function localSources(input) {
   const found = [];
   const visit = async target => {
     const details = await fs.promises.stat(target);
@@ -364,7 +364,7 @@ async function localSources(input) {
   return found.sort((left, right) => left.fileName.localeCompare(right.fileName));
 }
 
-async function driveSources(folderId) {
+export async function driveSources(folderId) {
   const auth = new google.auth.GoogleAuth({ scopes: ['https://www.googleapis.com/auth/drive.readonly'] });
   const drive = google.drive({ version: 'v3', auth });
   const files = [];
@@ -392,7 +392,7 @@ async function driveSources(folderId) {
       ? await drive.files.export({ fileId: file.id, mimeType: 'text/csv' }, { responseType: 'stream' })
       : await drive.files.get({ fileId: file.id, alt: 'media', supportsAllDrives: true }, { responseType: 'stream' });
     await pipeline(response.data, fs.createWriteStream(filePath));
-    sources.push({ filePath, fileName: file.name || `${file.id}${extension}`, modifiedTime: file.modifiedTime,
+    sources.push({ filePath, fileId: file.id, fileName: file.name || `${file.id}${extension}`, modifiedTime: file.modifiedTime,
       cleanup: async () => fs.promises.rm(filePath, { force: true }) });
   }
   return { sources, cleanup: async () => fs.promises.rm(tempRoot, { recursive: true, force: true }) };

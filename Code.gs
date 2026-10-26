@@ -1607,6 +1607,123 @@ function assertRoutedPendingSourceSelection_(dataset, expectedIdentity) {
   }
 }
 
+function getFastLiveIngestDatasetKey_(dataset) {
+  const keys = { drive: 'drive_around', soc: 'soc', reserves: 'reserves', cav: 'cav' };
+  const key = keys[String(dataset || '').trim().toLowerCase()];
+  if (!key) throw new Error('FAST_ERP_DATASET_INVALID');
+  return key;
+}
+
+function getFastLiveIngestRpc_(dataset) {
+  const rpcs = {
+    drive: 'fast_ingest_drive_around_v1',
+    soc: 'fast_ingest_soc_orders_v1',
+    reserves: 'fast_ingest_soc_reserves_v1',
+    cav: 'fast_ingest_cav_v1'
+  };
+  const rpc = rpcs[String(dataset || '').trim().toLowerCase()];
+  if (!rpc) throw new Error('FAST_ERP_DATASET_INVALID');
+  return rpc;
+}
+
+function getFastLiveFileMeta_(file) {
+  const modifiedAt = file.getLastUpdated();
+  return {
+    file_id: String(file.getId() || ''),
+    file_name: String(file.getName() || ''),
+    modified_at: modifiedAt && modifiedAt.toISOString ? modifiedAt.toISOString() : new Date(modifiedAt).toISOString(),
+    web_view_link: typeof file.getUrl === 'function' ? String(file.getUrl() || '') : ''
+  };
+}
+
+function getFastLiveIngestRows_(dataset, rawData, tableName, payloadBuilderFunc, syncStartTime, fileName) {
+  const result = payloadBuilderFunc(rawData, tableName, {}, syncStartTime, fileName);
+  const rows = Array.isArray(result && result.upserts) ? result.upserts : [];
+  const totalRows = Number(result && result.totalRows) || 0;
+  const diagnostics = result && result.stats ? result.stats : createDeltaSyncStats_();
+  throwIfSnapshotSourceInvalid_(diagnostics, totalRows, fileName, tableName);
+  if (rows.length !== totalRows) throw new Error('FAST_ERP_COMPLETE_SNAPSHOT_REQUIRED');
+  if (dataset !== 'drive') return { rows: rows, totalRows: totalRows, diagnostics: diagnostics };
+  return {
+    rows: rows.map(function(row) {
+      const values = Object.assign({}, row);
+      delete values[MASTER_ITEM6_FIELD_MASK_PROPERTY_];
+      return { values: values, rawFields: getMasterItem6RawFieldMask_(row) };
+    }),
+    totalRows: totalRows,
+    diagnostics: diagnostics
+  };
+}
+
+function processFastLiveFile_(dataset, route, pendingFiles, payloadBuilderFunc, afterCommit) {
+  const files = (Array.isArray(pendingFiles) ? pendingFiles : []).filter(function(file) {
+    return file && !isLiveImportTemporaryFile_(file.getName());
+  }).sort(function(a, b) {
+    const changed = b.getLastUpdated().getTime() - a.getLastUpdated().getTime();
+    return changed || String(b.getId() || '').localeCompare(String(a.getId() || ''));
+  });
+  if (!files.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' };
+  const sourceFile = files[0];
+  const olderFiles = files.slice(1);
+  const fileMeta = getFastLiveFileMeta_(sourceFile);
+  const sourceIdentity = getImportSourceIdentity_(sourceFile, route.tableName);
+  const check = callSupabaseRpc_('check_erp_file_sync_needed_v1', {
+    p_dataset_key: getFastLiveIngestDatasetKey_(dataset),
+    p_file_id: fileMeta.file_id,
+    p_file_name: fileMeta.file_name,
+    p_modified_at: fileMeta.modified_at,
+    p_content_hash: null
+  });
+  if (!check || typeof check.skip !== 'boolean') throw new Error('FAST_ERP_SYNC_CHECK_INVALID');
+  const processedFolder = getDriveFolderByIdWithRetry_(route.archiveFolderId, route.tableName + ' processed folder');
+  if (check.skip) {
+    revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
+    moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, route.tableName + ' unchanged file ' + fileMeta.file_name);
+    olderFiles.forEach(function(file) {
+      moveDriveFileToFolderWithRetry_(file, processedFolder, route.tableName + ' older unchanged file ' + file.getName());
+    });
+    return {
+      tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE',
+      skippedFilesArchived: olderFiles.length + 1, totalRows: 0,
+      fastSkipDurationMs: Number(check.duration_ms) || 0
+    };
+  }
+  const syncStartTime = new Date().toISOString();
+  const rawData = extractDataFromFile(sourceFile, route.dropFolderId, { importTableName: route.tableName });
+  if (!rawData || rawData.length < 1) throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY',
+    'No readable rows were found in ' + fileMeta.file_name + '.');
+  const prepared = getFastLiveIngestRows_(dataset, rawData, route.tableName, payloadBuilderFunc,
+    syncStartTime, fileMeta.file_name);
+  revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
+  const response = callSupabaseRpc_(getFastLiveIngestRpc_(dataset), {
+    p_file_meta: fileMeta,
+    p_rows: prepared.rows
+  });
+  if (!response || response.ok !== true || response.skip === true) throw new Error('FAST_ERP_INGEST_UNCONFIRMED');
+  if (typeof afterCommit === 'function') afterCommit({
+    tableName: route.tableName, fileName: fileMeta.file_name, syncStartTime: syncStartTime,
+    upsertCount: Number(response.inserted_rows || 0) + Number(response.updated_rows || 0),
+    deleteCount: Number(response.deleted_rows || 0), totalRows: prepared.totalRows
+  });
+  revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
+  moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, route.tableName + ' processed file ' + fileMeta.file_name);
+  olderFiles.forEach(function(file) {
+    moveDriveFileToFolderWithRetry_(file, processedFolder, route.tableName + ' archived older file ' + file.getName());
+  });
+  emitTableSyncLiveEvent_(route.tableName, {
+    filesProcessed: 1, totalRows: prepared.totalRows,
+    upsertCount: Number(response.inserted_rows || 0) + Number(response.updated_rows || 0),
+    deleteCount: Number(response.deleted_rows || 0), fastIngestDurationMs: Number(response.duration_ms || 0)
+  });
+  return {
+    tableName: route.tableName, filesProcessed: 1, failedFiles: 0, code: 'FAST_INGESTED',
+    skippedFilesArchived: olderFiles.length,
+    upsertCount: Number(response.inserted_rows || 0) + Number(response.updated_rows || 0),
+    deleteCount: Number(response.deleted_rows || 0), totalRows: prepared.totalRows,
+    fastIngestDurationMs: Number(response.duration_ms || 0), diagnostics: prepared.diagnostics
+  };
+}
+
 function runRoutedDropImport_(dataset) {
   return withDatasetImportProcessorLock_(function() {
     const route = getImportHistoryRoute_(dataset);
@@ -1624,12 +1741,10 @@ function runRoutedDropImport_(dataset) {
           && Number(file.getLastUpdated().getTime()) <= sourceWatermark.modifiedAt;
       }).map(function(file) { return { file: file, identity: getImportSourceIdentity_(file, route.tableName) }; }) : [];
     if (!sourceFile && !superseded.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' };
-    const options = { deltaMode: true, historyDataset: dataset, historyFileId: sourceWatermark.fileId };
     const result = !sourceFile ? { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE' }
-      : dataset === 'drive'
-        ? processSnapshotBatchFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildMasterPayload, options)
-        : processLatestFileOnlyFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildStandardPayload, options);
-    if (!result.failedFiles && !result.fatalFailure && (result.filesProcessed > 0 || !sourceFile)) {
+      : processFastLiveFile_(dataset, route, dataset === 'drive' ? [sourceFile] : files,
+        dataset === 'drive' ? buildMasterPayload : buildStandardPayload);
+    if (!result.failedFiles && !result.fatalFailure && (result.filesProcessed > 0 || result.code === 'UP_TO_DATE' || !sourceFile)) {
       if (sourceFile) saveManualSyncLiveSourceWatermark_(dataset, sourceWatermark);
       if (superseded.length) {
         const archive = getDriveFolderByIdWithRetry_(route.archiveFolderId, 'Published DriveAround superseded sources');
@@ -1911,6 +2026,7 @@ function runImportHistoryBackfillChunk_() {
 }
 function runCustomerRepMapOnly() { return processCustomerRepMapSnapshot_(); }
 function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE); }
+function runWarehouseAssignedOnly() { return runWarehouseAssignedItemsOnly(); }
 function validateSeasonSalesReconciliationPlan_(plan, stageCode) {
   const failure = String(stageCode || 'SEASON_SALES_RECONCILIATION') + '_PLAN_INVALID';
   if (!plan || plan.ok !== true || String(plan.status || '').trim().toLowerCase() !== 'completed') throw new Error(failure);
@@ -2022,18 +2138,20 @@ function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
 }
 
 function runCavOnly() {
-  return processLatestFileOnlyFolder(
-    FOLDERS.CAV_DROP,
-    FOLDERS.CAV_PROCESSED,
-    getRuntimeSiteSplitTableName_('ph_cav_import', 'PH'),
-    buildCavPayload,
-    {
-      deltaMode: true,
-      afterCommit: function(context) {
-        return reconcileSeasonSalesOfficeAfterImport_(context && context.syncStartTime, 'cav_import');
-      }
-    }
-  );
+  return withDatasetImportProcessorLock_(function() {
+    const route = {
+      dropFolderId: FOLDERS.CAV_DROP,
+      archiveFolderId: FOLDERS.CAV_PROCESSED,
+      tableName: getRuntimeSiteSplitTableName_('ph_cav_import', 'PH')
+    };
+    const folder = getDriveFolderByIdWithRetry_(route.dropFolderId, route.tableName + ' drop folder');
+    const iterator = listDriveFilesWithRetry_(folder, route.tableName + ' drop folder');
+    const files = [];
+    while (iterator.hasNext()) files.push(iterator.next());
+    return processFastLiveFile_('cav', route, files, buildCavPayload, function(context) {
+      return reconcileSeasonSalesOfficeAfterImport_(context && context.syncStartTime, 'cav_import');
+    });
+  });
 }
 function runRetiredDiseaseManualSyncStage_() {
   return {

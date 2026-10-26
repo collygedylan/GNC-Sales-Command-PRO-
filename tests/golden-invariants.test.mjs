@@ -875,7 +875,7 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
   const verifier = read('scripts/verify-live-request-queue.mjs');
   for (const marker of ['ph_app_users', 'user_access_control', 'ph_request_delivery_outbox',
     'ph_requests_completed_history', "['POST'", "['PATCH'", "['DELETE'", '#historical-requests-title',
-    '#historical-request-sales-impact-btn', 'requestSalesImpactTotal', 'minimumRequestImpact', "release.includes('2.3.68')"]) {
+    '#historical-request-sales-impact-btn', 'requestSalesImpactTotal', 'minimumRequestImpact', "release.includes('2.3.69')"]) {
     assert.match(verifier, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.match(verifier, /response\.ok[^]*payload\.length !== 0/);
@@ -1086,4 +1086,30 @@ test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Dire
   for (const marker of ['verifyRequestSubmissionCanary', 'verify_request_batch_submission_v2368',
     '008866.031.1', '10/20/26', 'verifyQuickAccessEvalReports', 'canary_rolled_back',
     'active_request !== 6', 'active_recount !== 0', 'active_bunch_notes !== 0']) assert.ok(verifier.includes(marker), marker);
+});
+
+test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => {
+  const migration = read('supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql');
+  const appsScript = read('Code.gs');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const fastSync = read('scripts/fast-live-erp-sync.mjs');
+  for (const rpc of ['check_erp_file_sync_needed_v1', 'fast_ingest_drive_around_v1',
+    'fast_ingest_soc_orders_v1', 'fast_ingest_soc_reserves_v1', 'fast_ingest_cav_v1',
+    'fast_ingest_warehouse_assigned_v1']) assert.ok(migration.includes(rpc), rpc);
+  for (const marker of ["set statement_timeout='200ms'", "'target_ms',50", "'target_ms',2000",
+    'jsonb_populate_record(null::%s,source_row.value)', 'bulk_import_master_snapshot_v1',
+    'reconcile_inventory_location_evidence_v1', 'refresh_soc_order_history_v2366',
+    'refresh_reserve_history_v2366', 'row_state_hash', 'source_content_hash', 'source_modified_at']) {
+    assert.ok(migration.includes(marker), marker);
+  }
+  assert.doesNotMatch(migration, /\b(?:drop\s+table|truncate)\b/i);
+  assert.doesNotMatch(migration, /(?:insert|update|delete)\s+(?:into\s+|from\s+)?public\.ph_(?:active_request|requests_pending|reclass_recount|bunch_note)/i);
+  assert.match(migration, /revoke all on function public\.fast_ingest_drive_around_v1\(jsonb,jsonb\) from public,anon,authenticated/);
+  assert.match(migration, /current_setting\('agdata\.fast_erp_defer_history',true\)='on'/);
+  for (const marker of ['processFastLiveFile_', 'check_erp_file_sync_needed_v1',
+    'FAST_ERP_COMPLETE_SNAPSHOT_REQUIRED', 'runWarehouseAssignedOnly']) assert.ok(appsScript.includes(marker), marker);
+  assert.match(appApi, /action === "fast_erp_ingest"[^]*FULL_ACCESS_USER_KEYS[^]*check_erp_file_sync_needed_v1[^]*rpcByDataset/);
+  for (const marker of ['objectRows', 'latestSources', 'check_erp_file_sync_needed_v1',
+    'fast_ingest_drive_around_v1', 'FAST_LIVE_ERP_DATABASE_URL', 'Promise.all']) assert.ok(fastSync.includes(marker), marker);
+  assert.match(read('assets/app-runtime.js'), /type: 'manual_run'[^]*fast: true/);
 });

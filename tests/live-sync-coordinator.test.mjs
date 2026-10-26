@@ -1437,3 +1437,19 @@ test('v2.3.56 REQUEST reconciliation is bounded, non-blocking, and refreshes eve
   assert.match(migration, /request_source[^]*customeridentityid[^]*consigneeidentityid/);
   assert.doesNotMatch(migration, /update public\.ph_active_request set req_qty='1'/);
 });
+
+test('v2.3.69 RUN SCRIPT fast-skips before parsing and uses one set-based RPC', () => {
+  const code = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql', import.meta.url), 'utf8');
+  const fastFunction = code.slice(code.indexOf('function processFastLiveFile_('), code.indexOf('function runRoutedDropImport_('));
+  assert.ok(fastFunction.indexOf("callSupabaseRpc_('check_erp_file_sync_needed_v1'") < fastFunction.indexOf('extractDataFromFile('));
+  assert.match(fastFunction, /check\.skip[^]*code: 'UP_TO_DATE'/);
+  assert.match(fastFunction, /callSupabaseRpc_\(getFastLiveIngestRpc_\(dataset\)[^]*p_rows: prepared\.rows/);
+  assert.doesNotMatch(fastFunction, /fetchAllSupabaseData|pushToSupabase|deleteFromSupabase/);
+  assert.match(runtime, /type: 'manual_run'[^]*fast: true[^]*force: true/);
+  assert.match(migration, /btrim\(p_file_name\) like '~\$%'/);
+  assert.match(migration, /upper\(btrim\(p_file_name\)\) like 'TEMP\\_%'/);
+  assert.match(migration, /merge_compact_history_state_v2366[^]*merge_drive_around_report_state_v2366/);
+  assert.match(migration, /\(itemcode,row_state_hash\)/);
+});

@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.68",
+  "version": "2.3.69",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -169,6 +169,14 @@
     "buildMasterBulkSnapshotPayload_",
     "buildStandardPayload",
     "buildMasterPayload",
-    "buildCavPayload"
+    "buildCavPayload",
+    "getFastLiveIngestDatasetKey_",
+    "getFastLiveIngestRpc_",
+    "getFastLiveFileMeta_",
+    "getFastLiveIngestRows_",
+    "processFastLiveFile_",
+    "runRoutedDropImport_",
+    "runWarehouseAssignedOnly",
+    "runCavOnly"
   ]
 }

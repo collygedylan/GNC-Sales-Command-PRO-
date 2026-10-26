@@ -61,6 +61,13 @@ const liveImportFunctions = new Set([
   "buildCavPayload",
   "processSnapshotBatchFolderLocked_",
   "assertRoutedPendingSourceSelection_",
+  "getFastLiveIngestDatasetKey_",
+  "getFastLiveIngestRpc_",
+  "getFastLiveFileMeta_",
+  "getFastLiveIngestRows_",
+  "processFastLiveFile_",
+  "runWarehouseAssignedOnly",
+  "runCavOnly",
   "assertDriveAroundSourceContract_",
   "processCustomerRepMapSnapshotLocked_",
   "getAppsScriptActionSigningKeys_",
@@ -99,6 +106,8 @@ const liveImportFunctions = new Set([
 ]);
 const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_", "requestNaMappingDigest_", "ensureProtectedRequestNaCustomerMappings_", "handleRuntimeWatchdogAlert_"]);
 for (const name of ['normalizeEscapedImportText_', 'normalizeEscapedImportRow_']) additiveFunctions.add(name);
+for (const name of ['getFastLiveIngestDatasetKey_', 'getFastLiveIngestRpc_', 'getFastLiveFileMeta_',
+  'getFastLiveIngestRows_', 'processFastLiveFile_', 'runWarehouseAssignedOnly']) additiveFunctions.add(name);
 for (const name of ['removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_', 'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync']) additiveFunctions.add(name);
 for (const name of ['publishManualSyncStatus_', 'scheduleRequestIntegrityMaintenance_', 'runQueuedRequestIntegrityMaintenance_']) additiveFunctions.add(name);
 additiveFunctions.add('setDatasetImportSourceMetadata_');

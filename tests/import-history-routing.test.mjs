@@ -187,8 +187,8 @@ test('operational routed import pins the latest source without starting paused h
   ctx.listRoutedDropFiles_ = () => (++listCalls === 1 ? [newest] : []);
   ctx.readImportHistoryBackfillState_ = () => { stateReads++; return null; };
   ctx.startImportHistoryBackfill = () => { startCalls++; throw new Error('historical backfill must stay paused'); };
-  ctx.processSnapshotBatchFolderLocked_ = (_drop, _archive, _table, _builder, options) => {
-    selectedId = options.historyFileId;
+  ctx.processFastLiveFile_ = (_dataset, _route, files) => {
+    selectedId = files[0].getId();
     modifiedAt = Date.parse('2026-10-19T20:01:54.672Z'); // Simulate archive/move changing Drive's modification time.
     return { filesProcessed: 1, failedFiles: 0, fatalFailure: false };
   };
@@ -249,8 +249,8 @@ test('failed live publication does not advance the source watermark', () => {
     getLastUpdated: () => new Date('2026-10-19T19:01:00.000Z') };
   ctx.withDatasetImportProcessorLock_ = work => work();
   ctx.listRoutedDropFiles_ = () => [newest];
-  ctx.processLatestFileOnlyFolderLocked_ = (_drop, _archive, _table, _builder, options) => {
-    assert.equal(options.historyFileId, 'failed-source');
+  ctx.processFastLiveFile_ = (_dataset, _route, files) => {
+    assert.equal(files[0].getId(), 'failed-source');
     return { filesProcessed: 0, failedFiles: 1, fatalFailure: true, errorCode: 'IMPORT_DATABASE_XX000' };
   };
 
@@ -265,9 +265,9 @@ test('history captures every column and zero/false/blank values without writing 
   const matrix = [['ITEMCODE', 'holdstopcode', 'locationnote', 'duplicate', 'duplicate'],
     ...Array.from({ length: 1001 }, (_, i) => ['ITEM-' + i, 'incoming', '', 0, false])];
   invoke(ctx, 'persistImportedFileHistory_', 'drive', file(), matrix);
-  assert.deepEqual(calls.map(call => call.name), ['begin_import_history_v1', ...Array(3).fill('stage_import_history_rows_v1'), 'publish_import_history_v1']);
+  assert.deepEqual(calls.map(call => call.name), ['begin_import_history_v1', 'stage_import_history_rows_v1', 'publish_import_history_v1']);
   assert.equal(calls[0].args.p_report_date, '2026-10-15');
-  assert.deepEqual(calls.filter(call => call.name.startsWith('stage')).map(call => call.args.p_rows.length), [500, 500, 1]);
+  assert.deepEqual(calls.filter(call => call.name.startsWith('stage')).map(call => call.args.p_rows.length), [1001]);
   assert.deepEqual(calls[1].args.p_rows[0].values, ['ITEM-0', 'incoming', '', 0, false]);
   assert.deepEqual(calls[0].args.p_columns, matrix[0]);
 });
@@ -284,7 +284,7 @@ test('history retries skip acknowledged chunks and reject incomplete publication
   const matrix = [['ITEMCODE'], ...Array.from({ length: 1001 }, (_, i) => [i])];
   assert.throws(() => invoke(ctx, 'persistImportedFileHistory_', 'drive', file(), matrix), /IMPORT_HISTORY_PUBLICATION_UNCONFIRMED/);
   assert.equal(calls[1].args.p_rows[0].row_number, 501);
-  assert.equal(calls.filter(call => call.name.startsWith('stage')).length, 2);
+  assert.equal(calls.filter(call => call.name.startsWith('stage')).length, 1);
 });
 
 test('source hashing is stable after a move or rename and rejects lossy source shapes', () => {
