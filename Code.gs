@@ -4080,6 +4080,25 @@ function buildDriveAroundHistoryRowRawJson_(headers, row) {
   return raw;
 }
 
+function buildDriveAroundHistoryStateHash_(row) {
+  const textValue = function(value) { return String(value == null ? '' : value).trim().toLowerCase(); };
+  const numberValue = function(value) {
+    const parsed = parseDriveAroundHistoryNumber_(value);
+    return parsed == null || !Number.isFinite(Number(parsed)) ? '0' : String(Number(parsed));
+  };
+  const values = [
+    textValue(row.itemcode), textValue(row.commonname), textValue(row.contsize), textValue(row.locationcode),
+    textValue(row.lotcode), numberValue(row.ptronhand), numberValue(row.ptrreviewed), numberValue(row.ptravailable),
+    numberValue(row.s_lts), numberValue(row.loc_photo_match), textValue(row.priority || row.pri),
+    textValue(row.holdstopcode), textValue(row.holdstopreason), numberValue(row.listprice),
+    textValue(row.itemspec || row.spec), textValue(row.caliper), textValue(row.locationnote || row.av_note),
+    textValue(row.pick_note || row.picknote), textValue(row.salesnote || row.sales_note),
+    String(row.photo_url || '').trim()
+  ];
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, values.join('|'), Utilities.Charset.UTF_8)
+    .map(function(byte) { return ((byte + 256) % 256).toString(16).padStart(2, '0'); }).join('');
+}
+
 function buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, nowIso) {
   if (!rawData || rawData.length < 2) return [];
   const headers = rawData[0].map(function(header) { return String(header || '').trim(); });
@@ -4144,6 +4163,15 @@ function buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, nowIso
     snapshotRow.genus = reportValues.genusname || null;
     snapshotRow.salesyear = reportValues.saleyear || null;
     snapshotRow.holdstopbegindate_raw = reportValues.holdstopbegindate || null;
+    snapshotRow.row_state_hash = buildDriveAroundHistoryStateHash_(snapshotRow);
+    snapshotRow.first_seen_at = nowIso;
+    snapshotRow.last_seen_at = nowIso;
+    snapshotRow.first_file_id = fileId;
+    snapshotRow.last_file_id = fileId;
+    snapshotRow.first_file_name = fileName;
+    snapshotRow.last_file_name = fileName;
+    snapshotRow.last_report_date = reportDate;
+    snapshotRow.seen_count = 1;
     rows.push(snapshotRow);
   }
   return rows;

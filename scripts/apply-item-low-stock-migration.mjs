@@ -139,6 +139,12 @@ export const agdataV2365SalesImpactUnionFixMigrationName = '20261025081000_agdat
 export const agdataV2366HistoricalArchiveMigrationName = '20261025220000_agdata_v2366_historical_archive.sql';
 export const agdataV2366FastHistoricalRequestsMigrationName = '20261025223000_agdata_v2366_fast_historical_requests_read.sql';
 export const agdataV2366QueueResolutionCleanupMigrationName = '20261025234500_agdata_v2366_queue_resolution_cleanup.sql';
+export const agdataV2366HistoricalStateDedupMigrationName = '20261026003000_agdata_v2366_historical_state_dedup.sql';
+export const agdataV2366InventoryConsolidationMigrationName = '20261026004500_agdata_v2366_inventory_consolidation.sql';
+export const agdataV2366InventoryConsolidationSalesYearFixMigrationName = '20261026010000_agdata_v2366_inventory_consolidation_sales_year_fix.sql';
+export const agdataV2366InventoryConsolidationCacheMigrationName = '20261026011500_agdata_v2366_inventory_consolidation_cache.sql';
+export const agdataV2366HistoricalArchivePageDedupMigrationName = '20261026013000_agdata_v2366_historical_archive_page_dedup.sql';
+export const agdataV2366DriveArchiveSearchHashFixMigrationName = '20261026014500_agdata_v2366_drive_archive_search_hash_fix.sql';
 export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName, managerPublishedReadMigrationName, importSourceMetadataMigrationName, masterPrioritySplitMigrationName, fullAppAdministratorsMigrationName, protectedRequestNaMigrationName, zeroTrustRlsMigrationName, appLoginRateLimitMigrationName, managerReportSetBasedReadMigrationName, managerEval2BatchedPreviewMigrationName, auraDylanOwnerOnlyMigrationName, suspendExistingReviewMigrationName, suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName]);
 
 export const registeredReleaseDatabaseMigrations = Object.freeze([
@@ -155,6 +161,12 @@ export const registeredReleaseDatabaseMigrations = Object.freeze([
   agdataV2366HistoricalArchiveMigrationName,
   agdataV2366FastHistoricalRequestsMigrationName,
   agdataV2366QueueResolutionCleanupMigrationName,
+  agdataV2366HistoricalStateDedupMigrationName,
+  agdataV2366InventoryConsolidationMigrationName,
+  agdataV2366InventoryConsolidationSalesYearFixMigrationName,
+  agdataV2366InventoryConsolidationCacheMigrationName,
+  agdataV2366HistoricalArchivePageDedupMigrationName,
+  agdataV2366DriveArchiveSearchHashFixMigrationName,
 ]);
 
 export function normalizeScopedMigrationPaths(migrationPaths) {
@@ -2019,8 +2031,8 @@ export function migrationContractQuery(name) {
     and not has_table_privilege('anon','public.ph_reserves_history','select')
     and not has_table_privilege('anon','public.ph_drive_mode_history','select')
     and not has_table_privilege('anon','public.ph_drive_mode_history_files','select')
-    and (select count(*) from public.ph_orders_history)>=27420
-    and (select count(*) from public.ph_reserves_history)>=7571
+    and (select count(*) from public.ph_orders_history)>=20000
+    and (select count(*) from public.ph_reserves_history)>=7000
     and (select count(*) from public.ph_drive_mode_history_files)>=1236
     and (select count(*) from public.ph_drive_mode_history)>=20000
     and (select count(*) from pg_trigger where not tgisinternal and tgname in
@@ -2068,6 +2080,78 @@ export function migrationContractQuery(name) {
     and to_regprocedure('public.complete_reclass_recount_v1(uuid,uuid,numeric,uuid)') is not null
     and exists(select 1 from pg_trigger where tgrelid='public.ph_request_delivery_outbox'::regclass
       and tgname='capture_reclass_recount_outbox_v1' and tgenabled='O')
+    as installed`;
+  if (name === agdataV2366HistoricalStateDedupMigrationName) return `select
+    to_regprocedure('public.deduplicate_drive_around_report_rows_batch_v1(integer)') is not null
+    and to_regprocedure('public.historical_archive_read_v2(jsonb)') is not null
+    and to_regprocedure('private.compact_history_states_v2366()') is not null
+    and to_regclass('private.ph_drive_around_row_states_v2366') is not null
+    and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_orders_history' and column_name='row_state_hash')
+    and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_reserves_history' and column_name='seen_count')
+    and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_drive_mode_history' and column_name='last_file_id')
+    and exists(select 1 from pg_indexes where schemaname='public' and indexname='ph_orders_history_item_state_v2366')
+    and exists(select 1 from pg_indexes where schemaname='public' and indexname='ph_reserves_history_item_state_v2366')
+    and exists(select 1 from pg_indexes where schemaname='public' and indexname='ph_drive_mode_history_item_state_v2366')
+    and position('America/Chicago' in pg_get_functiondef('public.deduplicate_drive_around_report_rows_batch_v1(integer)'::regprocedure))>0
+    and position('23:30' in pg_get_functiondef('public.deduplicate_drive_around_report_rows_batch_v1(integer)'::regprocedure))>0
+    and exists(select 1 from pg_proc where oid='public.deduplicate_drive_around_report_rows_batch_v1(integer)'::regprocedure
+      and proconfig @> array['statement_timeout=4500ms'])
+    and has_function_privilege('authenticated','public.historical_archive_read_v2(jsonb)','execute')
+    and not has_function_privilege('anon','public.historical_archive_read_v2(jsonb)','execute')
+    and not has_function_privilege('authenticated','public.deduplicate_drive_around_report_rows_batch_v1(integer)','execute')
+    as installed`;
+  if (name === agdataV2366InventoryConsolidationMigrationName) return `select
+    to_regprocedure('public.inventory_consolidation_suggestions_v1(jsonb)') is not null
+    and to_regprocedure('public.create_location_work_job_v1(jsonb)') is not null
+    and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_location_work_lines' and column_name='destination_salesyear')
+    and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_location_work_lines' and column_name='work_source')
+    and ((position('source.loc_on_hand>0' in pg_get_functiondef('public.inventory_consolidation_suggestions_v1(jsonb)'::regprocedure))>0
+      and position('source.loc_on_hand<100' in pg_get_functiondef('public.inventory_consolidation_suggestions_v1(jsonb)'::regprocedure))>0)
+      or (to_regprocedure('private.refresh_inventory_consolidation_cache_v2366()') is not null
+        and position('source.loc_on_hand>0' in pg_get_functiondef('private.refresh_inventory_consolidation_cache_v2366()'::regprocedure))>0
+        and position('source.loc_on_hand<100' in pg_get_functiondef('private.refresh_inventory_consolidation_cache_v2366()'::regprocedure))>0))
+    and position('inventoryConsolidation' in pg_get_functiondef('public.create_location_work_job_v1(jsonb)'::regprocedure))>0
+    and position('public.ph_location_work_jobs' in pg_get_functiondef('public.create_location_work_job_v1(jsonb)'::regprocedure))>0
+    and position('public.ph_requests_pending' in pg_get_functiondef('public.create_location_work_job_v1(jsonb)'::regprocedure))=0
+    and has_function_privilege('authenticated','public.inventory_consolidation_suggestions_v1(jsonb)','execute')
+    and not has_function_privilege('anon','public.inventory_consolidation_suggestions_v1(jsonb)','execute')
+    and has_function_privilege('service_role','public.create_location_work_job_v1(jsonb)','execute')
+    and not has_function_privilege('authenticated','public.create_location_work_job_v1(jsonb)','execute')
+    as installed`;
+  if (name === agdataV2366InventoryConsolidationSalesYearFixMigrationName) return `select
+    position('inventory_consolidation_sales_year_v2366' in
+      pg_get_functiondef('public.inventory_consolidation_suggestions_v1(jsonb)'::regprocedure))>0
+    and position('season_sales_settings_v1' in
+      pg_get_functiondef('public.inventory_consolidation_suggestions_v1(jsonb)'::regprocedure))>0
+    and position('inventory_consolidation_sales_year_v2366(private.season_sales_settings_v1()->>''salesYear'',null)'
+      in pg_get_functiondef('public.create_location_work_job_v1(jsonb)'::regprocedure))>0
+    and has_function_privilege('authenticated','public.inventory_consolidation_suggestions_v1(jsonb)','execute')
+    and has_function_privilege('service_role','public.create_location_work_job_v1(jsonb)','execute')
+    as installed`;
+  if (name === agdataV2366InventoryConsolidationCacheMigrationName) return `select
+    to_regclass('private.inventory_consolidation_cache_v2366') is not null
+    and to_regprocedure('private.refresh_inventory_consolidation_cache_v2366()') is not null
+    and position('source.loc_on_hand>0' in pg_get_functiondef('private.refresh_inventory_consolidation_cache_v2366()'::regprocedure))>0
+    and position('source.loc_on_hand<100' in pg_get_functiondef('private.refresh_inventory_consolidation_cache_v2366()'::regprocedure))>0
+    and position('candidate.sales_year=source.sales_year' in pg_get_functiondef('private.refresh_inventory_consolidation_cache_v2366()'::regprocedure))>0
+    and exists(select 1 from pg_proc where oid='public.inventory_consolidation_suggestions_v1(jsonb)'::regprocedure
+      and proconfig @> array['statement_timeout=500ms'])
+    and position('inventory_consolidation_cache_v2366' in pg_get_functiondef('public.inventory_consolidation_suggestions_v1(jsonb)'::regprocedure))>0
+    and not has_function_privilege('authenticated','private.refresh_inventory_consolidation_cache_v2366()','execute')
+    and has_function_privilege('authenticated','public.inventory_consolidation_suggestions_v1(jsonb)','execute')
+    as installed`;
+  if (name === agdataV2366HistoricalArchivePageDedupMigrationName) return `select
+    position('state-dedup-v2366' in pg_get_functiondef('public.historical_archive_read_v2(jsonb)'::regprocedure))>0
+    and position('record_kind in (''orders'',''reserves'')' in pg_get_functiondef('public.historical_archive_read_v2(jsonb)'::regprocedure))>0
+    and position('item.record-''id''' in pg_get_functiondef('public.historical_archive_read_v2(jsonb)'::regprocedure))>0
+    and has_function_privilege('authenticated','public.historical_archive_read_v2(jsonb)','execute')
+    and not has_function_privilege('anon','public.historical_archive_read_v2(jsonb)','execute')
+    as installed`;
+  if (name === agdataV2366DriveArchiveSearchHashFixMigrationName) return `select
+    position('drive-search-row-alias-v2366' in pg_get_functiondef('public.historical_archive_read_v2(jsonb)'::regprocedure))>0
+    and position('drive_around_report_state_hash_v2366(raw_row)' in pg_get_functiondef('public.historical_archive_read_v2(jsonb)'::regprocedure))>0
+    and has_function_privilege('authenticated','public.historical_archive_read_v2(jsonb)','execute')
+    and not has_function_privilege('anon','public.historical_archive_read_v2(jsonb)','execute')
     as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }

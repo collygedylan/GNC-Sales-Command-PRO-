@@ -14,6 +14,11 @@ import {
   reclassEmailReportPolicyMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName,
   auraDylanOwnerOnlyMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, unifiedRequestSyncSalesImpactMigrationName, agdataV2361SurgicalRestoreMigrationName, agdataV2362CanonicalRequestsMigrationName, agdataV2362LegacyCleanupMigrationName, agdataV2363UniformActiveHistoryMigrationName, agdataV2366HistoricalArchiveMigrationName,
   agdataV2366FastHistoricalRequestsMigrationName, agdataV2366QueueResolutionCleanupMigrationName,
+  agdataV2366HistoricalStateDedupMigrationName, agdataV2366InventoryConsolidationMigrationName,
+  agdataV2366InventoryConsolidationSalesYearFixMigrationName,
+  agdataV2366InventoryConsolidationCacheMigrationName,
+  agdataV2366HistoricalArchivePageDedupMigrationName,
+  agdataV2366DriveArchiveSearchHashFixMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -97,6 +102,92 @@ test('v2.3.66 queue resolution cleanup is registered and protected', () => {
   assert.doesNotMatch(source, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_request_delivery_outbox/i);
   assert.doesNotMatch(source, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_requests_pending/i);
   assert.doesNotMatch(source, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_soc_master/i);
+});
+
+test('v2.3.66 historical state deduplication is registered and time gated', () => {
+  assert.equal(agdataV2366HistoricalStateDedupMigrationName, '20261026003000_agdata_v2366_historical_state_dedup.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2366HistoricalStateDedupMigrationName]),
+    [agdataV2366HistoricalStateDedupMigrationName]);
+  const contract = migrationContractQuery(agdataV2366HistoricalStateDedupMigrationName);
+  for (const marker of ['deduplicate_drive_around_report_rows_batch_v1', 'row_state_hash', 'America/Chicago', '4500ms']) {
+    assert.match(contract, new RegExp(marker));
+  }
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366HistoricalStateDedupMigrationName}`, import.meta.url), 'utf8');
+  assert.match(source, /p_max_files integer default 25/);
+  assert.match(source, /time '23:30'/);
+  assert.match(source, /time '06:15'/);
+  assert.match(source, /set statement_timeout='4500ms'/);
+});
+
+test('v2.3.66 inventory consolidation is registered without Request writes', () => {
+  assert.equal(agdataV2366InventoryConsolidationMigrationName, '20261026004500_agdata_v2366_inventory_consolidation.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2366InventoryConsolidationMigrationName]),
+    [agdataV2366InventoryConsolidationMigrationName]);
+  const contract = migrationContractQuery(agdataV2366InventoryConsolidationMigrationName);
+  for (const marker of ['inventory_consolidation_suggestions_v1', 'destination_salesyear', 'inventoryConsolidation', 'ph_requests_pending']) {
+    assert.match(contract, new RegExp(marker));
+  }
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366InventoryConsolidationMigrationName}`, import.meta.url), 'utf8');
+  assert.match(source, /source\.loc_on_hand>0 and source\.loc_on_hand<100/);
+  assert.match(source, /eligible_sizes constant text\[\]:=array\[/);
+  assert.doesNotMatch(source, /insert\s+into\s+public\.ph_requests_pending/i);
+});
+
+test('v2.3.66 inventory consolidation normalizes configured two-digit SalesYear', () => {
+  assert.equal(agdataV2366InventoryConsolidationSalesYearFixMigrationName,
+    '20261026010000_agdata_v2366_inventory_consolidation_sales_year_fix.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2366InventoryConsolidationSalesYearFixMigrationName]),
+    [agdataV2366InventoryConsolidationSalesYearFixMigrationName]);
+  const contract = migrationContractQuery(agdataV2366InventoryConsolidationSalesYearFixMigrationName);
+  assert.match(contract, /inventory_consolidation_sales_year_v2366/);
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366InventoryConsolidationSalesYearFixMigrationName}`, import.meta.url), 'utf8');
+  assert.match(source, /INVENTORY_CONSOLIDATION_YEAR_FIX_SOURCE_MISMATCH/);
+  assert.match(source, /inventory_consolidation_suggestions_v1\(jsonb\)/);
+  assert.match(source, /create_location_work_job_v1\(jsonb\)/);
+});
+
+test('v2.3.66 inventory consolidation reads an atomic SWR cache', () => {
+  assert.equal(agdataV2366InventoryConsolidationCacheMigrationName,
+    '20261026011500_agdata_v2366_inventory_consolidation_cache.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2366InventoryConsolidationCacheMigrationName]),
+    [agdataV2366InventoryConsolidationCacheMigrationName]);
+  const contract = migrationContractQuery(agdataV2366InventoryConsolidationCacheMigrationName);
+  for (const marker of ['inventory_consolidation_cache_v2366', 'refresh_inventory_consolidation_cache_v2366',
+    'statement_timeout=500ms', 'candidate.sales_year=source.sales_year']) assert.match(contract, new RegExp(marker));
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366InventoryConsolidationCacheMigrationName}`, import.meta.url), 'utf8');
+  assert.match(source, /pg_try_advisory_xact_lock/);
+  assert.match(source, /on conflict\(suggestion_key\) do update/);
+  assert.match(source, /background refresh never creates Queue work/);
+  assert.doesNotMatch(source, /insert\s+into\s+public\.ph_requests_pending/i);
+  assert.doesNotMatch(source, /insert\s+into\s+public\.ph_location_work_/i);
+});
+
+test('v2.3.66 archive pages dedupe business state before rendering', () => {
+  assert.equal(agdataV2366HistoricalArchivePageDedupMigrationName,
+    '20261026013000_agdata_v2366_historical_archive_page_dedup.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2366HistoricalArchivePageDedupMigrationName]),
+    [agdataV2366HistoricalArchivePageDedupMigrationName]);
+  const contract = migrationContractQuery(agdataV2366HistoricalArchivePageDedupMigrationName);
+  for (const marker of ['state-dedup-v2366', 'orders', 'reserves', 'item.record']) assert.match(contract, new RegExp(marker));
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366HistoricalArchivePageDedupMigrationName}`, import.meta.url), 'utf8');
+  assert.match(source, /with ordinality as item\(record,ordinality\)/);
+  assert.match(source, /select distinct on \(state_hash\)/);
+  assert.match(source, /HISTORICAL_ARCHIVE_PAGE_DEDUP_SOURCE_MISMATCH/);
+});
+
+test('v2.3.66 Drive archive search hashes the composite row', () => {
+  assert.equal(agdataV2366DriveArchiveSearchHashFixMigrationName,
+    '20261026014500_agdata_v2366_drive_archive_search_hash_fix.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2366DriveArchiveSearchHashFixMigrationName]),
+    [agdataV2366DriveArchiveSearchHashFixMigrationName]);
+  const contract = migrationContractQuery(agdataV2366DriveArchiveSearchHashFixMigrationName);
+  for (const marker of ['drive-search-row-alias-v2366', 'drive_around_report_state_hash_v2366(raw_row)']) {
+    assert.match(contract, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2366DriveArchiveSearchHashFixMigrationName}`, import.meta.url), 'utf8');
+  const replacement = source.match(/new_fragment constant text:=\$new\$([^]*?)\$new\$/)?.[1] || '';
+  assert.match(replacement, /from public\.ph_drive_around_report_rows raw_row/);
+  assert.doesNotMatch(replacement, /drive_around_report_state_hash_v2366\(source\)/);
 });
 import { perennialPreviewSql, runPerennialAssignmentPreview, getPerennialPreviewFailure } from '../scripts/preview-perennial-assignment.mjs';
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';

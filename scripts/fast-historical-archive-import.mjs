@@ -27,7 +27,9 @@ const tableContracts = {
       issue_status: 'text', issue_note: 'text', issue_photos: 'jsonb', itemcode: 'text', commonname: 'text', contsize: 'text',
       locationcode: 'text', lotcode: 'text', qty_ordered: 'numeric', unit_list_price: 'numeric', line_dollar_value: 'numeric',
       photos: 'jsonb', photo_url: 'text', photo_date: 'text', spec: 'text', caliper: 'text', loc_match_pct: 'numeric',
-      loc_photo_match: 'numeric', pick_note: 'text', av_note: 'text', sales_note: 'text',
+      loc_photo_match: 'numeric', pick_note: 'text', av_note: 'text', sales_note: 'text', row_state_hash: 'text',
+      first_seen_at: 'timestamptz', last_seen_at: 'timestamptz', first_file_id: 'text', last_file_id: 'text',
+      first_file_name: 'text', last_file_name: 'text', seen_count: 'integer',
     },
   },
   reserves: {
@@ -39,7 +41,9 @@ const tableContracts = {
       order_number: 'text', itemcode: 'text', commonname: 'text', contsize: 'text', locationcode: 'text', lotcode: 'text',
       qty_reserved: 'numeric', on_hand: 'numeric', available_qty: 'numeric', open_stock: 'numeric', unit_list_price: 'numeric',
       line_dollar_value: 'numeric', hold_stop_code: 'text', hold_stop_reason: 'text', photos: 'jsonb', photo_url: 'text',
-      photo_date: 'text', spec: 'text', caliper: 'text', av_note: 'text', pick_note: 'text', sales_note: 'text',
+      photo_date: 'text', spec: 'text', caliper: 'text', av_note: 'text', pick_note: 'text', sales_note: 'text', row_state_hash: 'text',
+      first_seen_at: 'timestamptz', last_seen_at: 'timestamptz', first_file_id: 'text', last_file_id: 'text',
+      first_file_name: 'text', last_file_name: 'text', seen_count: 'integer',
     },
   },
   drive: {
@@ -48,9 +52,12 @@ const tableContracts = {
     columns: {
       history_key: 'text', source_kind: 'text', source_unique_id: 'text', source_file_id: 'text', source_file_name: 'text',
       report_date: 'date', itemcode: 'text', commonname: 'text', contsize: 'text', locationcode: 'text', lotcode: 'text',
-      season: 'text', ptravailable: 'numeric', on_hand: 'numeric', photos: 'jsonb', photo_url: 'text', photo_date: 'text',
+      season: 'text', ptravailable: 'numeric', on_hand: 'numeric', review: 'numeric', available: 'numeric', open_stock: 'numeric',
+      pri: 'text', unit_list_price: 'numeric', photos: 'jsonb', photo_url: 'text', photo_date: 'text',
       spec: 'text', caliper: 'text', loc_match_pct: 'numeric', loc_photo_match: 'numeric', pick_note: 'text', av_note: 'text',
-      sales_note: 'text', hold_stop_code: 'text', hold_stop_reason: 'text', archive_reason: 'text',
+      sales_note: 'text', hold_stop_code: 'text', hold_stop_reason: 'text', archive_reason: 'text', row_state_hash: 'text',
+      first_seen_at: 'timestamptz', last_seen_at: 'timestamptz', first_file_id: 'text', last_file_id: 'text',
+      first_file_name: 'text', last_file_name: 'text', seen_count: 'integer',
     },
   },
 };
@@ -134,6 +141,54 @@ function stableKey(domain, fileHash, rowNumber, sourceId) {
   return createHash('sha256').update(`${domain}|${fileHash}|${rowNumber}|${sourceId || ''}`).digest('hex');
 }
 
+function archiveStateText(value) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function archiveStateNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? String(numeric) : '0';
+}
+
+export function archiveRowStateHash(domain, row) {
+  const values = domain === 'orders' ? [
+    row.itemcode, row.locationcode, row.lotcode, row.customer_name, row.consignee_name, row.sales_rep,
+    row.order_number, row.tripnumber, row.dock_num, row.drop_num, row.planstart,
+    archiveStateNumber(row.qty_ordered), archiveStateNumber(row.unit_list_price), row.checker, row.inspector,
+    row.mistake, row.dock_status, row.item_check_status, row.issue_status, row.issue_note, row.spec, row.caliper,
+    row.av_note, row.pick_note, row.sales_note,
+  ].map(archiveStateText).concat(String(row.photo_url ?? '')) : domain === 'reserves' ? [
+    row.itemcode, row.locationcode, row.lotcode, row.customer_name, row.consignee_name, row.sales_rep,
+    row.order_number, archiveStateNumber(row.qty_reserved), archiveStateNumber(row.unit_list_price),
+    row.hold_stop_code, row.hold_stop_reason, row.spec, row.caliper, row.av_note, row.pick_note, row.sales_note,
+  ].map(archiveStateText).concat(String(row.photo_url ?? '')) : [
+    row.itemcode, row.commonname, row.contsize, row.locationcode, row.lotcode,
+    archiveStateNumber(row.on_hand), archiveStateNumber(row.review), archiveStateNumber(row.available ?? row.ptravailable),
+    archiveStateNumber(row.open_stock), archiveStateNumber(row.loc_photo_match), row.pri, row.hold_stop_code,
+    row.hold_stop_reason, archiveStateNumber(row.unit_list_price), row.spec, row.caliper, row.av_note,
+    row.pick_note, row.sales_note,
+  ].map(archiveStateText).concat(String(row.photo_url ?? ''));
+  return createHash('md5').update(values.join('|')).digest('hex');
+}
+
+function finalizeArchiveRow(domain, row, context) {
+  const rowStateHash = archiveRowStateHash(domain, row);
+  const primaryKey = tableContracts[domain].primaryKey;
+  const seenAt = dateValue(context.modifiedTime) || new Date().toISOString();
+  return {
+    ...row,
+    [primaryKey]: createHash('sha256').update(`${domain}|${archiveStateText(row.itemcode)}|${rowStateHash}`).digest('hex'),
+    row_state_hash: rowStateHash,
+    first_seen_at: seenAt,
+    last_seen_at: seenAt,
+    first_file_id: context.fileHash,
+    last_file_id: context.fileHash,
+    first_file_name: context.fileName,
+    last_file_name: context.fileName,
+    seen_count: 1,
+  };
+}
+
 export function mapArchiveRow(domain, row, context) {
   const itemcode = field(row, 'itemcode', 'item code', 'code_item', 'sku');
   if (!itemcode) return null;
@@ -159,7 +214,7 @@ export function mapArchiveRow(domain, row, context) {
     const planstart = field(row, 'planstart', 'plan start');
     const quantity = numberValue(row, 'qty_ordered', 'quantityordered', 'ordered_quantity', 'quantity');
     const unitPrice = numberValue(row, 'unit_list_price', 'listprice', 'unitprice', 'price') || 0;
-    return { ...common, order_line_key: key, source_kind: 'historical_file_import', sales_rep: field(row, 'sales_rep', 'salesrepname', 'sales rep'),
+    return finalizeArchiveRow(domain, { ...common, order_line_key: key, source_kind: 'historical_file_import', sales_rep: field(row, 'sales_rep', 'salesrepname', 'sales rep'),
       customer_name: customer, consignee_name: consignee, customer_consignee_label: `${customer} | ${consignee}`,
       order_folder_key: [trip && `Trip ${trip}`, dock && `Dock ${dock}`, drop && `Drop ${drop}`, planstart && `PlanStart ${planstart}`].filter(Boolean).join(' • ') || context.fileName,
       order_number: field(row, 'order_number', 'transactionnumber', 'purchaseordernumber', 'reference'), tripnumber: trip, dock_num: dock,
@@ -168,7 +223,7 @@ export function mapArchiveRow(domain, row, context) {
       item_check_status: field(row, 'item_check_status'), issue_status: field(row, 'issue_status', 'issue_state'), issue_note: field(row, 'issue_note'),
       issue_photos: photoArray({ photos: field(row, 'issue_photos', 'issue photo') }), qty_ordered: quantity, unit_list_price: unitPrice,
       line_dollar_value: numberValue(row, 'line_dollar_value', 'amount') ?? Math.round((quantity || 0) * unitPrice * 100) / 100,
-      loc_match_pct: numberValue(row, 'loc_match_pct'), loc_photo_match: numberValue(row, 'loc_photo_match') };
+      loc_match_pct: numberValue(row, 'loc_match_pct'), loc_photo_match: numberValue(row, 'loc_photo_match') }, context);
   }
   if (domain === 'reserves') {
     const salesRep = field(row, 'sales_rep', 'salesrepname', 'sales rep') || 'Unassigned';
@@ -177,18 +232,21 @@ export function mapArchiveRow(domain, row, context) {
     const order = field(row, 'order_number', 'transactionnumber', 'purchaseordernumber');
     const quantity = numberValue(row, 'qty_reserved', 'reserve_qty', 'quantityordered', 'quantity');
     const unitPrice = numberValue(row, 'unit_list_price', 'listprice', 'unitprice', 'price') || 0;
-    return { ...common, reserve_history_key: key, sales_rep: salesRep, customer_name: customer, consignee_name: consignee,
+    return finalizeArchiveRow(domain, { ...common, reserve_history_key: key, sales_rep: salesRep, customer_name: customer, consignee_name: consignee,
       customer_consignee_label: `${customer} | ${consignee}`, reserve_folder_key: [order, reportDate, context.fileName].filter(Boolean).join(' • '),
       order_number: order, qty_reserved: quantity, on_hand: numberValue(row, 'on_hand', 'ptronhand'),
       available_qty: numberValue(row, 'available_qty', 'ptravailable', 'available'), open_stock: numberValue(row, 'open_stock', 's_lts'),
       unit_list_price: unitPrice, line_dollar_value: numberValue(row, 'line_dollar_value', 'amount') ?? Math.round((quantity || 0) * unitPrice * 100) / 100,
-      hold_stop_code: field(row, 'hold_stop_code', 'holdstopcode'), hold_stop_reason: field(row, 'hold_stop_reason', 'holdstopreason') };
+      hold_stop_code: field(row, 'hold_stop_code', 'holdstopcode'), hold_stop_reason: field(row, 'hold_stop_reason', 'holdstopreason') }, context);
   }
-  return { ...common, history_key: key, source_kind: 'historical_file_import', season: field(row, 'season'),
+  return finalizeArchiveRow(domain, { ...common, history_key: key, source_kind: 'historical_file_import', season: field(row, 'season'),
     ptravailable: numberValue(row, 'ptravailable', 'available'), on_hand: numberValue(row, 'on_hand', 'ptronhand'),
+    review: numberValue(row, 'review', 'ptrreviewed'), available: numberValue(row, 'available', 'ptravailable'),
+    open_stock: numberValue(row, 'open_stock', 's_lts'), pri: field(row, 'pri', 'priority'),
+    unit_list_price: numberValue(row, 'unit_list_price', 'listprice', 'price'),
     loc_match_pct: numberValue(row, 'loc_match_pct'), loc_photo_match: numberValue(row, 'loc_photo_match'),
     hold_stop_code: field(row, 'hold_stop_code', 'holdstopcode'), hold_stop_reason: field(row, 'hold_stop_reason', 'holdstopreason'),
-    archive_reason: 'historical_file_import' };
+    archive_reason: 'historical_file_import' }, context);
 }
 
 export async function* parseCsvRows(stream) {
@@ -351,8 +409,14 @@ function upsertSql(domain) {
   const contract = tableContracts[domain];
   const columns = Object.keys(contract.columns);
   const definitions = columns.map(column => `${column} ${contract.columns[column]}`).join(',');
-  const updates = columns.filter(column => column !== contract.primaryKey).map(column => `${column}=excluded.${column}`).join(',');
-  return `insert into ${contract.table}(${columns.join(',')}) select ${columns.join(',')} from jsonb_to_recordset($1::jsonb) as incoming(${definitions}) on conflict(${contract.primaryKey}) do update set ${updates},updated_at=clock_timestamp()`;
+  const tableName = contract.table.split('.').at(-1);
+  const preserved = new Set([contract.primaryKey, 'first_seen_at', 'first_file_id', 'first_file_name', 'seen_count']);
+  const updates = columns.filter(column => !preserved.has(column) && !['last_seen_at', 'last_file_id', 'last_file_name'].includes(column))
+    .map(column => `${column}=excluded.${column}`);
+  updates.push(`last_seen_at=greatest(${tableName}.last_seen_at,excluded.last_seen_at)`);
+  updates.push('last_file_id=excluded.last_file_id', 'last_file_name=excluded.last_file_name');
+  updates.push(`seen_count=${tableName}.seen_count+case when coalesce(${tableName}.last_file_id,${tableName}.last_file_name,'') is distinct from coalesce(excluded.last_file_id,excluded.last_file_name,'') then excluded.seen_count else 0 end`);
+  return `insert into ${contract.table}(${columns.join(',')}) select ${columns.join(',')} from jsonb_to_recordset($1::jsonb) as incoming(${definitions}) on conflict(itemcode,row_state_hash) where row_state_hash is not null do update set ${updates.join(',')},updated_at=clock_timestamp()`;
 }
 
 function readEnvFile() {
@@ -396,7 +460,8 @@ async function processSource(source, options, pool, checkpoint, checkpointFile) 
   let batch = [], rows = 0, skipped = 0, firstReportDate = null;
   const flush = async () => {
     if (!batch.length) return;
-    const payload = batch; batch = [];
+    const uniqueStates = new Map(batch.map(row => [`${archiveStateText(row.itemcode)}|${row.row_state_hash}`, row]));
+    const payload = Array.from(uniqueStates.values()); batch = [];
     if (!options.execute) return;
     const operation = pool.query(sql, [JSON.stringify(payload)]).finally(() => pending.delete(operation));
     pending.add(operation);

@@ -2647,7 +2647,7 @@ async function handleHistoricalRequestsReadAction(
   }
   try {
     const operation = String(query.operation || "");
-    const rpcName = operation.startsWith("archive-") ? "historical_archive_read_v1" : "historical_requests_read_v1";
+    const rpcName = operation.startsWith("archive-") ? "historical_archive_read_v2" : "historical_requests_read_v1";
     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
       method: "POST",
       headers: {
@@ -2676,6 +2676,69 @@ async function handleHistoricalRequestsReadAction(
     return jsonResponse({ ok: true, data });
   } catch {
     return errorResponse("Historical Requests is temporarily unavailable. Previous data remains available.", 503, { code: "HISTORICAL_REQUESTS_UNAVAILABLE" });
+  }
+}
+
+async function handleInventoryConsolidationAction(
+  req: Request,
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session || session.mustChangePassword) {
+    return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+  }
+  if (Object.keys(payload).some((key) => !["action", "query"].includes(key))
+      || (payload.query !== undefined && (!payload.query || typeof payload.query !== "object" || Array.isArray(payload.query)))) {
+    return errorResponse("Inventory Consolidation query is invalid.", 400, { code: "INVENTORY_CONSOLIDATION_QUERY_INVALID" });
+  }
+  const query = payload.query && typeof payload.query === "object" ? payload.query as Record<string, unknown> : {};
+  if (Object.keys(query).some((key) => !["block", "containerSize", "salesYearRule", "query"].includes(key))
+      || JSON.stringify(query).length > 2048) {
+    return errorResponse("Inventory Consolidation query is invalid.", 400, { code: "INVENTORY_CONSOLIDATION_QUERY_INVALID" });
+  }
+  const actor = await resolveActiveSessionProfile(session).catch(() => null);
+  const actorId = String(actor?.id || "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId)
+      || String(session.authUserId || "").trim() !== actorId) {
+    return errorResponse("Sign in again.", 401, { code: "INVENTORY_CONSOLIDATION_AUTH_REQUIRED" });
+  }
+  const authorization = String(req.headers.get("authorization") || "").trim();
+  if (!/^Bearer\s+\S+$/i.test(authorization)) {
+    return errorResponse("Sign in again.", 401, { code: "INVENTORY_CONSOLIDATION_AUTH_REQUIRED" });
+  }
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/inventory_consolidation_suggestions_v1`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: authorization,
+        "Content-Type": "application/json",
+        "Cache-Control": "private, no-store",
+      },
+      body: JSON.stringify({ p_query: query }),
+      signal: AbortSignal.timeout(12000),
+    });
+    const text = await response.text();
+    let data: unknown = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+    if (!response.ok) {
+      const detail = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+      const code = String(detail.code || detail.message || "INVENTORY_CONSOLIDATION_UNAVAILABLE").trim().toUpperCase();
+      const status = response.status === 401 ? 401
+        : response.status === 403 || code === "42501" || code.includes("FORBIDDEN") ? 403
+        : response.status >= 500 || code === "55000" ? 503 : 400;
+      return errorResponse(status === 503
+        ? "Inventory Consolidation is refreshing. Saved suggestions remain available."
+        : "Inventory Consolidation could not load.", status, { code });
+    }
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return errorResponse("Inventory Consolidation returned an invalid response.", 503, { code: "INVENTORY_CONSOLIDATION_RESPONSE_INVALID" });
+    }
+    return jsonResponse({ ok: true, data });
+  } catch {
+    return errorResponse("Inventory Consolidation is temporarily unavailable. Saved suggestions remain available.", 503, {
+      code: "INVENTORY_CONSOLIDATION_UNAVAILABLE",
+    });
   }
 }
 
@@ -3107,6 +3170,8 @@ async function handleLocationWorkAction(
           actionType,
           plannedQty,
           destinationLocationcode,
+          destinationSalesYear: String(line.destinationSalesYear || "").trim(),
+          inventoryConsolidation: line.inventoryConsolidation === true,
           instructions: String(line.instructions || "").trim().slice(0, 4000),
         };
       });
@@ -7004,6 +7069,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "field_count") {
     return await handleFieldCountAction(session, payload);
   }
+  if (action === "inventory_consolidation") return await handleInventoryConsolidationAction(req, session, payload);
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
   if (action === "aura_inventory_v2") return await handleAuraInventoryV2(session, payload, {

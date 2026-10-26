@@ -851,7 +851,7 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
 
   const historyHandler = functionSource('supabase/functions/app-api/index.ts', 'handleHistoricalRequestsReadAction');
   assert.match(historyHandler, /session\.authUserId[^]*actorId/);
-  assert.match(historyHandler, /operation\.startsWith\("archive-"\)[^]*historical_archive_read_v1[^]*historical_requests_read_v1/);
+  assert.match(historyHandler, /operation\.startsWith\("archive-"\)[^]*historical_archive_read_v2[^]*historical_requests_read_v1/);
   assert.match(historyHandler, /SUPABASE_SERVICE_ROLE_KEY[^]*Authorization:\s*authorization/);
   assert.match(functionSource('supabase/functions/app-api/index.ts', 'handleRequestSalesImpactAction'),
     /canonical-active-history-v2363/);
@@ -936,4 +936,35 @@ test('Invariant 26 (Silent Recount and Bunch Notes Queue Resolution)', () => {
   }
   assert.match(read('scripts/apply-item-low-stock-migration.mjs'),
     /agdataV2366QueueResolutionCleanupMigrationName[^]*registeredReleaseDatabaseMigrations/);
+});
+
+test('Invariant 27 (Historical State Deduplication and Manual Inventory Consolidation)', () => {
+  const dedup = read('supabase/migrations/20261026003000_agdata_v2366_historical_state_dedup.sql');
+  for (const marker of ['deduplicate_drive_around_report_rows_batch_v1(p_max_files integer default 25)',
+    'row_state_hash', 'seen_count', "time '23:30'", "time '06:15'", "set statement_timeout='4500ms'",
+    'historical_archive_read_v2']) assert.match(dedup, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(dedup, /(?:^|\n)\s*truncate\s/i);
+
+  const consolidation = read('supabase/migrations/20261026004500_agdata_v2366_inventory_consolidation.sql');
+  for (const marker of ["array['#2','#3','#1','2DP','3DP','1GP','8DP','8 IN.','5DP','7DP','QT','2QTD','6QTD','8\" P','3GP','1DP']",
+    'source.loc_on_hand>0 and source.loc_on_hand<100', 'source.sales_year<current_sales_year or candidate.sales_year=source.sales_year',
+    'inventoryConsolidation', 'destination_salesyear']) assert.match(consolidation, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(consolidation, /insert\s+into\s+public\.ph_requests_pending/i);
+
+  const html = read('index.html');
+  for (const marker of ['inventory-open-suggestions', 'view-inventory-suggestion', 'view-inv-consolidation']) assert.match(html, new RegExp(marker));
+  const runtime = read('assets/app-runtime.js');
+  for (const marker of ['INVENTORY_CONSOLIDATION_SIZES', 'openInventorySuggestionView', 'openInventoryConsolidationView',
+    'Nothing enters Location Moves until you click Send.', 'Send to Location Moves']) assert.match(runtime, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(read('supabase/functions/app-api/index.ts'), /inventory_consolidation_suggestions_v1/);
+  assert.match(read('supabase/migrations/20261026010000_agdata_v2366_inventory_consolidation_sales_year_fix.sql'),
+    /inventory_consolidation_sales_year_v2366\(private\.season_sales_settings_v1\(\)->>''salesYear'',null\)/);
+  const consolidationCache = read('supabase/migrations/20261026011500_agdata_v2366_inventory_consolidation_cache.sql');
+  for (const marker of ['inventory_consolidation_cache_v2366', 'refresh_inventory_consolidation_cache_v2366',
+    "set statement_timeout='500ms'", 'background refresh never creates Queue work']) assert.match(consolidationCache, new RegExp(marker));
+  assert.match(read('supabase/migrations/20261026013000_agdata_v2366_historical_archive_page_dedup.sql'),
+    /select distinct on \(state_hash\)[^]*state-dedup-v2366/);
+  assert.match(read('supabase/migrations/20261026014500_agdata_v2366_drive_archive_search_hash_fix.sql'),
+    /drive-search-row-alias-v2366[^]*drive_around_report_state_hash_v2366\(raw_row\)/);
+  assert.match(read('scripts/apply-item-low-stock-migration.mjs'), /agdataV2366HistoricalStateDedupMigrationName[^]*agdataV2366InventoryConsolidationMigrationName[^]*registeredReleaseDatabaseMigrations/);
 });

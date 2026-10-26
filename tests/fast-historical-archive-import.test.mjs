@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
-import { historicalImportWindowOpen, mapArchiveRow, parseArguments, parseCsvRows } from '../scripts/fast-historical-archive-import.mjs';
+import { archiveRowStateHash, historicalImportWindowOpen, mapArchiveRow, parseArguments, parseCsvRows } from '../scripts/fast-historical-archive-import.mjs';
 
 test('historical archive importer enforces bounded workers, batches, and the Chicago window', () => {
   const options = parseArguments(['--input', '.', '--workers', '16', '--batch-size', '2000']);
@@ -23,4 +23,21 @@ test('historical archive importer streams quoted CSV and builds stable archive r
   assert.equal(mapped.line_dollar_value, 25);
   assert.equal(mapped.customer_name, 'Unassigned');
   assert.equal(mapped.source_file_name, 'orders.csv');
+});
+
+test('historical archive identity ignores file provenance but preserves business changes', () => {
+  const businessRow = { itemcode: '00123', commonname: 'Red Maple', locationcode: 'A.01.000', lotcode: '27.F1',
+    quantityordered: '2', listprice: '12.50', customer: 'Austin Nursery', ordernumber: 'SO-100' };
+  const first = mapArchiveRow('orders', businessRow,
+    { fileHash: 'a'.repeat(64), fileName: 'orders-day-1.csv', modifiedTime: '2026-10-10T12:00:00Z', rowNumber: 2 });
+  const fifth = mapArchiveRow('orders', businessRow,
+    { fileHash: 'e'.repeat(64), fileName: 'orders-day-5.csv', modifiedTime: '2026-10-14T12:00:00Z', rowNumber: 900 });
+  const changed = mapArchiveRow('orders', { ...businessRow, quantityordered: '3' },
+    { fileHash: 'f'.repeat(64), fileName: 'orders-day-6.csv', modifiedTime: '2026-10-15T12:00:00Z', rowNumber: 2 });
+  assert.equal(archiveRowStateHash('orders', first), archiveRowStateHash('orders', fifth));
+  assert.equal(first.row_state_hash, fifth.row_state_hash);
+  assert.equal(first.order_line_key, fifth.order_line_key);
+  assert.notEqual(first.row_state_hash, changed.row_state_hash);
+  assert.notEqual(first.order_line_key, changed.order_line_key);
+  assert.notEqual(first.source_file_name, fifth.source_file_name);
 });

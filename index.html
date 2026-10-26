@@ -1621,6 +1621,11 @@
                                 <div class="text-lg font-black text-slate-900">Projects</div>
                                 <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Inventory project folders</div>
                             </button>
+                            <button type="button" id="inventory-open-suggestions" class="rounded-2xl border border-amber-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openInventorySuggestionView()">
+                                <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700"><i class="ph-bold ph-lightbulb text-2xl"></i></div>
+                                <div class="text-lg font-black text-slate-900">Inventory Suggestion</div>
+                                <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">On-demand inventory actions</div>
+                            </button>
                             <button type="button" id="inventory-open-crop-roll" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('crop-roll')">
                                 <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-plant text-2xl"></i></div>
                                 <div class="text-lg font-black text-slate-900">Crop Roll</div>
@@ -1704,6 +1709,46 @@
                             <div id="production-inventory-84rd-content" class="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm"></div>
                         </div>
                     </div>
+                </div>
+
+                <div id="view-inventory-suggestion" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em]">Inventory</div>
+                                <div class="text-xl font-black text-slate-900">Inventory Suggestion</div>
+                            </div>
+                            <div class="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">On Demand</div>
+                        </div>
+                    </div>
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <button type="button" id="inventory-suggestion-open-consolidation" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openInventoryConsolidationView()">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-arrows-merge text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Inv Consolidation</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Review locations below 100 on hand</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="view-inv-consolidation" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex flex-col gap-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em]">Inventory Suggestion</div>
+                                    <div class="text-xl font-black text-slate-900">Inv Consolidation</div>
+                                </div>
+                                <button type="button" id="inv-consolidation-refresh" class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshInventoryConsolidationSuggestions()"><i class="ph-bold ph-arrows-clockwise mr-1"></i>Refresh</button>
+                            </div>
+                            <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                                <label><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Block</span><select id="inv-consolidation-block" class="input-field !mb-0" onchange="return setInventoryConsolidationFilter('block',this.value)"><option value="">All Blocks</option></select></label>
+                                <label><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Container Size</span><select id="inv-consolidation-size" class="input-field !mb-0" onchange="return setInventoryConsolidationFilter('containerSize',this.value)"><option value="">All 16 Sizes</option></select></label>
+                                <label><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Sales Year Rule</span><select id="inv-consolidation-rule" class="input-field !mb-0" onchange="return setInventoryConsolidationFilter('salesYearRule',this.value)"><option value="">All</option><option value="current">Current SY -&gt; Same SY</option><option value="older">Older SY -&gt; Any SY</option></select></label>
+                                <label><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Search</span><input id="inv-consolidation-search" class="input-field !mb-0" type="search" autocomplete="off" placeholder="Plant Name / ItemCode / Location" oninput="setInventoryConsolidationFilter('query',this.value)"></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="inv-consolidation-content"></div>
                 </div>
 
                 <div id="view-weather-hold" class="hidden">

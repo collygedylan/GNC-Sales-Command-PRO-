@@ -201,6 +201,28 @@ async function readArchiveDatabaseCounts(localEnv) {
   }
 }
 
+async function readQueueInvariantCounts(localEnv) {
+  const databaseUrl = String(process.env.GNC_REQUEST_QUEUE_DB_URL || localEnv.GNC_SUPABASE_DB_URL
+    || process.env.GNC_SUPABASE_DB_URL || '').trim();
+  if (!databaseUrl || !fs.existsSync(caFile)) fail('The protected production database URL is required for queue invariants.');
+  const client = new Client(createDatabaseClientOptions(databaseUrl));
+  try {
+    await client.connect();
+    await client.query('begin read only');
+    await client.query("set local statement_timeout = '3000ms'");
+    const result = await client.query(`select
+      (select count(*) from public.ph_active_location_moves)::bigint active_location_moves,
+      (select count(*) from public.ph_active_request)::bigint active_request,
+      (select count(*) from public.ph_active_recount)::bigint active_recount,
+      (select count(*) from public.ph_active_bunch_notes)::bigint active_bunch_notes,
+      (select count(*) from public.ph_active_suspend)::bigint active_suspend`);
+    await client.query('commit');
+    return Object.fromEntries(Object.entries(result.rows[0] || {}).map(([key, value]) => [key, Number(value)]));
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
 function archiveCount(value) {
   return Number((String(value || '').replaceAll(',', '').match(/\d+/) || ['0'])[0]);
 }
@@ -216,9 +238,29 @@ function archiveFolderDataCount(value) {
   return rowMatch ? Number(rowMatch[1].replaceAll(',', '')) : archiveRecordCount(text);
 }
 
+async function assertVisibleArchiveRecordsUnique(page, recordKind, phase) {
+  const signatures = await page.locator('[data-archive-record]').evaluateAll(cards => cards.map(card => {
+    const heading = Array.from(card.querySelectorAll('.historical-requests__request-heading')).map(node => node.textContent?.trim() || '').join('|');
+    const metadata = Array.from(card.querySelectorAll('.historical-requests__request-meta'));
+    const identity = metadata[0]?.textContent?.replace(/\s+/g, ' ').trim() || '';
+    const detail = (metadata[1]?.textContent || '').replace(/\s+/g, ' ').trim()
+      .replace(/\s*[·•]\s*\d{1,2}\/\d{1,2}\/\d{4}(?=\s*(?:[·•]|$))/g, '');
+    const facts = Array.from(card.querySelectorAll('.historical-requests__facts div')).map(node => node.textContent?.replace(/\s+/g, ' ').trim() || '').join('|');
+    const notes = metadata.slice(2).map(node => node.textContent?.replace(/\s+/g, ' ').trim() || '').join('|');
+    const value = card.querySelector('.historical-requests__request-value')?.textContent?.replace(/\s+/g, ' ').trim() || '';
+    const photos = Array.from(card.querySelectorAll('.historical-requests__photos a')).map(node => node.getAttribute('href') || '').join('|');
+    return [heading, identity, detail, facts, notes, value, photos].join('||').toLowerCase();
+  }));
+  if (!signatures.length) fail(`${recordKind} ${phase} rendered no archive records.`);
+  const distinct = new Set(signatures);
+  if (distinct.size !== signatures.length) fail(`${recordKind} ${phase} rendered ${signatures.length - distinct.size} duplicate business-state rows.`);
+  return { records: signatures.length, duplicateStates: 0 };
+}
+
 async function verifyArchiveSearch(page, recordKind) {
   const card = page.locator('[data-archive-record]').first();
   await card.waitFor({ state: 'visible', timeout: 30_000 });
+  const recordsProof = await assertVisibleArchiveRecordsUnique(page, recordKind, 'records');
   const recordText = normalizeCardText(await card.textContent());
   const metadata = normalizeCardText(await card.locator('.historical-requests__request-meta').first().textContent());
   const searchTerm = metadata.split(/\s+/)[0];
@@ -227,11 +269,12 @@ async function verifyArchiveSearch(page, recordKind) {
   await search.fill(searchTerm);
   await page.getByRole('heading', { name: /Search results for/ }).waitFor({ state: 'visible', timeout: 30_000 });
   await page.locator('[data-archive-record]').first().waitFor({ state: 'visible', timeout: 30_000 });
+  const searchProof = await assertVisibleArchiveRecordsUnique(page, recordKind, 'search');
   const searchText = normalizeCardText(await page.locator('[data-archive-record]').first().textContent());
   if (!searchText.toLowerCase().includes(searchTerm.toLowerCase())) fail(`${recordKind} search did not return ${searchTerm}.`);
   await page.getByRole('button', { name: 'Clear' }).click();
   await page.locator('[data-archive-folder]').first().waitFor({ state: 'visible', timeout: 30_000 });
-  return { searchTerm, recordText: recordText.slice(0, 240) };
+  return { searchTerm, recordText: recordText.slice(0, 240), recordsProof, searchProof };
 }
 
 async function verifyRequestArchiveSearch(page) {
@@ -446,9 +489,51 @@ async function runVerification(page, origin, accessCode) {
     requiredCard: expectedSuspendCard.join(' | '),
   };
 
+  stage = 'inventory-consolidation';
+  await page.evaluate(() => window.switchView('home', { force: true }));
+  await page.locator('#home-tile-sales-inventory').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator('#home-tile-sales-inventory').click();
+  await page.locator('#view-sales-inventory').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator('#inventory-open-suggestions').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator('#inventory-open-suggestions').click();
+  await page.locator('#view-inventory-suggestion').waitFor({ state: 'visible', timeout: 10_000 });
+  const consolidationStartedAt = Date.now();
+  await page.locator('#inventory-suggestion-open-consolidation').click();
+  await page.locator('#view-inv-consolidation').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator('[data-inv-consolidation-card]').first().waitFor({ state: 'visible', timeout: 10_000 });
+  const consolidationRenderMs = Date.now() - consolidationStartedAt;
+  if (consolidationRenderMs > 2_000) fail(`Inventory Consolidation rendered in ${consolidationRenderMs}ms.`);
+  const expectedSizes = ['#2','#3','#1','2DP','3DP','1GP','8DP','8 IN.','5DP','7DP','QT','2QTD','6QTD','8" P','3GP','1DP'];
+  const sizeLabels = (await page.locator('[data-consolidation-size-contract] span').allTextContents()).map(normalizeCardText);
+  if (JSON.stringify(sizeLabels) !== JSON.stringify(expectedSizes)) fail(`Inventory Consolidation sizes were ${JSON.stringify(sizeLabels)}.`);
+  const consolidationCards = await page.locator('[data-inv-consolidation-card]').evaluateAll(cards => cards.map(card => {
+    const text = String(card.textContent || '').replace(/\s+/g, ' ').trim();
+    const sourceSalesYear = Number((text.match(/SalesYear\s+(\d+)/i) || [])[1]);
+    const locOnHand = Number(String((text.match(/Loc On Hand\s+([\d,.]+)/i) || [])[1] || '').replaceAll(',', ''));
+    const destinationYears = Array.from(card.querySelectorAll('select option')).map(option => Number((option.textContent?.match(/SY\s+(\d+)/i) || [])[1])).filter(Number.isFinite);
+    return { contsize: card.getAttribute('data-consolidation-contsize') || '', rule: card.getAttribute('data-consolidation-sales-year-rule') || '',
+      sourceSalesYear, locOnHand, destinationYears, sendButtons: Array.from(card.querySelectorAll('button')).filter(button => button.textContent?.includes('Send to Location Moves')).length };
+  }));
+  if (!consolidationCards.length || consolidationCards.some(card => !expectedSizes.includes(card.contsize)
+      || !(card.locOnHand > 0 && card.locOnHand < 100) || !card.destinationYears.length || card.sendButtons !== 1
+      || (card.rule === 'current' && card.destinationYears.some(year => year !== card.sourceSalesYear))
+      || !['current','older'].includes(card.rule))) fail('Inventory Consolidation card contract failed.');
+  const consolidationSummary = normalizeCardText(await page.locator('#inv-consolidation-content').textContent());
+  const consolidationTotal = Number((consolidationSummary.match(/([\d,]+) matching locations?/) || [,'0'])[1].replaceAll(',', ''));
+  if (consolidationTotal < consolidationCards.length || !consolidationSummary.includes('Nothing enters Location Moves until you click Send.')) {
+    fail(`Inventory Consolidation summary was ${consolidationSummary.slice(0, 240)}.`);
+  }
+  await page.evaluate(() => window.goBackUniversal());
+  await page.locator('#view-inventory-suggestion').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.evaluate(() => window.goBackUniversal());
+  await page.locator('#view-sales-inventory').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.evaluate(() => window.goBackUniversal());
+  await page.locator('#view-home').waitFor({ state: 'visible', timeout: 10_000 });
+  const consolidationProof = { hierarchy: ['Inventory','Inventory Suggestion','Inv Consolidation'], total: consolidationTotal,
+    renderedCards: consolidationCards.length, sizeCount: sizeLabels.length, consolidationRenderMs, automaticQueueWrites: 0 };
+
   stage = 'historical-requests';
   const historyFailureOffset = failedResponses.length;
-  await page.evaluate(() => window.switchView('home', { force: true }));
   await dismissPushPermissionHelp(page);
   await page.locator('#home-tile-historical-requests').waitFor({ state: 'visible', timeout: 10_000 });
   await page.locator('#home-tile-historical-requests').click();
@@ -475,12 +560,14 @@ async function runVerification(page, origin, accessCode) {
   if (JSON.stringify(tabLabels) !== JSON.stringify(expectedTabLabels)) fail(`Historical archive tabs were ${JSON.stringify(tabLabels)}.`);
   const requestRootFolderCount = archiveCount(await page.locator('.historical-requests__section-heading > span').first().textContent());
   const requestSearch = await verifyRequestArchiveSearch(page);
-  const archiveTabs = {
-    requests: { label: expectedTabLabels[0], rootFolderCount: requestRootFolderCount, ...requestSearch },
-    orders: await verifyGenericArchiveTab(page, { kind: 'orders', label: expectedTabLabels[1], depth: 3 }),
-    reserves: await verifyGenericArchiveTab(page, { kind: 'reserves', label: expectedTabLabels[2], depth: 4 }),
-    drive: await verifyGenericArchiveTab(page, { kind: 'drive', label: expectedTabLabels[3], depth: 3 }),
-  };
+  const archiveTabs = { requests: { label: expectedTabLabels[0], rootFolderCount: requestRootFolderCount, ...requestSearch } };
+  stage = 'historical-orders';
+  archiveTabs.orders = await verifyGenericArchiveTab(page, { kind: 'orders', label: expectedTabLabels[1], depth: 3 });
+  stage = 'historical-reserves';
+  archiveTabs.reserves = await verifyGenericArchiveTab(page, { kind: 'reserves', label: expectedTabLabels[2], depth: 4 });
+  stage = 'historical-drive';
+  archiveTabs.drive = await verifyGenericArchiveTab(page, { kind: 'drive', label: expectedTabLabels[3], depth: 3 });
+  stage = 'historical-requests';
   const historyFailures = failedResponses.slice(historyFailureOffset).filter(value => value.includes('/functions/v1/app-api'));
   if (historyFailures.length) fail(`Historical Requests app-api failure: ${historyFailures[0]}`);
 
@@ -504,7 +591,7 @@ async function runVerification(page, origin, accessCode) {
   if (pageErrors.length) fail(`Browser page error: ${pageErrors[0]}`);
   const release = normalizeCardText(await page.locator('#header-version').textContent());
   if (!release.includes('2.3.66')) fail(`Unexpected release version: ${release || 'missing'}.`);
-  return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, queueProof, historicalPricedValue,
+  return { release, homeMetadataMs, filenames, requestBadgeCount, activeRequestId, queueProof, consolidationProof, historicalPricedValue,
     archiveTabs, requestSalesImpactText, requestSalesImpactTotal, cardDomText: expectedCards.map(([itemcode, , locationcode]) =>
       cardDomText.find(text => text.includes(itemcode) && text.includes(locationcode))) };
   } catch (error) {
@@ -518,8 +605,9 @@ async function main() {
   const anonKey = String(source.match(/const SUPABASE_KEY = "([^"]+)"/)?.[1] || '').trim();
   if (!supabaseUrl.includes('kzrnyjsosryejjejliii.supabase.co')) fail('Unexpected Supabase project.');
   if (!anonKey) fail('Supabase anon key is unavailable.');
-  const localEnv = readLocalEnv();
-  const accessCode = await resolveAccessCode({ supabaseUrl, localEnv });
+    const localEnv = readLocalEnv();
+    const accessCode = await resolveAccessCode({ supabaseUrl, localEnv });
+    const queueCountsBefore = await readQueueInvariantCounts(localEnv);
   let server;
   let browser;
   try {
@@ -532,9 +620,13 @@ async function main() {
     const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1440, height: 1000 } });
     const page = await context.newPage();
     const result = await runVerification(page, origin, accessCode);
+    const queueCountsAfter = await readQueueInvariantCounts(localEnv);
+    if (queueCountsAfter.active_location_moves !== queueCountsBefore.active_location_moves) {
+      fail(`Inventory Consolidation navigation changed Location Moves from ${queueCountsBefore.active_location_moves} to ${queueCountsAfter.active_location_moves}.`);
+    }
     const anonSecurity = await probeAnonSecurity({ supabaseUrl, anonKey, existingRequestId: result.activeRequestId });
     const archiveCounts = await readArchiveDatabaseCounts(localEnv);
-    console.log(JSON.stringify({ status: 'passed', origin, ...result, archiveCounts, anonSecurity }, null, 2));
+    console.log(JSON.stringify({ status: 'passed', origin, ...result, queueCountsBefore, queueCountsAfter, archiveCounts, anonSecurity }, null, 2));
   } finally {
     await browser?.close().catch(() => {});
     if (server) await new Promise(resolve => server.close(resolve));

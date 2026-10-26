@@ -1749,7 +1749,7 @@ const FOREGROUND_INVENTORY_POLL_MS = 30000;
 const FOREGROUND_INVENTORY_FULL_MAX_AGE_MS = 30000;
 const FOREGROUND_INVENTORY_INITIAL_MAX_AGE_MS = 15000;
 const FORCE_VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 10000;
-const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks','hl-order', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
+const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks','hl-order', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'inventory-suggestion', 'inv-consolidation', 'production-workflow']);
 const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'growerScoutReports', 'growerScoutAssets', 'warehouseAssignedItems', 'avNotes']);
 const RETIRED_DATASET_KEYS = new Set(['mlJobs']);
 const RETIRED_MANUAL_SYNC_STAGE_KEYS = new Set(['disease', 'lab', 'lab_reports']);
@@ -16299,6 +16299,14 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return switchView('sales-inventory');
         }
 
+        function openInventorySuggestionView() {
+            return switchView('inventory-suggestion');
+        }
+
+        function openInventoryConsolidationView() {
+            return switchView('inv-consolidation');
+        }
+
         function open84RdInventoryView() {
             if (!canUseFullInventoryView()) return false;
             inventory84DirectMode = true;
@@ -24288,6 +24296,9 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
         let selectedLocationMoveItems=[]; let selectedLocationMoveDestinationBySourceId=new Map();
         let locationWorkLineDrafts=new Map(); let locationWorkRecipientOptions=[]; let locationWorkSelectedRecipientIds=new Set(); let locationWorkCreateToken='';
         let locationWorkRows=[]; let locationWorkLoaded=false; let locationWorkLoading=false; let locationWorkError=''; let activeLocationWorkJobId='';
+        const INVENTORY_CONSOLIDATION_SIZES=Object.freeze(['#2','#3','#1','2DP','3DP','1GP','8DP','8 IN.','5DP','7DP','QT','2QTD','6QTD','8" P','3GP','1DP']);
+        let inventoryConsolidationRows=[]; let inventoryConsolidationLoaded=false; let inventoryConsolidationLoading=false; let inventoryConsolidationError=''; let inventoryConsolidationCurrentSalesYear=null;
+        let inventoryConsolidationFilters={block:'',containerSize:'',salesYearRule:'',query:''}; let inventoryConsolidationDestinationByKey=new Map();
         let reclassRecountJobs=[]; let reclassRecountLoaded=false; let reclassRecountLoading=false; let reclassRecountError=''; let reclassRecountOwner='';
         const MOVES_COMPLETED_STORAGE_PREFIX = 'gnc_moves_completed_v1';
         const MOVES_ACTUAL_MOVED_STORAGE_PREFIX = 'gnc_moves_actual_moved_v1';
@@ -27102,6 +27113,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             production: { eyebrow: 'Production', title: 'Production' },
             'production-workflow': { eyebrow: 'Production', title: 'Production Workflow' },
             'sales-inventory': { eyebrow: 'Inventory', title: 'Inventory' },
+            'inventory-suggestion': { eyebrow: 'Inventory', title: 'Inventory Suggestion' },
+            'inv-consolidation': { eyebrow: 'Inventory Suggestion', title: 'Inv Consolidation' },
             'bunch-note': { eyebrow: 'Inventory', title: 'Inv Bunch Notes' },
             'weather-hold': { eyebrow: 'Park Hill Weather', title: 'Weather & Hold Risk' },
             'shear-list': { eyebrow: 'Production', title: 'Shear List' },
@@ -60352,7 +60365,9 @@ function toggleDriveQuickRequestItem(domId) {
                 return (canonicalAllowed === true || !!(capabilities && capabilities.canViewQueue) || canSeeEvalWorkRequestTab() || ((!userOverride || userOverride === currentUser) && canUseInvBunchNotes())) && navigationPreferencesAllowed(targetView, true);
             }
             const access = getRoleAccessState('', userOverride);
-            if (targetView === 'sales-inventory') return navigationPreferencesAllowed(targetView, access.allowedViews.has(targetView) || ((!userOverride || userOverride === currentUser) && canUseInvBunchNotes()));
+            if (['sales-inventory','inventory-suggestion','inv-consolidation'].includes(targetView)) {
+                return navigationPreferencesAllowed('sales-inventory', access.allowedViews.has('sales-inventory') || ((!userOverride || userOverride === currentUser) && canUseInvBunchNotes()));
+            }
             if (targetView === 'moves') return navigationPreferencesAllowed(targetView, canUseMovesModule() || access.allowedViews.has('moves'));
             return navigationPreferencesAllowed(targetView, access.allowedViews.has(targetView));
         }
@@ -63079,7 +63094,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['bunch-note','drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','smart-moves','request-sales-impact','historical-requests','request-history','sales-credit','credit-request','managers','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','hl-order','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['bunch-note','drive','crop-roll','tasks','review','move-up','advertisement','grower','pest-management','communication','department-calendar','sales','smart-moves','request-sales-impact','historical-requests','request-history','sales-credit','credit-request','managers','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','inventory-suggestion','inv-consolidation','disease-pest','office','po-management','sales-office','moves','reports','low-stock','docks','hl-order','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -72631,6 +72646,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const visibleCount = [
                 setHubButtonVisibility('inventory-open-tasks', canAccessView('tasks')),
                 setHubButtonVisibility('inventory-open-drive', canAccessView('drive')),
+                setHubButtonVisibility('inventory-open-suggestions', canAccessView('inventory-suggestion')),
                 setHubButtonVisibility('inventory-open-crop-roll', canAccessView('crop-roll')),
                 setHubButtonVisibility('inventory-open-po-management', canAccessView('po-management')),
                 setHubButtonVisibility('inventory-open-request', canAccessView('request')),
@@ -72651,6 +72667,204 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (directCountingMode) void ensureFieldCountingIsland();
             else destroyFieldCountingIsland();
             if (showProduction && !showCounting) renderProductionInventory84Content();
+        }
+
+        function renderInventorySuggestionView() {
+            const button = document.getElementById('inventory-suggestion-open-consolidation');
+            if (button) button.classList.toggle('hidden', !canAccessView('inv-consolidation'));
+            hydrateInventoryConsolidationCache();
+            if (!inventoryConsolidationLoaded && !inventoryConsolidationLoading) void loadInventoryConsolidationSuggestions(false);
+        }
+
+        function getInventoryConsolidationCacheKey() {
+            const account = String(nativeAuthProfile?.username || currentUser || 'account').trim().toLowerCase() || 'account';
+            return `gnc_inventory_consolidation_v1:${account}`;
+        }
+
+        function hydrateInventoryConsolidationCache() {
+            if (inventoryConsolidationRows.length || inventoryConsolidationLoaded) return;
+            try {
+                const cached = JSON.parse(localStorage.getItem(getInventoryConsolidationCacheKey()) || 'null');
+                if (!cached || !Array.isArray(cached.rows)) return;
+                inventoryConsolidationRows = cached.rows;
+                inventoryConsolidationCurrentSalesYear = Number(cached.currentSalesYear) || null;
+            } catch (error) {}
+        }
+
+        function persistInventoryConsolidationCache() {
+            try {
+                localStorage.setItem(getInventoryConsolidationCacheKey(), JSON.stringify({
+                    rows: inventoryConsolidationRows.slice(0, 1000),
+                    currentSalesYear: inventoryConsolidationCurrentSalesYear,
+                    savedAt: new Date().toISOString()
+                }));
+            } catch (error) {}
+        }
+
+        async function inventoryConsolidationApi() {
+            const result = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                action: 'inventory_consolidation',
+                query: {}
+            }, { timeoutMs: 20000, label: 'Inventory Consolidation' });
+            if (!result || result.ok !== true || !result.data || typeof result.data !== 'object') {
+                throw new Error(String(result && (result.error || result.message) || 'Inventory Consolidation is unavailable.'));
+            }
+            return result.data;
+        }
+
+        async function loadInventoryConsolidationSuggestions(force = false) {
+            if (inventoryConsolidationLoading || (inventoryConsolidationLoaded && !force)) return false;
+            inventoryConsolidationLoading = true;
+            inventoryConsolidationError = '';
+            renderInventoryConsolidationContent();
+            try {
+                const data = await inventoryConsolidationApi();
+                inventoryConsolidationRows = Array.isArray(data.rows) ? data.rows : [];
+                inventoryConsolidationCurrentSalesYear = Number(data.currentSalesYear) || null;
+                inventoryConsolidationLoaded = true;
+                persistInventoryConsolidationCache();
+            } catch (error) {
+                inventoryConsolidationError = String(error && error.message || 'Inventory Consolidation could not refresh.');
+            } finally {
+                inventoryConsolidationLoading = false;
+                if (isViewVisible('inv-consolidation')) renderInventoryConsolidationView();
+            }
+            return false;
+        }
+
+        function refreshInventoryConsolidationSuggestions() {
+            void loadInventoryConsolidationSuggestions(true);
+            return false;
+        }
+
+        function setInventoryConsolidationFilter(field = '', value = '') {
+            if (!['block','containerSize','salesYearRule','query'].includes(field)) return false;
+            inventoryConsolidationFilters = { ...inventoryConsolidationFilters, [field]: String(value || '').trim() };
+            renderInventoryConsolidationContent();
+            return false;
+        }
+
+        function selectInventoryConsolidationDestination(suggestionKey = '', value = '') {
+            const key = String(suggestionKey || '').trim();
+            if (!key) return false;
+            inventoryConsolidationDestinationByKey.set(key, String(value || '').trim());
+            renderInventoryConsolidationContent();
+            return false;
+        }
+
+        function getInventoryConsolidationDestination(row = null) {
+            const destinations = Array.isArray(row && row.destinations) ? row.destinations : [];
+            if (!destinations.length) return null;
+            const selected = String(inventoryConsolidationDestinationByKey.get(String(row.suggestionKey || '')) || '').trim();
+            const match = destinations.find((destination) => `${String(destination.locationcode || '')}|||${String(destination.salesYear || '')}` === selected);
+            const destination = match || destinations[0];
+            if (destination) inventoryConsolidationDestinationByKey.set(String(row.suggestionKey || ''), `${String(destination.locationcode || '')}|||${String(destination.salesYear || '')}`);
+            return destination || null;
+        }
+
+        function inventoryConsolidationRowsForDisplay() {
+            const block = String(inventoryConsolidationFilters.block || '').toUpperCase();
+            const size = String(inventoryConsolidationFilters.containerSize || '').toUpperCase();
+            const rule = String(inventoryConsolidationFilters.salesYearRule || '').toLowerCase();
+            const query = String(inventoryConsolidationFilters.query || '').trim().toLowerCase();
+            return inventoryConsolidationRows.filter((row) => {
+                if (block && String(row.block || '').toUpperCase() !== block) return false;
+                if (size && String(row.contsize || '').toUpperCase() !== size) return false;
+                if (rule && String(row.salesYearRule || '').toLowerCase() !== rule) return false;
+                if (query && !`${row.commonname || ''} ${row.itemcode || ''} ${row.fromLocationcode || ''}`.toLowerCase().includes(query)) return false;
+                return Number(row.locOnHand) > 0 && Number(row.locOnHand) < 100 && Array.isArray(row.destinations) && row.destinations.length > 0;
+            });
+        }
+
+        function renderInventoryConsolidationContent() {
+            const container = document.getElementById('inv-consolidation-content');
+            if (!container) return;
+            const rows = inventoryConsolidationRowsForDisplay();
+            const visibleRows = rows.slice(0, 100);
+            const staleNotice = inventoryConsolidationError && inventoryConsolidationRows.length
+                ? `<div class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-900">${escapeHtml(inventoryConsolidationError)} Showing saved suggestions.</div>` : '';
+            if (!inventoryConsolidationRows.length && inventoryConsolidationLoading) {
+                container.innerHTML = '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-bold text-slate-500"><i class="ph-bold ph-spinner-gap mr-2 animate-spin"></i>Loading consolidation suggestions...</div>';
+                return;
+            }
+            if (!inventoryConsolidationRows.length && inventoryConsolidationError) {
+                container.innerHTML = `<div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center text-sm font-bold text-amber-900">${escapeHtml(inventoryConsolidationError)}<button type="button" class="mt-3 block w-full rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase text-white" onclick="return refreshInventoryConsolidationSuggestions()">Retry</button></div>`;
+                return;
+            }
+            const cards = visibleRows.map((row) => {
+                const destination = getInventoryConsolidationDestination(row);
+                const destinationValue = destination ? `${String(destination.locationcode || '')}|||${String(destination.salesYear || '')}` : '';
+                const destinationOptions = (Array.isArray(row.destinations) ? row.destinations : []).map((entry) => {
+                    const value = `${String(entry.locationcode || '')}|||${String(entry.salesYear || '')}`;
+                    const label = `${entry.locationcode || '-'} | ${entry.lotcode || '-'} | SY ${entry.salesYear || '-'} | On Hand ${entry.locOnHand ?? 0} | Combined ${entry.combinedLocOnHand ?? 0}`;
+                    return `<option value="${escapeHtml(value)}" ${value === destinationValue ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+                }).join('');
+                const currentRule = String(row.salesYearRule || '') === 'current';
+                const buttonDisabled = !canCreateLocationWorkJob() || !destination;
+                return `<article class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" data-inv-consolidation-card data-consolidation-contsize="${escapeHtml(String(row.contsize || ''))}" data-consolidation-sales-year-rule="${currentRule ? 'current' : 'older'}">
+                    <div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-lg font-black text-slate-900">${escapeHtml(String(row.commonname || row.itemcode || 'Inventory'))}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(row.contsize || '-'))} &middot; ${escapeHtml(String(row.itemcode || '-'))}</div></div><span class="rounded-full border ${currentRule ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-amber-200 bg-amber-50 text-amber-800'} px-3 py-1 text-[9px] font-black uppercase tracking-[0.1em]">${currentRule ? 'Current SY -> Same SY' : 'Older SY -> Any SY'}</span></div>
+                    <div class="mt-4 grid gap-3 lg:grid-cols-2"><section class="rounded-xl border border-amber-100 bg-amber-50/60 p-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-amber-800">Move From</div><div class="mt-1 text-base font-black text-slate-900">${escapeHtml(String(row.fromLocationcode || '-'))}</div><div class="mt-2 grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-600"><span>Lot ${escapeHtml(String(row.fromLotcode || '-'))}</span><span>SalesYear ${escapeHtml(String(row.salesYear || '-'))}</span><span>Loc On Hand <strong>${escapeHtml(String(row.locOnHand ?? 0))}</strong></span><span>Available ${escapeHtml(String(row.available ?? 0))}</span><span>Open Stock ${escapeHtml(String(row.openStock ?? 0))}</span></div></section>
+                    <section class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Move To</div><select class="input-field !mb-0 mt-2" aria-label="Suggested destination for ${escapeHtml(String(row.itemcode || 'item'))}" onchange="return selectInventoryConsolidationDestination('${escJsAttrValue(String(row.suggestionKey || ''))}',this.value)">${destinationOptions}</select>${destination ? `<div class="mt-2 grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-600"><span>To ${escapeHtml(String(destination.locationcode || '-'))}</span><span>Lot ${escapeHtml(String(destination.lotcode || '-'))}</span><span>To SalesYear ${escapeHtml(String(destination.salesYear || '-'))}</span><span>Dest Loc On Hand ${escapeHtml(String(destination.locOnHand ?? 0))}</span><span class="col-span-2">Combined Loc On Hand ${escapeHtml(String(destination.combinedLocOnHand ?? 0))}</span></div>` : ''}</section></div>
+                    <button type="button" class="mt-4 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-[.99] ${buttonDisabled ? 'pointer-events-none opacity-50' : ''}" ${buttonDisabled ? 'disabled' : ''} onclick="return openInventoryConsolidationLocationMove('${escJsAttrValue(String(row.suggestionKey || ''))}')"><i class="ph-bold ph-plus-circle mr-1"></i>Send to Location Moves</button>
+                </article>`;
+            }).join('');
+            const truncation = rows.length > visibleRows.length ? `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-center text-xs font-bold text-slate-500">Showing the first ${visibleRows.length} matches. Narrow the filters to review the remaining ${rows.length - visibleRows.length}.</div>` : '';
+            container.innerHTML = `${staleNotice}<div class="mb-3 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-2"><div><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">On-Demand Only</div><div class="text-sm font-bold text-slate-700">${rows.length} matching location${rows.length === 1 ? '' : 's'} &middot; Current SalesYear ${escapeHtml(String(inventoryConsolidationCurrentSalesYear || '-'))}</div></div><div class="text-[10px] font-bold text-slate-500">Nothing enters Location Moves until you click Send.</div></div><div class="mt-3 flex flex-wrap gap-1" data-consolidation-size-contract>${INVENTORY_CONSOLIDATION_SIZES.map((size) => `<span class="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-600">${escapeHtml(size)}</span>`).join('')}</div></div><div class="grid gap-3 xl:grid-cols-2">${cards || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400 xl:col-span-2">No consolidation suggestions match these filters.</div>'}</div>${truncation}`;
+        }
+
+        function renderInventoryConsolidationView() {
+            hydrateInventoryConsolidationCache();
+            const blockSelect = document.getElementById('inv-consolidation-block');
+            const sizeSelect = document.getElementById('inv-consolidation-size');
+            const ruleSelect = document.getElementById('inv-consolidation-rule');
+            const searchInput = document.getElementById('inv-consolidation-search');
+            if (blockSelect) {
+                const blocks = Array.from(new Set(inventoryConsolidationRows.map((row) => String(row.block || '').trim()).filter(Boolean)))
+                    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }));
+                const options = ['<option value="">All Blocks</option>', ...blocks.map((block) => `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`)].join('');
+                if (blockSelect.innerHTML !== options) blockSelect.innerHTML = options;
+                blockSelect.value = inventoryConsolidationFilters.block;
+            }
+            if (sizeSelect) {
+                const options = ['<option value="">All 16 Sizes</option>', ...INVENTORY_CONSOLIDATION_SIZES.map((size) => `<option value="${escapeHtml(size)}">${escapeHtml(size)}</option>`)].join('');
+                if (sizeSelect.innerHTML !== options) sizeSelect.innerHTML = options;
+                sizeSelect.value = inventoryConsolidationFilters.containerSize;
+            }
+            if (ruleSelect) ruleSelect.value = inventoryConsolidationFilters.salesYearRule;
+            if (searchInput && document.activeElement !== searchInput) searchInput.value = inventoryConsolidationFilters.query;
+            renderInventoryConsolidationContent();
+            if (!inventoryConsolidationLoaded && !inventoryConsolidationLoading) void loadInventoryConsolidationSuggestions(false);
+        }
+
+        async function openInventoryConsolidationLocationMove(suggestionKey = '') {
+            const row = inventoryConsolidationRows.find((entry) => String(entry.suggestionKey || '') === String(suggestionKey || ''));
+            const destination = getInventoryConsolidationDestination(row);
+            if (!row || !destination) {
+                showToast('Destination Required', 'Choose an eligible destination before sending this suggestion.', true);
+                return false;
+            }
+            const destinationRows = (Array.isArray(row.destinations) ? row.destinations : []).map((entry, index) => ({
+                UNIQUE_ID: `consolidation-destination-${row.itemcode}-${entry.locationcode}-${entry.salesYear}-${index}`,
+                ITEMCODE: row.itemcode, COMMONNAME: row.commonname, CONTSIZE: row.contsize,
+                LOCATIONCODE: entry.locationcode, LOTCODE: entry.lotcode, SALESYEAR: String(entry.salesYear || ''),
+                PTRONHAND: String(entry.locOnHand ?? 0)
+            }));
+            const items = (Array.isArray(row.sourceRows) ? row.sourceRows : []).filter((source) => Number(source.onHand) > 0).map((source) => ({
+                UNIQUE_ID: source.uniqueId, ITEMCODE: source.itemcode || row.itemcode, COMMONNAME: source.commonname || row.commonname,
+                CONTSIZE: source.contsize || row.contsize, LOCATIONCODE: source.locationcode || row.fromLocationcode,
+                LOTCODE: source.lotcode || row.fromLotcode, SALESYEAR: String(source.salesYear || row.salesYear || ''),
+                PTRONHAND: String(source.onHand ?? 0), PTRAVAILABLE: String(source.available ?? 0), S_LTS: String(source.openStock ?? 0),
+                INVENTORY_CONSOLIDATION: true, CONSOLIDATION_DESTINATIONS: destinationRows,
+                CONSOLIDATION_DESTINATION_LOCATION: destination.locationcode,
+                CONSOLIDATION_DESTINATION_SALES_YEAR: String(destination.salesYear || ''),
+                CONSOLIDATION_JOB_TITLE: `Inv Consolidation - ${row.commonname || row.itemcode} - ${row.fromLocationcode}`,
+                CONSOLIDATION_JOB_INSTRUCTIONS: `Move the listed on-hand quantity from ${row.fromLocationcode} to ${destination.locationcode}. Verify the physical quantity before completion.`
+            }));
+            if (!items.length) {
+                showToast('Source Changed', 'The source inventory rows are no longer available. Refresh suggestions.', true);
+                return false;
+            }
+            return openSelectedRowsMoveModal(items);
         }
 
         let inventoryProjects = [];
@@ -77356,6 +77570,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 renderProductionWorkflowPanel();
             } else if (viewId === 'sales-inventory') {
                 renderSalesInventoryHub();
+            } else if (viewId === 'inventory-suggestion') {
+                renderInventorySuggestionView();
+            } else if (viewId === 'inv-consolidation') {
+                renderInventoryConsolidationView();
             } else if (viewId === 'weather-hold') {
                 renderWeatherHold();
             } else if (viewId === 'shear-list') {
@@ -142603,6 +142821,9 @@ C.14.043 C.15.000
 
         function getLocationMoveDestinationRowsForSource(sourceRow = null) {
             if (!sourceRow) return [];
+            if (sourceRow.INVENTORY_CONSOLIDATION === true && Array.isArray(sourceRow.CONSOLIDATION_DESTINATIONS)) {
+                return sourceRow.CONSOLIDATION_DESTINATIONS.slice();
+            }
             const itemcode = getSelectedMoveItemCode(sourceRow);
             const sourceUid = getSelectedMoveSourceUid(sourceRow);
             const sourceLocation = getSelectedMoveLocation(sourceRow);
@@ -142751,16 +142972,19 @@ C.14.043 C.15.000
 
         function getLocationWorkDestinationGroups(sourceRow = null) {
             const groups = new Map();
+            const consolidation = !!(sourceRow && sourceRow.INVENTORY_CONSOLIDATION === true);
             getLocationMoveDestinationRowsForSource(sourceRow).forEach((row) => {
                 const locationcode = getSelectedMoveLocation(row);
                 if (!locationcode) return;
-                const key = locationcode.toUpperCase();
-                const current = groups.get(key) || { locationcode, onHand: 0, matchingRows: 0 };
+                const salesYear = getLocationMoveSalesYear(row);
+                const key = consolidation ? `${locationcode.toUpperCase()}|${String(salesYear || '')}` : locationcode.toUpperCase();
+                const current = groups.get(key) || { locationcode, salesYear, lotcode: String(firstNonEmptyValue(row.LOTCODE, row.lotcode, '') || '').trim(), onHand: 0, matchingRows: 0 };
                 current.onHand += getLocationWorkOnHand(row);
                 current.matchingRows += 1;
                 groups.set(key, current);
             });
-            return Array.from(groups.values()).sort((a, b) => a.locationcode.localeCompare(b.locationcode, undefined, { numeric: true, sensitivity: 'base' }));
+            return Array.from(groups.values()).sort((a, b) => a.locationcode.localeCompare(b.locationcode, undefined, { numeric: true, sensitivity: 'base' })
+                || Number(a.salesYear || 0) - Number(b.salesYear || 0));
         }
 
         function getLocationWorkLineDraft(item = null) {
@@ -142770,7 +142994,9 @@ C.14.043 C.15.000
                     sourceUniqueId: sourceUid,
                     actionType: 'move',
                     plannedQty: getLocationWorkOnHand(item),
-                    destinationLocationcode: '',
+                    destinationLocationcode: String(item && item.CONSOLIDATION_DESTINATION_LOCATION || ''),
+                    destinationSalesYear: String(item && item.CONSOLIDATION_DESTINATION_SALES_YEAR || ''),
+                    inventoryConsolidation: !!(item && item.INVENTORY_CONSOLIDATION === true),
                     instructions: ''
                 });
             }
@@ -142787,8 +143013,20 @@ C.14.043 C.15.000
             } else if (field === 'plannedQty') draft.plannedQty = String(value || '').replace(/[^0-9]/g, '');
             else if (field === 'instructions') draft.instructions = String(value || '').slice(0, 4000);
             else if (field === 'destinationLocationcode') draft.destinationLocationcode = normalizeMoveQueueDestinationInput(value);
+            else if (field === 'destinationSalesYear') draft.destinationSalesYear = String(value || '').replace(/[^0-9]/g, '').slice(0, 4);
             locationWorkLineDrafts.set(draft.sourceUniqueId, draft);
             if (field === 'actionType' || field === 'destinationLocationcode') renderSelectedMoveModalRows(selectedLocationMoveItems);
+            return false;
+        }
+
+        function setLocationWorkDestination(sourceUid = '', locationcode = '', salesYear = '') {
+            const item = selectedLocationMoveItems.find((row) => getSelectedMoveSourceUid(row) === String(sourceUid || '').trim());
+            if (!item) return false;
+            const draft = getLocationWorkLineDraft(item);
+            draft.destinationLocationcode = normalizeMoveQueueDestinationInput(locationcode);
+            draft.destinationSalesYear = String(salesYear || '').replace(/[^0-9]/g, '').slice(0, 4);
+            locationWorkLineDrafts.set(draft.sourceUniqueId, draft);
+            renderSelectedMoveModalRows(selectedLocationMoveItems);
             return false;
         }
 
@@ -142848,12 +143086,15 @@ C.14.043 C.15.000
                 const onHand = getLocationWorkOnHand(item);
                 const groups = getLocationWorkDestinationGroups(item);
                 const action = String(draft.actionType || 'move');
+                const consolidation = draft.inventoryConsolidation === true;
                 const destinationEnabled = action !== 'ta';
                 const destinationRequired = action === 'move';
-                const destinationHtml = destinationEnabled ? `<div class="mt-3 border-t border-blue-100 pt-3"><div class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Destination ${destinationRequired ? 'Required' : 'Optional'} — same ITEMCODE and sales year</div>${groups.length ? `<div class="grid gap-2 sm:grid-cols-2">${groups.map((group) => {
-                    const selected = String(draft.destinationLocationcode || '').toUpperCase() === String(group.locationcode || '').toUpperCase();
-                    return `<button type="button" class="rounded-xl border px-3 py-3 text-left ${selected ? 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200 bg-white'}" onclick="return setLocationWorkLineField('${escJsAttrValue(sourceUid)}','destinationLocationcode','${escJsAttrValue(selected ? '' : group.locationcode)}')"><div class="text-sm font-black text-slate-900">${selected ? '✓ ' : ''}${esc(group.locationcode)}</div><div class="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">On Hand ${esc(String(group.onHand))} · ${esc(String(group.matchingRows))} matching row${group.matchingRows === 1 ? '' : 's'}</div></button>`;
-                }).join('')}</div>` : `<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">No eligible destination exists for ${esc(itemcode)} sales year ${esc(String(salesYear || '-'))}. Choose TA, or use Grade/Save without a destination.</div>`}</div>` : '';
+                const destinationRule = consolidation ? 'approved SalesYear rule' : 'same ITEMCODE and sales year';
+                const destinationHtml = destinationEnabled ? `<div class="mt-3 border-t border-blue-100 pt-3"><div class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Destination ${destinationRequired ? 'Required' : 'Optional'} — ${destinationRule}</div>${groups.length ? `<div class="grid gap-2 sm:grid-cols-2">${groups.map((group) => {
+                    const selected = String(draft.destinationLocationcode || '').toUpperCase() === String(group.locationcode || '').toUpperCase()
+                        && (!consolidation || String(draft.destinationSalesYear || '') === String(group.salesYear || ''));
+                    return `<button type="button" class="rounded-xl border px-3 py-3 text-left ${selected ? 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200 bg-white'}" onclick="return setLocationWorkDestination('${escJsAttrValue(sourceUid)}','${escJsAttrValue(selected ? '' : group.locationcode)}','${escJsAttrValue(selected ? '' : group.salesYear)}')"><div class="text-sm font-black text-slate-900">${selected ? '✓ ' : ''}${esc(group.locationcode)}</div><div class="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">${consolidation ? `SY ${esc(String(group.salesYear || '-'))} · ` : ''}On Hand ${esc(String(group.onHand))} · ${esc(String(group.matchingRows))} matching row${group.matchingRows === 1 ? '' : 's'}</div></button>`;
+                }).join('')}</div>` : `<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">No eligible destination exists for ${esc(itemcode)} under the ${esc(destinationRule)}. Choose TA, or use Grade/Save without a destination.</div>`}</div>` : '';
                 return `<section class="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm" data-location-work-source="${esc(sourceUid)}">
                     <div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-sm font-black text-slate-900">${esc(common)} <span class="text-slate-500">${esc(size)}</span></div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">${esc(itemcode)} · From ${esc(location)} · Sales Year ${esc(String(salesYear || '-'))}</div></div><div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-right"><div class="text-[8px] font-black uppercase text-emerald-700">On Hand</div><div class="text-lg font-black text-emerald-900">${esc(String(onHand))}</div></div></div>
                     <div class="mt-3 grid gap-3 sm:grid-cols-2"><label><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Action</span><select class="input-field !mb-0" onchange="return setLocationWorkLineField('${escJsAttrValue(sourceUid)}','actionType',this.value)">${[['ta','TA'],['move','Move'],['grade','Grade'],['save','Save']].map(([value,label]) => `<option value="${value}" ${action === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label><label><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Action Qty</span><input class="input-field !mb-0" inputmode="numeric" pattern="[0-9]*" value="${esc(String(draft.plannedQty || ''))}" max="${onHand}" oninput="setLocationWorkLineField('${escJsAttrValue(sourceUid)}','plannedQty',this.value)" placeholder="1-${onHand}"></label></div>
@@ -142890,8 +143131,9 @@ C.14.043 C.15.000
             const title = document.getElementById('location-work-title');
             const instructions = document.getElementById('location-work-instructions');
             const recipientsPanel = document.getElementById('location-work-recipient-options');
-            if (title) title.value = '';
-            if (instructions) instructions.value = '';
+            const consolidationItem = items.find((item) => item && item.INVENTORY_CONSOLIDATION === true);
+            if (title) title.value = consolidationItem ? String(consolidationItem.CONSOLIDATION_JOB_TITLE || 'Inventory Consolidation') : '';
+            if (instructions) instructions.value = consolidationItem ? String(consolidationItem.CONSOLIDATION_JOB_INSTRUCTIONS || 'Move the selected inventory into the approved destination location.') : '';
             if (recipientsPanel) recipientsPanel.classList.add('hidden');
             const modal = document.getElementById('move-selected-modal');
             const saveBtn = document.getElementById('move-selected-save-btn');
@@ -142952,7 +143194,8 @@ C.14.043 C.15.000
                 const item = selectedLocationMoveItems[index];
                 const onHand = getLocationWorkOnHand(item);
                 const destinations = getLocationWorkDestinationGroups(item);
-                const eligible = !line.destinationLocationcode || destinations.some((entry) => entry.locationcode.toUpperCase() === String(line.destinationLocationcode).toUpperCase());
+                const eligible = !line.destinationLocationcode || destinations.some((entry) => entry.locationcode.toUpperCase() === String(line.destinationLocationcode).toUpperCase()
+                    && (!line.inventoryConsolidation || String(entry.salesYear || '') === String(line.destinationSalesYear || '')));
                 return !['ta','move','grade','save'].includes(line.actionType)
                     || !Number.isInteger(line.plannedQty) || line.plannedQty < 1 || line.plannedQty > onHand
                     || (line.actionType === 'move' && !line.destinationLocationcode)

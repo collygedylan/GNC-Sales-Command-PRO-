@@ -2,6 +2,20 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: drive
 import test from 'node:test';
 
+test('Inventory Suggestion routes to manual 16-size consolidation', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  assert.match(html, /id="inventory-open-suggestions"[^]*openInventorySuggestionView/);
+  assert.match(html, /id="view-inventory-suggestion"[^]*openInventoryConsolidationView/);
+  assert.match(html, /id="view-inv-consolidation"/);
+  assert.match(runtime, /INVENTORY_CONSOLIDATION_SIZES=Object\.freeze\(\[[^\]]+\]\)/);
+  assert.match(runtime, /Number\(row\.locOnHand\) > 0 && Number\(row\.locOnHand\) < 100/);
+  assert.match(runtime, /Current SY -> Same SY/);
+  assert.match(runtime, /Older SY -> Any SY/);
+  assert.match(runtime, /Nothing enters Location Moves until you click Send\./);
+  assert.match(runtime, /openInventoryConsolidationLocationMove/);
+});
+
 test('inventory projects expose folder and row workflows', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
