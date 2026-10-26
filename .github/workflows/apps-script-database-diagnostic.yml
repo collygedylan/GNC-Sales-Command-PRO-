@@ -123,7 +123,7 @@ jobs:
             elapsedMs: Date.now() - started, runId: String(payload?.runId || ''), stage: String(payload?.currentStage || ''),
             errorCode: String(payload?.errorCode || '') };
           if (!result.ok) {
-            const clasp = JSON.parse(String(process.env.APPS_SCRIPT_CLASPRC_JSON || '{}'));
+            const clasp = JSON.parse(String(process.env.APPS_SCRIPT_CLASPRC_JSON || '{}').replace(/^\uFEFF/, ''));
             const tokens = clasp.tokens && typeof clasp.tokens === 'object' ? clasp.tokens : {};
             const token = clasp.token || (tokens.refresh_token ? tokens : Object.values(tokens).find(value => value?.refresh_token)) || {};
             const settings = clasp.oauth2ClientSettings || clasp.oauth2Client || {};
