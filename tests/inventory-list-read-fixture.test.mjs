@@ -66,24 +66,24 @@ test('inventory master-page mocks return exact full and browse projection contra
   const physicalColumns = new Set(inventoryReadFixture.physicalColumns);
   const fullColumns = inventoryReadFixture.projections.full;
   const browseColumns = inventoryReadFixture.projections.browse;
-  assert.equal(physicalColumns.size, 213);
-  assert.equal(fullColumns.length, 213);
+  assert.equal(physicalColumns.size, 218);
+  assert.equal(fullColumns.length, 218);
   assert.deepEqual(new Set(fullColumns), physicalColumns);
-  assert.equal(browseColumns.length, 161);
+  assert.equal(browseColumns.length, 162);
   assert.ok(browseColumns.every(column => physicalColumns.has(column)));
 
   const sourceRow = inventoryReadFixture.row({ unique_id: 'projection-row', ptravailable: '0', ptronhand: '12' });
   const browse = inventoryReadFixture.readMasterPage([sourceRow], { dataset: 'master', projection: 'browse', limit: 100 });
   assert.equal(browse.projection, 'browse');
   assert.equal(browse.fieldCoverage, 'browse');
-  assert.equal(browse.columns.length, 161);
+  assert.equal(browse.columns.length, 162);
   assert.equal(browse.rows[0].ptravailable, '0');
   assert.equal(Object.hasOwn(browse.rows[0], 'concat'), false);
 
   const full = inventoryReadFixture.readMasterPage([sourceRow], { dataset: 'lookup', projection: 'full', uniqueId: 'projection-row', limit: 1 });
   assert.equal(full.projection, 'full');
   assert.equal(full.fieldCoverage, 'full');
-  assert.equal(full.columns.length, 213);
+  assert.equal(full.columns.length, 218);
   assert.equal(full.rows[0].ptravailable, '0');
   assert.equal(full.rows[0].ptronhand, '12');
   assert.equal(full.total, 1);

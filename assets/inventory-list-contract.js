@@ -47,13 +47,13 @@
     // comparison without changing V1 aliases or inventing values in list rows.
     const physicalColumns = Object.freeze([
         ...columns,
-        'altshipcomment', 'avg_price_eunit_shipped', 'carrier', 'combinedprice', 'concat',
+        'altshipcomment', 'avg_price_eunit_shipped', 'baseline_on_hand', 'carrier', 'combinedprice', 'concat',
         'consigneeaddress_1', 'consigneeaddress_2', 'consigneecity', 'consigneeidentityid', 'consigneestate',
         'consigneezip', 'customeridentityid', 'customersku', 'descriptorcode', 'dropweight',
         'equiv_uom', 'ext_eunit_shipped', 'ext_unit_merch_shipped', 'extunitprice', 'formattedupc',
         'freightrateperitem', 'generalloadinstr', 'handlingchargeperitem', 'hardinesszone', 'hlloadinstructions',
-        'idgroup', 'internalinvnote', 'invoicedate', 'isreserve', 'landed',
-        'nationalaccount', 'ncloadinstructions', 'okloadinstructions', 'ordertotal', 'purchaseordernumber',
+        'idgroup', 'initial_photo_match_qty', 'internalinvnote', 'invoicedate', 'isreserve', 'landed',
+        'loc_match_pct', 'loc_photo_match', 'nationalaccount', 'ncloadinstructions', 'okloadinstructions', 'ordertotal', 'purchaseordernumber',
         'quantityordered', 'quantityshipped', 'requestdate', 'requestdateweek', 'retailprice',
         'shiptotelephone_1', 'si_available', 'stagename', 'step', 'tagcode',
         'tagdeptnote', 'taggingchargeperitem', 'transactionnumber', 'txloadinstructions', 'unitprice',

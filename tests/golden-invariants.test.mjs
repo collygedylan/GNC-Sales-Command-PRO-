@@ -2100,3 +2100,16 @@ test('Invariant 72 (Every v2.3.87 Migration Has a Live Installed-State Contract)
   assert.match(runner, /name === agdataV2387ReclassPersistenceEvidenceMigrationName[^]*20261027163924[^]*010585\.031\.1/);
   assert.match(runner, /name === agdataV2387BatchReclassEvidenceMigrationName[^]*20261027171000[^]*reclass-batch-evidence-v2387/);
 });
+
+test('Invariant 73 (Full Inventory Reads Preserve Durable Reclass Photo Evidence)', () => {
+  const projections = read('supabase/functions/_shared/inventory-projections.ts');
+  const browserContract = read('assets/inventory-list-contract.js');
+  const fullStart = projections.indexOf('export const INVENTORY_MASTER_FULL_COLUMNS');
+  const fullEnd = projections.indexOf('export const INVENTORY_MASTER_BROWSE_COLUMNS', fullStart);
+  assert.ok(fullStart >= 0 && fullEnd > fullStart, 'full inventory projection block exists');
+  const full = projections.slice(fullStart, fullEnd);
+  for (const field of ['loc_match_pct', 'loc_photo_match', 'baseline_on_hand', 'initial_photo_match_qty']) {
+    assert.match(full, new RegExp(`"${field}"`), `${field} survives the app-api full-row boundary`);
+    assert.match(browserContract, new RegExp(`'${field}'`), `${field} survives the direct browser full-row boundary`);
+  }
+});

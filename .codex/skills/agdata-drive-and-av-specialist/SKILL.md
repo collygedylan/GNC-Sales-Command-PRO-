@@ -100,6 +100,8 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never omit `loc_match_pct`, `loc_photo_match`, `baseline_on_hand`, or `initial_photo_match_qty` from the full `inventory_read` projection; falling back to legacy percent math after a confirmed Reclass corrupts the displayed durable evidence.
+
 - Never pass untrimmed Drive/AV search text into render scheduling, recreate image wrappers during unchanged card refreshes, or expose a white thumbnail/letterbox surface while protected photo evidence is loading.
 
 - Never require AV Note for a row that is not the exact current-season Season Sales Note winner, hide Spec/Caliper behind photo or AV Note presence, or regress shared plant thumbnails to letterboxed 64px surfaces.

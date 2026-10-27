@@ -185,6 +185,12 @@
       "sampleNonNullRows": 1
     },
     {
+      "name": "photo_date",
+      "type": "text",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
       "name": "dock_spec",
       "type": "text",
       "nullable": true,
@@ -273,6 +279,30 @@
       "type": "text",
       "nullable": true,
       "sampleNonNullRows": 1
+    },
+    {
+      "name": "loc_match_pct",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "loc_photo_match",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "baseline_on_hand",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "initial_photo_match_qty",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
     },
     {
       "name": "warehousei",

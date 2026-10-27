@@ -243,7 +243,7 @@ test('browse inventory preserves filters and readouts with explicit field covera
   assert.equal(page.body.data.projection, 'browse');
   assert.equal(page.body.data.fieldCoverage, 'browse');
   const fields = page.body.data.columns;
-  assert.equal(fields.length, 161);
+  assert.equal(fields.length, 162);
   const contractContext = vm.createContext({});
   vm.runInContext(fs.readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), contractContext);
   assert.deepEqual(Array.from(fields).sort(), Array.from(contractContext.AgMetricInventoryList.columns).sort());
@@ -256,8 +256,11 @@ test('browse inventory preserves filters and readouts with explicit field covera
   assert.ok(queries[0].calls.some(([method, from, to]) => method === 'range' && from === 0 && to === 499));
   const full = await handler(actor, { operation: 'master_page', params: { dataset: 'lookup', projection: 'full', uniqueId: 'row-1' } });
   assert.equal(full.body.data.fieldCoverage, 'full');
-  assert.equal(full.body.data.columns.length, 213);
+  assert.equal(full.body.data.columns.length, 218);
   assert.ok(full.body.data.columns.includes('shiptotelephone_1'));
+  for (const field of ['loc_match_pct', 'loc_photo_match', 'baseline_on_hand', 'initial_photo_match_qty']) {
+    assert.ok(full.body.data.columns.includes(field), `full inventory evidence projection includes ${field}`);
+  }
   assert.ok(queries[1].calls.some(([method, field, value]) => method === 'eq' && field === 'unique_id' && value === 'row-1'));
   assert.ok(queries.every(query => query.calls.filter(([method]) => method === 'select').every(([, fields]) => !fields.includes('*'))));
 });
