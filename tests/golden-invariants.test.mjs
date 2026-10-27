@@ -2124,3 +2124,21 @@ test('Invariant 74 (AV Invalidation Checks Never Rewrite Durable Loc Photo Match
   assert.doesNotMatch(helper, /item\.LOC_MATCH_QTY\s*=/);
   assert.match(helper, /calculateLocMatchQtyValue\(item\)\s*\?\?\s*parseAppNumber\(item\.LOC_MATCH_QTY\)/);
 });
+
+test('Invariant 75 (v2.3.88 Existing Evidence, Docks, Navigation and Watchdog Stay Fail-Open)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const edge = read('supabase/functions/app-api/index.ts');
+  const workflow = read('supabase/functions/_shared/production-workflow.ts');
+  const bunch = read('assets/bunch-note.js');
+  const navigation = read('assets/navigation-preferences.js');
+  const migration = read('supabase/migrations/20261027184835_agdata_v2388_unified_runtime_recovery.sql');
+  assert.match(runtime, /getSuspendTagExistingReviewPatch[^]*dock_photo_link:[^]*loc_match_qty:/);
+  assert.match(runtime, /getScopedDocksItems[^]*dock !== 'Unassigned'/);
+  assert.doesNotMatch(runtime.slice(runtime.indexOf('function getScopedDocksItems'), runtime.indexOf('function rebuildSocOrderLineIdentityIndex')), /filter\(isDockRowWithinPlanStartWindow\)/);
+  assert.match(edge, /customer-rep-map[^]*CUSTOMER_REP_MAPPING_REVALIDATING/);
+  assert.match(workflow, /resolveCurrentReclassSourceIds[^]*\.eq\('itemcode'[^]*\.eq\('locationcode'/);
+  assert.match(bunch, /bn-suggestion-menu[^]*Type custom…/);
+  assert.match(navigation, /data-nav-slot[^]*data-nav-module[^]*data-nav-left[^]*data-nav-right/);
+  assert.match(migration, /reclass-source-alias-v2388/);
+  assert.match(migration, /where status='open'/);
+});

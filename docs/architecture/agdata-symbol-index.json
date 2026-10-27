@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.87",
+  "release": "AgData v2.3.88",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -265,7 +265,15 @@
       "supabase/functions/app-api/index.ts": [
         "handlePasskeyAuthenticationProxy"
       ],
-      "Code.gs": []
+      "Code.gs": [],
+      "supportingFiles": {
+        "assets/mobile-workspace.js": [
+          "syncHub"
+        ],
+        "assets/navigation-preferences.js": [
+          "renderShortcutEditor"
+        ]
+      }
     },
     "agdata-aura-assistant": {
       "assets/app-runtime.js": [
@@ -384,6 +392,8 @@
     "agdata-docks-and-orders-specialist": {
       "assets/app-runtime.js": [
         "renderDocks",
+        "getScopedDocksItems",
+        "normalizeDockViewDockKey",
         "loadHlOrderState",
         "renderCommunicationHub"
       ],
@@ -475,7 +485,14 @@
       ],
       "index.html": [
         "resumeAssignedItemsNotification"
-      ]
+      ],
+      "supportingFiles": {
+        "assets/bunch-note.js": [
+          "suggestionField",
+          "locationSetupHtml",
+          "editor"
+        ]
+      }
     },
     "agdata-queue-and-reclass-specialist": {
       "assets/app-runtime.js": [
@@ -494,6 +511,8 @@
         "normalizeRequestCardMetrics",
         "buildQueueInventoryMetricsHtml",
         "getSuspendTagMetricDisplayFallback",
+        "getSuspendTagExistingReview",
+        "getSuspendTagExistingReviewPatch",
         "syncDockSuspendDcRequestQuantityAliases"
       ],
       "assets/runtime-watchdog.js": [
@@ -528,6 +547,13 @@
           "identity",
           "createIndex"
         ],
+        "supabase/functions/_shared/production-workflow.ts": [
+          "resolveCurrentReclassSourceIds",
+          "handleInventoryReclassMove"
+        ],
+        "supabase/migrations/20261027184835_agdata_v2388_unified_runtime_recovery.sql": [
+          "reclass-source-alias-v2388"
+        ],
         "supabase/migrations/20261027040000_agdata_v2382_drive_parity_reclass_and_fast_sync.sql": [
           "ph_active_suspend",
           "ph_soc_suspend_tag_rows"
@@ -547,7 +573,9 @@
     "agdata-release-governor": {
       "assets/app-runtime.js": [],
       "assets/runtime-watchdog.js": [],
-      "supabase/functions/app-api/index.ts": [],
+      "supabase/functions/app-api/index.ts": [
+        "handleCustomerRepMappingAction"
+      ],
       "Code.gs": [
         "verifyAppsScriptActionEnvelope_",
         "doPost"
@@ -580,6 +608,10 @@
         "supabase/migrations/20261027133509_agdata_v2384_runtime_recovery.sql": [
           "app_runtime_watchdog_events",
           "bulk_import_master_snapshot_v2374_base"
+        ],
+        "supabase/migrations/20261027184835_agdata_v2388_unified_runtime_recovery.sql": [
+          "app_runtime_watchdog_events",
+          "app_version"
         ]
       }
     },

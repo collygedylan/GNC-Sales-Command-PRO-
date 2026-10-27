@@ -69,3 +69,4 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 - Never infer a parity incident from an authorized empty result or turn telemetry transport failure into recursive reporting.
 - Never record navigation/scope cancellation codes as operational failures or hardcode an old release in the active Watchdog fix brief.
 - Never resolve a load-stall cluster by suppressing telemetry alone; prove the owned view renders retained rows before background hydration, then close the exact incident cohort with its release version.
+- Never return a transient `503` for an authorized customer mapping read when a retained directory can stay visible with `200`, and never carry verified resolved incidents into the next active release version.

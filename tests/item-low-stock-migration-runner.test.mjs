@@ -1837,3 +1837,11 @@ test('v2.3.87 Reclass persistence and evidence migration is registered exactly o
  assert.match(migrationContractQuery(name),/20261027163924[^]*010585\.031\.1[^]*27\.F1[^]*27\.S1/);
  assert.match(migrationContractQuery(batchName),/20261027171000[^]*reclass-batch-evidence-v2387[^]*loc_photo_match/);
 });
+
+test('v2.3.88 runtime recovery is registered with stale-row and watchdog contracts', async () => {
+ const {agdataV2388UnifiedRuntimeRecoveryMigrationName:name,registeredReleaseDatabaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.equal(registeredReleaseDatabaseMigrations.filter(value=>value===name).length,1);
+ const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
+ for(const token of ['reclass-source-alias-v2388','candidate.itemcode','candidate.locationcode',"where status='open'",'AgData v2.3.88']) assert.ok(migration.includes(token),token);
+ assert.match(migrationContractQuery(name),/20261027184835[^]*reclass-source-alias-v2388[^]*app_runtime_watchdog_events[^]*2\.3\.88/);
+});

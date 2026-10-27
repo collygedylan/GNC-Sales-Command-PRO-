@@ -13,6 +13,11 @@
 .gnc-navigation-editor button:disabled { opacity: .55; cursor: wait; }
 .gnc-navigation-editor [role=alert] { border-left: 4px solid #dc2626; padding-left: .75rem; }
 .gnc-navigation-slots { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: .75rem; }
+.gnc-navigation-slot { display:flex; align-items:center; justify-content:space-between; gap:.5rem; width:100%; text-align:left; touch-action:manipulation; -webkit-user-select:none; -webkit-touch-callout:none; }
+.gnc-navigation-slot[aria-selected=true] { outline:3px solid var(--ops-brand,#07874f); outline-offset:2px; }
+.gnc-navigation-modules { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr)); gap:.5rem; margin-block:.8rem; }
+.gnc-navigation-modules button { touch-action:manipulation; -webkit-user-select:none; -webkit-touch-callout:none; }
+.gnc-navigation-reorder { display:grid; grid-template-columns:repeat(3,minmax(44px,1fr)); gap:.5rem; margin-block:.65rem; }
 .gnc-navigation-actions { display: flex; flex-wrap: wrap; gap: .6rem; padding-block: .5rem; }
 .gnc-navigation-actions > button { flex: 1 1 160px; }
 .gnc-navigation-access-row { padding: .65rem; border: 1px solid color-mix(in srgb,currentColor 30%,transparent); border-radius: .75rem; }

@@ -6,7 +6,7 @@ import { normalizeReclassMoveCommand } from "../../../services/reclassMove.ts";
 /** Protected adapters; actorProfile and moduleAllowed come from the authenticated
  * API context, never from the request JSON. SQL repeats active-profile checks. */
 type JsonRecord = Record<string, unknown>;
-type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
+type RpcClient = Pick<SupabaseClient<Database>, "rpc" | "from">;
 export type WorkflowContext = { supabase: RpcClient; actorProfile: JsonRecord; moduleAllowed: boolean; payload: JsonRecord };
 
 const TYPES = new Set(['propagation', 'planting']);
@@ -116,6 +116,37 @@ function requireReclassMoveActor(actor: JsonRecord) {
   }
 }
 
+async function resolveCurrentReclassSourceIds(supabase: RpcClient, command: ReturnType<typeof normalizeReclassMoveCommand>) {
+  const requested = command.moves.map((move) => move.source.uniqueId);
+  const { data: currentRows, error: currentError } = await supabase.from('ph_master_inventory')
+    .select('unique_id').in('unique_id', requested);
+  if (currentError) throw currentError;
+  const currentIds = new Set((currentRows || []).map((row) => text(row.unique_id)));
+  for (const move of command.moves) {
+    if (currentIds.has(move.source.uniqueId)) continue;
+    const identity = move.source.identity;
+    const itemcode = text(identity.itemcode), locationcode = text(identity.locationcode);
+    if (!itemcode || !locationcode) continue;
+    const { data: candidates, error } = await supabase.from('ph_master_inventory')
+      .select('unique_id,itemcode,contsize,locationcode,lotcode,season')
+      .eq('itemcode', itemcode).eq('locationcode', locationcode)
+      .order('unique_id', { ascending: true }).limit(200);
+    if (error) throw error;
+    const ranked = [...(candidates || [])].sort((left, right) => {
+      const score = (row: typeof left) =>
+        (text(row.lotcode) === text(identity.lotcode) ? 4 : 0)
+        + (text(row.season) === text(identity.season) ? 2 : 0)
+        + (text(row.contsize) === text(identity.contsize) ? 1 : 0);
+      return score(right) - score(left) || text(left.unique_id).localeCompare(text(right.unique_id));
+    });
+    const replacement = text(ranked[0]?.unique_id);
+    if (!replacement) continue;
+    move.source.uniqueId = replacement;
+    move.source.identity.unique_id = replacement;
+  }
+  return command;
+}
+
 export async function handleInventoryReclassMove({ supabase, actorProfile, payload }: ReclassMoveContext) {
   requireReclassMoveActor(actorProfile);
   const receiptEncoding = payload.receiptEncoding;
@@ -139,7 +170,7 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
   }
   const commandPayload = { ...payload };
   delete commandPayload.receiptEncoding;
-  const command = normalizeReclassMoveCommand(commandPayload);
+  const command = await resolveCurrentReclassSourceIds(supabase, normalizeReclassMoveCommand(commandPayload));
   const { data, error } = await supabase.rpc('apply_inventory_reclass_moves_with_delivery_v1', {
     p_actor_id: String(actorProfile.id), p_command_id: command.commandId,
     p_expected_revision: command.expectedRevision ?? 0,

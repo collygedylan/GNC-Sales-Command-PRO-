@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.87';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.88';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26612,7 +26612,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.87').trim() || 'AgData v2.3.87';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.88').trim() || 'AgData v2.3.88';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -57007,7 +57007,8 @@ function toggleDriveQuickRequestItem(domId) {
 
         function normalizeDockViewDockKey(dockNum = '') {
             const normalized = String(dockNum || '').trim();
-            return normalized || 'Unassigned';
+            if (!normalized || /^(?:nan|null|none)$/i.test(normalized)) return 'Unassigned';
+            return normalized.replace(/\.0+$/, '') || 'Unassigned';
         }
 
         function formatDockViewDockLabel(dockNum = '') {
@@ -61120,7 +61121,12 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getScopedDocksItems(items = socInventory, cacheScopeKey = '') {
             const { isAdmin, isRep, isQcSupervisor, isQc } = getRoleAccessState();
-            let nextItems = getActiveSuspendDockRows(Array.isArray(items) ? items : []).filter(isDockRowWithinPlanStartWindow);
+            // Docks is an operational snapshot, not a date report. A missing or
+            // old PLANSTART value must never hide a currently imported dock row.
+            let nextItems = getActiveSuspendDockRows(Array.isArray(items) ? items : []).filter((row) => {
+                const dock = normalizeDockViewDockKey(firstNonEmptyValue(row && row.DOCK, row && row.dock, row && row.DOCK_NUM, row && row.dock_num, ''));
+                return dock !== 'Unassigned';
+            });
             const scopeKey = String(firstNonEmptyValue(cacheScopeKey, items === socInventory ? getDatasetLoadSignature('soc') : '', '')).trim();
             const canUseCache = !!scopeKey;
             const cacheKey = canUseCache ? [
@@ -166668,13 +166674,41 @@ ${folderNote ? `Folder Note: ${folderNote}
             const rank = row => field(row, 'LOCATIONCODE') === location ? (field(row, 'LOTCODE') === lot ? 0 : 1) : 2;
             candidates.sort((a, b) => rank(a) - rank(b));
             for (const row of candidates) {
-                const photo = field(row, 'DOCK_PHOTO_LINK', 'REQ_PHOTO_LINK', 'PHOTO_LINK', 'SAVED_PHOTO_LINK', 'ROW_PHOTO_LINK');
-                const spec = field(row, 'DOCK_SPEC', 'REQ_SPEC', 'SPEC');
+                const photo = field(row, 'DOCK_PHOTO_LINK', 'REQ_PHOTO_LINK', 'PHOTO_LINK', 'PHOTO_URL', 'PHOTOS', 'SAVED_PHOTO_LINK', 'ROW_PHOTO_LINK');
+                const spec = field(row, 'DOCK_SPEC', 'REQ_SPEC', 'SPEC', 'ITEMSPEC');
                 const avNote = field(row, 'AV_NOTE');
-                if (photo && (spec || avNote)) return { photo, spec, avNote: avNote || 'SPEC - ' + spec,
-                    match: field(row, 'MATCH', 'REQ_MATCH', 'MATCHPCT') || '100' };
+                const explicitMatch = parseLocMatchPercent(field(row, 'LOC_MATCH_PCT', 'MATCH', 'REQ_MATCH', 'MATCHPCT'));
+                const photoMatch = Number(field(row, 'LOC_PHOTO_MATCH', 'LOC_MATCH_QTY'));
+                const onHand = Number(field(row, 'PTRONHAND', 'ON_HAND'));
+                const derivedMatch = explicitMatch == null && photoMatch > 0 && onHand > 0
+                    ? Math.min(100, Math.max(1, Math.round((photoMatch / onHand) * 100))) : explicitMatch;
+                if (photo && (spec || avNote || photoMatch > 0)) return {
+                    photo,
+                    photoName: field(row, 'DOCK_PHOTO_NAME', 'REQ_PHOTO_NAME', 'PHOTO_NAME'),
+                    spec,
+                    caliper: field(row, 'DOCK_CALIPER', 'REQ_CALIPER', 'CALIPER'),
+                    avNote: avNote || (spec ? 'SPEC - ' + spec : 'Existing location photo review'),
+                    match: String(derivedMatch == null ? 100 : derivedMatch),
+                    locMatchQty: field(row, 'LOC_MATCH_QTY', 'LOC_PHOTO_MATCH'),
+                    initialPtr: field(row, 'INITIAL_PTR', 'PTRONHAND', 'ON_HAND')
+                };
             }
             return null;
+        }
+
+        function getSuspendTagExistingReviewPatch(mirrorRow = {}, sourceRow = {}) {
+            const review = getSuspendTagExistingReview(mirrorRow, sourceRow);
+            if (!review) return {};
+            return Object.fromEntries(Object.entries({
+                dock_photo_link: review.photo,
+                dock_photo_name: review.photoName,
+                dock_spec: review.spec,
+                dock_caliper: review.caliper,
+                av_note: review.avNote,
+                match: review.match,
+                loc_match_qty: review.locMatchQty,
+                initial_ptr: review.initialPtr
+            }).filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== ''));
         }
 
         function getDockSuspendDcRequestCompletionReadiness(mirrorRow = null, sourceRow = null) {
@@ -167704,7 +167738,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         async function persistDockSuspendDcRequestCompletion(mirrorRow, expectedRevision = getDockSuspendCompletionRevision(mirrorRow)) {
-            return await runSuspendTagRowCommand('complete', mirrorRow, {}, expectedRevision);
+            const sourceRow = findDockSuspendDcRequestSourceRow(mirrorRow) || getDockSuspendDcRequestBaseRow(mirrorRow) || mirrorRow;
+            return await runSuspendTagRowCommand('complete', mirrorRow, getSuspendTagExistingReviewPatch(mirrorRow, sourceRow), expectedRevision);
         }
 
         async function markDockSuspendDcRequestCompleteAfterRecount(uniqueId = '') {

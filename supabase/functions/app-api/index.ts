@@ -1066,7 +1066,7 @@ function restrictedRequestIdentityOrCondition(identity: string) {
     .map((field) => `${field}.imatch.${datasetReadOrLiteral(pattern)}`).join(",");
 }
 
-const SUSPEND_TAG_METRIC_MASTER_FIELDS = "unique_id,itemcode,locationcode,lotcode,season,ptronhand,ptrreviewed,ptravailable,s_lts,holdstopcode,holdstopreason,av_note,sales_note,spec,caliper,pic_note,photo_link,photo_name,loc_photo_match,loc_match_qty,match";
+const SUSPEND_TAG_METRIC_MASTER_FIELDS = "unique_id,itemcode,locationcode,lotcode,season,ptronhand,ptrreviewed,ptravailable,s_lts,holdstopcode,holdstopreason,av_note,sales_note,spec,itemspec,caliper,pic_note,photo_link,photo_url,photos,photo_name,photo_date,loc_photo_match,loc_match_qty,loc_match_pct,match";
 const SUSPEND_TAG_METRIC_CAV_FIELDS = "unique_id,itemcode,season,ptravailable,available,reserved_qty,order_qty,holdstopreason,hold_reason,spec,brand,product_description";
 
 function normalizeSuspendTagMetricKey(value: unknown) {
@@ -1182,12 +1182,17 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
     HOLDSTOPREASON: firstSuspendTagMetricValue(selectedRows, ["holdstopreason", "hold_reason"]) ?? row.holdstopreason ?? null,
     AV_NOTE: firstSuspendTagMetricValue(selectedRows, ["av_note"]) ?? row.av_note ?? null,
     SALES_NOTE: firstSuspendTagMetricValue(selectedRows, ["sales_note"]) ?? row.sales_note ?? row.salesnote ?? null,
-    SPEC: firstSuspendTagMetricValue(selectedRows, ["spec"]) ?? row.spec ?? null,
+    SPEC: firstSuspendTagMetricValue(selectedRows, ["spec", "itemspec"]) ?? row.spec ?? row.itemspec ?? null,
+    ITEMSPEC: firstSuspendTagMetricValue(selectedRows, ["itemspec", "spec"]) ?? row.itemspec ?? row.spec ?? null,
     CALIPER: firstSuspendTagMetricValue(selectedRows, ["caliper"]) ?? row.caliper ?? null,
     PIC_NOTE: firstSuspendTagMetricValue(selectedRows, ["pic_note"]) ?? row.pic_note ?? null,
-    PHOTO_LINK: firstSuspendTagMetricValue(selectedRows, ["photo_link"]) ?? row.photo_link ?? null,
+    PHOTO_LINK: firstSuspendTagMetricValue(selectedRows, ["photo_link", "photo_url"]) ?? row.photo_link ?? row.photo_url ?? null,
+    PHOTO_URL: firstSuspendTagMetricValue(selectedRows, ["photo_url", "photo_link"]) ?? row.photo_url ?? row.photo_link ?? null,
+    PHOTOS: firstSuspendTagMetricValue(selectedRows, ["photos"]) ?? row.photos ?? null,
     PHOTO_NAME: firstSuspendTagMetricValue(selectedRows, ["photo_name"]) ?? row.photo_name ?? null,
-    MATCH: locPhotoMatch,
+    PHOTO_DATE: firstSuspendTagMetricValue(selectedRows, ["photo_date"]) ?? row.photo_date ?? null,
+    LOC_MATCH_PCT: firstSuspendTagMetricValue(selectedRows, ["loc_match_pct", "match"]) ?? row.loc_match_pct ?? row.match ?? null,
+    MATCH: firstSuspendTagMetricValue(selectedRows, ["loc_match_pct", "match"]) ?? locPhotoMatch,
     MATCH_LEVEL: matchLevel,
     SOURCE: selectedRows.length ? "ph_master_inventory" : "unmatched",
   };
@@ -2136,8 +2141,32 @@ async function handleCustomerRepMappingAction(
     if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("CUSTOMER_REP_MAPPING_RESPONSE_INVALID");
     return jsonResponse(data);
   } catch (error) {
-    recordHandledError("app-api", "customer-rep-map", error, 503);
-    return errorResponse("Customer mappings are temporarily unavailable. Retry after refreshing the list.", 503, { code: "CUSTOMER_REP_MAPPING_UNAVAILABLE" });
+    // The mapping editor is a fail-open read surface. A transient RPC/index
+    // failure must not lock Home or Manager behind a 503; retain the browser's
+    // last-known-good directory and let it revalidate on the next coordinator tick.
+    recordHandledError("app-api", "customer-rep-map", error, 200);
+    const page = Number(request.payload.page || 0);
+    const pageSize = Number(request.payload.pageSize || 100);
+    const readOperation = ["list", "options", "preload", "detail", "reps"].includes(request.operation);
+    return jsonResponse(readOperation ? {
+      ok: true,
+      stale: true,
+      retained: true,
+      operation: request.operation,
+      page,
+      pageSize,
+      total: 0,
+      rows: [],
+      reps: [],
+      revision: "0",
+      code: "CUSTOMER_REP_MAPPING_REVALIDATING",
+    } : {
+      ok: false,
+      stale: true,
+      retained: true,
+      code: "CUSTOMER_REP_MAPPING_RETRY_REQUIRED",
+      message: "The saved directory is still available. Retry this change after refresh; no update was confirmed.",
+    }, 200);
   }
 }
 

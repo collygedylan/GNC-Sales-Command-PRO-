@@ -72,9 +72,10 @@
  const canonicalLocation = value => {const text=cleanText(value,200).toUpperCase().replace(/\s+/g,'').replace(/\.+$/,'');return /^[A-Z0-9]+\.[A-Z0-9]+$/.test(text)?`${text}.000`:text;};
  const displayLocation = value => canonicalLocation(value).replace(/\.000$/, '');
  const BUNCH_HOUSES = ['South House','North House','Center House','South & Center House','North & Center House','East House','West House','East & Center House','West & Center House'];
- const PURPOSE_THREADS = ['Early Winter Protect','Haul-In Space','Small Container Crew','Fall Drill Shift Canfilling','LD Canfilling/Planting','Shovel Shift','Rain Days'];
- const CREW_DIRECTIONS = ['South → North','North → South','East → West','West → East'];
- const DEFAULT_HOUSE_PLANS = ['Bunch West & Center','Bunch North & Center','Spread Space'];
+ const PURPOSE_THREADS = ['Early Winter Protect','Haul-In Space','Small Container Cover','Overwinter Bunch & Cover','Consolidate & Space','Freeze Prep','Fall Drill Shift Canfilling','LD Canfilling/Planting','Shovel Shift','Rain Days'];
+ const CREW_DIRECTIONS = ['South → North','North → South','East → West','West → East','Center Out','Outside In'];
+ const DEFAULT_HOUSE_PLANS = ['Bunch West & Center','Bunch North & Center','Spread Space','Bunch South & Center','Bunch East & Center','Jam & Poly'];
+ const SCHEDULE_PRESETS = ['Before first hard freeze','After hauling is complete','After irrigation check','Before poly installation','Rain-day priority','Next available crew shift'];
  const HEADER_RULE_CHIPS = [
   'Keep countable rows, leave aisles between varieties, risers, & doors',
   'Leave out rows at house edges for drape plastic',
@@ -152,7 +153,7 @@
  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const arg = value => esc(JSON.stringify(value));
  const stock = value => quantity(value) === null ? 'Unknown' : String(quantity(value));
- const fresh = () => ({ account: '', epoch: 0, jobs: [], loaded: false, loading: false, error: '', blocks: [], rows: [], users: [], drafts: [], draft: null, location: '', locationStep: 'setup', cardPicker: null, actionEdit: null, customEdit: null, base: '', item: '', workCard: '', boardState: {}, queueBase: '', queueLocation: '', queueMode: 'create', screen: 'source', destinationBase: '', destinationLocation: '', destinationData: null, destinationNames: [], destinationSearch: '', picker: null, scrolls: new Map(), parked: new Map(), panels: new Set(), options: [], destinations: [], targets: {}, choices: {}, choiceSnapshots: {}, pendingActions: {}, custom: {}, workForms: {}, workRows: {}, workRecipients: [], bulkSelection: [], bulkOwnerIds: [], bulkOwnersTouched:false, bulkActionTouched:false, cardDestinationSearch:{}, bulkAction: '', bulkDestination:'', bulkDestinationSearch:'', bulkQualifier:'', bulkHouse:'', bulkMargin: '', bulkAppend: '', detail: null, preview: null, urls: [], filter: 'available', busy: false, metadataLoaded: false, metadataLoading: false, commands: new Map() });
+ const fresh = () => ({ account: '', epoch: 0, jobs: [], loaded: false, loading: false, error: '', blocks: [], rows: [], users: [], drafts: [], draft: null, location: '', locationStep: 'setup', suggestionMenu: '', customSuggestion: '', cardPicker: null, actionEdit: null, customEdit: null, base: '', item: '', workCard: '', boardState: {}, queueBase: '', queueLocation: '', queueMode: 'create', screen: 'source', destinationBase: '', destinationLocation: '', destinationData: null, destinationNames: [], destinationSearch: '', picker: null, scrolls: new Map(), parked: new Map(), panels: new Set(), options: [], destinations: [], targets: {}, choices: {}, choiceSnapshots: {}, pendingActions: {}, custom: {}, workForms: {}, workRows: {}, workRecipients: [], bulkSelection: [], bulkOwnerIds: [], bulkOwnersTouched:false, bulkActionTouched:false, cardDestinationSearch:{}, bulkAction: '', bulkDestination:'', bulkDestinationSearch:'', bulkQualifier:'', bulkHouse:'', bulkMargin: '', bulkAppend: '', detail: null, preview: null, urls: [], filter: 'available', busy: false, metadataLoaded: false, metadataLoading: false, commands: new Map() });
  let state = fresh();
  const account = () => typeof currentUser === 'undefined' ? '' : String(currentUser || '');
  const author = () => account() === 'dylan_collyge' && typeof nativeAuthSessionActive !== 'undefined' && nativeAuthSessionActive === true && typeof nativeAuthProfile !== 'undefined' && nativeAuthProfile?.username === 'dylan_collyge'
@@ -351,14 +352,18 @@
   const listId=`bn-${normalize(label).toLowerCase().replace(/[^a-z0-9]+/g,'-')}-options`;
   return `<label class="bn-field" data-bn-field="${esc(label)}">${esc(label)}<input data-bn-focus-key="${esc(focusKey)}" aria-label="${esc(label)}" list="${esc(listId)}" value="${esc(value||'')}" placeholder="${esc(placeholder)}" oninput="${action}"><datalist id="${esc(listId)}">${options.map(option=>{const optionValue=Array.isArray(option)?option[0]:option,optionLabel=Array.isArray(option)?option[1]:option;return `<option value="${esc(optionValue)}" label="${esc(optionLabel)}"></option>`;}).join('')}</datalist></label>`;
  }
+ function suggestionField(label,key,value,options,placeholder='Choose an option') {
+  const open=state.suggestionMenu===key,custom=state.customSuggestion===key;
+  return `<div class="bn-field bn-suggestion-field" data-bn-field="${esc(label)}"><span>${esc(label)}</span><button type="button" class="bn-suggestion-trigger" aria-label="${esc(label)}" aria-expanded="${open}" onclick="BunchNote.toggleSuggestion(${arg(key)})"><span>${esc(value||placeholder)}</span><i class="ph-bold ph-caret-down" aria-hidden="true"></i></button>${open?`<div class="bn-suggestion-menu" role="listbox" aria-label="${esc(label)} options">${options.map(option=>`<button type="button" role="option" onclick="BunchNote.selectSuggestion(${arg(key)},${arg(option)})">${esc(option)}</button>`).join('')}<button type="button" role="option" onclick="BunchNote.openCustomSuggestion(${arg(key)})">Type custom…</button></div>`:''}${custom?`<input data-bn-focus-key="suggestion:${esc(key)}" aria-label="Custom ${esc(label)}" value="${esc(value||'')}" placeholder="Type custom value" oninput="BunchNote.suggestionInput(${arg(key)},this.value)">`:''}</div>`;
+ }
  function locationSetupHtml(loc,index) {
   const chips=Array.isArray(loc.rule_chips)?loc.rule_chips:[];
   return `<section class="bn-location-editor" aria-label="Location setup"><h3>Plan work · ${esc(state.draft.body.block)} · ${esc(displayLocation(loc.location))}</h3>`
    +hybridField('Work type',loc.work_type||loc.purposes,templates.map(template=>template.label),`BunchNote.wizardField('workType',this.value)`,'Type or choose a work type')
-   +hybridField('Purpose / Sequence Thread',loc.purpose_thread||'',PURPOSE_THREADS,`BunchNote.wizardField('purpose_thread',this.value)`,'Type or choose a purpose')
-   +hybridField('Direction',loc.direction||'',CREW_DIRECTIONS,`BunchNote.wizardField('direction',this.value)`,'Type or choose a crew direction')
-   +`<label class="bn-field" data-bn-field="Default House Plan">Default House Plan<input data-bn-focus-key="field:Default House Plan" list="bn-default-house-plans" value="${esc(loc.default_house_plan||'')}" oninput="BunchNote.wizardField('default_house_plan',this.value)" placeholder="Bunch West & Center, Spread Space, or custom plan"><datalist id="bn-default-house-plans">${DEFAULT_HOUSE_PLANS.map(plan=>`<option value="${esc(plan)}"></option>`).join('')}</datalist></label>`
-   +textfield('Schedule / Prerequisite Alert',loc.schedule_banner||'',`BunchNote.wizardField('schedule_banner',this.value)`)
+   +suggestionField('Purpose / Sequence Thread','purpose_thread',loc.purpose_thread||'',PURPOSE_THREADS,'Choose a purpose')
+   +suggestionField('Direction','direction',loc.direction||'',CREW_DIRECTIONS,'Choose a direction')
+   +suggestionField('Default House Plan','default_house_plan',loc.default_house_plan||'',DEFAULT_HOUSE_PLANS,'Choose a house plan')
+   +suggestionField('Schedule / Prerequisite Alert','schedule_banner',loc.schedule_banner||'',SCHEDULE_PRESETS,'Choose a schedule')
    +`<fieldset class="bn-rule-chips"><legend>Quick crew rules</legend><div class="bn-chip-list">${HEADER_RULE_CHIPS.map(chip=>`<button type="button" class="bn-chip" data-bn-focus-key="rule:${esc(chip)}" aria-pressed="${chips.includes(chip)}" onclick="BunchNote.insertRuleChip(${arg(chip)})">${esc(chip)}</button>`).join('')}</div></fieldset>`
    +textfield('Extra notes',loc.instructions||'',`BunchNote.wizardField('notes',this.value)`)
    +`<details class="bn-options"><summary>Advanced location controls</summary><div class="bn-options-body">${field('Priority / work order',loc.priority,`BunchNote.edit(${index},'priority',this.value)`)}${textfield('Additional prerequisites',loc.prerequisites,`BunchNote.edit(${index},'prerequisites',this.value)`)}<div data-bn-structured="header" data-index="${index}"></div><div data-bn-structured="edit" data-index="${index}"></div>${sharedEditor(loc,index)}</div></details></section><div class="bn-step-actions">${button('Next','BunchNote.nextItems()',state.busy)}${button('Save draft','BunchNote.save()',state.busy)}</div>`;
@@ -557,6 +562,7 @@
   return state.bulkAction==='move'?`<label class="bn-field">Move destination<input aria-label="Bulk move destination" data-bn-focus-key="bulk-destination" list="bn-card-destinations" value="${esc(display)}" oninput="BunchNote.setBulk('destination',this.value)" onchange="BunchNote.setBulkDestination(this.value)"></label><div data-bn-destination-choice="bulk" style="display:contents">${exactDestinationField(display,state.bulkDestination,'bulk-destination-full',"BunchNote.setBulkDestinationFull(this.value,this)")}</div><label class="bn-field">Destination qualifier<input aria-label="Bulk destination qualifier" data-bn-focus-key="bulk-qualifier" value="${esc(state.bulkQualifier)}" oninput="BunchNote.setBulk('qualifier',this.value)"></label>`:state.bulkAction==='bunch'?`<label class="bn-field">Bunch house<select aria-label="Bulk Bunch house" data-bn-focus-key="bulk-house" onchange="if(this.value!=='Custom')BunchNote.setBulk('house',this.value)"><option value="">Choose a house</option>${BUNCH_HOUSES.map(house=>`<option value="${esc(house)}" ${state.bulkHouse===house?'selected':''}>${esc(house)}</option>`).join('')}<option value="Custom" ${state.bulkHouse&&!BUNCH_HOUSES.includes(state.bulkHouse)?'selected':''}>Custom house...</option></select><input aria-label="Custom bulk Bunch house" value="${esc(BUNCH_HOUSES.includes(state.bulkHouse)?'':state.bulkHouse)}" placeholder="Type a custom house" oninput="BunchNote.setBulk('house',this.value)"></label>`:'';
  }
  function updateBulkUi(location,{routing=false,fields=false}={}) {
+  if(typeof document==='undefined'||typeof document.querySelector!=='function')return;
   const host=document.querySelector('#bunch-note-content [data-bn-bulk-toolbar]');if(!host||!location)return;
   const selected=(state.bulkSelection||[]).filter(id=>location.cards.some(card=>card.id===id));
   host.hidden=selected.length===0;host.style.display=selected.length?'':'none';const legend=host.querySelector('[data-bn-bulk-legend]');if(legend)legend.textContent=`Update ${selected.length} selected cards`;
@@ -653,9 +659,9 @@
  function editor() {
   const draft = state.draft;
   const requiredRecipientIds=requiredBunchRecipientIds(draft?.body),requiredRecipientLabels=requiredBunchRecipientLabels(draft?.body);
-  let html = `<h2>Inv Bunch Notes</h2>${viewTabs()}<p class="bn-muted">Choose a block. Include and assign each inventory card independently; Move plans work without changing inventory.</p>`;
+  let html = draft ? '' : `<h2>Inv Bunch Notes</h2>${viewTabs()}<p class="bn-muted">Choose a block. Include and assign each inventory card independently; Move plans work without changing inventory.</p>`;
   if (!draft) return html + `<h3>Block Alpha</h3><div class="bn-drill-grid">${state.blocks.map(b => drillCard(b, 'View locations', `BunchNote.chooseBlock(${arg(b)})`, 'block')).join('') || `<p>${state.busy ? 'Loading blocks…' : 'No blocks available.'}</p>`}</div>${catalogEditor()}<h3>Saved batches</h3><div class="bn-drill-grid">${state.drafts.map(d => drillCard(d.block, `${d.body.locations.length} locations · ${new Date(d.updated_at).toLocaleString()}`, `BunchNote.openDraft(${arg(d.id)})`, 'batch')).join('') || '<p class="bn-muted">No saved batches.</p>'}</div>`;
-  html += `<nav class="bn-breadcrumb" aria-label="Bunch Note drill-down"><span>${esc([draft.body.block,state.base,state.location,state.item ? state.item.split('|').slice(1).join('|') : ''].filter(Boolean).join(' → '))}</span></nav>`;
+  html += `<nav class="bn-breadcrumb" aria-label="Bunch Note drill-down"><button type="button" onclick="BunchNote.backToBlocks()">Blocks</button><span aria-hidden="true">›</span><button type="button" onclick="BunchNote.backToLocations()">${esc(draft.body.block)}</button>${state.location?`<span aria-hidden="true">›</span><button type="button" aria-current="page">${esc(displayLocation(state.location))}</button>`:''}</nav>`;
   if (!state.location) {
    const locations=groupInventory(state.rows).get(normalize(draft.body.block))||new Map();
    html += `<section class="bn-location-list" aria-label="Source locations"><h3>Locations in ${esc(draft.body.block)}</h3><div class="bn-drill-grid">${[...locations].sort(([a],[b])=>a.localeCompare(b)).map(([location,rows])=>locationDrillCard(location,`${rows.length} inventory rows`)).join('')||'<p class="bn-muted">No locations in this block.</p>'}</div></section>`;
@@ -742,7 +748,7 @@
    setMainAreaScrollTop(Math.max(0,(typeof getMainAreaScrollTop==='function'?getMainAreaScrollTop():mainArea.scrollTop||0)+delta));
   });
  }
- function viewTabs() { return `<div class="bn-toolbar">${button('Source locations',"BunchNote.view('source')",state.busy,state.screen==='source')}${button('By Destination',"BunchNote.view('destinations')",state.busy,state.screen==='destinations')}</div>`; }
+ function viewTabs() { return `<div class="bn-toolbar bn-source-tabs">${button('Source locations',"BunchNote.view('source')",state.busy,state.screen==='source')}${button('By Destination',"BunchNote.view('destinations')",state.busy,state.screen==='destinations')}</div>`; }
  function pickerHtml() {
   const p=state.picker, matching=new Set(p.data.matching.map(r=>normalize(r.locationcode)));
   const names=p.tab==='matching'?[...matching]:p.data.locations.filter(loc=>!matching.has(normalize(loc)));
@@ -798,6 +804,7 @@
   const container = view === 'bunch-note' ? document.getElementById('bunch-note-content') : null;
   if (!container || !account()) { if(state.cardPicker){state.cardPicker=null;renderPickerPortal('');} return; }
   container.classList.add('bn-root');
+  container.ontouchmove = root.BunchNote?.blurActiveInput || null;
   if((state.actionEdit?.worker||state.customEdit&&state.targets[state.customEdit.key]?.worker||state.picker?.kind==='actual')&&(!state.detail?.job||state.detail.job.status!=='open'||workJob()?.owner_id!==nativeAuthProfile?.id)){
    state.actionEdit=null;state.customEdit=null;state.picker=null;state.pendingActions={};state.item='';
   }
@@ -858,8 +865,15 @@
   queueBase: value => {rememberScroll();state.queueBase=value;render();restoreScroll();},
   queueLocation: value => {rememberScroll();state.queueLocation=value;render();restoreScroll();},
   hasBack: () => !!(state.actionEdit||state.customEdit||state.cardPicker||state.picker||state.preview||state.item||state.detail||state.draft||state.queueBase||state.screen==='destinations'),
+  blurActiveInput: () => {const active=typeof document!=='undefined'?document.activeElement:null;if(active&&/^(?:INPUT|TEXTAREA|SELECT)$/.test(active.tagName||''))active.blur?.();},
+  toggleSuggestion: key => {root.BunchNote.blurActiveInput();state.customSuggestion='';state.suggestionMenu=state.suggestionMenu===key?'':key;render();},
+  selectSuggestion: (key,value) => {root.BunchNote.wizardField(key,value);state.suggestionMenu='';state.customSuggestion='';render();},
+  openCustomSuggestion: key => {state.suggestionMenu='';state.customSuggestion=key;render();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.(`[data-bn-focus-key="suggestion:${key}"]`)?.focus({preventScroll:true}));},
+  suggestionInput: (key,value) => root.BunchNote.wizardField(key,value),
+  backToBlocks: () => {state.draft=null;state.location='';state.locationStep='setup';state.suggestionMenu='';state.customSuggestion='';render();},
+  backToLocations: () => {state.location='';state.locationStep='setup';state.suggestionMenu='';state.customSuggestion='';render();},
   wizardField: (fieldName,value) => {const location=state.draft?.body.locations.find(location=>location.location===state.location);if(!location||!author())return;invalidate();clearError();const text=String(value??'');if(fieldName==='workType'){location.work_type=text;location.purposes=text;return;}const key={direction:'direction',notes:'instructions',purpose_thread:'purpose_thread',default_house_plan:'default_house_plan',schedule_banner:'schedule_banner'}[fieldName];if(key)location[key]=text;},
-  insertRuleChip: chip => {const location=state.draft?.body.locations.find(location=>location.location===state.location);if(!location||!author()||!HEADER_RULE_CHIPS.includes(chip))return;invalidate();const rules=new Set(Array.isArray(location.rule_chips)?location.rule_chips:[]);if(rules.has(chip))rules.delete(chip);else rules.add(chip);location.rule_chips=[...rules];const existing=String(location.instructions||'').split('\n').filter(line=>!HEADER_RULE_CHIPS.includes(line));location.instructions=[...existing,...location.rule_chips].filter(Boolean).join('\n');render();},
+  insertRuleChip: chip => {root.BunchNote.blurActiveInput();const location=state.draft?.body.locations.find(location=>location.location===state.location);if(!location||!author()||!HEADER_RULE_CHIPS.includes(chip))return;invalidate();const rules=new Set(Array.isArray(location.rule_chips)?location.rule_chips:[]);if(rules.has(chip))rules.delete(chip);else rules.add(chip);location.rule_chips=[...rules];const existing=String(location.instructions||'').split('\n').filter(line=>!HEADER_RULE_CHIPS.includes(line));location.instructions=[...existing,...location.rule_chips].filter(Boolean).join('\n');render();},
   nextItems: () => run(async()=>{const l=state.draft.body.locations.find(l=>l.location===state.location);if(!l.purposes?.trim())throw new Error('Enter a work type for this location.');await saveDraft();rememberScroll();state.locationStep='items';restoreScroll();}),
   openCardPicker: () => {if(state.busy||!author()||!state.draft||state.locationStep!=='items')return;const location=state.draft.body.locations.find(location=>location.location===state.location);if(!location)return;rememberScroll();state.cardPicker={search:'',userSearch:'',sortBy:'commonname',groupMode:'group',cardDrafts:{},destination_search:'',selectedKeys:[],rowIds:[],ownerIds:null,direction:location.direction||'',workflow_action:'',destination_location:'',destination_qualifier:'',destination_house:'',notes:'',workflow_instructions:'',committedId:'',groups:cardPickerGroups(location,'commonname')};render();restoreScroll();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-card-picker .bn-field input')?.focus({preventScroll:true}));},
   closeCardPicker: () => {if(state.busy)return;state.cardPicker=null;render();restoreScroll();if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>document.querySelector?.('.bn-wizard-items button[onclick="BunchNote.openCardPicker()"]')?.focus({preventScroll:true}));},

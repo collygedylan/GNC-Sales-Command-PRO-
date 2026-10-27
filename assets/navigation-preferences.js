@@ -106,27 +106,35 @@
             await refresh();
             const snapshot = currentState(); if (!snapshot) throw new Error('NAVIGATION_AUTH_REQUIRED');
             const available = snapshot.views.filter(item => item.selectable && permitted(item.view));
-            const initial = normalizedShortcuts(snapshot.shortcuts, key => available.some(item => item.view === key));
-            container.innerHTML = `<h2>Footer shortcuts</h2><p>Menu, Home, and Communication stay fixed. Choose up to five shortcuts in the order you want.</p><div class="gnc-navigation-slots">${Array.from({ length: 5 }, (_, i) => `<label>Shortcut ${i + 1}<select data-nav-slot="${i}"><option value="">No shortcut</option>${available.map(item => `<option value="${esc(item.view)}"${item.view === initial[i] ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</select></label>`).join('')}</div><p data-nav-status role="status"></p><div class="gnc-navigation-actions"><button type="button" data-nav-defaults>Use defaults</button><button type="button" data-nav-save>Save shortcuts</button><button type="button" data-nav-reload>Reload saved settings</button></div>`;
-            let pending = null;
-            container.onchange = () => { pending = null; };
-            container.querySelector('[data-nav-defaults]').onclick = () => {
-                const defaults = normalizedShortcuts(null, key => available.some(item => item.view === key));
-                container.querySelectorAll('[data-nav-slot]').forEach((node, i) => { node.value = defaults[i] || ''; }); pending = null;
-            };
-            container.querySelector('[data-nav-reload]').onclick = () => renderShortcutEditor(container);
-            container.querySelector('[data-nav-save]').onclick = async () => {
-                if (container.getAttribute('aria-busy') === 'true') return;
-                const raw = Array.from(container.querySelectorAll('[data-nav-slot]')).map(node => node.value).filter(Boolean);
-                if (new Set(raw).size !== raw.length) { status(container, 'Choose each shortcut once.', true); return; }
-                pending ||= { commandId: commandId(), expectedRevision: snapshot.footerRevision };
-                markBusy(container, true);
+            const storageKey = `gnc-navigation-shortcuts-v1:${username()}`;
+            let draft = normalizedShortcuts(snapshot.shortcuts, key => available.some(item => item.view === key));
+            try { const retained = JSON.parse(root.localStorage?.getItem(storageKey) || 'null'); if (Array.isArray(retained)) draft = normalizedShortcuts(retained, key => available.some(item => item.view === key)); } catch {}
+            let selected = Math.min(Math.max(draft.length - 1, 0), 4), saving = false;
+            const labelFor = view => available.find(item => item.view === view)?.label || LABELS[view] || view || 'Empty slot';
+            const persistLocal = () => { try { root.localStorage?.setItem(storageKey, JSON.stringify(draft)); } catch {} };
+            const save = async () => {
+                if (saving) return;
+                saving = true; markBusy(container, true); status(container, 'Saving shortcuts…');
                 try {
-                    const saved = await call('save_shortcuts', { shortcuts: raw }, pending); adopt(saved);
-                    snapshot.footerRevision = saved.footerRevision; pending = null; status(container, 'Shortcuts saved on your account.');
+                    const saved = await call('save_shortcuts', { shortcuts: draft }, { commandId: commandId(), expectedRevision: snapshot.footerRevision });
+                    adopt(saved); snapshot.footerRevision = saved.footerRevision; draft = normalizedShortcuts(saved.shortcuts, key => available.some(item => item.view === key)); persistLocal();
+                    renderMarkup(); status(container, 'Shortcuts saved and the dock is updated.');
                 } catch (error) { status(container, message(error), true); }
-                finally { markBusy(container, false); }
+                finally { saving = false; markBusy(container, false); }
             };
+            const change = next => { draft = normalizedShortcuts(next, key => available.some(item => item.view === key)); persistLocal(); renderMarkup(); void save(); };
+            const renderMarkup = () => {
+                container.innerHTML = `<h2>Footer shortcuts</h2><p>Tap or click a slot, then choose its module. Menu, Home, and Communication stay fixed.</p><div class="gnc-navigation-slots">${Array.from({ length: 5 }, (_, i) => `<button type="button" class="gnc-navigation-slot" data-nav-slot="${i}" aria-selected="${selected===i}"><span>Slot ${i+1}</span><strong>${esc(labelFor(draft[i]))}</strong></button>`).join('')}</div><div class="gnc-navigation-reorder" aria-label="Selected slot controls"><button type="button" data-nav-left aria-label="Move selected shortcut left">←</button><button type="button" data-nav-remove>× Remove</button><button type="button" data-nav-right aria-label="Move selected shortcut right">→</button></div><button type="button" data-nav-add>+ Add to first empty slot</button><div class="gnc-navigation-modules" aria-label="Available modules">${available.map(item=>`<button type="button" data-nav-module="${esc(item.view)}" aria-pressed="${draft[selected]===item.view}">${esc(item.label)}</button>`).join('')}</div><p data-nav-status role="status"></p><div class="gnc-navigation-actions"><button type="button" data-nav-defaults>Use defaults</button><button type="button" data-nav-reload>Reload saved settings</button></div>`;
+                container.querySelectorAll('[data-nav-slot]').forEach(node => { node.onclick=()=>{selected=Number(node.dataset.navSlot);renderMarkup();}; });
+                container.querySelectorAll('[data-nav-module]').forEach(node => { node.onclick=()=>{const view=node.dataset.navModule;const next=draft.filter(value=>value!==view);next.splice(Math.min(selected,next.length),0,view);change(next.slice(0,5));}; });
+                container.querySelector('[data-nav-left]').onclick=()=>{if(selected<1||selected>=draft.length)return;const next=[...draft];[next[selected-1],next[selected]]=[next[selected],next[selected-1]];selected--;change(next);};
+                container.querySelector('[data-nav-right]').onclick=()=>{if(selected<0||selected>=draft.length-1)return;const next=[...draft];[next[selected],next[selected+1]]=[next[selected+1],next[selected]];selected++;change(next);};
+                container.querySelector('[data-nav-remove]').onclick=()=>{if(selected>=draft.length)return;const next=[...draft];next.splice(selected,1);selected=Math.min(selected,Math.max(0,next.length-1));change(next);};
+                container.querySelector('[data-nav-add]').onclick=()=>{selected=Math.min(draft.length,4);renderMarkup();};
+                container.querySelector('[data-nav-defaults]').onclick=()=>{selected=0;change(normalizedShortcuts(null,key=>available.some(item=>item.view===key)));};
+                container.querySelector('[data-nav-reload]').onclick=()=>{try{root.localStorage?.removeItem(storageKey);}catch{}renderShortcutEditor(container);};
+            };
+            renderMarkup();
         } catch { container.innerHTML = '<p role="alert">Unable to load shortcuts.</p><button type="button" data-nav-retry>Retry</button>'; container.querySelector('button').onclick = () => renderShortcutEditor(container); }
     }
     function lockedView(row, user) {

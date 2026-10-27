@@ -77,3 +77,4 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 - Never repair a feature by directly toggling unrelated `#view-*` roots or by returning transient `401`/`403`/`409`/`423` responses to an already authorized fail-open read.
 - Never default the imported-file disclosure open below `768px`; initialize it collapsed before revealing Home so all 12 module tiles remain above the bottom navigation.
 - Never let a global Home CSS override turn the module grid into auto-sized rows inside a zero-height flex parent; bind all 12 tiles to the measured header-to-dock space and reapply the collapsed disclosure default on viewport changes until the user chooses its state.
+- Never append a generated hub tile when a native tile already targets the same module, clip the first hub row under sticky chrome, or make Quick Access depend on drag, long-press, or an explicit delayed Save action.

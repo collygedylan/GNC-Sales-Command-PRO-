@@ -60,3 +60,4 @@ Generic SOC detail saves also route through the authenticated dock_review comman
 
 - Never collapse physical tag lines, blend ordered/reserved/available quantities, reuse another module's email recipients, block Docks on an optional join, or let a late account response repaint Comm.
 - Never create a second inventory or navigation source inside Office, HL, or Comm.
+- Never filter the current Docks operational snapshot by a historical or missing PLANSTART value; valid imported dock identity is the render boundary, with numeric `.0` suffixes normalized for grouping.
