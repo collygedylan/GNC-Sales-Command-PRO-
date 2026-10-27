@@ -1825,7 +1825,7 @@ test('v2.3.80 Reclass freezes pre-edit report rows and suppresses test delivery'
 });
 
 test('v2.3.87 Reclass persistence and evidence migration is registered exactly once', async () => {
- const {agdataV2387ReclassPersistenceEvidenceMigrationName:name,agdataV2387BatchReclassEvidenceMigrationName:batchName,registeredReleaseDatabaseMigrations}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ const {agdataV2387ReclassPersistenceEvidenceMigrationName:name,agdataV2387BatchReclassEvidenceMigrationName:batchName,registeredReleaseDatabaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');
  assert.equal(registeredReleaseDatabaseMigrations.filter(value=>value===name).length,1);
  assert.equal(registeredReleaseDatabaseMigrations.filter(value=>value===batchName).length,1);
  const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
@@ -1834,4 +1834,6 @@ test('v2.3.87 Reclass persistence and evidence migration is registered exactly o
  assert.match(migration,/set local lock_timeout = '2s'/);
  assert.match(migration,/set local statement_timeout = '15s'/);
  for(const token of ['reclass-batch-evidence-v2387','photo_link','pick_note','source_before->>\'loc_photo_match\'']) assert.ok(batchMigration.includes(token),token);
+ assert.match(migrationContractQuery(name),/20261027163924[^]*010585\.031\.1[^]*27\.F1[^]*27\.S1/);
+ assert.match(migrationContractQuery(batchName),/20261027171000[^]*reclass-batch-evidence-v2387[^]*loc_photo_match/);
 });

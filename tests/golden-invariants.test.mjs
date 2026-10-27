@@ -2094,3 +2094,9 @@ test('Invariant 71 (Pages Fast Gate Retains a Bounded Cleanup Margin)', () => {
   assert.match(fastGate, /timeout-minutes:\s*4/);
   assert.match(fastGate, /Focused release contracts only \(15 second budget\)/);
 });
+
+test('Invariant 72 (Every v2.3.87 Migration Has a Live Installed-State Contract)', () => {
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  assert.match(runner, /name === agdataV2387ReclassPersistenceEvidenceMigrationName[^]*20261027163924[^]*010585\.031\.1/);
+  assert.match(runner, /name === agdataV2387BatchReclassEvidenceMigrationName[^]*20261027171000[^]*reclass-batch-evidence-v2387/);
+});

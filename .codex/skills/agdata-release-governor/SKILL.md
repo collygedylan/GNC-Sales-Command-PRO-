@@ -81,6 +81,8 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never register a release migration name without adding its installed-state query to `migrationContractQuery`; the cloud runner must validate the exact live behavior after history verification.
+
 - Never set the Pages fast-gate timeout so tightly that successful validation is killed during mandatory action cleanup; retain a bounded cleanup margin while measuring the real gate duration.
 
 - Never publish a `Code.gs` change unless every changed entrypoint and authorization dependency is registered in `appsScriptPatchFunctions` and exercised by the scoped remote-preservation test.

@@ -2642,6 +2642,24 @@ export function migrationContractQuery(name) {
     and exists(select 1 from public.ph_master_inventory where btrim(itemcode)='004424.010.1'
       and locationcode='C.16.000' and lotcode='27.S1' and ptronhand='12' and ptrreviewed='0' and ptravailable='12' and s_lts='2')
     as installed`;
+  if (name === agdataV2387ReclassPersistenceEvidenceMigrationName) return `select
+    exists(select 1 from supabase_migrations.schema_migrations where version='20261027163924')
+    and position('''photo_link''' in pg_get_functiondef(
+      'public.apply_inventory_reclass_move_v1(uuid,text,bigint,text,jsonb,jsonb)'::regprocedure))>0
+    and exists(select 1 from public.ph_master_inventory where btrim(itemcode)='010585.031.1'
+      and locationcode='D.21.000' and lotcode='27.F1' and ptronhand='325' and ptravailable='325'
+      and s_lts='325' and loc_photo_match='325' and loc_match_pct='15')
+    and exists(select 1 from public.ph_master_inventory where btrim(itemcode)='010585.031.1'
+      and locationcode='D.21.000' and lotcode='27.S1' and ptronhand='1843' and ptravailable='1843'
+      and s_lts='998' and loc_photo_match='325' and loc_match_pct='15')
+    as installed`;
+  if (name === agdataV2387BatchReclassEvidenceMigrationName) return `select
+    exists(select 1 from supabase_migrations.schema_migrations where version='20261027171000')
+    and position('reclass-batch-evidence-v2387' in pg_get_functiondef(
+      'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure))>0
+    and position('source_before->>''loc_photo_match''' in pg_get_functiondef(
+      'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure))>0
+    as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }
 
