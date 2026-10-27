@@ -1260,3 +1260,80 @@ html body #app-wrapper .app-drive-card-with-reclass .app-card-bottom-btn--argos-
     flex-direction: column;
   }
 }
+
+/* Keep the complete Home dashboard inside the space between the shared header and dock. */
+@media (max-width: 768px) {
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #main-scroll-area {
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 8px 8px calc(64px + env(safe-area-inset-bottom)) !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #view-wrapper,
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #view-home:not(.hidden),
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-content,
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-modules:not(.hidden) {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-sticky {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-hero {
+    gap: 0 !important;
+    margin: 0 0 6px !important;
+    padding: 6px 10px !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-hero > img.home-dashboard-logo {
+    width: min(48vw, 180px) !important;
+    max-height: 48px !important;
+    margin: 0 !important;
+    padding: 3px !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-hero > p {
+    margin: 2px 0 4px !important;
+    letter-spacing: .12em !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-hero > div.flex.flex-col {
+    margin-top: 0 !important;
+    padding-top: 4px !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-hero > div.flex.flex-col > div {
+    font-size: 11px !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-content {
+    flex: 1 1 0 !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-modules:not(.hidden) {
+    flex: 1 1 0 !important;
+    gap: 4px !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #home-dashboard-modules > h2 {
+    flex: 0 0 auto !important;
+    margin: 0 0 4px !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #view-home #home-dashboard-grid {
+    flex: 1 1 0 !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(6, minmax(0, 1fr)) !important;
+    grid-auto-rows: unset !important;
+    align-content: stretch !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    margin: 0 !important;
+  }
+  html body.ops-precision-pilot.current-view-home.home-dashboard-mode #app-wrapper #view-home #home-dashboard-grid > .home-module-tile {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 3px 6px !important;
+    gap: 2px !important;
+  }
+}
