@@ -27947,8 +27947,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const isVisible = canRunManualInventoryImport();
             // Manual recovery must remain reachable before any data read succeeds.
             const syncPanel = document.getElementById('dashboard-sync-accordion');
-            if (syncPanel && syncPanel.dataset.viewportDefaultApplied !== 'true') {
-                syncPanel.open = window.innerWidth >= 768;
+            if (syncPanel) {
+                const summary = syncPanel.querySelector('summary');
+                if (summary && summary.dataset.viewportChoiceBound !== 'true') {
+                    summary.addEventListener('click', (event) => {
+                        if (event.isTrusted) syncPanel.dataset.viewportUserControlled = 'true';
+                    });
+                    summary.dataset.viewportChoiceBound = 'true';
+                }
+                if (syncPanel.dataset.viewportUserControlled !== 'true') {
+                    syncPanel.open = window.innerWidth >= 768;
+                }
                 syncPanel.dataset.viewportDefaultApplied = 'true';
             }
             if (syncPanel) syncPanel.classList.toggle('hidden', !canViewDashboardSyncStatus());
@@ -145512,10 +145521,8 @@ C.14.043 C.15.000
             if (onHandValue != null) result.PTRONHAND = Number.isFinite(onHand) ? onHand : onHandValue;
             if (availableValue != null) result.PTRAVAILABLE = Number.isFinite(available) ? available : availableValue;
             if (reviewValue != null) result.PTRREVIEWED = Number.isFinite(review) ? review : reviewValue;
-            // Request RPC metrics may expose the aggregate as OPEN_STOCK while
-            // an attached Drive row carries the physical lot's S_LTS. Preserve
-            // the queue metric when both aliases are present, and retain
-            // unknown values instead of manufacturing zeroes before hydration.
+            // The caller copies an exact tuple's S_LTS into OPEN_STOCK before
+            // normalization. Without that proof, retain the queue's own metric.
             result.S_LTS = metricValue(['OPEN_STOCK', 'open_stock', 'S_LTS', 's_lts']) ?? null;
             const locOnHand = metricValue(['LOC_ON_HAND', 'loc_on_hand', 'ON_HAND', 'on_hand']);
             result.LOC_ON_HAND = locOnHand != null ? locOnHand : onHandValue;
@@ -145602,7 +145609,7 @@ C.14.043 C.15.000
             const knownPhotoMatch = falseBlock ? 0
                 : displayRow && (exactPhotoValue == null || !Number.isFinite(Number(exactPhotoValue)) || Number(exactPhotoValue) === 0)
                     ? 'N/A' : exactPhotoValue;
-            return buildInventoryQuantityChipsHtml(metricRow, { ...options, sourceView: state.row || cachedMaster ? 'drive' : sourceView,
+            const metricsHtml = buildInventoryQuantityChipsHtml(metricRow, { ...options, sourceView: state.row || cachedMaster ? 'drive' : sourceView,
                 canonical: true, preserveUnknown: true, missingValue: 'N/A',
                 hydrationStatus: falseBlock || suppressEnrichedMetrics ? '' : isSuspendTagCard
                     ? (suspendMetrics || displayFallback?.row ? 'ready' : '')
@@ -145610,6 +145617,7 @@ C.14.043 C.15.000
                 queueMetricTelemetry: isSuspendTagCard,
                 knownLocationOnHand: falseBlock ? 0 : displayRow ? metricRow.LOC_ON_HAND : metricRow.LOC_ON_HAND ?? suspendMetrics?.LOC_ON_HAND,
                 knownLocationPhotoMatch: knownPhotoMatch ?? suspendMetrics?.LOC_MATCH_QTY });
+            return falseBlock ? '' : metricsHtml;
         }
 
         const suspendTagReclassLoads = new Map();

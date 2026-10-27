@@ -1911,3 +1911,76 @@ test('Invariant 63 (Queue Inventory Uses Exact Location/Lot and False Block Neve
   assert.deepEqual([metadataRow.PRIORITY, metadataRow.HOLDSTOPREASON, metadataRow.SPEC, metadataRow.PHOTO_LINK, metadataRow.PHOTO_DATE],
     [4, 'current hold', 'current spec', 'current photo', '2026-10-27'], 'exact master metadata replaces stale queue summaries');
 });
+
+test('Invariant 64 (Queue API and Rendered Cards Preserve Exact Stock and Hide False Block Metrics)', () => {
+  const backend = runFunctions('supabase/functions/app-api/index.ts', [
+    'normalizeSuspendTagMetricKey', 'sumSuspendTagMetric', 'sumSuspendTagAvailable',
+    'firstSuspendTagMetricValue', 'buildSuspendTagMetricFallback'
+  ]);
+  const source = { itemcode: '004380.010.1', locationcode: 'B.04.000', lotcode: '27.F1',
+    ptronhand: '125', ptrreviewed: '120', ptravailable: '5', s_lts: '-2', loc_photo_match: null, loc_match_qty: '999' };
+  const rows = [source, { ...source, lotcode: '26.S1', ptronhand: '1921', s_lts: '777' },
+    { ...source, locationcode: 'OTHER', ptronhand: '9000', s_lts: '888' }];
+  const exact = backend.buildSuspendTagMetricFallback(source, rows, [], true);
+  assert.deepEqual([exact.PTRONHAND, exact.PTRREVIEWED, exact.PTRAVAILABLE, exact.S_LTS,
+    exact.LOC_PHOTO_MATCH, exact.LOC_ON_HAND], [125, 120, 5, -2, null, 2046]);
+  const wrongLot = backend.buildSuspendTagMetricFallback({ ...source, lotcode: '99.F1' }, rows, [], true);
+  assert.equal(wrongLot.PTRONHAND, null, 'an explicit missing lot never borrows another lot');
+  const missingLot = backend.buildSuspendTagMetricFallback({ ...source, lotcode: '' }, rows, [], true);
+  assert.equal(missingLot.MATCH_LEVEL, 'item-location');
+  assert.equal(missingLot.PTRONHAND, 2046, 'lotless fallback stays at the exact item/location');
+
+  const frontend = runFunctions('assets/app-runtime.js', ['normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
+    window: {}, firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
+    isDockSuspendDcRequestMirrorRow: () => true,
+    getQueueCardInventoryState: () => { throw new Error('False Block must not start inventory hydration'); },
+    getQueueCardInventoryAuthorizationContext: () => null,
+    getSuspendTagMetricDisplayFallback: () => null,
+    buildInventoryQuantityChipsHtml: () => '<div>inventory metrics</div>'
+  });
+  for (const locationcode of ['0.00.111', '00.00.111', '00.000.111']) {
+    const falseBlock = { ...source, locationcode };
+    const metrics = backend.buildSuspendTagMetricFallback(falseBlock, [...rows, falseBlock], [], true);
+    for (const field of ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'S_LTS', 'LOC_PHOTO_MATCH', 'LOC_ON_HAND']) {
+      assert.equal(metrics[field], null, `${locationcode}: ${field}`);
+    }
+    assert.equal(frontend.buildQueueInventoryMetricsHtml({ ...falseBlock, suspend_tag_metrics: exact }), '',
+      `${locationcode} renders no inventory metric boxes even with a stale enriched payload`);
+  }
+});
+
+test('Invariant 65 (Mobile Home Keeps All Dashboard Rows in the Header-to-Dock Fit)', () => {
+  const styles = read('assets/app-styles.css');
+  assert.match(styles, /current-view-home\.home-dashboard-mode[\s\S]{0,5000}grid-template-rows:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/,
+    'mobile Home allocates six bounded rows inside its flex-filled dashboard');
+  assert.match(styles, /current-view-home\.home-dashboard-mode[\s\S]{0,1200}padding:\s*8px 8px calc\(64px \+ env\(safe-area-inset-bottom\)\)/,
+    'the Home content reserves the shared bottom dock clearance');
+
+  const button = { disabled: false, classList: { toggle() {} }, querySelector: () => ({ innerText: '' }) };
+  const summary = { dataset: {}, addEventListener: (_type, handler) => { summary.onClick = handler; } };
+  const panel = { open: true, dataset: {}, classList: { toggle() {} }, querySelector: () => summary };
+  let width = 390;
+  const context = runFunctions('assets/app-runtime.js', ['syncGoogleScriptButton'], {
+    window: { get innerWidth() { return width; }, googleScriptRunInFlight: false },
+    document: { getElementById: id => id === 'run-google-script-btn' ? button : id === 'dashboard-sync-accordion' ? panel : null },
+    canRunManualInventoryImport: () => false,
+    canViewDashboardSyncStatus: () => true,
+    hasActiveManualSync: () => false,
+    getManualSyncProgressInfo: () => ({ text: '' }),
+    isAutoManualSyncStatus: () => false
+  });
+  context.syncGoogleScriptButton();
+  assert.equal(panel.open, false, 'mobile initialization collapses the imported-file disclosure');
+  width = 1024;
+  context.syncGoogleScriptButton();
+  assert.equal(panel.open, true, 'desktop initialization retains the expanded disclosure default');
+  width = 390;
+  context.syncGoogleScriptButton();
+  assert.equal(panel.open, false, 'crossing into mobile reapplies the collapsed default');
+  summary.onClick({ isTrusted: true });
+  panel.open = true;
+  context.syncGoogleScriptButton();
+  width = 1024;
+  context.syncGoogleScriptButton();
+  assert.equal(panel.open, true, 'a user-selected disclosure state is preserved across viewport changes');
+});

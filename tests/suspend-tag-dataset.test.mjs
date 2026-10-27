@@ -114,8 +114,8 @@ test('Suspend Tag has an exact editor allowlist without broadening ordinary SOC 
       assert.equal(roleAccess.isQcSupervisor, true);
     }
   }
-  assert.match(appApi, /suspend_tag:\s*\{\s*table: "ph_soc_master", permission: "ph_soc_master"/);
-  assert.match(appApi, /dataset === "suspend_tag"\s*\? !SUSPEND_TAG_EDITORS\.has\(username\)\s*:\s*!hasTableReadAccess\(role, source\.permission, username\) && !canonicalDatasetAccess/);
+  assert.match(appApi, /suspend_tag:\s*\{\s*table: "ph_active_suspend", permission: "ph_soc_master"/);
+  assert.match(appApi, /dataset === "suspend_tag"\s*\? !SUSPEND_TAG_EDITORS\.has\(username\)\s*:\s*dataset !== "app_user_directory" && !hasTableReadAccess\(role, source\.permission, username\) && !canonicalDatasetAccess/);
   const policy=readFileSync(new URL("../supabase/functions/_shared/suspend-tag.ts",import.meta.url),"utf8");
   assert.match(policy,/new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'dan_mccuistion'\]\)/);
 });
@@ -155,10 +155,10 @@ test('Suspend Tag dataset pages carry ordered master/CAV metric fallback without
   assert.match(appApi, /readSuspendTagMetricRows\("ph_cav_import"/);
   assert.match(appApi, /SUSPEND_TAG_METRIC_CAV_FIELDS\s*=\s*"[^"]*itemcode,season,/);
   assert.match(appApi, /captureReadyInventoryLocationRevision\(actorId\)[\s\S]*?readSuspendTagMetricRows\("ph_master_inventory"[\s\S]*?captureReadyInventoryLocationRevision\(actorId\) !== inventoryRevision/);
-  assert.ok(appApi.includes('[metricKey]: buildSuspendTagMetricFallback(row, masterByItem.get(key) || [], cavByItem.get(key) || [], true, metricKey === "request_inventory_metrics")'));
+  assert.match(appApi, /const selectedRows = isFalseBlock \? \[\] : exactRows\.length \? exactRows : !lotCode \? locationRows : \[\]/);
   assert.ok(appApi.includes('["suspend_tag", "request_queue", "active_request"].includes(dataset)'));
   assert.ok(appApi.includes('catch { metricRows = data; }'));
-  assert.match(appApi, /verifySuspendTagSession\(supabase, actor, request\)/);
+  assert.match(appApi, /verifySuspendTagSession\(supabase, actor, req\)/);
   assert.match(appApi, /dataset === "suspend_tag"\s*\? !SUSPEND_TAG_EDITORS\.has\(username\)/);
 
   const functions = [
@@ -179,12 +179,10 @@ test('Suspend Tag dataset pages carry ordered master/CAV metric fallback without
     { itemcode: '006009.031.1', locationcode: 'B.07.000', lotcode: '27.F1', season: 'F1', ptronhand: '5', ptrreviewed: null, ptravailable: '5', s_lts: '-400' },
     { itemcode: '006009.031.1', locationcode: 'B.07.000', lotcode: '27.S1', season: 'S1', ptronhand: '100', ptrreviewed: null, ptravailable: '100', s_lts: '2838' },
   ], [], true);
-  assert.equal(itemLot.MATCH_LEVEL, 'item-lot');
-  assert.equal(itemLot.PTRONHAND, 40);
-  assert.equal(itemLot.PTRREVIEWED, 35);
-  assert.equal(itemLot.PTRAVAILABLE, 5);
-  assert.equal(itemLot.S_LTS, -400, 'repeated seasonal open-stock values are not summed per location');
-  assert.equal(itemLot.LOC_ON_HAND, 40, 'missing staging location uses the numeric item/lot stock fallback');
+  assert.equal(itemLot.MATCH_LEVEL, 'false-block');
+  for (const metric of ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'S_LTS', 'LOC_ON_HAND', 'LOC_MATCH_QTY']) {
+    assert.equal(itemLot[metric], null, `False Block does not expose ${metric} from another location`);
+  }
 
   const itemFallback = context.build({ itemcode: '006009.031.1', locationcode: '0.00.111', lotcode: 'missing-lot' }, [
     { itemcode: '006009.031.1', locationcode: 'D.17.000', lotcode: '27.F1', season: 'F1', ptronhand: '35', s_lts: '-400' },
@@ -192,35 +190,38 @@ test('Suspend Tag dataset pages carry ordered master/CAV metric fallback without
     { itemcode: '006009.031.1', locationcode: 'B.07.000', lotcode: '27.S1', season: 'S1', ptronhand: '100', s_lts: '2838' },
     { itemcode: '006009.031.1', locationcode: 'C.01.000', lotcode: '27.S1', season: 'S1', ptronhand: '200', s_lts: '2838' },
   ], [], true);
-  assert.equal(itemFallback.MATCH_LEVEL, 'item');
-  assert.equal(itemFallback.PTRONHAND, 340);
-  assert.equal(itemFallback.S_LTS, 2438, 'distinct season totals are summed once per season');
+  assert.equal(itemFallback.MATCH_LEVEL, 'false-block');
+  for (const metric of ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'S_LTS', 'LOC_ON_HAND', 'LOC_MATCH_QTY']) {
+    assert.equal(itemFallback[metric], null, `False Block does not expose item-only ${metric}`);
+  }
 
   const cav = context.build({ itemcode: '099999.001.1', locationcode: '0.00.111', lotcode: '27.F1' }, [], [
     { itemcode: '099999.001.1', available: '12', spec: 'CAV spec', hold_reason: 'quality' },
   ], true);
-  assert.equal(cav.MATCH_LEVEL, 'cav-item');
+  assert.equal(cav.MATCH_LEVEL, 'false-block');
   assert.equal(cav.PTRONHAND, null, 'CAV does not supply On Hand');
-  assert.equal(cav.PTRAVAILABLE, 12);
-  assert.equal(cav.SOURCE, 'ph_cav_import');
-  assert.equal(cav.SPEC, 'CAV spec');
+  assert.equal(cav.PTRAVAILABLE, null, 'CAV item-only stock is not shown on a False Block card');
+  assert.equal(cav.SOURCE, 'unmatched');
+  assert.equal(cav.SPEC, null, 'False Block does not expose item-only CAV metadata');
+  assert.equal(cav.HOLDSTOPREASON, null, 'False Block does not expose item-only CAV reason metadata');
   const cavWithoutQuantity = context.build({ itemcode: '088888.001.1', locationcode: '0.00.111', lotcode: '27.F1' }, [], [
     { itemcode: '088888.001.1', spec: 'CAV source without quantities' },
   ], true);
   assert.equal(cavWithoutQuantity.PTRONHAND, null);
   assert.equal(cavWithoutQuantity.PTRAVAILABLE, null, 'an existing source row with a missing quantity remains unknown');
+  assert.equal(cavWithoutQuantity.SPEC, null, 'False Block does not expose item-only CAV specification metadata');
   const noSource = context.build({ itemcode: '077777.001.1', locationcode: '0.00.111', lotcode: '27.F1' }, [], []);
   assert.equal(noSource.PTRONHAND, null, 'missing item source rows stay unknown');
   assert.equal(noSource.LOC_ON_HAND, null, 'missing location is unknown until the master read is authoritative');
   const authoritativeNoSource = context.build({ itemcode: '077777.001.1', locationcode: '0.00.111', lotcode: '27.F1' }, [], [], true);
   assert.equal(authoritativeNoSource.PTRONHAND, null, 'an authoritative missing item still does not invent item quantities');
-  assert.equal(authoritativeNoSource.LOC_ON_HAND, 0, 'authoritative master absence at the physical location is numeric zero');
+  assert.equal(authoritativeNoSource.LOC_ON_HAND, null, 'False Block never exposes a physical-location metric');
 
   const oldLot = context.build({itemcode:'003360.070.2',locationcode:'I.02.000',lotcode:'25.F1'},[
     {itemcode:'003360.070.2',locationcode:'I.02.000',lotcode:'27.F1',ptronhand:'2',ptrreviewed:'2',ptravailable:'0',s_lts:'0'},
     {itemcode:'003360.070.2',locationcode:'A.01.000',lotcode:'25.F1',ptronhand:'9'}
   ],[],true,true);
-  assert.equal(oldLot.MATCH_LEVEL,'item-location');assert.equal(oldLot.PTRONHAND,2);assert.equal(oldLot.PTRAVAILABLE,0);
+  assert.equal(oldLot.MATCH_LEVEL,'unmatched');assert.equal(oldLot.PTRONHAND,null);assert.equal(oldLot.PTRAVAILABLE,null);
   const requestMissing=context.build({itemcode:'none',locationcode:'none',lotcode:'25.F1'},[],[],true,true);
   for(const metric of ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS','LOC_ON_HAND'])assert.equal(requestMissing[metric],0,metric);
   const reported = [
@@ -233,22 +234,33 @@ test('Suspend Tag dataset pages carry ordered master/CAV metric fallback without
     const card = context.build({ itemcode, commonname, locationcode: '0.00.111', lotcode: '27.F1' }, [
       { itemcode, locationcode: 'B.07.000', lotcode: '27.F1', season: 'F1', ptronhand: '12', ptrreviewed: '2', ptravailable: '10', s_lts: '8', loc_match_qty: itemcode === '006408.031.1' ? '967' : '3', holdstopreason: 'QC HOLD' },
     ], [], true);
-    assert.equal(card.MATCH_LEVEL, 'item-lot', `${itemcode} matches the tag lot before item fallback`);
+    assert.equal(card.MATCH_LEVEL, 'false-block', `${itemcode} remains unmatched at False Block`);
     for (const metric of ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'S_LTS', 'LOC_MATCH_QTY', 'LOC_ON_HAND']) {
-      assert.equal(typeof card[metric], 'number', `${itemcode} exposes numeric ${metric}`);
+      assert.equal(card[metric], null, `${itemcode} hides ${metric} from another location`);
     }
-    assert.equal(card.LOC_ON_HAND, 12, `${itemcode} uses item/lot On Hand at the staging location`);
-    assert.equal(card.LOC_MATCH_QTY, 0, `${itemcode} has no location photo match at 0.00.111; unrelated lot matches do not leak`);
-    assert.equal(card.HOLDSTOPREASON, 'QC HOLD', `${itemcode} retains the master reason for the card`);
+    assert.equal(card.HOLDSTOPREASON, null, `${itemcode} hides another location's master reason`);
   }
+  const exactLocationLot = context.build({ itemcode: '006009.031.1', locationcode: 'B.07.000', lotcode: '27.F1' }, [
+    { itemcode: '006009.031.1', locationcode: 'D.17.000', lotcode: '27.F1', ptronhand: '35', ptravailable: '35', s_lts: '-400' },
+    { itemcode: '006009.031.1', locationcode: 'B.07.000', lotcode: '27.F1', season: 'F1', ptronhand: '5', ptrreviewed: '0', ptravailable: '5', s_lts: '-400', loc_photo_match: '83.5', loc_match_qty: '999' },
+    { itemcode: '006009.031.1', locationcode: 'B.07.000', lotcode: '27.S1', season: 'S1', ptronhand: '100', ptravailable: '100', s_lts: '2838' },
+  ], [], true);
+  assert.equal(exactLocationLot.MATCH_LEVEL, 'item-location-lot');
+  assert.equal(exactLocationLot.PTRONHAND, 5);
+  assert.equal(exactLocationLot.PTRREVIEWED, 0);
+  assert.equal(exactLocationLot.PTRAVAILABLE, 5);
+  assert.equal(exactLocationLot.S_LTS, -400, 'Open Stock comes from the exact matched s_lts');
+  assert.equal(exactLocationLot.LOC_ON_HAND, 105, 'Loc On Hand sums all lots at the exact item and location');
+  assert.equal(exactLocationLot.LOC_PHOTO_MATCH, '83.5', 'photo parity uses the canonical location percentage field');
+  assert.equal(exactLocationLot.LOC_MATCH_QTY, '83.5', 'legacy aliases carry the same canonical percentage');
   const locationPhotoEvidence = context.build({ itemcode: '006408.031.1', locationcode: '0.00.111', lotcode: '27.F1' }, [
     { itemcode: '006408.031.1', locationcode: 'F.14.000', lotcode: '27.S1', season: 'S1', ptronhand: '1462', loc_match_qty: '967' },
     { itemcode: '006408.031.1', locationcode: '0.00.111', lotcode: '27.F1', season: 'F1', ptronhand: '4', loc_match_qty: '11' },
   ], [], true);
-  assert.equal(locationPhotoEvidence.LOC_MATCH_QTY, 11, 'a positive photo match remains tied to the requested physical location');
+  assert.equal(locationPhotoEvidence.LOC_MATCH_QTY, null, 'False Block does not expose a photo match from any inventory row');
 });
 
-test('Suspend Tag client uses item/lot and CAV display fallback and marks observable metrics', () => {
+test('Suspend Tag client requires exact item/location/lot metrics and suppresses False Block metrics', () => {
   const context = vm.createContext({ globalThis: null, window: null, Map, Set, String, Number, JSON });
   context.globalThis = context;
   context.window = context;
@@ -259,27 +271,23 @@ test('Suspend Tag client uses item/lot and CAV display fallback and marks observ
     { unique_id: 'master-c', itemcode: '006009.031.1', locationcode: 'F.14.000', lotcode: '27.S1', season: 'S1', ptronhand: '226', ptrreviewed: '0', ptravailable: '226', s_lts: '2838', loc_match_qty: '967' },
   ]);
   const lotFallback = index.resolveSuspendTagDisplay({ itemcode: '006009.031.1', locationcode: '0.00.111', lotcode: '27.F1' });
-  assert.equal(lotFallback.status, 'ready');
-  assert.equal(lotFallback.matchLevel, 'item-lot');
-  assert.equal(lotFallback.row.PTRONHAND, 40);
-  assert.equal(lotFallback.row.S_LTS, -400);
-  assert.equal(lotFallback.row.LOC_ON_HAND, 0);
-  assert.equal(lotFallback.row.LOC_MATCH_QTY, 0, 'photo match from another physical location is not shown on the tag location');
+  assert.equal(lotFallback.status, 'missing');
+  assert.equal(lotFallback.row, null, 'False Block never resolves another location\'s inventory');
   const locationScopedIndex = context.AgMetricQueueInventory.createIndex([
     { unique_id: 'target-loc', itemcode: '006009.031.1', locationcode: '0.00.111', lotcode: '27.F1', ptronhand: '4', ptrreviewed: '0', ptravailable: '4', loc_match_qty: '11' },
     { unique_id: 'other-loc', itemcode: '006009.031.1', locationcode: 'F.14.000', lotcode: '27.S1', ptronhand: '226', ptrreviewed: '0', ptravailable: '226', loc_match_qty: '967' },
   ]);
-  assert.equal(locationScopedIndex.resolveSuspendTagDisplay({ itemcode: '006009.031.1', locationcode: '0.00.111', lotcode: '27.F1' }).row.LOC_MATCH_QTY, 11);
+  assert.equal(locationScopedIndex.resolveSuspendTagDisplay({ itemcode: '006009.031.1', locationcode: '0.00.111', lotcode: '27.F1' }).status, 'missing');
   const cavFallback = index.resolveSuspendTagDisplay({ itemcode: '099999.001.1', locationcode: '0.00.111', lotcode: '27.F1' }, [
     { unique_id: 'cav-1', itemcode: '099999.001.1', available: '12' },
   ]);
-  assert.equal(cavFallback.matchLevel, 'cav-item');
-  assert.equal(cavFallback.row.PTRAVAILABLE, 12);
+  assert.equal(cavFallback.status, 'missing');
+  assert.equal(cavFallback.row, null, 'CAV item-only quantities are not shown on False Block cards');
   const cavMissingMetric = index.resolveSuspendTagDisplay({ itemcode: '088888.001.1', locationcode: '0.00.111', lotcode: '27.F1' }, [
     { unique_id: 'cav-2', itemcode: '088888.001.1', spec: 'Known row, unknown quantity' },
   ]);
-  assert.equal(cavMissingMetric.row.PTRAVAILABLE, null);
-  assert.equal(cavMissingMetric.row.S_LTS, null);
+  assert.equal(cavMissingMetric.status, 'missing');
+  assert.equal(cavMissingMetric.row, null);
   const source = readComposedAppSource();
   assert.match(source, /resolveSuspendTagDisplay\(identity, cavInventory\)/);
   assert.match(source, /data-suspend-tag-card="true"/);
@@ -288,8 +296,9 @@ test('Suspend Tag client uses item/lot and CAV display fallback and marks observ
     assert.ok(source.includes(metric), `${metric} is exposed to the watchdog sensor`);
   }
   assert.match(source, /data-queue-metric="reason"/);
-  assert.match(source, /knownLocationOnHand: metricRow\.LOC_ON_HAND \?\? suspendMetrics\?\.LOC_ON_HAND/);
-  assert.match(source, /knownLocationPhotoMatch: suspendMetrics\?\.LOC_MATCH_QTY/);
+  assert.match(source, /return falseBlock \? '' : metricsHtml/);
+  assert.match(source, /knownLocationOnHand: falseBlock \? 0 : displayRow \? metricRow\.LOC_ON_HAND/);
+  assert.match(source, /knownLocationPhotoMatch: knownPhotoMatch \?\? suspendMetrics\?\.LOC_MATCH_QTY/);
   assert.match(source, /knownLocationPhotoMatch !== null && knownLocationPhotoMatch !== undefined/);
   assert.match(source, /knownLocationOnHand !== null && knownLocationOnHand !== undefined && Number\.isFinite/);
   const queueState = extractFunction(source, 'getQueueCardInventoryState');
@@ -300,16 +309,26 @@ test('Suspend Tag client uses item/lot and CAV display fallback and marks observ
   let renderedMetrics;
   const serverContext = vm.createContext({
     isDockSuspendDcRequestMirrorRow: () => true,
+    firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
+    getQueueCardInventoryAuthorizationContext: () => null,
     getQueueCardInventoryState: () => { throw new Error('Server-enriched cards must not queue another identity read'); },
-    getSuspendTagMetricDisplayFallback: () => { throw new Error('Server-enriched cards do not require a local snapshot'); },
+    getSuspendTagMetricDisplayFallback: () => null,
     buildInventoryQuantityChipsHtml: (row, options) => { renderedMetrics = { row, options }; return 'metrics'; }
   });
-  vm.runInContext(source.match(/        function buildQueueInventoryMetricsHtml\([^]*?^        }/m)[0] + '\nthis.build = buildQueueInventoryMetricsHtml;', serverContext);
-  assert.equal(serverContext.build({ suspend_tag_metrics: { PTRONHAND: 136, PTRREVIEWED: 0, LOC_ON_HAND: 0, LOC_MATCH_QTY: 0 } }), 'metrics');
-  assert.equal(renderedMetrics.row.PTRONHAND, 136);
-  assert.equal(renderedMetrics.options.knownLocationOnHand, 0);
-  assert.equal(renderedMetrics.options.knownLocationPhotoMatch, 0);
-  assert.equal(renderedMetrics.options.hydrationStatus, 'ready');
+  const normalizeRequestCardMetrics = source.match(/        function normalizeRequestCardMetrics\([^]*?^        }/m)?.[0];
+  assert.ok(normalizeRequestCardMetrics, 'request metric normalization is present');
+  const buildQueueMetrics = source.match(/        function buildQueueInventoryMetricsHtml\([^]*?^        }/m)?.[0];
+  assert.ok(buildQueueMetrics, 'queue metric renderer is present');
+  vm.runInContext(`${normalizeRequestCardMetrics}\n${buildQueueMetrics}\nthis.build = buildQueueInventoryMetricsHtml;`, serverContext);
+  for (const locationcode of ['0.00.111', '00.00.111', '00.000.111']) {
+    assert.equal(serverContext.build({ locationcode, suspend_tag_metrics: { MATCH_LEVEL: 'item-location-lot',
+      PTRONHAND: 136, PTRREVIEWED: 0, LOC_ON_HAND: 136, LOC_MATCH_QTY: 0 } }), '',
+    `${locationcode} renders no inventory metric chips`);
+    assert.equal(renderedMetrics.row.PTRONHAND, 0, `${locationcode} sanitizes On Hand before metric callbacks`);
+    assert.equal(renderedMetrics.row.PTRAVAILABLE, 0, `${locationcode} sanitizes Available before metric callbacks`);
+    assert.equal(renderedMetrics.row.S_LTS, 0, `${locationcode} sanitizes Open Stock before metric callbacks`);
+    assert.equal(renderedMetrics.row.LOC_ON_HAND, 0, `${locationcode} sanitizes Loc On Hand before metric callbacks`);
+  }
 
   const renderContext = vm.createContext({
     parseAppNumber: value => value == null ? null : Number(value),

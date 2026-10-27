@@ -121,6 +121,10 @@ const verified = {
   contractVersion: 'inventory-reclass-move-completed-v1', commandId, requestId, actorProfileId: uuid,
   actorUsername: 'tester', actorDisplayName: 'Dylan <Ops>', actorEmail: 'actor@example.test', revision: '42',
   deliveryRecipients: ['dylan@example.test', 'megan@example.test', 'sharon@example.test', 'actor@example.test'],
+  report_rows: [{ unique_id: 'source-1', itemcode: '006138.051.1', commonname: 'Cobalt and Gold St. John\'s Wort',
+    contsize: '3DP', season: 'F1', lotcode: '27.F1', locationcode: 'D.08.001', ptronhand: '10', ptrreviewed: '0',
+    ptravailable: '8', itemspec: '18 inch', holdstopcode: 'H', holdstopreason: 'test', priority: '1',
+    locationnote: 'retied', salesnote: 'confirm' }],
   appliedRows: [
     { table: 'ph_master_inventory', row: { unique_id: 'source-1', itemcode: '006138.051.1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', season: 'F1', lotcode: '27.F1', locationcode: 'D.08.001', ptronhand: '8', ptravailable: '6', itemspec: '18 inch', holdstopcode: 'H', holdstopreason: 'test', priority: '1', locationnote: 'retied', salesnote: 'confirm' } },
     { table: 'ph_master_inventory', row: { unique_id: 'dest-1', itemcode: '006138.051.1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', season: 'U1', lotcode: '27.U1', locationcode: 'D.08.001', ptronhand: '2', ptravailable: '2', itemspec: '18 inch', holdstopcode: null, holdstopreason: null, priority: '1', locationnote: 'retied', salesnote: 'confirm' } },
@@ -157,7 +161,7 @@ test('Apps Script sends the canonical manager recipients plus actor, attaches re
   assert.equal(state.sends.length, 1, 'stable message ID receipt prevents a second send');
 });
 
-test('completed report model uses authoritative post-move rows and a separately labeled applied-move summary', () => {
+test('completed report model uses only the frozen pre-edit ERP rows and separately labels the applied move', () => {
   const backend = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
   const start = backend.indexOf('function buildCompletedInventoryReclassReportModel_(');
   const end = backend.indexOf('\nfunction ', start + 1);
@@ -190,9 +194,13 @@ test('completed report model uses authoritative post-move rows and a separately 
   const model = context.buildCompletedInventoryReclassReportModel_({
     actorUsername: 'tester', actorDisplayName: 'Tester', revision: '42',
     appliedRows: rows.map(row => ({ table: 'ph_master_inventory', row })),
-    moves: [{ direction: 'move_up', quantity: 2, source: { unique_id: 'source-1' }, destination: { unique_id: 'dest-1' } }],
+    report_rows: [{ ...rows[0], ptronhand: '10', ptrreviewed: '0', ptravailable: '8' }],
+    moves: [{ direction: 'move_up', quantity: 2, source: { unique_id: 'source-1' }, destination: { unique_id: 'dest-1', season: 'U1' } }],
   }, new Date('2026-10-20T12:00:00Z'));
-  assert.equal(captured.authoritativeRows[0].ptronhand, '8');
+  assert.equal(captured.authoritativeRows.length, 1, 'the app-created destination row is excluded from the inquiry table');
+  assert.equal(captured.authoritativeRows[0].ptronhand, '10', 'the source retains its pre-edit OH');
+  assert.equal(captured.authoritativeRows[0].ptrreviewed, '0', 'the source retains its pre-edit PTRREVIEWED');
+  assert.equal(captured.reportRows[0].values.ptronhand, '10');
   assert.equal(captured.reportRows[0].values.itemspec, '18 inch');
   assert.equal(captured.reportRows[0].values.holdstopcode, 'H');
   assert.equal(captured.reportRows[0].values.priority, '1');

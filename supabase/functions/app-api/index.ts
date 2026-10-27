@@ -1065,7 +1065,7 @@ function restrictedRequestIdentityOrCondition(identity: string) {
     .map((field) => `${field}.imatch.${datasetReadOrLiteral(pattern)}`).join(",");
 }
 
-const SUSPEND_TAG_METRIC_MASTER_FIELDS = "unique_id,itemcode,locationcode,lotcode,season,ptronhand,ptrreviewed,ptravailable,s_lts,holdstopcode,holdstopreason,av_note,sales_note,spec,caliper,pic_note,photo_link,photo_name,loc_match_qty,match";
+const SUSPEND_TAG_METRIC_MASTER_FIELDS = "unique_id,itemcode,locationcode,lotcode,season,ptronhand,ptrreviewed,ptravailable,s_lts,holdstopcode,holdstopreason,av_note,sales_note,spec,caliper,pic_note,photo_link,photo_name,loc_photo_match,loc_match_qty,match";
 const SUSPEND_TAG_METRIC_CAV_FIELDS = "unique_id,itemcode,season,ptravailable,available,reserved_qty,order_qty,holdstopreason,hold_reason,spec,brand,product_description";
 
 function normalizeSuspendTagMetricKey(value: unknown) {
@@ -1155,37 +1155,30 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
   const itemCode = normalizeSuspendTagMetricKey(row.itemcode ?? row.ITEMCODE);
   const locationCode = normalizeSuspendTagMetricKey(row.locationcode ?? row.LOCATIONCODE);
   const lotCode = normalizeSuspendTagMetricKey(row.lotcode ?? row.LOTCODE);
+  const isFalseBlock = /^0+\.0+\.111$/.test(locationCode);
   const itemMaster = masterRows.filter((candidate) => normalizeSuspendTagMetricKey(candidate.itemcode) === itemCode);
-  const exactRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode
-    && normalizeSuspendTagMetricKey(candidate.lotcode) === lotCode);
-  const lotRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.lotcode) === lotCode);
-  const requestLocationRows = preferLocation ? itemMaster.filter(candidate => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode) : [];
-  const matchLevel = exactRows.length ? "item-location-lot" : requestLocationRows.length ? "item-location" : lotRows.length ? "item-lot" : itemMaster.length ? "item" : "cav-item";
-  const selectedMasterRows = exactRows.length ? exactRows : requestLocationRows.length ? requestLocationRows : lotRows.length ? lotRows : itemMaster;
-  const selectedRows = selectedMasterRows.length ? selectedMasterRows : cavRows.filter((candidate) => normalizeSuspendTagMetricKey(candidate.itemcode) === itemCode);
-  const itemCavRows = cavRows.filter((candidate) => normalizeSuspendTagMetricKey(candidate.itemcode) === itemCode);
-  const selectedSeasons = new Set(selectedMasterRows.map((candidate) => normalizeSuspendTagMetricKey(candidate.season)).filter(Boolean));
-  const cavFallbackRows = selectedMasterRows.length && selectedSeasons.size
-    ? itemCavRows.filter((candidate) => selectedSeasons.has(normalizeSuspendTagMetricKey(candidate.season)))
-    : itemCavRows;
-  const absentSourceValue = preferLocation && masterSourceAuthoritative ? 0 : null;
-  const metric = (keys: string[], fallbackKeys: string[] = keys) => sumSuspendTagMetric(selectedRows, keys)
-    ?? sumSuspendTagMetric(cavFallbackRows, fallbackKeys);
-  const locationRows = itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode);
-  const openStockRows = itemMaster.filter((candidate) => /\.(?:F1|S1)$/i.test(normalizeSuspendTagMetricKey(candidate.lotcode)));
-  const locOnHand = locationRows.length ? sumSuspendTagMetric(locationRows, ["ptronhand"])
-    : sumSuspendTagMetric([row], ["ptronhand", "PTRONHAND"]) ?? metric(["ptronhand"]) ?? (masterSourceAuthoritative ? 0 : null);
-  const locPhotoMatch = locationRows.length ? sumSuspendTagMetric(locationRows, ["loc_match_qty"])
-    : masterSourceAuthoritative ? 0 : null;
+  const locationRows = isFalseBlock ? [] : itemMaster.filter((candidate) => normalizeSuspendTagMetricKey(candidate.locationcode) === locationCode);
+  const exactRows = lotCode ? locationRows.filter((candidate) => normalizeSuspendTagMetricKey(candidate.lotcode) === lotCode) : [];
+  const selectedRows = isFalseBlock ? [] : exactRows.length ? exactRows : !lotCode ? locationRows : [];
+  const matchLevel = isFalseBlock ? "false-block" : exactRows.length ? "item-location-lot"
+    : selectedRows.length ? "item-location" : "unmatched";
+  const absentSourceValue = !isFalseBlock && masterSourceAuthoritative && !locationRows.length ? 0 : null;
+  const metric = (keys: string[]) => sumSuspendTagMetric(selectedRows, keys) ?? absentSourceValue;
+  const locOnHand = locationRows.length ? sumSuspendTagMetric(locationRows, ["ptronhand"]) : absentSourceValue;
+  const locPhotoMatch = selectedRows.length ? firstSuspendTagMetricValue(selectedRows, ["loc_photo_match"])
+    : null;
+  const openStockRow = selectedRows.find((candidate) => firstSuspendTagMetricValue([candidate], ["s_lts"]) !== null);
+  const openStock = openStockRow ? sumSuspendTagMetric([openStockRow], ["s_lts"]) : absentSourceValue;
   return {
-    PTRONHAND: metric(["ptronhand"]) ?? absentSourceValue,
+    PTRONHAND: metric(["ptronhand"]),
     PTRREVIEWED: metric(["ptrreviewed"]) ?? (sumSuspendTagMetric(selectedRows, ["ptronhand"]) !== null ? 0 : absentSourceValue),
-    PTRAVAILABLE: sumSuspendTagAvailable(selectedRows) ?? sumSuspendTagAvailable(cavFallbackRows) ?? absentSourceValue,
-    S_LTS: sumSuspendTagAvailable(openStockRows) ?? 0,
-    LOC_ON_HAND: locOnHand ?? absentSourceValue,
+    PTRAVAILABLE: sumSuspendTagAvailable(selectedRows) ?? absentSourceValue,
+    S_LTS: openStock,
+    LOC_ON_HAND: locOnHand,
     LOC_MATCH_QTY: locPhotoMatch,
+    LOC_PHOTO_MATCH: locPhotoMatch,
     HOLDSTOPCODE: firstSuspendTagMetricValue(selectedRows, ["holdstopcode"]) ?? row.holdstopcode ?? null,
-    HOLDSTOPREASON: firstSuspendTagMetricValue(selectedRows, ["holdstopreason", "hold_reason"]) ?? firstSuspendTagMetricValue(cavFallbackRows, ["holdstopreason", "hold_reason"]) ?? row.holdstopreason ?? null,
+    HOLDSTOPREASON: firstSuspendTagMetricValue(selectedRows, ["holdstopreason", "hold_reason"]) ?? row.holdstopreason ?? null,
     AV_NOTE: firstSuspendTagMetricValue(selectedRows, ["av_note"]) ?? row.av_note ?? null,
     SALES_NOTE: firstSuspendTagMetricValue(selectedRows, ["sales_note"]) ?? row.sales_note ?? row.salesnote ?? null,
     SPEC: firstSuspendTagMetricValue(selectedRows, ["spec"]) ?? row.spec ?? null,
@@ -1193,9 +1186,9 @@ function buildSuspendTagMetricFallback(row: Record<string, unknown>, masterRows:
     PIC_NOTE: firstSuspendTagMetricValue(selectedRows, ["pic_note"]) ?? row.pic_note ?? null,
     PHOTO_LINK: firstSuspendTagMetricValue(selectedRows, ["photo_link"]) ?? row.photo_link ?? null,
     PHOTO_NAME: firstSuspendTagMetricValue(selectedRows, ["photo_name"]) ?? row.photo_name ?? null,
-    MATCH: firstSuspendTagMetricValue(selectedRows, ["match"]) ?? row.match ?? null,
+    MATCH: locPhotoMatch,
     MATCH_LEVEL: matchLevel,
-    SOURCE: selectedMasterRows.length ? "ph_master_inventory" : "ph_cav_import",
+    SOURCE: selectedRows.length ? "ph_master_inventory" : "unmatched",
   };
 }
 

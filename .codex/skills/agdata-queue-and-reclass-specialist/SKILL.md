@@ -96,6 +96,8 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never hydrate Queue metrics from another location or a different explicit lot, replace physical `s_lts` with summed Available, or replace a null `loc_photo_match` with a quantity. False Block variants must render no metric boxes even when an enriched payload contains stock; local report fixtures must include the frozen pre-edit `report_rows` and load every canonical reconciliation helper.
+
 - Never add a direct operational view to the runtime allowlist without a finite typed browser alias to its exact canonical row contract; otherwise the database bridge rejects the table before transport and a healthy queue renders empty.
 
 - Never render `Que -> SUSPEND` from a synthetic API dataset that can fail open to an empty result while authorized rows exist; hydrate `ph_active_suspend` directly, retain the prior snapshot, and replay the latest tab refresh when a shared single-flight is busy.

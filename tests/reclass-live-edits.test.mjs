@@ -59,7 +59,9 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
   const end = html.indexOf('function openArgosInventoryRequestFromTransactionModal(', start);
   const returnedRowStart = html.indexOf('function applyArgosInventoryTransactionReturnedRow(', 0);
   const returnedRowEnd = html.indexOf('const confirmedArgosReclassLiveEditRevisions = new Map();', returnedRowStart);
+  const seasonHelper = html.match(/        function reclassStockSeason\(row\) \{[^]*?^        \}/m)?.[0];
   assert.ok(start > 0 && end > start && returnedRowStart > 0 && returnedRowEnd > returnedRowStart);
+  assert.ok(seasonHelper, 'the fixture loads the canonical season-key helper used by returned-row reconciliation');
   const appliedRows = [];
   const dirtyViews = [];
   const masterState = { liveVerifiedRevision: revision, liveVerifiedScope: 'old-scope', liveVerifiedPermission: 'old-permission' };
@@ -82,6 +84,7 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
     fullInventory,
     masterInventoryById,
     avOpenInventory,
+    cavInventory: [],
     formatFetchedRows: rows => rows.map(raw => Object.fromEntries(Object.entries(raw).filter(([, value]) => value !== null && typeof value !== 'undefined'))),
     normalizeAppTableName: value => String(value || ''),
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
@@ -115,7 +118,7 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
     console,
   };
   vm.createContext(context);
-  vm.runInContext(`${html.slice(returnedRowStart, returnedRowEnd)}; ${html.slice(start, end)}; this.apply = applyConfirmedArgosReclassLiveEdits; this.acceptRead = isConfirmedInventoryReadRevisionCurrent; this.identityKey = getArgosReclassLiveEditIdentityKey();`, context);
+  vm.runInContext(`${html.slice(returnedRowStart, returnedRowEnd)}; ${html.slice(start, end)}; ${seasonHelper}; this.apply = applyConfirmedArgosReclassLiveEdits; this.acceptRead = isConfirmedInventoryReadRevisionCurrent; this.identityKey = getArgosReclassLiveEditIdentityKey();`, context);
   return { apply: context.apply, acceptRead: context.acceptRead, appliedRows, avOpenInventory, dirtyViews, fullInventory, identityKey: context.identityKey, masterState, work };
 }
 
