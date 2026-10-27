@@ -30,7 +30,7 @@ jobs:
   fast-gate:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     outputs:
       frontend: ${{ steps.classify.outputs.frontend }}
       supabase: ${{ steps.classify.outputs.supabase }}

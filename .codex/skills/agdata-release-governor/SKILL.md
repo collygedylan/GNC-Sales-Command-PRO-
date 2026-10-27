@@ -81,6 +81,8 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never set the Pages fast-gate timeout so tightly that successful validation is killed during mandatory action cleanup; retain a bounded cleanup margin while measuring the real gate duration.
+
 - Never publish a `Code.gs` change unless every changed entrypoint and authorization dependency is registered in `appsScriptPatchFunctions` and exercised by the scoped remote-preservation test.
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.

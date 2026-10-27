@@ -2087,3 +2087,10 @@ test('Invariant 70 (Reclass New Seasons Persist Zero-Baseline Stock and Durable 
   assert.match(batchMigration, /source_before->>'loc_photo_match'/);
   for (const field of ['photo_link','photo_name','date_completed','pick_note','sales_note']) assert.match(batchMigration, new RegExp(field));
 });
+
+test('Invariant 71 (Pages Fast Gate Retains a Bounded Cleanup Margin)', () => {
+  const workflow = read('.github/workflows/pages-static.yml');
+  const fastGate = workflow.slice(workflow.indexOf('  fast-gate:'), workflow.indexOf('\n  backend-publication:'));
+  assert.match(fastGate, /timeout-minutes:\s*4/);
+  assert.match(fastGate, /Focused release contracts only \(15 second budget\)/);
+});
