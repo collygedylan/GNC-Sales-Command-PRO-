@@ -1807,7 +1807,7 @@ const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'rese
 const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'growerScoutReports', 'growerScoutAssets', 'warehouseAssignedItems', 'avNotes']);
 const RETIRED_DATASET_KEYS = new Set(['mlJobs']);
 const RETIRED_MANUAL_SYNC_STAGE_KEYS = new Set(['disease', 'lab', 'lab_reports']);
-const MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT = Object.freeze(['drive','soc','reserves','cav','pikes_orders','stine_lumber_orders','customer_rep_map','warehouse_assigned_items','transactions_keyed','hl_po_parsed']);
+const MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT = Object.freeze(['drive','cav','reserves','soc','hl_po_parsed']);
 const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks','hl-order', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
         const APP_LIVE_EVENT_VIEW_AREAS = Object.freeze({
             home: ['request', 'sales-office', 'tasks', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back', 'customer-rep-map'],
@@ -24744,11 +24744,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let datasetRevisionConnectionStates = [];
         let syncDiagnosticsOverride = "";
         let manualSyncStatusState = null;
+        let isRunScriptActive = false;
         let manualSyncStatusPollTimer = null;
         let manualSyncStatusPollInFlight = false;
         let manualSyncTerminalErrorRunId = '';
         let lastManualSyncStatusCheckedAt = 0;
-        let lastManualSyncStaleSweepAt = 0;
         let manualSyncPostRefreshInFlight = false;
         let dashboardSyncMetadataSummaries = [];
         let dashboardSyncMetadataFetchedAt = 0;
@@ -27724,7 +27724,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!isManualSyncStatusClientStale(manualSyncStatusState)) return false;
             manualSyncStatusState = markManualSyncStatusClientStale(manualSyncStatusState);
             clearManualSyncStatusPoll();
-            requestManualSyncServerStaleSweep();
             return true;
         }
 
@@ -27774,6 +27773,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function isDatasetFrozenDuringManualSync(key = '', mode = 'initial') {
             const safeKey = String(key || '').trim();
             if (!hasActiveManualSync() || !MANUAL_SYNC_FROZEN_DATASET_KEYS.has(safeKey)) return false;
+            const owners = {
+                master: ['drive'], avOpen: ['drive', 'cav', 'reserves'], soc: ['soc'],
+                reserves: ['reserves'], cav: ['cav'], cavAvBlankKeys: ['cav'],
+                avHotPriceKeys: ['cav'], warehouseAssignedItems: ['warehouse_assigned_items'], salesOffice: ['soc']
+            }[safeKey] || [];
+            const pendingStages = new Set((manualSyncStatusState?.stageOrder || MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT)
+                .slice(Number(manualSyncStatusState?.stageIndex) || 0));
+            if (owners.length && !owners.some(stage => pendingStages.has(stage))) return false;
             const state = datasetLoadState && datasetLoadState[safeKey] ? datasetLoadState[safeKey] : null;
             if (!state) return false;
             return mode === 'full' ? !!state.fullLoaded : !!(state.initialLoaded || state.fullLoaded);
@@ -27804,23 +27811,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const response = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'manual_sync_status' }, { timeoutMs: 10000, label: 'Sync status' });
             if (!response?.ok) throw new Error(response?.code || 'MANUAL_SYNC_STATUS_UNAVAILABLE');
             return normalizeManualSyncStatusPayload(response.data);
-        }
-
-        function requestManualSyncServerStaleSweep() {
-            if (!currentUser || navigator.onLine === false) return;
-            const now = Date.now();
-            if (lastManualSyncStaleSweepAt && (now - lastManualSyncStaleSweepAt) < 30000) return;
-            lastManualSyncStaleSweepAt = now;
-            postGoogleScriptJsonPayload({ type: 'manual_clear_stale_status' }, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Manual Sync Stale Sweep')
-                .then((responseData) => {
-                    const next = normalizeManualSyncStatusPayload(responseData);
-                    if (!next.active) {
-                        applyManualSyncStatus(next, { suppressToast: true, skipPollSchedule: true });
-                    }
-                })
-                .catch((error) => {
-                    console.warn('Could not sweep stale manual sync status.', error);
-                });
         }
 
         function scheduleManualSyncStatusPoll(delayMs = MANUAL_SYNC_STATUS_POLL_MS) {
@@ -27877,7 +27867,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             let next = normalizeManualSyncStatusPayload(status);
             if (isManualSyncStatusClientStale(next)) {
                 next = markManualSyncStatusClientStale(next);
-                requestManualSyncServerStaleSweep();
             }
             const wasActive = !!previous.active;
             const isActive = !!next.active;
@@ -27927,7 +27916,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         dismissToast('sync-recovered');
                     }
                     manualSyncTerminalErrorRunId = '';
-                    if (!opts.suppressToast) showToast('Sync Complete', next.message || 'Manual sync complete.', false);
+                    if (!opts.suppressToast && String(currentUser || '').trim().toLowerCase() === 'dylan_collyge') showToast('Sync Complete', next.message || 'Manual sync complete.', false);
                 }
             } else {
                 updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
@@ -28023,7 +28012,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function runGoogleAppsScriptTrigger() {
             releaseStaleManualSyncClientStateIfNeeded();
-            if (!canRunManualInventoryImport() || window.googleScriptRunInFlight || hasActiveManualSync()) return false;
+            if (!canRunManualInventoryImport() || isRunScriptActive || window.googleScriptRunInFlight || hasActiveManualSync()) return false;
+            isRunScriptActive = true;
             window.googleScriptRunInFlight = true;
             syncGoogleScriptButton();
             showToast('Processing...', 'Starting full manual sync...', false);
@@ -28036,6 +28026,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     type: 'manual_run',
                     nativeAuthAccessToken: importToken,
                     job: 'all',
+                    maxAttemptsPerStage: 1,
                     trigger: 'header_button',
                     run_inline: false,
                     fast: true,
@@ -28097,7 +28088,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 } else if (handleDeferredManualSyncStart(responseData)) {
                 } else if (responseData && typeof responseData === 'object' && ('active' in responseData || responseData.currentStage || responseData.finishedAt)) {
                     const finalStatus = applyManualSyncStatus(responseData, { suppressToast: false });
-                    if (!finalStatus.active && !finalStatus.error) {
+                    if (!finalStatus.active && !finalStatus.error && String(currentUser || '').trim().toLowerCase() === 'dylan_collyge') {
                         showToast('Sync Complete', finalStatus.message || 'Manual sync complete.');
                     }
                 } else {
@@ -28129,6 +28120,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 showToast('Error', err && err.message ? err.message : 'Could not send the Google Apps Script request.', true);
             } finally {
+                isRunScriptActive = false;
                 window.googleScriptRunInFlight = false;
                 syncGoogleScriptButton();
             }
@@ -45120,7 +45112,7 @@ let avTopControlsRenderToken = 0;
             });
         }
 
-        function publishOptimisticReclassRows(pending, rows = null) {
+        function publishOptimisticReclassRows(pending, rows = null, options = {}) {
             const commandId = pending.command.commandId;
             if (rows) {
                 pending.displayRollback = [];
@@ -45165,7 +45157,9 @@ let avTopControlsRenderToken = 0;
                     removeRealtimeRow(fullInventory, entry.uid); removeRealtimeRow(avOpenInventory, entry.uid);
                     if (entry.before) { const applied = applyArgosInventoryTransactionReturnedRow(entry.before, entry.uid, { deferPublication: true }); if (applied) restored.push(applied); }
                 });
+                if (options.deferPublication === true) return restored;
                 publishArgosInventoryTransactionReturnedRows(restored);
+                return restored;
             }
         }
 
@@ -45911,8 +45905,9 @@ let avTopControlsRenderToken = 0;
                 const knownRevision = currentRevision > previousRevision ? currentRevision : previousRevision;
                 const receiptRevision = BigInt(receipt.revision);
                 const staleReceipt = receiptRevision < knownRevision;
-                publishOptimisticReclassRows(pending);
                 if (!staleReceipt) {
+                    const rollbackRows = publishOptimisticReclassRows(pending, null, { deferPublication: true });
+                    const restoredRows = Array.isArray(rollbackRows) ? rollbackRows : [];
                     applyReclassSeasonStocks(receipt.seasonStocks || []);
                     const appliedRows = [];
                     try {
@@ -45922,12 +45917,25 @@ let avTopControlsRenderToken = 0;
                             appliedRows.push(applied);
                         });
                     } finally {
-                        publishArgosInventoryTransactionReturnedRows(appliedRows);
+                        const published = new Map();
+                        [...restoredRows, ...appliedRows].forEach(row => {
+                            const uid = String(row && (row.UNIQUE_ID ?? row.unique_id) || '');
+                            if (uid) published.set(uid, row);
+                        });
+                        publishArgosInventoryTransactionReturnedRows(Array.from(published.values()));
                     }
                 }
                 const nextRevision = receiptRevision > knownRevision ? receiptRevision : knownRevision;
                 if (nextRevision > previousRevision) confirmedArgosReclassLiveEditRevisions.set(identityKey, nextRevision.toString());
-                if (!staleReceipt) invalidateArgosReclassLiveEditCaches('inventory-reclass-move-confirmed', { preserveMasterProof: true });
+                if (!staleReceipt) {
+                    masterState.liveVerifiedRevision = receiptRevision.toString();
+                    masterState.liveVerifiedScope = liveContext.scope;
+                    masterState.liveVerifiedPermission = liveContext.dataPermissionVersion;
+                    invalidateArgosReclassLiveEditCaches('inventory-reclass-move-confirmed', { preserveMasterProof: true });
+                    if (typeof persistCurrentCache === 'function') {
+                        await persistCurrentCache(true, 'inventory-reclass-move-confirmed');
+                    }
+                }
                 else if (!currentRevisionValid || currentRevision < knownRevision) {
                     // The immutable status receipt confirms the old command, but
                     // only a newer permission-scoped snapshot may replace it.

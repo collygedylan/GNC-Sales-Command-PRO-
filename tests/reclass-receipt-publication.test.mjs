@@ -11,15 +11,17 @@ const moveStart = html.indexOf('        async function applyArgosInventoryReclas
 const moveSource = html.slice(moveStart, html.indexOf('        function hasRemainingArgosReclassInquiry(', moveStart));
 
 function fixture({ revision = '41', identity = 'actor', failUid = '' } = {}) {
-  const work = { rebuilds: 0, detailRefreshes: 0, previews: 0, publications: [] };
+  const work = { rebuilds: 0, detailRefreshes: 0, previews: 0, persisted: [], publications: [] };
   const fullInventory = [{ UNIQUE_ID: 'source', DOM_ID: 'source-dom', PTRONHAND: '50' }];
   const index = new Map([['source', fullInventory[0]]]);
   const receipt = { revision: '42', rows: [
     { row: { unique_id: 'source', ptronhand: '30' } },
     { row: { unique_id: 'destination', ptronhand: '20' } },
   ] };
+  const masterState = { liveVerifiedRevision: revision, liveVerifiedScope: 'scope', liveVerifiedPermission: 'permission' };
   const ctx = vm.createContext({
-    fullInventory, avOpenInventory: [],
+    fullInventory, avOpenInventory: [], cavInventory: [],
+    reclassStockSeason: row => String(row?.season || row?.SEASON || ''),
     firstNonEmptyValue: (...values) => values.find(value => value !== '' && value != null),
     formatFetchedRows: rows => rows.map(row => {
       if (row.unique_id === failUid) throw new Error('Synthetic formatting failure');
@@ -46,16 +48,17 @@ function fixture({ revision = '41', identity = 'actor', failUid = '' } = {}) {
     refreshLiveLocMatchQuantityPreviews: () => { work.previews++; },
     getArgosReclassLiveEditIdentityKey: () => identity,
     getInventoryReclassMovesService: () => ({ status: async () => ({ status: 'applied', receipt }), submit: async () => receipt }),
-    getDatasetState: () => ({ liveVerifiedRevision: revision, liveVerifiedScope: 'scope', liveVerifiedPermission: 'permission' }),
+    getDatasetState: () => masterState,
     getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'permission' }),
     confirmedArgosReclassLiveEditRevisions: new Map(),
     persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null,
     invalidateArgosReclassLiveEditCaches() {}, retireConfirmedArgosReclassMoveProposals() {},
+    persistCurrentCache: async (immediate, reason) => { work.persisted.push({ immediate, reason }); return true; },
     setArgosReclassMoveInputsLocked() {}, isInventoryStatusOutcomeUncertain: () => false,
   });
   vm.runInContext(rowsSource + '\n' + moveSource, ctx);
   const state = { pendingReclassMove: { command: { commandId: 'receipt-batch' }, movedUids: ['source'], uncertain: true }, inquiryModel: {} };
-  return { ctx, work, fullInventory, state, receipt, index };
+  return { ctx, work, fullInventory, state, receipt, index, masterState };
 }
 
 test('two returned movement rows rebuild indexes and preview once before coherent publication', async () => {
@@ -64,12 +67,23 @@ test('two returned movement rows rebuild indexes and preview once before coheren
   assert.equal(f.work.rebuilds, 1);
   assert.equal(f.work.detailRefreshes, 1);
   assert.equal(f.work.previews, 1);
+  assert.deepEqual(f.work.persisted, [{ immediate: true, reason: 'inventory-reclass-move-confirmed' }]);
+  assert.equal(f.masterState.liveVerifiedRevision, '42');
   assert.deepEqual(f.work.publications, [
     { uid: 'source', source: '30', destination: '20' },
     { uid: 'destination', source: '30', destination: '20' },
   ]);
   assert.equal(f.index.get('source').DOM_ID, 'source-dom');
   assert.equal(f.state.pendingReclassMove, null);
+});
+
+test('committed receipt revision and rows are persisted before later revision polling', async () => {
+  const f = fixture({ revision: '41' });
+  await f.ctx.applyArgosInventoryReclassMoveCommand(f.state, {}, 'actor');
+  assert.equal(f.masterState.liveVerifiedRevision, f.receipt.revision);
+  assert.equal(f.index.get('source').PTRONHAND, '30');
+  assert.equal(f.index.get('destination').PTRONHAND, '20');
+  assert.deepEqual(f.work.persisted, [{ immediate: true, reason: 'inventory-reclass-move-confirmed' }]);
 });
 
 test('partial receipt formatting failure finalizes changed rows and retains pending recovery', async () => {

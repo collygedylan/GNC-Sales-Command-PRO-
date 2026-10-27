@@ -1861,3 +1861,14 @@ test('v2.3.90 Fill Tag, Dylan-only Bunch, and Reclass lot-cap migration is regis
  for(const token of ['suspend-fill-tag-v2390','location-sales-notes-v2390','dylan_collyge','reclass-move-up-open-stock-v2390','AgData v2.3.90']) assert.ok(migration.includes(token),token);
  assert.match(migrationContractQuery(name),/20261027211049[^]*suspend-fill-tag-v2390[^]*location-sales-notes-v2390[^]*reclass-move-up-open-stock-v2390[^]*2\.3\.90/);
 });
+
+test('v2.3.90 Reclass receipt durability migration is registered with physical-row and pending-ledger contracts', async () => {
+ const {agdataV2390ReclassReceiptLiveStockDurabilityMigrationName:name,registeredReleaseDatabaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.equal(registeredReleaseDatabaseMigrations.filter(value=>value===name).length,1);
+ const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
+ for(const token of ['004103.010.1','529','279','s_lts','season_oh','canonical_unique_id','AGDATA_V2390_JUNCUS_SOURCE_CHANGED']) assert.ok(migration.includes(token),token);
+ assert.match(migration,/count\(distinct m\.locationcode\|\|'\|'\|\|m\.lotcode\)[\s\S]*<> 6/);
+ assert.match(migration,/set local lock_timeout = '2s'/);
+ assert.match(migration,/set local statement_timeout = '15s'/);
+ assert.match(migrationContractQuery(name),/20261027223716[^]*004103\.010\.1[^]*529[^]*279[^]*1596/);
+});

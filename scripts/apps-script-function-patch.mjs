@@ -67,6 +67,7 @@ const liveImportFunctions = new Set([
   "getFastLiveFileMeta_",
   "getFastLiveIngestRows_",
   "processFastLiveFile_",
+  "cleanupTempGoogleSheet_", "extractDataFromFile",
   "getImportHistoryRoute_",
   "isLiveImportTemporaryFile_",
   "isCheckpointedLatestImportTable_",

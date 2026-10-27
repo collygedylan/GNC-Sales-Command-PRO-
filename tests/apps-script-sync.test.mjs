@@ -135,6 +135,49 @@ test('Processed archival requires acknowledged atomic completion and source meta
   }
 });
 
+test('RUN SCRIPT defaults to the ordered five-stage pass and temp cleanup falls back to DriveApp', () => {
+  const context = vm.createContext({
+    MANUAL_SYNC_STAGE_ORDER_DEFAULT: Object.freeze(['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']),
+    String,
+    Drive: { Files: { remove: id => { context.removed = id; } } },
+    DriveApp: { getFileById: id => ({ isTrashed: () => false, setTrashed: value => { context.trashed = [id, value]; } }) },
+    withDriveRetry_: (_label, action) => action(),
+  });
+  vm.runInContext(sourceFunction(appsScriptSource, 'getManualSyncStageOrder_') + '\n'
+    + sourceFunction(appsScriptSource, 'cleanupTempGoogleSheet_'), context);
+  assert.deepEqual(Array.from(context.getManualSyncStageOrder_('all')), ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']);
+  assert.deepEqual(Array.from(context.getManualSyncStageOrder_('drive_soc_reserves')), ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']);
+  assert.deepEqual(Array.from(context.getManualSyncStageOrder_('cav')), ['cav'], 'single-stage operator jobs remain available');
+  context.cleanupTempGoogleSheet_('temp-id', 'source.xlsx');
+  assert.equal(context.removed, 'temp-id');
+
+  context.Drive.Files.remove = () => { throw new Error('Drive remove unavailable'); };
+  context.cleanupTempGoogleSheet_('fallback-id', 'source.xlsx');
+  assert.deepEqual(Array.from(context.trashed), ['fallback-id', true]);
+  assert.match(sourceFunction(appsScriptSource, 'cleanupTempGoogleSheet_'), /IMPORT_TEMP_CLEANUP_FAILED/);
+  const extraction = sourceFunction(appsScriptSource, 'extractDataFromFile');
+  assert.match(extraction, /cleanupTempOnExit === true[\s\S]*clearImportExtractionCheckpoint_\(identity\)/);
+});
+
+test('Apps Script scoped merge accepts only the registered stage order and cleanup functions', () => {
+  const fingerprint = appsScriptSource.match(/^const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = [^\n]+;/m)?.[0];
+  assert.ok(fingerprint);
+  const stageDeclaration = appsScriptSource.match(/^const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object\.freeze\([^\n]+;/m)?.[0];
+  assert.ok(stageDeclaration);
+  const cleanupFunction = sourceFunction(appsScriptSource, 'cleanupTempGoogleSheet_');
+  const extractFunction = sourceFunction(appsScriptSource, 'extractDataFromFile');
+  const remoteOnly = "function remoteOnlyProductionRoute_() { return 'preserved'; }";
+  const remote = "const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = 'remote';\nconst MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['legacy']);\n"
+    + "function cleanupTempGoogleSheet_() { return 'old cleanup'; }\n"
+    + "function extractDataFromFile() { return 'old extraction'; }\n" + remoteOnly;
+  const merged = patchAppsScriptFunctions({ remoteSource: remote, localSource: `${fingerprint}\n${stageDeclaration}\n${cleanupFunction}\n${extractFunction}`,
+    functionNames: ['MANUAL_SYNC_STAGE_ORDER_DEFAULT', 'cleanupTempGoogleSheet_', 'extractDataFromFile'] });
+  assert.ok(merged.source.includes(stageDeclaration));
+  assert.match(merged.source, /Drive\.Files\.remove\(tempSheetId\)/);
+  assert.match(merged.source, /cleanupTempOnExit === true/);
+  assert.ok(merged.source.includes(remoteOnly));
+});
+
 test('manual sync has authenticated exact-run kick, serial worker, per-stage refresh and retrying poll', () => {
   assert.match(appsScriptSource, /\['manual_run', 'manual_continue', 'manual_clear_status'/);
   const continuation = appsScriptSource.slice(appsScriptSource.indexOf("if (payload.type === 'manual_continue')"),
@@ -174,12 +217,12 @@ test('ingestion deployment selects every changed function and preserves remote s
     'setupDropFolderAutoSyncTrigger', 'removeDropFolderAutoSyncTrigger', 'runAutoDropFolderSync_',
     'removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_',
     'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync',
-    'failDatasetImportFence_', 'runQueuedManualSyncStage_', 'URGENT_DRIVE_AROUND_TRIGGER_HANDLER_',
+    'failDatasetImportFence_', 'runQueuedManualSyncStage_', 'MANUAL_SYNC_STAGE_ORDER_DEFAULT', 'URGENT_DRIVE_AROUND_TRIGGER_HANDLER_',
     'URGENT_DRIVE_AROUND_REQUEST_KEY_', 'URGENT_DRIVE_AROUND_RETRY_MS_', 'URGENT_DRIVE_AROUND_STALE_MS_',
     'URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_', 'canonicalizeMasterBulkPayloadValue_',
     'normalizeEscapedImportText_', 'normalizeEscapedImportRow_', 'buildMasterBulkSnapshotPayload_',
     'buildStandardPayload', 'buildMasterPayload', 'buildCavPayload',
-    'getImportHistoryRoute_', 'isLiveImportTemporaryFile_', 'isCheckpointedLatestImportTable_', 'cleanupCompletedImportExtraction_', 'listRoutedDropFiles_',
+    'getImportHistoryRoute_', 'isLiveImportTemporaryFile_', 'isCheckpointedLatestImportTable_', 'cleanupTempGoogleSheet_', 'cleanupCompletedImportExtraction_', 'extractDataFromFile', 'listRoutedDropFiles_',
     'getFastLiveIngestDatasetKey_', 'getFastLiveIngestRpc_', 'getFastLiveFileMeta_',
     'getFastLiveIngestRows_', 'processFastLiveFile_', 'runRoutedDropImport_',
     'buildRequestDeliveryEmailPayload_', 'runSOCOnly', 'runDriveAroundOnly',

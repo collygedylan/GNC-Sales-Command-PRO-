@@ -142,6 +142,22 @@
         }
       ]
     },
+    "inventoryReclassReceiptPublication": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "applyArgosInventoryReclassMoveCommand"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "publishArgosInventoryTransactionReturnedRows"
+        },
+        {
+          "file": "supabase/functions/_shared/production-workflow.ts",
+          "symbol": "handleInventoryReclassMove"
+        }
+      ]
+    },
     "smartMovesHydration": {
       "primary": {
         "file": "assets/app-runtime.js",
@@ -510,6 +526,8 @@
         "buildSuspendTagRenderPlan",
         "buildReclassRecountLocationGroups",
         "buildOptimisticInventoryReclassMoveModel",
+        "applyArgosInventoryReclassMoveCommand",
+        "publishArgosInventoryTransactionReturnedRows",
         "reclassStockSeason",
         "fetchDirectPostgrestReadPage",
         "getQueueCardInventoryState",
@@ -573,6 +591,11 @@
     ],
     "supabase/migrations/20261027143000_agdata_v2385_reclass_open_stock_and_inline_oh.sql": [
       "propagate_inventory_season_stock_v1"
+        ],
+        "supabase/migrations/20261027223716_agdata_v2390_reclass_receipt_and_live_stock_durability.sql": [
+          "reconcile_inventory_live_overrides_v1",
+          "inventory_season_stock_overrides_v1",
+          "fast_commit_erp_stage_swap_v1"
         ]
       }
     },
@@ -635,6 +658,9 @@
     "agdata-sync-and-supabase-architect": {
       "assets/app-runtime.js": [
         "runGoogleAppsScriptTrigger",
+        "applyManualSyncStatus",
+        "refreshManualSyncStatus",
+        "isDatasetFrozenDuringManualSync",
         "refreshDashboardSyncMetadata",
         "processDylanFileProcessedToasts",
         "getProductionLiveSyncCoordinator",
@@ -657,7 +683,9 @@
         "runQueuedManualSyncStage_",
         "getFastLiveIngestDatasetKey_",
         "getFastLiveFileMeta_",
-        "cleanupCompletedImportExtraction_"
+        "cleanupCompletedImportExtraction_",
+        "cleanupTempGoogleSheet_",
+        "extractDataFromFile"
       ],
       "supportingFiles": {
         "scripts/fast-live-erp-sync.mjs": [

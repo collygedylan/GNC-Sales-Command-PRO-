@@ -14,10 +14,10 @@ function extractBetween(startMarker, endMarker) {
   return html.slice(start, end);
 }
 
-test('manual sync client fallback uses all ten current stages and advances past a failed stage', () => {
+test('manual sync client fallback uses the ordered five-stage pass and advances past a failed stage', () => {
   const stageMatch = html.match(/const MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT = Object\.freeze\((\[[^;]+\])\);/);
   assert.ok(stageMatch, 'client fallback stage order is present');
-  const expectedOrder = ['drive', 'pikes_orders', 'stine_lumber_orders', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'transactions_keyed', 'hl_po_parsed'];
+  const expectedOrder = ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'];
   const stageOrder = vm.runInNewContext(stageMatch[1]);
   assert.deepEqual(Array.from(stageOrder), expectedOrder);
 
@@ -38,9 +38,9 @@ test('manual sync client fallback uses all ten current stages and advances past 
     stageIndex: 3,
     stageResults: [{ key: 'drive', outcome: 'failed', errorCode: 'DRIVE_READ_FAILED' }],
   });
-  assert.deepEqual(Array.from(active.stageOrder), expectedOrder, 'an active legacy status without stageOrder uses the ten-stage fallback');
+  assert.deepEqual(Array.from(active.stageOrder), expectedOrder, 'an active legacy status without stageOrder uses the five-stage fallback');
   assert.equal(active.stageResults[0].outcome, 'failed', 'failure detail remains available to the status UI');
-  assert.equal(getManualSyncProgressInfo(active).text, '4/10', 'the worker’s next stage index is reflected rather than remaining at 0/10');
+  assert.equal(getManualSyncProgressInfo(active).text, '4/5', 'the worker’s next stage index is reflected rather than remaining at 0/5');
 });
 
 test('explicit logout does not reveal the blank login UI mid-signout; deliberate empty login still validates', () => {

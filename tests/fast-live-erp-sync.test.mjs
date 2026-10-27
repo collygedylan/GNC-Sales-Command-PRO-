@@ -7,6 +7,7 @@ import {
   buildFastAtomicSwapSql,
   buildFastBatchSql,
   buildFastStageRpcSql,
+  inferLiveDataset,
   parseFastLiveArguments,
   shouldIncludeSocLiveRow
 } from '../scripts/fast-live-erp-sync.mjs';
@@ -30,6 +31,14 @@ test('SOC selection retains every Dock row and dockless Suspend-to-DC row', () =
 test('Warehouse Assigned Items cannot be selected as a recurring ERP ingestion dataset', () => {
   assert.throws(() => parseFastLiveArguments(['--input', 'warehouse.xlsx', '--dataset', 'warehouse_assigned']),
     /FAST_LIVE_ERP_DATASET_INVALID/);
+});
+
+test('fast live multi-source execution orders Drive, CAV, Reserves, then SOC and excludes temp sources', () => {
+  const source = readFileSync(new URL('../scripts/fast-live-erp-sync.mjs', import.meta.url), 'utf8');
+  assert.match(source, /const datasetOrder = \['drive_around', 'cav', 'reserves', 'soc'\];[\s\S]*\.sort\(\(left, right\) => datasetOrder\.indexOf\(left\[0\]\) - datasetOrder\.indexOf\(right\[0\]\)\)/);
+  assert.equal(inferLiveDataset('TEMP_IMPORT_drive.xlsx'), null);
+  assert.equal(inferLiveDataset('~$DriveAround.xlsx'), null);
+  assert.equal(inferLiveDataset('DriveAround.xlsx'), 'drive_around');
 });
 
 test('fast live CLI executes only the service-role durable staged importer', () => {

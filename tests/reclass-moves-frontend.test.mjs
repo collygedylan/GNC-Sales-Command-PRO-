@@ -26,7 +26,7 @@ function extractAppFunction(name) {
 function extractApplyReclassMoveFunction() {
   // These tests isolate the command/status state machine. Publication of the
   // optimistic row projection is exercised separately by the hydration tests.
-  return `function publishOptimisticReclassRows() { return true; }\nfunction applyReclassSeasonStocks() { return true; }\n${extractAppFunction('applyArgosInventoryReclassMoveCommand')}`;
+  return `function publishOptimisticReclassRows() { return []; }\nfunction applyReclassSeasonStocks() { return true; }\n${extractAppFunction('applyArgosInventoryReclassMoveCommand')}`;
 }
 
 const source = { uniqueId: 'source-uid', identity: {

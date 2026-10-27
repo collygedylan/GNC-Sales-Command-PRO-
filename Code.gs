@@ -1696,7 +1696,10 @@ function processFastLiveFile_(dataset, route, pendingFiles, payloadBuilderFunc, 
     };
   }
   const syncStartTime = new Date().toISOString();
-  const rawData = extractDataFromFile(sourceFile, route.dropFolderId, { importTableName: route.tableName });
+  const rawData = extractDataFromFile(sourceFile, route.dropFolderId, {
+    importTableName: route.tableName,
+    cleanupTempOnExit: true
+  });
   if (!rawData || rawData.length < 1) throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY',
     'No readable rows were found in ' + fileMeta.file_name + '.');
   const prepared = getFastLiveIngestRows_(dataset, rawData, route.tableName, payloadBuilderFunc,
@@ -1770,6 +1773,7 @@ function processFastLiveFile_(dataset, route, pendingFiles, payloadBuilderFunc, 
   });
   return {
     tableName: route.tableName, filesProcessed: 1, failedFiles: 0, code: 'FAST_INGESTED',
+    tempFilesRemoved: Math.max(0, Number(rawData.__tempFilesRemoved) || 0),
     skippedFilesArchived: olderFiles.length,
     upsertCount: Number(response.inserted_rows || 0) + Number(response.updated_rows || 0),
     deleteCount: Number(response.deleted_rows || 0), totalRows: prepared.totalRows,
@@ -1807,7 +1811,7 @@ function runRoutedDropImport_(dataset) {
           result.archivedOlderFiles += 1;
         });
       }
-      if (listRoutedDropFiles_(route, dataset).length) result.continuationPending = true;
+      if (listRoutedDropFiles_(route, dataset).length) result.pendingFilesAtEnd = true;
     }
     return result;
   });
@@ -2345,7 +2349,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'cav', 'pikes_orders', 'stine_lumber_orders', 'customer_rep_map', 'warehouse_assigned_items', 'transactions_keyed', 'hl_po_parsed']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 330000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 300000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -3234,6 +3238,7 @@ function runQueuedManualSyncStage_(options) {
     const stageOrder = Array.isArray(status.stageOrder) && status.stageOrder.length
       ? status.stageOrder
       : MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
+    const singlePassRun = stageOrder.join('|') === MANUAL_SYNC_STAGE_ORDER_DEFAULT.join('|');
     const recoveryCheckpoint = readImportExtractionCheckpoint_();
     const checkpointMatchesStage = recoveryCheckpoint
       && String(recoveryCheckpoint.stage || '') === String(status.currentStage || '') && (
@@ -3329,15 +3334,6 @@ function runQueuedManualSyncStage_(options) {
         throw new Error(`Unknown manual sync stage: ${stageKey}`);
       }
 
-      const urgentDriveRequested = !!PropertiesService.getScriptProperties().getProperty(URGENT_DRIVE_AROUND_REQUEST_KEY_);
-      if (stageKey !== 'drive' && urgentDriveRequested && hasPendingDriveAroundSource_()) {
-        status.updatedAt = new Date().toISOString();
-        status.message = 'Drive Around source detected; yielding for an isolated import with a fresh execution budget.';
-        saveManualSyncStatus_(status);
-        scheduleUrgentDriveAroundTrigger_(URGENT_DRIVE_AROUND_RETRY_MS_, runOptions.triggerUid);
-        break;
-      }
-
       status.currentStage = stageKey;
       status.currentStageLabel = stageDef.label;
       if (String(status.stageStartedStage || '') !== stageKey) status.stageRecoveryCount = 0;
@@ -3358,18 +3354,22 @@ function runQueuedManualSyncStage_(options) {
         stageResult = withDatasetImportProcessorLock_(function() { return stageDef.run(); }, lock) || {};
       } catch (stageError) {
         if (isImportPreparationDeferredError_(stageError)) {
-          status.preparationRetryCount = Math.max(0, Number(status.preparationRetryCount) || 0) + 1;
-          if (status.preparationRetryCount <= 3) {
-            status.currentPhase = String(stageError.phase || 'preparation').replace(/[^a-z0-9_]+/gi, '').slice(0, 40);
-            status.updatedAt = new Date().toISOString();
-            status.message = `${stageDef.label} preparation deferred; retry ${status.preparationRetryCount}/3 is queued.`;
-            saveManualSyncStatus_(status);
-            scheduleManualSyncStageTrigger_();
-            break;
+          status.currentPhase = String(stageError.phase || 'preparation').replace(/[^a-z0-9_]+/gi, '').slice(0, 40);
+          if (singlePassRun) {
+            stageError.errorCode = stageError.errorCode || stageError.code || 'IMPORT_PREPARATION_DEFERRED';
+          } else {
+            status.preparationRetryCount = Math.max(0, Number(status.preparationRetryCount) || 0) + 1;
+            if (status.preparationRetryCount <= 3) {
+              status.updatedAt = new Date().toISOString();
+              status.message = `${stageDef.label} preparation deferred; retry ${status.preparationRetryCount}/3 is queued.`;
+              saveManualSyncStatus_(status);
+              scheduleManualSyncStageTrigger_();
+              break;
+            }
+            stageError = Object.assign(new Error('IMPORT_PREPARATION_RETRIES_EXHAUSTED'), {
+              errorCode: 'IMPORT_PREPARATION_RETRIES_EXHAUSTED'
+            });
           }
-          const exhausted = new Error('IMPORT_PREPARATION_RETRIES_EXHAUSTED');
-          exhausted.errorCode = 'IMPORT_PREPARATION_RETRIES_EXHAUSTED';
-          stageError = exhausted;
         }
         const stageErrorCode = getSafeImportFailureCode_(stageError);
         if (stageErrorCode === 'DATASET_IMPORT_LOCK_FAILED') throw stageError;
@@ -3386,11 +3386,30 @@ function runQueuedManualSyncStage_(options) {
       if (stageResult.continuationPending === true) {
         const progressRows = Math.max(0, Number(stageResult.stagedRows) || 0);
         const totalRows = Math.max(0, Number(stageResult.totalRows) || 0);
-        status.updatedAt = new Date().toISOString();
-        status.message = `Staged ${progressRows} of ${totalRows} ${stageDef.label} rows. Queueing bounded continuation...`;
-        saveManualSyncStatus_(status);
-        scheduleManualSyncStageTrigger_();
-        break;
+        const sameContinuingStage = String(status.continuationStage || '') === stageKey;
+        const priorRows = Math.max(0, Number(status.continuationStagedRows) || 0);
+        const madeProgress = progressRows > priorRows || Number(stageResult.filesProcessed || 0) > 0;
+        const noProgressCount = singlePassRun && sameContinuingStage && !madeProgress
+          ? Math.max(0, Number(status.continuationNoProgressCount) || 0) + 1 : 0;
+        if (singlePassRun && noProgressCount > 1) {
+          stageResult = {
+            filesProcessed: 0,
+            failedFiles: 1,
+            stagedRows: progressRows,
+            totalRows: totalRows,
+            errorCode: 'MANUAL_SYNC_STAGE_CONTINUATION_REQUIRED',
+            error: 'The stage retained its resumable cursor and needs another explicit RUN SCRIPT press.'
+          };
+        } else {
+          status.continuationStage = stageKey;
+          status.continuationStagedRows = Math.max(priorRows, progressRows);
+          status.continuationNoProgressCount = noProgressCount;
+          status.updatedAt = new Date().toISOString();
+          status.message = `Staged ${progressRows} of ${totalRows} ${stageDef.label} rows. Queueing bounded continuation...`;
+          saveManualSyncStatus_(status);
+          scheduleManualSyncStageTrigger_();
+          break;
+        }
       }
       const filesProcessed = Number(stageResult.filesProcessed || 0);
       const tempFilesRemoved = Number(stageResult.tempFilesRemoved || 0);
@@ -9101,11 +9120,24 @@ function cleanupTempGoogleSheet_(sheetId, fileName) {
 
   try {
     withDriveRetry_(`Trash temp converted sheet: ${fileName}`, function() {
-      return Drive.Files.update({ trashed: true }, tempSheetId, null, { fields: 'id,trashed' });
+      return Drive.Files.remove(tempSheetId);
     });
-  } catch (err) {
-    const errorMessage = err && err.message ? err.message : String(err);
-    console.warn(`[WARN] Could not trash temp converted sheet ${tempSheetId} for ${fileName}: ${errorMessage}`);
+    return true;
+  } catch (removeError) {
+    try {
+      const file = DriveApp.getFileById(tempSheetId);
+      if (file.isTrashed && file.isTrashed()) return true;
+      file.setTrashed(true);
+      return true;
+    } catch (fallbackError) {
+      const errorText = String(fallbackError && fallbackError.message || fallbackError || '');
+      if (/file not found|not found|404|does not exist/i.test(errorText)) return true;
+      console.error(`[IMPORT] Temp cleanup failed for ${fileName}: IMPORT_TEMP_CLEANUP_FAILED`);
+      const error = new Error('IMPORT_TEMP_CLEANUP_FAILED');
+      error.errorCode = 'IMPORT_TEMP_CLEANUP_FAILED';
+      error.cause = removeError;
+      throw error;
+    }
   }
 }
 
@@ -9236,6 +9268,22 @@ function extractDataFromFile(file, folderId, options) {
     throw new Error(errorMessage);
   } finally {
     if (!identity) cleanupTempGoogleSheet_(tempSheetId, originalFileName);
+    else if (options && options.cleanupTempOnExit === true) {
+      const activeCheckpoint = readImportExtractionCheckpoint_();
+      const checkpointMatches = activeCheckpoint && importSourceIdentityMatches_(identity, activeCheckpoint);
+      let cleanupId = tempSheetId || (checkpointMatches ? String(activeCheckpoint.tempSheetId || '') : '');
+      if (!cleanupId && checkpointMatches && activeCheckpoint.tempSheetName) {
+        const pendingTemp = findImportTempSheet_(folderId, activeCheckpoint.tempSheetName);
+        cleanupId = pendingTemp ? String(pendingTemp.getId() || '') : '';
+      }
+      if (cleanupId) {
+        cleanupTempGoogleSheet_(cleanupId, originalFileName);
+        if (Array.isArray(allValues)) Object.defineProperty(allValues, '__tempFilesRemoved', {
+          configurable: true, enumerable: false, value: 1
+        });
+      }
+      clearImportExtractionCheckpoint_(identity);
+    }
   }
 }
 

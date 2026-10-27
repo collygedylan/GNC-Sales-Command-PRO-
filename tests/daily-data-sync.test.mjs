@@ -249,6 +249,32 @@ test('a preparation deferral schedules the same stage without advancing the curs
   assert.deepEqual(status.completedStages, ['soc', 'reserves']);
 });
 
+test('the five-stage RUN SCRIPT pass attempts a preparation failure once and never loops the stage', () => {
+  const harness = createHarness();
+  const order = ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'];
+  harness.setRunningStatus(order);
+  const calls = [];
+  vm.runInContext("MANUAL_SYNC_STAGE_DEFINITIONS.cav.run = () => { __calls.push('cav'); return { filesProcessed: 0, failedFiles: 0 }; }; MANUAL_SYNC_STAGE_DEFINITIONS.hl_po_parsed.run = () => { __calls.push('hl_po_parsed'); return { filesProcessed: 0, failedFiles: 0 }; };", Object.assign(harness.context, { __calls: calls }));
+  harness.setStageRunner(stage => {
+    calls.push(stage);
+    if (stage === 'drive') {
+      const deferred = new Error('IMPORT_PREPARATION_DEFERRED');
+      deferred.errorCode = 'IMPORT_PREPARATION_DEFERRED';
+      deferred.phase = 'reading';
+      throw deferred;
+    }
+    return { filesProcessed: 0, failedFiles: 0 };
+  });
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  const status = harness.status();
+  assert.deepEqual(calls, order, 'every ordered stage is called once, including after an earlier stage failure');
+  assert.equal(status.active, false);
+  assert.equal(status.currentStage, 'failed');
+  assert.equal(status.stageResults[0].errorCode, 'MANUAL_SYNC_STAGE_FAILED', 'the bounded worker status keeps only its safe generic error code');
+  assert.equal(harness.triggers.filter(trigger => trigger.handler === 'runQueuedManualSyncStage_').length, 0,
+    'a deferred stage does not schedule an automatic same-stage retry');
+});
+
 test('queue responses expose the persisted run id after queue-status construction', () => {
   const harness = createHarness();
   const response = vm.runInContext("queueManualSyncRequest_({ job: 'soc', source: 'test', requestedBy: 'tester' })", harness.context);
@@ -336,6 +362,32 @@ test('a bounded Customer Rep Map continuation retains the same manual-sync stage
   assert.equal(complete.currentStage, 'complete');
   assert.deepEqual(complete.completedStages, ['customer_rep_map', 'soc']);
   assert.deepEqual(complete.stageResults.map(result => result.key), ['customer_rep_map', 'soc']);
+});
+
+test('single-pass continuation allows forward staged progress and stops after one no-progress retry', () => {
+  const harness = createHarness();
+  const order = ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'];
+  harness.setRunningStatus(order);
+  vm.runInContext("MANUAL_SYNC_STAGE_DEFINITIONS.cav.run = () => __runStage('cav'); MANUAL_SYNC_STAGE_DEFINITIONS.hl_po_parsed.run = () => __runStage('hl_po_parsed');", harness.context);
+  const calls = [];
+  harness.setStageRunner(stage => {
+    calls.push(stage);
+    if (stage === 'drive') return { continuationPending: true, stagedRows: calls.filter(value => value === 'drive').length < 2 ? 30 : 60, totalRows: 90 };
+    return { filesProcessed: 0, failedFiles: 0 };
+  });
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  assert.equal(harness.status().active, true, 'forward staged work is eligible for bounded continuation');
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  assert.equal(harness.status().active, true, 'increased staged rows remain eligible for continuation');
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  assert.equal(harness.status().active, true, 'one no-progress continuation is tolerated');
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  const status = harness.status();
+  assert.equal(status.active, false);
+  assert.equal(status.currentStage, 'failed');
+  assert.equal(status.stageResults[0].errorCode, 'MANUAL_SYNC_STAGE_CONTINUATION_REQUIRED');
+  assert.equal(calls.filter(stage => stage === 'drive').length, 4);
+  assert.equal(harness.triggers.filter(trigger => trigger.handler === 'runQueuedManualSyncStage_').length, 0);
 });
 
 test('a Drive stage with successful files and a classified rejected file is partial', () => {

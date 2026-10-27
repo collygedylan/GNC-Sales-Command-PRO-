@@ -296,7 +296,8 @@ export async function runFastLiveErpSync(options) {
     await bundle.cleanup();
     return { ok: true, execute: false, sources: preview };
   }
-  const entries = [...selected];
+  const datasetOrder = ['drive_around', 'cav', 'reserves', 'soc'];
+  const entries = [...selected].sort((left, right) => datasetOrder.indexOf(left[0]) - datasetOrder.indexOf(right[0]));
   try {
     const output = [];
     for (const [dataset, source] of entries) {

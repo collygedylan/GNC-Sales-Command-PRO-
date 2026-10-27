@@ -1300,9 +1300,9 @@ test('published baseline reads discard a changed publication token and retain au
     assert.equal(f.coordinator.getStatus().authorizationDenied, true); f.coordinator.reset();
 });
 
- test('core imports lead the ten-stage run and status polling bypasses Apps Script', () => {
+ test('core imports lead the five-stage run and status polling bypasses Apps Script', () => {
  const script=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
- assert.match(script,/MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze\(\['drive', 'soc', 'reserves', 'cav'/);
+ assert.match(script,/MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze\(\['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'\]/);
  });
 
 test('sync status reads app-api at ten seconds without Apps Script status requests', async () => {

@@ -37,10 +37,11 @@ test('v2.3.90 assets and worker upgrade purge previous cache generations', () =>
   const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
-    assert.equal(new URL(match[1], 'https://agmetricapp.com').searchParams.get('v'), '2.3.90', match[1]);
+    const asset = new URL(match[1], 'https://agmetricapp.com');
+    assert.equal(asset.searchParams.get('v'), asset.pathname === '/assets/mobile-workspace.js' ? '2.3.90.1' : '2.3.90', match[1]);
   }
   assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.90'/);
-  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'canonical-version-enforcement-r2'/);
+  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'single-pass-reclass-r1'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*window\.reloadForServiceWorkerUpdate\(\)[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
   const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.90' });
@@ -687,7 +688,7 @@ test('runtime readiness cancels recovery while a load failure purges stale shell
   await failed.window.recoverAppLoadFailure('login-runtime-failure');
   assert.equal(unregistered, 1);
   assert.deepEqual(deleted.sort(), ['agdata-v2.3.50', 'agdata-v2.3.53', 'agdata-v2.3.56', 'agdata-v2.3.57', 'agdata-v2.3.58', 'agdata-v2.3.59', 'agdata-v2.3.61']);
-  assert.match(replacement, /shellv=AgData(?:\+|%20)v2\.3\.88/);
+  assert.match(replacement, /shellv=AgData(?:\+|%20)v2\.3\.90/);
   assert.match(replacement, /shellts=\d+/);
 });
 

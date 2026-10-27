@@ -2228,3 +2228,104 @@ test('Invariant 82 (Bunch Worker Patch Reaches Apps Script HEAD Through the Scop
   assert.match(merger, /name !== bunchNoteEmailHandler/);
   assert.match(read('.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md'), /scoped merger allowlist and additive-function set/);
 });
+
+test('Invariant 83 (One Click Starts One Sync and Status Polling Never Dispatches Work)', async () => {
+  let releaseHeaders;
+  const pendingHeaders = new Promise(resolve => { releaseHeaders = resolve; });
+  const writes = [];
+  const context = runFunctions('assets/app-runtime.js', ['runGoogleAppsScriptTrigger', 'refreshManualSyncStatus'], {
+    isRunScriptActive: false, window: {}, currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan',
+    document: { hidden: false }, navigator: { onLine: true }, console,
+    manualSyncStatusState: null, manualSyncStatusPollInFlight: false, lastManualSyncStatusCheckedAt: 0,
+    MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'],
+    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 330000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
+    releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true,
+    hasActiveManualSync: () => false, syncGoogleScriptButton() {}, showToast() {},
+    getSupabaseReadIdentityScope: () => 'same-account', getNativeAuthRequestHeaders: () => pendingHeaders,
+    applyManualSyncStatus: status => status, firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== ''),
+    handleDeferredManualSyncStart: () => false,
+    postGoogleScriptJsonPayload: async payload => { writes.push(payload); return { active: false, status: 'complete' }; },
+    fetchManualSyncStatusFromScript: async () => ({ active: false, currentStage: 'idle' })
+  });
+  const firstClick = context.runGoogleAppsScriptTrigger();
+  assert.equal(context.isRunScriptActive, true);
+  await context.runGoogleAppsScriptTrigger();
+  releaseHeaders({ Authorization: 'Bearer fixture-token' });
+  await firstClick;
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].type, 'manual_run');
+  assert.equal(writes[0].maxAttemptsPerStage, 1);
+  assert.equal(writes[0].force, true);
+  assert.equal(context.isRunScriptActive, false);
+  await context.refreshManualSyncStatus(true);
+  await context.refreshManualSyncStatus(true);
+  assert.equal(writes.length, 1);
+  for (const name of ['applyManualSyncStatus', 'releaseStaleManualSyncClientStateIfNeeded']) {
+    assert.doesNotMatch(functionSource('assets/app-runtime.js', name), /postGoogleScriptJsonPayload|requestManualSyncServerStaleSweep|manual_continue/);
+  }
+  const hydration = runFunctions('assets/app-runtime.js', ['isDatasetFrozenDuringManualSync'], {
+    hasActiveManualSync: () => true, MANUAL_SYNC_FROZEN_DATASET_KEYS: new Set(['master', 'cav']),
+    manualSyncStatusState: { stageOrder: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'], stageIndex: 1 },
+    datasetLoadState: { master: { fullLoaded: true }, cav: { fullLoaded: true } }
+  });
+  assert.equal(hydration.isDatasetFrozenDuringManualSync('master', 'full'), false, 'published Drive data can hot-reload while later stages run');
+  assert.equal(hydration.isDatasetFrozenDuringManualSync('cav', 'full'), true, 'current CAV import retains its completed snapshot');
+});
+
+test('Invariant 84 (Committed Reclass Receipt Advances and Persists the Matching Snapshot)', async () => {
+  const source = functionSource('assets/app-runtime.js', 'applyArgosInventoryReclassMoveCommand');
+  assert.match(source, /masterState\.liveVerifiedRevision\s*=\s*receiptRevision\.toString\(\)/);
+  assert.match(source, /masterState\.liveVerifiedScope\s*=\s*liveContext\.scope/);
+  assert.match(source, /await persistCurrentCache\(true, 'inventory-reclass-move-confirmed'\)/);
+  assert.match(source, /publishArgosInventoryTransactionReturnedRows\(Array\.from\(published\.values\(\)\)\)/);
+
+  const runMove = async (revision) => {
+    const rows = [{ UNIQUE_ID: 'source', PTRONHAND: '50' }];
+    const masterState = { liveVerifiedRevision: revision, liveVerifiedScope: 'scope', liveVerifiedPermission: 'permission' };
+    const receipt = { revision: '42', seasonStocks: [], rows: [
+      { row: { unique_id: 'source', ptronhand: '30' } },
+      { row: { unique_id: 'destination', ptronhand: '20' } },
+    ] };
+    const command = { commandId: 'receipt-command', moves: [] };
+    const stored = { command, inquiryPayload: null };
+    const persisted = [];
+    const context = runFunctions('assets/app-runtime.js', ['applyArgosInventoryReclassMoveCommand'], {
+      getArgosReclassLiveEditIdentityKey: () => 'actor',
+      getDatasetState: () => masterState,
+      getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'permission' }),
+      confirmedArgosReclassLiveEditRevisions: new Map(),
+      persistPendingArgosInventoryReclassMove() { return true; },
+      readPendingArgosInventoryReclassMove: () => stored,
+      getInventoryReclassMovesService: () => ({ status: async () => ({ status: 'applied', receipt }) }),
+      publishOptimisticReclassRows() { return []; }, applyReclassSeasonStocks() {},
+      applyArgosInventoryTransactionReturnedRow(row) {
+        const updated = { ...row, UNIQUE_ID: row.unique_id, PTRONHAND: row.ptronhand };
+        const index = rows.findIndex(existing => existing.UNIQUE_ID === updated.UNIQUE_ID);
+        if (index < 0) rows.push(updated); else rows[index] = updated;
+        return updated;
+      },
+      publishArgosInventoryTransactionReturnedRows() {},
+      invalidateArgosReclassLiveEditCaches() {}, retireConfirmedArgosReclassMoveProposals() {},
+      setArgosReclassMoveInputsLocked() {}, isInventoryStatusOutcomeUncertain: () => false,
+      persistCurrentCache: async (immediate, reason) => {
+        persisted.push({ immediate, reason, rows: rows.map(row => ({ ...row })) });
+        return true;
+      },
+    });
+    const state = { pendingReclassMove: { command, inquiryPayload: null, movedUids: ['source'], uncertain: true }, inquiryModel: {} };
+    await context.applyArgosInventoryReclassMoveCommand(state, null, 'actor');
+    return { rows, masterState, persisted };
+  };
+
+  const current = await runMove('41');
+  assert.equal(current.masterState.liveVerifiedRevision, '42');
+  assert.deepEqual(plain(current.rows.map(row => [row.UNIQUE_ID, row.PTRONHAND])), [['source', '30'], ['destination', '20']]);
+  assert.equal(current.persisted.length, 1);
+  assert.equal(current.persisted[0].immediate, true);
+  assert.deepEqual(plain(current.persisted[0].rows.map(row => [row.UNIQUE_ID, row.PTRONHAND])), [['source', '30'], ['destination', '20']]);
+
+  const stale = await runMove('43');
+  assert.equal(stale.masterState.liveVerifiedRevision, '43');
+  assert.deepEqual(plain(stale.rows.map(row => [row.UNIQUE_ID, row.PTRONHAND])), [['source', '50']]);
+  assert.equal(stale.persisted.length, 0, 'an older receipt cannot persist over the newer snapshot');
+});
