@@ -112,3 +112,4 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 - Never key Suspend cards by plant/location identity or enforce a global snapshot revision for Reclass; preserve each SOC order-line UID and validate the locked physical source inside the transaction.
 - Never build a completed Reclass email/PDF from post-move applied rows; render the SQL-frozen `report_rows` snapshot directly, keep its pre-edit OH/PTRREVIEWED, and show the move quantity only as the originating-row callout.
 - Never assert Reclass office-keyer reports through the retired action-specific column layout; exercise the canonical nine-column renderer and verify frozen ERP rows/OH, yellow originating-row move callouts, and no app-created destination row.
+- Never keep Que's loading skeleton visible while already-authorized Request or Suspend rows are rendered, and never classify a valid Reclass conflict as a generic 400 detail failure.

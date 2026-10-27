@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.83';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.84';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1606,6 +1606,10 @@
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             const client = getSupabaseBrowserClient();
             if (!client || !client.auth || !client.auth.signInWithPasskey) return false;
+            // The user gesture owns authentication from this point forward.
+            // Fence older startup restoration before the discoverable passkey
+            // prompt opens so its later empty result cannot repaint login.
+            invalidateNativeAuthRecovery();
             startLoginNetworkTrace('passkey');
             const previousProfile = nativeAuthProfile;
             const previousUsername = String(currentUser || '').trim().toLowerCase();
@@ -1620,7 +1624,6 @@
                 sameAccount = !!sessionUserId && previousSessionActive && previousSessionId === sessionUserId
                     && String(previousProfile?.id || '').trim() === sessionUserId
                     && !!previousUsername && String(previousProfile?.username || '').trim().toLowerCase() === previousUsername;
-                invalidateNativeAuthRecovery();
                 nativeAuthReadRequired = true;
                 nativeAuthSessionActive = true;
                 nativeAuthSessionUserId = sessionUserId;
@@ -26588,7 +26591,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.83').trim() || 'AgData v2.3.83';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.84').trim() || 'AgData v2.3.84';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27958,9 +27961,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     });
                     summary.dataset.viewportChoiceBound = 'true';
                 }
-                if (syncPanel.dataset.viewportUserControlled !== 'true') {
+                const viewportDefaultBand = window.innerWidth >= 768 ? 'desktop' : 'mobile';
+                if (syncPanel.dataset.viewportUserControlled !== 'true'
+                    && syncPanel.dataset.viewportDefaultBand !== viewportDefaultBand) {
                     syncPanel.open = window.innerWidth >= 768;
                 }
+                syncPanel.dataset.viewportDefaultBand = viewportDefaultBand;
                 syncPanel.dataset.viewportDefaultApplied = 'true';
             }
             if (syncPanel) syncPanel.classList.toggle('hidden', !canViewDashboardSyncStatus());
@@ -28243,6 +28249,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function initializeAppSessionOnLoad() {
             if (appSessionStartupStarted) return;
             appSessionStartupStarted = true;
+            const startupRecoveryEpoch = nativeAuthRecoveryEpoch;
+            const stillOwnsStartup = () => startupRecoveryEpoch === nativeAuthRecoveryEpoch;
             try {
                 // SDK session restoration is not an authentication failure.
                 // Keep credentials out of the update/reload transition until
@@ -28255,13 +28263,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 const shellUpdated = await ensureCurrentShellBuild();
                 if (shellUpdated) return;
+                if (!stillOwnsStartup()) return;
                 if (!restoringNativeSession) resetLoginUiState();
                 const nativeSessionRestored = await restoreNativeAuthSessionOnStartup();
                 if (nativeSessionRestored) return;
+                if (!stillOwnsStartup() || (nativeAuthSessionActive && nativeAuthSessionUserId)) return;
                 resetLoginUiState();
                 primeSavedLoginUiOnStartup();
             } catch (err) {
                 console.error('Startup failed', err);
+                if (!stillOwnsStartup() || (nativeAuthSessionActive && nativeAuthSessionUserId)) return;
                 if (recoverShellAfterLoginRuntimeFailure(err, 'startup-runtime-failure')) return;
                 resetLoginUiState();
                 showToast("Error","Startup failed. Please log in again.",true);

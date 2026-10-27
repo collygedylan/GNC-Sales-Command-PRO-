@@ -179,7 +179,7 @@ test('ingestion deployment selects every changed function and preserves remote s
     'URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_', 'canonicalizeMasterBulkPayloadValue_',
     'normalizeEscapedImportText_', 'normalizeEscapedImportRow_', 'buildMasterBulkSnapshotPayload_',
     'buildStandardPayload', 'buildMasterPayload', 'buildCavPayload',
-    'getImportHistoryRoute_', 'isLiveImportTemporaryFile_', 'isCheckpointedLatestImportTable_', 'listRoutedDropFiles_',
+    'getImportHistoryRoute_', 'isLiveImportTemporaryFile_', 'isCheckpointedLatestImportTable_', 'cleanupCompletedImportExtraction_', 'listRoutedDropFiles_',
     'getFastLiveIngestDatasetKey_', 'getFastLiveIngestRpc_', 'getFastLiveFileMeta_',
     'getFastLiveIngestRows_', 'processFastLiveFile_', 'runRoutedDropImport_',
     'buildRequestDeliveryEmailPayload_', 'runSOCOnly', 'runDriveAroundOnly',

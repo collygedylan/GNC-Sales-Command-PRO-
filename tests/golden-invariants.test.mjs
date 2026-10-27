@@ -2012,3 +2012,18 @@ test('Invariant 66 (JD Uses a Complete App-Wide Request Directory With a Valid N
     'submission validates the exact executive tuple against the same app-wide sources');
   assert.match(migration, /AGDATA_NA_CUSTOMER[^]*AGDATA_NA_CONSIGNEE/);
 });
+
+test('Invariant 67 (Interactive Login and Atomic Drive Publication Retain Their Exact Owners)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const code = read('Code.gs');
+  const migration = read('supabase/migrations/20261027133509_agdata_v2384_runtime_recovery.sql');
+  const passkey = runtime.slice(runtime.indexOf('async function signInWithAppPasskey('), runtime.indexOf('async function registerAppPasskey('));
+  const startup = runtime.slice(runtime.indexOf('async function initializeAppSessionOnLoad('), runtime.indexOf('let appChromeStartupStarted'));
+  assert.ok(passkey.indexOf('invalidateNativeAuthRecovery()') < passkey.indexOf('auth.signInWithPasskey()'));
+  assert.match(startup, /startupRecoveryEpoch === nativeAuthRecoveryEpoch/);
+  assert.match(startup, /!stillOwnsStartup\(\) \|\| \(nativeAuthSessionActive && nativeAuthSessionUserId\)/);
+  assert.match(runtime, /viewportDefaultBand !== viewportDefaultBand/);
+  assert.match(code, /cleanupCompletedImportExtraction_\(sourceIdentity, fileMeta\.file_name\)[^]*moveDriveFileToFolderWithRetry_\(sourceFile/);
+  assert.match(migration, /mapped\.source_unique_id[^]*not exists\([^]*live\.unique_id=mapped\.canonical_unique_id[^]*exists\([^]*live\.unique_id=mapped\.source_unique_id/);
+  assert.match(migration, /resolved_in_version='2\.3\.84'/);
+});

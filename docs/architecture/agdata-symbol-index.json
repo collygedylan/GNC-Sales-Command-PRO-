@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.83",
+  "release": "AgData v2.3.84",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -557,7 +557,13 @@
         "record"
       ],
       "supabase/functions/app-api/index.ts": [],
-      "Code.gs": []
+      "Code.gs": [],
+      "supportingFiles": {
+        "supabase/migrations/20261027133509_agdata_v2384_runtime_recovery.sql": [
+          "app_runtime_watchdog_events",
+          "bulk_import_master_snapshot_v2374_base"
+        ]
+      }
     },
     "agdata-skill-learner": {
       "assets/app-runtime.js": [],
@@ -574,7 +580,8 @@
       "assets/app-runtime.js": [
         "runGoogleAppsScriptTrigger",
         "refreshDashboardSyncMetadata",
-        "fetchDirectPostgrestReadPage"
+        "fetchDirectPostgrestReadPage",
+        "syncGoogleScriptButton"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -591,7 +598,8 @@
         "queueManualSyncRequest_",
         "runQueuedManualSyncStage_",
         "getFastLiveIngestDatasetKey_",
-        "getFastLiveFileMeta_"
+        "getFastLiveFileMeta_",
+        "cleanupCompletedImportExtraction_"
       ],
       "supportingFiles": {
         "scripts/fast-live-erp-sync.mjs": [
@@ -641,6 +649,9 @@
           "mirror_itemcode_default_owner_to_warehouse_v1",
           "fast_ingest_warehouse_assigned_v1",
           "repair_fast_drive_archive_sql"
+        ],
+        "supabase/migrations/20261027133509_agdata_v2384_runtime_recovery.sql": [
+          "bulk_import_master_snapshot_v2374_base"
         ]
       }
     },
@@ -702,7 +713,9 @@
         "getNativeAuthSession",
         "initializeAppAccessSnapshot",
         "showOnlyPrimaryView",
-        "fetchDirectPostgrestReadPage"
+        "fetchDirectPostgrestReadPage",
+        "signInWithAppPasskey",
+        "initializeAppSessionOnLoad"
       ],
       "assets/runtime-watchdog.js": [
         "capture"

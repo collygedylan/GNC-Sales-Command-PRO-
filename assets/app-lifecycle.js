@@ -275,6 +275,7 @@
         const safeTarget = String(targetBuild || '').trim();
         const prefix = 'ag-data-v4.3-rebuild-';
         const targetCache = safeTarget.replace(/^AgData\s+v/i, 'agdata-v');
+        const normalizedTargetCache = targetCache.toLowerCase().replace(/[^a-z0-9]+/g, '');
         try {
             const serviceWorker = root.navigator?.serviceWorker;
             if (typeof serviceWorker?.getRegistrations === 'function') {
@@ -287,7 +288,7 @@
             if (typeof root.caches?.keys === 'function' && typeof root.caches?.delete === 'function') {
                 const keys = await root.caches.keys();
                 const obsoleteShellCaches = keys.filter(key => (key.startsWith(prefix) || /^agdata-v\d+\.\d+\.\d+(?:-|$)/i.test(key))
-                    && (!safeTarget || key !== targetCache));
+                    && (!safeTarget || !key.toLowerCase().replace(/[^a-z0-9]+/g, '').includes(normalizedTargetCache)));
                 await Promise.allSettled(obsoleteShellCaches.map(key => root.caches.delete(key)));
             }
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}

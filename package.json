@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.83",
+  "version": "2.3.84",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -175,6 +175,7 @@
     "getImportHistoryRoute_",
     "isLiveImportTemporaryFile_",
     "isCheckpointedLatestImportTable_",
+    "cleanupCompletedImportExtraction_",
     "listRoutedDropFiles_",
     "getFastLiveIngestDatasetKey_",
     "getFastLiveIngestRpc_",

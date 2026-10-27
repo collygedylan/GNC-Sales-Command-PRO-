@@ -97,6 +97,38 @@ function passkeyFunctionSource() {
   return html.slice(start, end);
 }
 
+function startupFunctionSource() {
+  const start = html.indexOf('async function initializeAppSessionOnLoad()');
+  const end = html.indexOf('let appChromeStartupStarted', start);
+  assert.ok(start >= 0 && end > start, 'startup session initializer is present');
+  return html.slice(start, end);
+}
+
+test('a first-tap discoverable passkey fences the older startup restore from repainting login', async () => {
+  const calls = [];
+  let releaseShell;
+  const shellReady = new Promise(resolve => { releaseShell = resolve; });
+  const context = vm.createContext({
+    appSessionStartupStarted: false, nativeAuthRecoveryEpoch: 4,
+    nativeAuthSessionActive: false, nativeAuthSessionUserId: '',
+    NATIVE_AUTH_ENABLED: true,
+    document: { getElementById: () => ({ classList: { add() {}, remove() {} } }) },
+    hasExplicitLogoutMarker: () => false, setLoginProgress() {},
+    ensureCurrentShellBuild: async () => { await shellReady; return false; },
+    restoreNativeAuthSessionOnStartup: async () => { calls.push('restore'); return false; },
+    resetLoginUiState: () => calls.push('reset-login'),
+    primeSavedLoginUiOnStartup: () => calls.push('prime-login'),
+    recoverShellAfterLoginRuntimeFailure: () => false,
+    showToast() {}, console,
+  });
+  vm.runInContext(startupFunctionSource(), context, { filename: 'index.html:initializeAppSessionOnLoad' });
+  const startup = vm.runInContext('initializeAppSessionOnLoad()', context);
+  vm.runInContext('nativeAuthRecoveryEpoch += 1; nativeAuthSessionActive = true; nativeAuthSessionUserId = "dylan-profile"', context);
+  releaseShell();
+  await startup;
+  assert.deepEqual(calls, [], 'stale startup does not restore or re-show Welcome back after passkey ownership changes');
+});
+
 function pendingSessionHarness({ sameIdentity = true, retainedSnapshot = true } = {}) {
   const classes = new Map();
   const ids = ['app-wrapper', 'login-inputs', 'loading-spinner', 'loading-text',

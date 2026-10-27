@@ -118,3 +118,4 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 - Never rank a Carry Over source against unrestricted destination years, expose mixed-tier source/destination locations, or trust stale client destination arrays without repeating the crop-tier guard.
 - Never prefetch Inventory Consolidation from Home, Drive, login, or Request; load it only after the foreground Inv Consolidation view opens and retain cached suggestions on actor-bound read failure.
 - Never render a photo date as an absolute thumbnail overlay or expose SPEC/CALIPER-only fragments through cards, persisted AV notes, or lifecycle emails.
+- Never reject a complete Drive snapshot merely because a retained alias points at a canonical UID absent from the current snapshot when the same atomic import has inserted the exact source UID; remap only that proven row and retain the conflict for genuinely missing identities.

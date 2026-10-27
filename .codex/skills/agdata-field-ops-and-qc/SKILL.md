@@ -83,3 +83,4 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 - Never let lot, priority, assignment, or season precede `locationcode`, reintroduce `Showing the first 8 inventory rows`, expose `.017`/`.018` as separate level-two tiles, or replace last-good Eval rows with a loading gate.
 - Never use a Manager refresh to erase field drafts, app-owned notes, task identities, or the shared shell's Back/header state.
+- Never make Assigned Items wait for full master pagination or replace retained assignments with `Load Failed`; paint its current assignment/master slice first and hydrate complete rows behind it.

@@ -68,3 +68,4 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 - Never emit an unknown skill/symbol, retain prior-version incidents in the active queue, include row contents/credentials/drafts, block a view, or let watchdog/AI write production data, source, commits, or deployments.
 - Never infer a parity incident from an authorized empty result or turn telemetry transport failure into recursive reporting.
 - Never record navigation/scope cancellation codes as operational failures or hardcode an old release in the active Watchdog fix brief.
+- Never resolve a load-stall cluster by suppressing telemetry alone; prove the owned view renders retained rows before background hydration, then close the exact incident cohort with its release version.

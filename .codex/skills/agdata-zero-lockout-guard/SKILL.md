@@ -102,3 +102,4 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Never translate an underlying-table grant omission on a security-invoker view into an empty successful dataset or clear the retained Queue after that isolated read fails.
 - Never convert a transient active-profile, dataset, inventory, historical-request, or consolidation read fault into a `400`, `403`, or `503` lockout response; return an authorized retained `200` shape without weakening mutation checks.
 - Never defer a confirmed canonical app-version mismatch behind active-session continuity or rely on an old worker cache to self-correct; force the one-time logout, full CacheStorage/Service Worker purge, and cache-busted newest-shell redirect.
+- Never let an older startup restore repaint `Welcome back` after an interactive password or discoverable-passkey attempt owns authentication; invalidate the restore generation at first tap and fence every post-await reset.

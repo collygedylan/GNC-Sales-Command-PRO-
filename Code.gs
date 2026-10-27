@@ -1710,6 +1710,7 @@ function processFastLiveFile_(dataset, route, pendingFiles, payloadBuilderFunc, 
   if (!stage || stage.ok !== true) throw new Error('FAST_ERP_STAGE_BEGIN_UNCONFIRMED');
   if (stage.skipped === true) {
     revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
+    cleanupCompletedImportExtraction_(sourceIdentity, fileMeta.file_name);
     moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, route.tableName + ' unchanged file ' + fileMeta.file_name);
     olderFiles.forEach(function(file) {
       moveDriveFileToFolderWithRetry_(file, processedFolder, route.tableName + ' older unchanged file ' + file.getName());
@@ -1742,6 +1743,7 @@ function processFastLiveFile_(dataset, route, pendingFiles, payloadBuilderFunc, 
   if (!response || response.ok !== true) throw new Error('FAST_ERP_INGEST_UNCONFIRMED');
   if (response.skip === true) {
     revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
+    cleanupCompletedImportExtraction_(sourceIdentity, fileMeta.file_name);
     moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, route.tableName + ' concurrently unchanged file ' + fileMeta.file_name);
     olderFiles.forEach(function(file) {
       moveDriveFileToFolderWithRetry_(file, processedFolder, route.tableName + ' older unchanged file ' + file.getName());
@@ -1756,6 +1758,7 @@ function processFastLiveFile_(dataset, route, pendingFiles, payloadBuilderFunc, 
     deleteCount: Number(response.deleted_rows || 0), totalRows: prepared.totalRows
   });
   revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
+  cleanupCompletedImportExtraction_(sourceIdentity, fileMeta.file_name);
   moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, route.tableName + ' processed file ' + fileMeta.file_name);
   olderFiles.forEach(function(file) {
     moveDriveFileToFolderWithRetry_(file, processedFolder, route.tableName + ' archived older file ' + file.getName());
@@ -7060,11 +7063,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   }
 
   if (importSucceeded) {
-    const completedCheckpoint = readImportExtractionCheckpoint_();
-    if (completedCheckpoint && sourceIdentity && importSourceIdentityMatches_(sourceIdentity, completedCheckpoint)) {
-      if (completedCheckpoint.isTempSheet === true) cleanupTempGoogleSheet_(completedCheckpoint.tempSheetId, newestFileName);
-      clearImportExtractionCheckpoint_(sourceIdentity);
-    }
+    cleanupCompletedImportExtraction_(sourceIdentity, newestFileName);
     olderFiles.forEach(function(file) {
       const rejectionMarker = getImportSourceRejectionMarker_(rejectionMarkerState, tableName, file);
       if (rejectionMarker) {
@@ -8893,6 +8892,16 @@ function clearImportExtractionCheckpoint_(identity) {
   const current = readImportExtractionCheckpoint_();
   if (identity && current && !importSourceIdentityMatches_(identity, current)) return false;
   PropertiesService.getScriptProperties().deleteProperty(IMPORT_EXTRACTION_CHECKPOINT_KEY_);
+  return true;
+}
+
+function cleanupCompletedImportExtraction_(identity, fileName) {
+  const completedCheckpoint = readImportExtractionCheckpoint_();
+  if (!completedCheckpoint || !identity || !importSourceIdentityMatches_(identity, completedCheckpoint)) return false;
+  if (completedCheckpoint.isTempSheet === true) {
+    cleanupTempGoogleSheet_(completedCheckpoint.tempSheetId, fileName);
+  }
+  clearImportExtractionCheckpoint_(identity);
   return true;
 }
 

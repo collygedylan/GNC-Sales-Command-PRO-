@@ -108,6 +108,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Never let Apps Script import or delivery code fall back to an anon/publishable Supabase key; reconcile and store a validated service-role secret instead of widening browser-role mutations.
 - Never route recurring ERP drops through a table-truncating generic swap or re-import Warehouse Assigned Items from Drive; stage 1,000-row batches in private storage, commit through the canonical protected importer, and keep assignments authoritative in Managers.
 - Never leave USER triggers disabled after a bulk ingest exception; every trigger-suppressed wrapper must restore them before returning or rethrowing.
+- Never leave a successful fast-stage Excel extraction checkpoint or converted `TEMP_IMPORT_*` sheet behind; consume the matching checkpoint after confirmed commit and before archiving the source.
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
