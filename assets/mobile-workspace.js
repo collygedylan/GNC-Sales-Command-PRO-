@@ -95,10 +95,15 @@
   const byTarget=new Map();
   for(const button of grid.querySelectorAll(':scope > button[data-module-target-view]')){
    const target=button.dataset.moduleTargetView;if(!target)continue;
-   const current=byTarget.get(target);
-   if(!current){byTarget.set(target,button);continue;}
+   // Manager cards share the managers route but own distinct setHomeTab deep links.
+   // Deduplicate by the upgraded tile identity so the complete module grid survives.
+   const targetKey=view==='managers'&&(button.getAttribute('onclick')||'').includes('setHomeTab(')
+    ? target+':'+(button.dataset.moduleTileId||button.id)
+    : target;
+   const current=byTarget.get(targetKey);
+   if(!current){byTarget.set(targetKey,button);continue;}
    const keep=current.id.startsWith('hub-extra-')&&!button.id.startsWith('hub-extra-')?button:current;
-   const duplicate=keep===current?button:current;duplicate.remove();byTarget.set(target,keep);
+   const duplicate=keep===current?button:current;duplicate.remove();byTarget.set(targetKey,keep);
   }
  }
  let initialized=false,observedNav=null,footerResizeObserver=null,footerMeasureFrame=0;
