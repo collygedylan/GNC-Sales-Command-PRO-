@@ -47,7 +47,6 @@ test('top-level Back traverses action editor, location instructions and cards wh
  assert.equal(saved.locations[0].actions[0].destination,'D.09.001');assert.equal(saved.locations[0].actions[0].destination_mode,'matching');
  assert.equal(saved.locations[0].source_all[0].locationcode,'D.08.001');
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Advanced inventory and action controls'));assert.ok(!element.innerHTML.includes('Choose destination'));
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Work type'));
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08.'));
  b.openLocation('D.08.001');assert.ok(element.innerHTML.includes('Grade for shipping'));
  assert.doesNotMatch(element.innerHTML,/>Back(?: to)?[ <]/);

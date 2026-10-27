@@ -85,3 +85,4 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 - Never use a Manager refresh to erase field drafts, app-owned notes, task identities, or the shared shell's Back/header state.
 - Never make Assigned Items wait for full master pagination or replace retained assignments with `Load Failed`; paint its current assignment/master slice first and hydrate complete rows behind it.
 - Never replace a complete same-account Eval #2 snapshot with eleven zero buckets while its published source rows are still available, and never make a Bunch Notes suggestion depend on a mobile-native datalist keyboard.
+- Never expose Bunch Notes' internal `setup`/`items` state as an extra Back stop; one shell Back tap must move from a visible location plan directly to its location grid.

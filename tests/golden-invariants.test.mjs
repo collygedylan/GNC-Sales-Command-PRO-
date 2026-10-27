@@ -2142,3 +2142,13 @@ test('Invariant 75 (v2.3.88 Existing Evidence, Docks, Navigation and Watchdog St
   assert.match(migration, /reclass-source-alias-v2388/);
   assert.match(migration, /where status='open'/);
 });
+
+test('Invariant 76 (Bunch Notes Back Treats Each Visible Drill Screen as One Step)', () => {
+  const bunch = read('assets/bunch-note.js');
+  const start = bunch.indexOf('function back()');
+  const end = bunch.indexOf('const destinationList', start);
+  assert.ok(start >= 0 && end > start, 'Bunch Notes Back helper exists');
+  const back = bunch.slice(start, end);
+  assert.match(back, /else if\(state\.location\)\{state\.location='';state\.locationStep='setup';\}/);
+  assert.doesNotMatch(back, /state\.location&&state\.locationStep==='items'/);
+});
