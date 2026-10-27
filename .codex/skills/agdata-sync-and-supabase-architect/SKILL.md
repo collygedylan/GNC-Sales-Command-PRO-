@@ -97,6 +97,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never let generated database contracts lag live read-only columns; exact-field validation must include published CAV fields such as `open_stock` and `season_oh` before live revision refresh can hot-swap that dataset.
+
 - Never let a successful full Drive import erase a pending app-created Reclass destination row or its evidence/season-stock overrides; preserve the canonical pending ledgers through atomic publication.
 
 - Never collapse a structured master-bulk or SQLSTATE failure into `MANUAL_SYNC_STAGE_FAILED`; retain the bounded code without exposing database details or source rows.

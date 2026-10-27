@@ -20396,6 +20396,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "open_stock": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "order_qty": {
             "schema": {
               "oneOf": [
@@ -20437,6 +20445,14 @@ export const contracts: RuntimeContracts<Database> = {
             }
           },
           "season": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "season_oh": {
             "schema": {
               "oneOf": [
                 "string",
@@ -20614,6 +20630,15 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "open_stock": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "order_qty": {
             "schema": {
               "oneOf": [
@@ -20660,6 +20685,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "season": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "season_oh": {
             "schema": {
               "oneOf": [
                 "string",
@@ -20841,6 +20875,15 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "open_stock": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "order_qty": {
             "schema": {
               "oneOf": [
@@ -20887,6 +20930,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "season": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "season_oh": {
             "schema": {
               "oneOf": [
                 "string",

@@ -5665,12 +5665,14 @@ export type Database = {
           itemcode: string | null
           last_updated: string | null
           n_star: string | null
+          open_stock: string | null
           order_qty: string | null
           ordertotal: string | null
           product_description: string | null
           ptravailable: string | null
           reserved_qty: string | null
           season: string | null
+          season_oh: string | null
           spec: string | null
           unique_id: string
           unit_price: string | null
@@ -5693,12 +5695,14 @@ export type Database = {
           itemcode?: string | null
           last_updated?: string | null
           n_star?: string | null
+          open_stock?: string | null
           order_qty?: string | null
           ordertotal?: string | null
           product_description?: string | null
           ptravailable?: string | null
           reserved_qty?: string | null
           season?: string | null
+          season_oh?: string | null
           spec?: string | null
           unique_id: string
           unit_price?: string | null
@@ -5721,12 +5725,14 @@ export type Database = {
           itemcode?: string | null
           last_updated?: string | null
           n_star?: string | null
+          open_stock?: string | null
           order_qty?: string | null
           ordertotal?: string | null
           product_description?: string | null
           ptravailable?: string | null
           reserved_qty?: string | null
           season?: string | null
+          season_oh?: string | null
           spec?: string | null
           unique_id?: string
           unit_price?: string | null

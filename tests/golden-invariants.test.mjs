@@ -2174,3 +2174,13 @@ test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Lin
   assert.match(workspace, /byTarget\.get\(targetKey\)[^]*byTarget\.set\(targetKey,keep\)/);
   assert.match(read('.codex/skills/agdata-app-shell-and-navigation/SKILL.md'), /Never deduplicate manager module cards only by their shared `managers` route/);
 });
+
+test('Invariant 79 (CAV Revision Refresh Accepts Every Published Read Column)', () => {
+  const types = read('supabase/functions/_shared/database.types.ts');
+  const contracts = read('services/database-contracts.generated.ts');
+  const browserBridge = read('assets/vendor/supabase-browser-2.112.3.min.js');
+  assert.match(types, /ph_cav_import:[^]*Row:[^]*open_stock: string \| null[^]*season_oh: string \| null/);
+  assert.match(contracts, /"ph_cav_import"[^]*"open_stock"[^]*"season_oh"/);
+  assert.match(browserBridge, /ph_cav_import[^]*open_stock[^]*season_oh/);
+  assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never let generated database contracts lag live read-only columns/);
+});
