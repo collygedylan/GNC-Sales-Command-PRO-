@@ -781,8 +781,7 @@
   else if(state.workCard){state.workCard='';state.item='';}
   else if(state.detail)state.detail=null;
   else if(state.queueMode==='assigned'){if(state.queueLocation)state.queueLocation='';else if(state.queueBase)state.queueBase='';else return false;}
-  else if(state.location&&state.locationStep==='items')state.locationStep='setup';
-  else if(state.location)state.location='';
+  else if(state.location){state.location='';state.locationStep='setup';}
   else if(state.base)state.base='';
   else if(state.draft){void root.BunchNote.backEditor();return true;}
   else return false;
