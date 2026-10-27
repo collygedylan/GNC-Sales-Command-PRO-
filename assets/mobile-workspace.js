@@ -95,7 +95,7 @@
   const byTarget=new Map();
   for(const button of grid.querySelectorAll(':scope > button[data-module-target-view]')){
    const target=button.dataset.moduleTargetView;if(!target)continue;
-   // Manager cards share the managers route but own distinct setHomeTab deep links.
+   // v2.3.89: Manager cards share the managers route but own distinct setHomeTab deep links.
    // Deduplicate by the upgraded tile identity so the complete module grid survives.
    const targetKey=view==='managers'&&(button.getAttribute('onclick')||'').includes('setHomeTab(')
     ? target+':'+(button.dataset.moduleTileId||button.id)
