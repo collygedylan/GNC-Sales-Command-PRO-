@@ -68,7 +68,9 @@ jobs:
       - name: Authorize current merged main and standard PR validation
         id: authorize
         run: node scripts/lib/apps-script-deployment-guard.mjs
+      # Version-cap fallback updates HEAD, retains an existing web version, and records both outcomes.
       - name: Publish the guarded production Apps Script version
+        id: sync
         if: steps.authorize.outputs.script-changed == 'true'
         env:
           APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}

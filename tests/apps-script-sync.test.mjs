@@ -167,6 +167,7 @@ test('source metadata and Manager read migrations are registered with secure dep
 test('ingestion deployment selects every changed function and preserves remote scheduling outside the patch', () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.deepEqual(manifest.appsScriptPatchFunctions, [
+    'buildSuspendTagApprovalEmail_',
     'buildReclassItemInquiryTable_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_',
     'buildReclassInquiryReportModel_', 'getReclassInquiryEmailRecipients_', 'buildReclassInquiryCompactReportHtml_',
     'buildReclassInquiryEmailHtml_', 'deliverReclassInquiryPayload_', 'handleSignedInventoryReclassMoveDelivery_',
@@ -178,8 +179,10 @@ test('ingestion deployment selects every changed function and preserves remote s
     'URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_', 'canonicalizeMasterBulkPayloadValue_',
     'normalizeEscapedImportText_', 'normalizeEscapedImportRow_', 'buildMasterBulkSnapshotPayload_',
     'buildStandardPayload', 'buildMasterPayload', 'buildCavPayload',
+    'getImportHistoryRoute_', 'isLiveImportTemporaryFile_', 'isCheckpointedLatestImportTable_', 'listRoutedDropFiles_',
     'getFastLiveIngestDatasetKey_', 'getFastLiveIngestRpc_', 'getFastLiveFileMeta_',
     'getFastLiveIngestRows_', 'processFastLiveFile_', 'runRoutedDropImport_',
+    'buildRequestDeliveryEmailPayload_', 'runSOCOnly', 'runDriveAroundOnly',
     'runWarehouseAssignedOnly', 'runCavOnly', 'resolveSupabaseServiceRoleKey_', 'getSupabaseHeaders_',
     'reconcileAppsScriptActionSigningKey_', 'verifyAppsScriptActionEnvelope_', 'doPost',
   ]);
@@ -243,8 +246,9 @@ function makeScript({ versionCount = 0, createdVersion = 201, deployedVersion = 
         return { data: {} };
       },
       deployments: {
-        update: async () => {
+        update: async (request) => {
           calls.push('deployments.update');
+          script.lastDeploymentUpdate = request.requestBody;
           return { data: {} };
         },
         get: async (request, options) => {
@@ -274,13 +278,27 @@ function healthyFetch(overrides = {}) {
   });
 }
 
-test('full capacity fails before editable Apps Script source is touched', async () => {
-  const { script, calls } = makeScript({ versionCount: 200 });
-  await assert.rejects(
-    syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key', script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha }),
-    (error) => error.code === 'APPS_SCRIPT_VERSION_CAPACITY_EXHAUSTED'
-  );
-  assert.deepEqual(calls, ['versions.list']);
+test('full version capacity updates HEAD and deploys the latest existing version as a successful fallback', async () => {
+  const { script, calls } = makeScript({ versionCount: 200, deployedVersion: 200 });
+  const warnings = [];
+  const healthCalls = [];
+  const result = await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key', script, scriptId: 'script',
+    deploymentId: 'deployment', source, githubSha: sha, logger: { warn: message => warnings.push(message) },
+    fetchImpl: async (_url, options) => { healthCalls.push(options); return healthyFetch()(); }, sleep: async () => {}, healthAttempts: 1 });
+  assert.equal(result.ok, true);
+  assert.equal(result.headUpdated, true);
+  assert.equal(result.versionCapacityExhausted, true);
+  assert.equal(result.versionCreated, false);
+  assert.equal(result.sourceUpdated, true);
+  assert.equal(result.deploymentUpdated, true);
+  assert.equal(result.versionNumber, 200);
+  assert.equal(result.deployedVersionNumber, 200);
+  assert.equal(result.health, null, 'HEAD-only fallback does not claim new-commit health');
+  assert.ok(script.updatedSource.includes(sha));
+  assert.match(warnings.join('\n'), /APPS_SCRIPT_VERSION_CAPACITY_EXHAUSTED/);
+  assert.deepEqual(healthCalls, []);
+  assert.equal(script.lastDeploymentUpdate?.deploymentConfig?.versionNumber, 200);
+  assert.deepEqual(calls, ['getContent', 'updateContent', 'versions.list', 'deployments.update', 'deployments.get']);
 });
 
 test('capacity at 180 warns but still permits an editable-source-only sync', async () => {
@@ -294,9 +312,43 @@ test('capacity at 180 warns but still permits an editable-source-only sync', asy
   });
   assert.equal(result.versionCountBefore, 180);
   assert.equal(result.deploymentUpdated, false);
+  assert.equal(result.versionCapacityExhausted, false);
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /APPS_SCRIPT_VERSION_CAPACITY_LOW/);
-  assert.deepEqual(calls, ['versions.list', 'getContent', 'updateContent']);
+  assert.deepEqual(calls, ['getContent', 'updateContent', 'versions.list']);
+});
+
+test('version-create quota errors use the latest existing deployment while unrelated errors remain fatal', async () => {
+  const quota = makeScript({ versionCount: 12, deployedVersion: 12 });
+  quota.script.projects.versions.create = async () => {
+    quota.calls.push('versions.create');
+    throw new Error('Quota exceeded: maximum number of versions');
+  };
+  const healthCalls = [];
+  const result = await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key', script: quota.script,
+    scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha, fetchImpl: async (...args) => {
+      healthCalls.push(args); return healthyFetch()();
+    }, sleep: async () => {}, healthAttempts: 1 });
+  assert.equal(result.ok, true);
+  assert.equal(result.headUpdated, true);
+  assert.equal(result.versionCapacityExhausted, true);
+  assert.equal(result.versionCreated, false);
+  assert.equal(result.versionNumber, 12);
+  assert.equal(result.deployedVersionNumber, 12);
+  assert.equal(result.health, null);
+  assert.equal(quota.script.lastDeploymentUpdate?.deploymentConfig?.versionNumber, 12);
+  assert.deepEqual(healthCalls, []);
+  assert.deepEqual(quota.calls, ['getContent', 'updateContent', 'versions.list', 'versions.create',
+    'deployments.update', 'deployments.get']);
+
+  const failure = makeScript({ versionCount: 12 });
+  failure.script.projects.versions.create = async () => {
+    failure.calls.push('versions.create');
+    throw new Error('permission denied');
+  };
+  await assert.rejects(syncAppsScriptProject({ script: failure.script, scriptId: 'script', deploymentId: 'deployment',
+    source, githubSha: sha }), /permission denied/);
+  assert.deepEqual(failure.calls, ['getContent', 'updateContent', 'versions.list', 'versions.create']);
 });
 
 test('successful sync advances and verifies the exact deployment version and health policy', async () => {
@@ -328,9 +380,9 @@ test('successful sync advances and verifies the exact deployment version and hea
   assert.equal(Object.hasOwn(healthRequests[1], 'reconcileSigningKey'), false, 'ordinary health remains read-only');
   assert.equal(Object.hasOwn(healthRequests[1], 'serverAuthorization'), false, 'ordinary health sends no key candidate');
   assert.deepEqual(calls, [
-    'versions.list',
     'getContent',
     'updateContent',
+    'versions.list',
     'versions.create',
     'deployments.update',
     'deployments.get'
@@ -414,7 +466,7 @@ test('stale deployment reads converge without another version or deployment writ
   assert.deepEqual(sleeps, [5000, 5000]);
   assert.equal(warnings.length, 2);
   assert.ok(warnings.every(value => value.startsWith('APPS_SCRIPT_DEPLOYMENT_VERSION_PENDING ')));
-  assert.deepEqual(calls, ['versions.list', 'getContent', 'updateContent', 'versions.create',
+  assert.deepEqual(calls, ['getContent', 'updateContent', 'versions.list', 'versions.create',
     'deployments.update', 'deployments.get', 'deployments.get', 'deployments.get']);
   assert.deepEqual(script.lastDeploymentRead, {
     request: { scriptId: 'script', deploymentId: 'deployment' },

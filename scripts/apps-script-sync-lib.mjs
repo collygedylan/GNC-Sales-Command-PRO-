@@ -207,15 +207,6 @@ export async function syncAppsScriptProject({
   if (!String(source || '').trim()) throw syncError('APPS_SCRIPT_SOURCE_EMPTY');
   if (typeof beforeMutation !== 'function') throw syncError('APPS_SCRIPT_MUTATION_GUARD_INVALID');
 
-  const versions = await listAllAppsScriptVersions(script, scriptId);
-  const versionCount = versions.length;
-  if (versionCount >= APPS_SCRIPT_VERSION_LIMIT) {
-    throw syncError('APPS_SCRIPT_VERSION_CAPACITY_EXHAUSTED');
-  }
-  if (versionCount >= APPS_SCRIPT_VERSION_WARNING_THRESHOLD) {
-    logger.warn(`WARNING: APPS_SCRIPT_VERSION_CAPACITY_LOW (${versionCount}/${APPS_SCRIPT_VERSION_LIMIT})`);
-  }
-
   const deploymentRequested = !!String(deploymentId || '').trim();
   const deploymentSource = deploymentRequested
     ? applyDeploymentFingerprint(source, githubSha)
@@ -234,18 +225,35 @@ export async function syncAppsScriptProject({
 
   await beforeMutation();
   await script.projects.updateContent({ scriptId, requestBody: { files } });
+  const versions = await listAllAppsScriptVersions(script, scriptId);
+  const versionCount = versions.length;
+  if (versionCount >= APPS_SCRIPT_VERSION_WARNING_THRESHOLD) {
+    logger.warn(`WARNING: APPS_SCRIPT_VERSION_CAPACITY_LOW (${versionCount}/${APPS_SCRIPT_VERSION_LIMIT})`);
+  }
   if (!deploymentRequested) {
-    return { versionCountBefore: versionCount, sourceUpdated: true, deploymentUpdated: false };
+    return { ok: true, headUpdated: true, versionCapacityExhausted: versionCount >= APPS_SCRIPT_VERSION_LIMIT,
+      versionCreated: false, versionCountBefore: versionCount, sourceUpdated: true, deploymentUpdated: false };
   }
 
   const release = normalizeRelease(deploymentSource.match(/const APP_RELEASE_VERSION_\s*=\s*['"]([^'"]+)['"]/)?.[1]);
   const description = release ? `${release} (${String(githubSha).slice(0, 7)})` : `GitHub Code.gs sync ${String(githubSha).slice(0, 7)}`;
-  await beforeMutation();
-  const versionResponse = await script.projects.versions.create({
-    scriptId,
-    requestBody: { description }
-  });
-  const versionNumber = Number(versionResponse?.data?.versionNumber);
+  let versionCapacityExhausted = versionCount >= APPS_SCRIPT_VERSION_LIMIT;
+  let versionNumber;
+  if (!versionCapacityExhausted) {
+    await beforeMutation();
+    try {
+      const versionResponse = await script.projects.versions.create({ scriptId, requestBody: { description } });
+      versionNumber = Number(versionResponse?.data?.versionNumber);
+    } catch (error) {
+      const message = [error?.code, error?.message, error?.response?.data?.error?.message].join(' ');
+      if (!/APPS_SCRIPT_VERSION_CAPACITY_EXHAUSTED|quota exceeded|maximum number of versions|version.{0,80}(?:limit|quota)/i.test(message)) throw error;
+      versionCapacityExhausted = true;
+    }
+  }
+  if (versionCapacityExhausted) {
+    versionNumber = Math.max(0, ...versions.map(version => Number(version.versionNumber)).filter(Number.isSafeInteger));
+    logger.warn(`WARNING: APPS_SCRIPT_VERSION_CAPACITY_EXHAUSTED; @HEAD updated; web app retains existing version ${versionNumber}.`);
+  }
   if (!Number.isInteger(versionNumber) || versionNumber <= 0) {
     throw syncError('APPS_SCRIPT_VERSION_NUMBER_MISSING');
   }
@@ -258,7 +266,7 @@ export async function syncAppsScriptProject({
       deploymentConfig: {
         versionNumber,
         manifestFileName: 'appsscript',
-        description
+        description: versionCapacityExhausted ? `Existing version ${versionNumber}; @HEAD synced ${String(githubSha).slice(0, 7)}` : description
       }
     }
   });
@@ -267,6 +275,12 @@ export async function syncAppsScriptProject({
     script, scriptId, deploymentId, versionNumber, sleep,
     onObservation: observation => logger.warn(`APPS_SCRIPT_DEPLOYMENT_VERSION_PENDING ${JSON.stringify(observation)}`)
   });
+
+  if (versionCapacityExhausted) {
+    return { ok: true, headUpdated: true, versionCapacityExhausted: true, versionCreated: false,
+      versionCountBefore: versionCount, versionCountAfter: versionCount, sourceUpdated: true,
+      deploymentUpdated: true, versionNumber, deployedVersionNumber, health: null };
+  }
 
   await reconcileDeploymentSigningKey({ deploymentId, serviceRoleKey, githubSha, fetchImpl });
 
@@ -281,6 +295,10 @@ export async function syncAppsScriptProject({
   });
 
   return {
+    ok: true,
+    headUpdated: true,
+    versionCapacityExhausted: false,
+    versionCreated: true,
     versionCountBefore: versionCount,
     versionCountAfter: versionCount + 1,
     sourceUpdated: true,

@@ -74,7 +74,9 @@ function getOAuthClientFromClaspRc(claspRc) {
 function appendSummary(result) {
   const summaryPath = String(process.env.GITHUB_STEP_SUMMARY || '').trim();
   if (!summaryPath) return;
-  const deploymentLine = result.deploymentUpdated
+  const deploymentLine = result.versionCapacityExhausted
+    ? `@HEAD updated for triggers; web app verified at existing version ${result.deployedVersionNumber}; immutable publication deferred (version capacity exhausted)`
+    : result.deploymentUpdated
     ? `version ${result.versionNumber}, verified at version ${result.deployedVersionNumber}`
     : 'source updated without deployment advancement';
   const healthLines = result.health
@@ -126,7 +128,7 @@ async function main() {
       remoteFilesDigestBefore: expectedRemoteDigest, remoteFilesDigestAfter: publishedDigest };
     console.log(`Scoped Apps Script patch prepared for ${functionNames.length} authorized functions; protected remote code is unchanged.`);
   }
-  console.log('Preflighting Apps Script version capacity before source update...');
+  console.log('Syncing guarded Apps Script @HEAD before immutable version publication...');
   const result = await syncAppsScriptProject({
     script,
     scriptId,
@@ -141,8 +143,23 @@ async function main() {
     logger: console
   });
 
-  console.log(`Version capacity verified (${result.versionCountBefore}/200 before sync).`);
-  if (result.deploymentUpdated) {
+  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT,
+    `head-updated=${result.headUpdated === true}\nversion-capacity-exhausted=${result.versionCapacityExhausted === true}\n`);
+  console.log(`Apps Script @HEAD updated (${result.versionCountBefore}/200 existing versions).`);
+  if (result.versionCapacityExhausted) {
+    const current = await script.projects.getContent({ scriptId });
+    if (patchEvidence && appsScriptFilesDigest(current.data?.files || []) !== publishedDigest) {
+      fail('APPS_SCRIPT_HEAD_SYNC_VERIFICATION_FAILED');
+    }
+    const evidenceDirectory = path.join(repoRoot, '.gnc-local');
+    fs.mkdirSync(evidenceDirectory, { recursive: true });
+    fs.writeFileSync(path.join(evidenceDirectory, 'apps-script-recovery-evidence.json'), `${JSON.stringify({
+      publicationMode: 'head-only-version-capacity', headCommit: githubSha, headUpdated: true,
+      versionCapacityExhausted: true, existingVersionNumber: result.versionNumber,
+      deployedVersionNumber: result.deployedVersionNumber, scopedPatch: patchEvidence
+    }, null, 2)}\n`);
+    console.warn(`WARNING: @HEAD is current; the web app remains on immutable version ${result.deployedVersionNumber}.`);
+  } else if (result.deploymentUpdated) {
     const evidence = await createAppsScriptRecoveryEvidence({
       script,
       scriptId,

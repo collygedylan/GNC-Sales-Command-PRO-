@@ -1580,3 +1580,29 @@ test('Invariant 54 (Suspend Queue Preserves Server Open Stock Unless an Exact Tu
   assert.equal(metricSink.row.PTRONHAND, undefined, 'missing metrics remain unknown instead of becoming zero');
   assert.equal(metricSink.row.S_LTS, null);
 });
+
+test('Invariant 55 (Apps Script Version Capacity Never Blocks Authorized HEAD Sync)', async () => {
+  const { syncAppsScriptProject } = await import('../scripts/apps-script-sync-lib.mjs');
+  const calls = [];
+  const script = { projects: {
+    getContent: async () => ({ data: { files: [{ name: 'Code', type: 'SERVER_JS', source: 'old' }] } }),
+    updateContent: async () => { calls.push('head'); },
+    versions: {
+      list: async () => ({ data: { versions: Array.from({ length: 200 }, (_, index) => ({ versionNumber: index + 166 })) } }),
+      create: async () => { throw new Error('a full project must reuse a version'); }
+    },
+    deployments: {
+      update: async ({ requestBody }) => { calls.push(requestBody.deploymentConfig.versionNumber); },
+      get: async () => ({ data: { deploymentConfig: { versionNumber: 365 } } })
+    }
+  } };
+  const result = await syncAppsScriptProject({ script, scriptId: 'fixture', deploymentId: 'fixture',
+    source: "const APP_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';", githubSha: 'a'.repeat(40),
+    logger: { warn() {} }, fetchImpl: async () => { throw new Error('must not certify new web code'); } });
+  assert.deepEqual(calls, ['head', 365]);
+  assert.equal(result.ok, true);
+  assert.equal(result.headUpdated, true);
+  assert.equal(result.versionCapacityExhausted, true);
+  assert.equal(result.versionCreated, false);
+  assert.equal(result.health, null);
+});

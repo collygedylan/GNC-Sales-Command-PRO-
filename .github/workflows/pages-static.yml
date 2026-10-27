@@ -11,7 +11,7 @@ on:
         required: false
         default: ''
       base-commit:
-        description: Optional previously deployed main commit used to recover all pending scope.
+        description: Optional deployed main commit for explicit recovery, including Apps Script version-cap fallback.
         type: string
         required: false
         default: ''
