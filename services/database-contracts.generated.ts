@@ -94426,6 +94426,49 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "request_jd_customer_directory_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_page": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_page_size": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_q": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "request_queue_remove_v1": {
       "oneOf": [
         {
@@ -104768,6 +104811,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "request_history_command_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "request_jd_customer_directory_v1": {
       "oneOf": [
         "json"
       ]
