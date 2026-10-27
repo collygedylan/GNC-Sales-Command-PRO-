@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "7745c1803bbaa824ebb28e0d30460ca651eef67d",
+  "commit": "c59067f5635f0ee163f36da16c530918ab8e5f6d",
   "release": "AgData v2.3.89",
   "files": [
     {
@@ -700,8 +700,8 @@
     },
     {
       "path": "assets/mobile-workspace.js",
-      "bytes": 9099,
-      "sha256": "23ba49d84e7c137fdcd24744f11132071574fad804015ccef5f7373ab9b16477"
+      "bytes": 9108,
+      "sha256": "1463f19a96443ca65e441e7b4d0ba825ed6973681fb257b8e7bf41e85722beea"
     },
     {
       "path": "assets/navigation-preferences.css",
@@ -891,22 +891,22 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 187,
-      "sha256": "286241866a130462036b501fbba71e5256d5a81f0d185c7353b8456b9164cec6"
+      "sha256": "b2e4513a12d9ced535307361370f3e01f01b14b7c7892e0b9a4cd9979e0c9710"
     },
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "286241866a130462036b501fbba71e5256d5a81f0d185c7353b8456b9164cec6"
+      "sha256": "b2e4513a12d9ced535307361370f3e01f01b14b7c7892e0b9a4cd9979e0c9710"
     },
     {
-      "path": "deployments/7745c1803bbaa824ebb28e0d30460ca651eef67d.json",
+      "path": "deployments/c59067f5635f0ee163f36da16c530918ab8e5f6d.json",
       "bytes": 187,
-      "sha256": "286241866a130462036b501fbba71e5256d5a81f0d185c7353b8456b9164cec6"
+      "sha256": "b2e4513a12d9ced535307361370f3e01f01b14b7c7892e0b9a4cd9979e0c9710"
     },
     {
       "path": "index.html",
-      "bytes": 378032,
-      "sha256": "500749cc8f01e6fdf4d8e2de5f02d908fbab2d180a0660203e29872aa41cf24f"
+      "bytes": 378034,
+      "sha256": "e35a91f53ff4579c1f17043c4da7c841a7c088481dbe92a90cfc4e54bdf00705"
     },
     {
       "path": "manifest.json",
@@ -1176,7 +1176,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "680b0df1aeb47a9800512db71d90a6d7b675e2c94673b7a808b649809e1e6ceb"
+      "sha256": "591028a095a61c7371c1474f5d7dc4ba746c0a45c63cb5307470d7de63896ac1"
     },
     {
       "path": "v2/v2-cache-migration.js",
