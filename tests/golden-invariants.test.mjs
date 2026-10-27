@@ -2184,3 +2184,15 @@ test('Invariant 79 (CAV Revision Refresh Accepts Every Published Read Column)', 
   assert.match(browserBridge, /ph_cav_import[^]*open_stock[^]*season_oh/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never let generated database contracts lag live read-only columns/);
 });
+
+test('Invariant 80 (Higher File Revision Repaints Home Metadata Even at the Same Timestamp)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const start = runtime.indexOf('function mergeDashboardSyncSummaries(summaries = [])');
+  const end = runtime.indexOf('async function prefetchDashboardSyncMetadataAfterLogin()', start);
+  assert.ok(start >= 0 && end > start, 'Home metadata merge helper exists');
+  const merge = runtime.slice(start, end);
+  assert.match(merge, /entryRevision[^]*existingRevision[^]*entryRevision > existingRevision/);
+  assert.match(merge, /revision: entryRevision === null \? '' : String\(entry\.revision\)/);
+  assert.match(runtime, /revision: String\(source\.revision \?\? ''\)[^]*authoritative:/);
+  assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never resolve equal-timestamp Home filename metadata lexically/);
+});

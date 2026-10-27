@@ -97,6 +97,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never resolve equal-timestamp Home filename metadata lexically when the dataset revision advanced; carry the revision into the summary and let the higher authoritative revision repaint the existing source card in place.
 - Never let generated database contracts lag live read-only columns; exact-field validation must include published CAV fields such as `open_stock` and `season_oh` before live revision refresh can hot-swap that dataset.
 
 - Never let a successful full Drive import erase a pending app-created Reclass destination row or its evidence/season-stock overrides; preserve the canonical pending ledgers through atomic publication.

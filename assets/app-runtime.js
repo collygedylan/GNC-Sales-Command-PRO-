@@ -116253,12 +116253,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             (Array.isArray(summaries) ? summaries : []).forEach((entry) => {
                 if (!entry || !entry.label || (!entry.iso && !(entry.files && entry.files.length))) return;
                 const existing = byLabel.get(entry.label);
+                const entryRevision = /^\d+$/.test(String(entry.revision ?? '')) ? BigInt(entry.revision) : null;
+                const existingRevision = /^\d+$/.test(String(existing?.revision ?? '')) ? BigInt(existing.revision) : null;
+                const newerRevision = entryRevision !== null && (existingRevision === null || entryRevision > existingRevision);
+                const sameRevision = entryRevision === existingRevision;
                 if (!existing || (entry.authoritative && !existing.authoritative)
-                    || (!!entry.authoritative === !!existing.authoritative && Number(entry.ms || -1) > Number(existing.ms || -1))) {
+                    || (!!entry.authoritative === !!existing.authoritative && (newerRevision
+                        || (sameRevision && Number(entry.ms || -1) > Number(existing.ms || -1))))) {
                     byLabel.set(entry.label, {
                         label: entry.label,
                         iso: entry.iso || '',
                         ms: Number(entry.ms || -1),
+                        revision: entryRevision === null ? '' : String(entry.revision),
                         authoritative: entry.authoritative === true,
                         files: selectDashboardSyncFilename(entry.files || []) ? [selectDashboardSyncFilename(entry.files)] : (existing?.files || [])
                     });
@@ -116301,7 +116307,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const iso = getValidIsoTimestamp(source.sourceImportedAt || (source.state === 'ready' ? source.changedAt
                     : ['importing', 'interrupted'].includes(source.state) && source.publishedReadable === true ? source.publishedAt : ''));
                 const filename = String(source.sourceFileName || '').trim();
-                return label && iso ? [{ label, iso, ms: Date.parse(iso), files: filename ? [filename] : [],
+                return label && iso ? [{ label, iso, ms: Date.parse(iso), revision: String(source.revision ?? ''), files: filename ? [filename] : [],
                     authoritative: !!(filename && source.sourceImportedAt) }] : [];
             });
             processDylanFileProcessedToasts(metadata);
