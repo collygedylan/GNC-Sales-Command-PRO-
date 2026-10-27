@@ -130,26 +130,14 @@
  function recipientEmails(directory, ids) {
   const dylan = directory.find(u => u.username === 'dylan_collyge');
   if (!dylan?.email) throw new Error('Dylan’s mapped email is required.');
-  const selected = [...new Set([...ids, dylan.id || dylan.profile_id])].map(id => directory.find(u => (u.id || u.profile_id) === id));
-  if (selected.some(u => !u?.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email))) throw new Error('Choose active users with email addresses.');
-  return [...new Set(selected.map(u => u.email.trim().toLowerCase()))];
+  return [dylan.email.trim().toLowerCase()];
  }
  function requiredBunchRecipientIds(body=state.draft?.body) {
-  const ids=new Set();
-  for(const user of state.users||[])if(['dylan_collyge','megan_kelly','sharon_combs'].includes(user.username))ids.add(user.id||user.profile_id);
-  for(const location of body?.locations||[])for(const card of location.cards||[])if(card.kind!=='divider'){
-   if(card.owner_id)ids.add(card.owner_id);
-   for(const id of Array.isArray(card.owner_ids)?card.owner_ids:[])if(id)ids.add(id);
-  }
-   for(const location of body?.locations||[])if(location.owner_id)ids.add(location.owner_id);
-  return ids;
+  const dylan=(state.users||[]).find(user=>user.username==='dylan_collyge');
+  return new Set(dylan?[dylan.id||dylan.profile_id]:[]);
  }
  function requiredBunchRecipientLabels(body=state.draft?.body) {
-  const byId=new Map((state.users||[]).map(user=>[user.id||user.profile_id,user.display||user.username]));
-  const labels=['Dylan Collyge','Megan Kelly','Sharon Combs'];
-   const defaults=new Set((state.users||[]).filter(user=>['dylan_collyge','megan_kelly','sharon_combs'].includes(user.username)).map(user=>user.id||user.profile_id));
-   for(const id of requiredBunchRecipientIds(body))if(byId.has(id)&&!defaults.has(id))labels.push(byId.get(id));
-  return [...new Set(labels)];
+  return ['Dylan Collyge'];
  }
  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const arg = value => esc(JSON.stringify(value));
@@ -705,7 +693,7 @@
     +button('Remove location from batch',`BunchNote.removeLocation(${arg(loc.location)})`,state.busy||!!draft.id&&draft.body.locations.length===1)+'</section>';
   }
   html += '<details class="bn-options"><summary>Instruction guidance from Bunch Notes <i class="ph-bold ph-caret-down" aria-hidden="true"></i></summary><div class="bn-options-body"><p>Use “Center house” for the house over the 4-inch line. Specify quantity or percentage, stage, destination, and whether crews should grade or row-run.</p><p>BOB, QC, SAM, RHETT, SHARON, MATT, BUNCHERS and TA are instruction labels. They do not assign users or select recipients.</p><p>Flags: blue = ship first; white = lesser quality; red = promo / worst quality; green = grow-on. Outside corner ribbons: yellow = water control; pink = overwinter outside; shift = haul for shift; shift + pink = outside for spring shift. Apply only where you explicitly choose.</p></div></details>';
-  html += `<details class="bn-card bn-options" ${panelAttrs('recipients')}><summary>Email recipients · server required group included</summary><div class="bn-options-body"><p class="bn-muted">Always included by the server: ${esc(requiredRecipientLabels.join(', '))}. Card assignees are added automatically; optional selections below use profile IDs, and recipient email addresses are resolved by the server.</p>${state.users.filter(u => u.email).map(u => {const id=u.id||u.profile_id,required=requiredRecipientIds.has(id);return `<label class="bn-choice"><input type="checkbox" data-bn-focus-key="recipient:${esc(id)}" aria-label="Email recipient ${esc(u.display || u.username)}" ${required || draft.body.recipient_ids.includes(id) ? 'checked' : ''} ${required ? 'disabled' : ''} onchange="BunchNote.recipient(${arg(id)},this.checked);this.focus({preventScroll:true})"><span>${esc(u.display || u.username)}<small>${esc(required?'Required by server':'Optional recipient')}</small></span></label>`;}).join('')}</div></details>`;
+  html += `<details class="bn-card bn-options" ${panelAttrs('recipients')}><summary>Email recipient · Dylan Collyge only</summary><div class="bn-options-body"><p class="bn-muted">Bunch Notes email delivery is locked to ${esc(requiredRecipientLabels.join(', '))}. Assignees receive work in the app, not by email.</p></div></details>`;
   return html + destinationList() + `<p class="bn-muted">${draft.body.locations.length} locations in this batch</p><div class="bn-toolbar">` + button('Refresh source for review', 'BunchNote.refreshSource()', state.busy) + button('Save draft', 'BunchNote.save()', state.busy || !draft.body.locations.length) + button('Preview PDFs and recipients', 'BunchNote.preview()', state.busy || !draft.body.locations.length) + '</div>';
  }
  function previewHtml() {
@@ -754,7 +742,7 @@
   }).join('');
   if(state.item)return html;
   if (open && owner) html += button(j.card_id?'Complete card':'Complete location', j.card_id?`BunchNote.cardCommand('complete_card',${arg(j.card_id)})`:`BunchNote.command('complete')`, state.busy || allActions(j).some(a=>!j.progress[a.id]));
-  if (state.detail.job.status==='complete' && author()) html += `<details class="bn-card bn-options" ${panelAttrs('work-report')}><summary>Completed-work PDF and recipients</summary><div class="bn-options-body">${state.users.filter(u=>u.email).map(u=>`<label class="bn-choice"><input type="checkbox" data-bn-focus-key="work-recipient:${esc(u.id)}" aria-label="Completed work email recipient ${esc(u.display || u.username)}" ${u.username==='dylan_collyge'||state.workRecipients.includes(u.id)?'checked':''} ${u.username==='dylan_collyge'?'disabled':''} onchange="BunchNote.workRecipient(${arg(u.id)},this.checked);this.focus({preventScroll:true})"><span>${esc(u.display || u.username)}<small>${esc(u.email)}</small></span></label>`).join('')}${button('Preview completed-work PDF','BunchNote.previewWork()',state.busy)}</div></details>`;
+  if (state.detail.job.status==='complete' && author()) html += `<details class="bn-card bn-options" ${panelAttrs('work-report')}><summary>Completed-work PDF · Dylan Collyge only</summary><div class="bn-options-body"><p class="bn-muted">Email recipient: Dylan Collyge.</p>${button('Preview completed-work PDF','BunchNote.previewWork()',state.busy)}</div></details>`;
   if(!j.card_id||author())html += `<h3>Completed-work PDFs</h3>${(state.detail.work_reports||[]).map(v=>`<p>Work revision ${v.job_revision} · Email ${esc(v.delivery_status)} ${button('Open completed-work PDF',`BunchNote.workPdf(${arg(v.preview_id)})`)}${author()&&['not_sent','failed','unknown','sending'].includes(v.delivery_status)?button(v.delivery_status==='not_sent'?'Review and send':v.delivery_status==='failed'?'Retry delivery':'Reconcile delivery',`BunchNote.delivery(${arg(v.preview_id)},${arg(v.delivery_status)})`):''}</p>`).join('')}`;
   html += `<details class="bn-options"><summary>Actual entry and correction history (${(j.actuals||[]).length})</summary>${(j.actuals||[]).map(x=>`<p>${esc(x.created_at)} · ${esc(x.action_snapshot.label || x.action_snapshot.instructions)} · ${esc(x.source_snapshot.contsize)} / ${esc(x.source_snapshot.lotcode)} · ${esc(x.quantity)} · ${esc(x.destination)} · ${x.superseded?'Replaced by correction':'Current'} · ${esc(x.explanation)}${!x.superseded&&((open&&owner)||(author()&&j.status==='complete'))?button('Amend recorded work',`BunchNote.correctActual(${arg(x.id)})`,state.busy):''}</p>`).join('')}</details>` + destinationList();
   if(!j.card_id||author())html += `<h3>PDF revisions</h3>${versions.map(v => `<p>Revision ${v.instruction_revision} · Email ${esc(v.delivery_status)} ${button('Open PDF', `BunchNote.pdf(${v.instruction_revision})`)}${author() && ['not_sent','failed','unknown','sending'].includes(v.delivery_status) ? button(v.delivery_status === 'not_sent' ? 'Review and send' : v.delivery_status === 'failed' ? 'Retry delivery' : 'Reconcile delivery', `BunchNote.delivery(${arg(v.preview_id)},${arg(v.delivery_status)})`) : ''}</p>`).join('')}`;
@@ -877,6 +865,7 @@
  }
  async function saveDraft() {
   prepareDraftCards();const d = state.draft;
+  d.body.recipient_ids=[...requiredBunchRecipientIds(d.body)];
   const result = await api('save', {batch_id: d.id, body: d.body}, d.revision, crypto.randomUUID());
   removeLocalDraft(d);state.draft = result.draft;normalizeDraftBody(state.draft.body);for(const location of state.draft.body.locations)location.source_all=state.rows.filter(row=>normalizeBunchNoteLocationKey(row.locationcode)===normalizeBunchNoteLocationKey(location.location));persistLocalDraft(state.draft);state.drafts=mergePersistedDrafts([state.draft,...state.drafts.filter(item=>item.id!==state.draft.id)]);state.boardState={...state.boardState,cardForms:{},dirtyCardIds:[],cardErrors:{},rejectedCardIds:[]};
  }
@@ -1026,12 +1015,12 @@
   workField: (key,field,value) => {state.workForms[key]={...state.workForms[key],[field]:value,...(field==='destination'?{destination_mode:'typed'}:field==='source_id'&&state.workForms[key]?.destination_mode==='matching'?{destination:'',destination_mode:undefined}:{})};if(field==='source_id')render();},
   recordActual: id => run(async()=>{const j=workJob(),key=j.id+':'+id,form=state.workForms[key]||{};await api('actual',{job_id:j.id,...workScope(j),action_id:id,source_id:form.source_id,quantity:form.quantity,destination:form.destination||'',destination_mode:form.destination_mode||'typed',explanation:form.explanation||''},j.revision,crypto.randomUUID());if(state.workForms[key]===form)state.workForms[key]={source_id:form.source_id};state.detail=await api('get',{job_id:j.id,...workScope(j)});await load();}),
   correctActual: id => {const j=workJob(),x=j.actuals.find(x=>x.id===id),amount=prompt('Corrected quantity (0 cancels this entry):',String(x.quantity));if(amount===null)return;const destination=actionKind(x.action_snapshot)==='ta'?'':prompt('Correct destination:',x.destination);if(destination===null)return;const explanation=prompt('Reason for this correction:');if(!explanation?.trim())return;return run(async()=>{await api('actual',{job_id:j.id,...workScope(j),action_id:x.action_id,source_id:x.source_snapshot.unique_id,replaces_id:id,quantity:amount,destination,explanation},j.revision,crypto.randomUUID());state.detail=await api('get',{job_id:j.id,...workScope(j)});await load();});},
-  workRecipient: (id,on) => {state.workRecipients=on?[...new Set([...state.workRecipients,id])]:state.workRecipients.filter(x=>x!==id);syncCheckboxByFocusKey(document.getElementById('bunch-note-content'),`work-recipient:${id}`,on);},
-  previewWork: () => run(async()=>{const j=state.detail.job,{preview}=await api('work_preview',{job_id:j.id,recipient_ids:state.workRecipients},j.revision,crypto.randomUUID());await preparePdf(preview);switchView('bunch-note');}),
+  workRecipient: () => {},
+  previewWork: () => run(async()=>{const j=state.detail.job,{preview}=await api('work_preview',{job_id:j.id,recipient_ids:[...requiredBunchRecipientIds()]},j.revision,crypto.randomUUID());await preparePdf(preview);switchView('bunch-note');}),
   publishWork: send_email => run(async()=>{await api('work_publish',{preview_id:state.preview.id,send_email},state.preview.job_revision,crypto.randomUUID());window.dispatchEvent(new CustomEvent('gnc:bunch-published'));invalidate();routeToAssignedWork();}),
   workPdf: preview_id => run(async()=>{const result=await api('work_pdf',{job_id:state.detail.job.id,preview_id});showPdfs([result.pdf]);const a=document.createElement('a');a.href=state.urls[0];a.target='_blank';a.rel='noopener';a.download=result.pdf.filename;a.click();}),
   removeAction: (i,j) => { invalidate(); state.draft.body.locations[i].actions.splice(j,1); render(); },
-  recipient: (id,on) => { if(requiredBunchRecipientIds().has(id)){syncCheckboxByFocusKey(document.getElementById('bunch-note-content'),`recipient:${id}`,true);return;}invalidate(); const d=state.draft.body; d.recipient_ids=on?[...new Set([...d.recipient_ids,id])]:d.recipient_ids.filter(v=>v!==id);syncCheckboxByFocusKey(document.getElementById('bunch-note-content'),`recipient:${id}`,on); },
+  recipient: () => {},
   refreshSource: () => run(async () => { invalidate(); const d=state.draft.body; state.rows=(await api('inventory',{block:d.block})).rows; const locations=groupInventory(state.rows).get(d.block)||new Map(); d.locations.forEach(l=>{l.source_all=locations.get(l.location)||[];for(const card of l.cards||[]){if(card.kind!=='inventory')continue;const matching=l.source_all.filter(r=>cardKey(r)===cardKey(card)),ids=new Set(matching.map(r=>r.unique_id));if(card.row_ids.every(id=>ids.has(id)))card.row_ids=[...ids];}prepareCards(l);});state.epoch++; }),
   save: () => run(saveDraft),
   preview: () => run(async () => { await saveDraft(); const d=state.draft; const {preview:p}=await api('preview',{batch_id:d.id},d.revision,crypto.randomUUID()); await preparePdf(p); }),
