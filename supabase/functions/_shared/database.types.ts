@@ -18966,6 +18966,15 @@ export type Database = {
         }
         Returns: Json
       }
+      request_jd_customer_directory_v1: {
+        Args: {
+          p_actor_id: string
+          p_page?: number
+          p_page_size?: number
+          p_q?: string
+        }
+        Returns: Json
+      }
       request_queue_remove_v1: {
         Args: {
           p_actor_id: string
