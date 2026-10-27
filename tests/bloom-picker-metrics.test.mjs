@@ -7,7 +7,7 @@ import { parse } from 'acorn';
 const html=readComposedAppSource();
 const script=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).find(s=>s.includes('function getBloomPickerTrayRowHtml('));
 const ast=parse(script,{ecmaVersion:'latest'});
-const names=new Set(['getBloomPickerTrayRowHtml','renderBloomPickerTrayRows','buildInventoryQuantityChipsHtml','firstNonEmptyValue','normalizeCardQuantityValue','getCardPtrOnHandValue','getCardPtrReviewedValue','getCardPtrAvailableValue','getCardOpenStockValue']);
+ const names=new Set(['getBloomPickerTrayRowHtml','renderBloomPickerTrayRows','buildInventoryQuantityChipsHtml','firstNonEmptyValue','normalizeCardQuantityValue','getCardPtrOnHandValue','getCardPtrReviewedValue','getCardPtrAvailableValue','getCardOpenStockValue']);
 const declarations=ast.body.filter(n=>n.type==='FunctionDeclaration'&&names.has(n.id.name));
 function setup(){
  const list={innerHTML:'',dataset:{},scrollTop:42}; const tray={classList:{toggle(){}}};
@@ -16,7 +16,8 @@ function setup(){
  preserveCardLocationOnHand:(item,value)=>value??item.LOC_ON_HAND??null,
  escapeHtml:v=>String(v??''),escJsAttrValue:v=>String(v),
  parseAppNumber:v=>{const n=Number(v);return Number.isFinite(n)?n:null;},
- getInventoryCardDesigLocValue:r=>r.DESIGLOC||'',getPhotoUrlList:v=>v?[v]:[],getRowPhotoLink:r=>r.PHOTO||'',
+  getInventoryCardDesigLocValue:r=>r.DESIGLOC||'',resolveCanonicalPhotoUrls:r=>String(r.PHOTO||'').split(',').filter(Boolean),resolveAndFormatPhotoDate:()=> '10/27/26',
+  getItemDisplayValue:(r,key)=>r[key]||'',
  getDirectImageUrl:v=>v,buildDeferredCardPhotoImg:v=>'<img data-src="'+v+'">',
  getCardLocationOnHandValue:r=>r.LOC_ON_HAND??null,formatLocPhotoMatchQtyValue:()=> 'N/A',
  closeAllBloomPickerTraySwipes(){},releaseBloomPickerTraySwipeMoveListener(){},bindBloomPickerTraySwipeHandlers(){},scheduleDeferredCardPhotoHydration(){},
@@ -26,8 +27,11 @@ function setup(){
 }
 const row=()=>({DOM_ID:'blue',ITEMCODE:'000152.050.1',COMMONNAME:'Blue Point Juniper - 2 Tier Poodle',CONTSIZE:'#5',LOCATIONCODE:'G.11.000',LOTCODE:'27.F1',PRIORITY:1,DESIGLOC:'NORTH',PTRONHAND:88,PTRREVIEWED:10,PTRAVAILABLE:78,S_LTS:153,LOC_ON_HAND:88});
 test('Bloom has a thumbnail header and exactly six single-line metrics without separator elements',()=>{
- const {context}=setup();const rendered=context.getBloomPickerTrayRowHtml({...row(),PHOTO:'https://example.invalid/plant.webp'});
+ const {context}=setup();const rendered=context.getBloomPickerTrayRowHtml({...row(),PHOTO:'https://example.invalid/plant.webp,https://example.invalid/plant-2.webp',SPEC:'24-30 IN',CALIPER:'2 IN'});
  assert.match(rendered,/app-bloom-card-photo[\s\S]*<img/); for (const pill of ['LOC G.11.000','LOT 27.F1','PRI 1','DESIGLOC NORTH']) assert.ok(rendered.includes('<span>'+pill+'</span>'));
+ assert.match(rendered,/app-av-photo-count[^>]*>1 \/ 2</);
+ assert.match(rendered,/app-inline-thumb-date[^>]*>10\/27\/26</);
+ assert.match(rendered,/Spec:[^]*24-30 IN[^]*Caliper:[^]*2 IN/);
  assert.ok(rendered.indexOf('app-bloom-card-meta') < rendered.indexOf('app-bloom-card-metrics'));
  assert.equal((rendered.match(/data-inventory-card-metric=/g)||[]).length,6);
  assert.match(rendered,/data-inventory-card-metric="available"[^]*?app-card-qty-value[^>]*>78</);

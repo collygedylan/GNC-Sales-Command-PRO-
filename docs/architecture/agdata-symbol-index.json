@@ -1,10 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.85",
+  "release": "AgData v2.3.87",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
     "supabase/functions/app-api/index.ts",
+    "supabase/functions/_shared/production-workflow.ts",
     "Code.gs"
   ],
   "sharedAssets": {
@@ -69,6 +70,10 @@
         },
         {
           "file": "assets/app-runtime.js",
+          "symbol": "getBloomPickerTrayRowHtml"
+        },
+        {
+          "file": "assets/app-runtime.js",
           "symbol": "renderDrive"
         }
       ]
@@ -128,8 +133,8 @@
       },
       "consumers": [
         {
-          "file": "supabase/functions/app-api/index.ts",
-          "symbol": "handleDriveReclassAction"
+          "file": "supabase/functions/_shared/production-workflow.ts",
+          "symbol": "handleInventoryReclassMove"
         },
         {
           "file": "Code.gs",
@@ -403,6 +408,8 @@
         "buildResolvedAVBaseState",
         "getRowPhotoLink",
         "resolveCanonicalPhotoUrls",
+        "isSeasonSalesNoteWinner",
+        "requiresAvNoteForCompletion",
         "getDetailPhotoUrls",
         "canonicalizeProductionCoreLiveKeys",
         "fetchDirectPostgrestReadPage",

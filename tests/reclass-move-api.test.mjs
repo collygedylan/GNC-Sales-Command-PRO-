@@ -44,6 +44,13 @@ test('Reclass status lookup proves the same command and returns the top-level co
     payload: { action: 'inventory_reclass_move', operation: 'status', commandId: command.commandId, moves: [] } }), /STATUS_INVALID/);
 });
 
+test('Reclass API never reports success without an applied committed-row receipt', async () => {
+  for (const receipt of [null, { ok: true, status: 'pending', rows: [] }, { ok: true, status: 'applied' }]) {
+    const supabase = { rpc: async () => ({ data: receipt, error: null }) };
+    await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile: actor, payload: command }), /COMMIT_UNCONFIRMED/);
+  }
+});
+
 test('Reclass compact transport is an additive RPC adapter and preserves receipt metadata', async () => {
   const compact = { ok: true, commandId: command.commandId, revision: 18, status: 'applied', importStatus: 'pending',
     rowEncoding: 'master-null-elision-v1', rowColumns: ['unique_id'],

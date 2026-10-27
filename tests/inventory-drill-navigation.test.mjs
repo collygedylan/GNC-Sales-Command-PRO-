@@ -168,6 +168,24 @@ test('AV and Common Name views render synchronously from complete in-memory rows
   assert.match(source('reconcileConfirmedDriveEvidence'), /propagateCommittedEdit\('ph_master_inventory'/);
 });
 
+test('AV Note is required only for the exact current Season Sales Note winner', () => {
+  const ctx = vm.createContext({
+    firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
+    isCurrentSeasonSalesNotesRow: row => row?.current === true,
+    isCurrentSeasonSalesNotesAssignmentRow: row => row?.assignment === 'season' && row?.current === true,
+    findLinkedMasterRow: row => row?.linked || null
+  });
+  vm.runInContext(source('isSeasonSalesNoteWinner') + source('requiresAvNoteForCompletion'), ctx);
+  assert.equal(ctx.requiresAvNoteForCompletion({ current: true, assignment: 'season' }), true);
+  assert.equal(ctx.requiresAvNoteForCompletion({ current: true, assignment: '' }), false);
+  assert.equal(ctx.requiresAvNoteForCompletion({ current: false, assignment: 'season' }), false);
+  assert.equal(ctx.requiresAvNoteForCompletion({ linked: { current: true, assignment: 'season' } }), true);
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(runtime, /wrapper\.classList\.toggle\('hidden', safePrefix !== 'req-' && !requiresAvNoteForCompletion/);
+  assert.doesNotMatch(runtime, /avNote\.value = 'SPEC - ' \+ spec/);
+  assert.match(runtime, /AV Note \(Optional — only required for Current Season Sales Note Winner\)/);
+});
+
 test('AV marks a cold administrator catalog partial and prefers complete master over an old AV slice', () => {
   const master = Array.from({ length: 9600 }, (_, id) => ({ UNIQUE_ID: id }));
   let complete = false;
@@ -1159,6 +1177,24 @@ test('Reclass moves add quantity to each physical Open Stock baseline before the
  assert.equal(result.find(r=>r.UNIQUE_ID==='sibling').S_LTS,'430');
  assert.equal(target.__reclassSeasonOpenStock,'430');
  assert.equal(rows[0].PTRONHAND,'330','preview retains immutable rollback rows');
+});
+
+test('Reclass new destination seasons start Open Stock at zero and preserve source evidence', () => {
+ const sourceRow={UNIQUE_ID:'orange-s1',ITEMCODE:'010585.031.1',LOCATIONCODE:'D.21.000',LOTCODE:'27.S1',SEASON:'S1',PTRONHAND:'2168',PTRAVAILABLE:'2168',S_LTS:'1323',PHOTO_LINK:'one.webp,two.webp',PHOTO_DATE:'2026-10-27',SPEC:'10-12 H x 14-16 W',CALIPER:'',LOC_PHOTO_MATCH:'325',LOC_MATCH_PCT:'15'};
+ const ctx=vm.createContext({parseAppNumber:v=>v==null?null:Number(v),buildItemInquiryViewModel:(_item,r)=>({rows:r}),avInventory:[],fullInventory:[sourceRow],cavInventory:[{ITEMCODE:'010585.031.1',SEASON:'F1',OPEN_STOCK:'1323'}]});
+ vm.runInContext(source('reclassStockSeason')+source('buildOptimisticInventoryReclassMoveModel'),ctx);
+ const rows=ctx.buildOptimisticInventoryReclassMoveModel({item:sourceRow,inquiryModel:{rows:[sourceRow]}},{commandId:'orange-move',moves:[{source:{uniqueId:'orange-s1'},lines:[{quantity:325,destinationSeason:'F1'}]}]}).model.rows;
+ const destination=rows.find(row=>row.LOTCODE==='27.F1');
+ assert.equal(destination.PTRONHAND,'325');
+ assert.equal(destination.S_LTS,'325');
+ assert.equal(destination.__reclassSeasonOpenStock,'325');
+ for (const field of ['PHOTO_LINK','PHOTO_DATE','SPEC','CALIPER','LOC_PHOTO_MATCH','LOC_MATCH_PCT']) assert.equal(destination[field],sourceRow[field],field);
+ assert.equal(rows.find(row=>row.UNIQUE_ID==='orange-s1').S_LTS,'998');
+});
+
+test('Drive and AV search handlers normalize trailing spaces before scheduling', () => {
+ assert.match(source('handleDriveSearch'),/input\.value\.trim\(\)\.replace\(\/\\s\+\/g, ' '\)\.toLowerCase\(\)/);
+ assert.match(source('handleAVSearch'),/String\(input \? input\.value : ''\)\.trim\(\)\.replace\(\/\\s\+\/g, ' '\)\.toLowerCase\(\)/);
 });
 
 test('Reclass inquiry uses nine canonical columns and boxed starting OH movement', () => {

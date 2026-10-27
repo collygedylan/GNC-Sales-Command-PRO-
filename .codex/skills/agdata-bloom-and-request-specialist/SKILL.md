@@ -84,6 +84,8 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never give Bloom Picker a lower-resolution photo path or omit canonical photo count/date and saved Spec/Caliper evidence from the selected physical row.
+
 - Never restore a delivery worker by granting browser roles access to private outbox, worker-state, email-thread, completed-history tables or worker RPCs; `Code.gs` and app-api use the service role while browser history stays on its authorized reader.
 
 - Never block Customer/Consignee selection on a full mapping download or assume a rep button already has `salesrepId`; resolve the selected rep through a bounded direct name query, then load only that rep's rows.

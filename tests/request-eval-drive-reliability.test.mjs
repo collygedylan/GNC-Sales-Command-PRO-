@@ -73,7 +73,7 @@ test('Drive evidence save is canonical, linked, timestamped, idempotent, and ret
   assert.match(migration, /get_request_drive_evidence_health_snapshot_v1/);
   assert.match(migration, /repair_request_drive_evidence_v1/);
   assert.match(migration, /skipped_newer_count/);
-  assert.match(html, /supabaseRpc\('save_drive_evidence_v2'/);
+  assert.match(html, /supabaseRpc\('save_drive_evidence_v3'/);
   const clientSave = html.slice(html.indexOf('async function saveSecureDriveEvidence'), html.indexOf('const HEALTH_METADATA_KEYS'));
   assert.doesNotMatch(clientSave, /fetchSupabasePage\(/);
   assert.match(html, /discardPendingLocalEdits\(\[itemToSave\.UNIQUE_ID\], true\)/);

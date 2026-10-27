@@ -687,8 +687,11 @@ test('Bloom summary, Suspend order strip, AV filters, and empty photos retain re
   assert.notEqual(addedStylesStart, -1, 'shared Bloom/Suspend/AV rules are present');
   const addedStyles = css.slice(addedStylesStart);
 
-  assert.match(addedStyles, /\.app-bloom-card-header\s*\{[^}]*grid-template-columns:\s*64px minmax\(0, 1fr\) auto;/);
-  assert.match(addedStyles, /\.app-bloom-card-photo\s*\{[^}]*width:\s*64px;[^}]*height:\s*64px;/);
+  assert.match(addedStyles, /\.app-bloom-card-header\s*\{[^}]*grid-template-columns:\s*92px minmax\(0, 1fr\) auto;/);
+  assert.match(addedStyles, /\.app-bloom-card-photo\s*\{[^}]*width:\s*92px;[^}]*height:\s*92px;[^}]*border-radius:\s*12px;/);
+  assert.match(addedStyles, /@media\s*\(max-width:\s*900px\)[^]*\.app-bloom-card-photo\s*\{[^}]*width:\s*80px;[^}]*height:\s*80px;/);
+  assert.match(addedStyles, /\.app-drive-card-photo img[^}]*object-fit:\s*cover\s*!important/);
+  assert.match(addedStyles, /\.request-av-option-card-shell \.app-card-qty-label[^}]*font-size:\s*13px/);
   assert.match(addedStyles, /\.app-bloom-card-metrics \.app-card-qty-row\s*\{[^}]*grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\) !important;/);
   assert.match(addedStyles, /#bloom-picker-actions-list:not\(\.hidden\)\s*\{[^}]*overflow-x:\s*auto !important;/);
 

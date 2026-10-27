@@ -96,6 +96,10 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never seed a newly created Reclass destination season from the source row or an unrelated CAV season baseline, omit location evidence from the cloned physical row, or accept an Edge success response without an applied receipt containing committed master rows.
+
+- Never make Que cards borrow a reduced thumbnail renderer or suppress saved Spec/Caliper when AV Note is blank; reuse the canonical photo/evidence projection for the exact physical row.
+
 - Never hydrate Queue metrics from another location or a different explicit lot, replace physical `s_lts` with summed Available, or replace a null `loc_photo_match` with a quantity. False Block variants must render no metric boxes even when an enriched payload contains stock; local report fixtures must include the frozen pre-edit `report_rows` and load every canonical reconciliation helper.
 
 - Never add a direct operational view to the runtime allowlist without a finite typed browser alias to its exact canonical row contract; otherwise the database bridge rejects the table before transport and a healthy queue renders empty.

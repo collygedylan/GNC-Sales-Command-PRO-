@@ -1823,3 +1823,15 @@ test('v2.3.80 Reclass freezes pre-edit report rows and suppresses test delivery'
  assert.match(contract,/not has_function_privilege\('authenticated'/);
  assert.match(contract,/not has_function_privilege\('anon'/);
 });
+
+test('v2.3.87 Reclass persistence and evidence migration is registered exactly once', async () => {
+ const {agdataV2387ReclassPersistenceEvidenceMigrationName:name,agdataV2387BatchReclassEvidenceMigrationName:batchName,registeredReleaseDatabaseMigrations}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.equal(registeredReleaseDatabaseMigrations.filter(value=>value===name).length,1);
+ assert.equal(registeredReleaseDatabaseMigrations.filter(value=>value===batchName).length,1);
+ const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
+ const batchMigration=fs.readFileSync(new URL('../supabase/migrations/'+batchName,import.meta.url),'utf8');
+ for(const token of ['loc_photo_match','loc_match_pct','photo_link','inventory_season_stock_overrides_v1','system:v2.3.87','AGDATA_V2387_ORANGE_REPAIR_UNCONFIRMED']) assert.ok(migration.includes(token),token);
+ assert.match(migration,/set local lock_timeout = '2s'/);
+ assert.match(migration,/set local statement_timeout = '15s'/);
+ for(const token of ['reclass-batch-evidence-v2387','photo_link','pick_note','source_before->>\'loc_photo_match\'']) assert.ok(batchMigration.includes(token),token);
+});

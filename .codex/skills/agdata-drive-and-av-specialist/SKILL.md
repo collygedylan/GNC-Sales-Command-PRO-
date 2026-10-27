@@ -100,6 +100,10 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never pass untrimmed Drive/AV search text into render scheduling, recreate image wrappers during unchanged card refreshes, or expose a white thumbnail/letterbox surface while protected photo evidence is loading.
+
+- Never require AV Note for a row that is not the exact current-season Season Sales Note winner, hide Spec/Caliper behind photo or AV Note presence, or regress shared plant thumbnails to letterboxed 64px surfaces.
+
 - Never persist or prefill AV Note measurement fragments containing SPEC or CALIPER, and never make Admin users press-and-hold to edit published evaluation data; sanitize load/save while keeping non-Admin published fields read-only.
 
 - Never let a delayed AV view reset erase a focused search that the user entered after the view became visible; explicit Reset/Home actions may clear it, background startup rendering may not.

@@ -147,6 +147,10 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
     ...(compactReceipt ? { p_receipt_encoding: 'master-null-elision-v1' } : {}),
   });
   if (error) throw error;
+  const receipt = record(data);
+  if (receipt.ok !== true || text(receipt.status) !== 'applied' || !Array.isArray(receipt.rows)) {
+    throw new Error('INVENTORY_RECLASS_COMMIT_UNCONFIRMED');
+  }
   return data;
 }
 

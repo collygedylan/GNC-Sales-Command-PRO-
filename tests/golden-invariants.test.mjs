@@ -2057,3 +2057,33 @@ test('Invariant 68 (Reclass Delta Reports, Bloom Gallery Shares and Discoverable
   assert.match(migration, /replace\(definition,\s*'next_stock:=coalesce\(baseline,0\)\+change\.delta;',\s*'next_stock:=coalesce\(baseline,0\)\+change\.oh_delta;'\)/);
   assert.match(migration, /private\.reclass_numeric_v1\(m\.s_lts\)\+change\.oh_delta/);
 });
+
+test('Invariant 69 (Season Winner AV Notes and Shared Card Evidence Stay Exact)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const styles = read('assets/ops-precision-pilot.css');
+  assert.match(runtime, /function requiresAvNoteForCompletion\(item = null\) \{[^]*return isSeasonSalesNoteWinner\(item\);/);
+  assert.match(runtime, /function isSeasonSalesNoteWinner\(item = null\)/);
+  assert.doesNotMatch(runtime, /const displaySpec = hasCardPhotoEvidence/);
+  assert.doesNotMatch(runtime, /const displayCaliper = hasCardPhotoEvidence/);
+  assert.match(runtime, /app-bloom-card-evidence[^]*Spec:[^]*Caliper:/);
+  assert.match(runtime, /CALIPER:/);
+  assert.match(styles, /--drive-card-photo-width:\s*92px;[^]*--drive-card-photo-height:\s*92px;/);
+  assert.match(styles, /--drive-card-photo-width:\s*80px;[^]*--drive-card-photo-height:\s*80px;/);
+  assert.match(styles, /app-drive-card-photo img[^}]*object-fit:\s*cover\s*!important/);
+});
+
+test('Invariant 70 (Reclass New Seasons Persist Zero-Baseline Stock and Durable Evidence)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const edge = read('supabase/functions/_shared/production-workflow.ts');
+  const migration = read('supabase/migrations/20261027163924_agdata_v2387_reclass_persistence_and_evidence.sql');
+  const batchMigration = read('supabase/migrations/20261027171000_agdata_v2387_batch_reclass_evidence.sql');
+  const preview = runtime.slice(runtime.indexOf('function buildOptimisticInventoryReclassMoveModel('), runtime.indexOf('function reconcileArgosReclassCardDraftState('));
+  assert.match(preview, /physicalSeasonKeys = new Set\(rows\.map\(stockKey\)\)/);
+  assert.match(preview, /if \(!current && !physicalSeasonKeys\.has\(destinationSeasonKey\)\) seasonOpenStocks\.set\(destinationSeasonKey, 0\)/);
+  assert.match(edge, /receipt\.ok !== true[^]*receipt\.status[^]*'applied'[^]*Array\.isArray\(receipt\.rows\)[^]*INVENTORY_RECLASS_COMMIT_UNCONFIRMED/);
+  for (const field of ['photo_link','date_completed','spec','caliper','loc_match_pct','loc_match_qty','loc_photo_match']) assert.match(migration, new RegExp(field));
+  assert.match(migration, /ptronhand='325'[^]*ptravailable='325'[^]*s_lts='325'/);
+  assert.match(migration, /ptronhand='1843'[^]*ptravailable='1843'[^]*s_lts='998'/);
+  assert.match(batchMigration, /source_before->>'loc_photo_match'/);
+  for (const field of ['photo_link','photo_name','date_completed','pick_note','sales_note']) assert.match(batchMigration, new RegExp(field));
+});

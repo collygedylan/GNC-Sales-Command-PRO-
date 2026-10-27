@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.85';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.87';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11966,8 +11966,15 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return false;
         }
 
+        function isSeasonSalesNoteWinner(item = null) {
+            if (!item) return false;
+            if (isCurrentSeasonSalesNotesAssignmentRow(item)) return true;
+            const linkedMaster = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+            return !!(linkedMaster && linkedMaster !== item && isCurrentSeasonSalesNotesAssignmentRow(linkedMaster));
+        }
+
         function requiresAvNoteForCompletion(item = null) {
-            return !itemOrLinkedMasterHasBlockingHoldStopCodeForAv(item);
+            return isSeasonSalesNoteWinner(item);
         }
 
         function isSeasonSalesNotesAssignmentValue(value = '') {
@@ -26607,7 +26614,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.85').trim() || 'AgData v2.3.85';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.87').trim() || 'AgData v2.3.87';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31813,14 +31820,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             };
         }
 
-        function validateEvalWorkPicturesSpecsEvidence(rowEvidence = null, label = 'This row') {
+        function validateEvalWorkPicturesSpecsEvidence(rowEvidence = null, label = 'This row', sourceRow = null) {
             const evidence = rowEvidence && typeof rowEvidence === 'object' ? rowEvidence : {};
             if (!Array.isArray(evidence.photos) || !evidence.photos.length) throw new Error(`${label}: take at least one photo.`);
             if (!String(evidence.spec || '').trim()) throw new Error(`${label}: Spec is required.`);
             const matchText = String(firstNonEmptyValue(evidence.locMatchPercent, evidence.loc_match_percent, '') || '').trim();
             const match = parseLocMatchPercent(matchText);
             if (match == null) throw new Error(`${label}: Loc Match % must be from 0 through 100.`);
-            if (!String(firstNonEmptyValue(evidence.avNote, evidence.av_note, '') || '').trim()) throw new Error(`${label}: AV Note is required.`);
+            if (requiresAvNoteForCompletion(sourceRow) && !String(firstNonEmptyValue(evidence.avNote, evidence.av_note, '') || '').trim()) throw new Error(`${label}: AV Note is required for the Current Season Sales Note Winner.`);
             return evidence;
         }
 
@@ -32102,7 +32109,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const label = `Row ${origin.locationcode || ''} / ${origin.lotcode || ''}`;
             try {
                 const evidence = collectEvalWorkEvidence(work);
-                validateEvalWorkPicturesSpecsEvidence(evidence, label);
+                validateEvalWorkPicturesSpecsEvidence(evidence, label, getEvalWorkOriginSourceRow(work, origin));
                 evidence.picturesSpecsResolution = 'done';
                 evalWorkEvidenceByOrigin[evalWorkActiveOriginUid] = evidence;
                 persistEvalWorkLocalDraft(work.id, buildEvalWorkLocalInquirySnapshot(work), collectEvalWorkEvidenceByOrigin(work), work.version);
@@ -32138,6 +32145,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const activeLocation = String(firstNonEmptyValue(activeOrigin.locationcode, activeOrigin.origin_locationcode, safeWork.origin_locationcode, '') || '');
             const activeLot = String(firstNonEmptyValue(activeOrigin.lotcode, activeOrigin.origin_lotcode, safeWork.origin_lotcode, '') || '');
             const activeSourceRow = getEvalWorkOriginSourceRow(safeWork, activeOrigin);
+            const activeAvNoteRequired = requiresAvNoteForCompletion(activeSourceRow);
             const activeMatchText = String(firstNonEmptyValue(evidence.locMatchPercent, evidence.loc_match_percent, '') || '').trim();
             const activeMatchQty = getEditorLocMatchQtyValue(activeSourceRow, activeMatchText);
             const picturesSpecsDone = String(firstNonEmptyValue(evidence.picturesSpecsResolution, evidence.pictures_specs_resolution, '') || '').trim().toLowerCase() === 'done';
@@ -32158,7 +32166,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     <label><span>Spec (Size/Dims) <em>Required</em></span><input id="eval-work-spec" value="${escapeHtml(evidence.spec || '')}" placeholder="e.g. 24-30 inch" oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}></label>
                     <label><span>Caliper</span><input id="eval-work-caliper" value="${escapeHtml(evidence.caliper || '')}" placeholder="e.g. 2 inch" oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}></label>
                     <label class="eval-work-match-wrap"><span>Loc Match % <em>Required</em></span><input id="eval-work-loc-match" type="text" inputmode="decimal" pattern="[0-9.]*" value="${escapeHtml(activeMatchText)}" placeholder="e.g. 95" oninput="return calculateEvalWorkMatchQty()" ${readOnly ? 'disabled' : ''}><span id="eval-work-match-display" class="eval-work-match-display">LOC PHOTO MATCH: <b id="eval-work-match-qty-val">${escapeHtml(activeMatchQty == null ? 'Not verified' : String(activeMatchQty))}</b></span></label>
-                    <label class="eval-work-av-note-wrap"><span>AV Note <em>Required</em></span><div class="eval-work-av-note-row"><input id="eval-work-av-note" type="text" value="${escapeHtml(firstNonEmptyValue(evidence.avNote, evidence.av_note, ''))}" placeholder="TYPE AV NOTE OR SELECT..." autocomplete="off" oninput="this.value=this.value.toUpperCase(); captureEvalWorkPicturesSpecsEditSoon(); return filterEvalWorkAvNotes(this.value)" onfocus="return filterEvalWorkAvNotes(this.value)" onblur="setTimeout(closeEvalWorkAvNoteDropdown,200)" ${readOnly ? 'disabled' : ''}><button type="button" aria-label="Add Spec and Caliper to AV Note" onmousedown="event.preventDefault()" onclick="return appendEvalWorkSpecCaliperToAvNote(event)" ${readOnly ? 'disabled' : ''}>+</button></div><div id="eval-work-av-dropdown-list" class="eval-work-av-dropdown hidden"></div></label>
+                    <label class="eval-work-av-note-wrap"><span>AV Note ${activeAvNoteRequired ? '<em>Required — Current Season Sales Note Winner</em>' : '<small>Optional — only required for Current Season Sales Note Winner</small>'}</span><div class="eval-work-av-note-row"><input id="eval-work-av-note" type="text" value="${escapeHtml(firstNonEmptyValue(evidence.avNote, evidence.av_note, ''))}" placeholder="${activeAvNoteRequired ? 'AV Note (Required — Current Season Sales Note Winner)' : 'AV Note (Optional — only required for Current Season Sales Note Winner)'}" autocomplete="off" oninput="this.value=this.value.toUpperCase(); captureEvalWorkPicturesSpecsEditSoon(); return filterEvalWorkAvNotes(this.value)" onfocus="return filterEvalWorkAvNotes(this.value)" onblur="setTimeout(closeEvalWorkAvNoteDropdown,200)" ${readOnly ? 'disabled' : ''}><button type="button" aria-label="Add Spec and Caliper to AV Note" onmousedown="event.preventDefault()" onclick="return appendEvalWorkSpecCaliperToAvNote(event)" ${readOnly ? 'disabled' : ''}>+</button></div><div id="eval-work-av-dropdown-list" class="eval-work-av-dropdown hidden"></div></label>
                     <label><span>Pick Note</span><input id="eval-work-pick-note" value="${escapeHtml(firstNonEmptyValue(evidence.pickNote, evidence.pick_note, ''))}" placeholder="e.g. Needs spacing" oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}></label>
                     <label><span>Comments</span><textarea id="eval-work-comments" placeholder="Any additional comments..." oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}>${escapeHtml(evidence.comments || '')}</textarea></label>
                 </div>
@@ -32468,7 +32476,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const requiredEvidence = evidenceByOrigin ? getEvalWorkOriginEntries(work).map((origin, index) => ({ origin, index, evidence: evidenceByOrigin[origin.origin_unique_id] || {} })) : [{ origin: { locationcode: work.origin_locationcode, lotcode: work.origin_lotcode }, index: 0, evidence }];
                 requiredEvidence.forEach(({ origin, index, evidence: rowEvidence }) => {
                     const label = `Lot ${index + 1} (${origin.locationcode || ''} / ${origin.lotcode || ''})`;
-                    validateEvalWorkPicturesSpecsEvidence(rowEvidence, label);
+                    validateEvalWorkPicturesSpecsEvidence(rowEvidence, label, getEvalWorkOriginSourceRow(work, origin));
                     if (String(firstNonEmptyValue(rowEvidence.picturesSpecsResolution, rowEvidence.pictures_specs_resolution, '') || '').trim().toLowerCase() !== 'done') {
                         throw new Error(`${label}: Pictures & Specs must be Mark Done.`);
                     }
@@ -45482,6 +45490,7 @@ let avTopControlsRenderToken = 0;
             const stockDeltas = new Map();
             const seasonOpenStocks = new Map();
             const stockKey = row => String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row);
+            const physicalSeasonKeys = new Set(rows.map(stockKey));
             const cavRows = typeof cavInventory !== 'undefined' ? cavInventory : [];
             cavRows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.OPEN_STOCK ?? row.open_stock ?? row.PTRAVAILABLE ?? row.ptravailable); if (!seasonOpenStocks.has(key) && value != null) seasonOpenStocks.set(key, value); });
             rows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.S_LTS ?? row.s_lts); if (!seasonOpenStocks.has(key) && value != null) seasonOpenStocks.set(key, value); });
@@ -45529,9 +45538,10 @@ let avTopControlsRenderToken = 0;
                     const baseAvailable = targetAvailable == null ? 0 : targetAvailable;
                     const pendingUid = current ? String(current.UNIQUE_ID || current.unique_id || '') : `pending-reclass-${command.commandId}-${moveIndex}-${season}`;
                     const destinationSeasonKey = `${String(source.ITEMCODE ?? source.itemcode ?? '')}|${season}`;
+                    if (!current && !physicalSeasonKeys.has(destinationSeasonKey)) seasonOpenStocks.set(destinationSeasonKey, 0);
                     const destinationOpenStock = current
                         ? parseAppNumber(current.S_LTS ?? current.s_lts ?? current.OPEN_STOCK ?? current.open_stock)
-                        : parseAppNumber(seasonOpenStocks.get(destinationSeasonKey));
+                        : parseAppNumber(seasonOpenStocks.get(destinationSeasonKey)) ?? 0;
                     const target = { ...source, ...(current || {}), UNIQUE_ID: pendingUid, unique_id: pendingUid, LOTCODE: targetLot, lotcode: targetLot,
                         HOLDSTOPCODE: current ? (current.HOLDSTOPCODE ?? current.holdstopcode) : '', holdstopcode: current ? (current.holdstopcode ?? current.HOLDSTOPCODE) : '',
                         HOLDSTOPREASON: current ? (current.HOLDSTOPREASON ?? current.holdstopreason) : '', holdstopreason: current ? (current.holdstopreason ?? current.HOLDSTOPREASON) : '',
@@ -45540,7 +45550,7 @@ let avTopControlsRenderToken = 0;
                         SEASON: season, season, PTRONHAND: String(baseOnHand + quantity), ptronhand: String(baseOnHand + quantity),
                         PTRAVAILABLE: String(baseAvailable + quantity), ptravailable: String(baseAvailable + quantity),
                         __optimisticReclassMove: command.commandId };
-                    if (targetIndex < 0 && destinationOpenStock != null) {
+                    if (targetIndex < 0) {
                         target.S_LTS = target.s_lts = target.OPEN_STOCK = target.open_stock = String(destinationOpenStock);
                     }
                     stockDeltas.set(stockKey(target), (stockDeltas.get(stockKey(target)) || 0) + quantity * effective(target));
@@ -80447,7 +80457,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function handleAVSearch() {
             const input = document.getElementById('av-search');
-            const term = String(input ? input.value : '').toLowerCase();
+            const term = String(input ? input.value : '').trim().replace(/\s+/g, ' ').toLowerCase();
             const clearBtn = document.getElementById('av-search-clear');
             if (clearBtn) clearBtn.classList.toggle('hidden', term.length <= 0);
             resetAvSearchDrilldownState();
@@ -95563,13 +95573,19 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const lotCode = escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, '-'));
             const priority = escapeHtml(firstNonEmptyValue(item.PRIORITY, item.priority, '-'));
             const desigLoc = escapeHtml(getInventoryCardDesigLocValue(item) || '--');
-            const photoUrl = getPhotoUrlList(getRowPhotoLink(item, 'drive'))[0] || '';
-            const photoHtml = photoUrl ? buildDeferredCardPhotoImg(getDirectImageUrl(photoUrl, 'card-inline'), { alt: firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Plant'), hydrateNow: true }) : '<span>NO PHOTO</span>';
+            const photoUrls = resolveCanonicalPhotoUrls(item, 'drive');
+            const photoUrl = photoUrls[0] || '';
+            const photoDate = photoUrl ? resolveAndFormatPhotoDate(item, photoUrl) : '';
+            const photoCountHtml = photoUrl ? `<span class="app-av-photo-count" aria-hidden="true">1 / ${photoUrls.length}</span>` : '';
+            const photoDateHtml = photoDate ? `<span class="photo-thumb-date app-inline-thumb-date">${escapeHtml(photoDate)}</span>` : '';
+            const photoHtml = photoUrl ? buildDeferredCardPhotoImg(getDirectImageUrl(photoUrl, 'card-feature'), { alt: firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Plant'), hydrateNow: true }) : '<span>NO PHOTO</span>';
+            const spec = String(getItemDisplayValue(item, 'SPEC', 'drive') || '').trim();
+            const caliper = String(getItemDisplayValue(item, 'CALIPER', 'drive') || '').trim();
             return `<div class="bloom-picker-tray-row" data-cart-dom-id="${safeDomId}">
                 <button type="button" class="bloom-picker-tray-action" onclick="return removeBloomPickerTrayRow('${safeDomIdJs}')"><i class="ph-bold ph-trash"></i><span>Remove</span></button>
                 <div class="bloom-picker-tray-surface rounded-2xl border border-emerald-100 bg-white px-3 py-2 shadow-sm">
                     <div class="app-bloom-card-header">
-                        <div class="app-bloom-card-photo">${photoHtml}</div>
+                        <div class="app-bloom-card-photo-column"><div class="app-bloom-card-photo">${photoHtml}${photoCountHtml}</div>${photoDateHtml}</div>
                         <div class="app-bloom-card-heading min-w-0">
                             <div class="truncate text-sm font-black leading-tight text-slate-900">${title} ${contSize}</div>
                             <div class="mt-0.5 truncate text-[11px] font-bold text-slate-500">${itemCode}</div>
@@ -95580,6 +95596,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         <span>LOC ${locationCode}</span><span>LOT ${lotCode}</span><span>PRI ${priority}</span><span>DESIGLOC ${desigLoc}</span>
                     </div>
                     <div class="app-bloom-card-metrics">${buildInventoryQuantityChipsHtml(item, { compact: true, layout: 'row', preserveUnknown: true, sourceView: 'drive' })}</div>
+                    ${(spec || caliper) ? `<div class="app-bloom-card-evidence">${spec ? `<span>Spec: ${escapeHtml(spec)}</span>` : ''}${caliper ? `<span>Caliper: ${escapeHtml(caliper)}</span>` : ''}</div>` : ''}
                 </div>
             </div>`;
         }
@@ -106122,13 +106139,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!safePrefix || safePrefix === 'global-') return;
             const avNote = document.getElementById(safePrefix + 'av-note');
             if (!avNote) return;
+            const required = requiresAvNoteForCompletion(item);
+            const helper = required ? 'Required — Current Season Sales Note Winner' : 'Optional — only required for Current Season Sales Note Winner';
+            avNote.placeholder = `AV Note (${helper})`;
+            avNote.setAttribute('aria-required', required ? 'true' : 'false');
             const wrapper = avNote.closest('.relative.w-full.mb-3');
-            if (!wrapper) return;
-            wrapper.classList.toggle('hidden', safePrefix !== 'req-' && !requiresAvNoteForCompletion(item));
-            if (safePrefix === 'req-' && !String(avNote.value || '').trim()) {
-                const spec = normalizeDetailSpecTextForSave(document.getElementById('req-spec')?.value || item?.REQ_SPEC || '');
-                if (spec) avNote.value = 'SPEC - ' + spec;
-            }
+            if (wrapper) wrapper.classList.remove('hidden');
         }
 
         function getAvDetailPickNoteText(item = activeItem, detailSourceView = '') {
@@ -145521,7 +145537,8 @@ C.14.043 C.15.000
             const dockNote = String(firstNonEmptyValue(item.DOCK_NOTE, item.dock_note, sourceRow && sourceRow.DOCK_NOTE, sourceRow && sourceRow.dock_note, item.DOCK_ISSUE_NOTE, item.dock_issue_note, sourceRow && sourceRow.DOCK_ISSUE_NOTE, sourceRow && sourceRow.dock_issue_note, '') || '').trim();
             const pickNote = String(firstNonEmptyValue(item.REQ_PICK, item.req_pick, item.REQ_PIC_NOTE, item.req_pic_note, item.PIC_NOTE, item.pic_note, sourceRow && sourceRow.REQ_PICK, sourceRow && sourceRow.req_pick, sourceRow && sourceRow.PIC_NOTE, sourceRow && sourceRow.pic_note, '') || '').trim();
             const chips = [
-                caliper ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">CAL: <span class="text-slate-900">${esc(caliper)}</span></span>` : ''
+                spec ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">SPEC: <span class="text-slate-900">${esc(spec)}</span></span>` : '',
+                caliper ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">CALIPER: <span class="text-slate-900">${esc(caliper)}</span></span>` : ''
             ].filter(Boolean).join('');
             const chipsHtml = chips ? `<div class="app-suspend-tag-data-chips mt-2 flex flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-[0.08em]">${chips}</div>` : '';
             const dockNoteHtml = dockNote ? `<div class="app-suspend-tag-data-note mt-2 rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${esc(dockNote)}</div>` : '';
@@ -146181,7 +146198,7 @@ C.14.043 C.15.000
                     const previewHtml = isReserveAvCard
                         ? `<div class="app-av-photo-slide" data-av-photo-index="0" aria-label="${label}">${imgHtml}${photoDateHtml}${photoStatusHtml}</div>`
                         : `<button type="button" class="app-av-photo-slide" data-fast-press-ignore data-av-photo-index="0" aria-label="${label}" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', 0); return false;">${imgHtml}${photoDateHtml}${photoStatusHtml}</button>`;
-                    heroHtml = `<div class="app-av-hero"><div class="app-av-photo-carousel"${isReserveAvCard ? '' : ' data-fast-press-ignore'}><div class="app-av-photo-track">${previewHtml}</div>${photoCount > 1 ? `<span class="app-av-photo-count" aria-hidden="true">1 / ${photoCount}</span>` : ''}</div></div>`;
+                    heroHtml = `<div class="app-av-hero"><div class="app-av-photo-carousel"${isReserveAvCard ? '' : ' data-fast-press-ignore'}><div class="app-av-photo-track">${previewHtml}</div><span class="app-av-photo-count" aria-hidden="true">1 / ${photoCount}</span></div></div>`;
                 }
                 const domIdText = String(firstNonEmptyValue(item.DOM_ID, '') || '').trim();
                 const itemCodeText = String(firstNonEmptyValue(item.ITEMCODE, '-') || '-').trim() || '-';
@@ -146190,6 +146207,7 @@ C.14.043 C.15.000
                 const commonNameText = String(firstNonEmptyValue(item.COMMONNAME, 'Unknown') || 'Unknown').trim() || 'Unknown';
                 const avNoteDisplay = avNoteText || String(firstNonEmptyValue(item.AVNOTE, item.AV_NOTES, '') || '').trim();
                 const specText = String(firstNonEmptyValue(item.SPEC, item.SPECIFICATION, item.AV_SPEC, item.SPECS, '') || '').trim();
+                const caliperText = String(firstNonEmptyValue(item.CALIPER, item.caliper, item.AV_CALIPER, '') || '').trim();
                 const showSeasonOh = rowSourceContainsHl(item);
                 const seasonOhText = showSeasonOh ? getCardSeasonOhValue(item) : '';
                 const seasonText = String(firstNonEmptyValue(item.SEASON, item.season, '-') || '-').trim() || '-';
@@ -146216,6 +146234,9 @@ C.14.043 C.15.000
                 const avSpecHtml = specText
                     ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Spec</span><div class="app-av-catalog-note-text">${escapeHtml(specText)}</div></section>`
                     : '';
+                const avCaliperHtml = caliperText
+                    ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Caliper</span><div class="app-av-catalog-note-text">${escapeHtml(caliperText)}</div></section>`
+                    : '';
                 const avNoteCatalogHtml = avNoteDisplay
                     ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">AV Note</span><div class="app-av-catalog-note-text">${escapeHtml(avNoteDisplay)}</div></section>`
                     : '';
@@ -146228,7 +146249,7 @@ C.14.043 C.15.000
                     <div class="app-av-catalog-frame">
                         <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3></div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div><div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} · ${priorityHtml}</span></div>${priceHtml}</div></div>
                         <div class="app-av-catalog-media"><div class="app-av-catalog-photo-wrap">${heroHtml}</div></div>
-                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${hasValidAvPhotos ? `<div class="app-av-catalog-photo-evidence">${photoDateHtml}</div>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}${viewPhotosButtonHtml}</div><div class="app-av-catalog-actions">${avReclassSourceHtml}</div>
+                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${hasValidAvPhotos ? `<div class="app-av-catalog-photo-evidence">${photoDateHtml}</div>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}${viewPhotosButtonHtml}</div><div class="app-av-catalog-actions">${avReclassSourceHtml}</div>
                     </div>
                 </div>`;
             };
@@ -146243,7 +146264,7 @@ C.14.043 C.15.000
                 if(thumbUrl.startsWith('http')){
                     const safePhotoCsv = escJsAttrValue(cardPhotoUrls.join(','));
                     const safePhotoCaption = escJsAttrValue(`${item.COMMONNAME || 'Inventory Item'} - ${item.CONTSIZE || '-'}`);
-                    const photoCountBadge = cardPhotoUrls.length > 1 ? `<span class="app-av-photo-count" aria-hidden="true">1 / ${cardPhotoUrls.length}</span>` : '';
+                    const photoCountBadge = `<span class="app-av-photo-count" aria-hidden="true">1 / ${cardPhotoUrls.length}</span>`;
                     thumbHtml=`<div class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${safePhotoCaption}', 0); return false;"><div class="app-inline-thumb-box app-av-photo-carousel">${buildDeferredCardPhotoImg(thumbUrl, { className: 'active:scale-95 transition-transform', alt: `${item.COMMONNAME || 'Inventory Item'} photo 1 of ${cardPhotoUrls.length}` })}${photoCountBadge}</div>${photoDateHtml}</div>`;
                 }
             }
@@ -146449,8 +146470,8 @@ C.14.043 C.15.000
             if(sourceView==='drive' || sourceView==='crop-roll'){
                 const displaySourceView = sourceView === 'crop-roll' ? 'drive' : sourceView;
                 const displayAvNote = hasCardPhotoEvidence ? getItemDisplayValue(item, 'AV_NOTE', displaySourceView) : '';
-                const displaySpec = hasCardPhotoEvidence ? getItemDisplayValue(item, 'SPEC', displaySourceView) : '';
-                const displayCaliper = hasCardPhotoEvidence ? getItemDisplayValue(item, 'CALIPER', displaySourceView) : '';
+                const displaySpec = getItemDisplayValue(item, 'SPEC', displaySourceView);
+                const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
                 const displayHoldStopCode = holdReleaseOverrideActive ? '' : firstNonEmptyValue(item.HOLDSTOPCODE, item.holdstopcode, item.HOLSTOPCODE, item.holstopcode, item.HOLD_STOP_CODE, item.HOLDSTOP, '');
                 const displaySource = String(firstNonEmptyValue(item.SOURCE, item.source, '') || '').trim();
                 const displayHoldStopReason = holdReleaseOverrideActive ? '' : firstNonEmptyValue(item.HOLDSTOPREASON, item.holdstopreason, item.HOLD_STOP_REASON, item.hold_stop_reason, item.HOLDREASON, item.holdreason, '');
@@ -146465,7 +146486,7 @@ C.14.043 C.15.000
                 const driveAvNoteHtml = displayAvNote && String(displayAvNote).trim() !== '' ? `<div class="app-drive-card-note rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${esc(displayAvNote)}</div>` : '';
                 const driveSalesNoteText = String(firstNonEmptyValue(salesNoteText, '') || '').trim();
                 const driveSalesNoteHtml = driveSalesNoteText ? `<div class="app-drive-card-note rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${esc(driveSalesNoteText)}</div>` : '';
-                const driveSpecHtml = displaySpec ? `<div class="app-drive-card-evidence"><span class="app-drive-card-spec">Spec: ${esc(displaySpec)}</span>${displayCaliper ? `<span class="app-drive-card-caliper">Cal: ${esc(displayCaliper)}</span>` : ''}</div>` : (displayCaliper ? `<div class="app-drive-card-evidence"><span class="app-drive-card-caliper">Cal: ${esc(displayCaliper)}</span></div>` : '');
+                const driveSpecHtml = displaySpec ? `<div class="app-drive-card-evidence"><span class="app-drive-card-spec">Spec: ${esc(displaySpec)}</span>${displayCaliper ? `<span class="app-drive-card-caliper">Caliper: ${esc(displayCaliper)}</span>` : ''}</div>` : (displayCaliper ? `<div class="app-drive-card-evidence"><span class="app-drive-card-caliper">Caliper: ${esc(displayCaliper)}</span></div>` : '');
                 const holdCodeText = String(firstNonEmptyValue(displayHoldStopCode, '') || '').trim();
                 const holdReasonDisplay = String(firstNonEmptyValue(displayHoldStopReason, '') || '').trim();
                 const holdDateDisplay = formatInventoryHoldSince(displayHoldStopBeginDate);
@@ -146504,8 +146525,8 @@ C.14.043 C.15.000
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
                 const displayAvNote = hasCardPhotoEvidence ? getItemDisplayValue(item, 'AV_NOTE', displaySourceView) : '';
-                const displaySpec = hasCardPhotoEvidence ? getItemDisplayValue(item, 'SPEC', displaySourceView) : '';
-                const displayCaliper = hasCardPhotoEvidence ? getItemDisplayValue(item, 'CALIPER', displaySourceView) : '';
+                const displaySpec = getItemDisplayValue(item, 'SPEC', displaySourceView);
+                const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
                 const displayMatch = hasCardPhotoEvidence ? getItemDisplayValue(item, 'MATCH', displaySourceView) : '';
                 let noteHtml='';
                 const holdHtml = buildHoldReasonHtml();
@@ -146513,7 +146534,7 @@ C.14.043 C.15.000
                 if(holdHtml) noteHtml += holdHtml;
                 if(evalTaskHtml) noteHtml += evalTaskHtml;
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
-                let extraData='';extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
+                let extraData='';extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Caliper: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
                 const taskArgosRailHtml = buildArgosInventoryTransactionRailHtml(item, 'tasks');
                 const taskApprovalBtn = buildInventoryAllEditRailButtonHtml(item, 'tasks');
                 const taskReverseRailBtn = buildNcrApprovalReverseRailButtonHtml(item, 'tasks');
@@ -151010,8 +151031,8 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getDriveSearchTerm() {
             const input = document.getElementById('drive-search');
-            if (input) return String(input.value || '').trim();
-            return String(searchRenderLastTerm['drive-search'] || '').trim();
+            if (input) return String(input.value || '').trim().replace(/\s+/g, ' ');
+            return String(searchRenderLastTerm['drive-search'] || '').trim().replace(/\s+/g, ' ');
         }
 
         function hasActiveDriveSearchTerm() {
@@ -153463,7 +153484,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getDriveSearchBoxValue() {
             const input = document.getElementById('drive-search');
-            return input ? String(input.value || '').trim() : '';
+            return input ? String(input.value || '').trim().replace(/\s+/g, ' ') : '';
         }
 
         function hasActiveDriveQuickResetFilters() {
@@ -154842,7 +154863,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             cancelDriveChunkedRenders();
             const input = document.getElementById('drive-search');
             if (!input) return false;
-            const term = input.value.trim().toLowerCase();
+            const term = input.value.trim().replace(/\s+/g, ' ').toLowerCase();
             const clearBtn = document.getElementById('drive-search-clear');
             if(term.length > 0) {
                 clearBtn.classList.remove('hidden');
