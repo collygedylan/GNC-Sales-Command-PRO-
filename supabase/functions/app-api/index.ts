@@ -1,7 +1,7 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.77";
-const APP_RUNTIME_RELEASE = "AgData v2.3.77";
+const APP_RUNTIME_VERSION = "2.3.89";
+const APP_RUNTIME_RELEASE = "AgData v2.3.89";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -458,7 +458,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.77";
+  const appVersion = "2.3.89";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -4658,7 +4658,7 @@ function dispatchAuthenticatedDeliveryWake(
 }
 
 const HOME_SYNC_METADATA_USERS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
-const HOME_SYNC_METADATA_KEYS = ["ph_master_inventory", "ph_soc_master", "ph_reserves", "ph_cav_import"];
+const HOME_SYNC_METADATA_KEYS = ["ph_master_inventory", "ph_soc_master", "ph_reserves", "ph_cav_import", "hl_po_parsed"];
 
 async function readLoginHomeSyncMetadata(username: string) {
   if (!HOME_SYNC_METADATA_USERS.has(normalizeUsername(username))) return null;
@@ -6642,8 +6642,12 @@ function cleanBunchNoteText(value: unknown, limit: number): string {
 }
 
 function canonicalBunchNoteLocation(value: unknown): string {
-  const location = cleanBunchNoteText(value, 200).toUpperCase().replace(/\s+/g, "").replace(/\.+$/, "");
+  const location = normalizeBunchNoteLocationKey(value);
   return /^[A-Z0-9]+\.[A-Z0-9]+$/.test(location) ? `${location}.000` : location;
+}
+
+function normalizeBunchNoteLocationKey(value: unknown): string {
+  return cleanBunchNoteText(value, 200).toUpperCase().replace(/\s+/g, "").replace(/\.+$/, "").replace(/\.000$/, "");
 }
 
 function normalizeBunchNoteSavePayload(value: unknown): Record<string, unknown> {
@@ -6663,7 +6667,7 @@ function normalizeBunchNoteSavePayload(value: unknown): Record<string, unknown> 
     }
     const ruleChips: unknown[] = Array.isArray(entry.rule_chips) ? entry.rule_chips : [];
     next.rule_chips = ruleChips.map((chip: unknown) => cleanBunchNoteText(chip, 500)).filter(Boolean).slice(0, 20);
-    if (Array.isArray(entry.cards)) next.cards = entry.cards.map((card: unknown) => card && typeof card === "object" && !Array.isArray(card) ? { ...(card as Record<string, unknown>), location_code: location } : card);
+    if (Array.isArray(entry.cards)) next.cards = entry.cards.map((card: unknown) => card && typeof card === "object" && !Array.isArray(card) && (card as Record<string, unknown>).kind !== "divider" ? { ...(card as Record<string, unknown>), location_code: location } : card);
     return next;
   });
   const firstBlock = locations.map((location: Record<string, unknown>) => canonicalBunchNoteLocation(location.location).split(".")[0]).find(Boolean) || "";

@@ -1329,7 +1329,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.77"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.89"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1356,9 +1356,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.77"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.89"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.77"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.89"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2151,4 +2151,16 @@ test('Invariant 76 (Bunch Notes Back Treats Each Visible Drill Screen as One Ste
   const back = bunch.slice(start, end);
   assert.match(back, /else if\(state\.location\)\{state\.location='';state\.locationStep='setup';\}/);
   assert.doesNotMatch(back, /state\.location&&state\.locationStep==='items'/);
+});
+
+test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Durable)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const bunch = read('assets/bunch-note.js');
+  const registry = read('assets/live-sync-registry.js');
+  assert.match(runtime, /plainManagersHubEntry[^]*activeHomeTab = 'dashboard'/);
+  assert.match(runtime, /hasActiveManualSync\(\) \? 10000 : 15000/);
+  assert.match(runtime, /gnc_dylan_last_toasted_revisions_v1[^]*username !== 'dylan_collyge'/);
+  assert.match(registry, /homeSyncMetadata:\s*\[[^\]]*hl_po_parsed/);
+  assert.match(bunch, /normalizeBunchNoteLocationKey[^]*gnc_bunch_note_drafts_v1[^]*Saved Drafts \/ Active Bunch Notes/);
+  assert.match(bunch, /function reset\(\) \{ persistLocalDraft\(\)/);
 });

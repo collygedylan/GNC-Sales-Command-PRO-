@@ -1342,6 +1342,40 @@ test('one foreground heartbeat pauses hidden callbacks and skips unchanged datas
     f.coordinator.reset();
 });
 
+test('v2.3.89 polls every 15 seconds and hot-reloads every processed file cohort in the background', () => {
+    const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+    const registry = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
+    assert.match(runtime, /getPollInterval:\s*\(\) => hasActiveManualSync\(\) \? 10000 : 15000/);
+    assert.match(runtime, /for \(const key of \['soc', 'reserves', 'cav'\]\)[^]*createProductionCoreLiveAdapter\(key, 'browse'/);
+    assert.match(runtime, /getAdapter\('side:po'/);
+    assert.match(registry, /homeSyncMetadata:\s*\[[^\]]*'hl_po_parsed'/);
+    assert.match(registry, /po:\s*\[[^\]]*'hl_po_parsed'/);
+});
+
+test('Dylan receives one seeded per-file toast on revision advance and other users receive none', () => {
+    const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+    const start = runtime.indexOf("const DYLAN_FILE_TOAST_STORAGE_KEY");
+    const end = runtime.indexOf('\n        function mergeDashboardSyncSummaries', start);
+    const source = runtime.slice(start, end);
+    const storage = new Map(), toasts = [];
+    const localStorage = { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) };
+    const context = { currentUser: 'dylan_collyge', localStorage, showToast: (...args) => toasts.push(args) };
+    vm.runInNewContext(source, context);
+    const keys = ['ph_master_inventory', 'ph_cav_import', 'ph_reserves', 'ph_soc_master'];
+    const metadata = revision => ({ contractVersion: 1, sources: keys.map((key, index) => ({
+        key, revision: String(revision + index), state: 'ready', sourceFileName: `${key}-${revision}.xlsx`,
+        sourceImportedAt: `2026-10-27T18:${String(revision).padStart(2, '0')}:00Z`
+    })) });
+    assert.deepEqual(Array.from(context.processDylanFileProcessedToasts(metadata(1))), []);
+    assert.equal(toasts.length, 0, 'initial boot seeds without replaying old files');
+    assert.deepEqual(Array.from(context.processDylanFileProcessedToasts(metadata(2))), keys);
+    assert.equal(toasts.length, 4);
+    assert.ok(toasts.every(([, message]) => /processed — Supabase updated/.test(message)));
+    context.currentUser = 'megan_kelly';
+    context.processDylanFileProcessedToasts(metadata(3));
+    assert.equal(toasts.length, 4, 'non-Dylan accounts never receive file-processed toasts');
+});
+
 
 test('conditional page cache avoids retransfers and is isolated by account and permission', async () => {
     const app = readComposedAppSource();

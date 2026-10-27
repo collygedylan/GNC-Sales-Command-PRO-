@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.88",
+  "release": "AgData v2.3.89",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -249,6 +249,7 @@
     "agdata-app-shell-and-navigation": {
       "assets/app-runtime.js": [
         "switchView",
+        "openManagersModules",
         "showOnlyPrimaryView",
         "goBackUniversal",
         "updateGlobalBackButton",
@@ -488,6 +489,7 @@
       ],
       "supportingFiles": {
         "assets/bunch-note.js": [
+          "normalizeBunchNoteLocationKey",
           "suggestionField",
           "locationSetupHtml",
           "editor"
@@ -630,6 +632,8 @@
       "assets/app-runtime.js": [
         "runGoogleAppsScriptTrigger",
         "refreshDashboardSyncMetadata",
+        "processDylanFileProcessedToasts",
+        "getProductionLiveSyncCoordinator",
         "fetchDirectPostgrestReadPage",
         "syncGoogleScriptButton"
       ],
@@ -702,6 +706,10 @@
         ],
         "supabase/migrations/20261027133509_agdata_v2384_runtime_recovery.sql": [
           "bulk_import_master_snapshot_v2374_base"
+        ],
+        "supabase/migrations/20261027200748_agdata_v2389_live_revision_and_bunch_draft_restore.sql": [
+          "touch_hl_po_parsed_v2389",
+          "hl_po_parsed_revision_v2389"
         ]
       }
     },

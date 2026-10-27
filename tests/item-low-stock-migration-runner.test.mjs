@@ -1845,3 +1845,11 @@ test('v2.3.88 runtime recovery is registered with stale-row and watchdog contrac
  for(const token of ['reclass-source-alias-v2388','candidate.itemcode','candidate.locationcode',"where status='open'",'AgData v2.3.88']) assert.ok(migration.includes(token),token);
  assert.match(migrationContractQuery(name),/20261027184835[^]*reclass-source-alias-v2388[^]*app_runtime_watchdog_events[^]*2\.3\.88/);
 });
+
+test('v2.3.89 live revision and Bunch draft migration is registered exactly once', async () => {
+ const {agdataV2389LiveRevisionBunchDraftMigrationName:name,registeredReleaseDatabaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.equal(registeredReleaseDatabaseMigrations.filter(value=>value===name).length,1);
+ const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
+ for(const token of ['F.05.000','dylan_collyge','AgData v2.3.89','set local statement_timeout','hl_po_parsed_revision_v2389']) assert.ok(migration.includes(token),token);
+ assert.match(migrationContractQuery(name),/20261027200748[^]*2\.3\.89[^]*hl_po_parsed[^]*bunch_note_private\.batches[^]*F\.05/);
+});

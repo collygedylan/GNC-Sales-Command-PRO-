@@ -53,11 +53,11 @@ function runtime(options = {}) {
   let frozenPreviewBody = null;
   window.postAppFunctionJson = async (_url, request) => {
     requests.push(plain(request));
-    if (request.operation === 'blocks') return { ok: true, data: { blocks: ['D'] } };
+    if (request.operation === 'blocks') return { ok: true, data: { blocks: options.blocks || ['D'] } };
     if (request.operation === 'directory') return { ok: true, data: { users: [{ id: 'worker-1', username: 'sam', display: 'Sam' }] } };
-    if (request.operation === 'drafts') return { ok: true, data: { drafts: [] } };
+    if (request.operation === 'drafts') return { ok: true, data: { drafts: options.drafts || [] } };
     if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: ['D.05.000', 'D.05.001', 'G.15.001', 'H.00.031'] } };
-    if (request.operation === 'inventory') return { ok: true, data: { rows } };
+    if (request.operation === 'inventory') return { ok: true, data: { rows: options.rows || rows } };
     if (request.operation === 'save') {
       savedBody = plain(request.payload.body);
       if (options.saveErrorOnce) {
@@ -347,6 +347,30 @@ test('app API normalizes Bunch Note save payloads before the database command', 
   assert.match(source, /function normalizeBunchNoteSavePayload/);
   assert.match(source, /operation === "save" \? normalizeBunchNoteSavePayload\(payload\.payload\)/);
   assert.match(source, /source_location: location, format_version: 5/);
+});
+
+test('F.05 and F.05.000 share one durable local draft across reset and surface draft badges', async () => {
+  const f05Rows = [{ ...rows[0], unique_id: 'f05-lot', blockalpha: 'F', locationcode: 'F.05.000' }];
+  const rt = runtime({ blocks: ['F'], rows: f05Rows });
+  await rt.note.open();
+  await rt.note.chooseBlock('F');
+  rt.note.openLocation('F.05');
+  rt.note.wizardField('workType', 'F.05 Bunch Notes');
+  rt.note.wizardField('notes', 'Keep the saved F.05 plan');
+  assert.equal(rt.note.normalizeBunchNoteLocationKey('F.05'), rt.note.normalizeBunchNoteLocationKey('F.05.000'));
+  rt.note.reset();
+  await rt.note.open();
+  const root = rt.window.document.querySelector('#bunch-note-content');
+  assert.match(root.textContent, /Saved Drafts \/ Active Bunch Notes/);
+  assert.match(root.textContent, /F\.05\.000 \(Draft\)/);
+  assert.match(root.textContent, /Block Alpha DRAFT/);
+  await rt.note.chooseBlock('F');
+  assert.match(root.textContent, /Location Code DRAFT/);
+  rt.note.openLocation('F.05.000');
+  assert.match(root.textContent, /Plan work · F · F\.05/);
+  assert.equal(root.querySelector('[data-bn-field="Work type"] input').value, 'F.05 Bunch Notes');
+  assert.match(rt.window.localStorage.getItem('gnc_bunch_note_drafts_v1') || '', /F\.05\.000/);
+  rt.dom.window.close();
 });
 
 test('editable Work Type title and Purpose thread persist independently through save and preview', async () => {

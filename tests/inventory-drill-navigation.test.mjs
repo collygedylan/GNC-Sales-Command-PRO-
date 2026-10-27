@@ -937,6 +937,18 @@ test('actual personalized Manager, Docks and Que footer buttons switch from Home
   preferences.reset();
 });
 
+test('plain Managers navigation resets any stale submodule and retains the complete hub grid', () => {
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const switchSource = source('switchView');
+  assert.match(switchSource, /plainManagersHubEntry[^]*activeHomeTab = 'dashboard'[^]*managersSearchTerm = ''/);
+  assert.match(runtime, /function openManagersModules\([^]*activeHomeTab = 'dashboard'[^]*renderManagers\(\)/);
+  const modulePicker = runtime.slice(runtime.indexOf('function renderManagerModulePicker'), runtime.indexOf('function renderManagerProductivity', runtime.indexOf('function renderManagerModulePicker')));
+  for (const label of ['Assigned Items', 'Eval Reports', 'Eval Reports #2', 'Eval Work', 'Shear List', 'Bunch Notes', 'Recount', 'Location Moves', 'Projects']) {
+    assert.match(runtime, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), label);
+  }
+  assert.match(modulePicker, /getManagerModuleOptions/);
+});
+
 test('Manager submodules return to Modules immediately; Eval2 ITEMCODES mode returns to the hub, then Home', () => {
   for (const tab of ['customer-rep-map', 'access-control', 'season-settings', 'crop-roll', 'approval', 'season-priority', 'production-schedule', 'eval-reports-2', 'moves', 'productivity']) {
     const { context: f, calls } = backHarness('managers');

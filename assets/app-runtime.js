@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.88';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.89';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21555,6 +21555,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 method: 'POST',
                 headers,
                 body: JSON.stringify(body || {}),
+                cache: 'no-store',
                 signal: safeOptions.signal
             }, Number(safeOptions.timeoutMs || 18000), String(safeOptions.label || 'App Function'));
             const responseVersion = String(response.headers?.get('x-agdata-app-version') || '').trim();
@@ -26612,7 +26613,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.88').trim() || 'AgData v2.3.88';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.89').trim() || 'AgData v2.3.89';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28987,6 +28988,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const foregroundIds = new Set(adapters.map(adapter => adapter.id));
             const backgroundContext = { ...context, surfaces: context.surfaces.filter(id => id.startsWith('badge:')) };
             const backgroundAdapters = context.pagedReportSurface ? [] : descriptors('home', backgroundContext).filter(adapter => !foregroundIds.has(adapter.id));
+            if (!context.pagedReportSurface && canViewDashboardSyncStatus()) {
+                for (const key of ['soc', 'reserves', 'cav']) {
+                    const id = `core:${key}`;
+                    if (!foregroundIds.has(id) && !backgroundAdapters.some(adapter => adapter.id === id)) {
+                        backgroundAdapters.push(createProductionCoreLiveAdapter(key, 'browse', { pageConcurrency: 1 }));
+                    }
+                }
+                const poAdapter = productionLiveSyncSideAdapters.getAdapter('side:po', foregroundContext);
+                if (poAdapter && !foregroundIds.has(poAdapter.id) && !backgroundAdapters.some(adapter => adapter.id === poAdapter.id)) {
+                    backgroundAdapters.push(poAdapter);
+                }
+            }
             salesOfficeAdapters.background.forEach((adapter) => {
                 if (!foregroundIds.has(adapter.id) && !backgroundAdapters.some(item => item.id === adapter.id)) backgroundAdapters.push(adapter);
             });
@@ -29714,7 +29727,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 },
                 clearTimeout: cancel => cancel(),
                 getContext: getProductionLiveSyncContext,
-                getPollInterval: () => hasActiveManualSync() ? 10000 : 30000,
+                getPollInterval: () => hasActiveManualSync() ? 10000 : 15000,
                 onHeartbeat: () => {
                     if (document.hidden) return;
                     if (hasActiveManualSync()) void refreshManualSyncStatus(true).catch(() => {});
@@ -78942,6 +78955,20 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
+            const plainManagersHubEntry = nextViewId === 'managers' && !fromHistory
+                && !switchOptions.managerSubView && !switchOptions.quickAccessRoute;
+            if (plainManagersHubEntry) {
+                if (activeHomeTab !== 'dashboard') {
+                    if (typeof cancelManagerModuleReads === 'function') cancelManagerModuleReads();
+                    if (typeof destroyManagerAssignedItemsView === 'function') destroyManagerAssignedItemsView();
+                    window.GncProductionSchedule?.unmount();
+                    if (typeof unmountAlphaCommandCenter === 'function') unmountAlphaCommandCenter('hr');
+                }
+                activeHomeTab = 'dashboard';
+                managersSearchTerm = '';
+                selectedProductivityUser = '';
+                if (typeof markViewDirty === 'function') markViewDirty('managers');
+            }
             if (switchOptions.quickAccessRoute && currentViewId !== nextViewId) {
                 quickAccessNestedBackState = {
                     account: String(currentUser || '').trim().toLowerCase(),
@@ -116182,6 +116209,45 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             ];
         }
 
+        const DYLAN_FILE_TOAST_STORAGE_KEY = 'gnc_dylan_last_toasted_revisions_v1';
+        const PROCESSED_FILE_DATASETS = Object.freeze({
+            ph_master_inventory: 'DRIVE', ph_cav_import: 'CAV', ph_reserves: 'RESERVES',
+            ph_soc_master: 'SOC', hl_po_parsed: 'HL ORDER'
+        });
+
+        function processedFileRevisionToken(source = {}) {
+            return [String(source.revision ?? ''), String(source.sourceFileName || ''),
+                String(source.sourceImportedAt || source.changedAt || ''), String(source.state || '')].join('|');
+        }
+
+        function processDylanFileProcessedToasts(metadata) {
+            const username = String(currentUser?.username || currentUser || '').trim().toLowerCase();
+            if (username !== 'dylan_collyge' || metadata?.contractVersion !== 1 || !Array.isArray(metadata.sources)) return [];
+            const ready = metadata.sources.filter(source => PROCESSED_FILE_DATASETS[source?.key]
+                && String(source.state || '').toLowerCase() === 'ready' && /^\d+$/.test(String(source.revision ?? '')));
+            if (!ready.length) return [];
+            let previous = null;
+            try { previous = JSON.parse(localStorage.getItem(DYLAN_FILE_TOAST_STORAGE_KEY) || 'null'); } catch (_) {}
+            const seeded = previous && typeof previous === 'object' && !Array.isArray(previous);
+            const next = seeded ? { ...previous } : {};
+            const advanced = [];
+            for (const source of ready) {
+                const key = String(source.key || '');
+                const token = processedFileRevisionToken(source);
+                if (seeded && next[key] && next[key] !== token) advanced.push(source);
+                next[key] = token;
+            }
+            try { localStorage.setItem(DYLAN_FILE_TOAST_STORAGE_KEY, JSON.stringify(next)); } catch (_) {}
+            for (const source of advanced) {
+                const label = PROCESSED_FILE_DATASETS[source.key];
+                const filename = String(source.sourceFileName || 'Processed file').trim();
+                const count = Number(source.rowCount ?? source.row_count);
+                const detail = Number.isFinite(count) && count >= 0 ? `${count.toLocaleString()} rows` : `revision ${source.revision}`;
+                showToast('File Processed', `✅ [${label}] ${filename} processed — Supabase updated (${detail})`);
+            }
+            return advanced.map(source => String(source.key || ''));
+        }
+
         function mergeDashboardSyncSummaries(summaries = []) {
             const byLabel = new Map();
             (Array.isArray(summaries) ? summaries : []).forEach((entry) => {
@@ -116219,7 +116285,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (!currentUser || navigator.onLine === false || !canViewDashboardSyncStatus()) return false;
             const username = String(currentUser || '').trim().toLowerCase();
             const profileId = String(nativeAuthProfile?.id || '').trim();
-            const keys = ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import'];
+            const keys = ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import', 'hl_po_parsed'];
             const metadata = await supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 2500 });
             if (username !== String(currentUser || '').trim().toLowerCase()
                 || profileId !== String(nativeAuthProfile?.id || '').trim()) return false;
@@ -116238,6 +116304,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return label && iso ? [{ label, iso, ms: Date.parse(iso), files: filename ? [filename] : [],
                     authoritative: !!(filename && source.sourceImportedAt) }] : [];
             });
+            processDylanFileProcessedToasts(metadata);
             if (!entries.length) return false;
             const retained = dashboardSyncMetadataOwner === owner ? dashboardSyncMetadataSummaries : [];
             dashboardSyncMetadataSummaries = mergeDashboardSyncSummaries([...retained, ...entries]);
