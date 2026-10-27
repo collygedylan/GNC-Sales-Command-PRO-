@@ -71,6 +71,8 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never deduplicate manager module cards only by their shared `managers` route; preserve each distinct `setHomeTab(...)` deep-link identity so shell enhancement cannot collapse the hub grid.
+
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never hide a loaded view behind a dataset/access refresh, add a duplicate Back implementation, clip Home row 6, or leave Smart Moves on its hydration placeholder after navigation.

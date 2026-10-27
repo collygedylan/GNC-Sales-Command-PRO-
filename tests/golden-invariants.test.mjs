@@ -2164,3 +2164,10 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
   assert.match(bunch, /normalizeBunchNoteLocationKey[^]*gnc_bunch_note_drafts_v1[^]*Saved Drafts \/ Active Bunch Notes/);
   assert.match(bunch, /function reset\(\) \{ persistLocalDraft\(\)/);
 });
+
+test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
+  const workspace = read('assets/mobile-workspace.js');
+  assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
+  assert.match(workspace, /byTarget\.get\(targetKey\)[^]*byTarget\.set\(targetKey,keep\)/);
+  assert.match(read('.codex/skills/agdata-app-shell-and-navigation/SKILL.md'), /Never deduplicate manager module cards only by their shared `managers` route/);
+});
