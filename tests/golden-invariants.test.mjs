@@ -2050,6 +2050,9 @@ test('Invariant 68 (Reclass Delta Reports, Bloom Gallery Shares and Discoverable
   assert.match(edge, /passkeys\/authentication\/verify/);
   assert.match(edge, /passkey_login_verify/);
   assert.match(edge, /options\.allowCredentials = \[\]/);
+  const appsScriptPatch = read('scripts/apps-script-function-patch.mjs');
+  assert.match(appsScriptPatch, /reclassEmailFunctions[^]*buildReclassInlineOhText_/);
+  assert.match(appsScriptPatch, /additiveFunctions[^]*buildReclassInlineOhText_/);
   const migration = read('supabase/migrations/20261027143000_agdata_v2385_reclass_open_stock_and_inline_oh.sql');
   assert.match(migration, /replace\(definition,\s*'next_stock:=coalesce\(baseline,0\)\+change\.delta;',\s*'next_stock:=coalesce\(baseline,0\)\+change\.oh_delta;'\)/);
   assert.match(migration, /private\.reclass_numeric_v1\(m\.s_lts\)\+change\.oh_delta/);
