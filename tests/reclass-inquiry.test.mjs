@@ -62,9 +62,9 @@ function loadClientModel() {
   return context.buildItemInquiryViewModel;
 }
 
-function loadServerModel() {
-  const start = code.indexOf('const RECLASS_INQUIRY_ROW_FIELDS_');
-  const end = code.indexOf('function handleInventoryTransaction_', start);
+function loadServerModel(serverCode = code) {
+  const start = serverCode.indexOf('const RECLASS_INQUIRY_ROW_FIELDS_');
+  const end = serverCode.indexOf('function handleInventoryTransaction_', start);
   assert.ok(start > 0 && end > start);
   const pilotProperties = new Map();
   const pilotMessages = [];
@@ -123,11 +123,28 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  const utf8Start = code.indexOf('function repairDisplayUtf8Mojibake_(');
-  const utf8End = code.indexOf('\nfunction ', utf8Start + 1);
-  vm.runInContext(`${code.slice(utf8Start, utf8End)};`, context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquirySplitMoveEntries_ = getReclassInquirySplitMoveEntries_; this.buildReclassInquirySplitMoveText_ = buildReclassInquirySplitMoveText_; this.buildReclassInquirySplitMoveHtml_ = buildReclassInquirySplitMoveHtml_; this.getReclassInquirySplitMoveSummaries_ = getReclassInquirySplitMoveSummaries_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = RECLASS_ACTION_WORKFLOW_V4_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V5_ENABLED_ = RECLASS_ACTION_WORKFLOW_V5_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_; this.RECLASS_INQUIRY_V7_EDITABLE_FIELDS_ = RECLASS_INQUIRY_V7_EDITABLE_FIELDS_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_; this.RECLASS_INQUIRY_ACTION_ORDER_V5_ = RECLASS_INQUIRY_ACTION_ORDER_V5_;`, context);
+  const utf8Start = serverCode.indexOf('function repairDisplayUtf8Mojibake_(');
+  const utf8End = serverCode.indexOf('\nfunction ', utf8Start + 1);
+  vm.runInContext(`${serverCode.slice(utf8Start, utf8End)};`, context);
+  const identityStart = serverCode.indexOf('function validateInventoryTransactionSourceIdentity_(');
+  const identityEnd = serverCode.indexOf('\nfunction ', identityStart + 1);
+  assert.ok(identityStart > 0 && identityEnd > identityStart);
+  vm.runInContext(`${serverCode.slice(identityStart, identityEnd)}; this.validateInventoryTransactionSourceIdentity_ = validateInventoryTransactionSourceIdentity_;`, context);
+  vm.runInContext(`${serverCode.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquirySplitMoveEntries_ = getReclassInquirySplitMoveEntries_; this.buildReclassInquirySplitMoveText_ = buildReclassInquirySplitMoveText_; this.buildReclassInquirySplitMoveHtml_ = buildReclassInquirySplitMoveHtml_; this.getReclassInquirySplitMoveSummaries_ = getReclassInquirySplitMoveSummaries_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = RECLASS_ACTION_WORKFLOW_V4_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V5_ENABLED_ = RECLASS_ACTION_WORKFLOW_V5_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_; this.RECLASS_INQUIRY_V7_EDITABLE_FIELDS_ = RECLASS_INQUIRY_V7_EDITABLE_FIELDS_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_; this.RECLASS_INQUIRY_ACTION_ORDER_V5_ = RECLASS_INQUIRY_ACTION_ORDER_V5_; this.validateInventoryTransactionSourceIdentity_ = validateInventoryTransactionSourceIdentity_;`, context);
   vm.runInContext('this.getProtectedLiveEditDelivery_ = getProtectedLiveEditDelivery_; this.buildProtectedLiveEditReportRows_ = buildProtectedLiveEditReportRows_; this.buildProtectedLiveEditSummary_ = buildProtectedLiveEditSummary_; this.getProtectedInventoryFieldDeliveryV7_ = getProtectedInventoryFieldDeliveryV7_; this.buildProtectedInventoryFieldReportRowsV7_ = buildProtectedInventoryFieldReportRowsV7_; this.buildReclassInquiryInventoryFieldHtml_ = buildReclassInquiryInventoryFieldHtml_; this.deliverReclassInquiryPayload_ = deliverReclassInquiryPayload_; this.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_;', context);
+  const completedStart = serverCode.indexOf('function buildCompletedInventoryReclassReportModel_(');
+  const completedEnd = serverCode.indexOf('\nfunction getInventoryTransactionEmailRowValue_', completedStart);
+  if (completedStart > 0 && completedEnd > completedStart) {
+    vm.runInContext(`${serverCode.slice(completedStart, completedEnd)}; this.buildCompletedInventoryReclassReportModel_ = buildCompletedInventoryReclassReportModel_;`, context);
+  }
+  for (const name of ['buildReclassItemInquiryTable_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_']) {
+    if (typeof context[name] === 'function') continue;
+    const helperStart = serverCode.indexOf(`function ${name}(`);
+    const helperEnd = serverCode.indexOf('\nfunction ', helperStart + 1);
+    assert.ok(helperStart > 0 && helperEnd > helperStart, `deployed source contains ${name}`);
+    vm.runInContext(`${serverCode.slice(helperStart, helperEnd)}; this.${name} = ${name};`, context);
+  }
+  vm.runInContext('this.buildReclassItemInquiryTable_ = buildReclassItemInquiryTable_; this.buildReclassItemInquiryHtml_ = buildReclassItemInquiryHtml_; this.buildReclassItemInquiryPdf_ = buildReclassItemInquiryPdf_; this.deliverReclassInquiryPayload_ = deliverReclassInquiryPayload_;', context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
@@ -209,6 +226,183 @@ function assertReclassReportGridLayout(output, expectedRows) {
   assert.match(output, /\.proposal-box-movement\{[^}]*break-inside:avoid;page-break-inside:avoid\}/);
   assert.match(output, /\.location-table tr\{break-inside:avoid;page-break-inside:avoid\}/);
 }
+
+test('completed Reclass email and PDF render only the frozen pre-edit ERP rows and OH', () => {
+  const server = loadServerModel();
+  const specs = [
+    ['source', '27.S1', 'C.15.000', '808', '3'],
+    ['erp-70', '27.U1', 'C.15.000', '70', '0'],
+    ['erp-113', '27.F1', 'F.16.000', '113', '0'],
+    ['erp-175', '27.S1', 'H.06.000', '175', '0'],
+    ['erp-1', '27.F1', 'H.06.000', '1', '0'],
+    ['erp-1596', '27.S1', 'D.10.000', '1596', '0'],
+  ];
+  const reportRows = specs.map(([unique_id, lotcode, locationcode, ptronhand, ptrreviewed]) => ({
+    unique_id, itemcode: '004103.010.1', commonname: 'Inflexus Blue Dart Grass Juncus', contsize: '#1',
+    source: 'LD', priority: '3', lotcode, locationcode, season: lotcode.split('.')[1], saleyear: '27',
+    ptronhand, ptrreviewed, ptravailable: ptronhand, locationnotedate: '', locationptn1: '', locationnote: ''
+  }));
+  const verified = {
+    report_rows: reportRows,
+    appliedRows: [
+      { ...reportRows[0], ptronhand: '532', ptrreviewed: '0', ptravailable: '532' },
+      { unique_id: 'app-created-destination', itemcode: '004103.010.1', contsize: '#1', locationcode: 'C.15.000',
+        lotcode: '27.F1', season: 'F1', ptronhand: '276', ptrreviewed: '0', ptravailable: '276' }
+    ],
+    moves: [{ direction: 'move_up', quantity: 276, source: { unique_id: 'source' },
+      destination: { unique_id: 'app-created-destination', season: 'F1' } }],
+    actorDisplayName: 'Test Operator', revision: '42'
+  };
+  const model = server.buildCompletedInventoryReclassReportModel_(verified, new Date('2026-10-26T12:00:00Z'));
+  const table = server.buildReclassItemInquiryTable_(model);
+  const rows = table.rows.map(row => row.map(cell => cell.text));
+  assert.equal(rows.length, 6, 'the completed report uses the six pre-edit ERP rows only');
+  const origin = rows.find(row => row[0] === '27.S1' && row[1] === 'C.15.000');
+  assert.ok(origin);
+  assert.equal(origin[4], '808', 'the originating row keeps pre-edit OH, not 532 or 276');
+  assert.equal(origin[5], '3', 'pre-edit PTRREVIEWED is preserved');
+  const originCells = table.rows.find(row => row[0].text === '27.S1' && row[1].text === 'C.15.000');
+  assert.deepEqual(Array.from(originCells[4].proposals), ['UP 276 TO F1']);
+  assert.equal(rows.some(row => row[0] === '27.F1' && row[1] === 'C.15.000'), false,
+    'the app-created destination is not added to the ERP snapshot');
+
+  const htmlOutput = server.buildReclassItemInquiryHtml_(model);
+  const htmlRows = Array.from(new JSDOM(htmlOutput).window.document.querySelectorAll('tbody tr'))
+    .map(row => row.textContent.replace(/\s+/g, ' ').trim());
+  assert.equal(htmlRows.length, 6);
+  assert.ok(htmlRows.some(row => row.includes('27.S1') && row.includes('C.15.000') && row.includes('808') && row.includes('UP 276 TO F1')));
+  assert.equal(htmlRows.some(row => row.includes('27.F1') && row.includes('C.15.000')), false);
+
+  const pdfText = Buffer.from(server.buildReclassItemInquiryPdf_(model).getBytes()).toString('latin1');
+  assert.match(pdfText, /\(808\)/);
+  assert.match(pdfText, /\(UP 276 TO F1\)/);
+  const pdfRowText = Array.from(pdfText.matchAll(/1 0 0 1 [\d.]+ ([\d.]+) Tm \(([^)]*)\) Tj ET/g))
+    .map(match => ({ y: match[1], text: match[2] }));
+  const pdfCellsByBaseline = new Map();
+  for (const cell of pdfRowText) pdfCellsByBaseline.set(cell.y, [...(pdfCellsByBaseline.get(cell.y) || []), cell.text]);
+  assert.equal(Array.from(pdfCellsByBaseline.values()).some(cells => cells[0] === '27.F1' && cells[1] === 'C.15.000'), false,
+    'PDF has no row for the newly created destination lot');
+});
+
+function assertV7FrozenDelivery(server) {
+  let inventoryFetches = 0;
+  let sent;
+  server.fetchEmailApprovalMasterRow_ = () => { inventoryFetches++; throw new Error('live source read is forbidden'); };
+  server.fetchReclassInquiryItemRows_ = () => { inventoryFetches++; throw new Error('live item read is forbidden'); };
+  server.fetchReclassInquiryScopeSettingsV3_ = () => { inventoryFetches++; throw new Error('live scope read is forbidden'); };
+  server.sendGmailApiMessage_ = payload => { sent = payload; return { gmailMessageId: 'dry-capture' }; };
+  server.isGmailAdvancedServiceAvailable_ = () => true;
+  server.resolveAutomatedEmailSenderAddress_ = () => 'reclass@example.invalid';
+
+  const specs = [
+    ['source', '27.S1', 'C.15.000', '808'], ['erp-70', '27.U1', 'C.15.000', '70'],
+    ['erp-113', '27.F1', 'F.16.000', '113'], ['erp-175', '27.S1', 'F.16.000', '175'],
+    ['erp-1', '27.F1', 'H.06.000', '1'], ['erp-1596', '27.S1', 'I.03.000', '1596']
+  ];
+  const frozenRows = specs.map(([unique_id, lotcode, locationcode, ptronhand]) => ({
+    unique_id, itemcode: '004103.010.1', commonname: 'Inflexus Blue Dart Grass Juncus', contsize: '#1',
+    lotcode, locationcode, source: 'LD', priority: '3', season: lotcode.split('.')[1], saleyear: '27',
+    ptronhand, ptrreviewed: '0', ptravailable: ptronhand, desigitem: '', desigcust: '', desigloc: '',
+    warehouseid: 'W1', warehousei: 'W1', locationnotedate: '', locationptn1: '', locationnote: ''
+  }));
+  const overlays = frozenRows.map(row => ({
+    unique_id: row.unique_id,
+    expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode, ptronhand: row.ptronhand,
+      priority: row.priority, ptravailable: row.ptravailable, desigitem: row.desigitem },
+    proposals: row.unique_id === 'source' ? [{ action: 'move_up', splits: [{ quantity: 276, destinationSeason: 'F1' }],
+      applyHold: false, holdReason: '' }] : []
+  }));
+  const stamps = { prisetby: null, priupdated: null, locationnotedate: null, evaldate: null };
+  const payload = {
+    workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_,
+    source: { unique_id: 'source', itemcode: '004103.010.1', lotcode: '27.S1', locationcode: 'C.15.000' },
+    actor: { username: 'dylan_collyge', display: 'Dylan Collyge' },
+    transaction: { requestActions: ['move_up'], holdStopProposals: [], scope: {} },
+    rowOverlays: overlays,
+    protectedDelivery: { v7FrozenRows: frozenRows, inventoryFields: [], liveEdits: [], inventoryRevision: '42',
+      v7Scope: { reportStamps: overlays.map(row => ({ unique_id: row.unique_id, stamps })) } }
+  };
+  const result = server.deliverReclassInquiryPayload_(payload, '<v7-frozen-report@example.invalid>');
+  assert.equal(result.gmailMessageId, 'dry-capture');
+  assert.equal(inventoryFetches, 0, 'the V7 branch uses v7FrozenRows and skips all inventory reads');
+  const htmlRows = Array.from(new JSDOM(sent.htmlBody).window.document.querySelectorAll('tbody tr'))
+    .map(row => row.textContent.replace(/\s+/g, ' ').trim());
+  assert.equal(htmlRows.length, 6);
+  assert.ok(htmlRows.some(row => row.includes('27.S1') && row.includes('C.15.000') && row.includes('808') && row.includes('UP 276 TO F1')));
+  assert.equal(htmlRows.some(row => row.includes('27.F1') && row.includes('C.15.000')), false);
+  const pdfText = Buffer.from(sent.attachments[0].getBytes()).toString('latin1');
+  assert.match(pdfText, /\(808\)/);
+  assert.match(pdfText, /\(UP 276 TO F1\)/);
+}
+
+test('V7 generic delivery renders frozen rows without live reads (current source)', () => {
+  assertV7FrozenDelivery(loadServerModel());
+});
+
+test('V7 generic delivery renders frozen rows without live reads (deployed Web App v370)', { skip: !fs.existsSync(path.join(root, '.gnc-local', 'reclass-deployed-version-370.gs')) }, () => {
+  const deployed = fs.readFileSync(path.join(root, '.gnc-local', 'reclass-deployed-version-370.gs'), 'utf8');
+  assertV7FrozenDelivery(loadServerModel(deployed));
+});
+
+test('captured SQL V7 payload dry-delivers on deployed v370 with the real source identity validator', { skip: !fs.existsSync(path.join(root, '.gnc-local', 'reclass-preedit-sql-payload.json')) || !fs.existsSync(path.join(root, '.gnc-local', 'reclass-deployed-version-370.gs')) }, () => {
+  const deployed = fs.readFileSync(path.join(root, '.gnc-local', 'reclass-deployed-version-370.gs'), 'utf8');
+  const capture = JSON.parse(fs.readFileSync(path.join(root, '.gnc-local', 'reclass-preedit-sql-payload.json'), 'utf8'));
+  const payload = capture[0]?.payload?.reclassPayload;
+  assert.ok(payload);
+  const server = loadServerModel(deployed);
+  let reads = 0;
+  let sent;
+  server.fetchEmailApprovalMasterRow_ = () => { reads++; throw new Error('unexpected live row read'); };
+  server.fetchReclassInquiryItemRows_ = () => { reads++; throw new Error('unexpected live item read'); };
+  server.fetchReclassInquiryScopeSettingsV3_ = () => { reads++; throw new Error('unexpected live scope read'); };
+  server.sendGmailApiMessage_ = message => { sent = message; return { gmailMessageId: 'dry-capture' }; };
+  server.isGmailAdvancedServiceAvailable_ = () => true;
+  server.resolveAutomatedEmailSenderAddress_ = () => 'reclass@example.invalid';
+  const result = server.deliverReclassInquiryPayload_(payload, '<captured-sql-v7@example.invalid>');
+  assert.equal(result.gmailMessageId, 'dry-capture');
+  assert.equal(reads, 0);
+  const reportRows = Array.from(new JSDOM(sent.htmlBody).window.document.querySelectorAll('tbody tr'));
+  assert.equal(reportRows.length, payload.protectedDelivery.v7FrozenRows.length);
+  const source = payload.protectedDelivery.v7FrozenRows.find(row => row.unique_id === payload.source.unique_id);
+  assert.ok(source);
+  const sourceHtml = reportRows.find(row => row.textContent.includes(source.lotcode) && row.textContent.includes(source.locationcode));
+  assert.ok(sourceHtml);
+  assert.ok(sourceHtml.textContent.includes(String(source.ptronhand)));
+  assert.equal(reportRows.some(row => row.textContent.includes('C.15.000') && row.textContent.includes('27.F1')), false);
+  assert.match(Buffer.from(sent.attachments[0].getBytes()).toString('latin1'), new RegExp(`\\(${String(source.ptronhand)}\\)`));
+});
+
+test('captured synthetic MoveDown V7 payload dry-delivers a frozen location-note callout on deployed v370', { skip: !fs.existsSync(path.join(root, '.gnc-local', 'reclass-preedit-sql-roundtrip.json')) || !fs.existsSync(path.join(root, '.gnc-local', 'reclass-deployed-version-370.gs')) }, () => {
+  const deployed = fs.readFileSync(path.join(root, '.gnc-local', 'reclass-deployed-version-370.gs'), 'utf8');
+  const capture = JSON.parse(fs.readFileSync(path.join(root, '.gnc-local', 'reclass-preedit-sql-roundtrip.json'), 'utf8'));
+  const payload = capture.find(entry => entry.direction === 'move_down')?.payload?.reclassPayload;
+  assert.ok(payload);
+  const server = loadServerModel(deployed);
+  let reads = 0;
+  let sent;
+  server.fetchEmailApprovalMasterRow_ = () => { reads++; throw new Error('unexpected live row read'); };
+  server.fetchReclassInquiryItemRows_ = () => { reads++; throw new Error('unexpected live item read'); };
+  server.fetchReclassInquiryScopeSettingsV3_ = () => { reads++; throw new Error('unexpected live scope read'); };
+  server.sendGmailApiMessage_ = message => { sent = message; return { gmailMessageId: 'dry-capture' }; };
+  server.isGmailAdvancedServiceAvailable_ = () => true;
+  server.resolveAutomatedEmailSenderAddress_ = () => 'reclass@example.invalid';
+  const result = server.deliverReclassInquiryPayload_(payload, '<captured-synthetic-movedown@example.invalid>');
+  assert.equal(result.gmailMessageId, 'dry-capture');
+  assert.equal(reads, 0);
+  const htmlRows = Array.from(new JSDOM(sent.htmlBody).window.document.querySelectorAll('tbody tr'));
+  assert.equal(htmlRows.length, 6, 'the report contains only six frozen ERP rows');
+  const source = payload.protectedDelivery.v7FrozenRows.find(row => row.unique_id === payload.source.unique_id);
+  assert.ok(source);
+  const sourceHtml = htmlRows.find(row => row.textContent.includes(source.lotcode) && row.textContent.includes(source.locationcode));
+  assert.ok(sourceHtml);
+  assert.ok(sourceHtml.textContent.includes(String(source.ptronhand)), 'the source OH remains frozen');
+  assert.match(sourceHtml.textContent, /DOWN 1 FROM 27\.F1 TO S1 \(AgData-created lot at C\.15\.000\)/);
+  assert.equal(htmlRows.some(row => row.querySelectorAll('td')[0]?.textContent.trim() === '27.F1'
+    && row.querySelectorAll('td')[1]?.textContent.trim() === 'C.15.000'), false,
+    'the AgData-created destination is never fabricated as an ERP row');
+  const pdfText = Buffer.from(sent.attachments[0].getBytes()).toString('latin1');
+  assert.match(pdfText, /DOWN 1 FROM 27\.F1 TO S1/);
+});
 
 function loadEvalServerModel() {
   const context = loadServerModel();

@@ -108,3 +108,4 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 - Never write the legacy master `pick` field without synchronizing canonical `pick_note`, or collapse Request rows that share an item but have distinct location/lot identities.
 - Never reject an otherwise authorized Reclass move because mutable On Hand or Available changed after the draft opened; lock the current source, retain stable physical identity checks, auto-create missing destination lots, and rely on command receipts for idempotency.
 - Never key Suspend cards by plant/location identity or enforce a global snapshot revision for Reclass; preserve each SOC order-line UID and validate the locked physical source inside the transaction.
+- Never build a completed Reclass email/PDF from post-move applied rows; render the SQL-frozen `report_rows` snapshot directly, keep its pre-edit OH/PTRREVIEWED, and show the move quantity only as the originating-row callout.

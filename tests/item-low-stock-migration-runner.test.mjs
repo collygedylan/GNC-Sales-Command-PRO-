@@ -1657,7 +1657,7 @@ test('enterprise Aura initializes trigram settings before replaying reader defin
 
 test('v2.3.79 Reclass destination repair is registered with current-schema receipt and service-only contracts', async () => {
  const {agdataV2379CompleteReclassDestinationRowLoopMigrationName:name}=await import('../scripts/apply-item-low-stock-migration.mjs');
- assert.equal(releaseDatabaseMigrations.at(-2),name);
+ assert.ok(releaseDatabaseMigrations.indexOf(name)<releaseDatabaseMigrations.indexOf('20261027013100_agdata_v2379_reclass_location_evidence.sql'));
  assert.equal(releaseDatabaseMigrations.filter(value=>value===name).length,1);
  const contract=migrationContractQuery(name);
  for(const token of ['expected_columns','reclass-destination-row-loop-v2379','p_expected_revision < 0','service_role','authenticated','anon']) assert.ok(contract.includes(token),token);
@@ -1666,7 +1666,7 @@ test('v2.3.79 Reclass destination repair is registered with current-schema recei
 
 test('v2.3.79 Reclass destination location evidence follow-up is registered and contracted', async () => {
  const {agdataV2379ReclassLocationEvidenceMigrationName:name}=await import('../scripts/apply-item-low-stock-migration.mjs');
- assert.equal(releaseDatabaseMigrations.at(-1),name);
+ assert.ok(releaseDatabaseMigrations.indexOf(name)<releaseDatabaseMigrations.indexOf('20261027020000_agdata_v2380_reclass_pre_edit_reports_and_test_suppression.sql'));
  assert.equal(releaseDatabaseMigrations.filter(value=>value===name).length,1);
  const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
  const contract=migrationContractQuery(name);
@@ -1674,4 +1674,21 @@ test('v2.3.79 Reclass destination location evidence follow-up is registered and 
  assert.match(migration,/destination\.lotcode='27\.F1'[\s\S]*destination\.ptronhand\)=276/);
  assert.match(contract,/v2379_non_source_evidence_qty/);
  assert.match(contract,/as installed/);
+});
+
+test('v2.3.80 Reclass freezes pre-edit report rows and suppresses test delivery', async () => {
+ const {agdataV2380ReclassPreEditReportsMigrationName:name}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.equal(releaseDatabaseMigrations.at(-1),name);
+ assert.equal(releaseDatabaseMigrations.filter(value=>value===name).length,1);
+ const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
+ const contract=migrationContractQuery(name);
+ for(const token of ['report_rows','is_test_command','testDeliverySuppressed','INVENTORY_RECLASS_TEST_ADMIN_REQUIRED','destination_before is null','reclass-move:%','reclass_inquiry','reclass_payload','v7FrozenRows','reportStamps','row_overlays','temporaryValues','temporaryChangedFields','AgData-created lot at','for update']) assert.ok(migration.includes(token),token);
+ assert.match(migration,/lock_timeout = '1500ms'/);
+ assert.match(migration,/statement_timeout = '10s'/);
+ assert.match(contract,/v2380_pre_edit_report_rows/);
+ assert.match(contract,/reclassPayload/);
+ assert.match(contract,/v7FrozenRows/);
+ assert.match(contract,/has_function_privilege\('service_role'/);
+ assert.match(contract,/not has_function_privilege\('authenticated'/);
+ assert.match(contract,/not has_function_privilege\('anon'/);
 });

@@ -168,7 +168,7 @@ test('ingestion deployment selects every changed function and preserves remote s
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.deepEqual(manifest.appsScriptPatchFunctions, [
     'buildSuspendTagApprovalEmail_',
-    'buildReclassItemInquiryTable_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_',
+    'buildReclassItemInquiryTable_', 'buildCompletedInventoryReclassReportModel_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_',
     'buildReclassInquiryReportModel_', 'getReclassInquiryEmailRecipients_', 'buildReclassInquiryCompactReportHtml_',
     'buildReclassInquiryEmailHtml_', 'deliverReclassInquiryPayload_', 'handleSignedInventoryReclassMoveDelivery_',
     'setupDropFolderAutoSyncTrigger', 'removeDropFolderAutoSyncTrigger', 'runAutoDropFolderSync_',

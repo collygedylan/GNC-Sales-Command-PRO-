@@ -15215,14 +15215,16 @@ function getReclassInquiryEmailRecipients_(payload) {
 
 function buildCompletedInventoryReclassReportModel_(verified, now) {
   const receipt = verified && typeof verified === 'object' ? verified : {};
-  const rawRows = Array.isArray(receipt.appliedRows) ? receipt.appliedRows : [];
-  const appliedRows = rawRows.map(function(entry) {
-    return entry && entry.row && typeof entry.row === 'object' ? entry.row : entry;
-  }).filter(function(row) { return row && typeof row === 'object'; });
+  // The delivery RPC freezes ERP rows before applying the move. Render this
+  // snapshot directly; appliedRows contains post-move state and can include an
+  // AgData-created destination row.
+  const snapshotRows = Array.isArray(receipt.report_rows) ? receipt.report_rows.filter(function(row) {
+    return row && typeof row === 'object' && !Array.isArray(row);
+  }) : [];
   const moves = Array.isArray(receipt.moves) ? receipt.moves : [];
-  if (!appliedRows.length || !moves.length) throw new Error('INVENTORY_RECLASS_MOVE_REPORT_ROWS_MISSING');
+  if (!snapshotRows.length || !moves.length) throw new Error('INVENTORY_RECLASS_MOVE_REPORT_ROWS_MISSING');
   const rowsByUid = new Map();
-  appliedRows.forEach(function(row) {
+  snapshotRows.forEach(function(row) {
     const uid = normalizeInventoryTransactionText_(getInventoryTransactionRowUid_(row));
     if (!uid || rowsByUid.has(uid)) throw new Error('INVENTORY_RECLASS_MOVE_REPORT_ROWS_INVALID');
     rowsByUid.set(uid, row);
@@ -15230,7 +15232,7 @@ function buildCompletedInventoryReclassReportModel_(verified, now) {
   const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(moves[0].source && moves[0].source.unique_id, moves[0].source && moves[0].source.uniqueId));
   const sourceRow = rowsByUid.get(sourceUid);
   if (!sourceRow) throw new Error('INVENTORY_RECLASS_MOVE_REPORT_SOURCE_MISSING');
-  const reportRows = appliedRows.map(function(row) {
+  const reportRows = snapshotRows.map(function(row) {
     const values = {};
     RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) {
       values[field.key] = getReclassInquiryExactValue_(row, field.aliases, '');
@@ -15240,20 +15242,22 @@ function buildCompletedInventoryReclassReportModel_(verified, now) {
   const completedMoves = moves.map(function(move) {
     const source = move && move.source || {};
     const destination = move && move.destination || {};
+    const sourceUid = normalizeInventoryTransactionText_(source.unique_id || source.uniqueId);
+    const destinationUid = normalizeInventoryTransactionText_(destination.unique_id || destination.uniqueId);
     if (!['move_up', 'move_down'].includes(String(move && move.direction || ''))
       || !Number.isFinite(Number(move && move.quantity)) || Number(move.quantity) <= 0
-      || !rowsByUid.has(normalizeInventoryTransactionText_(source.unique_id || source.uniqueId))
-      || !rowsByUid.has(normalizeInventoryTransactionText_(destination.unique_id || destination.uniqueId))) {
+      || !rowsByUid.has(sourceUid) || !destinationUid || !String(destination.season || '').trim()) {
       throw new Error('INVENTORY_RECLASS_MOVE_REPORT_MOVE_INVALID');
     }
     return { direction: move.direction, quantity: Number(move.quantity), source: source, destination: destination };
   });
   const submittedAt = now instanceof Date ? now : new Date();
-  const model = buildReclassInquiryReportModel_(sourceRow, appliedRows, reportRows, {
+  const model = buildReclassInquiryReportModel_(sourceRow, snapshotRows, reportRows, {
     actor: { display: firstNonEmptyRequestValue_(receipt.actorDisplayName, receipt.actorUsername, 'AgData user'), username: receipt.actorUsername || '' },
     transaction: { requestActions: [], holdStopProposals: [], scope: {} }
   }, submittedAt);
   model.isCompletedMoveReport = true;
+  model.reportRowsPreEdit = true;
   model.completedMoveSummary = completedMoves;
   model.completedRevision = String(receipt.revision || '');
   model.requestActionLabel = 'Reclass Move Completed';
@@ -17217,7 +17221,7 @@ function buildReclassItemInquiryTable_(model) {
     });
     let startingOnHand = Number(values.ptronhand);
     (safe.completedMoveSummary || []).filter(function(m){return String(m.source.unique_id || m.source.uniqueId)===String(row.unique_id);}).forEach(function(m){
-      if(Number.isFinite(startingOnHand))startingOnHand+=Number(m.quantity) || 0;
+      if (!safe.reportRowsPreEdit && Number.isFinite(startingOnHand)) startingOnHand += Number(m.quantity) || 0;
       proposals.push((m.direction==='move_down'?'DOWN':'UP')+' '+m.quantity+' TO '+String(m.destination.season || '').toUpperCase());
     });
     if(proposals.length)changed.add('ptronhand');
@@ -22582,6 +22586,7 @@ function handleSignedInventoryReclassMoveDelivery_(delivery) {
     if (!Array.isArray(moves) || moves.length < 1 || moves.length > 100
       || !Array.isArray(rawRecipients) || rawRecipients.length < 1 || rawRecipients.length > 4
       || !Array.isArray(verified.appliedRows) || verified.appliedRows.length < 1
+      || !Array.isArray(verified.report_rows) || verified.report_rows.length < 1
       || !actorEmail || rawRecipients.some(function(email) { return typeof email !== 'string' || !isLikelyEmailAddress_(email); })) {
       throw new Error('INVENTORY_RECLASS_MOVE_DELIVERY_INVALID');
     }

@@ -1632,3 +1632,42 @@ test('Invariant 56 (Reclass Destination Preserves Season Stock and Location Tota
   assert.equal(result.find(row => row.UNIQUE_ID === 'dest-sibling').S_LTS, '0');
   assert.equal(rows[0].PTRONHAND, '808', 'the canonical source remains available for rollback');
 });
+
+test('Invariant 57 (Completed Reclass Report Uses Only Frozen Pre-Edit ERP Rows)', () => {
+  const fields = ['lotcode', 'locationcode', 'source', 'priority', 'ptronhand', 'ptrreviewed', 'locationnotedate', 'locationptn1', 'locationnote']
+    .map(key => ({ key, aliases: [key] }));
+  const context = vm.createContext({
+    RECLASS_INQUIRY_ROW_FIELDS_: fields,
+    normalizeInventoryTransactionText_: value => String(value ?? '').trim(),
+    getInventoryTransactionRowUid_: row => String(row?.unique_id || ''),
+    firstNonEmptyRequestValue_: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim()) ?? '',
+    getReclassInquiryExactValue_: (row, aliases, fallback) => {
+      for (const alias of aliases) if (Object.hasOwn(row || {}, alias)) return row[alias] ?? '';
+      return fallback;
+    },
+    buildReclassInquiryReportModel_: (_source, _rows, reportRows) => ({ identity: {}, rows: reportRows }),
+    sortReclassInquiryCompactRows_: rows => rows
+  });
+  vm.runInContext(functionSource('Code.gs', 'buildCompletedInventoryReclassReportModel_') + '\n'
+    + functionSource('Code.gs', 'buildReclassItemInquiryTable_'), context);
+  const report_rows = [
+    { unique_id: 'source', lotcode: '27.S1', locationcode: 'C.15.000', source: 'LD', priority: '3', ptronhand: '808', ptrreviewed: '0' },
+    ...['70', '113', '175', '1', '1596'].map((ptronhand, index) => ({ unique_id: `erp-${index}`, lotcode: '27.S1',
+      locationcode: `A.${index + 1}.000`, source: 'LD', priority: '', ptronhand, ptrreviewed: '0' }))
+  ];
+  const verified = {
+    report_rows,
+    appliedRows: [...report_rows.map(row => ({ ...row, ptronhand: row.unique_id === 'source' ? '532' : row.ptronhand })),
+      { unique_id: 'created-destination', lotcode: '27.F1', locationcode: 'C.15.000', ptronhand: '276' }],
+    moves: [{ direction: 'move_up', quantity: 276, source: { unique_id: 'source' }, destination: { unique_id: 'created-destination', season: 'F1' } }]
+  };
+  const model = context.buildCompletedInventoryReclassReportModel_(verified, new Date('2026-10-26T12:00:00Z'));
+  const table = context.buildReclassItemInquiryTable_(model);
+  assert.equal(table.rows.length, 6);
+  const source = table.rows.find(row => row[0].text === '27.S1' && row[1].text === 'C.15.000');
+  assert.equal(source[4].text, '808', 'origin OH stays pre-edit instead of using appliedRows OH 532');
+  assert.equal(source[5].text, '0', 'origin PTRREVIEWED stays pre-edit');
+  assert.deepEqual(Array.from(source[4].proposals), ['UP 276 TO F1']);
+  assert.equal(table.rows.some(row => row[0].text === '27.F1' && row[1].text === 'C.15.000'), false,
+    'an app-created destination in appliedRows never enters the ERP report');
+});
