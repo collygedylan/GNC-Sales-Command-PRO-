@@ -2218,3 +2218,13 @@ test('Invariant 81 (Fill Tag, Bunch Delivery, and Move Up Preserve Physical Boun
   assert.match(gas, /const recipients = \[dylan\]/);
   for (const marker of ['suspend-fill-tag-v2390','location-sales-notes-v2390','reclass-move-up-open-stock-v2390']) assert.ok(migration.includes(marker), marker);
 });
+
+test('Invariant 82 (Bunch Worker Patch Reaches Apps Script HEAD Through the Scoped Merger)', () => {
+  const merger = read('scripts/apps-script-function-patch.mjs');
+  const manifest = JSON.parse(read('package.json'));
+  assert.ok(manifest.appsScriptPatchFunctions.includes('handleSignedBunchNoteDelivery_'));
+  assert.match(merger, /bunchNoteEmailHandler = 'handleSignedBunchNoteDelivery_'/);
+  assert.match(merger, /additiveEmailHandler, bunchNoteEmailHandler/);
+  assert.match(merger, /name !== bunchNoteEmailHandler/);
+  assert.match(read('.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md'), /scoped merger allowlist and additive-function set/);
+});

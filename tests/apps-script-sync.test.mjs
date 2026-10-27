@@ -195,6 +195,11 @@ test('ingestion deployment selects every changed function and preserves remote s
   assert.ok(patch.source.includes(untouched));
   assert.match(patch.source, /const APP_RELEASE_VERSION_ = 'new'/);
   assert.match(patch.source, /function setDatasetImportSourceMetadata_\(\) \{ return 'metadata'; \}/);
+  const bunchPrefix = "const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = 'old';\n";
+  const bunchPatch = patchAppsScriptFunctions({ remoteSource: bunchPrefix,
+    localSource: `${bunchPrefix}function handleSignedBunchNoteDelivery_() { return 'dylan-only'; }`,
+    functionNames: ['handleSignedBunchNoteDelivery_'] });
+  assert.match(bunchPatch.source, /function handleSignedBunchNoteDelivery_\(\) \{ return 'dylan-only'; \}/);
   assert.throws(() => patchAppsScriptFunctions({ remoteSource: remote, localSource: local,
     functionNames: ['startImportHistoryBackfill'] }), /ALLOWLIST_INVALID/);
   const localDispatch = sourceFunction(appsScriptSource, 'doPost');
