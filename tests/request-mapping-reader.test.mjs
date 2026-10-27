@@ -129,6 +129,48 @@ test('a 103-customer rep directory is fully available without a short display ca
  assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,103);
  assert.deepEqual(calls.map(body=>body.page),[0]);
 });
+test('JD receives the paged app-wide directory with N/A pinned and no rep-map row',async()=>{
+ const rows=Array.from({length:205},(_,index)=>({
+  ...mappingFixtureRow,unique_id:`jd-${index}`,salesrepid:'AGDATA_EXECUTIVE_ALL',salesrepname:'JD Jones',
+  customeridentityid:`JDC${index}`,consigneeid:`JDN${index}`,
+  customername:`Executive Customer ${String(index).padStart(3,'0')}`,
+  consigneename:`Executive Consignee ${String(index).padStart(3,'0')}`
+ }));
+ rows.unshift({...mappingFixtureRow,unique_id:'jd-na',salesrepid:'AGDATA_EXECUTIVE_ALL',salesrepname:'JD Jones',
+  customeridentityid:'AGDATA_NA_CUSTOMER',customername:'N/A',consigneeid:'AGDATA_NA_CONSIGNEE',consigneename:'N/A'});
+ const calls=[];
+ const c=fixture(async(_url,body)=>{
+  calls.push(body);
+  return {ok:true,rows:rows.slice(body.page*200,(body.page+1)*200),total:rows.length,page:body.page,pageSize:200,revision:'jd-r1'};
+ });
+ c.customerRepMapRows=[];
+ c.tempSelectedReqRep='JD Jones';
+ assert.equal(c.getRequestSelectedSalesrepId('JD Jones'),'AGDATA_EXECUTIVE_ALL');
+ const result=await c.loadRequestModalCustomerOptionsForRep('JD Jones');
+ assert.equal(result.rows.length,rows.length);
+ assert.equal(result.rows[0].customerName,'N/A');
+ assert.equal(result.rows[0].consigneeName,'N/A');
+ assert.equal(result.rows[0].request_selected_salesrep_id,'AGDATA_EXECUTIVE_ALL');
+ assert.deepEqual(calls.map(body=>[body.salesrepId,body.page]),[
+  ['AGDATA_EXECUTIVE_ALL',0],['AGDATA_EXECUTIVE_ALL',1]
+ ]);
+ assert.doesNotMatch(c.requestModalCustomerOptionsError,/directory is unavailable/i);
+});
+
+test('JD local fallback unions loaded Map, SOC, Reserves, and Request history before the RPC finishes',()=>{
+ const c=fixture(async()=>new Promise(()=>{}));
+ c.customerRepMapRows=[];
+ c.socInventory=[{customeridentityid:'SOC-C',customername:'SOC Customer',consigneeidentityid:'SOC-N',consigneename:'SOC Consignee'}];
+ c.reservesInventory=[{customeridentityid:'RES-C',customername:'Reserve Customer',consigneeidentityid:'RES-N',consigneename:'Reserve Consignee'}];
+ c.requestsInventory=[{customeridentityid:'REQ-C',customername:'Request Customer',consigneeidentityid:'REQ-N',consigneename:'Request Consignee'}];
+ c.requestHistoryInventory=[{customeridentityid:'HIS-C',customername:'History Customer',consigneeidentityid:'HIS-N',consigneename:'History Consignee'}];
+ const options=Array.from(c.getRequestModalCustomerOptionsForRep('JD Jones'));
+ assert.equal(options[0].label,'N/A | N/A');
+ assert.deepEqual(Array.from(options.slice(1),option=>option.customerName),[
+  'History Customer','Request Customer','Reserve Customer','SOC Customer'
+ ]);
+ assert.ok(options.every(option=>option.request_selected_salesrep_id==='AGDATA_EXECUTIVE_ALL'));
+});
 test('a mapping revision change between pages rejects partial results',async()=>{
  const c=fixture(async(_url,body)=>({ok:true,rows:Array.from({length:body.page?1:200},(_,i)=>({...mappingFixtureRow,customeridentityid:String(body.page*200+i),consigneeid:String(i)})),total:201,revision:body.page?'10':'9'}));
  await assert.rejects(c.loadRequestModalCustomerOptionsForRep('Rep One'),/changed during loading/);

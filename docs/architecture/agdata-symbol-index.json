@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.82",
+  "release": "AgData v2.3.83",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -305,7 +305,10 @@
         "fetchRequestCustomerMapRows",
         "fetchRequestCustomerMapRowsForRepName",
         "loadRequestModalCustomerOptionsForRep",
-        "scheduleRequestDeliveryWake"
+        "scheduleRequestDeliveryWake",
+        "isUniversalRequestDirectoryRep",
+        "getRequestUniversalCustomerOptions",
+        "fetchRequestUniversalCustomerOptions"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -358,6 +361,11 @@
         ],
         "supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql": [
           "sync_request_actor_fields_v2370"
+        ],
+        "supabase/migrations/20261027124800_agdata_v2383_jd_universal_customer_directory.sql": [
+          "request_jd_customer_directory_v1",
+          "is_jd_universal_request_tuple_v1",
+          "require_active_customer_mapping_for_request_v1"
         ]
       }
     },

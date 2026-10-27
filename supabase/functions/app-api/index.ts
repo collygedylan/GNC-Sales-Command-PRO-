@@ -130,6 +130,7 @@ const LEGACY_TABLE_ALIASES: Record<string, string> = {
 const AV_OPTION_EVAL_REQUESTS_TABLE = "ph_av_option_eval_requests";
 const AV_OPTION_EVAL_MANAGER_USERS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
 const FULL_ACCESS_USER_KEYS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
+const JD_EXECUTIVE_SALESREP_ID = "AGDATA_EXECUTIVE_ALL";
 const APPS_SCRIPT_PROXY_ACTIONS = new Set([
   "email", "image", "block_clearing_pdf", "bunch_note_preview", "hl_order_preview", "inventory_transaction", "inventory_transaction_history",
   "reclass_inquiry_status", "reclass_inquiry_retry", "reclass_inquiry_email",
@@ -2100,6 +2101,17 @@ async function handleCustomerRepMappingAction(
     return errorResponse("Customer mapping management is available only to active Administrators and Managers.", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
   }
   try {
+    if (request.operation === "options" && String(request.payload.salesrepId || "") === JD_EXECUTIVE_SALESREP_ID) {
+      const { data, error } = await supabase.rpc("request_jd_customer_directory_v1", {
+        p_actor_id: String(actor.id || ""),
+        p_page: Number(request.payload.page || 0),
+        p_page_size: Number(request.payload.pageSize || 100),
+        p_q: String(request.payload.q || ""),
+      });
+      if (error) throw error;
+      if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("CUSTOMER_REP_MAPPING_RESPONSE_INVALID");
+      return jsonResponse(data);
+    }
     const { data, error } = await supabase.rpc("customer_rep_mapping_manage_v1", {
       p_actor_id: String(actor.id || ""),
       p_operation: request.operation,

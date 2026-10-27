@@ -29,6 +29,7 @@ import {
   agdataV2382DriveParityReclassAndFastSyncMigrationName,
   agdataV2382SuspendViewSchemaCompatMigrationName,
   agdataV2382HlPoSetBasedPageStageMigrationName,
+  agdataV2383JdUniversalCustomerDirectoryMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -119,6 +120,18 @@ test('v2.3.82 HL PDF page import validates then inserts each 1000-row page set-w
   assert.match(migration, /if p_complete and imp\.status='staging' then/);
   assert.match(migration, /update hl_order_private\.state set revision=revision\+1/);
   assert.doesNotMatch(migration, /for\s+r\s+in\s+select\s+value\s+from\s+jsonb_array_elements\(p_rows\)/i);
+});
+
+test('v2.3.83 JD universal request directory is release-registered and service-only', () => {
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2383JdUniversalCustomerDirectoryMigrationName]),
+    [agdataV2383JdUniversalCustomerDirectoryMigrationName]);
+  const contract = migrationContractQuery(agdataV2383JdUniversalCustomerDirectoryMigrationName);
+  for (const marker of ['request_jd_customer_directory_v1','is_jd_universal_request_tuple_v1','AGDATA_EXECUTIVE_ALL','20261027124800']) {
+    assert.ok(contract.includes(marker), marker);
+  }
+  const migration = fs.readFileSync(new URL('../supabase/migrations/' + agdataV2383JdUniversalCustomerDirectoryMigrationName, import.meta.url), 'utf8');
+  assert.match(migration, /revoke all on function public\.request_jd_customer_directory_v1[^]*anon,authenticated/);
+  assert.match(migration, /grant execute on function public\.request_jd_customer_directory_v1[^]*service_role/);
 });
 
 test('v2.3.72 request completion delivery includes completed membership', () => {

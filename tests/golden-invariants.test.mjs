@@ -1984,3 +1984,31 @@ test('Invariant 65 (Mobile Home Keeps All Dashboard Rows in the Header-to-Dock F
   context.syncGoogleScriptButton();
   assert.equal(panel.open, true, 'a user-selected disclosure state is preserved across viewport changes');
 });
+
+test('Invariant 66 (JD Uses a Complete App-Wide Request Directory With a Valid N/A Pair)', () => {
+  const runtime = runFunctions('assets/app-runtime.js', [
+    'normalizeRepMatchToken', 'normalizeRepDisplayOrder', 'isUniversalRequestDirectoryRep'
+  ]);
+  assert.equal(runtime.isUniversalRequestDirectoryRep('JD Jones'), true);
+  assert.equal(runtime.isUniversalRequestDirectoryRep('jd_jones'), true);
+  assert.equal(runtime.isUniversalRequestDirectoryRep('VP of Sales'), true);
+  assert.equal(runtime.isUniversalRequestDirectoryRep('Rep One'), false);
+
+  const app = read('assets/app-runtime.js');
+  assert.match(app, /JD_EXECUTIVE_SALESREP_ID\s*=\s*'AGDATA_EXECUTIVE_ALL'/);
+  assert.match(app, /getRequestUniversalCustomerOptions\([^]*customerRepMapRows[^]*socInventory[^]*reservesInventory[^]*requestsInventory[^]*requestHistoryInventory/);
+  assert.match(app, /buildRequestModalNaCustomerOption\(JD_EXECUTIVE_SALESREP_ID\)/,
+    'the executive directory always starts with the authorized N/A tuple');
+  assert.match(app, /String\(currentUser \|\| ''\)[^]*=== 'jd_jones'[^]*resolveCanonicalRequestRepName\('JD Jones'\)/,
+    'JD defaults the request rep selection to himself');
+
+  const edge = read('supabase/functions/app-api/index.ts');
+  assert.match(edge, /request\.operation === "options"[^]*JD_EXECUTIVE_SALESREP_ID[^]*request_jd_customer_directory_v1/);
+  const migration = read('supabase/migrations/20261027124800_agdata_v2383_jd_universal_customer_directory.sql');
+  for (const source of ['ph_customer_consignee_sales_reps','ph_soc_master','ph_reserves','ph_active_request','ph_request_history']) {
+    assert.match(migration, new RegExp(source), `${source} contributes to JD's complete directory`);
+  }
+  assert.match(migration, /selected_id='AGDATA_EXECUTIVE_ALL'[^]*is_jd_universal_request_tuple_v1/,
+    'submission validates the exact executive tuple against the same app-wide sources');
+  assert.match(migration, /AGDATA_NA_CUSTOMER[^]*AGDATA_NA_CONSIGNEE/);
+});
