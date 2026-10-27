@@ -2113,3 +2113,13 @@ test('Invariant 73 (Full Inventory Reads Preserve Durable Reclass Photo Evidence
     assert.match(browserContract, new RegExp(`'${field}'`), `${field} survives the direct browser full-row boundary`);
   }
 });
+
+test('Invariant 74 (AV Invalidation Checks Never Rewrite Durable Loc Photo Match)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const start = runtime.indexOf('function getMasterAvInvalidationReasons(item)');
+  const end = runtime.indexOf('function getMasterAvOpenLtsValue(item)', start);
+  assert.ok(start >= 0 && end > start, 'AV invalidation helper exists');
+  const helper = runtime.slice(start, end);
+  assert.doesNotMatch(helper, /item\.LOC_MATCH_QTY\s*=/);
+  assert.match(helper, /calculateLocMatchQtyValue\(item\)\s*\?\?\s*parseAppNumber\(item\.LOC_MATCH_QTY\)/);
+});

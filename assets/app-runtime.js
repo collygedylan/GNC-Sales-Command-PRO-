@@ -12343,8 +12343,6 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const hasInvalidMatch = isInvalidLocMatchPercent(firstNonEmptyValue(item && item.MATCH, item && item.MATCHPCT, item && item.MATCH_PCT, ''));
             const effectiveLocMatchQty = hasInvalidMatch ? null : (calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY));
 
-            if (hasInvalidMatch) item.LOC_MATCH_QTY = '';
-            if (effectiveLocMatchQty != null) item.LOC_MATCH_QTY = effectiveLocMatchQty;
             if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
             if (bundleUpdatedAt) {
                 if (isPhotoDateMsExpired(Date.parse(bundleUpdatedAt))) reasons.push('stale_10_day');
