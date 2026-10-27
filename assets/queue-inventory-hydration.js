@@ -41,7 +41,6 @@
     function createIndex(rows = []) {
         const ids = new Map(), keys = new Map(), itemLocations = new Map(), items = new Map();
         const byItemLoc = new Map(), byItem = new Map(), normalizedSearchText = new WeakMap();
-        const fallbackIndexes = new WeakMap();
         const aggregate = (map, key, row) => {
             const entry = map.get(key) || { rows: [], locOnHand: 0, onHandKnown: false, available: 0 };
             entry.rows.push(row);
@@ -89,26 +88,13 @@
             return { status:'missing', row:null };
         }, resolveSuspendTagDisplay(input, fallbackRows = []) {
             const i = identity(input);
-            if (!i.itemCode) return { status:'missing', row:null };
-            const itemRows = items.get(i.itemCode) || [];
+            if (!i.itemCode || !i.locationCode) return { status:'missing', row:null };
+            if (/^0+\.0+\.111$/.test(i.locationCode)) return { status:'missing', row:null };
             const exactRows = i.locationCode && i.lotCode
                 ? (keys.get(locationLotKey(i)) || []).filter(row => matches(row, i)) : [];
-            const lotRows = i.lotCode ? itemRows.filter(row => identity(row).lotCode === i.lotCode) : [];
-            const selectedRows = exactRows.length ? exactRows : lotRows.length ? lotRows : itemRows;
-            let fallbackIndex = fallbackIndexes.get(fallbackRows);
-            if (!fallbackIndex && Array.isArray(fallbackRows)) {
-                fallbackIndex = new Map();
-                for (const row of fallbackRows) {
-                    const key = identity(row).itemCode;
-                    const bucket = fallbackIndex.get(key) || []; bucket.push(row); fallbackIndex.set(key, bucket);
-                }
-                fallbackIndexes.set(fallbackRows, fallbackIndex);
-            }
-            const itemCavRows = fallbackIndex?.get(i.itemCode) || [];
-            const seasons = new Set(selectedRows.map(row => text(pick(row, 'SEASON', 'season'))).filter(Boolean));
-            const cavRows = selectedRows.length && seasons.size
-                ? itemCavRows.filter(row => seasons.has(text(pick(row, 'SEASON', 'season')))) : itemCavRows;
-            const rowsForMetrics = selectedRows.length ? selectedRows : cavRows;
+            const sameLocationRows = !i.lotCode ? itemLocations.get(itemLocationKey(i)) || [] : [];
+            if (exactRows.length > 1) return { status:'ambiguous', row:null };
+            const rowsForMetrics = exactRows.length ? exactRows : sameLocationRows;
             if (!rowsForMetrics.length) return { status:'missing', row:null };
             const base = representative(rowsForMetrics) || {};
             const sum = keys => {
@@ -155,7 +141,7 @@
                     if (Number.isFinite(number)) openStockBySeason.set(key, number);
                 }
             }
-            const locationRows = i.locationCode ? itemLocations.get(itemLocationKey(i)) || [] : [];
+            const locationRows = itemLocations.get(itemLocationKey(i)) || [];
             let locationOnHandFound = false;
             const locationOnHand = locationRows.reduce((total, row) => {
                 const value = pick(row, 'PTRONHAND', 'ptronhand');
@@ -165,7 +151,7 @@
                 return total + (Number.isFinite(number) ? number : 0);
             }, 0);
             let locationPhotoMatchFound = false;
-            const locationPhotoMatch = locationRows.reduce((total, row) => {
+            const locationPhotoMatch = rowsForMetrics.reduce((total, row) => {
                 const value = pick(row, 'LOC_MATCH_QTY', 'loc_match_qty');
                 if (value === '') return total;
                 const number = Number(String(value).replace(/,/g, ''));
@@ -173,14 +159,16 @@
                 locationPhotoMatchFound = true;
                 return total + number;
             }, 0);
-            return { status:'ready', matchLevel: exactRows.length ? 'item-location-lot' : lotRows.length ? 'item-lot' : selectedRows.length ? 'item' : 'cav-item', row:{
+            return { status:'ready', matchLevel: exactRows.length ? 'item-location-lot' : 'item-location', row:{
                 ...base,
                 PTRONHAND: sum(['PTRONHAND', 'ptronhand']),
                 PTRREVIEWED: sum(['PTRREVIEWED', 'ptrreviewed']) ?? (sum(['PTRONHAND', 'ptronhand']) !== null ? 0 : null),
-                PTRAVAILABLE: sumAvailable(selectedRows) ?? sumAvailable(cavRows),
+                PTRAVAILABLE: sumAvailable(rowsForMetrics),
                 S_LTS: openStockBySeason.size ? [...openStockBySeason.values()].reduce((total, value) => total + value, 0) : null,
                 LOC_ON_HAND: locationRows.length ? (locationOnHandFound ? locationOnHand : null) : 0,
-                LOC_MATCH_QTY: locationRows.length ? (locationPhotoMatchFound ? locationPhotoMatch : null) : 0
+                LOC_PHOTO_MATCH: Object.prototype.hasOwnProperty.call(base, 'LOC_PHOTO_MATCH') ? base.LOC_PHOTO_MATCH
+                    : Object.prototype.hasOwnProperty.call(base, 'loc_photo_match') ? base.loc_photo_match : null,
+                LOC_MATCH_QTY: rowsForMetrics.length ? (locationPhotoMatchFound ? locationPhotoMatch : null) : null
             } };
         }, resolve(input) {
             const i = identity(input);
@@ -195,7 +183,7 @@
             // cards. When the source omits or changes lot/source qualifiers,
             // allow a unique normalized item+location match; never pick one of
             // multiple physical master rows at that location.
-            const scoped = i.itemCode && i.locationCode ? itemLocations.get(itemLocationKey(i)) || [] : [];
+            const scoped = !i.lotCode && i.itemCode && i.locationCode ? itemLocations.get(itemLocationKey(i)) || [] : [];
             return { status: scoped.length === 1 ? 'ready' : scoped.length ? 'ambiguous' : 'missing', row: scoped.length === 1 ? scoped[0] : null };
         } };
     }
