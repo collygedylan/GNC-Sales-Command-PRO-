@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.77';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.78';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11140,7 +11140,23 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function syncMasterFieldsToRequestRow(masterItem, row) {
             if (!masterItem || !row) return row;
             const preservedValues = captureRequestOwnedSyncValues(row, masterItem);
-            syncMasterFieldsToRow(masterItem, row, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true, exactPhotoClone: false, photoPrefix: 'req-' });
+            const inventoryIdentity = window.AgMetricQueueInventory?.identity;
+            const masterIdentity = inventoryIdentity ? inventoryIdentity(masterItem) : null;
+            const requestIdentity = inventoryIdentity ? inventoryIdentity(row) : null;
+            const exactInventoryMatch = !!(masterIdentity && requestIdentity && masterIdentity.itemCode
+                && masterIdentity.itemCode === requestIdentity.itemCode
+                && masterIdentity.locationCode && masterIdentity.locationCode === requestIdentity.locationCode
+                && masterIdentity.lotCode && masterIdentity.lotCode === requestIdentity.lotCode);
+            const serverMetrics = ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','ON_HAND','REVIEW','AVAILABLE','OPEN_STOCK','S_LTS',
+                'LOC_ON_HAND','LOC_PHOTO_MATCH','LOC_MATCH_QTY','LOC_ON_HAND_ITEMCODE','LOC_ON_HAND_LOCATIONCODE','LOC_ON_HAND_REVISION',
+                'LOC_ON_HAND_RECEIPT_SCOPE','LOC_ON_HAND_RECEIPT_PERMISSION','LOC_ON_HAND_RECEIPT_REVISION'];
+            const preservedMetrics = exactInventoryMatch ? null : Object.fromEntries(serverMetrics
+                .filter(key => Object.prototype.hasOwnProperty.call(row, key) || Object.prototype.hasOwnProperty.call(row, key.toLowerCase()))
+                .map(key => [key, Object.prototype.hasOwnProperty.call(row, key) ? row[key] : row[key.toLowerCase()]]));
+            const syncKeys = exactInventoryMatch ? LINKED_ROW_SYNC_KEYS
+                : LINKED_ROW_SYNC_KEYS.filter(key => !['ITEMCODE','LOCATIONCODE','LOTCODE','PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS','LOC_MATCH_QTY'].includes(key));
+            syncMasterFieldsToRow(masterItem, row, syncKeys, { attachMasterLink: exactInventoryMatch, exactPhotoClone: false, photoPrefix: 'req-' });
+            if (preservedMetrics) Object.entries(preservedMetrics).forEach(([key, value]) => { row[key] = value; });
             // Availability and its provenance must move together. The Request
             // import can lack stock even though its linked inventory knows it.
             row.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = masterItem.PHOTO_MATCH_PTR_AVAILABLE_KNOWN !== false
@@ -26568,7 +26584,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.77').trim() || 'AgData v2.3.77';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.78').trim() || 'AgData v2.3.78';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -56454,6 +56470,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (hasMaster) {
+                const priorDisplayRows = fullInventory;
+                const masterReadMeta = res.data && res.data.readMeta;
                 clearAcceptedLocOnHandAggregates();
                 if (res._verifiedLiveSync === true) {
                     const receiptScope = String(res._locOnHandReceiptScope || '');
@@ -56487,6 +56505,28 @@ function toggleDriveQuickRequestItem(domId) {
                 const preparedIndexes = prepared ? takePreparedMasterIndexMaps(prepared, preparedRowsUnchanged) : null;
                 if (preparedIndexes) installMasterInventoryIndexMaps(preparedIndexes);
                 else rebuildMasterInventoryIndexes();
+                // Rebind an existing verified display receipt only when this
+                // replacement is itself a complete, same-sized read. This keeps
+                // Drive and local report indexes attached to the published array
+                // without certifying a partial preview as complete.
+                const priorReceipt = productionDisplayMasterReceipt;
+                const currentScope = getSupabaseReadIdentityScope();
+                const currentPermission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+                const masterState = getDatasetState('master');
+                const liveContext = getProductionLiveSyncContext();
+                const verifiedMasterState = masterState?.initialLoaded === true && masterState.rowCompleteness === 'complete'
+                    && masterState.liveVerifiedScope === currentScope
+                    && masterState.liveVerifiedScope === liveContext?.scope
+                    && masterState.liveVerifiedPermission === currentPermission;
+                if (masterReadMeta?.rowCompleteness === 'complete'
+                    && Number(masterReadMeta.total) === fullInventory.length
+                    && fullInventory.length === res.data.length
+                    && ((priorReceipt?.rows === priorDisplayRows
+                        && priorReceipt.readScope === currentScope
+                        && priorReceipt.permission === currentPermission) || verifiedMasterState)) {
+                    productionDisplayMasterReceipt = { ...(priorReceipt || {}), rows: fullInventory,
+                        readScope: currentScope, permission: currentPermission };
+                }
                 const inheritanceCandidates = preparedIndexes ? prepared.inheritanceCandidates : null;
                 hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12, candidates: inheritanceCandidates?.ncr });
                 hydrateMovedSeasonCurrentRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12, candidates: inheritanceCandidates?.moved });
@@ -105011,6 +105051,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const blocked = (reason = '') => ({ include: false, selectable: false, reason });
             const visible = (selectable = true, reason = '') => ({ include: true, selectable: selectable !== false, reason });
             if (!candidate || !source) return blocked('Missing row');
+            const candidateLocation = String(firstNonEmptyValue(candidate.LOCATIONCODE, candidate.locationcode, candidate.LOCATION, candidate.location, '') || '').trim();
+            if (/^0+\.0+\.111$/i.test(candidateLocation)) return blocked('False Block');
             const sourceItemCode = getRequestItemCodeOptionItemCode(source);
             const candidateItemCode = getRequestItemCodeOptionItemCode(candidate);
             const sameItemCode = !!(sourceItemCode && candidateItemCode === sourceItemCode);
@@ -110506,7 +110548,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const explicitUid = String(firstNonEmptyValue(item && item.DOCK_SUSPEND_SOURCE_UID, item && item.dock_suspend_source_uid, '') || '').trim();
             if (explicitUid) return explicitUid;
             const uniqueId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
-            return uniqueId.indexOf('dock_suspend_dc_') === 0 ? uniqueId.slice('dock_suspend_dc_'.length) : uniqueId;
+            return uniqueId.replace(/^dock_suspend_dc_/i, '').trim();
         }
 
         function getDockSuspendDcSourceRowLookupRevision(sourceRows = getDockSuspendDcSourceRows()) {
@@ -110944,14 +110986,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 && Array.isArray(dockSuspendDcRequestMirrorRowsCache)) {
                 return dockSuspendDcRequestMirrorRowsCache.slice();
             }
-            if (sourceRows.length <= DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE) {
+            const buildCurrentRows = () => {
                 const seen = new Set();
-                const rows = sourceRows.map(buildDockSuspendDcRequestMirrorRow).filter((row) => {
+                return sourceRows.map(buildDockSuspendDcRequestMirrorRow).filter((row) => {
                     const id = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
                     if (!id || seen.has(id)) return false;
                     seen.add(id);
                     return true;
                 });
+            };
+            if (sourceRows.length <= DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE) {
+                const rows = buildCurrentRows();
                 dockSuspendDcRequestMirrorRowsCacheKey = cacheKey;
                 dockSuspendDcRequestMirrorRowsCacheSource = sourceRows;
                 dockSuspendDcRequestMirrorRowsCacheOwner = owner;
@@ -110960,17 +111005,20 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 dockSuspendDcRequestMirrorRowsByDomIdCache = null;
                 return rows.slice();
             }
+            // The Suspend queue is a physical SOC-row view. Build the complete
+            // current mirror set before returning so a cold/stale cache cannot
+            // briefly publish an empty queue while a timer prepares it.
             const prior = dockSuspendDcRequestMirrorRowsPreparation;
-            if (!prior || prior.sourceRows !== sourceRows || prior.revision !== cacheKey || prior.owner !== owner) {
-                scheduleDockSuspendDcRequestMirrorRowsPreparation(sourceRows, cacheKey, owner);
-            }
-            // The last complete set stays visible during refresh only inside
-            // the same authenticated scope. A cold view waits for the first
-            // complete slice set instead of presenting a partial queue.
-            return dockSuspendDcRequestMirrorRowsCacheOwner === owner
-                && Array.isArray(dockSuspendDcRequestMirrorRowsCache)
-                ? dockSuspendDcRequestMirrorRowsCache.slice()
-                : [];
+            if (prior && prior.timer != null) clearTimeout(prior.timer);
+            dockSuspendDcRequestMirrorRowsPreparation = null;
+            const rows = buildCurrentRows();
+            dockSuspendDcRequestMirrorRowsCacheKey = cacheKey;
+            dockSuspendDcRequestMirrorRowsCacheSource = sourceRows;
+            dockSuspendDcRequestMirrorRowsCacheOwner = owner;
+            dockSuspendDcRequestMirrorRowsCache = rows;
+            dockSuspendDcRequestMirrorRowsByIdCache = null;
+            dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+            return rows.slice();
         }
 
         function appendDockSuspendDcRequestMirrorRows(items = []) {
@@ -111046,7 +111094,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return (Array.isArray(items) ? items : []).filter(isDockSuspendDcRequestMirrorRow).filter(isDockSuspendDcRequestSource)
                 .filter(item => statusFilter === 'completed'
                     ? ['completed', 'awaiting_rep', 'approved'].includes(getSuspendTagStatus(item))
-                    : !isOptimisticallyCompletedRow(item));
+                    : !isOptimisticallyCompletedRow(item)
+                        && !hasCompletionDateValue(item)
+                        && !['completed', 'approved', 'rejected'].includes(String(firstNonEmptyValue(item.suspend_candidate_state, item.SUSPEND_CANDIDATE_STATE, '') || '').trim().toLowerCase()));
         }
 
         function countPendingSuspendTagQueueItems(items = [], sourceRows = []) {
@@ -111057,7 +111107,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     typeof socRawSourceRows !== 'undefined' ? socRawSourceRows : sourceRows,
                     typeof getCurrentSuspendTagSourceFreshness === 'function' ? getCurrentSuspendTagSourceFreshness() : null)
                 : (Array.isArray(sourceRows) ? sourceRows : []);
-            const latestSourceIds = new Set(latestSourceRows.map((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim()).filter(Boolean));
+            const latestSourceIds = new Set(latestSourceRows.map((row) => getDockSuspendDcRequestSourceUid(row)).filter(Boolean));
             getSuspendTagRequestItems(items).filter((row) => latestSourceIds.has(getDockSuspendDcRequestSourceUid(row))).forEach((row) => {
                 if (!['pending', 'denied'].includes(getSuspendTagStatus(row))) return;
                 const sourceUid = getDockSuspendDcRequestSourceUid(row);
@@ -111395,7 +111445,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const latestSourceRows = typeof getLatestSocSuspendTagSourceRows === 'function'
                 ? getLatestSocSuspendTagSourceRows(sourceRows, freshnessRows, latestSourceFreshness)
                 : (Array.isArray(sourceRows) ? sourceRows : []);
-            const latestSourceIds = new Set(latestSourceRows.map((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim()).filter(Boolean));
+            const latestSourceIds = new Set(latestSourceRows.map((row) => getDockSuspendDcRequestSourceUid(row)).filter(Boolean));
             const sourceLookupRevision = getDockSuspendDcSourceRowLookupRevision(sourceRows);
             const sourceLookup = getDockSuspendDcSourceRowLookup(sourceRows, sourceLookupRevision);
             // Sorting is independent of status and filters. Cache only the
@@ -145275,7 +145325,11 @@ C.14.043 C.15.000
                     queueCardInventoryIndexReceipt = receipt;
                 }
                 const found = sourceView === 'docks' ? queueCardInventoryIndex.resolveDisplay(identity) : queueCardInventoryIndex.resolve(identity);
-                if (found.row && ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS'].every(key => Object.prototype.hasOwnProperty.call(found.row, key) || Object.prototype.hasOwnProperty.call(found.row, key.toLowerCase()))) return found;
+                const foundIdentity = found.row ? helper.identity(found.row) : null;
+                const exactIdentity = !!(foundIdentity && identity.itemCode && foundIdentity.itemCode === identity.itemCode
+                    && identity.locationCode && foundIdentity.locationCode === identity.locationCode
+                    && identity.lotCode && foundIdentity.lotCode === identity.lotCode);
+                if (found.row && exactIdentity && ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS'].every(key => Object.prototype.hasOwnProperty.call(found.row, key) || Object.prototype.hasOwnProperty.call(found.row, key.toLowerCase()))) return found;
             }
             if (!queueCardInventoryHydrator) queueCardInventoryHydrator = helper.createHydrator({
                 context: getQueueCardInventoryContext, load: loadQueueCardInventoryBatch,
@@ -145336,18 +145390,27 @@ C.14.043 C.15.000
 
         function normalizeRequestCardMetrics(row = {}) {
             const result = { ...row };
-            const onHand = Number(firstNonEmptyValue(row.PTRONHAND, row.ptronhand, row.ON_HAND, row.on_hand, 0));
-            const available = Number(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, row.AVAILABLE_QTY, row.available_qty, 0));
-            const review = Number(firstNonEmptyValue(row.PTRREVIEWED, row.ptrreviewed, row.REVIEW_QTY, row.review_qty, 0));
-            result.PTRONHAND = Number.isFinite(onHand) ? onHand : 0;
-            result.PTRAVAILABLE = Number.isFinite(available) ? available : 0;
-            result.PTRREVIEWED = Number.isFinite(review) ? review : 0;
-            result.S_LTS = firstNonEmptyValue(row.S_LTS, row.s_lts, row.OPEN_STOCK, row.open_stock, 0);
-            result.LOC_ON_HAND = firstNonEmptyValue(row.LOC_ON_HAND, row.loc_on_hand, row.ON_HAND, row.on_hand, result.PTRONHAND);
-            result.LOC_MATCH_QTY = firstNonEmptyValue(row.LOC_MATCH_QTY, row.loc_match_qty, row.LOC_PHOTO_MATCH, row.loc_photo_match, 0);
+            const metricValue = (keys = []) => firstNonEmptyValue(...keys.map(key => row[key]), null);
+            const onHandValue = metricValue(['ON_HAND', 'on_hand', 'PTRONHAND', 'ptronhand']);
+            const availableValue = metricValue(['AVAILABLE', 'available', 'AVAILABLE_QTY', 'available_qty', 'PTRAVAILABLE', 'ptravailable']);
+            const reviewValue = metricValue(['REVIEW', 'review', 'REVIEW_QTY', 'review_qty', 'PTRREVIEWED', 'ptrreviewed']);
+            const onHand = onHandValue == null ? null : Number(onHandValue);
+            const available = availableValue == null ? null : Number(availableValue);
+            const review = reviewValue == null ? null : Number(reviewValue);
+            if (onHandValue != null) result.PTRONHAND = Number.isFinite(onHand) ? onHand : onHandValue;
+            if (availableValue != null) result.PTRAVAILABLE = Number.isFinite(available) ? available : availableValue;
+            if (reviewValue != null) result.PTRREVIEWED = Number.isFinite(review) ? review : reviewValue;
+            // Request RPC metrics may expose the aggregate as OPEN_STOCK while
+            // an attached Drive row carries the physical lot's S_LTS. Preserve
+            // the queue metric when both aliases are present, and retain
+            // unknown values instead of manufacturing zeroes before hydration.
+            result.S_LTS = metricValue(['OPEN_STOCK', 'open_stock', 'S_LTS', 's_lts']) ?? null;
+            const locOnHand = metricValue(['LOC_ON_HAND', 'loc_on_hand', 'ON_HAND', 'on_hand']);
+            result.LOC_ON_HAND = locOnHand != null ? locOnHand : onHandValue;
+            result.LOC_MATCH_QTY = metricValue(['LOC_PHOTO_MATCH', 'loc_photo_match', 'LOC_MATCH_QTY', 'loc_match_qty']);
             if (onHand === 0 && available > 0 && Number.isFinite(review)) {
                 result.PTRONHAND = available + review;
-                result.LOC_ON_HAND = Math.max(Number(row.LOC_ON_HAND ?? row.loc_on_hand) || 0, result.PTRONHAND);
+                result.LOC_ON_HAND = Math.max(Number(locOnHand) || 0, result.PTRONHAND);
             }
             return result;
         }
@@ -145382,9 +145445,20 @@ C.14.043 C.15.000
             const cachedMaster = !state.row && !suspendMetrics && sameOwnerMasterSnapshot ? findLinkedMasterRow(item) : null;
             const displayFallback = isSuspendTagCard && !suspendMetrics && !state.row ? getSuspendTagMetricDisplayFallback(item) : null;
             const displayRow = state.row || cachedMaster || displayFallback?.row || null;
-            const falseBlock = isSuspendTagCard && String(item.LOCATIONCODE || item.locationcode || '') === '0.00.111';
+            const falseBlock = isSuspendTagCard && /^0+\.0+\.111$/i.test(String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim());
             const zeroMetrics = falseBlock ? { PTRONHAND:0, PTRREVIEWED:0, PTRAVAILABLE:0, S_LTS:0, LOC_ON_HAND:0, LOC_MATCH_QTY:0 } : {};
-            const sourceMetrics = { ...zeroMetrics, ...(displayRow || {}), ...(suspendMetrics || {}) };
+            const directServerMetrics = {};
+            ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','ON_HAND','REVIEW','AVAILABLE','AVAILABLE_QTY','REVIEW_QTY',
+                'OPEN_STOCK','S_LTS','LOC_ON_HAND','LOC_PHOTO_MATCH','LOC_MATCH_QTY'].forEach((key) => {
+                const lower = key.toLowerCase();
+                if (Object.prototype.hasOwnProperty.call(item || {}, key)) directServerMetrics[key] = item[key];
+                else if (Object.prototype.hasOwnProperty.call(item || {}, lower)) directServerMetrics[key] = item[lower];
+            });
+            const sourceMetrics = displayRow
+                ? { ...displayRow, ...Object.fromEntries(['OPEN_STOCK','LOC_ON_HAND','LOC_PHOTO_MATCH','LOC_MATCH_QTY']
+                    .filter(key => directServerMetrics[key] !== undefined).map(key => [key, directServerMetrics[key]])) }
+                : { ...directServerMetrics };
+            Object.assign(sourceMetrics, suspendMetrics || {}, falseBlock ? zeroMetrics : {});
             const metricRow = sourceView === 'request' ? normalizeRequestCardMetrics(sourceMetrics) : sourceMetrics;
             if (item.ITEMCODE || item.itemcode) metricRow.ITEMCODE = item.ITEMCODE || item.itemcode;
             if (item.LOCATIONCODE || item.locationcode) metricRow.LOCATIONCODE = item.LOCATIONCODE || item.locationcode;

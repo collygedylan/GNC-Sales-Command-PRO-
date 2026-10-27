@@ -68,6 +68,7 @@ test('Suspend photo options reject unrelated item and size rows before validatin
   const optionState = { rows: [], cachedSignature: 'options-1' };
   const context = {
     String, Object, Array, Map, Set,
+    ACTIVE_REQUEST_TABLE: 'ph_requests_pending',
     fullInventory: [unrelatedItem, wrongSize, exactMatch],
     avOpenInventory: [samePlantSize],
     requestItemCodeOptionState: optionState,
@@ -107,6 +108,59 @@ test('Suspend photo options reject unrelated item and size rows before validatin
   masterRevision = 'master-2';
   context.getDockSuspendTagValidDriveOptionRows(target);
   assert.ok(itemCodeKeyReads > readsAfterInitialIndex, 'a master dataset revision rebuilds the candidate index');
+});
+
+test('Suspend active rows survive mirror ID prefixes and exclude completed source states', () => {
+  const functions = [extract('getDockSuspendDcRequestSourceUid'), extract('getSuspendTagRequestItems')].join('\n');
+  const rows = Array.from({ length: 17 }, (_, index) => ({
+    UNIQUE_ID: `dock_suspend_dc_Dock_29-10-${index}`,
+    DOCK_SUSPEND_SOURCE_UID: `Dock_29-10-${index}`,
+    IS_SUSPEND_TAG: true,
+    SUSPEND: 'SUSPEND', SUSPEND_TO: 'dc', SUSPEND_CANDIDATE_STATE: null,
+    DATE_COMPLETED: null
+  }));
+  const ctx = {
+    String, Array, Set, firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+    isDockSuspendDcRequestMirrorRow: row => row?.IS_SUSPEND_TAG === true,
+    isDockSuspendDcRequestSource: row => String(row?.SUSPEND || '').trim().toUpperCase() === 'SUSPEND' && String(row?.SUSPEND_TO || '').trim().toLowerCase() === 'dc',
+    getSuspendTagStatus: row => row.DATE_COMPLETED ? 'completed' : 'pending',
+    isOptimisticallyCompletedRow: () => false,
+    hasCompletionDateValue: row => !!row.DATE_COMPLETED
+  };
+  vm.createContext(ctx);
+  vm.runInContext(functions, ctx);
+  assert.equal(ctx.getDockSuspendDcRequestSourceUid(rows[0]), 'Dock_29-10-0');
+  assert.equal(ctx.getSuspendTagRequestItems(rows).length, 17);
+  assert.equal(ctx.getSuspendTagRequestItems([{ ...rows[0], SUSPEND_CANDIDATE_STATE: 'approved' }]).length, 0);
+  assert.equal(ctx.getSuspendTagRequestItems([{ ...rows[0], DATE_COMPLETED: '2026-10-26' }]).length, 0);
+});
+
+test('stale Suspend mirror cache synchronously rebuilds complete physical rows above the chunk threshold', () => {
+  const physicalRows = Array.from({ length: 17 }, (_, index) => ({ unique_id: `soc-${index}` }));
+  const ctx = {
+    String, Array, Set, Map,
+    DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE: 16,
+    canCurrentUserViewDockSuspendDcRequests: () => true,
+    getDockSuspendDcSourceRows: () => physicalRows,
+    getDockSuspendDcSourceRowLookupRevision: () => 'soc-revision-2',
+    getDockSuspendDcRequestMirrorRowsOwner: () => 'account-a',
+    buildDockSuspendDcRequestMirrorRow: row => ({ ...row, UNIQUE_ID: `dock_suspend_dc_${row.unique_id}` }),
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+    clearTimeout: () => { throw new Error('large stale cache must not schedule asynchronous preparation'); },
+    dockSuspendDcRequestMirrorRowsCacheKey: 'old-revision',
+    dockSuspendDcRequestMirrorRowsCacheSource: null,
+    dockSuspendDcRequestMirrorRowsCache: [],
+    dockSuspendDcRequestMirrorRowsCacheOwner: 'account-a',
+    dockSuspendDcRequestMirrorRowsPreparation: null,
+    dockSuspendDcRequestMirrorRowsByIdCache: null,
+    dockSuspendDcRequestMirrorRowsByDomIdCache: null
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extract('getDockSuspendDcRequestMirrorRows'), ctx);
+  const result = ctx.getDockSuspendDcRequestMirrorRows();
+  assert.equal(result.length, 17);
+  assert.equal(result[0].UNIQUE_ID, 'dock_suspend_dc_soc-0');
+  assert.equal(ctx.dockSuspendDcRequestMirrorRowsCacheKey, 'soc-revision-2');
 });
 
 test('queue inventory authorization receipt matches live-sync identity and invalidates on permission changes', () => {

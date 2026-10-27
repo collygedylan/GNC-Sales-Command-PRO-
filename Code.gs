@@ -22327,17 +22327,19 @@ function buildSuspendTagApprovalEmail_(delivery) {
   const payload = delivery.payload || {};
   const decision = delivery.eventType === 'suspend_tag_approval_decided';
   const value = function(v) { return v === null || typeof v === 'undefined' ? '' : String(v); };
+  const candidates = (Array.isArray(row.candidates) && row.candidates.length ? row.candidates : [row])
+    .filter(function(candidate) { return !/^0+\.0+\.111$/.test(value(candidate.locationcode).trim()); });
+  if (!candidates.length) throw new Error('SUSPEND_TAG_NO_PULL_CANDIDATES');
   const fields = [
     ['Customer', value(row.customername)], ['Consignee', value(row.consigneename)],
     ['Item Description', [row.commonname, row.contsize].filter(Boolean).join(' ')],
     ['Completed by', value(row.completed_by_display || row.completed_by_username)],
     ['Sent by', value(row.sent_by_display || row.sent_by_username)],
-    ['Location Code', value(row.locationcode)], ['Qty', value(row.quantityordered)],
+    ['Location Code', candidates.map(function(candidate) { return value(candidate.locationcode); }).join(', ')], ['Qty', value(row.quantityordered)],
     ['Spec', value(row.dock_spec)], ['Caliper', value(row.dock_caliper)],
     ['LOC MATCH %', value(row.match)], ['Match Qty', value(row.loc_match_qty)], ['Initial PTR', value(row.initial_ptr)],
     ['AV Note', value(row.av_note)], ['Notes', value(row.dock_note)]
   ];
-  const candidates = Array.isArray(row.candidates) && row.candidates.length ? row.candidates : [row];
   if (decision) fields.push(['Approved location', value((candidates.find(function(candidate) { return candidate.unique_id === approval.selected_source_uid; }) || {}).locationcode)]);
   const appUrl = 'https://agmetricapp.com/' + '?suspendApproval=' + encodeURIComponent(approval.id);
   const approveUrl = appUrl + '&suspendDecision=approve';

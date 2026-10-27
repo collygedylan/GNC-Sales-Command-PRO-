@@ -85,6 +85,7 @@ test('scoped publisher advances one version with guarded remote backfill and man
   } };
   let authorizations = 0;
   const result = await syncAppsScriptProject({ script, scriptId: 'fixture', deploymentId: 'fixture', source: patch.source, githubSha: sha,
+    serviceRoleKey: 'fixture-service-role-signing-key',
     beforeMutation: createAppsScriptSourceGuard({ script, scriptId: 'fixture', beforeDigest: appsScriptFilesDigest(files), afterDigest: appsScriptFilesDigest(published), authorize: async () => { authorizations++; } }),
     fetchImpl: async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ ok: true, deployedCommit: sha, lifecycleRecipientPolicyVersion: REQUEST_LIFECYCLE_POLICY_VERSION, requiredRecipientCount: 3 }) }),
     healthAttempts: 1,

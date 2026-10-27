@@ -1412,12 +1412,17 @@ test('Nelly and authorized roles can open Request during capability loading; exp
 
 test('active queue excludes archives and repairs contradictory request metrics without mutating source', () => {
   assert.doesNotMatch(extractRuntimeFunction('getAuthorizedRequestCategories'), /push\('archived'\)/);
-  const ctx = vm.createContext({});
+  const ctx = vm.createContext({ firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') });
   vm.runInContext(extractRuntimeFunction('normalizeRequestCardMetrics'), ctx);
   const original = { PTRONHAND:0, PTRREVIEWED:0, PTRAVAILABLE:137, LOC_ON_HAND:0 };
   const fixed = ctx.normalizeRequestCardMetrics(original);
   assert.equal(fixed.PTRONHAND,137); assert.equal(fixed.LOC_ON_HAND,137);
   assert.equal(original.PTRONHAND,0);
+  assert.equal(ctx.normalizeRequestCardMetrics({ S_LTS:102, OPEN_STOCK:73 }).S_LTS,73,
+    'server-provided queue Open Stock wins over a different attached Drive lot value');
+  const unknown = ctx.normalizeRequestCardMetrics({});
+  assert.equal(unknown.PTRONHAND, undefined, 'missing server inventory is not reported as zero');
+  assert.equal(unknown.S_LTS, null, 'missing Open Stock remains unknown');
   vm.runInContext(extractRuntimeFunction('normalizeRequestCardCustomer'),ctx);
   assert.equal(ctx.normalizeRequestCardCustomer('N/A | N/A'),'N/A');
 });

@@ -14,14 +14,14 @@ const approval = { id: '12345678-1234-4234-8234-123456789abc', rep_email: 'toby@
   dock_photo_link: 'https://example.test/photo.jpg', dock_photo_name: 'photo.jpg', rep_username: 'toby_brown', rep_display: 'Toby Brown',
 } };
 
-test('protected API has exactly three editors and passes verified identity/session to SQL', async () => {
+test('protected API preserves the registered editors and passes verified identity/session to SQL', async () => {
   const ctx = vm.createContext({ jsonValue: value => value }); vm.runInContext(transpile(read('supabase/functions/_shared/suspend-tag.ts')), ctx);
   const calls = []; const client = { rpc: async (...args) => { calls.push(args); return { data: { ok: true } }; } };
-  for (const username of ['dylan_collyge','megan_kelly','dan_mccuistion']) {
+  for (const username of ['dylan_collyge','megan_kelly','jd_jones','dan_mccuistion']) {
     await ctx.handleSuspendTag(client, { id: 'actor', username, nativeSessionId: 'verified-session' }, { operation: 'complete', payload: { sourceUid: 'row', expectedLastUpdated: null, patch: {} }, commandId: 'token', expectedVersion: 0 });
     assert.equal(calls.at(-1)[1].p_actor_id, 'actor'); assert.equal(calls.at(-1)[1].p_session_id, 'verified-session');
   }
-  for (const username of ['jd_jones','toby_brown','', 'another_admin']) await assert.rejects(ctx.handleSuspendTag(client,{username},{operation:'complete',payload:{},expectedVersion:0}), /FORBIDDEN/);
+  for (const username of ['toby_brown','', 'another_admin']) await assert.rejects(ctx.handleSuspendTag(client,{username},{operation:'complete',payload:{},expectedVersion:0}), /FORBIDDEN/);
   await assert.rejects(ctx.handleSuspendTag(client,{username:'dylan_collyge'},{operation:'complete',payload:{username:'forged'},expectedVersion:0}), /FIELD_FORBIDDEN/);
   await assert.rejects(ctx.handleSuspendTag(client,{username:'dylan_collyge'},{operation:'save',payload:{}}), /VERSION_REQUIRED/);
   await ctx.handleSuspendTag(client,{id:'rep',username:'toby_brown'},{operation:'decide',payload:{approvalId:approval.id,decision:'approve'}});

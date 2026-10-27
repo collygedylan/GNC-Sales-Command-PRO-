@@ -1512,3 +1512,71 @@ test('Invariant 52 (Suspend Reads Fail Open Without Weakening Mutations)', () =>
   assert.match(migration, /grant select on public\.ph_active_suspend to anon,authenticated,service_role/);
   assert.match(migration, /SUSPEND_ACTIVE_COUNT_MISMATCH/);
 });
+
+test('Invariant 53 (False Block Variants Never Become Email Pull Options)', () => {
+  const ctx = runFunctions('Code.gs', ['buildSuspendTagApprovalEmail_'], {
+    dedupeEmailAddresses_: values => [...new Set(values)],
+    escapeEmailHtml_: value => String(value),
+    buildRequestEmailTableItemsHtml_: payload => JSON.stringify(payload.requestItems),
+  });
+  const approval = { id: 'approval', status: 'pending', rep_email: 'rep@example.test',
+    submitter_email: 'actor@example.test', snapshot: { locationcode: '0.00.111',
+      candidates: [
+        { unique_id: 'false-one', locationcode: '0.00.111' },
+        { unique_id: 'false-two', locationcode: '00.000.111' },
+        { unique_id: 'real', locationcode: 'G.19.000', quantityordered: 20 },
+      ] } };
+  const result = ctx.buildSuspendTagApprovalEmail_({ eventType: 'suspend_tag_approval_requested', payload: { approval } });
+  for (const body of [result.textBody, result.htmlBody]) {
+    assert.match(body, /G\.19\.000/);
+    assert.doesNotMatch(body, /0\.00\.111|00\.000\.111|false-one|false-two/);
+  }
+  assert.equal(result.to, 'rep@example.test');
+  assert.throws(() => ctx.buildSuspendTagApprovalEmail_({ eventType: 'suspend_tag_approval_requested',
+    payload: { approval: { ...approval, snapshot: { locationcode: '00.000.111' } } } }), /NO_PULL_CANDIDATES/);
+});
+
+test('Invariant 54 (Suspend Queue Preserves Server Open Stock Unless an Exact Tuple Exists)', () => {
+  const metricSink = {};
+  const ctx = runFunctions('assets/app-runtime.js', ['normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
+    isDockSuspendDcRequestMirrorRow: item => item?.isSuspend === true,
+    getQueueCardInventoryState: item => {
+      const row = item?.testInventoryRow;
+      const exact = row && row.ITEMCODE === item.ITEMCODE && row.LOCATIONCODE === item.LOCATIONCODE && row.LOTCODE === item.LOTCODE;
+      return exact ? { status: 'ready', row } : { status: 'unavailable', row: null };
+    },
+    getQueueCardInventoryAuthorizationContext: () => null,
+    getDatasetState: () => null,
+    getSuspendTagMetricDisplayFallback: () => null,
+    findLinkedMasterRow: () => null,
+    buildInventoryQuantityChipsHtml: row => { metricSink.row = row; return ''; },
+    fullInventory: [],
+  });
+  ctx.isDockSuspendDcRequestMirrorRow = item => item?.isSuspend === true;
+  ctx.getQueueCardInventoryState = item => {
+    const row = item?.testInventoryRow;
+    const exact = row && row.ITEMCODE === item.ITEMCODE && row.LOCATIONCODE === item.LOCATIONCODE && row.LOTCODE === item.LOTCODE;
+    return exact ? { status: 'ready', row } : { status: 'unavailable', row: null };
+  };
+  const base = { isSuspend: true, ITEMCODE: '008280.150.1', LOCATIONCODE: 'C.05.000', LOTCODE: '27.F1',
+    PTRONHAND: 4, PTRREVIEWED: 0, PTRAVAILABLE: 4, OPEN_STOCK: 73, S_LTS: 102, LOC_ON_HAND: 4, LOC_MATCH_QTY: 0 };
+
+  ctx.buildQueueInventoryMetricsHtml({ ...base, testInventoryRow: { ITEMCODE: base.ITEMCODE,
+    LOCATIONCODE: base.LOCATIONCODE, LOTCODE: 'OTHER-LOT', PTRONHAND: 8, PTRAVAILABLE: 9, S_LTS: 102 } });
+  assert.equal(metricSink.row.PTRONHAND, 4, 'nonmatching lot must not replace queue metrics');
+  assert.equal(metricSink.row.S_LTS, 73, 'Open Stock must win over the unrelated Drive S_LTS value');
+  assert.equal(metricSink.row.PTRREVIEWED, 0, 'explicit zero remains a known metric');
+
+  ctx.buildQueueInventoryMetricsHtml({ ...base, testInventoryRow: { ITEMCODE: base.ITEMCODE,
+    LOCATIONCODE: base.LOCATIONCODE, LOTCODE: base.LOTCODE, PTRONHAND: 5, PTRAVAILABLE: 6,
+    PTRREVIEWED: 1, S_LTS: 102, LOC_ON_HAND: 5, LOC_MATCH_QTY: 2 } });
+  assert.equal(metricSink.row.PTRONHAND, 5, 'an exact hydrated tuple takes precedence');
+  assert.equal(metricSink.row.S_LTS, 73, 'server Open Stock remains authoritative across exact hydration');
+  assert.equal(metricSink.row.LOC_ON_HAND, 4, 'server location aggregate remains authoritative across exact hydration');
+  assert.equal(metricSink.row.LOC_MATCH_QTY, 0, 'explicit server location match zero remains authoritative');
+
+  ctx.buildQueueInventoryMetricsHtml({ isSuspend: true, ITEMCODE: base.ITEMCODE, LOCATIONCODE: base.LOCATIONCODE, LOTCODE: base.LOTCODE });
+  assert.equal(metricSink.row.PTRONHAND, undefined, 'missing metrics remain unknown instead of becoming zero');
+  assert.equal(metricSink.row.S_LTS, null);
+});
