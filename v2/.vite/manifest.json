@@ -6,7 +6,7 @@
     "isDynamicEntry": true
   },
   "index.html": {
-    "file": "assets/index-BLfxhYc7.js",
+    "file": "assets/index-C1TORE2w.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -20,7 +20,7 @@
     ]
   },
   "src/components/DriveInventory.tsx": {
-    "file": "assets/DriveInventory-CIDFXW4g.js",
+    "file": "assets/DriveInventory-m9VpZ4bh.js",
     "name": "DriveInventory",
     "src": "src/components/DriveInventory.tsx",
     "isDynamicEntry": true,
@@ -29,7 +29,7 @@
     ]
   },
   "src/pages/RequestQueue.tsx": {
-    "file": "assets/RequestQueue-DHosHVAI.js",
+    "file": "assets/RequestQueue-BlL5-5hP.js",
     "name": "RequestQueue",
     "src": "src/pages/RequestQueue.tsx",
     "isDynamicEntry": true,
