@@ -62,7 +62,7 @@
   if(tileId)button.dataset.moduleTileId=tileId;
   if(descriptor.targetView)button.dataset.moduleTargetView=descriptor.targetView;
   const icon=findTileIcon(button);if(icon)icon.classList.add('gnc-module-tile__icon');
-  const label=findTileLabel(button);if(label)label.classList.add('gnc-module-tile__label');
+  const label=findTileLabel(button);if(label){label.classList.add('gnc-module-tile__label');if(item)label.textContent=item.label;}
   return button;
  }
  function createTile(hubView,item){
@@ -91,6 +91,14 @@
    }
    upgradeTile(button,item);
    const allowed=canAccessView(item.targetView);button.hidden=!allowed;button.classList.toggle('hidden',!allowed);
+  }
+  const byTarget=new Map();
+  for(const button of grid.querySelectorAll(':scope > button[data-module-target-view]')){
+   const target=button.dataset.moduleTargetView;if(!target)continue;
+   const current=byTarget.get(target);
+   if(!current){byTarget.set(target,button);continue;}
+   const keep=current.id.startsWith('hub-extra-')&&!button.id.startsWith('hub-extra-')?button:current;
+   const duplicate=keep===current?button:current;duplicate.remove();byTarget.set(target,keep);
   }
  }
  let initialized=false,observedNav=null,footerResizeObserver=null,footerMeasureFrame=0;
