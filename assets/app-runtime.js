@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.81';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.82';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26585,7 +26585,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.81').trim() || 'AgData v2.3.81';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.82').trim() || 'AgData v2.3.82';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -110747,11 +110747,15 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 : (isDockSuspendDcRequestMirrorRow(row) ? findDockSuspendDcRequestSourceRow(row) : null);
             const sourceSnapshot = source && source.SNAPSHOT && typeof source.SNAPSHOT === 'object' ? source.SNAPSHOT : {};
             const rowSnapshot = row.SNAPSHOT && typeof row.SNAPSHOT === 'object' ? row.SNAPSHOT : {};
+            // The active Suspend view owns these exact-tuple metrics. Generic
+            // SOC normalization may have supplied a placeholder PTRAVAILABLE=0.
+            const exactViewMetrics = source?.IS_SUSPEND_TAG === true || source?.is_suspend_tag === true;
             const setAliases = (aliases = [], value = '') => {
                 if (value === null || value === undefined || String(value).trim() === '') return;
                 aliases.forEach((key) => { row[key] = value; });
             };
             setAliases(['PTRONHAND', 'ptronhand', 'PTR_ON_HAND', 'ptr_on_hand'], firstNonEmptyValue(
+                exactViewMetrics ? firstNonEmptyValue(source.ON_HAND, source.on_hand) : null,
                 source && source.PTRONHAND,
                 source && source.ptronhand,
                 source && source.PTR_ON_HAND,
@@ -110769,6 +110773,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 ''
             ));
             setAliases(['PTRREVIEWED', 'ptrreviewed', 'PTR_REVIEWED', 'ptr_reviewed', 'PTRREVIEW', 'ptrreview', 'REVIEWED', 'reviewed'], firstNonEmptyValue(
+                exactViewMetrics ? firstNonEmptyValue(source.REVIEW, source.review) : null,
                 source && source.PTRREVIEWED,
                 source && source.ptrreviewed,
                 source && source.PTR_REVIEWED,
@@ -110790,6 +110795,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 ''
             ));
             setAliases(['PTRAVAILABLE', 'ptravailable', 'PRTAVAILABLE', 'prtavailable', 'LOC_AVAIL', 'loc_avail', 'LOC_AVAILABLE', 'loc_available', 'LOCAVA', 'locava', 'AVAILABLE', 'available'], firstNonEmptyValue(
+                exactViewMetrics ? firstNonEmptyValue(source.AVAILABLE, source.available) : null,
                 source && source.PTRAVAILABLE,
                 source && source.ptravailable,
                 source && source.PRTAVAILABLE,
@@ -110811,6 +110817,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 ''
             ));
             setAliases(['S_LTS', 's_lts'], firstNonEmptyValue(
+                exactViewMetrics ? firstNonEmptyValue(source.OPEN_STOCK, source.open_stock) : null,
                 source && source.S_LTS,
                 source && source.s_lts,
                 sourceSnapshot.S_LTS,
@@ -145161,7 +145168,9 @@ C.14.043 C.15.000
                 ['MATCH','MATCH','match'],
                 ['MATCHPCT','MATCHPCT','matchpct'],
                 ['MATCH_PCT','MATCH_PCT','match_pct'],
-                ['LOC_MATCH_QTY','LOC_MATCH_QTY','loc_match_qty']
+                ['LOC_MATCH_QTY','LOC_MATCH_QTY','loc_match_qty'],
+                ['SPEC','SPEC','spec','ITEMSPEC','itemspec','REQ_SPEC','req_spec','DOCK_SPEC','dock_spec'],
+                ['PHOTO_DATE','PHOTO_DATE','photo_date','DATE_COMPLETED','date_completed']
             ];
             aliases.forEach(([canonical, ...fields]) => {
                 const field = fields.find(key => Object.prototype.hasOwnProperty.call(masterItem, key)
@@ -145169,6 +145178,13 @@ C.14.043 C.15.000
                 if (!field) return;
                 fields.forEach(key => { row[key] = masterItem[field]; });
             });
+            const photoLink = firstNonEmptyValue(masterItem.PHOTO_LINK, masterItem.photo_link, masterItem.PHOTO_URL, masterItem.photo_url, masterItem.PHOTOS, masterItem.photos, null);
+            if (photoLink !== null && photoLink !== undefined) {
+                ['PHOTO_LINK','photo_link','PHOTO_URL','photo_url','PHOTOS','photos','REQ_PHOTO_LINK','req_photo_link',
+                    'REQUEST_PHOTO_LINK','request_photo_link','REQUESTPHOTO_LINK','requestphoto_link','DOCK_PHOTO_LINK',
+                    'dock_photo_link','DOCKPHOTO_LINK','dockphoto_link','ROW_PHOTO_LINK','row_photo_link']
+                    .forEach(key => { row[key] = photoLink; });
+            }
             return row;
         }
 
@@ -145176,15 +145192,20 @@ C.14.043 C.15.000
             if (!item || String(sourceView || '').trim().toLowerCase() !== 'request' || !isDockSuspendDcRequestMirrorRow(item)) return item;
             const sourceRow = findDockSuspendDcRequestSourceRow(item) || item;
             const row = { ...(item || {}) };
-            const setIfPresent = (keys = [], value = '') => {
-                const text = String(firstNonEmptyValue(value, '') || '').trim();
-                if (!text) return;
+            const falseBlock = /^0+\.0+\.111$/i.test(String(firstNonEmptyValue(sourceRow.LOCATIONCODE, sourceRow.locationcode, item.LOCATIONCODE, item.locationcode, '') || '').trim());
+            const metricsRaw = item.suspend_tag_metrics && typeof item.suspend_tag_metrics === 'object' ? item.suspend_tag_metrics : null;
+            const hasLot = !!String(firstNonEmptyValue(sourceRow.LOTCODE, sourceRow.lotcode, item.LOTCODE, item.lotcode, '') || '').trim();
+            const matchLevel = String(firstNonEmptyValue(metricsRaw?.MATCH_LEVEL, metricsRaw?.match_level,
+                item.MATCH_LEVEL, item.match_level, '') || '').trim().toLowerCase();
+            const serverMetadataTrusted = !falseBlock && matchLevel === (hasLot ? 'item-location-lot' : 'item-location');
+            const suspendMetrics = serverMetadataTrusted ? metricsRaw || {} : {};
+            const setIfPresent = (keys = [], value = '', overwrite = false) => {
+                const text = String(value ?? '').trim();
+                if (!overwrite && !text) return;
                 keys.forEach((key) => {
-                    if (!String(firstNonEmptyValue(row[key], '') || '').trim()) row[key] = text;
+                    if (overwrite || !String(firstNonEmptyValue(row[key], '') || '').trim()) row[key] = text;
                 });
             };
-            const suspendMetrics = item.suspend_tag_metrics && typeof item.suspend_tag_metrics === 'object'
-                ? item.suspend_tag_metrics : {};
             [
                 [['HOLDSTOPCODE', 'holdstopcode'], suspendMetrics.HOLDSTOPCODE],
                 [['HOLDSTOPREASON', 'holdstopreason'], suspendMetrics.HOLDSTOPREASON],
@@ -145195,10 +145216,19 @@ C.14.043 C.15.000
                 [['PIC_NOTE', 'pic_note'], suspendMetrics.PIC_NOTE],
                 [['PHOTO_LINK', 'photo_link'], suspendMetrics.PHOTO_LINK],
                 [['PHOTO_NAME', 'photo_name'], suspendMetrics.PHOTO_NAME],
-            ].forEach(([keys, value]) => setIfPresent(keys, value));
-            syncDockSuspendDcRequestPhotoAliases(row, sourceRow);
-            const applyDisplayData = (displayRow = null, displaySourceView = 'request') => {
+            ].forEach(([keys, value]) => setIfPresent(keys, value, serverMetadataTrusted));
+            if (!serverMetadataTrusted) syncDockSuspendDcRequestPhotoAliases(row, sourceRow);
+            const applyDisplayData = (displayRow = null, displaySourceView = 'request', authoritative = false) => {
                 if (!displayRow) return false;
+                if (authoritative) {
+                    ['PHOTO_LINK','photo_link','PHOTO_URL','photo_url','PHOTOS','photos','PHOTO_NAME','photo_name',
+                        'REQ_PHOTO_LINK','req_photo_link','REQUEST_PHOTO_LINK','request_photo_link','REQUESTPHOTO_LINK','requestphoto_link',
+                        'DOCK_PHOTO_LINK','dock_photo_link','DOCKPHOTO_LINK','dockphoto_link','ROW_PHOTO_LINK','row_photo_link',
+                        'SAVED_PHOTO_LINK','saved_photo_link','REQ_PHOTO_NAME','req_photo_name','REQUEST_PHOTO_NAME','request_photo_name',
+                        'REQUESTPHOTONAME','requestphotoname','DOCK_PHOTO_NAME','dock_photo_name','DOCKPHOTO_NAME','dockphoto_name',
+                        'ROW_PHOTO_NAME','row_photo_name','SAVED_PHOTO_NAME','saved_photo_name']
+                        .forEach(key => { row[key] = ''; });
+                }
                 const photoCsv = mergePhotoCsvList([
                     getDriveCustomerOutreachPhotoCsv(displayRow),
                     displayRow.REQ_PHOTO_LINK,
@@ -145207,7 +145237,12 @@ C.14.043 C.15.000
                     displayRow.DOCKPHOTO_LINK,
                     displayRow.ROW_PHOTO_LINK,
                     displayRow.SAVED_PHOTO_LINK,
-                    displayRow.PHOTO_LINK
+                    displayRow.PHOTO_LINK,
+                    displayRow.photo_link,
+                    displayRow.PHOTO_URL,
+                    displayRow.photo_url,
+                    displayRow.PHOTOS,
+                    displayRow.photos
                 ]);
                 const photoNameCsv = mergePhotoCsvList([
                     displayRow.REQ_PHOTO_NAME,
@@ -145218,39 +145253,56 @@ C.14.043 C.15.000
                     displayRow.SAVED_PHOTO_NAME,
                     displayRow.PHOTO_NAME
                 ]);
-                if (photoCsv) {
-                    row.REQ_PHOTO_LINK = mergePhotoCsvList([row.REQ_PHOTO_LINK, photoCsv]);
+                if (photoCsv || authoritative) {
+                    row.REQ_PHOTO_LINK = authoritative ? photoCsv : mergePhotoCsvList([row.REQ_PHOTO_LINK, photoCsv]);
                     row.REQUEST_PHOTO_LINK = row.REQ_PHOTO_LINK;
                     row.REQUESTPHOTO_LINK = row.REQ_PHOTO_LINK;
-                    row.DOCK_PHOTO_LINK = mergePhotoCsvList([row.DOCK_PHOTO_LINK, photoCsv]);
+                    row.PHOTO_LINK = photoCsv;
+                    row.photo_link = photoCsv;
+                    row.DOCK_PHOTO_LINK = authoritative ? photoCsv : mergePhotoCsvList([row.DOCK_PHOTO_LINK, photoCsv]);
                     row.DOCKPHOTO_LINK = row.DOCK_PHOTO_LINK;
-                    row.ROW_PHOTO_LINK = mergePhotoCsvList([row.ROW_PHOTO_LINK, photoCsv]);
+                    row.ROW_PHOTO_LINK = authoritative ? photoCsv : mergePhotoCsvList([row.ROW_PHOTO_LINK, photoCsv]);
+                } else if (authoritative) {
+                    ['REQ_PHOTO_LINK','REQUEST_PHOTO_LINK','REQUESTPHOTO_LINK','DOCK_PHOTO_LINK','DOCKPHOTO_LINK','ROW_PHOTO_LINK','PHOTO_LINK','photo_link']
+                        .forEach(key => { row[key] = ''; });
                 }
-                if (photoNameCsv) {
-                    row.REQ_PHOTO_NAME = mergePhotoCsvList([row.REQ_PHOTO_NAME, photoNameCsv]);
+                if (photoNameCsv || authoritative) {
+                    row.REQ_PHOTO_NAME = authoritative ? photoNameCsv : mergePhotoCsvList([row.REQ_PHOTO_NAME, photoNameCsv]);
                     row.REQUEST_PHOTO_NAME = row.REQ_PHOTO_NAME;
                     row.REQUESTPHOTONAME = row.REQ_PHOTO_NAME;
-                    row.DOCK_PHOTO_NAME = mergePhotoCsvList([row.DOCK_PHOTO_NAME, photoNameCsv]);
+                    row.PHOTO_NAME = photoNameCsv;
+                    row.photo_name = photoNameCsv;
+                    row.DOCK_PHOTO_NAME = authoritative ? photoNameCsv : mergePhotoCsvList([row.DOCK_PHOTO_NAME, photoNameCsv]);
                     row.DOCKPHOTO_NAME = row.DOCK_PHOTO_NAME;
-                    row.ROW_PHOTO_NAME = mergePhotoCsvList([row.ROW_PHOTO_NAME, photoNameCsv]);
+                    row.ROW_PHOTO_NAME = authoritative ? photoNameCsv : mergePhotoCsvList([row.ROW_PHOTO_NAME, photoNameCsv]);
+                } else if (authoritative) {
+                    ['REQ_PHOTO_NAME','REQUEST_PHOTO_NAME','REQUESTPHOTONAME','DOCK_PHOTO_NAME','DOCKPHOTO_NAME','ROW_PHOTO_NAME','PHOTO_NAME','photo_name']
+                        .forEach(key => { row[key] = ''; });
                 }
-                setIfPresent(['SPEC', 'spec', 'REQ_SPEC', 'req_spec', 'DOCK_SPEC', 'dock_spec'], firstNonEmptyValue(getDriveCustomerOutreachSpec(displayRow), getItemDisplayValue(displayRow, 'SPEC', displaySourceView), displayRow.DOCK_SPEC, displayRow.dock_spec, ''));
-                setIfPresent(['CALIPER', 'caliper', 'REQ_CALIPER', 'req_caliper', 'DOCK_CALIPER', 'dock_caliper'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'CALIPER', displaySourceView), displayRow.DOCK_CALIPER, displayRow.dock_caliper, displayRow.CALIPER, displayRow.caliper, ''));
-                setIfPresent(['MATCH', 'match', 'REQ_MATCH', 'req_match'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'MATCH', displaySourceView), displayRow.MATCH, displayRow.match, displayRow.REQ_MATCH, displayRow.req_match, ''));
-                setIfPresent(['LOC_MATCH_QTY', 'loc_match_qty', 'REQ_LOC_MATCH_QTY', 'req_loc_match_qty', 'PHOTO_MATCH_QTY', 'photo_match_qty'], firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(displayRow, displaySourceView), getDisplayLocMatchQtyValue(displayRow, displaySourceView), displayRow.LOC_MATCH_QTY, displayRow.loc_match_qty, ''));
-                setIfPresent(['AV_NOTE', 'av_note'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'AV_NOTE', displaySourceView), displayRow.AV_NOTE, displayRow.av_note, ''));
-                setIfPresent(['SALES_NOTE', 'sales_note', 'SALESNOTE', 'salesnote'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'SALES_NOTE', displaySourceView), displayRow.SALES_NOTE, displayRow.sales_note, displayRow.SALESNOTE, displayRow.salesnote, ''));
+                setIfPresent(['SPEC', 'spec', 'ITEMSPEC', 'itemspec', 'REQ_SPEC', 'req_spec', 'DOCK_SPEC', 'dock_spec'], firstNonEmptyValue(getDriveCustomerOutreachSpec(displayRow), getItemDisplayValue(displayRow, 'SPEC', displaySourceView), displayRow.DOCK_SPEC, displayRow.dock_spec, ''), authoritative);
+                setIfPresent(['CALIPER', 'caliper', 'REQ_CALIPER', 'req_caliper', 'DOCK_CALIPER', 'dock_caliper'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'CALIPER', displaySourceView), displayRow.DOCK_CALIPER, displayRow.dock_caliper, displayRow.CALIPER, displayRow.caliper, ''), authoritative);
+                setIfPresent(['MATCH', 'match', 'REQ_MATCH', 'req_match'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'MATCH', displaySourceView), displayRow.MATCH, displayRow.match, displayRow.REQ_MATCH, displayRow.req_match, ''), authoritative);
+                setIfPresent(['LOC_MATCH_QTY', 'loc_match_qty', 'REQ_LOC_MATCH_QTY', 'req_loc_match_qty', 'PHOTO_MATCH_QTY', 'photo_match_qty'], firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(displayRow, displaySourceView), getDisplayLocMatchQtyValue(displayRow, displaySourceView), displayRow.LOC_MATCH_QTY, displayRow.loc_match_qty, ''), authoritative);
+                setIfPresent(['AV_NOTE', 'av_note'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'AV_NOTE', displaySourceView), displayRow.AV_NOTE, displayRow.av_note, ''), authoritative);
+                setIfPresent(['SALES_NOTE', 'sales_note', 'SALESNOTE', 'salesnote'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'SALES_NOTE', displaySourceView), displayRow.SALES_NOTE, displayRow.sales_note, displayRow.SALESNOTE, displayRow.salesnote, ''), authoritative);
                 setIfPresent(['DOCK_NOTE', 'dock_note', 'REQ_COMMENTS', 'req_comments'], firstNonEmptyValue(displayRow.DOCK_NOTE, displayRow.dock_note, displayRow.DOCK_ISSUE_NOTE, displayRow.dock_issue_note, displayRow.REQ_COMMENTS, displayRow.req_comments, displayRow.REQUEST_NOTE, displayRow.request_note, ''));
                 setIfPresent(['DESIGITEM', 'desigitem'], firstNonEmptyValue(displayRow.DESIGITEM, displayRow.desigitem, ''));
                 const photoUpdatedAt = firstNonEmptyValue(displayRow.AV_RULE_PHOTO_UPDATED_AT, displayRow.DATE_COMPLETED, displayRow.date_completed, displayRow.UPDATED_AT, displayRow.updated_at, '');
-                if (photoUpdatedAt && !String(firstNonEmptyValue(row.AV_RULE_PHOTO_UPDATED_AT, row.av_rule_photo_updated_at, '') || '').trim()) {
+                if (photoUpdatedAt && (authoritative || !String(firstNonEmptyValue(row.AV_RULE_PHOTO_UPDATED_AT, row.av_rule_photo_updated_at, '') || '').trim())) {
                     row.AV_RULE_PHOTO_UPDATED_AT = photoUpdatedAt;
                     row.av_rule_photo_updated_at = photoUpdatedAt;
+                }
+                if (authoritative) {
+                    const photoDate = firstNonEmptyValue(displayRow.PHOTO_DATE, displayRow.photo_date, displayRow.DATE_COMPLETED, displayRow.date_completed, '');
+                    row.PHOTO_DATE = photoDate;
+                    row.photo_date = photoDate;
+                    row.DATE_COMPLETED = photoDate;
+                    row.date_completed = photoDate;
                 }
                 return !!(photoCsv || photoNameCsv || firstNonEmptyValue(row.REQ_SPEC, row.REQ_MATCH, row.LOC_MATCH_QTY, row.AV_NOTE, row.DOCK_NOTE, ''));
             };
             const sourceHadDisplayData = applyDisplayData(sourceRow, 'request');
-            const displayRow = findDockSuspendDcRequestCardDisplayDataRow(item);
+            const displayRow = falseBlock ? null : findDockSuspendDcRequestCardDisplayDataRow(item);
             const optionHadDisplayData = displayRow ? applyDisplayData(displayRow, 'drive') : false;
             // A direct Queue open can render the SOC mirror before its exact
             // authorized inventory identity batch finishes. The hydration
@@ -145260,13 +145312,12 @@ C.14.043 C.15.000
             const hydratedInventoryRow = typeof getQueueCardInventoryRow === 'function'
                 ? getQueueCardInventoryRow(item, 'request') : null;
             const hydratedInventoryHadDisplayData = hydratedInventoryRow
-                ? applyDisplayData(hydratedInventoryRow, 'drive') : false;
+                ? applyDisplayData(hydratedInventoryRow, 'drive', true) : false;
             // The identity-batch response is a full, revision-verified master
             // row. Let it correct the queue summary even when the SOC mirror
             // contained a stale non-empty priority or hold/photo value.
             if (hydratedInventoryRow) syncDockSuspendCardMasterSummaryFields(row, hydratedInventoryRow);
             row.DOCK_SUSPEND_DISPLAY_DATA_ROW = !!(sourceHadDisplayData || optionHadDisplayData || hydratedInventoryHadDisplayData);
-            syncDockSuspendDcRequestPhotoAliases(row, sourceRow);
             syncDockSuspendDcRequestQuantityAliases(row, sourceRow);
             normalizeRowPhotoFields(row);
             buildSearchIndex(row);
@@ -145379,6 +145430,9 @@ C.14.043 C.15.000
         function getQueueCardInventoryState(item, sourceView = 'request') {
             const helper = window.AgMetricQueueInventory;
             if (!helper || !item) return { status: 'unavailable', row: null };
+            if (sourceView === 'request' && /^0+\.0+\.111$/i.test(String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim())) {
+                return { status:'missing', row:null };
+            }
             const source = isDockSuspendDcRequestMirrorRow(item) ? findDockSuspendDcRequestSourceRow(item) : item;
             const identity = helper.identity(getSuspendTagInventoryIdentity(item, source || item));
             const context = getQueueCardInventoryContext();
@@ -145401,7 +145455,8 @@ C.14.043 C.15.000
                 const foundIdentity = found.row ? helper.identity(found.row) : null;
                 const exactIdentity = !!(foundIdentity && identity.itemCode && foundIdentity.itemCode === identity.itemCode
                     && identity.locationCode && foundIdentity.locationCode === identity.locationCode
-                    && identity.lotCode && foundIdentity.lotCode === identity.lotCode);
+                    && (!identity.lotCode || foundIdentity.lotCode === identity.lotCode)
+                    && (!identity.source || foundIdentity.source === identity.source));
                 if (found.row && exactIdentity && ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS'].every(key => Object.prototype.hasOwnProperty.call(found.row, key) || Object.prototype.hasOwnProperty.call(found.row, key.toLowerCase()))) return found;
             }
             if (!queueCardInventoryHydrator) queueCardInventoryHydrator = helper.createHydrator({
@@ -145439,34 +145494,18 @@ C.14.043 C.15.000
             const source = findDockSuspendDcRequestSourceRow(item) || item;
             const identity = helper.identity(getSuspendTagInventoryIdentity(item, source));
             const resolved = queueCardInventoryIndex.resolveSuspendTagDisplay(identity, cavInventory);
-            if (resolved && resolved.row) return resolved;
-            const itemCode = String(identity && identity.itemCode || '').trim().toUpperCase();
-            const locationCode = String(identity && identity.locationCode || '').trim().toUpperCase();
-            const candidates = masterInventoryByNormalizedItemLocation.get(JSON.stringify([itemCode, locationCode])) || [];
-            if (!candidates.length) return resolved;
-            const metric = (row, keys) => {
-                for (const key of keys) {
-                    const value = Number(String(row && row[key] != null ? row[key] : '').replace(/,/g, '').trim());
-                    if (Number.isFinite(value)) return value;
-                }
-                return 0;
-            };
-            const aggregate = { ...candidates[0] };
-            aggregate.PTRONHAND = candidates.reduce((sum, row) => sum + metric(row, ['PTRONHAND', 'ptronhand', 'ON_HAND', 'on_hand']), 0);
-            aggregate.PTRREVIEWED = candidates.reduce((sum, row) => sum + metric(row, ['PTRREVIEWED', 'ptrreviewed', 'REVIEW_QTY', 'review_qty']), 0);
-            aggregate.PTRAVAILABLE = candidates.reduce((sum, row) => sum + metric(row, ['PTRAVAILABLE', 'ptravailable', 'AVAILABLE_QTY', 'available_qty']), 0);
-            aggregate.S_LTS = candidates.reduce((sum, row) => sum + metric(row, ['S_LTS', 's_lts', 'OPEN_STOCK', 'open_stock']), 0);
-            aggregate.LOC_ON_HAND = aggregate.PTRONHAND;
-            aggregate.LOC_MATCH_QTY = candidates.reduce((sum, row) => sum + metric(row, ['LOC_MATCH_QTY', 'loc_match_qty', 'LOC_PHOTO_MATCH', 'loc_photo_match']), 0);
-            return { status: 'ready', row: aggregate };
+            return resolved && resolved.row ? resolved : null;
         }
 
         function normalizeRequestCardMetrics(row = {}) {
             const result = { ...row };
             const metricValue = (keys = []) => firstNonEmptyValue(...keys.map(key => row[key]), null);
-            const onHandValue = metricValue(['ON_HAND', 'on_hand', 'PTRONHAND', 'ptronhand']);
-            const availableValue = metricValue(['AVAILABLE', 'available', 'AVAILABLE_QTY', 'available_qty', 'PTRAVAILABLE', 'ptravailable']);
-            const reviewValue = metricValue(['REVIEW', 'review', 'REVIEW_QTY', 'review_qty', 'PTRREVIEWED', 'ptrreviewed']);
+            // The verified ERP physical-row fields are authoritative. Legacy
+            // aliases can describe an unrelated aggregate and must not replace
+            // an exact PTR zero or quantity.
+            const onHandValue = metricValue(['PTRONHAND', 'ptronhand', 'ON_HAND', 'on_hand']);
+            const availableValue = metricValue(['PTRAVAILABLE', 'ptravailable', 'AVAILABLE_QTY', 'available_qty', 'AVAILABLE', 'available']);
+            const reviewValue = metricValue(['PTRREVIEWED', 'ptrreviewed', 'REVIEW_QTY', 'review_qty', 'REVIEW', 'review']);
             const onHand = onHandValue == null ? null : Number(onHandValue);
             const available = availableValue == null ? null : Number(availableValue);
             const review = reviewValue == null ? null : Number(reviewValue);
@@ -145481,10 +145520,6 @@ C.14.043 C.15.000
             const locOnHand = metricValue(['LOC_ON_HAND', 'loc_on_hand', 'ON_HAND', 'on_hand']);
             result.LOC_ON_HAND = locOnHand != null ? locOnHand : onHandValue;
             result.LOC_MATCH_QTY = metricValue(['LOC_PHOTO_MATCH', 'loc_photo_match', 'LOC_MATCH_QTY', 'loc_match_qty']);
-            if (onHand === 0 && available > 0 && Number.isFinite(review)) {
-                result.PTRONHAND = available + review;
-                result.LOC_ON_HAND = Math.max(Number(locOnHand) || 0, result.PTRONHAND);
-            }
             return result;
         }
 
@@ -145500,12 +145535,21 @@ C.14.043 C.15.000
 
         function buildQueueInventoryMetricsHtml(item, sourceView = 'request', options = {}) {
             const isSuspendTagCard = sourceView === 'request' && isDockSuspendDcRequestMirrorRow(item);
-            const requestMetrics = sourceView === 'request' && (item.request_inventory_metrics || item.REQUEST_INVENTORY_METRICS);
-            const suspendMetrics = isSuspendTagCard && item.suspend_tag_metrics && typeof item.suspend_tag_metrics === 'object'
-                ? item.suspend_tag_metrics : requestMetrics && typeof requestMetrics === 'object' ? requestMetrics : null;
-            const state = suspendMetrics ? { status:'ready', row:null } : getQueueCardInventoryState(item, sourceView);
-            const authorization = !state.row && !suspendMetrics ? getQueueCardInventoryAuthorizationContext() : null;
-            const masterState = authorization ? getDatasetState('master') : null;
+            const requestMetricsRaw = sourceView === 'request' && (item.request_inventory_metrics || item.REQUEST_INVENTORY_METRICS);
+            const suspendMetricsRaw = isSuspendTagCard && item.suspend_tag_metrics && typeof item.suspend_tag_metrics === 'object'
+                ? item.suspend_tag_metrics : requestMetricsRaw && typeof requestMetricsRaw === 'object' ? requestMetricsRaw : null;
+            const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim();
+            const falseBlock = sourceView === 'request' && /^0+\.0+\.111$/i.test(locationCode);
+            const cardLot = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, item.LOT, item.lot, '') || '').trim();
+            const metricMatchLevel = String(firstNonEmptyValue(suspendMetricsRaw?.MATCH_LEVEL, suspendMetricsRaw?.match_level,
+                suspendMetricsRaw?.MATCHLEVEL, suspendMetricsRaw?.matchLevel, item.MATCH_LEVEL, item.match_level, '') || '').trim().toLowerCase();
+            const serverMetricsMatchIdentity = metricMatchLevel === (cardLot ? 'item-location-lot' : 'item-location');
+            const suspendMetrics = suspendMetricsRaw && (falseBlock || !serverMetricsMatchIdentity) ? null : suspendMetricsRaw;
+            const suppressEnrichedMetrics = !!suspendMetricsRaw && !serverMetricsMatchIdentity;
+            const state = suspendMetrics || falseBlock ? { status:'ready', row:null } : getQueueCardInventoryState(item, sourceView);
+            const authorization = !state.row && (!suspendMetrics || typeof getQueueCardInventoryAuthorizationContext === 'function')
+                ? getQueueCardInventoryAuthorizationContext() : null;
+            const masterState = authorization && typeof getDatasetState === 'function' ? getDatasetState('master') : null;
             const displayReceipt = typeof productionDisplayMasterReceipt !== 'undefined' ? productionDisplayMasterReceipt : null;
             const sameOwnerMasterSnapshot = !!authorization && (
                 (masterState?.initialLoaded === true && masterState.rowCompleteness === 'complete'
@@ -145515,11 +145559,21 @@ C.14.043 C.15.000
                     && displayReceipt.readScope === authorization.readScope
                     && displayReceipt.permission === authorization.permission)
             );
-            const cachedMaster = !state.row && !suspendMetrics && sameOwnerMasterSnapshot ? findLinkedMasterRow(item) : null;
-            const displayFallback = isSuspendTagCard && !suspendMetrics && !state.row ? getSuspendTagMetricDisplayFallback(item) : null;
+            const queueHelper = typeof window !== 'undefined' ? window.AgMetricQueueInventory : null;
+            const queueSource = isSuspendTagCard
+                ? (typeof findDockSuspendDcRequestSourceRow === 'function' ? findDockSuspendDcRequestSourceRow(item) : null) || item : item;
+            const queueIdentity = queueHelper && typeof getSuspendTagInventoryIdentity === 'function'
+                ? queueHelper.identity(getSuspendTagInventoryIdentity(item, queueSource)) : null;
+            const cachedMasterResolution = !state.row && sameOwnerMasterSnapshot && queueHelper && queueIdentity && masterInventoryLookup
+                ? masterInventoryLookup.resolve(queueIdentity) : null;
+            const cachedMaster = cachedMasterResolution?.status === 'ready' ? cachedMasterResolution.row : null;
+            const displayFallback = isSuspendTagCard && !state.row && !cachedMaster ? getSuspendTagMetricDisplayFallback(item) : null;
             const displayRow = state.row || cachedMaster || displayFallback?.row || null;
-            const falseBlock = isSuspendTagCard && /^0+\.0+\.111$/i.test(String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim());
-            const zeroMetrics = falseBlock ? { PTRONHAND:0, PTRREVIEWED:0, PTRAVAILABLE:0, S_LTS:0, LOC_ON_HAND:0, LOC_MATCH_QTY:0 } : {};
+            const zeroMetrics = falseBlock ? { PTRONHAND:0, ptronhand:0, ON_HAND:0, on_hand:0,
+                PTRREVIEWED:0, ptrreviewed:0, REVIEW:0, review:0, REVIEW_QTY:0, review_qty:0,
+                PTRAVAILABLE:0, ptravailable:0, AVAILABLE:0, available:0, AVAILABLE_QTY:0, available_qty:0,
+                S_LTS:0, s_lts:0, OPEN_STOCK:0, open_stock:0, LOC_ON_HAND:0, loc_on_hand:0,
+                LOC_MATCH_QTY:0, loc_match_qty:0, LOC_PHOTO_MATCH:0, loc_photo_match:0 } : {};
             const directServerMetrics = {};
             ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','ON_HAND','REVIEW','AVAILABLE','AVAILABLE_QTY','REVIEW_QTY',
                 'OPEN_STOCK','S_LTS','LOC_ON_HAND','LOC_PHOTO_MATCH','LOC_MATCH_QTY'].forEach((key) => {
@@ -145527,24 +145581,35 @@ C.14.043 C.15.000
                 if (Object.prototype.hasOwnProperty.call(item || {}, key)) directServerMetrics[key] = item[key];
                 else if (Object.prototype.hasOwnProperty.call(item || {}, lower)) directServerMetrics[key] = item[lower];
             });
-            const sourceMetrics = displayRow
-                ? { ...displayRow, ...Object.fromEntries(['OPEN_STOCK','LOC_ON_HAND','LOC_PHOTO_MATCH','LOC_MATCH_QTY']
-                    .filter(key => directServerMetrics[key] !== undefined).map(key => [key, directServerMetrics[key]])) }
-                : { ...directServerMetrics };
-            Object.assign(sourceMetrics, suspendMetrics || {}, falseBlock ? zeroMetrics : {});
+            const sourceMetrics = displayRow ? { ...displayRow }
+                : suppressEnrichedMetrics || falseBlock ? {} : { ...directServerMetrics, ...(suspendMetrics || {}) };
+            if (displayRow && (Object.prototype.hasOwnProperty.call(displayRow, 'S_LTS') || Object.prototype.hasOwnProperty.call(displayRow, 's_lts'))) {
+                const exactOpenStock = firstNonEmptyValue(displayRow.S_LTS, displayRow.s_lts, null);
+                sourceMetrics.OPEN_STOCK = exactOpenStock;
+                sourceMetrics.open_stock = exactOpenStock;
+            }
+            Object.assign(sourceMetrics, zeroMetrics);
             const metricRow = sourceView === 'request' ? normalizeRequestCardMetrics(sourceMetrics) : sourceMetrics;
             if (item.ITEMCODE || item.itemcode) metricRow.ITEMCODE = item.ITEMCODE || item.itemcode;
             if (item.LOCATIONCODE || item.locationcode) metricRow.LOCATIONCODE = item.LOCATIONCODE || item.locationcode;
             // These quantities and photo observations belong to the verified
             // Drive master, regardless of the queue displaying them.
+            const exactPhotoValue = displayRow
+                ? (Object.prototype.hasOwnProperty.call(displayRow, 'LOC_PHOTO_MATCH') ? displayRow.LOC_PHOTO_MATCH
+                    : Object.prototype.hasOwnProperty.call(displayRow, 'loc_photo_match') ? displayRow.loc_photo_match
+                        : firstNonEmptyValue(displayRow.LOC_MATCH_QTY, displayRow.loc_match_qty, null))
+                : metricRow.LOC_MATCH_QTY;
+            const knownPhotoMatch = falseBlock ? 0
+                : displayRow && (exactPhotoValue == null || !Number.isFinite(Number(exactPhotoValue)) || Number(exactPhotoValue) === 0)
+                    ? 'N/A' : exactPhotoValue;
             return buildInventoryQuantityChipsHtml(metricRow, { ...options, sourceView: state.row || cachedMaster ? 'drive' : sourceView,
                 canonical: true, preserveUnknown: true, missingValue: 'N/A',
-                hydrationStatus: isSuspendTagCard
+                hydrationStatus: falseBlock || suppressEnrichedMetrics ? '' : isSuspendTagCard
                     ? (suspendMetrics || displayFallback?.row ? 'ready' : '')
                     : (suspendMetrics || cachedMaster || displayFallback?.row ? 'ready' : state.status),
                 queueMetricTelemetry: isSuspendTagCard,
-                knownLocationOnHand: metricRow.LOC_ON_HAND ?? suspendMetrics?.LOC_ON_HAND ?? (falseBlock ? 0 : undefined),
-                knownLocationPhotoMatch: suspendMetrics?.LOC_MATCH_QTY ?? (falseBlock ? 0 : undefined) });
+                knownLocationOnHand: falseBlock ? 0 : displayRow ? metricRow.LOC_ON_HAND : metricRow.LOC_ON_HAND ?? suspendMetrics?.LOC_ON_HAND,
+                knownLocationPhotoMatch: knownPhotoMatch ?? suspendMetrics?.LOC_MATCH_QTY });
         }
 
         const suspendTagReclassLoads = new Map();
@@ -155856,13 +155921,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             const syncControls = () => scheduleDriveTopControlsRender(driveViewState.baseSearchFilteredItems, driveViewState.drivePlantFilterState);
             if (activeDriveTab === 'name') {
                 renderDriveQuickRequestBar([]);
-                if (driveViewLevel === 0 && canUseProductionLiveSync() && getDatasetState('master').rowCompleteness !== 'complete'
-                    && productionDisplayMasterReceipt?.rows !== fullInventory) {
-                    syncDriveCrumb(crumb, driveModeLabel + ' > Select Common Name');
-                    if (!container.hasAttribute('data-complete-name-catalog')) container.innerHTML = '<div class="p-4 text-emerald-700" role="status">Preparing the full plant catalog…</div>';
-                    return;
-                }
-                container.setAttribute('data-complete-name-catalog', 'true');
+                // The authorized display snapshot is usable while its final
+                // background receipt is pending. Completeness still gates exports.
+                if (!canUseProductionLiveSync() || getDatasetState('master').rowCompleteness === 'complete'
+                    || productionDisplayMasterReceipt?.rows === fullInventory) {
+                    container.setAttribute('data-complete-name-catalog', 'true');
+                } else container.removeAttribute('data-complete-name-catalog');
                 renderDriveCommonNameDrill(container, crumb, driveModeLabel, driveViewState);
                 syncControls();
                 return;

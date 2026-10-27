@@ -1721,6 +1721,8 @@ function processFastLiveFile_(dataset, route, pendingFiles, payloadBuilderFunc, 
   if (!stageId) throw new Error('FAST_ERP_STAGE_ID_MISSING');
   let response;
   try {
+    // These durable batches leave the published inventory readable; only the
+    // canonical commit publishes quantities, exact-location metrics and edits.
     for (let offset = Number(stage.staged_rows) || 0; offset < prepared.rows.length; offset += 1000) {
       const batch = prepared.rows.slice(offset, offset + 1000);
       const appended = callSupabaseRpc_('fast_append_erp_stage_batch_v1', {

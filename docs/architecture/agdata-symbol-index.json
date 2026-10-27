@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.81",
+  "release": "AgData v2.3.82",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -465,7 +465,12 @@
         "buildSuspendTagRenderPlan",
         "buildReclassRecountLocationGroups",
         "buildOptimisticInventoryReclassMoveModel",
-        "fetchDirectPostgrestReadPage"
+        "fetchDirectPostgrestReadPage",
+        "getQueueCardInventoryState",
+        "normalizeRequestCardMetrics",
+        "buildQueueInventoryMetricsHtml",
+        "getSuspendTagMetricDisplayFallback",
+        "syncDockSuspendDcRequestQuantityAliases"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -489,6 +494,21 @@
         ],
         "supabase/functions/_shared/database.types.ts": [
           "ph_active_suspend"
+        ],
+        "assets/queue-inventory-hydration.js": [
+          "identity",
+          "createIndex"
+        ],
+        "supabase/migrations/20261027040000_agdata_v2382_drive_parity_reclass_and_fast_sync.sql": [
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
+        ],
+        "supabase/migrations/20261027050000_agdata_v2382_suspend_view_schema_compat.sql": [
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
+        ],
+        "supabase/migrations/20261027060000_agdata_v2382_hl_po_set_based_page_stage.sql": [
+          "hl_po_pdf_stage"
         ]
       }
     },

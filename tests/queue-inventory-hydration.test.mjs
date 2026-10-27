@@ -19,6 +19,7 @@ function productionQueueHydrationHarness({ authorized = true, rows = [], complet
   const authorizationScope = JSON.stringify(['actor', 'dylan', 'ADMIN', 'login']);
   const context = {
     setTimeout: () => 1, clearTimeout() {}, Date, Map, Set, AbortController,
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? null,
     getQueueCardInventoryContext: null,
     canUseProductionLiveSync: () => authorized,
     nativeAuthProfile: { id: 'actor' }, currentUser: 'dylan', currentRole: 'ADMIN', getCurrentLoginCacheScopeKey: () => 'login',
@@ -29,6 +30,7 @@ function productionQueueHydrationHarness({ authorized = true, rows = [], complet
     getDatasetState: () => ({ initialLoaded: complete, rowCompleteness: complete ? 'complete' : 'partial',
       liveVerifiedScope: authorizationScope, liveVerifiedPermission: 'permission-v3', liveVerifiedRevision: complete ? '42' : '' }),
     masterInventoryById: new Map(rows.map(value => [value.unique_id, value])),
+    masterInventoryLookup: null,
     fullInventory: rows,
     isDockSuspendDcRequestMirrorRow: () => false,
     getSuspendTagInventoryIdentity: item => ({ masterUid: item.MASTER_ID || '', itemCode: item.ITEMCODE || '',
@@ -70,17 +72,17 @@ test('queue index resolves exact rows, rejects ambiguous identities, and preserv
   assert.equal(index.resolve(identity).row.ptronhand,0);
   assert.equal(index.resolve(identity).row.s_lts,null);
   assert.equal(q.createIndex([first,row({unique_id:'master-3'})]).resolve(identity).status,'ambiguous');
-  assert.equal(index.resolve({...identity,lotCode:'missing'}).status,'ambiguous',
-    'an item/location with multiple physical lots cannot be guessed when the requested lot is absent');
+  assert.equal(index.resolve({...identity,lotCode:'missing'}).status,'missing',
+    'a supplied nonmatching lot never guesses among other physical rows');
 });
 
-test('queue display hydration uses a unique normalized item-location fallback but keeps repeated physical lots ambiguous', () => {
+test('queue display hydration allows same-location fallback only when the lot is absent', () => {
   const q = harness();
   const master = row({ locationcode:' c.9.0 ', lotcode:'27.F1', source:'DRIVE', ptronhand:90,
     ptrreviewed:25, ptravailable:65, s_lts:57, loc_match_qty:42, priority:10, holdstop:'H',
     holdstopreason:'light roots; thin body' });
-  const socWithoutExactLot = { ...identity, lotCode:'27.F3', source:'SOC' };
-  const resolved = q.createIndex([master]).resolve(socWithoutExactLot);
+  const socWithoutLot = { ...identity, lotCode:'', source:'SOC' };
+  const resolved = q.createIndex([master]).resolve(socWithoutLot);
   assert.equal(resolved.status, 'ready');
   assert.equal(resolved.row, master);
   assert.equal(resolved.row.loc_match_qty, 42);
@@ -88,10 +90,12 @@ test('queue display hydration uses a unique normalized item-location fallback bu
   assert.equal(resolved.row.holdstopreason, 'light roots; thin body');
 
   const repeatedPhysicalLots = q.createIndex([master, row({ unique_id:'master-2', lotcode:'27.F2', source:'DRIVE' })]);
-  assert.equal(repeatedPhysicalLots.resolve(socWithoutExactLot).status, 'ambiguous',
+  assert.equal(repeatedPhysicalLots.resolve(socWithoutLot).status, 'ambiguous',
     'item-location fallback must not discard or select among multiple physical master rows');
 
-  assert.equal(q.createIndex([master]).resolve({ ...socWithoutExactLot, masterUid:'missing-master-id' }).status, 'missing',
+  assert.equal(q.createIndex([master, row({ locationcode:'D.01.000', lotcode:'27.F3' })])
+    .resolve({ ...identity, lotCode:'27.F3' }).status, 'missing', 'a matching lot at another location cannot be used');
+  assert.equal(q.createIndex([master]).resolve({ ...socWithoutLot, masterUid:'missing-master-id' }).status, 'missing',
     'an explicit but stale master identity never falls back to another physical line');
 });
 
@@ -219,4 +223,23 @@ test('Suspend write verification resolves normalized identity before reading an 
   assert.equal(actual.unique_id,'master-1');assert.equal(calls[0].op,'master_identity_batch');
   assert.equal(calls[0].payload.queueIdentities[0].itemCode,'0043800101');
   assert.equal(calls[0].payload.queueIdentities[0].locationCode,'C.09.000');
+});
+
+test('exact Queue master metrics beat stale aliases and preserve genuine zero On Hand', () => {
+  const html = readComposedAppSource();
+  const start = html.indexOf('        function normalizeRequestCardMetrics(');
+  const next = /\r?\n        (?:async )?function /.exec(html.slice(start + 1));
+  assert.ok(start >= 0 && next, 'canonical request metric normalizer exists');
+  const context = { firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? null };
+  vm.createContext(context);
+  vm.runInContext(html.slice(start, start + 1 + next.index), context);
+  const normalized = context.normalizeRequestCardMetrics({
+    PTRONHAND: 0, PTRREVIEWED: 30, PTRAVAILABLE: 5, S_LTS: -2, LOC_ON_HAND: 2046,
+    ON_HAND: 125, REVIEW: 120, AVAILABLE: 0
+  });
+  assert.equal(normalized.PTRONHAND, 0, 'exact zero On Hand is not inferred from unrelated aliases');
+  assert.equal(normalized.PTRREVIEWED, 30);
+  assert.equal(normalized.PTRAVAILABLE, 5, 'exact physical-row Available wins over stale zero alias');
+  assert.equal(normalized.S_LTS, -2, 'exact physical-row seasonal stock remains authoritative');
+  assert.equal(normalized.LOC_ON_HAND, 2046);
 });

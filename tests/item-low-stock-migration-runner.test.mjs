@@ -26,6 +26,9 @@ import {
   agdataV2372RequestCompletionAcknowledgmentMigrationName,
   agdataV2372RequestCompletionDeliveryMigrationName,
   agdataV2373FastAppsScriptErpImportUnblockMigrationName, agdataV2381FastErpStageRpcsMigrationName,
+  agdataV2382DriveParityReclassAndFastSyncMigrationName,
+  agdataV2382SuspendViewSchemaCompatMigrationName,
+  agdataV2382HlPoSetBasedPageStageMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -65,6 +68,57 @@ test('v2.3.81 fast ERP stage RPCs preserve service-role and canonical commit con
   assert.match(migration, /bump_eval_report_revision_for_low_stock_v1/);
   assert.match(migration, /values\('ph_eval_report_settings',1,'ready'/);
   assert.match(migration, /revision=existing_revision\.revision\+1/);
+});
+
+test('v2.3.82 Suspend view uses exact physical inventory parity and excludes false blocks', () => {
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2382DriveParityReclassAndFastSyncMigrationName]),
+    [agdataV2382DriveParityReclassAndFastSyncMigrationName]);
+  const contract = migrationContractQuery(agdataV2382DriveParityReclassAndFastSyncMigrationName);
+  for (const marker of ['security_invoker=true', '^0+[.]0+[.]111$', 'master.itemcode',
+    'master.locationcode', 'master.lotcode', 'inventory.s_lts',
+    'inventory.ptravailable', 'inventory.loc_photo_match', 'sum(coalesce(casewhen(nullif(regexp_replace(coalesce(master.ptronhand',
+    'inventory.priority', 'inventory.holdstopcode', 'inventory.itemspec',
+    'inventory.photo_url',
+    "has_table_privilege('anon'", "has_table_privilege('authenticated'"]) {
+    assert.ok(contract.includes(marker), marker);
+  }
+  const migration = fs.readFileSync(new URL('../supabase/migrations/' + agdataV2382DriveParityReclassAndFastSyncMigrationName, import.meta.url), 'utf8');
+  assert.match(migration, /inventory\.s_lts/);
+  assert.match(migration, /lower\(btrim\(coalesce\(master\.locationcode::text,''\)\)\)=lower\(btrim\(coalesce\(soc\.locationcode::text,''\)\)\)/);
+  assert.match(migration, /master\.lotcode::text/);
+  assert.match(migration, /!~ '\^0\+\[\.\]0\+\[\.\]111\$'/);
+  assert.match(migration, /security_invoker=true/);
+  assert.match(migration, /inventory\.holdstopbegindate as holdstopbegindate/);
+  assert.match(migration, /as match_level/);
+  assert.doesNotMatch(migration, /sum\(coalesce\(private\.request_numeric_v2362\(master\.ptravailable\)/i);
+  assert.doesNotMatch(migration, /order by \(\(upper\(btrim\(master\.locationcode/);
+  const compat = migrationContractQuery(agdataV2382SuspendViewSchemaCompatMigrationName);
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2382SuspendViewSchemaCompatMigrationName]),
+    [agdataV2382SuspendViewSchemaCompatMigrationName]);
+  for (const marker of ['security_invoker=true', 'master.lotcode', 'inventory.s_lts',
+    'inventory.holdstopreason', 'inventory.photo_name', 'not exists(select 1 from information_schema.columns']) {
+    assert.ok(compat.includes(marker), marker);
+  }
+  const compatSql = fs.readFileSync(new URL('../supabase/migrations/' + agdataV2382SuspendViewSchemaCompatMigrationName, import.meta.url), 'utf8');
+  assert.match(compatSql, /unexpected_dependencies/);
+  assert.doesNotMatch(compatSql, /drop\s+view\s+public\.ph_active_suspend\s+cascade/i);
+  assert.match(compatSql, /security_invoker=true/);
+  assert.match(compatSql, /column_name not in \('photo_url','photos','pick_note','status'\)/);
+  assert.match(compatSql, /grant select on public\.ph_active_suspend,public\.ph_soc_suspend_tag_rows to anon,authenticated,service_role/i);
+});
+
+test('v2.3.82 HL PDF page import validates then inserts each 1000-row page set-wise', () => {
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2382HlPoSetBasedPageStageMigrationName]),
+    [agdataV2382HlPoSetBasedPageStageMigrationName]);
+  const contract = migrationContractQuery(agdataV2382HlPoSetBasedPageStageMigrationName);
+  for (const marker of ['with ordinality', 'insert into hl_order_private.po_import_rows',
+    'jsonb_array_length(p_rows)>1000', 'hl_po_pdf_incomplete']) assert.ok(contract.includes(marker), marker);
+  const migration = fs.readFileSync(new URL('../supabase/migrations/' + agdataV2382HlPoSetBasedPageStageMigrationName, import.meta.url), 'utf8');
+  assert.match(migration, /create or replace function public\.hl_po_pdf_stage/);
+  assert.match(migration, /with ordinality r\(value,ordinality\)/);
+  assert.match(migration, /if p_complete and imp\.status='staging' then/);
+  assert.match(migration, /update hl_order_private\.state set revision=revision\+1/);
+  assert.doesNotMatch(migration, /for\s+r\s+in\s+select\s+value\s+from\s+jsonb_array_elements\(p_rows\)/i);
 });
 
 test('v2.3.72 request completion delivery includes completed membership', () => {
@@ -730,7 +784,14 @@ test('handover release requires an armed minute job or an already completed Auth
 });
 
 test('approved SQL repair contracts verify every repaired body and retain restricted execution', () => {
-  assert.deepEqual(releaseDatabaseMigrations.slice(releaseDatabaseMigrations.indexOf(sqlLintRuntimeContextMigrationName)), [sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName,seasonSalesCavLookupMigrationName,seasonSalesEmptyCleanupMigrationName,seasonSalesWorklistMigrationName,inventoryAssignmentBatchesMigrationName,inventoryAssignmentWitnessMigrationName,inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName,bunchNoteMultiAssignmentRoutingMigrationName,bunchNoteBlueprintHeaderPdfDeliveryMigrationName,bunchNoteQueueExecutionMigrationName,bunchNoteSupervisorAssigneeFacetsMigrationName,suspendTagSenderIdentityMigrationName,canonicalUserAccessMigrationName,inventoryReclassMoveDeliveryMigrationName,masterSnapshotChunkedStagingMigrationName,masterIdentityBatchRetrySqlstateMigrationName,reclassEmailReportPolicyMigrationName,publishedLkgReadProofMigrationName,reclassServerRevisionMigrationName, reclassRepScopeMigrationName]);
+  const approvedRepairMigrations = [sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName,seasonSalesCavLookupMigrationName,seasonSalesEmptyCleanupMigrationName,seasonSalesWorklistMigrationName,inventoryAssignmentBatchesMigrationName,inventoryAssignmentWitnessMigrationName,inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName,bunchNoteMultiAssignmentRoutingMigrationName,bunchNoteBlueprintHeaderPdfDeliveryMigrationName,bunchNoteQueueExecutionMigrationName,bunchNoteSupervisorAssigneeFacetsMigrationName,suspendTagSenderIdentityMigrationName,canonicalUserAccessMigrationName,inventoryReclassMoveDeliveryMigrationName,masterSnapshotChunkedStagingMigrationName,masterIdentityBatchRetrySqlstateMigrationName,reclassEmailReportPolicyMigrationName,publishedLkgReadProofMigrationName,reclassServerRevisionMigrationName, reclassRepScopeMigrationName];
+  const approvedStart = releaseDatabaseMigrations.indexOf(sqlLintRuntimeContextMigrationName);
+  let approvedCursor = approvedStart;
+  for (const name of approvedRepairMigrations) {
+    const nextIndex = releaseDatabaseMigrations.indexOf(name, approvedCursor);
+    assert.equal(nextIndex, approvedCursor, `${name} remains in its approved order`);
+    approvedCursor += 1;
+  }
   const functions = migrationContractQuery(sqlFunctionCorrectnessRepairsMigrationName);
   for (const marker of ['inventory_rows.available', 'v_before_state_hash', 'AURA_BUNCH_CREATION_DATE_UNAVAILABLE',
     "card.row_ids @> (action->''row_ids'')", 'outbox.event_id']) assert.ok(functions.includes(marker), marker);
@@ -1067,7 +1128,13 @@ test('v2.3.2 Bunch supervisor permissions and assignee facets are registered wit
 });
 
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName,reclassShearedMigrationName,reclassSmartShieldMigrationName,smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName,auraVoiceRoleAccessMigrationName,auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName,managerReportReadV2MigrationName,managerListReadV2MigrationName,inventoryLocationOnHandMigrationName,masterInventoryRealtimeMigrationName,eval2SharedLowStockThresholdMigrationName,masterLineageCleanupMigrationName,seasonSalesCavLookupMigrationName,seasonSalesEmptyCleanupMigrationName,seasonSalesWorklistMigrationName,inventoryAssignmentBatchesMigrationName,inventoryAssignmentWitnessMigrationName,inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName,inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName,inventoryReclassCompactTriggerIdentityMigrationName,inventoryReclassCompactBatchChildReceiptsMigrationName,inventoryReclassNullElisionRpcMigrationName,masterIdentityBatchReadMigrationName,bunchNoteMultiAssignmentRoutingMigrationName,bunchNoteBlueprintHeaderPdfDeliveryMigrationName,bunchNoteQueueExecutionMigrationName,bunchNoteSupervisorAssigneeFacetsMigrationName,suspendTagSenderIdentityMigrationName,canonicalUserAccessMigrationName,inventoryReclassMoveDeliveryMigrationName,masterSnapshotChunkedStagingMigrationName,masterIdentityBatchRetrySqlstateMigrationName,reclassEmailReportPolicyMigrationName,publishedLkgReadProofMigrationName,reclassServerRevisionMigrationName, reclassRepScopeMigrationName]);
+  const expectedReleaseMigrations = [migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName,reclassShearedMigrationName,reclassSmartShieldMigrationName,smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName,auraVoiceRoleAccessMigrationName,auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName,managerReportReadV2MigrationName,managerListReadV2MigrationName,inventoryLocationOnHandMigrationName,masterInventoryRealtimeMigrationName,eval2SharedLowStockThresholdMigrationName,masterLineageCleanupMigrationName,seasonSalesCavLookupMigrationName,seasonSalesEmptyCleanupMigrationName,seasonSalesWorklistMigrationName,inventoryAssignmentBatchesMigrationName,inventoryAssignmentWitnessMigrationName,inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName,inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName,inventoryReclassCompactTriggerIdentityMigrationName,inventoryReclassCompactBatchChildReceiptsMigrationName,inventoryReclassNullElisionRpcMigrationName,masterIdentityBatchReadMigrationName,bunchNoteMultiAssignmentRoutingMigrationName,bunchNoteBlueprintHeaderPdfDeliveryMigrationName,bunchNoteQueueExecutionMigrationName,bunchNoteSupervisorAssigneeFacetsMigrationName,suspendTagSenderIdentityMigrationName,canonicalUserAccessMigrationName,inventoryReclassMoveDeliveryMigrationName,masterSnapshotChunkedStagingMigrationName,masterIdentityBatchRetrySqlstateMigrationName,reclassEmailReportPolicyMigrationName,publishedLkgReadProofMigrationName,reclassServerRevisionMigrationName, reclassRepScopeMigrationName];
+  let migrationCursor = 0;
+  for (const name of expectedReleaseMigrations) {
+    const nextIndex = releaseDatabaseMigrations.indexOf(name, migrationCursor);
+    assert.equal(nextIndex, migrationCursor, `${name} remains in the release order`);
+    migrationCursor += 1;
+  }
   assert.match(migrationContractQuery(reclassShearedMigrationName),/enqueue_drive_reclass_inquiry_v5/);
   assert.match(migrationContractQuery(reclassShearedMigrationName),/quantity_text/);
   assert.match(migrationContractQuery(auraCommonNamePriorityMigrationName),/common_score/);
@@ -1400,10 +1467,27 @@ test('hybrid activation blocks conflicting saved owners and inactive rose owner'
 
 test('every release migration probe names the result consumed by the deployment runner', () => {
   for (const name of releaseDatabaseMigrations) {
-    const query = migrationContractQuery(name).replace(/'(?:[^']|'')*'/g, "''");
+    const query = migrationContractQuery(name);
     let depth = 0;
+    let inString = false;
+    let dollarQuote = '';
     let outerQuery = '';
-    for (const character of query) {
+    for (let index = 0; index < query.length; index += 1) {
+      const character = query[index];
+      if (dollarQuote) {
+        if (query.startsWith(dollarQuote, index)) { index += dollarQuote.length - 1; dollarQuote = ''; }
+        continue;
+      }
+      if (!inString && character === '$') {
+        const delimiter = /^\$[A-Za-z0-9_]*\$/.exec(query.slice(index))?.[0];
+        if (delimiter) { dollarQuote = delimiter; index += delimiter.length - 1; continue; }
+      }
+      if (character === "'") {
+        if (inString && query[index + 1] === "'") { index += 1; continue; }
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
       if (character === '(') depth += 1;
       if (depth === 0) outerQuery += character;
       if (character === ')') depth -= 1;
@@ -1706,7 +1790,13 @@ test('v2.3.79 Reclass destination location evidence follow-up is registered and 
 
 test('v2.3.80 Reclass freezes pre-edit report rows and suppresses test delivery', async () => {
  const {agdataV2380ReclassPreEditReportsMigrationName:name}=await import('../scripts/apply-item-low-stock-migration.mjs');
- assert.equal(releaseDatabaseMigrations.at(-1),name);
+ const {agdataV2382DriveParityReclassAndFastSyncMigrationName:driveParity,
+   agdataV2382SuspendViewSchemaCompatMigrationName:suspendCompat}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.ok(releaseDatabaseMigrations.indexOf(name)<releaseDatabaseMigrations.indexOf(driveParity));
+ const {agdataV2381FastErpStageRpcsMigrationName:stage}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.ok(releaseDatabaseMigrations.indexOf(name)<releaseDatabaseMigrations.indexOf(stage));
+ assert.ok(releaseDatabaseMigrations.indexOf(stage)<releaseDatabaseMigrations.indexOf(driveParity));
+ assert.ok(releaseDatabaseMigrations.indexOf(driveParity)<releaseDatabaseMigrations.indexOf(suspendCompat));
  assert.equal(releaseDatabaseMigrations.filter(value=>value===name).length,1);
  const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
  const contract=migrationContractQuery(name);
