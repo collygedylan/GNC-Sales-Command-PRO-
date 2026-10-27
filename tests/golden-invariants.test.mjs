@@ -1025,7 +1025,7 @@ test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Dire
   assert.match(canaryStateProof, /from public\.ph_active_request active[^]*union all[^]*from public\.ph_request_history history/);
   assert.match(canaryStateProof, /history\.client_batch_id=verify_request_batch_submission_v2368\.client_batch_id/);
   assert.ok((inventoryProjections.match(/"photo_date"/g) || []).length >= 3, 'master inventory projections expose photo_date');
-  assert.match(inventoryListContract, /const version = 'master-list-v2'/);
+  assert.match(inventoryListContract, /const version = 'master-list-v3'/);
   assert.match(inventoryListContract, /'oversellpercentage', 'photo_date',\s*'photo_link', 'photo_name'/);
   assert.match(read('assets/app-runtime.js'), /app-av-photo-slide[^]*\$\{imgHtml\}\$\{photoDateHtml\}\$\{photoStatusHtml\}/);
   const persistStart = migration.indexOf('create or replace function private.persist_completed_request_history_v1');
@@ -2110,6 +2110,7 @@ test('Invariant 73 (Full Inventory Reads Preserve Durable Reclass Photo Evidence
   const full = projections.slice(fullStart, fullEnd);
   for (const field of ['loc_match_pct', 'loc_photo_match', 'baseline_on_hand', 'initial_photo_match_qty']) {
     assert.match(full, new RegExp(`"${field}"`), `${field} survives the app-api full-row boundary`);
+    assert.match(projections, new RegExp(`INVENTORY_MASTER_BROWSE_COLUMNS[^]*"${field}"`), `${field} survives the app-api startup browse boundary`);
     assert.match(browserContract, new RegExp(`'${field}'`), `${field} survives the direct browser full-row boundary`);
   }
 });

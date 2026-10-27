@@ -69,14 +69,14 @@ test('inventory master-page mocks return exact full and browse projection contra
   assert.equal(physicalColumns.size, 218);
   assert.equal(fullColumns.length, 218);
   assert.deepEqual(new Set(fullColumns), physicalColumns);
-  assert.equal(browseColumns.length, 162);
+  assert.equal(browseColumns.length, 166);
   assert.ok(browseColumns.every(column => physicalColumns.has(column)));
 
   const sourceRow = inventoryReadFixture.row({ unique_id: 'projection-row', ptravailable: '0', ptronhand: '12' });
   const browse = inventoryReadFixture.readMasterPage([sourceRow], { dataset: 'master', projection: 'browse', limit: 100 });
   assert.equal(browse.projection, 'browse');
   assert.equal(browse.fieldCoverage, 'browse');
-  assert.equal(browse.columns.length, 162);
+  assert.equal(browse.columns.length, 166);
   assert.equal(browse.rows[0].ptravailable, '0');
   assert.equal(Object.hasOwn(browse.rows[0], 'concat'), false);
 

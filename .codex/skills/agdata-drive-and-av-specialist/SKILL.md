@@ -102,7 +102,7 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 - Never mutate `LOC_MATCH_QTY` while evaluating AV invalidation/display eligibility; validation helpers are read-only and must not replace durable Reclass photo evidence with percent-derived math.
 
-- Never omit `loc_match_pct`, `loc_photo_match`, `baseline_on_hand`, or `initial_photo_match_qty` from the full `inventory_read` projection; falling back to legacy percent math after a confirmed Reclass corrupts the displayed durable evidence.
+- Never omit `loc_match_pct`, `loc_photo_match`, `baseline_on_hand`, or `initial_photo_match_qty` from startup browse or full `inventory_read` projections; falling back to legacy percent math after a confirmed Reclass corrupts the displayed durable evidence.
 
 - Never pass untrimmed Drive/AV search text into render scheduling, recreate image wrappers during unchanged card refreshes, or expose a white thumbnail/letterbox surface while protected photo evidence is loading.
 

@@ -6,12 +6,12 @@
     'use strict';
     // V1 positions are a wire contract. Never reorder/extend this array without
     // changing the version; canonical cache identity must include that version.
-    const version = 'master-list-v2';
+    const version = 'master-list-v3';
     const columns = Object.freeze([
         'a_lts', 'ai_lts', 'app_tab_assignment', 'assignedto', 'av_note',
         'av_rule_av_note_updated_at', 'av_rule_bundle_updated_at', 'av_rule_caliper_updated_at', 'av_rule_holdstop_snapshot', 'av_rule_last_clear_reason',
         'av_rule_last_cleared_at', 'av_rule_match_updated_at', 'av_rule_photo_updated_at', 'av_rule_priority_snapshot', 'av_rule_spec_updated_at',
-        'bay', 'blockalpha', 'blocknumber', 'botanicalname', 'brand',
+        'baseline_on_hand', 'bay', 'blockalpha', 'blocknumber', 'botanicalname', 'brand',
         'bypassloc', 'caliper', 'commonname', 'consigneename', 'containersort',
         'contsize', 'customername', 'date_completed', 'desigcust', 'desigitem',
         'desigloc', 'dock', 'dock_caliper', 'dock_note', 'dock_num',
@@ -25,9 +25,9 @@
         'flyer_photo_name', 'flyer_pick', 'flyer_spec', 'flyer_title', 'fnsalesnote',
         'genusname', 'grower', 'hold_release_approved_at', 'hold_release_approved_by', 'hold_release_approved_by_display',
         'hold_release_approved_holdstopbegindate', 'holdstopbegindate', 'holdstopcode', 'holdstopenddate', 'holdstopreason',
-        'hsreasonbegin', 'hz', 'initial_ptr', 'insurancegroup', 'intercopo',
+        'hsreasonbegin', 'hz', 'initial_photo_match_qty', 'initial_ptr', 'insurancegroup', 'intercopo',
         'inventorynote', 'itemcode', 'itemspec', 'largeptrqty', 'last_updated',
-        'listprice', 'loc_match_qty', 'locationcode', 'locationnote', 'locationnotedate',
+        'listprice', 'loc_match_pct', 'loc_match_qty', 'loc_photo_match', 'locationcode', 'locationnote', 'locationnotedate',
         'locationptn1', 'locationptn2', 'lochold', 'lotcode', 'match',
         'maxorderquantity', 'mcstatus', 'ncr_approval_message', 'ncr_approval_type', 'ncr_requested_at',
         'ncr_requested_by_display', 'ncr_requested_by_email', 'ncr_requested_by_username', 'oversellpercentage', 'photo_date',
@@ -52,8 +52,8 @@
         'consigneezip', 'customeridentityid', 'customersku', 'descriptorcode', 'dropweight',
         'equiv_uom', 'ext_eunit_shipped', 'ext_unit_merch_shipped', 'extunitprice', 'formattedupc',
         'freightrateperitem', 'generalloadinstr', 'handlingchargeperitem', 'hardinesszone', 'hlloadinstructions',
-        'idgroup', 'initial_photo_match_qty', 'internalinvnote', 'invoicedate', 'isreserve', 'landed',
-        'loc_match_pct', 'loc_photo_match', 'nationalaccount', 'ncloadinstructions', 'okloadinstructions', 'ordertotal', 'purchaseordernumber',
+        'idgroup', 'internalinvnote', 'invoicedate', 'isreserve', 'landed',
+        'nationalaccount', 'ncloadinstructions', 'okloadinstructions', 'ordertotal', 'purchaseordernumber',
         'quantityordered', 'quantityshipped', 'requestdate', 'requestdateweek', 'retailprice',
         'shiptotelephone_1', 'si_available', 'stagename', 'step', 'tagcode',
         'tagdeptnote', 'taggingchargeperitem', 'transactionnumber', 'txloadinstructions', 'unitprice',

@@ -243,7 +243,7 @@ test('browse inventory preserves filters and readouts with explicit field covera
   assert.equal(page.body.data.projection, 'browse');
   assert.equal(page.body.data.fieldCoverage, 'browse');
   const fields = page.body.data.columns;
-  assert.equal(fields.length, 162);
+  assert.equal(fields.length, 166);
   const contractContext = vm.createContext({});
   vm.runInContext(fs.readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), contractContext);
   assert.deepEqual(Array.from(fields).sort(), Array.from(contractContext.AgMetricInventoryList.columns).sort());
@@ -251,6 +251,7 @@ test('browse inventory preserves filters and readouts with explicit field covera
   for (const field of ['unique_id', 'ptronhand', 'ptrreviewed', 'ptravailable', 'season_oh', 'listprice', 'locationptn1', 'locationptn2', 'saleyear', 'filename', 'last_updated', 'hold_release_approved_at', 'eval_task_status', 'ncr_approval_type']) {
     assert.ok(fields.includes(field), field);
   }
+  for (const field of ['loc_match_pct', 'loc_photo_match', 'baseline_on_hand', 'initial_photo_match_qty']) assert.ok(fields.includes(field), field);
   assert.ok(!fields.includes('shiptotelephone_1'));
   assert.ok(queries[0].calls.every(([method]) => method !== 'or'), 'Rep inventory reads include all lot codes and seasons');
   assert.ok(queries[0].calls.some(([method, from, to]) => method === 'range' && from === 0 && to === 499));

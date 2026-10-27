@@ -69,7 +69,7 @@ export const INVENTORY_MASTER_BROWSE_COLUMNS = [
   "ptravailable", "s_lts", "season_supply", "saleyear", "itemspec", "locationnote", "locationnotedate",
   "fieldtagcolor", "holdstopcode", "holdstopreason", "holdstopbegindate", "season", "blockalpha", "blocknumber",
   "hold_release_approved_at", "hold_release_approved_by", "hold_release_approved_by_display", "hold_release_approved_holdstopbegindate", "app_tab_assignment", "assignedto", "date_completed",
-  "av_note", "sales_note", "salesnote", "match", "loc_match_qty", "initial_ptr", "spec",
+  "av_note", "sales_note", "salesnote", "match", "loc_match_pct", "loc_match_qty", "loc_photo_match", "baseline_on_hand", "initial_photo_match_qty", "initial_ptr", "spec",
   "caliper", "av_rule_bundle_updated_at", "av_rule_av_note_updated_at", "av_rule_spec_updated_at", "av_rule_match_updated_at", "av_rule_caliper_updated_at", "av_rule_photo_updated_at",
   "av_rule_priority_snapshot", "av_rule_holdstop_snapshot", "av_rule_last_clear_reason", "av_rule_last_cleared_at", "eval_task_type", "eval_task_status", "eval_task_instructions",
   "eval_task_assigned_by", "eval_task_assigned_at", "eval_task_completed_by", "eval_task_completed_at", "eval_task_recount_qty", "eval_task_moved_up_qty", "eval_task_hold_action",
