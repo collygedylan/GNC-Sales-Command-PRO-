@@ -1,7 +1,7 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.89";
-const APP_RUNTIME_RELEASE = "AgData v2.3.89";
+const APP_RUNTIME_VERSION = "2.3.90";
+const APP_RUNTIME_RELEASE = "AgData v2.3.90";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -458,7 +458,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.89";
+  const appVersion = "2.3.90";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -6677,6 +6677,16 @@ function normalizeBunchNoteSavePayload(value: unknown): Record<string, unknown> 
   return payload;
 }
 
+function forceBunchNoteDylanRecipient(value: unknown, dylanProfileId: string, operation: string): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value || {};
+  const next = { ...(value as Record<string, unknown>) };
+  if (operation === "save" && next.body && typeof next.body === "object" && !Array.isArray(next.body)) {
+    next.body = { ...(next.body as Record<string, unknown>), recipient_ids: [dylanProfileId] };
+  }
+  if (operation === "work_preview") next.recipient_ids = [dylanProfileId];
+  return next;
+}
+
 export async function renderBunchNotePreview(options: {
   rpc: BunchNoteRpc;
   actor: { id: string; username?: string; display_name?: string | null };
@@ -7269,7 +7279,11 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         });
         return jsonResponse({ ok: true, data: { pdfs: rendered.pdfs } });
       }
-      const rpcPayload = operation === "save" ? normalizeBunchNoteSavePayload(payload.payload) : payload.payload || {};
+      const { data: dylanRecipient, error: dylanRecipientError } = await supabase.from("profiles")
+        .select("id").eq("username", "dylan_collyge").is("disabled_at", null).limit(1).maybeSingle();
+      if (dylanRecipientError || !dylanRecipient?.id) throw new Error("BUNCH_NOTE_DYLAN_RECIPIENT_REQUIRED");
+      const normalizedPayload = operation === "save" ? normalizeBunchNoteSavePayload(payload.payload) : payload.payload || {};
+      const rpcPayload = forceBunchNoteDylanRecipient(normalizedPayload, String(dylanRecipient.id), operation);
       const { data, error } = await supabase.rpc("bunch_note_command_v1", {
         p_actor_id: actor.id, p_operation: operation,
         p_payload: jsonValue(rpcPayload), ...(typeof payload.commandId === "string" && payload.commandId ? { p_command_id: payload.commandId } : {}),

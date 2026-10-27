@@ -147,6 +147,33 @@ async function resolveCurrentReclassSourceIds(supabase: RpcClient, command: Retu
   return command;
 }
 
+async function enforceReclassMoveUpOpenStock(supabase: RpcClient, command: ReturnType<typeof normalizeReclassMoveCommand>) {
+  const ids = command.moves.map((move) => move.source.uniqueId);
+  const { data, error } = await supabase.from('ph_master_inventory')
+    .select('unique_id,itemcode,lotcode,ptronhand,s_lts').in('unique_id', ids);
+  if (error) throw error;
+  const rows = new Map((data || []).map((row) => [text(row.unique_id), row]));
+  const lots = new Map<string, { quantity: number; openStock: number; lotcode: string }>();
+  for (const move of command.moves) {
+    const row = rows.get(move.source.uniqueId);
+    if (!row) throw new Error('INVENTORY_RECLASS_SOURCE_MISSING');
+    const quantity = move.lines.filter((line) => line.direction === 'move_up').reduce((sum, line) => sum + line.quantity, 0);
+    if (!quantity) continue;
+    const onHand = Number(text(row.ptronhand).replace(/,/g, ''));
+    const parsedOpenStock = Number(text(row.s_lts).replace(/,/g, ''));
+    const openStock = Number.isFinite(parsedOpenStock) ? Math.max(0, parsedOpenStock) : 0;
+    if (!Number.isFinite(onHand) || quantity > onHand) throw new Error('INVENTORY_RECLASS_QUANTITY_UNDERFLOW');
+    const key = `${text(row.itemcode).toUpperCase()}|${text(row.lotcode).toUpperCase()}`;
+    const current = lots.get(key) || { quantity: 0, openStock, lotcode: text(row.lotcode).toUpperCase() };
+    current.quantity += quantity;
+    current.openStock = Math.min(current.openStock, openStock);
+    lots.set(key, current);
+  }
+  for (const lot of lots.values()) {
+    if (lot.quantity > lot.openStock) throw new Error('INVENTORY_RECLASS_MOVE_UP_OPEN_STOCK_EXCEEDED');
+  }
+}
+
 export async function handleInventoryReclassMove({ supabase, actorProfile, payload }: ReclassMoveContext) {
   requireReclassMoveActor(actorProfile);
   const receiptEncoding = payload.receiptEncoding;
@@ -171,6 +198,7 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
   const commandPayload = { ...payload };
   delete commandPayload.receiptEncoding;
   const command = await resolveCurrentReclassSourceIds(supabase, normalizeReclassMoveCommand(commandPayload));
+  await enforceReclassMoveUpOpenStock(supabase, command);
   const { data, error } = await supabase.rpc('apply_inventory_reclass_moves_with_delivery_v1', {
     p_actor_id: String(actorProfile.id), p_command_id: command.commandId,
     p_expected_revision: command.expectedRevision ?? 0,
@@ -194,6 +222,7 @@ export function inventoryReclassMoveError(error: unknown) {
   const status = forbidden ? 403 : conflict ? 409 : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 503 : 400;
   return { status, body: { ok: false, code, message: forbidden ? 'You do not have access to Reclass this inventory.'
     : conflict ? 'The physical inventory row could not be confirmed. Your draft is retained for retry.'
+      : code === 'INVENTORY_RECLASS_MOVE_UP_OPEN_STOCK_EXCEEDED' ? 'Cannot Move Up more than the source lot Open Stock.'
       : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 'The inventory movement could not be saved. Retry with the same command.'
         : 'Review the movement details and try again.' } };
 }

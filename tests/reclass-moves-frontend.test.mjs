@@ -353,7 +353,7 @@ test('editing actions before the 610-unit preview retains the pending body with 
   const dom = new JSDOM('<div id="argos-reclass-item-inquiry"></div>');
   const rules = { priority_change: { kind: 'priority', label: 'Priority Change' }, move_up: { kind: 'move', label: 'Move Up' } };
   const physical = { unique_id: 'source-uid', itemcode: 'ITEM-1', locationcode: 'A.01.001', lotcode: '27.F1',
-    season: 'F1', ptronhand: '1000', ptravailable: '1000', priority: '2' };
+    season: 'F1', ptronhand: '1000', ptravailable: '1000', s_lts: '1000', priority: '2' };
   const model = rows => ({ rows, locationRows: rows.map(row => ({ unique_id: row.unique_id, values: { ...row }, sourceRow: row })) });
   const state = { item: physical, snapshot: { uniqueId: physical.unique_id }, inquiryModel: model([physical]) };
   const ctx = { document: dom.window.document, window: dom.window, Map,
@@ -370,12 +370,13 @@ test('editing actions before the 610-unit preview retains the pending body with 
     getArgosReclassRowCurrentSeason: entry => entry.values.season,
     getItemInquiryItemCode: row => row?.itemcode || '', buildItemInquiryViewModel: (_item, rows) => model(rows),
     parseAppNumber: value => value == null ? null : Number(value),
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && String(value).trim() !== ''),
     generateArgosInventoryTransactionId: () => 'draft-id', captureEvalWorkLocalDraftSoon() {},
     escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;'),
   };
   vm.createContext(ctx);
   for (const name of ['getArgosReclassRowProposalMap', 'getArgosReclassV3Proposal', 'getArgosReclassV3HoldProposal',
-    'cloneArgosReclassProposal', 'getArgosReclassMoveBalance', 'getArgosReclassMoveBalanceText',
+    'cloneArgosReclassProposal', 'getArgosReclassLotOpenStock', 'getArgosReclassLotKey', 'getArgosReclassMoveUpLotState', 'getArgosReclassMoveBalance', 'getArgosReclassMoveBalanceText',
     'markArgosReclassProposalEdited', 'getArgosReclassV3ScopeActionsForEntry', 'getArgosReclassV3ActionCountForEntry',
     'refreshArgosReclassMultiActionUi', 'toggleArgosReclassV3Action', 'handleArgosReclassV3ProposalInput',
     'buildArgosReclassV3ProposalHtml', 'isArgosReclassLocationDetailsOpen', 'buildArgosReclassActionFieldsHtml',
@@ -408,7 +409,7 @@ test('editing actions before the 610-unit preview retains the pending body with 
     const pendingBody = card.querySelector('[data-reclass-row-body]');
     const quantityInput = pendingBody.querySelector('[data-reclass-v3-proposal-field="quantity"]');
     const balance = pendingBody.querySelector('[data-reclass-move-balance]').textContent;
-    assert.match(balance, /On Hand: 1000.*Requested \(Up \+ Down\): 610.*Remaining: 390/);
+    assert.match(balance, /On Hand: 1000.*Open Stock \(Max Move Up\): 1000.*Requested \(Up\): 610.*Remaining Move Up: 390/);
 
     const command = { commandId: 'command-610', moves: [{ source: { uniqueId: 'source-uid' },
       lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 610 }] }] };
@@ -472,7 +473,7 @@ test('Reclass move status distinguishes missing, pending, acknowledged, and malf
 });
 
 test('Reclass UI builds source-bound split movement commands at the current verified revision', () => {
-  const entry = { unique_id: 'source-uid', sourceRow: { unique_id: 'source-uid', itemcode: 'ITEM-1', contsize: '#3',
+  const entry = { unique_id: 'source-uid', sourceRow: { unique_id: 'source-uid', itemcode: 'ITEM-1', contsize: '#3', s_lts: '40',
     locationcode: 'C.12.001', lotcode: '27.F1', season: 'F1', ptronhand: '50', ptravailable: '40',
     __reclassIdentityRaw: { unique_id: 'source-uid', itemcode: 'ITEM-1', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', season: 'F1', ptronhand: '50.00', ptravailable: null } } };
   const ctx = { getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
@@ -492,6 +493,27 @@ test('Reclass UI builds source-bound split movement commands at the current veri
     { direction: 'move_up', destinationSeason: 'U1', quantity: 12 },
     { direction: 'move_up', destinationSeason: 'U2', quantity: 8 },
   ]);
+});
+
+test('Reclass Move Up enforces the 253 Open Stock cap per row and across the full 27.S1 lot', () => {
+  const row = (unique_id, locationcode, ptronhand) => ({ unique_id, itemcode: '004103.010.1', contsize: '#1',
+    locationcode, lotcode: '27.S1', season: 'S1', ptronhand: String(ptronhand), ptravailable: String(ptronhand), s_lts: '253' });
+  const entries = [row('f16', 'F.16.000', 175), row('c15', 'C.15.000', 532)]
+    .map(sourceRow => ({ unique_id: sourceRow.unique_id, sourceRow }));
+  const ctx = { canUseProductionLiveSync: () => true, getArgosReclassLiveEditIdentityKey: () => 'actor',
+    readPendingArgosInventoryReclassMove: () => null, generateArgosInventoryTransactionId: () => 'move-253' };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('buildInventoryReclassMoveCommand'), ctx);
+  const state = { inquiryModel: { locationRows: entries } };
+  const overlay = (unique_id, quantity) => ({ unique_id, proposals: [
+    { action: 'move_up', splits: [{ destinationSeason: 'F1', quantity }] }
+  ] });
+  const allowed = ctx.buildInventoryReclassMoveCommand({ rowOverlays: [overlay('f16', 175), overlay('c15', 78)] }, state);
+  assert.equal(allowed.moves.flatMap(move => move.lines).reduce((sum, line) => sum + line.quantity, 0), 253);
+  assert.throws(() => ctx.buildInventoryReclassMoveCommand({ rowOverlays: [overlay('c15', 254)] }, state),
+    /Cannot Move Up more than Open Stock \(253\) for lot 27\.S1/);
+  assert.throws(() => ctx.buildInventoryReclassMoveCommand({ rowOverlays: [overlay('f16', 175), overlay('c15', 79)] }, state),
+    /Cannot Move Up more than Open Stock \(253\) for lot 27\.S1/);
 });
 
 test('Item Inquiry can paint a complete warm snapshot immediately while live refresh continues separately', () => {
@@ -581,7 +603,7 @@ test('silent warm refresh leaves edits, pending moves, and focused controls inta
 
 test('Reclass UI blocks batches whose selected sources resolve to the same destination lineage', () => {
   const entry = uid => ({ unique_id: uid, sourceRow: { unique_id: uid, warehouseid: 'W1', itemcode: 'ITEM-1', contsize: '#3',
-    locationcode: 'C.12.001', lotcode: '27.F1', season: 'F1', ptronhand: '50', ptravailable: '40' } });
+    locationcode: 'C.12.001', lotcode: '27.F1', season: 'F1', ptronhand: '50', ptravailable: '40', s_lts: '50' } });
   const first = entry('source-one'); const second = entry('source-two');
   const ctx = { getDatasetState: () => ({ liveVerifiedRevision: '41', liveVerifiedScope: 'scope', liveVerifiedPermission: 'perm' }),
     getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'perm' }), canUseProductionLiveSync: () => true,

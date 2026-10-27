@@ -234,7 +234,7 @@ test('header-only location can save and open PDF preview with no inventory cards
   rt.dom.window.close();
 });
 
-test('email recipient checkbox updates preserve the main workspace and current focus', async () => {
+test('email recipient panel is immutable and Dylan-only', async () => {
   const rt=runtime();
   rt.window.postAppFunctionJson=new Proxy(rt.window.postAppFunctionJson,{apply(target,thisArg,args){
     if(args[1]?.operation==='directory')return Promise.resolve({ok:true,data:{users:[{id:'worker-1',username:'sam',display:'Sam',email:'sam@example.test'}]}});
@@ -243,19 +243,9 @@ test('email recipient checkbox updates preserve the main workspace and current f
   await rt.note.open();
   await rt.note.chooseBlock('D');
   const main=rt.window.document.querySelector('#bunch-note-content');
-  const firstChild=main.firstElementChild;
-  const checkbox=main.querySelector('[aria-label="Email recipient Sam"]');
-  assert.ok(checkbox);
-  const scroller=rt.window.document.querySelector('#main-scroll-area');
-  scroller.scrollTop=197;
-  checkbox.focus({preventScroll:true});
-  checkbox.checked=true;
-  checkbox.dispatchEvent(new rt.window.Event('change',{bubbles:true}));
-  assert.equal(main.firstElementChild,firstChild);
-  assert.equal(main.querySelector('[aria-label="Email recipient Sam"]'),checkbox);
-  assert.equal(scroller.scrollTop,197);
-  assert.equal(rt.window.document.activeElement,checkbox);
-  assert.ok(checkbox.checked);
+  assert.match(main.textContent,/Dylan Collyge only/);
+  assert.match(main.textContent,/Assignees receive work in the app, not by email/);
+  assert.equal(main.querySelector('[aria-label="Email recipient Sam"]'),null);
   rt.dom.window.close();
 });
 
@@ -346,6 +336,7 @@ test('app API normalizes Bunch Note save payloads before the database command', 
   const source = read('supabase/functions/app-api/index.ts');
   assert.match(source, /function normalizeBunchNoteSavePayload/);
   assert.match(source, /operation === "save" \? normalizeBunchNoteSavePayload\(payload\.payload\)/);
+  assert.match(source, /forceBunchNoteDylanRecipient\(normalizedPayload, String\(dylanRecipient\.id\), operation\)/);
   assert.match(source, /source_location: location, format_version: 5/);
 });
 
@@ -646,21 +637,13 @@ test('header recipient panel shows server-required defaults and assigned workers
   await addSequentialCard(rt, 'D.05.000\u001fPLANT-A\u001fPEONY\u001f#3', { owners: ['worker-1'] });
   rt.note.backLocations();
   const content = rt.window.document.querySelector('#bunch-note-content');
-  const panel = [...content.querySelectorAll('details')].find(item => item.querySelector('summary')?.textContent.includes('Email recipients'));
-  assert.match(panel.textContent, /Always included by the server: Dylan Collyge, Megan Kelly, Sharon Combs, Sam, Legacy Worker/);
-  for (const id of ['dylan', 'megan', 'sharon', 'worker-1', 'legacy-owner']) {
-    const checkbox = panel.querySelector(`input[onchange*="${id}"]`);
-    assert.ok(checkbox?.checked, `${id} is visibly included`);
-    assert.ok(checkbox.disabled, `${id} is server-required`);
-  }
-  const optional = panel.querySelector('input[onchange*="optional"]');
-  assert.equal(optional.checked, false);
-  assert.equal(optional.disabled, false);
-  assert.match(panel.textContent, /recipient email addresses are resolved by the server/);
+  const panel = [...content.querySelectorAll('details')].find(item => item.querySelector('summary')?.textContent.includes('Dylan Collyge only'));
+  assert.match(panel.textContent, /Bunch Notes email delivery is locked to Dylan Collyge/);
+  assert.equal(panel.querySelector('input[type="checkbox"]'),null);
   rt.dom.window.close();
 });
 
-test('recipient checkbox keeps focus and main scroll after a live repaint', async () => {
+test('recipient repaint cannot add an optional email recipient', async () => {
   const rt = runtime();
   rt.window.postAppFunctionJson = new Proxy(rt.window.postAppFunctionJson, { apply(target, thisArg, args) {
     if (args[1]?.operation === 'directory') return Promise.resolve({ ok: true, data: { users: [
@@ -674,19 +657,15 @@ test('recipient checkbox keeps focus and main scroll after a live repaint', asyn
   await rt.note.nextItems();
   rt.note.backLocations();
 
-  const panel = [...rt.window.document.querySelectorAll('details')].find(item => item.querySelector('summary')?.textContent.includes('Email recipients'));
-  const checkbox = panel.querySelector('input[onchange*="optional"]');
-  assert.ok(checkbox);
+  const panel = [...rt.window.document.querySelectorAll('details')].find(item => item.querySelector('summary')?.textContent.includes('Dylan Collyge only'));
+  assert.ok(panel);
   const main = rt.window.document.getElementById('main-scroll-area');
   main.scrollTop = 137;
-  checkbox.focus();
   rt.note.recipient('optional', true);
   rt.note.render();
 
-  const repaintedPanel = [...rt.window.document.querySelectorAll('details')].find(item => item.querySelector('summary')?.textContent.includes('Email recipients'));
-  const repainted = repaintedPanel.querySelector('input[onchange*="optional"]');
-  assert.equal(repainted.checked, true);
-  assert.equal(rt.window.document.activeElement, repainted);
+  const repaintedPanel = [...rt.window.document.querySelectorAll('details')].find(item => item.querySelector('summary')?.textContent.includes('Dylan Collyge only'));
+  assert.equal(repaintedPanel.querySelector('input[onchange*="optional"]'),null);
   assert.equal(main.scrollTop, 137);
   rt.dom.window.close();
 });

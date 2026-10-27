@@ -5,7 +5,7 @@ import { minify } from 'terser';
 import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'AgData v2.3.89';
+const RELEASE = 'AgData v2.3.90';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const ASSET_QUERY_OVERRIDES = Object.freeze({ 'mobile-workspace.js': `${RELEASE_QUERY}.1` });
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

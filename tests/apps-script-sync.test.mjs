@@ -170,7 +170,7 @@ test('ingestion deployment selects every changed function and preserves remote s
     'buildSuspendTagApprovalEmail_',
     'buildReclassInlineOhText_', 'buildReclassItemInquiryTable_', 'buildCompletedInventoryReclassReportModel_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_',
     'buildReclassInquiryReportModel_', 'getReclassInquiryEmailRecipients_', 'buildReclassInquiryCompactReportHtml_',
-    'buildReclassInquiryEmailHtml_', 'deliverReclassInquiryPayload_', 'handleSignedInventoryReclassMoveDelivery_',
+    'buildReclassInquiryEmailHtml_', 'deliverReclassInquiryPayload_', 'handleSignedInventoryReclassMoveDelivery_', 'handleSignedBunchNoteDelivery_',
     'setupDropFolderAutoSyncTrigger', 'removeDropFolderAutoSyncTrigger', 'runAutoDropFolderSync_',
     'removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_',
     'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync',

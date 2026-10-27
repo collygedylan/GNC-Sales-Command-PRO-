@@ -1853,3 +1853,11 @@ test('v2.3.89 live revision and Bunch draft migration is registered exactly once
  for(const token of ['F.05.000','dylan_collyge','AgData v2.3.89','set local statement_timeout','hl_po_parsed_revision_v2389']) assert.ok(migration.includes(token),token);
  assert.match(migrationContractQuery(name),/20261027200748[^]*2\.3\.89[^]*hl_po_parsed[^]*bunch_note_private\.batches[^]*F\.05/);
 });
+
+test('v2.3.90 Fill Tag, Dylan-only Bunch, and Reclass lot-cap migration is registered exactly once', async () => {
+ const {agdataV2390UniversalFillTagBunchDylanReclassLotCapMigrationName:name,registeredReleaseDatabaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.equal(registeredReleaseDatabaseMigrations.filter(value=>value===name).length,1);
+ const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
+ for(const token of ['suspend-fill-tag-v2390','location-sales-notes-v2390','dylan_collyge','reclass-move-up-open-stock-v2390','AgData v2.3.90']) assert.ok(migration.includes(token),token);
+ assert.match(migrationContractQuery(name),/20261027211049[^]*suspend-fill-tag-v2390[^]*location-sales-notes-v2390[^]*reclass-move-up-open-stock-v2390[^]*2\.3\.90/);
+});

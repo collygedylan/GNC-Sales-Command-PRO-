@@ -1329,7 +1329,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.89"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.90"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1356,9 +1356,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.89"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.90"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.89"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.90"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -1538,7 +1538,7 @@ test('Invariant 53 (False Block Variants Never Become Email Pull Options)', () =
 
 test('Invariant 54 (Suspend Queue Preserves Server Open Stock Unless an Exact Tuple Exists)', () => {
   const metricSink = {};
-  const ctx = runFunctions('assets/app-runtime.js', ['normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
+  const ctx = runFunctions('assets/app-runtime.js', ['isFalseBlockLocation', 'normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
     isDockSuspendDcRequestMirrorRow: item => item?.isSuspend === true,
     getQueueCardInventoryState: item => {
@@ -1844,7 +1844,7 @@ test('Invariant 63 (Queue Inventory Uses Exact Location/Lot and False Block Neve
 
   const exactMaster = rows[0];
   const sink = {};
-  const context = runFunctions('assets/app-runtime.js', ['normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
+  const context = runFunctions('assets/app-runtime.js', ['isFalseBlockLocation', 'normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
     window: { AgMetricQueueInventory: { identity: row => row } },
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
     isDockSuspendDcRequestMirrorRow: item => item?.isSuspend === true,
@@ -1888,7 +1888,7 @@ test('Invariant 63 (Queue Inventory Uses Exact Location/Lot and False Block Neve
   'False Block overrides every server metric alias');
 
   let rejectedPayloadRow;
-  const unavailableContext = runFunctions('assets/app-runtime.js', ['normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
+  const unavailableContext = runFunctions('assets/app-runtime.js', ['isFalseBlockLocation', 'normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
     window: {}, firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
     isDockSuspendDcRequestMirrorRow: item => item?.isSuspend === true, findDockSuspendDcRequestSourceRow: item => item,
     getSuspendTagInventoryIdentity: item => item,
@@ -1933,7 +1933,7 @@ test('Invariant 64 (Queue API and Rendered Cards Preserve Exact Stock and Hide F
   assert.equal(missingLot.MATCH_LEVEL, 'item-location');
   assert.equal(missingLot.PTRONHAND, 2046, 'lotless fallback stays at the exact item/location');
 
-  const frontend = runFunctions('assets/app-runtime.js', ['normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
+  const frontend = runFunctions('assets/app-runtime.js', ['isFalseBlockLocation', 'normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
     window: {}, firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
     isDockSuspendDcRequestMirrorRow: () => true,
     getQueueCardInventoryState: () => { throw new Error('False Block must not start inventory hydration'); },
@@ -1947,7 +1947,10 @@ test('Invariant 64 (Queue API and Rendered Cards Preserve Exact Stock and Hide F
     for (const field of ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'S_LTS', 'LOC_PHOTO_MATCH', 'LOC_ON_HAND']) {
       assert.equal(metrics[field], null, `${locationcode}: ${field}`);
     }
-    assert.equal(frontend.buildQueueInventoryMetricsHtml({ ...falseBlock, suspend_tag_metrics: exact }), '',
+    const falseBlockHtml = frontend.buildQueueInventoryMetricsHtml({ ...falseBlock, suspend_tag_metrics: exact });
+    assert.match(falseBlockHtml, /FALSE BLOCK — Add Location\(s\) to Fill Tag/,
+      `${locationcode} renders the explicit Fill Tag helper`);
+    assert.doesNotMatch(falseBlockHtml, /inventory metrics/,
       `${locationcode} renders no inventory metric boxes even with a stale enriched payload`);
   }
 });
@@ -2167,7 +2170,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.89\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.90\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isManagerShellHotfix[^]*mobile-workspace\.js[^]*`\$\{assetVersion\}\.1`/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2195,4 +2198,23 @@ test('Invariant 80 (Higher File Revision Repaints Home Metadata Even at the Same
   assert.match(merge, /revision: entryRevision === null \? '' : String\(entry\.revision\)/);
   assert.match(runtime, /revision: String\(source\.revision \?\? ''\)[^]*authoritative:/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never resolve equal-timestamp Home filename metadata lexically/);
+});
+
+test('Invariant 81 (Fill Tag, Bunch Delivery, and Move Up Preserve Physical Boundaries)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const bunch = read('assets/bunch-note.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const workflow = read('supabase/functions/_shared/production-workflow.ts');
+  const gas = read('Code.gs');
+  const migration = read('supabase/migrations/20261027211049_agdata_v2390_universal_fill_tag_bunch_dylan_reclass_lot_cap.sql');
+  assert.match(runtime, /function isFalseBlockLocation[^]*\^0\+\\\.0\+\\\.111/);
+  assert.match(runtime, /\+ Add Location \/ Fill Tag/);
+  assert.match(runtime, /customRows: normalizedCustomRows/);
+  assert.match(runtime, /Open Stock \(Max Move Up\)[^]*Cannot Move Up more than Open Stock/);
+  assert.match(bunch, /return \[dylan\.email\.trim\(\)\.toLowerCase\(\)\]/);
+  assert.doesNotMatch(bunch, /Card assignees are added automatically/);
+  assert.match(appApi, /forceBunchNoteDylanRecipient[^]*recipient_ids: \[dylanProfileId\]/);
+  assert.match(workflow, /enforceReclassMoveUpOpenStock[^]*INVENTORY_RECLASS_MOVE_UP_OPEN_STOCK_EXCEEDED/);
+  assert.match(gas, /const recipients = \[dylan\]/);
+  for (const marker of ['suspend-fill-tag-v2390','location-sales-notes-v2390','reclass-move-up-open-stock-v2390']) assert.ok(migration.includes(marker), marker);
 });

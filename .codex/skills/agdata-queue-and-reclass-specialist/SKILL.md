@@ -96,6 +96,8 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never cap Move Up only by physical row On Hand or Available; aggregate every Move Up line for the same itemcode + source lotcode and enforce the nonnegative pre-move `s_lts` limit in both the client draft and the locked SQL transaction.
+
 - Never seed a newly created Reclass destination season from the source row or an unrelated CAV season baseline, omit location evidence from the cloned physical row, or accept an Edge success response without an applied receipt containing committed master rows.
 
 - Never make Que cards borrow a reduced thumbnail renderer or suppress saved Spec/Caliper when AV Note is blank; reuse the canonical photo/evidence projection for the exact physical row.

@@ -23,7 +23,7 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
   const input = payload.payload;
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('SUSPEND_TAG_REQUEST_INVALID');
   const body = input as RecordValue;
-  const allowed = new Set(['sourceUid', 'expectedLastUpdated', 'patch', 'approvalId', 'decision', 'decisionMessage', 'ids', 'inventoryIds', 'candidateUid']);
+  const allowed = new Set(['sourceUid', 'expectedLastUpdated', 'patch', 'approvalId', 'decision', 'decisionMessage', 'ids', 'inventoryIds', 'customRows', 'candidateUid']);
   if (Object.keys(body).some(key => !allowed.has(key))) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   if (operation === 'decide') {
     if (!['approve', 'deny'].includes(String(body.decision || ''))) throw new Error('SUSPEND_TAG_DECISION_INVALID');
@@ -32,7 +32,18 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
   } else if (Object.prototype.hasOwnProperty.call(body, 'decisionMessage')) {
     throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   }
-  if (operation === 'add_candidates' && (!Array.isArray(body.inventoryIds) || body.inventoryIds.length < 1 || body.inventoryIds.length > 30 || body.inventoryIds.some(id => typeof id !== 'string' || !id.trim()))) throw new Error('SUSPEND_TAG_CANDIDATES_INVALID');
+  if (operation === 'add_candidates') {
+    const inventoryIds = Array.isArray(body.inventoryIds) ? body.inventoryIds : [];
+    const customRows = Array.isArray(body.customRows) ? body.customRows : [];
+    const invalidCustom = customRows.some((row) => !row || typeof row !== 'object' || Array.isArray(row)
+      || Object.keys(row).some((key) => !['locationcode', 'lotcode'].includes(key))
+      || typeof (row as RecordValue).locationcode !== 'string' || typeof (row as RecordValue).lotcode !== 'string'
+      || !/^[A-Z0-9]+(?:\.[A-Z0-9]+){1,2}$/i.test(String((row as RecordValue).locationcode).trim())
+      || /^0+\.0+\.111$/i.test(String((row as RecordValue).locationcode).trim())
+      || !/^\d{2}\.(?:F1|S1|U1|U2|U3|X|Y|Z)$/i.test(String((row as RecordValue).lotcode).trim()));
+    if (inventoryIds.length + customRows.length < 1 || inventoryIds.length + customRows.length > 30
+      || inventoryIds.some(id => typeof id !== 'string' || !id.trim()) || invalidCustom) throw new Error('SUSPEND_TAG_CANDIDATES_INVALID');
+  }
   if (body.candidateUid !== undefined && (operation !== 'decide' || typeof body.candidateUid !== 'string')) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   if (operation === 'inbox' && Object.keys(body).length) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   if (operation === 'rows' && (!Array.isArray(body.ids) || body.ids.length > 1000)) throw new Error('SUSPEND_TAG_REQUEST_INVALID');

@@ -13,13 +13,13 @@ function source(name) {
   if (html.slice(Math.max(0, start - 6), start) === 'async ') start -= 6;
   return html.slice(start, parseExpressionAt(html, start, { ecmaVersion: 'latest' }).end);
 }
-const functions = ['cloneArgosReclassProposal', 'getArgosReclassMoveBalance', 'getArgosReclassMoveBalanceText',
+const functions = ['cloneArgosReclassProposal', 'getArgosReclassLotOpenStock', 'getArgosReclassLotKey', 'getArgosReclassMoveUpLotState', 'getArgosReclassMoveBalance', 'getArgosReclassMoveBalanceText',
   'hasArgosReclassMoveUpProposal',
   'collectArgosReclassMoveProposal', 'collectArgosReclassV3Draft', 'changeArgosReclassMoveSplit',
   'markArgosReclassProposalEdited', 'getArgosReclassProposalRenderSignature', 'setArgosReclassAttributeIfChanged',
   'buildArgosReclassV3ProposalHtml'];
 function fixture() {
-  const entry = { unique_id: 'r1', values: { ptronhand: '25', lotcode: '27.F1', locationcode: 'A.01', season: 'F1' }, sourceRow: { ITEMCODE: 'TEST' } };
+  const entry = { unique_id: 'r1', values: { ptronhand: '25', lotcode: '27.F1', locationcode: 'A.01', season: 'F1' }, sourceRow: { ITEMCODE: 'TEST', LOTCODE: '27.F1', S_LTS: '25' } };
   const rowMap = {};
   const cardAttributes = new Map([['data-reclass-row-card', 'r1']]);
   const card = {
@@ -52,6 +52,7 @@ function fixture() {
     captureEvalWorkLocalDraftSoon() {}, refreshArgosReclassMultiActionUi() {},
     generateArgosInventoryTransactionId: () => 'edited-token',
     escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'),
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && String(value).trim() !== ''),
   };
   vm.createContext(ctx);
   vm.runInContext(functions.map(source).join('\n'), ctx);

@@ -22216,8 +22216,11 @@ function handleSignedBunchNoteDelivery_(delivery) {
     if (delivery.messageIdHeader !== expectedId) throw new Error('BUNCH_NOTE_DELIVERY_INVALID');
     const dylan = normalizeEmailAddress_(resolveRequestRecipientEmail_('dylan_collyge',''));
     if (!isLikelyEmailAddress_(dylan)) throw new Error('BUNCH_NOTE_DYLAN_EMAIL_REQUIRED');
-    const recipients = Array.from(new Set(saved.recipients.map(function(r) { return normalizeEmailAddress_(r.email); })));
-    if (!recipients.length || recipients.indexOf(dylan) === -1 || recipients.some(function(email) { return !isLikelyEmailAddress_(email); })) throw new Error('BUNCH_NOTE_RECIPIENT_INVALID');
+    const savedRecipients = Array.isArray(saved.recipients) ? saved.recipients.map(function(r) { return normalizeEmailAddress_(r.email); }) : [];
+    if (savedRecipients.indexOf(dylan) === -1) throw new Error('BUNCH_NOTE_DYLAN_EMAIL_REQUIRED');
+    // Bunch Notes delivery is intentionally Dylan-only. Never trust a stale or
+    // widened frozen recipient snapshot from an older preview.
+    const recipients = [dylan];
     const receipt = saved.receipt && saved.receipt.gmail_message_id ? saved.receipt : getRequestDeliveryReceipt_(expectedId) || findSentRequestDeliveryByMessageId_(expectedId);
     function durableReceipt(result) { return {gmail_message_id:result.gmailMessageId || result.gmail_message_id,thread_id:result.threadId || result.thread_id || '',message_id:expectedId,message_id_header:expectedId,recipients:result.recipients || recipients,mode:'bunch_note_gmail_api'}; }
     if (receipt) {

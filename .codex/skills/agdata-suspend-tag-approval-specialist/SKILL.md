@@ -34,5 +34,7 @@ node --test tests/suspend-tag-dataset.test.mjs tests/role-access-parity.test.mjs
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never restrict Fill Tag candidate selection to False Block sources, accept a False Block variant as a real candidate, or create a parallel evidence editor; every Suspend source uses the canonical add-candidates and exact-row photo/spec completion path.
+
 - Never render or authorize Suspend decisions from a generic Request card, username text alone, cached role flags, or client-supplied assignee identity.
 - Never broaden approval to every sales rep or let a stale/non-pending approval accept a decision.

@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.89';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.90';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26613,7 +26613,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.89').trim() || 'AgData v2.3.89';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.90').trim() || 'AgData v2.3.90';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -42589,6 +42589,44 @@ let avTopControlsRenderToken = 0;
             return copy;
         }
 
+        function getArgosReclassLotOpenStock(entry = null) {
+            const row = entry?.sourceRow || {};
+            const values = entry?.values || {};
+            const raw = firstNonEmptyValue(row.OPEN_STOCK, row.open_stock, row.S_LTS, row.s_lts,
+                values.open_stock, values.s_lts, values.S_LTS, 0);
+            const parsed = Number(String(raw ?? 0).trim().replace(/,/g, ''));
+            return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+        }
+
+        function getArgosReclassLotKey(entry = null) {
+            const row = entry?.sourceRow || {};
+            const values = entry?.values || {};
+            return `${String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, values.itemcode, '') || '').trim().toUpperCase()}|${String(firstNonEmptyValue(row.LOTCODE, row.lotcode, values.lotcode, '') || '').trim().toUpperCase()}`;
+        }
+
+        function getArgosReclassMoveUpLotState(entry = null) {
+            const rows = argosInventoryTransactionState?.inquiryModel?.locationRows || [];
+            const lotKey = getArgosReclassLotKey(entry);
+            const currentUid = String(entry?.unique_id || '');
+            let requested = 0, otherRowsRequested = 0;
+            rows.forEach((candidate) => {
+                if (getArgosReclassLotKey(candidate) !== lotKey) return;
+                const proposal = getArgosReclassV3Proposal(String(candidate?.unique_id || ''), 'move_up');
+                if (!proposal) return;
+                const amount = cloneArgosReclassProposal(proposal).splits.reduce((sum, split) => {
+                    const quantity = Number(String(split.quantity ?? '').trim());
+                    return sum + (Number.isSafeInteger(quantity) && quantity > 0 ? quantity : 0);
+                }, 0);
+                requested += amount;
+                if (String(candidate?.unique_id || '') !== currentUid) otherRowsRequested += amount;
+            });
+            const onHand = Number(String(entry?.values?.ptronhand ?? '').trim().replace(/,/g, ''));
+            const openStock = getArgosReclassLotOpenStock(entry);
+            return { lotKey, lotcode: lotKey.split('|')[1] || '', openStock, requested, otherRowsRequested,
+                rowMaximum: Math.max(0, Math.min(Number.isFinite(onHand) ? onHand : 0, openStock - otherRowsRequested)),
+                remaining: Math.max(0, openStock - requested) };
+        }
+
         function getArgosReclassMoveBalance(entry = null) {
             const rawOh = String(entry && entry.values && entry.values.ptronhand != null ? entry.values.ptronhand : '').trim().replace(/,/g, '');
             const onHand = rawOh ? Number(rawOh) : NaN;
@@ -42611,6 +42649,10 @@ let avTopControlsRenderToken = 0;
 
         function getArgosReclassMoveBalanceText(entry = null) {
             const balance = getArgosReclassMoveBalance(entry);
+            if (getArgosReclassV3Proposal(String(entry && entry.unique_id || ''), 'move_up')) {
+                const cap = getArgosReclassMoveUpLotState(entry);
+                return `On Hand: ${Number.isFinite(balance.onHand) ? balance.onHand : 'Unknown'} · Open Stock (Max Move Up): ${cap.openStock} · Requested (Up): ${cap.requested} · Remaining Move Up: ${cap.remaining}${balance.incomplete ? ' · Finish all split rows' : ''}`;
+            }
             return `On Hand: ${Number.isFinite(balance.onHand) ? balance.onHand : 'Unknown'} · Requested (Up + Down): ${balance.requested} · Remaining: ${Number.isFinite(balance.remaining) ? balance.remaining : 'Unknown'}${balance.incomplete ? ' · Finish all split rows' : ''}`;
         }
 
@@ -42657,6 +42699,11 @@ let avTopControlsRenderToken = 0;
                 if (destinationSeason === getArgosReclassRowCurrentSeason(entry)) throw new Error(`${rule.label} destination season must differ from the current season.`);
                 return { quantity, destinationSeason };
             });
+            if (draft.action === 'move_up') {
+                const cap = getArgosReclassMoveUpLotState(entry);
+                const total = splits.reduce((sum, split) => sum + split.quantity, 0);
+                if (total > cap.rowMaximum) throw new Error(`Cannot Move Up more than Open Stock (${cap.openStock}) for lot ${cap.lotcode}.`);
+            }
             if (allowHold && draft.applyHold) throw new Error('This saved move uses a retired Hold option. Remove and re-add the move, then select On Hold in the action grid.');
             return { action: draft.action, splits, applyHold: false, holdReason: '' };
         }
@@ -42827,13 +42874,15 @@ let avTopControlsRenderToken = 0;
             }
             if (rule.kind === 'move') {
                 const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
+                const moveUpState = normalized === 'move_up' ? getArgosReclassMoveUpLotState(entry) : null;
+                const inputMaximum = moveUpState ? moveUpState.rowMaximum : originalOh;
                 const currentSeason = getArgosReclassRowCurrentSeason(entry);
                 Object.assign(proposal, cloneArgosReclassProposal(proposal));
                 const label = normalized === 'move_up' ? 'Move Up' : 'Move Down';
                 const splitRows = proposal.splits.map((split, index) => {
                     const options = RECLASS_ACTION_WORKFLOW_V2_SEASONS.filter((season) => season !== currentSeason).map((season) => `<option value="${escapeHtml(season)}" ${String(split.destinationSeason || '').toUpperCase() === season ? 'selected' : ''}>${escapeHtml(season)}</option>`).join('');
                     const attrs = `data-reclass-v3-proposal-action="${normalized}" data-reclass-split-index="${index}"`;
-                    return `<div class="argos-reclass-move-split"><label class="argos-reclass-action-proposal"><span>Quantity ${index + 1}</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(originalOh) ? originalOh : ''))}" aria-label="${label} quantity ${index + 1}" value="${escapeHtml(String(split.quantity ?? ''))}" ${attrs} data-reclass-v3-proposal-field="quantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>Destination ${index + 1}</span><select class="argos-reclass-row-input" aria-label="${label} destination ${index + 1}" ${attrs} data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Choose season</option>${options}</select></label><button type="button" class="argos-reclass-action-btn" aria-label="Remove ${label} destination ${index + 1}" onclick="return changeArgosReclassMoveSplit(this,'${normalized}',${index})" ${proposal.splits.length === 1 ? 'disabled' : ''}>Remove</button></div>`;
+                    return `<div class="argos-reclass-move-split"><label class="argos-reclass-action-proposal"><span>Quantity ${index + 1}</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(inputMaximum) ? inputMaximum : ''))}" aria-label="${label} quantity ${index + 1}" value="${escapeHtml(String(split.quantity ?? ''))}" ${attrs} data-reclass-v3-proposal-field="quantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>Destination ${index + 1}</span><select class="argos-reclass-row-input" aria-label="${label} destination ${index + 1}" ${attrs} data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Choose season</option>${options}</select></label><button type="button" class="argos-reclass-action-btn" aria-label="Remove ${label} destination ${index + 1}" onclick="return changeArgosReclassMoveSplit(this,'${normalized}',${index})" ${proposal.splits.length === 1 ? 'disabled' : ''}>Remove</button></div>`;
                 }).join('');
                 const holdHtml = proposal.applyHold
                         ? '<p class="argos-reclass-action-scope-notice" role="alert">This saved move uses a retired Hold option. Remove and re-add the move, then select On Hold in the action grid.</p>'
@@ -45448,6 +45497,25 @@ let avTopControlsRenderToken = 0;
                 moves.push({ source: { uniqueId: uid, identity }, lines, sourceRow: entry.sourceRow });
             });
             if (!moves.length) return null;
+            const moveUpLots = new Map();
+            moves.forEach((move) => {
+                const row = move.sourceRow || {};
+                const itemcode = String(row.ITEMCODE ?? row.itemcode ?? '').trim().toUpperCase();
+                const lotcode = String(row.LOTCODE ?? row.lotcode ?? '').trim().toUpperCase();
+                const rawOpenStock = row.OPEN_STOCK ?? row.open_stock ?? row.S_LTS ?? row.s_lts ?? 0;
+                const parsedOpenStock = Number(String(rawOpenStock ?? 0).trim().replace(/,/g, ''));
+                const openStock = Number.isFinite(parsedOpenStock) ? Math.max(0, parsedOpenStock) : 0;
+                const moveUp = move.lines.filter((line) => line.direction === 'move_up').reduce((sum, line) => sum + line.quantity, 0);
+                if (!moveUp) return;
+                const key = `${itemcode}|${lotcode}`;
+                const current = moveUpLots.get(key) || { quantity: 0, openStock, lotcode };
+                current.quantity += moveUp;
+                current.openStock = Math.min(current.openStock, openStock);
+                moveUpLots.set(key, current);
+            });
+            for (const lot of moveUpLots.values()) {
+                if (lot.quantity > lot.openStock) throw new Error(`Cannot Move Up more than Open Stock (${lot.openStock}) for lot ${lot.lotcode}.`);
+            }
             const lineageKey = (row, lotcode = null) => JSON.stringify([
                 String(row.warehouseid ?? row.WAREHOUSEID ?? row.warehousei ?? row.WAREHOUSEI ?? ''),
                 String(row.itemcode ?? row.ITEMCODE ?? ''), String(row.contsize ?? row.CONTSIZE ?? ''),
@@ -105307,12 +105375,16 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return { masterIds, exactKeys };
         }
 
+        function isFalseBlockLocation(location = '') {
+            return /^0+\.0+\.111$/i.test(String(location || '').trim());
+        }
+
         function getRequestItemCodeOptionCandidateState(candidate = null, source = activeItem, existingKeys = null) {
             const blocked = (reason = '') => ({ include: false, selectable: false, reason });
             const visible = (selectable = true, reason = '') => ({ include: true, selectable: selectable !== false, reason });
             if (!candidate || !source) return blocked('Missing row');
             const candidateLocation = String(firstNonEmptyValue(candidate.LOCATIONCODE, candidate.locationcode, candidate.LOCATION, candidate.location, '') || '').trim();
-            if (/^0+\.0+\.111$/i.test(candidateLocation)) return blocked('False Block');
+            if (isFalseBlockLocation(candidateLocation)) return blocked('False Block');
             const sourceItemCode = getRequestItemCodeOptionItemCode(source);
             const candidateItemCode = getRequestItemCodeOptionItemCode(candidate);
             const sameItemCode = !!(sourceItemCode && candidateItemCode === sourceItemCode);
@@ -105512,11 +105584,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return { payload, localRow, optionUid, optionRow };
         }
 
-        async function addSelectedDockSuspendDcRequestOptions(selectedRows = [], sourceMirrorRow = activeItem) {
+        async function addSelectedDockSuspendDcRequestOptions(selectedRows = [], sourceMirrorRow = activeItem, customRows = []) {
             if (!sourceMirrorRow || !isDockSuspendDcRequestMirrorRow(sourceMirrorRow)) return false;
             const inventoryIds = [...new Set((Array.isArray(selectedRows) ? selectedRows : [])
                 .map(row => String(firstNonEmptyValue(row?.UNIQUE_ID, row?.unique_id, '') || '').trim()).filter(Boolean))].sort();
-            if (!inventoryIds.length) { showToast('Select Rows', 'Choose at least one AV option.', true); return false; }
+            const normalizedCustomRows = (Array.isArray(customRows) ? customRows : []).map((row) => ({
+                locationcode: String(row?.locationcode || '').trim().toUpperCase(),
+                lotcode: String(row?.lotcode || '').trim().toUpperCase()
+            })).filter((row) => row.locationcode && row.lotcode);
+            if (!inventoryIds.length && !normalizedCustomRows.length) { showToast('Select Rows', 'Choose an existing row or enter a location and lot.', true); return false; }
             const sourceUid = getDockSuspendDcRequestSourceUid(sourceMirrorRow);
             const state = getDockSuspendCompletionState();
             const flightKey = state.scope + '|' + sourceUid;
@@ -105524,12 +105600,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const source = findDockSuspendDcRequestSourceRow(sourceMirrorRow) || sourceMirrorRow;
             const expectedLastUpdated = getDockSuspendCompletionRevision(source);
             const expectedVersion = getSuspendTagWriteVersion(sourceMirrorRow);
-            const key = JSON.stringify(['add_candidates', sourceUid, expectedLastUpdated, expectedVersion, inventoryIds]);
+            const key = JSON.stringify(['add_candidates', sourceUid, expectedLastUpdated, expectedVersion, inventoryIds, normalizedCustomRows]);
             const pending = state.pending[key] || { requestId: crypto.randomUUID(), savedAt: Date.now() };
             state.pending[key] = pending; persistDockSuspendCompletionState(state);
             dockSuspendCompletionInFlight.add(flightKey);
             try {
-                const result = await suspendTagApi('add_candidates', { sourceUid, expectedLastUpdated, inventoryIds },
+                const result = await suspendTagApi('add_candidates', { sourceUid, expectedLastUpdated, inventoryIds, customRows: normalizedCustomRows },
                     { commandId: pending.requestId, expectedVersion });
                 if (!result?.ok || !Array.isArray(result.rows)) throw new Error('The server did not confirm the candidates. Retry safely.');
                 delete state.pending[key]; persistDockSuspendCompletionState(state);
@@ -105543,6 +105619,21 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 showToast('Save Failed', suspendTagErrorMessage(error), true);
             } finally { dockSuspendCompletionInFlight.delete(flightKey); }
             return false;
+        }
+
+        async function addCustomSuspendTagLocation() {
+            if (!activeItem || !isDockSuspendDcRequestMirrorRow(activeItem) || !canAddRequestItemCodeOptions()) return false;
+            const locationInput = document.getElementById('suspend-fill-tag-location');
+            const lotInput = document.getElementById('suspend-fill-tag-lot');
+            const locationcode = String(locationInput?.value || '').trim().toUpperCase();
+            const lotcode = String(lotInput?.value || '').trim().toUpperCase();
+            if (!/^[A-Z0-9]+(?:\.[A-Z0-9]+){1,2}$/.test(locationcode) || isFalseBlockLocation(locationcode)) {
+                showToast('Location Required', 'Enter a real nursery location. False Block cannot be a Fill Tag location.', true); return false;
+            }
+            if (!/^\d{2}\.(?:F1|S1|U1|U2|U3|X|Y|Z)$/i.test(lotcode)) {
+                showToast('Lot Required', 'Enter a lot such as 27.F1, 27.S1, or 27.U1.', true); return false;
+            }
+            return addSelectedDockSuspendDcRequestOptions([], activeItem, [{ locationcode, lotcode }]);
         }
 
         let requestSharedInventoryOptionIndex = { source: null, owner: '', version: -1, byItem: new Map(), byNameSize: new Map(), byName: new Map() };
@@ -106105,8 +106196,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 </div>`;
             }).join('') : (isOpen ? `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[12px] font-bold text-slate-400">${state.loading ? 'Loading AV options...' : escapeShareHtml(emptyRowsMessage)}</div>` : '');
             const moreCount = Math.max(0, rows.length - visibleRows.length);
-            const addOptionsLabel = isDockSuspendDcRequestMirrorRow(item) ? 'Add To Suspend Tag' : 'Add Selected Options';
+            const suspendFillTag = isDockSuspendDcRequestMirrorRow(item);
+            const addOptionsLabel = suspendFillTag ? '+ Add Location / Fill Tag' : 'Add Selected Options';
             const addButtonHtml = canAddOptions && selectableRowCount ? `<button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return addSelectedRequestItemCodeOptions()">${escapeShareHtml(addOptionsLabel)}</button>` : '';
+            const customLocationHtml = canAddOptions && suspendFillTag ? `<div class="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3" data-suspend-fill-tag-custom="true">
+                <div class="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-800">Add any nursery row</div>
+                <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]"><label class="text-[10px] font-black uppercase tracking-[0.1em] text-slate-600">Location<input id="suspend-fill-tag-location" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold" autocomplete="off" placeholder="C.15.000"></label><label class="text-[10px] font-black uppercase tracking-[0.1em] text-slate-600">Lot<input id="suspend-fill-tag-lot" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold" autocomplete="off" placeholder="27.F1"></label><button type="button" class="self-end rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white" onclick="return addCustomSuspendTagLocation()">+ Add Location / Fill Tag</button></div>
+                <div class="mt-2 text-[10px] font-bold text-slate-600">Creates the exact itemcode + locationcode + lotcode row, then opens the same photo, Spec, Caliper, Loc Match, and notes workflow.</div>
+            </div>` : '';
             panel.innerHTML = `<div class="flex flex-col">
                 <button type="button" class="request-av-options-header flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-left shadow-sm active:scale-[.99] dark:bg-[var(--bg-surface)] dark:text-[var(--text-main)] dark:border-[var(--border-subtle)]" onclick="return toggleRequestAvOptionsDropdown()" aria-expanded="${isOpen ? 'true' : 'false'}">
                     <span class="min-w-0">
@@ -106120,7 +106217,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     <span class="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800">${isOpen ? 'Hide' : 'Show'}<i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-sm"></i></span>
                 </button>
                 ${loadingHtml}${errorHtml}${hiddenCurrentSeasonHtml}
-                ${isOpen ? `${addButtonHtml ? `<div class="mt-3 flex justify-end">${addButtonHtml}</div>` : ''}<div class="mt-3 space-y-2">${rowsHtml}</div>${moreCount ? `<div class="mt-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeShareHtml(String(moreCount))} more not shown</div>` : ''}` : ''}
+                ${isOpen ? `${addButtonHtml ? `<div class="mt-3 flex justify-end">${addButtonHtml}</div>` : ''}${customLocationHtml}<div class="mt-3 space-y-2">${rowsHtml}</div>${moreCount ? `<div class="mt-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeShareHtml(String(moreCount))} more not shown</div>` : ''}` : ''}
             </div>`;
             panel.classList.remove('hidden');
             if (sharedPanel && legacyPanel && legacyPanel !== sharedPanel) {
@@ -145471,7 +145568,7 @@ C.14.043 C.15.000
             if (!item || String(sourceView || '').trim().toLowerCase() !== 'request' || !isDockSuspendDcRequestMirrorRow(item)) return item;
             const sourceRow = findDockSuspendDcRequestSourceRow(item) || item;
             const row = { ...(item || {}) };
-            const falseBlock = /^0+\.0+\.111$/i.test(String(firstNonEmptyValue(sourceRow.LOCATIONCODE, sourceRow.locationcode, item.LOCATIONCODE, item.locationcode, '') || '').trim());
+            const falseBlock = isFalseBlockLocation(firstNonEmptyValue(sourceRow.LOCATIONCODE, sourceRow.locationcode, item.LOCATIONCODE, item.locationcode, ''));
             const metricsRaw = item.suspend_tag_metrics && typeof item.suspend_tag_metrics === 'object' ? item.suspend_tag_metrics : null;
             const hasLot = !!String(firstNonEmptyValue(sourceRow.LOTCODE, sourceRow.lotcode, item.LOTCODE, item.lotcode, '') || '').trim();
             const matchLevel = String(firstNonEmptyValue(metricsRaw?.MATCH_LEVEL, metricsRaw?.match_level,
@@ -145817,7 +145914,7 @@ C.14.043 C.15.000
             const suspendMetricsRaw = isSuspendTagCard && item.suspend_tag_metrics && typeof item.suspend_tag_metrics === 'object'
                 ? item.suspend_tag_metrics : requestMetricsRaw && typeof requestMetricsRaw === 'object' ? requestMetricsRaw : null;
             const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim();
-            const falseBlock = sourceView === 'request' && /^0+\.0+\.111$/i.test(locationCode);
+            const falseBlock = sourceView === 'request' && isFalseBlockLocation(locationCode);
             const cardLot = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, item.LOT, item.lot, '') || '').trim();
             const metricMatchLevel = String(firstNonEmptyValue(suspendMetricsRaw?.MATCH_LEVEL, suspendMetricsRaw?.match_level,
                 suspendMetricsRaw?.MATCHLEVEL, suspendMetricsRaw?.matchLevel, item.MATCH_LEVEL, item.match_level, '') || '').trim().toLowerCase();
@@ -145888,7 +145985,9 @@ C.14.043 C.15.000
                 queueMetricTelemetry: isSuspendTagCard,
                 knownLocationOnHand: falseBlock ? 0 : displayRow ? metricRow.LOC_ON_HAND : metricRow.LOC_ON_HAND ?? suspendMetrics?.LOC_ON_HAND,
                 knownLocationPhotoMatch: knownPhotoMatch ?? suspendMetrics?.LOC_MATCH_QTY });
-            return falseBlock ? '' : metricsHtml;
+            return falseBlock
+                ? '<div class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-900" data-false-block="true">FALSE BLOCK — Add Location(s) to Fill Tag</div>'
+                : metricsHtml;
         }
 
         const suspendTagReclassLoads = new Map();
@@ -167627,6 +167726,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!uniqueId) return;
                 if (action === 'email-tag') emailSuspendTagFromCard(uniqueId, button);
                 else if (action === 'complete-tag') closeDockSuspendDcRequestFromCard(uniqueId, button);
+                else if (action === 'fill-tag') openDockSuspendDcRequestUpdate(uniqueId, { preferredTab: 'request', openAvOptions: true });
             }, true);
         }
 
@@ -167638,6 +167738,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const labels = { pending:'Pending',completed:'Completed — Ready to Email',awaiting_rep:'Awaiting Rep',approved:'Approved',denied:'Denied / Needs Changes' };
             const action = (label,actionName) => '<button type="button" ' + pressAttrs + ' class="app-suspend-tag-action rounded-xl border border-emerald-200 text-xs font-bold" data-action="' + actionName + '" data-unique-id="' + uid + '"' + (actionBusy ? ' disabled aria-disabled="true" data-suspend-action-busy="' + esc(getSupabaseReadIdentityScope() + '|' + sourceUid) + '" title="This Suspend Tag action is already in progress."' : '') + '>' + label + '</button>';
             return '<div class="app-suspend-tag-status border-t" data-suspend-tag-status="' + esc(status) + '">' + (status === 'pending' ? '' : '<div class="app-suspend-tag-status-label font-bold">' + esc(labels[status] || status) + '</div>') + (planstartValue ? '<div class="app-operational-planstart-date">PLANSTART: ' + esc(planstartValue) + '</div>' : '') + '<div class="app-suspend-tag-actions">'
+                + action('+ Add Location / Fill Tag','fill-tag')
                 + (['pending','denied','completed'].includes(status) ? action('Email','email-tag') : '')
                 + (status === 'awaiting_rep' && (item.suspend_tag_delivery_status || item.SUSPEND_TAG_DELIVERY_STATUS) === 'failed' ? action('Retry Delivery','email-tag') : '')
                 + action('Complete Tag','complete-tag') + '</div></div>';

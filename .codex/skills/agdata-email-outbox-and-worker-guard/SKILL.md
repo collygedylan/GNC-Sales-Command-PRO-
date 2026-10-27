@@ -34,5 +34,7 @@ node --test tests/apps-script-sync.test.mjs tests/reclass-recipient-policy.test.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never trust a Bunch Note preview or outbox recipient snapshot at dispatch time; the worker must resolve Dylan's active address and replace, not merge, all stored recipients.
+
 - Never repair a missing worker credential by granting anonymous operational writes, permissive public RLS, all-function execute, or access to private identity tables.
 - Never use `SUPABASE_KEY` or a publishable key for imports/delivery, silently swallow a failed lease, or claim an email sent from queue insertion alone.

@@ -296,7 +296,8 @@ test('Suspend Tag client requires exact item/location/lot metrics and suppresses
     assert.ok(source.includes(metric), `${metric} is exposed to the watchdog sensor`);
   }
   assert.match(source, /data-queue-metric="reason"/);
-  assert.match(source, /return falseBlock \? '' : metricsHtml/);
+  assert.match(source, /FALSE BLOCK — Add Location\(s\) to Fill Tag/);
+  assert.match(source, /function isFalseBlockLocation\(location = ''\)[^]*\/\^0\+\\\.0\+\\\.111\$\/i/);
   assert.match(source, /knownLocationOnHand: falseBlock \? 0 : displayRow \? metricRow\.LOC_ON_HAND/);
   assert.match(source, /knownLocationPhotoMatch: knownPhotoMatch \?\? suspendMetrics\?\.LOC_MATCH_QTY/);
   assert.match(source, /knownLocationPhotoMatch !== null && knownLocationPhotoMatch !== undefined/);
@@ -309,6 +310,7 @@ test('Suspend Tag client requires exact item/location/lot metrics and suppresses
   let renderedMetrics;
   const serverContext = vm.createContext({
     isDockSuspendDcRequestMirrorRow: () => true,
+    isFalseBlockLocation: location => /^0+\.0+\.111$/i.test(String(location || '').trim()),
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
     getQueueCardInventoryAuthorizationContext: () => null,
     getQueueCardInventoryState: () => { throw new Error('Server-enriched cards must not queue another identity read'); },
@@ -321,9 +323,9 @@ test('Suspend Tag client requires exact item/location/lot metrics and suppresses
   assert.ok(buildQueueMetrics, 'queue metric renderer is present');
   vm.runInContext(`${normalizeRequestCardMetrics}\n${buildQueueMetrics}\nthis.build = buildQueueInventoryMetricsHtml;`, serverContext);
   for (const locationcode of ['0.00.111', '00.00.111', '00.000.111']) {
-    assert.equal(serverContext.build({ locationcode, suspend_tag_metrics: { MATCH_LEVEL: 'item-location-lot',
-      PTRONHAND: 136, PTRREVIEWED: 0, LOC_ON_HAND: 136, LOC_MATCH_QTY: 0 } }), '',
-    `${locationcode} renders no inventory metric chips`);
+    assert.match(serverContext.build({ locationcode, suspend_tag_metrics: { MATCH_LEVEL: 'item-location-lot',
+      PTRONHAND: 136, PTRREVIEWED: 0, LOC_ON_HAND: 136, LOC_MATCH_QTY: 0 } }), /FALSE BLOCK/,
+    `${locationcode} renders the False Block helper instead of inventory metric chips`);
     assert.equal(renderedMetrics.row.PTRONHAND, 0, `${locationcode} sanitizes On Hand before metric callbacks`);
     assert.equal(renderedMetrics.row.PTRAVAILABLE, 0, `${locationcode} sanitizes Available before metric callbacks`);
     assert.equal(renderedMetrics.row.S_LTS, 0, `${locationcode} sanitizes Open Stock before metric callbacks`);
@@ -425,6 +427,9 @@ test('candidate handler forwards only exact inventory IDs and the verified actor
  assert.equal(calls[0][1].p_session_id,'session-native');assert.equal(calls[0][1].p_command_id,'command-stable');
  await assert.rejects(ctx.handleSuspendTag(client,{...actor,username:'nelly_aguilar'},command),/FORBIDDEN/);
  await assert.rejects(ctx.handleSuspendTag(client,actor,{...command,payload:{...command.payload,quantityordered:'999'}}),/FIELD_FORBIDDEN/);
+ const custom={...command,commandId:'custom-command',payload:{sourceUid:command.payload.sourceUid,expectedLastUpdated:command.payload.expectedLastUpdated,inventoryIds:[],customRows:[{locationcode:'C.15.000',lotcode:'27.F1'}]}};
+ await ctx.handleSuspendTag(client,actor,custom);
+ await assert.rejects(ctx.handleSuspendTag(client,actor,{...custom,payload:{...custom.payload,customRows:[{locationcode:'00.00.111',lotcode:'27.F1'}]}}),/CANDIDATES_INVALID/);
 });
 test('group transaction fences identity, replaces False Block, resolves all candidates and retains idempotency',()=>{
  const sql=readFileSync(new URL('../supabase/migrations/20261021170000_suspend_candidates_request_preload_v1.sql',import.meta.url),'utf8');

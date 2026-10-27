@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.89",
+  "version": "2.3.90",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -150,6 +150,7 @@
     "buildReclassInquiryEmailHtml_",
     "deliverReclassInquiryPayload_",
     "handleSignedInventoryReclassMoveDelivery_",
+    "handleSignedBunchNoteDelivery_",
     "setupDropFolderAutoSyncTrigger",
     "removeDropFolderAutoSyncTrigger",
     "runAutoDropFolderSync_",

@@ -79,6 +79,8 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never derive Bunch Notes email recipients from card owners, assignees, optional checkboxes, or stale preview snapshots while the Dylan-only delivery policy is active; in-app assignment and outbound email routing are separate contracts.
+
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never let lot, priority, assignment, or season precede `locationcode`, reintroduce `Showing the first 8 inventory rows`, expose `.017`/`.018` as separate level-two tiles, or replace last-good Eval rows with a loading gate.

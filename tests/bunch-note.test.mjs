@@ -8,7 +8,7 @@ const read = p => readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const js=read(process.env.BUNCH_NOTE_COMPILED_SHELL ? '_site/assets/bunch-note.js' : 'assets/bunch-note.js'), gas=read('Code.gs'), migration=read('supabase/archive_migrations/20260920060133_bunch_note_location_work_v1.sql');
 const plain=value=>JSON.parse(JSON.stringify(value));
 function runtime(extra={}) {
- const ctx=vm.createContext({console,Date,Map,Set,URL,Blob,Uint8Array,structuredClone,
+ const ctx=vm.createContext({console,Date,Map,Set,URL,Blob,Uint8Array,structuredClone,setTimeout,clearTimeout,queueMicrotask,
   currentUser:'dylan_collyge',nativeAuthSessionActive:true,nativeAuthProfile:{id:'dylan',username:'dylan_collyge',must_change_password:false},
   APP_API_FUNCTION_URL:'https://fixture.invalid',postAppFunctionJson:async()=>({ok:true,data:{jobs:[]}}),...extra});
  vm.runInContext(read('assets/location-code.js'),ctx);vm.runInContext(js,ctx); return ctx;
@@ -142,10 +142,10 @@ test('catalog covers every action group without assigning instruction labels',()
  for(const label of ['Early protection','Rain-day preparation','Shear before bunching','Wait for hauling before bunching','Center house','Countable rows','Variety mixes','Obsolete-location review']) assert.ok(templates.some(t=>t.label===label));
  assert.ok(templates.every(t=>!t.owner_id&&!t.recipient_ids));
 });
-test('recipients require Dylan, deduplicate addresses, and never add crew labels or Sharon implicitly',()=>{
+test('recipients are locked to Dylan and never add selected staff or crew labels',()=>{
  const b=runtime().BunchNote, directory=[{id:'d',username:'dylan_collyge',email:'dylan@example.test'},{id:'w',username:'worker',email:'worker@example.test'},{id:'alias',username:'alias',email:'WORKER@example.test'},{id:'s',username:'sharon_combs',email:'sharon@example.test'}];
- assert.deepEqual(plain(b.recipientEmails(directory,['w','alias','w'])),['worker@example.test','dylan@example.test']);
- assert.throws(()=>b.recipientEmails(directory,['attacker@example.test']),/active users/);
+ assert.deepEqual(plain(b.recipientEmails(directory,['w','alias','w'])),['dylan@example.test']);
+ assert.deepEqual(plain(b.recipientEmails(directory,['attacker@example.test'])),['dylan@example.test']);
  assert.throws(()=>b.recipientEmails(directory.filter(u=>u.id!=='d'),[]),/Dylan/);
 });
 test('creator uses exact active native profile, excluding privileged manager aliases',()=>{
@@ -163,13 +163,13 @@ test('uncertain command retains its id and same-user reauthentication rejects ol
  const pending=ctx.BunchNote.api('list');ctx.BunchNote.reset();resolve({ok:true,data:{jobs:[{private:true}]}});
  await assert.rejects(pending,/session changed/);
 });
-test('bounded assigned-work reads do not loop on render; explicit refresh can recover',async()=>{
+test('bounded assigned-work reads use the finite retry budget; render does not loop and explicit refresh recovers',async()=>{
  let calls=0;const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
- const ctx=runtime({getCurrentVisibleViewId:()=> 'bunch-note',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async()=>{calls++;throw new Error('offline');}});
+ const ctx=runtime({setTimeout:callback=>{queueMicrotask(callback);return 1;},getCurrentVisibleViewId:()=> 'bunch-note',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async()=>{calls++;throw new Error('offline');}});
  ctx.BunchNote.reset();ctx.BunchNote.setQueueMode('assigned');
- await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);
- ctx.BunchNote.render();await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
- ctx.postAppFunctionJson=async()=>{calls++;return {ok:true,data:{jobs:[]}};};await ctx.BunchNote.refresh();assert.equal(calls,2);
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,4);
+ ctx.BunchNote.render();await new Promise(r=>setImmediate(r));assert.equal(calls,4);
+ ctx.postAppFunctionJson=async()=>{calls++;return {ok:true,data:{jobs:[]}};};await ctx.BunchNote.refresh();assert.equal(calls,5);
 });
 test('backing out of assigned work preserves the selected Inventory mode',async()=>{
  const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
@@ -252,7 +252,7 @@ function deliveryRuntime({prior='pending',loseAck=false,recovered=false,automati
 }
 test('delivery uses frozen PDFs and exact recipients, records intent before sending',()=>{
  const d=deliveryRuntime(), result=d.send();assert.equal(result.ok,true);
- const sent=d.calls.find(c=>c.send).send;assert.deepEqual(plain(sent.toArray),['dylan@example.test','worker@example.test']);
+ const sent=d.calls.find(c=>c.send).send;assert.deepEqual(plain(sent.toArray),['dylan@example.test']);
  assert.equal(sent.subject,'BUNCH NOTES — C.12 — Rain day');assert.equal(sent.attachments.length,1);
  assert.ok(d.calls.findIndex(c=>c.body?.p_status==='sending')<d.calls.findIndex(c=>c.send));
  assert.ok(d.calls.some(c=>c.body?.p_status==='sent'));
@@ -267,7 +267,7 @@ test('automatic completion renders and freezes its report PDF before recording s
  assert.equal(d.calls[freezeIndex].body.p_pdfs[0].job_id,'job-1');
  assert.equal(d.calls[freezeIndex].body.p_pdfs[0].filename,'BN-1_WORK_R4.pdf');
  assert.equal(d.calls[sendIndex].send.attachments[0].name,'BN-1_WORK_R4.pdf');
- assert.deepEqual(plain(d.calls[sendIndex].send.toArray),['dylan@example.test','worker@example.test']);
+ assert.deepEqual(plain(d.calls[sendIndex].send.toArray),['dylan@example.test']);
 });
 test('automatic PDF renderer failures are retryable before a send intent exists',()=>{
  const d=deliveryRuntime({automaticPdf:true,renderFail:true}),result=d.send();

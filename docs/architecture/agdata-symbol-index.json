@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.89",
+  "release": "AgData v2.3.90",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -478,7 +478,8 @@
         "handleEvalWorkAction",
         "handleManagerReportReadAction",
         "sortManagerEval2PreviewRows",
-        "handleLocationWorkAction"
+        "handleLocationWorkAction",
+        "forceBunchNoteDylanRecipient"
       ],
       "Code.gs": [
         "handleSignedEvalWorkDelivery_",
@@ -490,6 +491,8 @@
       "supportingFiles": {
         "assets/bunch-note.js": [
           "normalizeBunchNoteLocationKey",
+          "recipientEmails",
+          "requiredBunchRecipientIds",
           "suggestionField",
           "locationSetupHtml",
           "editor"
@@ -551,6 +554,7 @@
         ],
         "supabase/functions/_shared/production-workflow.ts": [
           "resolveCurrentReclassSourceIds",
+          "enforceReclassMoveUpOpenStock",
           "handleInventoryReclassMove"
         ],
         "supabase/migrations/20261027184835_agdata_v2388_unified_runtime_recovery.sql": [
@@ -734,6 +738,8 @@
     },
     "agdata-suspend-tag-approval-specialist": {
       "assets/app-runtime.js": [
+        "isFalseBlockLocation",
+        "addCustomSuspendTagLocation",
         "buildSuspendTagActions",
         "openSuspendTagApproval"
       ],
@@ -757,12 +763,18 @@
         "resolveSupabaseServiceRoleKey_",
         "getSupabaseHeaders_",
         "reconcileAppsScriptActionSigningKey_",
-        "processRequestDeliveryOutbox_"
+        "processRequestDeliveryOutbox_",
+        "handleSignedBunchNoteDelivery_"
       ],
       "supportingFiles": {
         "supabase/migrations/20261026170000_agdata_v2371_request_suspend_email_and_lock_cleanup.sql": [
           "claim_request_delivery_events",
           "ph_request_delivery_outbox"
+        ],
+        "supabase/migrations/20261027211049_agdata_v2390_universal_fill_tag_bunch_dylan_reclass_lot_cap.sql": [
+          "ph_location_sales_notes",
+          "bunch_note_private.recipients_for_reports",
+          "reclass-move-up-open-stock-v2390"
         ]
       }
     },
