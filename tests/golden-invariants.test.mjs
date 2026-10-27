@@ -1606,3 +1606,29 @@ test('Invariant 55 (Apps Script Version Capacity Never Blocks Authorized HEAD Sy
   assert.equal(result.versionCreated, false);
   assert.equal(result.health, null);
 });
+
+test('Invariant 56 (Reclass Destination Preserves Season Stock and Location Total)', () => {
+  const lineage = { ITEMCODE: '004103.010.1', CONTSIZE: '#1', SOURCE: 'Drive' };
+  const rows = [
+    { ...lineage, UNIQUE_ID: 'source', LOCATIONCODE: 'C.15.000', LOTCODE: '27.S1', SEASON: 'S1', PTRONHAND: '808', PTRAVAILABLE: '808', S_LTS: '529' },
+    { ...lineage, UNIQUE_ID: 'other', LOCATIONCODE: 'C.15.000', LOTCODE: '27.U1', SEASON: 'U1', PTRONHAND: '70', PTRAVAILABLE: '70', S_LTS: '70' },
+    { ...lineage, UNIQUE_ID: 'dest-sibling', LOCATIONCODE: 'F.16.000', LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '113', PTRAVAILABLE: '113', S_LTS: '-276' }
+  ];
+  const context = vm.createContext({
+    parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
+    buildItemInquiryViewModel: (_item, nextRows) => ({ rows: nextRows, locationRows: [] })
+  });
+  vm.runInContext(functionSource('assets/app-runtime.js', 'reclassStockSeason') + '\n'
+    + functionSource('assets/app-runtime.js', 'buildOptimisticInventoryReclassMoveModel'), context);
+  const result = context.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows } }, {
+    commandId: 'golden-reclass-destination', moves: [{ source: { uniqueId: 'source' },
+      lines: [{ direction: 'move_up', destinationSeason: 'F1', quantity: 276 }] }]
+  }).model.rows;
+  const destination = result.find(row => row.LOCATIONCODE === 'C.15.000' && row.LOTCODE === '27.F1');
+  assert.ok(destination, 'same-location destination is inserted into the visible model');
+  assert.deepEqual([destination.PTRONHAND, destination.PTRREVIEWED, destination.PTRAVAILABLE, destination.S_LTS, destination.LOC_ON_HAND],
+    ['276', '0', '276', '0', '878']);
+  assert.equal(result.find(row => row.UNIQUE_ID === 'source').S_LTS, '253');
+  assert.equal(result.find(row => row.UNIQUE_ID === 'dest-sibling').S_LTS, '0');
+  assert.equal(rows[0].PTRONHAND, '808', 'the canonical source remains available for rollback');
+});

@@ -1181,13 +1181,17 @@ test('camera activity blocks shell reload and partial master refresh preserves D
 
 test('Reclass card preview publishes before network completion and rolls back only its own rows', () => {
  const original={UNIQUE_ID:'s',ITEMCODE:'i',LOTCODE:'27.S1',PTRONHAND:'495',S_LTS:'785'};
+ const target={UNIQUE_ID:'pending-reclass-preview-target',ITEMCODE:'i',LOCATIONCODE:'C.12.001',LOTCODE:'27.F1',SEASON:'F1',PTRONHAND:'276',PTRAVAILABLE:'276',PTRREVIEWED:'0',S_LTS:'0'};
  const cav={UNIQUE_ID:'cav',ITEMCODE:'i',SEASON:'S1',PTRAVAILABLE:'785'};
  const ctx=vm.createContext({fullInventory:[{...original}],avOpenInventory:[{...original}],cavInventory:[cav],getCurrentVisibleViewId:()=> 'drive',queueInteractiveViewRender(){},publishArgosInventoryTransactionReturnedRows(){},removeRealtimeRow:(rows,uid)=>{const i=rows.findIndex(r=>r.UNIQUE_ID===uid);if(i>=0)rows.splice(i,1);}});
  ctx.applyArgosInventoryTransactionReturnedRow=(row)=>{const value={...row};for(const rows of [ctx.fullInventory,ctx.avOpenInventory]){const i=rows.findIndex(r=>r.UNIQUE_ID===row.UNIQUE_ID);if(i>=0)rows[i]={...value};else rows.push({...value});}return ctx.fullInventory.find(r=>r.UNIQUE_ID===row.UNIQUE_ID);};
  vm.runInContext(source('reclassStockSeason')+source('applyReclassSeasonStocks')+source('publishOptimisticReclassRows'),ctx);
- const pending={command:{commandId:'preview'}};const start=performance.now();ctx.publishOptimisticReclassRows(pending,[{...original,PTRONHAND:'295',S_LTS:'585',SEASON_OH:'295'}]);
- assert.equal(ctx.fullInventory[0].PTRONHAND,'295');assert.equal(cav.PTRAVAILABLE,'585');assert.ok(performance.now()-start<100);
+ const pending={command:{commandId:'preview'}};const start=performance.now();ctx.publishOptimisticReclassRows(pending,[{...original,PTRONHAND:'295',S_LTS:'585',SEASON_OH:'295'},target]);
+ assert.equal(ctx.fullInventory[0].PTRONHAND,'295');assert.equal(cav.PTRAVAILABLE,'585');
+ assert.equal(ctx.fullInventory.find(row=>row.UNIQUE_ID===target.UNIQUE_ID).LOTCODE,'27.F1','a new optimistic destination is published into Drive inventory immediately');
+ assert.ok(performance.now()-start<100);
  ctx.publishOptimisticReclassRows(pending);assert.equal(ctx.fullInventory[0].PTRONHAND,'495');assert.equal(cav.PTRAVAILABLE,'785');
+ assert.equal(ctx.fullInventory.some(row=>row.UNIQUE_ID===target.UNIQUE_ID),false,'rollback removes only the temporary target row');
 });
 
 test('v2.3.54 keeps Drive evidence location-stable, thumbnails recoverable, and Eval #2 uncapped', () => {

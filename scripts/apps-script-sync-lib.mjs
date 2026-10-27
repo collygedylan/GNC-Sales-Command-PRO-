@@ -90,6 +90,57 @@ export async function listAllAppsScriptVersions(script, scriptId) {
   return versions;
 }
 
+export async function listAllAppsScriptDeployments(script, scriptId) {
+  const deployments = [];
+  let pageToken;
+  do {
+    const response = await script.projects.deployments.list({
+      scriptId,
+      pageSize: 50,
+      ...(pageToken ? { pageToken } : {})
+    });
+    deployments.push(...(Array.isArray(response?.data?.deployments) ? response.data.deployments : []));
+    pageToken = String(response?.data?.nextPageToken || '').trim() || undefined;
+  } while (pageToken);
+  return deployments;
+}
+
+async function tryDeleteOldestUnusedVersion({ script, scriptId, versions, deleteVersionRequest, beforeMutation, logger }) {
+  if (typeof deleteVersionRequest !== 'function' || typeof script?.projects?.deployments?.list !== 'function') return null;
+  let deployments;
+  try { deployments = await listAllAppsScriptDeployments(script, scriptId); }
+  catch (error) {
+    logger.warn(`WARNING: APPS_SCRIPT_VERSION_DELETE_SKIPPED; deployment references unavailable (${Number(error?.response?.status) || 'request error'}).`);
+    return null;
+  }
+  const deployedVersions = new Set(deployments.map(deployment => Number(deployment?.deploymentConfig?.versionNumber))
+    .filter(version => Number.isSafeInteger(version) && version > 0));
+  const latestExistingVersion = Math.max(0, ...versions.map(version => Number(version?.versionNumber))
+    .filter(version => Number.isSafeInteger(version) && version > 0));
+  const candidate = versions.map(version => Number(version?.versionNumber))
+    .filter(version => Number.isSafeInteger(version) && version > 0 && version !== latestExistingVersion && !deployedVersions.has(version))
+    .sort((a, b) => a - b)[0];
+  if (!candidate) return null;
+  // Reauthorize immediately before this optional destructive operation.
+  await beforeMutation();
+  const url = `https://script.googleapis.com/v1/projects/${encodeURIComponent(String(scriptId))}/versions/${candidate}`;
+  try {
+    const response = await deleteVersionRequest({ url, method: 'DELETE' });
+    const status = Number(response?.status ?? response?.statusCode);
+    if (Number.isFinite(status) && (status < 200 || status >= 300)) {
+      const error = new Error('Apps Script version delete returned a non-success status.');
+      Object.assign(error, { response: { status } });
+      throw error;
+    }
+    return candidate;
+  } catch (error) {
+    const status = Number(error?.response?.status ?? error?.statusCode ?? error?.code);
+    const reason = [404, 405, 501].includes(status) ? 'unsupported API response' : 'delete was unavailable';
+    logger.warn(`WARNING: APPS_SCRIPT_VERSION_DELETE_SKIPPED; ${reason} (${Number.isFinite(status) ? status : 'request error'}).`);
+    return null;
+  }
+}
+
 function healthUrlForDeployment(deploymentId) {
   return `https://script.google.com/macros/s/${encodeURIComponent(String(deploymentId || '').trim())}/exec`;
 }
@@ -201,6 +252,7 @@ export async function syncAppsScriptProject({
   sleep = delay,
   healthAttempts = 12,
   healthRetryDelayMs = 5000,
+  deleteVersionRequest,
   beforeMutation = async () => {}
 }) {
   if (!scriptId) throw syncError('APPS_SCRIPT_SCRIPT_ID_MISSING');
@@ -239,15 +291,35 @@ export async function syncAppsScriptProject({
   const description = release ? `${release} (${String(githubSha).slice(0, 7)})` : `GitHub Code.gs sync ${String(githubSha).slice(0, 7)}`;
   let versionCapacityExhausted = versionCount >= APPS_SCRIPT_VERSION_LIMIT;
   let versionNumber;
-  if (!versionCapacityExhausted) {
+  let deletedVersionNumber = null;
+  const createVersion = async () => {
     await beforeMutation();
     try {
       const versionResponse = await script.projects.versions.create({ scriptId, requestBody: { description } });
       versionNumber = Number(versionResponse?.data?.versionNumber);
+      return true;
     } catch (error) {
       const message = [error?.code, error?.message, error?.response?.data?.error?.message].join(' ');
       if (!/APPS_SCRIPT_VERSION_CAPACITY_EXHAUSTED|quota exceeded|maximum number of versions|version.{0,80}(?:limit|quota)/i.test(message)) throw error;
       versionCapacityExhausted = true;
+      return false;
+    }
+  };
+  if (versionCapacityExhausted) {
+    deletedVersionNumber = await tryDeleteOldestUnusedVersion({ script, scriptId, versions, deleteVersionRequest, beforeMutation, logger });
+    if (deletedVersionNumber != null) {
+      versions.splice(versions.findIndex(version => Number(version.versionNumber) === deletedVersionNumber), 1);
+      versionCapacityExhausted = versions.length >= APPS_SCRIPT_VERSION_LIMIT;
+    }
+    if (!versionCapacityExhausted) await createVersion();
+  } else if (!(await createVersion())) {
+    // A concurrent publisher can fill the final slot after the initial list.
+    // Attempt one guarded deletion and one retry, then use the existing fallback.
+    deletedVersionNumber = await tryDeleteOldestUnusedVersion({ script, scriptId, versions, deleteVersionRequest, beforeMutation, logger });
+    if (deletedVersionNumber != null) {
+      versions.splice(versions.findIndex(version => Number(version.versionNumber) === deletedVersionNumber), 1);
+      versionCapacityExhausted = versions.length >= APPS_SCRIPT_VERSION_LIMIT;
+      if (!versionCapacityExhausted) await createVersion();
     }
   }
   if (versionCapacityExhausted) {
@@ -278,7 +350,7 @@ export async function syncAppsScriptProject({
 
   if (versionCapacityExhausted) {
     return { ok: true, headUpdated: true, versionCapacityExhausted: true, versionCreated: false,
-      versionCountBefore: versionCount, versionCountAfter: versionCount, sourceUpdated: true,
+      versionCountBefore: versionCount, versionCountAfter: versions.length, sourceUpdated: true,
       deploymentUpdated: true, versionNumber, deployedVersionNumber, health: null };
   }
 
@@ -300,7 +372,7 @@ export async function syncAppsScriptProject({
     versionCapacityExhausted: false,
     versionCreated: true,
     versionCountBefore: versionCount,
-    versionCountAfter: versionCount + 1,
+    versionCountAfter: versions.length + 1,
     sourceUpdated: true,
     deploymentUpdated: true,
     versionNumber,

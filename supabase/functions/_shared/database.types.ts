@@ -10427,6 +10427,7 @@ export type Database = {
           av_rule_priority_snapshot: string | null
           av_rule_spec_updated_at: string | null
           avg_price_eunit_shipped: string | null
+          baseline_on_hand: number | null
           bay: string | null
           blockalpha: string | null
           blocknumber: string | null
@@ -10523,6 +10524,7 @@ export type Database = {
           hsreasonbegin: string | null
           hz: string | null
           idgroup: string | null
+          initial_photo_match_qty: number | null
           initial_ptr: string | null
           insurancegroup: string | null
           intercopo: string | null
@@ -10536,7 +10538,9 @@ export type Database = {
           largeptrqty: string | null
           last_updated: string | null
           listprice: string | null
+          loc_match_pct: number | null
           loc_match_qty: string | null
+          loc_photo_match: number | null
           locationcode: string | null
           locationnote: string | null
           locationnotedate: string | null
@@ -10559,9 +10563,14 @@ export type Database = {
           ordertotal: string | null
           oversellpercentage: string | null
           photo_date: string | null
+          photo_expires_at: string | null
           photo_link: string | null
           photo_name: string | null
+          photo_url: string | null
+          photos: Json
           pic_note: string | null
+          pick: string | null
+          pick_note: string | null
           picknote: string | null
           planstart: string | null
           plantgroupcode: string | null
@@ -10643,6 +10652,7 @@ export type Database = {
           av_rule_priority_snapshot?: string | null
           av_rule_spec_updated_at?: string | null
           avg_price_eunit_shipped?: string | null
+          baseline_on_hand?: number | null
           bay?: string | null
           blockalpha?: string | null
           blocknumber?: string | null
@@ -10739,6 +10749,7 @@ export type Database = {
           hsreasonbegin?: string | null
           hz?: string | null
           idgroup?: string | null
+          initial_photo_match_qty?: number | null
           initial_ptr?: string | null
           insurancegroup?: string | null
           intercopo?: string | null
@@ -10752,7 +10763,9 @@ export type Database = {
           largeptrqty?: string | null
           last_updated?: string | null
           listprice?: string | null
+          loc_match_pct?: number | null
           loc_match_qty?: string | null
+          loc_photo_match?: number | null
           locationcode?: string | null
           locationnote?: string | null
           locationnotedate?: string | null
@@ -10775,9 +10788,14 @@ export type Database = {
           ordertotal?: string | null
           oversellpercentage?: string | null
           photo_date?: string | null
+          photo_expires_at?: string | null
           photo_link?: string | null
           photo_name?: string | null
+          photo_url?: string | null
+          photos?: Json
           pic_note?: string | null
+          pick?: string | null
+          pick_note?: string | null
           picknote?: string | null
           planstart?: string | null
           plantgroupcode?: string | null
@@ -10859,6 +10877,7 @@ export type Database = {
           av_rule_priority_snapshot?: string | null
           av_rule_spec_updated_at?: string | null
           avg_price_eunit_shipped?: string | null
+          baseline_on_hand?: number | null
           bay?: string | null
           blockalpha?: string | null
           blocknumber?: string | null
@@ -10955,6 +10974,7 @@ export type Database = {
           hsreasonbegin?: string | null
           hz?: string | null
           idgroup?: string | null
+          initial_photo_match_qty?: number | null
           initial_ptr?: string | null
           insurancegroup?: string | null
           intercopo?: string | null
@@ -10968,7 +10988,9 @@ export type Database = {
           largeptrqty?: string | null
           last_updated?: string | null
           listprice?: string | null
+          loc_match_pct?: number | null
           loc_match_qty?: string | null
+          loc_photo_match?: number | null
           locationcode?: string | null
           locationnote?: string | null
           locationnotedate?: string | null
@@ -10991,9 +11013,14 @@ export type Database = {
           ordertotal?: string | null
           oversellpercentage?: string | null
           photo_date?: string | null
+          photo_expires_at?: string | null
           photo_link?: string | null
           photo_name?: string | null
+          photo_url?: string | null
+          photos?: Json
           pic_note?: string | null
+          pick?: string | null
+          pick_note?: string | null
           picknote?: string | null
           planstart?: string | null
           plantgroupcode?: string | null

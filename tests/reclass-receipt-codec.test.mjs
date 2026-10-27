@@ -24,14 +24,14 @@ const encode = (full = receipt) => ({ ...full, rowEncoding: 'master-null-elision
   rows: full.rows.map(({ table, row }) => ({ table, values: Object.fromEntries(Object.entries(row).filter(([, value]) => value !== null)) })) });
 const invalidEncoding = error => error instanceof Error && error.message === 'INVENTORY_RECLASS_RECEIPT_ENCODING_INVALID';
 
-test('compact receipt reconstructs all 213 fields without losing zero, empty strings, nulls or false metadata', () => {
-  assert.equal(columns.length, 213);
+test('compact receipt reconstructs every generated field without losing zero, empty strings, nulls or false metadata', () => {
+  assert.equal(columns.length, 223);
   const wire = encode();
   const original = structuredClone(wire);
   const decoded = decodeInventoryReclassReceipt(wire);
   assert.deepEqual(decoded, receipt);
   assert.deepEqual(wire, original, 'decoding never mutates the wire receipt');
-  assert.equal(Object.keys(decoded.rows[0].row).length, 213);
+  assert.equal(Object.keys(decoded.rows[0].row).length, columns.length);
   assert.equal(decoded.rows[0].row.flyer_match, 0);
   assert.equal(decoded.rows[0].row.av_note, '');
   assert.equal(decoded.rows[0].row.photo_link, null);
@@ -96,7 +96,7 @@ test('200-row receipts retain every field and isolate reconstructed rows and ret
   assert.deepEqual(wire, untouchedWire, 'failure in the last row cannot modify the original response');
 });
 
-test('supplied-value and omission checks match full-row validation across all 213 generated fields', () => {
+test('supplied-value and omission checks match full-row validation across every generated field', () => {
   const schema = contracts.tables.ph_master_inventory.row;
   const base = encode();
   const candidates = [null, undefined, false, true, 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY,

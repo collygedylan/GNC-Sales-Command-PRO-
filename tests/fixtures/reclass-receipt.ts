@@ -11,7 +11,7 @@ export function compactReclassReceiptFixture(receipt: JsonRecord): JsonRecord {
   const schema = contracts.tables.ph_master_inventory.row;
   if (typeof schema !== 'object' || !('object' in schema)) throw new Error('RECLASS_FIXTURE_SCHEMA_INVALID');
   const rowColumns = Object.keys(schema.object).sort();
-  if (rowColumns.length !== 213 || !Array.isArray(receipt.rows) || receipt.rows.length < 2 || receipt.rows.length > 200) {
+  if (!Array.isArray(receipt.rows) || receipt.rows.length < 2 || receipt.rows.length > 200) {
     throw new Error('RECLASS_FIXTURE_RECEIPT_INVALID');
   }
   const rows = receipt.rows.map(entry => {

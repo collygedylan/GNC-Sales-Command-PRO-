@@ -48037,6 +48037,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "baseline_on_hand": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
           "bay": {
             "schema": {
               "oneOf": [
@@ -48805,6 +48813,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "initial_photo_match_qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
           "initial_ptr": {
             "schema": {
               "oneOf": [
@@ -48909,10 +48925,26 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "loc_match_pct": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
           "loc_match_qty": {
             "schema": {
               "oneOf": [
                 "string",
+                "null"
+              ]
+            }
+          },
+          "loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
                 "null"
               ]
             }
@@ -49093,6 +49125,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "photo_expires_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "photo_link": {
             "schema": {
               "oneOf": [
@@ -49109,7 +49149,34 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "photo_url": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "photos": {
+            "schema": "json"
+          },
           "pic_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "pick": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "pick_note": {
             "schema": {
               "oneOf": [
                 "string",
@@ -49765,6 +49832,15 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "baseline_on_hand": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "bay": {
             "schema": {
               "oneOf": [
@@ -50629,6 +50705,15 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "initial_photo_match_qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "initial_ptr": {
             "schema": {
               "oneOf": [
@@ -50746,10 +50831,28 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "loc_match_pct": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "loc_match_qty": {
             "schema": {
               "oneOf": [
                 "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
                 "null"
               ]
             },
@@ -50953,6 +51056,15 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "photo_expires_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "photo_link": {
             "schema": {
               "oneOf": [
@@ -50971,7 +51083,38 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "photo_url": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photos": {
+            "schema": "json",
+            "optional": true
+          },
           "pic_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "pick": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "pick_note": {
             "schema": {
               "oneOf": [
                 "string",
@@ -51689,6 +51832,15 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "baseline_on_hand": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "bay": {
             "schema": {
               "oneOf": [
@@ -52553,6 +52705,15 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "initial_photo_match_qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "initial_ptr": {
             "schema": {
               "oneOf": [
@@ -52670,10 +52831,28 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "loc_match_pct": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "loc_match_qty": {
             "schema": {
               "oneOf": [
                 "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
                 "null"
               ]
             },
@@ -52877,6 +53056,15 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "photo_expires_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "photo_link": {
             "schema": {
               "oneOf": [
@@ -52895,7 +53083,38 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "photo_url": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photos": {
+            "schema": "json",
+            "optional": true
+          },
           "pic_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "pick": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "pick_note": {
             "schema": {
               "oneOf": [
                 "string",

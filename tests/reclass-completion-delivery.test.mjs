@@ -41,12 +41,14 @@ test('Reclass move service uses one idempotent move-and-delivery RPC; status rem
   assert.equal(calls.length, 0, 'caller-supplied actor identity is rejected before database dispatch');
 });
 
-function appsScriptHarness(verifiedPayload) {
+function appsScriptHarness(verifiedPayload, authoritativeRecipients = ['dylan@example.test', 'megan@example.test', 'sharon@example.test', 'actor@example.test']) {
   const backend = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+  const recipientsStart = backend.indexOf('function getReclassInquiryEmailRecipients_(payload)');
+  const recipientsEnd = backend.indexOf('\nfunction ', recipientsStart + 1);
   const start = backend.indexOf('function handleSignedInventoryReclassMoveDelivery_(');
   const end = backend.indexOf('\nfunction ', start + 1);
-  assert.ok(start >= 0 && end > start);
-  const state = { receipts: new Map(), intents: new Map(), sends: [], rpcCalls: [] };
+  assert.ok(recipientsStart >= 0 && recipientsEnd > recipientsStart && start >= 0 && end > start);
+  const state = { receipts: new Map(), intents: new Map(), sends: [], rpcCalls: [], recipientCalls: [] };
   const props = {
     getProperty: key => state.intents.get(key) || null,
     setProperty: (key, value) => state.intents.set(key, value),
@@ -60,6 +62,11 @@ function appsScriptHarness(verifiedPayload) {
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     PropertiesService: { getScriptProperties: () => props },
     getRequestDeliveryReceipt_: id => state.receipts.get(id) || null,
+    callSupabaseRpc_: (name, params) => {
+      state.recipientCalls.push({ name, params });
+      if (name !== 'get_reclass_delivery_recipients_v1') throw new Error('unexpected recipient RPC');
+      return authoritativeRecipients;
+    },
     findSentRequestDeliveryByMessageId_: id => {
       const sent = state.sentByMessageId?.get(id);
       // Mirrors getGmailDeliveryMetadata_: Gmail search returns message headers
@@ -86,6 +93,8 @@ function appsScriptHarness(verifiedPayload) {
         actorDisplay: receipt.actorDisplayName, requestActionLabel: 'Reclass Move Completed', completedRevision: receipt.revision,
         completedMoveSummary: receipt.moves };
     },
+    buildReclassItemInquiryPdf_: () => ({ type: 'application/pdf', filename: 'GNC_PH_Reclass_Completed_Cobalt_and_Gold_St_Johns_Wort.pdf',
+      htmlOutput: 'ITEM SPEC H/S Priority Loc Note Available' }),
     buildReclassInquiryEmailSubject_: model => `${model.identity.contsize} ${model.identity.commonname} Reclass - Move Completed`,
     buildReclassInquiryCompactReportHtml_: model => '<html>GNC PH Reclass Item Inquiry ITEM SPEC H/S Priority Loc Note Available ' + model.identity.itemspec + '</html>',
     buildReclassInquiryReportText_: () => 'GNC PH Reclass Item Inquiry completed report',
@@ -104,14 +113,14 @@ function appsScriptHarness(verifiedPayload) {
       return result;
     },
   });
-  vm.runInContext(backend.slice(start, end), context);
+  vm.runInContext(`${backend.slice(recipientsStart, recipientsEnd)}\n${backend.slice(start, end)}`, context);
   return { context, state };
 }
 
 const verified = {
   contractVersion: 'inventory-reclass-move-completed-v1', commandId, requestId, actorProfileId: uuid,
   actorUsername: 'tester', actorDisplayName: 'Dylan <Ops>', actorEmail: 'actor@example.test', revision: '42',
-  deliveryRecipients: ['actor@example.test', 'dylan@example.test', 'megan@example.test'],
+  deliveryRecipients: ['dylan@example.test', 'megan@example.test', 'sharon@example.test', 'actor@example.test'],
   appliedRows: [
     { table: 'ph_master_inventory', row: { unique_id: 'source-1', itemcode: '006138.051.1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', season: 'F1', lotcode: '27.F1', locationcode: 'D.08.001', ptronhand: '8', ptravailable: '6', itemspec: '18 inch', holdstopcode: 'H', holdstopreason: 'test', priority: '1', locationnote: 'retied', salesnote: 'confirm' } },
     { table: 'ph_master_inventory', row: { unique_id: 'dest-1', itemcode: '006138.051.1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', season: 'U1', lotcode: '27.U1', locationcode: 'D.08.001', ptronhand: '2', ptravailable: '2', itemspec: '18 inch', holdstopcode: null, holdstopreason: null, priority: '1', locationnote: 'retied', salesnote: 'confirm' } },
@@ -121,13 +130,16 @@ const verified = {
     destination: { unique_id: 'dest-1', commonname: 'Cobalt and Gold St. John\'s Wort', contsize: '3DP', itemcode: '006138.051.1', season: 'U1', lotcode: '27.U1', locationcode: 'D.08.001' } }],
 };
 
-test('Apps Script sends the canonical three recipients, attaches the full report, omits UUID from the subject, and recovers without a second send', () => {
+test('Apps Script sends the canonical manager recipients plus actor, attaches report, and recovers without a second send', () => {
   const { context, state } = appsScriptHarness(verified);
   const delivery = { eventId: '41df62a1-46d5-4d89-9e90-98f28f4647a8', eventKey,
     eventType: 'inventory_reclass_move_completed', leaseToken: '51df62a1-46d5-4d89-9e90-98f28f4647a8',
     requestId, messageIdHeader, payload: { ...verified, deliveryRecipients: ['attacker@evil.test'] } };
   const first = context.handleSignedInventoryReclassMoveDelivery_(delivery);
   assert.equal(first.ok, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(state.recipientCalls)), [
+    { name: 'get_reclass_delivery_recipients_v1', params: { p_actor_username: verified.actorUsername } }
+  ]);
   assert.equal(state.sends.length, 1);
   assert.deepEqual(state.sends[0].toArray, verified.deliveryRecipients);
   assert.deepEqual(state.sends[0].requiredRecipientEmails, verified.deliveryRecipients);
@@ -194,8 +206,8 @@ test('Apps Script rejects event, actor, request, recipient, and malformed moveme
   const delivery = { eventId: '41df62a1-46d5-4d89-9e90-98f28f4647a8', eventKey,
     eventType: 'inventory_reclass_move_completed', leaseToken: '51df62a1-46d5-4d89-9e90-98f28f4647a8',
     requestId, messageIdHeader, payload: verified };
-  const { context, state } = appsScriptHarness({ ...verified, deliveryRecipients: ['actor@example.test', 'actor@example.test'] });
-  assert.throws(() => context.handleSignedInventoryReclassMoveDelivery_(delivery), /RECIPIENTS_INVALID/);
+  const { context, state } = appsScriptHarness(verified, ['dylan@example.test', 'megan@example.test', 'sharon@example.test']);
+  assert.throws(() => context.handleSignedInventoryReclassMoveDelivery_(delivery), /INVENTORY_RECLASS_MOVE_RECIPIENTS_INVALID/);
   assert.equal(state.sends.length, 0);
   assert.equal(state.rpcCalls.length, 1);
 

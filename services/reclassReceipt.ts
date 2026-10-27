@@ -3,7 +3,6 @@ import { matchesSchema } from './database-contract-runtime.ts';
 
 type JsonRecord = Record<string, unknown>;
 const ROW_ENCODING = 'master-null-elision-v1';
-const MASTER_COLUMN_COUNT = 213;
 const masterRowSchema = contracts.tables.ph_master_inventory.row;
 const masterFields = typeof masterRowSchema === 'object' && 'object' in masterRowSchema ? masterRowSchema.object : null;
 const masterColumns = masterFields ? Object.freeze(Object.keys(masterFields).sort()) : [];
@@ -31,8 +30,7 @@ export function decodeInventoryReclassReceipt(value: unknown): JsonRecord {
   if (!fields) return invalid();
   const columns = masterColumns;
   const rowColumns = value.rowColumns;
-  if (columns.length !== MASTER_COLUMN_COUNT || !Array.isArray(rowColumns)
-    || rowColumns.length !== columns.length
+  if (!Array.isArray(rowColumns) || rowColumns.length !== columns.length
     || !columns.every((column, index) => rowColumns[index] === column)
     || !Array.isArray(value.rows) || value.rows.length < 2 || value.rows.length > 200) return invalid();
 

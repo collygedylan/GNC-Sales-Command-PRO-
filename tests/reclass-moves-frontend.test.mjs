@@ -23,6 +23,12 @@ function extractAppFunction(name) {
   throw new Error(`Unclosed function ${name}`);
 }
 
+function extractApplyReclassMoveFunction() {
+  // These tests isolate the command/status state machine. Publication of the
+  // optimistic row projection is exercised separately by the hydration tests.
+  return `function publishOptimisticReclassRows() { return true; }\nfunction applyReclassSeasonStocks() { return true; }\n${extractAppFunction('applyArgosInventoryReclassMoveCommand')}`;
+}
+
 const source = { uniqueId: 'source-uid', identity: {
   unique_id: 'source-uid', itemcode: 'ITEM-1', contsize: '#3', locationcode: 'C.12.001',
   lotcode: '27.F1', season: 'F1', ptronhand: '50', ptravailable: '40',
@@ -59,20 +65,46 @@ test('receipt movement and row identities must match the submitted command', () 
   assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt(receipt), command), /COMMAND_MISMATCH/);
 });
 
-test('confirmed source quantities must equal the submitted movement subtraction', () => {
+test('confirmed source quantities accept the server-locked result without comparing the stale client snapshot', () => {
   const command = { commandId: 'reclass-command-quantity-01', expectedRevision: 41,
     moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
   const valid = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId });
   assert.equal(assertInventoryReclassMoveReceiptMatchesCommand(valid, command).requestId, 'request-1');
   const wrongOnHand = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId,
     rows: [{ ...receipt.rows[0], row: { ...sourceRow, ptronhand: '31' } }, receipt.rows[1]] });
-  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(wrongOnHand, command), /SOURCE_PTRONHAND_MISMATCH/);
+  assert.equal(assertInventoryReclassMoveReceiptMatchesCommand(wrongOnHand, command).rows[0].row.ptronhand, '31',
+    'server-locked stock is authoritative even when the client snapshot was stale');
   const malformedAvailable = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId,
     rows: [{ ...receipt.rows[0], row: { ...sourceRow, ptravailable: '20x' } }, receipt.rows[1]] });
   assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(malformedAvailable, command), /SOURCE_PTRAVAILABLE_MISMATCH/);
+  const negativeAvailable = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId,
+    rows: [{ ...receipt.rows[0], row: { ...sourceRow, ptravailable: '-1' } }, receipt.rows[1]] });
+  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(negativeAvailable, command), /SOURCE_PTRAVAILABLE_MISMATCH/);
 });
 
-test('source stock conservation compares decimal quantities at a common scale', () => {
+test('receipt source resolves a stale UID through one normalized item/location/lot tuple', () => {
+  const command = { commandId: 'reclass-command-stale-uid-01', expectedRevision: 41,
+    moves: [{ source: { uniqueId: 'stale-source-uid', identity: { ...source.identity, unique_id: 'stale-source-uid',
+      itemcode: 'item-1', locationcode: 'c.12.001', lotcode: '27.f1', ptronhand: '900', ptravailable: '700' } },
+    lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  const staleUidReceipt = { ...receipt, commandId: command.commandId,
+    movements: [{ ...receipt.movements[0], sourceUniqueId: 'source-uid' }] };
+  const matched = assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt(staleUidReceipt), command);
+  assert.equal(matched.rows[0].row.unique_id, 'source-uid');
+  assert.equal(matched.rows[0].row.ptronhand, '30', 'server-locked current quantities are accepted');
+});
+
+test('stale UID fallback rejects an ambiguous normalized source tuple', () => {
+  const command = { commandId: 'reclass-command-ambiguous-01', expectedRevision: 41,
+    moves: [{ source: { uniqueId: 'stale-source-uid', identity: { ...source.identity, unique_id: 'stale-source-uid' } },
+      lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
+  const ambiguous = { ...receipt, commandId: command.commandId,
+    rows: [...receipt.rows, { table: 'ph_master_inventory', row: { ...sourceRow, unique_id: 'source-duplicate' } }] };
+  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt(ambiguous), command),
+    /SOURCE_AMBIGUOUS/);
+});
+
+test('server-locked decimal quantities remain authoritative when the client snapshot differs', () => {
   const command = { commandId: 'reclass-command-decimal-scale-01', expectedRevision: 41,
     moves: [{ source: { uniqueId: 'source-uid', identity: { ...source.identity, ptronhand: '1,000.0', ptravailable: '1000.00' } },
       lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 610 }] }] };
@@ -83,7 +115,7 @@ test('source stock conservation compares decimal quantities at a common scale', 
   const wrongScaleValue = confirmedInventoryReclassMoveReceipt({ ...receipt, commandId: command.commandId,
     movements: [{ ...receipt.movements[0], quantity: 610 }],
     rows: [{ table: 'ph_master_inventory', row: { ...sourceRow, ptronhand: '389.999', ptravailable: '390.000' } }, receipt.rows[1]] });
-  assert.throws(() => assertInventoryReclassMoveReceiptMatchesCommand(wrongScaleValue, command), /SOURCE_PTRONHAND_MISMATCH/);
+  assert.equal(assertInventoryReclassMoveReceiptMatchesCommand(wrongScaleValue, command).rows[0].row.ptronhand, '389.999');
 });
 
 test('unknown outcome retries can replay the exact same command and body', async () => {
@@ -116,7 +148,7 @@ test('pending move commands persist before dispatch and remain isolated per acco
     getInventoryReclassMovesService: () => ({ submit: () => dispatched, status: async () => ({ status: 'missing' }) }),
     persistPendingArgosInventoryReclassMove: null, readPendingArgosInventoryReclassMove: null };
   vm.createContext(ctx);
-  vm.runInContext(`${extractAppFunction('readPendingArgosInventoryReclassMove')}\n${extractAppFunction('persistPendingArgosInventoryReclassMove')}\n${extractAppFunction('applyArgosInventoryReclassMoveCommand')}`, ctx);
+  vm.runInContext(`${extractAppFunction('readPendingArgosInventoryReclassMove')}\n${extractAppFunction('persistPendingArgosInventoryReclassMove')}\n${extractApplyReclassMoveFunction()}`, ctx);
   const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
   const inFlight = ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'account-a');
   assert.equal(ctx.readPendingArgosInventoryReclassMove('account-a').command.commandId, command.commandId,
@@ -160,7 +192,7 @@ test('a malformed success receipt remains uncertain until status confirms the co
     confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
     retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null };
   vm.createContext(ctx);
-  vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+  vm.runInContext(extractApplyReclassMoveFunction(), ctx);
   const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
   await assert.rejects(ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor'), error => error.inventoryMovePending === true);
   assert.equal(state.pendingReclassMove.uncertain, true);
@@ -351,7 +383,7 @@ test('editing actions before the 610-unit preview retains the pending body with 
     'getArgosReclassRowRenderSignature', 'getArgosReclassProposalRenderSignature', 'getArgosReclassRowBodyId',
     'setArgosReclassAttributeIfChanged', 'renderArgosReclassInquiryEditor', 'reconcileArgosReclassCardDraftState',
     'findArgosReclassCardControl', 'reconcileArgosReclassInquiryMarkup', 'renderArgosInventoryTransactionInquiryModel',
-    'buildOptimisticInventoryReclassMoveModel', 'setArgosReclassMoveInputsLocked']) {
+    'reclassStockSeason', 'buildOptimisticInventoryReclassMoveModel', 'setArgosReclassMoveInputsLocked']) {
     vm.runInContext(extractAppFunction(name), ctx);
   }
   try {
@@ -581,7 +613,7 @@ test('optimistic move worksheet subtracts source stock and uses a temporary targ
   const ctx = { parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
     buildItemInquiryViewModel: (_item, rows) => ({ rows, locationRows: rows.map(row => ({ unique_id: row.UNIQUE_ID, sourceRow: row, values: row })) }) };
   vm.createContext(ctx);
-  vm.runInContext(extractAppFunction('buildOptimisticInventoryReclassMoveModel'), ctx);
+  vm.runInContext(`${extractAppFunction('reclassStockSeason')}\n${extractAppFunction('buildOptimisticInventoryReclassMoveModel')}`, ctx);
   const result = ctx.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows: [sourceRow] } }, {
     commandId: 'reclass-command-0007', moves: [{ source: { uniqueId: 'source-uid' }, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }]
   });
@@ -591,6 +623,35 @@ test('optimistic move worksheet subtracts source stock and uses a temporary targ
   assert.equal(result.model.rows[1].ptronhand, '20');
   assert.match(result.model.rows[1].unique_id, /^pending-reclass-/);
   assert.notEqual(result.model.rows[1].unique_id, 'server-target-uid', 'the UI does not guess the server-owned target ID');
+});
+
+test('optimistic season move inserts same-location destination with season Open Stock and stable location total', () => {
+  const lineage = { warehousei: 'WH1', ITEMCODE: '004103.010.1', CONTSIZE: '#1', SOURCE: 'seed', DESIGITEM: 'D1' };
+  const rows = [
+    { ...lineage, UNIQUE_ID: 'source-s1', LOCATIONCODE: 'C.15.000', LOTCODE: '27.S1', SEASON: 'S1', PTRONHAND: '808', PTRAVAILABLE: '808', S_LTS: '529', LOC_ON_HAND: '878' },
+    { ...lineage, UNIQUE_ID: 'other-c-lot', LOCATIONCODE: 'C.15.000', LOTCODE: '27.S2', SEASON: 'S2', PTRONHAND: '70', PTRAVAILABLE: '70', S_LTS: '0', LOC_ON_HAND: '878' },
+    { ...lineage, UNIQUE_ID: 'f16-f1', LOCATIONCODE: 'F.16.000', LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '113', PTRAVAILABLE: '113', S_LTS: '-276' },
+    { ...lineage, UNIQUE_ID: 'h06-f1', LOCATIONCODE: 'H.06.000', LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '1', PTRAVAILABLE: '1', S_LTS: '-276' }
+  ];
+  const ctx = { parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
+    buildItemInquiryViewModel: (_item, nextRows) => ({ rows: nextRows, locationRows: nextRows.map(row => ({ unique_id: row.UNIQUE_ID, sourceRow: row, values: row })) }) };
+  vm.createContext(ctx);
+  vm.runInContext(extractAppFunction('reclassStockSeason') + extractAppFunction('buildOptimisticInventoryReclassMoveModel'), ctx);
+  const result = ctx.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows } }, {
+    commandId: 'blue-dart-move', moves: [{ source: { uniqueId: 'source-s1' }, lines: [{ destinationSeason: 'F1', quantity: 276 }] }]
+  }).model.rows;
+  const sourceAfter = result.find(row => row.UNIQUE_ID === 'source-s1');
+  const dest = result.find(row => String(row.UNIQUE_ID).startsWith('pending-reclass-'));
+  assert.equal(sourceAfter.PTRONHAND, '532');
+  assert.equal(sourceAfter.S_LTS, '253');
+  assert.equal(dest.LOCATIONCODE, 'C.15.000');
+  assert.equal(dest.LOTCODE, '27.F1');
+  assert.equal(dest.PTRONHAND, '276');
+  assert.equal(dest.PTRREVIEWED, '0');
+  assert.equal(dest.PTRAVAILABLE, '276');
+  assert.equal(dest.S_LTS, '0', 'new row starts from existing F1 season Open Stock before adding moved quantity');
+  assert.equal(dest.LOC_ON_HAND, '878');
+  assert.deepEqual(result.filter(row => ['f16-f1','h06-f1'].includes(row.UNIQUE_ID)).map(row => row.S_LTS), ['0','0']);
 });
 
 test('optimistic destination selection uses full lineage and rejects duplicate canonical targets', () => {
@@ -604,7 +665,7 @@ test('optimistic destination selection uses full lineage and rejects duplicate c
     const ctx = { parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
       buildItemInquiryViewModel: (_item, input) => ({ rows: input, locationRows: input.map(row => ({ unique_id: row.UNIQUE_ID, sourceRow: row, values: row })) }) };
     vm.createContext(ctx);
-    vm.runInContext(extractAppFunction('buildOptimisticInventoryReclassMoveModel'), ctx);
+    vm.runInContext(`${extractAppFunction('reclassStockSeason')}\n${extractAppFunction('buildOptimisticInventoryReclassMoveModel')}`, ctx);
     return ctx.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows } }, {
       commandId: 'reclass-command-lineage-01', moves: [{ source: { uniqueId: 'source-uid' },
         lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }]
@@ -636,7 +697,7 @@ test('unknown Reclass move outcomes keep the optimistic worksheet and retry the 
     readPendingArgosInventoryReclassMove: () => null,
   };
   vm.createContext(ctx);
-  vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+  vm.runInContext(extractApplyReclassMoveFunction(), ctx);
   const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
   await assert.rejects(ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor'), error => error.inventoryMovePending === true);
   assert.equal(state.pendingReclassMove.uncertain, true);
@@ -673,7 +734,7 @@ test('pending move retry reuses the original validated inquiry draft after optim
     persistPendingArgosInventoryReclassMove: state => persisted.push(state?.pendingReclassMove?.inquiryPayload || null),
     readPendingArgosInventoryReclassMove: () => null };
   vm.createContext(ctx);
-  vm.runInContext(`${extractAppFunction('applyArgosInventoryReclassMoveCommand')}\n${extractAppFunction('getArgosInventoryTransactionPayloadForPendingMove')}`, ctx);
+  vm.runInContext(`${extractApplyReclassMoveFunction()}\n${extractAppFunction('getArgosInventoryTransactionPayloadForPendingMove')}`, ctx);
   const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
   await assert.rejects(ctx.applyArgosInventoryReclassMoveCommand(state, draft, 'actor'), error => error.inventoryMovePending === true);
   assert.deepEqual(state.inquiryModel, { rows: [{ unique_id: 'source-uid', ptronhand: '30' }] });
@@ -740,7 +801,7 @@ test('a new stock command is not dispatched when its recovery record cannot be p
     invalidateArgosReclassLiveEditCaches() {}, retireConfirmedArgosReclassMoveProposals() {},
     persistPendingArgosInventoryReclassMove: () => false };
   vm.createContext(ctx);
-  vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+  vm.runInContext(extractApplyReclassMoveFunction(), ctx);
   const originalModel = { rows: [{ unique_id: 'source-uid', ptronhand: '50' }] };
   const state = { inquiryModel: originalModel, item: {}, snapshot: { uniqueId: 'source-uid' } };
   await assert.rejects(ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor'), error =>
@@ -782,7 +843,7 @@ test('lost responses finalize committed pending or conflicted import receipts wi
       confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
       retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null };
     vm.createContext(ctx);
-    vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+    vm.runInContext(extractApplyReclassMoveFunction(), ctx);
     const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' },
       pendingReclassMove: { command, originalModel: { original: true }, movedUids: ['source-uid'], uncertain: true } };
     const result = await ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor');
@@ -816,7 +877,7 @@ test('recovering an older committed receipt never overwrites newer stock or lowe
     isInventoryStatusOutcomeUncertain: error => error.outcomeUncertain === true,
   };
   vm.createContext(ctx);
-  vm.runInContext(extractAppFunction('applyArgosInventoryReclassMoveCommand'), ctx);
+  vm.runInContext(extractApplyReclassMoveFunction(), ctx);
   const result = await ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'actor');
   assert.equal(result.receipt.requestId, staleReceipt.requestId, 'status still resolves the committed operation');
   assert.equal(statusCalls.length, 1);

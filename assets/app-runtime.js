@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.78';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.79';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26584,7 +26584,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.78').trim() || 'AgData v2.3.78';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.79').trim() || 'AgData v2.3.79';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -45485,6 +45485,10 @@ let avTopControlsRenderToken = 0;
                     const baseOnHand = targetOnHand == null ? 0 : targetOnHand;
                     const baseAvailable = targetAvailable == null ? 0 : targetAvailable;
                     const pendingUid = current ? String(current.UNIQUE_ID || current.unique_id || '') : `pending-reclass-${command.commandId}-${moveIndex}-${season}`;
+                    const destinationSeasonKey = `${String(source.ITEMCODE ?? source.itemcode ?? '')}|${season}`;
+                    const destinationOpenStock = current
+                        ? parseAppNumber(current.S_LTS ?? current.s_lts ?? current.OPEN_STOCK ?? current.open_stock)
+                        : parseAppNumber(seasonOpenStocks.get(destinationSeasonKey));
                     const target = { ...source, ...(current || {}), UNIQUE_ID: pendingUid, unique_id: pendingUid, LOTCODE: targetLot, lotcode: targetLot,
                         HOLDSTOPCODE: current ? (current.HOLDSTOPCODE ?? current.holdstopcode) : '', holdstopcode: current ? (current.holdstopcode ?? current.HOLDSTOPCODE) : '',
                         HOLDSTOPREASON: current ? (current.HOLDSTOPREASON ?? current.holdstopreason) : '', holdstopreason: current ? (current.holdstopreason ?? current.HOLDSTOPREASON) : '',
@@ -45493,6 +45497,9 @@ let avTopControlsRenderToken = 0;
                         SEASON: season, season, PTRONHAND: String(baseOnHand + quantity), ptronhand: String(baseOnHand + quantity),
                         PTRAVAILABLE: String(baseAvailable + quantity), ptravailable: String(baseAvailable + quantity),
                         __optimisticReclassMove: command.commandId };
+                    if (targetIndex < 0 && destinationOpenStock != null) {
+                        target.S_LTS = target.s_lts = target.OPEN_STOCK = target.open_stock = String(destinationOpenStock);
+                    }
                     stockDeltas.set(stockKey(target), (stockDeltas.get(stockKey(target)) || 0) + quantity * effective(target));
                     if (targetIndex >= 0) rows[targetIndex] = target;
                     else rows.push(target);
@@ -45505,6 +45512,19 @@ let avTopControlsRenderToken = 0;
                 if (stockDeltas.has(key) && rowStock != null) { row.S_LTS = row.s_lts = String(rowStock + delta); row.OPEN_STOCK = row.open_stock = row.S_LTS; }
                 if (stockDeltas.has(key) && seasonOpenStocks.has(key)) row.__reclassSeasonOpenStock = String(seasonOpenStocks.get(key) + delta);
                 row.SEASON_OH = row.season_oh = String(rows.filter(r => stockKey(r) === key).reduce((sum, r) => sum + (parseAppNumber(r.PTRONHAND ?? r.ptronhand) || 0), 0));
+            });
+            const locationRows = new Map();
+            rows.forEach(row => {
+                const key = JSON.stringify([String(row.ITEMCODE ?? row.itemcode ?? '').trim().toUpperCase(),
+                    String(row.LOCATIONCODE ?? row.locationcode ?? '').trim().toUpperCase()]);
+                if (!locationRows.has(key)) locationRows.set(key, []);
+                locationRows.get(key).push(row);
+            });
+            locationRows.forEach(group => {
+                const quantities = group.map(row => parseAppNumber(row.PTRONHAND ?? row.ptronhand));
+                if (quantities.some(value => value == null)) return;
+                const total = String(quantities.reduce((sum, value) => sum + value, 0));
+                group.forEach(row => { row.LOC_ON_HAND = row.loc_on_hand = total; });
             });
             return { model: buildItemInquiryViewModel(state.item, rows), movedUids };
         }

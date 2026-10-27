@@ -301,6 +301,50 @@ test('full version capacity updates HEAD and deploys the latest existing version
   assert.deepEqual(calls, ['getContent', 'updateContent', 'versions.list', 'deployments.update', 'deployments.get']);
 });
 
+test('version cleanup skips every deployed version across pages and deletes only the oldest unused version', async () => {
+  const { script, calls } = makeScript({ versionCount: 200, createdVersion: 201, deployedVersion: 201 });
+  const deploymentListCalls = [];
+  script.projects.deployments.list = async request => {
+    deploymentListCalls.push(request);
+    return request.pageToken
+      ? { data: { deployments: [{ deploymentConfig: { versionNumber: 2 } }, { deploymentConfig: { versionNumber: 200 } }] } }
+      : { data: { deployments: [{ deploymentConfig: { versionNumber: 1 } }], nextPageToken: 'next-page' } };
+  };
+  const deleted = [];
+  const guards = [];
+  const result = await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key', script, scriptId: 'script/id',
+    deploymentId: 'deployment', source, githubSha: sha, deleteVersionRequest: async request => {
+      deleted.push(request); return { status: 204 };
+    }, beforeMutation: async () => { guards.push('guard'); }, fetchImpl: healthyFetch(),
+    sleep: async () => {}, healthAttempts: 1 });
+  assert.equal(result.versionCapacityExhausted, false);
+  assert.equal(result.versionCreated, true);
+  assert.equal(result.versionCountBefore, 200);
+  assert.equal(result.versionCountAfter, 200);
+  assert.equal(deleted.length, 1);
+  assert.equal(deleted[0].method, 'DELETE');
+  assert.equal(deleted[0].url, 'https://script.googleapis.com/v1/projects/script%2Fid/versions/3');
+  assert.deepEqual(deploymentListCalls.map(request => request.pageToken || ''), ['', 'next-page']);
+  assert.equal(guards.length, 4, 'source update, delete, version create, and deployment update are each guarded');
+  assert.deepEqual(calls, ['getContent', 'updateContent', 'versions.list', 'versions.create', 'deployments.update', 'deployments.get']);
+});
+
+test('unsupported Apps Script version deletion warns and keeps the latest-version fallback green', async () => {
+  const { script, calls } = makeScript({ versionCount: 200, deployedVersion: 200 });
+  script.projects.deployments.list = async () => ({ data: { deployments: [{ deploymentConfig: { versionNumber: 1 } }] } });
+  const warnings = [];
+  const result = await syncAppsScriptProject({ serviceRoleKey: 'synthetic-signing-key', script, scriptId: 'script',
+    deploymentId: 'deployment', source, githubSha: sha, logger: { warn: message => warnings.push(message) },
+    deleteVersionRequest: async () => { throw Object.assign(new Error('not supported'), { response: { status: 404 } }); },
+    fetchImpl: async () => { throw new Error('head-only fallback must not run health checks'); }, sleep: async () => {} });
+  assert.equal(result.ok, true);
+  assert.equal(result.versionCapacityExhausted, true);
+  assert.equal(result.versionNumber, 200, 'latest existing version is retained as the fallback');
+  assert.equal(result.health, null);
+  assert.equal(warnings.filter(message => /APPS_SCRIPT_VERSION_DELETE_SKIPPED/.test(message)).length, 1);
+  assert.deepEqual(calls, ['getContent', 'updateContent', 'versions.list', 'deployments.update', 'deployments.get']);
+});
+
 test('capacity at 180 warns but still permits an editable-source-only sync', async () => {
   const { script, calls } = makeScript({ versionCount: 180 });
   const warnings = [];

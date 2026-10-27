@@ -1495,7 +1495,7 @@ test('history drilldown release contract checks ownership, financial redaction, 
 
 test('request lifecycle migration is registered with permanent history and active-only contracts',()=>{
   assert.equal(requestLifecycleStateMachineMigrationName,'20261024183000_request_lifecycle_state_machine_v1.sql');
-  assert.equal(releaseDatabaseMigrations.at(-1),requestLifecycleStateMachineMigrationName);
+  assert.ok(releaseDatabaseMigrations.includes(requestLifecycleStateMachineMigrationName));
   const source=fs.readFileSync(new URL(`../supabase/migrations/${requestLifecycleStateMachineMigrationName}`,import.meta.url),'utf8');
   for(const marker of ['request_master_has_valid_evidence_v1','persist_completed_request_history_v1','completed_history','line_dollar_value','enforce_request_lifecycle_v1','request-completed:auto-evidence:']) assert.ok(source.includes(marker),marker);
   const contract=migrationContractQuery(requestLifecycleStateMachineMigrationName);
@@ -1653,4 +1653,25 @@ test('enterprise Aura initializes trigram settings before replaying reader defin
   assert.doesNotMatch(sql, /grant\s+(?:set|alter system)\s+on\s+parameter/i);
   assert.equal(sql.split("old_text:=replace(old_text,E'\\r\\n',E'\\n');").length - 1, 2);
   assert.ok(sql.includes("new_text:=replace(new_text,E'\\r\\n',E'\\n');"));
+});
+
+test('v2.3.79 Reclass destination repair is registered with current-schema receipt and service-only contracts', async () => {
+ const {agdataV2379CompleteReclassDestinationRowLoopMigrationName:name}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.equal(releaseDatabaseMigrations.at(-2),name);
+ assert.equal(releaseDatabaseMigrations.filter(value=>value===name).length,1);
+ const contract=migrationContractQuery(name);
+ for(const token of ['expected_columns','reclass-destination-row-loop-v2379','p_expected_revision < 0','service_role','authenticated','anon']) assert.ok(contract.includes(token),token);
+ assert.match(contract,/as installed/);
+});
+
+test('v2.3.79 Reclass destination location evidence follow-up is registered and contracted', async () => {
+ const {agdataV2379ReclassLocationEvidenceMigrationName:name}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.equal(releaseDatabaseMigrations.at(-1),name);
+ assert.equal(releaseDatabaseMigrations.filter(value=>value===name).length,1);
+ const migration=fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
+ const contract=migrationContractQuery(name);
+ assert.match(migration,/v2379_non_source_evidence_qty/);
+ assert.match(migration,/destination\.lotcode='27\.F1'[\s\S]*destination\.ptronhand\)=276/);
+ assert.match(contract,/v2379_non_source_evidence_qty/);
+ assert.match(contract,/as installed/);
 });

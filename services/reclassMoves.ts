@@ -112,7 +112,28 @@ export function assertInventoryReclassMoveReceiptMatchesCommand(
   receipt: InventoryReclassMoveReceipt, command: ReclassMoveCommand,
 ): InventoryReclassMoveReceipt {
   if (receipt.commandId !== command.commandId) throw new Error('INVENTORY_RECLASS_RECEIPT_COMMAND_MISMATCH');
-  const expected = command.moves.flatMap((move) => move.lines.map((line) => ({ source: move.source.uniqueId,
+  const rowsById = new Map(receipt.rows.map((entry) => [String(entry.row.unique_id), entry.row]));
+  const normalizedTuple = (row: JsonRecord) => ['itemcode', 'locationcode', 'lotcode']
+    .map((field) => String(rowValue(row, field) ?? '').trim().toUpperCase());
+  const resolvedSources = new Map<string, JsonRecord>();
+  const sourceIdByReceiptId = new Map<string, string>();
+  for (const move of command.moves) {
+    const requestedTuple = normalizedTuple(move.source.identity);
+    if (requestedTuple.slice(0, 2).some((part) => !part)) throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_MISMATCH');
+    const exact = rowsById.get(move.source.uniqueId);
+    const candidates = exact ? [exact] : receipt.rows.map((entry) => entry.row)
+      .filter((row) => normalizedTuple(row).every((part, index) => part === requestedTuple[index]));
+    if (candidates.length > 1) throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_AMBIGUOUS');
+    const row = candidates[0];
+    if (!row || !normalizedTuple(row).every((part, index) => part === requestedTuple[index])) {
+      throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_MISMATCH');
+    }
+    const resolvedId = String(row.unique_id);
+    if (sourceIdByReceiptId.has(resolvedId)) throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_AMBIGUOUS');
+    resolvedSources.set(move.source.uniqueId, row);
+    sourceIdByReceiptId.set(resolvedId, move.source.uniqueId);
+  }
+  const expected = command.moves.flatMap((move) => move.lines.map((line) => ({ source: String(resolvedSources.get(move.source.uniqueId)?.unique_id || ''),
     direction: line.direction, destinationSeason: line.destinationSeason.toUpperCase(), quantity: line.quantity })));
   if (receipt.movements.length !== expected.length) throw new Error('INVENTORY_RECLASS_RECEIPT_MOVEMENTS_MISMATCH');
   const used = new Set<number>();
@@ -123,44 +144,41 @@ export function assertInventoryReclassMoveReceiptMatchesCommand(
     if (index < 0) throw new Error('INVENTORY_RECLASS_RECEIPT_MOVEMENTS_MISMATCH');
     used.add(index);
   }
-  const rowsById = new Map(receipt.rows.map((entry) => [String(entry.row.unique_id), entry.row]));
-  const movedQuantityBySource = new Map<string, number>();
-  for (const line of expected) movedQuantityBySource.set(line.source, (movedQuantityBySource.get(line.source) || 0) + line.quantity);
   for (const move of command.moves) {
-    const row = rowsById.get(move.source.uniqueId);
+    const row = resolvedSources.get(move.source.uniqueId);
     if (!row) throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_MISMATCH');
     for (const field of ['itemcode', 'contsize', 'locationcode', 'lotcode', 'season']) {
       const requested = move.source.identity[field];
-      if (requested !== undefined && (row[field] == null ? null : String(row[field])) !== requested) {
+      const actual = rowValue(row, field) == null ? null : String(rowValue(row, field));
+      const normalized = ['itemcode', 'locationcode', 'lotcode'].includes(field);
+      if (requested !== undefined && (normalized
+        ? String(actual ?? '').trim().toUpperCase() !== String(requested ?? '').trim().toUpperCase()
+        : actual !== requested)) {
         throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_MISMATCH');
       }
     }
-    const moved = movedQuantityBySource.get(move.source.uniqueId) || 0;
     for (const field of ['ptronhand', 'ptravailable']) {
-      const before = stockQuantity(move.source.identity[field]);
       const after = stockQuantity(rowValue(row, field));
-      if (before === null || after === null) {
-        throw new Error(`INVENTORY_RECLASS_RECEIPT_SOURCE_${field.toUpperCase()}_MISMATCH`);
-      }
-      const scale = Math.max(before.scale, after.scale);
-      const factor = 10n ** BigInt(scale);
-      const beforeAtScale = before.coefficient * (10n ** BigInt(scale - before.scale));
-      const afterAtScale = after.coefficient * (10n ** BigInt(scale - after.scale));
-      if (afterAtScale !== beforeAtScale - BigInt(moved) * factor) {
+      if (after === null) {
         throw new Error(`INVENTORY_RECLASS_RECEIPT_SOURCE_${field.toUpperCase()}_MISMATCH`);
       }
     }
   }
   for (const movement of receipt.movements) {
-    const source = command.moves.find((move) => move.source.uniqueId === String(movement.sourceUniqueId));
+    const requestedSourceId = sourceIdByReceiptId.get(String(movement.sourceUniqueId));
+    const source = command.moves.find((move) => move.source.uniqueId === requestedSourceId);
     const destination = rowsById.get(String(movement.destinationUniqueId));
     if (!source || !destination) throw new Error('INVENTORY_RECLASS_RECEIPT_DESTINATION_MISMATCH');
-    const sourceRow = rowsById.get(source.source.uniqueId)!;
-    const sourceLot = String(source.source.identity.lotcode || '');
+    const sourceRow = resolvedSources.get(source.source.uniqueId)!;
+    const sourceLot = String(source.source.identity.lotcode || '').trim().toUpperCase();
     const targetLot = `${sourceLot.replace(/[.][^.]+$/, '')}.${movement.destinationSeason}`;
     for (const field of ['itemcode', 'contsize', 'locationcode']) {
       const requested = source.source.identity[field];
-      if (requested !== undefined && (destination[field] == null ? null : String(destination[field])) !== requested) {
+      const actual = destination[field] == null ? null : String(destination[field]);
+      const normalized = field === 'itemcode' || field === 'locationcode';
+      if (requested !== undefined && (normalized
+        ? String(actual ?? '').trim().toUpperCase() !== String(requested ?? '').trim().toUpperCase()
+        : actual !== requested)) {
         throw new Error('INVENTORY_RECLASS_RECEIPT_DESTINATION_MISMATCH');
       }
     }

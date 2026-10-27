@@ -136,6 +136,7 @@ async function main() {
     source,
     githubSha,
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    deleteVersionRequest: request => auth.request(request),
     beforeMutation: patchEvidence ? createAppsScriptSourceGuard({ script, scriptId,
       beforeDigest: expectedRemoteDigest, afterDigest: publishedDigest,
       authorize: authorizeProductionAppsScriptDeploymentFromEnvironment,
