@@ -270,10 +270,10 @@ test('completed Reclass email and PDF render only the frozen pre-edit ERP rows a
   assert.equal(rows.length, 6, 'the completed report uses the six pre-edit ERP rows only');
   const origin = rows.find(row => row[0] === '27.S1' && row[1] === 'C.15.000');
   assert.ok(origin);
-  assert.equal(origin[4], '808', 'the originating row keeps pre-edit OH, not 532 or 276');
+  assert.equal(origin[4], '808 - 276 --> F1', 'the originating row keeps pre-edit OH and the inline destination move');
   assert.equal(origin[5], '3', 'pre-edit PTRREVIEWED is preserved');
   const originCells = table.rows.find(row => row[0].text === '27.S1' && row[1].text === 'C.15.000');
-  assert.deepEqual(Array.from(originCells[4].proposals), ['UP 276 TO F1']);
+  assert.deepEqual(Array.from(originCells[4].proposals), []);
   assert.equal(rows.some(row => row[0] === '27.F1' && row[1] === 'C.15.000'), false,
     'the app-created destination is not added to the ERP snapshot');
 
@@ -281,12 +281,13 @@ test('completed Reclass email and PDF render only the frozen pre-edit ERP rows a
   const htmlRows = Array.from(new JSDOM(htmlOutput).window.document.querySelectorAll('tbody tr'))
     .map(row => row.textContent.replace(/\s+/g, ' ').trim());
   assert.equal(htmlRows.length, 6);
-  assert.ok(htmlRows.some(row => row.includes('27.S1') && row.includes('C.15.000') && row.includes('808') && row.includes('UP 276 TO F1')));
+  assert.ok(htmlRows.some(row => row.includes('27.S1') && row.includes('C.15.000') && row.includes('808 - 276 --> F1')));
+  assert.doesNotMatch(htmlOutput, /UP 276 TO F1/);
   assert.equal(htmlRows.some(row => row.includes('27.F1') && row.includes('C.15.000')), false);
 
   const pdfText = Buffer.from(server.buildReclassItemInquiryPdf_(model).getBytes()).toString('latin1');
-  assert.match(pdfText, /\(808\)/);
-  assert.match(pdfText, /\(UP 276 TO F1\)/);
+  assert.match(pdfText, /\(808 - 276 --> F1\)/);
+  assert.doesNotMatch(pdfText, /\(UP 276 TO F1\)/);
   const pdfRowText = Array.from(pdfText.matchAll(/1 0 0 1 [\d.]+ ([\d.]+) Tm \(([^)]*)\) Tj ET/g))
     .map(match => ({ y: match[1], text: match[2] }));
   const pdfCellsByBaseline = new Map();
@@ -339,18 +340,22 @@ function assertV7FrozenDelivery(server) {
   const htmlRows = Array.from(new JSDOM(sent.htmlBody).window.document.querySelectorAll('tbody tr'))
     .map(row => row.textContent.replace(/\s+/g, ' ').trim());
   assert.equal(htmlRows.length, 6);
-  assert.ok(htmlRows.some(row => row.includes('27.S1') && row.includes('C.15.000') && row.includes('808') && row.includes('UP 276 TO F1')));
+  assert.ok(htmlRows.some(row => row.includes('27.S1') && row.includes('C.15.000') && row.includes('808 - 276 --> F1')));
   assert.equal(htmlRows.some(row => row.includes('27.F1') && row.includes('C.15.000')), false);
   const pdfText = Buffer.from(sent.attachments[0].getBytes()).toString('latin1');
-  assert.match(pdfText, /\(808\)/);
-  assert.match(pdfText, /\(UP 276 TO F1\)/);
+  assert.match(pdfText, /\(808 - 276 --> F1\)/);
+  assert.doesNotMatch(pdfText, /\(UP 276 TO F1\)/);
 }
 
 test('V7 generic delivery renders frozen rows without live reads (current source)', () => {
   assertV7FrozenDelivery(loadServerModel());
 });
 
-test('V7 generic delivery renders frozen rows without live reads (deployed Web App v370)', { skip: !fs.existsSync(path.join(root, '.gnc-local', 'reclass-deployed-version-370.gs')) }, () => {
+const deployedV370Path = path.join(root, '.gnc-local', 'reclass-deployed-version-370.gs');
+const deployedV370SupportsInlineOh = fs.existsSync(deployedV370Path)
+  && fs.readFileSync(deployedV370Path, 'utf8').includes('function buildReclassInlineOhText_');
+
+test('V7 generic delivery renders frozen rows without live reads (deployed Web App v370)', { skip: !deployedV370SupportsInlineOh }, () => {
   const deployed = fs.readFileSync(path.join(root, '.gnc-local', 'reclass-deployed-version-370.gs'), 'utf8');
   assertV7FrozenDelivery(loadServerModel(deployed));
 });
@@ -701,7 +706,7 @@ test('Reclass workflow V3 row actions are live while V2 remains available for co
   assert.doesNotMatch(html.slice(html.indexOf('function ensureArgosInventoryTransactionModal'), html.indexOf('function renderArgosInventoryTransactionSource')), /NCR Request/);
 });
 
-test('Reclass action reports use nine ERP columns, natural order, original OH, and yellow proposals', () => {
+test('Reclass action reports use nine ERP columns, natural order, inline moved OH, and yellow edits', () => {
   const server = loadServerModel();
   const actions = ['priority_change', 'recount', 'move_up', 'move_down', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'];
   const rendered = {};
@@ -732,9 +737,9 @@ test('Reclass action reports use nine ERP columns, natural order, original OH, a
     const model = server.buildReclassInquiryReportModel_(origin, rows, applied.rows, { transaction }, new Date('2026-08-22T14:15:00Z'));
     const report = renderCanonicalNineColumnReclassReport(server, model, rows.length);
     const movementCell = report.rows.find(row => row.cells[1].textContent.trim() === origin.locationcode)?.cells[4];
-    assert.ok(movementCell?.classList.contains('changed') && movementCell.querySelector('.proposal-box'));
-    assert.match(movementCell.textContent, new RegExp(`${action === 'move_up' ? 'UP' : 'DOWN'} ${quantity} TO ${season}`));
-    assert.equal(movementCell.querySelector('strong')?.textContent, oldOh, 'the report keeps the original ERP OH');
+    assert.ok(movementCell?.classList.contains('changed'));
+    assert.equal(movementCell.querySelector('.proposal-box'), null, 'movement is inline instead of a proposal box');
+    assert.equal(movementCell.querySelector('strong')?.textContent, `${oldOh} - ${quantity} --> ${season}`);
   }
 });
 
@@ -817,9 +822,8 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   const { output, rows: renderedRows } = renderCanonicalNineColumnReclassReport(server, model, rows.length);
   const dallasReportRow = renderedRows.find(reportRow => reportRow.cells[1].textContent.trim() === 'C.16.000');
   assert.ok(dallasReportRow);
-  assert.equal(dallasReportRow.cells[4].querySelector('strong')?.textContent, '526', 'pre-edit ERP OH is retained');
-  assert.match(dallasReportRow.cells[4].textContent, /UP 150 TO F1/);
-  assert.ok(dallasReportRow.cells[4].classList.contains('changed'), 'the move callout is highlighted in the originating OH cell');
+  assert.equal(dallasReportRow.cells[4].querySelector('strong')?.textContent, '526 - 150 --> F1', 'pre-edit ERP OH and move are inline');
+  assert.ok(dallasReportRow.cells[4].classList.contains('changed'), 'the inline move is highlighted in the originating OH cell');
   assert.equal(dallasReportRow.cells[3].textContent.trim(), '1');
   assert.ok(dallasReportRow.cells[3].classList.contains('changed'), 'the requested Priority is highlighted');
   assert.doesNotMatch(output, /<th>H\/S|<th>H\/S Reason|<th>Desig Item|<th>Move Qty/);
@@ -853,15 +857,15 @@ test('workflow V4 validates split moves, preserves repeated destination order, a
   const text = server.buildReclassInquiryReportText_(model);
   const htmlBody = server.buildReclassInquiryEmailHtml_(model);
   const movementCell = renderedRows[0].cells[4];
-  assert.equal(movementCell.querySelectorAll('.proposal-box').length, 4, 'each destination split is shown in the original OH cell');
-  for (const callout of ['UP 4 TO S1', 'UP 3 TO S1', 'UP 5 TO U1', 'DOWN 2 TO U2']) assert.ok(movementCell.textContent.includes(callout));
-  assert.equal(movementCell.querySelector('strong')?.textContent, '20', 'the report retains pre-edit OH');
+  assert.equal(movementCell.querySelectorAll('.proposal-box').length, 0, 'destination splits are inline without proposal boxes');
+  assert.equal(movementCell.querySelector('strong')?.textContent, '20 - 4 --> S1, - 3 --> S1, - 5 --> U1, - 2 --> U2');
   assert.doesNotMatch(pdf, /27\.S1.*A\.1.*(?:new destination|created)/i);
   assert.match(text, /UP 3 to S1/);
   assert.match(text, /UP 5 to U1/);
   assert.match(text, /DOWN 2 to U2/);
   assert.match(text, /Place on Hold requested: inspect & stage <carefully>/);
-  assert.match(htmlBody, /UP 4 TO S1/, 'the HTML report retains the move callout in the original OH cell');
+  assert.match(htmlBody, /20 - 4 --&gt; S1, - 3 --&gt; S1, - 5 --&gt; U1, - 2 --&gt; U2/, 'the HTML report keeps all moves inline in the original OH cell');
+  assert.doesNotMatch(htmlBody, /UP 4 TO S1|DOWN 2 TO U2/);
   assert.doesNotMatch(htmlBody, /Hold Reason|<th>Actions/);
   assert.match(text, /inventory was not changed/);
 });
@@ -906,8 +910,7 @@ test('workflow V5 keeps shearing distinct and renders server-derived snapshot ar
   const payload = { workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_, transaction, actor: { display: 'Tester' } };
   const model = server.buildReclassInquiryReportModel_(row, [row], result.rows, payload, new Date('2026-10-08T14:00:00Z'));
   const { output: pdf, rows: renderedRows } = renderCanonicalNineColumnReclassReport(server, model, 1);
-  assert.equal(renderedRows[0].cells[4].querySelector('strong')?.textContent, '10', 'original ERP OH remains unchanged');
-  assert.match(renderedRows[0].cells[4].textContent, /UP 2 TO S1/);
+  assert.equal(renderedRows[0].cells[4].querySelector('strong')?.textContent, '10 - 2 --> S1', 'original ERP OH and move remain inline');
   assert.doesNotMatch(pdf, /3--&gt;#|Desig Item|SUS/);
   assert.equal(result.rows[0].values.desigitem, 'ORIGINAL', 'the original designation is kept separate in the report snapshot');
   assert.throws(() => server.buildReclassInquiryActionRowsV3_(transaction, [row], [{
@@ -1060,7 +1063,7 @@ test('Hold/Stop scope honors season, two/four digit years, future rows, and mixe
   assert.equal(rows[0].holdstopreason, 'OLD HOLD');
 });
 
-test('both movement proposals share the original OH cell and remain boxed in grayscale', () => {
+test('both movement proposals share the original OH cell as one inline value', () => {
   const server = loadServerModel();
   const model = {
     identity: { commonname: 'Example', itemcode: 'A1', holdstopcode: '', holdstopreason: '' },
@@ -1072,10 +1075,9 @@ test('both movement proposals share the original OH cell and remain boxed in gra
   };
   const { output, rows: renderedRows } = renderCanonicalNineColumnReclassReport(server, model, 1);
   const onHandCell = renderedRows[0].cells[4];
-  assert.equal(onHandCell.querySelector('strong')?.textContent, '800', 'both moves retain the original OH');
-  assert.equal(onHandCell.querySelectorAll('.proposal-box').length, 2);
-  assert.match(onHandCell.textContent, /UP 40 TO F1/);
-  assert.match(onHandCell.textContent, /DOWN 20 TO S1/);
+  assert.equal(onHandCell.querySelector('strong')?.textContent, '800 - 40 --> F1, - 20 --> S1');
+  assert.equal(onHandCell.querySelectorAll('.proposal-box').length, 0);
+  assert.doesNotMatch(onHandCell.textContent, /UP 40 TO F1|DOWN 20 TO S1/);
   assert.doesNotMatch(output, /PROPOSED/);
 });
 
@@ -1311,8 +1313,8 @@ test('Reclass email body shows the nine-column pre-edit ERP table with a move ca
   assert.match(text, /Edited Fields: 2/);
   assert.deepEqual(Array.from(document.querySelectorAll('table thead th'), cell => cell.textContent.trim()), ['Lotcode', 'Location', 'SOURCE', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note']);
   assert.equal(document.querySelectorAll('tbody tr').length, 1);
-  assert.equal(document.querySelector('tbody td:nth-child(5) strong')?.textContent, '808');
-  assert.match(document.querySelector('tbody td:nth-child(5)')?.textContent || '', /UP 276 TO F1/);
+  assert.equal(document.querySelector('tbody td:nth-child(5) strong')?.textContent, '808 - 276 --> F1');
+  assert.doesNotMatch(document.querySelector('tbody td:nth-child(5)')?.textContent || '', /UP 276 TO F1/);
   assert.equal(document.querySelector('tbody td:nth-child(5)')?.classList.contains('changed'), true);
   assert.doesNotMatch(htmlBody, /PROPOSED/i);
   for (const removed of ['Reclass Request', 'Season Summary', 'Location \/ Lot Item Inquiry', '<th>Actions', '<th>Move Qty']) {
@@ -1747,12 +1749,12 @@ test('V7 Reclass PDF prints frozen editable fields in the main row and preserves
   for (const cell of [renderedRows[0].cells[3], renderedRows[0].cells[6], renderedRows[0].cells[7], renderedRows[0].cells[8]]) {
     assert.ok(cell.classList.contains('changed') && cell.querySelector('.proposal-box'));
   }
-  assert.equal(renderedRows[0].cells[4].querySelector('strong')?.textContent, '10');
-  assert.match(renderedRows[0].cells[4].textContent, /DOWN 2 TO S1/);
+  assert.equal(renderedRows[0].cells[4].querySelector('strong')?.textContent, '10 - 2 --> S1');
   assert.doesNotMatch(output, /<th>Desig Item|<th>Desig Cust|<th>Desig Loc|<th>Actions|<th>Move Qty/);
   const pdfText = Buffer.from(server.buildReclassItemInquiryPdf_(model).getBytes()).toString('latin1');
   assert.match(pdfText, /^%PDF-1\.4/);
-  assert.match(pdfText, /DOWN 2 TO S1/);
+  assert.match(pdfText, /10 - 2 --> S1/);
+  assert.doesNotMatch(pdfText, /DOWN 2 TO S1/);
   assert.doesNotMatch(pdfText, /ITEM-NEW|Customer new|Location new|Puller new/);
   assert.doesNotMatch(output, /PGC|Plant Grp|PLANT GRP|Brand Label|Int Inv Note/);
   const clearBefore = Object.fromEntries(fields.map((field) => [field, field === 'suspend' ? 'H' : '']));

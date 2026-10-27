@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.84';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.85';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -132,6 +132,7 @@
         const LEGACY_SESSION_BRIDGE_ENABLED = true;
         const NATIVE_AUTH_ALIAS_DOMAIN = 'greenleafnursery.com';
         const PASSKEY_ENROLLED_STORAGE_KEY = 'gnc_passkey_enrolled_v1';
+        const LAST_PASSKEY_USERNAME_STORAGE_KEY = 'gnc_last_passkey_username';
         const NATIVE_AUTH_PROFILE_CACHE_KEY = 'gnc_native_auth_profile_v1';
         let nativeAuthSessionActive = false;
         let nativeAuthAccessToken = '';
@@ -1610,6 +1611,16 @@
             // Fence older startup restoration before the discoverable passkey
             // prompt opens so its later empty result cannot repaint login.
             invalidateNativeAuthRecovery();
+            const usernameInput = document && typeof document.getElementById === 'function'
+                ? document.getElementById('username-input')
+                : null;
+            const usernameHint = String(
+                (usernameInput && usernameInput.value)
+                || localStorage.getItem(LAST_PASSKEY_USERNAME_STORAGE_KEY)
+                || localStorage.getItem('gnc_user_v3')
+                || ''
+            ).trim().toLowerCase();
+            if (usernameInput && !String(usernameInput.value || '').trim() && usernameHint) usernameInput.value = usernameHint;
             startLoginNetworkTrace('passkey');
             const previousProfile = nativeAuthProfile;
             const previousUsername = String(currentUser || '').trim().toLowerCase();
@@ -1658,6 +1669,7 @@
                 }
                 await (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(true)) ?? ensureNativeAppSessionBridge(true)).catch(() => null);
                 currentUser = String(profile.username || '').trim().toLowerCase();
+                if (currentUser) localStorage.setItem(LAST_PASSKEY_USERNAME_STORAGE_KEY, currentUser);
                 currentUserDisplay = String(profile.display_name || profile.username || '').trim();
                 currentRole = String(profile.role || 'User');
                 currentUserDivision = String(profile.division || '10');
@@ -23119,9 +23131,13 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         function primeSavedLoginUiOnStartup() {
             const sessionRecord = getPersistedSessionRestoreRecord();
             setSavedLoginPromptState(sessionRecord);
-            if (!sessionRecord) return false;
             const usernameInput = document.getElementById('username-input');
             const pinInput = document.getElementById('pin-code');
+            if (!sessionRecord) {
+                const passkeyUsernameHint = normalizeSessionIdentity(localStorage.getItem(LAST_PASSKEY_USERNAME_STORAGE_KEY));
+                if (usernameInput && passkeyUsernameHint && !String(usernameInput.value || '').trim()) usernameInput.value = passkeyUsernameHint;
+                return false;
+            }
             const normalizedUsername = normalizeSessionIdentity(sessionRecord.username);
             const password = String(sessionRecord.password || '').trim();
             if (usernameInput && normalizedUsername) usernameInput.value = normalizedUsername;
@@ -26591,7 +26607,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.84').trim() || 'AgData v2.3.84';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.85').trim() || 'AgData v2.3.85';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28302,7 +28318,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             clearPersistedManualSyncStartupState();
             updateSyncDiagnostics();
             initializeCartUi();
+            openInventoryGalleryDeepLink();
         }
+        window.addEventListener('popstate', openInventoryGalleryDeepLink);
+        window.addEventListener('hashchange', openInventoryGalleryDeepLink);
         window.addEventListener('pageshow', () => {
             ensureLoginInteractionHealth();
             maybeForceLatestStandaloneShell('pageshow', { forceManifest: true }).catch(() => {});
@@ -55027,6 +55046,50 @@ function toggleDriveQuickRequestItem(domId) {
             if (modal) modal.classList.add('hidden');
             return false;
         }
+        let inventoryGalleryDeepLinkFocusTimer = null;
+        function readInventoryGalleryDeepLink() {
+            const params = new URLSearchParams(window.location.search || '');
+            if (!params.get('gallery')) return null;
+            const photos = String(params.get('p') || '').split(',').map((value) => value.trim()).filter(Boolean);
+            if (!photos.length) return null;
+            return {
+                itemCode: String(params.get('item') || '').trim().toUpperCase(),
+                locationCode: String(params.get('loc') || '').trim().toUpperCase(),
+                lotCode: String(params.get('lot') || '').trim().toUpperCase(),
+                title: String(params.get('title') || 'Photo Gallery').trim() || 'Photo Gallery',
+                photos
+            };
+        }
+
+        function focusInventoryGalleryDeepLinkRow(link) {
+            if (!link || !currentUser || !Array.isArray(fullInventory) || !fullInventory.length) return false;
+            const row = fullInventory.find((item) => String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '') || '').trim().toUpperCase() === link.itemCode
+                && String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '') || '').trim().toUpperCase() === link.locationCode
+                && String(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '') || '').trim().toUpperCase() === link.lotCode);
+            if (!row) return false;
+            const uid = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, row.DOM_ID, '') || '').trim();
+            if (uid && typeof openDetail === 'function') openDetail(uid, 'drive');
+            else switchView('drive');
+            openPhotoModal(link.photos.join(','), link.title);
+            return true;
+        }
+
+        function openInventoryGalleryDeepLink() {
+            const link = readInventoryGalleryDeepLink();
+            if (!link) return false;
+            openPhotoModal(link.photos.join(','), link.title);
+            if (inventoryGalleryDeepLinkFocusTimer) clearInterval(inventoryGalleryDeepLinkFocusTimer);
+            let attempts = 0;
+            inventoryGalleryDeepLinkFocusTimer = setInterval(() => {
+                attempts += 1;
+                if (focusInventoryGalleryDeepLinkRow(link) || attempts >= 60) {
+                    clearInterval(inventoryGalleryDeepLinkFocusTimer);
+                    inventoryGalleryDeepLinkFocusTimer = null;
+                }
+            }, 1000);
+            return true;
+        }
+
         function isAuthenticatedAppShellVisible() {
             const wrapper = document.getElementById('app-wrapper');
             return !!wrapper && !wrapper.classList.contains('hidden') && wrapper.style.display !== 'none';
@@ -55717,6 +55780,7 @@ function toggleDriveQuickRequestItem(domId) {
             runPostLoginBootstrapStep('Explicit logout marker', () => clearExplicitLogoutMarker());
             runPostLoginBootstrapStep('Session cache', () => {
                 localStorage.setItem('gnc_user_v3',user);
+                localStorage.setItem(LAST_PASSKEY_USERNAME_STORAGE_KEY, String(user || '').trim().toLowerCase());
                 localStorage.setItem('gnc_role_v3',currentRole);
                 localStorage.setItem('gnc_division_v1',currentUserDivision || '10');
                 localStorage.setItem('gnc_language_v1',normalizeAppUserLanguage(currentUserLanguage));
@@ -150333,13 +150397,42 @@ ${folderNote ? `Folder Note: ${folderNote}
             return `<div style="margin:8px 0 12px 0;"><div><strong>${safeLabel}:</strong> <a href="${safeTargetUrl}">${safeDisplayName}</a></div><div style="margin-top:6px;"><a href="${safeTargetUrl}"><img src="${safeUrl}" alt="${safeDisplayName}" style="display:block;max-width:320px;width:100%;height:auto;max-height:320px;border-radius:8px;border:1px solid #d7ded8;object-fit:contain;"></a></div>${caption}</div>`;
         }
 
+        function getInventoryShareGalleryIdentity(item = null) {
+            const row = item || {};
+            const commonName = String(firstNonEmptyValue(row.COMMONNAME, row.commonname, 'Inventory Item') || 'Inventory Item').trim();
+            const contSize = String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim();
+            const locationCode = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, row.LOCATION, row.location, '') || '').trim();
+            const lotCode = String(firstNonEmptyValue(row.LOTCODE, row.lotcode, row.LOT, row.lot, '') || '').trim();
+            const itemCode = String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, row.ITEM, row.item, '') || '').trim();
+            return { commonName, contSize, locationCode, lotCode, itemCode, title: [commonName, contSize, locationCode].filter(Boolean).join(' ') };
+        }
+
+        function buildInventoryShareGalleryUrl(item = null, photoEntries = null) {
+            const photos = Array.isArray(photoEntries) ? photoEntries : getInventorySharePhotoEntries(item);
+            if (!photos.length) return '';
+            const identity = getInventoryShareGalleryIdentity(item);
+            const photoKeys = photos.map((photo) => String(firstNonEmptyValue(photo && photo.href, photo && photo.url, '') || '').trim()).filter(Boolean);
+            if (!photoKeys.length) return '';
+            const url = new URL('https://agmetricapp.com/');
+            url.searchParams.set('gallery', '1');
+            url.searchParams.set('item', identity.itemCode);
+            url.searchParams.set('loc', identity.locationCode);
+            url.searchParams.set('lot', identity.lotCode);
+            url.searchParams.set('p', photoKeys.join(','));
+            url.searchParams.set('title', identity.title);
+            return url.toString();
+        }
+
         function formatInventoryItemsText(items, headerLabel = 'SELECTED ROWS', options = {}) {
             const includeHeader = options.includeHeader !== false && !!headerLabel;
             const includePhotoUrls = options.includePhotoUrls !== false;
             const omitFieldLabels = new Set(Array.isArray(options.omitFieldLabels) ? options.omitFieldLabels.map((label) => String(label || '').trim().toLowerCase()).filter(Boolean) : []);
             let returnText = includeHeader ? `${headerLabel}\n\n` : '';
             (items || []).forEach((item, itemIndex) => {
-                returnText += `${getInventoryShareSummaryLine(item)}\n`;
+                const inventoryPhotos = getInventorySharePhotoEntries(item);
+                const galleryUrl = buildInventoryShareGalleryUrl(item, inventoryPhotos);
+                const identity = getInventoryShareGalleryIdentity(item);
+                returnText += `${identity.title}${identity.lotCode ? ` ${identity.lotCode}` : ''}${galleryUrl ? ` - ${galleryUrl}` : ''}\n`;
                 getInventoryShareFieldRows(item).forEach(field => {
                     if (omitFieldLabels.has(String(field.label || '').trim().toLowerCase())) return;
                     const rawValue = String(firstNonEmptyValue(field.value, '') || '').trim();
@@ -150348,14 +150441,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     returnText += `${field.label}: ${formattedValue}\n`;
                     if (isCaliperEmailField(field.label) && hasCaliperEmailValue(formattedValue)) returnText += `${CALIPER_MEASUREMENT_NOTE}\n`;
                 });
-                const inventoryPhotos = getInventorySharePhotoEntries(item);
                 if (inventoryPhotos.length) {
                     returnText += `Photos: ${inventoryPhotos.length} photo${inventoryPhotos.length === 1 ? '' : 's'}\n`;
-                    inventoryPhotos.forEach((photo, photoIndex) => {
-                        returnText += `${photo.label || `Photo ${photoIndex + 1}`}: ${photo.displayName}`;
-                        if (includePhotoUrls) returnText += ` - ${firstNonEmptyValue(photo.href, photo.url)}`;
-                        returnText += `\n`;
-                    });
                 }
                 if (itemIndex < (items || []).length - 1) returnText += `\n`;
             });
@@ -150397,6 +150484,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             const blocks = [];
             if (headerLabel) blocks.push(`<div style="font-weight:700;margin:0 0 14px 0;">${h(headerLabel)}</div>`);
             safeItems.forEach((item, index) => {
+                const inventoryPhotos = getInventorySharePhotoEntries(item);
+                const galleryUrl = buildInventoryShareGalleryUrl(item, inventoryPhotos);
+                const galleryIdentity = getInventoryShareGalleryIdentity(item);
+                const galleryHeader = galleryUrl
+                    ? `<div style="margin:0 0 12px 0;font-size:15px;"><a href="${h(galleryUrl)}" style="color:#16a34a;font-weight:700;text-decoration:underline;">${h(galleryIdentity.title)}</a>${galleryIdentity.lotCode ? ` ${h(galleryIdentity.lotCode)}` : ''}</div>`
+                    : `<div style="margin:0 0 12px 0;font-size:15px;font-weight:700;">${h(galleryIdentity.title)}${galleryIdentity.lotCode ? ` ${h(galleryIdentity.lotCode)}` : ''}</div>`;
                 const itemTable = table(
                     ['ITEMCODE', 'COMMONNAME', 'CONTSIZE', 'GENUS', 'SALESNOTE', 'HOLDSTOPCODE', 'HOLDSTOPREASON'],
                     [
@@ -150459,14 +150552,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const chunk = fieldRows.slice(start, start + 4);
                     fieldTables.push(table(chunk.map(field => field.label), chunk.map(field => dataCell(field.html, { html: true, bold: true, highlight: field.highlight }))));
                 }
-                const inventoryPhotos = getInventorySharePhotoEntries(item);
-                const photoHtml = inventoryPhotos.map((photo, photoIndex) => buildSharePhotoHtml({
-                    ...photo,
-                    label: photo.label || `Photo ${photoIndex + 1}`,
-                    index: photo.index || photoIndex + 1,
-                    totalCount: inventoryPhotos.length
-                })).join('');
-                blocks.push(`<div style="margin:0 0 18px 0;line-height:1.45;">${itemTable}${rowTable}${qtyTable}${noteTable}${fieldTables.join('')}${photoHtml}</div>`);
+                const photoSummary = inventoryPhotos.length ? `<div style="margin:0 0 12px 0;font-weight:700;">Photos: ${inventoryPhotos.length} photo${inventoryPhotos.length === 1 ? '' : 's'}</div>` : '';
+                blocks.push(`<div style="margin:0 0 18px 0;line-height:1.45;">${galleryHeader}${itemTable}${rowTable}${qtyTable}${noteTable}${fieldTables.join('')}${photoSummary}</div>`);
             });
             return `<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.45;"><style>@media screen and (max-width: 620px) {.gnc-email-table th,.gnc-email-table td{font-size:12px!important;padding:7px 6px!important;}}</style>${blocks.join('')}</div>`;
         }

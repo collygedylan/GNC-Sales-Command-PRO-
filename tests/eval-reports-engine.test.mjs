@@ -1695,11 +1695,12 @@ test('Item Inquiry report uses nine canonical columns, boxed edits and a single 
  const gs=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
  const fn=name=>{const a=gs.indexOf('function '+name+'(');const b=gs.indexOf('\nfunction ',a+9);assert.ok(a>=0);return gs.slice(a,b<0?gs.length:b);};
  const ctx=vm.createContext({sortReclassInquiryCompactRows_:r=>r,escapeEmailHtml_:v=>String(v),Utilities:{newBlob:(data,type,name)=>({data,type,name})}});
- vm.runInContext(['buildReclassItemInquiryTable_','buildReclassItemInquiryHtml_','buildReclassItemInquiryPdf_'].map(fn).join('\n'),ctx);
+ vm.runInContext(['buildReclassInlineOhText_','buildReclassItemInquiryTable_','buildReclassItemInquiryHtml_','buildReclassItemInquiryPdf_'].map(fn).join('\n'),ctx);
  const model={identity:{commonname:'Flame Grass',itemcode:'004502.010.1',contsize:'#1',source:'LD'},rows:[{unique_id:'origin',values:{locationcode:'C.16.000',lotcode:'27.S1',priority:'1',ptronhand:'295',ptravailable:'295',s_lts:'585'},changedFields:['priority','s_lts'],actionValues:{moveupsplits:[{quantity:200,destinationSeason:'F1'}]}}]};
  assert.match(fn('buildReclassInquiryReportModel_'),/identity.source = getReclassInquiryExactValue_\(sourceRow, \['source', 'SOURCE'\]/);
  const table=ctx.buildReclassItemInquiryTable_(model);assert.deepEqual(Array.from(table.columns,c=>c[1]),['Lotcode','Location','SOURCE','Priority','OH','PTRREVIEWED','Loc Note Date','LOCATIONPTN1','Location Note']);
- const html=ctx.buildReclassItemInquiryHtml_(model);for(const text of ['GNC PH Reclass Item Inquiry','Common Name:','Item Code:','Size:','Source:','11in 8.5in landscape','#ffffff','#fef08a','UP 200 TO F1','border:1.5px solid #000'])assert.ok(html.includes(text),text);
+ const html=ctx.buildReclassItemInquiryHtml_(model);for(const text of ['GNC PH Reclass Item Inquiry','Common Name:','Item Code:','Size:','Source:','11in 8.5in landscape','#ffffff','#fef08a','295 - 200 --> F1','border:1.5px solid #000'])assert.ok(html.includes(text),text);
+ assert.doesNotMatch(html,/UP 200 TO F1/);
  assert.doesNotMatch(html,/Action Details|>Action</);
  const pdf=ctx.buildReclassItemInquiryPdf_(model);assert.equal(pdf.name,'Flame Grass.pdf');assert.match(pdf.data,/\/MediaBox \[0 0 792 612\]/);assert.match(pdf.data,/\/Count 1/);assert.equal((pdf.data.match(/\/Type \/Page /g)||[]).length,1);
  assert.match(fn('getReclassInquiryEmailRecipients_'),/get_reclass_delivery_recipients_v1/);assert.match(fn('getReclassInquiryEmailRecipients_'),/recipients.length > 4/);

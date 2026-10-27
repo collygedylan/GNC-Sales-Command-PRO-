@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.84",
+  "release": "AgData v2.3.85",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -250,12 +250,16 @@
         "renderHome",
         "syncGoogleScriptButton",
         "warmSalesIntelligenceData",
-        "renderSmartMovesIntelligence"
+        "renderSmartMovesIntelligence",
+        "openInventoryGalleryDeepLink",
+        "signInWithAppPasskey"
       ],
       "assets/runtime-watchdog.js": [
         "view"
       ],
-      "supabase/functions/app-api/index.ts": [],
+      "supabase/functions/app-api/index.ts": [
+        "handlePasskeyAuthenticationProxy"
+      ],
       "Code.gs": []
     },
     "agdata-aura-assistant": {
@@ -308,7 +312,10 @@
         "scheduleRequestDeliveryWake",
         "isUniversalRequestDirectoryRep",
         "getRequestUniversalCustomerOptions",
-        "fetchRequestUniversalCustomerOptions"
+        "fetchRequestUniversalCustomerOptions",
+        "buildInventoryShareGalleryUrl",
+        "formatInventoryItemsText",
+        "formatInventoryItemsHtml"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -494,6 +501,7 @@
       ],
       "Code.gs": [
         "buildReclassItemInquiryTable_",
+        "buildReclassInlineOhText_",
         "handleSignedReclassRecountCompletion_",
         "buildCompletedInventoryReclassReportModel_",
         "handleSignedInventoryReclassMoveDelivery_"
@@ -523,6 +531,9 @@
         ],
         "supabase/migrations/20261027060000_agdata_v2382_hl_po_set_based_page_stage.sql": [
           "hl_po_pdf_stage"
+    ],
+    "supabase/migrations/20261027143000_agdata_v2385_reclass_open_stock_and_inline_oh.sql": [
+      "propagate_inventory_season_stock_v1"
         ]
       }
     },

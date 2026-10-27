@@ -13,7 +13,9 @@ function setup(){
  const list={innerHTML:'',dataset:{},scrollTop:42}; const tray={classList:{toggle(){}}};
  const context=vm.createContext({Array,Object,String,Number,Math,Set,Map,
  document:{getElementById:id=>id==='bloom-picker-tray'?tray:list},cartPanelOpen:true,
+ preserveCardLocationOnHand:(item,value)=>value??item.LOC_ON_HAND??null,
  escapeHtml:v=>String(v??''),escJsAttrValue:v=>String(v),
+ parseAppNumber:v=>{const n=Number(v);return Number.isFinite(n)?n:null;},
  getInventoryCardDesigLocValue:r=>r.DESIGLOC||'',getPhotoUrlList:v=>v?[v]:[],getRowPhotoLink:r=>r.PHOTO||'',
  getDirectImageUrl:v=>v,buildDeferredCardPhotoImg:v=>'<img data-src="'+v+'">',
  getCardLocationOnHandValue:r=>r.LOC_ON_HAND??null,formatLocPhotoMatchQtyValue:()=> 'N/A',

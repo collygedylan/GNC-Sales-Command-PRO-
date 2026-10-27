@@ -87,7 +87,7 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 ## Cross-Layer Blast Radius
 
 - Recount groups one card per `(itemcode, locationcode)`, sums On Hand across every lot, and sends per-lot On Hand/Available/Review plus the submitted location total.
-- Move Up/Down applies the quantity delta to Open Stock on every destination-season row and recomputes Loc Photo Match on first save. The report table remains exactly nine columns, with starting OH and `UP <QTY> TO <SEASON>` inside the OH cell.
+- Move Up/Down applies the physical moved-quantity delta to Open Stock on every source/destination lot row and recomputes Loc Photo Match on first save. The report table remains exactly nine columns, with the frozen starting OH and inline `152 - 140 --> F1` (or split `152 - 100 --> F1, - 40 --> S1`) notation inside the yellow OH cell.
 
 ## Mandatory 4-Caller & All-11-Gems Impact Contract
 
@@ -104,12 +104,13 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
-- Never group Recount by physical UID/lot alone, omit lot metrics from completion delivery, update only one destination-season Open Stock row, add Action columns to the nine-column report, or move the proposal box outside OH.
+- Never group Recount by physical UID/lot alone, omit lot metrics from completion delivery, update only one destination-season Open Stock row, add Action columns to the nine-column report, or render Reclass movement as an `UP/DOWN ... TO ...` sub-box instead of the inline frozen-OH subtraction notation.
 - Never collapse physical Suspend rows, infer mutation authority from cached UI state, add JD/Sunday as fixed Reclass recipients, or block opening a displayed-card Reclass draft on a background refresh.
 - Never treat request age, status text, completion-date text, tombstone presence, or history membership alone as proof that an active Request is fulfilled.
 - Never write the legacy master `pick` field without synchronizing canonical `pick_note`, or collapse Request rows that share an item but have distinct location/lot identities.
 - Never reject an otherwise authorized Reclass move because mutable On Hand or Available changed after the draft opened; lock the current source, retain stable physical identity checks, auto-create missing destination lots, and rely on command receipts for idempotency.
 - Never key Suspend cards by plant/location identity or enforce a global snapshot revision for Reclass; preserve each SOC order-line UID and validate the locked physical source inside the transaction.
-- Never build a completed Reclass email/PDF from post-move applied rows; render the SQL-frozen `report_rows` snapshot directly, keep its pre-edit OH/PTRREVIEWED, and show the move quantity only as the originating-row callout.
+- Never build a completed Reclass email/PDF from post-move applied rows; render the SQL-frozen `report_rows` snapshot directly, keep its pre-edit OH/PTRREVIEWED, and append each movement inline in the originating OH cell while excluding app-created destination rows.
+- Never derive Reclass Open Stock from `SUM(ptravailable)` or an Available delta; adjust every physical row in the source and destination lots by the exact moved On Hand quantity and preserve the matching CAV/override ledger.
 - Never assert Reclass office-keyer reports through the retired action-specific column layout; exercise the canonical nine-column renderer and verify frozen ERP rows/OH, yellow originating-row move callouts, and no app-created destination row.
 - Never keep Que's loading skeleton visible while already-authorized Request or Suspend rows are rendered, and never classify a valid Reclass conflict as a generic 400 detail failure.

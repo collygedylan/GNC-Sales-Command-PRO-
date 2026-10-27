@@ -17260,26 +17260,37 @@ function formatReclassInquiryScopeNote_(scope) {
   return season + ' | sales year <= ' + displayYear + ' | ' + String(Math.max(0, Math.trunc(count))) + ' row' + (Math.trunc(count) === 1 ? '' : 's');
 }
 
+function buildReclassInlineOhText_(originalOnHand, movements) {
+  const original = String(originalOnHand == null ? '' : originalOnHand).trim();
+  const parts = (Array.isArray(movements) ? movements : []).map(function(move) {
+    const quantity = String(move && move.quantity == null ? '' : move.quantity).trim();
+    const destinationSeason = String(move && move.destinationSeason || '').trim().toUpperCase();
+    return quantity && destinationSeason ? quantity + ' --> ' + destinationSeason : '';
+  }).filter(Boolean);
+  if (!parts.length) return original;
+  return original + ' - ' + parts[0] + parts.slice(1).map(function(part) { return ', - ' + part; }).join('');
+}
+
 function buildReclassItemInquiryTable_(model) {
   const safe = model || {}, identity = safe.identity || {};
   const columns = [['lotcode','Lotcode'],['locationcode','Location'],['source','SOURCE'],['priority','Priority'],['ptronhand','OH'],['ptrreviewed','PTRREVIEWED'],['locationnotedate','Loc Note Date'],['locationptn1','LOCATIONPTN1'],['locationnote','Location Note']];
   const rows = sortReclassInquiryCompactRows_(safe.rows).map(function(row) {
     const values = Object.assign({}, row.values || {}), av = row.actionValues || {};
-    const changed = new Set(row.changedFields || []), proposals = [];
+    const changed = new Set(row.changedFields || []), movements = [];
     (safe.v7InventoryFields || []).filter(function(e){return e.unique_id === row.unique_id;}).forEach(function(e){(e.changedFields || []).forEach(function(k){changed.add(k);});});
     [['moveup','UP'],['movedown','DOWN']].forEach(function(pair){
       const splits=av[pair[0]+'splits'] || (av[pair[0]+'quantity'] ? [{quantity:av[pair[0]+'quantity'],destinationSeason:av[pair[0]+'season']}] : []);
-      splits.forEach(function(s){proposals.push(pair[1]+' '+s.quantity+' TO '+String(s.destinationSeason || '').toUpperCase());});
+      splits.forEach(function(s){movements.push({quantity:s.quantity,destinationSeason:s.destinationSeason});});
     });
     let startingOnHand = Number(values.ptronhand);
     (safe.completedMoveSummary || []).filter(function(m){return String(m.source.unique_id || m.source.uniqueId)===String(row.unique_id);}).forEach(function(m){
       if (!safe.reportRowsPreEdit && Number.isFinite(startingOnHand)) startingOnHand += Number(m.quantity) || 0;
-      proposals.push((m.direction==='move_down'?'DOWN':'UP')+' '+m.quantity+' TO '+String(m.destination.season || '').toUpperCase());
+      movements.push({quantity:m.quantity,destinationSeason:m.destination.season});
     });
-    if(proposals.length)changed.add('ptronhand');
-    if(Number.isFinite(startingOnHand) && proposals.length)values.ptronhand=String(startingOnHand);
+    if(movements.length)changed.add('ptronhand');
+    if(Number.isFinite(startingOnHand) && movements.length)values.ptronhand=buildReclassInlineOhText_(String(startingOnHand),movements);
     if(values.ptrreviewed==null || values.ptrreviewed==='')values.ptrreviewed='0';
-    return columns.map(function(col){return {text:String(values[col[0]] == null?'':values[col[0]]),changed:changed.has(col[0]),proposals:col[0]==='ptronhand'?proposals:[]};});
+    return columns.map(function(col){const inlineOh=col[0]==='ptronhand'&&movements.length>0;return {text:String(values[col[0]] == null?'':values[col[0]]),changed:changed.has(col[0])||inlineOh,proposals:[],inlineOh:inlineOh};});
   });
   return {identity:identity,columns:columns,rows:rows};
 }
@@ -17288,7 +17299,7 @@ function buildReclassItemInquiryHtml_(model) {
   const table=buildReclassItemInquiryTable_(model), esc=escapeEmailHtml_;
   const header=[['Common Name','commonname'],['Item Code','itemcode'],['Size','contsize'],['Source','source']].map(function(p){return '<div><strong>'+p[0]+':</strong> '+esc(table.identity[p[1]] || '')+'</div>';}).join('');
   const cell='border:1px solid #333333;padding:4px 6px;color:#000000;vertical-align:top;overflow-wrap:anywhere;';
-  const content=function(c){const value=esc(c.text)||'&nbsp;';if(c.proposals && c.proposals.length)return '<strong>'+value+'</strong>'+c.proposals.map(function(p){return '<div class="proposal-box">'+esc(p)+'</div>';}).join('');return c.changed?'<div class="proposal-box">'+value+'</div>':value;};
+  const content=function(c){const value=esc(c.text)||'&nbsp;';if(c.inlineOh)return '<strong>'+value+'</strong>';if(c.proposals && c.proposals.length)return '<strong>'+value+'</strong>'+c.proposals.map(function(p){return '<div class="proposal-box">'+esc(p)+'</div>';}).join('');return c.changed?'<div class="proposal-box">'+value+'</div>':value;};
   return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:11in 8.5in landscape;margin:0.35in}*{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0;background:#ffffff;color:#000000;font-family:Arial,sans-serif}h2{margin:0 0 8px}table{width:100%;border-collapse:collapse;table-layout:auto;font-size:9pt}tr{break-inside:avoid}th,td{border:1px solid #333333;padding:4px 6px}th{background:#e5e7eb}.changed{background-color:#fef08a;font-weight:700}.proposal-box{margin-top:2px;border:1.5px solid #000;padding:2px 6px;font-weight:700;background:#fef08a}</style></head><body style="background:#ffffff;color:#000000"><h2>GNC PH Reclass Item Inquiry</h2>'+header+'<table style="width:100%;border-collapse:collapse;table-layout:auto;font-size:9pt;margin-top:12px"><thead><tr>'+table.columns.map(function(c){return '<th style="'+cell+'background:#e5e7eb;text-align:left">'+esc(c[1])+'</th>';}).join('')+'</tr></thead><tbody>'+table.rows.map(function(row){return '<tr>'+row.map(function(c){return '<td'+(c.changed?' class="changed"':'')+' style="'+cell+(c.changed?'background-color:#fef08a;font-weight:700;':'background:#ffffff;')+'">'+content(c)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></body></html>';
 }
 
@@ -17304,7 +17315,7 @@ function buildReclassItemInquiryPdf_(model) {
   const all=[table.columns.map(function(c){return {text:c[1],header:true};})].concat(table.rows.map(function(row){return row.map(function(c){return Object.assign({},c,{text:[c.text].concat(c.proposals || []).join('\n')});});}));
   let font=9, layout, heights;
   for(let i=0;i<30;i++){
-    layout=all.map(function(row){return row.map(function(c,j){return {cell:c,lines:c.header && c.text==='Hold/Stop' ? ['Hold/','Stop'] : c.header && !/\s/.test(c.text) ? [c.text] : wrap(c.text,Math.max(1,Math.floor((widths[j]-8)/(font*.62))))};});});
+    layout=all.map(function(row){return row.map(function(c,j){return {cell:c,lines:c.inlineOh ? [c.text] : c.header && c.text==='Hold/Stop' ? ['Hold/','Stop'] : c.header && !/\s/.test(c.text) ? [c.text] : wrap(c.text,Math.max(1,Math.floor((widths[j]-8)/(font*.62))))};});});
     heights=layout.map(function(row){return Math.max.apply(null,row.map(function(c){return c.lines.length;}))*font*1.2+8;});
     if(heights.reduce(function(a,b){return a+b;},0)<=465)break;
     font*=.88;
@@ -17314,7 +17325,7 @@ function buildReclassItemInquiryPdf_(model) {
   text('GNC PH Reclass Item Inquiry',margin,568,18,true);
   [['Common Name','commonname'],['Item Code','itemcode'],['Size','contsize'],['Source','source']].forEach(function(p,i){text(p[0]+': '+(table.identity[p[1]] || ''),margin,548-i*13,10,false);});
   let top=491;
-  layout.forEach(function(row,i){let x=margin;const h=heights[i];row.forEach(function(c,j){ops.push(c.cell.header?'.898 .906 .922 rg':c.cell.changed?'1 1 0 rg':'1 1 1 rg');ops.push(x.toFixed(3)+' '+(top-h).toFixed(3)+' '+widths[j].toFixed(3)+' '+h.toFixed(3)+' re f');ops.push('.2 .2 .2 RG .5 w '+x.toFixed(3)+' '+(top-h).toFixed(3)+' '+widths[j].toFixed(3)+' '+h.toFixed(3)+' re S','0 0 0 rg');c.lines.forEach(function(line,k){text(line,x+4,top-4-font-k*font*1.2,font,c.cell.header||c.cell.changed);});x+=widths[j];});top-=h;});
+  layout.forEach(function(row,i){let x=margin;const h=heights[i];row.forEach(function(c,j){ops.push(c.cell.header?'.898 .906 .922 rg':c.cell.changed?'1 1 0 rg':'1 1 1 rg');ops.push(x.toFixed(3)+' '+(top-h).toFixed(3)+' '+widths[j].toFixed(3)+' '+h.toFixed(3)+' re f');ops.push('.2 .2 .2 RG .5 w '+x.toFixed(3)+' '+(top-h).toFixed(3)+' '+widths[j].toFixed(3)+' '+h.toFixed(3)+' re S','0 0 0 rg');c.lines.forEach(function(line,k){const cellFont=c.cell.inlineOh?Math.max(4,Math.min(font,(widths[j]-8)/(Math.max(1,String(line).length)*.62))):font;text(line,x+4,top-4-cellFont-k*cellFont*1.2,cellFont,c.cell.header||c.cell.changed);});x+=widths[j];});top-=h;});
   const stream=ops.join('\n');
   const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>','<< /Length '+stream.length+' >>\nstream\n'+stream+'\nendstream'];
   let pdf='%PDF-1.4\n', offsets=[0];objects.forEach(function(object,i){offsets.push(pdf.length);pdf+=(i+1)+' 0 obj\n'+object+'\nendobj\n';});const start=pdf.length;pdf+='xref\n0 7\n0000000000 65535 f \n'+offsets.slice(1).map(function(n){return String(n).padStart(10,'0')+' 00000 n \n';}).join('')+'trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n'+start+'\n%%EOF';
@@ -17361,27 +17372,26 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       if (field.key === 'ptronhand') {
         const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
         const movementLines = [];
-        const v4MovementDetails = [];
+        const inlineMovements = [];
         [['moveup', 'UP'], ['movedown', 'DOWN']].forEach(function(pair) {
           const prefix = pair[0];
           const splits = Array.isArray(actionValues[prefix + 'splits']) ? actionValues[prefix + 'splits'] : [];
           splits.forEach(function(split) {
-            v4MovementDetails.push(buildReclassInquiryProposalBoxHtml_(pair[1] + ' ' + String(split && split.quantity != null ? split.quantity : '')
-              + ' TO ' + String(split && split.destinationSeason || '').toUpperCase(), 'proposal-box-movement'));
+            inlineMovements.push({ quantity: split && split.quantity, destinationSeason: split && split.destinationSeason });
           });
           if (splits.length && actionValues[prefix + 'applyhold'] === true) {
             const reason = String(actionValues[prefix + 'holdreason'] || '').trim();
             movementLines.push(buildReclassInquiryProposalBoxHtml_('Place on Hold requested' + (reason ? ': ' + reason : ''), 'proposal-box-movement'));
           }
         });
-        movementLines.push.apply(movementLines, v4MovementDetails);
-        if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP ' + String(actionValues.moveupquantity).trim() + ' TO ' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
-        if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('DOWN ' + String(actionValues.movedownquantity).trim() + ' TO ' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
-        if (String(actionValues.shearedproposeddesigitem || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.shearedproposeddesigitem).trim(), 'proposal-box-movement'));
-        if (!movementLines.length && String(actionValues.movequantity || '').trim()) {
-          movementLines.push(buildReclassInquiryProposalBoxHtml_('UP ' + String(actionValues.movequantity).trim() + ' TO ' + String(actionValues.destinationseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        if (!inlineMovements.length) {
+          if (String(actionValues.moveupquantity || '').trim()) inlineMovements.push({ quantity: actionValues.moveupquantity, destinationSeason: actionValues.moveupseason });
+          if (String(actionValues.movedownquantity || '').trim()) inlineMovements.push({ quantity: actionValues.movedownquantity, destinationSeason: actionValues.movedownseason });
         }
-        return '<td' + (movementLines.length ? ' class="movement-cell edited-cell" data-edited="true"' : '') + '><strong class="original-oh">' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>' + movementLines.join('') + '</td>';
+        if (String(actionValues.shearedproposeddesigitem || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.shearedproposeddesigitem).trim(), 'proposal-box-movement'));
+        if (!inlineMovements.length && String(actionValues.movequantity || '').trim()) inlineMovements.push({ quantity: actionValues.movequantity, destinationSeason: actionValues.destinationseason });
+        const inlineOh = buildReclassInlineOhText_(rawValue, inlineMovements);
+        return '<td' + (inlineMovements.length || movementLines.length ? ' class="movement-cell edited-cell" data-edited="true"' : '') + '><strong class="original-oh">' + (String(inlineOh || '') ? esc(inlineOh) : '&nbsp;') + '</strong>' + movementLines.join('') + '</td>';
       }
       return '<td class="' + cellClass(field, edited) + '"' + (edited ? ' data-edited="true"' : '') + '>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;')) + '</td>';
     }).join('') + '</tr>';

@@ -4651,6 +4651,46 @@ async function readLoginHomeSyncMetadata(username: string) {
   };
 }
 
+async function handlePasskeyAuthenticationProxy(action: string, payload: Record<string, unknown>, req: Request) {
+  const isOptions = action === "passkey_auth_options" || action === "passkey_login_begin";
+  const endpoint = isOptions ? "passkeys/authentication/options" : "passkeys/authentication/verify";
+  const credential = payload.credential && typeof payload.credential === "object" && !Array.isArray(payload.credential)
+    ? payload.credential as Record<string, unknown> : null;
+  const challengeId = String(payload.challengeId || payload.challenge_id || "").trim();
+  if (!isOptions && (!challengeId || !credential)) {
+    return errorResponse("Passkey challenge and credential are required.", 400, { code: "PASSKEY_VERIFY_REQUIRED" });
+  }
+  const body = isOptions
+    ? { gotrue_meta_security: { captcha_token: String(payload.captchaToken || "").trim() || undefined } }
+    : { challenge_id: challengeId, credential };
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Origin: String(req.headers.get("origin") || "https://agmetricapp.com"),
+      "X-Client-Info": "agdata-app-api-passkey-v1",
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
+  });
+  const responseText = await response.text();
+  let responseBody = responseText;
+  if (isOptions && response.ok) {
+    try {
+      const parsed = JSON.parse(responseText) as Record<string, unknown>;
+      const options = parsed.options && typeof parsed.options === "object" && !Array.isArray(parsed.options)
+        ? parsed.options as Record<string, unknown> : null;
+      if (options && !Array.isArray(options.allowCredentials)) options.allowCredentials = [];
+      responseBody = JSON.stringify(parsed);
+    } catch { /* preserve the upstream response if it is unexpectedly non-JSON */ }
+  }
+  return new Response(responseBody, {
+    status: response.status,
+    headers: { ...corsHeaders, "Content-Type": response.headers.get("content-type") || "application/json" },
+  });
+}
+
 async function handleLogin(payload: Record<string, unknown>, req: Request) {
   const username = String(payload.username || "").trim();
   const password = String(payload.password || "").trim();
@@ -6722,6 +6762,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   // Login credentials, the native bridge, and the dedicated password reconciliation flow have
   // their own proof contracts; every other app-api action shares the gate below.
   if (action === "login") return await handleLogin(payload, req);
+  if (["passkey_auth_options", "passkey_login_begin", "passkey_login_verify"].includes(action)) {
+    return await handlePasskeyAuthenticationProxy(action, payload, req);
+  }
   if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
   if (action === "password_change") return await handlePasswordChange(await readPasswordChangeSession(req, session), payload);
 

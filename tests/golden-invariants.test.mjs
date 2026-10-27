@@ -437,11 +437,11 @@ test('Invariant 10 (Reclass Move Up / Move Down Season-Wide Open Stock & Loc Pho
 });
 
 test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () => {
-  const context = runFunctions('Code.gs', ['buildReclassItemInquiryTable_'], { sortReclassInquiryCompactRows_: rows => rows });
+  const context = runFunctions('Code.gs', ['buildReclassInlineOhText_', 'buildReclassItemInquiryTable_'], { sortReclassInquiryCompactRows_: rows => rows });
   const table = plain(context.buildReclassItemInquiryTable_({ identity: { commonname: 'Green Velvet Boxwood' }, rows: [{ unique_id: 'source', values: { lotcode: '27.S1', locationcode: 'A.03.000', source: 'BR', ptronhand: '275' }, actionValues: {}, changedFields: [] }], completedMoveSummary: [{ direction: 'move_up', quantity: 55, source: { unique_id: 'source' }, destination: { season: 'F1' } }] }));
   assert.deepEqual(table.columns.map(column => column[1]), ['Lotcode', 'Location', 'SOURCE', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note']);
-  assert.equal(table.rows[0][4].text, '330');
-  assert.deepEqual(table.rows[0][4].proposals, ['UP 55 TO F1']);
+  assert.equal(table.rows[0][4].text, '330 - 55 --> F1');
+  assert.deepEqual(table.rows[0][4].proposals, []);
   assert.doesNotMatch(JSON.stringify(table.columns), /Action(?: Details)?/);
 });
 
@@ -1649,6 +1649,7 @@ test('Invariant 57 (Completed Reclass Report Uses Only Frozen Pre-Edit ERP Rows)
     sortReclassInquiryCompactRows_: rows => rows
   });
   vm.runInContext(functionSource('Code.gs', 'buildCompletedInventoryReclassReportModel_') + '\n'
+    + functionSource('Code.gs', 'buildReclassInlineOhText_') + '\n'
     + functionSource('Code.gs', 'buildReclassItemInquiryTable_'), context);
   const report_rows = [
     { unique_id: 'source', lotcode: '27.S1', locationcode: 'C.15.000', source: 'LD', priority: '3', ptronhand: '808', ptrreviewed: '0' },
@@ -1665,9 +1666,9 @@ test('Invariant 57 (Completed Reclass Report Uses Only Frozen Pre-Edit ERP Rows)
   const table = context.buildReclassItemInquiryTable_(model);
   assert.equal(table.rows.length, 6);
   const source = table.rows.find(row => row[0].text === '27.S1' && row[1].text === 'C.15.000');
-  assert.equal(source[4].text, '808', 'origin OH stays pre-edit instead of using appliedRows OH 532');
+  assert.equal(source[4].text, '808 - 276 --> F1', 'origin OH stays pre-edit and carries the inline move notation');
   assert.equal(source[5].text, '0', 'origin PTRREVIEWED stays pre-edit');
-  assert.deepEqual(Array.from(source[4].proposals), ['UP 276 TO F1']);
+  assert.deepEqual(Array.from(source[4].proposals), []);
   assert.equal(table.rows.some(row => row[0].text === '27.F1' && row[1].text === 'C.15.000'), false,
     'an app-created destination in appliedRows never enters the ERP report');
 });
@@ -1716,6 +1717,7 @@ test('Invariant 59 (Completed Reclass Preserves Existing ERP Destination Snapsho
     escapeEmailHtml_: value => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   });
   vm.runInContext(functionSource('Code.gs', 'buildCompletedInventoryReclassReportModel_') + '\n'
+    + functionSource('Code.gs', 'buildReclassInlineOhText_') + '\n'
     + functionSource('Code.gs', 'buildReclassItemInquiryTable_') + '\n'
     + functionSource('Code.gs', 'buildReclassItemInquiryHtml_'), context);
   const report_rows = [
@@ -1741,13 +1743,14 @@ test('Invariant 59 (Completed Reclass Preserves Existing ERP Destination Snapsho
   assert.equal(table.rows.length, 6);
   const origin = table.rows.find(row => row[0].text === '27.S1' && row[1].text === 'C.15.000');
   const destination = table.rows.find(row => row[0].text === '27.F1' && row[1].text === 'F.16.000');
-  assert.equal(origin[4].text, '808', 'origin displays its frozen pre-move quantity, not applied 532');
+  assert.equal(origin[4].text, '808 - 276 --> F1', 'origin displays frozen pre-move quantity with the inline destination move');
   assert.equal(origin[5].text, '7', 'origin review quantity remains frozen');
-  assert.deepEqual(Array.from(origin[4].proposals), ['UP 276 TO F1']);
+  assert.deepEqual(Array.from(origin[4].proposals), []);
   assert.equal(destination[4].text, '113', 'pre-existing ERP destination displays its frozen quantity, not applied 389');
   assert.equal(destination[5].text, '4', 'pre-existing ERP destination review quantity remains frozen');
   const html = context.buildReclassItemInquiryHtml_(model);
-  assert.match(html, /UP 276 TO F1/);
+  assert.match(html, /808 - 276 --&gt; F1/);
+  assert.doesNotMatch(html, /UP 276 TO F1/);
   assert.match(html, /proposal-box/);
   assert.match(html, /background:#fef08a/);
 });
@@ -2026,4 +2029,28 @@ test('Invariant 67 (Interactive Login and Atomic Drive Publication Retain Their 
   assert.match(code, /cleanupCompletedImportExtraction_\(sourceIdentity, fileMeta\.file_name\)[^]*moveDriveFileToFolderWithRetry_\(sourceFile/);
   assert.match(migration, /mapped\.source_unique_id[^]*not exists\([^]*live\.unique_id=mapped\.canonical_unique_id[^]*exists\([^]*live\.unique_id=mapped\.source_unique_id/);
   assert.match(migration, /resolved_in_version='2\.3\.84'/);
+});
+
+test('Invariant 68 (Reclass Delta Reports, Bloom Gallery Shares and Discoverable Passkeys Stay Canonical)', () => {
+  const reclass = runFunctions('Code.gs', ['buildReclassInlineOhText_']);
+  assert.equal(reclass.buildReclassInlineOhText_('152', [{ quantity: 140, destinationSeason: 'f1' }]), '152 - 140 --> F1');
+  assert.equal(reclass.buildReclassInlineOhText_('152', [
+    { quantity: 100, destinationSeason: 'f1' }, { quantity: 40, destinationSeason: 's1' }
+  ]), '152 - 100 --> F1, - 40 --> S1');
+
+  const runtime = read('assets/app-runtime.js');
+  assert.match(runtime, /buildInventoryShareGalleryUrl[^]*url\.searchParams\.set\('gallery', '1'\)[^]*url\.searchParams\.set\('p', photoKeys\.join\(','\)\)/);
+  assert.match(runtime, /Photos: \$\{inventoryPhotos\.length\} photo[^]*buildInventoryShareGalleryUrl/);
+  const inventoryFormatter = runtime.slice(runtime.indexOf('function formatInventoryItemsText('), runtime.indexOf('function formatInventoryItemsHtml('));
+  assert.doesNotMatch(inventoryFormatter, /Photo \$\{photoIndex \+ 1\}|photo\.url|photo\.href/);
+  assert.match(runtime, /LAST_PASSKEY_USERNAME_STORAGE_KEY[^]*invalidateNativeAuthRecovery\(\)[^]*auth\.signInWithPasskey\(\)/);
+
+  const edge = read('supabase/functions/app-api/index.ts');
+  assert.match(edge, /passkey_auth_options[^]*passkeys\/authentication\/options/);
+  assert.match(edge, /passkeys\/authentication\/verify/);
+  assert.match(edge, /passkey_login_verify/);
+  assert.match(edge, /options\.allowCredentials = \[\]/);
+  const migration = read('supabase/migrations/20261027143000_agdata_v2385_reclass_open_stock_and_inline_oh.sql');
+  assert.match(migration, /replace\(definition,\s*'next_stock:=coalesce\(baseline,0\)\+change\.delta;',\s*'next_stock:=coalesce\(baseline,0\)\+change\.oh_delta;'\)/);
+  assert.match(migration, /private\.reclass_numeric_v1\(m\.s_lts\)\+change\.oh_delta/);
 });

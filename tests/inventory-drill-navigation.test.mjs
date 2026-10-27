@@ -1061,17 +1061,17 @@ test('AV rendered search ranks St John word starts before Shasta and Hosta even 
  for(const term of ['st','st jo']) assert.deepEqual(Array.from(ctx.buildAVExportContext(rows,term).rows.slice(0,2),row=>row.COMMONNAME),['Blue Velvet St. Johnswort','Cobalt-N-Gold St. Johnswort']);
 });
 
-test('cold Drive withholds a partial 27-name catalog and retains the complete catalog through refresh', () => {
- let complete=false,painted=0; const attrs=new Map();const container={innerHTML:'',classList:{remove(){}},hasAttribute:key=>attrs.has(key),setAttribute:(key,value)=>attrs.set(key,value)};
+test('cold Drive paints an authorized partial catalog and refreshes when completeness changes', () => {
+ let complete=false,painted=0; const attrs=new Map();const container={innerHTML:'',classList:{remove(){}},hasAttribute:key=>attrs.has(key),setAttribute:(key,value)=>attrs.set(key,value),removeAttribute:key=>attrs.delete(key)};
  const ctx=vm.createContext({activeDriveTab:'name',activeDriveMode:'ok',driveViewLevel:0,DRIVE_MODE_LABELS:{ok:'Drive Mode'},fullInventory:[],productionDisplayMasterReceipt:null,
  ensureViewDataForRender:()=>false,syncDriveModeTabs(){},syncDriveTabPills(){},document:{getElementById:()=>container},renderDriveUniversalSearchResultsOnly:()=>false,hideDrivePlantFilters(){},
  buildDriveVisibleItemsState:()=>({baseSearchFilteredItems:Array.from({length:complete?1613:27})}),scheduleDriveTopControlsRender(){},renderDriveQuickRequestBar(){},
  canUseProductionLiveSync:()=>true,getDatasetState:()=>({rowCompleteness:complete?'complete':'partial'}),syncDriveCrumb(){},
  renderDriveCommonNameDrill:(_c,_b,_l,state)=>{painted++;container.innerHTML=String(state.baseSearchFilteredItems.length)+' names';}});
  vm.runInContext(source('renderDrive'),ctx);
- ctx.renderDrive();assert.equal(painted,0);assert.doesNotMatch(container.innerHTML,/27 names/);
- complete=true;ctx.renderDrive();assert.equal(container.innerHTML,'1613 names');
- complete=false;ctx.renderDrive();assert.equal(container.innerHTML,'1613 names');assert.equal(painted,1);
+ ctx.renderDrive();assert.equal(painted,1);assert.equal(container.innerHTML,'27 names');
+ complete=true;ctx.renderDrive();assert.equal(container.innerHTML,'1613 names');assert.equal(painted,2);
+ complete=false;ctx.renderDrive();assert.equal(container.innerHTML,'27 names');assert.equal(painted,3);
  const commonName=source('renderDriveCommonNameDrill');assert.ok(!commonName.includes('driveViewLevel > 3) driveViewLevel = 3'));
  const renderContent=html.match(/        function renderViewContent\([^]*?^        }/m)[0];
  assert.ok(renderContent.includes("!state.initialized && activeDriveTab === 'name' && !selectedDriveName && !selectedDriveLoc && driveViewLevel === 0"));
@@ -1165,11 +1165,11 @@ test('Reclass inquiry uses nine canonical columns and boxed starting OH movement
  const code=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
  const scriptFunction=name=>code.match(new RegExp('function '+name+'\\([^]*?^}','m'))?.[0] || assert.fail(name);
  const ctx=vm.createContext({sortReclassInquiryCompactRows_:rows=>rows});
- vm.runInContext(scriptFunction('buildReclassItemInquiryTable_'),ctx);
+ vm.runInContext(scriptFunction('buildReclassInlineOhText_')+'\n'+scriptFunction('buildReclassItemInquiryTable_'),ctx);
  const table=ctx.buildReclassItemInquiryTable_({identity:{},rows:[{unique_id:'source',values:{lotcode:'27.S1',locationcode:'A.03.000',source:'BR',ptronhand:'275'},actionValues:{},changedFields:[]}],completedMoveSummary:[{direction:'move_up',quantity:55,source:{unique_id:'source'},destination:{season:'F1'}}]});
  assert.deepEqual(Array.from(table.columns,column=>column[1]),['Lotcode','Location','SOURCE','Priority','OH','PTRREVIEWED','Loc Note Date','LOCATIONPTN1','Location Note']);
  assert.doesNotMatch(JSON.stringify(table.columns),/Action(?: Details)?/);
- const oh=table.rows[0][4];assert.equal(oh.text,'330');assert.deepEqual(Array.from(oh.proposals),['UP 55 TO F1']);assert.equal(oh.changed,true);
+ const oh=table.rows[0][4];assert.equal(oh.text,'330 - 55 --> F1');assert.deepEqual(Array.from(oh.proposals),[]);assert.equal(oh.changed,true);
  assert.match(scriptFunction('buildReclassItemInquiryHtml_'),/proposal-box[^]*border:1\.5px solid #000[^]*background:#fef08a/);
 });
 
