@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.80';
+const APP_SHELL_BUILD = 'AgData v2.3.81';
 const APP_SHELL_RUNTIME_REVISION = 'canonical-version-enforcement-r2';
-const APP_ASSET_VERSION = '2.3.80';
+const APP_ASSET_VERSION = '2.3.81';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.80';
+const CACHE_NAME = 'agdata-v2.3.81';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
@@ -683,18 +683,20 @@ self.addEventListener('push', (event) => {
   if (event.data) {
     try { data = event.data.json(); } catch (error) { data = { title: 'Ag Data Message', body: event.data.text() }; }
   }
-  const title = data.title || 'Ag Data Message';
+  const assignedItemsNotice = data.homeTab === 'assigned-items-export';
+  const title = assignedItemsNotice ? 'New Unassigned Item Code(s)' : data.title || 'Ag Data Message';
   const requestedIcon = data.icon ? new URL(data.icon, self.registration.scope) : null;
   const iconUrl = (requestedIcon
     ? (getBrandingCanonicalUrl(requestedIcon) || requestedIcon)
     : new URL('./assets/branding/ag-data-solutions-icon-v2026080925-192.png', self.registration.scope)).href;
   const requestedTarget = getRequestUrl(data.url || APP_SHELL_URL);
+  if (assignedItemsNotice && requestedTarget) requestedTarget.searchParams.set('assignedItems', 'unassigned');
   const targetUrl = isProductionShellUrl(requestedTarget) ? requestedTarget.href : getAbsoluteAssetUrl(APP_SHELL_URL);
   const options = {
-    body: data.body || 'You have a new message.',
+    body: assignedItemsNotice ? `${data.body || 'New itemcode(s) need a user assigned.'} Review Managers → Assigned Items.` : data.body || 'You have a new message.',
     icon: iconUrl,
     badge: iconUrl,
-    data: { url: targetUrl, viewId: data.viewId || 'request', approvalId: data.approvalId || '', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '', calendarEventId: data.calendarEventId || '' },
+    data: { url: targetUrl, viewId: assignedItemsNotice ? 'managers' : data.viewId || 'request', homeTab: assignedItemsNotice ? 'assigned-items-export' : data.homeTab || '', approvalId: data.approvalId || '', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '', calendarEventId: data.calendarEventId || '' },
     actions: data.viewId === 'suspend-tag-approval' && /^[0-9a-f-]{36}$/i.test(data.approvalId || '')
       ? [{ action: 'approve', title: 'Approve' }, { action: 'deny', title: 'Deny' }] : [],
     vibrate: [200, 100, 200],
@@ -723,14 +725,14 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of clientList) {
         if (isProductionShellUrl(client.url) && 'focus' in client) {
           await client.focus();
-          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, approvalId: payload.approvalId || '', taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
+          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, homeTab: payload.homeTab || '', approvalId: payload.approvalId || '', taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
           return client;
         }
       }
       if (clients.openWindow) {
         const opened = await clients.openWindow(targetUrl);
         if (opened) {
-          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, approvalId: payload.approvalId || '', taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
+          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, homeTab: payload.homeTab || '', approvalId: payload.approvalId || '', taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
         }
         return opened;
       }
