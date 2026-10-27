@@ -7,6 +7,7 @@ import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManife
 
 const RELEASE = 'AgData v2.3.89';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
+const ASSET_QUERY_OVERRIDES = Object.freeze({ 'mobile-workspace.js': `${RELEASE_QUERY}.1` });
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -273,7 +274,7 @@ await writeFile(path.join(stylesRoot, 'live-app-styles-authority-v2026090503.css
 
 const deployedHtml = (optimizedHead + runtimeDeployedHtml.slice(headEnd)).replace(
   /(<(?:link|script)\b[^>]*(?:href|src)=")\.\/assets\/([^"?]+\.(?:css|js))(?:\?[^"]*)?"/g,
-  (_match, prefix, asset) => prefix + './assets/' + asset + '?v=' + RELEASE_QUERY + '"');
+  (_match, prefix, asset) => prefix + './assets/' + asset + '?v=' + (ASSET_QUERY_OVERRIDES[asset] || RELEASE_QUERY) + '"');
 await mkdir(siteRoot, { recursive: true });
 await writeFile(path.join(siteRoot, 'index.html'), deployedHtml, 'utf8');
 
