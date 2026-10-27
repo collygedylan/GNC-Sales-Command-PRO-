@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "5b1106f04e51a2be6c706200f18c732f09771141",
+  "commit": "7745c1803bbaa824ebb28e0d30460ca651eef67d",
   "release": "AgData v2.3.89",
   "files": [
     {
@@ -891,17 +891,17 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 187,
-      "sha256": "c1e593595a5793d20ea84dc3920df9cf1a98d43f795f6e525403106d34d3a946"
+      "sha256": "286241866a130462036b501fbba71e5256d5a81f0d185c7353b8456b9164cec6"
     },
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "c1e593595a5793d20ea84dc3920df9cf1a98d43f795f6e525403106d34d3a946"
+      "sha256": "286241866a130462036b501fbba71e5256d5a81f0d185c7353b8456b9164cec6"
     },
     {
-      "path": "deployments/5b1106f04e51a2be6c706200f18c732f09771141.json",
+      "path": "deployments/7745c1803bbaa824ebb28e0d30460ca651eef67d.json",
       "bytes": 187,
-      "sha256": "c1e593595a5793d20ea84dc3920df9cf1a98d43f795f6e525403106d34d3a946"
+      "sha256": "286241866a130462036b501fbba71e5256d5a81f0d185c7353b8456b9164cec6"
     },
     {
       "path": "index.html",
@@ -1176,7 +1176,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "735706e1338d1d1e4be4e46e656fdc9436ddc3f8e4f2f0d6590184fea3f0f35e"
+      "sha256": "680b0df1aeb47a9800512db71d90a6d7b675e2c94673b7a808b649809e1e6ceb"
     },
     {
       "path": "v2/v2-cache-migration.js",
