@@ -37,6 +37,8 @@
 .bn-drill-copy strong{display:block;font-size:1.2rem;font-weight:900;line-height:1.2;margin:4px 0;overflow-wrap:anywhere;color:var(--ops-brand-strong,#05623c)}
 .bn-drill-card>i{flex-shrink:0;color:var(--ops-brand,#07874f)}
 .bn-eyebrow{display:block;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ops-text-muted,#617068)}
+.bn-draft-badge{display:inline-flex;margin-left:6px;padding:2px 7px;border-radius:999px;background:#dcfce7;color:#166534;font-size:.65rem;letter-spacing:.05em}
+.bn-saved-drafts-bar{margin:12px 0 18px;padding:12px;border:1px solid #86efac;border-radius:12px;background:#f0fdf4;color:#14532d}.bn-saved-drafts-bar>div{display:flex;gap:8px;overflow-x:auto;padding-top:8px}.bn-saved-drafts-bar button{flex:0 0 auto;border:1px solid #22c55e;border-radius:999px;background:#fff;padding:7px 11px;color:#166534;font-weight:800}
 .bn-muted{display:block;font-size:.9rem;color:var(--ops-text-muted,#617068)}
 .bn-breadcrumb,.bn-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
 .bn-breadcrumb>.bn-button,.bn-toolbar>.bn-button{margin:0}

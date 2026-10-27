@@ -69,7 +69,8 @@
  }
  const normalize = value => String(value ?? '').trim().toUpperCase();
  const cleanText = (value,limit) => String(value ?? '').replace(/\r\n?/g,'\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,'').trim().slice(0,limit);
- const canonicalLocation = value => {const text=cleanText(value,200).toUpperCase().replace(/\s+/g,'').replace(/\.+$/,'');return /^[A-Z0-9]+\.[A-Z0-9]+$/.test(text)?`${text}.000`:text;};
+ const normalizeBunchNoteLocationKey = value => cleanText(value,200).toUpperCase().replace(/\s+/g,'').replace(/\.+$/,'').replace(/\.000$/,'');
+ const canonicalLocation = value => {const text=normalizeBunchNoteLocationKey(value);return /^[A-Z0-9]+\.[A-Z0-9]+$/.test(text)?`${text}.000`:text;};
  const displayLocation = value => canonicalLocation(value).replace(/\.000$/, '');
  const BUNCH_HOUSES = ['South House','North House','Center House','South & Center House','North & Center House','East House','West House','East & Center House','West & Center House'];
  const PURPOSE_THREADS = ['Early Winter Protect','Haul-In Space','Small Container Cover','Overwinter Bunch & Cover','Consolidate & Space','Freeze Prep','Fall Drill Shift Canfilling','LD Canfilling/Planting','Shovel Shift','Rain Days'];
@@ -96,7 +97,7 @@
   rows.forEach(row => {
    if (!row.unique_id || seen.has(row.unique_id)) return;
    seen.add(row.unique_id);
-   const block = normalize(row.blockalpha), location = normalize(row.locationcode);
+   const block = normalize(row.blockalpha), location = canonicalLocation(row.locationcode);
    if (!block || !location) return;
    if (!blocks.has(block)) blocks.set(block, new Map());
    if (!blocks.get(block).has(location)) blocks.get(block).set(location, []);
@@ -155,6 +156,9 @@
  const stock = value => quantity(value) === null ? 'Unknown' : String(quantity(value));
  const fresh = () => ({ account: '', epoch: 0, jobs: [], loaded: false, loading: false, error: '', blocks: [], rows: [], users: [], drafts: [], draft: null, location: '', locationStep: 'setup', suggestionMenu: '', customSuggestion: '', cardPicker: null, actionEdit: null, customEdit: null, base: '', item: '', workCard: '', boardState: {}, queueBase: '', queueLocation: '', queueMode: 'create', screen: 'source', destinationBase: '', destinationLocation: '', destinationData: null, destinationNames: [], destinationSearch: '', picker: null, scrolls: new Map(), parked: new Map(), panels: new Set(), options: [], destinations: [], targets: {}, choices: {}, choiceSnapshots: {}, pendingActions: {}, custom: {}, workForms: {}, workRows: {}, workRecipients: [], bulkSelection: [], bulkOwnerIds: [], bulkOwnersTouched:false, bulkActionTouched:false, cardDestinationSearch:{}, bulkAction: '', bulkDestination:'', bulkDestinationSearch:'', bulkQualifier:'', bulkHouse:'', bulkMargin: '', bulkAppend: '', detail: null, preview: null, urls: [], filter: 'available', busy: false, metadataLoaded: false, metadataLoading: false, commands: new Map() });
  let state = fresh();
+ const LOCAL_DRAFT_STORE_KEY = 'gnc_bunch_note_drafts_v1';
+ const LEGACY_LOCAL_DRAFT_KEYS = ['gnc_bunch_note_draft_v1','gnc_bunch_note_drafts','bunchNoteDrafts'];
+ let draftAutoSaveTimer = null;
  const account = () => typeof currentUser === 'undefined' ? '' : String(currentUser || '');
  const author = () => account() === 'dylan_collyge' && typeof nativeAuthSessionActive !== 'undefined' && nativeAuthSessionActive === true && typeof nativeAuthProfile !== 'undefined' && nativeAuthProfile?.username === 'dylan_collyge'
   && !nativeAuthProfile.disabled_at && nativeAuthProfile.must_change_password === false
@@ -185,9 +189,32 @@
    loc.work_type=cleanText(loc.work_type||loc.title||loc.purposes||`${displayLocation(code)} Bunch Notes`,500);loc.purposes=cleanText(loc.purposes||loc.work_type,500);if('title' in loc)loc.title=cleanText(loc.title,500);
    loc.purpose_thread=cleanText(loc.purpose_thread,500);loc.default_house_plan=cleanText(loc.default_house_plan,800);loc.schedule_banner=cleanText(loc.schedule_banner,2000);loc.direction=cleanText(loc.direction,200);
    loc.instructions=cleanText(loc.instructions,8000);loc.prerequisites=cleanText(loc.prerequisites,8000);loc.rule_chips=(Array.isArray(loc.rule_chips)?loc.rule_chips:[]).map(chip=>cleanText(chip,500)).filter(Boolean).slice(0,20);
-   for(const card of Array.isArray(loc.cards)?loc.cards:[])if(card&&typeof card==='object')card.location_code=code;
+   for(const card of Array.isArray(loc.cards)?loc.cards:[])if(card&&typeof card==='object'&&card.kind!=='divider')card.location_code=code;
   }
   const firstBlock=d.locations.map(loc=>canonicalLocation(loc.location).split('.')[0]).find(Boolean)||'';d.block=cleanText(d.block,100).toUpperCase().replace(/\.+$/,'')||firstBlock;return d;
+ }
+ function readLocalDraftStore() {
+  let store={version:1,accounts:{}};
+  try{const parsed=JSON.parse(localStorage.getItem(LOCAL_DRAFT_STORE_KEY)||'null');if(parsed&&parsed.version===1&&parsed.accounts&&typeof parsed.accounts==='object')store=parsed;}catch(_){}
+  for(const key of LEGACY_LOCAL_DRAFT_KEYS){try{const legacy=JSON.parse(localStorage.getItem(key)||'null');const values=Array.isArray(legacy)?legacy:legacy?.body?[legacy]:[];if(values.length){store.accounts[account()]=[...(store.accounts[account()]||[]),...values];localStorage.removeItem(key);}}catch(_){}}
+  return store;
+ }
+ function localDraftIdentity(draft) {return String(draft?.id||draft?.local_id||`local:${account()}:${draft?.body?.block||''}`);}
+ function persistLocalDraft(draft=state.draft) {
+  if(!draft?.body||!account())return;
+  const copy=structuredClone(draft);normalizeDraftBody(copy.body);copy.local_id=localDraftIdentity(copy);copy.local_saved_at=new Date().toISOString();
+  try{const store=readLocalDraftStore(),items=Array.isArray(store.accounts[account()])?store.accounts[account()]:[],id=localDraftIdentity(copy),block=copy.body.block;store.accounts[account()]=[copy,...items.filter(item=>localDraftIdentity(item)!==id&&!(copy.id==null&&item?.id==null&&item?.body?.block===block))].slice(0,100);localStorage.setItem(LOCAL_DRAFT_STORE_KEY,JSON.stringify(store));}catch(_){}
+ }
+ function removeLocalDraft(draft) {try{const store=readLocalDraftStore(),id=localDraftIdentity(draft);store.accounts[account()]=(store.accounts[account()]||[]).filter(item=>localDraftIdentity(item)!==id);localStorage.setItem(LOCAL_DRAFT_STORE_KEY,JSON.stringify(store));}catch(_) {}}
+ function mergePersistedDrafts(serverDrafts=[]) {
+  const store=readLocalDraftStore(),local=Array.isArray(store.accounts[account()])?store.accounts[account()]:[],merged=new Map();
+  for(const draft of serverDrafts){if(!draft?.body)continue;normalizeDraftBody(draft.body);merged.set(localDraftIdentity(draft),draft);}
+  for(const draft of local){if(!draft?.body)continue;normalizeDraftBody(draft.body);const key=localDraftIdentity(draft),server=merged.get(key),localTime=Date.parse(draft.local_saved_at||0),serverTime=Date.parse(server?.updated_at||0);if(!server||localTime>serverTime)merged.set(key,draft);}
+  return [...merged.values()].sort((a,b)=>Date.parse(b.local_saved_at||b.updated_at||0)-Date.parse(a.local_saved_at||a.updated_at||0));
+ }
+ function scheduleDraftAutoSave() {
+  persistLocalDraft();clearTimeout(draftAutoSaveTimer);if(!state.draft||!author())return;
+  draftAutoSaveTimer=setTimeout(()=>{draftAutoSaveTimer=null;if(state.draft&&!state.busy&&author())void run(saveDraft);},1400);
  }
  function prepareDraftCards() { const d=normalizeDraftBody(state.draft?.body);if(!d)return;for(const loc of d.locations)prepareCards(loc,!Array.isArray(loc.cards)); }
  function ensureLocation(location) {
@@ -242,7 +269,7 @@
    return `<h2>${esc(job.location)} · ${esc(job.body.purposes)}</h2><p>${esc(job.note_number)} · Instruction revision ${job.instruction_revision}</p><div class="bn-card-board">${visibleCards.map(card=>{const note=(job.body.actions||[]).find(action=>action.card_id===card.id&&action.kind==='instruction'&&action.label==='Card notes'),owners=cardOwnerIds(card),workflow=card.workflow_action==='ta'?'TA (Throw Away)':card.workflow_action==='move'?'Move':card.workflow_action==='bunch'?'Bunch':'';return `<article class="bn-card"><span class="bn-eyebrow">${esc(card.kind==='shared'?'General / Shared Work':card.itemcode)}</span><h3>${esc(card.commonname)} ${esc(card.contsize)}</h3><p>Assigned: ${esc(cardAssigneeLabel(card))} · ${esc(card.status)}</p><p>House: ${esc(card.house||'Not specified')} · Direction: ${esc(card.direction||'Not specified')}</p>${workflow?`<p><b>Action:</b> ${esc(workflow)}${card.workflow_action==='move'?' · To '+esc(card.destination_location):card.workflow_action==='bunch'?' · '+esc(card.destination_house):''}</p>`:''}${card.notes?`<p class="bn-pre"><b>Card notes:</b> ${esc(card.notes)}</p>`:''}${note?`<p class="bn-pre"><b>Additional notes:</b> ${esc(note.instructions)}</p>`:''}${button('Open card',`BunchNote.openWorkCard(${arg(card.id)})`,state.busy)}${job.status==='open'&&card.status==='open'&&!owners.length?button('Claim card',`BunchNote.cardCommand('claim_card',${arg(card.id)})`,state.busy):''}${job.status==='open'&&card.status==='open'&&isCardAssignedTo(card,uid)?button('Release card',`BunchNote.cardCommand('release_card',${arg(card.id)})`,state.busy):''}${author()&&job.status==='open'&&card.status==='open'?`<fieldset class="bn-picker-lots"><legend>Assign / reassign card</legend>${state.users.map(user=>`<label class="bn-choice"><input type="checkbox" data-bn-focus-key="assigned-card-owner:${esc(card.id)}:${esc(user.id)}" aria-label="Assign ${esc(user.display||user.username)} to ${esc(card.itemcode||'shared work')}" data-card-owner="${esc(card.id)}" value="${esc(user.id)}" ${owners.includes(user.id)?'checked':''}><span>${esc(user.display||user.username)}</span></label>`).join('')}</fieldset>${button('Apply card assignment',`BunchNote.assignCard(${arg(card.id)})`,state.busy)}`:''}</article>`}).join('')||'<p class="bn-muted">No cards are assigned to this account.</p>'}</div>`+(author()&&job.status==='open'?button('Revise instructions','BunchNote.revise()',state.busy)+button('Cancel work','BunchNote.cancel()',state.busy):'');
  }
  function disposeView(options = {}) { structuredGeneration++; structuredHandles.forEach(h => h.destroy()); structuredHandles.clear();renderPickerPortal('');if(!options.preservePicker)state.cardPicker=null; }
- function reset() { disposeView(); state.urls.forEach(url => URL.revokeObjectURL(url)); state = fresh(); state.account = account(); }
+ function reset() { persistLocalDraft();clearTimeout(draftAutoSaveTimer);draftAutoSaveTimer=null;disposeView(); state.urls.forEach(url => URL.revokeObjectURL(url)); state = fresh(); state.account = account(); }
  function structuredProps(host) {
   const mode=host.dataset.bnStructured, index=Number(host.dataset.index);
   const j=workJob();
@@ -342,7 +369,7 @@
   try {
    return await run(async () => {
     const results = await Promise.all([api('blocks'), api('directory'), api('drafts'),api('catalog')]);
-    state.blocks = results[0].blocks; state.users = results[1].users; state.drafts = results[2].drafts; state.options=results[3].options; state.destinations=results[3].locations;
+    state.blocks = results[0].blocks; state.users = results[1].users; state.drafts = mergePersistedDrafts(results[2].drafts); state.options=results[3].options; state.destinations=results[3].locations;
     state.metadataLoaded = true;
    });
   } finally { state.metadataLoading = false; render(); }
@@ -375,12 +402,14 @@
  function userOptions(value, blank = 'Unassigned — available to everyone') { return `<option value="">${esc(blank)}</option>` + state.users.map(u => `<option value="${esc(u.id)}" ${u.id === value ? 'selected' : ''}>${esc(u.display || u.username)}</option>`).join(''); }
  const templateOptions = () => templates.map((t, n) => `<option value="${n}">${esc(t.group + ' — ' + t.label)}</option>`).join('');
  const panelAttrs = key => `${state.panels.has(key) ? 'open' : ''} ontoggle="BunchNote.panel(${arg(key)},this.open)"`;
- function drillCard(label, caption, action, kind) {
-  return `<button type="button" class="bn-drill-card" onclick="${action}" aria-label="Open ${esc(kind)} ${esc(label)}" ${state.busy ? 'disabled' : ''}><span class="bn-drill-icon" aria-hidden="true"><i class="ph-bold ${kind === 'block' ? 'ph-squares-four' : 'ph-map-pin'}"></i></span><span class="bn-drill-copy"><span class="bn-eyebrow">${kind === 'block' ? 'Block Alpha' : 'Location Code'}</span><strong>${esc(label)}</strong><span class="bn-muted">${esc(caption)}</span></span><i class="ph-bold ph-caret-right" aria-hidden="true"></i></button>`;
+ function savedDraftLocations() {return state.drafts.flatMap(d=>(d?.body?.locations||[]).map(loc=>({id:d.id||d.local_id||localDraftIdentity(d),block:d.body.block,location:canonicalLocation(loc.location||loc.source_location)})));}
+ function drillCard(label, caption, action, kind, badge='') {
+  return `<button type="button" class="bn-drill-card" onclick="${action}" aria-label="Open ${esc(kind)} ${esc(label)}" ${state.busy ? 'disabled' : ''}><span class="bn-drill-icon" aria-hidden="true"><i class="ph-bold ${kind === 'block' ? 'ph-squares-four' : 'ph-map-pin'}"></i></span><span class="bn-drill-copy"><span class="bn-eyebrow">${kind === 'block' ? 'Block Alpha' : 'Location Code'}${badge?` <b class="bn-draft-badge">${esc(badge)}</b>`:''}</span><strong>${esc(label)}</strong><span class="bn-muted">${esc(caption)}</span></span><i class="ph-bold ph-caret-right" aria-hidden="true"></i></button>`;
  }
  function locationDrillCard(location, caption) {
   const label = displayLocation(location);
-  return drillCard(label, caption, `BunchNote.openLocation(${arg(location)})`, 'location');
+  const saved=savedDraftLocations().some(item=>normalizeBunchNoteLocationKey(item.location)===normalizeBunchNoteLocationKey(location));
+  return drillCard(label, caption, `BunchNote.openLocation(${arg(location)})`, 'location', saved?'DRAFT':'');
  }
  const categoryLabels={sequence:'Sequence',grading:'Grading',placement:'Placement',inventory:'Inventory',hauling:'Shift/Hauling'};
  function actionChoices(key, rows, target) {
@@ -440,7 +469,7 @@
  }
  function destinationChoices() {
   const unique=new Map();
-  for(const entry of state.destinations||[]){const full=normalize(typeof entry==='string'?entry:entry.location||entry.location_code);if(!full)continue;const display=displayLocation(full);if(!unique.has(display))unique.set(display,new Set());unique.get(display).add(full);}
+  for(const entry of state.destinations||[]){const full=normalize(typeof entry==='string'?entry:entry.location||entry.location_code);if(!full)continue;const base=baseLocation(full),display=base!==full?base+'.':displayLocation(full);if(!unique.has(display))unique.set(display,new Set());unique.get(display).add(full);}
   return [...unique].sort(([a],[b])=>a.localeCompare(b)).map(([display,set])=>{const codes=[...set].sort((a,b)=>a.localeCompare(b)),preferred=codes.includes(display+'000')?display+'000':codes.length===1?codes[0]:'';return {display,full:preferred,codes,requiresExplicit:!preferred};});
  }
  function resolveDestination(display, selectedFull='') {
@@ -660,7 +689,7 @@
   const draft = state.draft;
   const requiredRecipientIds=requiredBunchRecipientIds(draft?.body),requiredRecipientLabels=requiredBunchRecipientLabels(draft?.body);
   let html = draft ? '' : `<h2>Inv Bunch Notes</h2>${viewTabs()}<p class="bn-muted">Choose a block. Include and assign each inventory card independently; Move plans work without changing inventory.</p>`;
-  if (!draft) return html + `<h3>Block Alpha</h3><div class="bn-drill-grid">${state.blocks.map(b => drillCard(b, 'View locations', `BunchNote.chooseBlock(${arg(b)})`, 'block')).join('') || `<p>${state.busy ? 'Loading blocks…' : 'No blocks available.'}</p>`}</div>${catalogEditor()}<h3>Saved batches</h3><div class="bn-drill-grid">${state.drafts.map(d => drillCard(d.block, `${d.body.locations.length} locations · ${new Date(d.updated_at).toLocaleString()}`, `BunchNote.openDraft(${arg(d.id)})`, 'batch')).join('') || '<p class="bn-muted">No saved batches.</p>'}</div>`;
+  if (!draft) {const saved=savedDraftLocations();const bar=`<section class="bn-saved-drafts-bar" aria-label="Saved Drafts"><b>Saved Drafts / Active Bunch Notes</b><div>${saved.map(item=>`<button type="button" onclick="BunchNote.openSavedLocation(${arg(item.id)},${arg(item.location)})">${esc(item.location)} (Draft)</button>`).join('')||'<span class="bn-muted">No saved drafts.</span>'}</div></section>`;return html + bar + `<h3>Block Alpha</h3><div class="bn-drill-grid">${state.blocks.map(b => drillCard(b, 'View locations', `BunchNote.chooseBlock(${arg(b)})`, 'block',saved.some(item=>item.block===b)?'DRAFT':'')).join('') || `<p>${state.busy ? 'Loading blocks…' : 'No blocks available.'}</p>`}</div>${catalogEditor()}<h3>Saved batches</h3><div class="bn-drill-grid">${state.drafts.map(d => drillCard(d.body?.block||d.block, `${d.body.locations.length} locations · ${new Date(d.updated_at||d.local_saved_at).toLocaleString()}`, `BunchNote.openDraft(${arg(d.id||d.local_id)})`, 'batch','SAVED')).join('') || '<p class="bn-muted">No saved batches.</p>'}</div>`;}
   html += `<nav class="bn-breadcrumb" aria-label="Bunch Note drill-down"><button type="button" onclick="BunchNote.backToBlocks()">Blocks</button><span aria-hidden="true">›</span><button type="button" onclick="BunchNote.backToLocations()">${esc(draft.body.block)}</button>${state.location?`<span aria-hidden="true">›</span><button type="button" aria-current="page">${esc(displayLocation(state.location))}</button>`:''}</nav>`;
   if (!state.location) {
    const locations=groupInventory(state.rows).get(normalize(draft.body.block))||new Map();
@@ -839,7 +868,7 @@
   restoreUiPosition(uiPosition,container,pickerPortalHost);
   void mountStructured(container);
 }
- const invalidate = () => { state.preview = null; state.urls.forEach(url => URL.revokeObjectURL(url)); state.urls = []; };
+ const invalidate = () => { state.preview = null; state.urls.forEach(url => URL.revokeObjectURL(url)); state.urls = []; queueMicrotask(scheduleDraftAutoSave); };
  function routeToAssignedWork() {
   state.queueMode = 'assigned'; state.screen = 'source'; state.detail = null; state.item = ''; state.queueBase = ''; state.queueLocation = '';
   state.loaded = false; state.jobs = [];
@@ -849,7 +878,7 @@
  async function saveDraft() {
   prepareDraftCards();const d = state.draft;
   const result = await api('save', {batch_id: d.id, body: d.body}, d.revision, crypto.randomUUID());
-  state.draft = result.draft;for(const location of state.draft.body.locations)location.source_all=state.rows.filter(row=>normalize(row.locationcode)===normalize(location.location));state.boardState={...state.boardState,cardForms:{},dirtyCardIds:[],cardErrors:{},rejectedCardIds:[]};
+  removeLocalDraft(d);state.draft = result.draft;normalizeDraftBody(state.draft.body);for(const location of state.draft.body.locations)location.source_all=state.rows.filter(row=>normalizeBunchNoteLocationKey(row.locationcode)===normalizeBunchNoteLocationKey(location.location));persistLocalDraft(state.draft);state.drafts=mergePersistedDrafts([state.draft,...state.drafts.filter(item=>item.id!==state.draft.id)]);state.boardState={...state.boardState,cardForms:{},dirtyCardIds:[],cardErrors:{},rejectedCardIds:[]};
  }
  function showPdfs(pdfs) {
   state.urls.forEach(url => URL.revokeObjectURL(url));
@@ -860,7 +889,7 @@
   });
  }
  root.BunchNote = {
-  prepareCards, cardKey, changeCard, moveCard, workJob, actionProblem, templates, normalize, baseLocation, locationGroups, salesYear, sourceGroups, quantity, groupInventory, groupItems, shiftEligible, actionKind, recipientEmails, mergeStructuredHeaderValue, api, render, reset, open, author, back, disposeView,
+  prepareCards, cardKey, changeCard, moveCard, workJob, actionProblem, templates, normalize, normalizeBunchNoteLocationKey, baseLocation, locationGroups, salesYear, sourceGroups, quantity, groupInventory, groupItems, shiftEligible, actionKind, recipientEmails, mergeStructuredHeaderValue, api, render, reset, open, author, back, disposeView,
   queueBase: value => {rememberScroll();state.queueBase=value;render();restoreScroll();},
   queueLocation: value => {rememberScroll();state.queueLocation=value;render();restoreScroll();},
   hasBack: () => !!(state.actionEdit||state.customEdit||state.cardPicker||state.picker||state.preview||state.item||state.detail||state.draft||state.queueBase||state.screen==='destinations'),
@@ -966,13 +995,14 @@
   stage: async ctx => { ensureAccount(); const owner=account(), epoch=state.epoch, id=state.detail?.job.id; const data = await api('list', {}, null, null, ctx.signal); const detail=id&&data.jobs.some(j=>j.id===id)?await api('get',{job_id:id},null,null,ctx.signal):null; const destination=state.screen==='destinations'?(await api(state.destinationLocation?'destination_detail':'destinations',state.destinationLocation?{location:state.destinationLocation}:{},null,null,ctx.signal)):null; return {account:owner,epoch,jobs:data.jobs,detail,id,destination,destinationLocation:state.destinationLocation}; },
   // The live-sync coordinator schedules the repaint after typing and taps finish.
   commit: value => { ensureAccount(); if (value.account === account() && value.epoch === state.epoch) { state.jobs = value.jobs; state.loaded = true; if (state.detail?.job.id===value.id) {state.detail=value.detail;if(!value.detail)state.item='';} if(value.destination&&state.screen==='destinations'&&state.destinationLocation===value.destinationLocation){state.destinationNames=value.destination.locations;if(state.destinationLocation)state.destinationData=value.destination;} } },
-  chooseBlock: block => run(async () => { block=cleanText(block,100).toUpperCase().replace(/\.+$/,'');if (!block) return; state.rows = (await api('inventory',{block})).rows; state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear(); state.draft = {id:null,revision:null,body:{format_version:5,block,locations:[],recipient_ids:[]}};if(state.parked.has(block))state.draft=state.parked.get(block);state.epoch++; }),
-  openDraft: id => run(async () => { const d = state.drafts.find(d => d.id === id); const rows=(await api('inventory',{block:d.block})).rows; state.draft = structuredClone(d); state.rows=rows;for(const location of state.draft.body.locations)location.source_all=rows.filter(row=>normalize(row.locationcode)===normalize(location.location));prepareDraftCards(); state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear();state.epoch++; }),
-  backEditor: () => run(async () => { const d=state.draft;if(d.body.locations.length)await saveDraft();state.parked.set(d.body.block,state.draft); state.drafts=(await api('drafts')).drafts; invalidate(); state.draft=null; state.location=''; }),
+  chooseBlock: block => run(async () => { block=cleanText(block,100).toUpperCase().replace(/\.+$/,'');if (!block) return; state.rows = (await api('inventory',{block})).rows; state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear();const saved=state.drafts.find(d=>(d.body?.block||d.block)===block); state.draft = saved?structuredClone(saved):{id:null,revision:null,body:{format_version:5,block,locations:[],recipient_ids:[]}};if(state.parked.has(block))state.draft=state.parked.get(block);normalizeDraftBody(state.draft.body);for(const location of state.draft.body.locations)location.source_all=state.rows.filter(row=>normalizeBunchNoteLocationKey(row.locationcode)===normalizeBunchNoteLocationKey(location.location));prepareDraftCards();persistLocalDraft(state.draft);state.epoch++; }),
+  openDraft: id => run(async () => { const d = state.drafts.find(d => (d.id||d.local_id||localDraftIdentity(d)) === id);if(!d)throw new Error('This saved draft is no longer available.'); const rows=(await api('inventory',{block:d.body?.block||d.block})).rows; state.draft = structuredClone(d);normalizeDraftBody(state.draft.body); state.rows=rows;for(const location of state.draft.body.locations)location.source_all=rows.filter(row=>normalizeBunchNoteLocationKey(row.locationcode)===normalizeBunchNoteLocationKey(location.location));prepareDraftCards(); state.location='';state.base='';state.item='';state.boardState={}; state.panels.clear();persistLocalDraft(state.draft);state.epoch++; }),
+  openSavedLocation: (id,location) => run(async()=>{const d=state.drafts.find(d=>(d.id||d.local_id||localDraftIdentity(d))===id);if(!d)throw new Error('This saved draft is no longer available.');const rows=(await api('inventory',{block:d.body?.block||d.block})).rows;state.draft=structuredClone(d);normalizeDraftBody(state.draft.body);state.rows=rows;for(const loc of state.draft.body.locations)loc.source_all=rows.filter(row=>normalizeBunchNoteLocationKey(row.locationcode)===normalizeBunchNoteLocationKey(loc.location));prepareDraftCards();state.location=canonicalLocation(location);state.locationStep='setup';state.base='';state.item='';state.boardState={};state.panels.clear();persistLocalDraft(state.draft);state.epoch++;}),
+  backEditor: () => run(async () => { const d=state.draft;if(d.body.locations.length)await saveDraft();state.parked.set(d.body.block,state.draft); state.drafts=mergePersistedDrafts((await api('drafts')).drafts); invalidate(); state.draft=null; state.location=''; }),
   backLocations: () => { state.location=''; render(); },
   panel: (key, expanded) => { if(expanded)state.panels.add(key); else state.panels.delete(key); },
   advancedInventoryPanel: (location, expanded) => { const key='advanced-inventory:'+normalize(location),open=state.panels.has(key);if(open===!!expanded)return;if(expanded)state.panels.add(key);else state.panels.delete(key);render(); },
-  openLocation: location => { if(state.busy)return;ensureLocation(location);rememberScroll();state.location=canonicalLocation(location);state.base='';state.item='';state.locationStep='setup';render();restoreScroll(); },
+  openLocation: location => { if(state.busy)return;ensureLocation(location);persistLocalDraft();rememberScroll();state.location=canonicalLocation(location);state.base='';state.item='';state.locationStep='setup';render();restoreScroll(); },
   removeLocation: location => run(async () => { if(state.draft.id && state.draft.body.locations.length === 1)return; if(!await showAppConfirm('Remove this location and its draft instructions from this batch?',{title:'Bunch Note'}))return; invalidate(); state.draft.body.locations=state.draft.body.locations.filter(l=>l.location!==location); state.location=''; }),
   selectRow: (i,id,on) => { invalidate(); const l=state.draft.body.locations[i]; l.row_ids=on?[...new Set([...l.row_ids,id])]:l.row_ids.filter(v=>v!==id); const add=document.getElementById('bn-add-selected-'+i); if(add)add.disabled=state.busy || !l.row_ids.length; },
   edit: (i,key,value) => { invalidate(); const location=state.draft.body.locations[i];location[key]=value;if(key==='purposes')location.work_type=String(value??''); },
@@ -1006,7 +1036,7 @@
   save: () => run(saveDraft),
   preview: () => run(async () => { await saveDraft(); const d=state.draft; const {preview:p}=await api('preview',{batch_id:d.id},d.revision,crypto.randomUUID()); await preparePdf(p); }),
   closePreview: () => { const work=state.preview?.report_kind==='completed_work';invalidate();if(work)state.detail=null;routeToAssignedWork(); },
-  publish: send_email => run(async () => { await api('publish',{preview_id:state.preview.id,send_email},state.draft.revision,crypto.randomUUID()); window.dispatchEvent(new CustomEvent('gnc:bunch-published')); invalidate(); state.draft=null; state.drafts=(await api('drafts')).drafts; routeToAssignedWork(); showToast('Inv Bunch Notes',send_email?'Published. Email queued.':'Published to Assigned work.'); }),
+  publish: send_email => run(async () => { const publishedDraft=state.draft;await api('publish',{preview_id:state.preview.id,send_email},state.draft.revision,crypto.randomUUID()); window.dispatchEvent(new CustomEvent('gnc:bunch-published')); removeLocalDraft(publishedDraft);invalidate(); state.draft=null; state.drafts=mergePersistedDrafts((await api('drafts')).drafts); routeToAssignedWork(); showToast('Inv Bunch Notes',send_email?'Published. Email queued.':'Published to Assigned work.'); }),
   refresh: () => run(load), filter: value => { state.filter=value;state.queueBase='';state.queueLocation=''; render(); },
   detail: id => run(async () => { rememberScroll();state.item='';state.workAction='';state.workCard='';state.detail=await api('get',{job_id:id}); await refreshCatalog(); if(author()&&!state.users.length)state.users=(await api('directory')).users;restoreScroll(); }),
   backQueue: () => { state.detail=null;state.item='';state.queueBase='';state.queueLocation='';state.screen='source';render(); },
