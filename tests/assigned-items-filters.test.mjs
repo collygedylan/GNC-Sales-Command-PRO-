@@ -10,7 +10,7 @@ const html = readComposedAppSource();
 const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnState', 'getManagerAssignedColumnValue',
   'matchesManagerAssignedColumnFilters', 'sortManagerAssignedColumnRows', 'getManagerAssignedColumnOptions',
   'rememberManagerAssignedColumnLabels', 'getManagerAssignedColumnLabel', 'selectManagerAssignedColumnValues',
-  'firstNonEmptyValue', 'normalizeWarehouseAssignedItemRow', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsDisplayRows',
+  'firstNonEmptyValue', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsDisplayRows',
   'getManagerAssignedItemsAssigneeOptions', 'getManagerAssignedItemsActiveAssigneeLabel', 'getManagerAssignedItemsExportColumns',
   'getManagerAssignedItemsExportMetaRows', 'getManagerAssignedItemsActiveAssigneeKey', 'getFilteredManagerAssignedItemsExportRows', 'buildManagerEvalAssignmentKey', 'isManagerEvalZoneAssignment',
   'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart', 'getWarehouseAssignedIdentityParts',
@@ -49,6 +49,37 @@ function context(data = rows, normalize = false) {
   return ctx;
 }
 const ids = values => Array.from(values, row => row.UNIQUE_ID);
+
+test('new unassigned itemcode notices deduplicate physical rows, respect manager access, and open the canonical filter', () => {
+  const storage = new Map(), notices = [], routes = [];
+  const state = { filters: { LOCATIONCODE: ['old'] }, sort: { field: 'ITEMCODE' } };
+  const ctx = vm.createContext({ currentUser: 'manager', allowed: true,
+    warehouseAssignedItemsInventory: [{ ITEMCODE: ' A ', ASSIGNEDTO: '' }, { itemcode: 'a', assignedto: null },
+      { ITEMCODE: 'B', ASSIGNEDTO: 'owner' }, { ITEMCODE: 'C', assignedto: '', present_in_drive: false }],
+    canViewAssignedItemsExport() { return ctx.allowed; }, getSupabaseReadIdentityScope() { return ctx.currentUser; },
+    sessionStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) },
+    showToast: (...args) => notices.push(args), getManagerAssignedColumnState: () => state,
+    switchView: value => routes.push(value), setHomeTab: value => routes.push(value),
+    MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned-items-export', managerAssignedItemsAssignedToFilter: 'all', managersSearchTerm: 'old search' });
+  vm.runInContext(['getManagerUnassignedItemcodes', 'notifyManagerUnassignedItems', 'openManagerUnassignedItems', 'openViewFromPushMessage'].map(helper).join('\n'), ctx);
+  assert.deepEqual(Array.from(ctx.getManagerUnassignedItemcodes()), ['A']);
+  assert.deepEqual(Array.from(ctx.getManagerUnassignedItemcodes([{ ITEMCODE: 'ZONE.1', MASTER_UNIQUE_ID: 'physical',
+    ASSIGNEDTO: 'zoe', DEFAULT_ASSIGNEDTO: '' }])), ['ZONE.1'], 'a location override does not replace a permanent itemcode default owner');
+  assert.equal(ctx.notifyManagerUnassignedItems(), 1);
+  assert.equal(ctx.notifyManagerUnassignedItems(), 0);
+  ctx.warehouseAssignedItemsInventory.push({ ITEMCODE: 'D', ASSIGNEDTO: '' });
+  assert.equal(ctx.notifyManagerUnassignedItems(), 1);
+  ctx.openViewFromPushMessage('home', { homeTab: 'assigned-items-export' });
+  assert.deepEqual(routes, ['managers', 'assigned-items-export']);
+  assert.equal(ctx.managerAssignedItemsAssignedToFilter, 'unassigned');
+  assert.equal(ctx.managersSearchTerm, '');
+  assert.equal(Object.keys(state.filters).length, 0);
+  ctx.currentUser = 'nonmanager'; ctx.allowed = false;
+  assert.equal(ctx.notifyManagerUnassignedItems(), 0);
+  ctx.openViewFromPushMessage('managers', { homeTab: 'assigned-items-export' });
+  assert.equal(routes.length, 2);
+  assert.equal(notices.length, 2);
+});
 
 test('low-stock no-history fixture returns one complete fallback summary per normalized itemcode', () => {
   assert.deepEqual(noHistoryLowStockTargets([' ab-100 ', 'AB-100', '', null, 'cedar.2', ' 0012 ', '0012']), [

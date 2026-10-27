@@ -1438,14 +1438,18 @@ test('v2.3.56 REQUEST reconciliation is bounded, non-blocking, and refreshes eve
   assert.doesNotMatch(migration, /update public\.ph_active_request set req_qty='1'/);
 });
 
-test('v2.3.69 RUN SCRIPT fast-skips before parsing and uses one set-based RPC', () => {
+test('v2.3.81 RUN SCRIPT fast-skips before parsing and stages 1,000-row RPC batches before canonical commit', () => {
   const code = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
   const migration = readFileSync(new URL('../supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql', import.meta.url), 'utf8');
   const fastFunction = code.slice(code.indexOf('function processFastLiveFile_('), code.indexOf('function runRoutedDropImport_('));
   assert.ok(fastFunction.indexOf("callSupabaseRpc_('check_erp_file_sync_needed_v1'") < fastFunction.indexOf('extractDataFromFile('));
   assert.match(fastFunction, /check\.skip[^]*code: 'UP_TO_DATE'/);
-  assert.match(fastFunction, /callSupabaseRpc_\(getFastLiveIngestRpc_\(dataset\)[^]*p_rows: prepared\.rows/);
+  assert.match(fastFunction, /callSupabaseRpc_\('fast_begin_erp_stage_v1'/);
+  assert.match(fastFunction, /offset \+= 1000/);
+  assert.match(fastFunction, /callSupabaseRpc_\('fast_append_erp_stage_batch_v1'/);
+  assert.match(fastFunction, /callSupabaseRpc_\('fast_commit_erp_stage_swap_v1'/);
+  assert.doesNotMatch(fastFunction, /callSupabaseRpc_\(getFastLiveIngestRpc_\(dataset\)/);
   assert.doesNotMatch(fastFunction, /fetchAllSupabaseData|pushToSupabase|deleteFromSupabase/);
   assert.match(runtime, /type: 'manual_run'[^]*fast: true[^]*force: true/);
   assert.match(migration, /btrim\(p_file_name\) like '~\$%'/);

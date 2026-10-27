@@ -9,6 +9,26 @@ const origin = 'https://agmetric-isolation.test';
 const absolute = value => new URL(typeof value === 'string' ? value : value.url, `${origin}/`).href;
 
 const suspendApprovalId = '12345678-1234-4234-8234-123456789abc';
+test('unassigned itemcode push retains its manager destination for open and closed clients', async () => {
+  for (const definitions of [[], [{ id: 'root', url: `${origin}/` }]]) {
+    const h = harness(definitions);
+    await h.dispatch('push', { data: { json: () => ({ title: 'Eval Assignment Needed', body: 'NEW.001 is unassigned.',
+      viewId: 'home', homeTab: 'assigned-items-export', tag: 'eval-assignment-NEW.001', url: './' }) } });
+    const notification = h.calls.notifications[0];
+    assert.equal(notification.title, 'New Unassigned Item Code(s)');
+    assert.match(notification.options.body, /NEW\.001.*Managers → Assigned Items/);
+    assert.equal(notification.options.data.viewId, 'managers');
+    assert.equal(notification.options.data.homeTab, 'assigned-items-export');
+    assert.equal(new URL(notification.options.data.url).searchParams.get('assignedItems'), 'unassigned');
+    await h.dispatch('notificationclick', { notification: { close() {}, data: notification.options.data } });
+    if (definitions.length) {
+      assert.equal(h.calls.messages[0].message.homeTab, 'assigned-items-export');
+      assert.equal(h.calls.messages[0].message.viewId, 'managers');
+    } else assert.match(h.calls.opened[0], /assignedItems=unassigned/);
+    assert.equal(h.calls.fetch.length, 0, 'opening the assignment review cannot mutate ownership');
+  }
+});
+
 test('Suspend notification buttons survive closed-app startup and are consumed only once by the root app', async () => {
   const h=harness([{id:'demo',url:`${origin}/v2/`}]);
   const data={viewId:'suspend-tag-approval',approvalId:suspendApprovalId,url:`${origin}/?suspendApproval=${suspendApprovalId}`};

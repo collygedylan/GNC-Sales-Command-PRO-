@@ -1671,3 +1671,125 @@ test('Invariant 57 (Completed Reclass Report Uses Only Frozen Pre-Edit ERP Rows)
   assert.equal(table.rows.some(row => row[0].text === '27.F1' && row[1].text === 'C.15.000'), false,
     'an app-created destination in appliedRows never enters the ERP report');
 });
+
+test('Invariant 58 (Unassigned Itemcode Notices Are Unique, Manager-Scoped and Open the Assignment Filter)', () => {
+  const seen = new Map(), notices = [], routes = [];
+  const state = { filters: { SOURCE: ['stale'] }, sort: { field: 'SOURCE' } };
+  const context = vm.createContext({ currentUser: 'manager', warehouseAssignedItemsInventory: [
+    { ITEMCODE: 'new.1', ASSIGNEDTO: '' }, { ITEMCODE: 'NEW.1', ASSIGNEDTO: null },
+    { ITEMCODE: 'owned.1', ASSIGNEDTO: 'grower' }],
+    canViewAssignedItemsExport: () => context.currentUser === 'manager',
+    getSupabaseReadIdentityScope: () => context.currentUser,
+    sessionStorage: { getItem: key => seen.get(key), setItem: (key, value) => seen.set(key, value) },
+    showToast: (...args) => notices.push(args), getManagerAssignedColumnState: () => state,
+    switchView: view => routes.push(view), setHomeTab: tab => routes.push(tab),
+    MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned-items-export', managersSearchTerm: 'stale', managerAssignedItemsAssignedToFilter: 'all' });
+  vm.runInContext(['getManagerUnassignedItemcodes', 'notifyManagerUnassignedItems', 'openManagerUnassignedItems']
+    .map(name => functionSource('assets/app-runtime.js', name)).join('\n'), context);
+  assert.equal(context.notifyManagerUnassignedItems(), 1);
+  assert.equal(context.notifyManagerUnassignedItems(), 0);
+  context.openManagerUnassignedItems();
+  assert.deepEqual(routes, ['managers', 'assigned-items-export']);
+  assert.equal(context.managerAssignedItemsAssignedToFilter, 'unassigned');
+  assert.equal(context.managersSearchTerm, '');
+  context.currentUser = 'rep';
+  assert.equal(context.notifyManagerUnassignedItems(), 0);
+  context.openManagerUnassignedItems();
+  assert.equal(routes.length, 2);
+  assert.equal(notices.length, 1);
+});
+
+test('Invariant 59 (Completed Reclass Preserves Existing ERP Destination Snapshot)', () => {
+  const fields = ['lotcode', 'locationcode', 'source', 'priority', 'ptronhand', 'ptrreviewed', 'locationnotedate', 'locationptn1', 'locationnote']
+    .map(key => ({ key, aliases: [key] }));
+  const context = vm.createContext({
+    RECLASS_INQUIRY_ROW_FIELDS_: fields,
+    normalizeInventoryTransactionText_: value => String(value ?? '').trim(),
+    getInventoryTransactionRowUid_: row => String(row?.unique_id || ''),
+    firstNonEmptyRequestValue_: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim()) ?? '',
+    getReclassInquiryExactValue_: (row, aliases, fallback) => {
+      for (const alias of aliases) if (Object.hasOwn(row || {}, alias)) return row[alias] ?? '';
+      return fallback;
+    },
+    buildReclassInquiryReportModel_: (_source, _rows, reportRows) => ({ identity: { commonname: 'Hummingbird', itemcode: '004103.010.1' }, rows: reportRows }),
+    sortReclassInquiryCompactRows_: rows => rows,
+    escapeEmailHtml_: value => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  });
+  vm.runInContext(functionSource('Code.gs', 'buildCompletedInventoryReclassReportModel_') + '\n'
+    + functionSource('Code.gs', 'buildReclassItemInquiryTable_') + '\n'
+    + functionSource('Code.gs', 'buildReclassItemInquiryHtml_'), context);
+  const report_rows = [
+    { unique_id: 'origin', lotcode: '27.S1', locationcode: 'C.15.000', source: 'LD', priority: '3', ptronhand: '808', ptrreviewed: '7' },
+    { unique_id: 'other-70', lotcode: '27.S1', locationcode: 'A.01.000', source: 'LD', priority: '', ptronhand: '70', ptrreviewed: '0' },
+    { unique_id: 'existing-destination', lotcode: '27.F1', locationcode: 'F.16.000', source: 'LD', priority: '', ptronhand: '113', ptrreviewed: '4' },
+    { unique_id: 'other-175', lotcode: '27.S1', locationcode: 'A.03.000', source: 'LD', priority: '', ptronhand: '175', ptrreviewed: '0' },
+    { unique_id: 'other-1', lotcode: '27.S1', locationcode: 'A.04.000', source: 'LD', priority: '', ptronhand: '1', ptrreviewed: '0' },
+    { unique_id: 'other-1596', lotcode: '27.S1', locationcode: 'A.05.000', source: 'LD', priority: '', ptronhand: '1596', ptrreviewed: '0' }
+  ];
+  const verified = {
+    report_rows,
+    appliedRows: report_rows.map(row => ({ ...row,
+      ptronhand: row.unique_id === 'origin' ? '532' : row.unique_id === 'existing-destination' ? '389' : row.ptronhand,
+      ptrreviewed: row.unique_id === 'origin' ? '0' : row.unique_id === 'existing-destination' ? '9' : row.ptrreviewed
+    })),
+    moves: [{ direction: 'move_up', quantity: 276, source: { unique_id: 'origin' },
+      destination: { unique_id: 'existing-destination', season: 'F1' } }]
+  };
+  const model = context.buildCompletedInventoryReclassReportModel_(verified, new Date('2026-10-26T12:00:00Z'));
+  const table = context.buildReclassItemInquiryTable_(model);
+  assert.equal(table.columns.length, 9);
+  assert.equal(table.rows.length, 6);
+  const origin = table.rows.find(row => row[0].text === '27.S1' && row[1].text === 'C.15.000');
+  const destination = table.rows.find(row => row[0].text === '27.F1' && row[1].text === 'F.16.000');
+  assert.equal(origin[4].text, '808', 'origin displays its frozen pre-move quantity, not applied 532');
+  assert.equal(origin[5].text, '7', 'origin review quantity remains frozen');
+  assert.deepEqual(Array.from(origin[4].proposals), ['UP 276 TO F1']);
+  assert.equal(destination[4].text, '113', 'pre-existing ERP destination displays its frozen quantity, not applied 389');
+  assert.equal(destination[5].text, '4', 'pre-existing ERP destination review quantity remains frozen');
+  const html = context.buildReclassItemInquiryHtml_(model);
+  assert.match(html, /UP 276 TO F1/);
+  assert.match(html, /proposal-box/);
+  assert.match(html, /background:#fef08a/);
+});
+
+test('Invariant 60 (Full Manager Assigned Items Uses Its Core Live-Sync Cohort)', () => {
+  const context = vm.createContext({
+    activeHomeTab: 'assigned-items-export', currentUser: 'manager',
+    MANAGER_EVAL_REPORTS_VIEW: 'eval-reports', MANAGER_EVAL_REPORTS_2_VIEW: 'eval-reports-2',
+    MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned-items-export', MANAGER_SEASON_PRIORITY_VIEW: 'season-priority',
+    getCurrentVisibleViewId: () => 'managers', isManagerApprovalTab: () => false,
+    window: { GncReportPagesLive: {} },
+    getManagerReportPageController: () => ({ enabled: surface => surface === 'assigned-items' })
+  });
+  vm.runInContext(functionSource('assets/app-runtime.js', 'getActiveManagerReportPageSurface') + '\n'
+    + functionSource('assets/app-runtime.js', 'useManagerReportPages') + '\n'
+    + read('assets/live-sync-registry.js'), context);
+  assert.equal(context.useManagerReportPages('assigned-items'), true, 'the report reader can remain available independently');
+  assert.equal(context.getActiveManagerReportPageSurface('managers'), '',
+    'the active full-row panel must not advertise a paged-only coordinator cohort');
+  const adapters = Array.from(context.AgMetricLiveSyncRegistry.getViewAdapters('managers', {
+    surfaces: ['managers:assigned-items-export']
+  }));
+  for (const id of ['core:master', 'core:warehouseAssignedItems', 'side:itemLowStockTargets', 'side:settings']) {
+    assert.ok(adapters.includes(id), `full Assigned Items cohort includes ${id}`);
+  }
+});
+
+test('Invariant 61 (Low Stock Revisions Use an App-API-Compatible Public Signal)', () => {
+  const context = vm.createContext({});
+  vm.runInContext(read('assets/live-sync-registry.js'), context);
+  const registry = context.AgMetricLiveSyncRegistry;
+  const privateKeys = ['private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'];
+  const targets = Array.from(registry.getSourceKeys(['side:itemLowStockTargets']));
+  assert.deepEqual(targets, ['ph_eval_report_settings'],
+    'the SQL revision mirror keeps low-stock freshness on the public key accepted by app-api');
+  for (const [view, options] of [
+    ['managers', { surfaces: ['managers:assigned-items-export'] }],
+    ['managers', { pagedReportSurface: 'eval2', surfaces: ['managers:eval-reports-2'] }]
+  ]) {
+    const adapters = Array.from(registry.getViewAdapters(view, options));
+    const keys = Array.from(registry.getSourceKeys(adapters));
+    assert.ok(keys.includes('ph_eval_report_settings'), 'each low-stock consumer observes the mirrored revision');
+    assert.ok(!keys.some(key => privateKeys.includes(key)), 'no private-schema key reaches the revision API');
+  }
+});

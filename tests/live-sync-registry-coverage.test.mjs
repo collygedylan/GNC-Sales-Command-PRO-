@@ -147,11 +147,13 @@ test('AV open does not let unopened optional datasets block the verified invento
 
 test('manager low-stock summaries load only for Assigned Items consumers', () => {
   const context = harness(), registry = context.AgMetricLiveSyncRegistry;
-  const sources = ['private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'];
+  const privateSources = ['private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'];
   const sourceKeys = (surface) => registry.getSourceKeys(registry.getViewAdapters('managers', surface ? { surfaces: [surface] } : {}));
-  assert.ok(!sourceKeys().some(table => sources.includes(table)), 'Opening the Managers hub must not wait for low-stock summaries');
-  assert.ok(!sourceKeys('managers:eval-reports').some(table => sources.includes(table)), 'Classic Eval Reports do not consume per-item targets');
-  assert.ok(sources.every(table => sourceKeys('managers:assigned-items-export').includes(table)), 'Assigned Items retains target revision tracking');
+  assert.ok(!sourceKeys().some(table => privateSources.includes(table)), 'Opening the Managers hub must not wait for low-stock summaries');
+  assert.ok(!sourceKeys('managers:eval-reports').some(table => privateSources.includes(table)), 'Classic Eval Reports do not consume per-item targets');
+  assert.ok(sourceKeys('managers:assigned-items-export').includes('ph_eval_report_settings'), 'Assigned Items retains the public low-stock revision signal');
+  assert.ok(!sourceKeys('managers:assigned-items-export').some(table => privateSources.includes(table)), 'The revision gateway never receives private schema keys');
+  assert.deepEqual(Array.from(registry.getSourceKeys(['side:itemLowStockTargets'])), ['ph_eval_report_settings']);
 
   context.document = { activeElement: {}, body: { classList: { contains: () => false } }, getElementById: () => null };
   context.view = 'managers';
@@ -163,9 +165,20 @@ test('manager low-stock summaries load only for Assigned Items consumers', () =>
     'A pending or failed target RPC cannot hold the module picker because it is outside the hub adapter set');
 
   context.activeHomeTab = context.MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
+  vm.runInContext(functionSource('getActiveManagerReportPageSurface') + '\n' + functionSource('useManagerReportPages'), context);
+  context.window.GncReportPagesLive = {};
+  context.currentUser = 'fixture';
+  context.getManagerReportPageController = () => ({ enabled: surface => surface === 'assigned-items' });
+  assert.equal(context.useManagerReportPages('assigned-items'), true, 'the report controller may remain available to report consumers');
+  assert.equal(context.getActiveManagerReportPageSurface('managers'), '',
+    'the current full-row Manager panel must not advertise a paged surface to the coordinator');
   const assignedSurfaces = context.getProductionLiveSyncSideContext().surfaces;
   assert.ok(assignedSurfaces.includes('managers:assigned-items-export'));
-  assert.ok(registry.getViewAdapters('managers', { surfaces: assignedSurfaces }).includes('side:itemLowStockTargets'));
+  const assignedAdapters = registry.getViewAdapters('managers', { surfaces: assignedSurfaces });
+  assert.ok(assignedAdapters.includes('core:master'));
+  assert.ok(assignedAdapters.includes('core:warehouseAssignedItems'));
+  assert.ok(assignedAdapters.includes('side:itemLowStockTargets'));
+  assert.ok(assignedAdapters.includes('side:settings'));
   context.activeHomeTab = context.MANAGER_EVAL_REPORTS_2_VIEW;
   context.selectedEvalReports = ['low-stock'];
   const eval2Surfaces = context.getProductionLiveSyncSideContext().surfaces;
@@ -281,7 +294,8 @@ test('paged report lists subscribe to revisions without materializing complete i
   const sources = Array.from(registry.getSourceKeys(ids));
   assert.ok(sources.includes('ph_master_inventory'));
   assert.ok(sources.includes('ph_inventory_row_assignments'));
-  assert.ok(sources.includes('private.ph_eval_item_low_stock_overrides'));
+  assert.ok(sources.includes('ph_eval_report_settings'));
+  assert.ok(!sources.some(source => source.startsWith('private.')));
   assert.deepEqual(Array.from(registry.getCoreKeys('low-stock', { pagedReportSurface:'ncr' })), []);
   assert.deepEqual(Array.from(registry.getViewAdapters('sales-inventory', { pagedReportSurface:'inventory-hub' })), []);
   const dialog = Array.from(registry.getViewAdapters('managers', {

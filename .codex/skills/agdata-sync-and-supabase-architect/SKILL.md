@@ -106,6 +106,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Never retain orphaned `TEMP_IMPORT_*` or `~$*` files during live drop-folder scans, and never run per-row historical dedup locks while publishing a complete Drive archive snapshot.
 
 - Never let Apps Script import or delivery code fall back to an anon/publishable Supabase key; reconcile and store a validated service-role secret instead of widening browser-role mutations.
+- Never route recurring ERP drops through a table-truncating generic swap or re-import Warehouse Assigned Items from Drive; stage 1,000-row batches in private storage, commit through the canonical protected importer, and keep assignments authoritative in Managers.
 - Never leave USER triggers disabled after a bulk ingest exception; every trigger-suppressed wrapper must restore them before returning or rethrowing.
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
@@ -114,3 +115,5 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Never let one startup dataset rejection cancel sibling metadata/queue reads, and never grant a security-invoker view without the matching RLS-protected underlying-table privilege.
 - Never short-circuit a forced Home RUN SCRIPT through the fast-ingest file-check RPC; dispatch DRIVE, SOC, RESERVES, and CAV through the authenticated `apps_script_action` gateway.
 - Never run or enable historical backfill outside 23:30–06:15 America/Chicago or while explicitly paused.
+- Never label a full-row Manager surface as paged in the live-sync context; its coordinator cohort must match the renderer's actual canonical source reads or `DATASET_KEYS_INVALID` can suppress the view.
+- Never place private-schema names in app-api dataset-revision requests; mirror private low-stock changes onto the public `ph_eval_report_settings` revision and subscribe to that key so freshness remains observable without invalid requests.

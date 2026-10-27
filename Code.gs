@@ -1702,11 +1702,52 @@ function processFastLiveFile_(dataset, route, pendingFiles, payloadBuilderFunc, 
   const prepared = getFastLiveIngestRows_(dataset, rawData, route.tableName, payloadBuilderFunc,
     syncStartTime, fileMeta.file_name);
   revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
-  const response = callSupabaseRpc_(getFastLiveIngestRpc_(dataset), {
+  const stage = callSupabaseRpc_('fast_begin_erp_stage_v1', {
+    p_dataset_key: getFastLiveIngestDatasetKey_(dataset),
     p_file_meta: fileMeta,
-    p_rows: prepared.rows
+    p_expected_rows: prepared.rows.length
   });
-  if (!response || response.ok !== true || response.skip === true) throw new Error('FAST_ERP_INGEST_UNCONFIRMED');
+  if (!stage || stage.ok !== true) throw new Error('FAST_ERP_STAGE_BEGIN_UNCONFIRMED');
+  if (stage.skipped === true) {
+    revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
+    moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, route.tableName + ' unchanged file ' + fileMeta.file_name);
+    olderFiles.forEach(function(file) {
+      moveDriveFileToFolderWithRetry_(file, processedFolder, route.tableName + ' older unchanged file ' + file.getName());
+    });
+    return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE',
+      skippedFilesArchived: olderFiles.length + 1, totalRows: 0, fastSkipDurationMs: Number(stage.duration_ms) || 0 };
+  }
+  const stageId = String(stage.stage_id || '');
+  if (!stageId) throw new Error('FAST_ERP_STAGE_ID_MISSING');
+  let response;
+  try {
+    for (let offset = Number(stage.staged_rows) || 0; offset < prepared.rows.length; offset += 1000) {
+      const batch = prepared.rows.slice(offset, offset + 1000);
+      const appended = callSupabaseRpc_('fast_append_erp_stage_batch_v1', {
+        p_stage_id: stageId, p_start_row: offset, p_rows: batch
+      });
+      if (!appended || appended.ok !== true || Number(appended.staged_rows) !== offset + batch.length) {
+        throw new Error('FAST_ERP_STAGE_BATCH_UNCONFIRMED');
+      }
+    }
+    revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
+    response = callSupabaseRpc_('fast_commit_erp_stage_swap_v1', { p_stage_id: stageId });
+  } catch (stageError) {
+    // Retain staged rows after transient transport or commit failures. The
+    // source fingerprint permits a later RUN SCRIPT retry to resume safely.
+    throw stageError;
+  }
+  if (!response || response.ok !== true) throw new Error('FAST_ERP_INGEST_UNCONFIRMED');
+  if (response.skip === true) {
+    revalidateImportSourceIdentity_(sourceIdentity, route.tableName);
+    moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, route.tableName + ' concurrently unchanged file ' + fileMeta.file_name);
+    olderFiles.forEach(function(file) {
+      moveDriveFileToFolderWithRetry_(file, processedFolder, route.tableName + ' older unchanged file ' + file.getName());
+    });
+    return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0, code: 'UP_TO_DATE',
+      skippedFilesArchived: olderFiles.length + 1, totalRows: 0,
+      fastSkipDurationMs: Number(response.duration_ms) || 0 };
+  }
   if (typeof afterCommit === 'function') afterCommit({
     tableName: route.tableName, fileName: fileMeta.file_name, syncStartTime: syncStartTime,
     upsertCount: Number(response.inserted_rows || 0) + Number(response.updated_rows || 0),

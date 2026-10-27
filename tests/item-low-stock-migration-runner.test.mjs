@@ -25,7 +25,7 @@ import {
   agdataV2369FastLiveErpIngestionMigrationName,
   agdataV2372RequestCompletionAcknowledgmentMigrationName,
   agdataV2372RequestCompletionDeliveryMigrationName,
-  agdataV2373FastAppsScriptErpImportUnblockMigrationName,
+  agdataV2373FastAppsScriptErpImportUnblockMigrationName, agdataV2381FastErpStageRpcsMigrationName,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -37,6 +37,34 @@ test('v2.3.72 request completion acknowledgment is release-registered', () => {
   for (const marker of ['ph_requests_pending', 'request_completion_receipt_v2372', 'REQ-mvp9cdc5mc3uk7hltrd', '2.3.72']) {
     assert.match(contract, new RegExp(marker.replaceAll('.', '\\.')));
   }
+});
+
+test('v2.3.81 fast ERP stage RPCs preserve service-role and canonical commit contracts', () => {
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2381FastErpStageRpcsMigrationName]),
+    [agdataV2381FastErpStageRpcsMigrationName]);
+  const contract = migrationContractQuery(agdataV2381FastErpStageRpcsMigrationName);
+  for (const marker of ['fast_erp_stage_runs_v1', 'fast_erp_stage_rows_v1',
+    'fast_begin_erp_stage_v1', 'fast_append_erp_stage_batch_v1', 'fast_commit_erp_stage_swap_v1',
+    'fast_abort_erp_stage_v1', 'fast_ingest_drive_around_v1', 'fast_ingest_soc_orders_v1',
+    'fast_ingest_soc_reserves_v1', 'fast_ingest_cav_v1', 'WAREHOUSE_ASSIGNMENTS_SEED_ONLY',
+    'sync_new_unassigned_warehouse_itemcodes_v1', 'eval_assignment_unassigned',
+    'reconcile_inventory_row_assignments_batch_v1', 'p_import_run_id',
+    'inventory_row_assignment_reconcile_finish_v1', 'p_run_id',
+    'private.fast_archive_drive_v2369(jsonb)',
+    'ph_itemcode_default_owner_warehouse_mirror_v2381']) assert.ok(contract.includes(marker));
+  const migration = fs.readFileSync(new URL('../supabase/migrations/20261027030000_agdata_v2381_fast_erp_stage_rpcs.sql', import.meta.url), 'utf8');
+  assert.match(migration, /jsonb_array_length\(p_rows\)>1000/);
+  assert.match(migration, /auth\.role\(\).*service_role/s);
+  assert.match(migration, /on delete cascade/);
+  assert.match(migration, /on conflict\(itemcode_normalized\) do nothing/);
+  assert.match(migration, /on conflict\(event_key\) do nothing/);
+  assert.match(migration, /ptravailable\)::numeric/);
+  assert.match(migration, /FAST_DRIVE_ARCHIVE_TYPED_PROJECTION_ANCHOR_MISMATCH/);
+  assert.match(migration, /ph_eval_low_stock_override_revision_v2381/);
+  assert.match(migration, /ph_eval_low_stock_import_revision_v2381/);
+  assert.match(migration, /bump_eval_report_revision_for_low_stock_v1/);
+  assert.match(migration, /values\('ph_eval_report_settings',1,'ready'/);
+  assert.match(migration, /revision=existing_revision\.revision\+1/);
 });
 
 test('v2.3.72 request completion delivery includes completed membership', () => {

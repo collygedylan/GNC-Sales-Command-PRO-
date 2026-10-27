@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.80",
+  "release": "AgData v2.3.81",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -432,7 +432,10 @@
       "assets/app-runtime.js": [
         "renderManagerEvalReports2Panel",
         "compareManagerEvalReport2InventoryRows",
-        "renderProductionHub"
+        "renderProductionHub",
+        "getManagerUnassignedItemcodes",
+        "notifyManagerUnassignedItems",
+        "openManagerUnassignedItems"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -446,6 +449,9 @@
       "Code.gs": [
         "handleSignedEvalWorkDelivery_",
         "handleSignedLocationWorkDelivery_"
+      ],
+      "index.html": [
+        "resumeAssignedItemsNotification"
       ]
     },
     "agdata-queue-and-reclass-specialist": {
@@ -549,7 +555,9 @@
         "processRequestDeliveryOutbox_",
         "getManualSyncStageOrder_",
         "queueManualSyncRequest_",
-        "runQueuedManualSyncStage_"
+        "runQueuedManualSyncStage_",
+        "getFastLiveIngestDatasetKey_",
+        "getFastLiveFileMeta_"
       ],
       "supportingFiles": {
         "scripts/fast-live-erp-sync.mjs": [
@@ -557,7 +565,9 @@
           "prepareLiveRows",
           "buildFastBatchSql",
           "buildFastAtomicSwapSql",
-          "runFastLiveErpSync"
+          "runFastLiveErpSync",
+          "buildFastStageRpcSql",
+          "callFastStageRpc"
         ],
         "supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql": [
           "check_erp_file_sync_needed_v1",
@@ -587,6 +597,16 @@
         ],
         "supabase/migrations/20261026230000_agdata_v2377_suspend_read_continuity.sql": [
           "ph_active_suspend"
+        ],
+        "supabase/migrations/20261027030000_agdata_v2381_fast_erp_stage_rpcs.sql": [
+          "fast_begin_erp_stage_v1",
+          "fast_append_erp_stage_batch_v1",
+          "fast_commit_erp_stage_swap_v1",
+          "fast_abort_erp_stage_v1",
+          "sync_new_unassigned_warehouse_itemcodes_v1",
+          "mirror_itemcode_default_owner_to_warehouse_v1",
+          "fast_ingest_warehouse_assigned_v1",
+          "repair_fast_drive_archive_sql"
         ]
       }
     },

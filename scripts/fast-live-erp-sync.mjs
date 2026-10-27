@@ -10,13 +10,14 @@ import { driveSources, hashFile, localSources, normalizeHeader, objectRows } fro
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const execFileAsync = promisify(execFile);
 export const FAST_LIVE_BATCH_SIZE = 1000;
-const datasets = new Set(['auto', 'drive_around', 'soc', 'reserves', 'cav', 'warehouse_assigned']);
+const DRIVE_RAW_FIELD_MASK = new Set(['locationnote','locationptn1','desigitem','desigcust','desigloc',
+  'pullerresponsibility','oversellpercentage','salesnote','suspend']);
+const datasets = new Set(['auto', 'drive_around', 'soc', 'reserves', 'cav']);
 const contracts = {
   drive_around: { table: 'ph_master_inventory', preserve: ['date_completed','end_cap_folder','end_cap_qty','end_cap_level','pic_note','sales_note','av_note','photo_link','photo_name','dock_spec','dock_caliper','dock_note','dock_photo_link','dock_photo_name','flyer_cat','flyer_title','flyer_inst','flyer_assigned','flyer_notes','flyer_photo_link','flyer_photo_name','flyer_completed','initial_ptr','loc_match_qty','app_tab_assignment','ncr_approval_type','ncr_requested_by_username','ncr_requested_by_display','ncr_requested_by_email','ncr_requested_at','ncr_approval_message','hold_release_approved_at','hold_release_approved_by','hold_release_approved_by_display','hold_release_approved_holdstopbegindate','flyer_av_note','flyer_match','flyer_loc_match_qty','flyer_spec','flyer_caliper','flyer_pick','flyer_initial_ptr','eval_task_type','eval_task_status','eval_task_instructions','eval_task_assigned_by','eval_task_assigned_at','eval_task_completed_by','eval_task_completed_at','eval_task_recount_qty','eval_task_moved_up_qty','eval_task_hold_action','eval_task_hold_code','eval_task_hold_reason','eval_task_result_note','photo_url','photo_date','loc_match_pct','baseline_on_hand','initial_photo_match_qty','loc_photo_match','pick_note','photo_expires_at','photos','pick','assignedto','match','spec','caliper'] },
   soc: { table: 'ph_soc_master', preserve: ['date_completed','assignedto','dock_photo_link','dock_photo_name','dock_spec','dock_caliper','dock_note','pic_note','sales_note','av_note','photo_link','photo_name','initial_ptr','loc_match_qty','app_tab_assignment','suspend_candidate_group','suspend_candidate_state','suspend_order_quantity','suspend_origin_uid','spec','caliper','match'] },
   reserves: { table: 'ph_reserves', preserve: ['date_completed','assignedto','pic_note','sales_note','av_note','photo_link','photo_name','initial_ptr','loc_match_qty','app_tab_assignment','spec','caliper','match'] },
   cav: { table: 'ph_cav_import', preserve: [] },
-  warehouse_assigned: { table: 'ph_warehouse_assigned_items', preserve: [] },
 };
 
 function fail(message) {
@@ -50,7 +51,6 @@ export function inferLiveDataset(fileName) {
   if (/^~\$|^temp_/i.test(name)) return null;
   if (name.includes('reserve')) return 'reserves';
   if (name.includes('open order') || name.includes('soc-10')) return 'soc';
-  if (name.includes('warehouse') || name.includes('assignment')) return 'warehouse_assigned';
   if (name.includes('cav') || name.includes('wide open')) return 'cav';
   if (name.includes('drive') || name.includes('inventory')) return 'drive_around';
   return null;
@@ -94,9 +94,6 @@ function fallbackIdentity(dataset, row) {
   if (dataset === 'cav') return safeIdentity([
     first(row, 'item', 'itemcode'), first(row, 'productdescription', 'commonname'), first(row, 'brandcode'),
     first(row, 'size', 'contsize'), first(row, 'season'),
-  ]);
-  if (dataset === 'warehouse_assigned') return safeIdentity([
-    first(row, 'itemcode'), first(row, 'genusname'), first(row, 'locationcode'), first(row, 'contsize'),
   ]);
   const digest = createHash('sha256').update(JSON.stringify([
     first(row, 'warehouseid'), first(row, 'itemcode'), first(row, 'contsize', 'printedcontainercode'),
@@ -268,6 +265,27 @@ commit;
 select json_build_object('dataset',${quoteLiteral(dataset)},'rows',(select count(*) from public.${quoteIdentifier(contract.table)}),'batches',${Math.ceil(rowCount / FAST_LIVE_BATCH_SIZE)},'used_columns',${usedColumns.length})::text result;\n`;
 }
 
+export function buildFastStageRpcSql({ rpc, args }) {
+  let call;
+  if (rpc === 'fast_begin_erp_stage_v1') {
+    if (!args || typeof args.p_dataset_key !== 'string' || !Number.isInteger(args.p_expected_rows)) fail('FAST_ERP_STAGE_ARGS_INVALID');
+    call = `public.${rpc}(${quoteLiteral(args.p_dataset_key)}::text,${jsonDollarLiteral(args.p_file_meta)}::jsonb,${args.p_expected_rows}::integer)`;
+  } else if (rpc === 'fast_append_erp_stage_batch_v1') {
+    if (!args || !Number.isInteger(args.p_start_row) || !Array.isArray(args.p_rows)) fail('FAST_ERP_STAGE_ARGS_INVALID');
+    call = `public.${rpc}(${quoteLiteral(args.p_stage_id)}::uuid,${args.p_start_row}::integer,${jsonDollarLiteral(args.p_rows)}::jsonb)`;
+  } else if (rpc === 'fast_commit_erp_stage_swap_v1' || rpc === 'fast_abort_erp_stage_v1') {
+    call = `public.${rpc}(${quoteLiteral(args?.p_stage_id)}::uuid)`;
+  } else fail('FAST_ERP_STAGE_RPC_INVALID');
+  return `select set_config('request.jwt.claim.role','service_role',false);\nselect ${call}::text result;\n`;
+}
+
+async function callFastStageRpc(rpc, args, label) {
+  const rows = await runLinkedSql(buildFastStageRpcSql({ rpc, args }), label);
+  const result = resultObject(rows);
+  if (!result || result.ok !== true) fail('FAST_ERP_STAGE_RPC_UNCONFIRMED');
+  return result;
+}
+
 export async function runFastLiveErpSync(options) {
   const bundle = await sourceBundle(options);
   const selected = latestSources(bundle.sources, options.dataset);
@@ -288,7 +306,11 @@ export async function runFastLiveErpSync(options) {
         const meta = { file_id: source.fileId || contentHash, file_name: source.fileName,
           modified_at: source.modifiedTime || new Date().toISOString(), content_hash: contentHash };
         const columns = await tableColumns(contract.table);
-        const rows = await prepareLiveRows(source.filePath, dataset, columns);
+        let rows = await prepareLiveRows(source.filePath, dataset, columns);
+        if (dataset === 'drive_around') {
+          rows = rows.map(row => ({ values: row,
+            rawFields: Object.keys(row).filter(field => DRIVE_RAW_FIELD_MASK.has(normalizeHeader(field))) }));
+        }
         const checkRows = await runLinkedSql(`select set_config('request.jwt.claim.role','service_role',false);
 select json_build_object(
   'sync',public.check_erp_file_sync_needed_v1(${quoteLiteral(dataset)},${quoteLiteral(meta.file_id)},${quoteLiteral(meta.file_name)},${quoteLiteral(meta.modified_at)},${quoteLiteral(meta.content_hash)}),
@@ -299,21 +321,30 @@ select json_build_object(
           output.push({ dataset, fileName: source.fileName, ...check, rowCount: rows.length });
           continue;
         }
-        const allColumns = [...columns.exact];
-        const usedColumns = allColumns.filter(column => rows.some(row => Object.hasOwn(row, column)));
-        const suffix = createHash('sha256').update(`${dataset}:${meta.content_hash}:${process.pid}`).digest('hex').slice(0, 12);
-        const stageTable = `_fast_live_${dataset}_${suffix}`;
-        const mergedTable = `_fast_live_merged_${suffix}`;
+        let stageId = '';
         try {
-          await runLinkedSql(`drop table if exists public.${quoteIdentifier(stageTable)};\ncreate unlogged table public.${quoteIdentifier(stageTable)} (like public.${quoteIdentifier(contract.table)} including defaults);\nrevoke all on public.${quoteIdentifier(stageTable)} from public,anon,authenticated;\n`, `${dataset}-stage`);
-          for (let offset = 0; offset < rows.length; offset += FAST_LIVE_BATCH_SIZE) {
-            await runLinkedSql(buildFastBatchSql(stageTable, rows.slice(offset, offset + FAST_LIVE_BATCH_SIZE), usedColumns), `${dataset}-batch-${offset / FAST_LIVE_BATCH_SIZE + 1}`);
+          const begin = await callFastStageRpc('fast_begin_erp_stage_v1', {
+            p_dataset_key: dataset, p_file_meta: meta, p_expected_rows: rows.length
+          }, `${dataset}-stage-begin`);
+          if (begin.skipped === true) {
+            output.push({ dataset, fileName: source.fileName, ...check, rowCount: rows.length, stageSkip: true });
+            continue;
           }
-          const result = resultObject(await runLinkedSql(buildFastAtomicSwapSql({ dataset, contract, stageTable, mergedTable,
-            rowCount: rows.length, columns: allColumns, usedColumns, meta }), `${dataset}-swap`));
+          stageId = String(begin.stage_id || '');
+          if (!stageId || Number(begin.expected_rows) !== rows.length) fail('FAST_ERP_STAGE_BEGIN_INVALID');
+          let offset = Number(begin.staged_rows) || 0;
+          if (!Number.isInteger(offset) || offset < 0 || offset > rows.length) fail('FAST_ERP_STAGE_CURSOR_INVALID');
+          for (; offset < rows.length; offset += FAST_LIVE_BATCH_SIZE) {
+            const batch = rows.slice(offset, offset + FAST_LIVE_BATCH_SIZE);
+            const appended = await callFastStageRpc('fast_append_erp_stage_batch_v1', {
+              p_stage_id: stageId, p_start_row: offset, p_rows: batch
+            }, `${dataset}-batch-${Math.floor(offset / FAST_LIVE_BATCH_SIZE) + 1}`);
+            if (Number(appended.staged_rows) !== offset + batch.length) fail('FAST_ERP_STAGE_BATCH_UNCONFIRMED');
+          }
+          const result = await callFastStageRpc('fast_commit_erp_stage_swap_v1', { p_stage_id: stageId }, `${dataset}-commit`);
           output.push({ dataset, fileName: source.fileName, ...result });
         } catch (error) {
-          await runLinkedSql(`drop table if exists public.${quoteIdentifier(stageTable)};\n`, `${dataset}-cleanup`).catch(() => {});
+          // Keep durable batch progress for safe retry after transient failures.
           throw error;
         }
       } finally {

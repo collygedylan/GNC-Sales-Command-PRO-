@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.80';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.81';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14118,6 +14118,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 if (changed) {
                     clearWarehouseAssignedItemCaches();
                     invalidateManagerEvalReport2Cache();
+                    notifyManagerUnassignedItems();
                 }
             } else if (tableName === 'ph_cav_import') {
                 changed = eventType === 'DELETE'
@@ -26584,7 +26585,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.80').trim() || 'AgData v2.3.80';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.81').trim() || 'AgData v2.3.81';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -56636,6 +56637,7 @@ function toggleDriveQuickRequestItem(domId) {
                 clearWarehouseAssignedItemCaches();
                 rebuildWarehouseAssignedItemIndexes(true);
                 invalidateManagerEvalReport2Cache();
+                notifyManagerUnassignedItems();
             }
 
             if (hasRequests || hasRequestHistory || (hasMaster && requestsInventory.length)) {
@@ -63466,6 +63468,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function openViewFromPushMessage(viewId = '', payload = null) {
             const target = String(viewId || '').trim().toLowerCase();
             if (!target || !currentUser) return;
+            if (['home', 'managers'].includes(target) && payload?.homeTab === 'assigned-items-export') {
+                openManagerUnassignedItems();
+                return;
+            }
             if (target === 'sales-office') {
                 openSalesOfficeView();
                 return;
@@ -131585,7 +131591,10 @@ C.14.043 C.15.000
             if (viewId !== 'managers') return '';
             if (activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) return 'eval1';
             if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) return 'eval2';
-            if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return 'assigned-items';
+            // Assigned Items currently renders the complete local warehouse
+            // assignment rows (renderManagerAssignedItemsExportPanel paged=false).
+            // Do not route it through the report-page-only adapter cohort;
+            // its gate must match the actual master + assignment datasets.
             if (activeHomeTab === MANAGER_SEASON_PRIORITY_VIEW) return 'season-priority';
             if (isManagerApprovalTab(activeHomeTab)) return 'approval';
             return '';
@@ -136743,6 +136752,46 @@ C.14.043 C.15.000
             return closeManagerAssignedColumnFilter();
         }
 
+        function getManagerUnassignedItemcodes(rows = warehouseAssignedItemsInventory) {
+            const codes = new Set();
+            (Array.isArray(rows) ? rows : []).forEach(row => {
+                if (!row || row.present_in_drive === false) return;
+                const code = String(row.ITEMCODE || row.itemcode || '').trim().toUpperCase();
+                const assigned = String(row.MASTER_UNIQUE_ID || row.master_unique_id
+                    ? (row.DEFAULT_ASSIGNEDTO ?? row.default_assignedto ?? '')
+                    : (row.ASSIGNEDTO ?? row.assignedto ?? row.assigned_to ?? '')).trim();
+                if (code && !assigned) codes.add(code);
+            });
+            return Array.from(codes).sort();
+        }
+
+        function notifyManagerUnassignedItems() {
+            if (!currentUser || !canViewAssignedItemsExport()) return 0;
+            const codes = getManagerUnassignedItemcodes();
+            if (!codes.length) return 0;
+            const key = `gnc_unassigned_itemcode_notices:${getSupabaseReadIdentityScope()}`;
+            let seen = [];
+            try { seen = JSON.parse(sessionStorage.getItem(key) || '[]'); } catch (error) {}
+            const known = new Set(Array.isArray(seen) ? seen : []);
+            const added = codes.filter(code => !known.has(code));
+            if (!added.length) return 0;
+            try { sessionStorage.setItem(key, JSON.stringify(Array.from(new Set([...known, ...codes])).slice(-10000))); } catch (error) {}
+            showToast('New Unassigned Item Code(s)', `${added.length} itemcode(s) need a user assigned in Managers → Assigned Items.`);
+            return added.length;
+        }
+
+        function openManagerUnassignedItems() {
+            if (!currentUser || !canViewAssignedItemsExport()) return false;
+            managerAssignedItemsAssignedToFilter = 'unassigned';
+            managersSearchTerm = '';
+            const state = getManagerAssignedColumnState();
+            state.filters = {};
+            state.sort = null;
+            switchView('managers');
+            setHomeTab(MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW);
+            return false;
+        }
+
         function getManagerAssignedItemsExportRows() {
             return (Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : [])
                 .map((row, idx) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx))
@@ -136770,8 +136819,8 @@ C.14.043 C.15.000
             state.rowCollator ||= new Intl.Collator(undefined, { numeric: true });
             const compare = state.rowCollator.compare;
             const output = sourceRows.sort((a, b) => {
-                const assignmentGroupCompare = (normalizeEvalAssignableUser(a && a.ASSIGNEDTO) ? 1 : 0)
-                    - (normalizeEvalAssignableUser(b && b.ASSIGNEDTO) ? 1 : 0);
+                const assignmentGroupCompare = (getManagerUnassignedItemcodes([a]).length ? 0 : 1)
+                    - (getManagerUnassignedItemcodes([b]).length ? 0 : 1);
                 if (assignmentGroupCompare !== 0) return assignmentGroupCompare;
                 const nameCompare = compare(String(a.COMMONNAME || ''), String(b.COMMONNAME || ''));
                 if (nameCompare !== 0) return nameCompare;
@@ -136868,7 +136917,7 @@ C.14.043 C.15.000
             if (state.filteredCache.has(cacheKey)) return state.filteredCache.get(cacheKey);
             const filtered = sourceRows.filter((row) => {
                 if (!matchesManagerAssignedColumnFilters(row, state.filters, exceptField)) return false;
-                if (activeKey === 'unassigned' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO)) return false;
+                if (activeKey === 'unassigned' && !getManagerUnassignedItemcodes([row]).length) return false;
                 if (activeKey === 'assigned' && !normalizeEvalAssignableUser(row && row.ASSIGNEDTO)) return false;
                 if (activeKey !== 'all' && activeKey !== 'unassigned' && activeKey !== 'assigned' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO) !== activeKey) return false;
                 return managerTextMatchesSearch([
@@ -137219,6 +137268,7 @@ C.14.043 C.15.000
             const totalCount = paged ? Number(pageMetadata.inventoryRowCount || pageMetadata.filteredRowCount || 0) : allRows.length;
             const assignedCount = assignees.reduce((count, option) => count + option.count, 0);
             const unassignedCount = paged ? Math.max(0, totalCount - assignedCount) : allRows.length - assignedCount;
+            const unassignedItemcodes = getManagerUnassignedItemcodes(allRows).length;
             const optionHtml = [
                 `<option value="all" ${activeKey === 'all' ? 'selected' : ''}>All AssignedTo (${totalCount})</option>`,
                 `<option value="unassigned" ${activeKey === 'unassigned' ? 'selected' : ''}>Unassigned (${unassignedCount})</option>`,
@@ -137227,6 +137277,7 @@ C.14.043 C.15.000
                 .concat(assignees.map((option) => `<option value="${escapeHtml(option.key)}" ${option.key === activeKey ? 'selected' : ''}>${escapeHtml(option.label)} (${option.count})</option>`))
                 .join('');
             return `<div class="space-y-4"><div data-manager-assigned-chrome class="space-y-4">
+                ${unassignedItemcodes ? `<button type="button" data-manager-unassigned-banner class="w-full rounded-xl border border-amber-300 bg-amber-50 p-3 text-left text-sm font-bold text-amber-950" onclick="return openManagerUnassignedItems()"><span data-manager-unassigned-count>${unassignedItemcodes}</span> unassigned itemcode(s) need a user assigned. Review unassigned items.</button>` : ''}
                 <div class="compact-filter-panel rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
                     <div class="compact-filter-rail grid grid-cols-2 gap-2 lg:grid-cols-[minmax(220px,360px)_auto_auto_auto] lg:items-end">
                         <label class="col-span-2 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 lg:col-span-1">AssignedTo
@@ -139736,7 +139787,9 @@ C.14.043 C.15.000
             const cards = visibleOptions.map((option) => {
                 const label = option.label || 'Module';
                 const description = option.description || 'Open a manager workflow.';
-                return `<button type="button" class="manager-module-card" data-manager-module="${option.id === MANAGER_RUNTIME_WATCHDOG_VIEW ? 'watchdog-monitor' : esc(option.id)}" title="${esc(`${label}: ${description}`)}" aria-label="${esc(`${label}: ${description}`)}" onclick="return setHomeTab('${escJsAttrValue(option.id)}')"><span class="manager-module-icon"><i class="ph-bold ${esc(option.icon || 'ph-squares-four')}"></i></span><span class="manager-module-title">${esc(label)}</span></button>`;
+                const unassignedCount = option.id === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW ? getManagerUnassignedItemcodes().length : 0;
+                const badge = unassignedCount ? `<span data-manager-unassigned-badge class="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-950">${unassignedCount} unassigned</span>` : '';
+                return `<button type="button" class="manager-module-card" data-manager-module="${option.id === MANAGER_RUNTIME_WATCHDOG_VIEW ? 'watchdog-monitor' : esc(option.id)}" title="${esc(`${label}: ${description}`)}" aria-label="${esc(`${label}: ${description}`)}" onclick="return setHomeTab('${escJsAttrValue(option.id)}')"><span class="manager-module-icon"><i class="ph-bold ${esc(option.icon || 'ph-squares-four')}"></i></span><span class="manager-module-title">${esc(label)}</span>${badge}</button>`;
             }).join('');
             return `<div class="manager-module-grid">${cards}</div>`;
         }
