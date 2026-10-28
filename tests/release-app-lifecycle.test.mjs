@@ -38,12 +38,12 @@ test('v2.3.97 assets and worker upgrade purge previous cache generations', () =>
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
     const asset = new URL(match[1], 'https://agmetricapp.com');
-    const expectedVersion = asset.pathname === '/assets/app-runtime.js' ? '2.3.97.2'
-      : asset.pathname === '/assets/mobile-workspace.js' ? '2.3.97.1' : '2.3.97';
+    const expectedVersion = asset.pathname === '/assets/app-runtime.js' ? '2.3.97.3'
+      : asset.pathname === '/assets/mobile-workspace.js' || asset.pathname === '/assets/photo-history-v2026090401.js' ? '2.3.97.1' : '2.3.97';
     assert.equal(asset.searchParams.get('v'), expectedVersion, match[1]);
   }
   assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.97'/);
-  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r2'/);
+  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r3'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*window\.reloadForServiceWorkerUpdate\(\)[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
   const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.97' });
@@ -56,8 +56,10 @@ test('v2.3.97 assets and worker upgrade purge previous cache generations', () =>
   vm.runInContext(sw + '\nglobalThis.assets = ASSETS_TO_CACHE;', worker);
   for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.97', asset);
   const build = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
+  const prepare = readFileSync(new URL('../scripts/prepare-release-site.mjs', import.meta.url), 'utf8');
   assert.match(build, /shellStylesheetMarkup\(`\.\/assets\/live-app-styles-base/);
   assert.match(build, /shellStylesheetMarkup\(pilotStylesheetHref\)/);
+  assert.match(prepare, /isScopedAssetHotfix[\s\S]*photo-history-v2026090401\.js/);
 });
 
 test('v2.3.97 keeps access-code login and native bridging reachable before profile hydration', () => {

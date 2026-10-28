@@ -146,6 +146,18 @@
         }
       ]
     },
+    "reclassRollbackModel": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "buildArgosInventoryReclassRollbackModel"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "applyArgosInventoryReclassMoveCommand"
+        }
+      ]
+    },
     "inventoryReclassReceiptPublication": {
       "primary": {
         "file": "assets/app-runtime.js",
@@ -352,6 +364,7 @@
     "agdata-app-shell-and-navigation": {
       "assets/app-runtime.js": [
         "switchView",
+        "navigateQuickAccessView",
         "openManagersModules",
         "showOnlyPrimaryView",
         "goBackUniversal",
@@ -636,6 +649,7 @@
         "buildSuspendTagRenderPlan",
         "buildReclassRecountLocationGroups",
         "buildOptimisticInventoryReclassMoveModel",
+        "buildArgosInventoryReclassRollbackModel",
         "applyArgosInventoryReclassMoveCommand",
         "publishArgosInventoryTransactionReturnedRows",
         "reclassStockSeason",
@@ -999,6 +1013,7 @@
         "openManagerTableManagement",
         "getManagerTableManagementItems",
         "downloadManagerRowsToExcel",
+        "openDylanPhotoHistory",
         "renderCompanyDirectoryPanel",
         "mountCompanyDirectoryPanel"
       ],
@@ -1013,6 +1028,9 @@
         "prefetchCustomerRepOptions"
       ],
       "assets/photo-history-v2026090401.js": [
+        "open",
+        "toggle",
+        "send",
         "exportAll"
       ],
       "assets/runtime-watchdog.js": [],

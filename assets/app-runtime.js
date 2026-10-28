@@ -9911,6 +9911,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         let retainedLocationOnHandDisplay = { owner: '', values: new Map() };
+        function getRetainedCardLocationOnHand(item = null) {
+            const owner = getSupabaseReadIdentityScope() + '|' + String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+            if (retainedLocationOnHandDisplay.owner !== owner) retainedLocationOnHandDisplay = { owner, values: new Map() };
+            const key = getInventoryCardItemLocationKey(item);
+            const value = key ? parseAppNumber(retainedLocationOnHandDisplay.values.get(key)) : null;
+            return value == null ? null : Number(value).toLocaleString('en-US', { maximumFractionDigits: 6 });
+        }
         function preserveCardLocationOnHand(item, summedLocationOnHand = null) {
             const owner = getSupabaseReadIdentityScope() + '|' + String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
             if (retainedLocationOnHandDisplay.owner !== owner) retainedLocationOnHandDisplay = { owner, values: new Map() };
@@ -9926,15 +9933,31 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getCardLocationOnHandValue(item = null) {
             const fallbackQty = parseAppNumber(firstNonEmptyValue(item?.PTRONHAND, item?.ptronhand, ''));
-            const fallback = preserveCardLocationOnHand(item, fallbackQty > 0 ? fallbackQty : null);
             const state = getDatasetState('master');
             const nativeModeActive = nativeAuthSessionActive === true || !!nativeAuthProfile?.id;
             const authorization = nativeModeActive ? getQueueCardInventoryAuthorizationContext() : null;
             const serverAggregate = getCardLocationOnHandServerAggregate(item, { authorization });
             if (serverAggregate.verified === true) {
-                if (serverAggregate.value == null) return fallback;
+                if (serverAggregate.value == null) return null;
                 return preserveCardLocationOnHand(item, serverAggregate.value);
             }
+            const acceptedReceipt = acceptedLocOnHandAggregateReceipt;
+            const rowReceiptScope = String(firstNonEmptyValue(item?.LOC_ON_HAND_RECEIPT_SCOPE, item?.loc_on_hand_receipt_scope, '') || '');
+            const rowReceiptPermission = String(firstNonEmptyValue(item?.LOC_ON_HAND_RECEIPT_PERMISSION, item?.loc_on_hand_receipt_permission, '') || '');
+            const rowReceiptRevision = String(firstNonEmptyValue(item?.LOC_ON_HAND_RECEIPT_REVISION, item?.loc_on_hand_receipt_revision, '') || '').trim();
+            if (serverAggregate.present && acceptedReceipt?.valid === true
+                && rowReceiptScope === acceptedReceipt.scope && rowReceiptPermission === acceptedReceipt.permission
+                && /^\d+$/.test(rowReceiptRevision) && /^\d+$/.test(String(acceptedReceipt.revision || ''))
+                && BigInt(rowReceiptRevision) < BigInt(acceptedReceipt.revision)
+                && Array.isArray(requestItemCodeOptionState?.rows) && requestItemCodeOptionState.rows.includes(item)) {
+                const optionContext = activeItem || item;
+                if (getRequestItemCodeOptionStateKey(optionContext) === requestItemCodeOptionState.key) {
+                    scheduleStaleRequestOptionMetricRefresh(optionContext, requestItemCodeOptionState, acceptedReceipt.revision);
+                }
+                return getRetainedCardLocationOnHand(item);
+            }
+            if (serverAggregate.present) return null;
+            const fallback = preserveCardLocationOnHand(item, fallbackQty > 0 ? fallbackQty : null);
             // Browse projections include On Hand for every row. Full *field*
             // coverage is not required to sum a complete inventory snapshot.
             const displayReceipt = typeof productionDisplayMasterReceipt !== 'undefined' ? productionDisplayMasterReceipt : null;
@@ -9956,6 +9979,18 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!entry) return fallback;
             if (!entry.known || !Number.isFinite(entry.total)) return fallback;
             return preserveCardLocationOnHand(item, entry.total);
+        }
+
+        function retainVerifiedCardLocationOnHandRows(rows = []) {
+            if (!Array.isArray(rows)) return 0;
+            let retained = 0;
+            rows.forEach((row) => {
+                const aggregate = getCardLocationOnHandServerAggregate(row, { authorization: getQueueCardInventoryAuthorizationContext() });
+                if (aggregate.verified !== true || aggregate.value == null) return;
+                preserveCardLocationOnHand(row, aggregate.value);
+                retained += 1;
+            });
+            return retained;
         }
 
         function getCardSeasonOhValue(item = null) {
@@ -32790,8 +32825,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const setupState = evalWorkSetupState;
             const submitState = argosInventoryTransactionState;
             const identityKey = getArgosReclassLiveEditIdentityKey();
+            let deferSetupOpenUntilPaint = false;
             try {
-                await ensureArgosReclassSubmissionVerification(submitState);
+                ensureArgosReclassSubmissionVerification(submitState);
                 if (argosInventoryTransactionState !== submitState || evalWorkSetupState !== setupState
                     || identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
                 const inquiry = buildEvalWorkSetupInquiry();
@@ -32809,6 +32845,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     setupState.movePending = true;
                     closeArgosInventoryTransactionModal({ background: true });
                     showToast('Moves Saved', 'Inventory updated. Saving in the background.');
+                    deferSetupOpenUntilPaint = true;
                     void moveWork.then(() => { setupState.movePending = false; }).catch(error => {
                         setupState.movePending = false;
                         setupState.moveError = error;
@@ -32820,14 +32857,26 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 showToast('Move Not Saved', String(error.message || 'Review the move quantities and try again.'), true);
                 return false;
             }
-            void ensureAssignableAppUsers(false).catch(() => []);
-            const modal = ensureEvalWorkSetupModal();
-            const assigneeButton = document.getElementById('eval-work-setup-assignee-button');
-            const instructions = document.getElementById('eval-work-setup-instructions');
-            if (instructions) instructions.value = '';
-            modal.classList.remove('hidden');
-            syncEvalWorkSetupSummary();
-            setTimeout(() => { try { assigneeButton && assigneeButton.focus({ preventScroll: true }); } catch (error) {} }, 30);
+            const openSetup = () => {
+                if (evalWorkSetupState !== setupState || identityKey !== getArgosReclassLiveEditIdentityKey()
+                    || deferSetupOpenUntilPaint && getCurrentVisibleViewId() !== setupState.sourceViewAfterClose) return;
+                void ensureAssignableAppUsers(false).catch(() => []);
+                const modal = ensureEvalWorkSetupModal();
+                const assigneeButton = document.getElementById('eval-work-setup-assignee-button');
+                const instructions = document.getElementById('eval-work-setup-instructions');
+                if (instructions) instructions.value = '';
+                modal.classList.remove('hidden');
+                syncEvalWorkSetupSummary();
+                setTimeout(() => { try { assigneeButton && assigneeButton.focus({ preventScroll: true }); } catch (error) {} }, 30);
+            };
+            if (deferSetupOpenUntilPaint) {
+                setupState.sourceViewAfterClose = getCurrentVisibleViewId();
+                const scheduleSetup = () => setTimeout(openSetup, 0);
+                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(scheduleSetup);
+                else scheduleSetup();
+            } else {
+                openSetup();
+            }
             return false;
         }
 
@@ -40139,24 +40188,28 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getRequestCapabilities() {
             const usernameKey = getRequestCapabilityUsernameKey(currentUser);
-            if (!usernameKey || requestCapabilityState.username !== usernameKey) return null;
-            return requestCapabilityState.capabilities || null;
+            if (!usernameKey || (requestCapabilityState.username && requestCapabilityState.username !== usernameKey)) return null;
+            return requestCapabilityState.capabilities || getRequestEntryCapabilities();
         }
 
         function getRequestEntryCapabilities() {
             const denied = window.GncUserAccessControl?.getSelfState?.().denied === true;
             if (denied || nativeAuthProfile?.active === false || nativeAuthProfile?.disabled_at != null) return null;
-            const existing = getRequestCapabilities();
+            const username = getRequestCapabilityUsernameKey(currentUser);
+            if (!username || (requestCapabilityState.username && requestCapabilityState.username !== username)) return null;
+            const existing = username && requestCapabilityState.username === username
+                ? requestCapabilityState.capabilities || null : null;
             // Explicit server denials remain authoritative; refresh age is not a denial.
             if (existing) return existing;
-            const username = getRequestCapabilityUsernameKey(currentUser);
             const profile = nativeAuthProfile;
-            if (!username || !nativeAuthSessionActive || !profile?.id || nativeAuthSessionUserId !== profile.id
+            if (!nativeAuthSessionActive || !profile?.id || nativeAuthSessionUserId !== profile.id
                 || getRequestCapabilityUsernameKey(profile.username) !== username) return null;
             const role = normalizeRoleAccessToken(profile.role || currentRole);
             const allowed = ['ADMIN','ADMINISTRATOR','MANAGER','CSR','OFFICE','SALESREP','SALES','REP','EVAL','QCSUPERVISOR','QC','FOREMAN','GROWER'].includes(role)
                 && canonicalFeaturePermission('can_access_que') !== false;
-            return { username, canCreateGeneral: allowed, canCreateAv: allowed && canonicalFeaturePermission('can_access_av') !== false };
+            return { username, scope: '', canViewQueue: allowed,
+                canCreateGeneral: allowed, canCreateAv: allowed && canonicalFeaturePermission('can_access_av') !== false,
+                canTakePhoto: false, canEdit: false, canComplete: false, canArchive: false };
         }
 
         function isRequestCapabilityDataUsable() {
@@ -43564,7 +43617,7 @@ let avTopControlsRenderToken = 0;
             return revision;
         }
 
-        async function ensureArgosReclassSubmissionVerification(state = null) {
+        function ensureArgosReclassSubmissionVerification(state = null) {
             // Cached-row freshness is not authorization. The authenticated API
             // rechecks access and source identity inside the atomic transaction.
             const identityKey = getArgosReclassLiveEditIdentityKey();
@@ -45338,12 +45391,20 @@ let avTopControlsRenderToken = 0;
                 const changed = [];
                 rows.forEach(row => {
                     const uid = String(row.UNIQUE_ID || row.unique_id || '');
-                    const before = fullInventory.find(r => String(r.UNIQUE_ID || r.unique_id || '') === uid);
+                    let before = typeof masterInventoryById !== 'undefined' && masterInventoryById instanceof Map
+                        ? masterInventoryById.get(uid) : null;
+                    if (!before || !fullInventory.includes(before)) before = fullInventory.find(r => String(r.UNIQUE_ID || r.unique_id || '') === uid);
                     pending.displayRollback.push({ uid, before: before ? { ...before } : null });
-                    const applied = applyArgosInventoryTransactionReturnedRow(row, uid, { deferPublication: true });
+                    let applied = before && fullInventory.includes(before) ? Object.assign(before, row) : null;
+                    if (!applied) applied = applyArgosInventoryTransactionReturnedRow(row, uid, { deferPublication: true });
+                    if (applied && typeof masterInventoryById !== 'undefined' && masterInventoryById instanceof Map) masterInventoryById.set(uid, applied);
                     if (applied) { applied.__optimisticReclassMove = commandId; changed.push(applied); }
                     const av = avOpenInventory.find(r => String(r.UNIQUE_ID || r.unique_id || '') === uid);
-                    if (av) av.__optimisticReclassMove = commandId;
+                    const includeInAv = typeof shouldIncludeMasterItemInAvSeasonView === 'function'
+                        && shouldIncludeMasterItemInAvSeasonView(applied || row);
+                    if (av && includeInAv) Object.assign(av, applied || row, { __optimisticReclassMove: commandId });
+                    else if (!av && includeInAv && applied) avOpenInventory.push(Object.assign({}, applied, { __optimisticReclassMove: commandId }));
+                    else if (av && !includeInAv) removeRealtimeRow(avOpenInventory, uid);
                 });
                 const seasonStocks = new Map();
                 rows.forEach(row => {
@@ -45357,7 +45418,32 @@ let avTopControlsRenderToken = 0;
                 });
                 applyReclassSeasonStocks(Array.from(seasonStocks.values()));
                 pending.cavRollback.forEach(entry => { entry.after = { ...entry.target }; });
-                publishArgosInventoryTransactionReturnedRows(changed);
+                if (pending.deferInitialPublication === true) {
+                    // Keep the exact moved rows and season metrics immediately
+                    // visible, but move the global index rebuild and cross-view
+                    // propagation off the modal-submit stack.
+                    const expectedCommandId = commandId;
+                    const expectedIdentityKey = pending.ownerIdentityKey;
+                    const ownerState = pending.ownerState;
+                    const publishIfStillOwned = () => {
+                        pending.initialPublicationTimer = null;
+                        if (expectedIdentityKey !== getArgosReclassLiveEditIdentityKey()
+                            || !ownerState || ownerState.pendingReclassMove !== pending
+                            || pending.command.commandId !== expectedCommandId) return;
+                        const stillOwned = changed.filter(row => fullInventory.includes(row)
+                            && String(row.__optimisticReclassMove || '') === expectedCommandId);
+                        if (stillOwned.length) publishArgosInventoryTransactionReturnedRows(stillOwned);
+                    };
+                    if (typeof requestAnimationFrame === 'function') {
+                        pending.initialPublicationTimer = requestAnimationFrame(() => {
+                            pending.initialPublicationTimer = setTimeout(publishIfStillOwned, 0);
+                        });
+                    } else {
+                        pending.initialPublicationTimer = setTimeout(publishIfStillOwned, 0);
+                    }
+                } else {
+                    publishArgosInventoryTransactionReturnedRows(changed);
+                }
                 const view = getCurrentVisibleViewId();
                 if (view) queueInteractiveViewRender(view, false, false, 0, 0);
             } else {
@@ -45878,6 +45964,12 @@ let avTopControlsRenderToken = 0;
             return { model: buildItemInquiryViewModel(state.item, rows), movedUids };
         }
 
+        function buildArgosInventoryReclassRollbackModel(state = null) {
+            return state && state.inquiryModel && Array.isArray(state.inquiryModel.rows)
+                ? buildItemInquiryViewModel(state.item, state.inquiryModel.rows.map(row => ({ ...row })))
+                : state && state.inquiryModel || null;
+        }
+
         function reconcileArgosReclassCardDraftState(previousCard = null, nextCard = null, preserveHydratedBody = false) {
             if (!previousCard || !nextCard) return false;
             const previousBody = previousCard.querySelector('[data-reclass-row-body]');
@@ -46086,7 +46178,9 @@ let avTopControlsRenderToken = 0;
             if (!pending) {
                 const preview = buildOptimisticInventoryReclassMoveModel(state, command);
                 pending = { command, inquiryPayload: payload && typeof payload === 'object' ? JSON.parse(JSON.stringify(payload)) : null,
-                    originalModel: state.inquiryModel, movedUids: preview.movedUids, uncertain: false, inFlight: false };
+                    originalModel: buildArgosInventoryReclassRollbackModel(state),
+                    movedUids: preview.movedUids, uncertain: false, inFlight: false,
+                    deferInitialPublication: state.backgroundSubmission === true, ownerIdentityKey: identityKey, ownerState: state };
                 state.pendingReclassMove = pending;
                 state.inquiryModel = preview.model;
                 publishOptimisticReclassRows(pending, preview.model.rows);
@@ -46264,7 +46358,7 @@ let avTopControlsRenderToken = 0;
                 apply.textContent = 'Preparing inquiry...';
             }
             try {
-                await ensureArgosReclassSubmissionVerification(submitState);
+                ensureArgosReclassSubmissionVerification(submitState);
                 if (!submitContextIsCurrent()) return false;
                 {
                     const hasPendingMove = !!submitState.pendingReclassMove;
@@ -70997,11 +71091,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return ['dylan_collyge', 'madison_austin', 'madelyn_gray'].includes(normalizeSessionIdentity(currentUser));
         }
 
-        function openDylanPhotoHistory() {
+        function openDylanPhotoHistory(options = {}) {
             if (!canOpenPhotoHistory()) return false;
             const actorKey = normalizeSessionIdentity(currentUser);
             window.GncPhotoHistory?.open({
                 actorKey,
+                readOnly: options.readOnly === true,
                 allowed: () => canOpenPhotoHistory() && normalizeSessionIdentity(currentUser) === actorKey,
                 request: (operation, input) => postAppFunctionJson(APP_API_FUNCTION_URL,
                     { action: 'photo_history', operation, input }, { timeoutMs: 30000, label: 'Photo History' })
@@ -79062,6 +79157,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
         let navigationPreferencesAccount = '';
         let quickAccessNestedBackState = null;
+        let quickAccessNavigationGeneration = 0;
         const QUICK_ACCESS_NESTED_ROUTES = Object.freeze({
             eval_reports_2: { parent: 'managers', tab: 'eval-reports-2' },
             'manager-eval-reports': { parent: 'managers', tab: 'eval-reports' },
@@ -79131,7 +79227,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (safeView.startsWith('production:')) return openProductionWorkflow(safeView.split(':')[1]);
             const nested = QUICK_ACCESS_NESTED_ROUTES[safeView];
             if (!nested) return switchView(safeView);
+            const navigationGeneration = ++quickAccessNavigationGeneration;
             const originView = getCurrentVisibleViewId();
+            const identity = getSupabaseReadIdentityScope();
             const openNested = () => {
                 if (nested.parent === 'managers' && nested.tab) setHomeTab(nested.tab);
                 else if (nested.parent === 'request' && nested.tab) setReqTab(nested.tab);
@@ -79139,8 +79237,47 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 else if (nested.archiveTab) document.querySelector(`[data-archive-tab="${nested.archiveTab}"]`)?.click();
             };
             switchView(nested.parent, { quickAccessRoute: safeView, quickAccessOrigin: originView, quickAccessTab: nested.tab || nested.archiveTab || '' });
-            openNested();
-            setTimeout(openNested, 80);
+            const historicalOwner = nested.archiveTab ? getHistoricalRequestsOwnerKey() : '';
+            if (nested.archiveTab && nested.parent === 'historical-requests') {
+                void (async () => {
+                    try { await ensureHistoricalRequestsIsland(); } catch (_) { return; }
+                    const host = document.getElementById('historical-requests-content');
+                    if (!host) return;
+                    const isCurrentOwner = () => navigationGeneration === quickAccessNavigationGeneration
+                        && getCurrentVisibleViewId() === nested.parent && isViewVisible(nested.parent)
+                        && identity === getSupabaseReadIdentityScope() && historicalOwner === getHistoricalRequestsOwnerKey()
+                        && canAccessQuickAccessView(safeView);
+                    const tabSelector = `[data-archive-tab="${nested.archiveTab}"]`;
+                    let observer = null;
+                    let timeout = null;
+                    const cleanup = () => {
+                        if (observer) observer.disconnect();
+                        observer = null;
+                        if (timeout != null) clearTimeout(timeout);
+                        timeout = null;
+                    };
+                    const selectWhenReady = () => {
+                        if (!isCurrentOwner()) { cleanup(); return true; }
+                        const button = host.querySelector(tabSelector);
+                        if (!button) return false;
+                        cleanup();
+                        button.click();
+                        return true;
+                    };
+                    if (selectWhenReady()) return;
+                    if (typeof MutationObserver !== 'function') return;
+                    observer = new MutationObserver(selectWhenReady);
+                    observer.observe(host, { childList: true, subtree: true });
+                    if (selectWhenReady()) return;
+                    timeout = setTimeout(cleanup, 5000);
+                })();
+            } else {
+                openNested();
+                setTimeout(() => {
+                    if (navigationGeneration === quickAccessNavigationGeneration
+                        && getCurrentVisibleViewId() === nested.parent && canAccessQuickAccessView(safeView)) openNested();
+                }, 80);
+            }
             return false;
         }
         function configureNavigationPreferences() {
@@ -106106,6 +106243,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const page = await fetchMasterInitialRowsPage({ itemCode: String(itemCode || '').trim() }, pageSize, offset);
                 const pageRows = Array.isArray(page) ? page : [];
                 if (!pageRows.length) break;
+                retainVerifiedCardLocationOnHandRows(pageRows);
                 rows.push(...pageRows);
                 if (pageRows.length < pageSize) break;
                 if (offset + pageSize < maxRows) await yieldToUiFrame();
@@ -106113,17 +106251,46 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return rows;
         }
 
-        async function loadRequestItemCodeOptions(item = activeItem, stateKey = '') {
+        function scheduleStaleRequestOptionMetricRefresh(item = activeItem, state = requestItemCodeOptionState, revision = '') {
+            const safeRevision = String(revision || '').trim();
+            const owner = getSupabaseReadIdentityScope();
+            if (!item || !state || state.owner !== owner || !safeRevision || !/^\d+$/.test(safeRevision)) return false;
+            if (state.metricRefreshRevision === safeRevision || state.metricRefreshPendingRevision === safeRevision) return false;
+            if (state.loading) {
+                state.metricRefreshPendingRevision = safeRevision;
+                return false;
+            }
+            state.metricRefreshRevision = safeRevision;
+            setTimeout(() => {
+                if (requestItemCodeOptionState !== state || state.owner !== getSupabaseReadIdentityScope()
+                    || getRequestItemCodeOptionStateKey(item) !== state.key) return;
+                const accepted = acceptedLocOnHandAggregateReceipt;
+                if (!accepted?.valid || accepted.scope !== getSupabaseReadIdentityScope()
+                    || accepted.permission !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')
+                    || BigInt(String(accepted.revision || '0')) < BigInt(safeRevision)) return;
+                const stillStale = state.rows.some(row => row && String(firstNonEmptyValue(row.LOC_ON_HAND_RECEIPT_SCOPE, row.loc_on_hand_receipt_scope, '') || '') === accepted.scope
+                    && String(firstNonEmptyValue(row.LOC_ON_HAND_RECEIPT_PERMISSION, row.loc_on_hand_receipt_permission, '') || '') === accepted.permission
+                    && /^\d+$/.test(String(firstNonEmptyValue(row.LOC_ON_HAND_RECEIPT_REVISION, row.loc_on_hand_receipt_revision, '') || ''))
+                    && BigInt(String(firstNonEmptyValue(row.LOC_ON_HAND_RECEIPT_REVISION, row.loc_on_hand_receipt_revision, '0'))) < BigInt(accepted.revision));
+                if (stillStale) loadRequestItemCodeOptions(item, state.key, { forceRefresh: true }).catch(() => {});
+            }, 0);
+            return true;
+        }
+
+        async function loadRequestItemCodeOptions(item = activeItem, stateKey = '', options = {}) {
             const state = ensureRequestItemCodeOptionState(item);
             const safeStateKey = String(stateKey || state.key || '').trim();
-            if (!item || !safeStateKey || state.loading || state.loaded) return false;
+            const forceRefresh = options?.forceRefresh === true;
+            if (!item || !safeStateKey || state.loading || state.loaded && !forceRefresh) return false;
             const itemCode = getRequestItemCodeOptionItemCode(item);
             if (!itemCode) return false;
             const canFetchRemoteRows = canFetchRequestItemCodeOptionsFromSupabase();
             const owner = getSupabaseReadIdentityScope();
             const sharedRows = getRequestSharedInventoryOptionRows(item);
-            state.rows = sharedRows;
-            state.rowsRevision = (Number(state.rowsRevision) || 0) + 1;
+            if (!forceRefresh) {
+                state.rows = sharedRows;
+                state.rowsRevision = (Number(state.rowsRevision) || 0) + 1;
+            }
             state.cachedSignature = '';
             state.denied = false;
             state.loading = true;
@@ -106139,10 +106306,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const rawRows = [];
                 const localRowsPromise = collectRequestItemCodeOptionRowsFromLocalCache(item, safeStateKey).catch(() => []);
                 let primaryLookupError = null;
+                let primaryLookupSucceeded = false;
                 if (canFetchRemoteRows) {
                     try {
                         const itemRows = await fetchRequestItemCodeOptionRowsFromSupabase(itemCode, { pageSize: 100, maxRows: 2500 });
                         rawRows.push(...itemRows);
+                        primaryLookupSucceeded = true;
                     } catch (lookupError) {
                         if (isSupabaseReadTerminalDenial(lookupError)) throw lookupError;
                         primaryLookupError = lookupError;
@@ -106165,18 +106334,33 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (requestItemCodeOptionState.key !== safeStateKey || owner !== getSupabaseReadIdentityScope()) return false;
                 state.cachedRows = [];
                 state.cachedSignature = '';
-                const retainedRows = [...sharedRows, ...(Array.isArray(state.rows) ? state.rows : [])];
-                const formattedRows = formatFetchedRows([...retainedRows, ...rawRows], 'ph_master_inventory').map((row, index) => {
+                const retainedRows = forceRefresh ? sharedRows : [...sharedRows, ...(Array.isArray(state.rows) ? state.rows : [])];
+                const formattedRows = formatFetchedRows(forceRefresh ? [...rawRows, ...retainedRows] : [...retainedRows, ...rawRows], 'ph_master_inventory').map((row, index) => {
                     const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
                     row.DOM_ID = row.DOM_ID || `reqopt_${uid || index}`;
                     return buildSearchIndex(normalizeRowPhotoFields(row));
                 });
                 const mergedRows = new Map();
+                const currentPermission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+                const acceptedMetricRevision = (row) => {
+                    const scope = String(firstNonEmptyValue(row?.LOC_ON_HAND_RECEIPT_SCOPE, row?.loc_on_hand_receipt_scope, '') || '');
+                    const permission = String(firstNonEmptyValue(row?.LOC_ON_HAND_RECEIPT_PERMISSION, row?.loc_on_hand_receipt_permission, '') || '');
+                    const revision = String(firstNonEmptyValue(row?.LOC_ON_HAND_RECEIPT_REVISION, row?.loc_on_hand_receipt_revision, '') || '').trim();
+                    const aggregateRevision = String(firstNonEmptyValue(row?.LOC_ON_HAND_REVISION, row?.loc_on_hand_revision, '') || '').trim();
+                    if (scope !== owner || permission !== currentPermission || !/^\d+$/.test(revision) || revision !== aggregateRevision) return null;
+                    return BigInt(revision);
+                };
                 formattedRows.forEach((row) => {
                     const identity = getRequestItemCodeOptionMasterId(row) || getRequestItemCodeOptionExactKey(row);
-                    if (identity && !mergedRows.has(identity)) mergedRows.set(identity, row);
+                    if (!identity) return;
+                    const existing = mergedRows.get(identity);
+                    if (!existing) { mergedRows.set(identity, row); return; }
+                    const incomingRevision = acceptedMetricRevision(row);
+                    const existingRevision = acceptedMetricRevision(existing);
+                    if (incomingRevision !== null && (existingRevision === null || incomingRevision > existingRevision)) mergedRows.set(identity, row);
                 });
-                if (mergedRows.size || !retainedRows.length) state.rows = Array.from(mergedRows.values());
+                if (mergedRows.size || !retainedRows.length && (!forceRefresh || primaryLookupSucceeded)
+                    || forceRefresh && primaryLookupSucceeded) state.rows = Array.from(mergedRows.values());
                 state.rowsRevision = (Number(state.rowsRevision) || 0) + 1;
                 state.loaded = true;
                 state.error = '';
@@ -106191,6 +106375,16 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             } finally {
                 if (requestItemCodeOptionState.key === safeStateKey && owner === getSupabaseReadIdentityScope()) {
                     state.loading = false;
+                    if (forceRefresh && acceptedLocOnHandAggregateReceipt?.valid === true
+                        && acceptedLocOnHandAggregateReceipt.scope === getSupabaseReadIdentityScope()
+                        && acceptedLocOnHandAggregateReceipt.permission === String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) {
+                        state.metricRefreshRevision = String(acceptedLocOnHandAggregateReceipt.revision || state.metricRefreshRevision || '');
+                    }
+                    const pendingMetricRevision = String(state.metricRefreshPendingRevision || '').trim();
+                    state.metricRefreshPendingRevision = '';
+                    if (pendingMetricRevision && requestItemCodeOptionState === state) {
+                        scheduleStaleRequestOptionMetricRefresh(activeItem, state, pendingMetricRevision);
+                    }
                     if (String(activeDetailTab || '').trim().toLowerCase() === 'this-location') {
                         renderRequestThisLocationPanel(activeItem, activeDetailSourceView || lastView || '', { skipLoad: true });
                     } else {
@@ -140196,13 +140390,13 @@ C.14.043 C.15.000
                     managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
                     try { return setHomeTab(MANAGER_ACCESS_CONTROL_VIEW); } finally { managerTableManagementDirectOpen = false; }
                 }
-                if (key === 'historical-requests' && canUseHistoricalRequests()) return switchView('archive-requests');
-                if (key === 'historical-drive-mode' && canUseHistoricalRequests()) return switchView('archive-drive');
-                if (key === 'historical-soc-open-orders' && canUseHistoricalRequests()) return switchView('archive-orders');
-                if (key === 'historical-soc-reserves' && canUseHistoricalRequests()) return switchView('archive-reserves');
+                if (key === 'historical-requests' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-requests');
+                if (key === 'historical-drive-mode' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-drive');
+                if (key === 'historical-soc-open-orders' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-orders');
+                if (key === 'historical-soc-reserves' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-reserves');
                 return false;
             }
-            if (key === 'photo-history') return openDylanPhotoHistory();
+            if (key === 'photo-history') return openDylanPhotoHistory({ readOnly: true });
             if (key === 'assigned-items' || key === 'customer-assignments' || key === 'user-role-access') {
                 const tab = key === 'assigned-items' ? MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
                     : key === 'customer-assignments' ? MANAGER_CUSTOMER_REP_MAP_VIEW : MANAGER_ACCESS_CONTROL_VIEW;
@@ -140210,10 +140404,10 @@ C.14.043 C.15.000
                 managerTableManagementDirectOpen = true;
                 try { return setHomeTab(tab); } finally { managerTableManagementDirectOpen = false; }
             }
-            if (key === 'historical-requests') return switchView('archive-requests');
-            if (key === 'historical-drive-mode') return switchView('archive-drive');
-            if (key === 'historical-soc-open-orders') return switchView('archive-orders');
-            if (key === 'historical-soc-reserves') return switchView('archive-reserves');
+            if (key === 'historical-requests') return navigateQuickAccessView('archive-requests');
+            if (key === 'historical-drive-mode') return navigateQuickAccessView('archive-drive');
+            if (key === 'historical-soc-open-orders') return navigateQuickAccessView('archive-orders');
+            if (key === 'historical-soc-reserves') return navigateQuickAccessView('archive-reserves');
             managerTableManagementSelection = key;
             destroyManagerTableManagement();
             return setHomeTab(MANAGER_TABLE_MANAGEMENT_VIEW);

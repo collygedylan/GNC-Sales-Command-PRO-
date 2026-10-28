@@ -94,8 +94,10 @@ try {
   for (const match of html.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^"]*)?)"/g)) {
     const assetUrl = new URL(match[1], 'https://release.invalid');
     const version = assetUrl.searchParams.get('v');
-    const isManagerShellHotfix = assetUrl.pathname.endsWith('/mobile-workspace.js') && version === `${assetVersion}.1`;
-    if (version !== assetVersion && !isManagerShellHotfix) throw new Error('RELEASE_ASSET_VERSION_MISMATCH: ' + match[1]);
+    const isScopedAssetHotfix = version === `${assetVersion}.1`
+      && (assetUrl.pathname.endsWith('/mobile-workspace.js')
+        || assetUrl.pathname.endsWith('/photo-history-v2026090401.js'));
+    if (version !== assetVersion && !isScopedAssetHotfix) throw new Error('RELEASE_ASSET_VERSION_MISMATCH: ' + match[1]);
   }
   if (/cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/.test(html)) throw new Error('RELEASE_EXTERNAL_CDN_FORBIDDEN');
   console.log('RELEASE_SITE_PREPARED');

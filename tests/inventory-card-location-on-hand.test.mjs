@@ -15,7 +15,7 @@ const names = new Set([
   'firstNonEmptyValue', 'normalizeCardQuantityValue', 'getCardPtrOnHandValue',
   'parseAppNumber', 'normalizeMasterInventorySourceCode', 'getMasterInventorySourceCode',
   'getMasterInventoryExactKey', 'getInventoryCardItemLocationKey', 'addInventoryCardLocationOnHand',
-  'getCardLocationOnHandValue', 'isDatasetLoaded', 'getItemInquiryItemCode',
+  'getCardLocationOnHandValue', 'retainVerifiedCardLocationOnHandRows', 'scheduleStaleRequestOptionMetricRefresh', 'isDatasetLoaded', 'getItemInquiryItemCode',
   'getCardLocationOnHandServerAggregate', 'clearAcceptedLocOnHandAggregates', 'invalidateLocOnHandAggregateRows', 'acceptCardLocationOnHandSourceReceipt', 'stampCardLocationOnHandReceipt', 'clearCardLocationOnHandReceipt',
   'getQueueCardInventoryAuthorizationContext',
   'normalizeNcrInheritanceKeyPart', 'createMasterInventoryIndexMaps', 'addMasterInventoryRowToIndexes',
@@ -30,6 +30,8 @@ function setup(rows) {
   const state = { fullLoaded: true, fieldCoverage: 'full', initialLoaded: true, rowCompleteness: 'complete',
     liveVerifiedScope: '', liveVerifiedPermission: '', liveVerifiedRevision: '' };
   const indexInvalidations = { count: 0 };
+  const scheduledCallbacks = [];
+  const optionRefreshes = [];
   const context = vm.createContext({
     Map, Set, Number, String, Array, Object, JSON, Math,
     NON_MASTER_INVENTORY_SOURCE_CODES: new Set(['REQUEST', 'V2_ACTIVE_REQUEST', 'V2_MASTER_INVENTORY', 'V2_SALES_OFFICE']),
@@ -37,6 +39,11 @@ function setup(rows) {
     LOC_ON_HAND_SYNC_KEYS: ['LOC_ON_HAND','LOC_ON_HAND_ITEMCODE','LOC_ON_HAND_LOCATIONCODE','LOC_ON_HAND_REVISION','LOC_ON_HAND_RECEIPT_SCOPE','LOC_ON_HAND_RECEIPT_PERMISSION','LOC_ON_HAND_RECEIPT_REVISION'],
     FLYER_FOLDER_ROWS_TABLE: 'ph_flyer_folder_rows',
     fullInventory: rows,
+    requestItemCodeOptionState: { key:'request|item', owner:'actor-a', rows:[], loading:false, loaded:true },
+    activeItem: { UNIQUE_ID:'request-source', ITEMCODE:'000749.071.1' },
+    getRequestItemCodeOptionStateKey: item => item?.UNIQUE_ID === 'request-source' ? 'request|item' : 'option|master-row',
+    loadRequestItemCodeOptions: (...args) => { optionRefreshes.push(args); return Promise.resolve(true); },
+    setTimeout: callback => { scheduledCallbacks.push(callback); return scheduledCallbacks.length; },
     requestsInventory: [], managerReportVisibleRows: new Map(), acceptedLocOnHandAggregateRevision: '',
     masterInventoryById: new Map(), masterInventoryByExactKey: new Map(), masterInventoryByItemCode: new Map(),
     masterInventoryByItemLocationOnHand: new Map(),
@@ -69,8 +76,12 @@ function setup(rows) {
   });
   vm.runInContext(hydrationSource, context);
   vm.runInContext(`let masterInventoryByItemLocationOnHand = new Map(); let acceptedLocOnHandAggregateReceipt = { scope:'', permission:'', revision:'', valid:false };\n${code}`, context);
+  context.preserveCardLocationOnHand = (item, value = null) => {
+    return value != null && Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-US') : null;
+  };
+  context.getRetainedCardLocationOnHand = () => null;
   context.rebuildMasterInventoryIndexes();
-  return { context, state, indexInvalidations };
+  return { context, state, indexInvalidations, scheduledCallbacks, optionRefreshes };
 }
 
 const rows = () => [
@@ -98,6 +109,40 @@ test('location aggregation ignores sales year and preserves zero without an item
   assert.equal(context.getCardLocationOnHandValue({ ITEMCODE: '0001', location_code: ' A.01.001 ' }), '10');
   assert.equal(context.getCardLocationOnHandValue({ ITEMCODE:'0001', LOCATIONCODE: 'Z.01.001' }), '0');
   assert.equal(context.getCardLocationOnHandValue({ ITEMCODE: '0001' }), null);
+});
+
+test('a newer authorized aggregate receipt triggers one bounded option refresh and rejects stale totals', () => {
+  const { context, scheduledCallbacks, optionRefreshes } = setup([]);
+  const option = { UNIQUE_ID:'av-option-1', ITEMCODE:'000749.071.1', LOCATIONCODE:'E.08.000',
+    LOC_ON_HAND:32, LOC_ON_HAND_ITEMCODE:'000749.071.1', LOC_ON_HAND_LOCATIONCODE:'E.08.000',
+    LOC_ON_HAND_REVISION:'52971', LOC_ON_HAND_RECEIPT_SCOPE:'actor-a', LOC_ON_HAND_RECEIPT_PERMISSION:'permissions-1',
+    LOC_ON_HAND_RECEIPT_REVISION:'52971' };
+  context.requestItemCodeOptionState.rows = [option];
+  let retainedLocationTotal = null;
+  context.preserveCardLocationOnHand = (_item, value = null) => {
+    if (value != null) retainedLocationTotal = Number(value);
+    return retainedLocationTotal == null ? null : retainedLocationTotal.toLocaleString('en-US');
+  };
+  context.getRetainedCardLocationOnHand = () => retainedLocationTotal == null ? null : retainedLocationTotal.toLocaleString('en-US');
+  context.acceptCardLocationOnHandSourceReceipt('actor-a', 'permissions-1', '52971');
+  assert.equal(context.retainVerifiedCardLocationOnHandRows([option]), 1, 'each scoped page saves its verified aggregate before a later read can advance the receipt');
+  assert.equal(retainedLocationTotal, 32);
+  context.acceptCardLocationOnHandSourceReceipt('actor-a', 'permissions-1', '52972');
+  assert.equal(context.getCardLocationOnHandValue(option), '32', 'the identity-bound prior location total remains visible while the stale receipt is rejected');
+  assert.equal(scheduledCallbacks.length, 1, 'one refresh is scheduled for the newer receipt revision');
+  context.getCardLocationOnHandValue(option);
+  assert.equal(scheduledCallbacks.length, 1, 'repeat card renders do not schedule duplicate reads');
+  scheduledCallbacks[0]();
+  assert.equal(optionRefreshes.length, 1);
+  assert.equal(optionRefreshes[0][0], context.activeItem, 'refresh uses the active request item key, not the option master-row key');
+  assert.equal(optionRefreshes[0][1], 'request|item');
+  assert.deepEqual(JSON.parse(JSON.stringify(optionRefreshes[0][2])), { forceRefresh:true });
+  context.requestItemCodeOptionState.metricRefreshRevision = '52973';
+  assert.equal(context.scheduleStaleRequestOptionMetricRefresh(context.activeItem, context.requestItemCodeOptionState, '52972'), false,
+    'a read-chain revision already acknowledged cannot schedule a self-triggered follow-up');
+  assert.equal(scheduledCallbacks.length, 1);
+  assert.equal(context.acceptCardLocationOnHandSourceReceipt('actor-a', 'permissions-1', '52970'), false,
+    'a refresh cannot move accepted authority backwards');
 });
 
 test('Suspend and Drive location totals canonicalize dotted item codes and padded location tokens', () => {

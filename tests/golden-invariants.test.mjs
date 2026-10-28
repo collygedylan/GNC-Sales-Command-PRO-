@@ -2178,7 +2178,7 @@ test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Lin
   const workspace = read('assets/mobile-workspace.js');
   assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.97\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('scripts/prepare-release-site.mjs'), /isManagerShellHotfix[^]*mobile-workspace\.js[^]*`\$\{assetVersion\}\.1`/);
+  assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
   assert.match(workspace, /byTarget\.get\(targetKey\)[^]*byTarget\.set\(targetKey,keep\)/);
   assert.match(read('.codex/skills/agdata-app-shell-and-navigation/SKILL.md'), /Never deduplicate manager module cards only by their shared `managers` route/);
@@ -2646,7 +2646,9 @@ test('Invariant 94 (Suspend Close, AV Options, Processed Toasts, and Eval Filter
     context.processedFileRevisionToken({ ...base, revision: 11, changedAt: '2026-10-28T10:01:00Z' }),
     'revision-only polling cannot repeat a processed-file toast');
   assert.notEqual(context.processedFileRevisionToken(base), context.processedFileRevisionToken({ ...base, sourceFileName: 'SOC-2.xlsx' }));
-  assert.match(runtime, /const retainedRows = \[\.\.\.sharedRows,[\s\S]*\.\.\.rawRows/);
+  const requestItemOptions = functionSource('assets/app-runtime.js', 'loadRequestItemCodeOptions');
+  assert.match(requestItemOptions, /const retainedRows = forceRefresh \? sharedRows : \[\.\.\.sharedRows, \.\.\.\(Array\.isArray\(state\.rows\) \? state\.rows : \[\]\)\];/);
+  assert.match(requestItemOptions, /formatFetchedRows\(forceRefresh \? \[\.\.\.rawRows, \.\.\.retainedRows\] : \[\.\.\.retainedRows, \.\.\.rawRows\]/);
   assert.match(runtime, /operation !== 'close' && \['save', 'complete', 'send', 'retry'\]/);
   assert.match(runtime, /sourceIdentity: getSuspendTagStableSourceIdentity\(mirror\)/);
   assert.match(runtime, /skipRequestOpenInfoModal:\s*safeOptions\.openAvOptions === true \|\| safeOptions\.focusEvidenceEditor === true/);
@@ -2699,9 +2701,9 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.match(loader, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
   assert.match(loader, /maxRetries = options\.retryOnCancellation === true \? 4 : 0[\s\S]*getSupabaseReadErrorCode\(error\) !== 'REQUEST_ABORTED'/);
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.2`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.3`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.2/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.3/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3073,15 +3075,13 @@ test('Invariant 108 (Table Management Archives Reject Every Mutation and Fixture
 });
 
 test('Invariant 109 (Eval Work Setup Remains Bound to Its Reclass Row and Account)', async () => {
-  let releaseVerification;
-  const verification = new Promise(resolve => { releaseVerification = resolve; });
   const firstRow = { snapshot: { uniqueId: 'first-row' } };
   const secondRow = { snapshot: { uniqueId: 'second-row' } };
   let inquiryBuilds = 0;
   const openContext = {
     argosInventoryTransactionState: firstRow, evalWorkSetupState: {},
     getArgosReclassLiveEditIdentityKey: () => 'account-a', isEvalWorkManagerUser: () => true,
-    ensureArgosReclassSubmissionVerification: () => verification,
+    ensureArgosReclassSubmissionVerification: () => { openContext.argosInventoryTransactionState = secondRow; },
     buildEvalWorkSetupInquiry: () => { inquiryBuilds++; return { row: 'first-row' }; },
     buildArgosInventoryTransactionPayload: () => ({ rowOverlays: [] }),
     applyArgosInventoryTransactionSourceContext: value => value,
@@ -3091,10 +3091,8 @@ test('Invariant 109 (Eval Work Setup Remains Bound to Its Reclass Row and Accoun
   };
   const openSandbox = runFunctions('assets/app-runtime.js', ['openEvalWorkSetupFromReclass'], openContext);
   const opening = openSandbox.openEvalWorkSetupFromReclass();
-  openContext.argosInventoryTransactionState = secondRow;
-  releaseVerification();
   assert.equal(await opening, false);
-  assert.equal(inquiryBuilds, 0, 'a stale verification cannot build from a newly opened row');
+  assert.equal(inquiryBuilds, 0, 'a row change during the synchronous verification guard cannot build the stale setup');
 
   const capturedInquiry = { row: 'captured-row' };
   const capturedContext = {
@@ -3276,4 +3274,335 @@ test('Invariant 113 (Assigned Items Joins Full Master and Honors Exact Empty Own
   assert.deepEqual(Array.from(options, option => [option.key, option.count]), [['current_owner', 1]]);
   assert.equal(options.some(option => option.key === 'stale_master_owner'), false);
   assert.equal(context.getManagerUnassignedItemcodes(displayed).length, 9551);
+});
+
+test('Invariant 114 (Historical Archive Quick Access Waits for Owned Module Mount)', async () => {
+  let currentView = 'managers';
+  let mounted = false;
+  let releaseMount;
+  let selectedTab = '';
+  let owner = 'account-a';
+  let activeObserver = null;
+  let pendingTimeout = null;
+  let mountPromise = new Promise(resolve => { releaseMount = resolve; });
+  const host = { querySelector: selector => mounted ? { click() { selectedTab = selector; } } : null };
+  const context = vm.createContext({
+    QUICK_ACCESS_NESTED_ROUTES: {
+      'archive-requests': { parent: 'historical-requests', archiveTab: 'requests' },
+      'archive-drive': { parent: 'historical-requests', archiveTab: 'drive' },
+      'archive-orders': { parent: 'historical-requests', archiveTab: 'orders' },
+      'archive-reserves': { parent: 'historical-requests', archiveTab: 'reserves' },
+    },
+    quickAccessNavigationGeneration: 0,
+    getCurrentVisibleViewId: () => currentView,
+    getSupabaseReadIdentityScope: () => owner,
+    getHistoricalRequestsOwnerKey: () => `${owner}|${currentView}`,
+    MutationObserver: class { constructor(callback) { this.callback = callback; activeObserver = this; } observe() {} disconnect() { if (activeObserver === this) activeObserver = null; } },
+    setTimeout: callback => { pendingTimeout = callback; return 1; }, clearTimeout: () => { pendingTimeout = null; },
+    canAccessQuickAccessView: () => true,
+    isViewVisible: view => currentView === view,
+    ensureHistoricalRequestsIsland: () => mountPromise,
+    switchView: view => { currentView = view; },
+    document: { getElementById: id => id === 'historical-requests-content' ? host : null },
+  });
+  vm.runInContext(functionSource('assets/app-runtime.js', 'navigateQuickAccessView'), context);
+  const openTable = functionSource('assets/app-runtime.js', 'openManagerTableManagement');
+  assert.equal((openTable.match(/return navigateQuickAccessView\('archive-/g) || []).length, 8,
+    'all archive table entries use the canonical quick-access router');
+  assert.equal(context.navigateQuickAccessView('archive-drive'), false);
+  assert.equal(currentView, 'historical-requests');
+  assert.equal(selectedTab, '', 'the requested tab waits for the lazy archive mount');
+  releaseMount();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(selectedTab, '', 'module readiness can precede the tab control commit');
+  assert.ok(activeObserver, 'a bounded DOM observer waits for the archive tab control');
+  mounted = true;
+  activeObserver.callback([]);
+  assert.match(selectedTab, /data-archive-tab="drive"/);
+
+  selectedTab = '';
+  mounted = false;
+  mountPromise = new Promise(resolve => { releaseMount = resolve; });
+  context.navigateQuickAccessView('archive-orders');
+  currentView = 'managers';
+  mounted = true;
+  releaseMount();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(selectedTab, '', 'a delayed mount cannot change the tab after navigation leaves Historical Requests');
+});
+
+test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Busted In Place)', () => {
+  const captured = [];
+  const context = vm.createContext({
+    currentUser: 'dylan_collyge', APP_API_FUNCTION_URL: '/functions/v1/app-api',
+    normalizeSessionIdentity: value => String(value || '').trim().toLowerCase(), canOpenPhotoHistory: () => true,
+    postAppFunctionJson: async () => ({ ok: true }),
+    window: { GncPhotoHistory: { open: bridge => captured.push(bridge) } },
+  });
+  vm.runInContext(functionSource('assets/app-runtime.js', 'openDylanPhotoHistory'), context);
+  context.openDylanPhotoHistory({ readOnly: true });
+  context.openDylanPhotoHistory();
+  assert.equal(captured[0].readOnly, true);
+  assert.equal(captured[1].readOnly, false, 'the standalone Photo History entry retains normal sharing mode');
+  const manager = functionSource('assets/app-runtime.js', 'openManagerTableManagement');
+  assert.match(manager, /if \(key === 'photo-history'\) return openDylanPhotoHistory\(\{ readOnly: true \}\);/);
+  const module = read('assets/photo-history-v2026090401.js');
+  assert.match(module, /if\(readOnly\)return;/);
+  assert.match(module, /if\(readOnly\|\|requestBusy\)return;/);
+  assert.match(module, /tray\.hidden=readOnly;notices\.hidden=readOnly/);
+  const build = read('scripts/build-live-shell.mjs');
+  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.3`/);
+  assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.97\.1/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.3/);
+  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r3'/);
+});
+
+test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
+  const base = {
+    currentUser: 'dylan_collyge', currentRole: 'Admin',
+    requestCapabilityState: { username: 'dylan_collyge', capabilities: null },
+    nativeAuthProfile: { id: 'profile-1', username: 'dylan_collyge', role: 'Admin', active: true, must_change_password: false },
+    nativeAuthSessionActive: true, nativeAuthSessionUserId: 'profile-1',
+    window: { GncUserAccessControl: { getSelfState: () => ({ denied: false }) } },
+    getRequestCapabilityUsernameKey: value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+    normalizeRoleAccessToken: value => String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, ''),
+    canonicalFeaturePermission: flag => flag === 'can_access_que' ? true : null,
+    getRoleAccessState: () => ({}), canSeeRegularRequestTabs: () => false,
+    canUseInvBunchNotes: () => false, canSeeEvalWorkRequestTab: () => false,
+    canSeeSuspendTagRequestTab: () => true, canSeeMovesRequestTab: () => false,
+    canSeeRecountRequestTab: () => false, canSeeShearListRequestTab: () => false,
+    isRestrictedEvalUser: () => false, requestSalesRepsManagerMode: false,
+  };
+  const names = ['getRequestCapabilities', 'getRequestEntryCapabilities', 'normalizeRequestTabValue'];
+  const runtime = runFunctions('assets/app-runtime.js', names, base);
+  assert.equal(runtime.getRequestCapabilities().canViewQueue, true);
+  assert.equal(runtime.normalizeRequestTabValue('suspend-tag'), 'suspend-tag');
+
+  runtime.requestCapabilityState.capabilities = { canViewQueue: false };
+  assert.equal(runtime.normalizeRequestTabValue('suspend-tag'), 'pending', 'explicit server denial remains authoritative');
+
+  runtime.requestCapabilityState.capabilities = null;
+  runtime.canonicalFeaturePermission = flag => flag === 'can_access_que' ? false : null;
+  assert.equal(runtime.normalizeRequestTabValue('suspend-tag'), 'pending', 'canonical permission denial blocks the fallback');
+
+  runtime.canonicalFeaturePermission = flag => flag === 'can_access_que' ? true : null;
+  runtime.window.GncUserAccessControl.getSelfState = () => ({ denied: true });
+  assert.equal(runtime.getRequestCapabilities(), null, 'confirmed current-account revocation blocks the fallback');
+  runtime.window.GncUserAccessControl.getSelfState = () => ({ denied: false });
+  runtime.nativeAuthSessionUserId = 'different-profile';
+  assert.equal(runtime.getRequestCapabilities(), null, 'a different auth profile cannot inherit the prior account fallback');
+});
+
+test('Invariant 117 (Reclass paints full optimistic rows before guarded deferred publication)', () => {
+  const sourceRow = { UNIQUE_ID: 'rollback-row', S_LTS: '4' };
+  const rollbackRuntime = runFunctions('assets/app-runtime.js', ['buildArgosInventoryReclassRollbackModel'], {
+    buildItemInquiryViewModel: (item, rows) => ({ item, rows }),
+  });
+  const rollbackModel = rollbackRuntime.buildArgosInventoryReclassRollbackModel({
+    item: { ITEMCODE: 'ITEM' }, inquiryModel: { rows: [sourceRow] },
+  });
+  sourceRow.S_LTS = '2';
+  assert.equal(rollbackModel.rows[0].S_LTS, '4', 'rollback snapshot preserves pre-move quantity after canonical rows mutate in place');
+  assert.notEqual(rollbackModel.rows[0], sourceRow, 'rollback snapshot owns a detached source row');
+  assert.match(functionSource('assets/app-runtime.js', 'applyArgosInventoryReclassMoveCommand'),
+    /originalModel:\s*buildArgosInventoryReclassRollbackModel\(state\)/, 'the move lifecycle uses the detached model for failure/retry');
+
+  let currentIdentity = 'profile-a';
+  let scheduled = null;
+  let publicationCalls = 0;
+  let metricCalls = 0;
+  const fullInventory = [
+    { UNIQUE_ID: 'source', ITEMCODE: 'ITEM', SOURCE_TABLE: 'ph_master_inventory', SEASON: 'F1', S_LTS: '4' },
+    { UNIQUE_ID: 'destination', ITEMCODE: 'ITEM', SOURCE_TABLE: 'ph_master_inventory', SEASON: 'S1', S_LTS: '0' },
+  ];
+  const byId = new Map(fullInventory.map(row => [row.UNIQUE_ID, row]));
+  const state = {};
+  const context = {
+    fullInventory, avOpenInventory: [], cavInventory: [],
+    reclassStockSeason: row => String(row.SEASON || ''),
+    applyArgosInventoryTransactionReturnedRow: row => Object.assign(byId.get(String(row.UNIQUE_ID)), row),
+    applyReclassSeasonStocks: () => { metricCalls += 1; },
+    publishArgosInventoryTransactionReturnedRows: () => { publicationCalls += 1; },
+    getCurrentVisibleViewId: () => '', queueInteractiveViewRender() {},
+    getArgosReclassLiveEditIdentityKey: () => currentIdentity,
+    setTimeout: callback => { scheduled = callback; return 1; },
+  };
+  const runtime = runFunctions('assets/app-runtime.js', ['publishOptimisticReclassRows'], context);
+  const pending = {
+    command: { commandId: 'move-1' }, ownerIdentityKey: 'profile-a', ownerState: state,
+    deferInitialPublication: true,
+  };
+  state.pendingReclassMove = pending;
+  runtime.publishOptimisticReclassRows(pending, [
+    { UNIQUE_ID: 'source', ITEMCODE: 'ITEM', SOURCE_TABLE: 'ph_master_inventory', SEASON: 'F1', S_LTS: '2' },
+    { UNIQUE_ID: 'destination', ITEMCODE: 'ITEM', SOURCE_TABLE: 'ph_master_inventory', SEASON: 'S1', S_LTS: '2' },
+  ]);
+  assert.equal(fullInventory[0].S_LTS, '2', 'source quantity is optimistic immediately');
+  assert.equal(fullInventory[1].S_LTS, '2', 'destination quantity is optimistic immediately');
+  assert.equal(metricCalls, 1, 'season metrics are applied before the task yields');
+  assert.equal(publicationCalls, 0, 'global index/view publication is kept off the submit stack');
+  assert.equal(typeof scheduled, 'function');
+  scheduled();
+  assert.equal(publicationCalls, 1, 'the still-owned command publishes after the task yields');
+
+  publicationCalls = 0;
+  runtime.publishOptimisticReclassRows(pending, [
+    { UNIQUE_ID: 'source', ITEMCODE: 'ITEM', SOURCE_TABLE: 'ph_master_inventory', SEASON: 'F1', S_LTS: '1' },
+  ]);
+  currentIdentity = 'profile-b';
+  scheduled();
+  assert.equal(publicationCalls, 0, 'an account switch suppresses stale deferred publication');
+});
+
+test('Invariant 118 (Eval Work setup opens after Reclass close and skips stale navigation)', async () => {
+  const createContext = () => {
+    const transactionState = { snapshot: { uniqueId: 'physical-row' }, item: { ITEMCODE: 'ITEM' } };
+    let frameCallback = null;
+    let timerCallback = null;
+    let visibleView = 'drive';
+    let closeCount = 0;
+    let modalCount = 0;
+    const context = {
+      argosInventoryTransactionState: transactionState, evalWorkSetupState: {},
+      getArgosReclassLiveEditIdentityKey: () => 'profile-a', isEvalWorkManagerUser: () => true,
+      ensureArgosReclassSubmissionVerification() {},
+      buildEvalWorkSetupInquiry: () => ({ row: 'physical-row' }),
+      buildArgosInventoryTransactionPayload: () => ({ rowOverlays: [{ proposals: [{ action: 'move_up' }] }] }),
+      applyArgosInventoryTransactionSourceContext: value => value,
+      applyArgosInventoryReclassMoveCommand: state => {
+        state.pendingReclassMove = { inFlight: true, command: { commandId: 'move-118' } };
+        return new Promise(() => {});
+      },
+      removeConfirmedMoveProposalsFromInquiryPayload: value => value,
+      closeArgosInventoryTransactionModal: () => { closeCount += 1; },
+      showToast() {}, ensureAssignableAppUsers: async () => [],
+      ensureEvalWorkSetupModal: () => { modalCount += 1; return { classList: { remove() {} } }; },
+      document: { getElementById: () => null }, syncEvalWorkSetupSummary() {},
+      getCurrentVisibleViewId: () => visibleView,
+      requestAnimationFrame: callback => { frameCallback = callback; return 1; },
+      setTimeout: callback => { timerCallback = callback; return 1; },
+      setVisibleView(value) { visibleView = value; },
+      runFrame() { frameCallback?.(); }, runTimer() { timerCallback?.(); },
+      counts: () => ({ closeCount, modalCount }),
+    };
+    return runFunctions('assets/app-runtime.js', ['openEvalWorkSetupFromReclass'], context);
+  };
+  const current = createContext();
+  await current.openEvalWorkSetupFromReclass();
+  assert.deepEqual(current.counts(), { closeCount: 1, modalCount: 0 }, 'move submit closes the Reclass modal before setup rendering');
+  current.runFrame();
+  current.runTimer();
+  assert.deepEqual(current.counts(), { closeCount: 1, modalCount: 1 }, 'setup opens after the post-paint task while still on the source view');
+
+  const stale = createContext();
+  await stale.openEvalWorkSetupFromReclass();
+  stale.setVisibleView('manager');
+  stale.runFrame();
+  stale.runTimer();
+  assert.deepEqual(stale.counts(), { closeCount: 1, modalCount: 0 }, 'navigation away suppresses a stale deferred setup');
+});
+
+test('Invariant 119 (bulk master import maps only exact full-lineage aliases to one canonical row)', () => {
+  const migration = read('supabase/migrations/20261028225000_agdata_v2397_master_identity_alias_repair.sql');
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  const baseMigration = read('supabase/migrations/20261015012249_bulk_master_snapshot_v1.sql');
+  const stableCandidate = /item6\.stable_identity_key = private\.ph_master_inventory_stable_identity_v7\(s\.raw_values\)/;
+  const pendingDesignationGate = /and exists\(select 1 from app_sync_private\.ph_master_inventory_item6_edits_v7 edit[\s\S]*?edit\.field_name in \('desigitem','desigcust','desigloc'\)\)/;
+  assert.match(baseMigration, stableCandidate, 'the import map resolves an incoming physical row through its stable identity');
+  assert.match(baseMigration, pendingDesignationGate, 'fixture represents the former condition that incorrectly blocked mapping');
+  assert.match(migration, /definition := replace\(definition,anchor,replacement\)/);
+  assert.match(migration, /private\.ph_master_inventory_lineage_key_v1\(to_jsonb\(m\)\) = s\.lineage_key/);
+  assert.match(migration, /alias_select_values := replace\(select_values, ''s\.unique_id'', ''coalesce\(mapped\.canonical_unique_id,s\.unique_id\)''\)/);
+  assert.match(migration, /column_names, alias_select_values, set_values, changed_predicate/);
+  assert.match(migration, /position\('coalesce\(mapped\.canonical_unique_id,s\.unique_id\)' in definition\)=0/);
+  assert.match(migration, /begin;[\s\S]*set local statement_timeout[\s\S]*set local lock_timeout[\s\S]*commit;/i);
+  assert.match(runner, /agdataV2397MasterIdentityAliasRepairMigrationName[^]*registeredReleaseDatabaseMigrations/);
+  assert.match(runner, /position\('coalesce\(mapped\.canonical_unique_id,s\.unique_id\)' in pg_get_functiondef/);
+  assert.match(baseMigration, /count\(distinct c\.canonical_unique_id\)::integer as candidate_count/);
+  assert.match(baseMigration, /candidate_count > 1/);
+  assert.match(baseMigration, /canonical_unique_id, source_unique_id, source_hash, import_run_id[\s\S]*c\.source_unique_id/);
+
+  const incoming = { uniqueId: 'drive-synthetic-row', stableIdentity: 'fixed-physical-line', lineage: 'same-designations' };
+  const canonicalRows = [
+    { uniqueId: 'different-designation-row', stableIdentity: incoming.stableIdentity, lineage: 'different-designations', pendingDesignationEdit: false },
+    { uniqueId: 'legacy-canonical-row', stableIdentity: incoming.stableIdentity, lineage: incoming.lineage, pendingDesignationEdit: false, pendingStockEdit: true },
+  ];
+  const candidates = canonicalRows.filter(row => row.stableIdentity === incoming.stableIdentity
+    && (row.pendingDesignationEdit || row.lineage === incoming.lineage));
+  assert.deepEqual(candidates.map(row => row.uniqueId), ['legacy-canonical-row'], 'stock-only pending edits do not block an exact full-lineage match, while a different designation does');
+  const mappedCanonicalId = candidates[0].uniqueId;
+  const insertedMasterId = mappedCanonicalId ?? incoming.uniqueId;
+  assert.equal(insertedMasterId, 'legacy-canonical-row', 'the alias upsert targets the canonical row, not a second synthetic UID');
+  assert.equal(incoming.uniqueId, 'drive-synthetic-row', 'the original source UID remains available for import provenance');
+});
+
+test('Invariant 120 (Historical archive owner is captured after switching to its parent view)', async () => {
+  let currentView = 'managers';
+  let releaseMount;
+  let selectedTab = '';
+  let domCommitted = false;
+  let activeObserver = null;
+  let pendingTimeout = null;
+  const ownerViews = [];
+  const mount = new Promise(resolve => { releaseMount = resolve; });
+  const host = { querySelector: selector => domCommitted ? { click() { selectedTab = selector; } } : null };
+  const context = vm.createContext({
+    QUICK_ACCESS_NESTED_ROUTES: { 'archive-drive': { parent: 'historical-requests', archiveTab: 'drive' } },
+    quickAccessNavigationGeneration: 0,
+    getCurrentVisibleViewId: () => currentView,
+    getSupabaseReadIdentityScope: () => 'profile-a',
+    getHistoricalRequestsOwnerKey: () => { ownerViews.push(currentView); return `profile-a|${currentView}`; },
+    MutationObserver: class { constructor(callback) { this.callback = callback; activeObserver = this; } observe() {} disconnect() { if (activeObserver === this) activeObserver = null; } },
+    setTimeout: callback => { pendingTimeout = callback; return 1; }, clearTimeout: () => { pendingTimeout = null; },
+    canAccessQuickAccessView: () => true,
+    isViewVisible: view => currentView === view,
+    ensureHistoricalRequestsIsland: () => mount,
+    switchView: view => { currentView = view; },
+    document: { getElementById: id => id === 'historical-requests-content' ? host : null },
+  });
+  vm.runInContext(functionSource('assets/app-runtime.js', 'navigateQuickAccessView'), context);
+  context.navigateQuickAccessView('archive-drive');
+  assert.deepEqual(ownerViews, ['historical-requests'], 'archive ownership is read only after the parent view becomes current');
+  releaseMount();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(selectedTab, '', 'the lazy module promise can resolve before React commits its tab buttons');
+  assert.ok(activeObserver, 'DOM commit is observed instead of guessed with a timer');
+  domCommitted = true;
+  activeObserver.callback([]);
+  assert.match(selectedTab, /data-archive-tab="drive"/, 'the current owner can select the requested tab after mounting');
+});
+
+test('Invariant 121 (Physical alias repair is provenance-backed, locked, and preserves pending edits)', () => {
+  const migration = read('supabase/migrations/20261028225500_agdata_v2397_master_physical_alias_repair.sql');
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  assert.match(migration, /c\.lineage_key=a\.lineage_key and c\.stable_identity_key=a\.stable_identity_key/);
+  assert.match(migration, /private\.ph_master_bulk_source_hash_v1\(s\.row_value->'values'/);
+  assert.match(migration, /source\.source_unique_id=a\.alias_unique_id/);
+  assert.match(migration, /perform 1 from public\.ph_master_inventory m[\s\S]*?for update of m;[\s\S]*?V2397_MASTER_ALIAS_LOCKED_SNAPSHOT_CHANGED[\s\S]*?set local session_replication_role = replica/);
+  assert.match(migration, /inventory_live_overrides_v1 x where x\.canonical_unique_id=p\.canonical_unique_id[\s\S]*?canonical_live_overrides/);
+  assert.match(migration, /canonical_season_stock_overrides[\s\S]*?inventory_season_stock_overrides_v1 x[\s\S]*?inventory_stock_season_v1\(p\.canonical_lotcode,p\.canonical_season\)/);
+  assert.match(migration, /set source_unique_id=p\.canonical_unique_id/);
+  assert.match(migration, /to_jsonb\(canonical_sales\)-'unique_id'=to_jsonb\(alias_sales\)-'unique_id'/);
+  assert.match(migration, /set local session_replication_role = %L/);
+  assert.match(migration, /update public\.ph_master_inventory m set last_updated=clock_timestamp\(\)/);
+  assert.match(migration, /begin;[\s\S]*set local statement_timeout[\s\S]*set local lock_timeout[\s\S]*commit;/i);
+  assert.match(runner, /agdataV2397MasterPhysicalAliasRepairMigrationName[^]*registeredReleaseDatabaseMigrations/);
+  assert.match(runner, /to_regclass\('private\.ph_master_identity_alias_repair_audit_v2397'\)/);
+});
+
+test('Invariant 122 (Stale scoped AV totals keep numeric LKG and refresh once per newer receipt)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const focused = read('tests/inventory-card-location-on-hand.test.mjs');
+  assert.match(runtime, /scheduleStaleRequestOptionMetricRefresh\(optionContext, requestItemCodeOptionState, acceptedReceipt\.revision\)/);
+  assert.match(runtime, /function scheduleStaleRequestOptionMetricRefresh[\s\S]*?state\.metricRefreshRevision === safeRevision[\s\S]*?loadRequestItemCodeOptions\(item, state\.key, \{ forceRefresh: true \}\)/);
+  assert.match(runtime, /const optionContext = activeItem \|\| item;[\s\S]*?getRequestItemCodeOptionStateKey\(optionContext\) === requestItemCodeOptionState\.key/);
+  assert.match(runtime, /function loadRequestItemCodeOptions\(item = activeItem, stateKey = '', options = \{\}\)[\s\S]*?const forceRefresh = options\?\.forceRefresh === true[\s\S]*?fetchRequestItemCodeOptionRowsFromSupabase\(itemCode, \{ pageSize: 100, maxRows: 2500 \}\)/);
+  assert.match(runtime, /const acceptedMetricRevision = \(row\) =>[\s\S]*?incomingRevision > existingRevision/);
+  assert.match(runtime, /function retainVerifiedCardLocationOnHandRows\(rows = \[\]\)[\s\S]*?getCardLocationOnHandServerAggregate\(row[\s\S]*?preserveCardLocationOnHand\(row, aggregate\.value\)/);
+  assert.match(runtime, /const pageRows = Array\.isArray\(page\) \? page : \[\];[\s\S]*?retainVerifiedCardLocationOnHandRows\(pageRows\)/);
+  assert.match(runtime, /if \(forceRefresh && acceptedLocOnHandAggregateReceipt\?\.valid === true[\s\S]*?state\.metricRefreshRevision = String\(acceptedLocOnHandAggregateReceipt\.revision/);
+  assert.match(focused, /a newer authorized aggregate receipt triggers one bounded option refresh and rejects stale totals/);
+  assert.match(focused, /repeat card renders do not schedule duplicate reads/);
+  assert.match(focused, /identity-bound prior location total remains visible while the stale receipt is rejected/);
 });

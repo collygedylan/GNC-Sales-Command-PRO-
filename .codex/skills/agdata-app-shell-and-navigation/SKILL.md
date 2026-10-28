@@ -71,6 +71,8 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never capture a lazy historical archive module owner before switching to its parent view when that owner key includes visible-view identity. Capture it after `switchView`, then guard the awaited module mount against the same account, parent view, navigation generation, and access.
+
 - Never collapse Drive card/program depth directly to size selection or consult cross-view history before exhausting the active Drive/AV drill. Global Back closes modal state first, then unwinds exactly one feature level while retaining the current search; only a separate root Back may clear search or leave the view.
 
 - Never deduplicate manager module cards only by their shared `managers` route; preserve each distinct `setHomeTab(...)` deep-link identity so shell enhancement cannot collapse the hub grid.
@@ -82,3 +84,4 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 - Never default the imported-file disclosure open below `768px`; initialize it collapsed before revealing Home so all 12 module tiles remain above the bottom navigation.
 - Never let a global Home CSS override turn the module grid into auto-sized rows inside a zero-height flex parent; bind all 12 tiles to the measured header-to-dock space and reapply the collapsed disclosure default on viewport changes until the user chooses its state.
 - Never append a generated hub tile when a native tile already targets the same module, clip the first hub row under sticky chrome, or make Quick Access depend on drag, long-press, or an explicit delayed Save action.
+- Never send archive aliases such as `archive-drive` directly to `switchView`; they are nested routes and must use `navigateQuickAccessView`. Do not rely on an arbitrary timeout to select a tab in a lazy-mounted archive: await `ensureHistoricalRequestsIsland` and recheck navigation generation, current view, account owner, and access before selecting it.

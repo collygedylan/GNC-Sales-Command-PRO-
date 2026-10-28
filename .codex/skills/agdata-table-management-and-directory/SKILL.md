@@ -14,6 +14,7 @@ Load this skill with `agdata-field-ops-and-qc`, `agdata-queue-and-reclass-specia
 - `assets/manager-table-management.js`: `mountManagerTableManagement`, safe table selector, paged editors for `ph_company_directory` and `ph_inquiry_coverage`, and verified user choices.
 - `assets/app-runtime.js`: `renderManagerTableManagementPanel`, `openManagerTableManagement`, `getManagerTableManagementItems`, plus existing Assigned Items, Company Directory, Inquiry Coverage, Customer Assignments, and User & Role Access entry points. Company Directory also retains `mountCompanyDirectoryPanel` for employee contacts, blocks/beds and production codes.
 - `assets/photo-history-v2026090401.js`: authorized gallery search, read-only badge, and bounded cursor-based Excel export; never export storage paths or signed URLs.
+- Photo History is opened with a read-only bridge mode from Table Management; normal standalone Photo History retains its existing share workflow.
 - `supabase/functions/_shared/table-management.ts`: strict request validation and `executeManagerTableManagement`.
 - SQL: `manager_table_management_v2397`; `ph_company_directory`, `ph_inquiry_coverage`, row revisions, and `app_dataset_revisions` signals.
 - Historical tables flow through `historical_archive_read_v2370` and `historical_requests_read_v2370`; Photo History flows through the existing separately authorized photo-history handler. Do not add archive writes or widen its explicitly approved actor set.
@@ -49,6 +50,7 @@ Use an isolated local Postgres check for the migration contract when available. 
 
 - Never expose all ten tables because a user can open Managers: build the selector from current server-backed capabilities and retain each table's own app-api and SQL authorization.
 - Never route archive actions through a generic write RPC, add restore/delete affordances to a historical view, or broaden the Photo History actor set as a side effect of centralizing its menu entry.
+- Never open Photo History from Table Management using its normal share mode. That archive entry is limited to view/search/filter/export; hide selection/send/status controls and guard selection and send handlers. Preserve the existing share workflow for separately opened Photo History.
 - Never render an empty Assigned Items list as authoritative while a full same-account inventory/assignment read is still pending or failed transiently.
 - Never let Customer Assignments open its Add form before the authorized rep catalog is hydrated; the form captures its choices at mount time. Keep ordinary row deletes revision-checked and idempotent, and never expose deletion for the protected N/A tuple.
 - Never replace the Company Directory contacts, blocks/beds, and production plant/project codes workflows with the maintained people-directory table. Keep the legacy directory reachable from its gated button and preserve its existing `canManageCompanyDirectory` authorization.
