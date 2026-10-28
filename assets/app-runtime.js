@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.92';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.93';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1889,6 +1889,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 60000;
         const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 180000;
         const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 5000;
+        const REQUEST_VIEW_BACKGROUND_TIMEOUT_MS = 2500;
         const REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS = 3500;
         const REQUEST_VIEW_RENDER_CATCHUP_MIN_INTERVAL_MS = 5000;
         const REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS = 3500;
@@ -26673,7 +26674,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.92').trim() || 'AgData v2.3.92';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.93').trim() || 'AgData v2.3.93';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -79057,6 +79058,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function shouldRenderViewSynchronouslyOnSwitch(viewId = '', state = null) {
             const targetViewId = String(viewId || '').trim();
             if (!targetViewId) return false;
+            if (targetViewId === 'request') {
+                const requestState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
+                return !requestState.initialized || !!requestState.dirty;
+            }
             if (targetViewId === 'managers' && activeHomeTab === 'dashboard') {
                 const managerState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
                 if (managerState.initialized && !managerState.dirty) return false;
@@ -115155,15 +115160,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const key = productionVerifiedViewKey(context);
                 if (productionLiveSyncVerifiedView === key || productionLiveSyncViewLoad?.key === key && productionLiveSyncViewLoad.pending) return;
                 const load = productionLiveSyncViewLoad = { key, pending:true, failed:false };
-                void getProductionLiveSyncCoordinator().check('queue-visible').catch(() => {}).finally(() => { load.pending = false; });
+                void withTimeout(getProductionLiveSyncCoordinator().check('queue-visible'), REQUEST_VIEW_BACKGROUND_TIMEOUT_MS, 'Request queue refresh')
+                    .catch(() => false).finally(() => { load.pending = false; });
                 return;
             }
             const config = getRequestViewLoadingConfig();
             const pending = [...(config.required || []), ...(config.background || [])].filter(item => !isDatasetLoaded(item.key, item.mode));
             if (!pending.length) return;
-            loadDatasetTargetsWithLimit(pending, {
+            withTimeout(loadDatasetTargetsWithLimit(pending, {
                 preserveRequestedMode: true, allowWhileInteractive: true
-            }).then(() => { if (isViewVisible('request')) scheduleRequestRender(0, 44, true); }).catch(() => {});
+            }), REQUEST_VIEW_BACKGROUND_TIMEOUT_MS, 'Request queue refresh')
+                .then(() => { if (isViewVisible('request')) scheduleRequestRender(0, 44, true); }).catch(() => {});
         }
 
         function renderRequest() {
@@ -137734,9 +137741,8 @@ C.14.043 C.15.000
                 return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">AssignedTo export is available to managers only.</div>';
             }
             const paged = false;
-            if (!paged && !isDatasetLoaded('warehouseAssignedItems', 'full') && !(canUseProductionLiveSync() && hasProgressiveViewData())) {
+            if (!paged && !isDatasetLoaded('warehouseAssignedItems', 'full')) {
                 ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
-                return '<div class="rounded-2xl border border-emerald-100 bg-white/80 p-8 text-center text-sm font-black uppercase tracking-[0.14em] text-slate-400">Loading AssignedTo rows...</div>';
             }
             const lowStockState = getManagerItemLowStockTargetsState();
             const lowStockKey = getManagerAssignedItemTargetKey();
@@ -142393,7 +142399,7 @@ C.14.043 C.15.000
             // User & Role Access has its own authenticated canonical resolver.
             // Keep that editor available when the optional legacy audit matrix
             // cannot load; renderAccessControlPanel provides its own fallback.
-            if (activeHomeTab !== MANAGER_RUNTIME_WATCHDOG_VIEW && activeHomeTab !== 'dashboard' && activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW && activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW && activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_COMPANY_DIRECTORY_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && ensureViewDataForRender('managers')) return;
+            if (activeHomeTab !== MANAGER_RUNTIME_WATCHDOG_VIEW && activeHomeTab !== 'dashboard' && activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW && activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW && activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_COMPANY_DIRECTORY_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender('managers')) return;
             if (activeHomeTab !== 'productivity') selectedProductivityUser = '';
             let html = '';
             if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);

@@ -1435,6 +1435,18 @@ test('Location Moves paints its own memory snapshot while active queue verificat
   assert.doesNotMatch(render, /if \(ensureViewDataForRender\('request'\)\)/);
 });
 
+test('Request and Assigned Items paint retained rows before bounded background hydration', () => {
+  const runtime = readComposedAppSource();
+  const synchronousSwitch = runtime.slice(runtime.indexOf('function shouldRenderViewSynchronouslyOnSwitch'), runtime.indexOf('function switchView'));
+  const requestRefresh = runtime.slice(runtime.indexOf('function refreshRequestViewInBackground'), runtime.indexOf('function renderRequest()'));
+  const assignedPanel = runtime.slice(runtime.indexOf('function renderManagerAssignedItemsExportPanel'), runtime.indexOf('function renderManagerEvalReportsPanel'));
+  const managerRender = runtime.match(/function renderManagers\(\)[\s\S]*?^        }/m)[0];
+  assert.match(synchronousSwitch, /targetViewId === 'request'[\s\S]*!requestState\.initialized \|\| !!requestState\.dirty/);
+  assert.match(requestRefresh, /REQUEST_VIEW_BACKGROUND_TIMEOUT_MS[\s\S]*Request queue refresh/);
+  assert.doesNotMatch(assignedPanel, /return ['"`][^'"`]*Loading AssignedTo rows/);
+  assert.match(managerRender, /activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender\('managers'\)/);
+});
+
 
 test('Location Work displays cached jobs during a pending read and transport retry preserves denials', () => {
   const runtime=readComposedAppSource();

@@ -2789,7 +2789,7 @@ export function migrationContractQuery(name) {
       'suspend_tag_private.group_command(uuid,text,jsonb,uuid,bigint)'::regprocedure))>0
     and exists(select 1 from pg_class where oid='public.ph_suspend_history'::regclass
       and reloptions @> array['security_invoker=true'])
-    and exists(select 1 from public.ph_app_settings where key='app_version' and value->>'app_version'='2.3.92')
+    and exists(select 1 from public.ph_app_settings where key='app_version' and value->>'app_version'='2.3.93')
     as installed`;
   if (name === agdataV2390PostgresManualSyncMigrationName) return `select
     to_regclass('private.erp_sync_jobs') is not null

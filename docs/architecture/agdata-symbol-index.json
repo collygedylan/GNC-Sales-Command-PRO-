@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.92",
+  "release": "AgData v2.3.93",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
