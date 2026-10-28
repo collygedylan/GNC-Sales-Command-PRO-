@@ -5,7 +5,7 @@
   const ROW = 356;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const date = value => String(value || '').slice(0, 10) || 'Unknown date';
-  let bridge, dialog, viewer, returnFocus, generation = 0, timer, poll, frame, requestBusy = false, openGeneration = 0;
+  let bridge, dialog, viewer, returnFocus, generation = 0, timer, poll, frame, requestBusy = false, openGeneration = 0, readOnly = false;
   let photos = [], cursor = null, asOf = '', hasMore = true, loading = false, loadError = false, lastWindow = '', selection = new Map();
   let draft = { q: '', container: '', location: '', lot: '', from: '', to: '', recipientId: '', message: '', pending: null };
   const thumbCache = new Map();
@@ -137,12 +137,12 @@
     el('space').style.height=(Math.ceil(photos.length/cols)*ROW+(hasMore?50:0))+'px';
     if(key!==lastWindow){
       lastWindow=key;const grid=el('window');grid.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;grid.style.transform=`translateY(${Math.floor(start/cols)*ROW}px)`;
-      grid.innerHTML=photos.slice(start,end).map(p=>`<article class="phg-card ${selection.has(p.id)?'selected':''}" data-id="${esc(p.id)}"><div class="phg-preview"><img alt="${esc(p.commonname||p.filename)}" data-photo-id="${esc(p.id)}" decoding="async" loading="lazy" fetchpriority="low"><button class="phg-retry" hidden>Retry thumbnail</button></div><strong title="${esc(p.commonname)}">${esc(p.commonname||'Name not recorded')}</strong><span class="phg-file">${esc([p.contsize,p.itemcode].filter(Boolean).join(' · '))||'Filename search available'}</span><span class="phg-file">${esc([p.locationcode,p.lotcode].filter(Boolean).join(' · '))}</span><span class="phg-file" title="${esc(p.filename)}">${esc(p.filename)}</span><span class="phg-muted">${date(p.photo_at)} · ${p.archived?'Archived':'Historical'}</span><div class="phg-actions"><label><input type="checkbox" aria-label="Select ${esc(p.filename)}" ${selection.has(p.id)?'checked':''} ${draft.pending?'disabled':''}>Select</label><button class="phg-open">Open photo</button></div></article>`).join('');
+      grid.innerHTML=photos.slice(start,end).map(p=>`<article class="phg-card ${!readOnly&&selection.has(p.id)?'selected':''}" data-id="${esc(p.id)}"><div class="phg-preview"><img alt="${esc(p.commonname||p.filename)}" data-photo-id="${esc(p.id)}" decoding="async" loading="lazy" fetchpriority="low"><button class="phg-retry" hidden>Retry thumbnail</button></div><strong title="${esc(p.commonname)}">${esc(p.commonname||'Name not recorded')}</strong><span class="phg-file">${esc([p.contsize,p.itemcode].filter(Boolean).join(' · '))||'Filename search available'}</span><span class="phg-file">${esc([p.locationcode,p.lotcode].filter(Boolean).join(' · '))}</span><span class="phg-file" title="${esc(p.filename)}">${esc(p.filename)}</span><span class="phg-muted">${date(p.photo_at)} · ${p.archived?'Archived':'Historical'}</span><div class="phg-actions">${readOnly?'':'<label><input type="checkbox" aria-label="Select '+esc(p.filename)+'" '+(selection.has(p.id)?'checked':'')+' '+(draft.pending?'disabled':'')+'>Select</label>'}<button class="phg-open">Open photo</button></div></article>`).join('');
       if(!photos.length)grid.innerHTML=`<p>${loadError?'Could not load photos.':loading?'Loading photos…':hasMore?'Loading photos…':'No matching photos. Try another name or clear the filters.'}</p>`;
       if(loadError){const retry=document.createElement('button');retry.textContent='Retry loading';retry.onclick=()=>{loadError=false;loadNext();};grid.append(retry);}
       grid.querySelectorAll('article').forEach(card=>{
         const p=photos.find(p=>p.id===card.dataset.id);
-        card.querySelector('input').onchange=e=>toggle(p,e.target.checked);
+        const select=card.querySelector('input');if(select)select.onchange=e=>toggle(p,e.target.checked);
         card.querySelector('.phg-open').onclick=()=>openPhoto(p);
         card.querySelector('.phg-retry').onclick=()=>hydrate(card,p,true);
         const image=card.querySelector('img');
@@ -172,11 +172,14 @@
     finally{archiveActive--;card.dataset.hydrating='';if(active())requestAnimationFrame(renderWindow);}
   }
   function toggle(p,checked){
-    if(draft.pending)return;
+    if(readOnly||draft.pending)return;
     if(checked && !selection.has(p.id) && selection.size>=20){tell('Choose up to 20 photos for one email.');lastWindow='';renderWindow();return;}
     if(checked)selection.set(p.id,p);else selection.delete(p.id);persist();renderSelection();lastWindow='';renderWindow();
   }
   function renderSelection(){
+    const tray=el('tray'),notices=el('notices');
+    tray.hidden=readOnly;notices.hidden=readOnly;
+    if(readOnly)return;
     el('selection-count').textContent=`${selection.size} photos selected · choose rep & send`;
     el('selected').innerHTML=[...selection.values()].map(p=>`<button data-id="${esc(p.id)}" ${draft.pending?'disabled':''} title="Remove ${esc(p.filename)}">× ${esc(p.commonname||p.filename)} · ${date(p.photo_at)}</button>`).join('');
     el('selected').querySelectorAll('button').forEach(b=>b.onclick=()=>toggle(selection.get(b.dataset.id),false));
@@ -186,7 +189,7 @@
     if(selection.size)el('tray').open=true;
   }
   async function send(){
-    if(requestBusy)return;
+    if(readOnly||requestBusy)return;
     const opened = openGeneration;
     if(!draft.pending && (!selection.size||!draft.recipientId)){tell('Select photos and choose a sales rep first.');return;}
     if(!draft.pending){draft.pending={ids:[...selection.keys()],recipientId:draft.recipientId,message:draft.message,idempotencyKey:crypto.randomUUID()};persist();}
@@ -224,6 +227,7 @@
   }
   async function open(nextBridge){
     if(!nextBridge?.allowed() || !/^[a-z0-9_]+$/.test(String(nextBridge.actorKey||'')))return false;
+    readOnly=nextBridge.readOnly===true;
     if(actorKey && actorKey!==nextBridge.actorKey){
       close();if(dialog){dialog.remove();dialog=null;}selection.clear();photos=[];thumbCache.clear();
       draft={q:'',container:'',location:'',lot:'',from:'',to:'',recipientId:'',message:'',pending:null};
@@ -234,9 +238,9 @@
     if(dialog.open)return false;
     requestBusy=false;
     returnFocus=document.activeElement;dialog.showModal();const opened=++openGeneration;
-    renderSelection();resetSearch();
-    try{const result=await api('recipients');if(opened!==openGeneration||!active())return false;el('recipientId').innerHTML='<option value="">Choose a sales rep</option>'+result.recipients.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');el('recipientId').value=draft.recipientId;}catch(error){if(active())tell(error.message);}
-    refreshStatus();clearInterval(poll);poll=setInterval(()=>{if(!bridge.allowed())clear();else if(document.visibilityState==='visible')refreshStatus();},15000);
+    renderSelection();resetSearch();clearInterval(poll);poll=null;
+    if(!readOnly){try{const result=await api('recipients');if(opened!==openGeneration||!active())return false;el('recipientId').innerHTML='<option value="">Choose a sales rep</option>'+result.recipients.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');el('recipientId').value=draft.recipientId;}catch(error){if(active())tell(error.message);}
+      refreshStatus();poll=setInterval(()=>{if(!bridge.allowed())clear();else if(document.visibilityState==='visible')refreshStatus();},15000);}
     return false;
   }
   function close(){persist();generation++;openGeneration++;clearTimeout(timer);clearInterval(poll);if(viewer?.open){viewer.close();viewer.remove();}dialog?.close();returnFocus?.focus?.({preventScroll:true});}
