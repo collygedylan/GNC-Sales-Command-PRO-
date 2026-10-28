@@ -158,6 +158,7 @@ jobs:
           RELEASE_MIGRATIONS: ${{ needs.authorize-backend.outputs.migrations }}
           GH_TOKEN: ${{ github.token }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         shell: bash
         run: |
@@ -168,7 +169,25 @@ jobs:
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
           mkdir -p supabase/.temp
           printf '%s' "$project_ref" > supabase/.temp/project-ref
+          SUPABASE_DB_PASSWORD="$(node --input-type=module -e '
+            import { validateDatabaseTarget } from "./scripts/apply-item-low-stock-migration.mjs";
+            const url = validateDatabaseTarget(process.env.SUPABASE_DB_URL, process.env.SUPABASE_URL);
+            process.stdout.write(decodeURIComponent(new URL(url).password));
+          ')"
+          export SUPABASE_DB_PASSWORD
+          if ! link_output="$(supabase link --project-ref "$project_ref" 2>&1)"; then
+            if grep -Eiq 'IPv6 is not supported|IPv4 connection' <<<"$link_output"; then
+              echo 'SUPABASE_LINK_IPV4_POOLER_FAILED' >&2
+            elif grep -Eiq 'password|authentication failed|permission denied' <<<"$link_output"; then
+              echo 'SUPABASE_LINK_DATABASE_AUTH_FAILED' >&2
+            else
+              echo 'SUPABASE_LINK_FAILED' >&2
+            fi
+            exit 1
+          fi
+          unset link_output
           node scripts/apply-item-low-stock-migration.mjs
+          unset SUPABASE_DB_PASSWORD
 
       - name: Deploy changed Edge Functions
         if: needs.authorize-backend.outputs['edge-functions'] != '[]'

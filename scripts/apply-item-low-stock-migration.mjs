@@ -291,7 +291,9 @@ const SAFE_ERROR_MARKERS = new Set([
   'LOW_STOCK_SUPABASE_PROJECT_LINK_INVALID', 'LOW_STOCK_SUPABASE_CLI_QUERY_FAILED',
   'LOW_STOCK_SUPABASE_CLI_NOT_FOUND', 'LOW_STOCK_SUPABASE_CLI_AUTH_FAILED',
   'LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED', 'LOW_STOCK_SUPABASE_CLI_NETWORK_FAILED',
-  'LOW_STOCK_SUPABASE_CLI_QUERY_REJECTED',
+  'LOW_STOCK_SUPABASE_CLI_QUERY_REJECTED', 'LOW_STOCK_SUPABASE_CLI_MULTISTATEMENT_UNSUPPORTED',
+  'LOW_STOCK_SUPABASE_CLI_API_NOT_FOUND', 'LOW_STOCK_SUPABASE_CLI_RATE_LIMITED',
+  'LOW_STOCK_SUPABASE_CLI_API_FAILED',
   'LOW_STOCK_SUPABASE_CLI_OUTPUT_INVALID', 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'
 ]);
 
@@ -399,10 +401,18 @@ export function classifySupabaseCliFailure(result) {
   const output = `${result?.stdout || ''}\n${result?.stderr || ''}`.slice(0, 32_000);
   const marker = [...SAFE_ERROR_MARKERS].find(value => output.includes(value));
   if (marker) return marker;
-  if (/unauthori[sz]ed|invalid (?:access )?token|token (?:is )?(?:invalid|expired)|http\s*401/i.test(output)) {
+  const statusCode = Number(output.match(/(?:unexpected\s+)?status(?:\s+code)?\s*[:=]?\s*([1-5]\d{2})|http\s+([1-5]\d{2})/i)?.slice(1).find(Boolean) || 0);
+  if ([401, 403].includes(statusCode) || /unauthori[sz]ed|invalid (?:access )?token|token (?:is )?(?:invalid|expired)|http\s*401/i.test(output)) {
     return 'LOW_STOCK_SUPABASE_CLI_AUTH_FAILED';
   }
+  if (statusCode === 404) return 'LOW_STOCK_SUPABASE_CLI_API_NOT_FOUND';
+  if (statusCode === 429 || /rate.?limit|too many requests/i.test(output)) return 'LOW_STOCK_SUPABASE_CLI_RATE_LIMITED';
+  if (statusCode >= 500) return 'LOW_STOCK_SUPABASE_CLI_API_FAILED';
+  if (/forbidden|insufficient (?:scope|permission)/i.test(output)) return 'LOW_STOCK_SUPABASE_CLI_AUTH_FAILED';
   if (/project(?:\s+ref)?[^\n]*(?:not linked|not found)|not linked[^\n]*project/i.test(output)) {
+    return 'LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED';
+  }
+  if (/IPv6 is not supported|IPv4 connection|run supabase link --project-ref/i.test(output)) {
     return 'LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED';
   }
   if (/ENOTFOUND|EAI_AGAIN|ECONN(?:REFUSED|RESET)|ETIMEDOUT|TLS handshake|connection timed out/i.test(output)) {
@@ -410,6 +420,9 @@ export function classifySupabaseCliFailure(result) {
   }
   if (/SQLSTATE|postgres(?:ql)? error|failed to run sql|query execution failed|permission denied for/i.test(output)) {
     return 'LOW_STOCK_SUPABASE_CLI_QUERY_REJECTED';
+  }
+  if (/cannot insert multiple commands into a prepared statement/i.test(output)) {
+    return 'LOW_STOCK_SUPABASE_CLI_MULTISTATEMENT_UNSUPPORTED';
   }
   return 'LOW_STOCK_SUPABASE_CLI_QUERY_FAILED';
 }
@@ -2885,6 +2898,9 @@ export async function runLinkedSupabaseQuery(sql, { root = process.cwd(), spawn 
   try { apiProject = new URL(process.env.SUPABASE_URL || '').hostname.match(/^([a-z0-9]{20})\.supabase\.co$/)?.[1] || ''; }
   catch { throw new Error('LOW_STOCK_SUPABASE_PROJECT_LINK_INVALID'); }
   if (!/^[a-z0-9]{20}$/.test(linkedProject) || linkedProject !== apiProject) throw new Error('LOW_STOCK_SUPABASE_PROJECT_LINK_INVALID');
+  const cliEntrypoint = path.join(root, 'node_modules', 'supabase', 'dist', 'supabase.js');
+  const cliEntryStat = fs.existsSync(cliEntrypoint) ? fs.lstatSync(cliEntrypoint) : null;
+  if (!cliEntryStat?.isFile() || cliEntryStat.isSymbolicLink()) throw new Error('LOW_STOCK_SUPABASE_CLI_NOT_FOUND');
   const tempRoot = process.env.RUNNER_TEMP || tmpdir();
   const queryFile = path.join(tempRoot, `agdata-linked-query-${process.pid}.sql`);
   const existing = fs.existsSync(queryFile) ? fs.lstatSync(queryFile) : null;
@@ -2892,7 +2908,7 @@ export async function runLinkedSupabaseQuery(sql, { root = process.cwd(), spawn 
   fs.writeFileSync(queryFile, sql, 'utf8');
   let result;
   try {
-    result = spawn('supabase', ['db', 'query', '--linked', '--file', queryFile, '--output', 'json'],
+    result = spawn(process.execPath, [cliEntrypoint, 'db', 'query', '--linked', '--file', queryFile, '--output', 'json'],
       { cwd: root, encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
   } finally {
     fs.writeFileSync(queryFile, '');

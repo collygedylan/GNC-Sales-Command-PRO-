@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { databaseBridge } from './helpers/database-bridge.mjs';
+import { classifySupabaseCliFailure, formatSafeFailure } from '../scripts/apply-item-low-stock-migration.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceCache = new Map();
@@ -2474,4 +2475,15 @@ test('Invariant 89 (Local ERP Worker Requires Service Authorization and an Activ
   scoped.payload.args.sql = 'forged';
   assert.equal((await context.handleErpSyncWorker(scoped, request(secret))).status, 400);
   assert.equal(calls.length, 2);
+});
+
+test('Invariant 90 (IPv6 CLI Link Failures Are Classified Without Exposing Connection Details)', () => {
+  const sensitiveRef = 'private-project-ref-must-not-leak';
+  const observed = `IPv6 is not supported on your current network. Run supabase link --project-ref ${sensitiveRef} to setup IPv4 connection.`;
+  const code = classifySupabaseCliFailure({ status: 1, stderr: observed });
+  assert.equal(code, 'LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED');
+  const report = formatSafeFailure({ phase: 'linked_cli_migrations', error: new Error(code) });
+  assert.match(report, /LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED phase=linked_cli_migrations/);
+  assert.equal(report.includes(sensitiveRef), false);
+  assert.equal(report.includes('IPv6'), false);
 });

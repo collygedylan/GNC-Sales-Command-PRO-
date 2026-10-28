@@ -67,11 +67,13 @@ test('main publication follows build then selected backend then Pages without va
   assert.doesNotMatch(commands(backend.jobs['deploy-supabase']), /run-discovered-tests|database-check|playwright/);
   const migrationStep = backend.jobs['deploy-supabase'].steps.find(step => step.name === 'Apply validated backend release migrations');
   assert.equal(migrationStep.env.SUPABASE_ACCESS_TOKEN, '${{ secrets.SUPABASE_ACCESS_TOKEN }}');
-  assert.equal(migrationStep.env.SUPABASE_DB_URL, undefined);
+  assert.equal(migrationStep.env.SUPABASE_DB_URL, '${{ secrets.SUPABASE_DB_URL }}');
   assert.match(migrationStep.run, /node scripts\/apply-item-low-stock-migration\.mjs/);
   assert.match(migrationStep.run, /supabase\/\.temp\/project-ref/);
+  assert.match(migrationStep.run, /validateDatabaseTarget\(process\.env\.SUPABASE_DB_URL, process\.env\.SUPABASE_URL\)/);
+  assert.match(migrationStep.run, /supabase link --project-ref "\$project_ref"/);
   const migrationRunner = read('scripts/apply-item-low-stock-migration.mjs');
-  assert.match(migrationRunner, /supabase', \['db', 'query', '--linked', '--file'/);
+  assert.match(migrationRunner, /spawn\(process\.execPath, \[cliEntrypoint, 'db', 'query', '--linked', '--file', queryFile/);
   const deployStep = backend.jobs['deploy-supabase'].steps.find(step => step.name === 'Deploy changed Edge Functions');
   assert.match(deployStep.run, /--no-verify-jwt/);
   assert.match(deployStep.run, /aura-llm-router/);

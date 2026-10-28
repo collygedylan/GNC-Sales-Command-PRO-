@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { X509Certificate } from 'node:crypto';
 import pg from 'pg';
 import yaml from 'js-yaml';
@@ -32,7 +34,7 @@ import {
   agdataV2382SuspendViewSchemaCompatMigrationName,
   agdataV2382HlPoSetBasedPageStageMigrationName,
   agdataV2383JdUniversalCustomerDirectoryMigrationName,
-  classifyDatabaseError, classifySupabaseCliFailure, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
+  classifyDatabaseError, classifySupabaseCliFailure, formatSafeFailure, runLinkedSupabaseQuery, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
 
@@ -121,11 +123,45 @@ test('Supabase CLI query failures expose only a safe diagnostic class', () => {
   const secret = 'sbp_secret-must-not-appear';
   assert.equal(classifySupabaseCliFailure({ error: { code: 'ENOENT', message: secret } }), 'LOW_STOCK_SUPABASE_CLI_NOT_FOUND');
   assert.equal(classifySupabaseCliFailure({ status: 1, stderr: `HTTP 401 invalid access token ${secret}` }), 'LOW_STOCK_SUPABASE_CLI_AUTH_FAILED');
+  assert.equal(classifySupabaseCliFailure({ status: 1, stderr: `unexpected status 403: Forbidden ${secret}` }), 'LOW_STOCK_SUPABASE_CLI_AUTH_FAILED');
+  assert.equal(classifySupabaseCliFailure({ status: 1, stderr: `unexpected status 429: Rate limit ${secret}` }), 'LOW_STOCK_SUPABASE_CLI_RATE_LIMITED');
+  assert.equal(classifySupabaseCliFailure({ status: 1, stderr: `unexpected status 503: Service unavailable ${secret}` }), 'LOW_STOCK_SUPABASE_CLI_API_FAILED');
+  assert.equal(classifySupabaseCliFailure({ status: 1, stderr: `IPv6 is not supported on your current network; Run supabase link --project-ref ${secret} to setup IPv4 connection.` }), 'LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED');
   assert.equal(classifySupabaseCliFailure({ status: 1, stderr: `failed to run sql: SQLSTATE 42501 ${secret}` }), 'LOW_STOCK_SUPABASE_CLI_QUERY_REJECTED');
   const formatted = formatSafeFailure({ phase: 'linked_cli_migrations', error: new Error('LOW_STOCK_SUPABASE_CLI_AUTH_FAILED') });
   assert.match(formatted, /phase=linked_cli_migrations/);
   assert.match(formatted, /LOW_STOCK_SUPABASE_CLI_AUTH_FAILED/);
   assert.equal(formatted.includes(secret), false);
+});
+
+test('linked migration queries invoke the lockfile-pinned Node Supabase CLI entrypoint', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'gnc-supabase-cli-'));
+  const prior = { token: process.env.SUPABASE_ACCESS_TOKEN, url: process.env.SUPABASE_URL };
+  const projectRef = 'abcdefghijklmnopqrst';
+  const cliPath = path.join(root, 'node_modules', 'supabase', 'dist', 'supabase.js');
+  fs.mkdirSync(path.dirname(cliPath), { recursive: true });
+  fs.mkdirSync(path.join(root, 'supabase', '.temp'), { recursive: true });
+  fs.writeFileSync(cliPath, '# pinned-cli-stub');
+  fs.writeFileSync(path.join(root, 'supabase', '.temp', 'project-ref'), projectRef);
+  process.env.SUPABASE_ACCESS_TOKEN = 'test-token-never-forwarded-by-mock';
+  process.env.SUPABASE_URL = `https://${projectRef}.supabase.co`;
+  let invocation;
+  try {
+    const rows = await runLinkedSupabaseQuery('select 1 as ok', { root, spawn: (command, args, options) => {
+      invocation = { command, args, options };
+      return { status: 0, stdout: '[{"ok":1}]', stderr: '' };
+    } });
+    assert.deepEqual(rows, [{ ok: 1 }]);
+    assert.equal(invocation.command, process.execPath);
+    assert.equal(invocation.args[0], cliPath);
+    assert.deepEqual(invocation.args.slice(1, 4), ['db', 'query', '--linked']);
+    assert.ok(invocation.args.includes('--file'));
+    assert.ok(invocation.args.includes('--output'));
+  } finally {
+    if (prior.token === undefined) delete process.env.SUPABASE_ACCESS_TOKEN; else process.env.SUPABASE_ACCESS_TOKEN = prior.token;
+    if (prior.url === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = prior.url;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('v2.3.82 Suspend view uses exact physical inventory parity and excludes false blocks', () => {
@@ -1523,7 +1559,10 @@ test('backend rollout verifies current main and applies migrations before deploy
     assert.ok(fs.existsSync(new URL(`../supabase/${directory}/${name}`, import.meta.url)), `${name} is tracked in its canonical migration directory`);
   }
   assert.match(workflow,/SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
-  assert.doesNotMatch(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
+  assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
+  assert.match(workflow,/decodeURIComponent\(new URL\(url\)\.password\)/);
+  assert.match(workflow,/supabase link --project-ref "\$project_ref"/);
+  assert.ok(workflow.indexOf('node scripts/apply-item-low-stock-migration.mjs') < workflow.indexOf('unset SUPABASE_DB_PASSWORD'));
   assert.match(workflow,/SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
 });
 
