@@ -487,6 +487,12 @@ test('release sync head-only mode updates source and never creates a version or 
   const entrypoint = readFileSync(new URL('../scripts/sync-codegs-to-apps-script.js', import.meta.url), 'utf8');
   assert.match(entrypoint, /headOnly:\s*true/);
   assert.match(entrypoint, /no version creation or deployment update was attempted/);
+  const headOnlyBranch = entrypoint.slice(entrypoint.indexOf('if (result.headOnly) {'), entrypoint.indexOf('} else if (result.versionCapacityExhausted)', entrypoint.indexOf('if (result.headOnly) {')));
+  assert.match(headOnlyBranch, /apps-script-head-only-evidence-v1/);
+  assert.match(headOnlyBranch, /headSourceDigest: publishedDigest/);
+  assert.match(headOnlyBranch, /deploymentAfterVersion !== existingDeploymentVersion/);
+  assert.match(headOnlyBranch, /deploymentUpdated: false/);
+  assert.doesNotMatch(headOnlyBranch, /versions\.create|deployments\.update/);
 });
 
 test('version-create quota errors use the latest existing deployment while unrelated errors remain fatal', async () => {

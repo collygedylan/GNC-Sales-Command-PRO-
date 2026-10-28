@@ -85,5 +85,6 @@ jobs:
         with:
           name: apps-script-publication-${{ github.sha }}-${{ github.run_attempt }}
           path: .gnc-local/apps-script-recovery-evidence.json
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14

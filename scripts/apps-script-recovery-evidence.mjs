@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { appsScriptFilesDigest } from './apps-script-function-patch.mjs';
 
 const COMPLETE_SHA = /^[a-f0-9]{40}$/;
 
@@ -8,6 +11,35 @@ export class AppsScriptRecoveryEvidenceError extends Error {
     this.name = 'AppsScriptRecoveryEvidenceError';
     this.code = code;
   }
+}
+
+export async function writeAppsScriptHeadOnlyEvidence({ script, scriptId, deploymentId,
+  expectedCommit, expectedDeploymentVersion, expectedFilesDigest, evidenceDirectory,
+  fileSystem = fs, now = () => Date.now() }) {
+  const commit = String(expectedCommit || '').trim();
+  if (!script?.projects?.getContent || !script?.projects?.deployments?.get) throw evidenceError('CLIENT_INVALID');
+  if (!String(scriptId || '').trim() || !String(deploymentId || '').trim()) throw evidenceError('TARGET_MISSING');
+  if (!COMPLETE_SHA.test(commit)) throw evidenceError('EXPECTED_COMMIT_INVALID');
+  if (!Number.isSafeInteger(expectedDeploymentVersion) || expectedDeploymentVersion < 1) throw evidenceError('EXPECTED_VERSION_INVALID');
+  if (!/^[a-f0-9]{64}$/.test(String(expectedFilesDigest || ''))) throw evidenceError('EXPECTED_SOURCE_DIGEST_INVALID');
+  if (!String(evidenceDirectory || '').trim() || !fileSystem?.mkdirSync || !fileSystem?.writeFileSync) throw evidenceError('EVIDENCE_PATH_INVALID');
+
+  const content = await script.projects.getContent({ scriptId });
+  const observedDigest = appsScriptFilesDigest(content?.data?.files || []);
+  if (observedDigest !== expectedFilesDigest) throw evidenceError('HEAD_SOURCE_MISMATCH');
+  const deployment = await script.projects.deployments.get({ scriptId, deploymentId });
+  const deployedVersion = Number(deployment?.data?.deploymentConfig?.versionNumber);
+  if (String(deployment?.data?.deploymentId || '').trim() !== deploymentId
+      || deployedVersion !== expectedDeploymentVersion) throw evidenceError('DEPLOYMENT_ADVANCED');
+  const verifiedAtMs = Number(now());
+  if (!Number.isFinite(verifiedAtMs)) throw evidenceError('TIME_INVALID');
+  const evidence = { schemaVersion: 'gnc-apps-script-head-only-evidence-v1', publicationMode: 'head-only',
+    headCommit: commit, headUpdated: true, headSourceDigest: observedDigest,
+    existingDeploymentVersion: deployedVersion, deploymentUnchanged: true,
+    deploymentUpdated: false, versionCreated: false, verifiedAt: new Date(verifiedAtMs).toISOString() };
+  fileSystem.mkdirSync(evidenceDirectory, { recursive: true });
+  fileSystem.writeFileSync(path.join(evidenceDirectory, 'apps-script-recovery-evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`);
+  return evidence;
 }
 
 function evidenceError(code) {

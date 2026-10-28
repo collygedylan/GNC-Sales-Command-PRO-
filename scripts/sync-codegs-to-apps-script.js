@@ -13,7 +13,7 @@ import {
   verifyAppsScriptDeploymentOwnership
 } from './lib/production-release-guard.mjs';
 import { authorizeProductionAppsScriptDeploymentFromEnvironment } from './lib/apps-script-deployment-guard.mjs';
-import { createAppsScriptRecoveryEvidence } from './apps-script-recovery-evidence.mjs';
+import { createAppsScriptRecoveryEvidence, writeAppsScriptHeadOnlyEvidence } from './apps-script-recovery-evidence.mjs';
 import { patchAppsScriptFunctions, appsScriptFilesDigest, createAppsScriptSourceGuard } from './apps-script-function-patch.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -108,7 +108,9 @@ async function main() {
   const auth = getOAuthClientFromClaspRc(claspRc);
   const script = google.script({ version: 'v1', auth });
 
-  await verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId });
+  const deploymentBeforeSync = await verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId });
+  const existingDeploymentVersion = Number(deploymentBeforeSync.deploymentConfig?.versionNumber);
+  if (!Number.isSafeInteger(existingDeploymentVersion) || existingDeploymentVersion < 1) fail('APPS_SCRIPT_DEPLOYMENT_VERSION_UNVERIFIED');
   console.log('Production Apps Script deployment ownership verified.');
   const packageManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
   const functionNames = packageManifest.appsScriptPatchFunctions;
@@ -151,9 +153,16 @@ async function main() {
     `head-updated=${result.headUpdated === true}\nversion-capacity-exhausted=${result.versionCapacityExhausted === true}\n`);
   console.log(`Apps Script @HEAD updated (${result.versionCountBefore}/200 existing versions).`);
   if (result.headOnly) {
-    const current = await script.projects.getContent({ scriptId });
-    if (patchEvidence && appsScriptFilesDigest(current.data?.files || []) !== publishedDigest) {
-      fail('APPS_SCRIPT_HEAD_SYNC_VERIFICATION_FAILED');
+    if (!publishedDigest) fail('APPS_SCRIPT_HEAD_SYNC_VERIFICATION_FAILED');
+    const evidenceDirectory = process.platform === 'win32'
+      ? path.win32.resolve('G:\\My Drive\\GNC\\AgData\\Release Evidence\\Apps Script')
+      : path.join(repoRoot, '.gnc-local');
+    try {
+      await writeAppsScriptHeadOnlyEvidence({ script, scriptId, deploymentId,
+        expectedCommit: githubSha, expectedDeploymentVersion: existingDeploymentVersion,
+        expectedFilesDigest: publishedDigest, evidenceDirectory });
+    } catch (error) {
+      fail(error?.code || error?.message || 'APPS_SCRIPT_HEAD_ONLY_EVIDENCE_FAILED');
     }
     console.log('Apps Script @HEAD sync verified; no version creation or deployment update was attempted.');
   } else if (result.versionCapacityExhausted) {

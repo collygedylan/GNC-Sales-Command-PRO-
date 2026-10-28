@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createAppsScriptRecoveryEvidence } from '../scripts/apps-script-recovery-evidence.mjs';
+import { createAppsScriptRecoveryEvidence, writeAppsScriptHeadOnlyEvidence } from '../scripts/apps-script-recovery-evidence.mjs';
+import { appsScriptFilesDigest } from '../scripts/apps-script-function-patch.mjs';
 import fs from 'node:fs';
 
 const commit = 'a'.repeat(40);
@@ -49,6 +50,51 @@ test('recovery evidence rejects a mismatched commit and a deployment version rac
     script: client({ before: 17, after: 18 }), scriptId: 'script-1',
     deploymentId: 'deployment-1', expectedCommit: commit
   }), /DEPLOYMENT_ADVANCED/);
+});
+
+test('head-only sync writes a verified source receipt without changing the pinned deployment', async () => {
+  const files = [{ name: 'Code', type: 'SERVER_JS', source }];
+  const expectedFilesDigest = appsScriptFilesDigest(files);
+  const written = new Map(), calls = [];
+  const fileSystem = {
+    mkdirSync: (directory, options) => calls.push(['mkdir', directory, options]),
+    writeFileSync: (target, text) => { calls.push(['write', target]); written.set(target, text); }
+  };
+  const script = {
+    projects: {
+      getContent: async args => { calls.push(['content', args]); return { data: { files } }; },
+      deployments: { get: async args => {
+        calls.push(['deployment-read', args]);
+        return { data: { deploymentId: 'deployment-1', deploymentConfig: { versionNumber: 17 } } };
+      } }
+    }
+  };
+  const evidence = await writeAppsScriptHeadOnlyEvidence({ script, scriptId: 'script-1', deploymentId: 'deployment-1',
+    expectedCommit: commit, expectedDeploymentVersion: 17, expectedFilesDigest, evidenceDirectory: 'evidence',
+    fileSystem, now: () => Date.parse('2026-09-22T12:00:00Z') });
+  assert.equal(evidence.schemaVersion, 'gnc-apps-script-head-only-evidence-v1');
+  assert.equal(evidence.headCommit, commit);
+  assert.equal(evidence.headSourceDigest, expectedFilesDigest);
+  assert.equal(evidence.existingDeploymentVersion, 17);
+  assert.equal(evidence.deploymentUnchanged, true);
+  assert.equal(evidence.deploymentUpdated, false);
+  assert.equal(evidence.versionCreated, false);
+  assert.equal(written.size, 1);
+  assert.deepEqual(JSON.parse([...written.values()][0]), evidence);
+  assert.deepEqual(calls.map(call => call[0]), ['content', 'deployment-read', 'mkdir', 'write']);
+
+  for (const failingScript of [
+    { projects: { getContent: async () => ({ data: { files: [{ ...files[0], source: source + '\nchanged' }] } }),
+      deployments: { get: async () => { throw new Error('deployment must not be read after source mismatch'); } } } },
+    { projects: { getContent: async () => ({ data: { files } }),
+      deployments: { get: async () => ({ data: { deploymentId: 'deployment-1', deploymentConfig: { versionNumber: 18 } } }) } } }
+  ]) {
+    const failedWrites = [];
+    await assert.rejects(writeAppsScriptHeadOnlyEvidence({ script: failingScript, scriptId: 'script-1', deploymentId: 'deployment-1',
+      expectedCommit: commit, expectedDeploymentVersion: 17, expectedFilesDigest, evidenceDirectory: 'evidence',
+      fileSystem: { mkdirSync: (...args) => failedWrites.push(args), writeFileSync: (...args) => failedWrites.push(args) } }));
+    assert.deepEqual(failedWrites, [], 'verification failures never create or write an evidence receipt');
+  }
 });
 
 test('Apps Script recovery code remains tested while publishing stays paused', () => {

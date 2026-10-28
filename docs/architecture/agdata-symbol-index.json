@@ -710,7 +710,12 @@
           "agdataV2376InstantLoginFastSuspendMigrationName"
         ],
         "scripts/apps-script-function-patch.mjs": [
-          "mergeRequestDeliveryWakeDispatch"
+          "mergeRequestDeliveryWakeDispatch",
+          "mergeMintDriveTokenDispatch"
+        ],
+        "scripts/apps-script-recovery-evidence.mjs": [
+          "createAppsScriptRecoveryEvidence",
+          "writeAppsScriptHeadOnlyEvidence"
         ]
       }
     },

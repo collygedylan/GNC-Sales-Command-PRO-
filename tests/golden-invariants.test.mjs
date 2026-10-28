@@ -7,6 +7,8 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import { databaseBridge } from './helpers/database-bridge.mjs';
 import { classifySupabaseCliFailure, formatSafeFailure } from '../scripts/apply-item-low-stock-migration.mjs';
+import { appsScriptFilesDigest } from '../scripts/apps-script-function-patch.mjs';
+import { writeAppsScriptHeadOnlyEvidence } from '../scripts/apps-script-recovery-evidence.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceCache = new Map();
@@ -2561,4 +2563,38 @@ test('Invariant 91 (RUN SCRIPT Dispatches One Claimed Cloud Step and Retires the
   const response = await handler({ method: 'POST', headers: { get: () => 'application/json' }, json: async () => ({ action: 'erp_sync_worker' }) });
   assert.equal(response.status, 410);
   assert.equal(response.code, 'ERP_SYNC_LOCAL_WORKER_DISABLED');
+});
+
+test('Invariant 92 (Apps Script Head-Only Receipts Prove Source and Preserve the Existing Deployment)', async () => {
+  const commit = 'a'.repeat(40);
+  const files = [{ name: 'Code', type: 'SERVER_JS', source: `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '${commit}';` }];
+  const expectedFilesDigest = appsScriptFilesDigest(files);
+  const written = [];
+  const fileSystem = { mkdirSync: (...args) => written.push(['mkdir', ...args]),
+    writeFileSync: (...args) => written.push(['write', ...args]) };
+  const makeScript = ({ currentFiles = files, version = 17 } = {}) => ({ projects: {
+    getContent: async () => ({ data: { files: currentFiles } }),
+    deployments: { get: async () => ({ data: { deploymentId: 'deployment', deploymentConfig: { versionNumber: version } } }) }
+  } });
+  const receipt = await writeAppsScriptHeadOnlyEvidence({ script: makeScript(), scriptId: 'script', deploymentId: 'deployment',
+    expectedCommit: commit, expectedDeploymentVersion: 17, expectedFilesDigest, evidenceDirectory: 'evidence',
+    fileSystem, now: () => Date.parse('2026-10-27T12:00:00Z') });
+  assert.equal(receipt.schemaVersion, 'gnc-apps-script-head-only-evidence-v1');
+  assert.equal(receipt.deploymentUnchanged, true);
+  assert.equal(receipt.deploymentUpdated, false);
+  assert.equal(receipt.versionCreated, false);
+  assert.equal(written.length, 2);
+
+  for (const script of [
+    makeScript({ currentFiles: [{ ...files[0], source: files[0].source + '\nchanged' }] }),
+    makeScript({ version: 18 })
+  ]) {
+    const forbiddenWrites = [];
+    await assert.rejects(writeAppsScriptHeadOnlyEvidence({ script, scriptId: 'script', deploymentId: 'deployment',
+      expectedCommit: commit, expectedDeploymentVersion: 17, expectedFilesDigest, evidenceDirectory: 'evidence',
+      fileSystem: { mkdirSync: (...args) => forbiddenWrites.push(args), writeFileSync: (...args) => forbiddenWrites.push(args) } }));
+    assert.deepEqual(forbiddenWrites, [], 'source or deployment mismatch prevents evidence publication');
+  }
+  const workflow = read('.github/workflows/apps-script-deploy.yml');
+  assert.match(workflow, /path: \.gnc-local\/apps-script-recovery-evidence\.json\n\s+include-hidden-files: true/);
 });
