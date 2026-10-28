@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.96';
+const APP_SHELL_BUILD = 'AgData v2.3.97';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r2';
-const APP_ASSET_VERSION = '2.3.96';
+const APP_ASSET_VERSION = '2.3.97';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.96';
+const CACHE_NAME = 'agdata-v2.3.97';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
@@ -79,7 +79,7 @@ const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/field-counting-chunks/chunk-4U4VUOO3.js",
   "./assets/field-counting.css",
   "./assets/field-counting.js",
-  "./assets/historical-requests-chunks/HistoricalRequestsView-B4W5D2W2.js",
+  "./assets/historical-requests-chunks/HistoricalRequestsView-PKBOOTZB.js",
   "./assets/historical-requests-chunks/chunk-K6ZBMP2H.js",
   "./assets/historical-requests.css",
   "./assets/historical-requests.js",

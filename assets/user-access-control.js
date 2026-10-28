@@ -48,6 +48,7 @@
     let configuredIdentityKey = '';
     let managerUiState = null;
     const saveInFlight = new Set();
+    let lifecycleInFlight = false;
 
     const text = value => String(value == null ? '' : value).trim();
     const key = value => text(value).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -338,6 +339,32 @@
         return `user-access-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
     }
 
+    async function runLifecycle(payload) {
+        requireVerifiedManager();
+        if (lifecycleInFlight) throw new Error('USER_ACCESS_LIFECYCLE_IN_FLIGHT');
+        if (typeof config.lifecycleTransport !== 'function') throw new Error('Authenticated user lifecycle service is unavailable.');
+        const lifecycleGeneration = generation;
+        const actorIdentity = getIdentity();
+        lifecycleInFlight = true;
+        try {
+            const result = await config.lifecycleTransport(payload);
+            if (!result || result.ok !== true) throw new Error(text(result?.error) || 'USER_LIFECYCLE_FAILED');
+            const currentIdentity = getIdentity();
+            if (lifecycleGeneration !== generation || !actorIdentity || !currentIdentity
+                || actorIdentity.id !== currentIdentity.id || actorIdentity.username !== currentIdentity.username) {
+                throw new Error('USER_ACCESS_ACCOUNT_CHANGED');
+            }
+            await loadDirectory({ force: true }).catch(error => {
+                const latestIdentity = getIdentity();
+                if (lifecycleGeneration === generation && latestIdentity?.id === actorIdentity.id
+                    && latestIdentity.username === actorIdentity.username) {
+                    directoryError = text(error?.message) || 'User lifecycle completed; refresh the directory to verify current rows.';
+                }
+            });
+            return true;
+        } finally { if (lifecycleGeneration === generation) lifecycleInFlight = false; }
+    }
+
     function requireVerifiedManager() {
         if (!isVerifiedManager()) throw new Error('USER_ACCESS_MANAGER_REQUIRED');
         if (!directoryRecord || directoryStatus !== 'ready') throw new Error('USER_ACCESS_DIRECTORY_NOT_VERIFIED');
@@ -510,6 +537,7 @@
         directoryRecord = null; cachedDirectoryRecord = readDisplayCache();
         directoryStatus = cachedDirectoryRecord ? 'stale' : 'idle'; directoryError = '';
         selfInFlight = null; directoryInFlight = null; saveInFlight.clear();
+        lifecycleInFlight = false;
         managerUiState = null;
         publish('reset');
     }
@@ -585,7 +613,9 @@
         container.innerHTML = `<div class="agdata-user-access__heading"><div><h2>User &amp; Role Access</h2><p>Role baselines are inherited by users unless a per-user override is saved.</p></div><button type="button" data-access-refresh>Refresh access</button></div>
             <p class="agdata-user-access__status" data-access-status role="${directoryError ? 'alert' : 'status'}">${escapeHtml(statusText)}</p>
             <div class="agdata-user-access__grid"><section class="agdata-user-access__panel" aria-label="Role baselines"><h3>Role baselines</h3><label>Role<select data-role-select>${ROLE_KEYS.map(role => `<option value="${escAttr(role)}"${role === selectedRole ? ' selected' : ''}>${escapeHtml(role.replaceAll('_', ' '))}</option>`).join('')}</select></label><div data-role-permissions></div><button type="button" data-role-save ${canManage && baseline && !!directoryRecord ? '' : 'disabled'}>Save &amp; Apply to Role</button></section>
-            <section class="agdata-user-access__panel" aria-label="Users"><h3>Users <span data-user-count>${filteredUsers.filter(user => user.active === true).length}</span></h3><label>Search users<input type="search" data-user-search value="${escAttr(query)}" autocomplete="off"></label><label>Filter by role<select data-user-role-filter><option value="">All roles</option>${ROLE_KEYS.map(role => `<option value="${escAttr(role)}"${role === roleFilter ? ' selected' : ''}>${escapeHtml(role.replaceAll('_', ' '))}</option>`).join('')}</select></label><label>User<select data-user-select><option value="">Select an active user</option>${filteredUsers.map(user => `<option value="${escAttr(user.username)}"${user.active !== true ? ' disabled' : ''}${user.username === chosenUser?.username ? ' selected' : ''}>${escapeHtml(user.display_name)} — ${escapeHtml(user.role)}${user.salesrep_id ? ` (${escapeHtml(user.salesrep_id)})` : ''}${user.active !== true ? ' — no active profile' : ''}</option>`).join('')}</select></label><div data-user-permissions></div><button type="button" data-user-save ${canManage && chosenUser && !!directoryRecord ? '' : 'disabled'}>Save user overrides</button></section></div>`;
+            <section class="agdata-user-access__panel" aria-label="Users"><h3>Users <span data-user-count>${filteredUsers.filter(user => user.active === true).length}</span></h3><label>Search users<input type="search" data-user-search value="${escAttr(query)}" autocomplete="off"></label><label>Filter by role<select data-user-role-filter><option value="">All roles</option>${ROLE_KEYS.map(role => `<option value="${escAttr(role)}"${role === roleFilter ? ' selected' : ''}>${escapeHtml(role.replaceAll('_', ' '))}</option>`).join('')}</select></label><label>User<select data-user-select><option value="">Select an active user</option>${filteredUsers.map(user => `<option value="${escAttr(user.username)}"${user.active !== true ? ' disabled' : ''}${user.username === chosenUser?.username ? ' selected' : ''}>${escapeHtml(user.display_name)} — ${escapeHtml(user.role)}${user.salesrep_id ? ` (${escapeHtml(user.salesrep_id)})` : ''}${user.active !== true ? ' — no active profile' : ''}</option>`).join('')}</select></label><div data-user-permissions></div><button type="button" data-user-save ${canManage && chosenUser && !!directoryRecord ? '' : 'disabled'}>Save user overrides</button>
+            <details><summary>Add user</summary><label>Username<input data-new-username autocomplete="off" maxlength="80"></label><label>Display name<input data-new-display-name autocomplete="off" maxlength="120"></label><label>Role<select data-new-role>${ROLE_KEYS.map(role => `<option value="${escAttr(role)}">${escapeHtml(role.replaceAll('_', ' '))}</option>`).join('')}</select></label><label>Initial access code<input type="password" data-new-access-code autocomplete="new-password" minlength="8"></label><button type="button" data-user-create ${canManage && directoryStatus === 'ready' ? '' : 'disabled'}>Create user</button><p>Access codes are write-only and are never shown in user lists.</p></details>
+            ${chosenUser ? `<details><summary>Edit profile for ${escapeHtml(chosenUser.display_name)}</summary><label>Display name<input data-user-display-name value="${escAttr(chosenUser.display_name)}" maxlength="120"></label><label>Role<select data-user-profile-role>${ROLE_KEYS.map(role => `<option value="${escAttr(role)}"${role === chosenUser.canonical_role ? ' selected' : ''}>${escapeHtml(role.replaceAll('_', ' '))}</option>`).join('')}</select></label><button type="button" data-user-profile-save ${canManage ? '' : 'disabled'}>Save profile</button><p>Contact email is maintained in Company Directory. Account login email and access code are protected.</p></details><details><summary>Reset access code or deactivate ${escapeHtml(chosenUser.display_name)}</summary><label>New access code<input type="password" data-reset-access-code autocomplete="new-password" minlength="8"></label><button type="button" data-user-reset-code ${canManage ? '' : 'disabled'}>Reset access code</button><button type="button" data-user-deactivate ${canManage && chosenUser.username !== getIdentity()?.username ? '' : 'disabled'}>Deactivate account</button></details>` : ''}</section></div>`;
         const rolePermissions = container.querySelector('[data-role-permissions]');
         if (baseline) {
             rolePermissions.innerHTML = PERMISSION_KEYS.map(permission => `<label class="agdata-user-access__permission"><span>${escapeHtml(permission.replace(/^can_/, '').replaceAll('_', ' '))}</span><input type="checkbox" data-role-permission="${permission}"${baseline.permissions[permission] ? ' checked' : ''}${canManage && !!directoryRecord ? '' : ' disabled'}></label>`).join('');
@@ -632,6 +662,79 @@
             try { await saveUserOverrides(chosenUser.username, overrides); root.showToast?.('Saved user access', 'User overrides were saved.'); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username }); }
             catch (error) { directoryError = text(error?.message); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username }); }
         };
+        container.querySelector('[data-user-create]')?.addEventListener('click', async () => {
+            const ownerIdentity = getIdentity();
+            const username = key(container.querySelector('[data-new-username]')?.value);
+            const displayName = text(container.querySelector('[data-new-display-name]')?.value);
+            const role = text(container.querySelector('[data-new-role]')?.value);
+            const password = String(container.querySelector('[data-new-access-code]')?.value || '');
+            if (!username || !role || password.length < 8) { root.showToast?.('Account details required', 'Enter a username, role and access code of at least 8 characters.'); return; }
+            const button = container.querySelector('[data-user-create]');
+            if (button) button.disabled = true;
+            try {
+                await runLifecycle({ action: 'create_user', username, displayName: displayName || username, role, password, mustChangePassword: true });
+                if (!ownerIdentity || getIdentity()?.id !== ownerIdentity.id || getIdentity()?.username !== ownerIdentity.username) return;
+                root.showToast?.('User created', `${username} can sign in with the new access code.`);
+                renderManager(container, { ...latestManagerOptions(), selectedUsername: username });
+            } catch (error) {
+                if (!ownerIdentity || getIdentity()?.id !== ownerIdentity.id || getIdentity()?.username !== ownerIdentity.username) return;
+                directoryError = text(error?.message); renderManager(container, latestManagerOptions());
+            }
+        });
+        container.querySelector('[data-user-profile-save]')?.addEventListener('click', async () => {
+            if (!chosenUser) return;
+            const ownerIdentity = getIdentity();
+            const displayName = text(container.querySelector('[data-user-display-name]')?.value);
+            const role = text(container.querySelector('[data-user-profile-role]')?.value);
+            if (!displayName || !role) { root.showToast?.('Profile details required', 'Enter a display name and role.'); return; }
+            const button = container.querySelector('[data-user-profile-save]');
+            if (button) button.disabled = true;
+            try {
+                await transport('update_user_profile', { username: chosenUser.username, display_name: displayName, role },
+                    { commandId: makeCommandId(), expectedRevision: directoryRecord.revision });
+                if (!ownerIdentity || getIdentity()?.id !== ownerIdentity.id || getIdentity()?.username !== ownerIdentity.username) return;
+                await loadDirectory({ force: true }).catch(() => null);
+                root.showToast?.('Profile saved', `${chosenUser.username}'s display name and role were updated.`);
+                renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username });
+            } catch (error) {
+                if (!ownerIdentity || getIdentity()?.id !== ownerIdentity.id || getIdentity()?.username !== ownerIdentity.username) return;
+                directoryError = text(error?.message); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username });
+            }
+        });
+        container.querySelector('[data-user-reset-code]')?.addEventListener('click', async () => {
+            const ownerIdentity = getIdentity();
+            const password = String(container.querySelector('[data-reset-access-code]')?.value || '');
+            if (password.length < 8 || !chosenUser) { root.showToast?.('Access code required', 'Enter a new access code of at least 8 characters.'); return; }
+            const button = container.querySelector('[data-user-reset-code]');
+            if (button) button.disabled = true;
+            try {
+                await runLifecycle({ action: 'reset_password', username: chosenUser.username, password });
+                if (!ownerIdentity || getIdentity()?.id !== ownerIdentity.id || getIdentity()?.username !== ownerIdentity.username) return;
+                root.showToast?.('Access code reset', `${chosenUser.username} must change the code after signing in.`);
+                renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username });
+            } catch (error) {
+                if (!ownerIdentity || getIdentity()?.id !== ownerIdentity.id || getIdentity()?.username !== ownerIdentity.username) return;
+                directoryError = text(error?.message); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username });
+            }
+        });
+        container.querySelector('[data-user-deactivate]')?.addEventListener('click', async () => {
+            if (!chosenUser || chosenUser.username === getIdentity()?.username) return;
+            const confirmed = await root.showAppConfirm?.(`Deactivate ${chosenUser.username}? They will no longer be able to sign in.`);
+            if (confirmed !== true) return;
+            const ownerIdentity = getIdentity();
+            const button = container.querySelector('[data-user-deactivate]');
+            if (button) button.disabled = true;
+            try {
+                await transport('deactivate_user', { username: chosenUser.username }, { commandId: makeCommandId(), expectedRevision: directoryRecord.revision });
+                if (!ownerIdentity || getIdentity()?.id !== ownerIdentity.id || getIdentity()?.username !== ownerIdentity.username) return;
+                await loadDirectory({ force: true });
+                root.showToast?.('Account deactivated', `${chosenUser.username} was deactivated.`);
+                renderManager(container, { ...latestManagerOptions(), selectedUsername: '' });
+            } catch (error) {
+                if (!ownerIdentity || getIdentity()?.id !== ownerIdentity.id || getIdentity()?.username !== ownerIdentity.username) return;
+                directoryError = text(error?.message); renderManager(container, { ...latestManagerOptions(), selectedUsername: chosenUser.username });
+            }
+        });
         if (!self.verified && selfStatus === 'idle' && !selfInFlight) loadSelf().then(async () => {
             if (isVerifiedManager() && directoryStatus !== 'ready') await loadDirectory().catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'renderManager'); });
             renderManager(container, latestManagerOptions());

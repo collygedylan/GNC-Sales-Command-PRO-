@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'AgData v2.3.96';
+  const RELEASE = 'AgData v2.3.97';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1';
   const PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:';

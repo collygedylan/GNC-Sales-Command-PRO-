@@ -8732,7 +8732,8 @@ body.ops-precision-pilot .compact-filter-warning{grid-column:1/-1;margin:0;color
 
 /* Assigned Items uses the same compact field contract without a collapsible summary or chip ledger. */
 body.ops-precision-pilot .assigned-filter-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px}
-body.ops-precision-pilot .assigned-phone-filters{display:block;margin:0}
+body.ops-precision-pilot .assigned-phone-filters{display:none;margin:0}
+@media(max-width:767px){body.ops-precision-pilot .assigned-phone-filters{display:block}}
 body.ops-precision-pilot .assigned-filter-fields.compact-filter-rail{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;min-width:0}
 body.ops-precision-pilot .assigned-column-trigger,body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{min-height:44px;border-color:var(--ops-border-strong);color:var(--ops-text);background:var(--ops-surface-muted);box-shadow:none}
 body.ops-precision-pilot .assigned-column-trigger{width:100%;padding:8px 10px}
@@ -10206,7 +10207,8 @@ body.ops-precision-pilot #request-content .app-request-compact-card .app-card-qt
 }
 
 /* Detail options share the six-metric grid even outside the Drive view. */
-.request-av-option-card-shell .app-card-qty-row { display:grid!important; grid-template-columns:minmax(0,1.25fr) minmax(0,1.25fr) minmax(0,1.2fr) minmax(0,1.25fr) minmax(0,1.8fr) minmax(0,1.5fr)!important; gap:clamp(2px,.7vw,6px)!important; padding:6px 0; }
+body .request-av-option-card-shell .app-card-qty-row { display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr))!important; gap:clamp(4px,.7vw,8px)!important; padding:6px 0; }
+body.viewport-compact .request-av-option-card-shell .app-card-qty-row { grid-template-columns:repeat(3,minmax(0,1fr))!important; }
 .request-av-option-card-shell .app-shared-drive-layout { --drive-card-photo-width:92px; --drive-card-photo-height:92px; }
 .request-av-option-card-shell .app-drive-card-photo :is(.app-smart-thumb,.app-inline-thumb-box) { width:92px!important; height:92px!important; aspect-ratio:1 / 1!important; border:1px solid rgba(74,222,128,.28)!important; border-radius:12px!important; overflow:hidden!important; background:#0d2318!important; }
 .request-av-option-card-shell .app-drive-card-photo img { display:block!important; width:100%!important; height:100%!important; object-fit:cover!important; object-position:center!important; }
