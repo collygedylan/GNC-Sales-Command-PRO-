@@ -51,7 +51,7 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
   if (body.sourceIdentity !== undefined) {
     const identity = body.sourceIdentity;
     const identityFields = new Set(['transactionnumber', 'tagcode', 'dock', 'stopnumber', 'itemcode', 'locationcode', 'lotcode', 'quantityshipped', 'customer', 'consignee', 'salesrep', 'spec', 'photo_url', 'loc_photo_match']);
-    if (operation !== 'close' || !identity || typeof identity !== 'object' || Array.isArray(identity)
+    if (operation !== 'close' && operation !== 'add_candidates' || !identity || typeof identity !== 'object' || Array.isArray(identity)
       || Object.entries(identity as RecordValue).some(([key, value]) => !identityFields.has(key) || typeof value !== 'string')) {
       throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
     }

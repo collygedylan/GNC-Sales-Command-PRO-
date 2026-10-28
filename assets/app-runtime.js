@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.96';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.97';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -17756,7 +17756,7 @@ bindFastInvokeById('drawer-pest-management-btn', 'openDrawerView', ['pest-manage
             bindFastInvokeById('drawer-disease-pest-btn', 'openDrawerView', ['disease-pest'], 'Disease & Pest Management');
             bindFastInvokeById('drawer-sales-office-btn', 'openDrawerSalesOffice', [], 'Sales Office');
             bindFastInvokeById('drawer-moves-btn', 'openDrawerMovesView', [], 'Location Move');
-            bindFastInvokeById('drawer-historical-requests-btn', 'openDrawerView', ['historical-requests'], 'Historical Requests');
+            bindFastInvokeById('drawer-historical-requests-btn', 'openManagerTableManagement', ['historical-requests'], 'Historical Requests');
             bindFastInvokeById('drawer-reports-btn', 'openDrawerView', ['reports'], 'Reports');
             bindFastInvokeById('drawer-hours-btn', 'openDrawerView', ['hours'], 'Labor Hours');
             bindFastInvokeById('drawer-low-stock-btn', 'openDrawerView', ['low-stock'], 'NCR');
@@ -17775,7 +17775,7 @@ bindFastInvokeById('home-tile-qc', 'switchView', ['qc'], 'QC');
             bindFastInvokeById('home-tile-sales-inventory', 'openInventoryHubView', [], 'Inventory');
             bindFastInvokeById('home-tile-production', 'switchView', ['production'], 'Production');
             bindFastInvokeById('home-tile-moves', 'openMovesView', [], 'Location Move');
-            bindFastInvokeById('home-tile-historical-requests', 'switchView', ['historical-requests'], 'Historical Requests');
+            bindFastInvokeById('home-tile-historical-requests', 'openManagerTableManagement', ['historical-requests'], 'Historical Requests');
             bindFastInvokeById('home-tile-reports', 'switchView', ['reports'], 'Reports');
             bindFastInvokeById('home-tile-review', 'switchView', ['review'], 'New Crop Release');
             bindFastInvokeById('home-tile-move-up', 'switchView', ['move-up'], 'Move Up');
@@ -24941,8 +24941,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const MANAGER_TRANSACTIONS_KEYED_VIEW = 'transactions-keyed';
         const MANAGER_ORDERS_VIEW = 'orders';
         const MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW = 'assigned-items-export';
+        const MANAGER_TABLE_MANAGEMENT_VIEW = 'table-management';
         const MANAGER_CUSTOMER_REP_MAP_VIEW = 'customer-rep-map';
         let customerRepMappingView = null;
+        let managerTableManagementInstance = null;
+        let managerTableManagementSelection = '';
+        let managerTableManagementDirectOpen = false;
         const MANAGER_EVAL_REPORTS_VIEW = 'eval-reports';
         const MANAGER_EVAL_REPORTS_2_VIEW = 'eval-reports-2';
         const MANAGER_HISTORICAL_REPORT_VIEW = 'historical-report';
@@ -26675,7 +26679,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.96').trim() || 'AgData v2.3.96';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.97').trim() || 'AgData v2.3.97';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29253,8 +29257,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 || snapshots.some(({ adapter }) => adapter.id !== previewCore))) return;
             const payload = { _verifiedLiveSync: true, _fromCache: true };
             const confirmedRevision = confirmedArgosReclassLiveEditRevisions.get(getArgosReclassLiveEditIdentityKey()) || '';
-            const pendingInventoryMove = typeof argosInventoryTransactionState !== 'undefined'
-                && !!argosInventoryTransactionState?.pendingReclassMove;
+            const pendingInventoryMove = (typeof argosInventoryTransactionState !== 'undefined'
+                && !!argosInventoryTransactionState?.pendingReclassMove)
+                || fullInventory.some(row => row.__optimisticReclassMove);
             const retainedMaster = productionDisplayMasterReceipt;
             const retainCompleteMaster = retainedMaster?.rows === fullInventory
                 && retainedMaster.readScope === getSupabaseReadIdentityScope()
@@ -32712,6 +32717,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function buildEvalWorkSetupInquiry() {
+            if (evalWorkSetupState && evalWorkSetupState.inquirySnapshot) return evalWorkSetupState.inquirySnapshot;
             if (!argosInventoryTransactionState || !argosInventoryTransactionState.snapshot) throw new Error('Reopen the Reclass Item Inquiry before assigning review work.');
             return collectEvalWorkInquiryPayload({
                 id: `setup-${argosInventoryTransactionState.idempotencyToken || Date.now()}`,
@@ -32754,7 +32760,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function syncEvalWorkSetupSummary() {
-            const state = argosInventoryTransactionState || {};
+            const state = evalWorkSetupState.transactionState || argosInventoryTransactionState || {};
             const snapshot = state.snapshot || {};
             const assignees = getEvalWorkSetupAssignees();
             const recipients = Array.isArray(evalWorkSetupState.completionRecipients) ? evalWorkSetupState.completionRecipients : [];
@@ -32780,8 +32786,41 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return false;
             }
             if (!argosInventoryTransactionState || !argosInventoryTransactionState.snapshot) return false;
-            await ensureAssignableAppUsers(false).catch(() => []);
             evalWorkSetupState = { assigneeUsernames: [], instructions: '', completionRecipients: [] };
+            const setupState = evalWorkSetupState;
+            const submitState = argosInventoryTransactionState;
+            const identityKey = getArgosReclassLiveEditIdentityKey();
+            try {
+                await ensureArgosReclassSubmissionVerification(submitState);
+                if (argosInventoryTransactionState !== submitState || evalWorkSetupState !== setupState
+                    || identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
+                const inquiry = buildEvalWorkSetupInquiry();
+                const payload = applyArgosInventoryTransactionSourceContext(buildArgosInventoryTransactionPayload());
+                setupState.transactionState = submitState;
+                setupState.inquirySnapshot = inquiry;
+                setupState.identityKey = identityKey;
+                const hasMoves = (payload.rowOverlays || []).some(overlay => (overlay.proposals || [])
+                    .some(proposal => ['move_up', 'move_down'].includes(proposal.action)));
+                if (hasMoves || submitState.pendingReclassMove) {
+                    submitState.backgroundSubmission = true;
+                    const moveWork = applyArgosInventoryReclassMoveCommand(submitState, payload, identityKey);
+                    if (!submitState.pendingReclassMove?.inFlight) { await moveWork; return false; }
+                    setupState.inquirySnapshot = removeConfirmedMoveProposalsFromInquiryPayload(inquiry);
+                    setupState.movePending = true;
+                    closeArgosInventoryTransactionModal({ background: true });
+                    showToast('Moves Saved', 'Inventory updated. Saving in the background.');
+                    void moveWork.then(() => { setupState.movePending = false; }).catch(error => {
+                        setupState.movePending = false;
+                        setupState.moveError = error;
+                        if (identityKey === getArgosReclassLiveEditIdentityKey()) showToast('Move Not Confirmed',
+                            error.inventoryMovePending ? 'Reopen this row to confirm the retained move command.' : String(error.message || 'The database save failed; the preview was restored.'), true);
+                    });
+                }
+            } catch (error) {
+                showToast('Move Not Saved', String(error.message || 'Review the move quantities and try again.'), true);
+                return false;
+            }
+            void ensureAssignableAppUsers(false).catch(() => []);
             const modal = ensureEvalWorkSetupModal();
             const assigneeButton = document.getElementById('eval-work-setup-assignee-button');
             const instructions = document.getElementById('eval-work-setup-instructions');
@@ -32800,7 +32839,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function chooseEvalWorkAssignee() {
             await ensureAssignableAppUsers(false).catch(() => []);
-            const state = argosInventoryTransactionState || {};
+            const state = evalWorkSetupState.transactionState || argosInventoryTransactionState || {};
             const selectedEmails = await openGroupedBloomNcrRecipientModal([state.item].filter(Boolean), (evalWorkSetupState.assigneeUsernames || []).map(resolveRequestRecipientEmail).filter(Boolean), {
                 brandLabel: 'GNC PH Eval Work',
                 title: 'Select Evaluator',
@@ -32824,7 +32863,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function chooseEvalWorkCompletionRecipients() {
-            const state = argosInventoryTransactionState || {};
+            const state = evalWorkSetupState.transactionState || argosInventoryTransactionState || {};
             const selected = await openGroupedBloomNcrRecipientModal([state.item].filter(Boolean), evalWorkSetupState.completionRecipients || [], {
                 brandLabel: 'GNC PH Eval Work',
                 title: 'Select Completion Recipients',
@@ -32836,41 +32875,65 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function createEvalWorkFromSetup(button = null) {
-            const assignees = getEvalWorkSetupAssignees();
-            const snapshot = argosInventoryTransactionState && argosInventoryTransactionState.snapshot;
+            const setupState = evalWorkSetupState;
+            if (!setupState || setupState.submitting) return false;
+            if (setupState.movePending || setupState.moveError) {
+                showToast('Move Confirmation Pending', 'Confirm the inventory save before assigning the remaining review.', true);
+                return false;
+            }
+            const identityKey = setupState.identityKey || getArgosReclassLiveEditIdentityKey();
+            if (!identityKey || identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
+            const transactionState = setupState.transactionState || argosInventoryTransactionState;
+            const assignees = getEvalWorkAssigneeOptions(setupState.assigneeUsernames || []);
+            const snapshot = transactionState && transactionState.snapshot;
             if (!snapshot || !assignees.length) {
                 showToast('Choose Evaluators', 'Select at least one user from the Eval list.', true);
                 return false;
             }
-            const recipients = dedupeRequestEmailRecipients(evalWorkSetupState.completionRecipients || []);
+            const recipients = dedupeRequestEmailRecipients(setupState.completionRecipients || []);
             if (assignees.some((entry) => !resolveRequestRecipientEmail(entry.username)) || !recipients.length) {
                 showToast('Review Setup Incomplete', 'Every evaluator needs an email, and at least one completion recipient is required.', true);
                 return false;
             }
-            const inquiry = buildEvalWorkSetupInquiry();
+            const inquiry = setupState.inquirySnapshot || buildEvalWorkSetupInquiry();
             const proposalCount = getEvalWorkSetupProposalCount(inquiry);
-            const confirmed = await showAppConfirm(`Assign ${snapshot.itemCode} at ${snapshot.locationCode} / ${snapshot.lotCode} to ${getEvalWorkAssigneeLabel(assignees.map((entry) => entry.username))}? The assignment has ${proposalCount} proposal${proposalCount === 1 ? '' : 's'} and ${recipients.length} completion recipient${recipients.length === 1 ? '' : 's'}.`, { title: 'Confirm Eval Work', confirmLabel: 'Assign Review' });
-            if (!confirmed) return false;
+            setupState.submitting = true;
             if (button) button.disabled = true;
+            let confirmed = false;
+            try {
+                confirmed = await showAppConfirm(`Assign ${snapshot.itemCode} at ${snapshot.locationCode} / ${snapshot.lotCode} to ${getEvalWorkAssigneeLabel(assignees.map((entry) => entry.username))}? The assignment has ${proposalCount} proposal${proposalCount === 1 ? '' : 's'} and ${recipients.length} completion recipient${recipients.length === 1 ? '' : 's'}.`, { title: 'Confirm Eval Work', confirmLabel: 'Assign Review' });
+            } catch (error) {
+                setupState.submitting = false;
+                if (button && evalWorkSetupState === setupState) button.disabled = false;
+                return false;
+            }
+            if (!confirmed || evalWorkSetupState !== setupState || identityKey !== getArgosReclassLiveEditIdentityKey()) {
+                setupState.submitting = false;
+                if (button && evalWorkSetupState === setupState) button.disabled = false;
+                return false;
+            }
             try {
                 const result = await evalWorkApi('create', {
-                    createToken: `eval-create-${argosInventoryTransactionState.idempotencyToken}`,
+                    createToken: `eval-create-${transactionState.idempotencyToken}`,
                     assigneeUsernames: assignees.map((entry) => entry.username),
                     instructions: String(document.getElementById('eval-work-setup-instructions') && document.getElementById('eval-work-setup-instructions').value || '').trim(),
                     completionRecipients: recipients,
                     source: { unique_id: snapshot.uniqueId, source_table: 'ph_master_inventory', itemcode: snapshot.itemCode, locationcode: snapshot.locationCode, lotcode: snapshot.lotCode },
                     inquiry
-                }, { timeoutMs: 45000, idempotencyKey: `eval-work-create-${argosInventoryTransactionState.idempotencyToken}` });
+                }, { timeoutMs: 45000, idempotencyKey: `eval-work-create-${transactionState.idempotencyToken}` });
+                if (evalWorkSetupState !== setupState || identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
                 if (result.data) evalWorkRows.unshift(result.data);
                 evalWorkLoaded = true;
                 closeEvalWorkSetup();
-                closeArgosInventoryTransactionModal();
+                if (argosInventoryTransactionState === transactionState) closeArgosInventoryTransactionModal();
                 showToast('Review Assigned', `${assignees.length} evaluator${assignees.length === 1 ? '' : 's'} will receive the assignment email. Completion recipients will be emailed after submission.`);
                 syncRequestTabButtons();
             } catch (error) {
+                if (evalWorkSetupState !== setupState || identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
                 showToast('Review Not Assigned', String(error && error.message ? error.message : 'Eval Work could not be created.'), true);
             } finally {
-                if (button) button.disabled = false;
+                setupState.submitting = false;
+                if (button && evalWorkSetupState === setupState && identityKey === getArgosReclassLiveEditIdentityKey()) button.disabled = false;
             }
             return false;
         }
@@ -43694,8 +43757,8 @@ let avTopControlsRenderToken = 0;
             return false;
         }
 
-        function closeArgosInventoryTransactionModal() {
-            if (argosInventoryTransactionState && argosInventoryTransactionState.pendingReclassMove) {
+        function closeArgosInventoryTransactionModal(options = {}) {
+            if (argosInventoryTransactionState && argosInventoryTransactionState.pendingReclassMove && options.background !== true) {
                 showToast('Move Confirmation Pending', 'Retry this move to confirm its saved outcome before closing the worksheet.', true);
                 return false;
             }
@@ -45369,6 +45432,7 @@ let avTopControlsRenderToken = 0;
         function isConfirmedInventoryReadRevisionCurrent(revision) {
             if (typeof argosInventoryTransactionState !== 'undefined'
                 && argosInventoryTransactionState?.pendingReclassMove) return false;
+            if (typeof fullInventory !== 'undefined' && fullInventory.some(row => row.__optimisticReclassMove)) return false;
             const confirmed = confirmedArgosReclassLiveEditRevisions.get(getArgosReclassLiveEditIdentityKey());
             if (!confirmed) return true;
             const incoming = String(revision || '');
@@ -45775,6 +45839,8 @@ let avTopControlsRenderToken = 0;
                     const target = { ...source, ...(current || {}), UNIQUE_ID: pendingUid, unique_id: pendingUid, LOTCODE: targetLot, lotcode: targetLot,
                         HOLDSTOPCODE: current ? (current.HOLDSTOPCODE ?? current.holdstopcode) : '', holdstopcode: current ? (current.holdstopcode ?? current.HOLDSTOPCODE) : '',
                         HOLDSTOPREASON: current ? (current.HOLDSTOPREASON ?? current.holdstopreason) : '', holdstopreason: current ? (current.holdstopreason ?? current.HOLDSTOPREASON) : '',
+                        HOLDSTOPBEGINDATE: current ? (current.HOLDSTOPBEGINDATE ?? current.holdstopbegindate) : '', holdstopbegindate: current ? (current.holdstopbegindate ?? current.HOLDSTOPBEGINDATE) : '',
+                        HOLDSTOPENDDATE: current ? (current.HOLDSTOPENDDATE ?? current.holdstopenddate) : '', holdstopenddate: current ? (current.holdstopenddate ?? current.HOLDSTOPENDDATE) : '',
                         PRIORITY: current ? (current.PRIORITY ?? current.priority) : '', priority: current ? (current.priority ?? current.PRIORITY) : '',
                         PTRREVIEWED: current ? (current.PTRREVIEWED ?? current.ptrreviewed) : '0', ptrreviewed: current ? (current.ptrreviewed ?? current.PTRREVIEWED) : '0',
                         SEASON: season, season, PTRONHAND: String(baseOnHand + quantity), ptronhand: String(baseOnHand + quantity),
@@ -46024,8 +46090,10 @@ let avTopControlsRenderToken = 0;
                 state.pendingReclassMove = pending;
                 state.inquiryModel = preview.model;
                 publishOptimisticReclassRows(pending, preview.model.rows);
-                renderArgosInventoryTransactionInquiryModel(state);
-                setArgosReclassMoveInputsLocked(true);
+                if (!state.backgroundSubmission) {
+                    renderArgosInventoryTransactionInquiryModel(state);
+                    setArgosReclassMoveInputsLocked(true);
+                }
             }
             let serverConfirmed = false;
             try {
@@ -46098,11 +46166,11 @@ let avTopControlsRenderToken = 0;
                     // only a newer permission-scoped snapshot may replace it.
                     invalidateArgosReclassLiveEditCaches('inventory-reclass-move-stale-receipt');
                 }
-                retireConfirmedArgosReclassMoveProposals(state, pending.movedUids);
+                if (!state.backgroundSubmission) retireConfirmedArgosReclassMoveProposals(state, pending.movedUids);
                 state.pendingReclassMove = null;
                 state.moveCommandId = '';
                 persistPendingArgosInventoryReclassMove(null, identityKey);
-                setArgosReclassMoveInputsLocked(false);
+                if (!state.backgroundSubmission) setArgosReclassMoveInputsLocked(false);
                 return { receipt, movedUids: pending.movedUids };
             } catch (error) {
                 if (identityKey !== getArgosReclassLiveEditIdentityKey()) throw error;
@@ -46119,8 +46187,10 @@ let avTopControlsRenderToken = 0;
                 state.pendingReclassMove = null;
                 state.moveCommandId = '';
                 persistPendingArgosInventoryReclassMove(null, identityKey);
-                renderArgosInventoryTransactionInquiryModel(state);
-                setArgosReclassMoveInputsLocked(false);
+                if (!state.backgroundSubmission) {
+                    renderArgosInventoryTransactionInquiryModel(state);
+                    setArgosReclassMoveInputsLocked(false);
+                }
                 throw error;
             }
         }
@@ -46183,7 +46253,7 @@ let avTopControlsRenderToken = 0;
             }
             const submitIdentityKey = getArgosReclassLiveEditIdentityKey();
             const submitIdentityIsCurrent = () => submitIdentityKey === getArgosReclassLiveEditIdentityKey();
-            const submitContextIsCurrent = () => argosInventoryTransactionState === submitState && submitIdentityIsCurrent();
+            const submitContextIsCurrent = () => (argosInventoryTransactionState === submitState || submitState.backgroundSubmission) && submitIdentityIsCurrent();
             const submitActorUsername = getCurrentReclassDeliveryActor();
             const submitSourceView = String(submitState.sourceView || 'drive');
             const apply = document.getElementById('argos-inventory-transaction-apply');
@@ -46206,16 +46276,25 @@ let avTopControlsRenderToken = 0;
                     const hasMoves = (inquiryPayload && inquiryPayload.rowOverlays || []).some((overlay) =>
                         (overlay.proposals || []).some((proposal) => ['move_up', 'move_down'].includes(String(proposal && proposal.action || ''))));
                     if (hasMoves || hasPendingMove) {
-                        if (apply) apply.textContent = submitState.pendingReclassMove ? 'Confirming move...' : 'Saving move...';
-                        const moveResult = await applyArgosInventoryReclassMoveCommand(submitState, inquiryPayload, submitIdentityKey);
+                        submitState.backgroundSubmission = true;
+                        const moveWork = applyArgosInventoryReclassMoveCommand(submitState, inquiryPayload, submitIdentityKey);
+                        // The synchronous prefix validates, publishes the preview and
+                        // durably stores the exact command before its first network await.
+                        if (submitState.pendingReclassMove?.inFlight) {
+                            closeArgosInventoryTransactionModal({ background: true });
+                            showToast('Moves Saved', 'Inventory updated. Saving in the background.');
+                        }
+                        const moveResult = await moveWork;
                         if (!submitContextIsCurrent()) return false;
                         if (!moveResult) return false;
                         moveSavedThisSubmit = true;
                         if (!inquiryPayload) inquiryPayload = applyArgosInventoryTransactionSourceContext(buildArgosInventoryTransactionPayload());
                         inquiryPayload = removeConfirmedMoveProposalsFromInquiryPayload(inquiryPayload);
                         if (!hasRemainingArgosReclassInquiry(inquiryPayload, submitSourceView)) {
-                            closeArgosInventoryTransactionModal();
-                            showToast('Moves Saved', 'Inventory moves were saved and confirmed.');
+                            if (!submitState.backgroundSubmission) {
+                                closeArgosInventoryTransactionModal();
+                                showToast('Moves Saved', 'Inventory moves were saved and confirmed.');
+                            }
                             const currentViewId = getCurrentVisibleViewId();
                             if (currentViewId) queueInteractiveViewRender(currentViewId, false, false, 0, 120);
                             return false;
@@ -46254,7 +46333,7 @@ let avTopControlsRenderToken = 0;
                     const unavailableUsers = Array.isArray(inquiryResult.unavailableUsernames)
                         ? inquiryResult.unavailableUsernames.map((value) => String(value || '').trim()).filter(Boolean)
                         : [];
-                    closeArgosInventoryTransactionModal();
+                    if (argosInventoryTransactionState === submitState) closeArgosInventoryTransactionModal();
                     if (unavailableUsers.length) {
                         showToast('Recipient Notice', `Sent to available recipients. Unavailable: ${unavailableUsers.join(', ')}.`);
                     } else if (liveEditRequested && liveEditResult && (liveEditResult.stale || liveEditResult.applied === 0)) {
@@ -46303,6 +46382,14 @@ let avTopControlsRenderToken = 0;
                 if (currentViewId) queueInteractiveViewRender(currentViewId, false, false, 0, 120);
             } catch (error) {
                 if (!submitContextIsCurrent()) return false;
+                if (submitState.backgroundSubmission) {
+                    if (error.inventoryMovePending || error.inventoryStatusPending) {
+                        showToast('Move Confirmation Pending', 'Your saved command is retained. Reopen this row to retry the same move.');
+                    } else {
+                        showToast('Move Not Saved', getFriendlyBackendErrorMessage(error, 'The database save failed. The preview was restored; reopen the row to retry.'), true);
+                    }
+                    return false;
+                }
                 if (String(error && error.code || '') === 'INVENTORY_RECLASS_PENDING_STORAGE_UNAVAILABLE') {
                     showToast('Move Not Saved', String(error.message || 'Save is unavailable because this device could not preserve the pending move.'), true);
                     return false;
@@ -46325,7 +46412,7 @@ let avTopControlsRenderToken = 0;
                 showToast(moveSavedThisSubmit ? 'Moves Saved' : 'Email Error', message, true);
             } finally {
                 submitState.submitting = false;
-                if (apply && submitContextIsCurrent() && document.getElementById('argos-inventory-transaction-apply') === apply) {
+                if (apply && argosInventoryTransactionState === submitState && submitContextIsCurrent() && document.getElementById('argos-inventory-transaction-apply') === apply) {
                     apply.disabled = false;
                     setArgosInventoryTransactionAction(submitState.action || 'reclass');
                 }
@@ -78944,6 +79031,18 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             access.configure({
                 getSessionIdentity: () => ({ id: nativeAuthSessionUserId, username: nativeAuthProfile?.username || '', authenticated: nativeAuthSessionActive && nativeAuthSessionUserId === nativeAuthProfile?.id }),
                 transport: envelope => postAppFunctionJson(APP_API_FUNCTION_URL, envelope, { timeoutMs: 15000, label: 'User and role access', idempotencyKey: envelope.command_id }),
+                lifecycleTransport: async envelope => {
+                    if (!supabaseClient?.functions?.invoke) throw new Error('User lifecycle service is unavailable.');
+                    const result = await supabaseClient.functions.invoke('auth-admin', { body: envelope });
+                    if (result.error) throw result.error;
+                    if (!result.data || result.data.ok !== true) {
+                        const error = new Error(String(result.data?.error || 'User lifecycle request failed.'));
+                        error.code = String(result.data?.error || 'USER_LIFECYCLE_FAILED');
+                        error.status = Number(result.data?.status) || 0;
+                        throw error;
+                    }
+                    return result.data;
+                },
                 onChange: detail => {
                     const self = detail?.self;
                     if (self?.verified && self.profile?.id === nativeAuthSessionUserId && self.revision !== canonicalUserAccessRevision) {
@@ -78982,6 +79081,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             'manager-assigned-items': { parent: 'managers', tab: 'assigned-items-export' },
             'manager-customer-assignments': { parent: 'managers', tab: 'customer-rep-map' },
             'manager-historical-report': { parent: 'managers', tab: 'historical-report' },
+            'manager-table-management': { parent: 'managers', tab: 'table-management' },
             'manager-shortage-cancel': { parent: 'managers', tab: 'shortage-cancel' },
             'manager-block-clearing': { parent: 'managers', tab: 'block-clearing' },
             'manager-access-control': { parent: 'managers', tab: 'access-control' },
@@ -87632,6 +87732,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }, 0);
             return workbookFile;
         }
+        window.downloadManagerRowsToExcel = (columns, rows, title = 'Table Management') => {
+            if (!Array.isArray(columns) || !Array.isArray(rows) || !rows.length) return false;
+            return downloadExcelWorkbook(columns, rows, title, '', 'table-management', null, { filenameBase: title });
+        };
 
         function exportCurrentAVToExcel() {
             if (ensureViewDataForRender('av')) return false;
@@ -105821,7 +105925,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             state.pending[key] = pending; persistDockSuspendCompletionState(state);
             dockSuspendCompletionInFlight.add(flightKey);
             try {
-                const result = await suspendTagApi('add_candidates', { sourceUid, expectedLastUpdated, inventoryIds, customRows: normalizedCustomRows },
+                const result = await suspendTagApi('add_candidates', { sourceUid, sourceIdentity: getSuspendTagStableSourceIdentity(source), expectedLastUpdated, inventoryIds, customRows: normalizedCustomRows },
                     { commandId: pending.requestId, expectedVersion });
                 if (!result?.ok || !Array.isArray(result.rows)) throw new Error('The server did not confirm the candidates. Retry safely.');
                 delete state.pending[key]; persistDockSuspendCompletionState(state);
@@ -105849,21 +105953,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 showToast('Save Failed', suspendTagErrorMessage(error), true);
             } finally { dockSuspendCompletionInFlight.delete(flightKey); }
             return false;
-        }
-
-        async function addCustomSuspendTagLocation() {
-            if (!activeItem || !isDockSuspendDcRequestMirrorRow(activeItem) || !canAddRequestItemCodeOptions()) return false;
-            const locationInput = document.getElementById('suspend-fill-tag-location');
-            const lotInput = document.getElementById('suspend-fill-tag-lot');
-            const locationcode = String(locationInput?.value || locationInput?.placeholder || '').trim().toUpperCase();
-            const lotcode = String(lotInput?.value || lotInput?.placeholder || '').trim().toUpperCase();
-            if (!/^[A-Z0-9]+(?:\.[A-Z0-9]+){1,2}$/.test(locationcode) || isFalseBlockLocation(locationcode)) {
-                showToast('Location Required', 'Enter a real nursery location. False Block cannot be a Fill Tag location.', true); return false;
-            }
-            if (!/^\d{2}\.(?:F1|S1|U1|U2|U3|X|Y|Z)$/i.test(lotcode)) {
-                showToast('Lot Required', 'Enter a lot such as 27.F1, 27.S1, or 27.U1.', true); return false;
-            }
-            return addSelectedDockSuspendDcRequestOptions([], activeItem, [{ locationcode, lotcode }]);
         }
 
         let requestSharedInventoryOptionIndex = { source: null, owner: '', version: -1, byItem: new Map(), byNameSize: new Map(), byName: new Map() };
@@ -106393,6 +106482,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const existingKeysForRender = isOpen
                 ? getExistingRequestItemCodeOptionKeys(item)
                 : { masterIds: new Set(), exactKeys: new Set() };
+            const suspendFillTag = isDockSuspendDcRequestMirrorRow(item);
             const selectableRowCount = isOpen
                 ? rows.filter((row) => getRequestItemCodeOptionCandidateState(row, item, existingKeysForRender).selectable).length
                 : 0;
@@ -106423,7 +106513,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const selectText = selectable ? 'Select Option' : (canAddOptions ? 'Unavailable Option' : 'AV Option');
                 const selectControlHtml = canAddOptions
                     ? `<label class="request-av-option-selectbar" onclick="event.stopPropagation();">
-                        <span class="request-av-option-selectbar-main"><input type="checkbox" data-request-itemcode-option="true" value="${esc(uid)}"${disabledAttr}><span>${escapeShareHtml(selectText)}</span></span>
+                        <span class="request-av-option-selectbar-main"><input type="checkbox" data-request-itemcode-option="true" value="${esc(uid)}"${disabledAttr}${suspendFillTag ? ' onchange="return syncSuspendAvOptionSelectionControls(this)"' : ''}><span>${escapeShareHtml(selectText)}</span></span>
                         <span class="request-av-option-selectbar-meta">${escapeShareHtml(location)} | Lot ${escapeShareHtml(lot)}</span>
                         ${reasonText ? `<span class="request-av-option-selectbar-reason">${escapeShareHtml(reasonText)}</span>` : ''}
                     </label>`
@@ -106439,18 +106529,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 </div>`;
             }).join('') : (isOpen ? `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[12px] font-bold text-slate-400">${state.loading ? 'Loading AV options...' : escapeShareHtml(emptyRowsMessage)}</div>` : '');
             const moreCount = Math.max(0, rows.length - visibleRows.length);
-            const suspendFillTag = isDockSuspendDcRequestMirrorRow(item);
-            const addOptionsLabel = suspendFillTag ? '+ Add Location / Fill Tag' : 'Add Selected Options';
-            const addButtonHtml = canAddOptions && selectableRowCount ? `<button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return addSelectedRequestItemCodeOptions()">${escapeShareHtml(addOptionsLabel)}</button>` : '';
-            const fillTagLocations = [...new Set(rows.map((row) => String(firstNonEmptyValue(row?.LOCATIONCODE, row?.locationcode, '') || '').trim().toUpperCase()).filter((value) => value && !isFalseBlockLocation(value)))];
-            const fillTagLots = [...new Set(rows.map((row) => String(firstNonEmptyValue(row?.LOTCODE, row?.lotcode, '') || '').trim().toUpperCase()).filter(Boolean))];
-            const customLocationHtml = canAddOptions && suspendFillTag ? `<div class="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3" data-suspend-fill-tag-custom="true">
-                <div class="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-800">Add any nursery row</div>
-                <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]"><label class="text-[10px] font-black uppercase tracking-[0.1em] text-slate-600">Location<input id="suspend-fill-tag-location" list="suspend-fill-tag-location-options" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold" autocomplete="off" placeholder="${esc(fillTagLocations[0] || 'C.15.000')}"><datalist id="suspend-fill-tag-location-options">${fillTagLocations.map((value) => `<option value="${esc(value)}"></option>`).join('')}</datalist></label><label class="text-[10px] font-black uppercase tracking-[0.1em] text-slate-600">Lot<input id="suspend-fill-tag-lot" list="suspend-fill-tag-lot-options" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold" autocomplete="off" placeholder="${esc(fillTagLots[0] || '27.F1')}"><datalist id="suspend-fill-tag-lot-options">${fillTagLots.map((value) => `<option value="${esc(value)}"></option>`).join('')}</datalist></label><button type="button" class="self-end rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white" onclick="return addCustomSuspendTagLocation()">+ Add Location / Fill Tag</button></div>
-                <div class="mt-2 text-[10px] font-bold text-slate-600">Creates the exact itemcode + locationcode + lotcode row, then opens the same photo, Spec, Caliper, Loc Match, and notes workflow.</div>
-            </div>` : '';
+            const addOptionsLabel = suspendFillTag ? '+ Add Selected AV Option(s) / Fill Tag' : 'Add Selected Options';
+            const addButtonHtml = canAddOptions && (suspendFillTag || selectableRowCount) ? `<button type="button" data-suspend-av-add${suspendFillTag ? ' data-suspend-av-header-action="true"' : ''} class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"${suspendFillTag ? ' disabled' : ''} onclick="event.stopPropagation(); return addSelectedRequestItemCodeOptions()">${escapeShareHtml(addOptionsLabel)}</button>` : '';
             panel.innerHTML = `<div class="flex flex-col">
-                <button type="button" class="request-av-options-header flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-left shadow-sm active:scale-[.99] dark:bg-[var(--bg-surface)] dark:text-[var(--text-main)] dark:border-[var(--border-subtle)]" onclick="return toggleRequestAvOptionsDropdown()" aria-expanded="${isOpen ? 'true' : 'false'}">
+                <div class="request-av-options-header flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-left shadow-sm dark:bg-[var(--bg-surface)] dark:text-[var(--text-main)] dark:border-[var(--border-subtle)]">
+                    <button type="button" class="min-w-0 flex-1 bg-transparent p-0 text-left" onclick="return toggleRequestAvOptionsDropdown()" aria-expanded="${isOpen ? 'true' : 'false'}">
                     <span class="min-w-0">
                         <span class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"><i class="ph-bold ph-map-pin-line text-sm"></i><span>AV Options</span></span>
                         <span class="mt-1 block truncate text-sm font-black text-slate-900">${escapeShareHtml(itemCode || 'Itemcode')} <span class="text-slate-400">|</span> ${escapeShareHtml(String(rows.length))} row${rows.length === 1 ? '' : 's'}</span>
@@ -106460,9 +106543,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         </span>
                     </span>
                     <span class="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800">${isOpen ? 'Hide' : 'Show'}<i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-sm"></i></span>
-                </button>
+                    </button>
+                    ${suspendFillTag && addButtonHtml ? addButtonHtml : ''}
+                </div>
                 ${loadingHtml}${errorHtml}${hiddenCurrentSeasonHtml}
-                ${isOpen ? `${addButtonHtml ? `<div class="mt-3 flex justify-end">${addButtonHtml}</div>` : ''}${customLocationHtml}<div class="mt-3 space-y-2">${rowsHtml}</div>${moreCount ? `<div class="mt-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeShareHtml(String(moreCount))} more not shown</div>` : ''}` : ''}
+                ${isOpen ? `${addButtonHtml && !suspendFillTag ? `<div class="mt-3 flex justify-end">${addButtonHtml}</div>` : ''}<div class="mt-3 space-y-2">${rowsHtml}</div>${moreCount ? `<div class="mt-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeShareHtml(String(moreCount))} more not shown</div>` : ''}${suspendFillTag && addButtonHtml ? `<div data-suspend-av-sticky class="sticky bottom-2 z-30 mt-3 hidden rounded-2xl border border-emerald-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-emerald-800 dark:bg-slate-900/95"><div class="flex items-center justify-between gap-3"><span data-suspend-av-selection-count class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-200">0 selected</span><button type="button" data-suspend-av-add class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-50" disabled onclick="event.stopPropagation(); return addSelectedRequestItemCodeOptions()">+ ADD SELECTED AV OPTION(S) TO TAG</button></div></div>` : ''}` : ''}
             </div>`;
             panel.classList.remove('hidden');
             if (sharedPanel && legacyPanel && legacyPanel !== sharedPanel) {
@@ -106470,6 +106555,21 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             syncDetailSharedPanelsVisibility();
             syncRequestDetailScrollMode();
+        }
+
+        function syncSuspendAvOptionSelectionControls(input = null) {
+            const panel = input?.closest?.('#detail-av-options-panel') || document.getElementById('detail-av-options-panel');
+            if (!panel) return false;
+            const selectedCount = panel.querySelectorAll('[data-request-itemcode-option="true"]:checked').length;
+            const headerAction = panel.querySelector('[data-suspend-av-header-action="true"]');
+            const sticky = panel.querySelector('[data-suspend-av-sticky]');
+            const stickyAction = sticky?.querySelector('[data-suspend-av-add]');
+            const countLabel = sticky?.querySelector('[data-suspend-av-selection-count]');
+            if (headerAction) headerAction.disabled = selectedCount === 0;
+            if (sticky) sticky.classList.toggle('hidden', selectedCount === 0);
+            if (stickyAction) stickyAction.disabled = selectedCount === 0;
+            if (countLabel) countLabel.textContent = `${selectedCount} selected`;
+            return false;
         }
 
         function collectSelectedRequestItemCodeOptionRows(item = activeItem) {
@@ -106490,11 +106590,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 showToast('Restricted', 'You cannot add request options from this row.', true);
                 return false;
             }
-            const folderId = getRequestFolderName(activeItem);
-            if (!folderId || folderId === 'Unassigned') {
-                showToast('Missing Folder', 'This request row does not have a folder.', true);
-                return false;
-            }
             const selectedRows = collectSelectedRequestItemCodeOptionRows(activeItem);
             if (!selectedRows.length) {
                 showToast('Select Rows', 'Choose at least one AV option to add.', true);
@@ -106502,6 +106597,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             if (isDockSuspendDcRequestMirrorRow(activeItem)) {
                 return addSelectedDockSuspendDcRequestOptions(selectedRows, activeItem);
+            }
+            const folderId = getRequestFolderName(activeItem);
+            if (!folderId || folderId === 'Unassigned') {
+                showToast('Missing Folder', 'This request row does not have a folder.', true);
+                return false;
             }
             await appendSelectedOptionsToExistingRequest(activeItem, selectedRows);
             return false;
@@ -128956,6 +129056,11 @@ C.14.043 C.15.000
         function setHomeTab(tab = 'dashboard') {
             const requestedTab = String(tab || 'dashboard').trim().toLowerCase();
             if (requestedTab === MANAGER_SALES_REPS_VIEW) return openManagerSalesRepsModule();
+            if (!managerTableManagementDirectOpen && requestedTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return openManagerTableManagement('assigned-items');
+            if (!managerTableManagementDirectOpen && requestedTab === MANAGER_COMPANY_DIRECTORY_VIEW) return openManagerTableManagement('company-directory');
+            if (!managerTableManagementDirectOpen && requestedTab === ITEM_INQUIRY_COVERAGE_SETTINGS_VIEW) return openManagerTableManagement('inquiry-coverage');
+            if (!managerTableManagementDirectOpen && requestedTab === MANAGER_CUSTOMER_REP_MAP_VIEW) return openManagerTableManagement('customer-assignments');
+            if (!managerTableManagementDirectOpen && requestedTab === MANAGER_ACCESS_CONTROL_VIEW) return openManagerTableManagement('user-role-access');
             if (requestedTab === CROP_ROLL_HOME_TAB && getCurrentVisibleViewId() !== 'managers') {
                 activeHomeTab = 'dashboard';
                 selectedProductivityUser = '';
@@ -128995,6 +129100,7 @@ C.14.043 C.15.000
             else if (requestedTab === MANAGER_PRODUCTION_SCHEDULE_VIEW && getManagersToolAccess().canViewProductionSchedule) nextTab = MANAGER_PRODUCTION_SCHEDULE_VIEW;
             else if (requestedTab === MANAGER_HR_COMMAND_VIEW && getManagersToolAccess().canViewHrCommand) nextTab = MANAGER_HR_COMMAND_VIEW;
             else if (requestedTab === MANAGER_COMPANY_DIRECTORY_VIEW && getManagersToolAccess().canManageCompanyDirectory) nextTab = MANAGER_COMPANY_DIRECTORY_VIEW;
+            else if (requestedTab === MANAGER_TABLE_MANAGEMENT_VIEW && canAccessView('managers')) nextTab = MANAGER_TABLE_MANAGEMENT_VIEW;
             else if (isManagerApprovalTab(requestedTab) && canUseManagerApprovalTab(requestedTab)) nextTab = requestedTab;
             if (previousTab === MANAGER_PRODUCTION_SCHEDULE_VIEW && previousTab !== nextTab) window.GncProductionSchedule?.unmount();
             if (previousTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && previousTab !== nextTab) destroyManagerAssignedItemsView();
@@ -129052,6 +129158,8 @@ C.14.043 C.15.000
                 if (isNotOnInventoryApprovalTaskView(nextTab)) scheduleNotOnInventoryApprovalTaskRowsRefresh(nextTab, { force: true });
             }
             if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
+                ensureDatasetLoaded('master', 'full', { preserveRequestedMode: true })
+                    .then(() => scheduleManagersRender(true)).catch(() => {});
                 ensureDatasetLoaded('warehouseAssignedItems', 'full', {
                     force: !warehouseAssignedItemsInventory.length,
                     bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory.length,
@@ -137181,7 +137289,7 @@ C.14.043 C.15.000
             const visibleKeys = state.visibleSelectionKeys, allKeys = state.allSelectionKeys;
             const hiddenSelected = Array.from(managerEvalAssignmentSelection).filter(key => allKeys.has(key) && !visibleKeys.has(key)).length;
             return `<div class="assigned-filter-controls">
-                <div class="assigned-phone-filters"><div class="assigned-filter-fields compact-filter-rail">${definitions.map(([field, label]) => renderManagerAssignedColumnTrigger(field, label)).join('')}</div></div>
+                <details class="assigned-phone-filters"><summary>Filter columns</summary><div class="assigned-filter-fields compact-filter-rail">${definitions.map(([field, label]) => renderManagerAssignedColumnTrigger(field, label)).join('')}</div></details>
                 ${hasFilters ? '<button type="button" class="assigned-filter-clear compact-filter-clear" onclick="return clearAllManagerAssignedColumnFilters()">Clear All Filters</button>' : ''}
                 ${hiddenSelected ? `<p role="status">${hiddenSelected} bulk selection${hiddenSelected === 1 ? ' is' : 's are'} hidden by filters and remain selected.</p>` : ''}
             </div>`;
@@ -137431,9 +137539,7 @@ C.14.043 C.15.000
         }
 
         function getManagerAssignedItemsExportRows() {
-            return (Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : [])
-                .map((row, idx) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx))
-                .filter(Boolean)
+            return getManagerAssignedItemsDisplayRows().slice()
                 .sort((a, b) => {
                     const assignedCompare = String(a.ASSIGNEDTO || '').localeCompare(String(b.ASSIGNEDTO || ''), undefined, { numeric: true });
                     if (assignedCompare !== 0) return assignedCompare;
@@ -137449,11 +137555,26 @@ C.14.043 C.15.000
 
         function getManagerAssignedItemsDisplayRows(rows = null) {
             const state = getManagerAssignedColumnState();
-            const input = Array.isArray(rows) ? rows : warehouseAssignedItemsInventory;
+            const useMaster = !Array.isArray(rows) && typeof fullInventory !== 'undefined' && Array.isArray(fullInventory) && fullInventory.length > 0;
+            const input = Array.isArray(rows) ? rows : useMaster ? fullInventory : warehouseAssignedItemsInventory;
             const targetRevision = typeof getManagerItemLowStockTargetsState === 'function' ? getManagerItemLowStockTargetsState().revision : 0;
-            const signature = `${getDatasetLoadSignature('warehouseAssignedItems')}|${state.dataEpoch || 0}|${targetRevision}|${managerEvalReportSettings?.lowStockMaxSLts}`;
+            const signature = `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster ? getDatasetLoadSignature('master') : ''}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${targetRevision}|${managerEvalReportSettings?.lowStockMaxSLts}`;
             if (state.displayCache?.input === input && state.displayCache.signature === signature && state.displayCache.length === input.length) return state.displayCache.rows;
-            const sourceRows = input.map((row, idx) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx)).filter(Boolean);
+            const sourceRows = input.map((row, idx) => {
+                if (!useMaster) return normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx);
+                const assignment = getWarehouseAssignedRowForItem(row);
+                const uid = String(row.UNIQUE_ID || row.unique_id || '');
+                return normalizeWarehouseAssignedItemRow(Object.assign({}, row, {
+                    MASTER_UNIQUE_ID: uid, master_unique_id: uid,
+                    ASSIGNEDTO: assignment ? String(assignment.assignedto ?? assignment.ASSIGNEDTO ?? '') : '',
+                    assignedto: assignment ? String(assignment.assignedto ?? assignment.ASSIGNEDTO ?? '') : '',
+                    DEFAULT_ASSIGNEDTO: assignment?.default_assignedto ?? assignment?.DEFAULT_ASSIGNEDTO ?? '',
+                    default_assignedto: assignment?.default_assignedto ?? assignment?.DEFAULT_ASSIGNEDTO ?? '',
+                    DEFAULT_REVISION: assignment?.default_revision ?? assignment?.DEFAULT_REVISION ?? 0,
+                    default_revision: assignment?.default_revision ?? assignment?.DEFAULT_REVISION ?? 0,
+                    assignment_reason: assignment?.assignment_reason ?? assignment?.ASSIGNMENT_REASON ?? 'unassigned'
+                }), idx);
+            }).filter(Boolean);
             state.rowCollator ||= new Intl.Collator(undefined, { numeric: true });
             const compare = state.rowCollator.compare;
             const output = sourceRows.sort((a, b) => {
@@ -137883,6 +138004,10 @@ C.14.043 C.15.000
                 return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">AssignedTo export is available to managers only.</div>';
             }
             const paged = false;
+            if (!isDatasetLoaded('master', 'full')) {
+                ensureDatasetLoaded('master', 'full', { preserveRequestedMode: true })
+                    .then(() => scheduleManagersRender(true)).catch(() => {});
+            }
             if (!paged && !isDatasetLoaded('warehouseAssignedItems', 'full')) {
                 ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
             }
@@ -139997,6 +140122,103 @@ C.14.043 C.15.000
             customerRepMappingView = {root, identity, destroy};
         }
 
+        function destroyManagerTableManagement() {
+            managerTableManagementInstance?.destroy?.();
+            managerTableManagementInstance = null;
+        }
+
+        function getManagerTableManagementItems(access = getManagersToolAccess()) {
+            return [
+                { id:'assigned-items', label:'Assigned Items', section:'editable', visible:access.canViewAssignedItemsExport },
+                { id:'company-directory', label:'Company Directory', section:'editable', visible:true },
+                { id:'inquiry-coverage', label:'Inquiry Coverage', section:'editable', visible:true },
+                { id:'customer-assignments', label:'Customer Assignments', section:'editable', visible:access.canManageCustomerRepMappings },
+                { id:'user-role-access', label:'User Role and Access', section:'editable', visible:access.canManageAccessControl },
+                { id:'historical-drive-mode', label:'Historical Drive Mode', section:'archive', visible:canUseHistoricalRequests() },
+                { id:'historical-soc-open-orders', label:'Historical SOC Open Orders', section:'archive', visible:canUseHistoricalRequests() },
+                { id:'historical-soc-reserves', label:'Historical SOC Reserves', section:'archive', visible:canUseHistoricalRequests() },
+                { id:'historical-requests', label:'Historical Requests', section:'archive', visible:canUseHistoricalRequests() },
+                { id:'photo-history', label:'Photo History', section:'archive', visible:canOpenPhotoHistory() }
+            ].filter(item => item.visible);
+        }
+
+        function renderManagerTableManagementPanel() {
+            return '<div id="manager-table-management-root" aria-live="polite"></div>';
+        }
+
+        function mountManagerTableManagementPanel(root) {
+            if (!root || !canAccessView('managers')) { destroyManagerTableManagement(); return; }
+            if (managerTableManagementInstance?.root === root) return;
+            destroyManagerTableManagement();
+            if (!window.GncManagerTableManagement?.mountManagerTableManagement) {
+                root.textContent = 'Table Management is unavailable. Reload the app to retry.';
+                return;
+            }
+            const identity = getSupabaseReadIdentityScope();
+            managerTableManagementInstance = {
+                root,
+                identity,
+                ...window.GncManagerTableManagement.mountManagerTableManagement(root, {
+                    selected: managerTableManagementSelection,
+                    tables: getManagerTableManagementItems().map(item => item.id),
+                    request: async payload => {
+                        const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs:30000, label:'Table Management' });
+                        if (!response || response.ok === false) throw new Error(response?.message || response?.error || response?.code || 'Table Management request failed.');
+                        return response;
+                    },
+                    legacyCoverage: () => renderItemInquiryCoveragePanel(),
+                    canOpenLegacyDirectory: getManagersToolAccess().canManageCompanyDirectory === true,
+                    openLegacyDirectory: () => {
+                        if (!getManagersToolAccess().canManageCompanyDirectory) return false;
+                        managerTableManagementDirectOpen = true;
+                        try { return setHomeTab(MANAGER_COMPANY_DIRECTORY_VIEW); }
+                        finally { managerTableManagementDirectOpen = false; }
+                    },
+                    openTable: key => openManagerTableManagement(key)
+                })
+            };
+        }
+
+        function openManagerTableManagement(table = '') {
+            const key = String(table || '').trim().toLowerCase();
+            const available = new Set(getManagerTableManagementItems().map(item => item.id));
+            if (key && !available.has(key)) {
+                if (key === 'photo-history' && !canOpenPhotoHistory()) return false;
+                if (key === 'assigned-items' && canViewAssignedItemsExport()) {
+                    managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
+                    try { return setHomeTab(MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW); } finally { managerTableManagementDirectOpen = false; }
+                }
+                if (key === 'customer-assignments' && canManageCustomerRepMappings()) {
+                    managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
+                    try { return setHomeTab(MANAGER_CUSTOMER_REP_MAP_VIEW); } finally { managerTableManagementDirectOpen = false; }
+                }
+                if (key === 'user-role-access' && canViewAccessControl()) {
+                    managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
+                    try { return setHomeTab(MANAGER_ACCESS_CONTROL_VIEW); } finally { managerTableManagementDirectOpen = false; }
+                }
+                if (key === 'historical-requests' && canUseHistoricalRequests()) return switchView('archive-requests');
+                if (key === 'historical-drive-mode' && canUseHistoricalRequests()) return switchView('archive-drive');
+                if (key === 'historical-soc-open-orders' && canUseHistoricalRequests()) return switchView('archive-orders');
+                if (key === 'historical-soc-reserves' && canUseHistoricalRequests()) return switchView('archive-reserves');
+                return false;
+            }
+            if (key === 'photo-history') return openDylanPhotoHistory();
+            if (key === 'assigned-items' || key === 'customer-assignments' || key === 'user-role-access') {
+                const tab = key === 'assigned-items' ? MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
+                    : key === 'customer-assignments' ? MANAGER_CUSTOMER_REP_MAP_VIEW : MANAGER_ACCESS_CONTROL_VIEW;
+                managerTableManagementSelection = key;
+                managerTableManagementDirectOpen = true;
+                try { return setHomeTab(tab); } finally { managerTableManagementDirectOpen = false; }
+            }
+            if (key === 'historical-requests') return switchView('archive-requests');
+            if (key === 'historical-drive-mode') return switchView('archive-drive');
+            if (key === 'historical-soc-open-orders') return switchView('archive-orders');
+            if (key === 'historical-soc-reserves') return switchView('archive-reserves');
+            managerTableManagementSelection = key;
+            destroyManagerTableManagement();
+            return setHomeTab(MANAGER_TABLE_MANAGEMENT_VIEW);
+        }
+
         function getManagersToolAccess() {
             const canViewShearApprovals = canUseInventoryChecksApprovalView();
             const canViewNcrApprovals = canUseNcrApprovalTaskView();
@@ -140014,6 +140236,7 @@ C.14.043 C.15.000
                 canViewInventoryTransactions: canViewInventoryTransactionHistory(),
                 canViewTransactionsKeyed: canViewTransactionsKeyed(),
                 canViewOrders: canViewManagerOrders(),
+                canViewTableManagement: canAccessView('managers'),
                 canViewAssignedItemsExport: canViewAssignedItemsExport(),
                 canManageCustomerRepMappings: canManageCustomerRepMappings(),
                 canViewEvalReports: canViewManagerEvalReports(),
@@ -140080,6 +140303,7 @@ C.14.043 C.15.000
             if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
             if (access.canViewTransactionsKeyed) tabs.push({ id: MANAGER_TRANSACTIONS_KEYED_VIEW, label: 'Transactions Keyed' });
             if (access.canViewOrders) tabs.push({ id: MANAGER_ORDERS_VIEW, label: 'Orders' });
+            if (access.canViewTableManagement) tabs.push({ id: MANAGER_TABLE_MANAGEMENT_VIEW, label: 'Table Management' });
             if (access.canViewAssignedItemsExport) tabs.push({ id: MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW, label: 'Assigned Items' });
             if (access.canManageCustomerRepMappings) tabs.push({ id: MANAGER_CUSTOMER_REP_MAP_VIEW, label: 'Customer Assignments' });
             if (access.canViewEvalReports) tabs.push({ id: MANAGER_EVAL_REPORTS_VIEW, label: 'Eval Reports' });
@@ -140128,6 +140352,7 @@ C.14.043 C.15.000
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
             if (safeTab === MANAGER_TRANSACTIONS_KEYED_VIEW) return { label: 'Transactions Keyed', description: 'Compare keyed transaction counts and daily or historical shares.', icon: 'ph-table' };
             if (safeTab === MANAGER_ORDERS_VIEW) return { label: 'Orders', description: 'Open frozen order-file history and matched Drive Mode rows.', icon: 'ph-package' };
+            if (safeTab === MANAGER_TABLE_MANAGEMENT_VIEW) return { label: 'Table Management', description: 'Manage authorized maintained tables and browse read-only history.', icon: 'ph-table' };
             if (safeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return { label: 'Assigned Items', description: 'Export warehouse assigned item rows by AssignedTo.', icon: 'ph-user-list' };
             if (safeTab === MANAGER_CUSTOMER_REP_MAP_VIEW) return { label: 'Customer Assignments', description: 'Assign customer and consignee sales reps, or restore their imported assignments.', icon: 'ph-address-book' };
             if (safeTab === MANAGER_EVAL_REPORTS_VIEW) return { label: 'Eval Reports', description: 'Open live Drive-based Eval inventory reports.', icon: 'ph-chart-bar' };
@@ -142515,6 +142740,7 @@ C.14.043 C.15.000
                 selectedProductivityUser = '';
             }
             if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW && document.getElementById('effective-user-access-editor')) renderNavigationPreferencesEditor('access', document.getElementById('effective-user-access-editor'));
+            if (activeHomeTab !== MANAGER_TABLE_MANAGEMENT_VIEW) destroyManagerTableManagement();
             if (activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && managerAssignedColumnState.viewHost) destroyManagerAssignedItemsView();
             if (activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW) destroyCustomerRepMappingView();
             if (activeHomeTab === MANAGER_CUSTOMER_REP_MAP_VIEW) {
@@ -142541,7 +142767,7 @@ C.14.043 C.15.000
             // User & Role Access has its own authenticated canonical resolver.
             // Keep that editor available when the optional legacy audit matrix
             // cannot load; renderAccessControlPanel provides its own fallback.
-            if (activeHomeTab !== MANAGER_RUNTIME_WATCHDOG_VIEW && activeHomeTab !== 'dashboard' && activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW && activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW && activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_COMPANY_DIRECTORY_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender('managers')) return;
+            if (activeHomeTab !== MANAGER_RUNTIME_WATCHDOG_VIEW && activeHomeTab !== 'dashboard' && activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW && activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW && activeHomeTab !== MANAGER_TABLE_MANAGEMENT_VIEW && activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_COMPANY_DIRECTORY_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender('managers')) return;
             if (activeHomeTab !== 'productivity') selectedProductivityUser = '';
             let html = '';
             if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);
@@ -142556,6 +142782,7 @@ C.14.043 C.15.000
             else if (activeHomeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) html += renderInventoryTransactionHistoryPanel();
             else if (activeHomeTab === MANAGER_TRANSACTIONS_KEYED_VIEW) html += renderTransactionsKeyedPanel();
             else if (activeHomeTab === MANAGER_ORDERS_VIEW) html += renderManagerOrdersPanel();
+            else if (activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW) html += renderManagerTableManagementPanel();
             else if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) html += renderManagerAssignedItemsExportPanel();
             else if (activeHomeTab === MANAGER_CUSTOMER_REP_MAP_VIEW) html += '<div id="manager-customer-rep-map-root" role="region" aria-label="Customer assignment management"></div>';
             else if (activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) html += renderManagerEvalReportsPanel();
@@ -142600,6 +142827,7 @@ C.14.043 C.15.000
             if (activeHomeTab === MANAGER_RUNTIME_WATCHDOG_VIEW && canViewRuntimeWatchdog) void refreshRuntimeWatchdogPanel();
             else if (activeHomeTab === 'dashboard' && canViewRuntimeWatchdog) void refreshRuntimeWatchdogBadge();
             if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) void mountManagerAssignedItemsView(container.querySelector('#manager-assigned-items-root'));
+            if (activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW) mountManagerTableManagementPanel(container.querySelector('#manager-table-management-root'));
             if (isManagerApprovalTab(activeHomeTab) && ['ncr-approvals', 'move-up-approvals', 'move-down-approvals', 'hold-release-approvals', 'recount-approvals', 'not-on-inventory-approvals'].includes(String(activeHomeTab).toLowerCase())) {
                 const host = container.querySelector('[data-manager-paged-approval="true"]');
                 if (host && useManagerReportPages('approval')) {
@@ -146921,7 +147149,7 @@ C.14.043 C.15.000
                 const holdCodeText = String(firstNonEmptyValue(displayHoldStopCode, '') || '').trim();
                 const holdReasonDisplay = String(firstNonEmptyValue(displayHoldStopReason, '') || '').trim();
                 const holdDateDisplay = formatInventoryHoldSince(displayHoldStopBeginDate);
-                const hasHoldData = holdCodeText || holdReasonDisplay || holdDateDisplay;
+                const hasHoldData = holdCodeText && !['—', '-', 'NULL', 'N/A'].includes(holdCodeText.toUpperCase());
                 const driveHoldDataHtml = hasHoldData ? `<div class="app-drive-card-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${holdCodeText ? esc(holdCodeText) : '—'}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonDisplay ? esc(holdReasonDisplay) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdDateDisplay ? esc(holdDateDisplay) : '—'}</strong></span></div>` : '';
                 const driveListPriceHtml = !isEvalSensitiveDataRestricted() && sourceView !== 'drive' && displayListPrice !== '-' ? `<div class="app-drive-card-list-price"><span>List price</span><strong>${esc(displayListPrice)}</strong></div>` : '';
                 const canUseDriveOptions = canCurrentUserUseDriveCardOptions(item, sourceView);

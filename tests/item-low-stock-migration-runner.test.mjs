@@ -982,6 +982,24 @@ test('inventory Reclass move ledger is release-registered with private access, i
   assert.match(source, /status.{0,80}importStatus|importStatus.{0,80}status/s);
 });
 
+test('v2.3.97 bulk Drive publication reconciles pending overrides from exact raw ERP values', () => {
+  const source = fs.readFileSync(new URL('../supabase/migrations/20261028220500_agdata_v2397_bulk_reclass_override_import.sql', import.meta.url), 'utf8');
+  assert.doesNotThrow(() => migrationBody(source));
+  for (const marker of [
+    'apply_inventory_live_overrides_bulk_v1', 'inventory_live_overrides_v1',
+    'inventory_season_stock_overrides_v1', 'apply_inventory_reclass_import_overlay_v1',
+    'private.inventory_override_matches_v1', "raw_values ? e.field_name",
+    'candidate_count=1', 'jsonb_populate_record(s,jsonb_build_object($1,e.app_override_value))'
+  ]) assert.ok(source.includes(marker), marker);
+  assert.ok(source.indexOf('apply_inventory_reclass_import_overlay_v1(p_run_id,p_request_id)')
+    < source.indexOf('apply_inventory_live_overrides_bulk_v1(p_run_id)'), 'movement reconciliation precedes per-field overlay');
+  assert.match(source, /held\.canonical_unique_id=live\.unique_id and held\.pending/);
+  assert.match(source, /held\.season=private\.inventory_stock_season_v1\(live\.lotcode,live\.season\) and held\.pending/);
+  assert.match(source, /s\.raw_values \? e\.field_name[\s\S]*private\.inventory_override_matches_v1\(e\.field_name,s\.raw_values/);
+  assert.doesNotMatch(source, /update\s+public\.ph_master_inventory\b/i, 'the migration changes importer behavior without mutating live inventory');
+  assert.doesNotMatch(source, /001360\.030\.1|004733\.020\.1|006192\.010\.1|004103\.010\.1/, 'the overlay is item-agnostic');
+});
+
 test('Reclass quantity trigger fastpaths are release-registered and data-preserving', () => {
   const name = inventoryReclassQuantityTriggerFastpathsMigrationName;
   assert.equal(releaseDatabaseMigrations[releaseDatabaseMigrations.indexOf(inventoryReclassMovesMigrationName) + 1], name);

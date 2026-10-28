@@ -1,7 +1,8 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.96";
-const APP_RUNTIME_RELEASE = "AgData v2.3.96";
+const APP_RUNTIME_VERSION = "2.3.97";
+const APP_RUNTIME_RELEASE = "AgData v2.3.97";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -461,7 +462,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.96";
+  const appVersion = "2.3.97";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -6761,6 +6762,7 @@ export async function renderBunchNotePreview(options: {
 type CanonicalActionGate = { flag: CanonicalUserAccessFlag } | { any: readonly CanonicalUserAccessFlag[] };
 
 function canonicalActionGate(action: string, payload: Record<string, unknown>): CanonicalActionGate | null {
+  if (action === "manager_table_management") return { flag: "can_access_manager_tab" };
   if (action === "fast_erp_ingest") return { flag: "can_access_manager_tab" };
   if (action === "erp_sync") return String(payload.operation || "").trim().toLowerCase() === "status"
     ? { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] }
@@ -7297,16 +7299,16 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
     try {
       const actor = await resolveActiveSessionProfile(session);
-      const allowed = new Set(["action", "operation", "role", "permissions", "username", "permission_overrides", "expected_revision", "command_id"]);
+      const allowed = new Set(["action", "operation", "role", "display_name", "permissions", "username", "permission_overrides", "expected_revision", "command_id"]);
       if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("USER_ACCESS_PAYLOAD_INVALID");
       const operation = String(payload.operation || "").trim().toLowerCase();
-      if (!["resolve", "directory", "save_role_baseline", "save_user_overrides"].includes(operation)) {
+      if (!["resolve", "directory", "save_role_baseline", "save_user_overrides", "deactivate_user", "update_user_profile"].includes(operation)) {
         throw new Error("USER_ACCESS_OPERATION_INVALID");
       }
       if (operation !== "resolve" && !FULL_ACCESS_USER_KEYS.has(String(actor.username || "").trim().toLowerCase())) {
         return errorResponse("Only the designated administrators can manage user access.", 403, { code: "USER_ACCESS_MANAGER_REQUIRED" });
       }
-      const mutation = operation === "save_role_baseline" || operation === "save_user_overrides";
+      const mutation = operation === "save_role_baseline" || operation === "save_user_overrides" || operation === "deactivate_user" || operation === "update_user_profile";
       const expectedRevision = payload.expected_revision;
       const commandId = String(payload.command_id || "").trim();
       if (mutation && (!Number.isSafeInteger(expectedRevision) || (expectedRevision as number) < 0)) {
@@ -7327,6 +7329,30 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
           throw new Error("USER_ACCESS_USER_PAYLOAD_INVALID");
         }
         commandPayload = { username: payload.username, permission_overrides: payload.permission_overrides };
+      } else if (operation === "deactivate_user") {
+        if (typeof payload.username !== "string" || !payload.username.trim()) throw new Error("USER_ACCESS_USERNAME_REQUIRED");
+        const { data, error } = await supabase.rpc("deactivate_user_access_v2397", {
+          p_actor_profile_id: actor.id,
+          p_username: payload.username,
+          p_command_id: commandId,
+          p_expected_revision: expectedRevision as number,
+        } as never);
+        if (error) throw error;
+        return jsonResponse(data);
+      } else if (operation === "update_user_profile") {
+        if (typeof payload.username !== "string" || !payload.username.trim()
+          || typeof payload.display_name !== "string" || !payload.display_name.trim()
+          || typeof payload.role !== "string" || !payload.role.trim()) throw new Error("USER_ACCESS_PROFILE_PAYLOAD_INVALID");
+        const { data, error } = await supabase.rpc("update_user_access_profile_v2397", {
+          p_actor_profile_id: actor.id,
+          p_username: payload.username,
+          p_display_name: payload.display_name,
+          p_role: payload.role,
+          p_command_id: commandId,
+          p_expected_revision: expectedRevision as number,
+        } as never);
+        if (error) throw error;
+        return jsonResponse(data);
       } else if (operation === "resolve" && Object.keys(payload).some(key => key !== "action" && key !== "operation")) {
         throw new Error("USER_ACCESS_SELF_ONLY");
       }
@@ -7361,6 +7387,22 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
     return await handleAppsScriptAction(session, payload.payload && typeof payload.payload === "object" && !Array.isArray(payload.payload)
       ? payload.payload as Record<string, unknown> : {}, canonicalAccessForRequest);
+  }
+
+  if (action === "manager_table_management") {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+    try {
+      const actor = activeProfileForRequest || await resolveActiveSessionProfile(session);
+      const data = await executeManagerTableManagement(
+        supabase as unknown as Parameters<typeof executeManagerTableManagement>[0], String(actor.id), payload);
+      return jsonResponse({ ok: true, data });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "MANAGER_TABLE_UNAVAILABLE";
+      const status = /READ_ONLY|FORBIDDEN|ACCESS_REQUIRED/.test(code) ? 403
+        : /CONFLICT/.test(code) ? 409 : /INVALID|REQUIRED/.test(code) ? 400 : 503;
+      return errorResponse(status === 503 ? "Table data is temporarily unavailable. Retry while keeping your current rows." : code, status,
+        { code: /^MANAGER_TABLE_[A-Z_]+$/.test(code) ? code : "MANAGER_TABLE_UNAVAILABLE" });
+    }
   }
 
   if (action === "erp_sync") {

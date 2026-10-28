@@ -46,3 +46,22 @@ test('v2.3.8 Suspend sender identity migration is release-registered with instal
     'as installed',
   ]) assert.ok(contract.includes(marker), `installed contract is missing ${marker}`);
 });
+
+test('v2.3.97 recovers only a unique active physical Suspend source and exposes one service-only Reclass ledger', () => {
+  const migration = readFileSync(new URL('../supabase/migrations/20261028220500_agdata_v2397_bulk_reclass_override_import.sql', import.meta.url), 'utf8');
+  const recovery = migration.slice(migration.indexOf('do $patch_suspend_add_candidates_identity$'), migration.indexOf('$patch_suspend_add_candidates_identity$;') + 37);
+  assert.match(recovery, /p_operation=''close''/);
+  assert.match(recovery, /p_operation=''add_candidates''/);
+  assert.match(recovery, /suspend_tag_private\.eligible\(candidate\.suspend,candidate\.suspend_to\)/);
+  assert.match(recovery, /transactionnumber/);
+  assert.match(recovery, /quantityshipped/);
+  assert.match(recovery, /customeridentityid/);
+  assert.match(recovery, /consigneeidentityid/);
+  assert.match(recovery, /having count\(\*\)=1/);
+  assert.match(recovery, /SUSPEND_TAG_SOURCE_MISSING/);
+  assert.match(migration, /create or replace view public\.ph_inventory_reclass_moves with \(security_invoker=true\)/i);
+  assert.match(migration, /from private\.ph_inventory_reclass_movements_v1/i);
+  assert.match(migration, /grant select on public\.ph_inventory_reclass_moves to service_role/i);
+  assert.match(migration, /revoke all on public\.ph_inventory_reclass_moves from public,anon,authenticated/i);
+  assert.doesNotMatch(migration, /create table[^;]*ph_inventory_reclass_moves/i);
+});

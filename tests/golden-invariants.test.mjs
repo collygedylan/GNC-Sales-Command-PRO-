@@ -1334,7 +1334,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.96"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.97"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1361,9 +1361,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.96"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.97"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.96"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.97"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2176,7 +2176,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.96\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.97\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isManagerShellHotfix[^]*mobile-workspace\.js[^]*`\$\{assetVersion\}\.1`/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2701,7 +2701,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.2`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.96\.2/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.2/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -2976,4 +2976,304 @@ test('Invariant 104 (Resumed ERP File Offset Is Persisted Before Resumed I/O)', 
   assert.equal(firstPersistedCursor.fileContinuation.state.nextOffset, 12000);
   assert.equal(firstPersistedCursor.fileContinuation.state.processedRows, 8000);
   assert.equal(statuses.length, 1, 'the checkpoint is written before the resumed download can fail');
+});
+
+test('Invariant 105 (Both Reclass Send Paths Close Before a Delayed Database Receipt)', async () => {
+  for (const review of [false, true]) {
+    let settle;
+    const delayed = new Promise(resolve => { settle = resolve; });
+    const events = [];
+    const state = { sourceView: 'drive', snapshot: { uniqueId: 'row' }, idempotencyToken: 'instant-test' };
+    const payload = { rowOverlays: [{ proposals: [{ action: 'move_down', splits: [{ quantity: 20, destinationSeason: 'X' }] }] }] };
+    const button = { disabled: false, textContent: '' };
+    const context = {
+      argosInventoryTransactionState: state, evalWorkSetupState: {},
+      getArgosReclassLiveEditIdentityKey: () => 'actor', getCurrentReclassDeliveryActor: () => 'actor',
+      ensureArgosReclassSubmissionVerification: async () => {},
+      getArgosInventoryTransactionPayloadForPendingMove: () => null,
+      buildArgosInventoryTransactionPayload: () => payload,
+      applyArgosInventoryTransactionSourceContext: value => value,
+      applyArgosInventoryReclassMoveCommand: (submission) => {
+        events.push('inventory-preview'); submission.pendingReclassMove = { inFlight: true };
+        return delayed;
+      },
+      closeArgosInventoryTransactionModal: options => {
+        assert.equal(options.background, true); events.push('close'); context.argosInventoryTransactionState = null;
+      },
+      showToast: title => events.push(title), getCurrentVisibleViewId: () => 'drive', queueInteractiveViewRender() {},
+      removeConfirmedMoveProposalsFromInquiryPayload: () => ({ rowOverlays: [] }), hasRemainingArgosReclassInquiry: () => false,
+      isEvalWorkManagerUser: () => true, buildEvalWorkSetupInquiry: () => payload,
+      ensureAssignableAppUsers: async () => [], ensureEvalWorkSetupModal: () => ({ classList: { remove() {} } }),
+      syncEvalWorkSetupSummary() {}, setTimeout() {},
+      document: { getElementById: () => button }, window: {},
+    };
+    const name = review ? 'openEvalWorkSetupFromReclass' : 'submitArgosInventoryTransaction';
+    const sandbox = runFunctions('assets/app-runtime.js', [name], context);
+    const started = performance.now();
+    const task = sandbox[name]();
+    await new Promise(resolve => setImmediate(resolve));
+    const duration = performance.now() - started;
+    assert.deepEqual(events.slice(0, 3), ['inventory-preview', 'close', 'Moves Saved'], name);
+    assert.ok(duration < 100, `${name} optimistic close ${duration.toFixed(2)}ms`);
+    assert.equal(button.textContent.includes('Saving move'), false);
+    settle({ receipt: {}, movedUids: ['row'] });
+    await task;
+  }
+});
+
+test('Invariant 106 (Closed Reclass Still Fences Stale Reads and Email Wake Never Blocks)', () => {
+  const row = { __optimisticReclassMove: 'pending-command' };
+  const context = runFunctions('assets/app-runtime.js', ['isConfirmedInventoryReadRevisionCurrent'], {
+    argosInventoryTransactionState: null, fullInventory: [row],
+    confirmedArgosReclassLiveEditRevisions: new Map(), getArgosReclassLiveEditIdentityKey: () => 'actor',
+  });
+  assert.equal(context.isConfirmedInventoryReadRevisionCurrent('999999'), false);
+  delete row.__optimisticReclassMove;
+  assert.equal(context.isConfirmedInventoryReadRevisionCurrent('999999'), true);
+  let task;
+  const sandbox = runFunctions('supabase/functions/app-api/index.ts', ['dispatchRequestDeliveryWorkerNow', 'dispatchReclassDeliveryNow'], {
+    invokeRequestDeliveryWorkerNow: () => new Promise(() => {}),
+    EdgeRuntime: { waitUntil: value => { task = value; } },
+  });
+  const receipt = { deliveryEventId: 'queued', status: 'queued' };
+  assert.equal(sandbox.dispatchReclassDeliveryNow(receipt, '', ''), receipt);
+  assert.ok(task && typeof task.then === 'function');
+});
+
+test('Invariant 107 (Suspend AV Selection Does Not Require a Request Folder)', async () => {
+  const calls = [];
+  const row = { unique_id: 'physical-suspend-row' };
+  const selected = [{ unique_id: 'master-option', locationcode: 'A.09.000', lotcode: '27.S1' }];
+  const sandbox = runFunctions('assets/app-runtime.js', ['addSelectedRequestItemCodeOptions'], {
+    activeItem: row, activeDetailSourceView: 'request', lastView: 'request',
+    isRequestDetailItem: () => true, canAddRequestItemCodeOptions: () => true,
+    collectSelectedRequestItemCodeOptionRows: () => selected, isDockSuspendDcRequestMirrorRow: () => true,
+    addSelectedDockSuspendDcRequestOptions: (options, source) => { calls.push({ options, source }); return true; },
+    getRequestFolderName: () => { throw new Error('Suspend must not require Request folders'); },
+    showToast: () => { throw new Error('valid Suspend selection must dispatch'); },
+  });
+  assert.equal(await sandbox.addSelectedRequestItemCodeOptions(), true);
+  assert.equal(calls.length, 1); assert.equal(calls[0].source, row); assert.equal(calls[0].options, selected);
+});
+
+test('Invariant 108 (Table Management Archives Reject Every Mutation and Fixtures Reject Unknown Reads)', async () => {
+  const { validateManagerTableManagementRequest } = await import('../supabase/functions/_shared/table-management.ts');
+  const { releaseSnapshotReadFixture } = await import('./helpers/release-smoke-route-policy.mjs');
+  for (const table of ['historical-drive-mode','historical-soc-open-orders','historical-soc-reserves','historical-requests','photo-history']) {
+    for (const operation of ['create','update','delete']) assert.throws(() => validateManagerTableManagementRequest({
+      action: 'manager_table_management', table, operation, payload: {},
+    }), /MANAGER_TABLE_READ_ONLY/);
+  }
+  const request = { action: 'manager_table_management', table: 'inquiry-coverage', operation: 'users', payload: {} };
+  assert.equal(releaseSnapshotReadFixture(request).data.rows[0].username, 'fixture_user');
+  assert.equal(releaseSnapshotReadFixture({ ...request, operation: 'create' }), null);
+  assert.equal(releaseSnapshotReadFixture({ ...request, actorId: 'forged' }), null);
+  assert.equal(releaseSnapshotReadFixture({ ...request, payload: { secret: true } }), null);
+  assert.throws(() => validateManagerTableManagementRequest({ ...request, operation: 'create', payload: { primary_user: 'any_user', scope: 'location', active: true, access_code: 'forbidden' } }), /FIELDS_FORBIDDEN/);
+});
+
+test('Invariant 109 (Eval Work Setup Remains Bound to Its Reclass Row and Account)', async () => {
+  let releaseVerification;
+  const verification = new Promise(resolve => { releaseVerification = resolve; });
+  const firstRow = { snapshot: { uniqueId: 'first-row' } };
+  const secondRow = { snapshot: { uniqueId: 'second-row' } };
+  let inquiryBuilds = 0;
+  const openContext = {
+    argosInventoryTransactionState: firstRow, evalWorkSetupState: {},
+    getArgosReclassLiveEditIdentityKey: () => 'account-a', isEvalWorkManagerUser: () => true,
+    ensureArgosReclassSubmissionVerification: () => verification,
+    buildEvalWorkSetupInquiry: () => { inquiryBuilds++; return { row: 'first-row' }; },
+    buildArgosInventoryTransactionPayload: () => ({ rowOverlays: [] }),
+    applyArgosInventoryTransactionSourceContext: value => value,
+    showToast() {}, ensureAssignableAppUsers: async () => [],
+    ensureEvalWorkSetupModal: () => ({ classList: { remove() {} } }),
+    document: { getElementById: () => null }, syncEvalWorkSetupSummary() {}, setTimeout() {},
+  };
+  const openSandbox = runFunctions('assets/app-runtime.js', ['openEvalWorkSetupFromReclass'], openContext);
+  const opening = openSandbox.openEvalWorkSetupFromReclass();
+  openContext.argosInventoryTransactionState = secondRow;
+  releaseVerification();
+  assert.equal(await opening, false);
+  assert.equal(inquiryBuilds, 0, 'a stale verification cannot build from a newly opened row');
+
+  const capturedInquiry = { row: 'captured-row' };
+  const capturedContext = {
+    argosInventoryTransactionState: firstRow, evalWorkSetupState: {},
+    getArgosReclassLiveEditIdentityKey: () => 'account-a', isEvalWorkManagerUser: () => true,
+    ensureArgosReclassSubmissionVerification: async () => {},
+    buildEvalWorkSetupInquiry: () => capturedInquiry,
+    buildArgosInventoryTransactionPayload: () => ({ rowOverlays: [] }),
+    applyArgosInventoryTransactionSourceContext: value => value,
+    showToast() {}, ensureAssignableAppUsers: async () => [],
+    ensureEvalWorkSetupModal: () => ({ classList: { remove() {} } }),
+    document: { getElementById: () => null }, syncEvalWorkSetupSummary() {}, setTimeout() {},
+  };
+  const capturedSandbox = runFunctions('assets/app-runtime.js', ['openEvalWorkSetupFromReclass'], capturedContext);
+  await capturedSandbox.openEvalWorkSetupFromReclass();
+  assert.equal(capturedContext.evalWorkSetupState.transactionState, firstRow);
+  assert.equal(capturedContext.evalWorkSetupState.inquirySnapshot, capturedInquiry,
+    'no-move Eval setup keeps its exact original draft');
+
+  const inquiry = { row: 'captured-row' };
+  const setupState = { transactionState: firstRow, inquirySnapshot: inquiry, identityKey: 'account-a',
+    assigneeUsernames: ['evaluator'], completionRecipients: ['recipient@example.test'] };
+  let releaseConfirmation;
+  const confirmation = new Promise(resolve => { releaseConfirmation = resolve; });
+  let apiCalls = 0; let closed = 0; let identity = 'account-a';
+  const createContext = {
+    evalWorkSetupState: setupState, argosInventoryTransactionState: firstRow,
+    getArgosReclassLiveEditIdentityKey: () => identity,
+    getEvalWorkAssigneeOptions: () => [{ username: 'evaluator' }],
+    dedupeRequestEmailRecipients: values => values,
+    resolveRequestRecipientEmail: () => 'evaluator@example.test',
+    getEvalWorkSetupProposalCount: () => 0, getEvalWorkAssigneeLabel: () => 'Evaluator',
+    showAppConfirm: () => confirmation, evalWorkApi: async () => { apiCalls++; return { data: {} }; },
+    evalWorkRows: [], document: { getElementById: () => null },
+    showToast() {}, closeEvalWorkSetup() { closed++; }, closeArgosInventoryTransactionModal() {},
+    syncRequestTabButtons() {},
+  };
+  const createSandbox = runFunctions('assets/app-runtime.js', ['createEvalWorkFromSetup'], createContext);
+  const creating = createSandbox.createEvalWorkFromSetup();
+  await new Promise(resolve => setImmediate(resolve));
+  identity = 'account-b';
+  createContext.evalWorkSetupState = { transactionState: secondRow };
+  releaseConfirmation(true);
+  assert.equal(await creating, false);
+  assert.equal(apiCalls, 0, 'confirmation returning after an account switch cannot submit');
+  assert.equal(createContext.evalWorkRows.length, 0);
+  assert.equal(closed, 0, 'a stale response cannot close the newer setup');
+  assert.equal(setupState.inquirySnapshot, inquiry);
+
+  let releaseApi;
+  const apiResult = new Promise(resolve => { releaseApi = resolve; });
+  identity = 'account-a'; apiCalls = 0; closed = 0;
+  const delayedSetup = { ...setupState, submitting: false };
+  const delayedContext = { ...createContext, evalWorkSetupState: delayedSetup,
+    showAppConfirm: async () => true, evalWorkApi: () => { apiCalls++; return apiResult; },
+    evalWorkRows: [], closeEvalWorkSetup() { closed++; } };
+  const delayedSandbox = runFunctions('assets/app-runtime.js', ['createEvalWorkFromSetup'], delayedContext);
+  const delayedCreate = delayedSandbox.createEvalWorkFromSetup();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(apiCalls, 1);
+  identity = 'account-b';
+  delayedContext.evalWorkSetupState = { transactionState: secondRow };
+  releaseApi({ data: { id: 'old-account-work' } });
+  assert.equal(await delayedCreate, false);
+  assert.equal(delayedContext.evalWorkRows.length, 0, 'stale API data cannot enter the next account cache');
+  assert.equal(closed, 0, 'a stale API response cannot close the next account dialog');
+});
+
+test('Invariant 110 (Suspend Candidate Mutation Carries Stable Physical Source Identity)', async () => {
+  const sourceIdentity = { transactionnumber: '10-0051426', tagcode: '0230', dock: 'Dock 38', stopnumber: '30',
+    itemcode: '004207.031.1', locationcode: 'A.09.000', lotcode: '27.S1', quantityshipped: '20',
+    customer: '10043', consignee: '53285', salesrep: 'S25' };
+  const calls = [];
+  const handlerSource = read('supabase/functions/_shared/suspend-tag.ts')
+    .replace(/^import[^]*?;\s*$/gm, '').replace(/^export /gm, '');
+  const sandbox = vm.createContext({ jsonValue: value => value });
+  vm.runInContext(ts.transpileModule(handlerSource, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
+  }).outputText, sandbox);
+  const result = await sandbox.handleSuspendTag({ rpc: async (name, args) => {
+    calls.push({ name, args }); return { data: { ok: true, rows: [] }, error: null };
+  } }, { id: 'actor', username: 'dylan_collyge', role: 'MANAGER', nativeSessionId: 'session' }, {
+    operation: 'add_candidates', commandId: 'stable-command-1234', expectedVersion: 0,
+    payload: { sourceUid: 'stale-soc-uid', sourceIdentity, expectedLastUpdated: '2026-10-28T18:00:00Z', inventoryIds: ['inventory-option'] },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(calls[0].name, 'suspend_tag_command_v1');
+  assert.deepEqual(calls[0].args.p_payload.sourceIdentity, sourceIdentity);
+  const migration = read('supabase/migrations/20261028220500_agdata_v2397_bulk_reclass_override_import.sql');
+  assert.match(migration, /suspend-add-candidates-physical-identity-v2397/);
+  assert.match(migration, /having count\(\*\)=1/);
+  assert.match(migration, /if s\.unique_id is null and p_operation=''add_candidates''/);
+  assert.match(migration, /suspend_tag_private\.eligible\(candidate\.suspend,candidate\.suspend_to\)/);
+});
+
+test('Invariant 111 (Customer Mapping CRUD Uses Strict Idempotent Revision Envelopes)', () => {
+  const source = read('supabase/functions/_shared/customer-rep-mapping.ts');
+  const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+  const exports = {};
+  const sandbox = vm.createContext({ exports, module: { exports } });
+  vm.runInContext(compiled, sandbox);
+  const validate = sandbox.module.exports.validateCustomerRepMappingRequest;
+  const requestId = '11111111-1111-4111-8111-111111111111';
+  const create = validate({ action: 'customer-rep-map', operation: 'create', requestId, salesrepId: '01',
+    customerId: '10001', customerName: 'Garden', consigneeId: '20001', consigneeName: 'North', territory: 'TX' });
+  assert.equal(create.operation, 'create');
+  assert.equal(create.payload.requestId, requestId);
+  assert.equal(create.payload.customerId, '10001');
+  assert.throws(() => validate({ action: 'customer-rep-map', operation: 'create', requestId, salesrepId: '01',
+    customerId: '10001', customerName: 'Garden', consigneeId: '20001', consigneeName: 'North', access_code: 'secret' }),
+  /CUSTOMER_REP_MAPPING_PAYLOAD_INVALID/);
+  assert.throws(() => validate({ action: 'customer-rep-map', operation: 'delete', requestId, id: 'ordinary-row' }),
+    /CUSTOMER_REP_MAPPING_PAYLOAD_INVALID/);
+  const remove = validate({ action: 'customer-rep-map', operation: 'delete', requestId, id: 'ordinary-row', expectedRevision: '9' });
+  assert.equal(remove.payload.expectedRevision, '9');
+  assert.equal(remove.payload.requestId, requestId);
+  assert.throws(() => validate({ action: 'customer-rep-map', operation: 'delete', requestId, id: 'ordinary-row', expectedRevision: '9', actorId: 'forged' }),
+    /CUSTOMER_REP_MAPPING_PAYLOAD_INVALID/);
+});
+
+test('Invariant 112 (User Lifecycle Keeps Credentials Write-Only and Updates Canonical Identity)', () => {
+  const editor = read('assets/user-access-control.js');
+  const api = read('supabase/functions/app-api/index.ts');
+  const authAdmin = read('supabase/functions/auth-admin/index.ts');
+  const migration = read('supabase/migrations/20261028222500_agdata_user_lifecycle_v2397.sql');
+  assert.match(editor, /data-user-create/);
+  assert.match(editor, /data-user-reset-code/);
+  assert.match(editor, /data-user-deactivate/);
+  assert.match(editor, /data-user-profile-save/);
+  assert.match(editor, /Contact email is maintained in Company Directory/);
+  assert.doesNotMatch(editor, /access_code\s*[:=]\s*user\./i);
+  assert.match(authAdmin, /provision_native_auth_app_user/);
+  assert.match(authAdmin, /updateUserById\(profile\.id, \{ password \}\)/);
+  assert.match(authAdmin, /sync_native_auth_app_access_code_v2397/);
+  assert.match(authAdmin, /reconciliationRequired: true/);
+  assert.match(api, /update_user_access_profile_v2397/);
+  assert.match(api, /deactivate_user_access_v2397/);
+  assert.match(migration, /update public\.ph_app_users set password=p_access_code/);
+  assert.match(migration, /update public\.profiles set display_name=v_display_name,role=v_role/);
+  assert.match(migration, /update public\.ph_app_users set role=v_role/);
+  assert.match(migration, /update public\.user_access_control set active=false/);
+  assert.match(migration, /USER_ACCESS_SELF_DEACTIVATION_FORBIDDEN/);
+  assert.match(migration, /USER_ACCESS_LAST_ADMIN_FORBIDDEN/);
+  assert.match(migration, /USER_ACCESS_ADMIN_ROLE_IMMUTABLE/);
+});
+
+test('Invariant 113 (Assigned Items Joins Full Master and Honors Exact Empty Ownership)', () => {
+  const assignments = new Map([
+    ['master-00001', { assignedto: '', default_assignedto: '', default_revision: 7 }],
+    ['master-00002', { assignedto: 'current_owner', default_assignedto: 'current_owner', default_revision: 8 }],
+  ]);
+  const fullInventory = Array.from({ length: 9552 }, (_, index) => ({
+    UNIQUE_ID: `master-${String(index + 1).padStart(5, '0')}`,
+    ITEMCODE: `ITEM-${String(index + 1).padStart(5, '0')}`,
+    COMMONNAME: `Plant ${index + 1}`, CONTSIZE: '#3', LOCATIONCODE: `A.${String(index % 100).padStart(2, '0')}.001`,
+    GENUSNAME: 'Rosa', WAREHOUSEI: '10', ASSIGNEDTO: 'stale_master_owner',
+  }));
+  const state = {};
+  const context = runFunctions('assets/app-runtime.js', [
+    'firstNonEmptyValue', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes',
+    'getManagerAssignedItemsDisplayRows', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsAssigneeOptions',
+  ], {
+    fullInventory,
+    warehouseAssignedItemsInventory: [],
+    managerEvalReportSettings: { lowStockMaxSLts: 150 },
+    getManagerAssignedColumnState: () => state,
+    getDatasetLoadSignature: key => `${key}:revision-1`,
+    normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase(),
+    getWarehouseAssignedRowForItem: row => assignments.get(row.UNIQUE_ID) || null,
+    getManagerItemLowStockTarget: () => null,
+  }, false);
+  const displayed = context.getManagerAssignedItemsDisplayRows();
+  assert.equal(displayed.length, 9552, 'all master rows render when warehouse ownership is empty');
+  const exactEmpty = displayed.find(row => row.MASTER_UNIQUE_ID === 'master-00001');
+  assert.equal(exactEmpty.ASSIGNEDTO, '', 'the exact empty assignment overrides stale master ASSIGNEDTO');
+  assert.equal(exactEmpty.DEFAULT_ASSIGNEDTO, '');
+  assert.equal(displayed.find(row => row.MASTER_UNIQUE_ID === 'master-00002').ASSIGNEDTO, 'current_owner');
+  const options = context.getManagerAssignedItemsAssigneeOptions(displayed);
+  assert.deepEqual(Array.from(options, option => [option.key, option.count]), [['current_owner', 1]]);
+  assert.equal(options.some(option => option.key === 'stale_master_owner'), false);
+  assert.equal(context.getManagerUnassignedItemcodes(displayed).length, 9551);
 });

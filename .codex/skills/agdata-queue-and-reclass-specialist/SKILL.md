@@ -96,6 +96,8 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never tie optimistic Reclass lifetime to the visible modal: persist the exact command before dispatch, close immediately, fence stale snapshots using pending row markers, and reconcile or roll back in the original account without repainting a newer draft. Send as Review uses the same atomic move command before assigning remaining review work. Never clone Hold Since/Until onto an unheld destination or render a Hold footer without a meaningful code.
+
 - Never validate or toast an empty Move Up/Down proposal when its action button merely opens the editor. Validate quantities and destinations only during Review/Send; once Send starts, publish the optimistic source/destination rows immediately, fence pending rows from stale snapshot replacement, then reconcile indexes, resolved caches, persistence, and rollback from the atomic receipt.
 
 - Never defer Que Request's first cached/empty paint behind touch scheduling or an unbounded background read; render retained rows synchronously and cap best-effort refresh waiting at 2,500 ms without suppressing watchdog telemetry.

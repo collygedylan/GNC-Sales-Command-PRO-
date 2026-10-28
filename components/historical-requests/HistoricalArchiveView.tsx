@@ -49,6 +49,12 @@ function currency(value: number) {
   return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
+function exportHistoricalRows(rows: Record<string, unknown>[], title: string) {
+  const columns = Array.from(new Set(rows.flatMap(row => Object.keys(row)))).map(key => [key, key] as [string, string]);
+  const exporter = (window as Window & { downloadManagerRowsToExcel?: (columns: [string, string][], rows: Record<string, unknown>[], title: string) => unknown }).downloadManagerRowsToExcel;
+  if (rows.length && exporter) exporter(columns, rows, title);
+}
+
 function ArchivePager({ page, pageSize, total, onPage }:
   { page: number; pageSize: number; total: number; onPage(page: number): void }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -86,6 +92,8 @@ export function HistoricalArchiveView({ bridge, recordKind, search }:
   const [path, setPath] = useState<string[]>([]);
   const [labels, setLabels] = useState<string[]>([]);
   const [page, setPage] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const normalizedSearch = search.trim();
   const maxDepth = recordKind === 'requests' ? 0 : DOMAIN_DEPTH[recordKind];
   useEffect(() => { setPath([]); setLabels([]); setPage(0); }, [recordKind, normalizedSearch]);
@@ -96,6 +104,28 @@ export function HistoricalArchiveView({ bridge, recordKind, search }:
   const state = useArchivePage(bridge, query);
   const folders = state.data?.rows.filter(isFolder) || [];
   const records = state.data?.rows.filter((row): row is HistoricalArchiveRecord => !isFolder(row)) || [];
+  const exportAllRecords = async () => {
+    if (exporting || records.length === 0) return;
+    setExporting(true); setExportError('');
+    try {
+      const first = await bridge.readArchive({ ...query, page: 0, pageSize: 100 });
+      if (first.total > 10_000) throw new Error('This filtered archive exceeds the 10,000 row export limit. Narrow the search and retry.');
+      const allRows = first.rows.filter((row): row is HistoricalArchiveRecord => !isFolder(row));
+      for (let currentPage = 1; currentPage * first.pageSize < first.total; currentPage++) {
+        const result = await bridge.readArchive({ ...query, page: currentPage, pageSize: first.pageSize });
+        if (result.revision !== first.revision || result.total !== first.total) throw new Error('Archive changed during export. Refresh and retry.');
+        allRows.push(...result.rows.filter((row): row is HistoricalArchiveRecord => !isFolder(row)));
+      }
+      if (allRows.length !== first.total) throw new Error('The complete filtered archive could not be verified. Refresh and retry.');
+      exportHistoricalRows(allRows.map(row => ({
+        id: row.id, title: row.title, subtitle: row.subtitle, status: row.status, occurred_at: row.occurredAt,
+        itemcode: row.itemcode, commonname: row.commonname, contsize: row.contsize, locationcode: row.locationcode,
+        lotcode: row.lotcode, quantity: row.quantity, unit_list_price: row.unitListPrice, line_value: row.lineDollarValue,
+        ...row.facts,
+      })), `Historical ${recordKind}`);
+    } catch (error) { setExportError(error instanceof Error ? error.message : 'Historical export failed.'); }
+    finally { setExporting(false); }
+  };
   const selectFolder = (folder: HistoricalArchiveFolder) => {
     setPath(current => [...current, folder.value]);
     setLabels(current => [...current, folder.label]);
@@ -116,7 +146,9 @@ export function HistoricalArchiveView({ bridge, recordKind, search }:
       <span>{state.data ? state.data.total.toLocaleString() : '—'} {path.length < maxDepth && !normalizedSearch ? 'folders' : 'records'}</span>
       {!normalizedSearch && path.length > 0 && <button className="historical-requests__back" type="button" onClick={goBack}>Back</button>}
       {state.data && <button className="historical-requests__refresh" type="button" onClick={state.retry}>Refresh</button>}
+      {records.length > 0 && <button className="historical-requests__refresh" type="button" disabled={exporting} onClick={() => void exportAllRecords()}>{exporting ? 'Preparing Excel…' : 'Export Excel'}</button>}
     </div></div>
+    {exportError && <p className="historical-requests__scope-note" role="alert">{exportError}</p>}
     {state.isLoading && !state.data && <div className="historical-requests__state" role="status">Loading historical archive…</div>}
     {state.error && !state.data && <div className="historical-requests__state historical-requests__state--error" role="alert">
       <span>{state.error.message || 'Historical Archive could not be loaded.'}</span><button type="button" onClick={state.retry}>Retry</button></div>}

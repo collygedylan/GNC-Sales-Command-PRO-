@@ -301,16 +301,20 @@ test('export metadata uses retained display labels, Unassigned, and readable sor
   assert.equal(metadata.get('Sort'), 'Item Code descending');
 });
 
-test('compact Assigned Items controls expose values and sort in triggers without collapsible or chip rows', () => {
+test('Assigned Items has one collapsed mobile filter disclosure and desktop hides that duplicate grid', () => {
   const trigger = helper('renderManagerAssignedColumnTrigger');
   const controls = helper('renderManagerAssignedColumnControls');
+  const styles = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
   assert.match(trigger, /assigned-filter-value/);
   assert.match(trigger, /state\.filters\[field\]\.length === 1/);
   assert.match(trigger, /selectedLabel/);
   assert.match(trigger, /sort\.direction === 'desc' \? '↓' : '↑'/);
-  assert.match(controls, /<div class="assigned-phone-filters">/);
+  assert.match(controls, /<details class="assigned-phone-filters"><summary>Filter columns<\/summary>/);
+  assert.doesNotMatch(controls, /<details[^>]*\bopen\b/);
   assert.match(controls, /hasFilters \? '<button[^']*assigned-filter-clear/);
-  assert.doesNotMatch(controls, /<details|<summary|assigned-filter-chip/);
+  assert.doesNotMatch(controls, /assigned-filter-chip/);
+  assert.match(styles, /\.assigned-phone-filters\{display:none\}/);
+  assert.match(styles, /@media\(max-width:767px\)\{\.assigned-phone-filters\{display:block/);
 });
 
 test('Assigned Items filter panel clamps wide visual viewports to the layout viewport', () => {

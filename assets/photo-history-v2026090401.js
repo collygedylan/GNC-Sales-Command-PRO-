@@ -50,7 +50,7 @@
     dialog.className = 'phg-dialog';
     dialog.setAttribute('aria-labelledby','phg-title');
     dialog.setAttribute('data-fast-press-ignore','');
-    dialog.innerHTML = `<div class="phg-shell"><header class="phg-header"><button id="phg-close" aria-label="Close Photo History">Back</button><h2 id="phg-title">Photo History</h2></header>
+    dialog.innerHTML = `<div class="phg-shell"><header class="phg-header"><button id="phg-close" aria-label="Close Photo History">Back</button><h2 id="phg-title">Photo History <small>READ-ONLY ARCHIVE</small></h2><button id="phg-export" type="button">Export Excel</button></header>
       <div class="phg-search"><input id="phg-q" type="search" inputmode="search" aria-label="Search Common Name, ITEMCODE or filename" placeholder="Common Name, ITEMCODE or photo filename"><button id="phg-clear">Clear</button></div>
       <div class="phg-filters compact-filter-rail" aria-label="Photo filters">${[['container','Container size'],['location','Location'],['lot','Lot'],['from','From date'],['to','Through date']].map(([id,label])=>`<label>${label}<input id="phg-${id}" type="${id==='from'||id==='to'?'date':'text'}" autocomplete="off"></label>`).join('')}<button id="phg-reset">Reset filters</button></div>
       <p id="phg-count" class="phg-muted" role="status">Historical photos — not confirmation of current availability. Scroll to browse all matches.</p><p id="phg-message" class="phg-error" role="alert"></p><div id="phg-notices" class="phg-notices" aria-live="polite"></div>
@@ -59,6 +59,7 @@
     dialog.querySelectorAll('input,textarea,select,button').forEach(e=>e.setAttribute('data-fast-press-ignore',''));
     document.body.append(dialog);
     el('close').onclick = close;
+    el('export').onclick = exportAll;
     dialog.addEventListener('cancel', e=>{e.preventDefault();close();});
     for (const id of ['q','container','location','lot','from','to']) {
       el(id).value = draft[id] || '';
@@ -77,6 +78,39 @@
     if (!active()) return;
     clearTimeout(timer);generation++;loading=false;photos=[];cursor=null;asOf='';hasMore=true;loadError=false;lastWindow='';
     el('scroll').scrollTop=0;tell('');renderWindow();loadNext();
+  }
+  let exportBusy = false;
+  async function exportAll() {
+    if (!active() || exportBusy) return;
+    const opened = openGeneration, filters = { q:draft.q, container:draft.container, location:draft.location, lot:draft.lot, from:draft.from, to:draft.to };
+    exportBusy = true; el('export').disabled = true; tell('Preparing filtered photo history…');
+    try {
+      let asOf = '', cursorValue = null, more = true; const all = [];
+      while (more) {
+        const result = await api('search', { ...filters, cursor:cursorValue, asOf, limit:48 });
+        if (opened !== openGeneration || !active()) return;
+        if (!asOf) asOf = result.asOf;
+        else if (result.asOf !== asOf) throw new Error('Photo history changed during export. Retry.');
+        all.push(...result.photos);
+        if (all.length > 5000) throw new Error('This filtered photo history exceeds the 5,000 row export limit. Narrow the filters and retry.');
+        more = result.hasMore === true;
+        const last = result.photos.at(-1);
+        if (more && !last) throw new Error('Photo history returned an incomplete export page. Retry.');
+        if (last) cursorValue = { at:last.photo_at, id:last.id };
+      }
+      const exporter = window.downloadManagerRowsToExcel;
+      if (typeof exporter !== 'function') throw new Error('Excel export is unavailable. Reload and retry.');
+      const columns = [['Photo Date','Photo Date'],['Uploaded By','Uploaded By'],['Item Code','Item Code'],['Common Name','Common Name'],['Container','Container'],['Location','Location'],['Lot','Lot'],['Spec','Spec'],['Filename','Filename'],['Archived','Archived'],['Context','Context']];
+      const rows = all.map(photo => {
+        const context = Array.isArray(photo.contexts) ? photo.contexts.find(item => item && typeof item === 'object') || {} : {};
+        return { 'Photo Date':photo.photo_at || '', 'Uploaded By':photo.uploaded_by || context.uploaded_by || context.uploadedBy || '',
+          'Item Code':photo.itemcode || '', 'Common Name':photo.commonname || '', Container:photo.contsize || '',
+          Location:photo.locationcode || '', Lot:photo.lotcode || '', Spec:photo.spec || context.spec || '',
+          Filename:photo.filename || '', Archived:photo.archived === true, Context:JSON.stringify(photo.contexts || []) };
+      });
+      exporter(columns, rows, 'Photo History'); tell(`Exported ${rows.length.toLocaleString()} filtered photo records.`);
+    } catch (error) { if (opened === openGeneration && active()) tell(error?.message || 'Photo export failed.'); }
+    finally { exportBusy = false; if (opened === openGeneration && active()) el('export').disabled = false; }
   }
   async function loadNext() {
     if (!active() || loading || !hasMore || loadError) return;

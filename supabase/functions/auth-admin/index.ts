@@ -111,6 +111,16 @@ async function handle(req: Request) {
     if (profileError || !profile?.id) return json({ error: "user_not_found" }, 404);
     const { error } = await admin.auth.admin.updateUserById(profile.id, { password });
     if (error) return json({ error: "password_reset_failed" }, 400);
+    const rpc = admin.rpc.bind(admin) as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+    const { data: synchronizedRaw, error: syncError } = await rpc("sync_native_auth_app_access_code_v2397", {
+      p_username: username,
+      p_access_code: password,
+    });
+    const synchronized = synchronizedRaw && typeof synchronizedRaw === "object"
+      ? synchronizedRaw as Record<string, unknown> : null;
+    if (syncError || synchronized?.ok !== true) {
+      return json({ error: "legacy_access_code_sync_failed", reconciliationRequired: true }, 409);
+    }
     const { error: updateError } = await admin.from("profiles")
       .update({ must_change_password: true, updated_at: new Date().toISOString() })
       .eq("id", profile.id);

@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.96",
+  "release": "AgData v2.3.97",
   "sourceLayers": [
     "assets/app-runtime.js",
+    "assets/manager-table-management.js",
     "assets/runtime-watchdog.js",
     "supabase/functions/app-api/index.ts",
+    "supabase/functions/_shared/table-management.ts",
     "supabase/functions/_shared/erp-sync.mjs",
     "scripts/local-erp-sync-worker.mjs",
     "supabase/functions/_shared/production-workflow.ts",
@@ -947,7 +949,6 @@
     "agdata-suspend-tag-approval-specialist": {
       "assets/app-runtime.js": [
         "isFalseBlockLocation",
-        "addCustomSuspendTagLocation",
         "buildSuspendTagActions",
         "openSuspendTagApproval",
         "getSuspendTagStableSourceIdentity"
@@ -989,6 +990,54 @@
           "ph_location_sales_notes",
           "bunch_note_private.recipients_for_reports",
           "reclass-move-up-open-stock-v2390"
+        ]
+      }
+    },
+    "agdata-table-management-and-directory": {
+      "assets/app-runtime.js": [
+        "renderManagerTableManagementPanel",
+        "openManagerTableManagement",
+        "getManagerTableManagementItems",
+        "downloadManagerRowsToExcel",
+        "renderCompanyDirectoryPanel",
+        "mountCompanyDirectoryPanel"
+      ],
+      "assets/manager-table-management.js": [
+        "mountManagerTableManagement"
+      ],
+      "services/customerRepMapping.ts": [
+        "mountCustomerRepMapping"
+      ],
+      "services/customerRepAssignments.ts": [
+        "createCustomerRepAssignments",
+        "prefetchCustomerRepOptions"
+      ],
+      "assets/photo-history-v2026090401.js": [
+        "exportAll"
+      ],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [
+        "canonicalActionGate",
+        "handleCustomerRepMappingAction"
+      ],
+      "Code.gs": [],
+      "supportingFiles": {
+        "supabase/functions/_shared/table-management.ts": [
+          "validateManagerTableManagementRequest",
+          "executeManagerTableManagement"
+        ],
+        "supabase/migrations/20261028221000_agdata_table_management_v2397.sql": [
+          "manager_table_management_v2397",
+          "ph_manager_table_commands",
+          "ph_company_directory",
+          "ph_inquiry_coverage"
+        ],
+        "supabase/functions/_shared/customer-rep-mapping.ts": [
+          "validateCustomerRepMappingRequest"
+        ],
+        "supabase/migrations/20261028222000_agdata_customer_mapping_crud_v2397.sql": [
+          "customer_rep_mapping_manage_v1",
+          "sales_private.customer_mapping_rows_v2397"
         ]
       }
     },

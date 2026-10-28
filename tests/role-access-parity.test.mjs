@@ -131,6 +131,7 @@ test('desktop connection status is visible without standalone mode or an active 
   const ctx = vm.createContext({ document: { getElementById: id => nodes[id] }, navigator: { onLine: true },
     isIOSDevice: () => false, isStandaloneApp: () => false, hasActiveManualSync: () => false,
     isTouchConstrainedDevice: () => false, syncDiagnosticsOverride: '', liveSyncMode: 'idle', lastSuccessfulSyncTime: 0,
+    getManualSyncProgressInfo: () => ({ active: false }),
     getDatasetRevisionConnectionLabel: () => 'Connected · 4 ready', formatDiagnosticsTime: () => '', getDiagnosticsPlatformLabel: () => 'Desktop' });
   vm.runInContext(shellFunction('updateSyncDiagnostics'), ctx); ctx.updateSyncDiagnostics();
   assert.equal(nodes['sync-diagnostics-badge'].classList.hidden, false);
@@ -489,4 +490,19 @@ test('Bunch Notes custom dropdown persistence is authenticated and Dylan-write-s
   assert.match(appApi, /operation === "dropdown_options_save"[\s\S]*actor\.username[\s\S]*dylan_collyge[\s\S]*BUNCH_NOTE_DROPDOWN_OPTIONS_FORBIDDEN/);
   assert.match(appApi, /allowedOptionKeys = new Set\(\["destination_house", "action", "workflow_instructions", "card_notes", "purpose", "direction", "house_plan", "schedule_alert"\]\)/);
   assert.doesNotMatch(appApi, /operation === "dropdown_options_save"[\s\S]{0,1200}TO authenticated/);
+});
+
+test('Table Management uses canonical Manager permission and archives never accept mutations', async () => {
+  const { validateManagerTableManagementRequest } = await import('../supabase/functions/_shared/table-management.ts');
+  const canonical = vm.createContext({});
+  const source = api.match(/function canonicalActionGate\([^]*?^}/m)[0];
+  vm.runInContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, canonical);
+  assert.equal(canonical.canonicalActionGate('manager_table_management', {}).flag, 'can_access_manager_tab');
+  for (const username of ['dylan_collyge','megan_kelly','jd_jones','evaluator_example','sales_rep_example']) {
+    const request = validateManagerTableManagementRequest({ action: 'manager_table_management', operation: 'create', table: 'inquiry-coverage', payload: { primary_user: username, backup_user: 'another_active_user', scope: 'all', active: true, command_id: '00000000-0000-4000-8000-000000000001' } });
+    assert.equal(request.payload.primary_user, username);
+  }
+  for (const table of ['historical-drive-mode','historical-soc-open-orders','historical-soc-reserves','historical-requests','photo-history']) {
+    assert.throws(() => validateManagerTableManagementRequest({ action: 'manager_table_management', operation: 'delete', table, payload: {} }), /READ_ONLY/);
+  }
 });

@@ -24,6 +24,7 @@ const domains = {
   'runtime-watchdog': ['GncRuntimeWatchdog', 'VIEW_LOAD_STALL', 'watchdog_log_event', 'watchdog_list_events', 'COPY AI FIX BRIEF', 'switchView', 'goBackUniversal'],
   'request-lifecycle-and-lock-guard': ['Que -> REQUEST', 'Pending', 'MARK DONE', 'Admin', 'ph_active_request'],
   'suspend-tag-approval-specialist': ['Suspend Tag', 'assigned rep', 'Admin', 'canDecide', 'suspend_tag_command_v1'],
+  'table-management-and-directory': ['Table Management', 'ph_company_directory', 'ph_inquiry_coverage', 'read-only', 'goBackUniversal'],
   'email-outbox-and-worker-guard': ['ph_request_delivery_outbox', 'service-role', 'Code.gs', 'processRequestDeliveryOutbox_', 'Dylan', 'Megan', 'Sharon'],
 };
 
@@ -51,7 +52,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    'e9e0c555e899ba807279bd082624558a0b84156c55f3a5c0f292316c99d43515');
+    '37fe664a6dff69da9a766faaf3cd2ae08d2e968fa86d7dd531d9ab2e318678a7');
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));
@@ -116,7 +117,7 @@ test('Request and sync startup reads reject forged parameters and all mutations'
  assert.equal(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities',actorId:'forged'},[],[],{}),null);
  assert.deepEqual(releaseSnapshotReadFixture({action:'request_work',operation:'capabilities'},[],[],{username:'dylan_collyge'}).data,{username:'dylan_collyge'});
  const runner=read('scripts/apply-item-low-stock-migration.mjs');
-  assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, agdataV2379CompleteReclassDestinationRowLoopMigrationName, agdataV2379ReclassLocationEvidenceMigrationName, agdataV2380ReclassPreEditReportsMigrationName, agdataV2381FastErpStageRpcsMigrationName, agdataV2382DriveParityReclassAndFastSyncMigrationName, agdataV2382SuspendViewSchemaCompatMigrationName, agdataV2382HlPoSetBasedPageStageMigrationName, agdataV2383JdUniversalCustomerDirectoryMigrationName, agdataV2384RuntimeRecoveryMigrationName, agdataV2385ReclassOpenStockInlineOhMigrationName, agdataV2395InstantReclassNavigationMigrationName, agdataV2396CloudErpContinuationMigrationName, agdataV2396BoundedErpRowCountMigrationName]'));
+  assert.ok(runner.includes('suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, agdataV2379CompleteReclassDestinationRowLoopMigrationName, agdataV2379ReclassLocationEvidenceMigrationName, agdataV2380ReclassPreEditReportsMigrationName, agdataV2381FastErpStageRpcsMigrationName, agdataV2382DriveParityReclassAndFastSyncMigrationName, agdataV2382SuspendViewSchemaCompatMigrationName, agdataV2382HlPoSetBasedPageStageMigrationName, agdataV2383JdUniversalCustomerDirectoryMigrationName, agdataV2384RuntimeRecoveryMigrationName, agdataV2385ReclassOpenStockInlineOhMigrationName, agdataV2395InstantReclassNavigationMigrationName, agdataV2396CloudErpContinuationMigrationName, agdataV2396BoundedErpRowCountMigrationName, agdataV2397BulkReclassOverrideMigrationName, agdataV2397TableManagementMigrationName, agdataV2397CustomerMappingCrudMigrationName, agdataV2397UserLifecycleMigrationName]'));
  assert.ok(runner.includes('if (name === requestWorkSyncStatusMigrationName)'));
  assert.ok(runner.includes('agdataV2396CloudErpContinuationMigrationName'));
  assert.ok(runner.includes('if (name === agdataV2396CloudErpContinuationMigrationName)'));
@@ -155,7 +156,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.96'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.96'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.97'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.97'/);assert.match(sw,/cache: 'reload'/);
 });
 
 

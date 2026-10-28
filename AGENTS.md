@@ -45,6 +45,7 @@ Before modifying any module, load and follow the corresponding domain skill(s) f
 13. `.codex/skills/agdata-request-lifecycle-and-lock-guard/SKILL.md` — Pending-only Request lifecycle, completion archival, draft continuity and role-correct published evaluation locks.
 14. `.codex/skills/agdata-suspend-tag-approval-specialist/SKILL.md` — Suspend-only assigned-rep/Admin decisions, physical tag identity and immutable approval receipts.
 15. `.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md` — Private durable outbox writes, service-role Apps Script workers, immediate wake/retry and confirmed recipient contracts.
+16. `.codex/skills/agdata-table-management-and-directory/SKILL.md` — Manager Table Management, maintained-directory and inquiry-coverage CRUD, assigned-item ownership, customer mapping, canonical user access, and read-only history/photo archives.
 
 Use [the canonical module dependency map](docs/architecture/agdata-module-dependency-map.md) for exact functions, shared state, backend contracts and the 1–3 focused Node targets for each cluster. Its source inventory is an audit snapshot, not a release receipt or permission to skip current checks. Register skill additions in `scripts/run-tooling-release-checks.mjs`; preserve shared Back/navigation dependencies in every domain skill.
 

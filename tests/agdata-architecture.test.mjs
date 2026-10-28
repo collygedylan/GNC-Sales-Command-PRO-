@@ -33,7 +33,7 @@ const clusters = [
 test('all installed skills are explicitly registered and provide bounded Node commands', () => {
   const actual = fs.readdirSync(path.join(root, '.codex/skills'))
     .filter(name => name.startsWith('agdata-')).map(name => `.codex/skills/${name}/SKILL.md`).sort();
-  assert.equal(actual.length, 15);
+  assert.equal(actual.length, 16);
   assert.deepEqual([...toolingSkillManifests].sort(), actual);
   assert.equal(new Set(toolingSkillManifests).size, toolingSkillManifests.length);
   for (const manifest of actual) {
@@ -79,7 +79,7 @@ test('current source layout resolves while the v2.3.17 census stays historical',
   assert.equal(layout.shell, 'index.html');
   assert.equal(layout.classicRuntime, 'assets/app-runtime.js');
   assert.deepEqual(layout.clusters, Array.from({ length: 10 }, (_, index) => index + 1));
-  assert.equal(toolingSkillManifests.length, 15);
+  assert.equal(toolingSkillManifests.length, 16);
   for (const file of [layout.shell, layout.classicRuntime, ...(layout.classicModules || []), ...layout.stylesheets]) {
     assert.ok(fs.statSync(path.join(root, file)).isFile(), file);
   }

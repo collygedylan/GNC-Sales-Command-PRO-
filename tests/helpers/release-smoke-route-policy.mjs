@@ -101,6 +101,22 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
  * return null so the caller's existing rejection path remains authoritative. */
 export function releaseSnapshotReadFixture(body, mappings = [], approvals = [], capabilities = null) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  if (body.action === 'manager_table_management'
+      && Object.keys(body).sort().join(',') === 'action,operation,payload,table'
+      && ['company-directory', 'inquiry-coverage'].includes(body.table)
+      && body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)) {
+    if (body.operation === 'users' && Object.keys(body.payload).length === 0) {
+      return { ok: true, data: { ok: true, rows: [{ username: 'fixture_user', display_name: 'Fixture User', email: 'fixture@example.test', userrole: 'evaluator' }] } };
+    }
+    if (body.operation === 'read' && Object.keys(body.payload).sort().join(',') === 'page,pageSize,q'
+        && body.payload.page === 0 && body.payload.pageSize === 100 && body.payload.q === '') {
+      const row = body.table === 'company-directory'
+        ? { id: '00000000-0000-4000-8000-000000000001', name: 'Fixture User', username: 'fixture_user', active: true, revision: '1' }
+        : { id: '00000000-0000-4000-8000-000000000002', scope: 'location', location: 'A.01.000', primary_user: 'fixture_user', active: true, revision: '1' };
+      return { ok: true, data: { ok: true, rows: [row], total: 1 } };
+    }
+    return null;
+  }
   if (isInventoryConsolidationSnapshotRead(body)) return {ok:true,data:{rows:[],currentSalesYear:null,generatedAt:null}};
   if (body.action === 'location_work' && body.operation === 'list' && body.status === 'all'
       && Object.keys(body).sort().join(',') === 'action,operation,status') return {ok:true,data:[]};

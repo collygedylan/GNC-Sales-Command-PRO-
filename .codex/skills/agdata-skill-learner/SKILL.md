@@ -12,6 +12,8 @@ description: Keep AgData domain skills and explicit fixture-read contracts synch
 
 Source extraction changes file ownership, not the number of business features. Keep the original census clearly labeled as a historical snapshot, record current source layout separately, and refresh dependency-map links to the actual function or stylesheet. Count function removals independently of functions merely moved into linked assets; preserve static tests through the shared composed-source reader.
 
+Manager table registration is owned by `agdata-table-management-and-directory`: keep `ph_company_directory` and `ph_inquiry_coverage` behind the authenticated app-api action, preserve canonical user-access and customer-mapping RPCs, and keep every historical/photo view read-only. Update the symbol index, dependency map, fixture routes for any new startup reads, and the all-Gems gate whenever these seams change.
+
 Governance and skill updates do not authorize production changes. Production AI and watchdog workflows remain read-only: they may summarize evidence or propose a patch, but must not autonomously edit production source, push commits, or publish. A staging push may produce only the fast-validated site artifact; production promotion continues through the reviewed `main` release path.
 
 ## Shared component dependencies

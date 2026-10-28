@@ -214,6 +214,58 @@ test('name correction preserves the current rep assignment and keeps drafts on c
   unmount();dom.window.close();
 });
 
+test('Customer Assignments creates with one retry UUID and hides protected N/A deletion',async()=>{
+  const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  dom.window.confirm=()=>true;
+  const root=dom.window.document.getElementById('root'),calls=[];let saves=0;
+  const protectedRow={...row,unique_id:'na-row',customeridentityid:'na-customer',consigneeid:'na-consignee',customername:'N/A',consigneename:'N/A',revision:'r1'};
+  let rows=[protectedRow];
+  const transport=async payload=>{
+    calls.push({...payload});
+    if(payload.operation==='reps')return {ok:true,rows:[{salesrepId:'01',salesrepName:'Morgan Smith'}],total:1,page:0,pageSize:100,revision:'r1'};
+    if(payload.operation==='list')return {ok:true,rows:[...rows],total:rows.length,page:0,pageSize:50,revision:'r1',canEdit:true};
+    if(payload.operation==='create'){
+      if(calls.filter(call=>call.operation==='create').length===1)throw new Error('temporary network failure');
+      rows.push({...row,unique_id:'created-row',customeridentityid:payload.customerId,consigneeid:payload.consigneeId,customername:payload.customerName,consigneename:payload.consigneeName,salesrepid:payload.salesrepId,revision:'r2'});
+      return {ok:true};
+    }
+    if(payload.operation==='delete'){rows=rows.filter(item=>item.unique_id!==payload.id);return {ok:true,deleted:payload.id};}
+    throw new Error('Unexpected operation '+payload.operation);
+  };
+  const unmount=dom.window.MappingEditor.mountCustomerRepMapping(root,transport,()=>saves++,'manager:crud');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  const add=Array.from(root.querySelectorAll('button')).find(button=>button.textContent==='+ Add Row');
+  assert.equal(add.disabled,false,'add is enabled only after rep options finish hydrating');
+  assert.equal(root.querySelectorAll('tbody tr button').length,2,'protected N/A row has no delete control');
+  add.click();
+  const form=root.querySelector('form');
+  for(const [name,value] of [['Customer Number','10001'],['Customer Name','Garden'],['Consignee ID','20001'],['Consignee Name','North'],['Territory','TX']])form.querySelector(`[aria-label="${name}"]`).value=value;
+  form.querySelector('[aria-label="Sales Rep"]').value='01';
+  form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setTimeout(resolve,0));
+  const failedCreate=calls.find(call=>call.operation==='create');
+  assert.ok(failedCreate.requestId);
+  assert.match(root.querySelector('[role=alert]').textContent,/Save failed|Retry to check its status/);
+  assert.ok(root.querySelector('form'),'failed create keeps the draft and offers retry');
+  form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setTimeout(resolve,0));
+  const creates=calls.filter(call=>call.operation==='create');
+  assert.equal(creates.length,2);
+  assert.equal(creates[0].requestId,creates[1].requestId,'retry reuses its idempotency UUID');
+  assert.match(creates[0].requestId,/^[0-9a-f-]{36}$/i);
+  assert.equal(rows.some(item=>item.unique_id==='created-row'),true);
+  assert.equal(saves,1);
+  const createdRow=Array.from(root.querySelectorAll('tbody tr')).find(tr=>tr.textContent.includes('Garden'));
+  const remove=Array.from(createdRow.querySelectorAll('button')).find(button=>button.textContent==='Delete Row');
+  assert.ok(remove,'nonreserved mappings expose delete');
+  remove.click();
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.ok(calls.some(call=>call.operation==='delete'&&call.id==='created-row'&&call.expectedRevision==='r2'&&call.requestId));
+  assert.equal(rows.some(item=>item.unique_id==='created-row'),false);
+  assert.equal(root.querySelectorAll('tbody tr button').length,2,'N/A mapping remains after deletion of an ordinary row');
+  unmount();dom.window.close();
+});
+
 test('assignments use cached canonical reps, UUID mutations and preserve drafts on conflicts',async()=>{
   const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
   const calls=[];let saves=0;

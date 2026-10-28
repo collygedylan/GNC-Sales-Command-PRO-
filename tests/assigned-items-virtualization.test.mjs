@@ -63,7 +63,7 @@ test('snapshot memoization skips normalization and sorting until authoritative d
     getManagerItemLowStockTarget: () => null,
     managerEvalReportSettings: {lowStockMaxSLts:150},
   });
-  vm.runInContext(extract('getManagerAssignedItemsDisplayRows'), ctx);
+  vm.runInContext(`${extract('getManagerUnassignedItemcodes')}\n${extract('getManagerAssignedItemsDisplayRows')}`, ctx);
   const first = ctx.getManagerAssignedItemsDisplayRows();
   for (let i=0;i<10;i++) assert.equal(ctx.getManagerAssignedItemsDisplayRows(), first);
   assert.equal(normalizations,25000);

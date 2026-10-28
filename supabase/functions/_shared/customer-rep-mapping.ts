@@ -1,4 +1,4 @@
-export type CustomerRepMappingOperation = "list" | "options" | "preload" | "detail" | "save" | "reps" | "assign" | "reset";
+export type CustomerRepMappingOperation = "list" | "options" | "preload" | "detail" | "save" | "reps" | "assign" | "reset" | "create" | "delete";
 
 export type CustomerRepMappingRequest = {
   operation: CustomerRepMappingOperation;
@@ -40,6 +40,24 @@ export function validateCustomerRepMappingRequest(input: unknown): CustomerRepMa
     throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
   }
   const operation = value.operation;
+  if (operation === "create" || operation === "delete") {
+    const allowed = new Set(operation === "create"
+      ? ["action", "operation", "requestId", "salesrepId", "customerId", "customerName", "consigneeId", "consigneeName", "territory"]
+      : ["action", "operation", "requestId", "id", "expectedRevision"]);
+    if (!onlyKeys(value, allowed)) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+    const requestId = boundedString(value.requestId, "requestId", 36, false);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+    const payload: Record<string, unknown> = { requestId };
+    if (operation === "create") {
+      for (const key of ["salesrepId", "customerId", "customerName", "consigneeId", "consigneeName"]) payload[key] = boundedString(value[key], key, 240, false);
+      payload.territory = value.territory === undefined ? "" : boundedString(value.territory, "territory", 120);
+    } else {
+      payload.id = boundedString(value.id, "id", 200, false);
+      payload.expectedRevision = boundedString(value.expectedRevision, "expectedRevision", 19, false);
+      if (!/^[1-9][0-9]{0,18}$/.test(String(payload.expectedRevision))) throw new Error("CUSTOMER_REP_MAPPING_REVISION_INVALID");
+    }
+    return { operation, payload };
+  }
   if (operation === "preload") {
     if (!onlyKeys(value, new Set(["action", "operation"]))) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
     return { operation, payload: {} };

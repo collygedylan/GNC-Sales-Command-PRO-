@@ -111,7 +111,7 @@ test('submission checks account ownership without waiting for cache, permission 
 
 test('quantity commands carry displayed row identity without requiring a verified global cache', () => {
   const row = { unique_id: 'loaded-row', warehouseid: '1', itemcode: 'ITEM-1', contsize: '#3', locationcode: 'A1',
-    lotcode: '27.U1', season: 'U1', ptronhand: '234', ptravailable: '234' };
+    lotcode: '27.U1', season: 'U1', ptronhand: '234', ptravailable: '234', s_lts: '234' };
   const state = { verificationIdentityKey: 'account-a', inquiryModel: { locationRows: [{ unique_id: row.unique_id, sourceRow: row }] } };
   const payload = { rowOverlays: [{ unique_id: row.unique_id,
     proposals: [{ action: 'move_up', splits: [{ destinationSeason: 'F1', quantity: 34 }] }] }] };

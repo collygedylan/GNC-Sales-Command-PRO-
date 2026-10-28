@@ -72,6 +72,37 @@ function currency(value: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value);
 }
 
+function exportHistoricalRequests(rows: HistoricalRequestRow[]) {
+  const exporter = (window as Window & { downloadManagerRowsToExcel?: (columns: [string, string][], rows: Record<string, unknown>[], title: string) => unknown }).downloadManagerRowsToExcel;
+  if (!exporter || rows.length === 0) return;
+  const columns: [string, string][] = [['Item', 'Item'], ['Item Code', 'Item Code'], ['Status', 'Status'], ['Location', 'Location'], ['Requested At', 'Requested At'], ['Sales Rep', 'Sales Rep'], ['Quantity', 'Quantity'], ['Dock', 'Dock'], ['Spec', 'Spec'], ['Caliper', 'Caliper'], ['Sent At', 'Sent At'], ['Delivery State', 'Delivery State'], ['Comments', 'Comments'], ['Photo Notes', 'Photo Notes'], ['List Price', 'List Price'], ['Total Value', 'Total Value']];
+  const values = rows.map(row => ({
+    Item: row.commonname || '', 'Item Code': row.itemcode || '', Status: row.status, Location: row.location || '',
+    'Requested At': row.requestedAt || '', 'Sales Rep': row.salesrepName || '', Quantity: row.requestQty,
+    Dock: row.dock, Spec: row.spec || '', Caliper: row.caliper || '', 'Sent At': row.sentAt || '',
+    'Delivery State': row.deliveryState, Comments: row.comments || '', 'Photo Notes': row.photoNotes || '',
+    'List Price': row.listPrice, 'Total Value': row.totalValue,
+  }));
+  exporter(columns, values, 'Historical Requests');
+}
+
+async function loadAllHistoricalRequests(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuery, expectedScope: HistoricalRequestsPage['scope'], expectedRevision: string) {
+  const normalize = (page: HistoricalRequestsPage) => historicalRequestsRoleCanViewFinancials(bridge.role) ? page : redactFinancials(page);
+  const first = normalize(await bridge.read({ ...query, page: 0, pageSize: 100 }));
+  if (first.total > 10_000) throw new Error('This filtered history exceeds the 10,000 row export limit. Narrow the date range and retry.');
+  if (first.scope !== expectedScope || first.revision !== expectedRevision) throw new Error('Historical data changed during export. Refresh and retry.');
+  const allRows = first.rows.filter((row): row is HistoricalRequestRow => !isGroup(row));
+  for (let currentPage = 1; currentPage * first.pageSize < first.total; currentPage++) {
+    const next = normalize(await bridge.read({ ...query, page: currentPage, pageSize: first.pageSize }));
+    if (next.scope !== first.scope || next.revision !== first.revision || next.total !== first.total || next.financials !== first.financials) {
+      throw new Error('Historical data changed during export. Refresh and retry.');
+    }
+    allRows.push(...next.rows.filter((row): row is HistoricalRequestRow => !isGroup(row)));
+  }
+  if (allRows.length !== first.total) throw new Error('The complete filtered history could not be verified. Refresh and retry.');
+  return allRows;
+}
+
 function unresolvedValueMessage(reason: string | null) {
   switch (reason) {
     case 'invalid_request_quantity': return 'Request quantity is invalid; value cannot be calculated.';
@@ -193,6 +224,8 @@ function RequestHistoryBrowser({ bridge }: { bridge: HistoricalRequestsBridge })
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [reportScopeInvalid, setReportScopeInvalid] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const dateFilters = { ...(dateFrom ? { dateFrom } : {}), ...(dateTo ? { dateTo } : {}) };
   const validDates = !dateFrom || !dateTo || dateFrom <= dateTo;
   // Keep the authorization probe active throughout the drill-down and revalidation.
@@ -207,9 +240,10 @@ function RequestHistoryBrowser({ bridge }: { bridge: HistoricalRequestsBridge })
     }
   }, [reps.data, reps.error, level, rep?.key, establishedScope]);
   const folders = usePage(bridge, validDates && level === 'customers' && rep ? { operation: 'folders', repKey: rep.key, recordKind, ...dateFilters, page, pageSize: PAGE_SIZE } : null);
-  const requests = usePage(bridge, validDates && level === 'requests' && rep && folder?.customerKey && folder?.consigneeKey ? {
+  const requestsQuery = validDates && level === 'requests' && rep && folder?.customerKey && folder?.consigneeKey ? {
     operation: 'requests', repKey: rep.key, customerKey: folder.customerKey, consigneeKey: folder.consigneeKey, recordKind, ...dateFilters, page, pageSize: PAGE_SIZE,
-  } : null);
+  } satisfies HistoricalRequestsQuery : null;
+  const requests = usePage(bridge, requestsQuery);
   const current = level === 'reps' ? reps : level === 'customers' ? folders : requests;
   const scopeGuardFailed = Boolean(reportScopeInvalid || reps.error || (scope && establishedScope && scope !== establishedScope)
     || (current.data && scope && (current.data.scope !== scope || current.data.financials !== reps.data?.financials))
@@ -219,6 +253,15 @@ function RequestHistoryBrowser({ bridge }: { bridge: HistoricalRequestsBridge })
   const rows = currentCanDisplay ? current.data?.rows || [] : [];
   const groups = rows.filter(isGroup);
   const requestRows = rows.filter((row): row is HistoricalRequestRow => !isGroup(row));
+  const exportCurrentRequests = async () => {
+    if (!requestsQuery || !reps.data || exporting) return;
+    setExporting(true); setExportError('');
+    try {
+      const allRows = await loadAllHistoricalRequests(bridge, requestsQuery, reps.data.scope, reps.data.revision);
+      exportHistoricalRequests(allRows);
+    } catch (error) { setExportError(error instanceof Error ? error.message : 'Historical export failed.'); }
+    finally { setExporting(false); }
+  };
   const ownerMismatch = requestRows.some(row => rep?.key !== 'rep:' + (row.salesrepUserId || 'unassigned'));
   const financials = historicalRequestsRoleCanViewFinancials(bridge.role) && !scopeGuardFailed && !ownerMismatch && reps.data?.scope === 'all' && reps.data.financials === true;
   const recoverScope = () => {
@@ -250,7 +293,9 @@ function RequestHistoryBrowser({ bridge }: { bridge: HistoricalRequestsBridge })
       <div className="historical-requests__section-heading"><h2 id="historical-browse-title">
         {level === 'reps' ? 'Sales Reps' : level === 'customers' ? 'Customers' : `${folder?.label || 'Customer'} · ${folder?.consigneeName || 'Consignee'} · Requests`}
       </h2><span>{currentCanDisplay ? current.data?.total.toLocaleString() : '—'} {level === 'reps' ? 'reps' : level === 'customers' ? 'folders' : noun}</span>
-        {current.data && <button className="historical-requests__refresh" type="button" onClick={() => { reps.retry(); current.retry(); }}>Refresh</button>}</div>
+        {current.data && <button className="historical-requests__refresh" type="button" onClick={() => { reps.retry(); current.retry(); }}>Refresh</button>}
+        {currentCanDisplay && level === 'requests' && requestRows.length > 0 && <button className="historical-requests__refresh" type="button" disabled={exporting} onClick={() => void exportCurrentRequests()}>{exporting ? 'Preparing Excel…' : 'Export Excel'}</button>}</div>
+      {exportError && <p className="historical-requests__scope-note" role="alert">{exportError}</p>}
       {financials && <p className="historical-requests__pricing-note">Value uses the active catalog item-code list price × request quantity. Blank or zero quantity defaults to 25. Unavailable prices are excluded from totals.</p>}
       {!scopeGuardFailed && !ownerMismatch && <PageStatus state={current} empty={level === 'reps' ? 'No sales reps found.' : level === 'customers' ? 'No customer folders found.' : `No ${noun} found for this customer and consignee.`} onRetry={current.retry} />}
       {currentCanDisplay && !ownerMismatch && groups.length > 0 && <div className="historical-requests__groups">{groups.map(group => <button className="historical-requests__group historical-requests__group-button" type="button" key={group.key} onClick={() => selectGroup(group)}>
@@ -299,7 +344,7 @@ function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge })
   const selectTab = (kind: HistoricalArchiveKind) => { setRecordKind(kind); };
   return <main className="historical-requests historical-archive" aria-labelledby="historical-requests-title" data-archive-kind={recordKind}>
     <header className="historical-requests__header"><div>
-      <p className="historical-requests__eyebrow">Unified historical archive</p><h1 id="historical-requests-title">Historical Requests</h1>
+      <p className="historical-requests__eyebrow">Unified historical archive</p><span className="historical-requests__eyebrow">READ-ONLY ARCHIVE</span><h1 id="historical-requests-title">Historical Requests</h1>
       <p className="historical-requests__description">Browse permanent Request, SOC, Reserve, and Drive Around snapshots.</p>
     </div></header>
     <nav className="historical-requests__tabs historical-archive__tabs" aria-label="Historical archive domains">

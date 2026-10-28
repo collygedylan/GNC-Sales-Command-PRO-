@@ -36,7 +36,9 @@ export function mountCustomerRepMapping(root: HTMLElement, transport: MappingTra
     const option = element('option', label); option.value = value; statusSelect.append(option);
   }
   const refresh = element('button', 'Refresh'); refresh.type = 'button';
-  toolbar.append(statusSelect, refresh); root.append(toolbar);
+  const add = element('button', '+ Add Row'); add.type = 'button'; add.hidden = true;
+  add.onclick = () => { if (!editing) createMapping(); };
+  toolbar.append(statusSelect, refresh, add); root.append(toolbar);
   const status = element('p'); status.setAttribute('role', 'status'); root.append(status);
   const error = element('p'); error.setAttribute('role', 'alert'); root.append(error);
   const repError = element('p'); repError.setAttribute('role', 'alert'); repError.dataset.assignmentError = 'catalog'; root.append(repError);
@@ -57,6 +59,43 @@ export function mountCustomerRepMapping(root: HTMLElement, transport: MappingTra
   previous.type = next.type = 'button'; previous.onclick = () => { page = Math.max(0,page-1); void load(); }; next.onclick = () => { page++; void load(); };
   footer.append(previous, next); root.append(footer);
   function endEdit(reload = true) { editing = false; editorHost.replaceChildren(); refresh.disabled = false; statusSelect.disabled = false; previous.disabled = next.disabled = false; if (reload) void load(); }
+  function createMapping() {
+    editing = true; error.textContent = ''; const requestId = crypto.randomUUID();
+    const form = element('form'); form.dataset.mappingEditor = 'new'; form.append(element('h3', 'Add customer assignment'));
+    const inputs = new Map<string, HTMLInputElement>();
+    for (const [key, labelText] of [['customerId','Customer Number'],['customerName','Customer Name'],['consigneeId','Consignee ID'],['consigneeName','Consignee Name'],['territory','Territory']]) {
+      const label = element('label', labelText), input = element('input'); input.required = key !== 'territory'; input.maxLength = key === 'territory' ? 120 : 240;
+      input.setAttribute('aria-label', labelText); label.append(input); form.append(label); inputs.set(key,input);
+    }
+    const select = element('select'); select.required = true; select.setAttribute('aria-label','Sales Rep');
+    const placeholder = element('option','Choose a sales rep'); placeholder.value = ''; select.append(placeholder);
+    for (const rep of reps) { const option = element('option',`${rep.salesrepName} · ${rep.salesrepId}`); option.value=rep.salesrepId; select.append(option); }
+    const save = element('button','Save Changes'), cancel = element('button','Cancel'); save.type='submit'; cancel.type='button'; cancel.onclick=()=>endEdit();
+    form.append(select,save,cancel); editorHost.replaceChildren(form);
+    form.onsubmit=async event=>{
+      event.preventDefault(); if(save.disabled)return; save.disabled=cancel.disabled=true; error.textContent='';
+      const ticket=++generation; controller?.abort(); controller=new AbortController();
+      try {
+        const result=await transport({action:'customer-rep-map',operation:'create',requestId,salesrepId:select.value,
+          ...Object.fromEntries([...inputs].map(([key,input])=>[key,input.value.trim()]))},controller.signal) as {ok?:boolean;error?:string};
+        if(disposed||ticket!==generation)return;
+        if(result?.ok!==true)throw new Error(result?.error||'The assignment could not be saved.');
+        onSaved(); endEdit();
+      }catch(reason){if(!disposed&&ticket===generation){error.textContent=reason instanceof Error?reason.message:'Save failed. Retry to check its status.';save.disabled=cancel.disabled=false;}}
+    };
+  }
+  async function deleteMapping(row: MappingRow, button: HTMLButtonElement) {
+    if(button.disabled||!root.ownerDocument.defaultView?.confirm(`Delete the ${row.customername} / ${row.consigneename} assignment? Historical requests remain available.`))return;
+    button.disabled=true; error.textContent=''; const requestId=button.dataset.requestId||(button.dataset.requestId=crypto.randomUUID());
+    const ticket=++generation; controller?.abort();controller=new AbortController();
+    try {
+      const result=await transport({action:'customer-rep-map',operation:'delete',id:row.unique_id,expectedRevision:row.revision,requestId},controller.signal) as {ok?:boolean;deleted?:string;error?:string};
+      if(disposed||ticket!==generation)return;
+      if(result?.ok!==true||result.deleted!==row.unique_id)throw new Error(result?.error||'The assignment could not be deleted.');
+      if(displayedPage)paint({...displayedPage,rows:displayedPage.rows.filter(item=>item.unique_id!==row.unique_id),total:Math.max(0,displayedPage.total-1)});
+      onSaved();void load();
+    }catch(reason){if(!disposed&&ticket===generation){error.textContent=reason instanceof Error?reason.message:'Delete failed. Retry to check its status.';button.disabled=false;}}
+  }
   function editNames(row: MappingRow) {
     editing = true; error.textContent = ''; refresh.disabled = true; statusSelect.disabled = true; previous.disabled = next.disabled = true;
     const form = element('form'); form.dataset.mappingEditor = row.unique_id;
@@ -138,6 +177,8 @@ export function mountCustomerRepMapping(root: HTMLElement, transport: MappingTra
   }
   function paint(result: MappingPage) {
     displayedPage = result;
+    add.hidden = !result.canEdit;
+    add.disabled = !reps.length;
     body.replaceChildren();
     for (const row of result.rows) {
       const tr=element('tr');
@@ -147,7 +188,8 @@ export function mountCustomerRepMapping(root: HTMLElement, transport: MappingTra
       tr.append(element('td',row.hasOverride?'Manager override':'Imported'));
       const actions=element('td');
       if(result.canEdit){const assign=element('button','Assign rep');assign.type='button';assign.disabled=!reps.length&&!row.hasOverride;assign.onclick=()=>{if(!editing)assignmentEditor(row);};actions.append(assign);
-        const correct=element('button','Edit');correct.type='button';correct.onclick=()=>{if(!editing)editNames(row);};actions.append(correct);}
+        const correct=element('button','Edit');correct.type='button';correct.onclick=()=>{if(!editing)editNames(row);};actions.append(correct);
+        if(row.customername?.trim().toUpperCase()!=='N/A'&&row.consigneename?.trim().toUpperCase()!=='N/A') { const remove=element('button','Delete Row');remove.type='button';remove.onclick=()=>{if(!editing)void deleteMapping(row,remove);};actions.append(remove); }}
       tr.append(actions); body.append(tr);
     }
     page=result.page; status.textContent=result.total?`${result.total.toLocaleString()} mappings · Page ${page+1} of ${Math.max(1,Math.ceil(result.total/result.pageSize))}`:'No matching mappings.';
@@ -160,7 +202,7 @@ export function mountCustomerRepMapping(root: HTMLElement, transport: MappingTra
   }
   async function loadReps() {
     repController?.abort(); const repsController=new AbortController(); repController=repsController;
-    try { const loaded=await assignments.reps(repsController.signal); if(disposed||repsController.signal.aborted)return; reps=loaded; repsRevision=assignments.getRevision(); repError.textContent=''; if (displayedPage && !editing) paint(displayedPage); }
+    try { const loaded=await assignments.reps(repsController.signal); if(disposed||repsController.signal.aborted)return; reps=loaded; repsRevision=assignments.getRevision(); repError.textContent=''; add.disabled=!reps.length; if (displayedPage && !editing) paint(displayedPage); }
     catch(reason) { if(!disposed&&!repsController.signal.aborted&&repController===repsController){repError.textContent=reason instanceof Error?reason.message:'Sales rep choices unavailable. Select Retry reps to retry.'; const retry=element('button','Retry reps'); retry.type='button'; retry.onclick=()=>void loadReps(); repError.append(retry);} }
   }
   refresh.onclick = () => { void load(); }; statusSelect.onchange = () => { filters.status = statusSelect.value; page = 0; void load(); };

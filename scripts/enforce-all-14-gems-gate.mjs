@@ -12,10 +12,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.96 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.97 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.96');
+  assert.equal(version, '2.3.97');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -79,4 +79,14 @@ test('AV Note load, save, and stored values remove SPEC and CALIPER fragments', 
   assert.match(runtime, /itemToSave\.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper\(avEl\.value\)/);
   assert.match(migration, /sanitize_av_note_without_spec_caliper\(av_note\)/);
   assert.match(migration, /sanitize_av_note_without_spec_caliper\(salesnote\)/);
+});
+
+test('Table Management skill registers ten catalog entries and strict archive write rejection', () => {
+  const catalog = read('assets/manager-table-management.js');
+  const manifest = read('.codex/skills/agdata-table-management-and-directory/SKILL.md');
+  assert.equal((catalog.match(/section: 'editable'/g) || []).length, 5);
+  assert.equal((catalog.match(/section: 'archive'/g) || []).length, 5);
+  assert.match(manifest, /Forbidden Anti-Patterns/);
+  assert.match(read('scripts/run-tooling-release-checks.mjs'), /agdata-table-management-and-directory/);
+  assert.match(read('supabase/functions/_shared/table-management.ts'), /READ_ONLY_TABLES\.has\(table\)[^\n]*MANAGER_TABLE_READ_ONLY/);
 });

@@ -15,7 +15,26 @@ test('candidate commands use the authenticated atomic Suspend endpoint', () => {
   const source = readComposedAppSource();
   const addition = source.match(/        async function addSelectedDockSuspendDcRequestOptions\([^]*?^        }/m)[0];
   assert.match(addition, /suspendTagApi\('add_candidates'/);
+  assert.match(addition, /sourceIdentity: getSuspendTagStableSourceIdentity\(source\)/);
   assert.doesNotMatch(addition, /runDetailWriteWithRetry\('ph_soc_master'/);
+});
+
+test('Suspend Fill Tag adds AV selections without manual row entry or Request folder gating', () => {
+  const source = readComposedAppSource();
+  const detailStart = source.indexOf('function renderRequestMatchingInventoryOptions(');
+  const detailEnd = source.indexOf('function syncSuspendAvOptionSelectionControls(', detailStart);
+  const detail = source.slice(detailStart, detailEnd);
+  const addSelected = extractFunction(source, 'addSelectedRequestItemCodeOptions');
+  assert.doesNotMatch(detail, /ADD ANY NURSERY ROW|suspend-fill-tag-location|suspend-fill-tag-lot/);
+  assert.match(detail, /data-request-itemcode-option="true"/);
+  assert.match(detail, /data-suspend-av-header-action/);
+  assert.match(detail, /data-suspend-av-sticky/);
+  assert.match(detail, /syncSuspendAvOptionSelectionControls\(this\)/);
+  assert.ok(addSelected.indexOf("if (isDockSuspendDcRequestMirrorRow(activeItem))") < addSelected.indexOf('getRequestFolderName(activeItem)'),
+    'Suspend candidate additions do not require a Request folder');
+  assert.match(addSelected, /addSelectedDockSuspendDcRequestOptions\(selectedRows, activeItem\)/);
+  const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
+  assert.match(css, /request-av-option-card-shell \.app-card-qty-row[^\n]*repeat\(3,minmax\(0,1fr\)\)/);
 });
 
 test('current SOC snapshot keeps unchanged suspend rows from earlier delta filenames', () => {
@@ -420,10 +439,12 @@ test('candidate handler forwards only exact inventory IDs and the verified actor
  vm.runInContext(code,ctx);
  const actor={id:'actor-native',username:'dylan_collyge',nativeSessionId:'session-native'};
  const client={rpc:async(name,args)=>{calls.push([name,args]);return {data:{ok:true,rows:[{unique_id:'choice',locationcode:'B.08.000',lotcode:'26.F1'},{unique_id:'false',locationcode:'0.00.111',suspend_candidate_state:'replaced',quantityordered:'0'}]},error:null};}};
- const command={operation:'add_candidates',commandId:'command-stable',expectedVersion:0,payload:{sourceUid:'dock35-drop80-010248.021.1',expectedLastUpdated:'2026-10-21T00:00:00Z',inventoryIds:['inventory-b08-26f1']}};
+ const sourceIdentity={transactionnumber:'10-010248',tagcode:'021.1',dock:'Dock 35',stopnumber:'80',itemcode:'004207.031.1',locationcode:'A.09.000',lotcode:'27.S1',quantityshipped:'20',customer:'10043',consignee:'53285',salesrep:'S25'};
+ const command={operation:'add_candidates',commandId:'command-stable',expectedVersion:0,payload:{sourceUid:'dock35-drop80-010248.021.1',sourceIdentity,expectedLastUpdated:'2026-10-21T00:00:00Z',inventoryIds:['inventory-b08-26f1']}};
  const result=await ctx.handleSuspendTag(client,actor,command);
  assert.equal(result.rows[0].locationcode,'B.08.000');assert.equal(result.rows[1].suspend_candidate_state,'replaced');
  assert.equal(calls[0][0],'suspend_tag_command_v1');assert.equal(calls[0][1].p_actor_id,'actor-native');
+ assert.deepEqual(calls[0][1].p_payload.sourceIdentity,sourceIdentity);
  assert.equal(calls[0][1].p_session_id,'session-native');assert.equal(calls[0][1].p_command_id,'command-stable');
  await assert.rejects(ctx.handleSuspendTag(client,{...actor,username:'nelly_aguilar'},command),/FORBIDDEN/);
  await assert.rejects(ctx.handleSuspendTag(client,actor,{...command,payload:{...command.payload,quantityordered:'999'}}),/FIELD_FORBIDDEN/);

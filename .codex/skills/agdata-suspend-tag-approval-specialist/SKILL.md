@@ -34,8 +34,11 @@ node --test tests/suspend-tag-dataset.test.mjs tests/role-access-parity.test.mjs
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never render a manual Location/Lot fill form in Suspend AV Options; additions must use checked master inventory options. Route Suspend rows to `addSelectedDockSuspendDcRequestOptions` before applying the Request folder requirement, since Suspend source rows may have no Request folder.
+
 - Never restrict Fill Tag candidate selection to False Block sources, accept a False Block variant as a real candidate, or create a parallel evidence editor; every Suspend source uses the canonical add-candidates and exact-row photo/spec completion path.
 
 - Never render or authorize Suspend decisions from a generic Request card, username text alone, cached role flags, or client-supplied assignee identity.
 - Never broaden approval to every sales rep or let a stale/non-pending approval accept a decision.
 - Never raise the missing-source guard before stale-UID composite recovery, omit shipped quantity/tag code from physical-line recovery, or let optional decision delivery roll back a committed close/approve/reject receipt.
+- Never send Add Candidates with only a mutable SOC UID; include the canonical stable physical source identity, and recover only one exact currently eligible order line. A present replaced/ineligible source must remain rejected.

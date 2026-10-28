@@ -104,6 +104,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 - Never let a successful full Drive import erase a pending app-created Reclass destination row or its evidence/season-stock overrides; preserve the canonical pending ledgers through atomic publication.
 
+- Never assume row-level master inventory triggers reconcile pending per-field overrides during bulk publication; the canonical wrapper disables USER triggers, so apply pending edits set-wise against fenced raw Drive fields before publication and retain missing pending rows.
+
 - Never collapse a structured master-bulk or SQLSTATE failure into `MANUAL_SYNC_STAGE_FAILED`; retain the bounded code without exposing database details or source rows.
 
 - Never send a complete Drive snapshot through a per-row-triggered Apps Script publication; use trigger-suppressed fast ingest, retaining resumable staging as the failure-recovery path.
