@@ -158,9 +158,17 @@ jobs:
           RELEASE_MIGRATIONS: ${{ needs.authorize-backend.outputs.migrations }}
           GH_TOKEN: ${{ github.token }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/apply-item-low-stock-migration.mjs
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_ref="${SUPABASE_URL#https://}"
+          project_ref="${project_ref%.supabase.co}"
+          [[ "$project_ref" =~ ^[a-z0-9]{20}$ ]] || { echo 'SUPABASE_PROJECT_REF_INVALID'; exit 1; }
+          supabase login --token "$SUPABASE_ACCESS_TOKEN"
+          mkdir -p supabase/.temp
+          printf '%s' "$project_ref" > supabase/.temp/project-ref
+          node scripts/apply-item-low-stock-migration.mjs
 
       - name: Deploy changed Edge Functions
         if: needs.authorize-backend.outputs['edge-functions'] != '[]'
@@ -194,7 +202,11 @@ jobs:
           }
           mapfile -t selected_functions < <(node --input-type=module -e "for (const name of JSON.parse(process.env.RELEASE_EDGE_FUNCTIONS)) console.log(name)")
           for function_name in "${selected_functions[@]}"; do
-            deploy_with_retry supabase functions deploy "$function_name" --use-api --project-ref "$project_ref"
+            if [[ "$function_name" == 'app-api' || "$function_name" == 'aura-llm-router' ]]; then
+              deploy_with_retry supabase functions deploy "$function_name" --use-api --no-verify-jwt --project-ref "$project_ref"
+            else
+              deploy_with_retry supabase functions deploy "$function_name" --use-api --project-ref "$project_ref"
+            fi
           done
 
       - name: Verify deployed Aura authorization

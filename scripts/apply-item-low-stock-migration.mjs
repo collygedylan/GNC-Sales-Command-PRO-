@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
@@ -181,6 +183,8 @@ export const agdataV2388UnifiedRuntimeRecoveryMigrationName = '20261027184835_ag
 export const agdataV2389LiveRevisionBunchDraftMigrationName = '20261027200748_agdata_v2389_live_revision_and_bunch_draft_restore.sql';
 export const agdataV2390UniversalFillTagBunchDylanReclassLotCapMigrationName = '20261027211049_agdata_v2390_universal_fill_tag_bunch_dylan_reclass_lot_cap.sql';
 export const agdataV2390ReclassReceiptLiveStockDurabilityMigrationName = '20261027223716_agdata_v2390_reclass_receipt_and_live_stock_durability.sql';
+export const agdataV2390PostgresManualSyncMigrationName = '20261028014500_agdata_v2390_postgres_manual_sync.sql';
+export const agdataV2390LocalErpWorkerMigrationName = '20261028022000_agdata_v2390_local_erp_worker.sql';
 export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName, managerPublishedReadMigrationName, importSourceMetadataMigrationName, masterPrioritySplitMigrationName, fullAppAdministratorsMigrationName, protectedRequestNaMigrationName, zeroTrustRlsMigrationName, appLoginRateLimitMigrationName, managerReportSetBasedReadMigrationName, managerEval2BatchedPreviewMigrationName, auraDylanOwnerOnlyMigrationName, suspendExistingReviewMigrationName, suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, agdataV2379CompleteReclassDestinationRowLoopMigrationName, agdataV2379ReclassLocationEvidenceMigrationName, agdataV2380ReclassPreEditReportsMigrationName, agdataV2381FastErpStageRpcsMigrationName, agdataV2382DriveParityReclassAndFastSyncMigrationName, agdataV2382SuspendViewSchemaCompatMigrationName, agdataV2382HlPoSetBasedPageStageMigrationName, agdataV2383JdUniversalCustomerDirectoryMigrationName, agdataV2384RuntimeRecoveryMigrationName, agdataV2385ReclassOpenStockInlineOhMigrationName]);
 
 export const registeredReleaseDatabaseMigrations = Object.freeze([
@@ -191,6 +195,8 @@ export const registeredReleaseDatabaseMigrations = Object.freeze([
   agdataV2389LiveRevisionBunchDraftMigrationName,
   agdataV2390UniversalFillTagBunchDylanReclassLotCapMigrationName,
   agdataV2390ReclassReceiptLiveStockDurabilityMigrationName,
+  agdataV2390PostgresManualSyncMigrationName,
+  agdataV2390LocalErpWorkerMigrationName,
   unifiedRequestSyncSalesImpactMigrationName,
   agdataV2361SurgicalRestoreMigrationName,
   agdataV2362CanonicalRequestsMigrationName,
@@ -281,7 +287,9 @@ const SAFE_ERROR_MARKERS = new Set([
   'LOW_STOCK_DATABASE_CONTRACT_MISSING', 'LOW_STOCK_CLOUD_MAIN_REQUIRED',
   'LOW_STOCK_RELEASE_IDENTITY_REQUIRED', 'LOW_STOCK_CURRENT_MAIN_REQUIRED',
   'LOW_STOCK_DIAGNOSTIC_CONTEXT_INVALID', 'LOW_STOCK_DIAGNOSTIC_WORKFLOW_INVALID',
-  'LOW_STOCK_ARGUMENTS_INVALID'
+  'LOW_STOCK_ARGUMENTS_INVALID', 'LOW_STOCK_SUPABASE_ACCESS_TOKEN_MISSING',
+  'LOW_STOCK_SUPABASE_PROJECT_LINK_INVALID', 'LOW_STOCK_SUPABASE_CLI_QUERY_FAILED',
+  'LOW_STOCK_SUPABASE_CLI_OUTPUT_INVALID', 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'
 ]);
 
 export function validateDatabaseTarget(connectionString, supabaseUrl) {
@@ -2697,6 +2705,25 @@ export function migrationContractQuery(name) {
       'private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)'::regprocedure))>0
     and exists(select 1 from public.ph_app_settings where key='app_version' and value->>'app_version'='2.3.90')
     as installed`;
+  if (name === agdataV2390LocalErpWorkerMigrationName) return `select
+    to_regprocedure('public.claim_erp_sync_worker_v1(uuid,uuid)') is not null
+    and to_regprocedure('public.assert_erp_sync_worker_v1(uuid,uuid)') is not null
+    and exists(select 1 from pg_attribute where attrelid='private.erp_sync_jobs'::regclass and attname='worker_id' and not attisdropped)
+    and not has_function_privilege('anon','public.claim_erp_sync_worker_v1(uuid,uuid)','execute')
+    and not has_function_privilege('authenticated','public.assert_erp_sync_worker_v1(uuid,uuid)','execute')
+    and has_function_privilege('service_role','public.claim_erp_sync_worker_v1(uuid,uuid)','execute')
+    as installed`;
+  if (name === agdataV2390PostgresManualSyncMigrationName) return `select
+    to_regclass('private.erp_sync_jobs') is not null
+    and to_regprocedure('public.get_erp_sync_status_v1()') is not null
+    and to_regprocedure('public.claim_erp_sync_job_v1(text,text)') is not null
+    and to_regprocedure('public.update_erp_sync_job_v1(uuid,jsonb)') is not null
+    and to_regprocedure('public.fast_erp_import_columns_v1(text)') is not null
+    and exists(select 1 from pg_class where oid='private.erp_sync_jobs'::regclass and relrowsecurity)
+    and not has_function_privilege('anon','public.claim_erp_sync_job_v1(text,text)','execute')
+    and not has_function_privilege('authenticated','public.claim_erp_sync_job_v1(text,text)','execute')
+    and exists(select 1 from pg_index where indrelid='private.erp_sync_jobs'::regclass and indisunique and indpred is not null)
+    as installed`;
   if (name === agdataV2390ReclassReceiptLiveStockDurabilityMigrationName) return `select
     exists(select 1 from supabase_migrations.schema_migrations where version='20261027223716')
     and position('fast_ingest_drive_around_v1' in pg_get_functiondef('public.fast_commit_erp_stage_swap_v1(uuid)'::regprocedure))>0
@@ -2733,6 +2760,124 @@ export async function upsertVaultSecret({ client, name, value, description }) {
 export function migrationBody(source) {
   if (!/^begin;\s/i.test(source) || !/\scommit;\s*$/i.test(source)) throw new Error('LOW_STOCK_MIGRATION_TRANSACTION_REQUIRED');
   return source.replace(/^begin;\s*/i, '').replace(/\scommit;\s*$/i, '');
+}
+
+function sqlLiteral(value) { return `'${String(value).replaceAll("'", "''")}'`; }
+
+export function buildScopedMigrationPreflightSql(targetMigrationName) {
+  if (!registeredReleaseDatabaseMigrations.includes(targetMigrationName)) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+  const version = targetMigrationName.slice(0, 14);
+  return `begin;\nset local statement_timeout='30s';\nselect jsonb_build_object('prior',(select to_jsonb(m) from (select name,statements from supabase_migrations.schema_migrations where version=${sqlLiteral(version)}) m),` +
+    `'baseline',(select to_jsonb(m) from (select name from supabase_migrations.schema_migrations where version=${sqlLiteral(productionBaselineVersion)}) m)) as release_migration_state;\ncommit;`;
+}
+
+export function buildScopedMigrationApplySql({ source, targetMigrationName }) {
+  if (!registeredReleaseDatabaseMigrations.includes(targetMigrationName)) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+  const version = targetMigrationName.slice(0, 14);
+  const name = targetMigrationName.slice(version.length + 1, -4);
+  const body = migrationBody(source);
+  const contract = migrationContractQuery(targetMigrationName);
+  const baselineRace = baselineIncludedMigrations.has(targetMigrationName)
+    ? `if exists(select 1 from supabase_migrations.schema_migrations where version=${sqlLiteral(productionBaselineVersion)}) then raise exception 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'; end if;`
+    : '';
+  return `begin;\nset local lock_timeout='1500ms';\nset local statement_timeout='30s';\n` +
+    `select pg_advisory_xact_lock(hashtext('gnc-item-low-stock-schema-v1'));\n` +
+    `do $history$ begin if exists(select 1 from supabase_migrations.schema_migrations where version=${sqlLiteral(version)}) then ` +
+    `raise exception 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'; end if; ${baselineRace} end $history$;\n` +
+    `${body}\ninsert into supabase_migrations.schema_migrations(version,name,statements) values(` +
+    `${sqlLiteral(version)},${sqlLiteral(name)},array[${sqlLiteral(body)}]::text[]);\n` +
+    `do $contract$ begin if not coalesce((select installed from (${contract}) as release_contract),false) then ` +
+    `raise exception 'LOW_STOCK_DATABASE_CONTRACT_MISSING'; end if; end $contract$;\ncommit;`;
+}
+
+export function buildScopedMigrationExistingCheckSql({ targetMigrationName, expectedState, source }) {
+  if (!registeredReleaseDatabaseMigrations.includes(targetMigrationName) || !['prior', 'baseline'].includes(expectedState)) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+  const version = targetMigrationName.slice(0, 14);
+  const name = targetMigrationName.slice(version.length + 1, -4);
+  const contract = migrationContractQuery(targetMigrationName).replace(/;\s*$/, '');
+  const historyCheck = expectedState === 'prior'
+    ? `if not exists(select 1 from supabase_migrations.schema_migrations where version=${sqlLiteral(version)} and name=${sqlLiteral(name)} and array_to_string(statements,E'\\n')=${sqlLiteral(migrationBody(source))}) then raise exception 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'; end if;`
+    : `if not exists(select 1 from supabase_migrations.schema_migrations where version=${sqlLiteral(productionBaselineVersion)} and name='production_baseline') then raise exception 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'; end if;`;
+  return `begin;\nset local lock_timeout='1500ms';\nset local statement_timeout='30s';\nselect pg_advisory_xact_lock(hashtext('gnc-item-low-stock-schema-v1'));\n` +
+    `do $check$ begin ${historyCheck} if not coalesce((select installed from (${contract}) as release_contract),false) then raise exception 'LOW_STOCK_DATABASE_CONTRACT_MISSING'; end if; end $check$;\ncommit;`;
+}
+
+function parseSupabaseQueryRows(output) {
+  const text = String(output || '').trim();
+  for (const candidate of [text, ...text.split(/\r?\n/).reverse()]) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed?.rows)) return parsed.rows;
+      if (Array.isArray(parsed?.result?.rows)) return parsed.result.rows;
+    } catch { /* inspect the next complete JSON payload */ }
+  }
+  throw new Error('LOW_STOCK_SUPABASE_CLI_OUTPUT_INVALID');
+}
+
+export async function applyScopedMigrationWithSupabaseCli({ source, targetMigrationName, query }) {
+  if (typeof query !== 'function') throw new Error('LOW_STOCK_SUPABASE_CLI_QUERY_FAILED');
+  const version = targetMigrationName.slice(0, 14);
+  const name = targetMigrationName.slice(version.length + 1, -4);
+  const body = migrationBody(source);
+  const rows = await query(buildScopedMigrationPreflightSql(targetMigrationName));
+  const state = rows?.[0]?.release_migration_state;
+  if (!state || typeof state !== 'object') throw new Error('LOW_STOCK_SUPABASE_CLI_OUTPUT_INVALID');
+  const contract = migrationContractQuery(targetMigrationName);
+  if (state.prior) {
+    const statements = Array.isArray(state.prior.statements) ? state.prior.statements.join('\n') : String(state.prior.statements || '');
+    if (state.prior.name !== name || statements !== body) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+    await query(buildScopedMigrationExistingCheckSql({ targetMigrationName, expectedState: 'prior', source }));
+    return { status: 'already_applied' };
+  }
+  if (baselineIncludedMigrations.has(targetMigrationName) && state.baseline) {
+    if (state.baseline.name !== 'production_baseline') throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+    await query(buildScopedMigrationExistingCheckSql({ targetMigrationName, expectedState: 'baseline' }));
+    return { status: 'included_in_baseline' };
+  }
+  await query(buildScopedMigrationApplySql({ source, targetMigrationName }));
+  return { status: 'applied' };
+}
+
+export async function applyScopedMigrationsUsingSupabaseCli({ migrationPaths, root = process.cwd(), query = sql => runLinkedSupabaseQuery(sql, { root }) }) {
+  const selected = normalizeScopedMigrationPaths(migrationPaths);
+  const results = [];
+  for (const targetMigrationName of selected) {
+    const sourceDirectory = baselineIncludedMigrations.has(targetMigrationName) ? 'archive_migrations' : 'migrations';
+    const sourcePath = path.join(root, 'supabase', sourceDirectory, targetMigrationName);
+    const source = fs.readFileSync(sourcePath, 'utf8');
+    const result = await applyScopedMigrationWithSupabaseCli({ source, targetMigrationName, query });
+    results.push({ migration: targetMigrationName, ...result });
+  }
+  return results;
+}
+
+export async function runLinkedSupabaseQuery(sql, { root = process.cwd(), spawn = spawnSync } = {}) {
+  if (!process.env.SUPABASE_ACCESS_TOKEN) throw new Error('LOW_STOCK_SUPABASE_ACCESS_TOKEN_MISSING');
+  const linkFile = path.join(root, 'supabase', '.temp', 'project-ref');
+  const linkedProject = fs.readFileSync(linkFile, 'utf8').trim();
+  let apiProject = '';
+  try { apiProject = new URL(process.env.SUPABASE_URL || '').hostname.match(/^([a-z0-9]{20})\.supabase\.co$/)?.[1] || ''; }
+  catch { throw new Error('LOW_STOCK_SUPABASE_PROJECT_LINK_INVALID'); }
+  if (!/^[a-z0-9]{20}$/.test(linkedProject) || linkedProject !== apiProject) throw new Error('LOW_STOCK_SUPABASE_PROJECT_LINK_INVALID');
+  const tempRoot = process.env.RUNNER_TEMP || tmpdir();
+  const queryFile = path.join(tempRoot, `agdata-linked-query-${process.pid}.sql`);
+  const existing = fs.existsSync(queryFile) ? fs.lstatSync(queryFile) : null;
+  if (existing && (!existing.isFile() || existing.isSymbolicLink())) throw new Error('LOW_STOCK_SUPABASE_CLI_QUERY_FAILED');
+  fs.writeFileSync(queryFile, sql, 'utf8');
+  let result;
+  try {
+    result = spawn('supabase', ['db', 'query', '--linked', '--file', queryFile, '--output-format', 'json'],
+      { cwd: root, encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+  } finally {
+    fs.writeFileSync(queryFile, '');
+  }
+  if (result.error || result.status !== 0) {
+    const combined = `${result.stdout || ''}\n${result.stderr || ''}`;
+    const code = [...SAFE_ERROR_MARKERS].find(marker => combined.includes(marker)) || 'LOW_STOCK_SUPABASE_CLI_QUERY_FAILED';
+    throw new Error(code);
+  }
+  return parseSupabaseQueryRows(result.stdout);
 }
 
 export async function applyItemLowStockMigration({ client, source, onPhase = () => {}, targetMigrationName = migrationName }) {
@@ -2781,6 +2926,30 @@ export async function applyItemLowStockMigration({ client, source, onPhase = () 
 }
 
 async function main(args = process.argv.slice(2)) {
+  if (process.env.RELEASE_MIGRATIONS !== undefined) {
+    if (args.length) throw new Error('LOW_STOCK_ARGUMENTS_INVALID');
+    let phase = 'release_ref';
+    try {
+      const selected = selectReleaseMigrations();
+      if (!selected.length) return;
+      if (process.env.GITHUB_ACTIONS !== 'true' || process.env.GITHUB_REF !== 'refs/heads/main'
+          || !['push','workflow_dispatch'].includes(process.env.GITHUB_EVENT_NAME)) throw new Error('LOW_STOCK_CLOUD_MAIN_REQUIRED');
+      const repository = process.env.GITHUB_REPOSITORY || '', sha = process.env.GITHUB_SHA || '';
+      if (!/^[\w.-]+\/[\w.-]+$/.test(repository) || !/^[a-f0-9]{40}$/.test(sha) || !process.env.GH_TOKEN) throw new Error('LOW_STOCK_RELEASE_IDENTITY_REQUIRED');
+      phase = 'current_main_check';
+      const response = await fetch(`https://api.github.com/repos/${repository}/git/ref/heads/main`, {
+        headers: { authorization: `Bearer ${process.env.GH_TOKEN}`, accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15000)
+      });
+      if (!response.ok || (await response.json()).object?.sha !== sha) throw new Error('LOW_STOCK_CURRENT_MAIN_REQUIRED');
+      phase = 'linked_cli_migrations';
+      const results = await applyScopedMigrationsUsingSupabaseCli({ migrationPaths: selected, root: process.cwd() });
+      for (const result of results) console.log(`${result.migration}: ${result.status}.`);
+    } catch (error) {
+      console.error(formatSafeFailure({ phase, error }));
+      process.exitCode = 1;
+    }
+    return;
+  }
   const diagnose = args.length === 1 && args[0] === '--diagnose';
   if (args.length && !diagnose) throw new Error('LOW_STOCK_ARGUMENTS_INVALID');
   let phase = diagnose ? 'diagnostic_authorization' : 'release_ref';

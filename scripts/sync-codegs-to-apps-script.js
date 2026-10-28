@@ -74,7 +74,9 @@ function getOAuthClientFromClaspRc(claspRc) {
 function appendSummary(result) {
   const summaryPath = String(process.env.GITHUB_STEP_SUMMARY || '').trim();
   if (!summaryPath) return;
-  const deploymentLine = result.versionCapacityExhausted
+  const deploymentLine = result.headOnly
+    ? '@HEAD updated; immutable version creation and deployment updates were intentionally skipped'
+    : result.versionCapacityExhausted
     ? `@HEAD updated for triggers; web app verified at existing version ${result.deployedVersionNumber}; immutable publication deferred (version capacity exhausted)`
     : result.deploymentUpdated
     ? `version ${result.versionNumber}, verified at version ${result.deployedVersionNumber}`
@@ -128,7 +130,7 @@ async function main() {
       remoteFilesDigestBefore: expectedRemoteDigest, remoteFilesDigestAfter: publishedDigest };
     console.log(`Scoped Apps Script patch prepared for ${functionNames.length} authorized functions; protected remote code is unchanged.`);
   }
-  console.log('Syncing guarded Apps Script @HEAD before immutable version publication...');
+  console.log('Syncing guarded Apps Script @HEAD only; immutable versions and deployments are disabled...');
   const result = await syncAppsScriptProject({
     script,
     scriptId,
@@ -136,6 +138,7 @@ async function main() {
     source,
     githubSha,
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    headOnly: true,
     deleteVersionRequest: request => auth.request(request),
     beforeMutation: patchEvidence ? createAppsScriptSourceGuard({ script, scriptId,
       beforeDigest: expectedRemoteDigest, afterDigest: publishedDigest,
@@ -147,7 +150,13 @@ async function main() {
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT,
     `head-updated=${result.headUpdated === true}\nversion-capacity-exhausted=${result.versionCapacityExhausted === true}\n`);
   console.log(`Apps Script @HEAD updated (${result.versionCountBefore}/200 existing versions).`);
-  if (result.versionCapacityExhausted) {
+  if (result.headOnly) {
+    const current = await script.projects.getContent({ scriptId });
+    if (patchEvidence && appsScriptFilesDigest(current.data?.files || []) !== publishedDigest) {
+      fail('APPS_SCRIPT_HEAD_SYNC_VERIFICATION_FAILED');
+    }
+    console.log('Apps Script @HEAD sync verified; no version creation or deployment update was attempted.');
+  } else if (result.versionCapacityExhausted) {
     const current = await script.projects.getContent({ scriptId });
     if (patchEvidence && appsScriptFilesDigest(current.data?.files || []) !== publishedDigest) {
       fail('APPS_SCRIPT_HEAD_SYNC_VERIFICATION_FAILED');

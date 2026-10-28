@@ -1309,7 +1309,7 @@ test('sync status reads app-api at ten seconds without Apps Script status reques
  const calls=[];const ctx=vm.createContext({APP_API_FUNCTION_URL:'/app-api',postAppFunctionJson:async(url,body)=>{calls.push({url,body});return {ok:true,data:{active:true,currentStage:'drive'}};},normalizeManualSyncStatusPayload:value=>value});
  vm.runInContext(appFunction('fetchManualSyncStatusFromScript'),ctx);
  assert.equal((await ctx.fetchManualSyncStatusFromScript()).currentStage,'drive');
- assert.equal(calls[0].body.action,'manual_sync_status'); assert.equal(calls[0].url,'/app-api');
+ assert.equal(calls[0].body.action,'erp_sync'); assert.equal(calls[0].body.operation,'status'); assert.equal(calls[0].url,'/app-api');
  const runtime=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
  assert.ok(runtime.includes('MANUAL_SYNC_STATUS_POLL_MS = 10000'));
  const script=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
@@ -1485,7 +1485,8 @@ test('v2.3.81 RUN SCRIPT fast-skips before parsing and stages 1,000-row RPC batc
   assert.match(fastFunction, /callSupabaseRpc_\('fast_commit_erp_stage_swap_v1'/);
   assert.doesNotMatch(fastFunction, /callSupabaseRpc_\(getFastLiveIngestRpc_\(dataset\)/);
   assert.doesNotMatch(fastFunction, /fetchAllSupabaseData|pushToSupabase|deleteFromSupabase/);
-  assert.match(runtime, /type: 'manual_run'[^]*fast: true[^]*force: true/);
+  assert.match(appFunction('runGoogleAppsScriptTrigger'), /action: 'erp_sync'[^]*operation: 'start'[^]*maxAttemptsPerStage: 1[^]*force: true/);
+  assert.doesNotMatch(appFunction('runGoogleAppsScriptTrigger'), /postGoogleScriptJsonPayload|manual_run|manual_continue/);
   assert.match(migration, /btrim\(p_file_name\) like '~\$%'/);
   assert.match(migration, /upper\(btrim\(p_file_name\)\) like 'TEMP\\_%'/);
   assert.match(migration, /merge_compact_history_state_v2366[^]*merge_drive_around_report_state_v2366/);

@@ -28,6 +28,7 @@ import {
 import { createDatabaseRestBridge, legacyDatabaseTableAliases } from "../../../services/databaseRest.ts";
 import { jsonObject, jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
 import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs";
+import { ERP_SYNC_STAGES, validateErpSyncCommand, isLegacyRunScriptAction } from "../_shared/erp-sync.mjs";
 import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
 import { createAppRateLimitDigest, createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
@@ -62,6 +63,7 @@ const databaseBridge = createDatabaseRestBridge(async (url, init, timeout) => fe
 
 const SUPABASE_URL = String(Deno.env.get("SUPABASE_URL") || "").trim();
 const SUPABASE_SERVICE_ROLE_KEY = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+const ERP_SYNC_LOCAL_WORKER_KEY = String(Deno.env.get("ERP_SYNC_LOCAL_WORKER_KEY") || "").trim();
 const PRODUCTION_SCHEDULE_WORKBOOK_ID = "1myBn2DzyhYtTj2MmYatf26jz575TjqxSpxC-kFt1Mhw";
 const PRODUCTION_SCHEDULE_USERS = new Set(["dylan_collyge", "megan_kelly", "jd_jones"]);
 const PRODUCTION_SCHEDULE_SIGNING_SECRET = SUPABASE_SERVICE_ROLE_KEY.trim();
@@ -4585,13 +4587,16 @@ async function handleAppsScriptAction(
   access: CanonicalUserAccess | null,
 ) {
   if (!session || !access) return errorResponse("An active authenticated profile is required.", 401, { code: "AUTH_REQUIRED" });
-  if (!PRODUCTION_SCHEDULE_APPS_SCRIPT_URL || !PRODUCTION_SCHEDULE_SIGNING_SECRET) {
-    return transientOkResponse("APPS_SCRIPT_GATEWAY_UNAVAILABLE", "The Apps Script action gateway is unavailable.");
-  }
   if (Object.keys(requestPayload).some(key => key !== "action" && key !== "payload")) {
     return errorResponse("Invalid Apps Script action request.", 400, { code: "APPS_SCRIPT_ACTION_REQUEST_INVALID" });
   }
   const action = String(requestPayload.action || "").trim().toLowerCase();
+  if (isLegacyRunScriptAction(action)) {
+    return errorResponse("RUN SCRIPT is handled by the PostgreSQL ERP sync worker.", 410, { code: "LEGACY_RUN_SCRIPT_DISABLED" });
+  }
+  if (!PRODUCTION_SCHEDULE_APPS_SCRIPT_URL || !PRODUCTION_SCHEDULE_SIGNING_SECRET) {
+    return transientOkResponse("APPS_SCRIPT_GATEWAY_UNAVAILABLE", "The Apps Script action gateway is unavailable.");
+  }
   const source = requestPayload.payload && typeof requestPayload.payload === "object" && !Array.isArray(requestPayload.payload)
     ? requestPayload.payload as Record<string, unknown> : null;
   if (!source) return errorResponse("Invalid Apps Script action payload.", 400, { code: "APPS_SCRIPT_ACTION_REQUEST_INVALID" });
@@ -6722,6 +6727,9 @@ type CanonicalActionGate = { flag: CanonicalUserAccessFlag } | { any: readonly C
 
 function canonicalActionGate(action: string, payload: Record<string, unknown>): CanonicalActionGate | null {
   if (action === "fast_erp_ingest") return { flag: "can_access_manager_tab" };
+  if (action === "erp_sync") return String(payload.operation || "").trim().toLowerCase() === "status"
+    ? { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] }
+    : { flag: "can_access_manager_tab" };
   if (action === "manual_sync_status") return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] };
   if (action === "av_read") return { flag: "can_access_av" };
   if (action === "dataset_read") {
@@ -6769,6 +6777,117 @@ function canonicalActionGate(action: string, payload: Record<string, unknown>): 
   return null;
 }
 
+async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>, actorValue: Record<string, unknown> | null) {
+  if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+  const actor = actorValue || await resolveActiveSessionProfile(session);
+  const command = validateErpSyncCommand(payload);
+  const operation = String(payload.operation || "").trim().toLowerCase();
+  if (operation === "status") {
+    if (!command.ok) {
+      return errorResponse("Invalid ERP sync status request.", 400, { code: "ERP_SYNC_REQUEST_INVALID" });
+    }
+    const { data, error } = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
+    if (error) return databaseFailureResponse("ERP sync status is unavailable.", error, "ERP_SYNC_STATUS_UNAVAILABLE");
+    const status = jsonObject(data);
+    if (status.active === true) return jsonResponse({ ok: true, data: status });
+    return jsonResponse({ ok: true, data: { ...status, active: false, status: status.status || "idle",
+      currentStage: "idle", currentStageLabel: "Idle", updatedAt: status.updatedAt || "" } });
+  }
+  if (!command.ok || operation !== "start") {
+    return errorResponse("Invalid ERP sync start request.", 400, { code: "ERP_SYNC_REQUEST_INVALID" });
+  }
+  if (!FULL_ACCESS_USER_KEYS.has(normalizeUsername(String(actor.username || "")))) {
+    return errorResponse("Only designated administrators can run ERP sync.", 403, { code: "ERP_SYNC_FORBIDDEN" });
+  }
+  const commandId = command.commandId;
+  const { data, error } = await supabase.rpc("claim_erp_sync_job_v1" as never, {
+    p_command_id: commandId, p_actor: normalizeUsername(String(actor.username || "")),
+  } as never);
+  if (error) return databaseFailureResponse("ERP sync could not be queued.", error, "ERP_SYNC_CLAIM_FAILED");
+  const claim = jsonObject(data);
+  const claimStatus = claim.status && typeof claim.status === "object" && !Array.isArray(claim.status)
+    ? jsonObject(claim.status) : claim;
+  if (claim.claimed === true) {
+    const runId = String(claim.runId || claim.run_id || claimStatus.runId || claimStatus.run_id || "");
+    if (!runId) return errorResponse("ERP sync claim was not confirmed.", 503, { code: "ERP_SYNC_CLAIM_UNCONFIRMED" });
+    const initial: Record<string, unknown> = { ...claimStatus, active: true, status: "queued", runId, commandId,
+      actor: normalizeUsername(String(actor.username || "")), source: "postgresql",
+      stageOrder: ERP_SYNC_STAGES.map(stage => stage.key), stageIndex: 0, currentStage: "queued",
+      currentStageLabel: "Queued", stageResults: Array.isArray(claimStatus.stageResults) ? claimStatus.stageResults : [],
+      startedAt: claimStatus.startedAt || new Date().toISOString(), updatedAt: claimStatus.updatedAt || new Date().toISOString(),
+      maxAttemptsPerStage: 1 };
+    return jsonResponse({ ok: true, data: initial });
+  }
+  return jsonResponse({ ok: true, data: claimStatus });
+}
+
+const ERP_SYNC_WORKER_OPERATIONS: Record<string, { rpc: string; argKeys: readonly string[] }> = {
+  update_status: { rpc: "update_erp_sync_job_v1", argKeys: ["p_status"] },
+  columns: { rpc: "fast_erp_import_columns_v1", argKeys: ["p_dataset_key"] },
+  check_file: { rpc: "check_erp_file_sync_needed_v1", argKeys: ["p_dataset_key", "p_file_id", "p_file_name", "p_modified_at", "p_content_hash"] },
+  begin: { rpc: "fast_begin_erp_stage_v1", argKeys: ["p_dataset_key", "p_file_meta", "p_expected_rows"] },
+  append: { rpc: "fast_append_erp_stage_batch_v1", argKeys: ["p_stage_id", "p_start_row", "p_rows"] },
+  commit: { rpc: "fast_commit_erp_stage_swap_v1", argKeys: ["p_stage_id"] },
+};
+
+async function handleErpSyncWorker(payload: Record<string, unknown>, req: Request) {
+  const authorization = String(req.headers.get("authorization") || "").trim();
+  if (!ERP_SYNC_LOCAL_WORKER_KEY || authorization !== `Bearer ${ERP_SYNC_LOCAL_WORKER_KEY}`) {
+    return errorResponse("Service worker authorization required.", 401, { code: "ERP_SYNC_WORKER_UNAUTHORIZED" });
+  }
+  if (Object.keys(payload).some(key => key !== "action" && key !== "payload")) {
+    return errorResponse("Invalid ERP sync worker request.", 400, { code: "ERP_SYNC_WORKER_REQUEST_INVALID" });
+  }
+  const source = payload.payload && typeof payload.payload === "object" && !Array.isArray(payload.payload)
+    ? payload.payload as Record<string, unknown> : {};
+  if (Object.keys(source).some(key => !["operation", "runId", "workerId", "args"].includes(key))) {
+    return errorResponse("Invalid ERP sync worker request.", 400, { code: "ERP_SYNC_WORKER_REQUEST_INVALID" });
+  }
+  const operation = String(source.operation || "").trim().toLowerCase();
+  if (operation === "status") {
+    if (Object.keys(source).some(key => key !== "operation")) return errorResponse("Invalid ERP sync worker status request.", 400, { code: "ERP_SYNC_WORKER_REQUEST_INVALID" });
+    const { data, error } = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
+    if (error) return databaseFailureResponse("ERP sync status is unavailable.", error, "ERP_SYNC_STATUS_UNAVAILABLE");
+    return jsonResponse({ ok: true, data });
+  }
+  const runId = String(source.runId || "").trim();
+  const workerId = String(source.workerId || "").trim();
+  if (!/^[0-9a-f-]{36}$/i.test(runId) || !/^[0-9a-f-]{36}$/i.test(workerId)) {
+    return errorResponse("Invalid ERP sync worker lease.", 400, { code: "ERP_SYNC_WORKER_LEASE_INVALID" });
+  }
+  if (operation === "claim_worker") {
+    if (Object.keys(source).some(key => !["operation", "runId", "workerId"].includes(key))) return errorResponse("Invalid ERP sync worker claim.", 400, { code: "ERP_SYNC_WORKER_REQUEST_INVALID" });
+    const { data, error } = await supabase.rpc("claim_erp_sync_worker_v1" as never, {
+      p_run_id: runId, p_worker_id: workerId,
+    } as never);
+    if (error) return databaseFailureResponse("ERP sync worker claim failed.", error, "ERP_SYNC_WORKER_CLAIM_FAILED");
+    const claim = jsonObject(data);
+    return jsonResponse({ ok: true, data: { claimed: claim.claimed === true, status: claim } });
+  }
+  const spec = ERP_SYNC_WORKER_OPERATIONS[operation];
+  const args = source.args && typeof source.args === "object" && !Array.isArray(source.args)
+    ? source.args as Record<string, unknown> : null;
+  if (!spec || !args || Object.keys(source).some(key => !["operation", "runId", "workerId", "args"].includes(key))
+      || Object.keys(args).some(key => !spec.argKeys.includes(key))) {
+    return errorResponse("Invalid ERP sync worker operation.", 400, { code: "ERP_SYNC_WORKER_REQUEST_INVALID" });
+  }
+  const lease = await supabase.rpc("assert_erp_sync_worker_v1" as never, {
+    p_run_id: runId, p_worker_id: workerId,
+  } as never);
+  if (lease.error) return errorResponse("ERP sync worker lease is no longer active.", 409, { code: "ERP_SYNC_WORKER_LEASE_INVALID" });
+  const rpcArgs: Record<string, unknown> = { ...args };
+  if (operation === "update_status") {
+    if (!rpcArgs.p_status || typeof rpcArgs.p_status !== "object" || Array.isArray(rpcArgs.p_status)) {
+      return errorResponse("Invalid ERP sync status update.", 400, { code: "ERP_SYNC_WORKER_REQUEST_INVALID" });
+    }
+    rpcArgs.p_run_id = runId;
+  }
+  const { data, error } = await supabase.rpc(spec.rpc as never, rpcArgs as never);
+  if (error) return databaseFailureResponse("ERP sync worker operation failed.", error, "ERP_SYNC_WORKER_OPERATION_FAILED");
+  return jsonResponse({ ok: true, data });
+}
+
 if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
@@ -6780,6 +6899,12 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
 
   const contentType = String(req.headers.get("content-type") || "").toLowerCase();
+  const payload = contentType.includes("multipart/form-data") ? {} as Record<string, unknown>
+    : normalizeEscapedDisplayPayload(await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const action = String(payload.action || "").trim().toLowerCase();
+  if (!contentType.includes("multipart/form-data") && action === "erp_sync_worker") {
+    return await handleErpSyncWorker(payload, req);
+  }
   let session = await readSupabaseOrAppSessionFromRequest(req, supabase);
   let canonicalAccessForRequest: CanonicalUserAccess | null = null;
   let activeProfileForRequest: Record<string, unknown> | null = null;
@@ -6798,9 +6923,6 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       return errorResponse(status === 503 ? "Access could not be verified. Retry when the service is available." : "An active authenticated profile is required.", status, { code: status === 503 ? "USER_ACCESS_UNAVAILABLE" : message });
     }
   }
-
-  const payload = normalizeEscapedDisplayPayload(await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const action = String(payload.action || "").trim().toLowerCase();
 
   // Login credentials, the native bridge, and the dedicated password reconciliation flow have
   // their own proof contracts; every other app-api action shares the gate below.
@@ -7016,6 +7138,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     return await handleAppsScriptAction(session, payload.payload && typeof payload.payload === "object" && !Array.isArray(payload.payload)
       ? payload.payload as Record<string, unknown> : {}, canonicalAccessForRequest);
   }
+
+  if (action === "erp_sync") return await handleErpSyncAction(session, payload, activeProfileForRequest);
 
   if (action === "fast_erp_ingest") {
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });

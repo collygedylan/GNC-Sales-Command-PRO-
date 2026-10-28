@@ -197,3 +197,13 @@ test('type-only schema reconciliation does not redeploy unrelated Edge Functions
   assert.deepEqual(scope.edgeFunctions,['app-api']);
   assert.equal(scope.deploy.supabase,true);
 });
+
+test('exclusive ERP sync shared module deploys only app-api while other shared changes remain global', () => {
+  const erp = classifyReleasePaths(['supabase/functions/_shared/erp-sync.mjs', 'supabase/functions/_shared/erp-sync.d.mts']);
+  assert.deepEqual(erp.edgeFunctions, ['app-api']);
+  assert.equal(erp.deploy.supabase, true);
+  assert.deepEqual(classifyReleasePaths(['supabase/functions/_shared/canonical-user-access.ts']).edgeFunctions, ['*']);
+  assert.deepEqual(classifyReleasePaths(['supabase/functions/_shared/erp-sync.mjs', 'supabase/config.toml']).edgeFunctions, ['*']);
+  assert.deepEqual(classifyReleasePaths(['supabase/functions/_shared/erp-sync.mjs', 'supabase/functions/aura-query/index.ts']).edgeFunctions, ['app-api', 'aura-query']);
+  assert.deepEqual(classifyReleasePaths(['supabase/functions/_shared/erp-sync.d.mts', 'supabase/functions/_shared/database.types.ts']).edgeFunctions, ['app-api']);
+});

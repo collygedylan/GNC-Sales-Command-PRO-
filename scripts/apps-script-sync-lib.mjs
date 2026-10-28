@@ -253,6 +253,7 @@ export async function syncAppsScriptProject({
   healthAttempts = 12,
   healthRetryDelayMs = 5000,
   deleteVersionRequest,
+  headOnly = false,
   beforeMutation = async () => {}
 }) {
   if (!scriptId) throw syncError('APPS_SCRIPT_SCRIPT_ID_MISSING');
@@ -281,6 +282,12 @@ export async function syncAppsScriptProject({
   const versionCount = versions.length;
   if (versionCount >= APPS_SCRIPT_VERSION_WARNING_THRESHOLD) {
     logger.warn(`WARNING: APPS_SCRIPT_VERSION_CAPACITY_LOW (${versionCount}/${APPS_SCRIPT_VERSION_LIMIT})`);
+  }
+  if (headOnly) {
+    return { ok: true, headUpdated: true, headOnly: true,
+      versionCapacityExhausted: versionCount >= APPS_SCRIPT_VERSION_LIMIT,
+      versionCreated: false, versionCountBefore: versionCount, sourceUpdated: true,
+      deploymentUpdated: false };
   }
   if (!deploymentRequested) {
     return { ok: true, headUpdated: true, versionCapacityExhausted: versionCount >= APPS_SCRIPT_VERSION_LIMIT,

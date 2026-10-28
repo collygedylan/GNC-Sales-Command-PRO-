@@ -89,6 +89,7 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
   if (write.test(action) || write.test(operation)) return false;
   if (isInventoryConsolidationSnapshotRead(body)) return true;
   if (action === 'manual_sync_status' && !operation && Object.keys(body).length === 1) return true;
+  if (action === 'erp_sync' && operation === 'status' && Object.keys(body).sort().join(',') === 'action,operation') return true;
   if (action === 'customer-rep-map' && operation === 'preload') return true;
   if (action === 'suspend_tag' && operation === 'inbox') return true;
   return /(?:^|_)read(?:_v\d+)?$/i.test(action)
@@ -120,6 +121,7 @@ export function releaseSnapshotReadFixture(body, mappings = [], approvals = [], 
       : {reviews:[],total:0,review_count:0,can_review:false,counters:[]}};
   }
   if (body.action === 'manual_sync_status' && Object.keys(body).join(',') === 'action') return {ok:true,data:{active:false,currentStage:'idle'}};
+  if (body.action === 'erp_sync' && body.operation === 'status' && Object.keys(body).sort().join(',') === 'action,operation') return {ok:true,data:{active:false,currentStage:'idle'}};
   if (body.action === 'request_work' && body.operation === 'capabilities' && Object.keys(body).sort().join(',') === 'action,operation' && capabilities) return {ok:true,data:capabilities};
   if (body.action === 'customer-rep-map' && body.operation === 'preload'
       && Object.keys(body).sort().join(',') === 'action,operation') {

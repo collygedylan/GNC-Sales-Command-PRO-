@@ -185,7 +185,11 @@ test('manual sync has authenticated exact-run kick, serial worker, per-stage ref
   assert.match(continuation, /String\(pending.runId\) !== String\(payload.run_id/);
   assert.match(continuation, /runQueuedManualSyncStage_\(\{ expectedRunId: payload.run_id \}\)/);
   assert.match(sourceFunction(appsScriptSource, 'runQueuedManualSyncStage_'), /lock.tryLock/);
-  assert.match(sourceFunction(appHtml, 'runGoogleAppsScriptTrigger', '        '), /type: 'manual_continue'[\s\S]*nativeAuthAccessToken: importToken/);
+  const start = sourceFunction(appHtml, 'runGoogleAppsScriptTrigger', '        ');
+  assert.match(start, /await getNativeAuthRequestHeaders\(\)/);
+  assert.match(start, /importScope !== getSupabaseReadIdentityScope\(\)/);
+  assert.match(start, /action: 'erp_sync'[\s\S]*operation: 'start'[\s\S]*commandId: crypto\.randomUUID\(\)/);
+  assert.doesNotMatch(start, /manual_continue|postGoogleScriptJsonPayload/);
   assert.match(sourceFunction(appHtml, 'applyManualSyncStatus', '        '), /next.stageIndex > previous.stageIndex[\s\S]*refreshDashboardSyncMetadata\(true\)/);
   assert.match(sourceFunction(appHtml, 'scheduleManualSyncStatusPoll', '        '), /catch\([\s\S]*scheduleManualSyncStatusPoll/);
 });
@@ -408,6 +412,23 @@ test('capacity at 180 warns but still permits an editable-source-only sync', asy
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /APPS_SCRIPT_VERSION_CAPACITY_LOW/);
   assert.deepEqual(calls, ['getContent', 'updateContent', 'versions.list']);
+});
+
+test('release sync head-only mode updates source and never creates a version or updates a deployment', async () => {
+  const { script, calls } = makeScript({ versionCount: 200 });
+  const result = await syncAppsScriptProject({ script, scriptId: 'script', deploymentId: 'deployment',
+    source, githubSha: sha, headOnly: true, logger: { warn() {} } });
+  assert.equal(result.headUpdated, true);
+  assert.equal(result.headOnly, true);
+  assert.equal(result.versionCapacityExhausted, true);
+  assert.equal(result.versionCreated, false);
+  assert.equal(result.deploymentUpdated, false);
+  assert.ok(script.updatedSource.includes(sha));
+  assert.deepEqual(calls, ['getContent', 'updateContent', 'versions.list']);
+
+  const entrypoint = readFileSync(new URL('../scripts/sync-codegs-to-apps-script.js', import.meta.url), 'utf8');
+  assert.match(entrypoint, /headOnly:\s*true/);
+  assert.match(entrypoint, /no version creation or deployment update was attempted/);
 });
 
 test('version-create quota errors use the latest existing deployment while unrelated errors remain fatal', async () => {

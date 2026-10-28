@@ -51,7 +51,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    '505ab5feea0c331a5bbe7b5bae22be443bb46d728c6c752c8177927c1d09035d');
+    'e9e0c555e899ba807279bd082624558a0b84156c55f3a5c0f292316c99d43515');
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));
@@ -63,7 +63,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   assert.ok(source.includes('local implementation permission alone does not authorize production writes, push, or deployment'));
   assert.ok(source.includes('Permanent Disk Hygiene'));
   assert.ok(source.includes('truncate temporary local scratch files to zero bytes'));
-  assert.ok(source.includes('G:\\My Drive\\GNC\\...'));
+  assert.ok(source.includes('G:\\My Drive\\GNC\\AgData\\Release Evidence\\'));
   const attributes = read('.gitattributes');
   for (const ext of ['js', 'mjs', 'ts', 'json', 'html', 'css', 'sql', 'gs', 'webmanifest', 'md', 'yml']) {
     assert.ok(attributes.split('\n').includes(`*.${ext} text eol=lf`), ext);
@@ -153,7 +153,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.90'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'single-pass-reclass-r1'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.90'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.90'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'postgres-erp-sync-r1'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.90'/);assert.match(sw,/cache: 'reload'/);
 });
 
 

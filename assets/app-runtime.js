@@ -27808,7 +27808,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function fetchManualSyncStatusFromScript() {
-            const response = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'manual_sync_status' }, { timeoutMs: 10000, label: 'Sync status' });
+            const response = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'erp_sync', operation: 'status' }, { timeoutMs: 10000, label: 'Sync status' });
             if (!response?.ok) throw new Error(response?.code || 'MANUAL_SYNC_STATUS_UNAVAILABLE');
             return normalizeManualSyncStatusPayload(response.data);
         }
@@ -27877,6 +27877,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 dashboardSyncMetadataFetchedAt = 0;
                 void refreshDashboardSyncMetadata(true);
             }
+            if (next.runId && (previous.active || next.active) && String(currentUser || '').trim().toLowerCase() === 'dylan_collyge') {
+                const completed = new Set((next.runId === previous.runId ? previous.stageResults || [] : [])
+                    .filter(result => result.outcome === 'processed' && Number(result.processedFiles) > 0)
+                    .map(result => `${result.key}|${result.sourceFileName || ''}`));
+                for (const result of next.stageResults || []) {
+                    if (result.outcome !== 'processed' || !(Number(result.processedFiles) > 0)
+                        || completed.has(`${result.key}|${result.sourceFileName || ''}`)) continue;
+                    showToast('Supabase Updated', `${String(result.key || '').toUpperCase()} ${result.sourceFileName || ''} processed — Supabase updated`, false,
+                        { fingerprint: `erp-sync:${next.runId}:${result.key}:${result.sourceFileName || ''}` });
+                }
+            }
 
             if (isActive) {
                 if (shouldPauseManualSyncViewRefresh()) {
@@ -27893,6 +27904,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
             clearManualSyncStatusPoll();
             if (wasActive) {
+                updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
                 refreshRealtimeSubscriptionsForCurrentView(true);
                 scheduleManualSyncCompletionRefresh();
                 if (!next.error && typeof handlePoManagementManualSyncComplete === 'function') handlePoManagementManualSyncComplete();
@@ -28023,17 +28035,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const importToken = String(authHeaders?.Authorization || '').replace(/^Bearer\s+/i, '').trim();
                 if (!canRunManualInventoryImport() || !importToken || importScope !== getSupabaseReadIdentityScope()) throw new Error('Permission Denied');
                 const payload = {
-                    type: 'manual_run',
-                    nativeAuthAccessToken: importToken,
-                    job: 'all',
+                    action: 'erp_sync',
+                    operation: 'start',
+                    commandId: crypto.randomUUID(),
                     maxAttemptsPerStage: 1,
-                    trigger: 'header_button',
-                    run_inline: false,
-                    fast: true,
-                    force: true,
-                    force_if_stale: true,
-                    requested_by: currentUserDisplay || currentUser || 'Unknown',
-                    requested_at: new Date().toISOString()
+                    force: true
                 };
                 const queuedAt = new Date().toISOString();
                 applyManualSyncStatus({
@@ -28047,7 +28053,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     updatedAt: queuedAt,
                     message: 'Running sync now...'
                 }, { delayMs: 1800, suppressToast: true });
-                const responseData = await postGoogleScriptJsonPayload(payload, MANUAL_SYNC_SCRIPT_TIMEOUT_MS, 'Manual Sync');
+                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 15000, label: 'Run Script' });
+                if (!response?.ok) throw new Error(response?.message || response?.code || 'ERP_SYNC_START_FAILED');
+                const responseData = response.data;
+                if (!responseData || typeof responseData.active !== 'boolean') throw new Error('ERP_SYNC_STATUS_INVALID');
                 const responseStatus = String(firstNonEmptyValue(responseData && responseData.status, '')).trim().toLowerCase();
                 const responseMessage = String(firstNonEmptyValue(responseData && responseData.message, '')).trim();
                 if (responseData && responseData.ok === false) {
@@ -28073,36 +28082,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         updatedAt: String(firstNonEmptyValue(responseData && responseData.updatedAt, responseData && responseData.updated_at, startedAt)).trim(),
                         message: responseMessage || 'Manual sync queued.'
                     }, { delayMs: 700, suppressToast: true });
-                    showToast('Started', responseMessage || 'Google Apps Script queued successfully.');
+                    showToast('Started', responseMessage || 'Supabase import queued successfully.');
                     window.googleScriptRunInFlight = false;
                     syncGoogleScriptButton();
-                    // Do not wait for Apps Script's time trigger to start the
-                    // worker. Polling stays independent while its lock serializes
-                    // this authenticated kick with the recovery trigger.
-                    if (responseData.runId) void postGoogleScriptJsonPayload({
-                        type: 'manual_continue', run_id: responseData.runId,
-                        nativeAuthAccessToken: importToken
-                    }, MANUAL_SYNC_SCRIPT_TIMEOUT_MS, 'Manual Sync Continuation').catch(() => {
-                        if (hasActiveManualSync()) scheduleManualSyncStatusPoll(500);
-                    });
-                } else if (handleDeferredManualSyncStart(responseData)) {
-                } else if (responseData && typeof responseData === 'object' && ('active' in responseData || responseData.currentStage || responseData.finishedAt)) {
-                    const finalStatus = applyManualSyncStatus(responseData, { suppressToast: false });
-                    if (!finalStatus.active && !finalStatus.error && String(currentUser || '').trim().toLowerCase() === 'dylan_collyge') {
-                        showToast('Sync Complete', finalStatus.message || 'Manual sync complete.');
-                    }
                 } else {
-                    const sentAt = new Date().toISOString();
-                    applyManualSyncStatus({
-                        active: true,
-                        runId: String(firstNonEmptyValue(responseData && responseData.runId, '')).trim(),
-                        currentStage: 'queued',
-                        currentStageLabel: 'Queued',
-                        startedAt: sentAt,
-                        updatedAt: sentAt,
-                        message: responseMessage || 'Manual sync request sent.'
-                    }, { delayMs: 700, suppressToast: true });
-                    showToast('Started', responseMessage || 'Google Apps Script request sent.');
+                    applyManualSyncStatus(responseData, { suppressToast: false });
                 }
             } catch (err) {
                 console.error(err);
@@ -28113,12 +28097,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         active: false,
                         currentStage: 'request_failed',
                         currentStageLabel: 'Request Failed',
-                        message: err && err.message ? err.message : 'Could not send the Google Apps Script request.',
-                        error: err && err.message ? err.message : 'Could not send the Google Apps Script request.',
+                        message: err && err.message ? err.message : 'Could not start the Supabase import.',
+                        error: err && err.message ? err.message : 'Could not start the Supabase import.',
                         finishedAt: new Date().toISOString()
                     }, { suppressToast: true });
                 }
-                showToast('Error', err && err.message ? err.message : 'Could not send the Google Apps Script request.', true);
+                showToast('Error', err && err.message ? err.message : 'Could not start the Supabase import.', true);
             } finally {
                 isRunScriptActive = false;
                 window.googleScriptRunInFlight = false;

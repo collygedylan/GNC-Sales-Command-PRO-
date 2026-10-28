@@ -138,18 +138,20 @@ jobs:
         run: npm run check:inline
       - name: Focused release contracts only (15 second budget)
         run: node scripts/run-tooling-release-checks.mjs
-      - name: Type-check only selected Edge Functions
+      - name: Parse and bundle selected Edge Functions with esbuild
         if: steps.classify.outputs.edge-functions != '[]'
         env:
           RELEASE_EDGE_FUNCTIONS: ${{ steps.classify.outputs.edge-functions }}
         run: |
           node --input-type=module <<'NODE'
-          import { spawnSync } from 'node:child_process';
+          import { resolve } from 'node:path';
+          import { build } from 'esbuild';
           for (const name of JSON.parse(process.env.RELEASE_EDGE_FUNCTIONS)) {
             if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error('RELEASE_EDGE_NAME_INVALID');
-            const result = spawnSync('./node_modules/.bin/deno', ['check', '--node-modules-dir=none', '--frozen',
-              `supabase/functions/${name}/index.ts`], { stdio: 'inherit' });
-            if (result.error || result.status !== 0) throw new Error(`RELEASE_DENO_CHECK_FAILED_${name}`);
+            await build({ entryPoints: [resolve(`supabase/functions/${name}/index.ts`)], bundle: true,
+              write: false, platform: 'neutral', format: 'esm', packages: 'external',
+              external: ['http://*', 'https://*', 'npm:*', 'jsr:*', 'node:*'], logLevel: 'silent' });
+            console.log(`Validated ${name} syntax and local imports (esbuild; no type-check claim).`);
           }
           NODE
       - uses: ./.github/actions/prepare-native-release

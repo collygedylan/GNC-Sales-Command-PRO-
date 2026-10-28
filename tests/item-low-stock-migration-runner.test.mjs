@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import { X509Certificate } from 'node:crypto';
 import pg from 'pg';
 import yaml from 'js-yaml';
+import { agdataV2390PostgresManualSyncMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
+import { applyScopedMigrationWithSupabaseCli, buildScopedMigrationApplySql, buildScopedMigrationExistingCheckSql } from '../scripts/apply-item-low-stock-migration.mjs';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName,
   perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, releaseDatabaseMigrations, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, migrationContractQuery, upsertVaultSecret,
@@ -69,6 +71,50 @@ test('v2.3.81 fast ERP stage RPCs preserve service-role and canonical commit con
   assert.match(migration, /bump_eval_report_revision_for_low_stock_v1/);
   assert.match(migration, /values\('ph_eval_report_settings',1,'ready'/);
   assert.match(migration, /revision=existing_revision\.revision\+1/);
+});
+
+test('v2.3.90 PostgreSQL manual sync migration is ordered and verified by the release runner', () => {
+  assert.equal(agdataV2390PostgresManualSyncMigrationName,
+    '20261028014500_agdata_v2390_postgres_manual_sync.sql');
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2390PostgresManualSyncMigrationName]),
+    [agdataV2390PostgresManualSyncMigrationName]);
+  assert.deepEqual(normalizeScopedMigrationPaths([agdataV2390PostgresManualSyncMigrationName]),
+    [agdataV2390PostgresManualSyncMigrationName]);
+  const contract = migrationContractQuery(agdataV2390PostgresManualSyncMigrationName);
+  for (const marker of ['private.erp_sync_jobs', "to_regprocedure('public.get_erp_sync_status_v1()') is not null",
+    "to_regprocedure('public.claim_erp_sync_job_v1(text,text)') is not null",
+    "to_regprocedure('public.update_erp_sync_job_v1(uuid,jsonb)') is not null",
+    "not has_function_privilege('anon','public.claim_erp_sync_job_v1(text,text)','execute')",
+    "not has_function_privilege('authenticated','public.claim_erp_sync_job_v1(text,text)','execute')"])
+    assert.ok(contract.includes(marker), marker);
+});
+
+test('scoped CLI migration path is bounded, history-safe, and verifies installed contracts transactionally', async () => {
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${agdataV2390PostgresManualSyncMigrationName}`, import.meta.url), 'utf8');
+  const appliedSql = buildScopedMigrationApplySql({ source, targetMigrationName: agdataV2390PostgresManualSyncMigrationName });
+  assert.match(appliedSql, /set local lock_timeout='1500ms'/);
+  assert.match(appliedSql, /set local statement_timeout='30s'/);
+  assert.match(appliedSql, /LOW_STOCK_DATABASE_CONTRACT_MISSING/);
+  assert.match(appliedSql, /commit;$/);
+  const checks = buildScopedMigrationExistingCheckSql({ targetMigrationName: agdataV2390PostgresManualSyncMigrationName, expectedState: 'prior', source });
+  assert.ok(checks.includes('array_to_string(statements'));
+  assert.ok(checks.includes(migrationBody(source).replaceAll("'", "''")));
+  assert.match(checks, /LOW_STOCK_MIGRATION_HISTORY_CHANGED/);
+  assert.match(checks, /LOW_STOCK_DATABASE_CONTRACT_MISSING/);
+  assert.match(checks, /set local statement_timeout='30s'/);
+  const calls = [];
+  const result = await applyScopedMigrationWithSupabaseCli({
+    source,
+    targetMigrationName: agdataV2390PostgresManualSyncMigrationName,
+    query: async sql => {
+      calls.push(sql);
+      return calls.length === 1 ? [{ release_migration_state: { prior: null, baseline: null } }] : [];
+    },
+  });
+  assert.deepEqual(result, { status: 'applied' });
+  assert.equal(calls.length, 2);
+  assert.match(calls[0], /set local statement_timeout='30s'/);
+  assert.match(calls[1], /LOW_STOCK_DATABASE_CONTRACT_MISSING/);
 });
 
 test('v2.3.82 Suspend view uses exact physical inventory parity and excludes false blocks', () => {
@@ -1453,7 +1499,9 @@ test('backend rollout verifies current main and applies migrations before deploy
   const migrationStep = steps.find(step => step.name === 'Apply validated backend release migrations');
   const deployStep = steps.find(step => step.name === 'Deploy changed Edge Functions');
   assert.equal(dependencyStep.with['node-version'],20);
-  assert.equal(migrationStep.run,'node scripts/apply-item-low-stock-migration.mjs');
+  assert.match(migrationStep.run,/node scripts\/apply-item-low-stock-migration\.mjs/);
+  assert.match(migrationStep.run,/supabase login --token/);
+  assert.match(migrationStep.run,/project-ref/);
   assert.equal(migrationStep.env.RELEASE_MIGRATIONS,'${{ needs.authorize-backend.outputs.migrations }}');
   assert.equal(deployStep.env.RELEASE_EDGE_FUNCTIONS,"${{ needs.authorize-backend.outputs['edge-functions'] }}");
   assert.match(deployStep.run,/for function_name in "\$\{selected_functions\[@\]\}"/);
@@ -1463,7 +1511,8 @@ test('backend rollout verifies current main and applies migrations before deploy
     const directory = [migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName].includes(name) ? 'archive_migrations' : 'migrations';
     assert.ok(fs.existsSync(new URL(`../supabase/${directory}/${name}`, import.meta.url)), `${name} is tracked in its canonical migration directory`);
   }
-  assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
+  assert.match(workflow,/SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
+  assert.doesNotMatch(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
   assert.match(workflow,/SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
 });
 

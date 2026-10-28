@@ -1,4 +1,4 @@
-import { copyFile, lstat, mkdir, readFile, readdir, realpath, stat, unlink, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -83,7 +83,7 @@ try {
   // versioned runtime and two cascade-preserving CSS bundles instead.
   await Promise.all(['app-runtime.js', ...Array.from({ length: 15 }, (_, index) =>
     `app-shell-style-${String(index + 1).padStart(2, '0')}.css`)].map(name =>
-    unlink(path.join(site, 'assets', name))));
+    writeFile(path.join(site, 'assets', name), '')));
   const fingerprint = spawnSync(process.execPath, [path.join(root, 'scripts', 'write-deployment-fingerprint.mjs')], {
     cwd: root, stdio: 'inherit', env: { ...process.env, LIVE_SITE_DIR: site, DEPLOYMENT_SITE_DIR: site },
   });

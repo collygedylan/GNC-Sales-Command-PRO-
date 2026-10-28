@@ -42,6 +42,12 @@ test('main publication follows build then selected backend then Pages without va
   assert.equal(gate.uses, undefined);
   assert.ok(gate.steps.some(step => step.run === 'npm run check:inline'));
   assert.ok(gate.steps.some(step => step.run === 'node scripts/run-tooling-release-checks.mjs'));
+  const edgeSyntax = gate.steps.find(step => step.name === 'Parse and bundle selected Edge Functions with esbuild');
+  assert.ok(edgeSyntax);
+  assert.match(edgeSyntax.run, /from 'esbuild'/);
+  assert.match(edgeSyntax.run, /bundle: true[^]*write: false/);
+  assert.doesNotMatch(edgeSyntax.run, /deno check|Type-check only/i);
+  assert.match(edgeSyntax.run, /no type-check claim/);
   const native = gate.steps.find(step => step.uses === './.github/actions/prepare-native-release');
   assert.equal(native.if, "steps.classify.outputs.frontend == 'true'");
   assert.doesNotMatch(commands(gate), /run-discovered-tests|playwright|run-release-smoke|docker build/);
@@ -59,6 +65,16 @@ test('main publication follows build then selected backend then Pages without va
   const backend = workflow('apps-script-sync.yml');
   assert.deepEqual(needs(backend.jobs['deploy-supabase']), ['authorize-backend']);
   assert.doesNotMatch(commands(backend.jobs['deploy-supabase']), /run-discovered-tests|database-check|playwright/);
+  const migrationStep = backend.jobs['deploy-supabase'].steps.find(step => step.name === 'Apply validated backend release migrations');
+  assert.equal(migrationStep.env.SUPABASE_ACCESS_TOKEN, '${{ secrets.SUPABASE_ACCESS_TOKEN }}');
+  assert.equal(migrationStep.env.SUPABASE_DB_URL, undefined);
+  assert.match(migrationStep.run, /node scripts\/apply-item-low-stock-migration\.mjs/);
+  assert.match(migrationStep.run, /supabase\/\.temp\/project-ref/);
+  const migrationRunner = read('scripts/apply-item-low-stock-migration.mjs');
+  assert.match(migrationRunner, /supabase', \['db', 'query', '--linked', '--file'/);
+  const deployStep = backend.jobs['deploy-supabase'].steps.find(step => step.name === 'Deploy changed Edge Functions');
+  assert.match(deployStep.run, /--no-verify-jwt/);
+  assert.match(deployStep.run, /aura-llm-router/);
 });
 
 test('expanded validation remains registered exclusively behind the main nightly switch', () => {

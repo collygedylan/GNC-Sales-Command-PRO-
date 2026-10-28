@@ -1,4 +1,4 @@
-import { lstat, mkdir, readdir, realpath, unlink, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readdir, realpath, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
@@ -14,13 +14,13 @@ export function releaseSiteDirectory(root, env = process.env) {
 export function localEvidenceDirectory(root) {
   const identity = createHash('sha256').update(path.resolve(root)).digest('hex').slice(0, 12);
   const base = process.platform === 'win32' && process.env.GITHUB_ACTIONS !== 'true'
-    ? 'G:/My Drive/GNC/AgData/Local Validation'
+    ? 'G:/My Drive/GNC/AgData/Release Evidence/Local Validation'
     : path.join(process.env.RUNNER_TEMP || tmpdir(), 'agdata-local-validation');
   return path.join(base, `${path.basename(path.resolve(root))}-${identity}`);
 }
 
 // Validate the complete output tree before changing any file. Retain the one
-// directory tree; remove stale files individually, never by recursive rm.
+// directory tree and truncate stale files in place so no path is unlinked.
 export async function prepareReleaseSiteDirectory(root, { clear = false, env = process.env } = {}) {
   const site = releaseSiteDirectory(root, env);
   const rootReal = await realpath(root);
@@ -44,7 +44,6 @@ export async function prepareReleaseSiteDirectory(root, { clear = false, env = p
   else await mkdir(site);
   if (clear) for (const file of files) {
     await writeFile(file, '');
-    await unlink(file);
   }
   return site;
 }

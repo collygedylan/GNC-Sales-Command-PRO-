@@ -41,7 +41,7 @@ test('v2.3.90 assets and worker upgrade purge previous cache generations', () =>
     assert.equal(asset.searchParams.get('v'), asset.pathname === '/assets/mobile-workspace.js' ? '2.3.90.1' : '2.3.90', match[1]);
   }
   assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.90'/);
-  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'single-pass-reclass-r1'/);
+  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'postgres-erp-sync-r1'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*window\.reloadForServiceWorkerUpdate\(\)[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
   const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.90' });

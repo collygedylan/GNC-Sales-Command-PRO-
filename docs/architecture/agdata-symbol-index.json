@@ -5,6 +5,8 @@
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
     "supabase/functions/app-api/index.ts",
+    "supabase/functions/_shared/erp-sync.mjs",
+    "scripts/local-erp-sync-worker.mjs",
     "supabase/functions/_shared/production-workflow.ts",
     "Code.gs"
   ],
@@ -257,6 +259,50 @@
         {
           "file": "supabase/migrations/20261026140000_agdata_v2369_emergency_recovery.sql",
           "symbol": "claim_request_delivery_events"
+        }
+      ]
+    },
+    "postgresFirstErpSync": {
+      "primary": {
+        "file": "supabase/functions/_shared/erp-sync.mjs",
+        "symbol": "runErpSyncWorker"
+      },
+      "consumers": [
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "handleErpSyncAction"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql",
+          "symbol": "claim_erp_sync_job_v1"
+        }
+      ]
+    },
+    "localFilesystemErpSync": {
+      "primary": {
+        "file": "scripts/local-erp-sync-worker.mjs",
+        "symbol": "pollLocalWorkerOnce"
+      },
+      "consumers": [
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "handleErpSyncWorker"
+        },
+        {
+          "file": "supabase/functions/_shared/erp-sync.mjs",
+          "symbol": "normalizeErpRows"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "supabase/migrations/20261028022000_agdata_v2390_local_erp_worker.sql",
+          "symbol": "claim_erp_sync_worker_v1"
+        },
+        {
+          "file": "supabase/migrations/20261028022000_agdata_v2390_local_erp_worker.sql",
+          "symbol": "assert_erp_sync_worker_v1"
         }
       ]
     }
@@ -676,6 +722,7 @@
       "supabase/functions/app-api/index.ts": [
         "handleDatasetRevisionsAction",
         "handleAppsScriptAction",
+        "handleErpSyncWorker",
         "dispatchRequestDeliveryWorkerNow",
         "fast_erp_ingest"
       ],
@@ -747,7 +794,32 @@
         "supabase/migrations/20261027200748_agdata_v2389_live_revision_and_bunch_draft_restore.sql": [
           "touch_hl_po_parsed_v2389",
           "hl_po_parsed_revision_v2389"
-        ]
+      ],
+      "supabase/functions/_shared/erp-sync.mjs": [
+        "runErpSyncWorker",
+        "normalizeErpRows",
+        "parseErpCsv",
+        "parseErpXlsx",
+        "normalizeErpHeader",
+        "shouldIgnoreErpFile",
+        "validateErpSyncCommand"
+      ],
+      "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
+        "get_erp_sync_status_v1",
+        "claim_erp_sync_job_v1",
+        "update_erp_sync_job_v1"
+      ],
+      "supabase/migrations/20261028022000_agdata_v2390_local_erp_worker.sql": [
+        "claim_erp_sync_worker_v1",
+        "assert_erp_sync_worker_v1"
+      ],
+      "scripts/local-erp-sync-worker.mjs": [
+        "localWorkerConfig",
+        "createWorkerApi",
+        "runClaimedLocalJob",
+        "pollLocalWorkerOnce",
+        "runLocalWorkerLoop"
+      ]
       }
     },
     "agdata-request-lifecycle-and-lock-guard": {

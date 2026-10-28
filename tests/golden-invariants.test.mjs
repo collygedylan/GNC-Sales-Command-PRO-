@@ -1113,7 +1113,8 @@ test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => {
   for (const marker of ['objectRows', 'latestSources', 'check_erp_file_sync_needed_v1',
     'FAST_LIVE_BATCH_SIZE', 'shouldIncludeSocLiveRow', 'disable trigger user', "'--linked'", 'supabase.js']) assert.ok(fastSync.includes(marker), marker);
   assert.doesNotMatch(fastSync, /FAST_LIVE_ERP_DATABASE_URL|GNC_SUPABASE_DB_URL|new Pool|from 'pg'/);
-  assert.match(read('assets/app-runtime.js'), /type: 'manual_run'[^]*fast: true/);
+  assert.match(functionSource('assets/app-runtime.js', 'runGoogleAppsScriptTrigger'), /action: 'erp_sync'[^]*operation: 'start'[^]*maxAttemptsPerStage: 1/);
+  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'runGoogleAppsScriptTrigger'), /postGoogleScriptJsonPayload|manual_run|manual_continue/);
 });
 
 test('Invariant 31 (Four-Caller Delivery and Direct Hydration Recovery)', () => {
@@ -2244,7 +2245,8 @@ test('Invariant 83 (One Click Starts One Sync and Status Polling Never Dispatche
     getSupabaseReadIdentityScope: () => 'same-account', getNativeAuthRequestHeaders: () => pendingHeaders,
     applyManualSyncStatus: status => status, firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== ''),
     handleDeferredManualSyncStart: () => false,
-    postGoogleScriptJsonPayload: async payload => { writes.push(payload); return { active: false, status: 'complete' }; },
+    APP_API_FUNCTION_URL: '/app-api', crypto: { randomUUID: () => 'sync-command' },
+    postAppFunctionJson: async (url, payload) => { writes.push(payload); return { ok: true, data: { active: false, status: 'complete' } }; },
     fetchManualSyncStatusFromScript: async () => ({ active: false, currentStage: 'idle' })
   });
   const firstClick = context.runGoogleAppsScriptTrigger();
@@ -2253,7 +2255,9 @@ test('Invariant 83 (One Click Starts One Sync and Status Polling Never Dispatche
   releaseHeaders({ Authorization: 'Bearer fixture-token' });
   await firstClick;
   assert.equal(writes.length, 1);
-  assert.equal(writes[0].type, 'manual_run');
+  assert.equal(writes[0].action, 'erp_sync');
+  assert.equal(writes[0].operation, 'start');
+  assert.equal(writes[0].commandId, 'sync-command');
   assert.equal(writes[0].maxAttemptsPerStage, 1);
   assert.equal(writes[0].force, true);
   assert.equal(context.isRunScriptActive, false);
@@ -2330,7 +2334,7 @@ test('Invariant 84 (Committed Reclass Receipt Advances and Persists the Matching
   assert.equal(stale.persisted.length, 0, 'an older receipt cannot persist over the newer snapshot');
 });
 
-test('Invariant 85 (Release Builds Reuse One Directory Without Following Links or Retaining Stale Files)', async () => {
+test('Invariant 85 (Release Builds Reuse One Directory Without Following Links or Retaining Stale Payloads)', async () => {
   const fs = await import('node:fs/promises');
   const { tmpdir } = await import('node:os');
   const { prepareReleaseSiteDirectory, releaseSiteDirectory } = await import('../scripts/release-disk-policy.mjs');
@@ -2355,7 +2359,8 @@ test('Invariant 85 (Release Builds Reuse One Directory Without Following Links o
     for (const contents of ['old build', 'second build']) {
       await fs.writeFile(path.join(assets, 'obsolete.js'), contents);
       assert.equal(await prepareReleaseSiteDirectory(fixture, { clear: true, env: {} }), site);
-      assert.deepEqual(await fs.readdir(assets), []);
+      assert.deepEqual(await fs.readdir(assets), ['obsolete.js']);
+      assert.equal(await fs.readFile(path.join(assets, 'obsolete.js'), 'utf8'), '');
       assert.equal((await fs.stat(site)).ino, originalDirectory.ino, 'the output directory is retained');
     }
     assert.equal(releaseSiteDirectory(fixture, {}), site);
@@ -2369,4 +2374,104 @@ test('Invariant 85 (Release Builds Reuse One Directory Without Following Links o
   } finally {
     await clearTemporaryTree(fixture);
   }
+});
+
+test('Invariant 86 (PostgreSQL Sync Status Cannot Dispatch Imports Through Background Reads)', async () => {
+  const calls = [];
+  const status = runFunctions('assets/app-runtime.js', ['fetchManualSyncStatusFromScript'], {
+    APP_API_FUNCTION_URL: '/app-api', normalizeManualSyncStatusPayload: value => value,
+    postAppFunctionJson: async (url, body) => {
+      calls.push({ url, body });
+      return { ok: true, data: { active: false, currentStage: 'idle' } };
+    }
+  });
+  assert.equal((await status.fetchManualSyncStatusFromScript()).currentStage, 'idle');
+  assert.deepEqual(plain(calls), [{ url: '/app-api', body: { action: 'erp_sync', operation: 'status' } }]);
+  const { releaseSnapshotReadFixture } = await import('./helpers/release-smoke-route-policy.mjs');
+  assert.equal(releaseSnapshotReadFixture(calls[0].body).data.active, false);
+  assert.equal(releaseSnapshotReadFixture({ action: 'erp_sync', operation: 'start' }), null);
+  assert.equal(releaseSnapshotReadFixture({ ...calls[0].body, force: true }), null);
+  assert.equal(releaseSnapshotReadFixture({ ...calls[0].body, actorId: 'forged' }), null);
+});
+
+test('Invariant 87 (ERP API Allows Inventory Status Reads and Queues Admin Work Without Cloud Filesystem Access)', async () => {
+  const { validateErpSyncCommand, ERP_SYNC_STAGES } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const calls = [], tasks = [];
+  let claimed = false, workers = 0;
+  const status = { active: false, currentStage: 'idle', stageResults: [] };
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
+    validateErpSyncCommand, ERP_SYNC_STAGES, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
+    normalizeUsername: value => String(value).toLowerCase(), jsonObject: value => value || {},
+    jsonResponse: value => value, errorResponse: (message, status, extra) => ({ ok: false, status, ...extra }),
+    Deno: { env: { get: () => '' } }, EdgeRuntime: { waitUntil: task => tasks.push(task) },
+    supabase: { rpc: async (name, args) => {
+      calls.push(name);
+      if (name === 'get_erp_sync_status_v1') return { data: status };
+      if (name === 'update_erp_sync_job_v1') return { data: args.p_status };
+      if (name === 'claim_erp_sync_job_v1') {
+        const first = !claimed; claimed = true;
+        return { data: { ...status, active: true, runId: 'one-job', claimed: first } };
+      }
+      throw new Error(`Unexpected RPC ${name}`);
+    } },
+    runErpSyncWorker: async () => { workers += 1; },
+    recordHandledError: (_service, _action, error) => { throw error; },
+  });
+  assert.equal((await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'status' }, { username: 'field_reader' })).data.active, false);
+  assert.deepEqual(calls, ['get_erp_sync_status_v1']);
+  const command = { action: 'erp_sync', operation: 'start', commandId: '00000000-0000-4000-8000-000000000001', force: true, maxAttemptsPerStage: 1 };
+  assert.equal((await context.handleErpSyncAction({}, command, { username: 'field_reader' })).code, 'ERP_SYNC_FORBIDDEN');
+  assert.equal((await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'status', force: true }, { username: 'dylan_collyge' })).code, 'ERP_SYNC_REQUEST_INVALID');
+  assert.equal((await context.handleErpSyncAction({}, command, { username: 'dylan_collyge' })).ok, true);
+  assert.equal((await context.handleErpSyncAction({}, command, { username: 'dylan_collyge' })).ok, true);
+  await Promise.all(tasks);
+  assert.equal(workers, 0, 'cloud requests never dispatch a filesystem or Google worker');
+  assert.equal(tasks.length, 0);
+});
+
+test('Invariant 88 (Selected Edge Syntax Validation Writes No Build Artifacts and Rejects Path Injection)', async () => {
+  const workflow = read('.github/workflows/pages-static.yml');
+  const start = workflow.indexOf('- name: Parse and bundle selected Edge Functions with esbuild');
+  const block = workflow.slice(start, workflow.indexOf('      - uses:', start));
+  const script = block.split("<<'NODE'\n")[1].split('\n          NODE')[0]
+    .replace(/^\s*import .*;\s*$/gm, '');
+  const builds = [];
+  const context = vm.createContext({ process: { env: { RELEASE_EDGE_FUNCTIONS: '["app-api"]' } },
+    resolve: path.resolve, build: async options => builds.push(options), console: { log() {} } });
+  await vm.runInContext(`(async () => { ${script} })()`, context);
+  assert.equal(builds.length, 1);
+  assert.equal(builds[0].write, false);
+  assert.equal(builds[0].bundle, true);
+  assert.ok(builds[0].external.includes('https://*'));
+  context.process.env.RELEASE_EDGE_FUNCTIONS = '["../outside"]';
+  await assert.rejects(vm.runInContext(`(async () => { ${script} })()`, context), /RELEASE_EDGE_NAME_INVALID/);
+  assert.equal(builds.length, 1);
+});
+
+test('Invariant 89 (Local ERP Worker Requires Service Authorization and an Active Bound Lease)', async () => {
+  const calls = [];
+  const secret = 'isolated-fixture-service-key';
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncWorker'], {
+    ERP_SYNC_LOCAL_WORKER_KEY: secret, jsonObject: value => value || {}, jsonResponse: value => value,
+    errorResponse: (_message, status, extra) => ({ ok: false, status, ...extra }),
+    ERP_SYNC_WORKER_OPERATIONS: { columns: { rpc: 'fast_erp_import_columns_v1', argKeys: ['p_dataset_key'] } },
+    supabase: { rpc: async name => {
+      calls.push(name);
+      if (name === 'get_erp_sync_status_v1') return { data: { active: false } };
+      if (name === 'assert_erp_sync_worker_v1') return { error: { code: 'LEASE_INVALID' } };
+      throw new Error(`Unexpected RPC ${name}`);
+    } },
+  });
+  const request = key => new Request('https://fixture.invalid', { headers: { authorization: `Bearer ${key}`, apikey: key } });
+  const body = { action: 'erp_sync_worker', payload: { operation: 'status' } };
+  assert.equal((await context.handleErpSyncWorker(body, request('anon'))).status, 401);
+  assert.equal(calls.length, 0);
+  assert.equal((await context.handleErpSyncWorker(body, request(secret))).data.active, false);
+  const scoped = { action: 'erp_sync_worker', payload: { operation: 'columns',
+    runId: '00000000-0000-4000-8000-000000000001', workerId: '00000000-0000-4000-8000-000000000002', args: { p_dataset_key: 'drive_around' } } };
+  assert.equal((await context.handleErpSyncWorker(scoped, request(secret))).code, 'ERP_SYNC_WORKER_LEASE_INVALID');
+  assert.deepEqual(calls, ['get_erp_sync_status_v1', 'assert_erp_sync_worker_v1']);
+  scoped.payload.args.sql = 'forged';
+  assert.equal((await context.handleErpSyncWorker(scoped, request(secret))).status, 400);
+  assert.equal(calls.length, 2);
 });

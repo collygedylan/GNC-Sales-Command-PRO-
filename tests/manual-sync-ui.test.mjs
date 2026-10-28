@@ -53,3 +53,32 @@ test('explicit logout does not reveal the blank login UI mid-signout; deliberate
   assert.match(login, /if\(!rawUser\|\|!inputPass\)\{ showToast\("Error","Please enter username and password",true\); return; \}/,
     'an explicit empty login attempt retains its normal validation');
 });
+
+test('each committed ERP file toasts once for Dylan even before the stage advances; completion restores idle', () => {
+  const source = extractBetween('        function applyManualSyncStatus(', '        async function refreshManualSyncStatus(');
+  for (const username of ['dylan_collyge', 'megan_kelly']) {
+    const toasts = [], diagnostics = [];
+    const initial = { active: true, runId: 'one-run', stageIndex: 0, stageResults: [] };
+    const context = vm.createContext({
+      manualSyncStatusState: initial, currentUser: username, navigator: { onLine: true },
+      normalizeManualSyncStatusPayload: value => value || {}, isManualSyncStatusClientStale: () => false,
+      syncGoogleScriptButton() {}, refreshDashboardSyncMetadata: async () => {},
+      shouldPauseManualSyncViewRefresh: () => false, updateSyncDiagnostics: value => diagnostics.push(value),
+      scheduleManualSyncStatusPoll() {}, clearManualSyncStatusPoll() {},
+      refreshRealtimeSubscriptionsForCurrentView() {}, scheduleManualSyncCompletionRefresh() {},
+      manualSyncTerminalErrorRunId: '', showToast: (...args) => toasts.push(args),
+      dashboardSyncMetadataFetchedAt: 1, liveSyncMode: 'idle',
+    });
+    vm.runInContext(`${source}\nthis.applyStatus = applyManualSyncStatus;`, context);
+    const first = { key: 'drive', outcome: 'processed', processedFiles: 1, sourceFileName: 'a.xlsx' };
+    const second = { ...first, sourceFileName: 'b.xlsx' };
+    context.applyStatus({ ...initial, stageResults: [first] });
+    context.applyStatus({ ...initial, stageResults: [first] });
+    context.applyStatus({ ...initial, stageResults: [first, second] });
+    context.applyStatus({ ...initial, active: false, stageIndex: 5, currentStage: 'idle', stageResults: [first, second] }, { suppressToast: true });
+    assert.equal(toasts.length, username === 'dylan_collyge' ? 2 : 0);
+    if (toasts.length) assert.notEqual(toasts[0][3].fingerprint, toasts[1][3].fingerprint);
+    assert.equal(diagnostics.at(-1), 'idle');
+    assert.equal(context.manualSyncStatusState.active, false);
+  }
+});
