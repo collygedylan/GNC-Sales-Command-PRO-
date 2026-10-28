@@ -168004,6 +168004,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getSuspendTagStableSourceIdentity(item = null) {
+            // This immutable physical-row tuple lets Close survive import timestamp and UID churn.
             const source = findDockSuspendDcRequestSourceRow(item) || getDockSuspendDcRequestBaseRow(item) || item || {};
             const value = (...keys) => String(firstNonEmptyValue(...keys.map((key) => source[key]), '') || '').trim();
             return {

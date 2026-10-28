@@ -9,6 +9,7 @@ declare
   old_text text;
   new_text text;
 begin
+  -- Re-entry is intentional: the release pipeline verifies this marker before recording canonical history.
   if position('suspend-close-stable-identity-v2392' in definition) > 0 then return; end if;
 
   old_text := $old$select * into s from public.ph_soc_master where unique_id=uid for update;
