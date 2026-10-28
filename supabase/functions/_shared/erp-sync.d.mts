@@ -26,6 +26,14 @@ export function runErpSyncWorker(options: {
   supabase: unknown;
   env: (key: string) => string;
   fetcher?: typeof fetch;
+  accessToken: string;
   status: (patch: Record<string, unknown>) => Promise<unknown>;
-  runId?: string;
 }): Promise<{ ok: boolean; stageResults: Array<Record<string, unknown>> }>;
+export function runErpSyncWorkerStep(options: {
+  supabase: unknown;
+  env: (key: string) => string;
+  fetcher?: typeof fetch;
+  accessToken: string;
+  status: (patch: Record<string, unknown>) => Promise<unknown>;
+  cursor?: Record<string, unknown>;
+}): Promise<{ done: boolean; ok?: boolean; cursor: Record<string, unknown> }>;

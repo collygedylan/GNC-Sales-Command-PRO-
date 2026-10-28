@@ -217,18 +217,6 @@ export async function normalizeErpRows(rawRows, dataset, columns) {
   return rows;
 }
 
-async function googleAccessToken(credentials, fetcher) {
-  const response = await fetcher('https://oauth2.googleapis.com/token', {
-    method:'POST', headers:{'content-type':'application/x-www-form-urlencoded'},
-    body:new URLSearchParams({client_id:credentials.client_id,client_secret:credentials.client_secret,
-      refresh_token:credentials.refresh_token,grant_type:'refresh_token'}),
-    signal:AbortSignal.timeout(15000),
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok || !body.access_token) throw new Error('ERP_DRIVE_AUTH_FAILED');
-  return String(body.access_token);
-}
-
 function driveUrl(path, params) {
   const url = new URL(`https://www.googleapis.com/drive/v3/${path}`);
   for (const [key,value] of Object.entries(params)) url.searchParams.set(key,String(value));
@@ -330,13 +318,11 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
   return {key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:rows.length};
 }
 
-export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,runId}) {
-  const oauthRaw = env('ERP_SYNC_GOOGLE_OAUTH_JSON');
+export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,accessToken}) {
   const foldersRaw = env('ERP_SYNC_DROP_FOLDERS_JSON');
-  if (!oauthRaw || !foldersRaw) throw new Error('ERP_SYNC_CREDENTIALS_NOT_CONFIGURED');
-  const credentials = JSON.parse(oauthRaw), folders = JSON.parse(foldersRaw);
-  if (!credentials.client_id || !credentials.client_secret || !credentials.refresh_token) throw new Error('ERP_SYNC_CREDENTIALS_INVALID');
-  const token = await googleAccessToken(credentials,fetcher);
+  if (!foldersRaw || !accessToken) throw new Error('ERP_SYNC_CREDENTIALS_NOT_CONFIGURED');
+  const folders = JSON.parse(foldersRaw);
+  const token = String(accessToken);
   const stageResults = [];
   for (let index=0; index<STAGES.length; index+=1) {
     const stage = STAGES[index];
@@ -383,6 +369,63 @@ export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,runId}
     error:blocked?'HL ORDER workbook contract requires confirmation.':failed?'One or more ERP files could not be imported.':'',
     errorCode:blocked?'ERP_SYNC_REQUIRES_TEMPLATE':failed?'ERP_SYNC_STAGE_FAILED':''});
   return {ok:!blocked && !failed,stageResults};
+}
+
+export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cursor={},accessToken}) {
+  const foldersRaw = env('ERP_SYNC_DROP_FOLDERS_JSON');
+  if (!foldersRaw || !accessToken) throw new Error('ERP_SYNC_CREDENTIALS_NOT_CONFIGURED');
+  const folders = JSON.parse(foldersRaw), token = String(accessToken);
+  const stageResults = Array.isArray(cursor.stageResults) ? cursor.stageResults.slice() : [];
+  const attemptedByStage = cursor.attemptedByStage && typeof cursor.attemptedByStage === 'object' ? {...cursor.attemptedByStage} : {};
+  let stageIndex = Math.max(0,Math.min(STAGES.length,Number(cursor.stageIndex)||0));
+  while (stageIndex < STAGES.length) {
+    const stage = STAGES[stageIndex], folderId = String(folders[stage.key]||'').trim();
+    const processedId = String(folders.processed?.[stage.key]||folders[`${stage.key}_processed`]||'').trim();
+    if (!folderId) {
+      stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,error:'ERP_DROP_FOLDER_ID_MISSING'});
+      stageIndex += 1; continue;
+    }
+    await status({currentStage:stage.key,stageIndex});
+    let files;
+    try {
+      files = (await listFiles(fetcher,token,folderId)).filter(file => file.mimeType !== 'application/vnd.google-apps.folder'
+        && !shouldIgnoreErpFile(file.name) && /\.(?:xlsx|csv)$/i.test(file.name))
+        .sort((a,b)=>String(a.modifiedTime||'').localeCompare(String(b.modifiedTime||'')));
+    } catch (error) {
+      stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,
+        error:String(error?.message||'ERP_DROP_FOLDER_READ_FAILED').slice(0,200)});
+      stageIndex += 1; continue;
+    }
+    if (stage.dataset === 'hl_po_parsed' && files.length) {
+      stageResults.push({key:stage.key,outcome:'requires_template',sourceFileName:files[0].name,processedFiles:0,
+        error:'HL_PO_WORKBOOK_CONTRACT_UNCONFIRMED'});
+      stageIndex += 1; continue;
+    }
+    const attempted = new Set(Array.isArray(attemptedByStage[stage.key]) ? attemptedByStage[stage.key] : []);
+    const file = files.find(candidate => !attempted.has(String(candidate.id||'')));
+    if (!file) {
+      if (!stageResults.some(result=>result.key===stage.key)) stageResults.push({key:stage.key,outcome:'UP_TO_DATE',sourceFileName:'',processedFiles:0});
+      stageIndex += 1; continue;
+    }
+    attempted.add(String(file.id||'')); attemptedByStage[stage.key] = [...attempted];
+    try {
+      const result = await stageFile({supabase,fetcher,token,file,dataset:stage.dataset,stageKey:stage.key,parentId:folderId,processedId,status});
+      stageResults.push({...result,key:stage.key,dataset:stage.dataset});
+    } catch (error) {
+      stageResults.push({key:stage.key,dataset:stage.dataset,outcome:'failed',sourceFileName:file.name,processedFiles:0,
+        error:String(error?.message||'ERP_FILE_IMPORT_FAILED').slice(0,200)});
+    }
+    const nextCursor = {stageIndex,stageResults,attemptedByStage};
+    await status({currentStage:stage.key,stageIndex,stageResults:stageResults.slice(),continuationCursor:nextCursor,lastCompletedFile:file.name});
+    return {done:false,cursor:nextCursor};
+  }
+  const blocked = stageResults.some(result=>result.outcome==='requires_template'), failed = stageResults.some(result=>result.outcome==='failed');
+  await status({active:false,status:blocked?'blocked':failed?'failed':'complete',currentStage:'idle',currentStageLabel:'Idle',
+    stageIndex:STAGES.length,stageResults,continuationCursor:{stageIndex:STAGES.length,stageResults,attemptedByStage},
+    finishedAt:new Date().toISOString(),message:blocked?'HL ORDER workbook contract requires confirmation.':failed?'One or more ERP files could not be imported.':'ERP sync completed.',
+    error:blocked?'HL ORDER workbook contract requires confirmation.':failed?'One or more ERP files could not be imported.':'',
+    errorCode:blocked?'ERP_SYNC_REQUIRES_TEMPLATE':failed?'ERP_SYNC_STAGE_FAILED':''});
+  return {done:true,ok:!blocked&&!failed,cursor:{stageIndex:STAGES.length,stageResults,attemptedByStage}};
 }
 
 export { STAGES as ERP_SYNC_STAGES };

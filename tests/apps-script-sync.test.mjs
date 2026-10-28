@@ -211,7 +211,7 @@ test('source metadata and Manager read migrations are registered with secure dep
   assert.doesNotMatch(migration, /update public.ph_master_inventory|delete from/);
 });
 
-test('ingestion deployment selects every changed function and preserves remote scheduling outside the patch', () => {
+test('ingestion deployment selects every changed function and preserves remote scheduling outside the patch', async () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.deepEqual(manifest.appsScriptPatchFunctions, [
     'buildSuspendTagApprovalEmail_',
@@ -231,7 +231,7 @@ test('ingestion deployment selects every changed function and preserves remote s
     'getFastLiveIngestRows_', 'processFastLiveFile_', 'runRoutedDropImport_',
     'buildRequestDeliveryEmailPayload_', 'runSOCOnly', 'runDriveAroundOnly',
     'runWarehouseAssignedOnly', 'runCavOnly', 'resolveSupabaseServiceRoleKey_', 'getSupabaseHeaders_',
-    'reconcileAppsScriptActionSigningKey_', 'verifyAppsScriptActionEnvelope_', 'doPost',
+    'reconcileAppsScriptActionSigningKey_', 'verifyAppsScriptActionEnvelope_', 'mintDriveToken_', 'doPost',
   ]);
   assert.equal(manifest.appsScriptPatchRelease, true);
   const untouched = 'const HISTORICAL_BACKFILL_PAUSED = true;\nconst AUTO_SYNC_PAUSED = true;';
@@ -266,6 +266,64 @@ test('ingestion deployment selects every changed function and preserves remote s
   assert.match(merged.source, /type === 'wake_delivery_worker'/);
   assert.equal(patchAppsScriptFunctions({ remoteSource: merged.source,
     localSource: prefix + localDispatch, functionNames: ['doPost'] }).source, merged.source);
+  const mintSource = sourceFunction(appsScriptSource, 'mintDriveToken_');
+  const mintRoute = "    if (payload.type === 'mint_drive_token') return jsonOutput_(mintDriveToken_());";
+  const mintPatch = patchAppsScriptFunctions({ remoteSource: `${prefix}${priorDispatch}`,
+    localSource: `${prefix}${localDispatch}\n${mintSource}`, functionNames: ['doPost', 'mintDriveToken_'] });
+  assert.match(mintPatch.source, /function mintDriveToken_\(\)/);
+  assert.ok(mintPatch.source.includes(mintRoute), 'the merger inserts mint dispatch into remote doPost without the local route');
+  assert.ok(mintPatch.source.includes(remoteOnly), 'adding the signed mint action preserves unrelated remote-only routes');
+
+  const mergedPostContext = vm.createContext({
+    getAppsScriptActionSigningKeys_: () => ['test-service-key'],
+    requestDeliveryBase64Url_: () => 'valid-signature',
+    appsScriptActionConstantTimeEqual_: (left, right) => left === right,
+    Utilities: { computeHmacSha256Signature: () => [1, 2, 3], Charset: { UTF_8: 'UTF-8' } },
+    verifyAppsScriptActionActor_: () => { throw new Error('mint route must use its restricted system actor'); },
+    jsonOutput_: value => value,
+    ScriptApp: { getOAuthToken: () => 'test-oauth-token' },
+  });
+  for (const name of ['verifyAppsScriptActionEnvelope_', 'authorizeAppsScriptPost_']) {
+    vm.runInContext(sourceFunction(appsScriptSource, name), mergedPostContext);
+  }
+  for (const name of ['mintDriveToken_', 'doPost']) vm.runInContext(sourceFunction(mintPatch.source, name), mergedPostContext);
+  const command = { contractVersion: 'apps-script-action-v1', action: 'mint_drive_token',
+    payload: { type: 'mint_drive_token' }, actor: { system: 'erp-sync-cloud-worker' } };
+  const tokenResponse = await mergedPostContext.doPost({ postData: { contents: JSON.stringify({
+    type: 'apps_script_action_v1', timestamp: new Date().toISOString(), signature: 'valid-signature',
+    deliveryJson: JSON.stringify(command),
+  }) } });
+  assert.deepEqual(JSON.parse(JSON.stringify(tokenResponse)), { ok: true, accessToken: 'test-oauth-token' },
+    'remote-only doPost verifies the signed command then returns the mint result');
+});
+
+test('Drive OAuth token mint requires the exact signed cloud-worker actor and stays server-only', () => {
+  const tokenContext = vm.createContext({ ScriptApp: { getOAuthToken: () => 'test-oauth-token' } });
+  vm.runInContext(sourceFunction(appsScriptSource, 'mintDriveToken_'), tokenContext);
+  assert.deepEqual(JSON.parse(JSON.stringify(tokenContext.mintDriveToken_())), { ok: true, accessToken: 'test-oauth-token' });
+
+  const envelopeContext = vm.createContext({
+    getAppsScriptActionSigningKeys_: () => ['test-service-key'],
+    requestDeliveryBase64Url_: () => 'valid-signature',
+    appsScriptActionConstantTimeEqual_: (left, right) => left === right,
+    Utilities: { computeHmacSha256Signature: () => [1, 2, 3], Charset: { UTF_8: 'UTF-8' } },
+    verifyAppsScriptActionActor_: () => { throw new Error('system mint must not be treated as a user actor'); },
+  });
+  vm.runInContext(sourceFunction(appsScriptSource, 'verifyAppsScriptActionEnvelope_'), envelopeContext);
+  const signedEnvelope = actor => ({ type: 'apps_script_action_v1', timestamp: new Date().toISOString(), signature: 'valid-signature',
+    deliveryJson: JSON.stringify({ contractVersion: 'apps-script-action-v1', action: 'mint_drive_token',
+      payload: { type: 'mint_drive_token' }, actor }) });
+  assert.equal(envelopeContext.verifyAppsScriptActionEnvelope_(signedEnvelope({ system: 'erp-sync-cloud-worker' })).type, 'mint_drive_token');
+  assert.throws(() => envelopeContext.verifyAppsScriptActionEnvelope_(signedEnvelope({ system: 'browser' })), /APPS_SCRIPT_DRIVE_TOKEN_ACTOR_INVALID/);
+  const extraPayload = signedEnvelope({ system: 'erp-sync-cloud-worker' });
+  extraPayload.deliveryJson = JSON.stringify({ contractVersion: 'apps-script-action-v1', action: 'mint_drive_token',
+    payload: { type: 'mint_drive_token', exposeToBrowser: true }, actor: { system: 'erp-sync-cloud-worker' } });
+  assert.throws(() => envelopeContext.verifyAppsScriptActionEnvelope_(extraPayload), /APPS_SCRIPT_DRIVE_TOKEN_ACTOR_INVALID/);
+  const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+  const proxyStart = appApi.indexOf('const APPS_SCRIPT_PROXY_ACTIONS = new Set([');
+  const proxyEnd = appApi.indexOf(']);', proxyStart);
+  assert.ok(proxyStart >= 0 && proxyEnd > proxyStart);
+  assert.doesNotMatch(appApi.slice(proxyStart, proxyEnd), /mint_drive_token/);
 });
 
 test('urgent Drive cleanup respects the staging RPC minimum age', () => {

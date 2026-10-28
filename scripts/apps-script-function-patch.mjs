@@ -93,6 +93,7 @@ const liveImportFunctions = new Set([
   "appsScriptActionConstantTimeEqual_",
   "verifyAppsScriptActionActor_",
   "verifyAppsScriptActionEnvelope_",
+  "mintDriveToken_",
   "authorizeAppsScriptPost_",
   "doPost",
   "buildRequestEmailMessage_",
@@ -125,7 +126,7 @@ for (const name of ['removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveArou
 for (const name of ['publishManualSyncStatus_', 'scheduleRequestIntegrityMaintenance_', 'runQueuedRequestIntegrityMaintenance_']) additiveFunctions.add(name);
 additiveFunctions.add('setDatasetImportSourceMetadata_');
 additiveFunctions.add('verifyRuntimeWatchdogAlert_');
-for (const name of ['appsScriptActionConstantTimeEqual_', 'getAppsScriptActionSigningKeys_', 'reconcileAppsScriptActionSigningKey_', 'verifyAppsScriptActionActor_', 'verifyAppsScriptActionEnvelope_', 'authorizeAppsScriptPost_', 'verifyAppsScriptLifecycleCanary_']) additiveFunctions.add(name);
+for (const name of ['appsScriptActionConstantTimeEqual_', 'getAppsScriptActionSigningKeys_', 'reconcileAppsScriptActionSigningKey_', 'verifyAppsScriptActionActor_', 'verifyAppsScriptActionEnvelope_', 'authorizeAppsScriptPost_', 'verifyAppsScriptLifecycleCanary_', 'mintDriveToken_']) additiveFunctions.add(name);
 for (const name of ['buildReclassInlineOhText_', 'buildReclassItemInquiryTable_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_']) additiveFunctions.add(name);
 const fail = code => { throw new Error(`APPS_SCRIPT_FUNCTION_PATCH_${code}`); };
 const digest = source => createHash('sha256').update(source).digest('hex');
@@ -195,6 +196,17 @@ function mergeRequestDeliveryWakeDispatch(remote, local) {
   return remote.replace(anchor, route + '\n' + anchor);
 }
 
+function mergeMintDriveTokenDispatch(remote, local) {
+  const route = "    if (payload.type === 'mint_drive_token') return jsonOutput_(mintDriveToken_());";
+  const anchor = "    if (payload.type === 'deployment_health') {";
+  const guardedEntry = '    const payload = authorizeAppsScriptPost_(JSON.parse(e.postData.contents));';
+  if (!local.includes(route)) return remote;
+  if (remote.includes(route)) return remote;
+  if (!remote.includes(guardedEntry)) fail('MINT_DRIVE_TOKEN_POST_GATE_REMOTE_ANCHOR');
+  if (remote.split(anchor).length !== 2) fail('MINT_DRIVE_TOKEN_DISPATCH_REMOTE_ANCHOR');
+  return remote.replace(anchor, route + '\n\n' + anchor);
+}
+
 /** Preserve remote source verbatim outside the explicitly authorized functions. */
 export function patchAppsScriptFunctions({ remoteSource, localSource, functionNames, includeRelease = false }) {
   if (!Array.isArray(functionNames) || !functionNames.length
@@ -231,6 +243,7 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
       if (replacement.includes("if (payload.type === 'runtime_watchdog_alert_v1')")) remoteBlock = mergeRuntimeWatchdogDispatch(remoteBlock, replacement);
       if (replacement.includes('authorizeAppsScriptPost_(JSON.parse(e.postData.contents))')) remoteBlock = mergeAppsScriptPostGate(remoteBlock, replacement);
       remoteBlock = mergeRequestDeliveryWakeDispatch(remoteBlock, replacement);
+      remoteBlock = mergeMintDriveTokenDispatch(remoteBlock, replacement);
       replacement = remoteBlock;
     }
     return { name, ...remote.get(name), replacement };

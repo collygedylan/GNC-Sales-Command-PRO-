@@ -6,7 +6,7 @@ import path from 'node:path';
 import { X509Certificate } from 'node:crypto';
 import pg from 'pg';
 import yaml from 'js-yaml';
-import { agdataV2390PostgresManualSyncMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
+import { agdataV2390PostgresManualSyncMigrationName, agdataV2391CloudErpContinuationsMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
 import { applyScopedMigrationWithSupabaseCli, buildScopedMigrationApplySql, buildScopedMigrationExistingCheckSql } from '../scripts/apply-item-low-stock-migration.mjs';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName,
@@ -89,6 +89,23 @@ test('v2.3.90 PostgreSQL manual sync migration is ordered and verified by the re
     "not has_function_privilege('anon','public.claim_erp_sync_job_v1(text,text)','execute')",
     "not has_function_privilege('authenticated','public.claim_erp_sync_job_v1(text,text)','execute')"])
     assert.ok(contract.includes(marker), marker);
+});
+
+test('v2.3.91 cloud worker continuation CAS is release-registered and service-only', async () => {
+  const { registeredReleaseDatabaseMigrations, normalizeScopedMigrationPaths, migrationContractQuery } =
+    await import('../scripts/apply-item-low-stock-migration.mjs');
+  const name = agdataV2391CloudErpContinuationsMigrationName;
+  assert.equal(name, '20261028040000_agdata_v2391_cloud_erp_continuations.sql');
+  assert.equal(registeredReleaseDatabaseMigrations.filter(value => value === name).length, 1);
+  assert.deepEqual(normalizeScopedMigrationPaths([name]), [name]);
+  const migration = fs.readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8');
+  for (const marker of ['continuation_step integer not null default 0', 'claim_erp_sync_worker_step_v1',
+    "job.worker_id is distinct from p_worker_id", 'job.continuation_step <> p_step',
+    'continuation_step=continuation_step+1', "'worker','supabase_edge'",
+    "from public, anon, authenticated", 'to service_role']) assert.ok(migration.includes(marker), marker);
+  const contract = migrationContractQuery(name);
+  for (const marker of ['continuation_step', 'claim_erp_sync_worker_step_v1',
+    "has_function_privilege('service_role'", "not has_function_privilege('authenticated'"]) assert.ok(contract.includes(marker), marker);
 });
 
 test('scoped CLI migration path is bounded, history-safe, and verifies installed contracts transactionally', async () => {

@@ -23097,6 +23097,8 @@ function doPost(e) {
       return jsonOutput_(getAppsScriptDeploymentHealth_());
     }
 
+    if (payload.type === 'mint_drive_token') return jsonOutput_(mintDriveToken_());
+
     if (payload.type === 'block_clearing_pdf') {
       return jsonOutput_(handleBlockClearingPdf_(payload));
     }
@@ -23481,7 +23483,7 @@ function verifyAppsScriptActionEnvelope_(envelope) {
     'reclass_inquiry_status', 'reclass_inquiry_retry', 'clear_request_gallery_cache',
     'drivearound_name_preview', 'drivearound_name_cleanup', 'manual_continue', 'manual_run', 'manual_clear_status',
     'manual_clear_stale_status', 'manual_status', 'inventory_transaction_history',
-    'reclass_inquiry_email', 'inventory_transaction', 'email', 'image', 'wake_delivery_worker'
+    'reclass_inquiry_email', 'inventory_transaction', 'email', 'image', 'wake_delivery_worker', 'mint_drive_token'
   ];
   if (allowed.indexOf(action) < 0 || action === 'drivearound_history_backfill') {
     throw new Error('APPS_SCRIPT_ACTION_FORBIDDEN');
@@ -23490,6 +23492,11 @@ function verifyAppsScriptActionEnvelope_(envelope) {
   if (action === 'deployment_health') {
     if (!command.actor || command.actor.system !== 'apps-script-deployment-health'
         || Object.keys(command.actor).length !== 1) throw new Error('APPS_SCRIPT_HEALTH_ACTOR_INVALID');
+  } else if (action === 'mint_drive_token') {
+    if (!command.actor || command.actor.system !== 'erp-sync-cloud-worker' || Object.keys(command.actor).length !== 1
+        || Object.keys(command.payload).length !== 1 || command.payload.type !== 'mint_drive_token') {
+      throw new Error('APPS_SCRIPT_DRIVE_TOKEN_ACTOR_INVALID');
+    }
   } else if (command.actor && command.actor.system === 'apps-script-lifecycle-canary') {
     verifyAppsScriptLifecycleCanary_(action, command.payload);
   } else {
@@ -23519,6 +23526,12 @@ function verifyAppsScriptActionEnvelope_(envelope) {
   delete payload.__verifiedAppActor;
   if (actor) Object.defineProperty(payload, '__verifiedAppActor', { value: actor, enumerable: false });
   return payload;
+}
+
+function mintDriveToken_() {
+  const accessToken = String(ScriptApp.getOAuthToken() || '').trim();
+  if (!accessToken) throw new Error('APPS_SCRIPT_DRIVE_TOKEN_UNAVAILABLE');
+  return { ok: true, accessToken: accessToken };
 }
 
 function getAppsScriptActionSigningKeys_() {

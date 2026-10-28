@@ -237,12 +237,6 @@ export async function runLocalWorkerLoop({ api, config, stagePaths = ERP_LOCAL_S
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    const config = localWorkerConfig();
-    const api = createWorkerApi(config);
-    await runLocalWorkerLoop({ api, config });
-  } catch (error) {
-    process.stderr.write(`${safeErrorCode(error)}\n`);
-    process.exitCode = 1;
-  }
+  process.stderr.write('ERP_LOCAL_WORKER_RETIRED_USE_CLOUD_RUN_SCRIPT\n');
+  process.exitCode = 1;
 }

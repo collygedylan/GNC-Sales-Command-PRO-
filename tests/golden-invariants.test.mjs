@@ -1331,7 +1331,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.90"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.91"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1358,9 +1358,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.90"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.91"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.90"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.91"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2172,7 +2172,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.90\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.91\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isManagerShellHotfix[^]*mobile-workspace\.js[^]*`\$\{assetVersion\}\.1`/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2486,4 +2486,79 @@ test('Invariant 90 (IPv6 CLI Link Failures Are Classified Without Exposing Conne
   assert.match(report, /LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED phase=linked_cli_migrations/);
   assert.equal(report.includes(sensitiveRef), false);
   assert.equal(report.includes('IPv6'), false);
+});
+
+test('Invariant 91 (RUN SCRIPT Dispatches One Claimed Cloud Step and Retires the Local Daemon)', async () => {
+  const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const calls = [], tasks = [], dispatched = [];
+  let claimCount = 0, workerClaimCount = 0, stepClaimCount = 0, stepCalls = 0;
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['dispatchCloudErpSync', 'claimAndDispatchCloudStep', 'handleErpSyncAction'], {
+    ERP_SYNC_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
+    normalizeUsername: value => String(value).trim().toLowerCase(), jsonObject: value => value || {},
+    crypto: { randomUUID: () => '00000000-0000-4000-8000-000000000091' },
+    jsonResponse: value => value, errorResponse: (message, status, extra) => ({ ok: false, status, ...extra }),
+    databaseFailureResponse: (message, _error, code) => ({ ok: false, code }),
+    recordHandledError: (_service, _action, error) => { throw error; },
+    supabase: { rpc: async (name, args) => {
+      calls.push(name);
+      if (name === 'get_erp_sync_status_v1') return { data: { active: false, status: 'idle', stageResults: [] } };
+      if (name === 'claim_erp_sync_job_v1') {
+        claimCount += 1;
+        return { data: claimCount === 1
+          ? { claimed: true, runId: 'cloud-run-91', status: { stageResults: [] } }
+          : { claimed: false, status: { active: true, runId: 'cloud-run-91', currentStage: 'queued' } } };
+      }
+      if (name === 'claim_erp_sync_worker_v1') { workerClaimCount += 1; return { data: { claimed: true } }; }
+      if (name === 'claim_erp_sync_worker_step_v1') {
+        stepClaimCount += 1;
+        assert.equal(args.p_run_id, 'cloud-run-91');
+        assert.equal(args.p_step, 0);
+        return { data: { claimed: true, status: { continuationCursor: { stageIndex: 0 } } } };
+      }
+      if (name === 'update_erp_sync_job_v1') return { data: args.p_status };
+      throw new Error(`Unexpected RPC ${name}`);
+    } },
+    executeCloudErpSyncStep: async () => { stepCalls += 1; },
+    EdgeRuntime: { waitUntil: task => tasks.push(task) },
+  });
+  const queue = initial => { dispatched.push(initial.runId); context.dispatchCloudErpSync(initial); };
+  const session = { mustChangePassword: false };
+  const actor = { username: 'dylan_collyge' };
+  assert.equal((await context.handleErpSyncAction(session, { action: 'erp_sync', operation: 'status' }, actor, queue)).data.active, false);
+  assert.deepEqual(dispatched, []);
+  const command = { action: 'erp_sync', operation: 'start', commandId: '00000000-0000-4000-8000-000000000091', force: true, maxAttemptsPerStage: 1 };
+  const started = await context.handleErpSyncAction(session, command, actor, queue);
+  assert.equal(started.data.status, 'queued');
+  assert.deepEqual(dispatched, ['cloud-run-91']);
+  assert.deepEqual(started.data.stageOrder, ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']);
+  const duplicate = await context.handleErpSyncAction(session, { ...command, commandId: '00000000-0000-4000-8000-000000000092' }, actor, queue);
+  assert.equal(duplicate.data.currentStage, 'queued');
+  assert.deepEqual(dispatched, ['cloud-run-91']);
+  await tasks[0];
+  await tasks[1];
+  assert.equal(workerClaimCount, 1, 'only the newly claimed run starts a cloud worker');
+  assert.equal(stepClaimCount, 1, 'the worker claims exactly the initial CAS step');
+  assert.equal(stepCalls, 1, 'only a successfully claimed initial step is dispatched');
+  assert.equal(tasks.length, 2, 'one worker claim and one initial step are scheduled outside the browser request');
+  assert.equal(calls.filter(name => name === 'claim_erp_sync_worker_v1').length, 1);
+  assert.equal(calls.filter(name => name === 'claim_erp_sync_worker_step_v1').length, 1);
+  assert.ok(calls.includes('update_erp_sync_job_v1'));
+
+  const { spawnSync } = await import('node:child_process');
+  const retired = spawnSync(process.execPath, [path.join(root, 'scripts/local-erp-sync-worker.mjs')], { encoding: 'utf8', timeout: 5000 });
+  assert.equal(retired.status, 1);
+  assert.match(retired.stderr, /ERP_LOCAL_WORKER_RETIRED_USE_CLOUD_RUN_SCRIPT/);
+
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const routeSource = appApi.slice(appApi.indexOf('if (import.meta.main) serve(')).replace('if (import.meta.main)', 'if (true)');
+  const emitted = ts.transpileModule(routeSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  let handler;
+  const routeContext = vm.createContext({ serve: callback => { handler = callback; },
+    withObservedRequest: (_name, _request, callback) => callback(), corsHeaders: {},
+    ensureServerConfig() {}, normalizeEscapedDisplayPayload: value => value,
+    errorResponse: (message, status, extra) => ({ message, status, ...extra }) });
+  vm.runInContext(emitted, routeContext);
+  const response = await handler({ method: 'POST', headers: { get: () => 'application/json' }, json: async () => ({ action: 'erp_sync_worker' }) });
+  assert.equal(response.status, 410);
+  assert.equal(response.code, 'ERP_SYNC_LOCAL_WORKER_DISABLED');
 });

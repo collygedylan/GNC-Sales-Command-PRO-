@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { deflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import { isLegacyRunScriptAction, normalizeErpRows, parseErpCsv, parseErpXlsx, runErpSyncWorker, shouldIgnoreErpFile, validateErpSyncCommand } from '../supabase/functions/_shared/erp-sync.mjs';
+import { isLegacyRunScriptAction, normalizeErpRows, parseErpCsv, parseErpXlsx, runErpSyncWorker, runErpSyncWorkerStep, shouldIgnoreErpFile, validateErpSyncCommand } from '../supabase/functions/_shared/erp-sync.mjs';
 
 function makeZip(entries) {
   const locals = [], central = [];
@@ -66,7 +66,15 @@ test('app-api connects strict validation to ERP actions and keeps status read-on
   assert.match(worker,/claim_erp_sync_worker_v1/);
   assert.match(worker,/assert_erp_sync_worker_v1/);
   assert.match(worker,/fast_commit_erp_stage_swap_v1/);
-  assert.match(source,/action === "erp_sync_worker"\) \{\s*return await handleErpSyncWorker/);
+  assert.match(source,/action === "erp_sync_worker"\) \{\s*return errorResponse\("The local ERP worker is disabled\.", 410/);
+  assert.match(handler,/queueCloudWorker\?\.\(initial\)/);
+  assert.match(source,/handleErpSyncAction\(session, payload, activeProfileForRequest, dispatchCloudErpSync\)/);
+  assert.match(source,/runtime\.waitUntil\(task\)/);
+  assert.match(source,/claim_erp_sync_worker_step_v1[^]*p_step: step/);
+  assert.match(source,/action === "erp_sync_continue"[^]*handleErpSyncContinuation/);
+  assert.match(source,/action: "mint_drive_token"[^]*actor: \{ system: "erp-sync-cloud-worker" \}/);
+  assert.match(source,/data\.accessToken \|\| data\.access_token/);
+  assert.doesNotMatch(source,/ERP_SYNC_GOOGLE_OAUTH_JSON|GNC_GOOGLE_REFRESH_TOKEN/);
   assert.match(appsScriptHandler,/isLegacyRunScriptAction\(action\)[^]*LEGACY_RUN_SCRIPT_DISABLED[^]*PRODUCTION_SCHEDULE_APPS_SCRIPT_URL/);
 });
 
@@ -108,7 +116,6 @@ test('worker commits each staged batch before archiving and completes the empty 
   let sourceListed = true;
   const fakeFetch = async (input, init = {}) => {
     const url = new URL(input);
-    if (url.hostname === 'oauth2.googleapis.com') return Response.json({access_token:'ephemeral'});
     if (url.pathname.endsWith('/files')) {
       if (init.method === 'POST') return Response.json({id:'processed-folder'});
       const folder = url.searchParams.get('q').match(/'([^']+)'/)[1];
@@ -132,10 +139,8 @@ test('worker commits each staged batch before archiving and completes the empty 
     throw new Error(`unexpected RPC ${name}`);
   }};
   const folders = {drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder'};
-  const result = await runErpSyncWorker({supabase,fetcher:fakeFetch,status:async patch=>status.push(patch),
-    env:key=>key==='ERP_SYNC_GOOGLE_OAUTH_JSON'
-      ? JSON.stringify({client_id:'fixture',client_secret:'fixture',refresh_token:'fixture'})
-      : key==='ERP_SYNC_DROP_FOLDERS_JSON' ? JSON.stringify(folders) : ''});
+  const result = await runErpSyncWorker({supabase,fetcher:fakeFetch,status:async patch=>status.push(patch),accessToken:'fixture-token',
+    env:key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):''});
   assert.equal(result.ok,true);
   assert.equal(result.stageResults.find(row=>row.key==='drive').outcome,'processed');
   assert.equal(result.stageResults.find(row=>row.key==='hl_po_parsed').outcome,'UP_TO_DATE');
@@ -150,7 +155,6 @@ test('unchanged file is archived without download or duplicate stage writes', as
   const calls=[];
   const fakeFetch=async(input,init={})=>{
     const url=new URL(input);
-    if(url.hostname==='oauth2.googleapis.com')return Response.json({access_token:'ephemeral'});
     if(url.pathname.endsWith('/files')){
       const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
       return Response.json({files:folder==='drive-folder'
@@ -167,8 +171,7 @@ test('unchanged file is archived without download or duplicate stage writes', as
   }};
   const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder',
     processed:{drive:'drive-processed'}};
-  const result=await runErpSyncWorker({supabase,fetcher:fakeFetch,status:async()=>{},env:key=>key==='ERP_SYNC_GOOGLE_OAUTH_JSON'
-    ? JSON.stringify({client_id:'fixture',client_secret:'fixture',refresh_token:'fixture'}):key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):''});
+  const result=await runErpSyncWorker({supabase,fetcher:fakeFetch,status:async()=>{},accessToken:'fixture-token',env:key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):''});
   assert.equal(result.ok,true);
   assert.equal(result.stageResults.find(row=>row.key==='drive').outcome,'UP_TO_DATE');
   assert.equal(calls.filter(name=>name==='check_erp_file_sync_needed_v1').length,1);
@@ -180,16 +183,13 @@ test('stage read failure continues sequentially and ends IDLE with a visible err
   const statuses=[];
   const fakeFetch=async(input)=>{
     const url=new URL(input);
-    if(url.hostname==='oauth2.googleapis.com')return Response.json({access_token:'ephemeral'});
     const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
     if(folder==='drive-folder')return Response.json({error:'fixture'}, {status:503});
     return Response.json({files:[]});
   };
   const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder'};
   const result=await runErpSyncWorker({supabase:{rpc:async()=>{throw new Error('no source means no SQL RPC');}},fetcher:fakeFetch,
-    status:async patch=>statuses.push(patch),env:key=>key==='ERP_SYNC_GOOGLE_OAUTH_JSON'
-      ? JSON.stringify({client_id:'fixture',client_secret:'fixture',refresh_token:'fixture'})
-      : key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):''});
+    status:async patch=>statuses.push(patch),accessToken:'fixture-token',env:key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):''});
   const final=statuses.at(-1);
   assert.equal(result.ok,false);
   assert.deepEqual(statuses.filter(patch=>patch.currentStage).map(patch=>patch.currentStage),
@@ -199,4 +199,47 @@ test('stage read failure continues sequentially and ends IDLE with a visible err
   assert.equal(final.currentStage,'idle');
   assert.equal(final.errorCode,'ERP_SYNC_STAGE_FAILED');
   assert.equal(final.stageResults.length,5);
+});
+
+test('cloud continuation processes at most one source file per invocation and resumes without re-import', async () => {
+  const files=[
+    {id:'file-1',name:'Drive 1.csv',modifiedTime:'2026-10-27T00:00:00Z',parents:['drive-folder']},
+    {id:'file-2',name:'Drive 2.csv',modifiedTime:'2026-10-27T00:01:00Z',parents:['drive-folder']},
+  ];
+  const archived=[], begins=[];
+  const fakeFetch=async(input,init={})=>{
+    const url=new URL(input);
+    if(url.pathname.endsWith('/files')){
+      const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
+      return Response.json({files:folder==='drive-folder'?files.filter(file=>!archived.includes(file.id))
+        :folder==='processed-folder'?files.filter(file=>archived.includes(file.id)):[]});
+    }
+    if(url.pathname.endsWith('/files/file-1')||url.pathname.endsWith('/files/file-2')){
+      const id=url.pathname.split('/').at(-1);
+      if(init.method==='PATCH'){archived.push(id);return Response.json({id,parents:['processed-folder']});}
+      return new Response('itemcode,commonname,ptravailable\n004380.010.1,Blue Dart Grass,1\n');
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+  const supabase={rpc:async(name,args)=>{
+    if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false}};
+    if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','commonname','ptravailable']};
+    if(name==='fast_begin_erp_stage_v1'){begins.push(args.p_file_meta.file_id);return {data:{stage_id:`stage-${args.p_file_meta.file_id}`,expected_rows:1,staged_rows:0}};}
+    if(name==='fast_append_erp_stage_batch_v1')return {data:{staged_rows:args.p_start_row+args.p_rows.length}};
+    if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true}};
+    throw new Error(`unexpected RPC ${name}`);
+  }};
+  const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder',
+    processed:{drive:'processed-folder'}};
+  const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
+  const first=await runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token'});
+  assert.equal(first.done,false);
+  assert.deepEqual(archived,['file-1']);
+  const second=await runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token',cursor:first.cursor});
+  assert.equal(second.done,false);
+  assert.deepEqual(archived,['file-1','file-2']);
+  const final=await runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token',cursor:second.cursor});
+  assert.equal(final.done,true);
+  assert.deepEqual(begins,['file-1','file-2']);
+  assert.equal(final.cursor.stageResults.filter(row=>row.outcome==='processed').length,2);
 });
