@@ -1440,11 +1440,13 @@ test('Request and Assigned Items paint retained rows before bounded background h
   const synchronousSwitch = runtime.slice(runtime.indexOf('function shouldRenderViewSynchronouslyOnSwitch'), runtime.indexOf('function switchView'));
   const requestRefresh = runtime.slice(runtime.indexOf('function refreshRequestViewInBackground'), runtime.indexOf('function renderRequest()'));
   const assignedPanel = runtime.slice(runtime.indexOf('function renderManagerAssignedItemsExportPanel'), runtime.indexOf('function renderManagerEvalReportsPanel'));
+  const assignedEntry = runtime.slice(runtime.indexOf("if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW)"), runtime.indexOf("if (nextTab === MANAGER_EVAL_REPORTS_VIEW)"));
   const managerRender = runtime.match(/function renderManagers\(\)[\s\S]*?^        }/m)[0];
   assert.match(synchronousSwitch, /targetViewId === 'request'[\s\S]*!requestState\.initialized \|\| !!requestState\.dirty/);
   assert.match(requestRefresh, /REQUEST_VIEW_BACKGROUND_TIMEOUT_MS[\s\S]*Request queue refresh/);
   assert.doesNotMatch(assignedPanel, /return ['"`][^'"`]*Loading AssignedTo rows/);
   assert.match(managerRender, /activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender\('managers'\)/);
+  assert.match(assignedEntry, /force: !warehouseAssignedItemsInventory\.length[\s\S]*preserveRequestedMode: true/);
 });
 
 

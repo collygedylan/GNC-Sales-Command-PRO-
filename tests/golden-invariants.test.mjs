@@ -2668,3 +2668,10 @@ test('Invariant 96 (Request and Assigned Items Always Paint Last-Known-Good Rows
   assert.match(managerRender, /activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender\('managers'\)/);
   assert.match(runtime, /plainManagersHubEntry[\s\S]*activeHomeTab = 'dashboard'/);
 });
+
+test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current Warehouse Hydration)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const entry = runtime.slice(runtime.indexOf("if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW)"), runtime.indexOf("if (nextTab === MANAGER_EVAL_REPORTS_VIEW)"));
+  assert.match(entry, /ensureDatasetLoaded\('warehouseAssignedItems', 'full', \{[\s\S]*force: !warehouseAssignedItemsInventory\.length/);
+  assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
+});

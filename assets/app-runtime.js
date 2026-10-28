@@ -128915,7 +128915,10 @@ C.14.043 C.15.000
                 if (isNotOnInventoryApprovalTaskView(nextTab)) scheduleNotOnInventoryApprovalTaskRowsRefresh(nextTab, { force: true });
             }
             if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
-                ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
+                ensureDatasetLoaded('warehouseAssignedItems', 'full', {
+                    force: !warehouseAssignedItemsInventory.length,
+                    preserveRequestedMode: true
+                }).then(() => scheduleManagersRender(true)).catch(() => {});
             }
             if (nextTab === MANAGER_EVAL_REPORTS_VIEW) {
                 ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
