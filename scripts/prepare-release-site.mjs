@@ -95,8 +95,8 @@ try {
     const assetUrl = new URL(match[1], 'https://release.invalid');
     const version = assetUrl.searchParams.get('v');
     const isScopedAssetHotfix = version === `${assetVersion}.1`
-      && (assetUrl.pathname.endsWith('/mobile-workspace.js')
-        || assetUrl.pathname.endsWith('/photo-history-v2026090401.js'));
+      && ['/assets/mobile-workspace.js', '/assets/photo-history-v2026090401.js', '/assets/inventory-list-contract.js',
+        '/assets/live-app-styles-base-v2026090503.css'].includes(assetUrl.pathname);
     if (version !== assetVersion && !isScopedAssetHotfix) throw new Error('RELEASE_ASSET_VERSION_MISMATCH: ' + match[1]);
   }
   if (/cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/.test(html)) throw new Error('RELEASE_EXTERNAL_CDN_FORBIDDEN');

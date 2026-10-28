@@ -2178,7 +2178,7 @@ test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Lin
   const workspace = read('assets/mobile-workspace.js');
   assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.97\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js/);
+  assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
   assert.match(workspace, /byTarget\.get\(targetKey\)[^]*byTarget\.set\(targetKey,keep\)/);
   assert.match(read('.codex/skills/agdata-app-shell-and-navigation/SKILL.md'), /Never deduplicate manager module cards only by their shared `managers` route/);
@@ -2693,7 +2693,8 @@ test('Invariant 96 (Request and Assigned Items Always Paint Last-Known-Good Rows
 
 test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current Warehouse Hydration)', () => {
   const runtime = read('assets/app-runtime.js');
-  const entry = runtime.slice(runtime.indexOf("if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW)"), runtime.indexOf("if (nextTab === MANAGER_EVAL_REPORTS_VIEW)"));
+  const entryStart = runtime.indexOf("if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {", runtime.indexOf('function setHomeTab'));
+  const entry = runtime.slice(entryStart, runtime.indexOf("if (nextTab === MANAGER_EVAL_REPORTS_VIEW)", entryStart));
   const loader = runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad'));
   assert.match(entry, /ensureDatasetLoaded\('warehouseAssignedItems', 'full', \{[\s\S]*force: !warehouseAssignedItemsInventory\.length/);
   assert.match(entry, /bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory\.length/);
@@ -2701,9 +2702,9 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.match(loader, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
   assert.match(loader, /maxRetries = options\.retryOnCancellation === true \? 4 : 0[\s\S]*getSupabaseReadErrorCode\(error\) !== 'REQUEST_ABORTED'/);
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.3`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.3/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.4/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3351,11 +3352,11 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   assert.match(module, /if\(readOnly\|\|requestBusy\)return;/);
   assert.match(module, /tray\.hidden=readOnly;notices\.hidden=readOnly/);
   const build = read('scripts/build-live-shell.mjs');
-  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.3`/);
+  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.97\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.3/);
-  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r3'/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.4/);
+  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r4'/);
 });
 
 test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
@@ -3605,4 +3606,100 @@ test('Invariant 122 (Stale scoped AV totals keep numeric LKG and refresh once pe
   assert.match(focused, /a newer authorized aggregate receipt triggers one bounded option refresh and rejects stale totals/);
   assert.match(focused, /repeat card renders do not schedule duplicate reads/);
   assert.match(focused, /identity-bound prior location total remains visible while the stale receipt is rejected/);
+});
+
+test('Invariant 123 (Reclass season stock touches every matching lot and skips unrelated identities)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const seen = [];
+  const sourceRow = (id, itemcode, season) => ({ UNIQUE_ID: id, ITEMCODE: itemcode, SEASON: season, S_LTS: '1', SEASON_OH: '1', PTRAVAILABLE: '1' });
+  const fullInventory = [sourceRow('a', 'I', 'F1'), sourceRow('b', 'I', 'F1'), sourceRow('other-full', 'OTHER', 'F1')];
+  const avOpenInventory = [sourceRow('a', 'I', 'F1'), sourceRow('other-av', 'OTHER', 'F1')];
+  const cavInventory = [sourceRow('cav-a', 'I', 'F1'), sourceRow('other-cav', 'OTHER', 'F1')];
+  const context = vm.createContext({
+    fullInventory, avOpenInventory, cavInventory,
+    reclassStockSeason: row => { seen.push(row.UNIQUE_ID); return row.SEASON; },
+  });
+  vm.runInContext(functionSource('assets/app-runtime.js', 'applyReclassSeasonStocks'), context);
+  context.applyReclassSeasonStocks([{ itemcode: 'I', season: 'F1', openStock: '12', seasonOnHand: '7',
+    rows: [{ uniqueId: 'a', openStock: '4' }] }]);
+  assert.deepEqual(seen, ['a', 'b', 'a', 'cav-a'], 'season parsing is limited to the affected itemcode across all inventory arrays');
+  assert.equal(fullInventory[0].S_LTS, '4');
+  assert.equal(fullInventory[0].SEASON_OH, '7');
+  assert.equal(fullInventory[1].SEASON_OH, '7', 'all matching lots receive the season total');
+  assert.equal(avOpenInventory[0].S_LTS, '4');
+  assert.equal(cavInventory[0].OPEN_STOCK, '12');
+  for (const row of [fullInventory[2], avOpenInventory[1], cavInventory[1]]) {
+    assert.equal(row.SEASON_OH, '1', `${row.UNIQUE_ID} remains untouched`);
+    assert.equal(row.PTRAVAILABLE, '1');
+  }
+});
+
+test('Invariant 124 (Cold Assigned Items full projection is unique and remains coordinator-owned)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const context = runFunctions('assets/app-runtime.js', ['getMasterFullSelectFields', 'buildMasterFullDatasetQuery'], {
+    window: { AgMetricInventoryList: { physicalColumns: ['unique_id', 'baseline_on_hand', 'ptravailable'] } },
+    appendEvalMasterScopeToQuery: query => query,
+  });
+  const selectedFields = context.buildMasterFullDatasetQuery().slice('select='.length).split('&')[0].split(',');
+  assert.deepEqual(selectedFields, ['unique_id', 'baseline_on_hand', 'ptravailable']);
+  assert.equal(new Set(selectedFields).size, selectedFields.length, 'the canonical full query must not request a physical column twice');
+
+  const entryStart = runtime.indexOf("if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {", runtime.indexOf('function setHomeTab'));
+  const entry = runtime.slice(entryStart, runtime.indexOf("if (nextTab === MANAGER_EVAL_REPORTS_VIEW)", entryStart));
+  const panel = functionSource('assets/app-runtime.js', 'renderManagerAssignedItemsExportPanel');
+  const contractContext = vm.createContext({});
+  vm.runInContext(read('assets/inventory-list-contract.js'), contractContext);
+  const physicalColumns = Array.from(contractContext.AgMetricInventoryList.physicalColumns);
+  assert.equal(new Set(physicalColumns).size, physicalColumns.length, 'the full physical projection must be unique');
+  assert.match(read('scripts/build-live-shell.mjs'), /'inventory-list-contract\.js': `\$\{RELEASE_QUERY\}\.1`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.97\.1/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.97\.1/);
+  assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
+  assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
+  assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
+    /return getProductionLiveSyncCoordinator\(\)\.ensure\(adapter, !!options\.force\)/);
+});
+
+test('Invariant 125 (AV metric grid keeps three columns under the Drive-only precision override)', () => {
+  const avStyle = read('assets/app-shell-style-05.css');
+  const opsStyle = read('assets/ops-precision-pilot.css');
+  assert.match(avStyle, /body #view-detail \.request-av-option-card-shell \.app-card-qty-row,\s*body\.viewport-compact #view-detail \.request-av-option-card-shell \.app-card-qty-row\s*\{\s*grid-template-columns:repeat\(3,minmax\(0,1fr\)\) !important/);
+  assert.match(avStyle, /body\.viewport-compact #view-detail \.request-av-option-card-shell \.app-drive-card-grid:not\(\.app-drive-card-grid--no-photo\)[\s\S]*grid-template-areas:"photo header reclass" "details details details" !important/);
+  assert.match(avStyle, /body\.viewport-compact #view-detail \.request-av-option-card-shell \.app-drive-card-details \{grid-area:details;width:100%;min-width:0\}/);
+  assert.match(opsStyle, /body\.ops-precision-pilot \.app-drive-compact-card\.app-inventory-card-overhaul \.app-card-qty-row\s*\{\s*container-type: inline-size;\s*grid-template-columns:[^;]+!important;\s*gap: clamp\(2px, \.7vw, 6px\) !important;/);
+});
+
+test('Invariant 126 (Selected Suspend AV action remains viewport-fixed above the footer)', () => {
+  const style = read('assets/app-shell-style-05.css');
+  const runtimeFunction = functionSource('assets/app-runtime.js', 'syncSuspendAvOptionSelectionControls');
+  const stickyRule = style.slice(style.indexOf('body #view-detail [data-suspend-av-sticky]'), style.indexOf('.photo-date-badge-host', style.indexOf('body #view-detail [data-suspend-av-sticky]')));
+  assert.match(stickyRule, /position:fixed !important/);
+  assert.match(stickyRule, /bottom:calc\(max\(var\(--gnc-footer-height,var\(--footer-nav-reserve/);
+  assert.match(stickyRule, /var\(--gnc-personal-footer-height,0px\)\) \+ 8px \+ env\(safe-area-inset-bottom\)\) !important/);
+  assert.match(stickyRule, /left:max\(var\(--shell-gutter/);
+  assert.match(stickyRule, /right:max\(var\(--shell-gutter/);
+  assert.doesNotMatch(stickyRule, /display\s*:/, 'the shared hidden class continues to control visibility');
+  let selectedCount = 1;
+  const toggles = [];
+  const sticky = { classList: { toggle(name, hidden) { toggles.push([name, hidden]); } }, querySelector: selector => selector === '[data-suspend-av-add]' ? stickyAction : countLabel };
+  const stickyAction = { disabled: true };
+  const countLabel = { textContent: '' };
+  const panel = {
+    querySelectorAll: () => Array.from({ length: selectedCount }, () => ({})),
+    querySelector: selector => selector === '[data-suspend-av-header-action="true"]' ? headerAction : sticky,
+  };
+  const headerAction = { disabled: true };
+  const context = vm.createContext({ document: { getElementById: () => panel } });
+  vm.runInContext(runtimeFunction, context);
+  context.syncSuspendAvOptionSelectionControls();
+  assert.deepEqual(toggles.pop(), ['hidden', false]);
+  assert.equal(headerAction.disabled, false);
+  assert.equal(stickyAction.disabled, false);
+  assert.equal(countLabel.textContent, '1 selected');
+  selectedCount = 0;
+  context.syncSuspendAvOptionSelectionControls();
+  assert.deepEqual(toggles.pop(), ['hidden', true]);
 });

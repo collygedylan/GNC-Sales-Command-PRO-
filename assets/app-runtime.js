@@ -45361,20 +45361,25 @@ let avTopControlsRenderToken = 0;
 
         function applyReclassSeasonStocks(stocks = []) {
             const changes = new Map(stocks.filter(s => s && s.openStock != null && s.openStock !== '').map(s => [String(s.itemcode) + '|' + String(s.season).toUpperCase(), s]));
+            const affectedItemcodes = new Set(Array.from(changes.values(), value => String(value.itemcode)));
             const rowStocks = new Map();
             changes.forEach(value => (Array.isArray(value.rows) ? value.rows : []).forEach(row => {
                 const uniqueId = String(row && (row.uniqueId ?? row.unique_id) || '');
                 if (uniqueId && Number.isFinite(Number(row.openStock))) rowStocks.set(uniqueId, String(row.openStock));
             }));
             [fullInventory, avOpenInventory].forEach(rows => rows.forEach(row => {
-                const value = changes.get(String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row));
+                const itemcode = String(row.ITEMCODE ?? row.itemcode ?? '');
+                if (!affectedItemcodes.has(itemcode)) return;
+                const value = changes.get(itemcode + '|' + reclassStockSeason(row));
                 if (!value || !Number.isFinite(Number(value.seasonOnHand))) return;
                 const physicalStock = rowStocks.get(String(row.UNIQUE_ID ?? row.unique_id ?? ''));
                 if (physicalStock != null) row.S_LTS = row.s_lts = row.OPEN_STOCK = row.open_stock = physicalStock;
                 row.SEASON_OH = row.season_oh = String(value.seasonOnHand);
             }));
             cavInventory.forEach(row => {
-                const value = changes.get(String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row));
+                const itemcode = String(row.ITEMCODE ?? row.itemcode ?? '');
+                if (!affectedItemcodes.has(itemcode)) return;
+                const value = changes.get(itemcode + '|' + reclassStockSeason(row));
                 if (!value || !Number.isFinite(Number(value.openStock)) || !Number.isFinite(Number(value.seasonOnHand))) return;
                 row.S_LTS = row.s_lts = row.OPEN_STOCK = row.open_stock = String(value.openStock);
                 row.SEASON_OH = row.season_oh = String(value.seasonOnHand);

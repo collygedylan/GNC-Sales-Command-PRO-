@@ -10,7 +10,10 @@ const RELEASE = 'AgData v2.3.97';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const ASSET_QUERY_OVERRIDES = Object.freeze({
   'mobile-workspace.js': `${RELEASE_QUERY}.1`,
-  'live-app-runtime-v2026082010.min.js': `${RELEASE_QUERY}.3`,
+  'live-app-runtime-v2026082010.min.js': `${RELEASE_QUERY}.4`,
+  'inventory-list-contract.js': `${RELEASE_QUERY}.1`,
+  'app-shell-style-05.css': `${RELEASE_QUERY}.1`,
+  'live-app-styles-base-v2026090503.css': `${RELEASE_QUERY}.1`,
   'photo-history-v2026090401.js': `${RELEASE_QUERY}.1`,
 });
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -214,7 +217,7 @@ let optimizedHead = headHtml.replace(extractedStylePattern, (match, attrs, offse
 
   if (beforePilotStylesheet && !baseLinkWritten) {
     baseLinkWritten = true;
-    return shellStylesheetMarkup(`./assets/live-app-styles-base-v2026090503.css?v=${RELEASE_QUERY}`);
+    return shellStylesheetMarkup(`./assets/live-app-styles-base-v2026090503.css?v=${ASSET_QUERY_OVERRIDES['live-app-styles-base-v2026090503.css'] || RELEASE_QUERY}`);
   }
   if (!beforePilotStylesheet && !authorityLinkWritten) {
     authorityLinkWritten = true;

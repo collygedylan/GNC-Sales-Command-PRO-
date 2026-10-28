@@ -47,7 +47,7 @@
     // comparison without changing V1 aliases or inventing values in list rows.
     const physicalColumns = Object.freeze([
         ...columns,
-        'altshipcomment', 'avg_price_eunit_shipped', 'baseline_on_hand', 'carrier', 'combinedprice', 'concat',
+        'altshipcomment', 'avg_price_eunit_shipped', 'carrier', 'combinedprice', 'concat',
         'consigneeaddress_1', 'consigneeaddress_2', 'consigneecity', 'consigneeidentityid', 'consigneestate',
         'consigneezip', 'customeridentityid', 'customersku', 'descriptorcode', 'dropweight',
         'equiv_uom', 'ext_eunit_shipped', 'ext_unit_merch_shipped', 'extunitprice', 'formattedupc',
