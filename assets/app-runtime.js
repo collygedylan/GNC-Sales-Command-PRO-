@@ -106255,7 +106255,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const safeRevision = String(revision || '').trim();
             const owner = getSupabaseReadIdentityScope();
             if (!item || !state || state.owner !== owner || !safeRevision || !/^\d+$/.test(safeRevision)) return false;
-            if (state.metricRefreshRevision === safeRevision || state.metricRefreshPendingRevision === safeRevision) return false;
+            const handledRevision = String(state.metricRefreshRevision || '').trim();
+            const pendingRevision = String(state.metricRefreshPendingRevision || '').trim();
+            if (handledRevision && /^\d+$/.test(handledRevision) && BigInt(safeRevision) <= BigInt(handledRevision)) return false;
+            if (pendingRevision && /^\d+$/.test(pendingRevision) && BigInt(safeRevision) <= BigInt(pendingRevision)) return false;
             if (state.loading) {
                 state.metricRefreshPendingRevision = safeRevision;
                 return false;

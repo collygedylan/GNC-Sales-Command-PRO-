@@ -3595,7 +3595,7 @@ test('Invariant 122 (Stale scoped AV totals keep numeric LKG and refresh once pe
   const runtime = read('assets/app-runtime.js');
   const focused = read('tests/inventory-card-location-on-hand.test.mjs');
   assert.match(runtime, /scheduleStaleRequestOptionMetricRefresh\(optionContext, requestItemCodeOptionState, acceptedReceipt\.revision\)/);
-  assert.match(runtime, /function scheduleStaleRequestOptionMetricRefresh[\s\S]*?state\.metricRefreshRevision === safeRevision[\s\S]*?loadRequestItemCodeOptions\(item, state\.key, \{ forceRefresh: true \}\)/);
+  assert.match(runtime, /function scheduleStaleRequestOptionMetricRefresh[\s\S]*?BigInt\(safeRevision\) <= BigInt\(handledRevision\)[\s\S]*?loadRequestItemCodeOptions\(item, state\.key, \{ forceRefresh: true \}\)/);
   assert.match(runtime, /const optionContext = activeItem \|\| item;[\s\S]*?getRequestItemCodeOptionStateKey\(optionContext\) === requestItemCodeOptionState\.key/);
   assert.match(runtime, /function loadRequestItemCodeOptions\(item = activeItem, stateKey = '', options = \{\}\)[\s\S]*?const forceRefresh = options\?\.forceRefresh === true[\s\S]*?fetchRequestItemCodeOptionRowsFromSupabase\(itemCode, \{ pageSize: 100, maxRows: 2500 \}\)/);
   assert.match(runtime, /const acceptedMetricRevision = \(row\) =>[\s\S]*?incomingRevision > existingRevision/);
