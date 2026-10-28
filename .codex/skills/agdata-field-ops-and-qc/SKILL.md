@@ -80,7 +80,7 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 ## Forbidden Anti-Patterns (Never Repeat)
 
 - Never route Managers Assigned Items through the generic blocking dataset gate or return a loading-only panel while retained assignments exist; mount the cached/empty table immediately and refresh assignment/master rows behind it without replacing the Managers hub.
-- Never trust a `fullLoaded` marker for `warehouseAssignedItems` when the retained row array is empty; a fresh Assigned Items entry must force one current warehouse read while keeping the empty table mounted.
+- Never trust a `fullLoaded` marker or same-revision coordinator cache for `warehouseAssignedItems` when the retained row array is empty; a fresh Assigned Items entry must bypass snapshot reuse for one current warehouse read while keeping the empty table mounted.
 
 - Never repeat a location-level Direction or default House Plan beneath every Bunch Note commonname, expose Card direction in the card modal, or use single-value/datalist controls for workflow fields that require multi-select; custom choices stay field-scoped and persist to both `inv_bunch_notes_custom_dropdowns_v1` stores.
 

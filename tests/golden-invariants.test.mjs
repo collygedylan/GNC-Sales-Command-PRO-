@@ -2673,5 +2673,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   const runtime = read('assets/app-runtime.js');
   const entry = runtime.slice(runtime.indexOf("if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW)"), runtime.indexOf("if (nextTab === MANAGER_EVAL_REPORTS_VIEW)"));
   assert.match(entry, /ensureDatasetLoaded\('warehouseAssignedItems', 'full', \{[\s\S]*force: !warehouseAssignedItemsInventory\.length/);
+  assert.match(entry, /bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory\.length/);
+  assert.match(runtime, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });

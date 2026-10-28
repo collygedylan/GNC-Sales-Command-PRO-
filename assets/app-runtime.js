@@ -14896,7 +14896,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function setRealtimeSubscriptionsForView(viewId, force = false) {
-            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
+            if (!options.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
                 cleanupRealtime(); clearVisibleViewPollSync();
                 activeRealtimeViewId = String(viewId || 'home');
                 if (activeRealtimeViewId !== 'request' || activeReqTab !== 'eval-work') unsubscribeEvalWorkRealtime();
@@ -128917,6 +128917,7 @@ C.14.043 C.15.000
             if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
                 ensureDatasetLoaded('warehouseAssignedItems', 'full', {
                     force: !warehouseAssignedItemsInventory.length,
+                    bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory.length,
                     preserveRequestedMode: true
                 }).then(() => scheduleManagersRender(true)).catch(() => {});
             }
