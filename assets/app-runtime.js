@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.94';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.95';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26675,7 +26675,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.94').trim() || 'AgData v2.3.94';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.95').trim() || 'AgData v2.3.95';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29180,12 +29180,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 || snapshots.some(({ adapter }) => adapter.id !== previewCore))) return;
             const payload = { _verifiedLiveSync: true, _fromCache: true };
             const confirmedRevision = confirmedArgosReclassLiveEditRevisions.get(getArgosReclassLiveEditIdentityKey()) || '';
+            const pendingInventoryMove = typeof argosInventoryTransactionState !== 'undefined'
+                && !!argosInventoryTransactionState?.pendingReclassMove;
             const retainedMaster = productionDisplayMasterReceipt;
             const retainCompleteMaster = retainedMaster?.rows === fullInventory
                 && retainedMaster.readScope === getSupabaseReadIdentityScope()
                 && retainedMaster.permission === context.dataPermissionVersion;
             const previewEntries = snapshots.filter(({ adapter, value }) => adapter.id !== 'core:master'
-                || !(confirmedRevision && value?.cached === true)
+                || !pendingInventoryMove && !(confirmedRevision && value?.cached === true)
                     && !(retainCompleteMaster && value?.rowCompleteness !== 'complete'));
             const hasCompletePreview = previewEntries.length === snapshots.length;
             // This is display state only. No inventory proof, complete-source flag,
@@ -42848,7 +42850,7 @@ let avTopControlsRenderToken = 0;
                 if (argosReclassMultiActionState.rowResolutions instanceof Map) argosReclassMultiActionState.rowResolutions.delete(uid);
                 const values = entry.values && typeof entry.values === 'object' ? entry.values : {};
                 const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
-                if (['move', 'sheared'].includes(rule.kind) && (!Number.isFinite(originalOh) || originalOh < 1)) {
+                if (rule.kind === 'sheared' && (!Number.isFinite(originalOh) || originalOh < 1)) {
                     showToast('Action Unavailable', `${rule.label} requires a positive original OH.`, true);
                     return false;
                 }
@@ -45247,6 +45249,7 @@ let avTopControlsRenderToken = 0;
             // Rebuild their shared indexes once before publishing either row.
             // This also reconciles any successful upserts when a later row fails.
             if (typeof rebuildMasterInventoryIndexes === 'function') rebuildMasterInventoryIndexes();
+            if (typeof invalidateResolvedViewStateCaches === 'function') invalidateResolvedViewStateCaches();
             const tables = new Set(rows.map(row => row.SOURCE_TABLE));
             if (typeof refreshRealtimeDetailLookupIndexes === 'function') {
                 tables.forEach(table => refreshRealtimeDetailLookupIndexes(table));
@@ -45291,6 +45294,8 @@ let avTopControlsRenderToken = 0;
         }
 
         function isConfirmedInventoryReadRevisionCurrent(revision) {
+            if (typeof argosInventoryTransactionState !== 'undefined'
+                && argosInventoryTransactionState?.pendingReclassMove) return false;
             const confirmed = confirmedArgosReclassLiveEditRevisions.get(getArgosReclassLiveEditIdentityKey());
             if (!confirmed) return true;
             const incoming = String(revision || '');
@@ -79428,6 +79433,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             if (currentView === 'drive') {
                 if (activeDriveTab === 'name') {
+                    if (driveViewLevel >= 4 && selectedDriveName && selectedDriveSize && selectedDriveSeason) {
+                        backToDrivePrograms();
+                        updateGlobalBackButton();
+                        return false;
+                    }
                     if (driveViewLevel >= 3 && selectedDriveName && selectedDriveSize) {
                         backToDriveSeasons();
                         updateGlobalBackButton();

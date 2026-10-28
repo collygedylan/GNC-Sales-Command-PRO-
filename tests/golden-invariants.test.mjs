@@ -1334,7 +1334,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.94"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.95"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1361,9 +1361,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.94"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.95"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.94"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.95"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2175,7 +2175,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.94\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.95\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isManagerShellHotfix[^]*mobile-workspace\.js[^]*`\$\{assetVersion\}\.1`/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2682,7 +2682,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.2`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.94\.2/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.95\.2/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -2697,4 +2697,31 @@ test('Invariant 98 (Universal Request Directory and Complete Tag Preserve Physic
   assert.match(suspendHandler, /SUSPEND_TAG_DATABASE_\$\{rpcCode\}/);
   assert.match(migration, /quantityshipped[\s\S]*tagcode[\s\S]*rep_for_row\(s\)\)\.id is distinct from actor\.id/);
   assert.match(migration, /values\('app_version',jsonb_build_object\('release','AgData v2\.3\.94','app_version','2\.3\.94'/);
+});
+
+test('Invariant 99 (Reclass Is Optimistic Without Premature Validation and Inventory Back Unwinds Locally)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const migration = read('supabase/migrations/20261028172852_agdata_v2395_instant_reclass_and_navigation.sql');
+  const toggle = runtime.slice(runtime.indexOf('function toggleArgosReclassV3Action('), runtime.indexOf('function handleArgosReclassV3ProposalInput('));
+  const collect = runtime.slice(runtime.indexOf('function collectArgosReclassMoveProposal('), runtime.indexOf('function getArgosReclassV3ScopeActionsForEntry('));
+  const publish = runtime.slice(runtime.indexOf('function publishArgosInventoryTransactionReturnedRows('), runtime.indexOf('const confirmedArgosReclassLiveEditRevisions'));
+  const back = runtime.slice(runtime.indexOf('function goBackUniversal('), runtime.indexOf("if (currentView === 'crop-roll')"));
+  const revisions = new Map([['actor', '52418']]);
+  const context = runFunctions('assets/app-runtime.js', ['isConfirmedInventoryReadRevisionCurrent'], {
+    argosInventoryTransactionState: { pendingReclassMove: { command: { commandId: 'pending' } } },
+    confirmedArgosReclassLiveEditRevisions: revisions,
+    getArgosReclassLiveEditIdentityKey: () => 'actor',
+  });
+  assert.equal(context.isConfirmedInventoryReadRevisionCurrent('52419'), false, 'pending optimistic rows fence every background snapshot');
+  context.argosInventoryTransactionState.pendingReclassMove = null;
+  assert.equal(context.isConfirmedInventoryReadRevisionCurrent('52417'), false);
+  assert.equal(context.isConfirmedInventoryReadRevisionCurrent('52418'), true);
+  assert.match(toggle, /rule\.kind === 'sheared'/);
+  assert.doesNotMatch(toggle, /\['move', 'sheared'\]\.includes/);
+  assert.match(collect, /Cannot Move Up more than Open Stock/);
+  assert.match(publish, /rebuildMasterInventoryIndexes[\s\S]*invalidateResolvedViewStateCaches/);
+  assert.match(back, /driveViewLevel >= 4[\s\S]*backToDrivePrograms\(\)[\s\S]*driveViewLevel >= 3[\s\S]*backToDriveSeasons\(\)/);
+  assert.match(migration, /C\.16\.000','27\.F1','220','0','220','150'/);
+  assert.match(migration, /H\.03\.000','27\.S1','4000','0','4000','4074'/);
+  assert.match(migration, /AGDATA_V2395_RECLASS_MOVE_STATE_MISMATCH/);
 });

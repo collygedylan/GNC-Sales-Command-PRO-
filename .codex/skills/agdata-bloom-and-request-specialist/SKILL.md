@@ -17,6 +17,8 @@ Read [the canonical dependency map](../../../docs/architecture/agdata-module-dep
 
 ## Shared dependencies and invariants
 
+- v2.3.95 navigation regression guard: Bloom and Request wizard/modal Back remains higher priority than shared Drive/AV drill and history Back. The inventory Reclass fix adds no Request recipient, mapping, startup-read, or durable submission change.
+
 - Use `switchView`, `canAccessView`, `updateGlobalBackButton`, `goBackUniversal`, modal back handlers and the selection tray's navigation ownership. Preserve `#bloom-picker-tray`, `#bloom-picker-modal`, `#request-rep-modal`, `#view-sales`, `#view-sales-office`, `#historical-requests-content`. The shell skill owns shared header/Back visibility; individual wizard Back handlers retain their current step history.
 - Preserve the Selected Rows tray, six inventory metrics, swipe removal and CLEAR BLOOM PICKER; preserve all nine actions: Assign, Eval Work, Submit QC, Request, Location Move, Flyer, Take Back, 2nd Cut, Shear.
 - Request MARK DONE photo/spec confirmation must compute the visible plant count from the entered LOC MATCH % and linked master PTR availability even when photo recency qualification is unavailable. Preserve the measured percentage and count in the confirmation summary; strip escaped quote sequences before saving SPEC and AV NOTE text. Background refreshes must not reset active request detail scroll while photo uploads or focused form edits are underway, and custom measurement keyboards close as soon as focus leaves their own input.

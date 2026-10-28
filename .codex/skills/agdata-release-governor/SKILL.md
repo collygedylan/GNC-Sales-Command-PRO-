@@ -60,6 +60,8 @@ Register suspend_existing_review_v1 in the scoped migration runner and verify it
 
 Register suspend_candidates_request_preload_v1 in the scoped migration runner; SQL and app-api precede the scoped buildSuspendTagApprovalEmail_ Apps Script patch, then Pages. Preserve the paused historical schedules.
 
+Register `agdata_v2395_instant_reclass_and_navigation` in the release migration allowlist and installed-state query. Its SQL verifies the already-committed three-row Reclass state and version marker without replaying the move; publication remains SQL, app-api, then Pages, with no Apps Script patch.
+
 ## Request completion and foreground continuity
 
 Register request_work_sync_status_v1 in the scoped migration runner. Publish SQL and app-api before the allowlisted Apps Script function/constant patch, then Pages. Apps Script patching supports only the named MANUAL_SYNC_STAGE_ORDER_DEFAULT and IMPORT_HISTORY_CHUNK_SIZE_ constants plus registered helper additions, retaining protected-source comparison and Head/active-version guards.

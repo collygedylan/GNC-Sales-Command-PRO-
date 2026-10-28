@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.94",
+  "release": "AgData v2.3.95",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -714,6 +714,9 @@
         ],
         "supabase/migrations/20261028114955_agdata_v2392_suspend_close_av_options_toast_eval_filter.sql": [
           "suspend-close-stable-identity-v2392"
+        ],
+        "supabase/migrations/20261028172852_agdata_v2395_instant_reclass_and_navigation.sql": [
+          "AGDATA_V2395_RECLASS_MOVE_STATE_MISMATCH"
         ]
       }
     },

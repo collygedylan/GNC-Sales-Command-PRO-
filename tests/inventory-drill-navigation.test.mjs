@@ -420,7 +420,7 @@ function fixture(mode) {
     setDriveSearchManualSelectionLock() {}, restoreDriveStateAfterUniversalSearch() {}, syncDriveTabPills() {},
     scheduleDriveSearchRender() {},
   });
-  for (const name of ['goBackUniversal', 'backToDriveSeasons', 'backToDriveSizes', 'backToDriveNames', 'resetDriveDrillSelectionState', 'clearDriveSearch', 'getDriveSearchTerm', 'hasActiveDriveSearchTerm']) vm.runInContext(source(name), context);
+  for (const name of ['goBackUniversal', 'backToDrivePrograms', 'backToDriveSeasons', 'backToDriveSizes', 'backToDriveNames', 'resetDriveDrillSelectionState', 'clearDriveSearch', 'getDriveSearchTerm', 'hasActiveDriveSearchTerm']) vm.runInContext(source(name), context);
   return context;
 }
 
@@ -480,11 +480,14 @@ test('editor, drawer and wizard Back consume one action before inventory drill o
 
 test('Drive drill takes exactly one step before delegated Back and preserves view history', () => {
   const { context: f, calls } = backHarness();
+  f.driveViewLevel = 4;
+  f.selectedDriveProgram = 'q1';
   f.viewHistoryStack.push({ viewId: 'tasks', scrollTop: 81 });
   f.getVisibleSecondaryBack = modalOnly => modalOnly ? null : { click: () => calls.push('delegated') };
-  for (const expectedLevel of [2, 1, 0]) {
+  for (const expectedLevel of [3, 2, 1, 0]) {
     assert.equal(f.goBackUniversal(), false);
     assert.equal(f.driveViewLevel, expectedLevel);
+    assert.equal(f.selectedDriveProgram, null);
     assert.deepEqual(calls, []);
     assert.equal(f.viewHistoryStack.length, 1);
   }

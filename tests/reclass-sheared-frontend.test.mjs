@@ -277,6 +277,39 @@ test('a selected future row can start a hold draft without current-season settin
   });
 });
 
+test('Move Up and Move Down open an empty editor without premature quantity validation', () => {
+  const start = html.indexOf('function toggleArgosReclassV3Action(');
+  const end = html.indexOf('function handleArgosReclassV3ProposalInput(', start);
+  const entry = { unique_id: 'zero-row', values: { ptronhand: '0', season: 'F1' } };
+  const rowMaps = new Map();
+  const toasts = [];
+  const context = {
+    argosInventoryTransactionState: { inquiryModel: { locationRows: [entry] } },
+    argosReclassMultiActionState: { holdStopProposals: {}, rowResolutions: new Map(), rowProposals: rowMaps },
+    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
+    getArgosReclassRowEditorEntry: uid => uid === entry.unique_id ? entry : null,
+    getArgosReclassRowProposalMap: (uid, create = false) => {
+      if (!rowMaps.has(uid) && create) rowMaps.set(uid, {});
+      return rowMaps.get(uid) || null;
+    },
+    getArgosReclassV3Proposal: (uid, action) => rowMaps.get(uid)?.[action] || null,
+    canCurrentUserSubmitRepInventoryOperations: () => false,
+    getArgosReclassV3HoldProposal: () => null,
+    getReclassActionWorkflowV5Config: action => ({ kind: 'move', label: action === 'move_up' ? 'Move Up' : 'Move Down' }),
+    getReclassActionWorkflowV2Config: action => ({ kind: 'move', label: action }),
+    generateArgosInventoryTransactionId: () => 'next-token',
+    refreshArgosReclassMultiActionUi() {}, captureEvalWorkLocalDraftSoon() {},
+    showToast: (...args) => toasts.push(args), window: { confirm: () => true },
+  };
+  vm.createContext(context);
+  vm.runInContext(`${html.slice(start, end)}; this.toggle = toggleArgosReclassV3Action;`, context);
+  for (const action of ['move_up', 'move_down']) {
+    context.toggle(null, action, entry.unique_id);
+    assert.deepEqual(JSON.parse(JSON.stringify(rowMaps.get(entry.unique_id)[action].splits)), [{ quantity: '', destinationSeason: '' }]);
+  }
+  assert.deepEqual(toasts, []);
+});
+
 test('recipient directory refresh is a no-parameter authenticated request and deduplicates concurrent picker opens', async () => {
   const fixture = loadRecipientDirectoryRefresh();
   const resolve = fixture.setDeferredResponse();

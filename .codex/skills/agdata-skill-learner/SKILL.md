@@ -54,6 +54,8 @@ Queue badge startup registers only location_work/list/status=all and bunch_note_
 
 The v2.3.60 request repair adds no startup route: it preserves the existing queue and metadata fixtures, registers the scoped SQL migration, and ratchets exact-ID ledgering plus four-proof lifecycle recovery into the golden invariants.
 
+The v2.3.95 Reclass/navigation repair adds no startup or background route. Invariant 99 owns the behavior ratchet: empty Move Up/Down opens without validation, pending optimistic rows reject stale master snapshots, coherent publication invalidates resolved caches, and Drive card/program Back unwinds before season/size/name/search/history.
+
 ## Owned Files, Canonical Functions & SQL Contracts
 
 - Own `docs/architecture/agdata-symbol-index.json`, `.codex/skills/*/SKILL.md`, `AGENTS.md`, `tests/golden-invariants.test.mjs`, governance registration, and the dependency map. Every listed symbol must resolve in its declared source file.

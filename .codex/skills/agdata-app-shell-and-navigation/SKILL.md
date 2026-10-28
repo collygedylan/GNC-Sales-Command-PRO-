@@ -71,6 +71,8 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never collapse Drive card/program depth directly to size selection or consult cross-view history before exhausting the active Drive/AV drill. Global Back closes modal state first, then unwinds exactly one feature level while retaining the current search; only a separate root Back may clear search or leave the view.
+
 - Never deduplicate manager module cards only by their shared `managers` route; preserve each distinct `setHomeTab(...)` deep-link identity so shell enhancement cannot collapse the hub grid.
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.

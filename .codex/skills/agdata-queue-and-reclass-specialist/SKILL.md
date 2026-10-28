@@ -96,6 +96,8 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never validate or toast an empty Move Up/Down proposal when its action button merely opens the editor. Validate quantities and destinations only during Review/Send; once Send starts, publish the optimistic source/destination rows immediately, fence pending rows from stale snapshot replacement, then reconcile indexes, resolved caches, persistence, and rollback from the atomic receipt.
+
 - Never defer Que Request's first cached/empty paint behind touch scheduling or an unbounded background read; render retained rows synchronously and cap best-effort refresh waiting at 2,500 ms without suppressing watchdog telemetry.
 
 - Never make Complete Tag depend on a mutable import timestamp when its stable physical identity still resolves one active row, replace a nonempty itemcode AV-option cohort with an empty background response, or route Fill Tag through the read-only `OK` summary modal; close archives the resolved row while Fill Tag opens AV Options directly and retains all real-location seasons, including zero-available and Hold rows.
