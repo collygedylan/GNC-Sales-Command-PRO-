@@ -400,6 +400,14 @@ test('Suspend card actions use delegated data-action buttons and preserve nested
   assert.deepEqual([prevented, stopped, immediateStopped], [true, true, true]);
 });
 
+test('Fill Tag opens AV Options directly without the read-only OK summary modal', () => {
+  const openStart = html.indexOf('function openDockSuspendDcRequestUpdate(');
+  const openEnd = html.indexOf('function refreshLocalDockSuspendDcRequestState(', openStart);
+  const openPath = html.slice(openStart, openEnd);
+  assert.match(openPath, /skipRequestOpenInfoModal:\s*safeOptions\.openAvOptions === true \|\| safeOptions\.focusEvidenceEditor === true/);
+  assert.match(html, /action === 'fill-tag'[\s\S]{0,180}openAvOptions:\s*true/);
+});
+
 test('lost close response retries its receipt even after the row leaves the eligible dataset', async () => {
   let first = true;
   const h = harness({ live: true, proof: false,

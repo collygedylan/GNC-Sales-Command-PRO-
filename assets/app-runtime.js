@@ -167057,7 +167057,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!canCurrentUserViewDockSuspendDcRequests()) return false;
             retryPendingSuspendTagInventoryReconciliations();
             const tab = String(firstNonEmptyValue(safeOptions.preferredTab, 'request') || 'request').trim() || 'request';
-            openDetail(uid, 'request', { preferredTab: tab });
+            openDetail(uid, 'request', {
+                preferredTab: tab,
+                skipRequestOpenInfoModal: safeOptions.openAvOptions === true || safeOptions.focusEvidenceEditor === true
+            });
             if (safeOptions.openAvOptions) {
                 requestAvOptionsDropdownOpen = true;
                 setTimeout(() => {

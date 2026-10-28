@@ -2629,6 +2629,7 @@ test('Invariant 94 (Suspend Close, AV Options, Processed Toasts, and Eval Filter
   assert.match(runtime, /const retainedRows = \[\.\.\.sharedRows,[\s\S]*\.\.\.rawRows/);
   assert.match(runtime, /operation !== 'close' && \['save', 'complete', 'send', 'retry'\]/);
   assert.match(runtime, /sourceIdentity: getSuspendTagStableSourceIdentity\(mirror\)/);
+  assert.match(runtime, /skipRequestOpenInfoModal:\s*safeOptions\.openAvOptions === true \|\| safeOptions\.focusEvidenceEditor === true/);
   assert.match(runtime, /EVAL_USER_FILTER_USERS = new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'\]\)/);
   assert.match(edge, /sourceIdentity[\s\S]*operation !== 'close'/);
   assert.match(migration, /suspend-close-stable-identity-v2392[\s\S]*p_operation<>'close'[\s\S]*suspend-tag-complete:/);

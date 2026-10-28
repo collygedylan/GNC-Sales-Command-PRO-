@@ -96,7 +96,7 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
-- Never make Complete Tag depend on a mutable import timestamp when its stable physical identity still resolves one active row, and never replace a nonempty itemcode AV-option cohort with an empty background response; close archives the resolved row while Fill Tag retains all real-location seasons, including zero-available and Hold rows.
+- Never make Complete Tag depend on a mutable import timestamp when its stable physical identity still resolves one active row, replace a nonempty itemcode AV-option cohort with an empty background response, or route Fill Tag through the read-only `OK` summary modal; close archives the resolved row while Fill Tag opens AV Options directly and retains all real-location seasons, including zero-available and Hold rows.
 
 - Never grant or reject Jorge Reclass authority from cached role flags alone: the client may unlock only an Assigned Items row, and app-api plus PostgreSQL must independently resolve the authenticated `jorge_colunga` actor against the exact physical row or canonical itemcode assignment before applying live edits.
 
