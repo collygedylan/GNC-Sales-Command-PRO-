@@ -10,7 +10,7 @@ const RELEASE = 'AgData v2.3.93';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const ASSET_QUERY_OVERRIDES = Object.freeze({
   'mobile-workspace.js': `${RELEASE_QUERY}.1`,
-  'live-app-runtime-v2026082010.min.js': `${RELEASE_QUERY}.1`,
+  'live-app-runtime-v2026082010.min.js': `${RELEASE_QUERY}.2`,
 });
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = await prepareReleaseSiteDirectory(root);
