@@ -67,8 +67,8 @@ const BRANDING_CANONICAL_ASSETS = Object.freeze([
 // END GENERATED BRANDING ASSETS
 const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/bunch-note-cards.css",
-  "./assets/bunch-note-chunks/CardBoard-O7NWXZWB.js",
-  "./assets/bunch-note-chunks/StructuredBunchNote-OLDSEG5D.js",
+  "./assets/bunch-note-chunks/CardBoard-EVE72ZOH.js",
+  "./assets/bunch-note-chunks/StructuredBunchNote-2LJQ2ZXQ.js",
   "./assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
   "./assets/bunch-note-structured.js",
   "./assets/bunch-note.css",
