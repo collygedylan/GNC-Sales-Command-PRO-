@@ -23,7 +23,7 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
   const input = payload.payload;
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('SUSPEND_TAG_REQUEST_INVALID');
   const body = input as RecordValue;
-  const allowed = new Set(['sourceUid', 'expectedLastUpdated', 'patch', 'approvalId', 'decision', 'decisionMessage', 'ids', 'inventoryIds', 'customRows', 'candidateUid']);
+  const allowed = new Set(['sourceUid', 'sourceIdentity', 'expectedLastUpdated', 'patch', 'approvalId', 'decision', 'decisionMessage', 'ids', 'inventoryIds', 'customRows', 'candidateUid']);
   if (Object.keys(body).some(key => !allowed.has(key))) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   if (operation === 'decide') {
     if (!['approve', 'deny'].includes(String(body.decision || ''))) throw new Error('SUSPEND_TAG_DECISION_INVALID');
@@ -45,9 +45,17 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
       || inventoryIds.some(id => typeof id !== 'string' || !id.trim()) || invalidCustom) throw new Error('SUSPEND_TAG_CANDIDATES_INVALID');
   }
   if (body.candidateUid !== undefined && (operation !== 'decide' || typeof body.candidateUid !== 'string')) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
+  if (body.sourceIdentity !== undefined) {
+    const identity = body.sourceIdentity;
+    const identityFields = new Set(['transactionnumber', 'dock', 'stopnumber', 'itemcode', 'locationcode', 'lotcode', 'consignee']);
+    if (operation !== 'close' || !identity || typeof identity !== 'object' || Array.isArray(identity)
+      || Object.entries(identity as RecordValue).some(([key, value]) => !identityFields.has(key) || typeof value !== 'string')) {
+      throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
+    }
+  }
   if (operation === 'inbox' && Object.keys(body).length) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   if (operation === 'rows' && (!Array.isArray(body.ids) || body.ids.length > 1000)) throw new Error('SUSPEND_TAG_REQUEST_INVALID');
-  if (!['rows', 'approval', 'decide', 'inbox'].includes(operation) && (!Number.isSafeInteger(payload.expectedVersion) || Number(payload.expectedVersion) < 0)) throw new Error('SUSPEND_TAG_VERSION_REQUIRED');
+  if (!['rows', 'approval', 'decide', 'inbox', 'close'].includes(operation) && (!Number.isSafeInteger(payload.expectedVersion) || Number(payload.expectedVersion) < 0)) throw new Error('SUSPEND_TAG_VERSION_REQUIRED');
   const { data, error } = await client.rpc('suspend_tag_command_v1', {
     p_actor_id: String(actor.id), p_operation: operation, p_payload: jsonValue(body),
     ...(typeof payload.commandId === "string" ? { p_command_id: payload.commandId } : {}),

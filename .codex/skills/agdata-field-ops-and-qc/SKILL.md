@@ -79,6 +79,8 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never hardcode Eval-user filtering to only one legacy manager set; the shared filter gate includes Dylan, Megan, JD, Mitch and authenticated Administrators while option values come from the live assignment/evaluator directory.
+
 - Never derive Bunch Notes email recipients from card owners, assignees, optional checkboxes, or stale preview snapshots while the Dylan-only delivery policy is active; in-app assignment and outbound email routing are separate contracts.
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.

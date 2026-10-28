@@ -97,6 +97,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never key a processed-file toast by dataset revision or import poll time; deduplicate by dataset plus immutable source filename and available Drive modified/hash identity so unrelated revision bumps cannot repeat Dylan's toast.
+
 - Never resolve equal-timestamp Home filename metadata lexically when the dataset revision advanced; carry the revision into the summary and let the higher authoritative revision repaint the existing source card in place.
 - Never let generated database contracts lag live read-only columns; exact-field validation must include published CAV fields such as `open_stock` and `season_oh` before live revision refresh can hot-swap that dataset.
 

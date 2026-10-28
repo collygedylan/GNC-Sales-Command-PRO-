@@ -2166,7 +2166,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
   const registry = read('assets/live-sync-registry.js');
   assert.match(runtime, /plainManagersHubEntry[^]*activeHomeTab = 'dashboard'/);
   assert.match(runtime, /hasActiveManualSync\(\) \? 10000 : 15000/);
-  assert.match(runtime, /gnc_dylan_last_toasted_revisions_v1[^]*username !== 'dylan_collyge'/);
+  assert.match(runtime, /gnc_dylan_last_toasted_files_v2[^]*username !== 'dylan_collyge'/);
   assert.match(registry, /homeSyncMetadata:\s*\[[^\]]*hl_po_parsed/);
   assert.match(bunch, /normalizeBunchNoteLocationKey[^]*gnc_bunch_note_drafts_v1[^]*Saved Drafts \/ Active Bunch Notes/);
   assert.match(bunch, /function reset\(\) \{ persistLocalDraft\(\)/);
@@ -2612,4 +2612,25 @@ test('Invariant 93 (Jorge Live Changes Require Canonical Assigned-Row Proof at E
   assert.match(api, /handlePhotoUpload[\s\S]*assertInventoryLiveChangeActorRows/);
   assert.match(migration, /require_drive_live_change_profile_v2392[\s\S]*save_drive_evidence_v3/);
   assert.match(migration, /can_access_drive_mode[\s\S]*can_access_av[\s\S]*can_access_que[\s\S]*can_access_manager_tab[\s\S]*can_submit_reclass/);
+});
+
+test('Invariant 94 (Suspend Close, AV Options, Processed Toasts, and Eval Filters Stay Stable)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const edge = read('supabase/functions/_shared/suspend-tag.ts');
+  const migration = read('supabase/migrations/20261028114955_agdata_v2392_suspend_close_av_options_toast_eval_filter.sql');
+  const context = runFunctions('assets/app-runtime.js', ['processedFileRevisionToken'], {
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') ?? '',
+  });
+  const base = { key: 'ph_soc_master', sourceFileName: 'SOC.xlsx', sourceFileId: 'drive-file-1' };
+  assert.equal(context.processedFileRevisionToken({ ...base, revision: 10, changedAt: '2026-10-28T10:00:00Z' }),
+    context.processedFileRevisionToken({ ...base, revision: 11, changedAt: '2026-10-28T10:01:00Z' }),
+    'revision-only polling cannot repeat a processed-file toast');
+  assert.notEqual(context.processedFileRevisionToken(base), context.processedFileRevisionToken({ ...base, sourceFileName: 'SOC-2.xlsx' }));
+  assert.match(runtime, /const retainedRows = \[\.\.\.sharedRows,[\s\S]*\.\.\.rawRows/);
+  assert.match(runtime, /operation !== 'close' && \['save', 'complete', 'send', 'retry'\]/);
+  assert.match(runtime, /sourceIdentity: getSuspendTagStableSourceIdentity\(mirror\)/);
+  assert.match(runtime, /EVAL_USER_FILTER_USERS = new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'\]\)/);
+  assert.match(edge, /sourceIdentity[\s\S]*operation !== 'close'/);
+  assert.match(migration, /suspend-close-stable-identity-v2392[\s\S]*p_operation<>'close'[\s\S]*suspend-tag-complete:/);
+  assert.match(migration, /ph_suspend_history[\s\S]*security_invoker=true/);
 });

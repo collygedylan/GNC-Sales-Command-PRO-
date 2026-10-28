@@ -18,7 +18,11 @@ const helpers = between('let dockSuspendCompletionState = null;', 'async functio
 const handler = between('async function completeDockSuspendDcRequestFromCard(', 'async function saveDockSuspendDcRequestMirrorData(');
 const optimisticPainter = between('function paintOptimisticSuspendTagRemoval(', 'function forcePendingRequestRoot(');
 const revision = '2026-09-08T15:50:47.123456Z';
-const source = () => ({ UNIQUE_ID: 'soc-1', LAST_UPDATED: revision, DATE_COMPLETED: '', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC', PTRONHAND: '0' });
+const source = () => ({
+  UNIQUE_ID: 'soc-1', LAST_UPDATED: revision, DATE_COMPLETED: '', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC', PTRONHAND: '0',
+  TRANSACTIONNUMBER: 'tx-39-20', DOCK: '39', STOPNUMBER: '20', ITEMCODE: '009373.031.1',
+  LOCATIONCODE: 'F.14.000', LOTCODE: '27.F1', CONSIGNEE: 'Little Lime Punch',
+});
 const button = () => ({ innerHTML: 'Done', disabled: false, classList: { add() {}, remove() {} } });
 const acknowledgement = (changes = {}) => ({ ok: true, row: { unique_id: 'soc-1', last_updated: revision, date_completed: '2026-09-08T16:00:00Z', suspend_tag_version: 1, suspend_tag_status: 'completed', ...changes } });
 function harness(options = {}) {
@@ -39,6 +43,7 @@ function harness(options = {}) {
     },
     localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
     normalizeSessionIdentity: (value) => String(value || '').trim().toLowerCase(),
+    hasCompletionDateValue: (item) => Boolean(String(item?.DATE_COMPLETED || item?.date_completed || '').trim()),
     esc: (value) => String(value ?? ''),
     escJsAttrValue: (value) => String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"),
     firstNonEmptyValue: (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim()) ?? '',
@@ -77,6 +82,7 @@ function harness(options = {}) {
     },
     APP_API_FUNCTION_URL: 'https://example.invalid', normalizeRowPhotoFields() {}, buildSearchIndex() {},
     getDockSuspendDcRequestCompletionReadiness: () => ({ ready: options.ready !== false, missing: ['photo'] }), openDockSuspendDcRequestUpdate() { openUpdateCalls += 1; },
+    getSuspendTagExistingReviewPatch: () => ({}),
     applyDockSuspendDcRequestHandledState: (item, at) => { item.DATE_COMPLETED = at; item.date_completed = at; },
     refreshLocalDockSuspendDcRequestState() {}, markViewDirty() {},
     yieldToUiFrame: async () => {},
@@ -127,17 +133,17 @@ test('rerendered Suspend actions stay disabled only for the exact busy account a
   assert.equal(vm.runInContext(`suspendTagCompletionActions.has(${JSON.stringify(key)})`, h.ctx), true, 'fixture seeds the exact key checked by production');
   const markup = h.ctx.buildSuspendTagActions(h.mirror);
   const buttons = markup.match(/<button[^>]*>/g) || [];
-  assert.equal(buttons.length, 2);
+  assert.equal(buttons.length, 3);
   assert.ok(buttons.every(buttonMarkup => /\sdisabled(?:\s|>)/.test(buttonMarkup)), `both regenerated action buttons remain disabled while the row command is in flight: ${markup}`);
   const differentSource = { ...h.mirror, UNIQUE_ID: 'dock_suspend_dc_other-row', DOCK_SUSPEND_SOURCE_UID: 'soc-other' };
   const otherSourceMarkup = h.ctx.buildSuspendTagActions(differentSource);
   const otherSourceButtons = otherSourceMarkup.match(/<button[^>]*>/g) || [];
-  assert.equal(otherSourceButtons.length, 2);
+  assert.equal(otherSourceButtons.length, 3);
   assert.ok(otherSourceButtons.every(buttonMarkup => !/\sdisabled(?:\s|>)/.test(buttonMarkup)), 'busy state must not leak to a different source row for the same account');
   h.ctx.currentUser = 'another-user';
   const otherAccountMarkup = h.ctx.buildSuspendTagActions(h.mirror);
   const otherAccountButtons = otherAccountMarkup.match(/<button[^>]*>/g) || [];
-  assert.equal(otherAccountButtons.length, 2);
+  assert.equal(otherAccountButtons.length, 3);
   assert.ok(otherAccountButtons.every(buttonMarkup => !/\sdisabled(?:\s|>)/.test(buttonMarkup)), 'busy state must not leak across account identity');
 });
 
@@ -159,7 +165,7 @@ test('Email updates replacement card buttons while busy and releases only the sa
   await new Promise(setImmediate);
   assert.ok(replacementActions.every(action => action.disabled && action.attributes.get('aria-disabled') === 'true'), 'the current exact row controls are disabled while its command is pending');
   const rerender = h.ctx.buildSuspendTagActions(h.mirror);
-  assert.equal((rerender.match(/<button[^>]*\sdisabled(?:\s|>)[^>]*>/g) || []).length, 2, 'a fresh render preserves the in-flight disabled state');
+  assert.equal((rerender.match(/<button[^>]*\sdisabled(?:\s|>)[^>]*>/g) || []).length, 3, 'a fresh render preserves the in-flight disabled state');
   finishComplete(acknowledgement({ suspend_tag_status: 'completed', suspend_tag_version: 1 }));
   await pending;
   assert.ok(replacementActions.every(action => !action.disabled && !action.attributes.has('aria-disabled')), 'the exact current row is re-enabled after completion and email queueing');
@@ -348,7 +354,13 @@ test('Complete Tag is direct, permits pending approval, and removes eligibility 
   assert.equal(action.disabled, true);
   assert.equal(h.row.SUSPEND, 'SUSPEND');
   await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
-  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'close']);
+  assert.deepEqual(h.calls.map(call => call.name), ['close']);
+  assert.equal(h.calls[0].body.expectedVersion, null);
+  assert.equal(h.calls[0].body.payload.expectedLastUpdated, undefined);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].body.payload.sourceIdentity)), {
+    transactionnumber: 'tx-39-20', dock: '39', stopnumber: '20', itemcode: '009373.031.1',
+    locationcode: 'F.14.000', lotcode: '27.F1', consignee: 'Little Lime Punch',
+  });
   assert.equal(h.confirmCalls, 0);
   assert.equal(h.openUpdateCalls, 0);
   finish(acknowledgement({ suspend: null, suspend_to: null }));

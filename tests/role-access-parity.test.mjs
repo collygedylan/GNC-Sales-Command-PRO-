@@ -342,10 +342,19 @@ test('only the admin trio can view Home imported filenames', () => {
 test('processed-file toast storage is strictly Dylan-only while revision reads stay no-store', () => {
   const source = shellFunction('processDylanFileProcessedToasts');
   assert.match(source, /username !== 'dylan_collyge'/);
-  assert.match(source, /gnc_dylan_last_toasted_revisions_v1|DYLAN_FILE_TOAST_STORAGE_KEY/);
+  assert.match(source, /gnc_dylan_last_toasted_files_v2|DYLAN_FILE_TOAST_STORAGE_KEY/);
   assert.match(source, /processed — Supabase updated/);
   assert.match(shellFunction('postAppFunctionJson'), /cache: 'no-store'/);
   assert.match(api, /HOME_SYNC_METADATA_KEYS = \[[^\]]*"hl_po_parsed"/);
+});
+
+test('Eval-user filtering includes Dylan, Megan, JD, Mitch, and authenticated administrators', () => {
+  const source = shellFunction('canUserFilterEvalUsers');
+  assert.match(source, /EVAL_USER_FILTER_USERS/);
+  assert.match(html, /EVAL_USER_FILTER_USERS = new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'\]\)/);
+  assert.match(source, /access\?\.isAdmin/);
+  assert.match(shellFunction('canUseCropRollEvalUserFilter'), /canUserFilterEvalUsers/);
+  assert.match(shellFunction('canUseRequestSuspendTagAssignedToFilter'), /canUserFilterEvalUsers/);
 });
 
 test('verified administrator controls remain available during a same-account refresh', () => {
