@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.95",
+  "release": "AgData v2.3.96",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -580,8 +580,8 @@
         "renderProductionHub",
         "getManagerUnassignedItemcodes",
         "notifyManagerUnassignedItems",
-      "openManagerUnassignedItems",
-      "canUserFilterEvalUsers"
+        "openManagerUnassignedItems",
+        "canUserFilterEvalUsers"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -591,7 +591,7 @@
         "handleManagerReportReadAction",
         "sortManagerEval2PreviewRows",
         "handleLocationWorkAction",
-      "forceBunchNoteDylanRecipient"
+        "forceBunchNoteDylanRecipient"
       ],
       "Code.gs": [
         "handleSignedEvalWorkDelivery_",
@@ -807,7 +807,9 @@
         "handleErpSyncContinuation",
         "mintCloudDriveAccessToken",
         "dispatchRequestDeliveryWorkerNow",
-        "fast_erp_ingest"
+        "fast_erp_ingest",
+        "handleErpSyncAction",
+        "processCloudErpSyncStep"
       ],
       "Code.gs": [
         "mintDriveToken_",
@@ -887,7 +889,11 @@
           "parseErpXlsx",
           "normalizeErpHeader",
           "shouldIgnoreErpFile",
-          "validateErpSyncCommand"
+          "validateErpSyncCommand",
+          "normalizeErpRowsChunk",
+          "stageFileContinuation",
+          "parseErpXlsxPage",
+          "countImportableErpXlsxRows"
         ],
         "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
           "get_erp_sync_status_v1",
@@ -908,6 +914,11 @@
           "runClaimedLocalJob",
           "pollLocalWorkerOnce",
           "runLocalWorkerLoop"
+        ],
+        "supabase/migrations/20261028183832_agdata_v2396_cloud_erp_continuation.sql": [
+          "claim_erp_sync_job_v2",
+          "claim_erp_sync_request_step_v1",
+          "release_erp_sync_request_step_v1"
         ]
       }
     },

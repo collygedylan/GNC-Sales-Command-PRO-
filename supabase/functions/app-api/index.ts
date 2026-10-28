@@ -1,7 +1,7 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.95";
-const APP_RUNTIME_RELEASE = "AgData v2.3.95";
+const APP_RUNTIME_VERSION = "2.3.96";
+const APP_RUNTIME_RELEASE = "AgData v2.3.96";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -461,7 +461,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.95";
+  const appVersion = "2.3.96";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -6885,12 +6885,16 @@ async function failCloudErpSync(runId: string, error: unknown, message: string) 
   recordHandledError("app-api", "ERP_SYNC_WORKER_FAILED", error, 500);
 }
 
-async function executeCloudErpSyncStep(runId: string, workerId: string, step: number, claimedStatus: Record<string, unknown>) {
+async function processCloudErpSyncStep(runId: string, workerId: string, step: number, claimedStatus: Record<string, unknown>) {
   const status = claimedStatus.status && typeof claimedStatus.status === "object" ? jsonObject(claimedStatus.status) : claimedStatus;
   const cursor = status.continuationCursor && typeof status.continuationCursor === "object"
     ? jsonObject(status.continuationCursor) : { stageIndex: 0, stageResults: [], attemptedByStage: {} };
   let current: Record<string, unknown> = { ...status };
   const persist = async (patch: Record<string, unknown>) => {
+    const lease = await supabase.rpc("assert_erp_sync_worker_v1" as never, {
+      p_run_id: runId, p_worker_id: workerId,
+    } as never);
+    if (lease.error) throw new Error("ERP_SYNC_WORKER_LEASE_INVALID");
     const merged: Record<string, unknown> = { ...current, ...patch };
     const delta = patch.stageResultsDelta;
     delete merged.stageResultsDelta;
@@ -6910,19 +6914,25 @@ async function executeCloudErpSyncStep(runId: string, workerId: string, step: nu
   try {
     const accessToken = await mintCloudDriveAccessToken();
     const result = await runErpSyncWorkerStep({ supabase, env: key => Deno.env.get(key) || "", cursor, status: persist, accessToken });
-    if (result.done) return;
-    if (!ERP_SYNC_CLOUD_WORKER_KEY) throw new Error("ERP_SYNC_CLOUD_WORKER_KEY_NOT_CONFIGURED");
-    const response = await fetch(`${SUPABASE_URL.replace(/\/+$/, "")}/functions/v1/app-api`, {
-      method: "POST", headers: { "content-type": "application/json", apikey: SUPABASE_SERVICE_ROLE_KEY,
-        authorization: `Bearer ${ERP_SYNC_CLOUD_WORKER_KEY}` },
-      body: JSON.stringify({ action: "erp_sync_continue", runId, workerId, step: step + 1 }),
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) throw new Error(`ERP_SYNC_CONTINUATION_${response.status}`);
+    return { result, status: current };
   } catch (error) {
     const message = String((error as { message?: unknown })?.message || "ERP_SYNC_WORKER_FAILED").slice(0, 200);
     await failCloudErpSync(runId, error, message);
+    throw error;
   }
+}
+
+async function executeCloudErpSyncStep(runId: string, workerId: string, step: number, claimedStatus: Record<string, unknown>) {
+  const { result } = await processCloudErpSyncStep(runId,workerId,step,claimedStatus);
+  if (result.done) return;
+  if (!ERP_SYNC_CLOUD_WORKER_KEY) throw new Error("ERP_SYNC_CLOUD_WORKER_KEY_NOT_CONFIGURED");
+  const response = await fetch(`${SUPABASE_URL.replace(/\/+$/, "")}/functions/v1/app-api`, {
+    method: "POST", headers: { "content-type": "application/json", apikey: SUPABASE_SERVICE_ROLE_KEY,
+      authorization: `Bearer ${ERP_SYNC_CLOUD_WORKER_KEY}` },
+    body: JSON.stringify({ action: "erp_sync_continue", runId, workerId, step: step + 1 }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error(`ERP_SYNC_CONTINUATION_${response.status}`);
 }
 
 async function mintCloudDriveAccessToken() {
@@ -6945,8 +6955,7 @@ async function mintCloudDriveAccessToken() {
 }
 
 async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
-  payload: Record<string, unknown>, actorValue: Record<string, unknown> | null,
-  queueCloudWorker?: (initial: Record<string, unknown>) => void) {
+  payload: Record<string, unknown>, actorValue: Record<string, unknown> | null) {
   if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
   const actor = actorValue || await resolveActiveSessionProfile(session);
   const command = validateErpSyncCommand(payload);
@@ -6962,15 +6971,52 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     return jsonResponse({ ok: true, data: { ...status, active: false, status: status.status || "idle",
       currentStage: "idle", currentStageLabel: "Idle", updatedAt: status.updatedAt || "" } });
   }
-  if (!command.ok || operation !== "start") {
+  if (!command.ok || !["start","continue"].includes(operation)) {
     return errorResponse("Invalid ERP sync start request.", 400, { code: "ERP_SYNC_REQUEST_INVALID" });
   }
   if (!FULL_ACCESS_USER_KEYS.has(normalizeUsername(String(actor.username || "")))) {
     return errorResponse("Only designated administrators can run ERP sync.", 403, { code: "ERP_SYNC_FORBIDDEN" });
   }
+  if (operation === "continue") {
+    const runId = String(command.runId || "");
+    const { data, error } = await supabase.rpc("claim_erp_sync_request_step_v1" as never, {
+      p_run_id: runId, p_actor: normalizeUsername(String(actor.username || "")),
+    } as never);
+    if (error) return databaseFailureResponse("ERP sync continuation could not be claimed.", error, "ERP_SYNC_CONTINUE_CLAIM_FAILED");
+    const claim = jsonObject(data), status = claim.status && typeof claim.status === "object" ? jsonObject(claim.status) : { ...claim };
+    for (const privateField of ["workerId","worker_id","claimed","retryAfterMs","retry_after_ms","continuationStep","continuation_step"]) {
+      delete status[privateField];
+    }
+    if (claim.claimed !== true) {
+      const retryAfterMs = Math.max(250,Math.min(10000,Number(claim.retryAfterMs||claim.retry_after_ms)||1000));
+      const latest = await supabase.rpc("get_erp_sync_status_v1" as never,{} as never);
+      const durableStatus = latest.error ? status : jsonObject(latest.data);
+      return jsonResponse({ok:true,status:durableStatus.active===true?"CONTINUE":durableStatus.status||"complete",data:durableStatus,
+        runId,retryAfterMs,stage:durableStatus.currentStage||"idle",fileId:durableStatus.fileId||null,nextOffset:durableStatus.nextOffset??null});
+    }
+    const workerId = String(claim.workerId||claim.worker_id||"");
+    const step = Number(claim.continuationStep??claim.continuation_step);
+    if (!/^[0-9a-f-]{36}$/i.test(workerId) || !Number.isSafeInteger(step) || step<0) {
+      return errorResponse("ERP sync continuation claim was not confirmed.",503,{code:"ERP_SYNC_CONTINUE_CLAIM_UNCONFIRMED"});
+    }
+    try {
+      const {result,status:durableStatus} = await processCloudErpSyncStep(runId,workerId,step,status);
+      const active = result.done !== true;
+      const cursor = durableStatus.continuationCursor && typeof durableStatus.continuationCursor === "object"
+        ? jsonObject(durableStatus.continuationCursor) : {};
+      const fileContinuation = cursor.fileContinuation && typeof cursor.fileContinuation === "object"
+        ? jsonObject(cursor.fileContinuation) : {};
+      return jsonResponse({ok:true,status:active?"CONTINUE":durableStatus.status||"complete",data:durableStatus,
+        runId,stage:durableStatus.currentStage||"idle",fileId:fileContinuation.file && typeof fileContinuation.file === "object"
+          ? (fileContinuation.file as Record<string,unknown>).id||null : null,
+        nextOffset:jsonObject(fileContinuation.state).nextOffset??null});
+    } finally {
+      await supabase.rpc("release_erp_sync_request_step_v1" as never,{p_run_id:runId,p_worker_id:workerId,p_step:step} as never);
+    }
+  }
   const commandId = command.commandId;
-  const { data, error } = await supabase.rpc("claim_erp_sync_job_v1" as never, {
-    p_command_id: commandId, p_actor: normalizeUsername(String(actor.username || "")),
+  const { data, error } = await supabase.rpc("claim_erp_sync_job_v2" as never, {
+    p_command_id: commandId, p_actor: normalizeUsername(String(actor.username || "")), p_force_restart: true,
   } as never);
   if (error) return databaseFailureResponse("ERP sync could not be queued.", error, "ERP_SYNC_CLAIM_FAILED");
   const claim = jsonObject(data);
@@ -6982,17 +7028,17 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     const initial: Record<string, unknown> = { ...claimStatus, active: true, status: "queued", runId, commandId,
       actor: normalizeUsername(String(actor.username || "")), source: "postgresql",
       stageOrder: ERP_SYNC_STAGES.map(stage => stage.key), stageIndex: 0, currentStage: "queued",
-      currentStageLabel: "Queued", stageResults: Array.isArray(claimStatus.stageResults) ? claimStatus.stageResults : [],
+      currentStageLabel: "Queued", stageResults: [],
+      continuationCursor: { stageIndex: 0, stageResults: [], attemptedByStage: {} }, fileId: null, nextOffset: null,
       startedAt: claimStatus.startedAt || new Date().toISOString(), updatedAt: claimStatus.updatedAt || new Date().toISOString(),
       maxAttemptsPerStage: 1 };
     const { error: initialError } = await supabase.rpc("update_erp_sync_job_v1" as never, {
       p_run_id: runId, p_status: initial,
     } as never);
     if (initialError) return databaseFailureResponse("ERP sync could not be started.", initialError, "ERP_SYNC_START_FAILED");
-    queueCloudWorker?.(initial);
-    return jsonResponse({ ok: true, data: initial });
+    return jsonResponse({ ok: true, status:"CONTINUE", data: initial });
   }
-  return jsonResponse({ ok: true, data: claimStatus });
+  return jsonResponse({ ok: true, status:claimStatus.active===true?"CONTINUE":claimStatus.status||"complete", data: claimStatus });
 }
 
 const ERP_SYNC_WORKER_OPERATIONS: Record<string, { rpc: string; argKeys: readonly string[] }> = {
@@ -7316,7 +7362,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
 
   if (action === "erp_sync") {
-    return await handleErpSyncAction(session, payload, activeProfileForRequest, dispatchCloudErpSync);
+    return await handleErpSyncAction(session, payload, activeProfileForRequest);
   }
 
   if (action === "fast_erp_ingest") {

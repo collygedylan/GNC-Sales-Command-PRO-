@@ -1334,7 +1334,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.95"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.96"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1361,9 +1361,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.95"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.96"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.95"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.96"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -1972,6 +1972,7 @@ test('Invariant 65 (Mobile Home Keeps All Dashboard Rows in the Header-to-Dock F
   const panel = { open: true, dataset: {}, classList: { toggle() {} }, querySelector: () => summary };
   let width = 390;
   const context = runFunctions('assets/app-runtime.js', ['syncGoogleScriptButton'], {
+    isRunScriptActive: false,
     window: { get innerWidth() { return width; }, googleScriptRunInFlight: false },
     document: { getElementById: id => id === 'run-google-script-btn' ? button : id === 'dashboard-sync-accordion' ? panel : null },
     canRunManualInventoryImport: () => false,
@@ -2175,7 +2176,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.95\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.96\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isManagerShellHotfix[^]*mobile-workspace\.js[^]*`\$\{assetVersion\}\.1`/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2398,39 +2399,55 @@ test('Invariant 86 (PostgreSQL Sync Status Cannot Dispatch Imports Through Backg
   assert.equal(releaseSnapshotReadFixture({ ...calls[0].body, actorId: 'forged' }), null);
 });
 
-test('Invariant 87 (ERP API Allows Inventory Status Reads and Queues Admin Work Without Cloud Filesystem Access)', async () => {
+test('Invariant 87 (ERP API Allows Status Reads and Admin-Leased Cloud Continuations)', async () => {
   const { validateErpSyncCommand, ERP_SYNC_STAGES } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const calls = [], tasks = [];
-  let claimed = false, workers = 0;
+  const calls = [];
+  let claimed = false, steps = 0, releases = 0;
   const status = { active: false, currentStage: 'idle', stageResults: [] };
   const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
     validateErpSyncCommand, ERP_SYNC_STAGES, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value).toLowerCase(), jsonObject: value => value || {},
     jsonResponse: value => value, errorResponse: (message, status, extra) => ({ ok: false, status, ...extra }),
-    Deno: { env: { get: () => '' } }, EdgeRuntime: { waitUntil: task => tasks.push(task) },
+    databaseFailureResponse: (message, _error, code) => ({ ok: false, code }),
+    processCloudErpSyncStep: async () => {
+      steps += 1;
+      return { result: { done: true }, status: { active: false, status: 'complete', currentStage: 'idle', stageIndex: 5, stageResults: [] } };
+    },
     supabase: { rpc: async (name, args) => {
       calls.push(name);
       if (name === 'get_erp_sync_status_v1') return { data: status };
-      if (name === 'update_erp_sync_job_v1') return { data: args.p_status };
-      if (name === 'claim_erp_sync_job_v1') {
+      if (name === 'claim_erp_sync_job_v2') {
         const first = !claimed; claimed = true;
-        return { data: { ...status, active: true, runId: 'one-job', claimed: first } };
+        return { data: first
+          ? { active: true, claimed: true, runId: '00000000-0000-4000-8000-000000000087', status: { stageResults: [] } }
+          : { active: true, claimed: false, runId: '00000000-0000-4000-8000-000000000087', status: { active: true, runId: '00000000-0000-4000-8000-000000000087', currentStage: 'drive', stageIndex: 0 } } };
       }
+      if (name === 'update_erp_sync_job_v1') return { data: args.p_status };
+      if (name === 'claim_erp_sync_request_step_v1') return { data: { claimed: true, workerId: '00000000-0000-4000-8000-000000000087', continuationStep: 1, status: { active: true, currentStage: 'drive' } } };
+      if (name === 'release_erp_sync_request_step_v1') { releases += 1; return { data: true }; }
       throw new Error(`Unexpected RPC ${name}`);
     } },
-    runErpSyncWorker: async () => { workers += 1; },
     recordHandledError: (_service, _action, error) => { throw error; },
   });
   assert.equal((await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'status' }, { username: 'field_reader' })).data.active, false);
   assert.deepEqual(calls, ['get_erp_sync_status_v1']);
-  const command = { action: 'erp_sync', operation: 'start', commandId: '00000000-0000-4000-8000-000000000001', force: true, maxAttemptsPerStage: 1 };
+  const command = { action: 'erp_sync', operation: 'start', commandId: '00000000-0000-4000-8000-000000000001', force: true, forceRestart: true, maxAttemptsPerStage: 1 };
   assert.equal((await context.handleErpSyncAction({}, command, { username: 'field_reader' })).code, 'ERP_SYNC_FORBIDDEN');
   assert.equal((await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'status', force: true }, { username: 'dylan_collyge' })).code, 'ERP_SYNC_REQUEST_INVALID');
-  assert.equal((await context.handleErpSyncAction({}, command, { username: 'dylan_collyge' })).ok, true);
-  assert.equal((await context.handleErpSyncAction({}, command, { username: 'dylan_collyge' })).ok, true);
-  await Promise.all(tasks);
-  assert.equal(workers, 0, 'cloud requests never dispatch a filesystem or Google worker');
-  assert.equal(tasks.length, 0);
+  const started = await context.handleErpSyncAction({}, command, { username: 'dylan_collyge' });
+  assert.equal(started.status, 'CONTINUE');
+  assert.equal(started.data.runId, '00000000-0000-4000-8000-000000000087');
+  const duplicate = await context.handleErpSyncAction({}, command, { username: 'dylan_collyge' });
+  assert.equal(duplicate.data.runId, '00000000-0000-4000-8000-000000000087');
+  assert.equal((await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'continue', runId: '00000000-0000-4000-8000-000000000087' }, { username: 'field_reader' })).code, 'ERP_SYNC_FORBIDDEN');
+  const completed = await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'continue', runId: '00000000-0000-4000-8000-000000000087' }, { username: 'dylan_collyge' });
+  assert.equal(completed.status, 'complete');
+  assert.equal(completed.data.currentStage, 'idle');
+  assert.equal(steps, 1, 'one authorized continuation executes one bounded cloud step');
+  assert.equal(releases, 1, 'the exact claimed step lease is released');
+  assert.ok(calls.includes('claim_erp_sync_job_v2'));
+  assert.ok(calls.includes('claim_erp_sync_request_step_v1'));
+  assert.equal(calls.includes('claim_erp_sync_job_v1'), false, 'browser requests do not use the legacy worker claim');
 });
 
 test('Invariant 88 (Selected Edge Syntax Validation Writes No Build Artifacts and Rejects Path Injection)', async () => {
@@ -2491,11 +2508,11 @@ test('Invariant 90 (IPv6 CLI Link Failures Are Classified Without Exposing Conne
   assert.equal(report.includes('IPv6'), false);
 });
 
-test('Invariant 91 (RUN SCRIPT Dispatches One Claimed Cloud Step and Retires the Local Daemon)', async () => {
+test('Invariant 91 (RUN SCRIPT Claims Explicit Cloud Continuations and Retires the Local Daemon)', async () => {
   const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const calls = [], tasks = [], dispatched = [];
-  let claimCount = 0, workerClaimCount = 0, stepClaimCount = 0, stepCalls = 0;
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['dispatchCloudErpSync', 'claimAndDispatchCloudStep', 'handleErpSyncAction'], {
+  const calls = [];
+  let claimCount = 0, stepClaimCount = 0, stepCalls = 0, releaseCount = 0;
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
     ERP_SYNC_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value).trim().toLowerCase(), jsonObject: value => value || {},
     crypto: { randomUUID: () => '00000000-0000-4000-8000-000000000091' },
@@ -2505,47 +2522,46 @@ test('Invariant 91 (RUN SCRIPT Dispatches One Claimed Cloud Step and Retires the
     supabase: { rpc: async (name, args) => {
       calls.push(name);
       if (name === 'get_erp_sync_status_v1') return { data: { active: false, status: 'idle', stageResults: [] } };
-      if (name === 'claim_erp_sync_job_v1') {
+      if (name === 'claim_erp_sync_job_v2') {
         claimCount += 1;
         return { data: claimCount === 1
-          ? { claimed: true, runId: 'cloud-run-91', status: { stageResults: [] } }
-          : { claimed: false, status: { active: true, runId: 'cloud-run-91', currentStage: 'queued' } } };
+          ? { claimed: true, runId: '00000000-0000-4000-8000-000000000091', status: { stageResults: [] } }
+          : { claimed: false, active: true, runId: '00000000-0000-4000-8000-000000000091', status: { active: true, runId: '00000000-0000-4000-8000-000000000091', currentStage: 'queued' } } };
       }
-      if (name === 'claim_erp_sync_worker_v1') { workerClaimCount += 1; return { data: { claimed: true } }; }
-      if (name === 'claim_erp_sync_worker_step_v1') {
+      if (name === 'claim_erp_sync_request_step_v1') {
         stepClaimCount += 1;
-        assert.equal(args.p_run_id, 'cloud-run-91');
-        assert.equal(args.p_step, 0);
-        return { data: { claimed: true, status: { continuationCursor: { stageIndex: 0 } } } };
+        assert.equal(args.p_run_id, '00000000-0000-4000-8000-000000000091');
+        assert.equal(args.p_actor, 'dylan_collyge');
+        return { data: { claimed: true, workerId: '00000000-0000-4000-8000-000000000091', continuationStep: 1, status: { active: true, currentStage: 'drive', stageIndex: 0 } } };
       }
+      if (name === 'release_erp_sync_request_step_v1') { releaseCount += 1; return { data: true }; }
       if (name === 'update_erp_sync_job_v1') return { data: args.p_status };
       throw new Error(`Unexpected RPC ${name}`);
     } },
-    executeCloudErpSyncStep: async () => { stepCalls += 1; },
-    EdgeRuntime: { waitUntil: task => tasks.push(task) },
+    processCloudErpSyncStep: async () => {
+      stepCalls += 1;
+      return { result: { done: false }, status: { active: true, status: 'running', currentStage: 'drive', stageIndex: 0, stageResults: [] } };
+    },
   });
-  const queue = initial => { dispatched.push(initial.runId); context.dispatchCloudErpSync(initial); };
   const session = { mustChangePassword: false };
   const actor = { username: 'dylan_collyge' };
-  assert.equal((await context.handleErpSyncAction(session, { action: 'erp_sync', operation: 'status' }, actor, queue)).data.active, false);
-  assert.deepEqual(dispatched, []);
-  const command = { action: 'erp_sync', operation: 'start', commandId: '00000000-0000-4000-8000-000000000091', force: true, maxAttemptsPerStage: 1 };
-  const started = await context.handleErpSyncAction(session, command, actor, queue);
-  assert.equal(started.data.status, 'queued');
-  assert.deepEqual(dispatched, ['cloud-run-91']);
+  assert.equal((await context.handleErpSyncAction(session, { action: 'erp_sync', operation: 'status' }, actor)).data.active, false);
+  const command = { action: 'erp_sync', operation: 'start', commandId: '00000000-0000-4000-8000-000000000091', force: true, forceRestart: true, maxAttemptsPerStage: 1 };
+  const started = await context.handleErpSyncAction(session, command, actor);
+  assert.equal(started.status, 'CONTINUE');
+  assert.equal(started.data.runId, '00000000-0000-4000-8000-000000000091');
   assert.deepEqual(started.data.stageOrder, ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']);
-  const duplicate = await context.handleErpSyncAction(session, { ...command, commandId: '00000000-0000-4000-8000-000000000092' }, actor, queue);
-  assert.equal(duplicate.data.currentStage, 'queued');
-  assert.deepEqual(dispatched, ['cloud-run-91']);
-  await tasks[0];
-  await tasks[1];
-  assert.equal(workerClaimCount, 1, 'only the newly claimed run starts a cloud worker');
-  assert.equal(stepClaimCount, 1, 'the worker claims exactly the initial CAS step');
-  assert.equal(stepCalls, 1, 'only a successfully claimed initial step is dispatched');
-  assert.equal(tasks.length, 2, 'one worker claim and one initial step are scheduled outside the browser request');
-  assert.equal(calls.filter(name => name === 'claim_erp_sync_worker_v1').length, 1);
-  assert.equal(calls.filter(name => name === 'claim_erp_sync_worker_step_v1').length, 1);
-  assert.ok(calls.includes('update_erp_sync_job_v1'));
+  const duplicate = await context.handleErpSyncAction(session, command, actor);
+  assert.equal(duplicate.data.runId, '00000000-0000-4000-8000-000000000091');
+  assert.equal(duplicate.status, 'CONTINUE');
+  const continued = await context.handleErpSyncAction(session, { action: 'erp_sync', operation: 'continue', runId: '00000000-0000-4000-8000-000000000091' }, actor);
+  assert.equal(continued.status, 'CONTINUE');
+  assert.equal(stepClaimCount, 1, 'the browser claims exactly one atomic continuation step');
+  assert.equal(stepCalls, 1, 'only a successfully claimed continuation performs cloud work');
+  assert.equal(releaseCount, 1, 'the exact continuation lease is released');
+  assert.equal(calls.filter(name => name === 'claim_erp_sync_job_v2').length, 2);
+  assert.equal(calls.filter(name => name === 'claim_erp_sync_request_step_v1').length, 1);
+  assert.equal(calls.some(name => name.includes('worker')), false, 'browser flow does not dispatch the legacy worker path');
 
   const { spawnSync } = await import('node:child_process');
   const retired = spawnSync(process.execPath, [path.join(root, 'scripts/local-erp-sync-worker.mjs')], { encoding: 'utf8', timeout: 5000 });
@@ -2682,7 +2698,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.2`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.95\.2/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.96\.2/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -2724,4 +2740,50 @@ test('Invariant 99 (Reclass Is Optimistic Without Premature Validation and Inven
   assert.match(migration, /C\.16\.000','27\.F1','220','0','220','150'/);
   assert.match(migration, /H\.03\.000','27\.S1','4000','0','4000','4074'/);
   assert.match(migration, /AGDATA_V2395_RECLASS_MOVE_STATE_MISMATCH/);
+});
+
+test('Invariant 100 (RUN SCRIPT Drives Bounded Cloud Continuations Through IDLE)', async () => {
+  const writes = [];
+  const applied = [];
+  let continuation = 0;
+  const context = runFunctions('assets/app-runtime.js', ['continueManualErpSync', 'runGoogleAppsScriptTrigger'], {
+    isRunScriptActive: false, window: {}, currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan',
+    document: { hidden: false }, navigator: { onLine: true }, console,
+    manualSyncStatusState: { active: true, runId: 'stale-run', currentStage: 'drive', stageIndex: 0 },
+    MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'],
+    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 330000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
+    releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true,
+    hasActiveManualSync: () => true, syncGoogleScriptButton() {}, showToast() {},
+    getSupabaseReadIdentityScope: () => 'same-account',
+    getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer fixture-token' }),
+    applyManualSyncStatus: status => { applied.push(status); return status; },
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
+    APP_API_FUNCTION_URL: '/app-api', crypto: { randomUUID: () => 'sync-command-100' },
+    postAppFunctionJson: async (_url, payload) => {
+      writes.push(payload);
+      if (payload.operation === 'start') return { ok: true, status: 'CONTINUE', data: { runId: 'run-100' } };
+      continuation += 1;
+      const active = continuation < 3;
+      return {
+        ok: true,
+        status: active ? 'CONTINUE' : 'COMPLETE',
+        data: { durableStatus: { active, runId: 'run-100', currentStage: active ? 'drive' : 'idle', stageIndex: active ? continuation : 5 } }
+      };
+    },
+    setTimeout: callback => { callback(); return 0; }
+  });
+  await context.runGoogleAppsScriptTrigger();
+  assert.deepEqual(plain(writes[0]), {
+    action: 'erp_sync', operation: 'start', commandId: 'sync-command-100',
+    maxAttemptsPerStage: 1, force: true, forceRestart: true
+  });
+  assert.deepEqual(writes.slice(1).map(write => [write.action, write.operation, write.runId]), [
+    ['erp_sync', 'continue', 'run-100'],
+    ['erp_sync', 'continue', 'run-100'],
+    ['erp_sync', 'continue', 'run-100']
+  ]);
+  assert.equal(applied.at(-1).active, false);
+  assert.equal(applied.at(-1).currentStage, 'idle');
+  assert.equal(context.isRunScriptActive, false);
+  assert.equal(context.window.googleScriptRunInFlight, false);
 });

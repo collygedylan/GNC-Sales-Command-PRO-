@@ -5,7 +5,8 @@ const STAGES = [
   { key: 'soc', dataset: 'soc' },
   { key: 'hl_po_parsed', dataset: 'hl_po_parsed' },
 ];
-const BATCH_SIZE = 1000;
+const BATCH_SIZE = 5000;
+const ERP_ROWS_PER_CONTINUATION = 5000;
 const RAW_DRIVE_FIELDS = new Set(['locationnote','locationptn1','desigitem','desigcust','desigloc',
   'pullerresponsibility','oversellpercentage','salesnote','suspend']);
 
@@ -21,11 +22,11 @@ export function normalizeErpHeader(value) {
   return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-function recordsToObjects(records) {
+function recordsToObjects(records, keepEmpty = false) {
   const headerIndex = records.findIndex(row => row.some(value => normalizeErpHeader(value) === 'itemcode'));
   if (headerIndex < 0) throw new Error('ERP_SOURCE_HEADER_MISSING');
   const headers = records[headerIndex].map((value,index) => normalizeErpHeader(value) || `column${index+1}`);
-  return records.slice(headerIndex+1).filter(row => row.some(value => String(value).trim() !== ''))
+  return records.slice(headerIndex+1).filter(row => keepEmpty || row.some(value => String(value).trim() !== ''))
     .map(row => Object.fromEntries(headers.map((header,index) => [header,row[index] ?? ''])));
 }
 
@@ -36,10 +37,16 @@ export function validateErpSyncCommand(payload) {
     return Object.keys(payload).every(key => ['action','operation'].includes(key))
       ? { ok:true, operation } : { ok:false, code:'ERP_SYNC_REQUEST_INVALID' };
   }
+  if (operation === 'continue') {
+    const runId=String(payload.runId||'').trim();
+    return Object.keys(payload).every(key=>['action','operation','runId'].includes(key))
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(runId)
+      ? {ok:true,operation,runId} : {ok:false,code:'ERP_SYNC_REQUEST_INVALID'};
+  }
   const commandId = String(payload.commandId || '').trim();
-  const validKeys = Object.keys(payload).every(key => ['action','operation','commandId','force','maxAttemptsPerStage'].includes(key));
+  const validKeys = Object.keys(payload).every(key => ['action','operation','commandId','force','forceRestart','maxAttemptsPerStage'].includes(key));
   const validId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commandId);
-  return operation === 'start' && validKeys && validId && payload.force === true && payload.maxAttemptsPerStage === 1
+  return operation === 'start' && validKeys && validId && payload.force === true && payload.forceRestart === true && payload.maxAttemptsPerStage === 1
     ? { ok:true, operation, commandId }
     : { ok:false, code:'ERP_SYNC_REQUEST_INVALID' };
 }
@@ -154,6 +161,126 @@ export async function parseErpXlsx(bytesLike) {
   return recordsToObjects(rows);
 }
 
+function parseXlsxRowXml(rowXml, shared) {
+  const opening=rowXml.match(/^<row\b([^>]*)>/)?.[1]||'';
+  const rowNumber=Number(opening.match(/\br="(\d+)"/)?.[1]||0);
+  const cells=[];
+  const content=rowXml.slice(rowXml.indexOf('>')+1).replace(/<\/row>\s*$/,'');
+  for (const cellMatch of content.matchAll(/<c\b([^>]*?)(?:\/\s*>|>([\s\S]*?)<\/c>)/g)) {
+    const ref=cellMatch[1].match(/\br="([A-Z]+)\d+"/i)?.[1]||'';
+    let column=0; for(const char of ref.toUpperCase())column=column*26+char.charCodeAt(0)-64;
+    if(!column)continue;
+    const type=cellMatch[1].match(/\bt="([^"]+)"/)?.[1], cellContent=cellMatch[2]||'';
+    const raw=cellContent.match(/<v\b[^>]*>([\s\S]*?)<\/v>/)?.[1];
+    const inline=[...cellContent.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(match=>xmlText(match[1])).join('');
+    let value=raw===undefined?inline:xmlText(raw);
+    if(type==='s')value=shared[Number(value)]??'';
+    cells[column-1]=value;
+  }
+  return {rowNumber,cells:cells.map(value=>value??'')};
+}
+
+function parseXlsxSelectedCells(rowXml,shared,wantedColumns) {
+  const result=new Map();
+  const content=rowXml.slice(rowXml.indexOf('>')+1).replace(/<\/row>\s*$/,'');
+  for(const cellMatch of content.matchAll(/<c\b([^>]*?)(?:\/\s*>|>([\s\S]*?)<\/c>)/g)){
+    const ref=cellMatch[1].match(/\br="([A-Z]+)\d+"/i)?.[1]||'';let column=0;
+    for(const char of ref.toUpperCase())column=column*26+char.charCodeAt(0)-64;
+    if(!wantedColumns.has(column))continue;
+    const type=cellMatch[1].match(/\bt="([^"]+)"/)?.[1],cellContent=cellMatch[2]||'';
+    const raw=cellContent.match(/<v\b[^>]*>([\s\S]*?)<\/v>/)?.[1];
+    const inline=[...cellContent.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(match=>xmlText(match[1])).join('');
+    let value=raw===undefined?inline:xmlText(raw);if(type==='s')value=shared[Number(value)]??'';result.set(column,value);
+  }
+  return result;
+}
+
+async function xlsxSheetContext(bytesLike) {
+  const bytes=bytesLike instanceof Uint8Array?bytesLike:new Uint8Array(bytesLike), zip=zipEntries(bytes);
+  const sharedXml=await zipText(zip,'xl/sharedStrings.xml');
+  const shared=[...sharedXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(match=>
+    [...match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(part=>xmlText(part[1])).join(''));
+  const workbook=await zipText(zip,'xl/workbook.xml'), rels=await zipText(zip,'xl/_rels/workbook.xml.rels');
+  const firstSheet=workbook.match(/<sheet\b[^>]*\br:id="([^"]+)"/);
+  if(!firstSheet)throw new Error('ERP_XLSX_SHEET_MISSING');
+  const relationship=[...rels.matchAll(/<Relationship\b([^>]*)\/?\s*>/g)].find(match=>
+    new RegExp(`\\bId="${firstSheet[1].replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}"`).test(match[1]));
+  const target=relationship?.[1].match(/\bTarget="([^"]+)"/)?.[1];
+  if(!target)throw new Error('ERP_XLSX_SHEET_RELATIONSHIP_MISSING');
+  return {zip,shared,sheetPath:target.startsWith('/')?target.slice(1):`xl/${target.replace(/^\.\//,'')}`};
+}
+
+async function visitXlsxRows(zip,sheetPath,visit) {
+  const entry=zip.entries.get(sheetPath); if(!entry)throw new Error('ERP_XLSX_SHEET_MISSING');
+  const view=zip.view, local=entry.localOffset;
+  if(view.getUint32(local,true)!==0x04034b50)throw new Error('ERP_XLSX_ENTRY_INVALID');
+  const nameLength=view.getUint16(local+26,true),extraLength=view.getUint16(local+28,true),start=local+30+nameLength+extraLength;
+  const compressed=zip.bytes.subarray(start,start+entry.compressed);
+  const source=new Blob([compressed]).stream();
+  const stream=entry.method===0?source:entry.method===8?source.pipeThrough(new DecompressionStream('deflate-raw')):null;
+  if(!stream)throw new Error('ERP_XLSX_COMPRESSION_UNSUPPORTED');
+  const reader=stream.getReader(),decoder=new TextDecoder(); let buffer='',index=0,stopped=false;
+  const consume=async(final=false)=>{
+    while(true){
+      const begin=buffer.indexOf('<row');
+      if(begin<0){if(!final)buffer=buffer.slice(-5);else buffer='';return;}
+      if(begin>0)buffer=buffer.slice(begin);
+      if(buffer.length>4&&!/[\s/>]/.test(buffer[4])){buffer=buffer.slice(4);continue;}
+      const openEnd=buffer.indexOf('>'); if(openEnd<0)return;
+      const open=buffer.slice(0,openEnd+1);
+      let end;
+      if(/\/\s*>$/.test(open))end=openEnd+1;
+      else {const close=buffer.indexOf('</row>',openEnd+1);if(close<0)return;end=close+6;}
+      const rowXml=buffer.slice(0,end); buffer=buffer.slice(end);
+      if(await visit(rowXml,index++)){stopped=true;return;}
+    }
+  };
+  try {
+    while(!stopped){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});await consume();}
+    if(!stopped){buffer+=decoder.decode();await consume(true);}
+  } finally {if(stopped)await reader.cancel().catch(()=>{});reader.releaseLock();}
+  return index;
+}
+
+export async function parseErpXlsxPage(bytesLike,start=0,limit=ERP_ROWS_PER_CONTINUATION) {
+  const {zip,shared,sheetPath}=await xlsxSheetContext(bytesLike), rows=[]; let header=null,selected=0,done=false;
+  const wantedStart=Math.max(0,Number(start)||0),wantedEnd=wantedStart+Math.max(1,Number(limit)||ERP_ROWS_PER_CONTINUATION);
+  const totalRows=await visitXlsxRows(zip,sheetPath,async(rowXml,index)=>{
+    if(index===0){header=parseXlsxRowXml(rowXml,shared).cells;return false;}
+    const dataIndex=index-1;
+    if(dataIndex>=wantedStart&&dataIndex<wantedEnd){rows.push(parseXlsxRowXml(rowXml,shared).cells);selected+=1;return false;}
+    if(dataIndex>=wantedEnd){done=false;return true;}
+    return false;
+  });
+  done=totalRows<=wantedEnd+1;
+  if(!header)throw new Error('ERP_SOURCE_HEADER_MISSING');
+  const objects=recordsToObjects([header,...rows],true);
+  if(!objects.length&&wantedStart===0)throw new Error('ERP_SOURCE_EMPTY');
+  return {rows:objects,nextOffset:wantedStart+selected,done,totalRows:Math.max(0,totalRows-1)};
+}
+
+export async function countImportableErpXlsxRows(bytesLike,dataset) {
+  const {zip,shared,sheetPath}=await xlsxSheetContext(bytesLike); let header=null,count=0;
+  let targets=new Map(),wantedColumns=new Set();
+  await visitXlsxRows(zip,sheetPath,async(rowXml,index)=>{
+    if(index===0){
+      header=parseXlsxRowXml(rowXml,shared).cells;
+      const names=new Map(header.map((value,column)=>[normalizeErpHeader(value),column+1]));
+      targets=new Map([['itemcode',names.get('itemcode')||names.get('item')],['dock',names.get('dock')],
+        ['suspend',names.get('suspend')],['suspendto',names.get('suspendto')||names.get('suspendtodc')||names.get('suspendto')]]);
+      for(const [name,column] of targets)if(column&&(dataset==='soc'||name==='itemcode'))wantedColumns.add(column);
+      return false;
+    }
+    if(!header)throw new Error('ERP_SOURCE_HEADER_MISSING');
+    const values=parseXlsxSelectedCells(rowXml,shared,wantedColumns);
+    const get=(name)=>clean(values.get(targets.get(name))||'')||'';
+    if(get('itemcode')&&(dataset!=='soc'||get('dock')||get('suspend').toUpperCase()==='SUSPEND'&&get('suspendto').toLowerCase()==='dc'))count+=1;
+    return false;
+  });
+  if(!count||count>50000)throw new Error('ERP_ROWS_INVALID');
+  return count;
+}
+
 function clean(value) {
   if (value === undefined || value === null) return null;
   const text = String(value).trim().replaceAll("\\'", "'");
@@ -180,10 +307,14 @@ async function identity(dataset, row, index) {
   }
   return values.join('-').replace(/[^a-zA-Z0-9-]/g, '_') || `${dataset}-${index}`;
 }
-export async function normalizeErpRows(rawRows, dataset, columns) {
-  const rows = [], counts = new Map();
+export async function normalizeErpRowsChunk(rawRows, dataset, columns, options = {}) {
+  const rows = [], counts = new Map(Object.entries(options.identityCounts || {}).map(([key,value]) => [key,Number(value)||0]));
   const columnsByNormalized = new Map(columns.map(column => [normalizeErpHeader(column),column]));
-  for (const raw of rawRows) {
+  const start = Math.max(0,Number(options.start)||0);
+  const end = Math.min(rawRows.length,start+Math.max(1,Number(options.limit)||rawRows.length));
+  let rowCount = Math.max(0,Number(options.priorRowCount)||0);
+  for (let rawIndex=start; rawIndex<end; rawIndex+=1) {
+    const raw = rawRows[rawIndex];
     if (!first(raw, 'itemcode', 'item')) continue;
     if (dataset === 'soc' && !(first(raw,'dock') || first(raw,'suspend').toUpperCase() === 'SUSPEND'
       && first(raw,'suspend-to','suspend_to','suspendto').toLowerCase() === 'dc')) continue;
@@ -205,16 +336,28 @@ export async function normalizeErpRows(rawRows, dataset, columns) {
       }
     }
     const idColumn = columnsByNormalized.get('uniqueid');
-    const base = first(raw,'unique_id','uniqueid') || await identity(dataset,raw,rows.length);
+    const base = first(raw,'unique_id','uniqueid') || await identity(dataset,raw,rowCount);
     const duplicate = counts.get(base) || 0;
     counts.set(base, duplicate + 1);
     if (idColumn) row[idColumn] = duplicate ? `${base}-${duplicate}` : base;
     if (dataset === 'drive_around') {
       rows.push({ values: row, rawFields: Object.keys(row).filter(key => RAW_DRIVE_FIELDS.has(normalizeErpHeader(key))) });
     } else rows.push(row);
+    rowCount += 1;
   }
-  if (!rows.length || rows.length > 50000) throw new Error('ERP_ROWS_INVALID');
-  return rows;
+  if (rowCount > 50000) throw new Error('ERP_ROWS_INVALID');
+  return {rows,nextRawOffset:end,rowCount,identityCounts:Object.fromEntries(counts)};
+}
+export async function normalizeErpRows(rawRows, dataset, columns) {
+  const result = await normalizeErpRowsChunk(rawRows,dataset,columns,{start:0,limit:rawRows.length});
+  if (!result.rows.length || result.rows.length > 50000) throw new Error('ERP_ROWS_INVALID');
+  return result.rows;
+}
+
+function countImportableRows(rawRows,dataset) {
+  return rawRows.reduce((count,row) => count + (first(row,'itemcode','item')
+    && (dataset !== 'soc' || first(row,'dock') || first(row,'suspend').toUpperCase() === 'SUSPEND'
+      && first(row,'suspend-to','suspend_to','suspendto').toLowerCase() === 'dc') ? 1 : 0),0);
 }
 
 function driveUrl(path, params) {
@@ -230,12 +373,13 @@ async function driveJson(fetcher, token, path, params = {}, method = 'GET', body
   if (!response.ok) throw new Error(`ERP_DRIVE_API_${response.status}`);
   return result;
 }
-async function listFiles(fetcher, token, folderId) {
+async function listFiles(fetcher, token, folderId, importableOnly = false) {
   const files = [];
   let pageToken = '';
   const seenTokens = new Set();
   for (let page = 0; page < 100; page += 1) {
-    const result = await driveJson(fetcher,token,'files',{q:`'${folderId}' in parents and trashed=false`,
+    const filter = importableOnly ? " and mimeType!='application/vnd.google-apps.folder' and (name contains '.xlsx' or name contains '.csv') and not name contains 'TEMP_' and not name contains '~$'" : '';
+    const result = await driveJson(fetcher,token,'files',{q:`'${folderId}' in parents and trashed=false${filter}`,
       fields:'nextPageToken,files(id,name,mimeType,modifiedTime,size,parents)',pageSize:1000,
       supportsAllDrives:true,includeItemsFromAllDrives:true,...(pageToken ? {pageToken} : {})});
     files.push(...(Array.isArray(result.files) ? result.files : []));
@@ -261,7 +405,7 @@ async function processedFolder(fetcher, token, parentId, configuredId = '') {
 async function moveProcessed(fetcher, token, file, parentId, configuredId = '') {
   const destination = await processedFolder(fetcher,token,parentId,configuredId);
   await driveJson(fetcher,token,`files/${encodeURIComponent(file.id)}`,{
-    addParents:destination,removeParents:(file.parents || [parentId]).join(','),fields:'id,parents',supportsAllDrives:true,
+    addParents:destination,removeParents:parentId,fields:'id,parents',supportsAllDrives:true,
   },'PATCH');
 }
 
@@ -318,6 +462,79 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
   return {key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:rows.length};
 }
 
+async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,state}) {
+  if (state?.phase === 'move') {
+    try {
+      await moveProcessed(fetcher,token,file,parentId,processedId);
+      return {done:true,result:{key:dataset,outcome:state.moveOutcome||'processed',sourceFileName:file.name,processedFiles:1,
+        ...(state.expectedRows?{rowCount:state.expectedRows}:{})}};
+    } catch (error) {
+      const attempts = (Number(state.moveAttempts)||0)+1;
+      if (attempts >= 3) throw error;
+      return {done:false,state:{...state,moveAttempts:attempts,lastMoveError:String(error?.message||'ERP_DRIVE_MOVE_FAILED').slice(0,120)}};
+    }
+  }
+  const meta = {file_id:file.id,file_name:file.name,modified_at:file.modifiedTime || new Date().toISOString()};
+  const {data:check,error:checkError} = await supabase.rpc('check_erp_file_sync_needed_v1',{
+    p_dataset_key:dataset,p_file_id:file.id,p_file_name:file.name,p_modified_at:meta.modified_at,p_content_hash:file.md5Checksum||null,
+  });
+  if (checkError) throw checkError;
+  if (check?.skip === true) {
+    try { await moveProcessed(fetcher,token,file,parentId,processedId); }
+    catch (error) { return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows:0,nextOffset:0,processedRows:0,identityCounts:{},moveAttempts:1}}; }
+    return {done:true,result:{key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1}};
+  }
+  const bytes = await sourceBytes(fetcher,token,file);
+  if (state?.modifiedAt && state.modifiedAt !== meta.modified_at) throw new Error('ERP_SOURCE_CHANGED_DURING_IMPORT');
+  const isCsv=/\.csv$/i.test(file.name);
+  const allCsvRows=isCsv?parseErpCsv(new TextDecoder('utf-8').decode(bytes)):null;
+  const expectedRowsForNew=state?null:isCsv?countImportableRows(allCsvRows,dataset):await countImportableErpXlsxRows(bytes,dataset);
+  const page=isCsv?null:await parseErpXlsxPage(bytes,state?.nextOffset||0,ERP_ROWS_PER_CONTINUATION);
+  const pageRows=isCsv?allCsvRows.slice(state?.nextOffset||0,(state?.nextOffset||0)+ERP_ROWS_PER_CONTINUATION):page.rows;
+  const nextRawOffset=isCsv?Math.min(allCsvRows.length,(state?.nextOffset||0)+pageRows.length):page.nextOffset;
+  const pageDone=isCsv?nextRawOffset>=allCsvRows.length:page.done;
+  const table = ({drive_around:'ph_master_inventory',cav:'ph_cav_import',reserves:'ph_reserves',soc:'ph_soc_master'})[dataset];
+  if (!table) throw new Error('HL_PO_ORIGINAL_PDF_REQUIRED');
+  const {data:columns,error:columnsError} = await supabase.rpc('fast_erp_import_columns_v1',{p_dataset_key:dataset});
+  if (columnsError || !Array.isArray(columns) || !columns.length) throw columnsError || new Error('ERP_COLUMNS_UNAVAILABLE');
+  let next = state;
+  if (!next) {
+    const expectedRows = expectedRowsForNew;
+    if (!expectedRows || expectedRows > 50000) throw new Error('ERP_ROWS_INVALID');
+    const {data:begin,error:beginError} = await supabase.rpc('fast_begin_erp_stage_v1',{
+      p_dataset_key:dataset,p_file_meta:{...meta,content_hash:await hashHex(bytes)},p_expected_rows:expectedRows,
+    });
+    if (beginError) throw beginError;
+    if (begin?.skipped === true) {
+      try { await moveProcessed(fetcher,token,file,parentId,processedId); }
+      catch (_) { return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows,nextOffset:0,processedRows:expectedRows,identityCounts:{},moveAttempts:1}}; }
+      return {done:true,result:{key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1}};
+    }
+    const stageId = String(begin?.stage_id||'');
+    if (!stageId || Number(begin.expected_rows)!==expectedRows) throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
+    next = {stageId,expectedRows,nextOffset:0,processedRows:0,identityCounts:{},modifiedAt:meta.modified_at};
+  }
+  const chunk = await normalizeErpRowsChunk(pageRows,dataset,columns,{start:0,limit:pageRows.length||1,
+    priorRowCount:next.processedRows,identityCounts:next.identityCounts});
+  if (chunk.rows.length) {
+    const {data,error} = await supabase.rpc('fast_append_erp_stage_batch_v1',{
+      p_stage_id:next.stageId,p_start_row:next.processedRows,p_rows:chunk.rows,
+    });
+    if (error || Number(data?.staged_rows)!==next.processedRows+chunk.rows.length) throw error||new Error('ERP_STAGE_BATCH_UNCONFIRMED');
+  }
+  next = {...next,nextOffset:nextRawOffset,processedRows:chunk.rowCount,identityCounts:chunk.identityCounts};
+  await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
+    stageResultsDelta:{key:stageKey,stagedRows:next.processedRows,expectedRows:next.expectedRows}});
+  if (!pageDone) return {done:false,state:next};
+  if (next.processedRows!==next.expectedRows) throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
+  const {data:committed,error:commitError} = await supabase.rpc('fast_commit_erp_stage_swap_v1',{p_stage_id:next.stageId});
+  if (commitError || committed?.ok!==true) throw commitError||new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
+  try {
+    await moveProcessed(fetcher,token,file,parentId,processedId);
+    return {done:true,result:{key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:next.expectedRows}};
+  } catch (_) { return {done:false,state:{...next,phase:'move',moveAttempts:1}}; }
+}
+
 export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,accessToken}) {
   const foldersRaw = env('ERP_SYNC_DROP_FOLDERS_JSON');
   if (!foldersRaw || !accessToken) throw new Error('ERP_SYNC_CREDENTIALS_NOT_CONFIGURED');
@@ -335,7 +552,7 @@ export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,access
     await status({currentStage:stage.key,stageIndex:index});
     let files;
     try {
-      files = (await listFiles(fetcher,token,folderId)).filter(file =>
+      files = (await listFiles(fetcher,token,folderId,true)).filter(file =>
         file.mimeType !== 'application/vnd.google-apps.folder' && !shouldIgnoreErpFile(file.name)
         && /\.(?:xlsx|csv)$/i.test(file.name)).sort((a,b)=>String(a.modifiedTime||'').localeCompare(String(b.modifiedTime||'')));
     } catch (error) {
@@ -378,7 +595,32 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
   const stageResults = Array.isArray(cursor.stageResults) ? cursor.stageResults.slice() : [];
   const attemptedByStage = cursor.attemptedByStage && typeof cursor.attemptedByStage === 'object' ? {...cursor.attemptedByStage} : {};
   let stageIndex = Math.max(0,Math.min(STAGES.length,Number(cursor.stageIndex)||0));
+  const resume = cursor.fileContinuation && typeof cursor.fileContinuation === 'object' ? cursor.fileContinuation : null;
+  if (resume) {
+    const stage = STAGES[Number(resume.stageIndex)];
+    const file = resume.file;
+    if (!stage || !file?.id) throw new Error('ERP_CONTINUATION_INVALID');
+    const folderId = String(folders[stage.key]||'').trim();
+    const processedId = String(folders.processed?.[stage.key]||folders[`${stage.key}_processed`]||'').trim();
+    const sliceStarted=performance.now();
+    const step = await stageFileContinuation({supabase,fetcher,token,file,dataset:stage.dataset,stageKey:stage.key,
+      parentId:folderId,processedId,status,state:resume.state||null});
+    const elapsedMs=(Number(resume.state?.elapsedMs)||0)+Math.max(0,Math.round(performance.now()-sliceStarted));
+    let nextCursor;
+    if (step.done) {
+      stageResults.push({...step.result,key:stage.key,dataset:stage.dataset,durationMs:elapsedMs});
+      const attempted = new Set(Array.isArray(attemptedByStage[stage.key])?attemptedByStage[stage.key]:[]);
+      attempted.add(String(file.id)); attemptedByStage[stage.key]=[...attempted];
+      nextCursor={stageIndex:Number(resume.stageIndex),stageResults,attemptedByStage};
+    } else nextCursor={stageIndex:Number(resume.stageIndex),stageResults,attemptedByStage,
+      fileContinuation:{...resume,state:{...step.state,elapsedMs}}};
+    await status({status:'CONTINUE',currentStage:stage.key,stageIndex:Number(resume.stageIndex),
+      continuationCursor:nextCursor,stageResults:stageResults.slice(),fileId:file.id,
+      nextOffset:step.state?.nextOffset??null,lastCompletedFile:step.done?file.name:undefined});
+    return {done:false,cursor:nextCursor};
+  }
   while (stageIndex < STAGES.length) {
+    const stageStarted=performance.now();
     const stage = STAGES[stageIndex], folderId = String(folders[stage.key]||'').trim();
     const processedId = String(folders.processed?.[stage.key]||folders[`${stage.key}_processed`]||'').trim();
     if (!folderId) {
@@ -388,7 +630,7 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
     await status({currentStage:stage.key,stageIndex});
     let files;
     try {
-      files = (await listFiles(fetcher,token,folderId)).filter(file => file.mimeType !== 'application/vnd.google-apps.folder'
+      files = (await listFiles(fetcher,token,folderId,true)).filter(file => file.mimeType !== 'application/vnd.google-apps.folder'
         && !shouldIgnoreErpFile(file.name) && /\.(?:xlsx|csv)$/i.test(file.name))
         .sort((a,b)=>String(a.modifiedTime||'').localeCompare(String(b.modifiedTime||'')));
     } catch (error) {
@@ -404,14 +646,25 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
     const attempted = new Set(Array.isArray(attemptedByStage[stage.key]) ? attemptedByStage[stage.key] : []);
     const file = files.find(candidate => !attempted.has(String(candidate.id||'')));
     if (!file) {
-      if (!stageResults.some(result=>result.key===stage.key)) stageResults.push({key:stage.key,outcome:'UP_TO_DATE',sourceFileName:'',processedFiles:0});
+      if (!stageResults.some(result=>result.key===stage.key)) stageResults.push({key:stage.key,outcome:'UP_TO_DATE',sourceFileName:'',processedFiles:0,
+        durationMs:Math.max(0,Math.round(performance.now()-stageStarted))});
       stageIndex += 1; continue;
     }
-    attempted.add(String(file.id||'')); attemptedByStage[stage.key] = [...attempted];
     try {
-      const result = await stageFile({supabase,fetcher,token,file,dataset:stage.dataset,stageKey:stage.key,parentId:folderId,processedId,status});
-      stageResults.push({...result,key:stage.key,dataset:stage.dataset});
+      const sliceStarted=performance.now();
+      const step = await stageFileContinuation({supabase,fetcher,token,file,dataset:stage.dataset,stageKey:stage.key,parentId:folderId,processedId,status,state:null});
+      const elapsedMs=Math.max(0,Math.round(performance.now()-sliceStarted));
+      if (step.done) {
+        attempted.add(String(file.id||'')); attemptedByStage[stage.key]=[...attempted];
+        stageResults.push({...step.result,key:stage.key,dataset:stage.dataset,durationMs:elapsedMs});
+      } else {
+        const nextCursor={stageIndex,stageResults,attemptedByStage,fileContinuation:{stageIndex,file,state:{...step.state,elapsedMs}}};
+        await status({status:'CONTINUE',currentStage:stage.key,stageIndex,continuationCursor:nextCursor,
+          stageResults:stageResults.slice(),fileId:file.id,nextOffset:step.state?.nextOffset??null});
+        return {done:false,cursor:nextCursor};
+      }
     } catch (error) {
+      attempted.add(String(file.id||'')); attemptedByStage[stage.key]=[...attempted];
       stageResults.push({key:stage.key,dataset:stage.dataset,outcome:'failed',sourceFileName:file.name,processedFiles:0,
         error:String(error?.message||'ERP_FILE_IMPORT_FAILED').slice(0,200)});
     }

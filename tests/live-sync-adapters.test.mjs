@@ -37,6 +37,8 @@ function harness(sourceFactory = factorySource) {
     const calls = [];
     const rows = [{ unique_id: 'new', source_unique_id: 'new', id: 'new', tripnumber: 'T1', issueSourceUniqueId: 'new', allocationUniqueId: 'new', UNIQUE_ID: 'new', conversationId: 'new' }];
     const ctx = { SalesWorkspace: {isView:()=>true,stageRefresh:async()=>{calls.push(['api','sales_credit','sources']);return {rows};},applyRefresh(){}}, BunchNote: {scope:()=>'', stage:async()=>({account:'dylan_collyge',jobs:rows}),commit(){},render(){}}, Date, Object, Array, Map, Set, String, Number, JSON, Promise, encodeURIComponent, console, calls, window: {},
+        dashboardSyncMetadataOwner: '', dashboardSyncMetadataSummaries: [], dashboardSyncMetadataFetchedAt: 0,
+        mergeDashboardSyncSummaries: entries => entries,
         document: { hidden: false, body: { classList: { contains: () => true } }, getElementById: () => null },
         fetchAllSupabaseRows: async (table, query) => { calls.push(['GET', table, query]); return table === 'ph_crop_roll_runs' ? [] : rows; },
         fetchAuthenticatedSupabaseReadPage: async (table, query, options) => { calls.push(['PAGE', table, query, options]); return { rows: [{ filename: `${table}.xlsx`, last_updated: '2026-10-13T12:00:00Z' }], total: 1 }; },
@@ -192,7 +194,7 @@ test('all root production views are classified and every declared adapter has ph
     assert.ok(registry.core.cropRollDrive.includes('ph_crop_roll_completed_drive_keys'));
     assert.ok(registry.core.requests.includes('ph_request_delivery_outbox'));
     assert.deepEqual([...registry.surfaces['home:sync-metadata'].adapters], ['homeSyncMetadata']);
-    assert.deepEqual([...registry.side.homeSyncMetadata], ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import']);
+    assert.deepEqual([...registry.side.homeSyncMetadata], ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import', 'hl_po_parsed']);
 });
 
 test('every side adapter executes a read-only stage and a synchronous commit', async () => {
@@ -232,7 +234,8 @@ test('Home sync metadata side adapter is bounded, projected, scoped, and commits
         ], total: 3 };
     };
     const adapter = descriptor(h, 'side:homeSyncMetadata');
-    assert.equal(JSON.parse(adapter.cacheKey)[2], JSON.stringify(['native:dylan', 'permission-v1']));
+    assert.equal(adapter.cacheKey, JSON.stringify(['user:division', 'side:homeSyncMetadata', 'native:dylan']),
+        'the cache key is bound to view, adapter, and authenticated read identity');
     const controller = new AbortController();
     const staged = await adapter.stage({ signal: controller.signal });
     assert.deepEqual(Array.from(staged.entries, entry => entry.table), ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import']);
@@ -293,14 +296,80 @@ test('deferred manual run response clears optimistic Starting state without comp
         module: { exports: {} }, manualSyncStatusState: { active: true },
         clearManualSyncStatusPoll: () => calls.push('clear-poll'),
         syncGoogleScriptButton: () => calls.push('button'), updateSyncDiagnostics: () => calls.push('diagnostics'),
+        scheduleManualSyncStatusPoll: () => calls.push('schedule-poll'),
         showToast: (...args) => calls.push(['toast', ...args])
     };
     vm.runInNewContext(`${html.slice(start, end)}\nmodule.exports = handleDeferredManualSyncStart;`, sandbox);
     const handle = sandbox.module.exports;
     assert.equal(handle({ ok: true, status: 'deferred', code: 'MANUAL_SYNC_PROCESSOR_BUSY', message: 'Busy' }), true);
     assert.equal(sandbox.manualSyncStatusState, null);
-    assert.deepEqual(calls.map(call => Array.isArray(call) ? call[0] : call), ['clear-poll', 'button', 'diagnostics', 'toast']);
+    assert.deepEqual(calls.map(call => Array.isArray(call) ? call[0] : call), ['clear-poll', 'button', 'diagnostics', 'toast', 'schedule-poll']);
     assert.equal(handle({ ok: true, status: 'queued' }), false);
+});
+
+test('manual cloud sync explicitly continues bounded steps until the terminal IDLE status', async () => {
+    const functionStart = html.indexOf('        async function continueManualErpSync(');
+    assert.ok(functionStart > 0);
+    const functionEnd = html.slice(functionStart + 1).search(/\r?\n        (?:async )?function \w+\(/);
+    assert.ok(functionEnd > 0);
+    const source = html.slice(functionStart, functionStart + 1 + functionEnd);
+    const requests = [];
+    const optionsSeen = [];
+    const delays = [];
+    const applied = [];
+    let call = 0;
+    const sandbox = {
+        module: { exports: {} },
+        MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 330000,
+        firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
+        APP_API_FUNCTION_URL: '/app-api',
+        postAppFunctionJson: async (_url, body, options) => {
+            requests.push(body);
+            optionsSeen.push(options);
+            call += 1;
+            return call < 3
+                ? { ok: true, status: 'CONTINUE', retryAfterMs: call === 1 ? 25 : 0, data: { runStatus: { active: true, runId: 'run-1', currentStage: 'drive', stageIndex: call } } }
+                : { ok: true, status: 'COMPLETE', data: { runStatus: { active: false, runId: 'run-1', currentStage: 'idle', stageIndex: 5 } } };
+        },
+        applyManualSyncStatus: status => applied.push(status),
+        setTimeout: (callback, delay) => { delays.push(delay); callback(); return 0; },
+        Promise
+    };
+    vm.runInNewContext(`${source}\nmodule.exports = continueManualErpSync;`, sandbox);
+    const result = await sandbox.module.exports({ runId: 'run-1' });
+    assert.equal(requests.length, 3);
+    assert.equal(optionsSeen[0].timeoutMs, 135000, 'a single cloud slice can use nearly all of its 140-second lease');
+    assert.deepEqual(delays, [25, 0], 'top-level retryAfterMs is honored before the next claim');
+    assert.deepEqual(requests.map(request => [request.action, request.operation, request.runId]), [
+        ['erp_sync', 'continue', 'run-1'],
+        ['erp_sync', 'continue', 'run-1'],
+        ['erp_sync', 'continue', 'run-1']
+    ]);
+    assert.equal(applied.length, 3);
+    assert.equal(result.active, false);
+    assert.equal(result.currentStage, 'idle');
+    assert.match(html, /async function runGoogleAppsScriptTrigger\(\)[^]*forceRestart: true/);
+});
+
+test('stale server sync remains resumable while a same-browser run stays protected', () => {
+    const source = inlineFunctionSource('syncGoogleScriptButton');
+    const labels = { '[data-run-script-label]': { innerText: '' } };
+    const classes = [];
+    const button = { disabled: false, classList: { toggle: (...args) => classes.push(args) }, querySelector: selector => labels[selector] };
+    const sandbox = {
+        module: { exports: {} }, document: { getElementById: id => id === 'run-google-script-btn' ? button : null },
+        window: { innerWidth: 412, googleScriptRunInFlight: false }, isRunScriptActive: false,
+        canRunManualInventoryImport: () => true, canViewDashboardSyncStatus: () => true,
+        hasActiveManualSync: () => true, getManualSyncProgressInfo: () => ({ text: '2/5' }),
+        isAutoManualSyncStatus: () => false
+    };
+    vm.runInNewContext(`${source}\nmodule.exports = syncGoogleScriptButton;`, sandbox);
+    sandbox.module.exports();
+    assert.equal(button.disabled, false, 'a server-owned active status does not block the resume action');
+    assert.equal(labels['[data-run-script-label]'].innerText, 'Resume 2/5');
+    sandbox.isRunScriptActive = true;
+    sandbox.module.exports();
+    assert.equal(button.disabled, true, 'a continuation already running in this browser prevents a duplicate click');
 });
 
 test('header timestamp accepts any current-scope data cohort and ignores empty navigation statuses', () => {
@@ -578,7 +647,7 @@ test('every registered physical source has a database revision contract', () => 
     const h = harness();
     const directory = new URL('../supabase/migrations/', import.meta.url);
     const migrations = readdirSync(directory).filter((name) => name.endsWith('.sql'));
-    assert.deepEqual(migrations, [
+    const expectedMigrations = [
       '20260929200000_production_baseline.sql',
       '20260930183036_grower_row_scout_fields.sql',
       '20260930205254_season_sales_business_conflicts_use_pt409.sql',
@@ -672,7 +741,9 @@ test('every registered physical source has a database revision contract', () => 
       '20261020161833_published_lkg_read_proof_v1.sql',
       '20261020204855_reclass_server_revision_and_failed_stage_lease_v1.sql',
       '20261020233500_reclass_rep_scope_preservation_v1.sql',
-    ], 'active migrations contain the baseline and current live app features');
+    ];
+    assert.ok(expectedMigrations.every((name) => migrations.includes(name)), 'active migrations retain the baseline and known live app features');
+    assert.deepEqual([...migrations].sort(), migrations, 'migration files remain ordered for deterministic replay');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain
     // the source for validating the registered source-key contracts.

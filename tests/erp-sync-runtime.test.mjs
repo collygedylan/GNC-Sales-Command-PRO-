@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { deflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import { isLegacyRunScriptAction, normalizeErpRows, parseErpCsv, parseErpXlsx, runErpSyncWorker, runErpSyncWorkerStep, shouldIgnoreErpFile, validateErpSyncCommand } from '../supabase/functions/_shared/erp-sync.mjs';
+import { countImportableErpXlsxRows, isLegacyRunScriptAction, normalizeErpRows, parseErpCsv, parseErpXlsx, parseErpXlsxPage, runErpSyncWorker, runErpSyncWorkerStep, shouldIgnoreErpFile, validateErpSyncCommand } from '../supabase/functions/_shared/erp-sync.mjs';
 
 function makeZip(entries) {
   const locals = [], central = [];
@@ -36,13 +36,16 @@ test('ERP source filtering ignores temp imports and Office lock files', () => {
 
 test('ERP sync accepts one forced start attempt or a read-only status request', () => {
   const commandId = '0f39d01a-3cc7-4ae4-83c0-96a0d02b9f53';
-  assert.deepEqual(validateErpSyncCommand({action:'erp_sync',operation:'start',commandId,force:true,maxAttemptsPerStage:1}),
+  assert.deepEqual(validateErpSyncCommand({action:'erp_sync',operation:'start',commandId,force:true,forceRestart:true,maxAttemptsPerStage:1}),
     {ok:true,operation:'start',commandId});
   assert.deepEqual(validateErpSyncCommand({action:'erp_sync',operation:'status'}),{ok:true,operation:'status'});
+  const runId='29f77c6e-9f1a-4f43-bf1a-46783d8a90bf';
+  assert.deepEqual(validateErpSyncCommand({action:'erp_sync',operation:'continue',runId}),{ok:true,operation:'continue',runId});
   for (const payload of [
-    {action:'erp_sync',operation:'start',commandId,force:true,maxAttemptsPerStage:2},
+    {action:'erp_sync',operation:'start',commandId,force:true,forceRestart:true,maxAttemptsPerStage:2},
     {action:'erp_sync',operation:'start',commandId,force:true,maxAttemptsPerStage:1,actor:'megan_kelly'},
     {action:'erp_sync',operation:'status',force:true},
+    {action:'erp_sync',operation:'continue',runId:'not-a-uuid'},
     {action:'erp_sync',operation:'manual_continue'},
   ]) assert.equal(validateErpSyncCommand(payload).ok,false);
 });
@@ -58,17 +61,19 @@ test('app-api connects strict validation to ERP actions and keeps status read-on
   const appsScriptHandler = source.slice(source.indexOf('async function handleAppsScriptAction'),source.indexOf('function dispatchAuthenticatedDeliveryWake'));
   assert.match(handler,/const command = validateErpSyncCommand\(payload\)/);
   assert.match(handler,/operation === "status"[^]*get_erp_sync_status_v1/);
-  assert.match(handler,/claim_erp_sync_job_v1[^]*return jsonResponse\(\{ ok: true, data: initial \}\)/);
+  assert.match(handler,/claim_erp_sync_job_v2[^]*p_force_restart: true[^]*return jsonResponse\(\{ ok: true, status:"CONTINUE", data: initial \}\)/);
+  assert.match(handler,/operation === "continue"[^]*claim_erp_sync_request_step_v1[^]*processCloudErpSyncStep[^]*release_erp_sync_request_step_v1/);
+  assert.match(handler,/for \(const privateField of \["workerId","worker_id","claimed"[^]*delete status\[privateField\]/);
   assert.doesNotMatch(handler,/runErpSyncWorker|EdgeRuntime\.waitUntil/);
-  assert.ok(handler.indexOf('operation === "status"') < handler.indexOf('claim_erp_sync_job_v1'));
+  assert.ok(handler.indexOf('operation === "status"') < handler.indexOf('claim_erp_sync_job_v2'));
   const worker = source.slice(source.indexOf('const ERP_SYNC_WORKER_OPERATIONS'),source.indexOf('if (import.meta.main) serve'));
   assert.match(worker,/authorization !== `Bearer \$\{ERP_SYNC_LOCAL_WORKER_KEY\}`/);
   assert.match(worker,/claim_erp_sync_worker_v1/);
   assert.match(worker,/assert_erp_sync_worker_v1/);
   assert.match(worker,/fast_commit_erp_stage_swap_v1/);
   assert.match(source,/action === "erp_sync_worker"\) \{\s*return errorResponse\("The local ERP worker is disabled\.", 410/);
-  assert.match(handler,/queueCloudWorker\?\.\(initial\)/);
-  assert.match(source,/handleErpSyncAction\(session, payload, activeProfileForRequest, dispatchCloudErpSync\)/);
+  assert.doesNotMatch(handler,/queueCloudWorker|dispatchCloudErpSync/);
+  assert.match(source,/handleErpSyncAction\(session, payload, activeProfileForRequest\)/);
   assert.match(source,/runtime\.waitUntil\(task\)/);
   assert.match(source,/claim_erp_sync_worker_step_v1[^]*p_step: step/);
   assert.match(source,/action === "erp_sync_continue"[^]*handleErpSyncContinuation/);
@@ -92,6 +97,27 @@ test('XLSX parser reads first worksheet shared strings and sparse columns in mem
     'xl/worksheets/sheet1.xml':'<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row><row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2" s="2" /><c r="C2" t="s"><v>4</v></c></row></sheetData></worksheet>',
   });
   assert.deepEqual(await parseErpXlsx(bytes), [{itemcode:'001',commonname:'',note:'Red & Maple'}]);
+  assert.deepEqual(await parseErpXlsxPage(bytes,0,1),{rows:[{itemcode:'001',commonname:'',note:'Red & Maple'}],nextOffset:1,done:true,totalRows:1});
+  assert.equal(await countImportableErpXlsxRows(bytes,'drive_around'),1);
+});
+
+test('streaming XLSX pages stop at bounded worksheet rows and resume with absolute offsets', async () => {
+  const sheetRows=['<row r="1"><c r="A1" t="inlineStr"><is><t>itemcode</t></is></c><c r="B1" t="inlineStr"><is><t>dock</t></is></c></row>'];
+  for(let index=1;index<=5200;index+=1)sheetRows.push(`<row r="${index+1}"><c r="A${index+1}"><v>${index}</v></c><c r="B${index+1}"><v>D${index}</v></c></row>`);
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${sheetRows.join('')}</sheetData></worksheet>`,
+  });
+  const first=await parseErpXlsxPage(bytes,0,5000), second=await parseErpXlsxPage(bytes,first.nextOffset,5000);
+  assert.equal(first.rows.length,5000);
+  assert.equal(first.rows[0].itemcode,'1');
+  assert.equal(first.nextOffset,5000);
+  assert.equal(first.done,false);
+  assert.equal(second.rows.length,200);
+  assert.equal(second.rows.at(-1).itemcode,'5200');
+  assert.equal(second.nextOffset,5200);
+  assert.equal(second.done,true);
 });
 
 test('live row mapping preserves canonical physical identities and CAV aliases', async () => {
@@ -156,6 +182,10 @@ test('unchanged file is archived without download or duplicate stage writes', as
   const fakeFetch=async(input,init={})=>{
     const url=new URL(input);
     if(url.pathname.endsWith('/files')){
+      const query=url.searchParams.get('q');
+      assert.match(query,/name contains '\.xlsx'/);
+      assert.match(query,/name contains '\.csv'/);
+      assert.match(query,/not name contains 'TEMP_'/);
       const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
       return Response.json({files:folder==='drive-folder'
         ? [{id:'file-1',name:'Drive.csv',modifiedTime:'2026-10-27T00:00:00Z',parents:['drive-folder']}]
@@ -242,4 +272,100 @@ test('cloud continuation processes at most one source file per invocation and re
   assert.equal(final.done,true);
   assert.deepEqual(begins,['file-1','file-2']);
   assert.equal(final.cursor.stageResults.filter(row=>row.outcome==='processed').length,2);
+  const emptyHl=final.cursor.stageResults.find(row=>row.key==='hl_po_parsed');
+  assert.equal(emptyHl.outcome,'UP_TO_DATE');
+  assert.ok(Number.isFinite(emptyHl.durationMs)&&emptyHl.durationMs>=0);
+});
+
+test('cloud ERP file work yields bounded row chunks and retries a failed Processed move without recommit', async () => {
+  const rows=Array.from({length:5200},(_,index)=>`item-${index},Plant ${index},1`).join('\n');
+  const csv=`itemcode,commonname,ptravailable\n${rows}\n`;
+  let committed=0, appended=0, moveAttempts=0, archived=false;
+  const fakeFetch=async(input,init={})=>{
+    const url=new URL(input);
+    if(url.pathname.endsWith('/files')) {
+      const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
+      return Response.json({files:folder==='drive-folder'&&!archived?[{id:'large-file',name:'Drive Large.csv',modifiedTime:'2026-10-28T12:00:00Z',parents:['drive-folder']}]:[]});
+    }
+    if(url.pathname.endsWith('/files/large-file')) {
+      if(init.method==='PATCH') {
+        moveAttempts+=1;
+        assert.equal(url.searchParams.get('addParents'),'processed-folder');
+        assert.equal(url.searchParams.get('removeParents'),'drive-folder');
+        assert.equal(url.searchParams.get('supportsAllDrives'),'true');
+        if(moveAttempts===1)return Response.json({error:'temporary'}, {status:503});
+        archived=true;return Response.json({id:'large-file',parents:['processed-folder']});
+      }
+      return new Response(csv);
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+  const supabase={rpc:async(name,args)=>{
+    if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false}};
+    if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','commonname','ptravailable']};
+    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'large-stage',expected_rows:5200,staged_rows:0}};
+    if(name==='fast_append_erp_stage_batch_v1'){assert.ok(args.p_rows.length<=5000);appended+=args.p_rows.length;return {data:{staged_rows:args.p_start_row+args.p_rows.length}};}
+    if(name==='fast_commit_erp_stage_swap_v1'){committed+=1;return {data:{ok:true}};}
+    throw new Error(`unexpected RPC ${name}`);
+  }};
+  const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder',processed:{drive:'processed-folder'}};
+  const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
+  const run=cursor=>runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token',cursor});
+  const first=await run();
+  assert.equal(first.cursor.fileContinuation.state.nextOffset,5000);
+  assert.equal(appended,5000);
+  const second=await run(first.cursor);
+  assert.equal(second.cursor.fileContinuation.state.phase,'move');
+  assert.equal(committed,1);
+  assert.equal(archived,false);
+  const third=await run(second.cursor);
+  assert.equal(committed,1);
+  assert.equal(moveAttempts,2);
+  assert.equal(archived,true);
+  assert.equal(third.cursor.stageResults[0].rowCount,5200);
+});
+
+test('a failed source is attempted once, then the next continuation advances to the next stage', async () => {
+  const archived=[],listed=[];
+  const fakeFetch=async(input,init={})=>{
+    const url=new URL(input);
+    if(url.pathname.endsWith('/files')){
+      const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];listed.push(folder);
+      const files=folder==='drive-folder'&&!archived.includes('bad-drive')
+        ?[{id:'bad-drive',name:'broken.csv',modifiedTime:'2026-10-28T12:00:00Z',parents:['drive-folder']}]
+        :folder==='cav-folder'&&!archived.includes('good-cav')
+        ?[{id:'good-cav',name:'valid.csv',modifiedTime:'2026-10-28T12:01:00Z',parents:['cav-folder']}]:[];
+      return Response.json({files});
+    }
+    if(url.pathname.endsWith('/files/good-cav')){
+      if(init.method==='PATCH'){archived.push('good-cav');return Response.json({id:'good-cav'});}
+      return new Response('itemcode,commonname,brandcode\n001,Blue Grass,B1\n');
+    }
+    throw new Error(`unexpected Drive call ${url}`);
+  };
+  const begins=[];
+  const supabase={rpc:async(name,args)=>{
+    if(name==='check_erp_file_sync_needed_v1'){
+      if(args.p_file_id==='bad-drive')throw new Error('ERP_DRIVE_TEMPORARY_503');
+      return {data:{skip:false}};
+    }
+    if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','commonname','brand_code']};
+    if(name==='fast_begin_erp_stage_v1'){begins.push(args.p_file_meta.file_id);return {data:{stage_id:'cav-stage',expected_rows:1,staged_rows:0}};}
+    if(name==='fast_append_erp_stage_batch_v1')return {data:{staged_rows:args.p_start_row+args.p_rows.length}};
+    if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true}};
+    throw new Error(`unexpected RPC ${name}`);
+  }};
+  const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder',
+    processed:{drive:'drive-processed',cav:'cav-processed'}};
+  const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
+  const run=cursor=>runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token',cursor});
+  const first=await run();
+  assert.equal(first.cursor.stageResults[0].outcome,'failed');
+  assert.deepEqual(first.cursor.attemptedByStage.drive,['bad-drive']);
+  const second=await run(first.cursor);
+  assert.deepEqual(begins,['good-cav']);
+  assert.deepEqual(archived,['good-cav']);
+  assert.ok(listed.includes('cav-folder'));
+  assert.equal(second.cursor.stageIndex,1);
+  assert.equal(second.cursor.stageResults.filter(result=>result.sourceFileName==='broken.csv').length,1);
 });
