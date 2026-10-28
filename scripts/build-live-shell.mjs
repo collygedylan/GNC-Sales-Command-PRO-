@@ -8,7 +8,10 @@ import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 
 const RELEASE = 'AgData v2.3.93';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
-const ASSET_QUERY_OVERRIDES = Object.freeze({ 'mobile-workspace.js': `${RELEASE_QUERY}.1` });
+const ASSET_QUERY_OVERRIDES = Object.freeze({
+  'mobile-workspace.js': `${RELEASE_QUERY}.1`,
+  'live-app-runtime-v2026082010.min.js': `${RELEASE_QUERY}.1`,
+});
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = await prepareReleaseSiteDirectory(root);
 const htmlPath = path.join(root, 'index.html');
@@ -109,7 +112,7 @@ const runtimeTag = `<script>
     bootTiming.state = 'loading';
     bootTiming.scriptLoadStartMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
     const runtime = document.createElement('script');
-    runtime.src = './assets/${runtimeName}?v=${RELEASE_QUERY}';
+    runtime.src = './assets/${runtimeName}?v=${ASSET_QUERY_OVERRIDES[runtimeName] || RELEASE_QUERY}';
     runtime.defer = true;
     runtime.onerror = failed;
     runtime.onload = () => {
@@ -222,7 +225,7 @@ let optimizedHead = headHtml.replace(extractedStylePattern, (match, attrs, offse
 // Fetch the large classic runtime while the browser parses the lightweight
 // shell. Execution stays deferred until the existing after-paint bootstrap,
 // so this overlaps network transfer without blocking first paint.
-const runtimePreloadTag = `<link rel="preload" as="script" href="./assets/${runtimeName}?v=${RELEASE_QUERY}" fetchpriority="high">`;
+const runtimePreloadTag = `<link rel="preload" as="script" href="./assets/${runtimeName}?v=${ASSET_QUERY_OVERRIDES[runtimeName] || RELEASE_QUERY}" fetchpriority="high">`;
 optimizedHead = optimizedHead.replace('</head>', `${runtimePreloadTag}\n</head>`);
 
 if (!baseStyles.length || !authorityStyles.length) {
