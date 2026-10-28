@@ -106,6 +106,18 @@ function zipEntries(bytes) {
   return { entries, view, bytes };
 }
 
+export function createBoundedByteStream(bytesLike, chunkSize=16*1024) {
+  const bytes=bytesLike instanceof Uint8Array?bytesLike:new Uint8Array(bytesLike);
+  const size=Math.max(1024,Math.min(64*1024,Math.floor(Number(chunkSize)||16*1024)));
+  let offset=0;
+  return new ReadableStream({pull(controller){
+    if(offset>=bytes.length){controller.close();return;}
+    const end=Math.min(bytes.length,offset+size);
+    controller.enqueue(bytes.subarray(offset,end));
+    offset=end;
+  }});
+}
+
 async function zipText(zip, name) {
   const entry = zip.entries.get(name);
   if (!entry) return '';
@@ -117,7 +129,7 @@ async function zipText(zip, name) {
   let payload;
   if (entry.method === 0) payload = compressed;
   else if (entry.method === 8) {
-    const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    const stream = createBoundedByteStream(compressed).pipeThrough(new DecompressionStream('deflate-raw'));
     payload = new Uint8Array(await new Response(stream).arrayBuffer());
   } else throw new Error('ERP_XLSX_COMPRESSION_UNSUPPORTED');
   return new TextDecoder().decode(payload);
@@ -217,7 +229,7 @@ async function visitXlsxRows(zip,sheetPath,visit,element='row',options={}) {
   if(view.getUint32(local,true)!==0x04034b50)throw new Error('ERP_XLSX_ENTRY_INVALID');
   const nameLength=view.getUint16(local+26,true),extraLength=view.getUint16(local+28,true),start=local+30+nameLength+extraLength;
   const compressed=zip.bytes.subarray(start,start+entry.compressed);
-  const source=new Blob([compressed]).stream();
+  const source=createBoundedByteStream(compressed);
   const stream=entry.method===0?source:entry.method===8?source.pipeThrough(new DecompressionStream('deflate-raw')):null;
   if(!stream)throw new Error('ERP_XLSX_COMPRESSION_UNSUPPORTED');
   const reader=stream.getReader(),decoder=new TextDecoder(); let buffer='',index=0,stopped=false;

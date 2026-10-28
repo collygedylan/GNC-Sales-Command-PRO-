@@ -2916,3 +2916,38 @@ test('Invariant 102 (Cloud XLSX Seals Its Exact Parsed Count Before Commit and M
     'stage begins, appends, seals the actual one-row count, commits, then moves the source file');
   assert.equal(cursor.stageResults[0].rowCount, 1);
 });
+
+test('Invariant 103 (Compressed XLSX Bytes Stream in Bounded, Cancellable Chunks)', async () => {
+  const { createBoundedByteStream } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const bytes = Uint8Array.from({ length: 100003 }, (_, index) => index % 251);
+  const chunks = [];
+  const reader = createBoundedByteStream(bytes).getReader();
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  assert.ok(chunks.length > 1);
+  assert.ok(chunks.every(chunk => chunk.length <= 16 * 1024));
+  const copy = new Uint8Array(bytes.length);
+  let offset = 0;
+  for (const chunk of chunks) { copy.set(chunk, offset); offset += chunk.length; }
+  assert.equal(offset, bytes.length);
+  assert.ok(copy.every((value, index) => value === bytes[index]), 'stream output is byte-for-byte identical');
+
+  let pullCount = 0;
+  class PullCountBytes extends Uint8Array {
+    subarray(start, end) { pullCount += 1; return super.subarray(start, end); }
+  }
+  const largeInput = new PullCountBytes(2 * 1024 * 1024);
+  const cancelReader = createBoundedByteStream(largeInput).getReader();
+  const firstChunk = await cancelReader.read();
+  assert.equal(firstChunk.done, false);
+  assert.ok(firstChunk.value.length <= 16 * 1024);
+  const pullsAtCancel = pullCount;
+  await cancelReader.cancel();
+  assert.equal((await cancelReader.read()).done, true);
+  await Promise.resolve();
+  assert.equal(pullCount, pullsAtCancel, 'cancellation prevents further source pulls');
+  assert.ok(pullCount < largeInput.length / (16 * 1024), 'the rest of the source remains unread');
+});

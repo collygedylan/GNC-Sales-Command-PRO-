@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { deflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import { countImportableErpXlsxRows, isLegacyRunScriptAction, normalizeErpRows, parseErpCsv, parseErpXlsx, parseErpXlsxPage, runErpSyncWorker, runErpSyncWorkerStep, shouldIgnoreErpFile, validateErpSyncCommand } from '../supabase/functions/_shared/erp-sync.mjs';
+import { countImportableErpXlsxRows, createBoundedByteStream, isLegacyRunScriptAction, normalizeErpRows, parseErpCsv, parseErpXlsx, parseErpXlsxPage, runErpSyncWorker, runErpSyncWorkerStep, shouldIgnoreErpFile, validateErpSyncCommand } from '../supabase/functions/_shared/erp-sync.mjs';
 
 function makeZip(entries) {
   const locals = [], central = [];
@@ -102,6 +102,15 @@ test('XLSX parser reads first worksheet shared strings and sparse columns in mem
   assert.equal(page.nextOffset,1);
   assert.equal(page.done,true);
   assert.equal(await countImportableErpXlsxRows(bytes,'drive_around'),1);
+});
+
+test('ZIP compressed input is fed to DecompressionStream in bounded backpressured chunks', async () => {
+  const bytes=Uint8Array.from({length:100_003},(_,index)=>index%251);
+  const reader=createBoundedByteStream(bytes).getReader();
+  let count=0,maxChunk=0;
+  while(true){const {value,done}=await reader.read();if(done)break;count+=value.length;maxChunk=Math.max(maxChunk,value.length);}
+  assert.equal(count,bytes.length);
+  assert.ok(maxChunk<=16*1024);
 });
 
 test('streaming XLSX pages stop at bounded worksheet rows and resume with absolute offsets', async () => {
