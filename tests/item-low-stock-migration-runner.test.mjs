@@ -32,7 +32,7 @@ import {
   agdataV2382SuspendViewSchemaCompatMigrationName,
   agdataV2382HlPoSetBasedPageStageMigrationName,
   agdataV2383JdUniversalCustomerDirectoryMigrationName,
-  classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
+  classifyDatabaseError, classifySupabaseCliFailure, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
 
@@ -115,6 +115,17 @@ test('scoped CLI migration path is bounded, history-safe, and verifies installed
   assert.equal(calls.length, 2);
   assert.match(calls[0], /set local statement_timeout='30s'/);
   assert.match(calls[1], /LOW_STOCK_DATABASE_CONTRACT_MISSING/);
+});
+
+test('Supabase CLI query failures expose only a safe diagnostic class', () => {
+  const secret = 'sbp_secret-must-not-appear';
+  assert.equal(classifySupabaseCliFailure({ error: { code: 'ENOENT', message: secret } }), 'LOW_STOCK_SUPABASE_CLI_NOT_FOUND');
+  assert.equal(classifySupabaseCliFailure({ status: 1, stderr: `HTTP 401 invalid access token ${secret}` }), 'LOW_STOCK_SUPABASE_CLI_AUTH_FAILED');
+  assert.equal(classifySupabaseCliFailure({ status: 1, stderr: `failed to run sql: SQLSTATE 42501 ${secret}` }), 'LOW_STOCK_SUPABASE_CLI_QUERY_REJECTED');
+  const formatted = formatSafeFailure({ phase: 'linked_cli_migrations', error: new Error('LOW_STOCK_SUPABASE_CLI_AUTH_FAILED') });
+  assert.match(formatted, /phase=linked_cli_migrations/);
+  assert.match(formatted, /LOW_STOCK_SUPABASE_CLI_AUTH_FAILED/);
+  assert.equal(formatted.includes(secret), false);
 });
 
 test('v2.3.82 Suspend view uses exact physical inventory parity and excludes false blocks', () => {

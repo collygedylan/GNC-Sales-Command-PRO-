@@ -289,6 +289,9 @@ const SAFE_ERROR_MARKERS = new Set([
   'LOW_STOCK_DIAGNOSTIC_CONTEXT_INVALID', 'LOW_STOCK_DIAGNOSTIC_WORKFLOW_INVALID',
   'LOW_STOCK_ARGUMENTS_INVALID', 'LOW_STOCK_SUPABASE_ACCESS_TOKEN_MISSING',
   'LOW_STOCK_SUPABASE_PROJECT_LINK_INVALID', 'LOW_STOCK_SUPABASE_CLI_QUERY_FAILED',
+  'LOW_STOCK_SUPABASE_CLI_NOT_FOUND', 'LOW_STOCK_SUPABASE_CLI_AUTH_FAILED',
+  'LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED', 'LOW_STOCK_SUPABASE_CLI_NETWORK_FAILED',
+  'LOW_STOCK_SUPABASE_CLI_QUERY_REJECTED',
   'LOW_STOCK_SUPABASE_CLI_OUTPUT_INVALID', 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'
 ]);
 
@@ -370,6 +373,7 @@ export function classifyDatabaseError(error) {
 
 const DIAGNOSTIC_PHASES = new Set([
   'diagnostic_authorization', 'target_validation', 'release_ref', 'database_connect',
+  'linked_cli_migrations',
   'transaction_begin', 'advisory_lock', 'migration_history_read', 'migration_sql',
   'migration_history_write', 'contract_check', 'transaction_commit', 'schema_probe',
   'transaction_rollback', 'client_close'
@@ -387,6 +391,27 @@ export function formatSafeFailure({ phase, error, connectionString = '' }) {
   const target = summary ? ` route=${summary.route} port=${summary.port} sslmode=${summary.sslmode}` : '';
   const code = classified.errorCode ? ` error_code=${classified.errorCode}` : '';
   return `${marker} phase=${safePhase} error_class=${classified.errorClass}${code}${target}`;
+}
+
+export function classifySupabaseCliFailure(result) {
+  const errorCode = result?.error && typeof result.error.code === 'string' ? result.error.code : '';
+  if (errorCode === 'ENOENT') return 'LOW_STOCK_SUPABASE_CLI_NOT_FOUND';
+  const output = `${result?.stdout || ''}\n${result?.stderr || ''}`.slice(0, 32_000);
+  const marker = [...SAFE_ERROR_MARKERS].find(value => output.includes(value));
+  if (marker) return marker;
+  if (/unauthori[sz]ed|invalid (?:access )?token|token (?:is )?(?:invalid|expired)|http\s*401/i.test(output)) {
+    return 'LOW_STOCK_SUPABASE_CLI_AUTH_FAILED';
+  }
+  if (/project(?:\s+ref)?[^\n]*(?:not linked|not found)|not linked[^\n]*project/i.test(output)) {
+    return 'LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED';
+  }
+  if (/ENOTFOUND|EAI_AGAIN|ECONN(?:REFUSED|RESET)|ETIMEDOUT|TLS handshake|connection timed out/i.test(output)) {
+    return 'LOW_STOCK_SUPABASE_CLI_NETWORK_FAILED';
+  }
+  if (/SQLSTATE|postgres(?:ql)? error|failed to run sql|query execution failed|permission denied for/i.test(output)) {
+    return 'LOW_STOCK_SUPABASE_CLI_QUERY_REJECTED';
+  }
+  return 'LOW_STOCK_SUPABASE_CLI_QUERY_FAILED';
 }
 
 export function validateDiagnosticContext(env) {
@@ -2867,15 +2892,13 @@ export async function runLinkedSupabaseQuery(sql, { root = process.cwd(), spawn 
   fs.writeFileSync(queryFile, sql, 'utf8');
   let result;
   try {
-    result = spawn('supabase', ['db', 'query', '--linked', '--file', queryFile, '--output-format', 'json'],
+    result = spawn('supabase', ['db', 'query', '--linked', '--file', queryFile, '--output', 'json'],
       { cwd: root, encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
   } finally {
     fs.writeFileSync(queryFile, '');
   }
   if (result.error || result.status !== 0) {
-    const combined = `${result.stdout || ''}\n${result.stderr || ''}`;
-    const code = [...SAFE_ERROR_MARKERS].find(marker => combined.includes(marker)) || 'LOW_STOCK_SUPABASE_CLI_QUERY_FAILED';
-    throw new Error(code);
+    throw new Error(classifySupabaseCliFailure(result));
   }
   return parseSupabaseQueryRows(result.stdout);
 }
