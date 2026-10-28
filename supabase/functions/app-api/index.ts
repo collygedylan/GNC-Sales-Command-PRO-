@@ -1,7 +1,7 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.91";
-const APP_RUNTIME_RELEASE = "AgData v2.3.91";
+const APP_RUNTIME_VERSION = "2.3.92";
+const APP_RUNTIME_RELEASE = "AgData v2.3.92";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -11,7 +11,7 @@ import { readAvPage } from "../_shared/av-read.ts";
 import { captureInventoryLocationRevision, enrichInventoryLocationRows } from "../_shared/inventory-location-on-hand.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
 import { resolveCanonicalUserAccess, hasAnyCanonicalUserAccessFlag, requireCanonicalUserAccessFlag, type CanonicalUserAccess, type CanonicalUserAccessFlag } from "../_shared/canonical-user-access.ts";
-import { handleProductionWorkflow, handleInventoryTransactionHistory, handleInventoryReclassMove, inventoryReclassMoveError, workflowError } from "../_shared/production-workflow.ts";
+import { assertInventoryLiveChangeActorRows, GLOBAL_INVENTORY_LIVE_CHANGE_USERS, handleProductionWorkflow, handleInventoryTransactionHistory, handleInventoryReclassMove, inventoryReclassMoveError, normalizeInventoryLiveChangeUsername, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { Database } from "../_shared/database.types.ts";
@@ -461,7 +461,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.91";
+  const appVersion = "2.3.92";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -2386,6 +2386,25 @@ export async function handleDriveReclassAction(
         validateReclassEditableFieldProposals(protectedPayload);
       }
       catch (error) { return driveReclassErrorResponse(error instanceof Error ? error.message : "DRIVE_RECLASS_V5_PAYLOAD_INVALID"); }
+      const liveChangeRows = [protectedPayload.source, ...(protectedPayload.rowOverlays || [])
+        .map((value) => jsonObject(value))
+        .filter((overlay) => (Array.isArray(overlay.fieldEdits) && overlay.fieldEdits.length > 0)
+          || (Array.isArray(overlay.proposals) && overlay.proposals.length > 0))]
+        .map((row) => ({
+          uniqueId: String(row.unique_id || row.uniqueId || row.source_uid || "").trim(),
+          itemcode: String(row.itemcode || "").trim(),
+          locationcode: String(row.locationcode || "").trim(),
+          lotcode: String(row.lotcode || "").trim(),
+        }));
+      try {
+        await assertInventoryLiveChangeActorRows(supabase, activeProfile, liveChangeRows);
+      } catch (error) {
+        const code = String(error instanceof Error ? error.message : error || "");
+        if (code === "INVENTORY_LIVE_CHANGE_JORGE_ROW_NOT_ASSIGNED") {
+          return errorResponse("Live changes for jorge_colunga are only permitted on rows assigned to jorge_colunga in Assigned Items.", 403, { code });
+        }
+        return driveReclassErrorResponse(code);
+      }
       const enqueueRpc = protectedPayload.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY
         ? "enqueue_drive_reclass_inquiry_v7"
         : protectedPayload.workflowPolicyVersion === RECLASS_SMART_SHIELD_POLICY
@@ -6519,9 +6538,6 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
 
   let protectedMasterUid = "";
   if (PROTECTED_DRIVE_PHOTO_PREFIXES.has(prefix)) {
-    if (!access.isAdmin) {
-      return errorResponse("Drive photo upload requires an active Admin profile.", 403, { code: "drive_photo_forbidden" });
-    }
     protectedMasterUid = String(form.get("masterUid") || "").trim();
     const expectedItemcode = String(form.get("itemCode") || "").trim();
     const expectedLocation = String(form.get("locationCode") || "").trim();
@@ -6539,6 +6555,22 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
       || String(masterRow.locationcode || "").trim() !== expectedLocation
       || String(masterRow.lotcode || "").trim() !== expectedLot) {
       return errorResponse("Drive row identity changed. Refresh before uploading.", 409, { code: "drive_photo_row_conflict" });
+    }
+    const actor = await resolveActiveSessionProfile(session).catch(() => null);
+    if (!actor) return errorResponse("An active profile is required for Drive photo uploads.", 403, { code: "drive_photo_forbidden" });
+    const actorKey = normalizeInventoryLiveChangeUsername(actor.username);
+    if (!access.isAdmin && !GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actorKey) && actorKey !== "jorge_colunga") {
+      return errorResponse("Drive photo upload requires an active Admin profile.", 403, { code: "drive_photo_forbidden" });
+    }
+    try {
+      await assertInventoryLiveChangeActorRows(supabase, actor, [{
+        uniqueId: protectedMasterUid, itemcode: expectedItemcode, locationcode: expectedLocation, lotcode: expectedLot,
+      }]);
+    } catch (error) {
+      const message = actorKey === "jorge_colunga"
+        ? "Live changes for jorge_colunga are only permitted on rows assigned to jorge_colunga in Assigned Items."
+        : "Drive photo upload is only enabled on inventory rows assigned to your account.";
+      return errorResponse(message, 403, { code: String(error instanceof Error ? error.message : "drive_photo_forbidden") });
     }
   }
 

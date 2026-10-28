@@ -100,6 +100,8 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never infer live photo/evidence authority from an Admin role or a previously opened Manager tab: hydrate the canonical Assigned Items index at login, evaluate the displayed physical row with `canUserMakeLiveChangesOnRow`, and repeat Jorge's exact-row/itemcode assignment check in Edge and PostgreSQL before every live write.
+
 - Never mutate `LOC_MATCH_QTY` while evaluating AV invalidation/display eligibility; validation helpers are read-only and must not replace durable Reclass photo evidence with percent-derived math.
 
 - Never omit `loc_match_pct`, `loc_photo_match`, `baseline_on_hand`, or `initial_photo_match_qty` from startup browse or full `inventory_read` projections; falling back to legacy percent math after a confirmed Reclass corrupts the displayed durable evidence.

@@ -11,8 +11,75 @@ export type WorkflowContext = { supabase: RpcClient; actorProfile: JsonRecord; m
 
 const TYPES = new Set(['propagation', 'planting']);
 const IDENTITY_FIELDS = ['unique_id', 'itemcode', 'contsize', 'locationcode', 'lotcode'];
+export const GLOBAL_INVENTORY_LIVE_CHANGE_USERS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']);
 const text = (value: unknown) => String(value ?? '').trim();
 const record = (value: unknown): JsonRecord => value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {};
+
+export type InventoryLiveChangeIdentity = {
+  uniqueId?: string;
+  itemcode?: string;
+  locationcode?: string;
+  lotcode?: string;
+};
+
+export function normalizeInventoryLiveChangeUsername(value: unknown) {
+  const key = text(value).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return ['jorge', 'jorge_colunga', 'colunga_jorge'].includes(key) ? 'jorge_colunga' : key;
+}
+
+export async function assertInventoryLiveChangeActorRows(
+  supabase: RpcClient,
+  actorProfile: JsonRecord,
+  identities: InventoryLiveChangeIdentity[],
+) {
+  const actor = normalizeInventoryLiveChangeUsername(actorProfile.username);
+  const role = text(actorProfile.role).toUpperCase().replace(/[^A-Z]/g, '');
+  if (GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actor) || ['ADMIN', 'ADMINISTRATOR'].includes(role)) return true;
+  if (actor !== 'jorge_colunga') return true;
+  const requested = identities.map((identity) => ({
+    uniqueId: text(identity.uniqueId),
+    itemcode: text(identity.itemcode).toUpperCase(),
+    locationcode: text(identity.locationcode).toUpperCase(),
+    lotcode: text(identity.lotcode).toUpperCase(),
+  })).filter((identity) => identity.uniqueId || identity.itemcode);
+  if (!actor || !requested.length) throw new Error(actor === 'jorge_colunga'
+    ? 'INVENTORY_LIVE_CHANGE_JORGE_ROW_NOT_ASSIGNED' : 'INVENTORY_LIVE_CHANGE_ROW_NOT_ASSIGNED');
+  const uniqueIds = [...new Set(requested.map((identity) => identity.uniqueId).filter(Boolean))];
+  const requestedItemcodes = [...new Set(requested.map((identity) => identity.itemcode).filter(Boolean))];
+  let sourceRows: Array<Record<string, unknown>> = [];
+  if (uniqueIds.length) {
+    const result = await supabase.from('ph_master_inventory')
+      .select('unique_id,itemcode,locationcode,lotcode').in('unique_id', uniqueIds);
+    if (result.error) throw result.error;
+    sourceRows = (result.data || []) as Array<Record<string, unknown>>;
+  }
+  const resolved = requested.map((identity) => {
+    const row = sourceRows.find((candidate) => text(candidate.unique_id) === identity.uniqueId);
+    return row ? {
+      uniqueId: text(row.unique_id), itemcode: text(row.itemcode).toUpperCase(),
+      locationcode: text(row.locationcode).toUpperCase(), lotcode: text(row.lotcode).toUpperCase(),
+    } : identity;
+  });
+  const itemcodes = [...new Set([...requestedItemcodes, ...resolved.map((identity) => identity.itemcode).filter(Boolean)])];
+  const rowAssignments = uniqueIds.length ? await supabase.from('ph_inventory_row_assignments')
+    .select('master_unique_id,itemcode,locationcode,lotcode,assignedto,present_in_drive')
+    .in('master_unique_id', uniqueIds).eq('present_in_drive', true) : { data: [], error: null };
+  if (rowAssignments.error) throw rowAssignments.error;
+  const itemAssignments = itemcodes.length ? await supabase.from('ph_warehouse_assigned_items')
+    .select('itemcode,itemcode_normalized,assignedto,present_in_drive')
+    .in('itemcode', itemcodes).eq('present_in_drive', true) : { data: [], error: null };
+  if (itemAssignments.error) throw itemAssignments.error;
+  const exact = (rowAssignments.data || []) as Array<Record<string, unknown>>;
+  const legacy = (itemAssignments.data || []) as Array<Record<string, unknown>>;
+  const allowed = resolved.every((identity) => exact.some((assignment) =>
+    normalizeInventoryLiveChangeUsername(assignment.assignedto) === actor
+      && text(assignment.master_unique_id) === identity.uniqueId)
+    || legacy.some((assignment) => normalizeInventoryLiveChangeUsername(assignment.assignedto) === actor
+      && text(assignment.itemcode_normalized || assignment.itemcode).toUpperCase() === identity.itemcode));
+  if (!allowed) throw new Error(actor === 'jorge_colunga'
+    ? 'INVENTORY_LIVE_CHANGE_JORGE_ROW_NOT_ASSIGNED' : 'INVENTORY_LIVE_CHANGE_ROW_NOT_ASSIGNED');
+  return true;
+}
 
 export function requireWorkflowActor(actor: JsonRecord, moduleAllowed: boolean) {
   const locked = Date.parse(text(actor.locked_until));
@@ -198,6 +265,12 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
   const commandPayload = { ...payload };
   delete commandPayload.receiptEncoding;
   const command = await resolveCurrentReclassSourceIds(supabase, normalizeReclassMoveCommand(commandPayload));
+  await assertInventoryLiveChangeActorRows(supabase, actorProfile, command.moves.map((move) => ({
+    uniqueId: move.source.uniqueId,
+    itemcode: move.source.identity.itemcode,
+    locationcode: move.source.identity.locationcode,
+    lotcode: move.source.identity.lotcode,
+  })));
   await enforceReclassMoveUpOpenStock(supabase, command);
   const { data, error } = await supabase.rpc('apply_inventory_reclass_moves_with_delivery_v1', {
     p_actor_id: String(actorProfile.id), p_command_id: command.commandId,
@@ -216,11 +289,14 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
 export function inventoryReclassMoveError(error: unknown) {
   const source = record(error);
   const message = error instanceof Error ? error.message : text(source.message);
-  const code = /^(?:INVENTORY_RECLASS|DRIVE_RECLASS)_[A-Z0-9_]+$/.test(message) ? message : 'INVENTORY_RECLASS_UNAVAILABLE';
-  const forbidden = /FORBIDDEN|PERMISSION_REQUIRED|PROFILE_INACTIVE|ACTOR_REQUIRED/.test(code) || source.code === '42501';
+  const code = /^(?:INVENTORY_RECLASS|INVENTORY_LIVE_CHANGE|DRIVE_RECLASS)_[A-Z0-9_]+$/.test(message) ? message : 'INVENTORY_RECLASS_UNAVAILABLE';
+  const forbidden = /FORBIDDEN|PERMISSION_REQUIRED|PROFILE_INACTIVE|ACTOR_REQUIRED|ROW_NOT_ASSIGNED/.test(code) || source.code === '42501';
   const conflict = /CONFLICT|CHANGED|MISSING|AMBIGUOUS|MISMATCH|REFRESH_REQUIRED/.test(code) || (source.code === "40001" || source.code === "PT409");
   const status = forbidden ? 403 : conflict ? 409 : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 503 : 400;
-  return { status, body: { ok: false, code, message: forbidden ? 'You do not have access to Reclass this inventory.'
+  const jorgeAssignedOnly = code === 'INVENTORY_LIVE_CHANGE_JORGE_ROW_NOT_ASSIGNED';
+  return { status: jorgeAssignedOnly ? 403 : status, body: { ok: false, code, message: jorgeAssignedOnly
+    ? 'Live changes for jorge_colunga are only permitted on rows assigned to jorge_colunga in Assigned Items.'
+    : forbidden ? 'You do not have access to Reclass this inventory.'
     : conflict ? 'The physical inventory row could not be confirmed. Your draft is retained for retry.'
       : code === 'INVENTORY_RECLASS_MOVE_UP_OPEN_STOCK_EXCEEDED' ? 'Cannot Move Up more than the source lot Open Stock.'
       : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 'The inventory movement could not be saved. Retry with the same command.'

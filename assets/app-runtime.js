@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.91';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.92';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13118,6 +13118,53 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function hasWarehouseAssignmentSourceRows() {
             return (typeof WAREHOUSE_ASSIGNED_ITEMS_TABLE !== 'undefined' && WAREHOUSE_ASSIGNED_ITEMS_TABLE === 'ph_inventory_row_assignments')
                 || (Array.isArray(warehouseAssignedItemsInventory) && warehouseAssignedItemsInventory.length > 0);
+        }
+
+        const GLOBAL_LIVE_CHANGE_USER_KEYS = Object.freeze(new Set([
+            'dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'
+        ]));
+        const SCOPED_LIVE_CHANGE_USER_KEY = 'jorge_colunga';
+
+        function normalizeLiveChangeUsername(value = '') {
+            const key = normalizeEvalAccessUserKey(value);
+            if (['jorge', 'jorge_colunga', 'colunga_jorge'].includes(key)) return SCOPED_LIVE_CHANGE_USER_KEY;
+            return key;
+        }
+
+        function isRowAssignedToUser(user = '', row = null) {
+            if (!row || typeof row !== 'object') return false;
+            const userKey = normalizeLiveChangeUsername(user);
+            if (!userKey) return false;
+            rebuildWarehouseAssignedItemIndexes();
+            const rowId = String(firstNonEmptyValue(row.master_unique_id, row.MASTER_UNIQUE_ID,
+                row.SOURCE_UNIQUE_ID, row.source_unique_id, row.UNIQUE_ID, row.unique_id, '') || '').trim();
+            const itemcode = normalizeWarehouseAssignedCompactPart(firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''));
+            return (Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : []).some((assignment) => {
+                if (!assignment || assignment.present_in_drive === false) return false;
+                const assignedKey = normalizeLiveChangeUsername(firstNonEmptyValue(assignment.WAREHOUSE_ASSIGNED_USER,
+                    assignment.ASSIGNEDTO, assignment.assignedto, assignment.ASSIGNED_TO, assignment.assigned_to, ''));
+                if (assignedKey !== userKey) return false;
+                const assignmentRowId = String(firstNonEmptyValue(assignment.master_unique_id, assignment.MASTER_UNIQUE_ID, '') || '').trim();
+                if (rowId && assignmentRowId && rowId === assignmentRowId) return true;
+                return !!itemcode && getWarehouseAssignedIdentityParts(assignment).itemcode === itemcode;
+            });
+        }
+
+        function canUserMakeLiveChangesOnRow(user = '', row = null) {
+            const userKey = normalizeLiveChangeUsername(user || currentUser || currentUserDisplay);
+            if (!userKey || !row || typeof row !== 'object') return false;
+            if (GLOBAL_LIVE_CHANGE_USER_KEYS.has(userKey)) return true;
+            if (userKey === SCOPED_LIVE_CHANGE_USER_KEY) return isRowAssignedToUser(userKey, row);
+            const access = getRoleAccessState('', userKey);
+            if (access && access.isAdmin) return true;
+            return false;
+        }
+
+        function warmLiveChangeAssignmentsAfterLogin() {
+            if (!currentUser || !(canAccessView('drive') || canAccessView('av') || canAccessView('managers'))) return false;
+            if (warehouseAssignedItemsInventory.length) rebuildWarehouseAssignedItemIndexes(true);
+            queueDatasetLoad('warehouseAssignedItems', 'full', isTouchConstrainedDevice() ? 180 : 0);
+            return true;
         }
 
         function normalizeSocDockRowAliases(item) {
@@ -26613,7 +26660,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.91').trim() || 'AgData v2.3.91';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.92').trim() || 'AgData v2.3.92';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -40221,13 +40268,15 @@ let avTopControlsRenderToken = 0;
         }
 
         function isWarehouseAssignedDriveCardForCurrentUser(item = null, userOverride = '', displayOverride = '') {
-            const assignedUser = getWarehouseAssignedUserForItem(item);
-            return !!assignedUser && isAssignedToCurrentUser(assignedUser, userOverride, displayOverride);
+            const actor = firstNonEmptyValue(userOverride, displayOverride, currentUser, currentUserDisplay, '');
+            return isRowAssignedToUser(actor, item);
         }
 
         function canCurrentUserUseDriveCardOptions(item = null, sourceView = 'drive', roleOverride = '', userOverride = '', displayOverride = '') {
             const safeSourceView = String(sourceView || '').trim().toLowerCase();
             if (safeSourceView !== 'drive') return true;
+            const actor = firstNonEmptyValue(userOverride, displayOverride, currentUser, currentUserDisplay, '');
+            if (canUserMakeLiveChangesOnRow(actor, item)) return true;
             const access = getRoleAccessState(roleOverride, userOverride);
             if (!access || access.isAdmin) return true;
             if (isAlwaysDriveCardOptionsUser(userOverride, displayOverride)) return true;
@@ -40278,6 +40327,8 @@ let avTopControlsRenderToken = 0;
 
         function canRestrictedEvalUserUpdateItem(item = null, userOverride = '', displayOverride = '') {
             if (!item || typeof item !== 'object') return false;
+            const actor = firstNonEmptyValue(userOverride, displayOverride, currentUser, currentUserDisplay, '');
+            if (canUserMakeLiveChangesOnRow(actor, item)) return true;
             if (isEvalTaskItem(item) || hasEvalTaskRequestMeta(item)) {
                 return getEvalTaskAssignedUsersFromItem(item).some(user => isAssignedToCurrentUser(user, userOverride, displayOverride));
             }
@@ -43398,6 +43449,14 @@ let avTopControlsRenderToken = 0;
                 return false;
             }
             const safeSourceView = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
+            const scopedLiveChangeActor = typeof normalizeLiveChangeUsername === 'function'
+                ? normalizeLiveChangeUsername((typeof currentUser !== 'undefined' ? currentUser : '')
+                    || (typeof currentUserDisplay !== 'undefined' ? currentUserDisplay : '')) : '';
+            if (scopedLiveChangeActor === 'jorge_colunga'
+                && !canUserMakeLiveChangesOnRow(scopedLiveChangeActor, item)) {
+                showToast('Assigned Rows Only', 'Live changes are only enabled for rows assigned to you in the Assigned Items tab.', true);
+                return false;
+            }
             if (safeSourceView === 'suspend-tag' && !canCurrentUserViewDockSuspendDcRequests()) {
                 showToast('Unavailable', 'Suspend Tag actions are not available for this account.', true);
                 return false;
@@ -46000,6 +46059,14 @@ let avTopControlsRenderToken = 0;
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             if (!argosInventoryTransactionState || argosInventoryTransactionState.submitting) return false;
             const submitState = argosInventoryTransactionState;
+            const scopedLiveChangeActor = typeof normalizeLiveChangeUsername === 'function'
+                ? normalizeLiveChangeUsername((typeof currentUser !== 'undefined' ? currentUser : '')
+                    || (typeof currentUserDisplay !== 'undefined' ? currentUserDisplay : '')) : '';
+            if (scopedLiveChangeActor === 'jorge_colunga'
+                && !canUserMakeLiveChangesOnRow(scopedLiveChangeActor, submitState.item)) {
+                showToast('Assigned Rows Only', 'Live changes are only enabled for rows assigned to you in the Assigned Items tab.', true);
+                return false;
+            }
             const submitIdentityKey = getArgosReclassLiveEditIdentityKey();
             const submitIdentityIsCurrent = () => submitIdentityKey === getArgosReclassLiveEditIdentityKey();
             const submitContextIsCurrent = () => argosInventoryTransactionState === submitState && submitIdentityIsCurrent();
@@ -49213,9 +49280,9 @@ let avTopControlsRenderToken = 0;
         }
 
         function canCurrentUserUpdateDrivePhotoData(itemOverride = null, prefix = '') {
-            const access = getRoleAccessState();
-            if (access && access.isAdmin) return true;
-            return canRestrictedEvalUserUpdateItem(getEditableDetailItemForPrefix(prefix, itemOverride), currentUser, currentUserDisplay);
+            const item = getEditableDetailItemForPrefix(prefix, itemOverride);
+            return canUserMakeLiveChangesOnRow(currentUser || currentUserDisplay, item)
+                || canRestrictedEvalUserUpdateItem(item, currentUser, currentUserDisplay);
         }
 
         function canEditRowDetails(prefix = '', itemOverride = null) {
@@ -55923,6 +55990,7 @@ function toggleDriveQuickRequestItem(domId) {
                 // ready while the login surface still covers the app so the
                 // live-sync coordinator can safely hydrate startup lookups.
                 setRoleAccessReadyState(true);
+                warmLiveChangeAssignmentsAfterLogin();
                 registerAppFilterStatePersistence();
                 restorePersistedAppFilterStateForCurrentUser();
                 clearLoginCachePrefetch();
@@ -55973,6 +56041,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             void loadEvalWorkAssignments(false).catch(() => {});
             const roleAccess = getRoleAccessState();
+            warmLiveChangeAssignmentsAfterLogin();
             applyCurrentUserMasterInventoryScope();
             registerAppFilterStatePersistence();
             restorePersistedAppFilterStateForCurrentUser();

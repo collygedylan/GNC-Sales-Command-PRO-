@@ -86,6 +86,7 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 - Never let lot, priority, assignment, or season precede `locationcode`, reintroduce `Showing the first 8 inventory rows`, expose `.017`/`.018` as separate level-two tiles, or replace last-good Eval rows with a loading gate.
 - Never use a Manager refresh to erase field drafts, app-owned notes, task identities, or the shared shell's Back/header state.
 - Never make Assigned Items wait for full master pagination or replace retained assignments with `Load Failed`; paint its current assignment/master slice first and hydrate complete rows behind it.
+- Never require an evaluator to open Manager → Assigned Items before row-scoped controls work; restore the account-owned assignment cache during login and refresh `ph_inventory_row_assignments` in the background before Drive, AV, Item Detail, or Reclass authorization is evaluated.
 - Never replace a complete same-account Eval #2 snapshot with eleven zero buckets while its published source rows are still available, and never make a Bunch Notes suggestion depend on a mobile-native datalist keyboard.
 - Never expose Bunch Notes' internal `setup`/`items` state as an extra Back stop; one shell Back tap must move from a visible location plan directly to its location grid.
 - Never compare Bunch Note drafts and inventory by raw display location or keep drafts only in session memory; normalize `F.05` and `F.05.000`, retain a per-account local shadow through logout, and merge it with the server draft before rendering badges or editors.

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { assertInventoryLiveChangeActorRows } from '../supabase/functions/_shared/production-workflow.ts';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const runtime = read('assets/runtime-watchdog.js');
@@ -255,6 +256,78 @@ test('background Home rendering retains the active Manager module', () => {
   vm.runInContext(html.match(/        function renderHome\([^]*?^        }/m)[0], ctx);
   ctx.renderHome();
   assert.equal(ctx.activeHomeTab, 'access-control');
+});
+
+test('global live-change users and Jorge assigned-row access share one canonical client and server guard', () => {
+  const constant = html.match(/        const GLOBAL_LIVE_CHANGE_USER_KEYS = Object\.freeze\(new Set\(\[[^]*?\]\)\);/)?.[0];
+  assert.ok(constant, 'global live-change user registry');
+  const ctx = vm.createContext({
+    currentUser: 'jorge_colunga', currentUserDisplay: 'Jorge Colunga',
+    warehouseAssignedItemsInventory: [{ master_unique_id: 'row-assigned', itemcode: 'ABC.001', assignedto: 'Colunga, Jorge', present_in_drive: true }],
+    rebuildWarehouseAssignedItemIndexes() {},
+    normalizeEvalAccessUserKey: value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+    normalizeWarehouseAssignedCompactPart: value => String(value || '').trim().toUpperCase().replace(/\s+/g, ''),
+    getWarehouseAssignedIdentityParts: row => ({ itemcode: String(row.itemcode || row.ITEMCODE || '').trim().toUpperCase().replace(/\s+/g, '') }),
+    getRoleAccessState: (_role, user) => user === 'other_admin' ? { isAdmin: true } : { isEval: true, isRepLike: false },
+    isRestrictedEvalUser: access => !!access?.isEval && !access?.isAdmin,
+  });
+  vm.runInContext([constant, "const SCOPED_LIVE_CHANGE_USER_KEY = 'jorge_colunga';", shellFunction('normalizeLiveChangeUsername'), shellFunction('isRowAssignedToUser'),
+    shellFunction('canUserMakeLiveChangesOnRow')].join('\n'), ctx);
+  const assigned = { unique_id: 'row-assigned', itemcode: 'ABC.001' };
+  const unassigned = { unique_id: 'row-other', itemcode: 'XYZ.999' };
+  for (const user of ['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']) {
+    assert.equal(ctx.canUserMakeLiveChangesOnRow(user, unassigned), true, `${user} global live change`);
+  }
+  for (const alias of ['jorge_colunga', 'Jorge Colunga', 'jorge.colunga', 'Colunga, Jorge', 'jorge']) {
+    assert.equal(ctx.canUserMakeLiveChangesOnRow(alias, assigned), true, `${alias} assigned row`);
+    assert.equal(ctx.canUserMakeLiveChangesOnRow(alias, unassigned), false, `${alias} unassigned row`);
+  }
+  assert.equal(ctx.canUserMakeLiveChangesOnRow('other_admin', unassigned), true);
+  const migration = read('supabase/migrations/20261028070752_agdata_v2392_jorge_assigned_live_changes.sql');
+  assert.match(migration, /ph_inventory_row_assignments[\s\S]*ph_warehouse_assigned_items/);
+  assert.match(migration, /drive\.reclass\.submit','assigned'/);
+  assert.match(api, /assertInventoryLiveChangeActorRows\(supabase, activeProfile, liveChangeRows\)/);
+  assert.match(api, /Live changes for jorge_colunga are only permitted on rows assigned to jorge_colunga in Assigned Items\./);
+});
+
+test('Jorge server guard accepts exact and legacy Assigned Items ownership and rejects every unassigned row', async () => {
+  const rowsByTable = {
+    ph_master_inventory: [
+      { unique_id: 'row-exact', itemcode: 'ABC.001', locationcode: 'A.01.000', lotcode: '27.F1' },
+      { unique_id: 'row-legacy', itemcode: 'LEG.002', locationcode: 'B.02.000', lotcode: '27.F1' },
+      { unique_id: 'row-blocked', itemcode: 'NO.003', locationcode: 'C.03.000', lotcode: '27.F1' },
+    ],
+    ph_inventory_row_assignments: [
+      { master_unique_id: 'row-exact', itemcode: 'ABC.001', assignedto: 'Jorge Colunga', present_in_drive: true },
+    ],
+    ph_warehouse_assigned_items: [
+      { itemcode: 'LEG.002', itemcode_normalized: 'LEG.002', assignedto: 'Colunga, Jorge', present_in_drive: true },
+    ],
+  };
+  const calls = [];
+  const supabase = { from(table) {
+    calls.push(table);
+    let rows = [...(rowsByTable[table] || [])];
+    const chain = {
+      select() { return chain; },
+      in(field, values) { rows = rows.filter(row => values.includes(row[field])); return chain; },
+      eq(field, value) { rows = rows.filter(row => row[field] === value); return chain; },
+      then(resolve, reject) { return Promise.resolve({ data: rows, error: null }).then(resolve, reject); },
+    };
+    return chain;
+  } };
+  const jorge = { username: 'jorge_colunga', role: 'EVAL' };
+  assert.equal(await assertInventoryLiveChangeActorRows(supabase, jorge, [{ uniqueId: 'row-exact', itemcode: 'ABC.001' }]), true);
+  assert.equal(await assertInventoryLiveChangeActorRows(supabase, jorge, [{ uniqueId: 'row-legacy', itemcode: 'LEG.002' }]), true);
+  await assert.rejects(assertInventoryLiveChangeActorRows(supabase, jorge,
+    [{ uniqueId: 'row-blocked', itemcode: 'NO.003' }]), /INVENTORY_LIVE_CHANGE_JORGE_ROW_NOT_ASSIGNED/);
+  const beforeGlobal = calls.length;
+  for (const username of ['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']) {
+    assert.equal(await assertInventoryLiveChangeActorRows(supabase, { username, role: 'EVAL' },
+      [{ uniqueId: 'row-blocked', itemcode: 'NO.003' }]), true);
+  }
+  assert.equal(calls.length, beforeGlobal, 'global live-change users do not need assignment lookups');
 });
 
 test('only the admin trio can view Home imported filenames', () => {
