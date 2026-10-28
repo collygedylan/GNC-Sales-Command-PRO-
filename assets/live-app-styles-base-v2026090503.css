@@ -2656,8 +2656,8 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         }
 
 /* AV option metrics keep labels and values legible on narrow cards. */
-body .request-av-option-card-shell .app-card-qty-row,
-body.viewport-compact .request-av-option-card-shell .app-card-qty-row {
+body #view-detail .request-av-option-card-shell .app-card-qty-row,
+body.viewport-compact #view-detail .request-av-option-card-shell .app-card-qty-row {
     grid-template-columns:repeat(3,minmax(0,1fr)) !important;
     gap:.5rem !important;
 }
@@ -2668,6 +2668,32 @@ body .request-av-option-card-shell .app-card-qty-chip {
 body .request-av-option-card-shell .app-card-qty-label {font-size:.58rem !important;white-space:nowrap}
 body .request-av-option-card-shell .app-card-qty-value {font-size:.9rem !important;white-space:nowrap}
 body .request-av-option-card-shell [data-inventory-card-field="holdstopbegindate"] strong {white-space:nowrap}
+body.viewport-compact #view-detail .request-av-option-card-shell .app-drive-card-grid:not(.app-drive-card-grid--no-photo) {
+    grid-template-columns:minmax(4.25rem,4.5rem) minmax(0,1fr) minmax(4.5rem,5rem) !important;
+    grid-template-areas:"photo header reclass" "details details details" !important;
+    gap:6px !important;
+}
+body.viewport-compact #view-detail .request-av-option-card-shell .app-drive-card-grid.app-drive-card-grid--no-photo {
+    grid-template-columns:minmax(0,1fr) minmax(4.5rem,5rem) !important;
+    grid-template-areas:"header reclass" "details details" !important;
+    gap:6px !important;
+}
+body.viewport-compact #view-detail .request-av-option-card-shell .app-drive-card-main {display:contents !important}
+body.viewport-compact #view-detail .request-av-option-card-shell .app-drive-card-photo {grid-area:photo;min-width:0}
+body.viewport-compact #view-detail .request-av-option-card-shell .app-drive-card-header {grid-area:header;min-width:0}
+body.viewport-compact #view-detail .request-av-option-card-shell .app-drive-card-details {grid-area:details;width:100%;min-width:0}
+body.viewport-compact #view-detail .request-av-option-card-shell .app-drive-card-reclass {grid-area:reclass;min-width:0}
+body #view-detail [data-suspend-av-sticky] {
+    position:fixed !important;
+    left:max(var(--shell-gutter,12px),calc((100vw - var(--content-max-width,820px))/2)) !important;
+    right:max(var(--shell-gutter,12px),calc((100vw - var(--content-max-width,820px))/2)) !important;
+    bottom:calc(max(var(--gnc-footer-height,var(--footer-nav-reserve,8.75rem)),var(--gnc-personal-footer-height,0px)) + 8px + env(safe-area-inset-bottom)) !important;
+    width:auto;
+    max-width:min(var(--content-max-width,820px),calc(100vw - (var(--shell-gutter,12px) * 2))) !important;
+    margin:0 !important;
+    box-sizing:border-box;
+    z-index:3100 !important;
+}
 .photo-date-badge-host {
     position: relative;
     display: inline-flex;
