@@ -217,7 +217,7 @@ test('ingestion deployment selects every changed function and preserves remote s
     'buildSuspendTagApprovalEmail_',
     'buildReclassInlineOhText_', 'buildReclassItemInquiryTable_', 'buildCompletedInventoryReclassReportModel_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_',
     'buildReclassInquiryReportModel_', 'getReclassInquiryEmailRecipients_', 'buildReclassInquiryCompactReportHtml_',
-    'buildReclassInquiryEmailHtml_', 'deliverReclassInquiryPayload_', 'handleSignedInventoryReclassMoveDelivery_', 'handleSignedBunchNoteDelivery_',
+    'buildReclassInquiryEmailHtml_', 'deliverReclassInquiryPayload_', 'handleSignedInventoryReclassMoveDelivery_', 'bunchNoteCardRoute_', 'buildBunchNotePdfHtml_', 'handleSignedBunchNoteDelivery_',
     'setupDropFolderAutoSyncTrigger', 'removeDropFolderAutoSyncTrigger', 'runAutoDropFolderSync_',
     'removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_',
     'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync',
@@ -488,10 +488,11 @@ test('release sync head-only mode updates source and never creates a version or 
   assert.match(entrypoint, /headOnly:\s*true/);
   assert.match(entrypoint, /no version creation or deployment update was attempted/);
   const headOnlyBranch = entrypoint.slice(entrypoint.indexOf('if (result.headOnly) {'), entrypoint.indexOf('} else if (result.versionCapacityExhausted)', entrypoint.indexOf('if (result.headOnly) {')));
-  assert.match(headOnlyBranch, /apps-script-head-only-evidence-v1/);
-  assert.match(headOnlyBranch, /headSourceDigest: publishedDigest/);
-  assert.match(headOnlyBranch, /deploymentAfterVersion !== existingDeploymentVersion/);
-  assert.match(headOnlyBranch, /deploymentUpdated: false/);
+  const evidenceSource = readFileSync(new URL('../scripts/apps-script-recovery-evidence.mjs', import.meta.url), 'utf8');
+  assert.match(evidenceSource, /gnc-apps-script-head-only-evidence-v1/);
+  assert.match(evidenceSource, /headSourceDigest: observedDigest/);
+  assert.match(evidenceSource, /deployedVersion !== expectedDeploymentVersion/);
+  assert.match(evidenceSource, /deploymentUpdated: false/);
   assert.doesNotMatch(headOnlyBranch, /versions\.create|deployments\.update/);
 });
 

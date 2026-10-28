@@ -2229,7 +2229,7 @@ test('Invariant 82 (Bunch Worker Patch Reaches Apps Script HEAD Through the Scop
   assert.ok(manifest.appsScriptPatchFunctions.includes('handleSignedBunchNoteDelivery_'));
   assert.match(merger, /bunchNoteEmailHandler = 'handleSignedBunchNoteDelivery_'/);
   assert.match(merger, /additiveEmailHandler, bunchNoteEmailHandler/);
-  assert.match(merger, /name !== bunchNoteEmailHandler/);
+  assert.match(merger, /!bunchNoteEmailFunctions\.has\(name\)/);
   assert.match(read('.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md'), /scoped merger allowlist and additive-function set/);
 });
 
@@ -2634,4 +2634,22 @@ test('Invariant 94 (Suspend Close, AV Options, Processed Toasts, and Eval Filter
   assert.match(edge, /sourceIdentity[\s\S]*operation !== 'close'/);
   assert.match(migration, /suspend-close-stable-identity-v2392[\s\S]*p_operation<>'close'[\s\S]*suspend-tag-complete:/);
   assert.match(migration, /ph_suspend_history[\s\S]*security_invoker=true/);
+});
+
+test('Invariant 95 (Bunch Note Multi-Select Choices Learn Per Field Without Repeating Card Direction)', () => {
+  const bunch = read('assets/bunch-note.js');
+  const css = read('assets/bunch-note.css');
+  const pdf = read('services/bunch-note-pdf.mjs');
+  const api = read('supabase/functions/app-api/index.ts');
+  const gas = read('Code.gs');
+  for (const house of ['North House','South House','East House','West House','Center House']) assert.match(bunch, new RegExp(house));
+  assert.match(bunch, /BUNCH_NOTE_DROPDOWN_STORE_KEY = 'inv_bunch_notes_custom_dropdowns_v1'/);
+  assert.match(bunch, /function renderBunchNoteMultiSelectDropdown[\s\S]*aria-multiselectable="true"[\s\S]*Or type custom/);
+  assert.match(bunch, /ensureBunchNoteDropdownOptionSaved[\s\S]*dropdown_options_save/);
+  assert.match(api, /operation === "dropdown_options_save"[\s\S]*inv_bunch_notes_custom_dropdowns_v1[\s\S]*dylan_collyge/);
+  assert.match(css, /\.bn-card-picker[^}]*padding-bottom:108px/);
+  assert.doesNotMatch(bunch, /Card direction/);
+  assert.doesNotMatch(pdf, /routeParts\.push\(`Direction/);
+  assert.doesNotMatch(pdf, /\['Default house plan', report\.default_house_plan\]/);
+  assert.doesNotMatch(gas, /Default house plan: ' \+ \(r\.default_house_plan/);
 });

@@ -7579,6 +7579,40 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         });
         return jsonResponse({ ok: true, data: { pdfs: rendered.pdfs } });
       }
+      if (operation === "dropdown_options_read") {
+        const { data, error } = await supabase.from("ph_app_settings").select("value")
+          .eq("key", "inv_bunch_notes_custom_dropdowns_v1").limit(1).maybeSingle();
+        if (error) throw error;
+        const value = data?.value && typeof data.value === "object" && !Array.isArray(data.value)
+          ? data.value as Record<string, unknown> : {};
+        return jsonResponse({ ok: true, data: { options: value } });
+      }
+      if (operation === "dropdown_options_save") {
+        if (String(actor.username || "").trim().toLowerCase() !== "dylan_collyge") throw Object.assign(new Error("BUNCH_NOTE_DROPDOWN_OPTIONS_FORBIDDEN"), { code: "42501" });
+        const source = payload.payload && typeof payload.payload === "object" && !Array.isArray(payload.payload)
+          ? payload.payload as Record<string, unknown> : {};
+        if (Object.keys(source).some(key => key !== "options")) throw new Error("BUNCH_NOTE_DROPDOWN_OPTIONS_INVALID");
+        const optionSource = source.options && typeof source.options === "object" && !Array.isArray(source.options)
+          ? source.options as Record<string, unknown> : {};
+        const allowedOptionKeys = new Set(["destination_house", "action", "workflow_instructions", "card_notes", "purpose", "direction", "house_plan", "schedule_alert"]);
+        if (Object.keys(optionSource).some(key => !allowedOptionKeys.has(key))) throw new Error("BUNCH_NOTE_DROPDOWN_OPTIONS_INVALID");
+        const fields: Record<string, string[]> = {};
+        for (const key of allowedOptionKeys) {
+          const values = Array.isArray(optionSource[key]) ? optionSource[key] as unknown[] : [];
+          const seen = new Set<string>();
+          fields[key] = values.map(value => cleanBunchNoteText(value, 500)).filter(value => {
+            const normalized = value.toLocaleLowerCase();
+            if (!value || seen.has(normalized)) return false;
+            seen.add(normalized); return true;
+          }).slice(0, 100);
+        }
+        const value = { version: 1, fields };
+        const { error } = await supabase.from("ph_app_settings").upsert({
+          key: "inv_bunch_notes_custom_dropdowns_v1", value: jsonValue(value), updated_by: actor.id,
+        }, { onConflict: "key" });
+        if (error) throw error;
+        return jsonResponse({ ok: true, data: { options: value } });
+      }
       const { data: dylanRecipient, error: dylanRecipientError } = await supabase.from("profiles")
         .select("id").eq("username", "dylan_collyge").is("disabled_at", null).limit(1).maybeSingle();
       if (dylanRecipientError || !dylanRecipient?.id) throw new Error("BUNCH_NOTE_DYLAN_RECIPIENT_REQUIRED");

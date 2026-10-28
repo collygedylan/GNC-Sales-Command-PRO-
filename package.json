@@ -150,6 +150,8 @@
     "buildReclassInquiryEmailHtml_",
     "deliverReclassInquiryPayload_",
     "handleSignedInventoryReclassMoveDelivery_",
+    "bunchNoteCardRoute_",
+    "buildBunchNotePdfHtml_",
     "handleSignedBunchNoteDelivery_",
     "setupDropFolderAutoSyncTrigger",
     "removeDropFolderAutoSyncTrigger",

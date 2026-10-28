@@ -79,6 +79,8 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never repeat a location-level Direction or default House Plan beneath every Bunch Note commonname, expose Card direction in the card modal, or use single-value/datalist controls for workflow fields that require multi-select; custom choices stay field-scoped and persist to both `inv_bunch_notes_custom_dropdowns_v1` stores.
+
 - Never hardcode Eval-user filtering to only one legacy manager set; the shared filter gate includes Dylan, Megan, JD, Mitch and authenticated Administrators while option values come from the live assignment/evaluator directory.
 
 - Never derive Bunch Notes email recipients from card owners, assignees, optional checkboxes, or stale preview snapshots while the Dylan-only delivery policy is active; in-app assignment and outbound email routing are separate contracts.

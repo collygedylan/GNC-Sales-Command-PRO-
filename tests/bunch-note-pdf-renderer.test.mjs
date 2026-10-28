@@ -73,6 +73,21 @@ test('walking order item fields are stacked and stay together through pagination
   assert.ok(samePage?.includes('Move to H.00.000') && samePage.includes('Notes: leave outside drape for card 5'));
 });
 
+test('Bunch Note PDF prints the house plan value directly and omits per-card direction and house repetition', async () => {
+  const [pdf] = await renderBunchNoteReportsPdf([{
+    job_id: 'clean-plan', note_number: 'BN-CLEAN', instruction_revision: 1,
+    work_type: 'F.05 Bunch Notes', default_house_plan: 'Bunch North House', direction: 'East → West',
+    cards: [card('clean', { workflow_action: 'bunch', destination_house: 'North House', direction: 'East → West', house: 'Bunch North House', workflow_instructions: 'Keep lots separated' })],
+    source: [{ unique_id: 'row-clean', itemcode: 'ITEM-clean', commonname: 'Fredonia Grape clean', contsize: '2DP' }], actions: [],
+  }], 'Dylan', '2026-10-28T12:00:00Z');
+  const text = inspectPdf(pdf).pages.flat().join('\n');
+  assert.match(text, /Bunch North House/);
+  assert.doesNotMatch(text, /Default house plan:/i);
+  assert.doesNotMatch(text, /Direction East|House Bunch North House/);
+  assert.match(text, /Bunch to North House/);
+  assert.match(text, /Instructions: Keep lots separated/);
+});
+
 test('long destinations wrap within an item block without dropping qualifier text', async () => {
   const qualifier = 'Keep every plant together beside the southern greenhouse entrance with clear access for the next truck and the counting team';
   const [pdf] = await renderBunchNoteReportsPdf([{

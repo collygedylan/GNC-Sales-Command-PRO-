@@ -16,7 +16,6 @@ const quantityOf = (object, ...keys) => {
   return 'Unknown';
 };
 const labelUser = user => user.full_name || user.display || user.display_name || user.username || user.id;
-const DIRECTIONS = ['West to East', 'East to West', 'North to South', 'South to North', 'Custom'];
 const ACTIONS = ['', 'move', 'bunch', 'ta', 'haul', 'set_out', 'custom', 'compound'];
 const DESTINATIONS = ['South House', 'North House', 'Center House', 'South & Center House', 'North & Center House', 'East House', 'West House'];
 const EMPTY_VIEW_STATE = Object.freeze({});
@@ -48,7 +47,6 @@ function CardEditor({ location, card, users, busy, selected, onSelect, viewState
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(() => viewState.cardErrors?.[stateId] || '');
   const [changeRejected, setChangeRejected] = useState(() => viewState.rejectedCardIds?.includes(stateId) || false);
-  const [customDirection, setCustomDirection] = useState(Boolean(card.direction && !DIRECTIONS.includes(card.direction)));
   const [customHouse, setCustomHouse] = useState(Boolean(card.house && !(location.house_sections || []).some(section => section.name === card.house)));
   const incomingSignature = JSON.stringify(card);
   const [signature, setSignature] = useState(incomingSignature);
@@ -56,7 +54,6 @@ function CardEditor({ location, card, users, busy, selected, onSelect, viewState
     if (!viewState.dirtyCardIds?.includes(stateId) && dirty) setDirty(false);
     if (!dirty && incomingSignature !== signature) {
       setForm({ ...card }); setSignature(incomingSignature);
-      setCustomDirection(Boolean(card.direction && !DIRECTIONS.includes(card.direction)));
       setCustomHouse(Boolean(card.house && !(location.house_sections || []).some(section => section.name === card.house)));
     }
   }, [incomingSignature, signature, dirty, card, viewState.dirtyCardIds, stateId]);
@@ -135,13 +132,12 @@ function CardEditor({ location, card, users, busy, selected, onSelect, viewState
         <label className="bn-board-card__include"><input type="checkbox" checked={Boolean(form.included)} onClick={stop} onChange={setIncluded} /> Include in this Bunch Note</label>
         {form.group_id && <span className="bn-board-card__metadata">Grouped card</span>}
         <span className="bn-board-card__metadata">Worker: {users.find(user => user.id === form.owner_id)?.display || users.find(user => user.id === form.owner_id)?.full_name || users.find(user => user.id === form.owner_id)?.username || (form.owner_id ? 'Assigned' : 'Unassigned')}</span>
-        <span className="bn-board-card__metadata">House: {form.house || 'Not specified'} · Direction: {form.direction || (!form.included ? location.direction : '') || 'Not specified'}</span>
+        <span className="bn-board-card__metadata">House: {form.house || 'Not specified'}</span>
       </div>
       <div className="bn-board-card__quick" aria-label="Card quick actions">
         <button type="button" onClick={move}>Move</button>
         <button type="button" aria-label="Assign Worker Name" aria-expanded={activeAction === 'worker'} onClick={event => { stop(event); openAction('worker'); }}>Assign</button>
         <button type="button" aria-label="House to work in" aria-expanded={activeAction === 'house'} onClick={event => { stop(event); openAction('house'); }}>House</button>
-        <button type="button" aria-expanded={activeAction === 'direction'} onClick={event => { stop(event); openAction('direction'); }}>Direction</button>
         <button type="button" aria-expanded={activeAction === 'editor'} onClick={event => { stop(event); openAction('editor'); }}>Quick Editor</button>
         {activeAction === 'worker' && <label>Worker<select aria-label="Assign worker" value={form.owner_id || ''} disabled={Boolean(location.job_id)} onClick={stop} onChange={event => update({ owner_id: event.target.value || null })}>
           <option value="">Unassigned</option>{workerOptions.map(user => <option key={user.id} value={user.id}>{labelUser(user)}</option>)}
@@ -152,15 +148,9 @@ function CardEditor({ location, card, users, busy, selected, onSelect, viewState
         }}>
           <option value="">Select house</option>{(location.house_sections || []).map(section => <option key={section.id} value={section.name}>{section.name}</option>)}<option value="Custom">Custom house…</option>
         </select></label>}
-        {activeAction === 'direction' && <label>Direction<select aria-label="Direction" value={customDirection ? 'Custom' : (form.direction || (!form.included ? location.direction : '') || '')} onClick={stop} onChange={event => {
-          setCustomDirection(event.target.value === 'Custom');
-          update({ direction: event.target.value === 'Custom' ? form.direction : event.target.value });
-        }}><option value="">{form.included ? 'Not specified' : 'Use location default'}</option>{DIRECTIONS.map(direction => <option key={direction} value={direction}>{direction}</option>)}</select></label>}
-        {activeAction === 'direction' && customDirection && <input aria-label="Custom direction" value={form.direction || ''} onClick={stop} onChange={event => update({ direction: event.target.value })} />}
         {activeAction === 'house' && customHouse && <input aria-label="Custom house to work in" value={form.house || ''} onClick={stop} onChange={event => update({ house: event.target.value })} />}
         {activeAction === 'editor' && <div className="bn-board-card__editor" onClick={stop}>
           <label>Action<input list={`${listId}-actions`} value={form.workflow_action || ''} onChange={event => update({ workflow_action: event.target.value })} /><datalist id={`${listId}-actions`}>{ACTIONS.map(value => <option key={value} value={value} />)}</datalist></label>
-          <label>Card direction<input list={`${listId}-directions`} value={form.direction || ''} onChange={event => update({ direction: event.target.value })} /><datalist id={`${listId}-directions`}>{DIRECTIONS.map(value => <option key={value} value={value} />)}</datalist></label>
           <label>Destination<input list={`${listId}-destinations`} value={form.destination_location || form.destination_house || ''} onChange={event => update({ destination_location: event.target.value, destination_house: event.target.value })} /><datalist id={`${listId}-destinations`}>{DESTINATIONS.map(value => <option key={value} value={value} />)}</datalist></label>
           <label>Assigned users<select multiple value={form.owner_ids || (form.owner_id ? [form.owner_id] : [])} onChange={event => { const owner_ids = [...event.target.selectedOptions].map(option => option.value); update({ owner_ids, owner_id: owner_ids[0] || null }); }}>{workerOptions.map(user => <option key={user.id} value={user.id}>{labelUser(user)}</option>)}</select></label>
           <label>Card notes<textarea value={form.notes || ''} onChange={event => update({ notes: event.target.value })} /></label>

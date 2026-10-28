@@ -458,3 +458,11 @@ test('v2.3.56 preserves admin evidence authorization, reconciliation, and home l
   assert.match(appRuntime, /function getHomeDesktopColumnCount[^]*Math\.min\(total, 3\)[^]*profile\.width < 768[^]*compactHomeLayout \? 2 : getHomeDesktopColumnCount/);
   assert.match(styles, /overflow: hidden !important[^]*:is\(#home-dashboard-grid, #home-rep-dashboard-grid\)[^]*grid-auto-rows: var\(--home-fit-tile-height, 44px\)/);
 });
+
+test('Bunch Notes custom dropdown persistence is authenticated and Dylan-write-scoped', () => {
+  const appApi = read('supabase/functions/app-api/index.ts');
+  assert.match(appApi, /operation === "dropdown_options_read"[\s\S]*ph_app_settings[\s\S]*inv_bunch_notes_custom_dropdowns_v1/);
+  assert.match(appApi, /operation === "dropdown_options_save"[\s\S]*actor\.username[\s\S]*dylan_collyge[\s\S]*BUNCH_NOTE_DROPDOWN_OPTIONS_FORBIDDEN/);
+  assert.match(appApi, /allowedOptionKeys = new Set\(\["destination_house", "action", "workflow_instructions", "card_notes", "purpose", "direction", "house_plan", "schedule_alert"\]\)/);
+  assert.doesNotMatch(appApi, /operation === "dropdown_options_save"[\s\S]{0,1200}TO authenticated/);
+});

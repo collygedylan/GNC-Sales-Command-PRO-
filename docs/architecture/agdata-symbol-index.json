@@ -591,7 +591,10 @@
       ],
       "Code.gs": [
         "handleSignedEvalWorkDelivery_",
-        "handleSignedLocationWorkDelivery_"
+        "handleSignedLocationWorkDelivery_",
+        "bunchNoteCardRoute_",
+        "buildBunchNotePdfHtml_",
+        "handleSignedBunchNoteDelivery_"
       ],
       "index.html": [
         "resumeAssignedItemsNotification"
@@ -603,7 +606,12 @@
           "requiredBunchRecipientIds",
           "suggestionField",
           "locationSetupHtml",
+          "renderBunchNoteMultiSelectDropdown",
+          "ensureBunchNoteDropdownOptionSaved",
           "editor"
+        ],
+        "services/bunch-note-pdf.mjs": [
+          "renderBunchNoteReportsPdf"
         ],
         "supabase/migrations/20261028070752_agdata_v2392_jorge_assigned_live_changes.sql": [
           "inventory_row_assigned_to_actor_v2392",

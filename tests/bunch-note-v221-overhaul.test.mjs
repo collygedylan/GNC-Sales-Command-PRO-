@@ -51,12 +51,15 @@ function runtime(options = {}) {
   const requests = [];
   let savedBody = null;
   let frozenPreviewBody = null;
+  let savedDropdownOptions = null;
   window.postAppFunctionJson = async (_url, request) => {
     requests.push(plain(request));
     if (request.operation === 'blocks') return { ok: true, data: { blocks: options.blocks || ['D'] } };
     if (request.operation === 'directory') return { ok: true, data: { users: [{ id: 'worker-1', username: 'sam', display: 'Sam' }] } };
     if (request.operation === 'drafts') return { ok: true, data: { drafts: options.drafts || [] } };
     if (request.operation === 'catalog') return { ok: true, data: { options: [], locations: ['D.05.000', 'D.05.001', 'G.15.001', 'H.00.031'] } };
+    if (request.operation === 'dropdown_options_read') return { ok: true, data: { options: options.dropdownOptions || {} } };
+    if (request.operation === 'dropdown_options_save') { savedDropdownOptions = plain(request.payload.options); return { ok: true, data: { options: { version: 1, fields: savedDropdownOptions } } }; }
     if (request.operation === 'inventory') return { ok: true, data: { rows: options.rows || rows } };
     if (request.operation === 'save') {
       savedBody = plain(request.payload.body);
@@ -77,7 +80,7 @@ function runtime(options = {}) {
   window.postGoogleScriptJsonPayload = async () => { throw new Error('PDF preview must use the authenticated app API'); };
   window.eval(read('assets/location-code.js'));
   window.eval(read('assets/bunch-note.js'));
-  return { dom, window, note: window.BunchNote, requests, get savedBody() { return savedBody; }, get frozenPreviewBody() { return frozenPreviewBody; } };
+  return { dom, window, note: window.BunchNote, requests, get savedBody() { return savedBody; }, get frozenPreviewBody() { return frozenPreviewBody; }, get savedDropdownOptions() { return savedDropdownOptions; } };
 }
 
 async function openLocation(rt) {
@@ -92,7 +95,28 @@ test('Bunch Notes focus calls never use the native scrolling default', () => {
   assert.doesNotMatch(source,/schedulePickerScrollRestore|pickerPositionGeneration/);
 });
 
-test('card picker input changes retain DOM identity, scroll and focused controls', async () => {
+test('Bunch Notes house-plan controls multi-select and learn custom choices per field', async () => {
+  const rt = runtime();
+  await openLocation(rt);
+  rt.note.wizardField('workType', 'Bunch');
+  rt.note.toggleMultiSelectMenu('header-house-plan');
+  const options = [...rt.window.document.querySelectorAll('[data-bn-multi-select="header-house-plan"] .bn-choice')].map(node => node.textContent.trim());
+  assert.deepEqual(options.slice(0, 5), ['North House','South House','East House','West House','Center House']);
+  const target = { kind: 'wizard', field: 'default_house_plan' };
+  rt.note.toggleMultiSelectValue(target, 'house_plan', 'North House');
+  rt.note.toggleMultiSelectValue(target, 'house_plan', 'Center House');
+  const input = rt.window.document.getElementById('bn-custom-header-house-plan');
+  input.value = 'Propagation House';
+  await rt.note.addMultiSelectCustom(target, 'house_plan', input.id);
+  const stored = JSON.parse(rt.window.localStorage.getItem('inv_bunch_notes_custom_dropdowns_v1'));
+  assert.deepEqual(stored.fields.house_plan, ['Propagation House']);
+  assert.deepEqual(rt.savedDropdownOptions.house_plan, ['Propagation House']);
+  await rt.note.nextItems();
+  assert.equal(rt.savedBody.locations[0].default_house_plan, 'North House\nCenter House\nPropagation House');
+  assert.doesNotMatch(rt.window.document.body.textContent, /Default house plan:/i);
+});
+
+test('card picker input changes retain scroll and focused controls through multi-select rerenders', async () => {
   const rt = runtime();
   await openLocation(rt);
   rt.note.wizardField('workType', 'Inspect');
@@ -114,14 +138,15 @@ test('card picker input changes retain DOM identity, scroll and focused controls
   assert.equal(rt.window.document.activeElement, checkbox);
 
   rt.note.showPickerDetails();
-  const action = rt.window.document.querySelector('[aria-label="Required card action"]');
+  const action = rt.window.document.querySelector('[data-bn-multi-select="picker-action"] [aria-label="Action"]');
   action.focus();
   const details = rt.window.document.querySelector('.bn-card-picker');
   details.scrollTop = 180;
-  rt.note.pickerField('workflow_action', 'move');
-  assert.equal(rt.window.document.querySelector('.bn-card-picker'), details);
-  assert.equal(rt.window.document.querySelector('[aria-label="Required card action"]'), action);
-  assert.equal(rt.window.document.activeElement, rt.window.document.querySelector('[aria-label="Required card action"]'));
+  rt.note.toggleMultiSelectValue({ kind: 'picker', field: 'workflow_action' }, 'action', 'Move');
+  assert.ok(rt.window.document.querySelector('.bn-card-picker'));
+  const rerenderedAction = rt.window.document.querySelector('[data-bn-multi-select="picker-action"] [aria-label="Action"]');
+  assert.ok(rerenderedAction);
+  assert.equal(rt.window.document.activeElement, rerenderedAction);
   assert.equal(rt.window.document.querySelector('.bn-card-picker').scrollTop, 180);
   rt.dom.window.close();
 });
@@ -175,7 +200,7 @@ test('canonical destination selection keeps the input and does not steal newer f
   assert.ok(destination);
   destination.focus();
   rt.note.pickerField('destination_search', 'D.05.');
-  const action=rt.window.document.querySelector('[aria-label="Required card action"]');
+  const action=rt.window.document.querySelector('[data-bn-multi-select="picker-action"] [aria-label="Action"]');
   action.focus({preventScroll:true});
   rt.note.pickCardDestination('D.05.');
   assert.equal(rt.window.document.querySelector('[aria-label="Move destination"]'),destination);
@@ -203,9 +228,9 @@ test('reopening and saving an existing Move card preserves qualifier and instruc
 
   rt.note.togglePickerCard(cardKey, true);
   rt.note.showPickerDetails();
-  assert.equal(rt.window.document.querySelector('[aria-label="Required card action"]').value, 'move');
+  assert.match(rt.window.document.querySelector('[data-bn-multi-select="picker-action"] [aria-label="Action"]').textContent, /move/i);
   assert.equal(rt.window.document.querySelector('[aria-label="Destination qualifier"]').value, 'South House staging row');
-  assert.equal(rt.window.document.querySelector('[data-bn-focus-key="field:Workflow instructions"]').value, 'Keep this lot with the south crew');
+  assert.match(rt.window.document.querySelector('[data-bn-multi-select="picker-instructions"] [aria-label="Workflow instructions"]').textContent, /Keep this lot with the south crew/);
   await rt.note.commitPickerCard();
   await rt.note.preview();
 
@@ -284,7 +309,7 @@ test('header blueprint persists purpose, plan, banner, direction, and quick rule
   const rt = runtime();
   await openLocation(rt);
   assert.match(rt.window.document.querySelector('#bunch-note-content').textContent, /Purpose|Sequence Thread/);
-  assert.match(rt.window.document.querySelector('#bunch-note-content').textContent, /Default House Plan/);
+  assert.match(rt.window.document.querySelector('#bunch-note-content').textContent, /House Plan/);
   assert.match(rt.window.document.querySelector('#bunch-note-content').textContent, /Schedule|Prerequisite Alert/);
   assert.match(rt.window.document.querySelector('#bunch-note-content').textContent, /Keep countable rows/);
   rt.note.wizardField('purpose_thread', 'Early Winter Protect');
@@ -498,9 +523,9 @@ test('bulk values and assignments survive action rerender; inline action reveals
   rt.note.closeCardPicker();
   const card = rt.savedBody.locations[0].cards[0];
   let content = rt.window.document.querySelector('#bunch-note-content');
-  const inlineAction = content.querySelector(`[aria-label="Action for PLANT-A"]`);
-  inlineAction.value = 'move';
-  inlineAction.dispatchEvent(new rt.window.Event('change', { bubbles: true }));
+  const inlineAction = content.querySelector(`[data-bn-multi-select="card-action:${card.id}"] [aria-label="Action"]`);
+  assert.ok(inlineAction);
+  rt.note.toggleMultiSelectValue({ kind: 'card', location: 'D.05.000', id: card.id, field: 'workflow_action' }, 'action', 'Move');
   content = rt.window.document.querySelector('#bunch-note-content');
   assert.ok(content.querySelector('[aria-label="Move destination for PLANT-A"]'), 'Move choice immediately reveals its destination input');
 

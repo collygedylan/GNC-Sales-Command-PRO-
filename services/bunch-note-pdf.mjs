@@ -156,12 +156,12 @@ function buildBlocks(report) {
   if (isPresent(report.instruction_revision)) subtitleParts.push(`Revision ${report.instruction_revision}`);
   if (report.report_kind === 'completed_work' && isPresent(report.work_revision)) subtitleParts.push(`Completed work ${report.work_revision}`);
   addText(subtitleParts.join(' | '), { bold: true, size: 10, after: 7 });
+  if (isPresent(report.default_house_plan)) addText(normalizedText(report.default_house_plan).trim().replace(/\r?\n/g, ' | '), { bold: true, size: 13, after: 7 });
 
   const metadata = [
     ['Purpose / sequence', report.purpose_thread],
     ['Direction', report.direction],
     ['Target houses', report.target_houses],
-    ['Default house plan', report.default_house_plan],
     ['Priority / order', report.priority],
     ['Schedule / prerequisite alert', report.schedule_banner],
     ['Header rules', Array.isArray(report.rule_chips) ? report.rule_chips.filter(isPresent).join(' | ') : ''],
@@ -198,20 +198,15 @@ function buildBlocks(report) {
       const itemCode = isPresent(card.itemcode || row?.itemcode) ? ` (${card.itemcode || row?.itemcode})` : '';
       const firstLine = isInventory ? `${itemNumber}. ${callout}${isPresent(size) ? `${size} ` : ''}${variety}${itemCode}` : `${callout}${variety}`;
       const itemLines = wrapText(firstLine, BODY_WIDTH - 8, 11, 'Helvetica-Bold').map(text => ({ text, size: 11, font: 'Helvetica-Bold', indent: 8 }));
-      const routeParts = [];
-      const action = String(card.workflow_action || '').trim().toLowerCase();
-      if (action === 'move') {
-        if (isPresent(card.destination_location)) routeParts.push(`Move to ${card.destination_location}${isPresent(card.destination_qualifier) ? ` | ${card.destination_qualifier}` : ''}`);
-        else routeParts.push('Move');
-      } else if (action === 'bunch') routeParts.push(isPresent(card.destination_house) ? `Bunch to ${card.destination_house}` : 'Bunch');
-      else if (action === 'ta') routeParts.push('TA (Throw Away)');
-      else if (action === 'haul') routeParts.push('Haul');
-      else if (action === 'set_out') routeParts.push('Set out');
-      else if (action === 'custom') routeParts.push('Custom action');
-      else if (action === 'compound') routeParts.push('Compound action');
-      if (isPresent(card.destination_location) && action !== 'move') routeParts.push(`Destination ${card.destination_location}`);
-      if (isPresent(card.direction)) routeParts.push(`Direction ${card.direction}`);
-      if (isPresent(card.house)) routeParts.push(`House ${card.house}`);
+      const actions = String(card.workflow_action || '').split(/\r?\n|\s+·\s+/).map(value => value.trim()).filter(Boolean);
+      const routeParts = actions.map(value => {
+        const action = value.toLowerCase();
+        if (action === 'move' || action.startsWith('move ')) return isPresent(card.destination_location) ? `Move to ${card.destination_location}${isPresent(card.destination_qualifier) ? ` | ${card.destination_qualifier}` : ''}` : 'Move';
+        if (action === 'bunch' || action.startsWith('bunch') || action.includes('& bunch')) return isPresent(card.destination_house) ? `Bunch to ${String(card.destination_house).replace(/\r?\n/g, ' | ')}` : value;
+        if (action === 'ta' || action.startsWith('ta ')) return 'TA (Throw Away)';
+        return value;
+      });
+      if (isPresent(card.destination_location) && !actions.some(value => value.toLowerCase() === 'move' || value.toLowerCase().startsWith('move '))) routeParts.push(`Destination ${card.destination_location}`);
       const details = [];
       if (isPresent(card.workflow_instructions)) details.push(`Instructions: ${card.workflow_instructions}`);
       if (isPresent(card.notes)) details.push(`Notes: ${card.notes}`);
