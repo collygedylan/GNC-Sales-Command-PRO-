@@ -1446,7 +1446,7 @@ test('Request and Assigned Items paint retained rows before bounded background h
   assert.match(requestRefresh, /REQUEST_VIEW_BACKGROUND_TIMEOUT_MS[\s\S]*Request queue refresh/);
   assert.doesNotMatch(assignedPanel, /return ['"`][^'"`]*Loading AssignedTo rows/);
   assert.match(managerRender, /activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender\('managers'\)/);
-  assert.match(assignedEntry, /force: !warehouseAssignedItemsInventory\.length[\s\S]*bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory\.length[\s\S]*preserveRequestedMode: true/);
+  assert.match(assignedEntry, /force: !warehouseAssignedItemsInventory\.length[\s\S]*bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory\.length[\s\S]*retryOnCancellation: !warehouseAssignedItemsInventory\.length[\s\S]*preserveRequestedMode: true/);
 });
 
 

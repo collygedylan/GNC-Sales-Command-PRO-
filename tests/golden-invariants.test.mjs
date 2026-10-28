@@ -2675,7 +2675,9 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   const loader = runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad'));
   assert.match(entry, /ensureDatasetLoaded\('warehouseAssignedItems', 'full', \{[\s\S]*force: !warehouseAssignedItemsInventory\.length/);
   assert.match(entry, /bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory\.length/);
+  assert.match(entry, /retryOnCancellation: !warehouseAssignedItemsInventory\.length/);
   assert.match(loader, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
+  assert.match(loader, /maxRetries = options\.retryOnCancellation === true \? 4 : 0[\s\S]*getSupabaseReadErrorCode\(error\) !== 'REQUEST_ABORTED'/);
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);

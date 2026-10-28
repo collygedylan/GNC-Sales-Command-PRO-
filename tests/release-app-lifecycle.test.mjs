@@ -38,7 +38,8 @@ test('v2.3.93 assets and worker upgrade purge previous cache generations', () =>
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
     const asset = new URL(match[1], 'https://agmetricapp.com');
-    assert.equal(asset.searchParams.get('v'), asset.pathname === '/assets/mobile-workspace.js' ? '2.3.93.1' : '2.3.93', match[1]);
+    const hotfixAsset = ['/assets/mobile-workspace.js', '/assets/app-runtime.js'].includes(asset.pathname);
+    assert.equal(asset.searchParams.get('v'), hotfixAsset ? '2.3.93.1' : '2.3.93', match[1]);
   }
   assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.93'/);
   assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'postgres-erp-sync-r1'/);

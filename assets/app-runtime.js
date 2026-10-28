@@ -35166,15 +35166,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 });
                 return true;
             };
+            const runLoadWithCancellationRetry = async () => {
+                const maxRetries = options.retryOnCancellation === true ? 4 : 0;
+                for (let attempt = 0; ; attempt += 1) {
+                    try { return await runLoad(); }
+                    catch (error) {
+                        if (attempt >= maxRetries || getSupabaseReadErrorCode(error) !== 'REQUEST_ABORTED') throw error;
+                        await new Promise(resolve => setTimeout(resolve, 600 * (attempt + 1)));
+                    }
+                }
+            };
 
             if (wantsFull) {
-                state.fullPromise = Promise.resolve(state.initialPromise).catch(() => false).then(runLoad).finally(() => {
+                state.fullPromise = Promise.resolve(state.initialPromise).catch(() => false).then(runLoadWithCancellationRetry).finally(() => {
                     state.fullPromise = null;
                 });
                 return state.fullPromise;
             }
 
-            state.initialPromise = runLoad().finally(() => {
+            state.initialPromise = runLoadWithCancellationRetry().finally(() => {
                 state.initialPromise = null;
             });
             return state.initialPromise;
@@ -128918,6 +128928,7 @@ C.14.043 C.15.000
                 ensureDatasetLoaded('warehouseAssignedItems', 'full', {
                     force: !warehouseAssignedItemsInventory.length,
                     bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory.length,
+                    retryOnCancellation: !warehouseAssignedItemsInventory.length,
                     preserveRequestedMode: true
                 }).then(() => scheduleManagersRender(true)).catch(() => {});
             }
