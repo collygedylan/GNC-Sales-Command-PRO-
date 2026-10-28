@@ -320,7 +320,7 @@ test('manual cloud sync explicitly continues bounded steps until the terminal ID
     let call = 0;
     const sandbox = {
         module: { exports: {} },
-        MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 330000,
+        MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000,
         firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
         APP_API_FUNCTION_URL: '/app-api',
         postAppFunctionJson: async (_url, body, options) => {
@@ -370,6 +370,67 @@ test('stale server sync remains resumable while a same-browser run stays protect
     sandbox.isRunScriptActive = true;
     sandbox.module.exports();
     assert.equal(button.disabled, true, 'a continuation already running in this browser prevents a duplicate click');
+});
+
+test('compact sync diagnostics retain the active stage count through terminal IDLE', () => {
+    const source = inlineFunctionSource('updateSyncDiagnostics');
+    const badge = { classList: { toggle() {} }, innerText: '', className: '' };
+    const detail = { classList: { toggle() {} }, innerText: '' };
+    let active = true;
+    const sandbox = {
+        module: { exports: {} },
+        document: { getElementById: id => id === 'sync-diagnostics-badge' ? badge : id === 'sync-diagnostics-detail' ? detail : null },
+        navigator: { onLine: true },
+        hasActiveManualSync: () => active,
+        isTouchConstrainedDevice: () => true,
+        isPassiveChromeSyncWindowActive: () => false,
+        isAutoManualSyncStatus: () => false,
+        getManualSyncProgressInfo: () => ({ text: active ? '1/5' : '' }),
+        getManualSyncStatusText: () => 'Importing Drive',
+        getDatasetRevisionConnectionLabel: () => '',
+        formatDiagnosticsTime: () => '',
+        getDiagnosticsPlatformLabel: () => 'Mobile',
+        lastSuccessfulSyncTime: '', liveSyncMode: 'idle', window: {}
+    };
+    vm.runInNewContext(`${source}\nmodule.exports = updateSyncDiagnostics;`, sandbox);
+    sandbox.module.exports('manual-sync');
+    assert.equal(badge.innerText, 'SYNC 1/5');
+    assert.equal(detail.innerText, 'SYNC 1/5');
+    active = false;
+    sandbox.module.exports('idle');
+    assert.equal(badge.innerText, 'IDLE');
+});
+
+test('manual cloud continuation has a ten-minute overall deadline and finite steps', async () => {
+    const functionStart = html.indexOf('        async function continueManualErpSync(');
+    assert.ok(functionStart > 0);
+    const functionEnd = html.slice(functionStart + 1).search(/\r?\n        (?:async )?function \w+\(/);
+    const source = html.slice(functionStart, functionStart + 1 + functionEnd);
+    assert.match(html, /const MANUAL_SYNC_SCRIPT_TIMEOUT_MS = 600000/);
+    assert.match(source, /const maxSteps = 300/);
+    let now = 0;
+    const timeouts = [];
+    let requests = 0;
+    const sandbox = {
+        module: { exports: {} }, Date: { now: () => now },
+        MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000,
+        firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
+        APP_API_FUNCTION_URL: '/app-api',
+        postAppFunctionJson: async (_url, body, options) => {
+            requests += 1;
+            assert.equal(body.operation, 'continue');
+            timeouts.push(options.timeoutMs);
+            now += 120000;
+            return { ok: true, status: 'CONTINUE', data: { runStatus: { active: true, runId: 'run-timeboxed' } } };
+        },
+        applyManualSyncStatus() {},
+        setTimeout: callback => { callback(); return 0; },
+        Promise
+    };
+    vm.runInNewContext(`${source}\nmodule.exports = continueManualErpSync;`, sandbox);
+    await assert.rejects(sandbox.module.exports({ runId: 'run-timeboxed' }), /ERP_SYNC_CONTINUE_DEADLINE/);
+    assert.equal(requests, 5, 'the watcher stops after the finite deadline instead of spinning indefinitely');
+    assert.deepEqual(timeouts, [135000, 135000, 135000, 135000, 120000], 'each request remains below the 140-second lease');
 });
 
 test('header timestamp accepts any current-scope data cohort and ignores empty navigation statuses', () => {

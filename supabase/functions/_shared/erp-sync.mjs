@@ -161,6 +161,10 @@ export async function parseErpXlsx(bytesLike) {
   return recordsToObjects(rows);
 }
 
+function sharedValue(shared,index) {
+  return shared instanceof Map?shared.get(index)??'':shared[index]??'';
+}
+
 function parseXlsxRowXml(rowXml, shared) {
   const opening=rowXml.match(/^<row\b([^>]*)>/)?.[1]||'';
   const rowNumber=Number(opening.match(/\br="(\d+)"/)?.[1]||0);
@@ -174,7 +178,7 @@ function parseXlsxRowXml(rowXml, shared) {
     const raw=cellContent.match(/<v\b[^>]*>([\s\S]*?)<\/v>/)?.[1];
     const inline=[...cellContent.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(match=>xmlText(match[1])).join('');
     let value=raw===undefined?inline:xmlText(raw);
-    if(type==='s')value=shared[Number(value)]??'';
+    if(type==='s')value=sharedValue(shared,Number(value));
     cells[column-1]=value;
   }
   return {rowNumber,cells:cells.map(value=>value??'')};
@@ -190,16 +194,13 @@ function parseXlsxSelectedCells(rowXml,shared,wantedColumns) {
     const type=cellMatch[1].match(/\bt="([^"]+)"/)?.[1],cellContent=cellMatch[2]||'';
     const raw=cellContent.match(/<v\b[^>]*>([\s\S]*?)<\/v>/)?.[1];
     const inline=[...cellContent.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(match=>xmlText(match[1])).join('');
-    let value=raw===undefined?inline:xmlText(raw);if(type==='s')value=shared[Number(value)]??'';result.set(column,value);
+    let value=raw===undefined?inline:xmlText(raw);if(type==='s')value=sharedValue(shared,Number(value));result.set(column,value);
   }
   return result;
 }
 
 async function xlsxSheetContext(bytesLike) {
   const bytes=bytesLike instanceof Uint8Array?bytesLike:new Uint8Array(bytesLike), zip=zipEntries(bytes);
-  const sharedXml=await zipText(zip,'xl/sharedStrings.xml');
-  const shared=[...sharedXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(match=>
-    [...match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(part=>xmlText(part[1])).join(''));
   const workbook=await zipText(zip,'xl/workbook.xml'), rels=await zipText(zip,'xl/_rels/workbook.xml.rels');
   const firstSheet=workbook.match(/<sheet\b[^>]*\br:id="([^"]+)"/);
   if(!firstSheet)throw new Error('ERP_XLSX_SHEET_MISSING');
@@ -207,10 +208,10 @@ async function xlsxSheetContext(bytesLike) {
     new RegExp(`\\bId="${firstSheet[1].replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}"`).test(match[1]));
   const target=relationship?.[1].match(/\bTarget="([^"]+)"/)?.[1];
   if(!target)throw new Error('ERP_XLSX_SHEET_RELATIONSHIP_MISSING');
-  return {zip,shared,sheetPath:target.startsWith('/')?target.slice(1):`xl/${target.replace(/^\.\//,'')}`};
+  return {zip,sheetPath:target.startsWith('/')?target.slice(1):`xl/${target.replace(/^\.\//,'')}`};
 }
 
-async function visitXlsxRows(zip,sheetPath,visit) {
+async function visitXlsxRows(zip,sheetPath,visit,element='row',options={}) {
   const entry=zip.entries.get(sheetPath); if(!entry)throw new Error('ERP_XLSX_SHEET_MISSING');
   const view=zip.view, local=entry.localOffset;
   if(view.getUint32(local,true)!==0x04034b50)throw new Error('ERP_XLSX_ENTRY_INVALID');
@@ -222,17 +223,22 @@ async function visitXlsxRows(zip,sheetPath,visit) {
   const reader=stream.getReader(),decoder=new TextDecoder(); let buffer='',index=0,stopped=false;
   const consume=async(final=false)=>{
     while(true){
-      const begin=buffer.indexOf('<row');
+      const token=`<${element}`,closeToken=`</${element}>`;
+      const begin=buffer.indexOf(token);
       if(begin<0){if(!final)buffer=buffer.slice(-5);else buffer='';return;}
       if(begin>0)buffer=buffer.slice(begin);
-      if(buffer.length>4&&!/[\s/>]/.test(buffer[4])){buffer=buffer.slice(4);continue;}
+      if(buffer.length>token.length&&!/[\s/>]/.test(buffer[token.length])){buffer=buffer.slice(token.length);continue;}
       const openEnd=buffer.indexOf('>'); if(openEnd<0)return;
       const open=buffer.slice(0,openEnd+1);
       let end;
       if(/\/\s*>$/.test(open))end=openEnd+1;
-      else {const close=buffer.indexOf('</row>',openEnd+1);if(close<0)return;end=close+6;}
-      const rowXml=buffer.slice(0,end); buffer=buffer.slice(end);
-      if(await visit(rowXml,index++)){stopped=true;return;}
+      else {const close=buffer.indexOf(closeToken,openEnd+1);if(close<0)return;end=close+closeToken.length;}
+      const rowIndex=index++,rowEnd=end,range=options.range,onlyIndexes=options.onlyIndexes;
+      if(range&&rowIndex<range.start){buffer=buffer.slice(rowEnd);continue;}
+      if(range&&rowIndex>=range.end){stopped=true;return;}
+      if(onlyIndexes&&!onlyIndexes.has(rowIndex)){buffer=buffer.slice(rowEnd);continue;}
+      const rowXml=buffer.slice(0,rowEnd); buffer=buffer.slice(rowEnd);
+      if(await visit(rowXml,rowIndex)){stopped=true;return;}
     }
   };
   try {
@@ -242,41 +248,90 @@ async function visitXlsxRows(zip,sheetPath,visit) {
   return index;
 }
 
-export async function parseErpXlsxPage(bytesLike,start=0,limit=ERP_ROWS_PER_CONTINUATION) {
-  const {zip,shared,sheetPath}=await xlsxSheetContext(bytesLike), rows=[]; let header=null,selected=0,done=false;
-  const wantedStart=Math.max(0,Number(start)||0),wantedEnd=wantedStart+Math.max(1,Number(limit)||ERP_ROWS_PER_CONTINUATION);
-  const totalRows=await visitXlsxRows(zip,sheetPath,async(rowXml,index)=>{
-    if(index===0){header=parseXlsxRowXml(rowXml,shared).cells;return false;}
-    const dataIndex=index-1;
-    if(dataIndex>=wantedStart&&dataIndex<wantedEnd){rows.push(parseXlsxRowXml(rowXml,shared).cells);selected+=1;return false;}
-    if(dataIndex>=wantedEnd){done=false;return true;}
-    return false;
-  });
-  done=totalRows<=wantedEnd+1;
-  if(!header)throw new Error('ERP_SOURCE_HEADER_MISSING');
-  const objects=recordsToObjects([header,...rows],true);
+async function readXlsxRowsSlice(zip,sheetPath,start,count) {
+  const rows=[];
+  await visitXlsxRows(zip,sheetPath,async(rowXml)=>{rows.push(rowXml);return false;},'row',
+    {range:{start:Math.max(0,start),end:Math.max(0,start)+Math.max(1,count)}});
+  return rows;
+}
+
+function sharedStringIndexes(rowXmls,wantedColumns=null) {
+  const indexes=new Set();
+  for(const rowXml of rowXmls)for(const cell of rowXml.matchAll(/<c\b([^>]*?)(?:\/\s*>|>([\s\S]*?)<\/c>)/g)){
+    const ref=cell[1].match(/\br="([A-Z]+)\d+"/i)?.[1]||'';let column=0;
+    for(const char of ref.toUpperCase())column=column*26+char.charCodeAt(0)-64;
+    if(wantedColumns&&!wantedColumns.has(column))continue;
+    if(cell[1].match(/\bt="([^"]+)"/)?.[1]!=='s')continue;
+    const index=Number(cell[2]?.match(/<v\b[^>]*>(\d+)<\/v>/)?.[1]);
+    if(Number.isSafeInteger(index)&&index>=0)indexes.add(index);
+  }
+  return indexes;
+}
+
+async function resolveSharedStrings(zip,indexes) {
+  const result=new Map();
+  if(!indexes.size||!zip.entries.has('xl/sharedStrings.xml'))return result;
+  await visitXlsxRows(zip,'xl/sharedStrings.xml',async(siXml,index)=>{
+    result.set(index,[...siXml.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(part=>xmlText(part[1])).join(''));
+    return result.size===indexes.size;
+  },'si',{onlyIndexes:indexes,range:{start:0,end:Math.max(...indexes)+1}});
+  return result;
+}
+
+async function discoverXlsxHeader(zip,sheetPath) {
+  for(let base=0;base<50000;base+=256){
+    const preamble=await readXlsxRowsSlice(zip,sheetPath,base,256);
+    if(!preamble.length)break;
+    const shared=await resolveSharedStrings(zip,sharedStringIndexes(preamble));
+    for(let index=0;index<preamble.length;index+=1){
+      const cells=parseXlsxRowXml(preamble[index],shared).cells;
+      if(cells.some(value=>normalizeErpHeader(value)==='itemcode'))return {rowIndex:base+index,header:cells};
+    }
+    if(preamble.length<256)break;
+  }
+  throw new Error('ERP_SOURCE_HEADER_MISSING');
+}
+
+export async function parseErpXlsxPage(bytesLike,start=0,limit=ERP_ROWS_PER_CONTINUATION,checkpoint={}) {
+  const {zip,sheetPath}=await xlsxSheetContext(bytesLike);
+  const wantedStart=Math.max(0,Number(start)||0),pageSize=Math.max(1,Number(limit)||ERP_ROWS_PER_CONTINUATION);
+  const headerRowIndex=Number.isSafeInteger(checkpoint.headerRowIndex)?checkpoint.headerRowIndex:null;
+  const found=checkpoint.header&&Array.isArray(checkpoint.header)&&headerRowIndex!==null
+    ?{rowIndex:headerRowIndex,header:checkpoint.header}:await discoverXlsxHeader(zip,sheetPath);
+  const worksheetStart=found.rowIndex+1+wantedStart;
+  const rawRows=await readXlsxRowsSlice(zip,sheetPath,worksheetStart,pageSize+1);
+  const pageXml=rawRows.slice(0,pageSize),hasMore=rawRows.length>pageSize;
+  let rows;
+  if(checkpoint.dataset==='soc'){
+    const headers=new Map(found.header.map((value,index)=>[normalizeErpHeader(value),index+1]));
+    const wantedColumns=new Set(['itemcode','item','dock','suspend','suspendto'].map(name=>headers.get(name)).filter(Boolean));
+    const predicateShared=await resolveSharedStrings(zip,sharedStringIndexes(pageXml,wantedColumns));
+    const get=(values,...names)=>{for(const name of names){const value=clean(values.get(headers.get(name))||'');if(value!==null)return value;}return '';};
+    const eligible=pageXml.filter(rowXml=>{
+      const values=parseXlsxSelectedCells(rowXml,predicateShared,wantedColumns);
+      return Boolean(get(values,'itemcode','item'))&&Boolean(get(values,'dock')
+        ||get(values,'suspend').toUpperCase()==='SUSPEND'&&get(values,'suspendto').toLowerCase()==='dc');
+    });
+    const shared=await resolveSharedStrings(zip,sharedStringIndexes(eligible));
+    rows=eligible.map(rowXml=>parseXlsxRowXml(rowXml,shared).cells);
+  } else {
+    const shared=await resolveSharedStrings(zip,sharedStringIndexes(pageXml));
+    rows=pageXml.map(rowXml=>parseXlsxRowXml(rowXml,shared).cells);
+  }
+  const objects=recordsToObjects([found.header,...rows],true);
   if(!objects.length&&wantedStart===0)throw new Error('ERP_SOURCE_EMPTY');
-  return {rows:objects,nextOffset:wantedStart+selected,done,totalRows:Math.max(0,totalRows-1)};
+  return {rows:objects,nextOffset:wantedStart+pageXml.length,done:!hasMore,totalRows:!hasMore?wantedStart+pageXml.length:null,
+    headerRowIndex:found.rowIndex,header:found.header};
 }
 
 export async function countImportableErpXlsxRows(bytesLike,dataset) {
-  const {zip,shared,sheetPath}=await xlsxSheetContext(bytesLike); let header=null,count=0;
-  let targets=new Map(),wantedColumns=new Set();
-  await visitXlsxRows(zip,sheetPath,async(rowXml,index)=>{
-    if(index===0){
-      header=parseXlsxRowXml(rowXml,shared).cells;
-      const names=new Map(header.map((value,column)=>[normalizeErpHeader(value),column+1]));
-      targets=new Map([['itemcode',names.get('itemcode')||names.get('item')],['dock',names.get('dock')],
-        ['suspend',names.get('suspend')],['suspendto',names.get('suspendto')||names.get('suspendtodc')||names.get('suspendto')]]);
-      for(const [name,column] of targets)if(column&&(dataset==='soc'||name==='itemcode'))wantedColumns.add(column);
-      return false;
-    }
-    if(!header)throw new Error('ERP_SOURCE_HEADER_MISSING');
-    const values=parseXlsxSelectedCells(rowXml,shared,wantedColumns);
-    const get=(name)=>clean(values.get(targets.get(name))||'')||'';
-    if(get('itemcode')&&(dataset!=='soc'||get('dock')||get('suspend').toUpperCase()==='SUSPEND'&&get('suspendto').toLowerCase()==='dc'))count+=1;
-    return false;
-  });
+  let offset=0,count=0,checkpoint={};
+  while(true){
+    const page=await parseErpXlsxPage(bytesLike,offset,ERP_ROWS_PER_CONTINUATION,checkpoint);
+    count+=countImportableRows(page.rows,dataset);
+    offset=page.nextOffset;checkpoint={headerRowIndex:page.headerRowIndex,header:page.header};
+    if(page.done)break;
+  }
   if(!count||count>50000)throw new Error('ERP_ROWS_INVALID');
   return count;
 }
@@ -378,7 +433,7 @@ async function listFiles(fetcher, token, folderId, importableOnly = false) {
   let pageToken = '';
   const seenTokens = new Set();
   for (let page = 0; page < 100; page += 1) {
-    const filter = importableOnly ? " and mimeType!='application/vnd.google-apps.folder' and (name contains '.xlsx' or name contains '.csv') and not name contains 'TEMP_' and not name contains '~$'" : '';
+    const filter = importableOnly ? " and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/csv' or mimeType='application/csv' or mimeType='application/vnd.ms-excel' or mimeType='application/octet-stream')" : '';
     const result = await driveJson(fetcher,token,'files',{q:`'${folderId}' in parents and trashed=false${filter}`,
       fields:'nextPageToken,files(id,name,mimeType,modifiedTime,size,parents)',pageSize:1000,
       supportsAllDrives:true,includeItemsFromAllDrives:true,...(pageToken ? {pageToken} : {})});
@@ -390,6 +445,22 @@ async function listFiles(fetcher, token, folderId, importableOnly = false) {
   }
   if (pageToken) throw new Error('ERP_DRIVE_PAGINATION_LIMIT');
   return files;
+}
+async function prefetchErpFolders(fetcher,token,folders,existing={}) {
+  const snapshot={...existing};
+  const pending=STAGES.filter(stage=>!snapshot[stage.key]);
+  await Promise.all(pending.map(async stage=>{
+    const folderId=String(folders[stage.key]||'').trim(),started=performance.now();
+    if(!folderId){snapshot[stage.key]={files:[],listDurationMs:Math.max(0,Math.round(performance.now()-started)),error:'ERP_DROP_FOLDER_ID_MISSING'};return;}
+    try {
+      const files=await listFiles(fetcher,token,folderId,true);
+      snapshot[stage.key]={files,listDurationMs:Math.max(0,Math.round(performance.now()-started)),fetchedAt:new Date().toISOString()};
+    } catch(error) {
+      snapshot[stage.key]={files:[],listDurationMs:Math.max(0,Math.round(performance.now()-started)),
+        error:String(error?.message||'ERP_DROP_FOLDER_READ_FAILED').slice(0,200),fetchedAt:new Date().toISOString()};
+    }
+  }));
+  return snapshot;
 }
 async function processedFolder(fetcher, token, parentId, configuredId = '') {
   if (configuredId) return configuredId;
@@ -488,8 +559,10 @@ async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageK
   if (state?.modifiedAt && state.modifiedAt !== meta.modified_at) throw new Error('ERP_SOURCE_CHANGED_DURING_IMPORT');
   const isCsv=/\.csv$/i.test(file.name);
   const allCsvRows=isCsv?parseErpCsv(new TextDecoder('utf-8').decode(bytes)):null;
-  const expectedRowsForNew=state?null:isCsv?countImportableRows(allCsvRows,dataset):await countImportableErpXlsxRows(bytes,dataset);
-  const page=isCsv?null:await parseErpXlsxPage(bytes,state?.nextOffset||0,ERP_ROWS_PER_CONTINUATION);
+  const expectedRowsForNew=state?null:isCsv?countImportableRows(allCsvRows,dataset):50000;
+  const pageSize=dataset==='soc'?1000:ERP_ROWS_PER_CONTINUATION;
+  const page=isCsv?null:await parseErpXlsxPage(bytes,state?.nextOffset||0,pageSize,
+    {...(state?{headerRowIndex:state.headerRowIndex,header:state.header}:{}),dataset});
   const pageRows=isCsv?allCsvRows.slice(state?.nextOffset||0,(state?.nextOffset||0)+ERP_ROWS_PER_CONTINUATION):page.rows;
   const nextRawOffset=isCsv?Math.min(allCsvRows.length,(state?.nextOffset||0)+pageRows.length):page.nextOffset;
   const pageDone=isCsv?nextRawOffset>=allCsvRows.length:page.done;
@@ -502,7 +575,7 @@ async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageK
     const expectedRows = expectedRowsForNew;
     if (!expectedRows || expectedRows > 50000) throw new Error('ERP_ROWS_INVALID');
     const {data:begin,error:beginError} = await supabase.rpc('fast_begin_erp_stage_v1',{
-      p_dataset_key:dataset,p_file_meta:{...meta,content_hash:await hashHex(bytes)},p_expected_rows:expectedRows,
+      p_dataset_key:dataset,p_file_meta:{...meta,content_hash:await hashHex(bytes),...(isCsv?{}:{expected_rows_pending:true})},p_expected_rows:expectedRows,
     });
     if (beginError) throw beginError;
     if (begin?.skipped === true) {
@@ -511,8 +584,12 @@ async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageK
       return {done:true,result:{key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1}};
     }
     const stageId = String(begin?.stage_id||'');
-    if (!stageId || Number(begin.expected_rows)!==expectedRows) throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
-    next = {stageId,expectedRows,nextOffset:0,processedRows:0,identityCounts:{},modifiedAt:meta.modified_at};
+    const stagedExpected=Number(begin?.expected_rows);
+    if (!stageId || !Number.isSafeInteger(stagedExpected) || stagedExpected<1 || stagedExpected>50000
+      || (isCsv&&stagedExpected!==expectedRows)) throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
+    next = {stageId,expectedRows:stagedExpected,expectedRowsPending:!isCsv,nextOffset:0,
+      processedRows:0,identityCounts:{},modifiedAt:meta.modified_at,
+      ...(isCsv?{}:{headerRowIndex:page.headerRowIndex,header:page.header})};
   }
   const chunk = await normalizeErpRowsChunk(pageRows,dataset,columns,{start:0,limit:pageRows.length||1,
     priorRowCount:next.processedRows,identityCounts:next.identityCounts});
@@ -520,12 +597,23 @@ async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageK
     const {data,error} = await supabase.rpc('fast_append_erp_stage_batch_v1',{
       p_stage_id:next.stageId,p_start_row:next.processedRows,p_rows:chunk.rows,
     });
-    if (error || Number(data?.staged_rows)!==next.processedRows+chunk.rows.length) throw error||new Error('ERP_STAGE_BATCH_UNCONFIRMED');
+    const stagedRows=Number(data?.staged_rows),expectedStaged=next.processedRows+chunk.rows.length;
+    if (error || (stagedRows!==expectedStaged&&!(data?.replayed===true&&stagedRows>=expectedStaged))) {
+      throw error||new Error('ERP_STAGE_BATCH_UNCONFIRMED');
+    }
   }
   next = {...next,nextOffset:nextRawOffset,processedRows:chunk.rowCount,identityCounts:chunk.identityCounts};
   await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
     stageResultsDelta:{key:stageKey,stagedRows:next.processedRows,expectedRows:next.expectedRows}});
   if (!pageDone) return {done:false,state:next};
+  if (next.expectedRowsPending) {
+    if(next.processedRows<1||next.processedRows>50000)throw new Error('ERP_ROWS_INVALID');
+    const {data:sealed,error:sealError}=await supabase.rpc('fast_seal_erp_stage_v1',{
+      p_stage_id:next.stageId,p_expected_rows:next.processedRows,
+    });
+    if(sealError||sealed?.ok!==true)throw sealError||new Error('ERP_STAGE_SEAL_UNCONFIRMED');
+    next={...next,expectedRows:next.processedRows,expectedRowsPending:false};
+  }
   if (next.processedRows!==next.expectedRows) throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
   const {data:committed,error:commitError} = await supabase.rpc('fast_commit_erp_stage_swap_v1',{p_stage_id:next.stageId});
   if (commitError || committed?.ok!==true) throw commitError||new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
@@ -595,6 +683,10 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
   const stageResults = Array.isArray(cursor.stageResults) ? cursor.stageResults.slice() : [];
   const attemptedByStage = cursor.attemptedByStage && typeof cursor.attemptedByStage === 'object' ? {...cursor.attemptedByStage} : {};
   let stageIndex = Math.max(0,Math.min(STAGES.length,Number(cursor.stageIndex)||0));
+  let folderSnapshot=cursor.folderSnapshot&&typeof cursor.folderSnapshot==='object'&&!Array.isArray(cursor.folderSnapshot)?{...cursor.folderSnapshot}:{};
+  folderSnapshot=await prefetchErpFolders(fetcher,token,folders,folderSnapshot);
+  const snapshotCursor={stageIndex,stageResults:stageResults.slice(),attemptedByStage,folderSnapshot};
+  await status({status:'CONTINUE',stageIndex,currentStage:STAGES[stageIndex]?.key||'idle',continuationCursor:snapshotCursor});
   const resume = cursor.fileContinuation && typeof cursor.fileContinuation === 'object' ? cursor.fileContinuation : null;
   if (resume) {
     const stage = STAGES[Number(resume.stageIndex)];
@@ -605,15 +697,18 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
     const sliceStarted=performance.now();
     const step = await stageFileContinuation({supabase,fetcher,token,file,dataset:stage.dataset,stageKey:stage.key,
       parentId:folderId,processedId,status,state:resume.state||null});
-    const elapsedMs=(Number(resume.state?.elapsedMs)||0)+Math.max(0,Math.round(performance.now()-sliceStarted));
+    const hasPriorElapsed=resume.state?.elapsedMs!==undefined&&Number.isFinite(Number(resume.state.elapsedMs));
+    const listDurationMs=Math.max(0,Number(resume.state?.listDurationMs??folderSnapshot[stage.key]?.listDurationMs)||0);
+    const elapsedMs=(hasPriorElapsed?Number(resume.state.elapsedMs):listDurationMs)+Math.max(0,Math.round(performance.now()-sliceStarted));
     let nextCursor;
     if (step.done) {
-      stageResults.push({...step.result,key:stage.key,dataset:stage.dataset,durationMs:elapsedMs});
+      stageResults.push({...step.result,key:stage.key,dataset:stage.dataset,
+        listDurationMs,durationMs:elapsedMs});
       const attempted = new Set(Array.isArray(attemptedByStage[stage.key])?attemptedByStage[stage.key]:[]);
       attempted.add(String(file.id)); attemptedByStage[stage.key]=[...attempted];
-      nextCursor={stageIndex:Number(resume.stageIndex),stageResults,attemptedByStage};
+      nextCursor={stageIndex:Number(resume.stageIndex),stageResults,attemptedByStage,folderSnapshot};
     } else nextCursor={stageIndex:Number(resume.stageIndex),stageResults,attemptedByStage,
-      fileContinuation:{...resume,state:{...step.state,elapsedMs}}};
+      fileContinuation:{...resume,state:{...step.state,elapsedMs}},folderSnapshot};
     await status({status:'CONTINUE',currentStage:stage.key,stageIndex:Number(resume.stageIndex),
       continuationCursor:nextCursor,stageResults:stageResults.slice(),fileId:file.id,
       nextOffset:step.state?.nextOffset??null,lastCompletedFile:step.done?file.name:undefined});
@@ -623,18 +718,26 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
     const stageStarted=performance.now();
     const stage = STAGES[stageIndex], folderId = String(folders[stage.key]||'').trim();
     const processedId = String(folders.processed?.[stage.key]||folders[`${stage.key}_processed`]||'').trim();
+    const snapshot=folderSnapshot[stage.key]&&typeof folderSnapshot[stage.key]==='object'?folderSnapshot[stage.key]:{};
+    const listDurationMs=Math.max(0,Number(snapshot.listDurationMs)||0);
     if (!folderId) {
-      stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,error:'ERP_DROP_FOLDER_ID_MISSING'});
+      stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,error:'ERP_DROP_FOLDER_ID_MISSING',
+        listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted))});
       stageIndex += 1; continue;
     }
-    await status({currentStage:stage.key,stageIndex});
+    const stageCursor={stageIndex,stageResults:stageResults.slice(),attemptedByStage,folderSnapshot};
+    await status({currentStage:stage.key,currentStageLabel:stage.key==='hl_po_parsed'?'HL ORDER':stage.key.toUpperCase(),
+      message:`Processing ${stage.key==='hl_po_parsed'?'HL ORDER':stage.key.toUpperCase()} in the cloud.`,
+      stageIndex,continuationCursor:stageCursor});
     let files;
     try {
-      files = (await listFiles(fetcher,token,folderId,true)).filter(file => file.mimeType !== 'application/vnd.google-apps.folder'
+      if(snapshot.error)throw new Error(String(snapshot.error));
+      files = (Array.isArray(snapshot.files)?snapshot.files:[]).filter(file => file.mimeType !== 'application/vnd.google-apps.folder'
         && !shouldIgnoreErpFile(file.name) && /\.(?:xlsx|csv)$/i.test(file.name))
         .sort((a,b)=>String(a.modifiedTime||'').localeCompare(String(b.modifiedTime||'')));
     } catch (error) {
       stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,
+        listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted)),
         error:String(error?.message||'ERP_DROP_FOLDER_READ_FAILED').slice(0,200)});
       stageIndex += 1; continue;
     }
@@ -647,18 +750,19 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
     const file = files.find(candidate => !attempted.has(String(candidate.id||'')));
     if (!file) {
       if (!stageResults.some(result=>result.key===stage.key)) stageResults.push({key:stage.key,outcome:'UP_TO_DATE',sourceFileName:'',processedFiles:0,
-        durationMs:Math.max(0,Math.round(performance.now()-stageStarted))});
+        listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted))});
       stageIndex += 1; continue;
     }
     try {
       const sliceStarted=performance.now();
       const step = await stageFileContinuation({supabase,fetcher,token,file,dataset:stage.dataset,stageKey:stage.key,parentId:folderId,processedId,status,state:null});
-      const elapsedMs=Math.max(0,Math.round(performance.now()-sliceStarted));
+      const elapsedMs=listDurationMs+Math.max(0,Math.round(performance.now()-sliceStarted));
       if (step.done) {
         attempted.add(String(file.id||'')); attemptedByStage[stage.key]=[...attempted];
-        stageResults.push({...step.result,key:stage.key,dataset:stage.dataset,durationMs:elapsedMs});
+        stageResults.push({...step.result,key:stage.key,dataset:stage.dataset,listDurationMs,durationMs:elapsedMs});
       } else {
-        const nextCursor={stageIndex,stageResults,attemptedByStage,fileContinuation:{stageIndex,file,state:{...step.state,elapsedMs}}};
+        const nextCursor={stageIndex,stageResults,attemptedByStage,fileContinuation:{stageIndex,file,state:{...step.state,elapsedMs,
+          listDurationMs}},folderSnapshot};
         await status({status:'CONTINUE',currentStage:stage.key,stageIndex,continuationCursor:nextCursor,
           stageResults:stageResults.slice(),fileId:file.id,nextOffset:step.state?.nextOffset??null});
         return {done:false,cursor:nextCursor};
@@ -666,19 +770,20 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
     } catch (error) {
       attempted.add(String(file.id||'')); attemptedByStage[stage.key]=[...attempted];
       stageResults.push({key:stage.key,dataset:stage.dataset,outcome:'failed',sourceFileName:file.name,processedFiles:0,
+        listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted)),
         error:String(error?.message||'ERP_FILE_IMPORT_FAILED').slice(0,200)});
     }
-    const nextCursor = {stageIndex,stageResults,attemptedByStage};
+    const nextCursor = {stageIndex,stageResults,attemptedByStage,folderSnapshot};
     await status({currentStage:stage.key,stageIndex,stageResults:stageResults.slice(),continuationCursor:nextCursor,lastCompletedFile:file.name});
     return {done:false,cursor:nextCursor};
   }
   const blocked = stageResults.some(result=>result.outcome==='requires_template'), failed = stageResults.some(result=>result.outcome==='failed');
   await status({active:false,status:blocked?'blocked':failed?'failed':'complete',currentStage:'idle',currentStageLabel:'Idle',
-    stageIndex:STAGES.length,stageResults,continuationCursor:{stageIndex:STAGES.length,stageResults,attemptedByStage},
+    stageIndex:STAGES.length,stageResults,continuationCursor:{stageIndex:STAGES.length,stageResults,attemptedByStage,folderSnapshot},
     finishedAt:new Date().toISOString(),message:blocked?'HL ORDER workbook contract requires confirmation.':failed?'One or more ERP files could not be imported.':'ERP sync completed.',
     error:blocked?'HL ORDER workbook contract requires confirmation.':failed?'One or more ERP files could not be imported.':'',
     errorCode:blocked?'ERP_SYNC_REQUIRES_TEMPLATE':failed?'ERP_SYNC_STAGE_FAILED':''});
-  return {done:true,ok:!blocked&&!failed,cursor:{stageIndex:STAGES.length,stageResults,attemptedByStage}};
+  return {done:true,ok:!blocked&&!failed,cursor:{stageIndex:STAGES.length,stageResults,attemptedByStage,folderSnapshot}};
 }
 
 export { STAGES as ERP_SYNC_STAGES };

@@ -919,6 +919,9 @@
           "claim_erp_sync_job_v2",
           "claim_erp_sync_request_step_v1",
           "release_erp_sync_request_step_v1"
+        ],
+        "supabase/migrations/20261028190134_agdata_v2396_bounded_erp_row_count.sql": [
+          "fast_seal_erp_stage_v1"
         ]
       }
     },

@@ -3,7 +3,7 @@
 */
 
 const APP_SHELL_BUILD = 'AgData v2.3.96';
-const APP_SHELL_RUNTIME_REVISION = 'postgres-erp-sync-r1';
+const APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r2';
 const APP_ASSET_VERSION = '2.3.96';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);

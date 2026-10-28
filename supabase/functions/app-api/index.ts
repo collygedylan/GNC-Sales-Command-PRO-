@@ -7006,10 +7006,12 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
         ? jsonObject(durableStatus.continuationCursor) : {};
       const fileContinuation = cursor.fileContinuation && typeof cursor.fileContinuation === "object"
         ? jsonObject(cursor.fileContinuation) : {};
+      const fileState = fileContinuation.state && typeof fileContinuation.state === "object"
+        && !Array.isArray(fileContinuation.state) ? jsonObject(fileContinuation.state) : {};
       return jsonResponse({ok:true,status:active?"CONTINUE":durableStatus.status||"complete",data:durableStatus,
         runId,stage:durableStatus.currentStage||"idle",fileId:fileContinuation.file && typeof fileContinuation.file === "object"
           ? (fileContinuation.file as Record<string,unknown>).id||null : null,
-        nextOffset:jsonObject(fileContinuation.state).nextOffset??null});
+        nextOffset:fileState.nextOffset??null});
     } finally {
       await supabase.rpc("release_erp_sync_request_step_v1" as never,{p_run_id:runId,p_worker_id:workerId,p_step:step} as never);
     }
@@ -7028,7 +7030,7 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     const initial: Record<string, unknown> = { ...claimStatus, active: true, status: "queued", runId, commandId,
       actor: normalizeUsername(String(actor.username || "")), source: "postgresql",
       stageOrder: ERP_SYNC_STAGES.map(stage => stage.key), stageIndex: 0, currentStage: "queued",
-      currentStageLabel: "Queued", stageResults: [],
+      currentStageLabel: "Starting", message: "Running cloud sync.", stageResults: [],
       continuationCursor: { stageIndex: 0, stageResults: [], attemptedByStage: {} }, fileId: null, nextOffset: null,
       startedAt: claimStatus.startedAt || new Date().toISOString(), updatedAt: claimStatus.updatedAt || new Date().toISOString(),
       maxAttemptsPerStage: 1 };

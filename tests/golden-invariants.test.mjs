@@ -2244,7 +2244,7 @@ test('Invariant 83 (One Click Starts One Sync and Status Polling Never Dispatche
     document: { hidden: false }, navigator: { onLine: true }, console,
     manualSyncStatusState: null, manualSyncStatusPollInFlight: false, lastManualSyncStatusCheckedAt: 0,
     MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'],
-    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 330000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
+    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
     releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true,
     hasActiveManualSync: () => false, syncGoogleScriptButton() {}, showToast() {},
     getSupabaseReadIdentityScope: () => 'same-account', getNativeAuthRequestHeaders: () => pendingHeaders,
@@ -2406,7 +2406,10 @@ test('Invariant 87 (ERP API Allows Status Reads and Admin-Leased Cloud Continuat
   const status = { active: false, currentStage: 'idle', stageResults: [] };
   const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
     validateErpSyncCommand, ERP_SYNC_STAGES, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
-    normalizeUsername: value => String(value).toLowerCase(), jsonObject: value => value || {},
+    normalizeUsername: value => String(value).toLowerCase(), jsonObject: value => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected JSON object');
+      return value;
+    },
     jsonResponse: value => value, errorResponse: (message, status, extra) => ({ ok: false, status, ...extra }),
     databaseFailureResponse: (message, _error, code) => ({ ok: false, code }),
     processCloudErpSyncStep: async () => {
@@ -2751,7 +2754,7 @@ test('Invariant 100 (RUN SCRIPT Drives Bounded Cloud Continuations Through IDLE)
     document: { hidden: false }, navigator: { onLine: true }, console,
     manualSyncStatusState: { active: true, runId: 'stale-run', currentStage: 'drive', stageIndex: 0 },
     MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'],
-    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 330000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
+    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
     releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true,
     hasActiveManualSync: () => true, syncGoogleScriptButton() {}, showToast() {},
     getSupabaseReadIdentityScope: () => 'same-account',
@@ -2786,4 +2789,130 @@ test('Invariant 100 (RUN SCRIPT Drives Bounded Cloud Continuations Through IDLE)
   assert.equal(applied.at(-1).currentStage, 'idle');
   assert.equal(context.isRunScriptActive, false);
   assert.equal(context.window.googleScriptRunInFlight, false);
+});
+
+test('Invariant 101 (Empty Cloud Sync Completion Does Not Require a File Cursor)', async () => {
+  const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const calls = [];
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
+    ERP_SYNC_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
+    normalizeUsername: value => String(value || '').trim().toLowerCase(),
+    jsonObject: value => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected JSON object');
+      return value;
+    },
+    jsonResponse: value => value,
+    errorResponse: (message, status, extra) => ({ ok: false, status, ...extra }),
+    databaseFailureResponse: (message, _error, code) => ({ ok: false, code }),
+    supabase: { rpc: async (name, args) => {
+      calls.push(name);
+      if (name === 'claim_erp_sync_request_step_v1') return { data: {
+        claimed: true, workerId: '00000000-0000-4000-8000-000000000101', continuationStep: 1,
+        status: { active: true, currentStage: 'hl_po_parsed', stageIndex: 4, continuationCursor: { stageIndex: 5, stageResults: [] } }
+      } };
+      if (name === 'release_erp_sync_request_step_v1') {
+        assert.equal(args.p_run_id, '00000000-0000-4000-8000-000000000101');
+        assert.equal(args.p_worker_id, '00000000-0000-4000-8000-000000000101');
+        assert.equal(args.p_step, 1);
+        return { data: true };
+      }
+      throw new Error(`Unexpected RPC ${name}`);
+    } },
+    processCloudErpSyncStep: async (_runId, _workerId, _step, status) => {
+      assert.equal(status.continuationCursor.stageIndex, 5, 'all configured stages are already skipped as up-to-date');
+      return { result: { done: true }, status: {
+        active: false, status: 'complete', currentStage: 'idle', stageIndex: 5, stageResults: []
+      } };
+    }
+  });
+  const response = await context.handleErpSyncAction({ mustChangePassword: false }, {
+    action: 'erp_sync', operation: 'continue', runId: '00000000-0000-4000-8000-000000000101'
+  }, { username: 'dylan_collyge' });
+  assert.equal(response.status, 'complete');
+  assert.equal(response.data.active, false);
+  assert.equal(response.data.currentStage, 'idle');
+  assert.equal(response.fileId, null);
+  assert.equal(response.nextOffset, null);
+  assert.deepEqual(calls, ['claim_erp_sync_request_step_v1', 'release_erp_sync_request_step_v1']);
+});
+
+test('Invariant 102 (Cloud XLSX Seals Its Exact Parsed Count Before Commit and Move)', async () => {
+  const { runErpSyncWorkerStep } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const entries = {
+    'xl/workbook.xml': '<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml': '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>itemcode</t></is></c><c r="B1" t="inlineStr"><is><t>commonname</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>001</t></is></c><c r="B2" t="inlineStr"><is><t>Blue Grass</t></is></c></row></sheetData></worksheet>'
+  };
+  const locals = [], central = [];
+  let offset = 0;
+  for (const [pathName, textValue] of Object.entries(entries)) {
+    const name = Buffer.from(pathName), data = Buffer.from(textValue);
+    const local = Buffer.alloc(30 + name.length);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(name.length, 26); name.copy(local, 30);
+    locals.push(local, data);
+    const record = Buffer.alloc(46 + name.length);
+    record.writeUInt32LE(0x02014b50, 0); record.writeUInt16LE(20, 4); record.writeUInt16LE(20, 6);
+    record.writeUInt32LE(data.length, 20); record.writeUInt32LE(data.length, 24);
+    record.writeUInt16LE(name.length, 28); record.writeUInt32LE(offset, 42); name.copy(record, 46);
+    central.push(record); offset += local.length + data.length;
+  }
+  const directory = Buffer.concat(central), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(central.length, 8); end.writeUInt16LE(central.length, 10);
+  end.writeUInt32LE(directory.length, 12); end.writeUInt32LE(offset, 16);
+  const workbook = Buffer.concat([...locals, directory, end]);
+  const events = [];
+  let moved = false;
+  const fetcher = async (input, init = {}) => {
+    const url = new URL(input);
+    if (url.pathname.endsWith('/files')) {
+      const isDrive = url.searchParams.get('q')?.includes("'drive-folder'");
+      return Response.json({ files: isDrive && !moved ? [{ id: 'drive-file-102', name: 'Drive.xlsx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        modifiedTime: '2026-10-28T12:00:00Z', parents: ['drive-folder'] }] : [] });
+    }
+    if (url.pathname.endsWith('/files/drive-file-102') && init.method === 'PATCH') {
+      events.push('move'); moved = true; return Response.json({ id: 'drive-file-102' });
+    }
+    if (url.pathname.endsWith('/files/drive-file-102')) return new Response(workbook);
+    throw new Error(`Unexpected Drive request ${url}`);
+  };
+  const supabase = { rpc: async (name, args) => {
+    events.push(name);
+    if (name === 'check_erp_file_sync_needed_v1') return { data: { skip: false } };
+    if (name === 'fast_erp_import_columns_v1') return { data: ['unique_id', 'itemcode', 'commonname'] };
+    if (name === 'fast_begin_erp_stage_v1') {
+      assert.equal(args.p_expected_rows, 50000);
+      assert.equal(args.p_file_meta.expected_rows_pending, true);
+      return { data: { stage_id: 'stage-102', expected_rows: 50000, staged_rows: 0 } };
+    }
+    if (name === 'fast_append_erp_stage_batch_v1') return { data: { staged_rows: args.p_start_row + args.p_rows.length } };
+    if (name === 'fast_seal_erp_stage_v1') {
+      assert.equal(args.p_stage_id, 'stage-102'); assert.equal(args.p_expected_rows, 1);
+      return { data: { ok: true, staged_rows: 1, expected_rows: 1 } };
+    }
+    if (name === 'fast_commit_erp_stage_swap_v1') return { data: { ok: true } };
+    throw new Error(`Unexpected ERP RPC ${name}`);
+  } };
+  const folders = { drive: 'drive-folder', cav: 'cav-folder', reserves: 'reserves-folder',
+    soc: 'soc-folder', hl_po_parsed: 'hl-folder', processed: { drive: 'drive-processed' } };
+  const env = key => key === 'ERP_SYNC_DROP_FOLDERS_JSON' ? JSON.stringify(folders) : '';
+  const status = async value => events.push(value.active === false ? 'idle' : 'status');
+  let cursor = { stageIndex: 0, stageResults: [], attemptedByStage: {} };
+  let result;
+  for (let request = 0; request < 3; request += 1) {
+    result = await runErpSyncWorkerStep({ supabase, fetcher, status, env, accessToken: 'fixture-token', cursor });
+    cursor = result.cursor;
+    if (result.done) break;
+  }
+  assert.equal(result.done, true);
+  assert.equal(result.ok, true, JSON.stringify(cursor.stageResults));
+  assert.equal(moved, true);
+  const begin = events.indexOf('fast_begin_erp_stage_v1');
+  const append = events.indexOf('fast_append_erp_stage_batch_v1');
+  const seal = events.indexOf('fast_seal_erp_stage_v1');
+  const commit = events.indexOf('fast_commit_erp_stage_swap_v1');
+  const move = events.indexOf('move');
+  assert.ok(begin >= 0 && begin < append && append < seal && seal < commit && commit < move,
+    'stage begins, appends, seals the actual one-row count, commits, then moves the source file');
+  assert.equal(cursor.stageResults[0].rowCount, 1);
 });

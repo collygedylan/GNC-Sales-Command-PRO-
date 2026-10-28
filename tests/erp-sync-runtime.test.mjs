@@ -97,7 +97,10 @@ test('XLSX parser reads first worksheet shared strings and sparse columns in mem
     'xl/worksheets/sheet1.xml':'<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row><row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2" s="2" /><c r="C2" t="s"><v>4</v></c></row></sheetData></worksheet>',
   });
   assert.deepEqual(await parseErpXlsx(bytes), [{itemcode:'001',commonname:'',note:'Red & Maple'}]);
-  assert.deepEqual(await parseErpXlsxPage(bytes,0,1),{rows:[{itemcode:'001',commonname:'',note:'Red & Maple'}],nextOffset:1,done:true,totalRows:1});
+  const page=await parseErpXlsxPage(bytes,0,1);
+  assert.deepEqual(page.rows,[{itemcode:'001',commonname:'',note:'Red & Maple'}]);
+  assert.equal(page.nextOffset,1);
+  assert.equal(page.done,true);
   assert.equal(await countImportableErpXlsxRows(bytes,'drive_around'),1);
 });
 
@@ -118,6 +121,93 @@ test('streaming XLSX pages stop at bounded worksheet rows and resume with absolu
   assert.equal(second.rows.at(-1).itemcode,'5200');
   assert.equal(second.nextOffset,5200);
   assert.equal(second.done,true);
+});
+
+test('streaming XLSX pages discover itemcode headers after report titles and preserve blank-row offsets', async () => {
+  const sheet='<worksheet><sheetData>'+
+    '<row r="1"><c r="A1" t="inlineStr"><is><t>DriveAround Monthly Report</t></is></c></row>'+
+    '<row r="2"></row>'+
+    '<row r="3"><c r="A3" t="inlineStr"><is><t>itemcode</t></is></c><c r="B3" t="inlineStr"><is><t>commonname</t></is></c></row>'+
+    '<row r="4"><c r="A4" t="inlineStr"><is><t>001</t></is></c><c r="B4" t="inlineStr"><is><t>Blue Grass</t></is></c></row>'+
+    '<row r="5"></row>'+
+    '<row r="6"><c r="A6" t="inlineStr"><is><t>002</t></is></c><c r="B6" t="inlineStr"><is><t>Red Grass</t></is></c></row>'+
+    '</sheetData></worksheet>';
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':sheet,
+  });
+  const first=await parseErpXlsxPage(bytes,0,1), blank=await parseErpXlsxPage(bytes,first.nextOffset,1), last=await parseErpXlsxPage(bytes,blank.nextOffset,1);
+  assert.equal(first.rows[0].itemcode,'001');
+  assert.equal(first.done,false);
+  assert.equal(blank.rows[0].itemcode,'');
+  assert.equal(blank.nextOffset,2);
+  assert.equal(last.rows[0].itemcode,'002');
+  assert.equal(last.done,true);
+  assert.equal(await countImportableErpXlsxRows(bytes,'drive_around'),2);
+});
+
+test('cloud XLSX stages with a pending expected count and seals the exact normalized row count at EOF', async () => {
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':'<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>itemcode</t></is></c><c r="B1" t="inlineStr"><is><t>commonname</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>001</t></is></c><c r="B2" t="inlineStr"><is><t>Blue Grass</t></is></c></row></sheetData></worksheet>',
+  });
+  let archived=false,sealCalls=0;
+  const fakeFetch=async(input,init={})=>{
+    const url=new URL(input);
+    if(url.pathname.endsWith('/files')){
+      const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
+      return Response.json({files:folder==='drive-folder'&&!archived?[{id:'xlsx-1',name:'Drive.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',modifiedTime:'2026-10-28T12:00:00Z',parents:['drive-folder']}]:[]});
+    }
+    if(url.pathname.endsWith('/files/xlsx-1')){
+      if(init.method==='PATCH'){archived=true;return Response.json({id:'xlsx-1'});}
+      return new Response(bytes);
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+  const supabase={rpc:async(name,args)=>{
+    if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false}};
+    if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','commonname']};
+    if(name==='fast_begin_erp_stage_v1'){
+      assert.equal(args.p_expected_rows,50000);
+      assert.equal(args.p_file_meta.expected_rows_pending,true);
+      return {data:{stage_id:'xlsx-stage',expected_rows:50000,staged_rows:0}};
+    }
+    if(name==='fast_append_erp_stage_batch_v1')return {data:{staged_rows:args.p_start_row+args.p_rows.length}};
+    if(name==='fast_seal_erp_stage_v1'){
+      sealCalls+=1;assert.equal(args.p_stage_id,'xlsx-stage');assert.equal(args.p_expected_rows,1);
+      return {data:{ok:true,expected_rows:1,staged_rows:1}};
+    }
+    if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true}};
+    throw new Error(`unexpected RPC ${name}`);
+  }};
+  const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder',processed:{drive:'drive-processed'}};
+  const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
+  const result=await runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token'});
+  assert.equal(sealCalls,1);
+  assert.equal(archived,true);
+  assert.equal(result.cursor.stageResults[0].rowCount,1);
+});
+
+test('SOC XLSX pages filter itemcode/dock/Suspend-DC rows before full cell decoding and preserve raw offsets', async () => {
+  const headers=['itemcode','dock','suspend','suspend-to','commonname'];
+  const row=(n,values)=>`<row r="${n}">${values.map((value,index)=>`<c r="${String.fromCharCode(65+index)}${n}" t="inlineStr"><is><t>${value}</t></is></c>`).join('')}</row>`;
+  const sheet=`<worksheet><sheetData>${row(1,headers)}${row(2,['001','D1','','','Plant 1'])}${row(3,['002','','','','Excluded'])}${row(4,['003','','SUSPEND','dc','Plant 3'])}</sheetData></worksheet>`;
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':sheet,
+  });
+  const first=await parseErpXlsxPage(bytes,0,2,{dataset:'soc'}),second=await parseErpXlsxPage(bytes,first.nextOffset,2,
+    {dataset:'soc',headerRowIndex:first.headerRowIndex,header:first.header});
+  assert.deepEqual(first.rows.map(item=>item.itemcode),['001']);
+  assert.equal(first.nextOffset,2);
+  assert.equal(first.done,false);
+  assert.deepEqual(second.rows.map(item=>item.itemcode),['003']);
+  assert.equal(second.nextOffset,3);
+  assert.equal(second.done,true);
+  assert.equal(await countImportableErpXlsxRows(bytes,'soc'),2);
 });
 
 test('live row mapping preserves canonical physical identities and CAV aliases', async () => {
@@ -183,9 +273,10 @@ test('unchanged file is archived without download or duplicate stage writes', as
     const url=new URL(input);
     if(url.pathname.endsWith('/files')){
       const query=url.searchParams.get('q');
-      assert.match(query,/name contains '\.xlsx'/);
-      assert.match(query,/name contains '\.csv'/);
-      assert.match(query,/not name contains 'TEMP_'/);
+      assert.doesNotMatch(query,/name contains/);
+      assert.match(query,/application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/);
+      assert.match(query,/text\/csv/);
+      assert.match(query,/application\/octet-stream/);
       const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
       return Response.json({files:folder==='drive-folder'
         ? [{id:'file-1',name:'Drive.csv',modifiedTime:'2026-10-27T00:00:00Z',parents:['drive-folder']}]
@@ -236,11 +327,12 @@ test('cloud continuation processes at most one source file per invocation and re
     {id:'file-1',name:'Drive 1.csv',modifiedTime:'2026-10-27T00:00:00Z',parents:['drive-folder']},
     {id:'file-2',name:'Drive 2.csv',modifiedTime:'2026-10-27T00:01:00Z',parents:['drive-folder']},
   ];
-  const archived=[], begins=[];
+  const archived=[], begins=[],listed=[];
   const fakeFetch=async(input,init={})=>{
     const url=new URL(input);
     if(url.pathname.endsWith('/files')){
       const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
+      listed.push(folder);
       return Response.json({files:folder==='drive-folder'?files.filter(file=>!archived.includes(file.id))
         :folder==='processed-folder'?files.filter(file=>archived.includes(file.id)):[]});
     }
@@ -275,6 +367,9 @@ test('cloud continuation processes at most one source file per invocation and re
   const emptyHl=final.cursor.stageResults.find(row=>row.key==='hl_po_parsed');
   assert.equal(emptyHl.outcome,'UP_TO_DATE');
   assert.ok(Number.isFinite(emptyHl.durationMs)&&emptyHl.durationMs>=0);
+  assert.ok(Number.isFinite(emptyHl.listDurationMs)&&emptyHl.listDurationMs>=0);
+  assert.deepEqual([...new Set(listed)].sort(),['cav-folder','drive-folder','hl-folder','reserves-folder','soc-folder'].sort());
+  assert.equal(listed.length,5);
 });
 
 test('cloud ERP file work yields bounded row chunks and retries a failed Processed move without recommit', async () => {
@@ -368,4 +463,20 @@ test('a failed source is attempted once, then the next continuation advances to 
   assert.ok(listed.includes('cav-folder'));
   assert.equal(second.cursor.stageIndex,1);
   assert.equal(second.cursor.stageResults.filter(result=>result.sourceFileName==='broken.csv').length,1);
+});
+
+test('continuation cursor advances before stage I/O so expired-lease retries cannot regress stage index', async () => {
+  const statuses=[];
+  const fakeFetch=async(input)=>Response.json({files:[]});
+  const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder'};
+  const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
+  const cursor={stageIndex:3,stageResults:[{key:'drive',outcome:'UP_TO_DATE'},{key:'cav',outcome:'UP_TO_DATE'},
+    {key:'reserves',outcome:'UP_TO_DATE'}],attemptedByStage:{drive:[],cav:[],reserves:[]}};
+  const result=await runErpSyncWorkerStep({supabase:{rpc:async()=>{throw new Error('empty stages must not write SQL');}},
+    fetcher:fakeFetch,status:async patch=>statuses.push(patch),env,accessToken:'fixture-token',cursor});
+  const resumedSoc=statuses.find(patch=>patch.currentStage==='soc');
+  assert.equal(resumedSoc.stageIndex,3);
+  assert.equal(resumedSoc.continuationCursor.stageIndex,3);
+  assert.equal(result.done,true);
+  assert.equal(result.cursor.stageResults.find(row=>row.key==='soc').outcome,'UP_TO_DATE');
 });

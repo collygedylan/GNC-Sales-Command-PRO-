@@ -43,7 +43,7 @@ test('v2.3.96 assets and worker upgrade purge previous cache generations', () =>
     assert.equal(asset.searchParams.get('v'), expectedVersion, match[1]);
   }
   assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.96'/);
-  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'postgres-erp-sync-r1'/);
+  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r2'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*window\.reloadForServiceWorkerUpdate\(\)[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
   const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.96' });

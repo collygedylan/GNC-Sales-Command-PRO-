@@ -26648,7 +26648,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'megan_kelly@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const MANUAL_SYNC_SCRIPT_TIMEOUT_MS = 330000;
+        const MANUAL_SYNC_SCRIPT_TIMEOUT_MS = 600000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
@@ -142755,15 +142755,16 @@ C.14.043 C.15.000
             const compactPassiveSync = compactTouchChrome && isPassiveChromeSyncWindowActive();
             const autoManualSync = effectiveMode === 'manual-sync' && isAutoManualSyncStatus();
             const manualSyncPrefix = autoManualSync ? 'AUTO' : 'SYNC';
+            const manualSyncProgress = getManualSyncProgressInfo().text;
             const revisionSummary = navigator.onLine === false ? '' : getDatasetRevisionConnectionLabel();
             const lastSyncSummary = revisionSummary || formatDiagnosticsTime(lastSuccessfulSyncTime);
             const modeLabel = effectiveMode === 'manual-sync'
-                ? (compactTouchChrome ? manualSyncPrefix : `${manualSyncPrefix} ${getManualSyncProgressInfo().text || ''}`.trim())
+                ? `${manualSyncPrefix} ${manualSyncProgress || ''}`.trim()
                 : (labelMap[effectiveMode] || 'IDLE');
             badge.className = `px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap overflow-hidden ${compactTouchChrome ? 'justify-center text-center' : ''} ${styleMap[effectiveMode] || styleMap.idle}`;
             badge.innerText = modeLabel;
             detail.innerText = effectiveMode === 'manual-sync'
-                ? (compactTouchChrome ? (`${manualSyncPrefix} ${getManualSyncProgressInfo().text || 'Running'}`.trim()) : `${autoManualSync ? 'Auto Sync' : 'Manual Sync'} | ${getManualSyncStatusText() || 'Running...'}`)
+                ? (compactTouchChrome ? (`${manualSyncPrefix} ${manualSyncProgress || 'Running'}`.trim()) : `${autoManualSync ? 'Auto Sync' : 'Manual Sync'} | ${getManualSyncStatusText() || 'Running...'}`)
                 : (compactTouchChrome
                     ? `${compactPassiveSync ? 'Sync' : getDiagnosticsPlatformLabel()} | ${lastSyncSummary}`
                     : `${getDiagnosticsPlatformLabel()} | ${navigator.onLine ? 'Online' : 'Offline'} | ${revisionSummary || `Last Sync ${lastSyncSummary}`}`);
