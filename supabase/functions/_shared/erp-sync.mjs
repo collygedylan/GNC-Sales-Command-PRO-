@@ -697,9 +697,10 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
   let stageIndex = Math.max(0,Math.min(STAGES.length,Number(cursor.stageIndex)||0));
   let folderSnapshot=cursor.folderSnapshot&&typeof cursor.folderSnapshot==='object'&&!Array.isArray(cursor.folderSnapshot)?{...cursor.folderSnapshot}:{};
   folderSnapshot=await prefetchErpFolders(fetcher,token,folders,folderSnapshot);
-  const snapshotCursor={stageIndex,stageResults:stageResults.slice(),attemptedByStage,folderSnapshot};
-  await status({status:'CONTINUE',stageIndex,currentStage:STAGES[stageIndex]?.key||'idle',continuationCursor:snapshotCursor});
   const resume = cursor.fileContinuation && typeof cursor.fileContinuation === 'object' ? cursor.fileContinuation : null;
+  const snapshotCursor={stageIndex,stageResults:stageResults.slice(),attemptedByStage,folderSnapshot,
+    ...(resume?{fileContinuation:resume}:{})};
+  await status({status:'CONTINUE',stageIndex,currentStage:STAGES[stageIndex]?.key||'idle',continuationCursor:snapshotCursor});
   if (resume) {
     const stage = STAGES[Number(resume.stageIndex)];
     const file = resume.file;

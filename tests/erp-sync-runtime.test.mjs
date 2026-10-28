@@ -489,3 +489,21 @@ test('continuation cursor advances before stage I/O so expired-lease retries can
   assert.equal(result.done,true);
   assert.equal(result.cursor.stageResults.find(row=>row.key==='soc').outcome,'UP_TO_DATE');
 });
+
+test('folder snapshot persistence preserves an in-flight row offset before resumed file I/O', async () => {
+  const statuses=[];
+  const folderSnapshot=Object.fromEntries(['drive','cav','reserves','soc','hl_po_parsed'].map(key=>[key,{files:[],listDurationMs:0}]));
+  const file={id:'resume-file',name:'Resume.xlsx',modifiedTime:'2026-10-28T12:00:00Z',parents:['drive-folder']};
+  const cursor={stageIndex:0,stageResults:[],attemptedByStage:{},folderSnapshot,fileContinuation:{stageIndex:0,file,
+    state:{stageId:'stage-resume',expectedRows:50000,expectedRowsPending:true,nextOffset:12000,processedRows:8000,
+      identityCounts:{},headerRowIndex:1,header:['itemcode']}}};
+  const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder'};
+  const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
+  const supabase={rpc:async name=>name==='check_erp_file_sync_needed_v1'?{data:{skip:false}}:{data:null}};
+  await assert.rejects(runErpSyncWorkerStep({supabase,fetcher:async()=>{throw new Error('fixture download fault');},
+    status:async patch=>statuses.push(patch),env,accessToken:'fixture-token',cursor}),/fixture download fault/);
+  const first=JSON.parse(JSON.stringify(statuses[0].continuationCursor));
+  assert.equal(first.stageIndex,0);
+  assert.equal(first.fileContinuation.state.nextOffset,12000);
+  assert.equal(first.fileContinuation.state.processedRows,8000);
+});
