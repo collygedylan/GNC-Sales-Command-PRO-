@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "3ad650d04848189b202f3427adb2c66a5b808a58",
+  "commit": "c349d1eaae70f4da15f6effbc61cf4b5f98c96ab",
   "release": "AgData v2.3.93",
   "files": [
     {
@@ -545,8 +545,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8623574,
-      "sha256": "463ba82b9413fbc2c88cdb7e18828c257dde95efbd1a14f57e9b1e5c33c0225a"
+      "bytes": 8624003,
+      "sha256": "0ae69ae768d1900faf649b7d386218fb17a3d841ba351b322143566a17cf3da6"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -971,22 +971,22 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 187,
-      "sha256": "5506ad8baaf4cfc70d0476b6d08e6375aecf56718fd404a4016cdcd0912fdeb9"
+      "sha256": "9475c02575455b1571b6f6f2ccf0ebef2f368edea0d86715fbb5093afd71228f"
     },
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "5506ad8baaf4cfc70d0476b6d08e6375aecf56718fd404a4016cdcd0912fdeb9"
+      "sha256": "9475c02575455b1571b6f6f2ccf0ebef2f368edea0d86715fbb5093afd71228f"
     },
     {
-      "path": "deployments/3ad650d04848189b202f3427adb2c66a5b808a58.json",
+      "path": "deployments/c349d1eaae70f4da15f6effbc61cf4b5f98c96ab.json",
       "bytes": 187,
-      "sha256": "5506ad8baaf4cfc70d0476b6d08e6375aecf56718fd404a4016cdcd0912fdeb9"
+      "sha256": "9475c02575455b1571b6f6f2ccf0ebef2f368edea0d86715fbb5093afd71228f"
     },
     {
       "path": "index.html",
       "bytes": 378036,
-      "sha256": "35b455f352135f56ce829d25164251634cbbca7bf2b8faacaa97bab9b248b000"
+      "sha256": "21eb8f363fd50b25a3bea54281b475c3496ee655f07d2b138ca10b946df46e4c"
     },
     {
       "path": "manifest.json",
@@ -1256,7 +1256,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "ac8da48c3a8949533a6fad9e9c0c56026caac72cf55f2bfd7d0c2c71ec92b912"
+      "sha256": "6d19f123a5abda519aa99ffddd7a6989ff36218febe0213ebcf17548ea27a4dc"
     },
     {
       "path": "v2/v2-cache-migration.js",
