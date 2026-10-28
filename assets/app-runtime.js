@@ -14896,7 +14896,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function setRealtimeSubscriptionsForView(viewId, force = false) {
-            if (!options.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
+            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
                 cleanupRealtime(); clearVisibleViewPollSync();
                 activeRealtimeViewId = String(viewId || 'home');
                 if (activeRealtimeViewId !== 'request' || activeReqTab !== 'eval-work') unsubscribeEvalWorkRealtime();
@@ -34983,7 +34983,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (RETIRED_DATASET_KEYS.has(String(key || '').trim())) return false;
             const definition = DATASET_DEFINITIONS[key];
             if (!definition) return false;
-            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
+            if (!options.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
                 const adapterId = `core:${key === 'avOpen' ? 'master' : key}`;
                 const foreground = getProductionLiveSyncContext().adapters.find(adapter => adapter.id === adapterId);
                 // A preview can queue an initial load while the foreground full
