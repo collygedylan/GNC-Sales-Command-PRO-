@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.93';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.94';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24861,6 +24861,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let requestGlobalCustomerOptionsCache = [];
         let requestUniversalCustomerOptionsCacheKey = '';
         let requestUniversalCustomerOptionsCache = [];
+        let requestCustomCustomerOptions = new Map();
         let requestMappingRpcCacheOwner = '';
         let requestMappingSecurityEpoch = 0;
         let requestReserveFallbackSource = null;
@@ -26674,7 +26675,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.93').trim() || 'AgData v2.3.93';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.94').trim() || 'AgData v2.3.94';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -39671,6 +39672,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return tokens;
         }
 
+        function matchSalesRepIdentity(left = '', right = '', leftId = '', rightId = '') {
+            const normalizedLeftId = normalizeRequestSalesrepId(leftId);
+            const normalizedRightId = normalizeRequestSalesrepId(rightId);
+            if (normalizedLeftId && normalizedRightId && normalizedLeftId === normalizedRightId) return true;
+            const leftTokens = getRepNameLookupTokens(String(left || '').split('@')[0]);
+            const rightTokens = getRepNameLookupTokens(String(right || '').split('@')[0]);
+            for (const token of leftTokens) if (rightTokens.has(token)) return true;
+            const sorted = value => normalizeRepMatchToken(normalizeRepDisplayOrder(String(value || '').split('@')[0])).split(' ').filter(Boolean).sort().join(' ');
+            return !!sorted(left) && sorted(left) === sorted(right);
+        }
+
         function setRepPermutations(user) {
             const rawUser = String(user || '').toLowerCase().trim();
             const parts = rawUser.split(/[^a-z0-9]+/).filter(Boolean);
@@ -51937,6 +51949,7 @@ function toggleDriveQuickRequestItem(domId) {
             requestGlobalCustomerOptionsCache = [];
             requestUniversalCustomerOptionsCacheKey = '';
             requestUniversalCustomerOptionsCache = [];
+            requestCustomCustomerOptions = new Map();
             requestModalCustomerOptionsCacheKey = '';
             requestModalCustomerOptionsReady = false;
             requestModalCustomerOptionsLoading = false;
@@ -52170,7 +52183,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getCustomerRepMapRepValue(row = null) {
-            return firstNonEmptyValue(row && row.SALESREPNAME, row && row.SALESREP, row && row.SALES_REP, row && row.SALESREPID, row && row.salesrepname, row && row.salesrepid, '');
+            return firstNonEmptyValue(row && row.SALESREPNAME, row && row.SALESREP, row && row.SALES_REP, row && row.SALESPERSON,
+                row && row.REQUEST_SELECTED_REP_DISPLAY, row && row.REQUEST_SELECTED_REP_USERNAME, row && row.REQUESTED_BY,
+                row && row.salesrepname, row && row.salesrep, row && row.salesperson, row && row.request_selected_rep_display,
+                row && row.request_selected_rep_username, row && row.requested_by, row && row.SALESREPID, row && row.salesrepid, '');
         }
 
         function getCustomerRepMapCustomerValue(row = null) {
@@ -52239,9 +52255,9 @@ function toggleDriveQuickRequestItem(domId) {
             return requestGlobalCustomerOptionsCache;
         }
 
-        function getRequestUniversalCustomerOptions() {
+        function buildSalesRepCustomerDirectory(repName = '', selectedSalesrepId = '') {
             const sourceLists = [customerRepMapRows, socInventory, reservesInventory, requestsInventory, requestHistoryInventory];
-            const signature = JSON.stringify([getRequestModalLookupOwnerSignature(), sourceLists.map((rows) => {
+            const signature = JSON.stringify([getRequestModalLookupOwnerSignature(), normalizeRepMatchToken(repName), selectedSalesrepId, sourceLists.map((rows) => {
                 const list = Array.isArray(rows) ? rows : [];
                 return [list.length, String(firstNonEmptyValue(list[0]?.UNIQUE_ID, list[0]?.unique_id, '') || ''),
                     String(firstNonEmptyValue(list[list.length - 1]?.UNIQUE_ID, list[list.length - 1]?.unique_id, '') || '')];
@@ -52250,7 +52266,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return requestUniversalCustomerOptionsCache;
             }
             const options = new Map();
-            const na = buildRequestModalNaCustomerOption(JD_EXECUTIVE_SALESREP_ID);
+            const na = buildRequestModalNaCustomerOption(selectedSalesrepId);
             if (na) options.set(requestCustomerOptionKey(na), na);
             sourceLists.forEach((rows, sourceIndex) => {
                 (Array.isArray(rows) ? rows : []).forEach((row) => {
@@ -52259,28 +52275,65 @@ function toggleDriveQuickRequestItem(domId) {
                     const consigneeName = getCustomerRepMapConsigneeValue(row);
                     const context = getRequestCustomerContext(row);
                     if (!customerName || !consigneeName || !context.customeridentityid || !context.consigneeidentityid) return;
+                    const rowRepId = String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, row.REQUEST_SELECTED_SALESREP_ID, row.request_selected_salesrep_id, '') || '').trim();
+                    const mappedToRep = matchSalesRepIdentity(getCustomerRepMapRepValue(row), repName, rowRepId, selectedSalesrepId);
                     const option = buildRequestModalCustomerSearchOption(customerName, consigneeName, {
                         ...row,
-                        salesrepid: JD_EXECUTIVE_SALESREP_ID,
-                        salesrepname: 'JD Jones',
-                        request_selected_salesrep_id: JD_EXECUTIVE_SALESREP_ID
+                        salesrepid: selectedSalesrepId,
+                        salesrepname: repName,
+                        request_selected_salesrep_id: selectedSalesrepId,
+                        directory_scope: mappedToRep ? 'Mapped Customers' : 'All Customers'
                     });
                     if (option) options.set(requestCustomerOptionKey(option), option);
                 });
             });
             requestUniversalCustomerOptionsCacheKey = signature;
-            requestUniversalCustomerOptionsCache = mergeRequestModalCustomerOptions(Array.from(options.values()));
+            requestUniversalCustomerOptionsCache = mergeRequestModalCustomerOptions(Array.from(options.values()), Array.from(requestCustomCustomerOptions.values()));
             return requestUniversalCustomerOptionsCache;
         }
 
-        async function fetchRequestUniversalCustomerOptions() {
+        function buildRequestCustomIdentity(prefix = '', value = '') {
+            let hash = 2166136261;
+            for (const char of normalizeRepMatchToken(value)) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0;
+            return `AGDATA_CUSTOM_${String(prefix || '').toUpperCase()}_${hash.toString(16).padStart(8, '0')}`;
+        }
+
+        function addCustomRequestCustomerOption(customerName = '', consigneeName = 'N/A') {
+            const customer = String(customerName || '').trim();
+            const consignee = String(consigneeName || '').trim() || REQUEST_NA_CONSIGNEE_NAME;
+            if (!customer) return null;
+            const salesrepId = getRequestSelectedSalesrepId(tempSelectedReqRep);
+            const option = buildRequestModalCustomerSearchOption(customer, consignee, {
+                customeridentityid: buildRequestCustomIdentity('CUSTOMER', customer),
+                consigneeidentityid: buildRequestCustomIdentity('CONSIGNEE', `${customer}|${consignee}`),
+                request_selected_salesrep_id: salesrepId,
+                salesrepid: salesrepId,
+                salesrepname: tempSelectedReqRep,
+                customerstatus: 'A',
+                consigneestatus: 'A',
+                directory_scope: 'Custom Entry'
+            });
+            if (!option) return null;
+            requestCustomCustomerOptions.set(requestCustomerOptionKey(option), option);
+            requestUniversalCustomerOptionsCacheKey = '';
+            requestModalCustomerOptionRowsCache.clear();
+            requestModalCustomerGroupCacheKey = '';
+            requestExistingFolderGroupsCacheKey = '';
+            return option;
+        }
+
+        function getRequestUniversalCustomerOptions() {
+            return buildSalesRepCustomerDirectory(tempSelectedReqRep, getRequestSelectedSalesrepId(tempSelectedReqRep));
+        }
+
+        async function fetchRequestUniversalCustomerOptions(repName = tempSelectedReqRep, salesrepId = getRequestSelectedSalesrepId(repName)) {
             const fetchPage = (page) => postAppFunctionJson(APP_API_FUNCTION_URL, {
-                action: 'customer-rep-map', operation: 'options', salesrepId: JD_EXECUTIVE_SALESREP_ID,
+                action: 'customer-rep-map', operation: 'options', salesrepId, salesrepName: resolveCanonicalRequestRepName(repName) || String(repName || '').trim(),
                 page, pageSize: 200, q: ''
-            }, { timeoutMs: 30000, label: 'JD customer directory' });
+            }, { timeoutMs: 30000, label: 'Request customer directory' });
             const first = await fetchPage(0);
             if (!first?.ok || !Array.isArray(first.rows) || !Number.isSafeInteger(Number(first.total))) {
-                throw new Error('The JD customer directory response was incomplete.');
+                throw new Error('The customer directory response was incomplete.');
             }
             const total = Number(first.total);
             const pages = Math.ceil(total / 200);
@@ -52291,11 +52344,11 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (responses.some((response, page) => !response?.ok || !Array.isArray(response.rows)
                 || Number(response.total) !== total || Number(response.page) !== page || String(response.revision || '') !== String(first.revision || ''))) {
-                throw new Error('The JD customer directory changed during loading. Retry the customer list.');
+                throw new Error('The customer directory changed during loading. Retry the customer list.');
             }
             const rows = responses.flatMap(response => response.rows);
-            if (rows.length !== total) throw new Error('The JD customer directory response was incomplete.');
-            return { rows, revision: String(first.revision || '0') };
+            if (rows.length !== total) throw new Error('The customer directory response was incomplete.');
+            return { rows, revision: String(first.revision || '0'), salesrepId: String(first.salesrepId || salesrepId || '') };
         }
 
 
@@ -52306,7 +52359,7 @@ function toggleDriveQuickRequestItem(domId) {
             const cached = requestMappingRpcCache.get(id);
             const globalReady = Array.isArray(customerRepMapRows) && customerRepMapRows.some(isActiveRequestCustomerMapping);
             const sameOwnerEntry = !!id && !!cached && cached.owner === owner && Array.isArray(cached.rows) && cached.rows.length > 0;
-            const universalReady = id === JD_EXECUTIVE_SALESREP_ID && getRequestUniversalCustomerOptions().length > 0;
+            const universalReady = !!tempSelectedReqRep && buildSalesRepCustomerDirectory(tempSelectedReqRep, id).length > 0;
             requestModalCustomerOptionsReady = sameOwnerEntry || universalReady || globalReady;
             requestModalCustomerOptionsCacheKey = requestModalCustomerOptionsReady
                 ? `${id || 'all'}:${String(cached?.revision || customerRepMapRows.mappingRevision || 'stale')}` : '';
@@ -52340,7 +52393,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             const activeRows = rows.filter(row => isActiveRequestCustomerMapping(row)
-                && normalizeRepMatchToken(normalizeRepDisplayOrder(getCustomerRepMapRepValue(row))) === repToken);
+                && matchSalesRepIdentity(getCustomerRepMapRepValue(row), canonicalRepName, row.salesrepid || row.SALESREPID, ''));
             const salesrepIds = new Set(activeRows.map(row => String(row.salesrepid || row.SALESREPID || '').trim()).filter(Boolean));
             if (!activeRows.length || activeRows.length !== rows.length || salesrepIds.size !== 1) {
                 throw new Error('The selected sales rep customer directory is unavailable.');
@@ -52364,10 +52417,11 @@ function toggleDriveQuickRequestItem(domId) {
             const load = (async () => {
                 let rows;
                 let resolvedByName = false;
-                if (salesrepId === JD_EXECUTIVE_SALESREP_ID) {
-                    const localRows = getRequestUniversalCustomerOptions();
+                if (salesrepId || repName) {
+                    const localRows = buildSalesRepCustomerDirectory(repName, salesrepId);
                     try {
-                        const remote = await fetchRequestUniversalCustomerOptions();
+                        const remote = await fetchRequestUniversalCustomerOptions(repName, salesrepId);
+                        salesrepId = remote.salesrepId || salesrepId;
                         rows = mergeRequestModalCustomerOptions(localRows,
                             remote.rows.map(row => buildRequestModalCustomerSearchOption(
                                 getCustomerRepMapCustomerValue(row), getCustomerRepMapConsigneeValue(row), row
@@ -52375,12 +52429,6 @@ function toggleDriveQuickRequestItem(domId) {
                     } catch (error) {
                         rows = localRows;
                     }
-                } else if (salesrepId) {
-                    const fields = 'unique_id,customername,consigneename,salesrepname,salesrepid,customeridentityid,consigneeid,territorycode,territorydesc,customerstatus,consigneestatus';
-                    const query = `select=${fields}&salesrepid=eq.${encodeURIComponent(salesrepId)}&customerstatus=eq.A&consigneestatus=eq.A&order=customername.asc,consigneename.asc`;
-                    rows = await fetchAllSupabaseRows('ph_customer_consignee_sales_reps', query, {
-                        count: true, requireComplete: true, skipCustomerMapShortcut: true
-                    });
                 } else {
                     const resolved = await fetchRequestCustomerMapRowsForRepName(repName);
                     salesrepId = resolved.salesrepId;
@@ -52391,8 +52439,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (typeof isCurrent === 'function' && !isCurrent()) return null;
                 if (securityEpoch !== requestMappingSecurityEpoch || owner !== getRequestModalLookupOwnerSignature()) return null;
                 if (signature !== getRequestModalCustomerMappingCacheSignature()) throw new Error('Customer mappings changed during loading. Refresh to retry.');
-                if (salesrepId !== JD_EXECUTIVE_SALESREP_ID && !rows.every(row => isActiveRequestCustomerMapping(row)
-                    && normalizeRequestSalesrepId(row.salesrepid) === normalizeRequestSalesrepId(salesrepId))) throw new Error('Customer mapping response did not match the selected rep.');
+                if (!rows.every(row => isActiveRequestCustomerMapping(row))) throw new Error('Customer mapping response did not match the selected rep.');
                 const identities = rows.map(row => JSON.stringify([
                     salesrepId || row.salesrepid,
                     row.customeridentityid,
@@ -52624,10 +52671,7 @@ function toggleDriveQuickRequestItem(domId) {
                 && (cachedOptions.signature === signature || cachedOptions.stale === true)) return cachedOptions.rows;
             const cached = id ? requestMappingRpcCache.get(id) : null;
             if (id === JD_EXECUTIVE_SALESREP_ID) {
-                const rows = mergeRequestModalCustomerOptions(
-                    getRequestUniversalCustomerOptions(),
-                    cached?.owner === owner && Array.isArray(cached.rows) ? cached.rows : []
-                );
+                const rows = mergeRequestModalCustomerOptions(buildSalesRepCustomerDirectory(repName, id), cached?.owner === owner && Array.isArray(cached.rows) ? cached.rows : []);
                 requestModalCustomerOptionRowsCache.set(id, { signature, owner, rows, stale: !cached || cached.signature !== signature });
                 return rows;
             }
@@ -52644,7 +52688,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (mapReady && id) {
                 getRequestAuthorizedReserveFallbackMappings(id).forEach(row => appendCustomerRepMapOption(options, row));
             }
-            const merged = mergeRequestModalCustomerOptions(Array.from(options.values()), mapReady ? getRequestGlobalCustomerOptions() : []);
+            const merged = mergeRequestModalCustomerOptions(buildSalesRepCustomerDirectory(repName, id), Array.from(options.values()), mapReady ? getRequestGlobalCustomerOptions() : [], [buildRequestModalNaCustomerOption(id)]);
             requestModalCustomerOptionRowsCache.set(cacheId, { signature, owner, rows: merged, stale: !mapReady || !!sameOwnerEntry && cached.signature !== signature });
             while (requestModalCustomerOptionRowsCache.size > 32) requestModalCustomerOptionRowsCache.delete(requestModalCustomerOptionRowsCache.keys().next().value);
             return merged;
@@ -147541,6 +147585,48 @@ C.14.043 C.15.000
             return scheduleRequestModalSearchRender('existing-folder-folder', tempExistingReqFolderSearch, () => renderExistingRequestFolderPicker(), getExistingRequestPickerSearchRenderOptions());
         }
 
+        function selectCustomRequestCustomer(value = '', existingPicker = true) {
+            const option = addCustomRequestCustomerOption(value, REQUEST_NA_CONSIGNEE_NAME);
+            if (!option) return false;
+            const groups = existingPicker ? buildExistingRequestFolderCustomerGroups(tempSelectedReqRep)
+                : getRequestCustomerPickerGroupsCached(getRequestModalCustomerOptionsForRep(tempSelectedReqRep));
+            const group = groups.find(entry => normalizeRepMatchToken(entry.label) === normalizeRepMatchToken(option.customerName));
+            if (!group) return false;
+            if (existingPicker) {
+                tempExistingReqSelectedCustomer = group.key;
+                tempExistingReqCustomerSearch = '';
+                tempExistingReqConsigneeSearch = '';
+                renderExistingRequestFolderPicker();
+            } else {
+                selectRequestCustomerForNewFolder(group.key, group.label);
+            }
+            return false;
+        }
+
+        function selectCustomRequestConsignee(value = '', existingPicker = true) {
+            const groups = existingPicker ? buildExistingRequestFolderCustomerGroups(tempSelectedReqRep)
+                : getRequestCustomerPickerGroupsCached(getRequestModalCustomerOptionsForRep(tempSelectedReqRep));
+            const customerKey = existingPicker ? tempExistingReqSelectedCustomer : tempRequestCustomerSelectedCustomerKey;
+            const selected = groups.find(entry => entry.key === customerKey);
+            const customerName = String(selected?.label || tempRequestCustomerSelectedCustomerName || '').trim();
+            const option = addCustomRequestCustomerOption(customerName, value);
+            if (!option) return false;
+            if (existingPicker) {
+                const refreshed = buildExistingRequestFolderCustomerGroups(tempSelectedReqRep);
+                const customer = refreshed.find(entry => normalizeRepMatchToken(entry.label) === normalizeRepMatchToken(customerName));
+                const consignee = customer?.consignees?.find(entry => normalizeRepMatchToken(entry.consigneeName) === normalizeRepMatchToken(value));
+                if (customer && consignee) {
+                    tempExistingReqSelectedCustomer = customer.key;
+                    tempExistingReqSelectedConsignee = consignee.key;
+                    tempExistingReqConsigneeSearch = '';
+                    renderExistingRequestFolderPicker();
+                }
+            } else {
+                setCustomerInput(option.label, option.customeridentityid, option.consigneeidentityid, option.customerName, option.consigneeName);
+            }
+            return false;
+        }
+
         function selectExistingRequestCustomer(customerKey = '') {
             tempExistingReqSelectedCustomer = String(customerKey || '');
             tempExistingReqConsigneeSearch = '';
@@ -147721,10 +147807,12 @@ C.14.043 C.15.000
                         const consigneeCount = Number(group.consigneeCount || (Array.isArray(group.consignees) ? group.consignees.length : 0)) || 0;
                         html += `<button class="request-choice-card mb-2" data-render-key="request-customer:${esc(group.key)}" ${buildFastInvokeAttrs('selectExistingRequestCustomer', [group.key], 'Open customer ' + label)}><i class="request-choice-icon ph-fill ph-users"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${escapeRequestCustomerPickerText(label)}</span><span class="request-choice-meta">${consigneeCount} consignee${consigneeCount === 1 ? '' : 's'} | ${group.folderCount} folder${group.folderCount === 1 ? '' : 's'} | ${group.rowCount} row${group.rowCount === 1 ? '' : 's'}</span></div></button>`;
                     });
+                    const exact = filteredGroups.some(group => normalizeRepMatchToken(group.label) === customerSearch);
+                    if (tempExistingReqCustomerSearch.trim() && !exact) html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestCustomer', [tempExistingReqCustomerSearch, true], 'Use custom customer')}><i class="request-choice-icon ph-bold ph-plus"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">Use "${escapeRequestCustomerPickerText(tempExistingReqCustomerSearch)}"</span><span class="request-choice-meta">Custom Customer · All Sales Reps</span></div></button>`;
                 } else if (requestModalCustomerOptionsLoading) {
                     html += `<div class="request-empty-state">Customer choices are loading in the background…</div>`;
                 } else {
-                    html += `<div class="request-empty-state">${esc(requestModalCustomerOptionsError || 'No active mapped customers found for this Sales Rep ID.')}</div>`;
+                    html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestCustomer', [tempExistingReqCustomerSearch || 'N/A', true], 'Use customer entry')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(tempExistingReqCustomerSearch || 'N/A')}"</span></button>`;
                 }
                 html += `</div>`;
             } else if (!selectedConsigneeGroup) {
@@ -147740,8 +147828,10 @@ C.14.043 C.15.000
                         const label = String(group.consigneeLabel || 'No Consignee').trim();
                         html += `<button class="request-choice-card mb-2" data-render-key="request-consignee:${esc(group.key)}" ${buildFastInvokeAttrs('selectExistingRequestConsignee', [group.key], 'Open consignee ' + label)}><i class="request-choice-icon ph-fill ph-map-pin"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${escapeRequestCustomerPickerText(label)}</span><span class="request-choice-meta">${group.folderCount} folder${group.folderCount === 1 ? '' : 's'} | ${group.rowCount} row${group.rowCount === 1 ? '' : 's'}</span></div></button>`;
                     });
+                    const exact = filteredConsignees.some(group => normalizeRepMatchToken(group.consigneeLabel) === consigneeSearch);
+                    if (tempExistingReqConsigneeSearch.trim() && !exact) html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestConsignee', [tempExistingReqConsigneeSearch, true], 'Use custom consignee')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(tempExistingReqConsigneeSearch)}"</span></button>`;
                 } else {
-                    html += `<div class="request-empty-state">No mapped consignees matched that search.</div>`;
+                    html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestConsignee', [tempExistingReqConsigneeSearch || 'N/A', true], 'Use consignee entry')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(tempExistingReqConsigneeSearch || 'N/A')}"</span></button>`;
                 }
                 html += `</div>`;
             } else {
@@ -147952,6 +148042,9 @@ C.14.043 C.15.000
                     const label = String(group.label || 'Unknown Customer').trim();
                     return `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectRequestCustomerForNewFolder', [group.key, label], 'Select customer ' + label)}><i class="request-choice-icon ph-fill ph-users"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${escapeRequestCustomerPickerText(label)}</span><span class="request-choice-meta">${group.customeridentityid ? 'ID ' + escapeRequestCustomerPickerText(group.customeridentityid) + ' · ' : ''}${group.consigneeCount || 0} consignee${(group.consigneeCount || 0) === 1 ? '' : 's'}</span></div></button>`;
                 }).join('');
+                if (rawVal && !filteredGroups.some(group => normalizeRepMatchToken(group.label) === val)) {
+                    html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestCustomer', [rawVal, false], 'Use custom customer')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(rawVal)}"</span><span class="request-choice-meta">Custom Customer · All Sales Reps</span></button>`;
+                }
             } else {
                 const selectedGroup = groups.find((group) => group.key === tempRequestCustomerSelectedCustomerKey);
                 const consigneeOptions = selectedGroup ? selectedGroup.consignees || [] : [];
@@ -147964,12 +148057,12 @@ C.14.043 C.15.000
                     return `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('setCustomerInput', [combinedLabel, option.customeridentityid || '', option.consigneeidentityid || '', customerName, option.consigneeName || ''], 'Select consignee ' + label)}><i class="request-choice-icon ph-fill ph-map-pin"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${escapeRequestCustomerPickerText(label)}</span><span class="request-choice-meta">${escapeRequestCustomerPickerText(customerName || 'Unknown Customer')}${option.consigneeidentityid ? ' · ID ' + escapeRequestCustomerPickerText(option.consigneeidentityid) : ''}</span></div></button>`;
                 }).join('');
                 if (!filteredConsignees.length) {
-                    html += `<div class="request-empty-state">No active mapped consignees match. Ask a Manager to correct the mapping if needed.</div>`;
+                    html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestConsignee', [rawVal || 'N/A', false], 'Use custom consignee')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(rawVal || 'N/A')}"</span></button>`;
                 }
             }
             if (html === '') {
                 const hasOptions = options.length > 0;
-                html = `<div class="request-empty-state">${hasOptions ? (tempRequestCustomerSelectedCustomerKey ? 'No active mapped consignees match. Ask a Manager to correct the mapping if needed.' : 'No active mapped customers match. Ask a Manager to correct the mapping if needed.') : 'No active customer / consignee mappings are available for this sales rep.'}</div>`;
+                html = `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs(tempRequestCustomerSelectedCustomerKey ? 'selectCustomRequestConsignee' : 'selectCustomRequestCustomer', [rawVal || 'N/A', false], 'Use request directory entry')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(rawVal || 'N/A')}"</span><span class="request-choice-meta">${hasOptions ? 'Custom Entry' : 'Universal Directory Fallback'}</span></button>`;
             }
             container.innerHTML = html;
         }
@@ -168033,12 +168126,19 @@ ${folderNote ? `Folder Note: ${folderNote}
             const value = (...keys) => String(firstNonEmptyValue(...keys.map((key) => source[key]), '') || '').trim();
             return {
                 transactionnumber: value('TRANSACTIONNUMBER', 'transactionnumber', 'TRANSACTION_NUMBER', 'transaction_number'),
+                tagcode: value('TAGCODE', 'tagcode'),
                 dock: value('DOCK', 'dock', 'DOCK_NUM', 'dock_num'),
                 stopnumber: value('STOPNUMBER', 'stopnumber', 'STOP_NUMBER', 'stop_number'),
                 itemcode: value('ITEMCODE', 'itemcode'),
                 locationcode: value('LOCATIONCODE', 'locationcode'),
                 lotcode: value('LOTCODE', 'lotcode'),
-                consignee: value('CONSIGNEEIDENTITYID', 'consigneeidentityid', 'CONSIGNEENAME', 'consigneename', 'CONSIGNEE', 'consignee')
+                quantityshipped: value('QUANTITYSHIPPED', 'quantityshipped', 'QTY', 'qty', 'QUANTITY', 'quantity'),
+                customer: value('CUSTOMERIDENTITYID', 'customeridentityid', 'CUSTOMERNAME', 'customername'),
+                consignee: value('CONSIGNEEIDENTITYID', 'consigneeidentityid', 'CONSIGNEENAME', 'consigneename', 'CONSIGNEE', 'consignee'),
+                salesrep: value('SALESREPID', 'salesrepid', 'SALESREPNAME', 'salesrepname', 'SALES_REP', 'sales_rep'),
+                spec: value('REQ_SPEC', 'req_spec', 'DOCK_SPEC', 'dock_spec', 'SPEC', 'spec'),
+                photo_url: value('REQ_PHOTO_LINK', 'req_photo_link', 'DOCK_PHOTO_LINK', 'dock_photo_link', 'PHOTO_URL', 'photo_url'),
+                loc_photo_match: value('LOC_PHOTO_MATCH', 'loc_photo_match', 'LOC_MATCH_QTY', 'loc_match_qty', 'MATCH', 'match')
             };
         }
 

@@ -16,6 +16,8 @@ Governance and skill updates do not authorize production changes. Production AI 
 
 ## Shared component dependencies
 
+Teach universal behavior as universal: absent an explicit named-user exception, feature skills and fixture contracts must cover all active users/roles and all Sales Rep identity formats rather than preserving a one-account workaround.
+
 Every feature skill must name its dependency on the shared `switchView` / `showOnlyPrimaryView` router, `goBackUniversal` / `updateGlobalBackButton`, `viewHistoryStack` and header/search ownership where applicable. Do not teach a local component to hide or recreate global Back/navigation DOM. Keep permissions, auth epoch, cached rows and recipient contracts distinct from visual shell state. Record static findings separately from rendered behavior and measured performance.
 
 ## Scoped Node verification
@@ -73,3 +75,4 @@ The v2.3.60 request repair adds no startup route: it preserves the existing queu
 
 - Never edit before the Step 0 read, leave a new canonical function unindexed, add a wildcard fixture, teach an unverified assumption, or close a bug without the `+1` invariant and root-cause entry.
 - Never delete, renumber, skip, todo, or weaken an existing golden invariant; the ratchet is append-only.
+- Never encode a general workflow contract as a one-user or one-rep exception; record deliberate named-user exceptions explicitly and add representative multi-identity coverage for every universal rule.

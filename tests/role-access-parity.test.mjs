@@ -397,6 +397,30 @@ test('transient access and navigation fallbacks cannot revoke Dylan or pause liv
   assert.match(api, /normalizeUsername\(session\.username\) === "dylan_collyge"[^]*\? "admin"/);
 });
 
+test('v2.3.94 canonical rep matching and universal request directory work for every sales rep spelling', () => {
+  const ctx = vm.createContext({ Set, String, normalizeRequestSalesrepId: value => String(value || '').trim().toUpperCase() });
+  for (const name of ['normalizeRepMatchToken', 'normalizeRepDisplayOrder', 'getRepNameLookupTokens', 'matchSalesRepIdentity']) {
+    vm.runInContext(shellFunction(name), ctx);
+  }
+  for (const [firstLast, lastFirst, username] of [
+    ['Kevin Effinger', 'Effinger, Kevin', 'kevin_effinger'],
+    ['Abbey Burka', 'Burka, Abbey', 'abbey_burka'],
+    ['Ben Harveson', 'Harveson, Ben', 'ben_harveson'],
+    ['Brian Hatfield', 'Hatfield, Brian', 'brian_hatfield'],
+    ['Troy Lee', 'Lee, Troy', 'troy_lee'],
+  ]) {
+    assert.equal(ctx.matchSalesRepIdentity(firstLast, lastFirst), true, lastFirst);
+    assert.equal(ctx.matchSalesRepIdentity(firstLast, username), true, username);
+  }
+  const appRuntime = read('assets/app-runtime.js');
+  const migration2394 = read('supabase/migrations/20261028145127_agdata_v2394_universal_request_directory_suspend_identity.sql');
+  assert.match(appRuntime, /buildSalesRepCustomerDirectory[\s\S]*customerRepMapRows[\s\S]*socInventory[\s\S]*reservesInventory[\s\S]*requestsInventory[\s\S]*requestHistoryInventory/);
+  assert.match(appRuntime, /buildRequestModalNaCustomerOption\(selectedSalesrepId\)/);
+  assert.doesNotMatch(appRuntime, /No active mapped customers found for this sales rep/);
+  assert.match(migration2394, /request_customer_directory_v2394/);
+  assert.match(migration2394, /is_universal_request_tuple_v2394/);
+});
+
 test('v2.3.45 watchdog remediations preserve authorized views with ready fallbacks', () => {
   const appApi = read('supabase/functions/app-api/index.ts');
   const auraRouter = read('supabase/functions/aura-llm-router/index.ts');

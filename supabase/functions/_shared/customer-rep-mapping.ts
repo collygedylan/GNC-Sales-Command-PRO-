@@ -6,7 +6,7 @@ export type CustomerRepMappingRequest = {
 };
 
 const LIST_FIELDS = new Set(["action", "operation", "page", "pageSize", "filters", "sort", "direction", "q"]);
-const OPTIONS_FIELDS = new Set(["action", "operation", "page", "pageSize", "q", "salesrepId", "customerId", "consigneeId"]);
+const OPTIONS_FIELDS = new Set(["action", "operation", "page", "pageSize", "q", "salesrepId", "salesrepName", "customerId", "consigneeId"]);
 const SAVE_FIELDS = new Set(["action", "operation", "id", "expectedRevision", "salesrepId", "salesrepName", "customerName", "consigneeName"]);
 const REP_FIELDS = new Set(["action", "operation", "page", "pageSize", "q"]);
 const ASSIGN_FIELDS = new Set(["action", "operation", "id", "expectedRevision", "requestId", "salesrepId"]);
@@ -77,9 +77,10 @@ export function validateCustomerRepMappingRequest(input: unknown): CustomerRepMa
     }
     const q = value.q === undefined ? "" : boundedString(value.q, "q", 120);
     const salesrepId = value.salesrepId === undefined ? "" : boundedString(value.salesrepId, "salesrepId", 100);
+    const salesrepName = value.salesrepName === undefined ? "" : boundedString(value.salesrepName, "salesrepName", 240);
     const customerId = value.customerId === undefined ? "" : boundedString(value.customerId, "customerId", 200);
     const consigneeId = value.consigneeId === undefined ? "" : boundedString(value.consigneeId, "consigneeId", 200);
-    return { operation, payload: { page, pageSize, q, salesrepId, customerId, consigneeId } };
+    return { operation, payload: { page, pageSize, q, salesrepId, salesrepName, customerId, consigneeId } };
   }
   if (operation === "detail") {
     if (!onlyKeys(value, new Set(["action", "operation", "id"]))) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");

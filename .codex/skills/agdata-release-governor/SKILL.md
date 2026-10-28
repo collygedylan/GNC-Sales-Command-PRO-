@@ -16,6 +16,8 @@ Edge type checks resolve pinned npm imports through Deno's global cache (`--node
 
 ## Shared component dependencies
 
+Universal workflow fixes remain universal at release review: unless the release prompt explicitly names a deliberate single-user contract, gates must reject baseline Request, Queue, navigation, or data-access behavior conditioned on one username or Sales Rep.
+
 The built artifact must preserve the app shell's `switchView`, `syncGlobalHeaderChrome`, `goBackUniversal` and `updateGlobalBackButton` wiring; native compilation and cache restoration must not mix shell, styles or assets from different source identities. Preserve lifecycle/version fingerprints, source-specific build caching and shared navigation invariants from the app-shell skill. No release optimization may silently rewrite header/Back DOM or cached application data.
 
 ## Scoped Node verification
@@ -92,3 +94,4 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 - Never skip the golden invariant file, weaken its active count, add `.skip`/`.todo`, deploy app-api without `--no-verify-jwt`, run unrequested browser/Docker/Deno checks, or replay unchanged backend work.
 - Never create versioned throwaway validators, amend/force-push, claim unmeasured evidence, or continue refactoring after the required gate passes.
 - Never add a runtime release-descriptor fetch path without emitting that exact path in the prepared Pages artifact and covering it in the focused release contract.
+- Never approve a supposedly universal workflow fix that tests only one account, one Sales Rep display format, or one role while equivalent active identities remain gated.

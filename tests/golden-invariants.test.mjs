@@ -1185,6 +1185,7 @@ test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', async () => {
     },
     isActiveRequestCustomerMapping: () => true,
     getCustomerRepMapRepValue: row => row.salesrepname,
+    matchSalesRepIdentity: (left, right) => String(left || '').toLowerCase() === String(right || '').toLowerCase(),
     window: { setTimeout },
   });
   const result = await context.fetchRequestCustomerMapRowsForRepName('Josh Ringleb');
@@ -1333,7 +1334,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.93"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.94"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1360,9 +1361,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.93"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.94"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.93"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.94"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -1995,25 +1996,25 @@ test('Invariant 65 (Mobile Home Keeps All Dashboard Rows in the Header-to-Dock F
   assert.equal(panel.open, true, 'a user-selected disclosure state is preserved across viewport changes');
 });
 
-test('Invariant 66 (JD Uses a Complete App-Wide Request Directory With a Valid N/A Pair)', () => {
+test('Invariant 66 (Every Rep Uses a Complete App-Wide Request Directory With a Valid N/A Pair)', () => {
   const runtime = runFunctions('assets/app-runtime.js', [
     'normalizeRepMatchToken', 'normalizeRepDisplayOrder', 'isUniversalRequestDirectoryRep'
   ]);
   assert.equal(runtime.isUniversalRequestDirectoryRep('JD Jones'), true);
   assert.equal(runtime.isUniversalRequestDirectoryRep('jd_jones'), true);
   assert.equal(runtime.isUniversalRequestDirectoryRep('VP of Sales'), true);
-  assert.equal(runtime.isUniversalRequestDirectoryRep('Rep One'), false);
+  assert.equal(runtime.isUniversalRequestDirectoryRep('Rep One'), false, 'ordinary reps retain their own canonical salesrep id');
 
   const app = read('assets/app-runtime.js');
   assert.match(app, /JD_EXECUTIVE_SALESREP_ID\s*=\s*'AGDATA_EXECUTIVE_ALL'/);
   assert.match(app, /getRequestUniversalCustomerOptions\([^]*customerRepMapRows[^]*socInventory[^]*reservesInventory[^]*requestsInventory[^]*requestHistoryInventory/);
-  assert.match(app, /buildRequestModalNaCustomerOption\(JD_EXECUTIVE_SALESREP_ID\)/,
-    'the executive directory always starts with the authorized N/A tuple');
+  assert.match(app, /buildRequestModalNaCustomerOption\(selectedSalesrepId\)/,
+    'every selected rep directory always starts with the authorized N/A tuple');
   assert.match(app, /String\(currentUser \|\| ''\)[^]*=== 'jd_jones'[^]*resolveCanonicalRequestRepName\('JD Jones'\)/,
     'JD defaults the request rep selection to himself');
 
   const edge = read('supabase/functions/app-api/index.ts');
-  assert.match(edge, /request\.operation === "options"[^]*JD_EXECUTIVE_SALESREP_ID[^]*request_jd_customer_directory_v1/);
+  assert.match(edge, /request\.operation === "options"[^]*request_customer_directory_v2394/);
   const migration = read('supabase/migrations/20261027124800_agdata_v2383_jd_universal_customer_directory.sql');
   for (const source of ['ph_customer_consignee_sales_reps','ph_soc_master','ph_reserves','ph_active_request','ph_request_history']) {
     assert.match(migration, new RegExp(source), `${source} contributes to JD's complete directory`);
@@ -2174,7 +2175,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.93\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.94\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isManagerShellHotfix[^]*mobile-workspace\.js[^]*`\$\{assetVersion\}\.1`/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2681,6 +2682,19 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.2`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.93\.2/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.94\.2/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
+});
+
+test('Invariant 98 (Universal Request Directory and Complete Tag Preserve Physical Identity)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const suspendHandler = read('supabase/functions/_shared/suspend-tag.ts');
+  const migration = read('supabase/migrations/20261028145127_agdata_v2394_universal_request_directory_suspend_identity.sql');
+  assert.match(runtime, /matchSalesRepIdentity[\s\S]*buildSalesRepCustomerDirectory[\s\S]*selectCustomRequestCustomer[\s\S]*selectCustomRequestConsignee/);
+  assert.match(runtime, /getSuspendTagStableSourceIdentity[\s\S]*tagcode[\s\S]*quantityshipped/);
+  assert.match(appApi, /request_customer_directory_v2394/);
+  assert.match(suspendHandler, /SUSPEND_TAG_DATABASE_\$\{rpcCode\}/);
+  assert.match(migration, /quantityshipped[\s\S]*tagcode[\s\S]*rep_for_row\(s\)\)\.id is distinct from actor\.id/);
+  assert.match(migration, /values\('app_version',jsonb_build_object\('release','AgData v2\.3\.94','app_version','2\.3\.94'/);
 });

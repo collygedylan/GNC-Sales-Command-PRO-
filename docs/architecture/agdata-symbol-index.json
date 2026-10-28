@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.93",
+  "release": "AgData v2.3.94",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/runtime-watchdog.js",
@@ -428,6 +428,10 @@
         "isUniversalRequestDirectoryRep",
         "getRequestUniversalCustomerOptions",
         "fetchRequestUniversalCustomerOptions",
+        "matchSalesRepIdentity",
+        "buildSalesRepCustomerDirectory",
+        "selectCustomRequestCustomer",
+        "selectCustomRequestConsignee",
         "buildInventoryShareGalleryUrl",
         "formatInventoryItemsText",
         "formatInventoryItemsHtml"
@@ -928,7 +932,8 @@
         "isFalseBlockLocation",
         "addCustomSuspendTagLocation",
         "buildSuspendTagActions",
-        "openSuspendTagApproval"
+        "openSuspendTagApproval",
+        "getSuspendTagStableSourceIdentity"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [],
@@ -937,6 +942,11 @@
         "supabase/functions/_shared/suspend-tag.ts": [
           "handleSuspendTag",
           "verifySuspendTagSession"
+        ],
+        "supabase/migrations/20261028145127_agdata_v2394_universal_request_directory_suspend_identity.sql": [
+          "request_customer_directory_v2394",
+          "is_universal_request_tuple_v2394",
+          "suspend-physical-identity-v2394"
         ]
       }
     },

@@ -38,3 +38,4 @@ node --test tests/suspend-tag-dataset.test.mjs tests/role-access-parity.test.mjs
 
 - Never render or authorize Suspend decisions from a generic Request card, username text alone, cached role flags, or client-supplied assignee identity.
 - Never broaden approval to every sales rep or let a stale/non-pending approval accept a decision.
+- Never raise the missing-source guard before stale-UID composite recovery, omit shipped quantity/tag code from physical-line recovery, or let optional decision delivery roll back a committed close/approve/reject receipt.

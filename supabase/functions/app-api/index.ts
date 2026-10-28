@@ -1,7 +1,7 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.93";
-const APP_RUNTIME_RELEASE = "AgData v2.3.93";
+const APP_RUNTIME_VERSION = "2.3.94";
+const APP_RUNTIME_RELEASE = "AgData v2.3.94";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -461,7 +461,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.93";
+  const appVersion = "2.3.94";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -2109,9 +2109,11 @@ async function handleCustomerRepMappingAction(
     return errorResponse("Customer mapping management is available only to active Administrators and Managers.", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
   }
   try {
-    if (request.operation === "options" && String(request.payload.salesrepId || "") === JD_EXECUTIVE_SALESREP_ID) {
-      const { data, error } = await supabase.rpc("request_jd_customer_directory_v1", {
+    if (request.operation === "options" && (String(request.payload.salesrepId || "") || String(request.payload.salesrepName || ""))) {
+      const { data, error } = await supabase.rpc("request_customer_directory_v2394", {
         p_actor_id: String(actor.id || ""),
+        p_salesrep_identity: String(request.payload.salesrepName || ""),
+        p_salesrep_id: String(request.payload.salesrepId || ""),
         p_page: Number(request.payload.page || 0),
         p_page_size: Number(request.payload.pageSize || 100),
         p_q: String(request.payload.q || ""),

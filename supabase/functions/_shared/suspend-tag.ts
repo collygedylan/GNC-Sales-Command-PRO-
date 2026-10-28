@@ -3,6 +3,7 @@ import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
 
 export const SUSPEND_TAG_EDITORS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'dan_mccuistion']);
+const SUSPEND_TAG_AUTHORIZED_ROLES = new Set(['ADMIN', 'ADMINISTRATOR', 'MANAGER', 'EVALUATOR', 'INVENTORY', 'INVENTORYMANAGER', 'SALESREP']);
 type RecordValue = Record<string, unknown>;
 type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 
@@ -19,7 +20,9 @@ export async function verifySuspendTagSession(client: { auth: { getUser: (token:
 export async function handleSuspendTag(client: RpcClient, actor: RecordValue, payload: RecordValue) {
   const operation = String(payload.operation || '');
   if (!['rows', 'save', 'complete', 'close', 'send', 'retry', 'approval', 'decide', 'add_candidates', 'inbox', 'dock_review'].includes(operation)) throw new Error('SUSPEND_TAG_OPERATION_INVALID');
-  if (!['approval', 'decide', 'inbox', 'dock_review'].includes(operation) && !SUSPEND_TAG_EDITORS.has(String(actor.username || ''))) throw new Error('SUSPEND_TAG_FORBIDDEN');
+  const role = String(actor.role || '').replace(/[^A-Z]/gi, '').toUpperCase();
+  if (!['rows', 'inbox', 'dock_review'].includes(operation)
+    && !SUSPEND_TAG_EDITORS.has(String(actor.username || '')) && !SUSPEND_TAG_AUTHORIZED_ROLES.has(role)) throw new Error('SUSPEND_TAG_FORBIDDEN');
   const input = payload.payload;
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('SUSPEND_TAG_REQUEST_INVALID');
   const body = input as RecordValue;
@@ -47,7 +50,7 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
   if (body.candidateUid !== undefined && (operation !== 'decide' || typeof body.candidateUid !== 'string')) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   if (body.sourceIdentity !== undefined) {
     const identity = body.sourceIdentity;
-    const identityFields = new Set(['transactionnumber', 'dock', 'stopnumber', 'itemcode', 'locationcode', 'lotcode', 'consignee']);
+    const identityFields = new Set(['transactionnumber', 'tagcode', 'dock', 'stopnumber', 'itemcode', 'locationcode', 'lotcode', 'quantityshipped', 'customer', 'consignee', 'salesrep', 'spec', 'photo_url', 'loc_photo_match']);
     if (operation !== 'close' || !identity || typeof identity !== 'object' || Array.isArray(identity)
       || Object.entries(identity as RecordValue).some(([key, value]) => !identityFields.has(key) || typeof value !== 'string')) {
       throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
@@ -62,13 +65,17 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
     ...(typeof payload.expectedVersion === "number" ? { p_expected_version: payload.expectedVersion } : {}),
     ...(typeof actor.nativeSessionId === "string" ? { p_session_id: actor.nativeSessionId } : {}),
   });
-  if (error) throw new Error(error.message || 'SUSPEND_TAG_REQUEST_FAILED');
+  if (error) {
+    const rpcCode = String((error as { code?: string }).code || '').replace(/[^A-Z0-9_]/gi, '').toUpperCase();
+    const message = String(error.message || '').trim();
+    throw new Error((message.match(/SUSPEND_TAG_[A-Z0-9_]+/i)?.[0] || (rpcCode ? `SUSPEND_TAG_DATABASE_${rpcCode}` : 'SUSPEND_TAG_DATABASE_ERROR')).toUpperCase());
+  }
   return data;
 }
 
 export function suspendTagError(error: unknown) {
   const raw = String(error instanceof Error ? error.message : error);
-  const code = raw.match(/SUSPEND_TAG_[A-Z_]+/)?.[0] || 'SUSPEND_TAG_REQUEST_FAILED';
+  const code = raw.match(/SUSPEND_TAG_[A-Z0-9_]+/)?.[0] || 'SUSPEND_TAG_REQUEST_FAILED';
   const status = /FORBIDDEN|SESSION_REQUIRED|SERVICE_REQUIRED|REVIEW_LOCKED/.test(code) ? 403
     : /CHANGED|CONFLICT|SUPERSEDED|AMBIGUOUS/.test(code) ? 409 : /MISSING|REQUIRED|INVALID/.test(code) ? 422 : 503;
   return { status, body: { ok: false, error: code, code } };

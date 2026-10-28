@@ -21,7 +21,8 @@ const revision = '2026-09-08T15:50:47.123456Z';
 const source = () => ({
   UNIQUE_ID: 'soc-1', LAST_UPDATED: revision, DATE_COMPLETED: '', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC', PTRONHAND: '0',
   TRANSACTIONNUMBER: 'tx-39-20', DOCK: '39', STOPNUMBER: '20', ITEMCODE: '009373.031.1',
-  LOCATIONCODE: 'F.14.000', LOTCODE: '27.F1', CONSIGNEE: 'Little Lime Punch',
+  LOCATIONCODE: 'F.14.000', LOTCODE: '27.F1', QUANTITYSHIPPED: '150', TAGCODE: 'TAG-150',
+  CONSIGNEE: 'Little Lime Punch',
 });
 const button = () => ({ innerHTML: 'Done', disabled: false, classList: { add() {}, remove() {} } });
 const acknowledgement = (changes = {}) => ({ ok: true, row: { unique_id: 'soc-1', last_updated: revision, date_completed: '2026-09-08T16:00:00Z', suspend_tag_version: 1, suspend_tag_status: 'completed', ...changes } });
@@ -358,8 +359,9 @@ test('Complete Tag is direct, permits pending approval, and removes eligibility 
   assert.equal(h.calls[0].body.expectedVersion, null);
   assert.equal(h.calls[0].body.payload.expectedLastUpdated, undefined);
   assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].body.payload.sourceIdentity)), {
-    transactionnumber: 'tx-39-20', dock: '39', stopnumber: '20', itemcode: '009373.031.1',
-    locationcode: 'F.14.000', lotcode: '27.F1', consignee: 'Little Lime Punch',
+    transactionnumber: 'tx-39-20', tagcode: 'TAG-150', dock: '39', stopnumber: '20', itemcode: '009373.031.1',
+    locationcode: 'F.14.000', lotcode: '27.F1', quantityshipped: '150', customer: '',
+    consignee: 'Little Lime Punch', salesrep: '', spec: '', photo_url: '', loc_photo_match: '',
   });
   assert.equal(h.confirmCalls, 0);
   assert.equal(h.openUpdateCalls, 0);

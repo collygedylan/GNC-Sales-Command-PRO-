@@ -8,10 +8,10 @@ let cachedRequestMappingFunctions;
 export function requestMappingFunctions() {
   if (cachedRequestMappingFunctions) return cachedRequestMappingFunctions;
   const html = readComposedAppSource();
-  const names = ['normalizeRepMatchToken','normalizeRepDisplayOrder','getRepNameLookupTokens','getRequestRepMatchTokens','doesRequestRepMatchValue',
+  const names = ['normalizeRepMatchToken','normalizeRepDisplayOrder','getRepNameLookupTokens','matchSalesRepIdentity','getRequestRepMatchTokens','doesRequestRepMatchValue',
     'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName','isRequestRepRoleValue','normalizeRequestRepUserOption','ensureRequestRepUserOptionsReady','getRequestModalLookupOwnerSignature','getRequestModalCustomerMappingCacheSignature','normalizeRequestSalesrepId','syncRequestModalCustomerMappingOwner','clearRequestModalCustomerMappingOwnerState',
     'getRequestMappedRepDirectory','getRequestReserveFallbackDirectory','getRequestAuthorizedReserveFallbackMappings','getReserveSalesRepLabel','isUniversalRequestDirectoryRep','getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','buildRequestModalNaCustomerOption','requestCustomerOptionKey','getCustomerRepMapRepValue','isRequestModalCustomerAuthorizationFailure',
-    'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions','getRequestGlobalCustomerOptions','getRequestUniversalCustomerOptions','fetchRequestUniversalCustomerOptions',
+    'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions','getRequestGlobalCustomerOptions','buildSalesRepCustomerDirectory','getRequestUniversalCustomerOptions','fetchRequestUniversalCustomerOptions',
     'isActiveRequestCustomerMapping','fetchRequestCustomerMapRows','fetchRequestCustomerMapRowsForRepName','isRequestModalCustomerMapReady','buildRequestModalCustomerOptionsCache','loadRequestModalCustomerOptionsForRep','prefetchRequestModalCustomerOptions','scheduleRequestModalReferencePrefetch','scheduleGlobalReferencePrefetch','ensureDockAssignableUsers','prepareRequestModalChoicesForStartup','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
     'isCurrentRequestCustomerContext','getRequestModalCachedCustomerOptionsForRep','isRequestNaCustomerValue','buildRequestCustomerPickerGroups','getExistingRequestFolderRepRows','getExistingRequestFolderRowsSignature','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep','renderRequestModalRepPickerOnOpen',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
@@ -39,6 +39,7 @@ var requestModalCustomerOptionsCacheKey='',requestModalCustomerOptionsByRepCache
 var requestMappingRpcCacheOwner='',requestMappingSecurityEpoch=0,requestReserveFallbackSource=null,requestReserveFallbackRevision='',requestReserveFallbackRowsBySalesrepId=new Map(),requestReserveFallbackOptionsByKey=new Map();
 var requestModalCustomerOptionRowsCache=new Map(),requestExistingFolderGroupsByRepCache=new Map();
 var requestGlobalCustomerOptionsCacheKey='',requestGlobalCustomerOptionsCache=[],requestUniversalCustomerOptionsCacheKey='',requestUniversalCustomerOptionsCache=[];
+var requestCustomCustomerOptions=new Map();
 var mappingRevision='1',resolvedViewStateEpoch=0;
 var getDatasetLoadSignature=key=>String(key)==='customerRepMap'?'customerRepMap:'+mappingRevision:String(key)+':1';
 var isDatasetLoaded=()=>true;
