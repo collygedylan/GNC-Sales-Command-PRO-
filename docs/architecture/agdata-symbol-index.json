@@ -613,6 +613,11 @@
         "scripts/run-tooling-release-checks.mjs": [
           "runToolingReleaseChecks"
         ],
+        "scripts/release-disk-policy.mjs": [
+          "releaseSiteDirectory",
+          "prepareReleaseSiteDirectory",
+          "localEvidenceDirectory"
+        ],
         "scripts/apply-item-low-stock-migration.mjs": [
           "agdataV2369EmergencyRecoveryMigrationName",
           "agdataV2370WatchdogRequestRecoveryMigrationName",

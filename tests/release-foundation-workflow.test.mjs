@@ -32,7 +32,9 @@ test('foundation remains a sealed-artifact diagnostic in the scheduled nightly s
 });
 test('local feedback builds a fresh complete site without publication or silent reuse', () => {
   const source = read('scripts/check-foundation.mjs');
-  assert.match(source, /mkdtempSync/);
+  assert.match(source, /releaseSiteDirectory\(root\)/);
+  assert.doesNotMatch(source, /mkdtempSync/);
+  assert.match(source, /localEvidenceDirectory\(root\)/);
   assert.match(source, /scripts\/prepare-release-site\.mjs/);
   assert.match(source, /APP_LIFECYCLE_SITE_DIR: site, APP_LIFECYCLE_BASE_URL: ''/);
   assert.match(source, /'--workers=1', '--retries=0'/);

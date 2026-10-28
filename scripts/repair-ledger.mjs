@@ -1,15 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { localEvidenceDirectory } from './release-disk-policy.mjs';
 
 const phases = ['diagnosis', 'implementation', 'validation', 'deployment', 'verification', 'complete', 'blocked'];
 export function recordCandidateValidation(root, result) {
-  const directory = path.join(root, '.gnc-local');
+  const directory = localEvidenceDirectory(root);
   fs.mkdirSync(directory, { recursive: true });
   fs.appendFileSync(path.join(directory, 'validation-history.jsonl'), JSON.stringify({ kind: 'candidate', at: new Date().toISOString(), ...result }) + '\n');
 }
 export function recordValidationRun(root, report) {
-  const file = path.join(root, '.gnc-local', 'validation-history.jsonl');
+  const file = path.join(localEvidenceDirectory(root), 'validation-history.jsonl');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const foundation = report.foundationStages || [];
   const sum = stages => stages.reduce((total, stage) => total + stage.durationMs, 0);
@@ -45,16 +46,17 @@ export function summarizeRepair(events) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {
     const [phase, model, effort, used] = process.argv.slice(2);
-    const file = path.resolve('.gnc-local', 'repair-ledger.json');
+    const directory = localEvidenceDirectory(process.cwd());
+    const file = path.join(directory, 'repair-ledger.json');
     const events = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
     if (phase === 'validation-report') {
-      const history = path.resolve('.gnc-local', 'validation-history.jsonl');
+      const history = path.join(directory, 'validation-history.jsonl');
       const runs = fs.existsSync(history) ? fs.readFileSync(history, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : [];
       console.log(JSON.stringify({ runs, reviewAfterChanges: 3, note: 'Compare distinct changes; repeated runs are not separate changes. Candidate timing comes from report-release-timings.mjs.' }, null, 2));
     } else if (phase === 'report') console.log(JSON.stringify(summarizeRepair(events), null, 2));
     else {
       const next = appendRepairEvent(events, { phase, model, effort, usedPercent: used === undefined ? null : Number(used) });
-      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.mkdirSync(directory, { recursive: true });
       const temp = `${file}.${process.pid}.tmp`;
       const fd = fs.openSync(temp, 'wx');
       try { fs.writeFileSync(fd, JSON.stringify(next, null, 2)); fs.fsyncSync(fd); }

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { localEvidenceDirectory, releaseSiteDirectory } from './release-disk-policy.mjs';
 
 // These outputs are rebuilt from pinned inputs; keep platform-specific generated
 // bytes out of the source identity, but include them in the compiled-site digest.
@@ -43,12 +44,11 @@ export function siteDigest(site) {
   return digest.digest('hex');
 }
 export function assertLocalValidation(root) {
-  const file = path.join(root, '.gnc-local', 'local-check.json');
+  const file = path.join(localEvidenceDirectory(root), 'local-check.json');
   if (!fs.existsSync(file)) throw new Error('LOCAL_CHECK_REQUIRED: run npm run check:local before dispatch.');
   const report = JSON.parse(fs.readFileSync(file, 'utf8'));
   if (report.schemaVersion !== 'gnc-local-check-v1' || report.ok !== true) throw new Error('LOCAL_CHECK_FAILED: diagnose the saved failure before dispatch.');
-  const relative = path.relative(root, report.site || '').replaceAll('\\', '/');
-  if (!/^\.gnc-local\/foundation-site-[\w-]+$/.test(relative)) throw new Error('LOCAL_BUILD_PATH_INVALID');
+  if (path.resolve(report.site || '') !== releaseSiteDirectory(root)) throw new Error('LOCAL_BUILD_PATH_INVALID');
   if (report.sourceDigest !== sourceDigest(root)) throw new Error('LOCAL_SOURCE_CHANGED: run npm run check:local for the current source.');
   if (report.siteDigest !== siteDigest(report.site)) throw new Error('LOCAL_BUILD_CHANGED: the checked compiled site is missing or changed.');
   return report;

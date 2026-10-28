@@ -2329,3 +2329,44 @@ test('Invariant 84 (Committed Reclass Receipt Advances and Persists the Matching
   assert.deepEqual(plain(stale.rows.map(row => [row.UNIQUE_ID, row.PTRONHAND])), [['source', '50']]);
   assert.equal(stale.persisted.length, 0, 'an older receipt cannot persist over the newer snapshot');
 });
+
+test('Invariant 85 (Release Builds Reuse One Directory Without Following Links or Retaining Stale Files)', async () => {
+  const fs = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { prepareReleaseSiteDirectory, releaseSiteDirectory } = await import('../scripts/release-disk-policy.mjs');
+  const fixture = await fs.mkdtemp(path.join(tmpdir(), 'agdata-site-policy-'));
+  const site = path.join(fixture, '_site');
+  const assets = path.join(site, 'assets');
+  const outside = path.join(fixture, 'source');
+  async function clearTemporaryTree(directory) {
+    for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) await fs.unlink(file);
+      else if (entry.isDirectory()) await clearTemporaryTree(file);
+      else { await fs.writeFile(file, ''); await fs.unlink(file); }
+    }
+    await fs.rmdir(directory);
+  }
+  try {
+    await fs.mkdir(assets, { recursive: true });
+    await fs.mkdir(outside);
+    await fs.writeFile(path.join(outside, 'keep.js'), 'source remains intact');
+    const originalDirectory = await fs.stat(site);
+    for (const contents of ['old build', 'second build']) {
+      await fs.writeFile(path.join(assets, 'obsolete.js'), contents);
+      assert.equal(await prepareReleaseSiteDirectory(fixture, { clear: true, env: {} }), site);
+      assert.deepEqual(await fs.readdir(assets), []);
+      assert.equal((await fs.stat(site)).ino, originalDirectory.ino, 'the output directory is retained');
+    }
+    assert.equal(releaseSiteDirectory(fixture, {}), site);
+    assert.throws(() => releaseSiteDirectory(fixture, { LIVE_SITE_DIR: '_site-copy' }), /PATH_INVALID/);
+    assert.throws(() => releaseSiteDirectory(fixture, { LIVE_SITE_DIR: '../escape' }), /PATH_INVALID/);
+    await fs.writeFile(path.join(assets, 'keep-until-valid.js'), 'prior output');
+    await fs.symlink(outside, path.join(assets, 'redirect'), 'junction');
+    await assert.rejects(prepareReleaseSiteDirectory(fixture, { clear: true, env: {} }), /SYMLINK_FORBIDDEN/);
+    assert.equal(await fs.readFile(path.join(assets, 'keep-until-valid.js'), 'utf8'), 'prior output');
+    assert.equal(await fs.readFile(path.join(outside, 'keep.js'), 'utf8'), 'source remains intact');
+  } finally {
+    await clearTemporaryTree(fixture);
+  }
+});

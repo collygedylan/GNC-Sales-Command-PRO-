@@ -6,6 +6,7 @@ import { changedFilesFromGit, selectAffectedTests } from './select-focused-tests
 import { discoverTests } from './test-discovery.mjs';
 import { sourceDigest, siteDigest } from './local-validation-evidence.mjs';
 import { recordValidationRun } from './repair-ledger.mjs';
+import { localEvidenceDirectory } from './release-disk-policy.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 export const foundationTests = discoverTests({ root, group: 'foundation' });
@@ -30,7 +31,7 @@ export function focusedPlan(affected) {
 }
 
 export function runLocalChecks({ cwd = root, npm = process.env.npm_execpath, spawn = spawnSync, print = console.log, now = Date.now } = {}) {
-  const directory = path.join(cwd, '.gnc-local');
+  const directory = localEvidenceDirectory(cwd);
   fs.mkdirSync(directory, { recursive: true });
   const output = fs.mkdtempSync(path.join(directory, 'local-check-'));
   const report = { schemaVersion: 'gnc-local-check-v1', mode: 'local-feedback-not-release-proof',

@@ -4,13 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { prepareBrandingAssets } from './branding-assets.mjs';
 import { readExpectedRelease } from './deployment-fingerprint-lib.mjs';
+import { prepareReleaseSiteDirectory, releaseSiteDirectory } from './release-disk-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const site = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
-const relativeSite = path.relative(root, site).replaceAll('\\', '/');
-if (relativeSite !== '_site' && !/^\.gnc-local\/foundation-site-[\w-]+$/.test(relativeSite)) {
-  throw new Error('RELEASE_SITE_PATH_INVALID');
-}
+const site = releaseSiteDirectory(root);
 const files = [
   'index.html', 'manifest.json', 'sw.js', 'CNAME', '.nojekyll', 'OneSignalSDKWorker.js',
 ];
@@ -29,8 +26,7 @@ async function copyTree(source, destination) {
 }
 
 try {
-  const existing = await lstat(site).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
-  if (existing && (!existing.isDirectory() || existing.isSymbolicLink() || (await readdir(site)).length)) throw new Error('RELEASE_SITE_MUST_BE_EMPTY');
+  await prepareReleaseSiteDirectory(root, { clear: true });
   // This small module has editable page/service sources outside assets. Compile
   // it here too so a scoped local release never packages a stale checked-in copy.
   const scheduleBuild = spawnSync(process.execPath, [path.join(root, 'scripts', 'build-production-schedule.mjs')],
