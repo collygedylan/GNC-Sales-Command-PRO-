@@ -440,6 +440,7 @@
         "fetchRequestCustomerMapRows",
         "fetchRequestCustomerMapRowsForRepName",
         "loadRequestModalCustomerOptionsForRep",
+        "hasVerifiedRequestRepCanonicalDirectory",
         "scheduleRequestDeliveryWake",
         "isUniversalRequestDirectoryRep",
         "getRequestUniversalCustomerOptions",

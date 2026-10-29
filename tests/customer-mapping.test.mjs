@@ -154,6 +154,46 @@ test('cold canonical-key RPC accepts differently named source aliases but reject
   assert.deepEqual(Array.from(groups,group=>group.key),['id:AGDATA_NA_CUSTOMER','id:00060','id:00061']);
 });
 
+test('normal warm selection keeps its cached LKG pair while fetching the complete canonical alias directory',async()=>{
+  const c=requestFixture();
+  c.document.getElementById=()=>null;
+  const s07={...row,unique_id:'chance-s07',salesrepid:'S07',salesrepname:'Chance Alldredge',
+    customeridentityid:'00060',customername:'Chance Customer',consigneeid:'00070',consigneename:'North'};
+  const s17={...row,unique_id:'chance-s17',salesrepid:'S17',salesrepname:'Chance Alldredge - South TX',
+    customeridentityid:'00061',customername:'Chance Customer',consigneeid:'00071',consigneename:'South'};
+  c.customerRepMapRows=[s17];
+  c.tempSelectedReqRep='Chance Alldredge - South TX'; c.tempSelectedReqSalesrepId='S17';
+  c.isRequestRowArchivedForCompletion=()=>false;
+  c.canUseRequestMappedFoldersForCurrentUser=()=>true;
+  c.getRequestCustomerFolderLabel=(customer,consignee)=>customer||consignee||'Unknown Customer';
+  c.getRequestConsigneeFolderLabel=consignee=>consignee||'No Consignee';
+  c.normalizeRequestConsigneeFolderKey=value=>c.normalizeRepMatchToken(value);
+  c.parseExistingRequestFolderMetadata=folderId=>({dateIso:'',dateLabel:'',requestNumber:'',requestIdLabel:folderId});
+  const owner=c.syncRequestModalCustomerMappingOwner();
+  c.requestMappingRpcCache.set('S17',{owner,rows:[s17],universal:false,revision:'warm-preload-r1'});
+  let resolveRpc;
+  c.fetchRequestUniversalCustomerOptions=()=>new Promise(resolve=>{resolveRpc=resolve;});
+  const before=c.getRequestModalCustomerOptionsForRep('Chance Alldredge - South TX');
+  assert.equal(before[0].customeridentityid,'AGDATA_NA_CUSTOMER');
+  assert.deepEqual(Array.from(before.filter(option=>option.customeridentityid!=='AGDATA_NA_CUSTOMER'),option=>[option.salesrepid,option.customeridentityid,option.consigneeidentityid]),
+    [['S17','00061','00071']]);
+  const pending=c.ensureRequestModalCustomerOptionsReady();
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(typeof resolveRpc,'function','normal selection starts an RPC even when its warm local cache has rows');
+  assert.equal(c.requestModalCustomerOptionsLoading,true);
+  assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Chance Alldredge - South TX').filter(option=>option.customeridentityid==='00061'),
+    option=>[option.salesrepid,option.customeridentityid,option.consigneeidentityid]),[['S17','00061','00071']],
+    'the currently available same-account cached pair remains visible during refresh');
+  resolveRpc({rows:[{...s07,salesrep_canonical_key:'profile-chance'},{...s17,salesrep_canonical_key:'profile-chance'}],
+    revision:'warm-rpc-r2',salesrepId:'S17',salesrepCanonicalKey:'profile-chance',universal:false});
+  await pending;
+  assert.equal(c.hasVerifiedRequestRepCanonicalDirectory(c.requestMappingRpcCache.get('S17'),owner),true);
+  assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Chance Alldredge - South TX').filter(option=>option.customeridentityid!=='AGDATA_NA_CUSTOMER'),
+    option=>[option.salesrepid,option.customeridentityid,option.consigneeidentityid]),[['S07','00060','00070'],['S17','00061','00071']]);
+  assert.deepEqual(Array.from(c.buildExistingRequestFolderCustomerGroups('Chance Alldredge - South TX'),group=>group.key),
+    ['id:AGDATA_NA_CUSTOMER','id:00060','id:00061']);
+});
+
 test('a cached universal directory cannot leak into a non-JD selected-rep picker',()=>{
   const c=requestFixture();
   const owner=c.syncRequestModalCustomerMappingOwner();

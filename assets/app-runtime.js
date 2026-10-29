@@ -52640,6 +52640,16 @@ function toggleDriveQuickRequestItem(domId) {
                 salesrepCanonicalKey: String(first.salesrepCanonicalKey || ''), universal: first.universal === true };
         }
 
+        function hasVerifiedRequestRepCanonicalDirectory(entry, owner = getRequestModalLookupOwnerSignature()) {
+            if (!entry || entry.owner !== owner || entry.universal === true || !Array.isArray(entry.rows)) return false;
+            const canonicalKey = String(entry.salesrepCanonicalKey || '').trim().toLowerCase();
+            if (!canonicalKey) return false;
+            return entry.rows.filter(row => !isRequestNaCustomerValue(getCustomerRepMapCustomerValue(row))).every(row => {
+                const rowKey = String(firstNonEmptyValue(row.SALESREP_CANONICAL_KEY, row.salesrep_canonical_key, '') || '').trim().toLowerCase();
+                return !!rowKey && rowKey === canonicalKey;
+            });
+        }
+
 
         function buildRequestModalCustomerOptionsCache(force = false) {
             const signature = getRequestModalCustomerMappingCacheSignature();
@@ -52702,7 +52712,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!salesrepId && !requestedRepName) return Promise.resolve({ rows: [], revision: customerRepMapRows.mappingRevision || '0', signature, owner, stale: true });
             const cached = salesrepId ? requestMappingRpcCache.get(salesrepId) : null;
             if (!force && cached?.owner === owner && Array.isArray(cached.rows)
-                && (salesrepId === JD_EXECUTIVE_SALESREP_ID || cached.universal !== true)) return Promise.resolve(cached);
+                && (salesrepId === JD_EXECUTIVE_SALESREP_ID || hasVerifiedRequestRepCanonicalDirectory(cached, owner))) return Promise.resolve(cached);
             const loads = loadRequestModalCustomerOptionsForRep.inflight || (loadRequestModalCustomerOptionsForRep.inflight = new Map());
             const inflightKey = JSON.stringify([salesrepId || normalizeRepMatchToken(normalizeRepDisplayOrder(requestedRepName)), signature]);
             if (loads.has(inflightKey)) return loads.get(inflightKey);
@@ -52739,21 +52749,11 @@ function toggleDriveQuickRequestItem(domId) {
                     }).map(row => buildRequestModalCustomerSearchOption(
                         getCustomerRepMapCustomerValue(row), getCustomerRepMapConsigneeValue(row), row
                     )).filter(Boolean);
-                    const permittedLocalRows = executiveDirectory ? [] : [...localRows, ...cachedRows].filter(row => {
-                        const rowId = String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '') || '').trim();
-                        const customerName = getCustomerRepMapCustomerValue(row);
-                        const consigneeName = getCustomerRepMapConsigneeValue(row);
-                        return !!resolvedId && isActiveRequestCustomerMapping(row)
-                            && !(isRequestNaCustomerValue(consigneeName) && !isRequestNaCustomerValue(customerName))
-                            && matchSalesRepIdentity(getCustomerRepMapRepValue(row), canonicalName, rowId, resolvedId);
-                    }).map(row => buildRequestModalCustomerSearchOption(
-                        getCustomerRepMapCustomerValue(row), getCustomerRepMapConsigneeValue(row), row
-                    )).filter(Boolean);
                     salesrepId = resolvedId;
                     rows = executiveDirectory
                         ? mergeRequestModalCustomerOptions(buildSalesRepCustomerDirectory(requestedRepName, salesrepId), remoteRows)
                             .filter(option => !(isRequestNaCustomerValue(option.consigneeName) && !isRequestNaCustomerValue(option.customerName)))
-                        : mergeRequestModalCustomerOptions(permittedLocalRows, remoteRows);
+                        : mergeRequestModalCustomerOptions(remoteRows);
                     if (!salesrepId || (!executiveDirectory && !rows.length)) throw new Error('No customer and consignee pairs are mapped to the selected sales rep.');
                 } catch (error) {
                     if (isRequestModalCustomerAuthorizationFailure(error)) throw error;
@@ -52953,14 +52953,19 @@ function toggleDriveQuickRequestItem(domId) {
             syncRequestModalCustomerMappingOwner();
             if (!force) {
                 buildRequestModalCustomerOptionsCache();
-                if (requestModalCustomerOptionsReady) return Promise.resolve(true);
+                const selectedId = getRequestSelectedSalesrepId(tempSelectedReqRep);
+                const cached = selectedId ? requestMappingRpcCache.get(selectedId) : null;
+                const verifiedDirectory = selectedId === JD_EXECUTIVE_SALESREP_ID
+                    ? cached?.owner === requestMappingRpcCacheOwner && cached.universal === true
+                    : hasVerifiedRequestRepCanonicalDirectory(cached, requestMappingRpcCacheOwner);
+                if (requestModalCustomerOptionsReady && verifiedDirectory) return Promise.resolve(true);
             }
             if (!force && requestModalCustomerOptionsLoadPromise) return requestModalCustomerOptionsLoadPromise;
             const generation = ++requestMappingReadGeneration;
             const requestGeneration = requestModalAsyncGeneration;
             const rep = tempSelectedReqRep;
             requestModalCustomerOptionsLoading = true;
-            requestModalCustomerOptionsReady = false;
+            requestModalCustomerOptionsReady = requestModalCustomerOptionsReady && getRequestModalCustomerOptionsForRep(rep).length > 0;
             requestModalCustomerOptionsError = '';
             const loadPromise = (async () => {
                 if (!rep) await prefetchRequestModalCustomerOptions(force);

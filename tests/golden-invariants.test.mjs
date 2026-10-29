@@ -2707,9 +2707,9 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.match(loader, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
   assert.match(loader, /maxRetries = options\.retryOnCancellation === true \? 4 : 0[\s\S]*getSupabaseReadErrorCode\(error\) !== 'REQUEST_ABORTED'/);
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.7`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.8`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.7/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.8/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3360,11 +3360,11 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   assert.match(module, /if\(readOnly\|\|requestBusy\)return;/);
   assert.match(module, /tray\.hidden=readOnly;notices\.hidden=readOnly/);
   const build = read('scripts/build-live-shell.mjs');
-  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.7`/);
+  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.8`/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.102\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.7/);
-  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'customer-pairs-r3'/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.8/);
+  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'customer-pairs-r4'/);
 });
 
 test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
@@ -4291,4 +4291,48 @@ test('Invariant 152 (Canonical Rep Keys Preserve Alias-Owned Physical Pairs and 
     'matching display text cannot substitute for an authoritative matching canonical key');
   assert.equal(options.some(option => option.customeridentityid === unverified.customeridentityid), false,
     'a missing canonical key cannot be inferred from an exact display-name match');
+});
+
+test('Invariant 153 (Warm Partial Rep Cache Stays Visible While Normal Selection Loads Canonical Aliases)', async () => {
+  const context = vm.createContext({ window: {}, document: { getElementById: () => null } });
+  vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
+  const s07 = { ...mappingFixtureRow, unique_id: 'chance-s07', salesrepid: 'S07', salesrepname: 'Chance Alldredge',
+    customeridentityid: '00060', customername: 'Chance Customer', consigneeid: '00070', consigneename: 'North' };
+  const s17 = { ...mappingFixtureRow, unique_id: 'chance-s17', salesrepid: 'S17', salesrepname: 'Chance Alldredge - South TX',
+    customeridentityid: '00061', customername: 'Chance Customer', consigneeid: '00071', consigneename: 'South' };
+  context.customerRepMapRows = [s17];
+  context.tempSelectedReqRep = 'Chance Alldredge - South TX';
+  context.tempSelectedReqSalesrepId = 'S17';
+  context.isRequestRowArchivedForCompletion = () => false;
+  context.canUseRequestMappedFoldersForCurrentUser = () => true;
+  context.getRequestCustomerFolderLabel = (customer, consignee) => customer || consignee || 'Unknown Customer';
+  context.getRequestConsigneeFolderLabel = consignee => consignee || 'No Consignee';
+  context.normalizeRequestConsigneeFolderKey = value => context.normalizeRepMatchToken(value);
+  context.parseExistingRequestFolderMetadata = folderId => ({ dateIso: '', dateLabel: '', requestNumber: '', requestIdLabel: folderId });
+  const owner = context.syncRequestModalCustomerMappingOwner();
+  context.requestMappingRpcCache.set('S17', { owner, rows: [s17], universal: false, revision: 'partial-preload-r1' });
+  let resolveRpc;
+  context.fetchRequestUniversalCustomerOptions = () => new Promise(resolve => { resolveRpc = resolve; });
+  const before = context.getRequestModalCustomerOptionsForRep('Chance Alldredge - South TX');
+  assert.equal(before[0].customeridentityid, 'AGDATA_NA_CUSTOMER');
+  assert.deepEqual(plain(before.filter(option => option.customeridentityid !== 'AGDATA_NA_CUSTOMER')
+    .map(option => [option.salesrepid, option.customeridentityid, option.consigneeidentityid])), [['S17', '00061', '00071']]);
+  const pending = context.ensureRequestModalCustomerOptionsReady();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(typeof resolveRpc, 'function', 'normal selection fetches even when the warm local cache has an exact pair');
+  assert.equal(context.requestModalCustomerOptionsLoading, true);
+  assert.ok(context.getRequestModalCustomerOptionsForRep('Chance Alldredge - South TX').some(option => option.customeridentityid === '00061'),
+    'available same-account LKG remains visible while the canonical directory refreshes');
+  resolveRpc({ rows: [
+    { ...s07, salesrep_canonical_key: 'profile-chance' }, { ...s17, salesrep_canonical_key: 'profile-chance' },
+  ], revision: 'canonical-refresh-r2', salesrepId: 'S17', salesrepCanonicalKey: 'profile-chance', universal: false });
+  await pending;
+  assert.equal(context.hasVerifiedRequestRepCanonicalDirectory(context.requestMappingRpcCache.get('S17'), owner), true);
+  assert.deepEqual(plain(context.getRequestModalCustomerOptionsForRep('Chance Alldredge - South TX')
+    .filter(option => option.customeridentityid !== 'AGDATA_NA_CUSTOMER')
+    .map(option => [option.salesrepid, option.customeridentityid, option.consigneeidentityid])), [
+    ['S07', '00060', '00070'], ['S17', '00061', '00071'],
+  ]);
+  assert.deepEqual(plain(context.buildExistingRequestFolderCustomerGroups('Chance Alldredge - South TX').map(group => group.key)),
+    ['id:AGDATA_NA_CUSTOMER', 'id:00060', 'id:00061']);
 });

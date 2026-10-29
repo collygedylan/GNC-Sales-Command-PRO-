@@ -10,7 +10,7 @@ export function requestMappingFunctions() {
   const html = readComposedAppSource();
   const names = ['normalizeRepMatchToken','normalizeRepDisplayOrder','getRepNameLookupTokens','matchSalesRepIdentity','getRequestRepMatchTokens','doesRequestRepMatchValue',
     'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName','isRequestRepRoleValue','normalizeRequestRepUserOption','ensureRequestRepUserOptionsReady','getRequestModalLookupOwnerSignature','getRequestModalCustomerMappingCacheSignature','normalizeRequestSalesrepId','syncRequestModalCustomerMappingOwner','clearRequestModalCustomerMappingOwnerState',
-    'getRequestMappedRepDirectory','getRequestReserveFallbackDirectory','getRequestAuthorizedReserveFallbackMappings','getReserveSalesRepLabel','isUniversalRequestDirectoryRep','getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','buildRequestModalNaCustomerOption','requestCustomerOptionKey','buildRequestCustomIdentity','addCustomRequestCustomerOption','getCustomerRepMapRepValue','isRequestModalCustomerAuthorizationFailure',
+    'getRequestMappedRepDirectory','getRequestReserveFallbackDirectory','getRequestAuthorizedReserveFallbackMappings','getReserveSalesRepLabel','isUniversalRequestDirectoryRep','getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','buildRequestModalNaCustomerOption','requestCustomerOptionKey','buildRequestCustomIdentity','addCustomRequestCustomerOption','getCustomerRepMapRepValue','isRequestModalCustomerAuthorizationFailure','hasVerifiedRequestRepCanonicalDirectory',
     'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions','getRequestGlobalCustomerOptions','buildSalesRepCustomerDirectory','getRequestUniversalCustomerOptions','fetchRequestUniversalCustomerOptions',
     'isActiveRequestCustomerMapping','fetchRequestCustomerMapRows','fetchRequestCustomerMapRowsForRepName','isRequestModalCustomerMapReady','buildRequestModalCustomerOptionsCache','loadRequestModalCustomerOptionsForRep','prefetchRequestModalCustomerOptions','scheduleRequestModalReferencePrefetch','scheduleGlobalReferencePrefetch','ensureDockAssignableUsers','prepareRequestModalChoicesForStartup','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
     'isCurrentRequestCustomerContext','getRequestModalCachedCustomerOptionsForRep','isRequestNaCustomerValue','buildRequestCustomerPickerGroups','getExistingRequestFolderRepRows','getExistingRequestFolderRowsSignature','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep','renderRequestModalRepPickerOnOpen',
@@ -41,7 +41,10 @@ var requestMappingRpcCacheOwner='',requestMappingSecurityEpoch=0,requestReserveF
 var requestModalCustomerOptionRowsCache=new Map(),requestExistingFolderGroupsByRepCache=new Map();
 var requestGlobalCustomerOptionsCacheKey='',requestGlobalCustomerOptionsCache=[],requestUniversalCustomerOptionsCacheKey='',requestUniversalCustomerOptionsCache=[];
 var requestCustomCustomerOptions=new Map();
+var requestModalCustomerOptionsLoadPromise=null,requestModalCustomerOptionsReady=false,requestModalCustomerOptionsLoading=false,requestModalCustomerOptionsError='';
+var requestMappingReadGeneration=0,requestModalAsyncGeneration=0;
 var mappingRevision='1',resolvedViewStateEpoch=0;
+var refreshRequestModalCustomerStepIfVisible=()=>false;
 var getDatasetLoadSignature=key=>String(key)==='customerRepMap'?'customerRepMap:'+mappingRevision:String(key)+':1';
 var isDatasetLoaded=()=>true;
 var REQUEST_MODAL_REP_OPTIONS=['Rep One','Rep Two','Molly Dixon'].map(label=>{const token=normalizeRepMatchToken(label);return {label,token,collapsedToken:token.replace(/\\s+/g,'')};});
