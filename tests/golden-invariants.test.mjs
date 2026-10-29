@@ -5517,3 +5517,56 @@ test('Invariant 197 (Suspend item hydration survives navigation and rejects chan
   await discarded.promise;
   assert.equal(discarded.rows.length,0);
 });
+
+
+test('Invariant 198 (Scoped location notes are registered in the browser database contract)', async () => {
+  let reads=0;
+  const bridge=databaseBridge(async(url,init)=>{ reads++; assert.equal(init.method,'GET'); assert.match(url,/ph_location_sales_notes/); return new Response(JSON.stringify([{itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',spec:'22-26" H',updated_at:'2026-10-29T12:00:00Z'}]),{status:200}); });
+  const response=await bridge.fetchTable('https://example.test','ph_location_sales_notes','select=itemcode,locationcode,lotcode,spec,updated_at&itemcode=eq.item&limit=1000',{method:'GET'},1000,'notes');
+  assert.equal(response.status,200); assert.equal(reads,1);
+});
+
+test('Invariant 199 (Optional location notes cannot discard successful master item hydration)', async () => {
+  const entries=new Map();
+  const api=runFunctions('assets/app-runtime.js',['hydrateSuspendTagItemOptions'],{
+    console:{warn(){}}, Date, Map, Set, suspendTagItemHydration:entries, queueCardInventoryRenderVersion:0,
+    getSupabaseReadIdentityScope:()=> 'actor',hasAuthenticatedOperationalReadIdentity:()=>true,
+    getRequestItemCodeOptionItemCode:item=>item.ITEMCODE,
+    fetchRequestItemCodeOptionRowsFromSupabase:async()=>[{itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',ptronhand:'160',spec:'22-26" H'}],
+    runDedupeSupabaseRead:(key,fn)=>fn({}),fetchAuthenticatedSupabaseReadPage:async()=>{throw Error('Notes unavailable');},
+    formatFetchedRows:rows=>rows, buildSearchIndex:row=>row,normalizeRowPhotoFields:row=>row,
+    window:{AgMetricQueueInventory:{createIndex:rows=>({rows})}},markViewDirty:()=>{},isViewVisible:()=>false
+  });
+  api.hydrateSuspendTagItemOptions([{ITEMCODE:'item'}]); await entries.get('item').promise;
+  assert.equal(entries.get('item').rows[0].ptronhand,'160'); assert.equal(entries.get('item').rows[0].spec,'22-26" H');
+});
+
+
+test('Invariant 200 (Stale Suspend lot retains physical-row quantities and the complete location total)', () => {
+  const row={PTRONHAND:264,PTRREVIEWED:0,PTRAVAILABLE:264,LOC_ON_HAND:264};
+  const index={resolveSuspendTagDisplay:()=>({matchLevel:'item-location',row:{...row}}),resolveDisplay:()=>({row:{PTRONHAND:160,PTRREVIEWED:0,PTRAVAILABLE:160}})};
+  const api=runFunctions('assets/app-runtime.js',['getSuspendTagMetricDisplayFallback'],{
+    window:{AgMetricQueueInventory:{identity:value=>({itemCode:value.ITEMCODE,locationCode:value.LOCATIONCODE,source:value.SOURCE||''})}},isDockSuspendDcRequestMirrorRow:()=>true,
+    suspendTagItemHydration:new Map([['item',{owner:'actor',index,rows:[{ITEMCODE:'item',LOCATIONCODE:'A.06.000',PTRONHAND:104,PTRAVAILABLE:104,PTRREVIEWED:0},{ITEMCODE:'item',LOCATIONCODE:'A.06.000',PTRONHAND:160,PTRAVAILABLE:160,PTRREVIEWED:0}]}]]),getRequestItemCodeOptionItemCode:()=> 'item',
+    getSupabaseReadIdentityScope:()=> 'actor',findDockSuspendDcRequestSourceRow:row=>row,getSuspendTagInventoryIdentity:row=>row,
+    firstNonEmptyValue:(...values)=>values.find(value=>value!==null&&value!==undefined&&value!=='')
+  });
+  const result=api.getSuspendTagMetricDisplayFallback({ITEMCODE:'item',LOCATIONCODE:'A.06.000',LOTCODE:'27.F1'});
+  assert.equal(result.row.PTRONHAND,160);assert.equal(result.row.PTRAVAILABLE,160);assert.equal(result.row.LOC_ON_HAND,264);
+});
+
+
+test('Invariant 201 (Opening Suspend AV paints once and never schedules a second checkbox-tree replacement)', () => {
+  let renders=0; const delayed=[]; const item={UNIQUE_ID:'tag'};
+  const api=runFunctions('assets/app-runtime.js',['openDockSuspendDcRequestUpdate'],{
+    activeItem:item,activeDetailSourceView:'request',lastView:'request',requestAvOptionsDropdownOpen:false,
+    findDockSuspendDcRequestMirrorRowByUniqueId:()=>item,isDockSuspendDcRequestMirrorRow:()=>true,
+    canCurrentUserViewDockSuspendDcRequests:()=>true,hydrateSuspendTagItemOptions:()=>{},retryPendingSuspendTagInventoryReconciliations:()=>{},
+    firstNonEmptyValue:(...values)=>values.find(value=>value!==null&&value!==undefined&&value!==''),
+    openDetail:(uid,view,options)=>{assert.equal(options.skipRequestOpenInfoModal,true);},ensureRequestItemCodeOptionState:()=>({}),
+    renderRequestMatchingInventoryOptions:()=>{renders++;},syncRequestDetailScrollMode:()=>{},syncSuspendFillTagDetailAction:()=>{},
+    setTimeout:callback=>delayed.push(callback)
+  });
+  api.openDockSuspendDcRequestUpdate('tag',{openAvOptions:true}); assert.equal(renders,1);
+  delayed.forEach(callback=>callback()); assert.equal(renders,1); assert.equal(api.requestAvOptionsDropdownOpen,true);
+});

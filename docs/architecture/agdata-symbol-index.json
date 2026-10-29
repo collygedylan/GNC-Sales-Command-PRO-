@@ -755,10 +755,12 @@
           "createLegacyDatabaseBridge"
         ],
         "services/database-contracts.generated.ts": [
-          "ph_active_suspend"
+          "ph_active_suspend",
+          "ph_location_sales_notes"
         ],
         "supabase/functions/_shared/database.types.ts": [
-          "ph_active_suspend"
+          "ph_active_suspend",
+          "ph_location_sales_notes"
         ],
         "assets/queue-inventory-hydration.js": [
           "identity",

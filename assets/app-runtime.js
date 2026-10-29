@@ -107134,7 +107134,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     fetchRequestItemCodeOptionRowsFromSupabase(itemCode),
                     runDedupeSupabaseRead('suspend-location-evidence:' + itemCode, ({ signal }) =>
                         fetchAuthenticatedSupabaseReadPage('ph_location_sales_notes', 'select=*&itemcode=eq.' + encodeURIComponent(itemCode) + '&limit=1000', { signal }),
-                        { retainOnGenerationChange: true, signal: null })
+                        { retainOnGenerationChange: true, signal: null }).catch(error => { console.warn('Suspend location evidence refresh deferred', error); return { rows: [] }; })
                 ]).then(([rows, notes]) => {
                     if (owner !== getSupabaseReadIdentityScope()) return;
                     const enriched = rows.map(row => {
@@ -147616,7 +147616,22 @@ C.14.043 C.15.000
             if (targeted?.owner === getSupabaseReadIdentityScope() && targeted.index) {
                 const source = findDockSuspendDcRequestSourceRow(item) || item;
                 const found = targeted.index.resolveSuspendTagDisplay(helper.identity(getSuspendTagInventoryIdentity(item, source)));
-                if (found?.row) return found;
+                if (found?.row) {
+                    // A stale order lot may use a representative physical row for
+                    // display, while Loc On Hand retains the whole location total.
+                    if (found.matchLevel === 'item-location') {
+                        const wanted = helper.identity(getSuspendTagInventoryIdentity(item, source));
+                        const representative = (targeted.rows || []).filter(row => {
+                            const actual = helper.identity(row);
+                            return actual.itemCode === wanted.itemCode && actual.locationCode === wanted.locationCode
+                                && (!wanted.source || actual.source === wanted.source);
+                        }).reduce((best, row) => !best || Number(row.PTRONHAND) > Number(best.PTRONHAND) ? row : best, null);
+                        if (representative) ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE'].forEach(key => {
+                            found.row[key] = firstNonEmptyValue(representative[key], representative[key.toLowerCase()], found.row[key]);
+                        });
+                    }
+                    return found;
+                }
             }
             const context = getQueueCardInventoryContext();
             const authorization = getQueueCardInventoryAuthorizationContext();
@@ -168818,11 +168833,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ensureRequestItemCodeOptionState(activeItem);
                 requestAvOptionsDropdownOpen = true;
                 renderRequestMatchingInventoryOptions(activeItem, 'request');
-                setTimeout(() => {
-                    requestAvOptionsDropdownOpen = true;
-                    renderRequestMatchingInventoryOptions(activeItem, activeDetailSourceView || lastView || 'request', { skipLoad: true });
-                    syncRequestDetailScrollMode();
-                }, isTouchConstrainedDevice() ? 140 : 60);
+                syncRequestDetailScrollMode();
             } else if (!safeOptions.focusEvidenceEditor) {
                 showToast('Update Row', 'Take photos and review the row. Use Email Rep only if help is needed.');
             }

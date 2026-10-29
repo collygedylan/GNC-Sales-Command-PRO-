@@ -10414,6 +10414,54 @@ export type Database = {
           },
         ]
       }
+      ph_location_sales_notes: {
+        Row: {
+          itemcode: string
+          locationcode: string
+          lotcode: string
+          photo_link: string | null
+          photo_name: string | null
+          spec: string | null
+          caliper: string | null
+          loc_match_pct: number | null
+          av_note: string | null
+          pick_note: string | null
+          sales_note: string | null
+          updated_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          itemcode: string
+          locationcode: string
+          lotcode: string
+          photo_link?: string | null
+          photo_name?: string | null
+          spec?: string | null
+          caliper?: string | null
+          loc_match_pct?: number | null
+          av_note?: string | null
+          pick_note?: string | null
+          sales_note?: string | null
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          itemcode?: string
+          locationcode?: string
+          lotcode?: string
+          photo_link?: string | null
+          photo_name?: string | null
+          spec?: string | null
+          caliper?: string | null
+          loc_match_pct?: number | null
+          av_note?: string | null
+          pick_note?: string | null
+          sales_note?: string | null
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ph_master_inventory: {
         Row: {
           a_lts: string | null

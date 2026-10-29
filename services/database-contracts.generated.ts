@@ -47950,6 +47950,295 @@ export const contracts: RuntimeContracts<Database> = {
         }
       }
     },
+    "ph_location_sales_notes": {
+      "row": {
+        "object": {
+          "itemcode": {
+            "schema": "string"
+          },
+          "locationcode": {
+            "schema": "string"
+          },
+          "lotcode": {
+            "schema": "string"
+          },
+          "photo_link": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "photo_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "caliper": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "loc_match_pct": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "av_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "pick_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "sales_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "updated_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "updated_at": {
+            "schema": "string"
+          }
+        }
+      },
+      "insert": {
+        "object": {
+          "itemcode": {
+            "schema": "string"
+          },
+          "locationcode": {
+            "schema": "string"
+          },
+          "lotcode": {
+            "schema": "string"
+          },
+          "photo_link": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photo_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "caliper": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "loc_match_pct": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "av_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "pick_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "sales_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "updated_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      },
+      "update": {
+        "object": {
+          "itemcode": {
+            "schema": "string",
+            "optional": true
+          },
+          "locationcode": {
+            "schema": "string",
+            "optional": true
+          },
+          "lotcode": {
+            "schema": "string",
+            "optional": true
+          },
+          "photo_link": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photo_name": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "caliper": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "loc_match_pct": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "av_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "pick_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "sales_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "updated_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "updated_at": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      }
+    },
     "ph_master_inventory": {
       "row": {
         "object": {
