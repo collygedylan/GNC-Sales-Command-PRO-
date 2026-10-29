@@ -5457,3 +5457,12 @@ test('Invariant 193 (Suspend edit receipts accept newer sources and concurrent p
   assert.throws(()=>run('send',row),/did not confirm/);
   assert.doesNotThrow(()=>run('complete',{...row,suspend_tag_status:'completed',date_completed:'2026-10-29T12:00:00Z'}));
 });
+
+test('Invariant 194 (Release migration transaction envelope is accepted by the canonical publisher)', async () => {
+  const { migrationBody } = await import('../scripts/apply-item-low-stock-migration.mjs');
+  const source = read('supabase/migrations/20261029210000_agdata_v23107_row_workflows.sql');
+  const body = migrationBody(source);
+  assert.match(body, /CREATE OR REPLACE FUNCTION public\.create_inventory_project_v1/);
+  assert.throws(() => migrationBody('-- misplaced comment\n' + source), /TRANSACTION_REQUIRED/);
+  assert.throws(() => migrationBody(body), /TRANSACTION_REQUIRED/);
+});

@@ -84,6 +84,7 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never place comments before a release migration’s opening BEGIN; the canonical migrationBody parser requires BEGIN as the first statement. Preserve its transaction guard (Invariant 194).
 
 - Never fail a release solely on cold-cache bulk download seconds or navigation-cancelled background reads. The explicit v2.3.107 release uses one tooling-gate invocation, no Deno, linked-CLI SQL, and one bounded live DOM check; correct harness faults without permission pauses. Preserve behavioral/security assertions.
 
@@ -103,3 +104,12 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 ## v2.3.103 single-publication release contract
 
 An explicit single-push release preserves completed mapping changes, prepares all source and SQL work first, applies validated migrations and app-api before one main push, and publishes one version. Explicit bounded live validation replaces broad rep loops: at most two screens, under 45 seconds, with browser.close in finally and process.exit after a recorded result. Long cloud imports continue independently of the browser; audit their durable completion without extending the browser loop. Never claim timing targets or empty folders from an unfinished job.
+
+## Permanent Main-Thread Memory Budget and Automatic Handoff
+
+- **95% memory reduction / zero-compaction stdout budget:** Maximum 8 stdout lines per command. Never dump verbose test, tooling, Supabase, SQL, or diff output into chat. Redirect output to a scratch log under G:\My Drive\GNC\AgData\Release Evidence\; print only exit status, elapsed seconds, and the last 5 log lines. Use git diff --stat and inspect targeted ranges of at most 35 lines. Aim to keep context use below 15%; do not claim this is measurable or guaranteed without telemetry.
+- **Batched execution:** Maximum 5 shell commands per prompt; batch inspection into 1, edits into 1–2, required focused tooling into 1, and authorized deployment/push/smoke into 1. Use the main thread only. Never spawn Customer ui, Customer backend, or other worker sub-agents. Do not rerun passed suites or rebuild a completed release without a demonstrated blocker.
+- **Automatic handoff:** Read .gnc-local/latest-state.md first at the beginning of each new chat. At the end of every completed release, write exactly 10 concise lines recording the live version, latest commit SHA, publication results, checks, limitations, and next action. This required local state file is an explicit exception to the retained-artifact location rule.
+- **Thread-full alert:** If a thread exceeds 6 completed prompts or context compaction occurs once, append this exact line at the bottom of the final response:
+  **⚠️ CHAT MEMORY NEAR LIMIT — TAP [NEW CHAT] BEFORE PASTING YOUR NEXT PROMPT (STATE SAVED TO .gnc-local/latest-state.md)**
+- **Zero permission pauses / cold-cache loops:** Execute authorized work end-to-end without May I permission prompts. Never fail or retry live browser checks solely for cold-cache download seconds or cancelled background reads during navigation. Report unverified outcomes honestly; do not weaken functional or security assertions.

@@ -1,6 +1,6 @@
+BEGIN;
 -- AgData v2.3.107: exact-source edits remain available across import/review churn.
 -- No anonymous mutation grants, email sends, bulk inventory triggers or history changes.
-BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '30s';
 CREATE OR REPLACE FUNCTION suspend_tag_private.resolve_edit_source_v23107(p_payload jsonb)
