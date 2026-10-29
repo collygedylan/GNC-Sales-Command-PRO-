@@ -5,6 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 
+// AgData v2.3.106 retains the existing registered SQL contracts; cold-start changes add no migration.
 // v2.3.102 restores exact customer/consignee pair ownership and preserves import overrides.
 export const agdataV23102CustomerPairOwnershipMigrationName = '20261029130000_agdata_v23102_customer_pair_ownership.sql';
 export const agdataV23102LegacyPairScopeMigrationName = '20261029130500_agdata_v23102_legacy_pair_scope.sql';

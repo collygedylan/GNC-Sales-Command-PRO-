@@ -46,7 +46,7 @@ These use local source/VM or injected transport fixtures without a database, bro
 
 Home source filename drawer and toggle are restricted to the authenticated Dylan/Megan/JD trio. History continuation belongs to the cloud RUN SCRIPT stage.
 
-Master startup hydration begins from Home for every authorized inventory role, with bounded four-way 1,000-row pages. Customer/consignee choices use the compact authenticated preload endpoint instead of duplicated raw-table and per-rep paging. Use the resumable cloud history stage for current RUN SCRIPT imports.
+Master startup hydration begins from Home for every authorized inventory role, with a progressive first page and at most eight concurrent pages sized to the live PostgREST cap. Customer/consignee choices use the compact authenticated preload endpoint instead of duplicated raw-table and per-rep paging. Use the resumable cloud history stage for current RUN SCRIPT imports.
 
 ## Request completion and foreground continuity
 
@@ -96,6 +96,10 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never expect parallel offset paging without an authoritative total, or assume a requested 5,000-row limit bypasses the server cap. Read the exact total once through a narrow unique-ID projection beside the first page; keep wide physical-row pages free of exact-count work. Publish the first authorized partial page across Home and operational views, then validate total/identity coverage before full publication.
+- Never let a foreground read generation cancel a shared same-account operational download; preserve its owner until completion and retain account/auth epoch as the cancellation boundary.
+- Never fetch heavy operational tables before an authenticated identity exists, serialize master/SOC startup behind independent permission reads, or auto-open notification help during login.
 
 - Never let a row delta set initial/full source readiness or replace a cold base load. Buffer source patches by authenticated owner until a complete nonempty snapshot is installed, then replay and rebuild canonical indexes.
 - Never return a failed coordinator ensure as successful cold hydration; continue the canonical authorized direct loader and repaint after completion.
@@ -165,3 +169,8 @@ Cross-layer blast radius: Code.gs folder identities and prepare/finalize/archive
 ## v2.3.105 cold hydration and incremental cloud history
 
 `pendingRowPatchesBySource`, `hydrateColdSource` and `replayHydratedRowPatches` reuse the canonical dataset loader and master indexes. Home, Managers, Docks, Request and Item Detail eagerly hydrate their operational bases; account changes discard pending deltas. `erp-history-sync.mjs` continues after core/secondary imports and reuses immutable SOC_PROCESSED versions before activating affected-item statistics. No new browser read endpoint is introduced; Code.gs delivery/email paths remain intact.
+
+
+## v2.3.106 cold-start read ownership
+
+`hasAuthenticatedOperationalReadIdentity` gates heavy direct reads before transport. Customer mapping and the full master snapshot share account-owned in-flight promises that survive permission readiness transitions. `fetchAllInventoryReadRows` learns exact totals once, detects the actual server page cap, publishes a partial first page, and fetches continuation pages with up to eight workers. `finalizeLogin` starts master, SOC, pending requests, Suspend and assignments before awaiting access readiness. Only a complete unique-ID snapshot establishes full readiness and replays pending source patches; scheduled push enrollment keeps notification help closed. No new browser endpoint, SQL contract, or Apps Script importer is introduced. Performance targets require measured live evidence.

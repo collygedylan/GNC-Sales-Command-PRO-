@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.105",
+  "release": "AgData v2.3.106",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -865,6 +865,9 @@
         "processDylanFileProcessedToasts",
         "getProductionLiveSyncCoordinator",
         "fetchDirectPostgrestReadPage",
+        "runDedupeSupabaseRead",
+        "abortSupabaseReadsBeforeGeneration",
+        "fetchRequestCustomerMapRows",
         "syncGoogleScriptButton",
         "refreshManualSyncOnForeground",
         "scheduleManualSyncCompletionRefresh",
@@ -878,7 +881,10 @@
         "bufferRowPatchUntilHydrated",
         "replayHydratedRowPatches",
         "hydrateColdSource",
-        "ensureColdOperationalHydration"
+        "ensureColdOperationalHydration",
+        "hasAuthenticatedOperationalReadIdentity",
+        "fetchAllInventoryReadRows",
+        "hydrateFirstDatasetPageForRender"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [

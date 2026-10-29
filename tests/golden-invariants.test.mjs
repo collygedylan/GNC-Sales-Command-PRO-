@@ -1344,7 +1344,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.105"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.106"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1373,9 +1373,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.105"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.106"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.105"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.106"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2188,7 +2188,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.105/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.106/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2722,7 +2722,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.105/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.106/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3379,8 +3379,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.105/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.105/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.106/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.106/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3680,8 +3680,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.105/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.105/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.106/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.106/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -4924,4 +4924,147 @@ test('Invariant 173 (Cloud Order History Owns Imports And Incremental Average Pu
   vm.runInContext(`${code.match(/function scheduleSocOrderHistoryTrigger_\([^]*?^}/m)?.[0]}\n${worker}\nthis.result=runSocOrderHistoryBackfillChunk_();`, context);
   assert.equal(context.result.status, 'cloud_owned');
   assert.equal(trigger.length, 0);
+});
+
+
+test('Invariant 174 (Cold Master Preview Precedes Eight-Way Complete Snapshot With Server Page Caps)', async () => {
+  let active = 0, peak = 0, previewAt = 0, firstRows = 0, countFinished = false;
+  const started = performance.now(), total = 54322;
+  const ctx = runFunctions('assets/app-runtime.js', ['fetchAllInventoryReadRows'], {
+    canUseProductionLiveSync: () => true, yieldToUiFrame: async () => {},
+    fetchAuthenticatedSupabaseReadPage: async (table, query, options) => {
+      assert.equal(table, 'ph_master_inventory'); assert.equal(query, 'select=unique_id&limit=1'); assert.equal(options.count, true);
+      await new Promise(resolve => setTimeout(resolve, 25)); countFinished = true; return { total };
+    },
+    fetchInventoryReadPage: async (_operation, _params, requested, offset) => {
+      active++; peak = Math.max(peak, active);
+      await new Promise(resolve => setTimeout(resolve, 2));
+      active--;
+      const size = Math.min(requested, 1000, total - offset);
+      return { rows: Array.from({ length: size }, (_, index) => ({ unique_id: 'row-' + (offset + index) })),
+        total: null, hasMore: size === requested, projection: 'full', fieldCoverage: 'full', columns: ['unique_id'] };
+    },
+  });
+  const rows = await ctx.fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'full' }, {
+    sharedSnapshotOwner: true, limit: 5000, pageConcurrency: 8, requireComplete: true,
+    onFirstPage: rows => { firstRows = rows.length; previewAt = performance.now(); assert.equal(active, 0); assert.equal(countFinished, false); },
+  });
+  assert.equal(firstRows, 1000, 'publish the actual server-capped first page immediately');
+  assert.ok(previewAt - started < 1000, 'the bounded Node fixture publishes a preview within one second');
+  assert.equal(peak, 8); assert.equal(rows.length, total); assert.equal(rows.readMeta.total, total);
+  assert.equal(rows.readMeta.rowCompleteness, 'complete'); assert.equal(new Set(rows.map(row => row.unique_id)).size, total);
+});
+
+test('Invariant 175 (Authenticated Login Starts Master And SOC Before Permission Waits)', () => {
+  const started = [];
+  const ctx = runFunctions('assets/app-runtime.js', ['ensureColdOperationalHydration'], {
+    canUseProductionLiveSync: () => true, hydrateColdSource: key => { started.push(key); return new Promise(() => {}); },
+  });
+  ctx.ensureColdOperationalHydration('home');
+  assert.deepEqual(started, ['master', 'soc', 'requests', 'suspendTag', 'warehouseAssignedItems']);
+  const login = functionSource('assets/app-runtime.js', 'finalizeLogin');
+  assert.ok(login.indexOf("ensureColdOperationalHydration('home')") < login.indexOf('await Promise.all([capabilitiesTask, accessTask])'));
+  const denied = runFunctions('assets/app-runtime.js', ['ensureColdOperationalHydration'], {
+    canUseProductionLiveSync: () => false, hydrateColdSource: () => { throw new Error('Unauthenticated fetch'); },
+  });
+  denied.ensureColdOperationalHydration('home');
+});
+
+test('Invariant 176 (Cancelled Cold Hydration Releases Its Shared Loading Promise)', async () => {
+  const pending = new Map();
+  const ctx = runFunctions('assets/app-runtime.js', ['hydrateColdSource'], {
+    coldSourceHydrations: pending, resetPendingRowPatchesForOwner: () => 'owner', getSupabaseReadIdentityScope: () => 'owner',
+    canUseProductionLiveSync: () => true, getDatasetState: () => ({ fullLoaded: false }), getDatasetRenderRowCount: () => 0,
+    ensureDatasetLoaded: async () => { throw Object.assign(new Error('cancelled'), { code: 'REQUEST_ABORTED' }); },
+  });
+  assert.equal(await ctx.hydrateColdSource('master'), false); assert.equal(pending.size, 0);
+  assert.match(functionSource('assets/app-runtime.js', 'ensureDatasetLoaded'), /finally\(\(\) => \{\s*state\.fullPromise = null/);
+});
+
+test('Invariant 177 (Heavy Reads Require An Authenticated Owner And Retain Same-Account Flights)', async () => {
+  let sessionLookups = 0, networkReads = 0;
+  const unauthenticated = runFunctions('assets/app-runtime.js', ['hasAuthenticatedOperationalReadIdentity', 'fetchDirectPostgrestReadPage'], {
+    WAREHOUSE_ASSIGNED_ITEMS_TABLE: 'ph_inventory_row_assignments', SUPABASE_READ_TIMEOUT_MS: 1000,
+    SUPABASE_KEY: 'fixture-key', SUPABASE_URL: 'https://fixture.invalid', currentUser: '', nativeAuthReadRequired: false,
+    nativeAuthSessionActive: false, nativeAuthProfile: null, normalizeAppTableName: value => value,
+    getRequestCapabilityUsernameKey: value => String(value || '').trim().toLowerCase(), getCurrentAppSessionToken: () => '',
+    readPersistedAppSessionRecord: () => null, getNativeAuthRequestHeaders: async () => { sessionLookups++; return null; },
+    window: { GncDatabase: { fetchTable: async () => { networkReads++; throw new Error('pre-login network read'); } } },
+  });
+  for (const table of ['ph_master_inventory', 'ph_customer_consignee_sales_reps', 'ph_soc_master', 'ph_inventory_row_assignments', 'ph_warehouse_assigned_items']) {
+    await assert.rejects(unauthenticated.fetchDirectPostgrestReadPage(table), { code: 'DATASET_AUTH_REQUIRED' }, table);
+  }
+  assert.equal(sessionLookups, 0); assert.equal(networkReads, 0);
+
+  const authenticated = runFunctions('assets/app-runtime.js', ['hasAuthenticatedOperationalReadIdentity'], {
+    currentUser: 'dylan_collyge', nativeAuthReadRequired: true, nativeAuthSessionActive: true,
+    nativeAuthProfile: { id: 'profile-1', username: 'dylan_collyge' }, appAccessSnapshotState: { status: 'loading' },
+    getRequestCapabilityUsernameKey: value => String(value || '').trim().toLowerCase(),
+  });
+  assert.equal(authenticated.hasAuthenticatedOperationalReadIdentity(), true, 'same-account reads do not wait for access readiness');
+
+  let resolveRead;
+  const readPromise = new Promise(resolve => { resolveRead = resolve; });
+  const readContext = runFunctions('assets/app-runtime.js', [
+    'getSupabaseReadIdentityScope', 'abortSupabaseReadsBeforeGeneration', 'getSupabaseReadCooldownKey',
+    'getSupabaseReadTerminalKey', 'staleSupabaseReadScopeError', 'runDedupeSupabaseRead',
+  ], {
+    AbortController,
+    SUPABASE_URL: 'https://fixture.invalid', nativeAuthSessionActive: true, nativeAuthProfile: { id: 'profile-1' },
+    currentUser: 'dylan_collyge', currentRole: 'admin', currentUserDivision: '10', productionLiveSyncReadAuthEpoch: 1,
+    productionLiveSyncReadGeneration: 1, getCurrentLoginCacheScopeKey: () => 'account-1',
+    supabaseReadLatestByKey: new Map(), supabaseReadInFlight: new Map(), supabaseReadTerminalDenials: new Map(),
+    supabaseReadFailureCooldowns: new Map(), incrementInternalPerfCounter() {}, runSupabaseReadTask: task => task(),
+    runSupabaseReadWithBackoff: (_key, task) => task(), redactEvalSensitiveData: value => value,
+  });
+  let transportSignal;
+  const first = readContext.runDedupeSupabaseRead('all:customer-map', ({ signal }) => { transportSignal = signal; return readPromise; }, { retainOnGenerationChange: true });
+  await Promise.resolve();
+  readContext.productionLiveSyncReadGeneration++;
+  readContext.abortSupabaseReadsBeforeGeneration();
+  const second = readContext.runDedupeSupabaseRead('all:customer-map', () => assert.fail('duplicate transport'), { retainOnGenerationChange: true });
+  assert.equal(transportSignal.aborted, false); assert.strictEqual(first, second);
+  resolveRead(['current-account-rows']);
+  assert.deepEqual(await first, ['current-account-rows']);
+
+  let resolveStaleRead;
+  const stalePromise = new Promise(resolve => { resolveStaleRead = resolve; });
+  let staleSignal;
+  const staleRead = readContext.runDedupeSupabaseRead('all:customer-map-after-account-change', ({ signal }) => {
+    staleSignal = signal; return stalePromise;
+  }, { retainOnGenerationChange: true });
+  await Promise.resolve();
+  readContext.currentUser = 'another_user';
+  readContext.productionLiveSyncReadAuthEpoch++;
+  readContext.productionLiveSyncReadGeneration++;
+  readContext.abortSupabaseReadsBeforeGeneration();
+  assert.equal(staleSignal.aborted, true, 'identity changes still abort retained transports');
+  resolveStaleRead(['stale-account-rows']);
+  await assert.rejects(staleRead, { code: 'DATASET_READ_SCOPE_CHANGED' });
+
+  const runtime = read('assets/app-runtime.js');
+  assert.match(runtime, /retainOnGenerationChange: true/);
+  assert.match(runtime, /identityScope !== getSupabaseReadIdentityScope\(\)/);
+});
+
+test('Invariant 178 (Denied Push Permission Help Is User-Initiated, Not Startup-Opened)', async () => {
+  let enrollmentCallback = null, helpCount = 0, warningCount = 0;
+  const ctx = runFunctions('assets/app-runtime.js', ['scheduleCellularPushEnrollment', 'manuallyEnablePushNotifications'], {
+    cellularPushEnrollmentTimer: null, currentUser: 'dylan_collyge', pushBlockedNoticeShown: false,
+    Notification: { permission: 'denied' }, document: { hidden: false }, navigator: { userAgent: 'Desktop Chrome' },
+    isPushSupported: () => true, getPushPromptUserScope: () => 'dylan_collyge:profile',
+    maybeWarnPushPermissionBlocked: () => { warningCount++; }, showPushPermissionHelp: () => { helpCount++; },
+    setTimeout: callback => { enrollmentCallback = callback; return 1; }, clearTimeout() {},
+  });
+  ctx.scheduleCellularPushEnrollment('login', 0);
+  assert.equal(typeof enrollmentCallback, 'function');
+  await enrollmentCallback();
+  assert.equal(warningCount, 1, 'background enrollment may retain the nonmodal permission warning');
+  assert.equal(helpCount, 0, 'startup enrollment must not open the help modal');
+
+  await ctx.manuallyEnablePushNotifications();
+  assert.equal(helpCount, 1, 'an explicit Menu Enable Notifications action retains the help flow');
+  const schedule = functionSource('assets/app-runtime.js', 'scheduleCellularPushEnrollment');
+  assert.doesNotMatch(schedule, /showPushPermissionHelp\(\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'manuallyEnablePushNotifications'), /showPushPermissionHelp\(\)/);
 });

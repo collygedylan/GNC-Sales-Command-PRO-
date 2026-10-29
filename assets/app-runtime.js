@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.105';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.106';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12909,9 +12909,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
 
         function ensureColdOperationalHydration(viewId = '') {
             if (!canUseProductionLiveSync() || !['home', 'drive', 'av', 'docks', 'request', 'managers', 'detail'].includes(viewId)) return;
-            const keys = ['master'];
-            if (['docks', 'request', 'detail'].includes(viewId)) keys.push('soc', 'suspendTag');
-            if (['home', 'managers', 'detail'].includes(viewId)) keys.push('warehouseAssignedItems');
+            const keys = ['master', 'soc', 'requests', 'suspendTag', 'warehouseAssignedItems'];
             keys.forEach(key => { void hydrateColdSource(key); });
         }
 
@@ -18228,8 +18226,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function abortSupabaseReadsBeforeGeneration(generation = productionLiveSyncReadGeneration) {
+            const currentIdentity = getSupabaseReadIdentityScope();
             for (const flight of supabaseReadLatestByKey.values()) {
-                if (flight.generation !== generation) flight.controller.abort();
+                if (flight.generation !== generation
+                    && !(flight.retainOnGenerationChange === true && flight.identityScope === currentIdentity)) flight.controller.abort();
             }
         }
 
@@ -18472,13 +18472,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             if (supabaseReadTerminalDenials.has(terminalKey)) return Promise.reject(supabaseReadTerminalDenials.get(terminalKey));
             const generation = productionLiveSyncReadGeneration;
-            const safeKey = JSON.stringify([cooldownKey, generation]);
+            const retainOnGenerationChange = options.retainOnGenerationChange === true;
+            const safeKey = JSON.stringify([cooldownKey, retainOnGenerationChange ? 'identity-scoped' : generation]);
             if (supabaseReadInFlight.has(safeKey)) {
                 incrementInternalPerfCounter('dedupedSupabaseReads');
                 return supabaseReadInFlight.get(safeKey);
             }
             const previous = supabaseReadLatestByKey.get(cooldownKey);
-            if (previous && previous.generation !== generation) {
+            if (previous && previous.generation !== generation
+                && !(previous.retainOnGenerationChange === true && previous.identityScope === identityScope && identityScope === getSupabaseReadIdentityScope())) {
                 previous.controller.abort();
                 // Old reads are already fenced by generation and identity. Do
                 // not make a new view wait for a transport ignoring cancellation.
@@ -18491,9 +18493,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             else externalSignal?.addEventListener('abort', abortController, { once: true });
             const promise = runSupabaseReadTask(() => runSupabaseReadWithBackoff(cooldownKey, async () => {
                 if (controller.signal.aborted) throw Object.assign(new Error('Data read cancelled.'), { code: 'REQUEST_ABORTED' });
-                if (generation !== productionLiveSyncReadGeneration || identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                if ((!retainOnGenerationChange && generation !== productionLiveSyncReadGeneration) || identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
                 const result = await taskFn({ signal: controller.signal });
-                if (generation !== productionLiveSyncReadGeneration || identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                if ((!retainOnGenerationChange && generation !== productionLiveSyncReadGeneration) || identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
                 return redactEvalSensitiveData(result);
             }, controller.signal, Math.max(1, Math.min(3, Number(options.maxAttempts) || 3))), controller.signal).finally(() => {
                 externalSignal?.removeEventListener('abort', abortController);
@@ -18501,7 +18503,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 if (supabaseReadLatestByKey.get(cooldownKey)?.promise === promise) supabaseReadLatestByKey.delete(cooldownKey);
             });
             supabaseReadInFlight.set(safeKey, promise);
-            supabaseReadLatestByKey.set(cooldownKey, { generation, promise, controller });
+            supabaseReadLatestByKey.set(cooldownKey, { generation, promise, controller, identityScope, retainOnGenerationChange });
             return promise;
         }
 
@@ -22005,7 +22007,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
             if (operation === 'master_page' && String(params.dataset || '').trim().toLowerCase() === 'master'
                 && ['browse', 'full'].includes(String(params.projection || '').trim().toLowerCase())) {
-                return fetchDirectMasterInventoryPage(params, safeLimit, safeOffset, options);
+                return fetchDirectMasterInventoryPage(params, limit, safeOffset, options);
             }
             const result = await requestInventoryRead(operation, { ...params, limit: safeLimit, offset: safeOffset }, options);
             if (!result || !Array.isArray(result.rows)) throw new Error('Inventory data returned an invalid page; verified cached rows were retained.');
@@ -22040,7 +22042,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (!['browse', 'full'].includes(projection) || !Array.isArray(columns) || !columns.length) {
                 throw new Error('Direct inventory projection is unavailable.');
             }
-            const safeLimit = Math.max(1, Math.min(1000, Math.floor(Number(limit) || INITIAL_PAGE_LIMIT)));
+            const safeLimit = Math.max(1, Math.min(5000, Math.floor(Number(limit) || INITIAL_PAGE_LIMIT)));
             const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
             const afterUniqueId = String(options.afterUniqueId || '').trim();
             const itemCode = String(params.itemCode || '').trim();
@@ -22101,104 +22103,89 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function fetchAllInventoryReadRows(operation, params = {}, options = {}) {
-            const limit = Math.max(1, Math.min(1000, Math.floor(Number(options.limit) || 1000)));
-            const firstPageLimit = Math.max(1, Math.min(limit, Math.floor(Number(options.firstPageLimit) || limit)));
-            const requestedPageConcurrency = Math.max(1, Math.min(4, Math.floor(Number(options.pageConcurrency) || 1)));
+            if (options.sharedSnapshotOwner !== true && operation === 'master_page' && params.dataset === 'master' && canUseProductionLiveSync()) {
+                return runDedupeSupabaseRead('inventory-snapshot:' + JSON.stringify(params), ({ signal }) =>
+                    fetchAllInventoryReadRows(operation, params, { ...options, signal, sharedSnapshotOwner: true, retainOnGenerationChange: true }),
+                    { ...options, signal: null, retainOnGenerationChange: true });
+            }
+            const limit = Math.max(1, Math.min(5000, Math.floor(Number(options.limit) || 1000)));
+            const firstLimit = Math.max(1, Math.min(limit, Math.floor(Number(options.firstPageLimit) || limit)));
+            const concurrency = Math.max(1, Math.min(8, Math.floor(Number(options.pageConcurrency) || 1)));
             const allRows = [];
-            let offset = 0;
-            let pageCount = 0;
-            let expectedTotal = null;
-            let readMeta = null;
-            let afterUniqueId = '';
-            const onFirstPage = typeof options.onFirstPage === 'function' ? options.onFirstPage : null;
-            const captureReadMeta = (page) => {
-                if (!readMeta) {
-                    readMeta = { projection: page.projection, fieldCoverage: page.fieldCoverage, columns: page.columns };
-                    return;
+            let expectedTotal = null, readMeta = null, afterUniqueId = '', offset = 0, pageCount = 0;
+            const acceptPage = page => {
+                if (!Array.isArray(page.rows)) throw new Error('Inventory page rows were invalid.');
+                if (page.total != null) {
+                    if (expectedTotal !== null && Number(page.total) !== expectedTotal) throw new Error('Inventory total changed between pages; the partial snapshot was discarded.');
+                    expectedTotal = Number(page.total);
                 }
-                if (page.projection !== readMeta.projection || page.fieldCoverage !== readMeta.fieldCoverage
-                    || JSON.stringify(page.columns) !== JSON.stringify(readMeta.columns)) {
-                    throw new Error('Inventory field coverage changed between pages; the partial snapshot was discarded.');
-                }
+                const meta = { projection: page.projection, fieldCoverage: page.fieldCoverage, columns: page.columns };
+                if (readMeta && JSON.stringify(meta) !== JSON.stringify(readMeta)) throw new Error('Inventory field coverage changed between pages; the partial snapshot was discarded.');
+                readMeta = meta;
+                if (++pageCount > 10000) throw new Error('Inventory response exceeded the safe page limit.');
             };
-            while (true) {
-                if (options.signal?.aborted) throw Object.assign(new Error('Inventory read cancelled.'), { code: 'REQUEST_ABORTED' });
-                const pageLimit = pageCount === 0 ? firstPageLimit : limit;
-                const page = await fetchInventoryReadPage(operation, params, pageLimit, offset,
-                    afterUniqueId ? { ...options, afterUniqueId } : options);
-                if (expectedTotal === null) expectedTotal = page.total;
-                else if (page.total !== null && page.total !== undefined && Number(page.total) !== Number(expectedTotal)) {
-                    throw new Error('Inventory total changed between pages; the partial snapshot was discarded.');
-                }
-                captureReadMeta(page);
-                if (pageCount === 0 && onFirstPage && page.rows.length) {
-                    try { await onFirstPage(page.rows.slice(), { table: 'ph_master_inventory', query: `inventory_read:${operation}`, total: page.total, limit: pageLimit, loaded: page.rows.length, offset,
-                        projection: page.projection, fieldCoverage: page.fieldCoverage, columns: page.columns }); }
-                    catch (error) { console.warn('First inventory page hydration failed.', error); }
-                }
-                if (!page.rows.length) {
-                    if (expectedTotal === null) expectedTotal = offset;
-                    break;
-                }
-                allRows.push(...page.rows);
-                pageCount += 1;
-                if (page.total === null || page.total === undefined) {
-                    const nextUniqueId = String(page.rows.at(-1)?.unique_id || '').trim();
-                    if (!nextUniqueId || nextUniqueId === afterUniqueId) {
-                        throw new Error('Inventory keyset boundary was invalid; the partial snapshot was discarded.');
-                    }
-                    afterUniqueId = nextUniqueId;
-                }
-                if (expectedTotal === null && page.rows.length < pageLimit) expectedTotal = offset + page.rows.length;
-                if (page.total !== null ? allRows.length >= page.total && !page.hasMore : !page.hasMore && page.rows.length < limit) break;
-
-                // A complete inventory snapshot can be assembled from independent
-                // offset pages once the API has supplied its exact total. Keep this
-                // opt-in and tightly bounded; callers without a stable total retain
-                // the sequential path below.
-                if (requestedPageConcurrency > 1 && page.rows.length === limit
-                    && Number.isFinite(Number(expectedTotal)) && Number(expectedTotal) > allRows.length) {
-                    const total = Number(expectedTotal);
-                    const offsets = [];
-                    for (let nextOffset = offset + limit; nextOffset < total; nextOffset += limit) offsets.push(nextOffset);
-                    if (offsets.length + pageCount > 10000) throw new Error('Inventory response exceeded the safe page limit.');
-                    const pages = new Array(offsets.length);
-                    let cursor = 0;
-                    let pageFailure = null;
-                    const workers = Array.from({ length: Math.min(requestedPageConcurrency, offsets.length) }, async () => {
-                        while (cursor < offsets.length && !pageFailure) {
+            // Keep exact counting off the wide physical-row response. The narrow
+            // identity read runs beside the first page and never delays its preview.
+            const countPromise = operation === 'master_page' && params.dataset === 'master' && canUseProductionLiveSync()
+                ? fetchAuthenticatedSupabaseReadPage('ph_master_inventory', 'select=unique_id&limit=1',
+                    { count: true, signal: options.signal, timeoutMs: options.timeoutMs })
+                    .then(page => ({ total: page.total }), error => ({ error }))
+                : Promise.resolve({ total: null });
+            const first = await fetchInventoryReadPage(operation, params, firstLimit, 0, options);
+            acceptPage(first);
+            allRows.push(...first.rows);
+            if (first.rows.length && typeof options.onFirstPage === 'function') {
+                await options.onFirstPage(first.rows.slice(), { table: 'ph_master_inventory', query: 'inventory_read:' + operation,
+                    total: expectedTotal, limit: firstLimit, loaded: first.rows.length, offset: 0, ...readMeta });
+            }
+            const countResult = await countPromise;
+            if (countResult.error) throw countResult.error;
+            if (countResult.total != null) expectedTotal = Number(countResult.total);
+            // Honor the server's actual PostgREST cap; a requested 5,000-row page
+            // can contain 1,000 rows without being the end of the snapshot.
+            const pageSize = first.rows.length > 0 && first.rows.length < firstLimit && (first.hasMore || expectedTotal > first.rows.length)
+                ? first.rows.length : limit;
+            offset = first.rows.length;
+            if (expectedTotal !== null && expectedTotal > offset && concurrency > 1) {
+                const offsets = [];
+                for (let next = offset; next < expectedTotal; next += pageSize) offsets.push(next);
+                if (offsets.length > 10000) throw new Error('Inventory response exceeded the safe page limit.');
+                const pages = new Array(offsets.length);
+                let cursor = 0, failure = null;
+                await Promise.all(Array.from({ length: Math.min(concurrency, offsets.length) }, async () => {
+                    while (cursor < offsets.length && !failure) {
+                        const index = cursor++;
+                        try {
                             if (options.signal?.aborted) throw Object.assign(new Error('Inventory read cancelled.'), { code: 'REQUEST_ABORTED' });
-                            const pageIndex = cursor++;
-                            try {
-                                const nextPage = await fetchInventoryReadPage(operation, params, limit, offsets[pageIndex], options);
-                                if (nextPage.total !== null && nextPage.total !== undefined && Number(nextPage.total) !== total) {
-                                    throw new Error('Inventory total changed between pages; the partial snapshot was discarded.');
-                                }
-                                captureReadMeta(nextPage);
-                                const expectedRows = Math.min(limit, total - offsets[pageIndex]);
-                                if (nextPage.rows.length !== expectedRows) throw new Error('Inventory page was incomplete; the partial snapshot was discarded.');
-                                pages[pageIndex] = nextPage.rows;
-                                pageCount += 1;
-                                await yieldToUiFrame();
-                            } catch (error) {
-                                pageFailure = error;
-                                throw error;
-                            }
-                        }
-                    });
-                    await Promise.all(workers);
-                    pages.forEach((rows) => allRows.push(...rows));
-                    break;
+                            const page = await fetchInventoryReadPage(operation, params, pageSize, offsets[index], options);
+                            acceptPage(page);
+                            if (page.rows.length !== Math.min(pageSize, expectedTotal - offsets[index])) throw new Error('Inventory page was incomplete; the partial snapshot was discarded.');
+                            pages[index] = page.rows;
+                        } catch (error) { failure = error; throw error; }
+                    }
+                }));
+                pages.forEach(rows => allRows.push(...rows));
+            } else {
+                let page = first;
+                while (page.hasMore || (expectedTotal !== null && offset < expectedTotal)) {
+                    if (options.signal?.aborted) throw Object.assign(new Error('Inventory read cancelled.'), { code: 'REQUEST_ABORTED' });
+                    if (expectedTotal === null) {
+                        const nextUniqueId = String(page.rows.at(-1)?.unique_id || '').trim();
+                        if (!nextUniqueId || nextUniqueId === afterUniqueId) throw new Error('Inventory keyset boundary was invalid; the partial snapshot was discarded.');
+                        afterUniqueId = nextUniqueId;
+                    }
+                    page = await fetchInventoryReadPage(operation, params, pageSize, offset, afterUniqueId ? { ...options, afterUniqueId } : options);
+                    acceptPage(page);
+                    if (!page.rows.length) break;
+                    allRows.push(...page.rows);
+                    offset += page.rows.length;
+                    await yieldToUiFrame();
                 }
-                offset += page.rows.length;
-                if (pageCount > 10000) throw new Error('Inventory response exceeded the safe page limit.');
-                await yieldToUiFrame();
+                if (expectedTotal === null && !page.hasMore) expectedTotal = allRows.length;
             }
             if (options.requireComplete === true) {
-                const ids = allRows.map((row) => String(row?.unique_id || '').trim());
-                if (expectedTotal === null || allRows.length !== expectedTotal || ids.some((id) => !id) || new Set(ids).size !== ids.length) {
-                    throw new Error('Complete inventory rows could not be verified. Retry the report.');
-                }
+                const ids = allRows.map(row => String(row?.unique_id || '').trim());
+                if (expectedTotal === null || allRows.length !== expectedTotal || ids.some(id => !id) || new Set(ids).size !== ids.length) throw new Error('Complete inventory rows could not be verified. Retry the report.');
             }
             Object.defineProperty(allRows, 'readMeta', { value: { ...(readMeta || { projection: String(params.projection || ''), fieldCoverage: '', columns: [] }),
                 total: expectedTotal, rowCompleteness: expectedTotal !== null && allRows.length === expectedTotal ? 'complete' : 'partial' }, enumerable: false });
@@ -26834,7 +26821,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.105').trim() || 'AgData v2.3.105';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.106').trim() || 'AgData v2.3.106';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29127,7 +29114,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && typeof getCurrentVisibleViewId === 'function'
                 && getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
                 ? 2 : key === 'master'
-                    ? Math.min(2, Math.max(1, Math.floor(Number(stageOptions.pageConcurrency) || 1)))
+                    ? coldSourceHydrations.has('master')
+                        ? Math.min(8, Math.max(1, Math.floor(Number(stageOptions.pageConcurrency) || 8)))
+                        : Math.min(2, Math.max(1, Math.floor(Number(stageOptions.pageConcurrency) || 1)))
                     : stageOptions.pageConcurrency;
             const querySource = projection === 'full' ? definition.fullQuery || definition.initialQuery || 'select=*' : definition.initialQuery || 'select=*';
             const query = typeof querySource === 'function' ? querySource(projection, {}) : querySource;
@@ -29193,6 +29182,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getProductionCoreLiveProjection(key, viewId, context = {}) {
             const coreKey = key === 'avOpen' ? 'master' : key;
+            if (coreKey === 'master' && coldSourceHydrations.has('master')) return 'full';
             if (viewId === 'av' && activeAVTab === 'open'
                 && (coreKey === 'master' || coreKey === 'reserves')) return 'full';
             if (coreKey !== 'master') return 'browse';
@@ -34858,6 +34848,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function fetchDirectPostgrestReadPage(table, queryString = '', options = {}, allowAnonFallback = false) {
             const safeTable = normalizeAppTableName(table);
+            const authenticatedOnlyTable = safeTable === 'ph_master_inventory'
+                || safeTable === 'ph_customer_consignee_sales_reps'
+                || safeTable === 'ph_soc_master'
+                || safeTable === WAREHOUSE_ASSIGNED_ITEMS_TABLE
+                || safeTable === 'ph_warehouse_assigned_items';
+            if (authenticatedOnlyTable && !hasAuthenticatedOperationalReadIdentity()) {
+                throw Object.assign(new Error(`${safeTable} read requires the active authenticated account.`), { code: 'DATASET_AUTH_REQUIRED' });
+            }
             const opts = options && typeof options === 'object' ? options : {};
             const timeoutMs = Math.max(1000, Number(opts.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);
             const nativeHeaders = opts.preferAnon === true ? null : await getNativeAuthRequestHeaders().catch(() => null);
@@ -34889,8 +34887,29 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return 'DATASET_LOAD_FAILED';
         }
 
+        function hasAuthenticatedOperationalReadIdentity() {
+            const username = typeof getRequestCapabilityUsernameKey === 'function'
+                ? getRequestCapabilityUsernameKey(currentUser) : String(currentUser || '').trim().toLowerCase();
+            if (!username) return false;
+            if (nativeAuthReadRequired === true || nativeAuthSessionActive === true || !!String(nativeAuthProfile?.id || '').trim()) {
+                const profileUsername = typeof getRequestCapabilityUsernameKey === 'function'
+                    ? getRequestCapabilityUsernameKey(nativeAuthProfile?.username || nativeAuthProfile?.user_metadata?.username || '')
+                    : String(nativeAuthProfile?.username || nativeAuthProfile?.user_metadata?.username || '').trim().toLowerCase();
+                return nativeAuthSessionActive === true && !!String(nativeAuthProfile?.id || '').trim() && profileUsername === username;
+            }
+            if (typeof getCurrentAppSessionToken !== 'function' || !getCurrentAppSessionToken()
+                || typeof readPersistedAppSessionRecord !== 'function') return false;
+            const record = readPersistedAppSessionRecord();
+            const recordUsername = typeof getRequestCapabilityUsernameKey === 'function'
+                ? getRequestCapabilityUsernameKey(record?.username || '') : String(record?.username || '').trim().toLowerCase();
+            return !!record && recordUsername === username;
+        }
+
         async function fetchAuthenticatedSupabaseReadPage(table, queryString = '', options = {}) {
             const safeTable = normalizeAppTableName(table);
+            if (safeTable === 'ph_customer_consignee_sales_reps' && !hasAuthenticatedOperationalReadIdentity()) {
+                throw Object.assign(new Error('Customer mappings load after an authenticated session is ready.'), { code: 'DATASET_AUTH_REQUIRED' });
+            }
             if (safeTable === 'ph_master_inventory' && /^\s*select=filename,last_updated(?:&|$)/i.test(String(queryString || ''))) {
                 const freshness = await requestInventoryRead('source_freshness', {}, { signal: options.signal, timeoutMs: options.timeoutMs, label: 'Drive source freshness' });
                 const hasFreshness = freshness && typeof freshness === 'object' && (freshness.filename != null || freshness.last_updated != null);
@@ -35065,7 +35084,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 } finally {
                     stopGlobalProgress();
                 }
-            }, { signal: opts.signal || null });
+            }, { signal: opts.signal || null, retainOnGenerationChange: opts.retainOnGenerationChange === true });
         }
 
         function buildActiveRequestLiveRowsQuery(selectFields = '*') {
@@ -35198,7 +35217,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (getDatasetRenderRowCount(safeKey) > 0) return false;
             const visibleView = getCurrentVisibleViewId();
             return (safeKey === 'cropRollDrive' && visibleView === 'crop-roll')
-                || (safeKey === 'master' && visibleView === 'drive');
+                || (safeKey === 'master' && ['home', 'drive', 'av', 'docks', 'managers', 'request', 'detail'].includes(visibleView));
         }
 
         async function hydrateFirstDatasetPageForRender(key = '', rows = [], meta = {}) {
@@ -35206,8 +35225,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!safeKey || !Array.isArray(rows) || !rows.length) return false;
             const state = getDatasetState(safeKey);
             processAndLoadData(buildDatasetPayload(safeKey, rows));
-            state.initialLoaded = true;
             state.firstPagePreviewLoaded = true;
+            state.rowCompleteness = 'partial';
+            state.expectedRowCount = meta.total;
             state.lastLoadedAt = new Date().toISOString();
             if (safeKey === 'cropRollDrive') {
                 cropRollDriveSchemaReady = true;
@@ -35216,10 +35236,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     queueInteractiveViewRender('crop-roll', false, true, 0, 140);
                 }
             } else if (safeKey === 'master') {
-                markViewDirty('drive');
-                if (getCurrentVisibleViewId() === 'drive') {
-                    queueInteractiveViewRender('drive', false, true, 0, 140);
-                }
+                rebuildMasterInventoryIndexes();
+                const view = getCurrentVisibleViewId();
+                TRACKED_VIEW_IDS.forEach(markViewDirty);
+                if (view !== 'home') queueInteractiveViewRender(view, false, true, 0, 140);
+                scheduleProductionLiveSyncRender(true, { cachedPreview: true });
             }
             await yieldToUiFrame();
             return true;
@@ -35459,8 +35480,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const initialLimitSource = definition.initialLimit;
                 const resolvedInitialLimit = typeof initialLimitSource === 'function' ? initialLimitSource(modeLabel, options) : (initialLimitSource || INITIAL_PAGE_LIMIT);
                 const shouldFetchAllForInitial = !wantsFull && definition.initialFetchAll === true && options.fastInitialPage !== true;
+                const firstPageOwner = getSupabaseReadIdentityScope();
                 const firstPageHydrationOptions = shouldHydrateFirstPageForDatasetLoad(key, modeLabel)
-                    ? { onFirstPage: (firstRows, meta) => hydrateFirstDatasetPageForRender(key, firstRows, meta) }
+                    ? { onFirstPage: (firstRows, meta) => firstPageOwner === getSupabaseReadIdentityScope()
+                        ? hydrateFirstDatasetPageForRender(key, firstRows, meta) : false }
                     : {};
                 let rows = [];
                 let missingOptionalCropRollDrive = false;
@@ -35470,7 +35493,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             ? { dataset: 'avOpen', projection: wantsFull ? 'full' : 'browse' }
                             : { dataset: 'master', projection: wantsFull ? 'full' : 'browse' };
                         if (wantsFull || shouldFetchAllForInitial) {
-                            rows = await fetchAllInventoryReadRows('master_page', inventoryReadParams, { ...firstPageHydrationOptions, limit: 1000 });
+                            rows = await fetchAllInventoryReadRows('master_page', inventoryReadParams, { ...firstPageHydrationOptions, limit: 5000, pageConcurrency: 8, requireComplete: true });
                         } else {
                             const page = await fetchInventoryReadPage('master_page', inventoryReadParams, Math.min(resolvedInitialLimit, 500), 0, { label: 'Inventory rows' });
                             rows = page.rows;
@@ -35536,6 +35559,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 state.fullLoaded = wantsFull
                     ? !masterFullLooksPartial
                     : (key === 'master' || key === 'avOpen' ? fieldCoverage === 'full' && !masterInitialLooksPartial : (masterInitialLooksPartial ? false : ((key === 'master' && shouldFetchAllForInitial) ? true : state.fullLoaded)));
+                state.expectedRowCount = rows.readMeta?.total ?? rows.length;
                 state.fieldCoverage = fieldCoverage;
                 state.rowCompleteness = (wantsFull || shouldFetchAllForInitial) && !masterFullLooksPartial && !masterInitialLooksPartial ? 'complete' : 'partial';
                 state.lastLoadedAt = new Date().toISOString();
@@ -53150,22 +53174,28 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function fetchRequestCustomerMapRows(options = {}) {
-            const owner = getRequestModalLookupOwnerSignature();
-            const signature = getRequestModalCustomerMappingCacheSignature();
-            const key = JSON.stringify([owner, signature]);
-            if (fetchRequestCustomerMapRows.key === key && fetchRequestCustomerMapRows.pending) return fetchRequestCustomerMapRows.pending;
+            if (!hasAuthenticatedOperationalReadIdentity()) {
+                throw Object.assign(new Error('Customer mappings load after an authenticated session is ready.'), { code: 'DATASET_AUTH_REQUIRED' });
+            }
+            const identity = getSupabaseReadIdentityScope();
+            const datasetRevision = getDatasetLoadSignature('customerRepMap');
+            const key = JSON.stringify([identity, datasetRevision]);
+            const inflight = fetchRequestCustomerMapRows.inflight instanceof Map
+                ? fetchRequestCustomerMapRows.inflight : (fetchRequestCustomerMapRows.inflight = new Map());
+            if (inflight.has(key)) return inflight.get(key);
             const fields = 'unique_id,customername,consigneename,salesrepname,salesrepid,customeridentityid,consigneeid,territorycode,territorydesc,customerstatus,consigneestatus';
             const pending = fetchAllSupabaseRows('ph_customer_consignee_sales_reps', `select=${fields}&customerstatus=eq.A&consigneestatus=eq.A&order=customername.asc,consigneename.asc`, {
-                ...options, count: true, requireComplete: true, skipCustomerMapShortcut: true
+                ...options, signal: undefined, retainOnGenerationChange: true,
+                count: true, requireComplete: true, skipCustomerMapShortcut: true
             }).then(rows => {
-                if (owner !== getRequestModalLookupOwnerSignature()) throw new Error('Request customer account changed.');
+                if (identity !== getSupabaseReadIdentityScope()) throw new Error('Request customer account changed.');
+                if (datasetRevision !== getDatasetLoadSignature('customerRepMap')) throw new Error('Customer mappings changed during loading. Refresh to retry.');
                 if (!Array.isArray(rows) || !rows.every(isActiveRequestCustomerMapping)
                     || new Set(rows.map(row => row.unique_id)).size !== rows.length) throw new Error('Customer mapping snapshot is incomplete.');
-                Object.defineProperty(rows, 'mappingRevision', { value: signature });
+                Object.defineProperty(rows, 'mappingRevision', { value: getRequestModalCustomerMappingCacheSignature() });
                 return rows;
-            }).finally(() => { if (fetchRequestCustomerMapRows.pending === pending) fetchRequestCustomerMapRows.pending = null; });
-            fetchRequestCustomerMapRows.key = key;
-            fetchRequestCustomerMapRows.pending = pending;
+            }).finally(() => { if (inflight.get(key) === pending) inflight.delete(key); });
+            inflight.set(key, pending);
             return pending;
         }
 
@@ -56746,6 +56776,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             void prefetchDashboardSyncMetadataAfterLogin().catch(() => false);
             try {
+            ensureColdOperationalHydration('home');
             const readCapabilities = () => initializeRequestCapabilities({ render: false, reason: isRestoredSession ? 'restored-login' : 'login' });
             if (canUseProductionLiveSync()) {
                 const loginOwner = nativeAuthProfile.id;
@@ -64269,7 +64300,6 @@ function toggleDriveQuickRequestItem(domId) {
                     if (!document.hidden) {
                         pushBlockedNoticeShown = false;
                         maybeWarnPushPermissionBlocked(true);
-                        showPushPermissionHelp();
                     }
                     return;
                 }

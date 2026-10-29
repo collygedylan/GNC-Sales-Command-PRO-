@@ -406,7 +406,7 @@ test('Dylan and Brian fetch all 9600 inventory rows and build the complete A-Z C
   for (const user of ['dylan_collyge', 'brian_hatfield']) {
     let firstPageRows = 0;
     let catalog = [];
-    const context = vm.createContext({ currentUser: user, activeDriveMode: 'ok', DRIVE_MODE_LABELS: { ok: 'Drive Mode' },
+    const context = vm.createContext({ canUseProductionLiveSync: () => false, currentUser: user, activeDriveMode: 'ok', DRIVE_MODE_LABELS: { ok: 'Drive Mode' },
       driveViewLevel: 0, selectedDriveName: null, driveDrillGroupStateCache: new Map(),
       shouldLockDriveSearchToTopLevel: () => false, getDrivePlantCommonName: row => row.COMMONNAME,
       getDrivePlantContSize: row => row.CONTSIZE, compareDriveCommonName: (a, b) => a.localeCompare(b),
@@ -483,7 +483,7 @@ test('Brian and admin render a prepared 9600-row Drive snapshot in one pass thro
 
 test('AV selects the same complete master and reserve projection for every authorized role', () => {
   for (const role of ['admin', 'salesrep', 'sales rep', 'sales_rep']) {
-    const context = vm.createContext({ activeAVTab: 'open', pendingMasterFullHydrations: new Set(),
+    const context = vm.createContext({ coldSourceHydrations: new Map(), activeAVTab: 'open', pendingMasterFullHydrations: new Set(),
       getSupabaseReadIdentityScope: () => role, shouldUseRepAvOpenDataset: () => role !== 'admin' });
     vm.runInContext(source('getProductionCoreLiveProjection'), context);
     for (const key of ['avOpen', 'master', 'reserves']) {
