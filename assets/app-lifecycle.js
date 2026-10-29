@@ -114,6 +114,16 @@
     const VERSION_RELOAD_FUSE_STORAGE_KEY = 'gnc_version_reload_fuse_v1';
     const VERSION_RELOAD_FUSE_MS = 5 * 60 * 1000;
     const normalizeAgDataVersion = value => String(value || '').trim().match(/(?:AgData\s+v|v)?((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))/i)?.[1] || '';
+    const compareAgDataVersions = (left, right) => {
+        const a = normalizeAgDataVersion(left).split('.').map(Number);
+        const b = normalizeAgDataVersion(right).split('.').map(Number);
+        for (let index = 0; index < 3; index += 1) {
+            const delta = (a[index] || 0) - (b[index] || 0);
+            if (delta) return Math.sign(delta);
+        }
+        return 0;
+    };
+    root.compareAgDataVersions = compareAgDataVersions;
     const isAuthTransitionActive = () => {
         const spinner = doc.getElementById?.('loading-spinner');
         const loginView = doc.getElementById?.('view-login');
@@ -149,7 +159,7 @@
     root.forceAgDataVersionUpgrade = (targetVersion, currentVersion = '', options = {}) => {
         const target = normalizeAgDataVersion(targetVersion);
         const current = normalizeAgDataVersion(currentVersion || root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__);
-        if (!target || (!options.force && (!current || current === target)) || root.navigator?.onLine === false) return Promise.resolve(false);
+        if (!target || (!options.force && (!current || compareAgDataVersions(target, current) <= 0)) || root.navigator?.onLine === false) return Promise.resolve(false);
         if (isAuthTransitionActive() || activeSession()) {
             root.__gncShellUpdateReady = true;
             return Promise.resolve(false);
