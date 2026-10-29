@@ -9,7 +9,7 @@ const html = readComposedAppSource();
 const start = html.indexOf('        const REQUEST_MODAL_OPTION_PAGE_SIZE');
 const end = html.indexOf('        const PRODUCTIVITY_HOME_VIEWERS', start);
 
-test('Request choices initially render twenty cached options and retain access to every remaining choice', () => {
+test('Request rep choices render every eligible user immediately while customer and folder lists stay paged', () => {
   assert.ok(start > 0 && end > start);
   const renders = [];
   const context = vm.createContext({ requestModalVisibleOptionLimits: new Map(), esc: value => value,
@@ -18,9 +18,12 @@ test('Request choices initially render twenty cached options and retain access t
     renderExistingRequestFolderPicker: () => renders.push(['folder']) });
   vm.runInContext(html.slice(start, end), context);
   const rows = Array.from({ length: 12000 }, (_, id) => ({ id: String(id) }));
-  const first = context.getRequestModalVisibleOptions('customer:rep1', rows);
-  assert.equal(first.shown, 20); assert.equal(first.total, 12000);
-  assert.match(context.buildRequestModalMoreResultsHtml(first), /Show 20 More · 20 of 12000/);
+  const first = context.getRequestModalVisibleOptions('rep:all', rows);
+  assert.equal(first.shown, 12000);
+  assert.equal(context.buildRequestModalMoreResultsHtml(first), '');
+  const customerFirst = context.getRequestModalVisibleOptions('customer:rep1', rows);
+  assert.equal(customerFirst.shown, 20); assert.equal(customerFirst.total, 12000);
+  assert.match(context.buildRequestModalMoreResultsHtml(customerFirst), /Show 20 More · 20 of 12000/);
   context.showMoreRequestModalOptions('customer:rep1');
   const expanded = context.getRequestModalVisibleOptions('customer:rep1', rows);
   assert.equal(expanded.shown, 40);
@@ -52,7 +55,7 @@ test('imperative Request modal actions claim the interaction window before backg
   const context = vm.createContext({
     Date: { now: () => 500 }, lastUserInteractionAt: 0,
     isTouchLikeInteractionStartEvent: () => false, isTouchLikeInteractionEndEvent: () => false,
-    requestSubmitInFlight: true, resolveRequestRepSelectionForCurrentUser: () => '', showToast() {},
+    requestSubmitInFlight: true, resolveRequestRepSelectionForCurrentUser: () => '', getCartSelectedItems: () => [], showToast() {},
   });
   for (const name of ['markUserInteractionActivity', 'showRequestModalBase', 'selectRepForRequest']) {
     const functionStart = html.indexOf(`        function ${name}(`);

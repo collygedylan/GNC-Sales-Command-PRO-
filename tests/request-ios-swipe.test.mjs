@@ -60,16 +60,16 @@ test('Bloom Picker Request rep selector merges the configured roster with normal
     html.indexOf('async function ensureRequestRepUserOptionsReady'),
     html.indexOf('function resolveCanonicalRequestRepName')
   );
-  assert.match(loader, /select=username,role&order=username\.asc&limit=1000/);
+  assert.match(loader, /select=username,role,display_name&order=username\.asc&limit=1000/);
   assert.doesNotMatch(loader, /role=in\.\(REP,Rep,rep\)/);
   assert.match(loader, /map\(normalizeRequestRepUserOption\)\.filter\(Boolean\)/);
-  assert.match(loader, /mergeRequestModalRepOptions\(REQUEST_MODAL_REP_OPTIONS, directoryRepOptions\)/);
+  assert.match(loader, /dedupeRequestModalRepUsers\(directoryRepOptions\)/);
 
   const roleNormalizer = html.slice(
     html.indexOf('function isRequestRepRoleValue'),
     html.indexOf('function resolveStaticRequestRepLabel')
   );
-  assert.match(roleNormalizer, /normalizeRoleAccessToken\(role\) === 'REP'/);
+  assert.match(roleNormalizer, /'REP', 'SALESREP', 'SALES', 'CSR', 'CUSTOMERSERVICE'/);
 });
 
 test('Ben create-and-own access is enforced in both policies and the save RPC', () => {

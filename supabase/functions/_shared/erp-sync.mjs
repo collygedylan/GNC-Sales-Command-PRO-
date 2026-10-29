@@ -163,32 +163,15 @@ async function zipText(zip, name) {
   return new TextDecoder().decode(payload);
 }
 
-export async function parseErpXlsx(bytesLike) {
-  const bytes = bytesLike instanceof Uint8Array ? bytesLike : new Uint8Array(bytesLike);
-  const zip = zipEntries(bytes);
-  const sharedXml = await zipText(zip, 'xl/sharedStrings.xml');
-  const shared = [...sharedXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(match =>
-    [...match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(part => xmlText(part[1])).join(''));
-  const workbook = await zipText(zip, 'xl/workbook.xml');
-  const rels = await zipText(zip, 'xl/_rels/workbook.xml.rels');
-  const firstSheet = workbook.match(/<sheet\b[^>]*\br:id="([^"]+)"/);
-  if (!firstSheet) throw new Error('ERP_XLSX_SHEET_MISSING');
-  const relationship = [...rels.matchAll(/<Relationship\b([^>]*)\/?\s*>/g)].find(match =>
-    new RegExp(`\\bId="${firstSheet[1].replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}"`).test(match[1]));
-  const target = relationship?.[1].match(/\bTarget="([^"]+)"/)?.[1];
-  if (!target) throw new Error('ERP_XLSX_SHEET_RELATIONSHIP_MISSING');
-  const sheetPath = target.startsWith('/') ? target.slice(1) : `xl/${target.replace(/^\.\//,'')}`;
-  const sheet = await zipText(zip, sheetPath);
-  const rows = [];
+async function parseXlsxSheetRows(zip, sheetPath, shared) {
+  const sheet = await zipText(zip, sheetPath), rows = [];
   for (const rowMatch of sheet.matchAll(/<row\b([^>]*?)(?:\/\s*>|>([\s\S]*?)<\/row>)/g)) {
-    const cells = [];
-    const rowContent = rowMatch[2] || '';
+    const cells = [], rowContent = rowMatch[2] || '';
     for (const cellMatch of rowContent.matchAll(/<c\b([^>]*?)(?:\/\s*>|>([\s\S]*?)<\/c>)/g)) {
       const ref = cellMatch[1].match(/\br="([A-Z]+)\d+"/i)?.[1] || '';
       let column = 0;
       for (const char of ref.toUpperCase()) column = column * 26 + char.charCodeAt(0) - 64;
-      const type = cellMatch[1].match(/\bt="([^"]+)"/)?.[1];
-      const content = cellMatch[2] || '';
+      const type = cellMatch[1].match(/\bt="([^"]+)"/)?.[1], content = cellMatch[2] || '';
       const raw = content.match(/<v\b[^>]*>([\s\S]*?)<\/v>/)?.[1];
       const inline = [...content.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(match => xmlText(match[1])).join('');
       let value = raw === undefined ? inline : xmlText(raw);
@@ -197,6 +180,35 @@ export async function parseErpXlsx(bytesLike) {
     }
     rows.push(cells.map(value => value ?? ''));
   }
+  return rows;
+}
+
+export async function parseErpXlsxSheets(bytesLike) {
+  const bytes = bytesLike instanceof Uint8Array ? bytesLike : new Uint8Array(bytesLike);
+  const zip = zipEntries(bytes);
+  const sharedXml = await zipText(zip, 'xl/sharedStrings.xml');
+  const shared = [...sharedXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(match =>
+    [...match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(part => xmlText(part[1])).join(''));
+  const workbook = await zipText(zip, 'xl/workbook.xml');
+  const rels = await zipText(zip, 'xl/_rels/workbook.xml.rels');
+  const relations = new Map([...rels.matchAll(/<Relationship\b([^>]*)\/?\s*>/g)].map(match => {
+    const id = match[1].match(/\bId="([^"]+)"/)?.[1], target = match[1].match(/\bTarget="([^"]+)"/)?.[1];
+    return [id, target];
+  }));
+  const sheets = [];
+  for (const match of workbook.matchAll(/<sheet\b([^>]*)\/?\s*>/g)) {
+    const name = match[1].match(/\bname="([^"]+)"/)?.[1] || 'Sheet1';
+    const id = match[1].match(/\br:id="([^"]+)"/)?.[1], target = relations.get(id);
+    if (!target) throw new Error('ERP_XLSX_SHEET_RELATIONSHIP_MISSING');
+    const sheetPath = target.startsWith('/') ? target.slice(1) : `xl/${target.replace(/^\.\//,'')}`;
+    sheets.push({name, rows: await parseXlsxSheetRows(zip, sheetPath, shared)});
+  }
+  if (!sheets.length) throw new Error('ERP_XLSX_SHEET_MISSING');
+  return sheets;
+}
+
+export async function parseErpXlsx(bytesLike) {
+  const sheets = await parseErpXlsxSheets(bytesLike), rows = sheets[0]?.rows || [];
   if (rows.length < 2) throw new Error('ERP_SOURCE_EMPTY');
   return recordsToObjects(rows);
 }
@@ -576,7 +588,7 @@ export async function listFiles(fetcher, token, folderId, importableOnly = false
   for (let page = 0; page < 100; page += 1) {
     const filter = importableOnly ? " and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/csv' or mimeType='application/csv' or mimeType='application/vnd.ms-excel' or mimeType='application/octet-stream')" : '';
     const result = await driveJson(fetcher,token,'files',{q:`'${folderId}' in parents and trashed=false${filter}`,
-      fields:'nextPageToken,files(id,name,mimeType,modifiedTime,size,parents)',pageSize:1000,
+      fields:'nextPageToken,files(id,name,mimeType,modifiedTime,createdTime,size,md5Checksum,parents)',pageSize:1000,
       supportsAllDrives:true,includeItemsFromAllDrives:true,...(pageToken ? {pageToken} : {})});
     files.push(...(Array.isArray(result.files) ? result.files : []));
     pageToken = String(result.nextPageToken || '');
@@ -630,6 +642,15 @@ export async function sourceBytes(fetcher, token, file) {
   const response = await fetcher(driveUrl(`files/${encodeURIComponent(file.id)}`,{alt:'media',supportsAllDrives:true}),{
     headers:{authorization:`Bearer ${token}`},signal:AbortSignal.timeout(60000)});
   if (!response.ok) throw new Error(`ERP_DRIVE_DOWNLOAD_${response.status}`);
+  return new Uint8Array(await response.arrayBuffer());
+}
+export async function sourceWorkbookBytes(fetcher, token, file) {
+  const nativeSheet=String(file?.mimeType||'')==='application/vnd.google-apps.spreadsheet';
+  const url=nativeSheet
+    ?driveUrl(`files/${encodeURIComponent(file.id)}/export`,{mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
+    :driveUrl(`files/${encodeURIComponent(file.id)}`,{alt:'media',supportsAllDrives:true});
+  const response=await fetcher(url,{headers:{authorization:`Bearer ${token}`},signal:AbortSignal.timeout(60000)});
+  if(!response.ok)throw new Error(`ERP_HISTORY_DOWNLOAD_${response.status}`);
   return new Uint8Array(await response.arrayBuffer());
 }
 function hashHex(bytes) {

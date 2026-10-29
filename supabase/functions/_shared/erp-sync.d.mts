@@ -28,6 +28,7 @@ export function validateErpSyncCommand(payload: unknown): ErpSyncCommandResult;
 export function resolveErpRowsPerSlice(dataset: string, requestedRows?: number): number;
 export function parseErpCsv(text: string): Record<string, string>[];
 export function parseErpXlsx(bytes: ArrayBuffer | Uint8Array): Promise<Record<string, string>[]>;
+export function parseErpXlsxSheets(bytes: ArrayBuffer | Uint8Array): Promise<Array<{ name: string; rows: unknown[][] }>>;
 export function normalizeErpRows(rawRows: Record<string, unknown>[], dataset: string,
   columns: string[]): Promise<Array<Record<string, unknown>>>;
 export const ERP_SYNC_STAGES: ReadonlyArray<{ key: string; dataset: string }>;
@@ -57,6 +58,7 @@ export function processedFolder(fetcher: typeof fetch, token: string, parentId: 
 export function moveProcessed(fetcher: typeof fetch, token: string, file: { id: string }, parentId: string,
   configuredId?: string): Promise<void>;
 export function sourceBytes(fetcher: typeof fetch, token: string, file: { id: string }): Promise<Uint8Array>;
+export function sourceWorkbookBytes(fetcher: typeof fetch, token: string, file: { id: string; mimeType?: string }): Promise<Uint8Array>;
 export function stageFileContinuation(options: {
   supabase: unknown; fetcher: typeof fetch; token: string; file: { id: string; name: string; modifiedTime?: string };
   dataset: string; stageKey: string; parentId: string; processedId: string; status: (patch: Record<string, unknown>) => Promise<unknown>;

@@ -75,6 +75,8 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never equate a realtime connection or row event with complete cold hydration. Register per-owner source buffering, full-load replay, requester eligibility, assigned Eval Reclass and cloud-history continuation behavior together, with no wildcard browser fixture.
+
 - Never create a second sync engine or substitute client Broadcast row claims for database authorization. Register the existing coordinator's row-patch helpers, physical source subscriptions, and opaque revision hints together; preserve draft/owner tests and report actual production timings separately from local synchronous behavior.
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.

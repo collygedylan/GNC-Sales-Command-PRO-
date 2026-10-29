@@ -340,6 +340,104 @@ test('only the admin trio can view Home imported filenames', () => {
   }
 });
 
+test('Request requester choices allow only REP, CSR, Admin and active mapped reps with readable names', () => {
+  const ctx = vm.createContext({
+    normalizeRoleAccessToken: value => String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, ''),
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && String(value).trim() !== '') ?? '',
+    normalizePushUsername: value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_'),
+    normalizeRequestSalesrepId: value => String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, ''),
+    normalizeRepDisplayOrder: value => String(value || '').trim().replace(/\b\w/g, char => char.toUpperCase()),
+    normalizeRepMatchToken: value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(),
+    buildRequestModalRepOption(label, metadata) { const token = String(label || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); return { label, token, collapsedToken: token.replace(/\s+/g, ''), ...metadata }; },
+  });
+  vm.runInContext(shellFunction('isRequestRepRoleValue') + shellFunction('normalizeRequestRepUserOption'), ctx);
+  for (const role of ['REP', 'rep', 'Sales Rep', 'sales_rep', 'salesrep', 'Sales', 'CSR', 'Customer Service', 'Sales Office', 'Office', 'Admin', 'Administrator', 'Manager']) {
+    assert.equal(ctx.isRequestRepRoleValue(role), true, role);
+  }
+  for (const role of ['Eval', 'Evaluator', 'Production', 'QC', 'Docks']) assert.equal(ctx.isRequestRepRoleValue(role), false, role);
+  assert.equal(ctx.normalizeRequestRepUserOption({ username: 'chris_evans', role: 'CSR' }).label, 'Chris Evans');
+  assert.equal(ctx.normalizeRequestRepUserOption({ username: 'eval_user', role: 'Evaluator' }), null);
+  const allowed = vm.createContext({
+    requestModalRepUserOptions: [
+      { label: 'Chris Evans', role: 'CSR', username: 'chris_evans', token: 'chris evans', collapsedToken: 'chrisevans' },
+      { label: 'Hidden Eval', role: 'Evaluator', username: 'hidden_eval', token: 'hidden eval', collapsedToken: 'hiddeneval' },
+    ],
+    getRequestMappedRepDirectory: () => ({ options: [{ label: 'Kevin Effinger', salesrepId: 'S01', salesrepIds: ['S01'], token: 'kevin effinger', collapsedToken: 'kev ineffinger' }] }),
+    normalizeRoleAccessToken: ctx.normalizeRoleAccessToken,
+    normalizeRepMatchToken: ctx.normalizeRepMatchToken,
+    normalizePushUsername: ctx.normalizePushUsername,
+    normalizeRequestSalesrepId: ctx.normalizeRequestSalesrepId,
+    normalizeRepDisplayOrder: value => String(value || '').trim(),
+    buildRequestModalRepOption: (label, metadata) => ({ label, token: 'kevin effinger', collapsedToken: 'kevineffinger', ...metadata }),
+  });
+  vm.runInContext(shellFunction('isRequestRepRoleValue') + shellFunction('getAllowedRequestModalRepOptions'), allowed);
+  const options = Array.from(allowed.getAllowedRequestModalRepOptions());
+  assert.deepEqual(options.map(option => option.label).sort(), ['Chris Evans', 'Kevin Effinger']);
+  assert.equal(options.find(option => option.label === 'Kevin Effinger').salesrepId, 'S01');
+  const dedupe = vm.createContext({ normalizePushUsername: ctx.normalizePushUsername });
+  vm.runInContext(shellFunction('dedupeRequestModalRepUsers'), dedupe);
+  const identities = dedupe.dedupeRequestModalRepUsers([
+    { username: 'person_one', label: 'Alex Smith', role: 'REP' },
+    { username: 'person_one', label: 'Alex Smith', role: 'REP' },
+    { username: 'person_two', label: 'Alex Smith', role: 'CSR' },
+  ]);
+  assert.equal(identities.length, 2, 'dedupe by canonical username rather than display name');
+  assert.match(html, /if \(!isRequestRepRoleValue\(role\)\) return null/);
+  assert.match(html, /function getAllowedRequestModalRepOptions\(\)[\s\S]{0,1200}const eligibleUsers = requestModalRepUserOptions\.filter\(option => isRequestRepRoleValue\(option && option\.role\)\)[\s\S]{0,1200}directory\.options\.forEach\(option => add\(option, `rep:/);
+  assert.match(html, /key\.startsWith\('rep:'\)\) return \{ rows: sourceRows, shown: sourceRows\.length/);
+});
+
+test('Eval Reclass entry and submit require Assigned Items ownership while global/admin access stays intact', () => {
+  const ctx = vm.createContext({
+    currentRole: 'Evaluator', currentUserDisplay: 'Taylor Eval',
+    GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']),
+    normalizeLiveChangeUsername: value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
+    getRoleAccessState: role => ({ isEval: /eval/i.test(role || ctx.currentRole), isAdmin: /admin/i.test(role || ctx.currentRole) }),
+    isRowAssignedToUser: (user, row) => ['taylor_eval', 'taylor_eval'].includes(String(user || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')) && row?.unique_id === 'assigned',
+  });
+  vm.runInContext(shellFunction('isEvalReclassRowAssigned'), ctx);
+  assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'assigned' }), true);
+  assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'other' }), false);
+  ctx.currentRole = 'Admin';
+  assert.equal(ctx.isEvalReclassRowAssigned('admin_user', { unique_id: 'other' }), true);
+  ctx.currentRole = 'Evaluator';
+  assert.equal(ctx.isEvalReclassRowAssigned('dylan_collyge', { unique_id: 'other' }), true);
+  const actionContext = vm.createContext({
+    currentUser: 'taylor_eval', currentUserDisplay: 'Taylor Eval',
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') ?? '',
+    canUserMakeLiveChangesOnRow: () => false,
+    getRoleAccessState: () => ({ isEval: true, isAdmin: false, isRepLike: false }),
+    isAlwaysDriveCardOptionsUser: () => false,
+    isRowAssignedToUser: (user, row) => ['taylor_eval', 'taylor_eval'].includes(String(user || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')) && row?.unique_id === 'assigned',
+  });
+  vm.runInContext(shellFunction('isWarehouseAssignedDriveCardForCurrentUser') + shellFunction('canCurrentUserUseDriveCardOptions'), actionContext);
+  assert.equal(actionContext.canCurrentUserUseDriveCardOptions({ unique_id: 'assigned' }, 'drive'), true);
+  assert.equal(actionContext.canCurrentUserUseDriveCardOptions({ unique_id: 'other' }, 'drive'), false);
+  assert.match(api, /roleKey === "EVAL" \|\| roleKey === "EVALUATOR"/);
+  assert.match(api, /ph_inventory_row_assignments[\s\S]*?ph_warehouse_assigned_items/);
+  assert.match(api, /INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED/);
+  assert.match(api, /Evaluators may submit Reclass changes only for rows assigned to them/);
+  assert.match(html, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, item\)\)/);
+  assert.match(html, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, submitState\.item\)\)/);
+  assert.match(api, /normalizeUsername\(String\(activeProfile\.display_name \|\| ""\)\)/);
+});
+
+test('Reclass opens on the item name and size followed directly by larger location cards', () => {
+  const shell = readComposedAppSource();
+  const modalStart = shell.indexOf('        function ensureArgosInventoryTransactionModal(');
+  const modalEnd = shell.indexOf('\n        function ', modalStart + 1);
+  const modal = shell.slice(modalStart, modalEnd);
+  const editorStart = shell.indexOf('        function renderArgosReclassInquiryEditor(');
+  const editorEnd = shell.indexOf('\n        function ', editorStart + 1);
+  const editor = shell.slice(editorStart, editorEnd);
+  assert.match(shell, /titleEl\.textContent = `\$\{snapshot\.commonName \|\| ''\} \$\{snapshot\.contSize \|\| ''\}`/);
+  assert.doesNotMatch(modal, /argos-inventory-transaction-(?:subtitle|notice|source)|argos-tx-tabs/);
+  assert.doesNotMatch(editor, /Choose an action on each row|renderArgosReclassHoldScopeNotice/);
+  const styles = read('assets/app-shell-style-05.css');
+  assert.match(styles, /\.argos-reclass-row-toggle\{min-height:6rem;padding:1\.125rem 1\.25rem\}/);
+  assert.match(styles, /\.argos-reclass-row-toggle-copy>span:first-child\{font-size:1\.25rem/);
+});
+
 test('processed-file toast storage is strictly Dylan-only while revision reads stay no-store', () => {
   const source = shellFunction('processDylanFileProcessedToasts');
   assert.match(source, /username !== 'dylan_collyge'/);

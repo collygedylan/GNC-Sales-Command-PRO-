@@ -25,6 +25,7 @@ const liveImportDeclarations = new Set([
   'URGENT_DRIVE_AROUND_EXECUTION_BUDGET_MS_',
 ]);
 const liveImportFunctions = new Set([
+  'scheduleSocOrderHistoryTrigger_', 'runSocOrderHistoryBackfillChunk_',
   'setupDropFolderAutoSyncTrigger', 'removeDropFolderAutoSyncTrigger', 'runAutoDropFolderSync_',
   'removeUrgentDriveAroundTriggers_', 'scheduleUrgentDriveAroundTrigger_', 'hasPendingDriveAroundSource_',
   'cleanupStaleDriveAroundWorkspace_', 'runUrgentDriveAroundSync_', 'runUrgentDriveAroundSync',

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.104",
+  "release": "AgData v2.3.105",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -456,7 +456,8 @@
         "selectCustomRequestConsignee",
         "buildInventoryShareGalleryUrl",
         "formatInventoryItemsText",
-        "formatInventoryItemsHtml"
+        "formatInventoryItemsHtml",
+        "dedupeRequestModalRepUsers"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -711,7 +712,8 @@
         "getSuspendTagStableSourceIdentity",
         "persistPendingReclassDeliveryDraft",
         "dispatchPendingReclassDeliveryDraft",
-        "isProtectedDriveReclassPayload"
+        "isProtectedDriveReclassPayload",
+        "isEvalReclassRowAssigned"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -869,7 +871,14 @@
         "getTransientManualErpSliceStatus",
         "reduceManualErpSliceLimit",
         "getUniversalLiveSyncTables",
-        "applyUniversalLiveSyncPatch"
+        "applyUniversalLiveSyncPatch",
+        "getRowPatchDatasetKey",
+        "resetPendingRowPatchesForOwner",
+        "isRowPatchSourceReady",
+        "bufferRowPatchUntilHydrated",
+        "replayHydratedRowPatches",
+        "hydrateColdSource",
+        "ensureColdOperationalHydration"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -899,7 +908,9 @@
         "getFastLiveFileMeta_",
         "cleanupCompletedImportExtraction_",
         "cleanupTempGoogleSheet_",
-        "extractDataFromFile"
+        "extractDataFromFile",
+        "scheduleSocOrderHistoryTrigger_",
+        "runSocOrderHistoryBackfillChunk_"
       ],
       "supportingFiles": {
         "scripts/fast-live-erp-sync.mjs": [
@@ -979,7 +990,9 @@
           "xlsxColumnLetters",
           "selectedCellPattern",
           "parseXlsxSelectedCells",
-          "resolveErpRowsPerSlice"
+          "resolveErpRowsPerSlice",
+          "parseErpXlsxSheets",
+          "sourceWorkbookBytes"
         ],
         "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
           "get_erp_sync_status_v1",
@@ -1030,6 +1043,16 @@
           "agdata_live_sync_authorized_v23104",
           "broadcast_rows_v23104",
           "broadcast_revision_v23104"
+        ],
+        "supabase/functions/_shared/erp-history-sync.mjs": [
+          "runSocHistorySyncStep"
+        ],
+        "supabase/migrations/20261029173000_agdata_v23105_cloud_history_refresh.sql": [
+          "activate_eval_item_low_stock_import_v1"
+        ],
+        "supabase/functions/_shared/soc-order-history.mjs": [
+          "parseSocHistoryWorkbook",
+          "parseSocHistoryReportTime"
         ]
       }
     },

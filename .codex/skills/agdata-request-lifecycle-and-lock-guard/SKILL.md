@@ -38,3 +38,4 @@ node --test tests/request-work-draft.test.mjs tests/request-submission-durabilit
 - Never use one lock rule across Request and published Drive/AV data; authorization context and Admin bypass must be explicit.
 - Never re-read or delete a just-completed Request through `ph_active_request`; completion makes that active-only view hide the row, so atomic persistence must retain and mutate the locked `ph_requests_pending` row until history and outbox acknowledgment finish.
 - Never validate folder-completion delivery from pending rows alone after atomic completion deletes them; both queue reconciliation and worker preparation must derive membership from pending rows plus completed history.
+- Never truncate the `Who requested this?` identity list behind a Load More control or include users outside REP/CSR/Admin plus active mapped Sales Reps; normalize role aliases and render human-readable names before selection.

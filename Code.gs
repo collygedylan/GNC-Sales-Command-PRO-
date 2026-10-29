@@ -274,8 +274,8 @@ function socHistoryPagesReleaseIsGreen_(properties) {
   }
 }
 function scheduleSocOrderHistoryTrigger_(delayMs) {
-  if (ScriptApp.getProjectTriggers().some(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })) return;
-  ScriptApp.newTrigger(SOC_ORDER_HISTORY_TRIGGER).timeBased().after(Math.max(60000, Number(delayMs) || 60000)).create();
+  ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })
+    .forEach(function(t) { ScriptApp.deleteTrigger(t); });
 }
 function socHistoryHash_(value) {
   return bytesToSha256Hex_(Utilities.newBlob(String(value)).getBytes());
@@ -366,111 +366,11 @@ function extractSocOrderHistoryFile_(entry) {
   }
 }
 function runSocOrderHistoryBackfillChunk_() {
-  const lock = LockService.getUserLock();
-  if (!lock.tryLock(1000)) return { status: 'locked' };
-  let nextDelay = 15 * 60 * 1000;
-  const started = Date.now();
-  try {
-    ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })
-      .forEach(function(t) { ScriptApp.deleteTrigger(t); });
-    const properties = PropertiesService.getScriptProperties();
-    if (!socHistoryPagesReleaseIsGreen_(properties)) {
-      nextDelay = SOC_ORDER_HISTORY_RELEASE_RETRY_MS;
-      return { status: 'release_pending', files_processed: 0, failures: 0, pending: 0 };
-    }
-    // Apps Script can terminate without finally on a hard runtime limit.
-    // Queue recovery before conversion/parsing; normal completion replaces it.
-    scheduleSocOrderHistoryTrigger_(7 * 60 * 1000);
-    const files = listSocOrderHistoryFiles_();
-    if (!files.length) throw new Error('SOC_HISTORY_ARCHIVE_EMPTY');
-    const manifest = files.map(function(f) { return { drive_file_id: f.id, source_revision: f.source_revision }; });
-    const run = callSupabaseRpc_('begin_eval_item_low_stock_import_v1', { p_manifest: manifest });
-    if (!run || !run.run_id) throw new Error('SOC_HISTORY_RUN_INVALID');
-    const pending = new Set((run.pending_files || []).map(function(f) { return f.drive_file_id + '|' + f.source_revision; }));
-    const remaining = files.filter(function(f) { return pending.has(f.id + '|' + f.source_revision); });
-    let state = {};
-    try { state = JSON.parse(properties.getProperty(SOC_ORDER_HISTORY_STATE) || '{}'); } catch (ignored) {}
-    let offset = state.run_id === run.run_id ? Number(state.cursor || 0) % Math.max(1, remaining.length) : 0;
-    const resumeOffset = state.run_id === run.run_id ? remaining.findIndex(function(f) { return f.id === state.resume_file_id; }) : -1;
-    if (resumeOffset >= 0) offset = resumeOffset;
-    let processed = 0, failures = 0, attempted = 0;
-    let resumeFileId = '';
-    for (let attempt = 0; attempt < Math.min(3, remaining.length); attempt++) {
-      if (Date.now() - started > 3 * 60 * 1000) break;
-      const entry = remaining[(offset + attempt) % remaining.length];
-      attempted++;
-      try {
-        const timing = parseSocHistoryReportTime_(entry);
-        const parsed = extractSocOrderHistoryFile_(entry);
-        if (entry.file.getLastUpdated().toISOString() + '|' + SOC_ORDER_HISTORY_PARSER_VERSION !== entry.source_revision) {
-          throw new Error('SOC_HISTORY_SOURCE_CHANGED');
-        }
-        // Semantic digest: retained observations + parser/schema/exclusion proof.
-        // Original files are never moved, renamed, or modified by this worker.
-        const hash = socHistoryHash_(JSON.stringify({ parser: SOC_ORDER_HISTORY_PARSER_VERSION, parsed: parsed, timing: timing }));
-        const prepared = callSupabaseRpc_('prepare_eval_item_low_stock_file_v1', {
-          p_run_id: run.run_id, p_drive_file_id: entry.id, p_source_revision: entry.source_revision,
-          p_file_name: entry.title, p_source_report_date: timing.report_date, p_snapshot_at: timing.snapshot_at,
-          p_source_date_method: timing.source_date_method, p_source_created_at: timing.source_created_at,
-          p_content_sha256: hash, p_content_bytes: entry.content_bytes,
-          p_source_sheet_name: parsed.source_sheet_name || null,
-          p_source_row_count: parsed.source_row_count, p_expected_row_count: parsed.rows.length,
-          p_exclusion_counts: Object.assign({ schema: parsed.schema, row_ranges: parsed.exclusion_ranges }, parsed.exclusion_counts),
-          p_disposition: entry.disposition, p_exclusion_reason: entry.exclusion_reason
-        });
-        if (!prepared || !prepared.file_version_id) throw new Error('SOC_HISTORY_FILE_STATE_INVALID');
-        if (prepared.status !== 'complete') {
-          // Staging is sequential and idempotent. Resume beyond the persisted
-          // source ordinal so a large native sheet can span bounded executions.
-          const lastStaged = Number(prepared.last_staged_row_number || 0);
-          const unstaged = parsed.rows.filter(function(row) { return row.source_row_number > lastStaged; });
-          let yielded = false;
-          for (let i = 0; i < unstaged.length; i += 250) {
-            if (Date.now() - started > 280000) { yielded = true; break; }
-            callSupabaseRpc_('stage_eval_item_low_stock_rows_v1', {
-              p_file_version_id: prepared.file_version_id, p_rows: unstaged.slice(i, i + 250)
-            });
-          }
-          if (yielded) { nextDelay = 60000; resumeFileId = entry.id; break; }
-          callSupabaseRpc_('finalize_eval_item_low_stock_file_v1', {
-            p_file_version_id: prepared.file_version_id, p_content_sha256: hash, p_expected_row_count: parsed.rows.length
-          });
-        }
-        processed++;
-      } catch (error) {
-        failures++;
-        const errorCode = /^SOC_HISTORY_[A-Z_]+$/.test(String(error.message)) ? error.message : 'SOC_HISTORY_FILE_RETRY';
-        // Avoid logging raw customer rows, RPC payloads, or provider responses.
-        console.warn('[SOC HISTORY] ' + errorCode + ' file=' + entry.id);
-      }
-    }
-    const after = callSupabaseRpc_('begin_eval_item_low_stock_import_v1', { p_manifest: manifest });
-    if (after.complete && !after.active) {
-      // Re-list before publication: changed/new files must join coverage first.
-      const fresh = listSocOrderHistoryFiles_().map(function(f) { return { drive_file_id: f.id, source_revision: f.source_revision }; });
-      if (JSON.stringify(fresh) !== JSON.stringify(manifest)) {
-        nextDelay = 60000;
-      } else {
-        callSupabaseRpc_('activate_eval_item_low_stock_import_v1', { p_run_id: after.run_id });
-        emitTableSyncLiveEvent_('ph_eval_item_low_stock_targets', { runId: after.run_id, filesProcessed: processed });
-      }
-    } else if (!after.complete && !failures) nextDelay = 60000;
-    properties.setProperty(SOC_ORDER_HISTORY_STATE, JSON.stringify({ run_id: run.run_id,
-      cursor: offset + attempted, resume_file_id: resumeFileId, pending: (after.pending_files || []).length,
-      failures: failures, updated_at: new Date().toISOString() }));
-    return { status: after.complete ? 'complete' : 'pending', files_processed: processed, failures: failures,
-      pending: (after.pending_files || []).length };
-  } catch (error) {
-    console.warn('[SOC HISTORY] BACKFILL_RETRY');
-    return { status: 'retry' };
-  } finally {
-    lock.releaseLock();
-    ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })
-      .forEach(function(t) { ScriptApp.deleteTrigger(t); });
-    scheduleSocOrderHistoryTrigger_(nextDelay);
-  }
+  // Historical order files and Average Order statistics are owned by the cloud ERP worker.
+  ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === SOC_ORDER_HISTORY_TRIGGER; })
+    .forEach(function(t) { ScriptApp.deleteTrigger(t); });
+  return { status: 'cloud_owned', files_processed: 0, failures: 0, pending: 0 };
 }
-
 
 function triggerPermissions() { 
   DriveApp.getRootFolder(); 

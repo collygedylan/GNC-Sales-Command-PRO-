@@ -80,7 +80,7 @@ test('production subscription applies RLS row events only for the current owner 
     hasActiveManualSync: () => false,
     isTouchConstrainedDevice: () => false,
     getSupabaseBrowserClient: () => ctx.client,
-    getInventoryStatusSync: () => ctx.statusSync,
+    getInventoryStatusSync: () => ctx.statusSync, isRowPatchSourceReady: () => true,
     readProductionDisplaySnapshot: () => null, previewProductionSnapshots: () => {},
     retainAppliedProductionDisplay: () => {}, writeProductionVerifiedSnapshot: () => {},
     getCurrentVisibleViewId: () => 'docks',

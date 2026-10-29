@@ -27,7 +27,12 @@ test('Apps Script scoped patch ships the release manifest and preserves protecte
   +"\nfunction protectedRemoteOnly_() { return 'unchanged'; }\n";
  const patch=patchAppsScriptFunctions({remoteSource,localSource:codeSource,functionNames:manifest.appsScriptPatchFunctions});
  assert.deepEqual(patch.functions,manifest.appsScriptPatchFunctions);
- for(const name of patch.functions)assert.ok(patch.source.includes(`function ${name}(`),`${name} is included in the scoped patch`);
+ assert.ok(manifest.appsScriptPatchFunctions.includes('scheduleSocOrderHistoryTrigger_'));
+ assert.ok(manifest.appsScriptPatchFunctions.includes('runSocOrderHistoryBackfillChunk_'));
+ const historyWorker=patch.source.match(/function runSocOrderHistoryBackfillChunk_\(\) \{[^]*?^}/m)?.[0]||'';
+ assert.match(historyWorker,/status: 'cloud_owned'/);
+ assert.doesNotMatch(historyWorker,/DriveApp|callSupabaseRpc_|scheduleSocOrderHistoryTrigger_\(/);
+ for(const name of patch.functions)assert.ok(patch.source.includes(`function ${name}(`)||patch.source.includes(`const ${name} =`),`${name} is included in the scoped patch`);
  assert.equal(patch.source.split("return jsonOutput_(handleRuntimeWatchdogAlert_(payload));").length-1,1,'the watchdog handler dispatch is present exactly once');
  assert.match(patch.source,/const payload = authorizeAppsScriptPost_\(JSON\.parse\(e\.postData\.contents\)\)/,'the scoped patch installs the doPost authentication entry gate');
  assert.ok(patch.source.includes("function protectedRemoteOnly_() { return 'unchanged'; }"));

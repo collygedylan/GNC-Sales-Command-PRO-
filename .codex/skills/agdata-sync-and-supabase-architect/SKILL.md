@@ -1,6 +1,6 @@
 ---
 name: agdata-sync-and-supabase-architect
-description: Maintain AgData Home sync status, Drive file freshness, RUN SCRIPT, snapshot imports and Supabase publication while preserving live data and paused backfills.
+description: Maintain AgData Home sync status, Drive file freshness, RUN SCRIPT, snapshot imports and Supabase publication while preserving live data and incremental history.
 ---
 
 # Sync and Supabase architecture
@@ -16,7 +16,7 @@ Read [the canonical dependency map](../../../docs/architecture/agdata-module-dep
 - Reads continue from the latest completed READY snapshot while new staging is running, queued, timed out or interrupted. Never leave production datasets marked INTERRUPTED as test residue.
 - A valid `get_my_dataset_revisions_v1` response establishes that the authenticated client is connected to the revision service. Publish that connection state before adapter hydration completes, then continue snapshot hydration in the background; connection status alone is never current row proof or write authorization.
 - Merge header connection states by source key within the same authenticated owner. A narrow Drive revision response updates its sources without replacing Home's broader readiness summary; account/session and confirmed permission resets clear the summary.
-- Keep historical backfill paused when instructed. When separately authorized to run, enforce 23:30 inclusive to 06:15 exclusive America/Chicago in both scheduler and worker, including daylight-saving transitions. Never enable the paused 15-minute automation as part of routine sync work.
+- Cloud RUN SCRIPT incrementally refreshes history at any time through Drive REST -> app-api -> Postgres. The v2.3.105 request removes the previous America/Chicago overnight-only/paused rule; keep immutable completed versions and resumable cursors. Honor future explicit pauses and preserve Apps Script delivery/email workers.
 
 Use Supabase MCP for read-only schema/contract/log inspection and validated production migrations. Keep credentials in environment/secret stores. Test destructive SQL, trigger faults and rollback behavior in disposable local databases. Use the repository's PostgreSQL 17/Supabase harness for full compatibility; a PostgreSQL 15 lightweight sandbox is not equivalent. No live fault injection is authorized by this skill.
 
@@ -44,17 +44,17 @@ node --test tests/master-snapshot-chunk-import.test.mjs tests/live-sync-registry
 
 These use local source/VM or injected transport fixtures without a database, browser or deployment. Target `< 10s`, unmeasured until run; choose only the relevant subset. SQL/RPC changes require targeted isolated SQL checks, never automatic full migration replay. Docs-only task overrides take precedence. See canonical module-map cluster 8 for source anchors and cross-module contracts.
 
-Home source filename drawer and toggle are restricted to the authenticated Dylan/Megan/JD trio. The existing historical backfill and 15-minute trigger remain paused.
+Home source filename drawer and toggle are restricted to the authenticated Dylan/Megan/JD trio. History continuation belongs to the cloud RUN SCRIPT stage.
 
-Master startup hydration begins from Home for every authorized inventory role, with bounded four-way 1,000-row pages. Customer/consignee choices use the compact authenticated preload endpoint instead of duplicated raw-table and per-rep paging. Keep historical backfill and its 15-minute trigger paused under the current release instruction.
+Master startup hydration begins from Home for every authorized inventory role, with bounded four-way 1,000-row pages. Customer/consignee choices use the compact authenticated preload endpoint instead of duplicated raw-table and per-rep paging. Use the resumable cloud history stage for current RUN SCRIPT imports.
 
 ## Request completion and foreground continuity
 
-MANUAL_SYNC_STAGE_ORDER_DEFAULT starts drive, soc, reserves, cav. Master stage and history chunks support 2,000 rows; unfinished 500-row checkpoints remain resumable without staging-table alteration. Deferred runQueuedRequestIntegrityMaintenance_ waits until core sync is inactive. publishManualSyncStatus_ writes the service-only app_manual_sync_status singleton with an eight-second same-stage throttle; clients read app-api manual_sync_status every ten seconds. Historical backfills and their fifteen-minute trigger remain paused. These settings are not measured production timing guarantees. Focused coverage: live-sync-coordinator.test.mjs.
+MANUAL_SYNC_STAGE_ORDER_DEFAULT starts drive, soc, reserves, cav. Master stage and history chunks support 2,000 rows; unfinished 500-row checkpoints remain resumable without staging-table alteration. Deferred runQueuedRequestIntegrityMaintenance_ waits until core sync is inactive. publishManualSyncStatus_ writes the service-only app_manual_sync_status singleton with an eight-second same-stage throttle; clients read app-api manual_sync_status every ten seconds. Cloud history runs incrementally after live source publication. These settings are not measured production timing guarantees. Focused coverage: live-sync-coordinator.test.mjs.
 
 ## Performance and retry guard (v2.3.34)
 
-Application revision conflicts use SQLSTATE PT409 (HTTP 409); never raise 40001 for an application conflict, because PostgREST can retry it internally. Real PostgreSQL serialization failures retain 40001. The atomic application_conflict_retry_guard migration preserves security, grants and bounded catch behavior; operational_lookup_indexes uses audited physical columns and existing index prefixes. The 500/2,000-row staging constraint preserves resumable older imports. Historical archive backfills and the 15-minute trigger remain PAUSED.
+Application revision conflicts use SQLSTATE PT409 (HTTP 409); never raise 40001 for an application conflict, because PostgREST can retry it internally. Real PostgreSQL serialization failures retain 40001. The atomic application_conflict_retry_guard migration preserves security, grants and bounded catch behavior; operational_lookup_indexes uses audited physical columns and existing index prefixes. The 500/2,000-row staging constraint preserves resumable older imports. Cloud history runs incrementally after live source publication.
 
 The foreground coordinator owns a 30-second idle / 10-second active-sync heartbeat; hidden contexts cancel network polling and watchdog delivery retains its queue until visible. SOC/CAV/Reserves dataset_read pages accept optional numeric ifRevision, returning up_to_date only after actor, permission and query validation against a READY revision. Page caches are bounded and fenced by read identity and permission version. Queue metric joins group master/CAV once by item. Browser table mutations use authenticated app-api without direct PostgREST fallback; intentional native reads retain existing SELECT policies.
 
@@ -66,9 +66,9 @@ Both staging header expected_chunks and chunk-ledger row_count constraints must 
 
 The private inventory_live_overrides_v1 audit records per-physical-UID ERP baselines, app values, actor/time, latest ERP values and acknowledgement. Only matching fenced raw ERP values acknowledge a pending field; arbitrary ERP drift and auxiliary CAV writes preserve it. Later ERP changes apply after acknowledgement. Existing priority/Item6 guards remain; unprotected ERP sibling consolidation retains the new physical UID while protected ambiguity still fails. Missing source rows retain pending edits. New startup reads are not introduced.
 
-runRoutedDropImport_ selects one newest live source and archives older unchanged file identities only after successful publication, using the published watermark for archival retry. Historical backfills remain paused. Shared switchView/showOnlyPrimaryView, goBackUniversal/updateGlobalBackButton, viewHistoryStack and header/search ownership remain dependencies. Focused checks: request-submission-durability and security-zero-trust.
+runRoutedDropImport_ selects one newest live source and archives older unchanged file identities only after successful publication, using the published watermark for archival retry. Cloud history runs incrementally after live source publication. Shared switchView/showOnlyPrimaryView, goBackUniversal/updateGlobalBackButton, viewHistoryStack and header/search ownership remain dependencies. Focused checks: request-submission-durability and security-zero-trust.
 
-Pending Reclass season stock overrides protect master s_lts/season_oh and ph_cav_import Open Stock/Season OH until matching fenced ERP evidence and CAV acknowledgement. Imports retain new physical siblings and pending season CAV rows. Historical backfill and its 15-minute trigger remain paused.
+Pending Reclass season stock overrides protect master s_lts/season_oh and ph_cav_import Open Stock/Season OH until matching fenced ERP evidence and CAV acknowledgement. Imports retain new physical siblings and pending season CAV rows. Cloud history runs incrementally after live source publication.
 
 ## Desktop shell recovery
 
@@ -76,7 +76,7 @@ Home renders stable DRIVE/CAV/RESERVES/SOC filename cards even when only one met
 
 ## Watchdog and active queue continuity
 
-Home filename summaries persist under gnc_sync_filenames_v1 scoped by profile ID, username and permission version; restore them synchronously before background metadata refresh. Dark Home summary/cards/buttons use #062115 and light text. Footer queue adapters include actor-scoped Location Work and Bunch queue reads; none may gate the visible active queue. Historical backfills and the 15-minute historical trigger remain PAUSED.
+Home filename summaries persist under gnc_sync_filenames_v1 scoped by profile ID, username and permission version; restore them synchronously before background metadata refresh. Dark Home summary/cards/buttons use #062115 and light text. Footer queue adapters include actor-scoped Location Work and Bunch queue reads; none may gate the visible active queue. Cloud history runs incrementally after live source publication.
 
 Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and retain already rendered same-account filenames. Que reads try `ph_request_queue_live_rows`, then `ph_active_request_live_rows`, then retained active rows; a single PostgREST warning must not abort startup or zero unrelated queue tabs. Security-invoker queue views retain RLS and require the authenticated table privilege on joined `ph_master_inventory`.
 
@@ -88,7 +88,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 ## Cross-Layer Blast Radius
 
 - Manual RUN SCRIPT sends `force: true`, clears/overrides a stale sync lock, runs DRIVE -> SOC -> RESERVES -> CAV, archives successfully published `.xlsx` inputs into Processed, and immediately preserves one latest Home filename per source from cached/bootstrap state.
-- Import changes cross Drive metadata, Apps Script scheduling/fences, SQL staging/revisions, app-api readiness, client SWR, and watchdog status. Historical backfill and its 15-minute trigger remain PAUSED.
+- Import changes cross Drive metadata, Apps Script scheduling/fences, SQL staging/revisions, app-api readiness, client SWR, and watchdog status. Cloud history runs incrementally after live source publication.
 
 ## Mandatory 4-Caller & All-11-Gems Impact Contract
 
@@ -96,6 +96,10 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never let a row delta set initial/full source readiness or replace a cold base load. Buffer source patches by authenticated owner until a complete nonempty snapshot is installed, then replay and rebuild canonical indexes.
+- Never return a failed coordinator ensure as successful cold hydration; continue the canonical authorized direct loader and repaint after completion.
+- Never make live imports depend on legacy Apps Script history processing; complete the bounded cloud history manifest and atomically activate canonical incremental Average Order statistics.
 
 - Never make live row patches depend on the active module or accept a client Broadcast payload as an authoritative database row. The account-owned `agdata-live-sync` channel uses RLS-filtered Postgres Changes and bounded server Broadcast rows only for sources with uniform read access, private revision hints for immediate wake-up, zero-delay revision signals, and the existing foreground fallback. Retain editing drafts and scroll anchors while synchronously updating canonical caches and indexes.
 
@@ -146,7 +150,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Never answer a forced manual run with `The import processor is finishing its current work.`, acquire a fence for an unchanged file, leave a published `.xlsx` in Drop, show multiple stale filenames, create a public definer view, or execute `SET LOCAL` outside `BEGIN`/`COMMIT`.
 - Never let one startup dataset rejection cancel sibling metadata/queue reads, and never grant a security-invoker view without the matching RLS-protected underlying-table privilege.
 - Never short-circuit a forced Home RUN SCRIPT through the fast-ingest file-check RPC; dispatch DRIVE, SOC, RESERVES, and CAV through the authenticated `apps_script_action` gateway.
-- Never run or enable historical backfill outside 23:30–06:15 America/Chicago or while explicitly paused.
+- Never gate cloud history ingestion on the removed overnight window or reopen unchanged finalized file versions; respect a future explicit pause.
 - Never label a full-row Manager surface as paged in the live-sync context; its coordinator cohort must match the renderer's actual canonical source reads or `DATASET_KEYS_INVALID` can suppress the view.
 - Never place private-schema names in app-api dataset-revision requests; mirror private low-stock changes onto the public `ph_eval_report_settings` revision and subscribe to that key so freshness remains observable without invalid requests.
 - Never treat a healthy Realtime socket or login-time snapshot as sufficient freshness: retain the 15-second no-store revision poll, focus/visibility wakeups, and revision-fenced background adapters for DRIVE, CAV, RESERVES, SOC, and HL Order.
@@ -155,4 +159,9 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## v2.3.103 bounded cloud and secondary imports
 
-Cross-layer blast radius: Code.gs folder identities and prepare/finalize/archive contracts remain canonical; app-api continues the four core stages then the four secondary stages using erp-secondary-sync.mjs. Browser transient retries pass a 600–2500 row cap; core parsing stops at 700 ms or its row budget and persists the raw offset. SQL request leases expire after 12 seconds. Secondary source rows retain their physical keys and use row_state_hash equality to skip unchanged updates; HL PDF pages retain immutable replay validation. Drive moves fetch actual parents before PATCH. Existing READY data and paused historical backfills remain unchanged. No new browser startup reads are introduced.
+Cross-layer blast radius: Code.gs folder identities and prepare/finalize/archive contracts remain canonical; app-api continues the four core stages then the four secondary stages using erp-secondary-sync.mjs. Browser transient retries pass a 600–2500 row cap; core parsing stops at 700 ms or its row budget and persists the raw offset. SQL request leases expire after 12 seconds. Secondary source rows retain their physical keys and use row_state_hash equality to skip unchanged updates; HL PDF pages retain immutable replay validation. Drive moves fetch actual parents before PATCH. Existing READY data and finalized history versions remain intact. No new browser startup reads are introduced.
+
+
+## v2.3.105 cold hydration and incremental cloud history
+
+`pendingRowPatchesBySource`, `hydrateColdSource` and `replayHydratedRowPatches` reuse the canonical dataset loader and master indexes. Home, Managers, Docks, Request and Item Detail eagerly hydrate their operational bases; account changes discard pending deltas. `erp-history-sync.mjs` continues after core/secondary imports and reuses immutable SOC_PROCESSED versions before activating affected-item statistics. No new browser read endpoint is introduced; Code.gs delivery/email paths remain intact.

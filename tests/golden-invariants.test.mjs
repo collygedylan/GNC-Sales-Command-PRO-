@@ -1053,7 +1053,11 @@ test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Dire
     assert.ok(runtime.includes(marker), marker);
   }
   const sanitizer = runFunctions('assets/app-runtime.js', ['sanitizeAvNoteWithoutSpecCaliper']);
-  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'normalizeRequestRepUserOption'), /isRequestRepRoleValue/);
+  const requesterRoleFilter = runFunctions('assets/app-runtime.js', ['normalizeRoleAccessToken', 'isRequestRepRoleValue']);
+  for (const role of ['REP', 'Sales Rep', 'sales_rep', 'Sales', 'CSR', 'Customer Service', 'Sales Office', 'Office', 'Admin', 'Administrator', 'Manager']) {
+    assert.equal(requesterRoleFilter.isRequestRepRoleValue(role), true, role);
+  }
+  for (const role of ['Eval', 'Evaluator', 'Production', 'QC', 'Docks']) assert.equal(requesterRoleFilter.isRequestRepRoleValue(role), false, role);
   assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('HEAVY BUD / SPEC - 3.5-4\'H'), 'HEAVY BUD');
   assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('SCATTERED BLOOMS / SPEC - 12-14"'), 'SCATTERED BLOOMS');
   assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('N/A / SPEC - 20-22"H'), '');
@@ -1340,7 +1344,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.104"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.105"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1369,9 +1373,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.104"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.105"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.104"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.105"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2184,7 +2188,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.104/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.105/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2718,7 +2722,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.104/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.105/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3010,8 +3014,9 @@ test('Invariant 105 (Both Reclass Send Paths Close Before a Delayed Database Rec
     const payload = { rowOverlays: [{ proposals: [{ action: 'move_down', splits: [{ quantity: 20, destinationSeason: 'X' }] }] }] };
     const button = { disabled: false, textContent: '' };
     const context = {
-      argosInventoryTransactionState: state, evalWorkSetupState: {},
+      argosInventoryTransactionState: state, evalWorkSetupState: {}, currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan Collyge',
       getArgosReclassLiveEditIdentityKey: () => 'actor', getCurrentReclassDeliveryActor: () => 'actor',
+      isEvalReclassRowAssigned: () => true,
       ensureArgosReclassSubmissionVerification: async () => {},
       getArgosInventoryTransactionPayloadForPendingMove: () => null,
       buildArgosInventoryTransactionPayload: () => payload,
@@ -3374,8 +3379,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.104/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.104/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.105/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.105/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3675,12 +3680,12 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.104/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.104/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.105/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.105/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
-    /return getProductionLiveSyncCoordinator\(\)\.ensure\(adapter, !!options\.force\)/);
+    /await getProductionLiveSyncCoordinator\(\)\.ensure\(adapter, !!options\.force\)/);
 });
 
 test('Invariant 125 (AV metric grid keeps three columns under the Drive-only precision override)', () => {
@@ -4695,6 +4700,7 @@ test('Invariant 165 (Non-Move Reclass Closes After Durable Idempotent Draft Stag
   const context = runFunctions('assets/app-runtime.js', ['persistPendingReclassDeliveryDraft', 'getReclassDeliveryJob', 'submitArgosInventoryTransaction'], {
     argosInventoryTransactionState: state, currentUser: 'dylan_collyge', Date, JSON, String, Array, Object,
     getArgosReclassLiveEditIdentityKey: () => 'actor-165', getCurrentReclassDeliveryActor: () => 'dylan_collyge',
+    isEvalReclassRowAssigned: () => true,
     getArgosInventoryTransactionRequestLabel: action => String(action || 'inquiry'),
     getArgosInventoryTransactionRequestAction: () => 'hold',
     getFriendlyBackendErrorMessage: (_error, fallback) => fallback,
@@ -4774,4 +4780,148 @@ test('Invariant 167 (Menu Uses the Compact Uniform Drawer Contract)', async () =
     assert.ok(drawer.querySelector('#drawer-preferences-security'));
     assert.ok(drawer.querySelector('#drawer-footer #drawer-logout-btn'));
   } finally { dom.window.close(); }
+});
+
+
+test('Invariant 168 (Cold Row Patches Cannot Establish Base Hydration)', async () => {
+  const states = { master: { fullLoaded: false, rowCompleteness: 'unknown' } };
+  let rows = 0, owner = 'alice', loads = 0;
+  const applied = [];
+  const ctx = runFunctions('assets/app-runtime.js', ['getRowPatchDatasetKey', 'resetPendingRowPatchesForOwner', 'isRowPatchSourceReady', 'bufferRowPatchUntilHydrated', 'replayHydratedRowPatches'], {
+    pendingRowPatchesBySource: new Map(), coldSourceHydrations: new Map(), pendingRowPatchOwner: '',
+    getDatasetKeysForTable: () => ['master'], getDatasetState: key => states[key], getDatasetRenderRowCount: () => rows,
+    getSupabaseReadIdentityScope: () => owner, hydrateColdSource: async () => { loads++; },
+    applyRowSyncSnapshot: snapshot => applied.push(snapshot), applyUniversalLiveSyncPatch: (_source, payload) => applied.push(payload),
+  });
+  const patch = { kind: 'realtime', payload: { eventType: 'UPDATE', new: { unique_id: 'm-168', qty: 8 } } };
+  assert.equal(ctx.bufferRowPatchUntilHydrated('ph_master_inventory', patch), true);
+  assert.equal(loads, 1); assert.equal(states.master.fullLoaded, false);
+  ctx.replayHydratedRowPatches(); assert.equal(applied.length, 0);
+  states.master.fullLoaded = true; states.master.rowCompleteness = 'complete';
+  ctx.replayHydratedRowPatches(); assert.equal(applied.length, 0, 'an empty base is still not ready');
+  rows = 9553; ctx.replayHydratedRowPatches(); assert.equal(applied.length, 1);
+  assert.equal(ctx.pendingRowPatchesBySource.size, 0);
+  rows = 0; ctx.bufferRowPatchUntilHydrated('ph_master_inventory', patch);
+  owner = 'bob'; rows = 9553; ctx.replayHydratedRowPatches();
+  assert.equal(applied.length, 1, 'account switching discards the previous owner buffer');
+});
+
+test('Invariant 169 (Cold Hydration Joins One Full Load And Repaints After Completion)', async () => {
+  let resolve, loads = 0, renders = 0, rows = 0;
+  const state = { fullLoaded: false, rowCompleteness: 'unknown' };
+  const ctx = runFunctions('assets/app-runtime.js', ['hydrateColdSource'], {
+    coldSourceHydrations: new Map(), resetPendingRowPatchesForOwner: () => 'owner', getSupabaseReadIdentityScope: () => 'owner',
+    canUseProductionLiveSync: () => true, getDatasetState: () => state, getDatasetRenderRowCount: () => rows,
+    ensureDatasetLoaded: (_key, mode, options) => { loads++; assert.equal(mode, 'full'); assert.equal(options.bypassLiveSyncCoordinator, true); return new Promise(r => { resolve = r; }); },
+    replayHydratedRowPatches() {}, rebuildMasterInventoryIndexes() {}, invalidateResolvedViewStateCaches() {}, TRACKED_VIEW_IDS: ['managers', 'docks', 'detail'], markViewDirty() {},
+    scheduleProductionLiveSyncRender: () => { renders++; },
+  });
+  const first = ctx.hydrateColdSource('master'), second = ctx.hydrateColdSource('master');
+  assert.equal(loads, 1); assert.equal(renders, 0);
+  rows = 9553; state.fullLoaded = true; state.rowCompleteness = 'complete'; resolve(true);
+  assert.equal(await first, true); assert.equal(await second, true); assert.equal(renders, 1);
+});
+
+test('Invariant 170 (Requester Picker Is Complete And Role Scoped)', () => {
+  const ctx = runFunctions('assets/app-runtime.js', ['isRequestRepRoleValue', 'normalizeRequestRepUserOption',
+    'dedupeRequestModalRepUsers', 'getAllowedRequestModalRepOptions', 'getRequestModalVisibleOptions',
+    'buildRequestModalMoreResultsHtml'], {
+    REQUEST_MODAL_OPTION_PAGE_SIZE: 20, requestModalVisibleOptionLimits: new Map(), requestModalRepUserOptions: [],
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && String(value).trim() !== '') ?? '',
+    normalizeRoleAccessToken: value => String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, ''),
+    normalizePushUsername: value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_'),
+    normalizeRepDisplayOrder: value => String(value || '').trim().replace(/\b\w/g, char => char.toUpperCase()),
+    normalizeRequestSalesrepId: value => String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, ''),
+    buildRequestModalRepOption: (label, meta) => { const token = String(label || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); return { label, token, collapsedToken: token.replace(/\s+/g, ''), ...meta }; },
+    getRequestMappedRepDirectory: () => ({ options: [{ label: 'Kevin Effinger', salesrepId: 'S-K1', salesrepIds: ['S-K1'] }] }),
+  });
+  const rows = [
+    { username: 'chris_evans', role: 'CSR' }, { username: 'claudia_castillo', role: 'Sales Office' },
+    { username: 'dan_mcendree', role: 'Manager' }, { username: 'ignored_eval', role: 'Evaluator' },
+    { username: 'ignored_qc', role: 'QC' },
+  ].map(row => ctx.normalizeRequestRepUserOption(row)).filter(Boolean);
+  ctx.requestModalRepUserOptions = ctx.dedupeRequestModalRepUsers([...rows, ...rows]);
+  const allowed = Array.from(ctx.getAllowedRequestModalRepOptions());
+  const labels = allowed.map(option => option.label).sort((a, b) => a.localeCompare(b));
+  assert.deepEqual(labels, ['Claudia Castillo', 'Chris Evans', 'Dan Mcendree', 'Kevin Effinger'].sort((a, b) => a.localeCompare(b)));
+  const visible = ctx.getRequestModalVisibleOptions('rep:all', Array.from({ length: 73 }, (_, id) => ({ id })));
+  assert.equal(visible.shown, 73); assert.equal(ctx.buildRequestModalMoreResultsHtml(visible), '');
+});
+
+test('Invariant 171 (Reclass Modal Starts With Item Identity And Location Cards)', () => {
+  const created = { innerHTML: '', setAttribute() {} };
+  const ctx = runFunctions('assets/app-runtime.js', ['ensureArgosInventoryTransactionModal'], {
+    document: { getElementById: () => null, createElement: () => created, body: { appendChild() {} } },
+  });
+  const modal = ctx.ensureArgosInventoryTransactionModal();
+  assert.match(modal.innerHTML, /argos-inventory-transaction-title/);
+  assert.match(modal.innerHTML, /argos-reclass-item-inquiry/);
+  assert.doesNotMatch(modal.innerHTML, /argos-inventory-transaction-(?:subtitle|notice|source)|argos-tx-tabs/);
+  const runtime = read('assets/app-runtime.js');
+  assert.match(runtime, /titleEl\.textContent = `\$\{snapshot\.commonName \|\| ''\} \$\{snapshot\.contSize \|\| ''\}`/);
+  const styles = read('assets/app-shell-style-05.css');
+  assert.match(styles, /\.argos-reclass-row-toggle\{min-height:6rem;padding:1\.125rem 1\.25rem\}/);
+  assert.match(styles, /\.argos-reclass-row-toggle-copy>span:first-child\{font-size:1\.25rem/);
+});
+
+test('Invariant 172 (Eval Reclass Is Assigned Only At Every UI Boundary)', () => {
+  const ctx = runFunctions('assets/app-runtime.js', ['isEvalReclassRowAssigned', 'isWarehouseAssignedDriveCardForCurrentUser',
+    'canCurrentUserUseDriveCardOptions'], {
+    currentRole: 'Evaluator', currentUser: 'taylor_eval', currentUserDisplay: 'Taylor Eval',
+    GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']),
+    normalizeLiveChangeUsername: value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
+    getRoleAccessState: () => ({ isEval: true, isAdmin: false }), canUserMakeLiveChangesOnRow: () => false,
+    isAlwaysDriveCardOptionsUser: () => false,
+    isRowAssignedToUser: (user, row) => ['taylor_eval'].includes(String(user || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')) && row?.unique_id === 'assigned',
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== '') ?? '',
+  });
+  assert.equal(ctx.canCurrentUserUseDriveCardOptions({ unique_id: 'assigned' }, 'drive'), true);
+  assert.equal(ctx.canCurrentUserUseDriveCardOptions({ unique_id: 'other' }, 'drive'), false);
+  assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'assigned' }), true);
+  assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'other' }), false);
+  const runtime = read('assets/app-runtime.js');
+  assert.match(runtime, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, item\)\)/);
+  assert.match(runtime, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, submitState\.item\)\)/);
+  const api = read('supabase/functions/app-api/index.ts');
+  assert.match(api, /INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED/);
+  assert.match(api, /ph_inventory_row_assignments[\s\S]*?ph_warehouse_assigned_items/);
+});
+
+test('Invariant 173 (Cloud Order History Owns Imports And Incremental Average Publication)', async () => {
+  const { runSocHistorySyncStep } = await import('../supabase/functions/_shared/erp-history-sync.mjs');
+  const files = ['history-a', 'history-b'].map((id, index) => ({ id, name: `SOC 2026-09-2${index + 5}.xlsx`,
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    modifiedTime: `2026-09-2${index + 6}T00:00:00Z`, createdTime: `2026-09-2${index + 5}T20:00:00Z`, size: '512' }));
+  let downloads = 0;
+  const fetcher = async url => {
+    if (String(url).includes('/files?')) return { ok: true, json: async () => ({ files }) };
+    downloads += 1; throw new Error('unchanged finalized history must not be downloaded');
+  };
+  const calls = [];
+  const supabase = { rpc: async (name, args) => {
+    calls.push({ name, args }); return { data: { run_id: 'active-history', complete: true, active: true }, error: null };
+  } };
+  const result = await runSocHistorySyncStep({ supabase, fetcher, token: 'test-token' });
+  assert.equal(result.done, true);
+  assert.equal(result.result.outcome, 'UP_TO_DATE');
+  assert.equal(downloads, 0);
+  assert.deepEqual(calls.map(call => call.name), ['begin_eval_item_low_stock_import_v1']);
+  assert.deepEqual(calls[0].args.p_manifest.map(file => file.source_revision),
+    files.map(file => `${file.modifiedTime}|soc-history-v1`));
+
+  const api = read('supabase/functions/app-api/index.ts');
+  assert.match(api, /if \(result\.done && cursor\.historyComplete !== true\)[\s\S]*runSocHistorySyncStep/);
+  assert.match(api, /historyComplete: history\.done/);
+  const code = read('Code.gs');
+  const worker = code.match(/function runSocOrderHistoryBackfillChunk_\(\) \{[^]*?^}/m)?.[0] || '';
+  assert.match(worker, /status: 'cloud_owned'/);
+  assert.doesNotMatch(worker, /DriveApp|callSupabaseRpc_|scheduleSocOrderHistoryTrigger_\(/);
+  const trigger = [{ getHandlerFunction: () => 'runSocOrderHistoryBackfillChunk_' }];
+  const context = vm.createContext({ SOC_ORDER_HISTORY_TRIGGER: 'runSocOrderHistoryBackfillChunk_', ScriptApp: {
+    getProjectTriggers: () => trigger,
+    deleteTrigger: value => { const index = trigger.indexOf(value); if (index >= 0) trigger.splice(index, 1); },
+  } });
+  vm.runInContext(`${code.match(/function scheduleSocOrderHistoryTrigger_\([^]*?^}/m)?.[0]}\n${worker}\nthis.result=runSocOrderHistoryBackfillChunk_();`, context);
+  assert.equal(context.result.status, 'cloud_owned');
+  assert.equal(trigger.length, 0);
 });

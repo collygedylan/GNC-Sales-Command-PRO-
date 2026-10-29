@@ -229,7 +229,8 @@ test('ingestion deployment selects every changed function and preserves remote s
     'getImportHistoryRoute_', 'isLiveImportTemporaryFile_', 'isCheckpointedLatestImportTable_', 'cleanupTempGoogleSheet_', 'cleanupCompletedImportExtraction_', 'extractDataFromFile', 'listRoutedDropFiles_',
     'getFastLiveIngestDatasetKey_', 'getFastLiveIngestRpc_', 'getFastLiveFileMeta_',
     'getFastLiveIngestRows_', 'processFastLiveFile_', 'runRoutedDropImport_',
-    'buildRequestDeliveryEmailPayload_', 'runSOCOnly', 'runDriveAroundOnly',
+    'buildRequestDeliveryEmailPayload_', 'scheduleSocOrderHistoryTrigger_', 'runSocOrderHistoryBackfillChunk_',
+    'runSOCOnly', 'runDriveAroundOnly',
     'runWarehouseAssignedOnly', 'runCavOnly', 'resolveSupabaseServiceRoleKey_', 'getSupabaseHeaders_',
     'reconcileAppsScriptActionSigningKey_', 'verifyAppsScriptActionEnvelope_', 'mintDriveToken_', 'doPost',
   ]);

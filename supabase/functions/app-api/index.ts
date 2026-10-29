@@ -1,8 +1,9 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { runSocHistorySyncStep } from "../_shared/erp-history-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.104";
-const APP_RUNTIME_RELEASE = "AgData v2.3.104";
+const APP_RUNTIME_VERSION = "2.3.105";
+const APP_RUNTIME_RELEASE = "AgData v2.3.105";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -463,7 +464,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.104";
+  const appVersion = "2.3.105";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -2413,11 +2414,47 @@ export async function handleDriveReclassAction(
           lotcode: String(row.lotcode || "").trim(),
         }));
       try {
+        const roleKey = normalizeRole(activeProfile.role).replace(/[^A-Z]/g, "");
+        const evaluator = roleKey === "EVAL" || roleKey === "EVALUATOR";
+        if (evaluator && !GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actorUsername)) {
+          const identities = liveChangeRows.filter((row) => row.uniqueId || row.itemcode);
+          const actorAliases = new Set([actorUsername, normalizeUsername(String(activeProfile.display_name || ""))].filter(Boolean));
+          const uniqueIds = [...new Set(identities.map((row) => row.uniqueId).filter(Boolean))];
+          const itemcodes = [...new Set(identities.map((row) => row.itemcode.toUpperCase()).filter(Boolean))];
+          const sourceResult = uniqueIds.length ? await supabase.from("ph_master_inventory")
+            .select("unique_id,itemcode,locationcode,lotcode").in("unique_id", uniqueIds) : { data: [], error: null };
+          if (sourceResult.error) throw sourceResult.error;
+          const sourceRows = (sourceResult.data || []) as Array<Record<string, unknown>>;
+          const exactResult = uniqueIds.length ? await supabase.from("ph_inventory_row_assignments")
+            .select("master_unique_id,assignedto,present_in_drive").in("master_unique_id", uniqueIds).eq("present_in_drive", true)
+            : { data: [], error: null };
+          if (exactResult.error) throw exactResult.error;
+          const legacyResult = itemcodes.length ? await supabase.from("ph_warehouse_assigned_items")
+            .select("itemcode,itemcode_normalized,assignedto,present_in_drive").in("itemcode", itemcodes).eq("present_in_drive", true)
+            : { data: [], error: null };
+          if (legacyResult.error) throw legacyResult.error;
+          const exactAssignments = (exactResult.data || []) as Array<Record<string, unknown>>;
+          const legacyAssignments = (legacyResult.data || []) as Array<Record<string, unknown>>;
+          const everyRowAssigned = identities.length === liveChangeRows.length && identities.every((identity) => {
+            const master = sourceRows.find((row) => String(row.unique_id || "") === identity.uniqueId);
+            const itemcode = String(master?.itemcode || identity.itemcode).trim().toUpperCase();
+            return exactAssignments.some((assignment) => String(assignment.master_unique_id || "") === identity.uniqueId
+              && actorAliases.has(normalizeUsername(assignment.assignedto))
+              && assignment.present_in_drive !== false)
+              || legacyAssignments.some((assignment) => actorAliases.has(normalizeUsername(assignment.assignedto))
+                && String(assignment.itemcode_normalized || assignment.itemcode || "").trim().toUpperCase() === itemcode
+                && assignment.present_in_drive !== false);
+          });
+          if (!everyRowAssigned) throw new Error("INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED");
+        }
         await assertInventoryLiveChangeActorRows(supabase, activeProfile, liveChangeRows);
       } catch (error) {
         const code = String(error instanceof Error ? error.message : error || "");
         if (code === "INVENTORY_LIVE_CHANGE_JORGE_ROW_NOT_ASSIGNED") {
           return errorResponse("Live changes for jorge_colunga are only permitted on rows assigned to jorge_colunga in Assigned Items.", 403, { code });
+        }
+        if (code === "INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED") {
+          return errorResponse("Evaluators may submit Reclass changes only for rows assigned to them in Assigned Items.", 403, { code });
         }
         return driveReclassErrorResponse(code);
       }
@@ -6987,7 +7024,10 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
     await persist({ maxRowsPerSlice: cap });
     const secondary = async (nextCursor: Record<string, unknown>) => runSecondaryErpSyncStep({
       supabase, env: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? SUPABASE_SERVICE_ROLE_KEY
-        : key === "SUPABASE_URL" ? SUPABASE_URL : Deno.env.get(key) || "", cursor: nextCursor, status: persist, accessToken,
+        : key === "SUPABASE_URL" ? SUPABASE_URL : Deno.env.get(key) || "", cursor: nextCursor,
+      status: (patch: Record<string, unknown>) => persist(patch.active === false
+        ? { ...patch, active: true, status: "CONTINUE", currentStage: "order_history", currentStageLabel: "Order History", finishedAt: null }
+        : patch), accessToken,
     });
     let result: { done: boolean; cursor: Record<string, unknown>; ok?: boolean };
     if (cursor.coreComplete === true) result = await secondary(cursor);
@@ -7000,6 +7040,24 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
         const nextCursor = { ...result.cursor, coreComplete: true };
         await persist({ continuationCursor: nextCursor });
         result = await secondary(nextCursor);
+      }
+    }
+    if (result.done && cursor.historyComplete !== true) {
+      const history = await runSocHistorySyncStep({ supabase, fetcher: fetch, token: accessToken, maxFilesPerSlice: 1 });
+      const historyCursor = { ...result.cursor, historyComplete: history.done };
+      const historyStatus = history.result as Record<string, unknown>;
+      const stageResult = { ...historyStatus, key: "order_history" };
+      if (history.done) {
+        await persist({ active: false, status: "complete", currentStage: "idle", currentStageLabel: "Idle",
+          stageResultsDelta: stageResult, continuationCursor: historyCursor, sliceFailures: 0,
+          finishedAt: new Date().toISOString(), completedAt: new Date().toISOString(),
+          message: "ERP sync and order history completed." });
+        result = { done: true, cursor: historyCursor, ok: true };
+      } else {
+        await persist({ active: true, status: "CONTINUE", currentStage: "order_history", currentStageLabel: "Order History",
+          stageResultsDelta: stageResult, continuationCursor: historyCursor, sliceFailures: 0,
+          message: "Order history is processing in bounded background slices." });
+        result = { done: false, cursor: historyCursor, ok: true };
       }
     }
     if (current.active !== false && Number(current.sliceFailures || 0) > 0) await persist({ sliceFailures: 0 });
