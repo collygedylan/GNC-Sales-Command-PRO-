@@ -4501,3 +4501,16 @@ test('Invariant 158 (Secondary Cloud Imports Finalize Before Moving Actual Drive
   const final=await runSecondaryErpSyncStep({supabase:db,fetcher:()=>{throw Error('No repeat download');},accessToken:'fixture',env:()=>'',status:async()=>{},cursor:first.cursor});
   assert.equal(final.done,true);
 });
+
+
+test('Invariant 159 (HL PDF Drop Skips Historical Native Sheets Without Moving Them)', async () => {
+  const {prefetchSecondaryFolders,SECONDARY_ERP_STAGES}=await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
+  const hl=SECONDARY_ERP_STAGES.find(s=>s.key==='hl_po_parsed');
+  const fetcher=async(input,init={})=>{assert.notEqual(init.method,'PATCH');const url=new URL(input);
+    if(url.pathname.endsWith('/files'))return Response.json({files:url.searchParams.get('q').includes(hl.folder)?[
+      {id:'historical-sheet',name:'HL PO 2026-10-19',mimeType:'application/vnd.google-apps.spreadsheet'},
+      {id:'pending-pdf',name:'HL PO 2026-10-29.pdf',mimeType:'application/pdf'}]:[]});
+    return Response.json({parents:[]});};
+  const folders=await prefetchSecondaryFolders(fetcher,'fixture');
+  assert.deepEqual(folders.hl_po_parsed.files.map(file=>file.id),['pending-pdf']);
+});

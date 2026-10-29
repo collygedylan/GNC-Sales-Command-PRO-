@@ -97,6 +97,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never treat historical native Sheets in the HL PDF source folder as pending PDF imports. Preserve the canonical PDF-only filter and leave those historical documents in place.
+
 - Never treat a source-specific first slice as permission to process a whole workbook, reuse a single source folder as removeParents, or mark a secondary file processed before its established finalizer succeeds. Register server-only secondary imports and preserve exact source row keys with hash-based no-op updates.
 - Never retry a transient manual ERP slice failure with the same row cap indefinitely; retry HTTP 500/502/504/546 at most six times, lowering the requested slice from 2500 to 1250 to 600 rows, then resume normal 2500-row slices after a successful retry.
 

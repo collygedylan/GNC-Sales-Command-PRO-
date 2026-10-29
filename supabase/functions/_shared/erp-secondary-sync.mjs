@@ -279,7 +279,8 @@ export async function prefetchSecondaryFolders(fetcher,token) {
       const lists=await Promise.all((parent.parents||[]).map(id=>listFiles(fetcher,token,id)));
       files=[...files,...lists.flat()];
     }
-    files=Array.from(new Map(files.filter(f=>f.mimeType!=='application/vnd.google-apps.folder'&&!shouldIgnoreErpFile(f.name))
+    files=Array.from(new Map(files.filter(f=>f.mimeType!=='application/vnd.google-apps.folder'&&!shouldIgnoreErpFile(f.name)
+      && (stage.key!=='hl_po_parsed'||f.mimeType==='application/pdf'||/\.pdf$/i.test(f.name)))
       .map(f=>[f.id,f])).values());
     return [stage.key,{files,listDurationMs:Math.round(performance.now()-started)}];
   })));
