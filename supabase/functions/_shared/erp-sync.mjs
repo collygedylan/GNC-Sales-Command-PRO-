@@ -22,6 +22,23 @@ export function normalizeErpHeader(value) {
   return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+function validSocDock(value) {
+  const dock=String(value||'').trim();
+  return Boolean(dock)&&!['nan','null','none','0'].includes(dock.toLowerCase());
+}
+function firstSocDock(row) {
+  for(const name of ['dock','docknumber','tripnumber']){const value=first(row,name);if(validSocDock(value))return value;}
+  return '';
+}
+function hasImportableSocDock(row) {
+  return validSocDock(firstSocDock(row));
+}
+function isImportableSocRow(row) {
+  return Boolean(first(row,'itemcode','item'))&&(hasImportableSocDock(row)
+    ||first(row,'suspend').toUpperCase()==='SUSPEND'
+      &&first(row,'suspend-to','suspend_to','suspendto').toLowerCase()==='dc');
+}
+
 function recordsToObjects(records, keepEmpty = false) {
   const headerIndex = records.findIndex(row => row.some(value => normalizeErpHeader(value) === 'itemcode'));
   if (headerIndex < 0) throw new Error('ERP_SOURCE_HEADER_MISSING');
@@ -316,12 +333,13 @@ export async function parseErpXlsxPage(bytesLike,start=0,limit=ERP_ROWS_PER_CONT
   let rows;
   if(checkpoint.dataset==='soc'){
     const headers=new Map(found.header.map((value,index)=>[normalizeErpHeader(value),index+1]));
-    const wantedColumns=new Set(['itemcode','item','dock','suspend','suspendto'].map(name=>headers.get(name)).filter(Boolean));
+    const wantedColumns=new Set(['itemcode','item','dock','docknumber','tripnumber','suspend','suspendto'].map(name=>headers.get(name)).filter(Boolean));
     const predicateShared=await resolveSharedStrings(zip,sharedStringIndexes(pageXml,wantedColumns));
     const get=(values,...names)=>{for(const name of names){const value=clean(values.get(headers.get(name))||'');if(value!==null)return value;}return '';};
     const eligible=pageXml.filter(rowXml=>{
       const values=parseXlsxSelectedCells(rowXml,predicateShared,wantedColumns);
-      return Boolean(get(values,'itemcode','item'))&&Boolean(get(values,'dock')
+      const dock=['dock','docknumber','tripnumber'].map(name=>get(values,name)).find(validSocDock)||'';
+      return Boolean(get(values,'itemcode','item'))&&(validSocDock(dock)
         ||get(values,'suspend').toUpperCase()==='SUSPEND'&&get(values,'suspendto').toLowerCase()==='dc');
     });
     const shared=await resolveSharedStrings(zip,sharedStringIndexes(eligible));
@@ -377,18 +395,34 @@ async function identity(dataset, row, index) {
 export async function normalizeErpRowsChunk(rawRows, dataset, columns, options = {}) {
   const rows = [], counts = new Map(Object.entries(options.identityCounts || {}).map(([key,value]) => [key,Number(value)||0]));
   const columnsByNormalized = new Map(columns.map(column => [normalizeErpHeader(column),column]));
+  const assignAlias=(row,raw,target,names)=>{
+    const column=columnsByNormalized.get(normalizeErpHeader(target));
+    if(column&&row[column]==null){const value=first(raw,...names);if(value)row[column]=value;}
+  };
   const start = Math.max(0,Number(options.start)||0);
   const end = Math.min(rawRows.length,start+Math.max(1,Number(options.limit)||rawRows.length));
   let rowCount = Math.max(0,Number(options.priorRowCount)||0);
   for (let rawIndex=start; rawIndex<end; rawIndex+=1) {
     const raw = rawRows[rawIndex];
     if (!first(raw, 'itemcode', 'item')) continue;
-    if (dataset === 'soc' && !(first(raw,'dock') || first(raw,'suspend').toUpperCase() === 'SUSPEND'
-      && first(raw,'suspend-to','suspend_to','suspendto').toLowerCase() === 'dc')) continue;
+    if (dataset === 'soc' && !isImportableSocRow(raw)) continue;
     const row = {};
     for (const [key,value] of Object.entries(raw)) {
       const target = columnsByNormalized.get(key);
       if (target) row[target] = clean(value);
+    }
+    if(dataset==='soc'){
+      assignAlias(row,raw,'dock',['dock','docknumber','tripnumber']);
+      assignAlias(row,raw,'dock_num',['dock_num','docknumber','dock','tripnumber']);
+      assignAlias(row,raw,'stopnumber',['stopnumber','drop','stop']);
+    }
+    if(dataset==='drive_around'){
+      assignAlias(row,raw,'holdstopcode',['holdstopcode','holdstop','stopcode']);
+      assignAlias(row,raw,'holdstopbegindate',['holdstopbegindate','holdstopstartdate','holdstartdate','stopbegindate','holdbegindate']);
+      assignAlias(row,raw,'holdstopreason',['holdstopreason','holdreason','holdreasonnotescomment','holdreasonnotescomments','stopreason']);
+      assignAlias(row,raw,'locationnote',['locationnote','locnote','locationnotes']);
+      assignAlias(row,raw,'locationnotedate',['locationnotedate','locnotedate','loc_note_date','locationnotedatetime']);
+      assignAlias(row,raw,'locationptn1',['locationptn1','locptn1','ptn1']);
     }
     if (dataset === 'cav') {
       const aliases = { itemcode:['itemcode','item'], commonname:['commonname','productdescription'],
@@ -422,9 +456,8 @@ export async function normalizeErpRows(rawRows, dataset, columns) {
 }
 
 function countImportableRows(rawRows,dataset) {
-  return rawRows.reduce((count,row) => count + (first(row,'itemcode','item')
-    && (dataset !== 'soc' || first(row,'dock') || first(row,'suspend').toUpperCase() === 'SUSPEND'
-      && first(row,'suspend-to','suspend_to','suspendto').toLowerCase() === 'dc') ? 1 : 0),0);
+  return rawRows.reduce((count,row) => count + (Boolean(first(row,'itemcode','item'))
+    && (dataset !== 'soc' || isImportableSocRow(row)) ? 1 : 0),0);
 }
 
 function driveUrl(path, params) {

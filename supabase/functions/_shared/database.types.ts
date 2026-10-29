@@ -13813,7 +13813,10 @@ export type Database = {
           ordertotal: string | null
           photo_link: string | null
           photo_name: string | null
+          photo_url: string | null
+          photos: Json
           pic_note: string | null
+          pick_note: string | null
           picknote: string | null
           planstart: string | null
           plantgroupcode: string | null
@@ -13845,6 +13848,7 @@ export type Database = {
           source: string | null
           spec: string | null
           stagename: string | null
+          status: string | null
           step: string | null
           stopnumber: string | null
           suspend: string | null
@@ -13956,7 +13960,10 @@ export type Database = {
           ordertotal?: string | null
           photo_link?: string | null
           photo_name?: string | null
+          photo_url?: string | null
+          photos?: Json
           pic_note?: string | null
+          pick_note?: string | null
           picknote?: string | null
           planstart?: string | null
           plantgroupcode?: string | null
@@ -13988,6 +13995,7 @@ export type Database = {
           source?: string | null
           spec?: string | null
           stagename?: string | null
+          status?: string | null
           step?: string | null
           stopnumber?: string | null
           suspend?: string | null
@@ -14099,7 +14107,10 @@ export type Database = {
           ordertotal?: string | null
           photo_link?: string | null
           photo_name?: string | null
+          photo_url?: string | null
+          photos?: Json
           pic_note?: string | null
+          pick_note?: string | null
           picknote?: string | null
           planstart?: string | null
           plantgroupcode?: string | null
@@ -14131,6 +14142,7 @@ export type Database = {
           source?: string | null
           spec?: string | null
           stagename?: string | null
+          status?: string | null
           step?: string | null
           stopnumber?: string | null
           suspend?: string | null

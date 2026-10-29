@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.97",
+  "release": "AgData v2.3.98",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -516,7 +516,10 @@
         "getScopedDocksItems",
         "normalizeDockViewDockKey",
         "loadHlOrderState",
-        "renderCommunicationHub"
+        "renderCommunicationHub",
+        "buildDockBrowseSummary",
+        "normalizeDockViewStopKey",
+        "normalizeSocDockRowAliases"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -526,7 +529,15 @@
         "runReservesOnly",
         "buildHlOrderPdfHtml_",
         "handleSignedHlOrderDelivery_"
-      ]
+      ],
+      "supportingFiles": {
+        "services/database-contracts.generated.ts": [
+          "ph_soc_master"
+        ],
+        "supabase/functions/_shared/database.types.ts": [
+          "ph_soc_master"
+        ]
+      }
     },
     "agdata-drive-and-av-specialist": {
       "assets/app-runtime.js": [
@@ -562,7 +573,10 @@
         "canUserMakeLiveChangesOnRow",
         "warmLiveChangeAssignmentsAfterLogin",
         "syncSuspendFillTagDetailAction",
-        "focusSuspendFillTagEvidenceEditor"
+        "focusSuspendFillTagEvidenceEditor",
+        "getLiveDriveNoteRow",
+        "renderManagerSeasonPriorityLiveNotes",
+        "getDriveDetailFieldRawValue"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -909,7 +923,11 @@
           "normalizeErpRowsChunk",
           "stageFileContinuation",
           "parseErpXlsxPage",
-          "countImportableErpXlsxRows"
+          "countImportableErpXlsxRows",
+          "validSocDock",
+          "firstSocDock",
+          "hasImportableSocDock",
+          "isImportableSocRow"
         ],
         "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
           "get_erp_sync_status_v1",

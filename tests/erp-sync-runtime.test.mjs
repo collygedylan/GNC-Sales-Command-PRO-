@@ -219,11 +219,31 @@ test('SOC XLSX pages filter itemcode/dock/Suspend-DC rows before full cell decod
   assert.equal(await countImportableErpXlsxRows(bytes,'soc'),2);
 });
 
+test('SOC XLSX and normalization preserve every active dock row across ERP dock/drop header aliases', async () => {
+  const headers=['itemcode','docknumber','tripnumber','drop','suspend','suspend-to'];
+  const row=(n,values)=>`<row r="${n}">${values.map((value,index)=>`<c r="${String.fromCharCode(65+index)}${n}" t="inlineStr"><is><t>${value}</t></is></c>`).join('')}</row>`;
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${row(1,headers)}${row(2,['101','38.0','','40.0','',''])}${row(3,['102','','39.0','30.0','',''])}${row(4,['103','0','','','',''])}${row(5,['104','','','','SUSPEND','DC'])}</sheetData></worksheet>`,
+  });
+  const page=await parseErpXlsxPage(bytes,0,10,{dataset:'soc'});
+  assert.deepEqual(page.rows.map(item=>item.itemcode),['101','102','104']);
+  const normalized=await normalizeErpRows(page.rows,'soc',['unique_id','itemcode','dock','tripnumber','stopnumber']);
+  assert.deepEqual(normalized.map(item=>[item.dock??null,item.tripnumber??null,item.stopnumber??null]),[['38.0',null,'40.0'],['39.0','39.0','30.0'],[null,null,null]]);
+  assert.equal(await countImportableErpXlsxRows(bytes,'soc'),3);
+});
+
 test('live row mapping preserves canonical physical identities and CAV aliases', async () => {
-  const driveInput = {warehouseid:'W1',itemcode:'004103.010.1',contsize:'#1',lotcode:'27.F1',locationcode:'C.15.000',source:'DriveAround'};
+  const driveInput = {warehouseid:'W1',itemcode:'004103.010.1',contsize:'#1',lotcode:'27.F1',locationcode:'C.15.000',source:'DriveAround',
+    holdstopcode:'',holdstartdate:'2026-10-27',holdreasonnotescomments:'stale text',locnote:'pull full',locnotedate:'2026-10-27',ptn1:'A.09.000'};
   const driveId = `drive-${createHash('sha256').update(JSON.stringify(['W1','004103.010.1','#1','27.F1','C.15.000','DriveAround','','',''])).digest('hex').slice(0,32)}`;
-  const drive = await normalizeErpRows([driveInput],'drive_around',['unique_id','itemcode','contsize','lotcode','locationcode','source']);
+  const drive = await normalizeErpRows([driveInput],'drive_around',['unique_id','itemcode','contsize','lotcode','locationcode','source',
+    'holdstopcode','holdstopbegindate','holdstopreason','locationnote','locationnotedate','locationptn1']);
   assert.equal(drive[0].values.unique_id,driveId);
+  assert.deepEqual([drive[0].values.holdstopcode,drive[0].values.holdstopbegindate,drive[0].values.holdstopreason,
+    drive[0].values.locationnote,drive[0].values.locationnotedate,drive[0].values.locationptn1],
+    [null,'2026-10-27','stale text','pull full','2026-10-27','A.09.000']);
   const soc = await normalizeErpRows([{dock:'D1',itemcode:'001',transactionnumber:'T1',quantityordered:'2'}],
     'soc',['unique_id','itemcode']);
   assert.equal(soc[0].unique_id,['D1','T1','','','001','','','2','','','','','',''].join('-'));

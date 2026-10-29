@@ -91,11 +91,19 @@ test('Dock cards render a separate shared team block for every TRIPNUMBER', () =
   assert.match(html, /getDockTeamInfo\(item\.TRIPNUMBER\)/);
 });
 
-test('every Docks user sees the 2026+ rows while work actions remain assignment checked', () => {
+test('Docks retains valid imported docks without a PLANSTART gate while work actions remain assignment checked', () => {
   const start = html.indexOf('function getScopedDocksItems(');
   const end = html.indexOf('function applyRolePermissions()', start);
   const block = html.slice(start, end);
-  assert.match(block, /filter\(isDockRowWithinPlanStartWindow\)/);
+  assert.doesNotMatch(block, /filter\(isDockRowWithinPlanStartWindow\)/);
+  const ctx = vm.createContext({
+    socInventory: [],
+    getRoleAccessState: () => ({ isAdmin:true }),
+    firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim()) || '',
+  });
+  for (const name of ['getActiveSuspendDockRows','normalizeDockViewDockKey','getScopedDocksItems']) vm.runInContext(source(name), ctx);
+  const rows = [{ DOCK:'38.0', PLANSTART:'' }, { DOCK:'27', PLANSTART:'2020-01-01' }, { DOCK:'0' }, { DOCK:'none' }];
+  assert.deepEqual(Array.from(ctx.getScopedDocksItems(rows), row => row.DOCK), ['38.0','27']);
   assert.match(block, /if \(isRep\)/);
   assert.doesNotMatch(block, /else if \(isQc/);
   assert.match(html, /function canCurrentUserMarkDockStage[\s\S]*isDockRowQueuedForCurrentUser/);
@@ -122,13 +130,13 @@ test('Docks display lookup falls back through normalized lot, location and item 
 
 test('Docks stop cards contain exactly one title, six-metric strip and action row each with numeric all-lot location stock', t => {
   const rows = [
-    { UNIQUE_ID:'master-a', ITEMCODE:'004380.010.1', LOCATIONCODE:'C.09.000', LOTCODE:'27.F1', PTRONHAND:40, PTRREVIEWED:2, PTRAVAILABLE:38, S_LTS:30 },
-    { UNIQUE_ID:'master-b', ITEMCODE:'43800101', LOCATIONCODE:'c.9.0', LOTCODE:'27.S1', PTRONHAND:60, PTRREVIEWED:5, PTRAVAILABLE:55, S_LTS:50 },
+    { UNIQUE_ID:'master-a', ITEMCODE:'004380.010.1', LOCATIONCODE:'C.09.000', LOTCODE:'27.F1', PTRONHAND:40, PTRREVIEWED:2, PTRAVAILABLE:38, S_LTS:30, LOC_MATCH_QTY:7 },
+    { UNIQUE_ID:'master-b', ITEMCODE:'43800101', LOCATIONCODE:'c.9.0', LOTCODE:'27.S1', PTRONHAND:60, PTRREVIEWED:5, PTRAVAILABLE:55, S_LTS:50, LOC_MATCH_QTY:7 },
   ];
   const dom = new JSDOM('<main id="cards"></main>');
   t.after(() => dom.window.close());
   const f = vm.createContext({
-    window: {}, Map, Set, fullInventory:rows, nativeAuthSessionActive:false, nativeAuthProfile:null,
+    window: {}, Map, Set, fullInventory:rows, nativeAuthSessionActive:false, nativeAuthProfile:null, acceptedLocOnHandAggregateReceipt:null,
     getDatasetState: () => ({ initialLoaded:true, rowCompleteness:'complete' }),
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
     escapeHtml: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;'),

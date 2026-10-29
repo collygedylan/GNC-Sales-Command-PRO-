@@ -61,6 +61,94 @@ import { JSDOM } from 'jsdom';
 const html = readComposedAppSource();
 const source = name => html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0] || assert.fail(name);
 
+test('Drive and Season Priority use the same live Hold/Stop and Location Note row', () => {
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const context = vm.createContext({
+    fullInventory: [{ ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', HOLDSTOPCODE: '', HOLDSTOPREASON: 'stale reason', HOLDSTOPBEGINDATE: '2026-01-01', LOCATIONNOTE: 'Water before pulling', LOCATIONPTN1: '2026-10-01' }],
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
+    escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+  });
+  for (const name of ['getLiveDriveNoteRow', 'renderManagerSeasonPriorityLiveNotes', 'getDriveDetailFieldKeys', 'getDriveDetailFieldRawValue']) {
+    const fn = runtime.match(new RegExp(`        function ${name}\\([^]*?^        }`, 'm'))?.[0] || assert.fail(name);
+    vm.runInContext(fn, context);
+  }
+  const aliases = runtime.match(/        const DRIVE_DETAIL_ITEM_FIELD_ALIASES = Object\.freeze\(\{[^]*?\n        \}\);/)?.[0] || assert.fail('DRIVE_DETAIL_ITEM_FIELD_ALIASES');
+  vm.runInContext(aliases, context);
+  const html = context.renderManagerSeasonPriorityLiveNotes({ ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', noteContext: { old: 'stale report hold' } });
+  assert.match(html, /Location Note: Water before pulling/);
+  assert.match(html, /2026-10-01/);
+  assert.doesNotMatch(html, /Hold\/Stop|stale reason|stale report hold/);
+  const detailRow = { ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'stale reason', LOCATIONNOTE: 'old cached note' };
+  assert.equal(context.getDriveDetailFieldRawValue(detailRow, 'HOLDSTOPCODE'), '');
+  assert.equal(context.getDriveDetailFieldRawValue(detailRow, 'HOLDSTOPREASON'), '');
+  assert.equal(context.getDriveDetailFieldRawValue(detailRow, 'LOCATIONNOTE'), 'Water before pulling');
+  assert.equal(context.getDriveDetailFieldRawValue(detailRow, 'LOC NOTE DATE'), '2026-10-01');
+  const staleDuplicate = { ...context.fullInventory[0], UNIQUE_ID: 'duplicate-stale', LOCATIONNOTE: 'Wrong sibling note' };
+  const exactDuplicate = { ...context.fullInventory[0], UNIQUE_ID: 'physical-source', LOCATIONNOTE: 'Exact source note' };
+  context.fullInventory = [staleDuplicate, exactDuplicate];
+  assert.equal(context.getLiveDriveNoteRow({ ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', UNIQUE_ID: 'physical-source' }), exactDuplicate);
+  assert.equal(context.getLiveDriveNoteRow({ ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH' }), null, 'ambiguous physical lots do not borrow sibling notes');
+  assert.match(runtime, /'LOC NOTE DATE': Object\.freeze\(\['LOCATIONNOTEDATE', 'LOCATION_NOTE_DATE', 'LOC_NOTE_DATE'/);
+  assert.match(runtime, /if \(!cleanHoldCode\) return ''/);
+  assert.ok(runtime.includes('LOCATION NOTE:</span>'));
+});
+
+test('Docks show grouped Drop summaries and shell Back unwinds Drop, Dock, then Home', () => {
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const render = source('renderDocks');
+  for (const marker of ['Drops ·', 'Rows · Qty', 'Consignee:', 'Rep:', 'Suspended', 'Approved', 'Ready', 'Drop ${escapeHtml(stopCard.stopNum)}', 'compareLocationCodeValues']) {
+    assert.ok(render.includes(marker), `Docks renderer includes ${marker}`);
+  }
+  assert.match(render, /data-docks-drop-card/);
+  assert.match(render, /selectDockStop/);
+  assert.match(render, /Back to Drops/);
+  assert.match(render, /Open Drop/);
+  assert.doesNotMatch(render, /STOP \$\{stopCard\.stopNum\}/);
+
+  const state = { dockViewMode: 'docks', dockViewLevel: 0, selectedDockNum: null, selectedDockStop: null,
+    selectedDockIssueUid: null, selectedDockIssueAllocationId: '', viewHistoryStack: [], currentView: 'docks' };
+  const context = vm.createContext({
+    Map, Set, ...state,
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
+    parseAppNumber: value => value == null || String(value).trim() === '' ? null : Number(value),
+    formatDockDisplayQty: value => String(value),
+    getDockOrderedQtyRaw: row => row.ORDER_QTY,
+    getSuspendTagStatus: row => row.suspend_tag_status || '',
+    getDefaultDockTeamInfo: () => ({}),
+    runDirectTrackedNavigation: (_view, _key, apply) => { apply(); return false; },
+    updateDockModeToggleUi: () => {}, scheduleDocksRender: () => {}, updateGlobalBackButton: () => {},
+    getVisibleSecondaryBack: () => null, getManagerAssignedColumnState: () => ({ editor: false }),
+    getCurrentVisibleViewId: () => 'docks', isDrawerOpen: () => false, closeOpenInteractiveSurfaceForBack: () => false,
+    setMenuOpenState: () => {}, syncGlobalModalBack: () => {}, restorePreviousViewFromHistory: () => false,
+    fastBackHome: () => { context.currentView = 'home'; }, closeManagerAssignedColumnFilter: () => false,
+    BunchNote: { back: () => false }, window: { SalesWorkspace: null }, LocationCode: { back: () => false },
+    document: { getElementById: () => ({ value: '', classList: { add: () => {} } }) }
+  });
+  for (const name of ['normalizeDockViewDockKey', 'normalizeDockViewStopKey', 'buildDockBrowseSummary', 'selectDock', 'selectDockStop', 'resetDockView', 'goBackUniversal']) {
+    const fn = runtime.match(new RegExp(`        function ${name}\\([^]*?^        }`, 'm'))?.[0] || assert.fail(name);
+    vm.runInContext(fn, context);
+  }
+  const qty = context.buildDockBrowseSummary([
+    { ORDER_QTY: '4', suspend_tag_status: 'pending', SUSPEND: 'SUSPEND', STOPNUMBER: '30.0' },
+    { ORDER_QTY: '6', suspend_tag_status: 'approved', STOPNUMBER: '40' },
+    { ORDER_QTY: '5', STOPNUMBER: '40.0' }
+  ]);
+  assert.deepEqual({ rows: qty.rowCount, drops: qty.dropCount, quantity: qty.quantity, suspended: qty.suspended, approved: qty.approved, ready: qty.ready },
+    { rows: 3, drops: 2, quantity: '15', suspended: 1, approved: 1, ready: 1 });
+  context.selectDock('38.0');
+  assert.equal(context.dockViewLevel, 1);
+  assert.equal(context.selectedDockNum, '38');
+  context.selectDockStop('40.0');
+  assert.equal(context.dockViewLevel, 2);
+  assert.equal(context.selectedDockStop, '40');
+  context.goBackUniversal();
+  assert.equal(context.dockViewLevel, 1);
+  assert.equal(context.selectedDockStop, null);
+  context.goBackUniversal();
+  assert.equal(context.dockViewLevel, 0);
+  assert.equal(context.selectedDockNum, null);
+});
+
 test('AV cards omit Project while Item Inquiry opens the Reclass editor', () => {
   const projectLine = html.split('\n').find(line => line.includes('const projectButtonHtml ='));
   assert.match(projectLine, /!\['av', 'av-photo'\]\.includes/);

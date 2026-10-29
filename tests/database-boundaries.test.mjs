@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { appApiDatabaseBridge, databaseBridge } from './helpers/database-bridge.mjs';
 import { databaseContracts, generateContracts } from '../scripts/generate-database-contracts.mjs';
 import { inspectDatabaseBoundary } from '../scripts/check-database-boundaries.mjs';
+import { contracts } from '../services/database-contracts.generated.ts';
 
 test('Company Directory database calls belong only to its compiled service adapter', () => {
   const read = "client.from('ph_company_directory_contacts').select('*')";
@@ -67,6 +68,21 @@ test('validated legacy transport preserves authentication, filters, signal and r
   assert.equal(query.get('itemcode'), 'eq.000012');
   assert.equal(query.get('locationcode'), 'eq.C.06.001');
   assert.equal(query.get('offset'), '50');
+});
+
+test('ph_soc_master select-star accepts the live photo and status columns', async () => {
+  const fields = contracts.tables.ph_soc_master.row.object;
+  const sample = Object.fromEntries(Object.entries(fields).map(([key, field]) => {
+    const schema = field.schema;
+    const nullable = typeof schema === 'object' && 'oneOf' in schema && schema.oneOf.includes('null');
+    return [key, schema === 'json' ? [] : nullable ? null : schema === 'number' ? 1 : schema === 'boolean' ? true : 'fixture'];
+  }));
+  sample.unique_id = 'dock-fixture';
+  sample.photos = [];
+  const bridge = databaseBridge(async () => new Response(JSON.stringify([sample])));
+  const response = await bridge.fetchTable('https://fixture.invalid', 'ph_soc_master', 'select=*', { method: 'GET' }, 1000, 'SOC');
+  assert.deepEqual(await response.json(), [sample]);
+  for (const key of ['photo_url', 'photos', 'pick_note', 'status']) assert.ok(Object.hasOwn(fields, key), `${key} belongs to the live SOC contract`);
 });
 
 test('zero-argument operations and PostgreSQL nullable arguments remain valid', async () => {

@@ -80,3 +80,5 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 - Never edit before the Step 0 read, leave a new canonical function unindexed, add a wildcard fixture, teach an unverified assumption, or close a bug without the `+1` invariant and root-cause entry.
 - Never delete, renumber, skip, todo, or weaken an existing golden invariant; the ratchet is append-only.
 - Never encode a general workflow contract as a one-user or one-rep exception; record deliberate named-user exceptions explicitly and add representative multi-identity coverage for every universal rule.
+
+- Never diagnose an empty operational screen from row counts alone: verify the authenticated response against the generated browser contract and then exercise the same canonical hydration, drill navigation, and live note fields. Dock header aliases and all-user display parity share the existing SOC/master read contracts; no wildcard fixture or new startup read is justified.

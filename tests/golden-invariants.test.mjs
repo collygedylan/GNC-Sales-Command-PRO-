@@ -1334,7 +1334,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.97"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.98"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1361,9 +1361,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
   assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.97"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.98"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.97"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.98"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2176,7 +2176,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.97\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.98\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2704,7 +2704,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.4/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.98\.4/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3354,8 +3354,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.97\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.97\.4/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.98\.1/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.98\.4/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r4'/);
 });
 
@@ -3655,8 +3655,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.97\.1/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.97\.1/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.98\.1/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.98\.1/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -3702,4 +3702,120 @@ test('Invariant 126 (Selected Suspend AV action remains viewport-fixed above the
   selectedCount = 0;
   context.syncSuspendAvOptionSelectionControls();
   assert.deepEqual(toggles.pop(), ['hidden', true]);
+});
+
+import { countImportableErpXlsxRows, normalizeErpRows, parseErpXlsxPage } from '../supabase/functions/_shared/erp-sync.mjs';
+import { deflateRawSync } from 'node:zlib';
+
+test('Invariant 127 (SOC ingestion retains valid Dock aliases regardless of Suspend status)', async () => {
+  const entries = {
+    'xl/workbook.xml': '<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml': '<worksheet><sheetData>' +
+      '<row r="1"><c r="A1" t="inlineStr"><is><t>itemcode</t></is></c><c r="B1" t="inlineStr"><is><t>docknumber</t></is></c><c r="C1" t="inlineStr"><is><t>tripnumber</t></is></c><c r="D1" t="inlineStr"><is><t>drop</t></is></c><c r="E1" t="inlineStr"><is><t>suspend</t></is></c><c r="F1" t="inlineStr"><is><t>suspend-to</t></is></c></row>' +
+      '<row r="2"><c r="A2" t="inlineStr"><is><t>101</t></is></c><c r="B2" t="inlineStr"><is><t>38.0</t></is></c><c r="D2" t="inlineStr"><is><t>40.0</t></is></c></row>' +
+      '<row r="3"><c r="A3" t="inlineStr"><is><t>102</t></is></c><c r="C3" t="inlineStr"><is><t>39.0</t></is></c><c r="D3" t="inlineStr"><is><t>30.0</t></is></c></row>' +
+      '<row r="4"><c r="A4" t="inlineStr"><is><t>103</t></is></c><c r="B4" t="inlineStr"><is><t>0</t></is></c></row>' +
+      '<row r="5"><c r="A5" t="inlineStr"><is><t>104</t></is></c><c r="E5" t="inlineStr"><is><t>SUSPEND</t></is></c><c r="F5" t="inlineStr"><is><t>DC</t></is></c></row>' +
+      '<row r="6"><c r="A6" t="inlineStr"><is><t>105</t></is></c><c r="B6" t="inlineStr"><is><t>null</t></is></c></row>' +
+      '<row r="7"><c r="A7" t="inlineStr"><is><t>106</t></is></c><c r="B7" t="inlineStr"><is><t>nan</t></is></c></row>' +
+      '<row r="8"><c r="A8" t="inlineStr"><is><t>107</t></is></c><c r="B8" t="inlineStr"><is><t>none</t></is></c></row>' +
+      '</sheetData></worksheet>',
+  };
+  const local = [], central = [];
+  let offset = 0;
+  for (const [name, content] of Object.entries(entries)) {
+    const filename = Buffer.from(name), raw = Buffer.from(content), compressed = deflateRawSync(raw);
+    const header = Buffer.alloc(30 + filename.length);
+    header.writeUInt32LE(0x04034b50, 0); header.writeUInt16LE(20, 4); header.writeUInt16LE(8, 8);
+    header.writeUInt32LE(compressed.length, 18); header.writeUInt32LE(raw.length, 22); header.writeUInt16LE(filename.length, 26); filename.copy(header, 30);
+    local.push(header, compressed);
+    const record = Buffer.alloc(46 + filename.length);
+    record.writeUInt32LE(0x02014b50, 0); record.writeUInt16LE(20, 4); record.writeUInt16LE(20, 6); record.writeUInt16LE(8, 10);
+    record.writeUInt32LE(compressed.length, 20); record.writeUInt32LE(raw.length, 24); record.writeUInt16LE(filename.length, 28);
+    record.writeUInt32LE(offset, 42); filename.copy(record, 46); central.push(record); offset += header.length + compressed.length;
+  }
+  const centralData = Buffer.concat(central), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(Object.keys(entries).length, 8); end.writeUInt16LE(Object.keys(entries).length, 10);
+  end.writeUInt32LE(centralData.length, 12); end.writeUInt32LE(offset, 16);
+  const bytes = Buffer.concat([...local, centralData, end]);
+  const page = await parseErpXlsxPage(bytes, 0, 10, { dataset: 'soc' });
+  assert.deepEqual(page.rows.map(row => row.itemcode), ['101', '102', '104']);
+  assert.equal(await countImportableErpXlsxRows(bytes, 'soc'), 3);
+  const rows = await normalizeErpRows(page.rows, 'soc', ['unique_id', 'itemcode', 'dock', 'stopnumber']);
+  assert.deepEqual(rows.map(row => [row.dock ?? null, row.stopnumber ?? null]), [['38.0', '40.0'], ['39.0', '30.0'], [null, null]]);
+});
+
+test('Invariant 128 (Season Priority and Item Detail read notes from the exact live inventory row)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const context = vm.createContext({
+    fullInventory: [
+      { UNIQUE_ID: 'old-sibling', ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', HOLDSTOPCODE: '', HOLDSTOPREASON: 'stale hold', HOLDSTOPBEGINDATE: '2026-01-01', LOCATIONNOTE: 'wrong note' },
+      { UNIQUE_ID: 'current-row', ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', HOLDSTOPCODE: '', HOLDSTOPREASON: 'stale hold', HOLDSTOPBEGINDATE: '2026-01-01', LOCATIONNOTE: 'Current location note', LOCATIONNOTEDATE: '2026-10-28', LOCATIONPTN1: 'Legacy text' }
+    ],
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
+    escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+  });
+  for (const name of ['getLiveDriveNoteRow', 'renderManagerSeasonPriorityLiveNotes', 'getDriveDetailFieldKeys', 'getDriveDetailFieldRawValue']) {
+    vm.runInContext(functionSource('assets/app-runtime.js', name), context);
+  }
+  const aliasMap = runtime.match(/        const DRIVE_DETAIL_ITEM_FIELD_ALIASES = Object\.freeze\(\{[^]*?\n        \}\);/)?.[0];
+  assert.ok(aliasMap, 'detail note aliases exist');
+  vm.runInContext(aliasMap, context);
+  const reportRow = { UNIQUE_ID: 'current-row', ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH' };
+  const note = context.renderManagerSeasonPriorityLiveNotes(reportRow);
+  assert.match(note, /Location Note: Current location note/);
+  assert.doesNotMatch(note, /Hold\/Stop|stale hold|wrong note/);
+  assert.equal(context.getDriveDetailFieldRawValue({ ...reportRow, HOLDSTOPREASON: 'stale report reason' }, 'HOLDSTOPREASON'), '');
+  assert.equal(context.getDriveDetailFieldRawValue(reportRow, 'LOCATIONNOTE'), 'Current location note');
+  assert.equal(context.getDriveDetailFieldRawValue(reportRow, 'LOC NOTE DATE'), '2026-10-28');
+});
+
+test('Invariant 129 (Docks retains distinct Dock and Drop levels and one-step shell Back)', () => {
+  const render = functionSource('assets/app-runtime.js', 'renderDocks');
+  for (const marker of ['Drops ·', 'Rows · Qty', 'Drop ${escapeHtml(stopCard.stopNum)}', 'Back to Drops', 'selectDockStop', 'compareLocationCodeValues']) assert.ok(render.includes(marker), marker);
+  assert.match(render, /data-docks-drop-card/);
+  assert.doesNotMatch(render, /STOP \$\{stopCard\.stopNum\}/);
+  const context = vm.createContext({
+    dockViewMode: 'docks', dockViewLevel: 0, selectedDockNum: null, selectedDockStop: null, selectedDockIssueUid: null,
+    selectedDockIssueAllocationId: '', viewHistoryStack: [],
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
+    runDirectTrackedNavigation: (_view, _key, callback) => { callback(); return false; }, updateDockModeToggleUi: () => {},
+    scheduleDocksRender: () => {}, updateGlobalBackButton: () => {}, getVisibleSecondaryBack: () => null,
+    getManagerAssignedColumnState: () => ({ editor: false }), getCurrentVisibleViewId: () => 'docks', isDrawerOpen: () => false,
+    closeOpenInteractiveSurfaceForBack: () => false, setMenuOpenState: () => {}, BunchNote: { back: () => false },
+    window: { SalesWorkspace: null }, LocationCode: { back: () => false }, restorePreviousViewFromHistory: () => false,
+    fastBackHome: () => {}, document: { getElementById: () => ({ value: '', classList: { add: () => {} } }) }
+  });
+  for (const name of ['normalizeDockViewDockKey', 'normalizeDockViewStopKey', 'selectDock', 'selectDockStop', 'resetDockView', 'goBackUniversal']) {
+    vm.runInContext(functionSource('assets/app-runtime.js', name), context);
+  }
+  context.selectDock('38.0');
+  context.selectDockStop('40.0');
+  assert.deepEqual([context.dockViewLevel, context.selectedDockNum, context.selectedDockStop], [2, '38', '40']);
+  context.goBackUniversal();
+  assert.deepEqual([context.dockViewLevel, context.selectedDockNum, context.selectedDockStop], [1, '38', null]);
+  context.goBackUniversal();
+  assert.deepEqual([context.dockViewLevel, context.selectedDockNum, context.selectedDockStop], [0, null, null]);
+});
+
+import { contracts } from '../services/database-contracts.generated.ts';
+
+test('Invariant 130 (SOC select-star contract includes live photo and status columns)', async () => {
+  const fields = contracts.tables.ph_soc_master.row.object;
+  const row = Object.fromEntries(Object.entries(fields).map(([key, field]) => {
+    const schema = field.schema;
+    const nullable = typeof schema === 'object' && 'oneOf' in schema && schema.oneOf.includes('null');
+    return [key, schema === 'json' ? [] : nullable ? null : schema === 'number' ? 1 : schema === 'boolean' ? true : 'fixture'];
+  }));
+  row.unique_id = 'invariant-130';
+  row.photos = [];
+  const bridge = databaseBridge(async () => new Response(JSON.stringify([row])));
+  const result = await bridge.fetchTable('https://fixture.invalid', 'ph_soc_master', 'select=*', { method: 'GET' }, 1000, 'SOC');
+  assert.deepEqual(await result.json(), [row]);
+  for (const [key, type] of [['photo_url', 'string'], ['photos', 'json'], ['pick_note', 'string'], ['status', 'string']]) {
+    const schema = fields[key]?.schema;
+    assert.ok(schema, `${key} is represented in the physical table contract`);
+    assert.ok(schema === type || (typeof schema === 'object' && 'oneOf' in schema && schema.oneOf.includes(type)), `${key} has ${type} contract`);
+  }
 });

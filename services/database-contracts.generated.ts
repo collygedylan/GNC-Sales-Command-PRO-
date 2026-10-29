@@ -69285,7 +69285,26 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "photo_url": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "photos": {
+            "schema": "json"
+          },
           "pic_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "pick_note": {
             "schema": {
               "oneOf": [
                 "string",
@@ -69534,6 +69553,14 @@ export const contracts: RuntimeContracts<Database> = {
             }
           },
           "stagename": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "status": {
             "schema": {
               "oneOf": [
                 "string",
@@ -70501,7 +70528,29 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "photo_url": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photos": {
+            "schema": "json",
+            "optional": true
+          },
           "pic_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "pick_note": {
             "schema": {
               "oneOf": [
                 "string",
@@ -70781,6 +70830,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "stagename": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "status": {
             "schema": {
               "oneOf": [
                 "string",
@@ -71768,7 +71826,29 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "photo_url": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "photos": {
+            "schema": "json",
+            "optional": true
+          },
           "pic_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "pick_note": {
             "schema": {
               "oneOf": [
                 "string",
@@ -72048,6 +72128,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "stagename": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "status": {
             "schema": {
               "oneOf": [
                 "string",

@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.97';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.98';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13235,9 +13235,12 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 item.dockno,
                 item.DOCK,
                 item.dock,
+                item.TRIPNUMBER,
+                item.tripnumber,
                 ''
             );
-            item.DOCK = firstNonEmptyValue(item.DOCK, item.dock, item.DOCK_NUM, '');
+            item.DOCK_NUM = normalizeDockViewDockKey(item.DOCK_NUM);
+            item.DOCK = item.DOCK_NUM;
             item.STOPNUMBER = firstNonEmptyValue(
                 item.STOPNUMBER,
                 item.stopnumber,
@@ -13247,8 +13250,11 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 item.stopno,
                 item.STOP,
                 item.stop,
+                item.DROP,
+                item.drop,
                 ''
             );
+            item.STOPNUMBER = normalizeDockViewStopKey(item.STOPNUMBER);
             item.TRIPNUMBER = firstNonEmptyValue(
                 item.TRIPNUMBER,
                 item.tripnumber,
@@ -26714,7 +26720,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.97').trim() || 'AgData v2.3.97';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.98').trim() || 'AgData v2.3.98';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27529,7 +27535,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
             'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'HOLDSTOPCODE', 'HOLDSTOPBEGINDATE',
             'HOLDSTOPREASON', 'HRSSEASONBEGIN', 'SEASON_SUPPLY', 'SEASON_OH', 'SEASON_DEMAND',
-            'S_LTS', 'OVERSELLPERCENTAGE', 'ITEMSPEC', 'LOCATIONNOTE', 'LOCATIONNOTEDATE',
+            'S_LTS', 'OVERSELLPERCENTAGE', 'ITEMSPEC', 'LOCATIONNOTE', 'LOC NOTE DATE',
             'SUSPEND', 'SUSPENDTO', 'SPECIALPULLER', 'PULLTAGNOTE1', 'PULLTAGNOTE2', 'FIELDTAGCOLOR',
             'SALESNOTE', 'INVENTORYNOTE', 'LOCATIONPTN1', 'LOCATIONPTN2', 'PRISETBY', 'PRIUPDATED',
             'BYPASSLOC', 'LARGEPTRQTY', 'MAXORDERQUANTITY', 'LOCHOLD', 'LISTPRICE', 'EXT_PTRONHAND',
@@ -27542,7 +27548,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const DRIVE_DETAIL_ITEM_FIELD_ALIASES = Object.freeze({
             HRSSEASONBEGIN: Object.freeze(['HRSSEASONBEGIN', 'HSREASONBEGIN']),
             SEASON_SUPPLY: Object.freeze(['SEASON_SUPPLY', 'SEASONSUPPLY']),
-            SUSPENDTO: Object.freeze(['SUSPEND_TO', 'SUSPENDTO'])
+            SUSPENDTO: Object.freeze(['SUSPEND_TO', 'SUSPENDTO']),
+            'LOC NOTE DATE': Object.freeze(['LOCATIONNOTEDATE', 'LOCATION_NOTE_DATE', 'LOC_NOTE_DATE', 'locationnotedate', 'loc_note_date', 'LOCATIONPTN1', 'locationptn1'])
         });
         const GLOBAL_HEADER_SEARCH_CONFIG = {
             av: 'av-search-container',
@@ -57481,7 +57488,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function normalizeDockViewDockKey(dockNum = '') {
             const normalized = String(dockNum || '').trim();
-            if (!normalized || /^(?:nan|null|none)$/i.test(normalized)) return 'Unassigned';
+            if (!normalized || /^(?:nan|null|none|0(?:\.0+)?)$/i.test(normalized)) return 'Unassigned';
             return normalized.replace(/\.0+$/, '') || 'Unassigned';
         }
 
@@ -57492,8 +57499,38 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function normalizeDockViewStopKey(stopNum = '') {
-            const normalized = String(stopNum || '').trim();
+            const normalized = String(stopNum || '').trim().replace(/^(-?\d+)\.0+$/, '$1');
             return normalized || 'Unassigned';
+        }
+
+        function buildDockBrowseSummary(rows = []) {
+            const source = Array.isArray(rows) ? rows : [];
+            let quantity = 0;
+            let quantityRows = 0;
+            let suspended = 0;
+            let approved = 0;
+            source.forEach(row => {
+                const rawQty = typeof getDockOrderedQtyRaw === 'function' ? getDockOrderedQtyRaw(row) : '';
+                const qty = typeof parseAppNumber === 'function' ? parseAppNumber(rawQty) : Number(rawQty);
+                if (rawQty !== '' && rawQty !== null && rawQty !== undefined && Number.isFinite(qty)) {
+                    quantity += Math.max(0, qty);
+                    quantityRows += 1;
+                }
+                const candidate = String(firstNonEmptyValue(row && row.suspend_candidate_state, row && row.SUSPEND_CANDIDATE_STATE, '') || '').trim().toLowerCase();
+                const tag = String(firstNonEmptyValue(row && row.suspend_tag_status, row && row.SUSPEND_TAG_STATUS, '') || '').trim().toLowerCase();
+                if (candidate === 'approved' || tag === 'approved') approved += 1;
+                else if (String(firstNonEmptyValue(row && row.SUSPEND, row && row.suspend, '') || '').trim().toUpperCase() === 'SUSPEND'
+                    || ['pending', 'completed', 'awaiting_rep'].includes(candidate)
+                    || ['pending', 'completed', 'awaiting_rep'].includes(tag)) suspended += 1;
+            });
+            return {
+                rowCount: source.length,
+                quantity: quantityRows ? formatDockDisplayQty(quantity) : '—',
+                dropCount: new Set(source.map(row => normalizeDockViewStopKey(firstNonEmptyValue(row && row.STOPNUMBER, row && row.stopnumber, row && row.DROP, row && row.drop, ''))).filter(value => value !== 'Unassigned')).size,
+                suspended,
+                approved,
+                ready: Math.max(0, source.length - suspended - approved)
+            };
         }
 
         function normalizeDockTeamInfo(info = null) {
@@ -90700,9 +90737,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return String(a).localeCompare(String(b), undefined, {numeric: true});
             };
             const sortDockRows = (a, b) => {
-                let stopA = parseFloat(a.STOPNUMBER); if(isNaN(stopA)) stopA = 9999;
-                let stopB = parseFloat(b.STOPNUMBER); if(isNaN(stopB)) stopB = 9999;
+                let stopA = parseFloat(normalizeDockViewStopKey(firstNonEmptyValue(a.STOPNUMBER, a.stopnumber, ''))); if(isNaN(stopA)) stopA = 9999;
+                let stopB = parseFloat(normalizeDockViewStopKey(firstNonEmptyValue(b.STOPNUMBER, b.stopnumber, ''))); if(isNaN(stopB)) stopB = 9999;
                 if(stopA !== stopB) return stopA - stopB;
+                const locationCompare = compareLocationCodeValues(firstNonEmptyValue(a.LOCATIONCODE, a.locationcode, ''), firstNonEmptyValue(b.LOCATIONCODE, b.locationcode, ''));
+                if (locationCompare !== 0) return locationCompare;
+                const lineA = String(firstNonEmptyValue(a.ORDERLINE, a.orderline, a.ORDER_LINE, a.order_line, a.LINENO, a.lineno, a.LINE_NUMBER, a.line_number, a.LINESEQ, a.lineseq, a.SEQUENCE, a.sequence, '') || '').trim();
+                const lineB = String(firstNonEmptyValue(b.ORDERLINE, b.orderline, b.ORDER_LINE, b.order_line, b.LINENO, b.lineno, b.LINE_NUMBER, b.line_number, b.LINESEQ, b.lineseq, b.SEQUENCE, b.sequence, '') || '').trim();
+                const lineCompare = lineA.localeCompare(lineB, undefined, { numeric: true, sensitivity: 'base' });
+                if (lineCompare !== 0) return lineCompare;
                 const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''), undefined, { sensitivity: 'base' });
                 if (nameCompare !== 0) return nameCompare;
                 return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, {numeric:true, sensitivity:'base'});
@@ -90714,10 +90757,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     const dockNum = normalizeDockViewDockKey(item && item.DOCK_NUM);
                     let entry = dockGroups.get(dockNum);
                     if (!entry) {
-                        entry = { dockNum, count: 0, hasCoUt: false, states: new Set(), planStartDates: new Set(), tripCounts: new Map() };
+                        entry = { dockNum, count: 0, rows: [], hasCoUt: false, states: new Set(), planStartDates: new Set(), tripCounts: new Map() };
                         dockGroups.set(dockNum, entry);
                     }
                     entry.count += 1;
+                    entry.rows.push(item);
                     const tripNumber = String(firstNonEmptyValue(item && item.TRIPNUMBER, '') || '').trim();
                     if (tripNumber) entry.tripCounts.set(tripNumber, (entry.tripCounts.get(tripNumber) || 0) + 1);
                     const state = getDockCardStateValue(item);
@@ -90734,7 +90778,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     const trips = Array.from(entry.tripCounts.entries())
                         .sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }))
                         .map(([tripNumber, rowCount]) => ({ tripNumber, rowCount, savedInfo: getDockTeamInfo(tripNumber) }));
-                    return { dockNum, dockLabel: formatDockViewDockLabel(dockNum), count: entry.count, states: Array.from(entry.states).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), planStartDates: Array.from(entry.planStartDates).sort(compareDockPlanStartLabels), trips, dockTeamRenderVersion: dockTeamStatusRenderVersion, borderCls: entry.hasCoUt ? 'border-red-500' : 'border-[#007a4d]', bgCls: entry.hasCoUt ? 'bg-red-50' : 'bg-green-50', textCls: entry.hasCoUt ? 'text-red-700' : 'text-[#007a4d]' };
+                    const summary = buildDockBrowseSummary(entry.rows);
+                    const consigneeNames = [...new Set(entry.rows.map(row => String(firstNonEmptyValue(row.CONSIGNEENAME, row.CONSIGNEE, row.CUSTOMERNAME, '') || '').trim()).filter(Boolean))];
+                    const repNames = [...new Set(entry.rows.map(row => String(firstNonEmptyValue(row.SALESREPNAME, row.SALESREPID, row.SALESREP, '') || '').trim()).filter(Boolean))];
+                    return { dockNum, dockLabel: formatDockViewDockLabel(dockNum), count: entry.count, summary, consigneeSummary: consigneeNames.slice(0, 3).join(', ') || 'Unknown Consignee', repSummary: repNames.slice(0, 3).join(', ') || 'Unknown Rep', states: Array.from(entry.states).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), planStartDates: Array.from(entry.planStartDates).sort(compareDockPlanStartLabels), trips, dockTeamRenderVersion: dockTeamStatusRenderVersion, borderCls: entry.hasCoUt ? 'border-red-500' : 'border-[#007a4d]', bgCls: entry.hasCoUt ? 'bg-red-50' : 'bg-green-50', textCls: entry.hasCoUt ? 'text-red-700' : 'text-[#007a4d]' };
                 });
                 renderMarkupChunkedByKey('docks-main', container, crumb, dockCards, 'Select a Dock', (dockCard) => {
                     const statesLabel = dockCard.states.length ? dockCard.states.join(', ') : '-';
@@ -90748,7 +90795,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         const editButton = canEditDockConfig ? `<button class="mt-3 w-full rounded-lg border border-gray-200 bg-white py-2 text-xs font-bold text-gray-600 shadow-sm transition-colors hover:border-[#007a4d] hover:text-[#007a4d]" ${buildFastInvokeAttrs('openDockInfoModal', [dockCard.dockNum, trip.tripNumber], `Edit Trip ${trip.tripNumber}`)}><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Trip Team & Status</button>` : '';
                         return `<section class="rounded-xl border border-gray-200 bg-gray-50 p-3"><div class="mb-2 flex items-center justify-between gap-2"><div><span class="text-[9px] font-black uppercase tracking-wider text-gray-400">Trip</span><div class="text-sm font-black text-gray-800">${escapeHtml(trip.tripNumber)}</div></div><div class="text-right"><span class="rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${statusColor}">${escapeHtml(info.status)}</span><div class="mt-1 text-[8px] font-bold uppercase tracking-wider text-gray-400">${trip.rowCount} rows</div></div></div><div class="grid grid-cols-3 gap-2"><div class="rounded border border-gray-200 bg-white p-2 text-center"><div class="mb-0.5 text-[8px] font-bold uppercase text-gray-400">Checker</div><div class="truncate text-xs font-bold text-gray-700">${escapeHtml(info.checker || '-')}</div></div><div class="rounded border border-gray-200 bg-white p-2 text-center"><div class="mb-0.5 text-[8px] font-bold uppercase text-gray-400">Inspector</div><div class="truncate text-xs font-bold text-gray-700">${escapeHtml(info.inspector || '-')}</div></div><div class="rounded border border-gray-200 bg-white p-2 text-center"><div class="mb-0.5 text-[8px] font-bold uppercase text-gray-400">Mistake Guy</div><div class="truncate text-xs font-bold text-gray-700">${escapeHtml(info.mistake || '-')}</div></div></div>${editButton}</section>`;
                     }).join('') : '<div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] font-bold text-amber-800">No TRIPNUMBER is available for these rows.</div>';
-                    return `<div class="bg-white border-2 ${dockCard.borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 cursor-pointer active:${dockCard.bgCls} transition-colors" ${buildFastInvokeAttrs('selectDock', [dockCard.dockNum], `Open ${dockCard.dockLabel}`)}><div class="flex justify-between items-center"><div class="flex items-center gap-3"><div class="${dockCard.bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${dockCard.textCls}"></i></div><div><div class="font-black text-lg ${dockCard.textCls} leading-tight">${dockCard.dockLabel}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${dockCard.count} Items</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="mt-3 grid grid-cols-1 gap-2 text-[10px] font-bold uppercase tracking-wider sm:grid-cols-2"><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-map-pin mr-1 text-[#007a4d]"></i><span class="text-gray-400">States:</span> ${escapeHtml(statesLabel)}</div><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-calendar-blank mr-1 text-[#007a4d]"></i><span class="text-gray-400">Plan Start:</span> ${escapeHtml(planStartLabel)}</div></div></div><div class="space-y-3 border-t border-gray-100 bg-gray-50 p-3">${tripHtml}</div></div>`;
+                    const summary = dockCard.summary;
+                    const statusSummary = [summary.suspended ? `Suspended ${summary.suspended}` : '', summary.approved ? `Approved ${summary.approved}` : ''].filter(Boolean).join(' · ') || 'Ready';
+                    return `<div class="bg-white border-2 ${dockCard.borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 cursor-pointer active:${dockCard.bgCls} transition-colors" ${buildFastInvokeAttrs('selectDock', [dockCard.dockNum], `Open ${dockCard.dockLabel}`)}><div class="flex justify-between items-center"><div class="flex items-center gap-3"><div class="${dockCard.bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${dockCard.textCls}"></i></div><div><div class="font-black text-lg ${dockCard.textCls} leading-tight">${dockCard.dockLabel}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${summary.dropCount} Drops · ${summary.rowCount} Rows · Qty ${escapeHtml(summary.quantity)}</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider"><span class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">Consignee: ${escapeHtml(dockCard.consigneeSummary)}</span><span class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">Rep: ${escapeHtml(dockCard.repSummary)}</span><span class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">${escapeHtml(statusSummary)}</span></div><div class="mt-2 grid grid-cols-1 gap-2 text-[10px] font-bold uppercase tracking-wider sm:grid-cols-2"><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-map-pin mr-1 text-[#007a4d]"></i><span class="text-gray-400">States:</span> ${escapeHtml(statesLabel)}</div><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-calendar-blank mr-1 text-[#007a4d]"></i><span class="text-gray-400">Plan Start:</span> ${escapeHtml(planStartLabel)}</div></div></div><div class="space-y-3 border-t border-gray-100 bg-gray-50 p-3">${tripHtml}</div></div>`;
                 }, {
                     approxCardHeight: 260,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">No dock items found.</div>`,
@@ -90783,11 +90832,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         const progress = getDockItemProgress(item.UNIQUE_ID);
                         return progress.checker && progress.inspector;
                     }).length;
-                    return { stopNum, count: stopItems.length, doneCount, rep: lead.SALESREPNAME || lead.SALESREPID || 'Unknown Rep', cust: lead.CUSTOMERNAME || 'Unknown Customer', cons: lead.CONSIGNEENAME || lead.CONSIGNEE || '', state: lead.CONSIGNEESTATE || lead.STATE || 'N/A' };
+                    return { stopNum, count: stopItems.length, doneCount, summary: buildDockBrowseSummary(stopItems), rep: lead.SALESREPNAME || lead.SALESREPID || 'Unknown Rep', cust: lead.CUSTOMERNAME || 'Unknown Customer', cons: lead.CONSIGNEENAME || lead.CONSIGNEE || '', state: lead.CONSIGNEESTATE || lead.STATE || 'N/A' };
                 });
                 const prefixHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="return resetDockView()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
                 renderMarkupChunkedByKey('docks-stops', container, crumb, stopCards, selectedDockLabel, (stopCard) => {
-                    return `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform" ${buildFastInvokeAttrs('selectDockStop', [stopCard.stopNum], `Open Stop ${stopCard.stopNum}`)}><div class="p-4"><div class="flex justify-between items-start gap-3 mb-2"><div><div class="font-black text-xl text-[#007a4d] leading-none">STOP ${stopCard.stopNum}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">${stopCard.count} Rows</div></div><div class="text-right"><div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${stopCard.doneCount === stopCard.count ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${stopCard.doneCount}/${stopCard.count} Done</div></div></div><div class="text-sm font-bold text-gray-800 leading-tight">${stopCard.cust}</div>${stopCard.cons && stopCard.cons !== stopCard.cust ? `<div class="text-xs font-semibold text-gray-500 mt-1">${stopCard.cons}</div>` : ''}<div class="flex flex-wrap gap-2 mt-3 text-[10px] font-bold uppercase tracking-wider"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="ph-bold ph-user mr-1"></i>${stopCard.rep}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200"><i class="ph-bold ph-map-pin mr-1"></i>${stopCard.state}</span></div></div><div class="bg-gray-50 border-t border-gray-100 px-4 py-3 flex items-center justify-between"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open Stop</span><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div></div>`;
+                    const summary = stopCard.summary;
+                    const badges = [summary.suspended ? `<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-amber-800">Suspended ${summary.suspended}</span>` : '', summary.approved ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-800">Approved ${summary.approved}</span>` : '', summary.ready ? `<span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Ready ${summary.ready}</span>` : ''].filter(Boolean).join('');
+                    return `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform" data-docks-drop-card="${escapeHtml(stopCard.stopNum)}" ${buildFastInvokeAttrs('selectDockStop', [stopCard.stopNum], `Open Drop ${stopCard.stopNum}`)}><div class="p-4"><div class="flex justify-between items-start gap-3 mb-2"><div><div class="font-black text-xl text-[#007a4d] leading-none">Drop ${escapeHtml(stopCard.stopNum)}</div><div class="mt-2 inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-blue-700">${escapeHtml(selectedDockLabel)}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">${stopCard.count} Rows · Qty ${escapeHtml(summary.quantity)}</div></div><div class="text-right"><div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${stopCard.doneCount === stopCard.count ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${stopCard.doneCount}/${stopCard.count} Done</div></div></div><div class="text-sm font-bold text-gray-800 leading-tight">${escapeHtml(stopCard.cust)}</div>${stopCard.cons && stopCard.cons !== stopCard.cust ? `<div class="text-xs font-semibold text-gray-500 mt-1">${escapeHtml(stopCard.cons)}</div>` : ''}<div class="flex flex-wrap gap-2 mt-3 text-[10px] font-bold uppercase tracking-wider"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="ph-bold ph-user mr-1"></i>${escapeHtml(stopCard.rep)}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200"><i class="ph-bold ph-map-pin mr-1"></i>${escapeHtml(stopCard.state)}</span>${badges}</div></div><div class="bg-gray-50 border-t border-gray-100 px-4 py-3 flex items-center justify-between"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open Drop</span><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div></div>`;
                 }, { prefixHtml, approxCardHeight: 175, emptyHtml: `<div class="p-8 text-center text-gray-400">No stops remain in this dock.</div>` });
                 return;
             }
@@ -90809,12 +90860,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const progress = getDockItemProgress(item.UNIQUE_ID);
                 return progress.checker && progress.inspector;
             }).length;
-            crumb.innerText = `${selectedDockLabel} > Stop ${selectedDockStop}`;
-            const stopHeaderHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="dockViewLevel=1; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Stops</div><div class="bg-white border border-green-200 rounded-xl shadow-lg mb-4 overflow-hidden"><div class="bg-gradient-to-r from-[#007a4d] to-[#119b6a] text-white p-4 border-b border-green-200/40"><div class="flex justify-between items-center gap-3 mb-2 border-b border-white/20 pb-2"><div><div class="font-black text-xl tracking-wider">STOP ${selectedDockStop}</div><div class="text-[10px] font-bold text-green-50 uppercase tracking-wider mt-1">${stopItems.length} Rows</div></div><div class="flex items-center gap-2"><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15">${doneCount}/${stopItems.length} Done</div></div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-green-50 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-green-50 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-white">${state}</span></div></div></div>`;
-            renderMarkupChunkedByKey('docks-stop-items', container, crumb, stopItems, `${selectedDockLabel} > Stop ${selectedDockStop}`, (item) => generateCard(item, 'docks', 'status-orange'), {
+            crumb.innerText = `${selectedDockLabel} > Drop ${selectedDockStop}`;
+            const stopHeaderHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="dockViewLevel=1; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Drops</div><div class="bg-white border border-green-200 rounded-xl shadow-lg mb-4 overflow-hidden"><div class="bg-gradient-to-r from-[#007a4d] to-[#119b6a] text-white p-4 border-b border-green-200/40"><div class="flex justify-between items-center gap-3 mb-2 border-b border-white/20 pb-2"><div><div class="font-black text-xl tracking-wider">Drop ${escapeHtml(selectedDockStop)}</div><div class="text-[10px] font-bold text-green-50 uppercase tracking-wider mt-1">${stopItems.length} Rows · Qty ${escapeHtml(buildDockBrowseSummary(stopItems).quantity)}</div></div><div class="flex items-center gap-2"><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15"><i class="ph-bold ph-user mr-1"></i>${escapeHtml(rep)}</div><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15">${doneCount}/${stopItems.length} Done</div></div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${escapeHtml(cust)}</div>${cons && cons !== cust ? `<div class="text-[12px] text-green-50 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${escapeHtml(cons)}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-green-50 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-white">${escapeHtml(state)}</span></div></div></div>`;
+            renderMarkupChunkedByKey('docks-stop-items', container, crumb, stopItems, `${selectedDockLabel} > Drop ${selectedDockStop}`, (item) => generateCard(item, 'docks', 'status-orange'), {
                 prefixHtml: stopHeaderHtml,
                 approxCardHeight: 265,
-                emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this stop.</div>`,
+                emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this Drop.</div>`,
                 renderSignature: buildDocksStopItemsRenderSignature(selectedDockLabel, selectedDockStop, stopItems),
                 verifyRowSelector: '[data-docks-stop-card]',
                 reserveSpace: true
@@ -103093,10 +103144,71 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return DRIVE_DETAIL_ITEM_FIELD_ALIASES[label] || [label];
         }
 
+        function getLiveDriveNoteRow(item) {
+            if (!item || !Array.isArray(fullInventory)) return null;
+            const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim().toUpperCase();
+            const location = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim().toUpperCase();
+            const lot = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, item.LOT, '') || '').trim().toUpperCase();
+            if (!itemCode || !location || !lot) return null;
+            const source = String(firstNonEmptyValue(item.SOURCE, item.source, '') || '').trim().toUpperCase();
+            const sourceUid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.sourceUid, '') || '').trim();
+            if (sourceUid) {
+                const exactUidRow = fullInventory.find(row => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === sourceUid);
+                if (exactUidRow) return exactUidRow;
+            }
+            const candidates = fullInventory.filter(row => {
+                if (String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, '') || '').trim().toUpperCase() !== itemCode
+                    || String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '') || '').trim().toUpperCase() !== location
+                    || String(firstNonEmptyValue(row.LOTCODE, row.lotcode, row.LOT, '') || '').trim().toUpperCase() !== lot) return false;
+                return !source || String(firstNonEmptyValue(row.SOURCE, row.source, '') || '').trim().toUpperCase() === source;
+            });
+            return candidates.length === 1 ? candidates[0] : null;
+        }
+
+        function renderManagerSeasonPriorityLiveNotes(row) {
+            const live = getLiveDriveNoteRow(row);
+            if (!live) return '';
+            const value = (...keys) => {
+                for (const key of keys) {
+                    const candidate = firstNonEmptyValue(live[key], live[String(key).toLowerCase()], '');
+                    const text = String(candidate == null ? '' : candidate).trim();
+                    if (text && !['NULL', 'UNDEFINED', '--', '-'].includes(text.toUpperCase())) return text;
+                }
+                return '';
+            };
+            const code = value('HOLDSTOPCODE', 'HOLSTOPCODE', 'HOLD_STOP_CODE');
+            const reason = value('HOLDSTOPREASON', 'HOLD_STOP_REASON');
+            const since = value('HOLDSTOPBEGINDATE', 'HOLDSTOP_BEGIN_DATE');
+            const locationNote = value('LOCATIONNOTE', 'LOCATION_NOTE');
+            const noteDate = value('LOCATIONNOTEDATE', 'LOCATION_NOTE_DATE', 'LOC_NOTE_DATE', 'LOCATIONPTN1');
+            const lines = [];
+            if (code) lines.push(`Hold/Stop: ${code}${reason ? ` - ${reason}` : ''}${since ? ` · ${since}` : ''}`);
+            if (locationNote) lines.push(`Location Note: ${locationNote}${noteDate ? ` · ${noteDate}` : ''}`);
+            return lines.map(line => `<p class="mt-2 whitespace-pre-wrap break-words text-sm text-slate-700">${escapeHtml(line)}</p>`).join('');
+        }
+
         function getDriveDetailFieldRawValue(item, label = '') {
             const row = item || activeItem;
             if (!row) return '';
             const keys = getDriveDetailFieldKeys(label);
+            const noteFields = new Set(['HOLDSTOPCODE', 'HOLDSTOPBEGINDATE', 'HOLDSTOPREASON', 'LOCATIONNOTE', 'LOCATIONNOTEDATE', 'LOCATION_NOTE_DATE', 'LOC_NOTE_DATE', 'LOCATIONPTN1']);
+            const liveNoteRow = keys.some(key => noteFields.has(String(key || '').trim().toUpperCase())) ? getLiveDriveNoteRow(row) : null;
+            if (liveNoteRow) {
+                const holdField = keys.some(key => ['HOLDSTOPREASON', 'HOLDSTOPBEGINDATE', 'HOLDSTOP_BEGIN_DATE'].includes(String(key || '').trim().toUpperCase()));
+                if (holdField && !String(firstNonEmptyValue(liveNoteRow.HOLDSTOPCODE, liveNoteRow.holdstopcode, liveNoteRow.HOLSTOPCODE, liveNoteRow.holstopcode, liveNoteRow.HOLD_STOP_CODE, '') || '').trim()) return '';
+                for (const key of keys) {
+                    const candidates = [liveNoteRow[key], liveNoteRow[String(key || '').toLowerCase()]];
+                    for (const value of candidates) {
+                        if (value === null || value === undefined) continue;
+                        const text = String(value).trim();
+                        if (!text || text.toUpperCase() === 'NULL') continue;
+                        return value;
+                    }
+                }
+                // The complete live row owns explicit blanks; do not fall back to stale detail metadata.
+                if (keys.some(key => Object.prototype.hasOwnProperty.call(liveNoteRow, key)
+                    || Object.prototype.hasOwnProperty.call(liveNoteRow, String(key || '').toLowerCase()))) return '';
+            }
             if (shouldHideSharedAppPayloadForInvalidAvRules(row)) {
                 const hidesSharedField = keys.some((key) => INVALID_SHARED_AV_DISPLAY_KEYS.has(String(key || '').trim().toUpperCase()) || String(key || '').trim().toUpperCase() === 'SALESNOTE');
                 if (hidesSharedField) return '';
@@ -139933,9 +140045,10 @@ C.14.043 C.15.000
                 const busy = state.pending.has(row.sourceUid), assigned = Array.isArray(row.resolvedAssignedTo) ? row.resolvedAssignedTo.join(', ') || 'Unassigned'
                     : (row.warehouseAssignedTo || []).length ? row.warehouseAssignedTo.join(', ') : row.assignedTo || 'Unassigned';
                 const notes = Object.values(row.noteContext || {}).filter(Boolean);
+                const liveNoteHtml = renderManagerSeasonPriorityLiveNotes(row);
                 const status = awaiting ? `Requested — awaiting import · Delivery: ${request.deliveryStatus || 'queued'}` : request?.lifecycleStatus === 'conflict' ? 'Import differs — review current priorities before requesting again.' : '';
                 const disabled = busy || state.loading || !!state.error || (awaiting && !request.canRetry);
-                return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" data-season-priority-card="${escapeHtml(row.sourceUid)}" data-itemcode="${escapeHtml(row.itemcode)}"><h3 class="break-words text-lg font-black text-slate-900">${escapeHtml(row.commonname || row.itemcode)}</h3><p class="mt-1 break-words text-sm font-bold text-emerald-700">${escapeHtml(row.itemcode)} · ${escapeHtml(row.contsize)}</p><dl class="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-700"><div><dt class="text-xs text-slate-500">Location / lot / source</dt><dd class="break-words font-bold">${escapeHtml(row.locationcode)} / ${escapeHtml(row.lotcode || '—')} / ${escapeHtml(row.source || '—')}</dd></div><div><dt class="text-xs text-slate-500">Assigned To</dt><dd class="break-words font-bold">${escapeHtml(assigned)}</dd></div><div><dt class="text-xs text-slate-500">Current priority</dt><dd class="font-black"><span data-inventory-priority-value>${escapeHtml(getInventoryStatusSync()?.getDisplayRow({ ...row, unique_id: row.sourceUid }).priority ?? row.priority)}</span> → requested 1</dd></div><div><dt class="text-xs text-slate-500">PTRAVAILABLE</dt><dd class="font-bold">${escapeHtml(row.ptravailable ?? '—')}</dd></div></dl>${notes.length ? `<p class="mt-3 whitespace-pre-wrap break-words text-sm text-slate-600">${escapeHtml(notes.join('\n'))}</p>` : ''}<p class="mt-3 text-xs text-slate-500">All other ${escapeHtml(row.itemcode)} rows with priorities 1–${Number(row.priority) - 1} move up one number, across all locations and seasons. Priorities update when saved. The inquiry is also queued for keyers.</p>${status ? `<p role="status" class="mt-3 break-words text-sm font-bold text-emerald-800">${escapeHtml(status)}</p>` : ''}<button type="button" class="mt-4 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="submitManagerSeasonPriority('${escJsAttrValue(row.sourceUid)}',${awaiting && request.canRetry ? 'true' : 'false'})" ${disabled ? 'disabled' : ''}>${busy ? 'Submitting…' : awaiting && request.canRetry ? 'Retry delivery' : awaiting ? 'Requested — awaiting import' : 'Make Priority 1'}</button></article>`;
+                return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" data-season-priority-card="${escapeHtml(row.sourceUid)}" data-itemcode="${escapeHtml(row.itemcode)}"><h3 class="break-words text-lg font-black text-slate-900">${escapeHtml(row.commonname || row.itemcode)}</h3><p class="mt-1 break-words text-sm font-bold text-emerald-700">${escapeHtml(row.itemcode)} · ${escapeHtml(row.contsize)}</p><dl class="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-700"><div><dt class="text-xs text-slate-500">Location / lot / source</dt><dd class="break-words font-bold">${escapeHtml(row.locationcode)} / ${escapeHtml(row.lotcode || '—')} / ${escapeHtml(row.source || '—')}</dd></div><div><dt class="text-xs text-slate-500">Assigned To</dt><dd class="break-words font-bold">${escapeHtml(assigned)}</dd></div><div><dt class="text-xs text-slate-500">Current priority</dt><dd class="font-black"><span data-inventory-priority-value>${escapeHtml(getInventoryStatusSync()?.getDisplayRow({ ...row, unique_id: row.sourceUid }).priority ?? row.priority)}</span> → requested 1</dd></div><div><dt class="text-xs text-slate-500">PTRAVAILABLE</dt><dd class="font-bold">${escapeHtml(row.ptravailable ?? '—')}</dd></div></dl>${notes.length ? `<p class="mt-3 whitespace-pre-wrap break-words text-sm text-slate-600">${escapeHtml(notes.join('\n'))}</p>` : ''}${liveNoteHtml}<p class="mt-3 text-xs text-slate-500">All other ${escapeHtml(row.itemcode)} rows with priorities 1–${Number(row.priority) - 1} move up one number, across all locations and seasons. Priorities update when saved. The inquiry is also queued for keyers.</p>${status ? `<p role="status" class="mt-3 break-words text-sm font-bold text-emerald-800">${escapeHtml(status)}</p>` : ''}<button type="button" class="mt-4 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="submitManagerSeasonPriority('${escJsAttrValue(row.sourceUid)}',${awaiting && request.canRetry ? 'true' : 'false'})" ${disabled ? 'disabled' : ''}>${busy ? 'Submitting…' : awaiting && request.canRetry ? 'Retry delivery' : awaiting ? 'Requested — awaiting import' : 'Make Priority 1'}</button></article>`;
             }, { estimateSize:grouped ? 100 : 310, layout:'grid', emptyHtml:'<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-8 text-center text-sm text-slate-600">No selected Season Sales Notes at priority 2, 3, or 4 match these filters.</div>', getKey:value => String(value?.key || value?.sourceUid || ''), onState:result => {
                 if (result.sourceRevision && state.pageRevision && result.sourceRevision !== state.pageRevision) return;
                 if (!grouped) {
@@ -140163,9 +140276,10 @@ C.14.043 C.15.000
                     const assigned = Array.isArray(row.resolvedAssignedTo) ? row.resolvedAssignedTo.join(', ') || 'Unassigned'
                         : (row.warehouseAssignedTo || []).length ? row.warehouseAssignedTo.join(', ') : row.assignedTo || 'Unassigned';
                     const notes = Object.values(row.noteContext || {}).filter(Boolean);
+                    const liveNoteHtml = renderManagerSeasonPriorityLiveNotes(row);
                     const status = awaiting ? `Requested — awaiting import · Delivery: ${request.deliveryStatus || 'queued'}` : request?.lifecycleStatus === 'conflict' ? 'Import differs — review current priorities before requesting again.' : '';
                     const disabled = busy || state.loading || !!state.error || (awaiting && !request.canRetry);
-                    return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" data-season-priority-card="${esc(row.sourceUid)}"><h3 class="break-words text-lg font-black text-slate-900">${esc(row.commonname || row.itemcode)}</h3><p class="mt-1 break-words text-sm font-bold text-emerald-700">${esc(row.itemcode)} · ${esc(row.contsize)}</p><dl class="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-700"><div><dt class="text-xs text-slate-500">Location / lot / source</dt><dd class="break-words font-bold">${esc(row.locationcode)} / ${esc(row.lotcode || '—')} / ${esc(row.source || '—')}</dd></div><div><dt class="text-xs text-slate-500">Assigned To</dt><dd class="break-words font-bold">${esc(assigned)}</dd></div><div><dt class="text-xs text-slate-500">Current priority</dt><dd class="font-black"><span data-inventory-priority-value>${esc(getInventoryStatusSync()?.getDisplayRow({ ...row, unique_id: row.sourceUid }).priority ?? row.priority)}</span> → requested 1</dd></div><div><dt class="text-xs text-slate-500">PTRAVAILABLE</dt><dd class="font-bold">${esc(row.ptravailable ?? '—')}</dd></div></dl>${notes.length ? `<p class="mt-3 whitespace-pre-wrap break-words text-sm text-slate-600">${esc(notes.join('\n'))}</p>` : ''}<p class="mt-3 text-xs text-slate-500">All other ${esc(row.itemcode)} rows with priorities 1–${Number(row.priority) - 1} move up one number, across all locations and seasons. Priorities update when saved. The inquiry is also queued for keyers.</p>${status ? `<p role="status" class="mt-3 break-words text-sm font-bold text-emerald-800">${esc(status)}</p>` : ''}<button type="button" class="mt-4 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="submitManagerSeasonPriority('${js(row.sourceUid)}',${awaiting && request.canRetry ? 'true' : 'false'})" ${disabled ? 'disabled' : ''}>${busy ? 'Submitting…' : awaiting && request.canRetry ? 'Retry delivery' : awaiting ? 'Requested — awaiting import' : 'Make Priority 1'}</button></article>`;
+                    return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" data-season-priority-card="${esc(row.sourceUid)}"><h3 class="break-words text-lg font-black text-slate-900">${esc(row.commonname || row.itemcode)}</h3><p class="mt-1 break-words text-sm font-bold text-emerald-700">${esc(row.itemcode)} · ${esc(row.contsize)}</p><dl class="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-700"><div><dt class="text-xs text-slate-500">Location / lot / source</dt><dd class="break-words font-bold">${esc(row.locationcode)} / ${esc(row.lotcode || '—')} / ${esc(row.source || '—')}</dd></div><div><dt class="text-xs text-slate-500">Assigned To</dt><dd class="break-words font-bold">${esc(assigned)}</dd></div><div><dt class="text-xs text-slate-500">Current priority</dt><dd class="font-black"><span data-inventory-priority-value>${esc(getInventoryStatusSync()?.getDisplayRow({ ...row, unique_id: row.sourceUid }).priority ?? row.priority)}</span> → requested 1</dd></div><div><dt class="text-xs text-slate-500">PTRAVAILABLE</dt><dd class="font-bold">${esc(row.ptravailable ?? '—')}</dd></div></dl>${notes.length ? `<p class="mt-3 whitespace-pre-wrap break-words text-sm text-slate-600">${esc(notes.join('\n'))}</p>` : ''}${liveNoteHtml}<p class="mt-3 text-xs text-slate-500">All other ${esc(row.itemcode)} rows with priorities 1–${Number(row.priority) - 1} move up one number, across all locations and seasons. Priorities update when saved. The inquiry is also queued for keyers.</p>${status ? `<p role="status" class="mt-3 break-words text-sm font-bold text-emerald-800">${esc(status)}</p>` : ''}<button type="button" class="mt-4 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="submitManagerSeasonPriority('${js(row.sourceUid)}',${awaiting && request.canRetry ? 'true' : 'false'})" ${disabled ? 'disabled' : ''}>${busy ? 'Submitting…' : awaiting && request.canRetry ? 'Retry delivery' : awaiting ? 'Requested — awaiting import' : 'Make Priority 1'}</button></article>`;
                 }).join('') + '</div>';
             }
             return html + '</section>';
@@ -146969,7 +147083,7 @@ C.14.043 C.15.000
             const salesOfficeAccentTextClass = isSeasonSalesNoteCard ? 'text-orange-900' : 'text-purple-700';
             const salesOfficeStatusClass = isSeasonSalesNoteCard ? 'status-orange' : 'status-purple';
             const buildHoldReasonHtml = () => {
-                if (!cleanHoldCode && !holdReasonText) return '';
+                if (!cleanHoldCode) return '';
                 const holdTitle = cleanHoldCode ? `HOLD: ${cleanHoldCode}` : 'HOLD STATUS';
                 return `<div class="app-card-note mt-2 ${holdCardToneClass} border rounded p-2 shadow-sm whitespace-pre-wrap"><div class="text-[10px] font-black ${holdLabelToneClass} uppercase tracking-wider mb-0.5">${holdTitle}</div>${holdReasonText ? `<div class="text-[12px] font-semibold leading-snug">${esc(holdReasonText)}</div>` : ''}</div>`;
             };
@@ -147352,7 +147466,9 @@ C.14.043 C.15.000
                 const holdReasonDisplay = String(firstNonEmptyValue(displayHoldStopReason, '') || '').trim();
                 const holdDateDisplay = formatInventoryHoldSince(displayHoldStopBeginDate);
                 const hasHoldData = holdCodeText && !['—', '-', 'NULL', 'N/A'].includes(holdCodeText.toUpperCase());
-                const driveHoldDataHtml = hasHoldData ? `<div class="app-drive-card-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${holdCodeText ? esc(holdCodeText) : '—'}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonDisplay ? esc(holdReasonDisplay) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdDateDisplay ? esc(holdDateDisplay) : '—'}</strong></span></div>` : '';
+                const liveLocationNote = String(firstNonEmptyValue(item.LOCATIONNOTE, item.locationnote, item.LOCATION_NOTE, item.location_note, '') || '').trim();
+                const liveLocationNoteDate = String(firstNonEmptyValue(item.LOCATIONNOTEDATE, item.locationnotedate, item.LOC_NOTE_DATE, item.loc_note_date, item.LOCATIONPTN1, item.locationptn1, '') || '').trim();
+                const driveHoldDataHtml = `${hasHoldData ? `<div class="app-drive-card-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${esc(holdCodeText)}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonDisplay ? esc(holdReasonDisplay) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdDateDisplay ? esc(holdDateDisplay) : '—'}</strong></span></div>` : ''}${liveLocationNote ? `<div class="app-drive-card-note mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-[12px] font-semibold text-amber-900 shadow-sm whitespace-pre-wrap"><span class="font-black">LOCATION NOTE:</span> ${esc(liveLocationNote)}${liveLocationNoteDate ? ` <span class="font-bold">(${esc(liveLocationNoteDate)})</span>` : ''}</div>` : ''}`;
                 const driveListPriceHtml = !isEvalSensitiveDataRestricted() && sourceView !== 'drive' && displayListPrice !== '-' ? `<div class="app-drive-card-list-price"><span>List price</span><strong>${esc(displayListPrice)}</strong></div>` : '';
                 const canUseDriveOptions = canCurrentUserUseDriveCardOptions(item, sourceView);
                 const canSelectDriveWorkflow = canCurrentUserSelectDriveWorkflowRow(item, sourceView);
