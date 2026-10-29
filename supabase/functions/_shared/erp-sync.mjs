@@ -365,13 +365,21 @@ export async function countImportableErpXlsxRows(bytesLike,dataset) {
   return count;
 }
 
-export async function parseErpXlsxImportRows(bytesLike,dataset) {
+export async function parseErpXlsxImportRows(bytesLike,dataset,options={}) {
   const {zip,sheetPath}=await xlsxSheetContext(bytesLike);
   const sharedXml=await zipText(zip,'xl/sharedStrings.xml');
   const shared=[...sharedXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(match=>
     [...match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(part=>xmlText(part[1])).join(''));
+  const onBatch=typeof options.onBatch==='function'?options.onBatch:null;
+  const batchSize=Math.max(1,Math.min(10000,Math.floor(Number(options.batchSize)||BATCH_SIZE)));
   let headers=null,headerIndexes=null;
-  const rows=[];
+  const rows=[];let rawBatch=[],parsedRowCount=0;
+  const wantedSocColumns=new Set(['itemcode','item','dock','docknumber','tripnumber','suspend','suspendto']);
+  const flushBatch=async()=>{
+    if(!rawBatch.length)return;
+    const batch=rawBatch;rawBatch=[];
+    await onBatch(batch,{parsedRows:parsedRowCount});
+  };
   await visitXlsxRows(zip,sheetPath,async(rowXml)=>{
     if(!headers){
       const cells=parseXlsxRowXml(rowXml,shared).cells;
@@ -382,8 +390,7 @@ export async function parseErpXlsxImportRows(bytesLike,dataset) {
       return false;
     }
     if(dataset==='soc'){
-      const wanted=new Set(['itemcode','item','dock','docknumber','tripnumber','suspend','suspendto']
-        .map(name=>headerIndexes.get(name)).filter(Boolean));
+      const wanted=new Set([...wantedSocColumns].map(name=>headerIndexes.get(name)).filter(Boolean));
       const selected=parseXlsxSelectedCells(rowXml,shared,wanted);
       const value=(...names)=>names.map(name=>clean(selected.get(headerIndexes.get(name)))).find(item=>item!==null)??'';
       const dock=['dock','docknumber','tripnumber'].map(name=>value(name)).find(validSocDock)||'';
@@ -391,11 +398,23 @@ export async function parseErpXlsxImportRows(bytesLike,dataset) {
     }
     const cells=parseXlsxRowXml(rowXml,shared).cells;
     if(!cells.some(value=>String(value??'').trim()))return false;
-    rows.push(Object.fromEntries(headers.map((header,index)=>[header,cells[index]??''])));
-    if(rows.length>50000)throw new Error('ERP_ROWS_INVALID');
+    const raw=Object.fromEntries(headers.map((header,index)=>[header,cells[index]??'']));
+    if(onBatch){
+      rawBatch.push(raw);parsedRowCount+=1;
+      if(parsedRowCount>50000)throw new Error('ERP_ROWS_INVALID');
+      if(rawBatch.length>=batchSize)await flushBatch();
+    }else{
+      rows.push(raw);
+      if(rows.length>50000)throw new Error('ERP_ROWS_INVALID');
+    }
     return false;
   });
   if(!headers)throw new Error('ERP_SOURCE_HEADER_MISSING');
+  if(onBatch){
+    await flushBatch();
+    if(!parsedRowCount)throw new Error('ERP_SOURCE_EMPTY');
+    return {rowCount:parsedRowCount};
+  }
   if(!rows.length)throw new Error('ERP_SOURCE_EMPTY');
   return rows;
 }
@@ -587,52 +606,81 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
   const bytes = await sourceBytes(fetcher,token,file);
   meta.content_hash = await hashHex(bytes);
   const isXlsx=/\.xlsx$/i.test(file.name);
-  const raw = !isXlsx ? parseErpCsv(new TextDecoder('utf-8').decode(bytes)) : await parseErpXlsxImportRows(bytes,dataset);
   const table = ({drive_around:'ph_master_inventory',cav:'ph_cav_import',reserves:'ph_reserves',soc:'ph_soc_master'})[dataset];
   if (!table) throw new Error(dataset === 'hl_po_parsed' ? 'HL_PO_ORIGINAL_PDF_REQUIRED' : 'ERP_DATASET_INVALID');
   const {data:columns,error:columnsError} = await supabase.rpc('fast_erp_import_columns_v1',{p_dataset_key:dataset});
   if (columnsError || !Array.isArray(columns) || !columns.length) throw columnsError || new Error('ERP_COLUMNS_UNAVAILABLE');
-  const rows = await normalizeErpRows(raw,dataset,columns);
-  const {data:begin,error:beginError} = await supabase.rpc('fast_begin_erp_stage_v1',{
-    p_dataset_key:dataset,p_file_meta:{...meta,...(isXlsx?{expected_rows_pending:true}:{})},p_expected_rows:isXlsx?50000:rows.length,
-  });
-  if (beginError) throw beginError;
-  if (begin?.skipped === true) {
-    try { await moveProcessed(fetcher,token,file,parentId,processedId); }
-    catch (error) {
-      if (continuation) return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows:rows.length,nextOffset:0,processedRows:rows.length,identityCounts:{},moveAttempts:1}};
-      throw error;
-    }
+  let expectedRows=0,processedRows=0,identityCounts={},stageId='',alreadyStaged=0,stagedRows=0;
+  const beginStage=async(pExpectedRows,pending)=>{
+    const {data,error}=await supabase.rpc('fast_begin_erp_stage_v1',{
+      p_dataset_key:dataset,p_file_meta:{...meta,...(pending?{expected_rows_pending:true}:{})},p_expected_rows:pExpectedRows,
+    });
+    if(error)throw error;
+    if(data?.skipped===true)return {skipped:true};
+    const id=String(data?.stage_id||''),staged=Number(data?.staged_rows)||0;
+    if(!id||Number(data?.expected_rows)!==pExpectedRows||staged>pExpectedRows)throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
+    return {stageId:id,stagedRows:staged};
+  };
+  let rows=null;
+  if(!isXlsx){
+    const raw=parseErpCsv(new TextDecoder('utf-8').decode(bytes));
+    rows=await normalizeErpRows(raw,dataset,columns);
+    expectedRows=rows.length;
+  }
+  const begin=await beginStage(isXlsx?50000:expectedRows,isXlsx);
+  if(begin.skipped===true){
+    try{await moveProcessed(fetcher,token,file,parentId,processedId);}
+    catch(error){if(continuation)return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows,nextOffset:0,processedRows:0,identityCounts:{},moveAttempts:1}};throw error;}
     const result={key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1};
     return continuation?{done:true,result}:result;
   }
-  const stageId = String(begin?.stage_id || '');
-  const alreadyStaged=Number(begin?.staged_rows)||0;
-  if (!stageId || Number(begin.expected_rows) !== (isXlsx?50000:rows.length) || alreadyStaged>rows.length) throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
-  for (let offset = alreadyStaged; offset < rows.length; offset += BATCH_SIZE) {
-    const batch = rows.slice(offset,offset+BATCH_SIZE);
-    await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
-      stageResultsDelta:{key:stageKey,stagedRows:offset,expectedRows:rows.length}});
-    const {data,error} = await supabase.rpc('fast_append_erp_stage_batch_v1',{
-      p_stage_id:stageId,p_start_row:offset,p_rows:batch,
-    });
-    if (error || Number(data?.staged_rows) !== offset+batch.length) throw error || new Error('ERP_STAGE_BATCH_UNCONFIRMED');
-    await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
-      stageResultsDelta:{key:stageKey,stagedRows:offset+batch.length,expectedRows:rows.length}});
-  }
+  stageId=begin.stageId;alreadyStaged=begin.stagedRows;stagedRows=alreadyStaged;
+  const appendNormalizedRows=async(batchRows,startRow)=>{
+    let index=Math.min(batchRows.length,Math.max(0,alreadyStaged-startRow));
+    while(index<batchRows.length){
+      const absoluteStart=startRow+index;
+      const length=Math.min(BATCH_SIZE,batchRows.length-index);
+      const batch=batchRows.slice(index,index+length),endRow=absoluteStart+length;
+      await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
+        stageResultsDelta:{key:stageKey,stagedRows,expectedRows:isXlsx?50000:expectedRows}});
+      const {data,error}=await supabase.rpc('fast_append_erp_stage_batch_v1',{
+        p_stage_id:stageId,p_start_row:absoluteStart,p_rows:batch,
+      });
+      const confirmed=Number(data?.staged_rows);
+      if(error||confirmed!==endRow)throw error||new Error('ERP_STAGE_BATCH_UNCONFIRMED');
+      stagedRows=Math.max(stagedRows,confirmed);
+      await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
+        stageResultsDelta:{key:stageKey,stagedRows,expectedRows:isXlsx?50000:expectedRows}});
+      index+=length;
+    }
+  };
   if(isXlsx){
-    const {data:sealed,error:sealError}=await supabase.rpc('fast_seal_erp_stage_v1',{p_stage_id:stageId,p_expected_rows:rows.length});
+    await parseErpXlsxImportRows(bytes,dataset,{batchSize:BATCH_SIZE,onBatch:async rawBatch=>{
+      const startRow=processedRows;
+      const chunk=await normalizeErpRowsChunk(rawBatch,dataset,columns,{start:0,limit:rawBatch.length,
+        priorRowCount:processedRows,identityCounts});
+      processedRows=chunk.rowCount;identityCounts=chunk.identityCounts;
+      if(chunk.rows.length)await appendNormalizedRows(chunk.rows,startRow);
+    }});
+    expectedRows=processedRows;
+  }else{
+    await appendNormalizedRows(rows,0);
+    processedRows=rows.length;
+  }
+  if(!expectedRows||expectedRows>50000||alreadyStaged>expectedRows||stagedRows!==expectedRows)throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
+  if(isXlsx){
+    const {data:sealed,error:sealError}=await supabase.rpc('fast_seal_erp_stage_v1',{p_stage_id:stageId,p_expected_rows:expectedRows});
     if(sealError||sealed?.ok!==true)throw sealError||new Error('ERP_STAGE_SEAL_UNCONFIRMED');
   }
   await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
-    stageResultsDelta:{key:stageKey,stagedRows:rows.length,expectedRows:rows.length}});
+    stageResultsDelta:{key:stageKey,stagedRows:expectedRows,expectedRows}});
   const {data:committed,error:commitError} = await supabase.rpc('fast_commit_erp_stage_swap_v1',{p_stage_id:stageId});
   if (commitError || committed?.ok !== true) throw commitError || new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
-  const result={key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:rows.length};
+  const result={key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:expectedRows};
   try { await moveProcessed(fetcher,token,file,parentId,processedId); }
   catch (error) {
-    if (continuation) return {done:false,state:{phase:'move',moveOutcome:'processed',expectedRows:rows.length,nextOffset:rows.length,
-      processedRows:rows.length,identityCounts:{},moveAttempts:1}};
+    if (continuation) return {done:false,state:{phase:'move',moveOutcome:'processed',expectedRows,nextOffset:expectedRows,
+      processedRows:expectedRows,identityCounts:{},moveAttempts:1}};
     throw error;
   }
   return continuation?{done:true,result}:result;

@@ -97,9 +97,11 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never retain a full raw XLSX row array alongside a second full normalized snapshot in an Edge worker. Stream one worksheet pass through at most 5,000 raw rows, normalize and append that batch, release it, and seal the final count; renew the lease around each bounded write. A parser-only benchmark does not establish hosted memory or full-run completion.
+
 - Never order dotted app releases as strings or treat an older remote manifest as a newer release; compare numeric major/minor/patch segments, including 2.3.100 > 2.3.99, through compareAgDataVersions.
 
-- Never advance a browser-owned ERP continuation without scheduling the next signed cloud request under EdgeRuntime.waitUntil after releasing the shared private.erp_sync_jobs lease. Renew that lease before every bounded append/publication; download and parse a new workbook once, and publish IDLE/Home metadata before background row hydration. A public.app_sync_runs lease must not be invented alongside the canonical private job.
+- Never advance a browser-owned ERP continuation without scheduling the next signed cloud request under EdgeRuntime.waitUntil before heavy workbook work, with the successor waiting on the shared private.erp_sync_jobs lease. Renew that lease before every bounded append/publication; download and parse a new workbook once, and publish IDLE/Home metadata before background row hydration. A public.app_sync_runs lease must not be invented alongside the canonical private job.
 
 - Never collapse a physical Drive alias by UID or stable hash alone. Require exact full lineage, committed raw-stage source hash, one protected canonical row, no independent pending commands, and a locked revalidation of both rows and edit ledgers; audit full provenance and remap source-only evidence before deleting the alias.
 

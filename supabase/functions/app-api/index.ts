@@ -6860,6 +6860,9 @@ async function claimAndDispatchCloudStep(runId: string) {
   if (error) throw error;
   const claim = jsonObject(data);
   if (claim.claimed !== true) return false;
+  // Queue the successor before CPU/memory-heavy workbook processing. Its lease
+  // retry survives an interrupted worker as well as an ordinary completed step.
+  dispatchCloudErpSync({ runId });
   const workerId = String(claim.workerId || claim.worker_id || "");
   const step = Number(claim.continuationStep ?? claim.continuation_step);
   const task = executeCloudErpSyncStep(runId, workerId, step, claim).catch(error => {
@@ -6960,14 +6963,11 @@ async function releaseCloudErpSyncStep(runId: string, workerId: string, step: nu
 }
 
 async function executeCloudErpSyncStep(runId: string, workerId: string, step: number, claimedStatus: Record<string, unknown>) {
-  let continueRun = false;
   try {
-    const { result } = await processCloudErpSyncStep(runId,workerId,step,claimedStatus);
-    continueRun = result.done !== true;
+    await processCloudErpSyncStep(runId,workerId,step,claimedStatus);
   } finally {
     await releaseCloudErpSyncStep(runId,workerId,step);
   }
-  if (continueRun) dispatchCloudErpSync({ runId });
 }
 
 async function mintCloudDriveAccessToken() {
@@ -7034,11 +7034,10 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     if (!/^[0-9a-f-]{36}$/i.test(workerId) || !Number.isSafeInteger(step) || step<0) {
       return errorResponse("ERP sync continuation claim was not confirmed.",503,{code:"ERP_SYNC_CONTINUE_CLAIM_UNCONFIRMED"});
     }
-    let continueRun = false;
+    dispatchCloudErpSync({ runId });
     try {
       const {result,status:durableStatus} = await processCloudErpSyncStep(runId,workerId,step,status);
       const active = result.done !== true;
-      continueRun = active;
       const cursor = durableStatus.continuationCursor && typeof durableStatus.continuationCursor === "object"
         ? jsonObject(durableStatus.continuationCursor) : {};
       const fileContinuation = cursor.fileContinuation && typeof cursor.fileContinuation === "object"
@@ -7051,7 +7050,6 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
         nextOffset:fileState.nextOffset??null});
     } finally {
       await releaseCloudErpSyncStep(runId,workerId,step);
-      if (continueRun) dispatchCloudErpSync({ runId });
     }
   }
   const commandId = command.commandId;

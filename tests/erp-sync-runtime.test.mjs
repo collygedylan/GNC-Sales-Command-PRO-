@@ -551,6 +551,6 @@ await import('./erp-sync-ui-completion.test.mjs');
 test('cloud continuation retries a failed lease release and recovers after a busy lease expires', async () => {
   const { verifyCloudErpChaining } = await import('./helpers/erp-cloud-chain.mjs');
   const source = await readFile(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
-  assert.equal((await verifyCloudErpChaining(source, { releaseFailures: 1 })).waits, 0);
-  assert.equal((await verifyCloudErpChaining(source, { releaseFailures: 2 })).waits, 1);
+  assert.equal((await verifyCloudErpChaining(source, { releaseFailures: 1 })).processed, 5);
+  assert.ok((await verifyCloudErpChaining(source, { releaseFailures: 2 })).waits >= 1);
 });

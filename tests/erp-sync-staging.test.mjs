@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
 import test from 'node:test';
-import { parseErpXlsxPage, runErpSyncWorkerStep } from '../supabase/functions/_shared/erp-sync.mjs';
+import { parseErpXlsxImportRows, parseErpXlsxPage, runErpSyncWorkerStep } from '../supabase/functions/_shared/erp-sync.mjs';
 
 function makeZip(entries) {
   const locals=[],central=[];let offset=0;
@@ -40,6 +40,73 @@ test('SOC fast prefilter retains Suspend rows regardless of Suspend-To while rej
   });
   const page=await parseErpXlsxPage(bytes,0,20,{dataset:'soc'});
   assert.deepEqual(page.rows.map(row=>row.itemcode),['001','002','003']);
+});
+
+test('streaming XLSX parser releases each bounded raw batch to its consumer', async()=>{
+  const xmlRows=[inlineRow(1,['itemcode','dock'])];
+  for(let index=1;index<=11;index+=1)xmlRows.push(inlineRow(index+1,[String(index),`D${index}`]));
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${xmlRows.join('')}</sheetData></worksheet>`,
+  });
+  const batchSizes=[];
+  const result=await parseErpXlsxImportRows(bytes,'reserves',{batchSize:5,onBatch:async batch=>batchSizes.push(batch.length)});
+  assert.deepEqual(batchSizes,[5,5,1]);
+  assert.equal(result.rowCount,11);
+  assert.equal('rows' in result,false,'streaming callers receive only the final count, not an accumulated workbook array');
+});
+
+test('streaming parser emits 10,001 XLSX rows as bounded 5,000-row callbacks',async()=>{
+  const xmlRows=[inlineRow(1,['itemcode','dock'])];
+  for(let index=1;index<=10001;index+=1)xmlRows.push(inlineRow(index+1,[String(index),`D${index}`]));
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${xmlRows.join('')}</sheetData></worksheet>`,
+  });
+  const batchSizes=[];
+  const result=await parseErpXlsxImportRows(bytes,'reserves',{batchSize:5000,onBatch:async batch=>batchSizes.push(batch.length)});
+  assert.deepEqual(batchSizes,[5000,5000,1]);
+  assert.equal(result.rowCount,10001);
+  assert.equal('rows' in result,false);
+});
+
+test('XLSX stage resumes the identical persisted prefix before appending its remaining rows',async()=>{
+  const xmlRows=[inlineRow(1,['itemcode','dock'])];
+  for(let index=1;index<=5;index+=1)xmlRows.push(inlineRow(index+1,[String(index),`D${index}`]));
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${xmlRows.join('')}</sheetData></worksheet>`,
+  });
+  const appends=[];let downloads=0;
+  const file={id:'resume-xlsx',name:'SOC.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder']};
+  const fetcher=async(input,init={})=>{
+    const url=new URL(input);
+    if(url.pathname.endsWith('/files/resume-xlsx')&&url.searchParams.get('alt')==='media'){downloads+=1;return new Response(bytes);}
+    if(url.pathname.endsWith('/files/resume-xlsx')&&init.method==='PATCH')return Response.json({id:file.id});
+    throw new Error(`Unexpected Drive request: ${init.method||'GET'} ${url.pathname}`);
+  };
+  const supabase={rpc:async(name,args)=>{
+    if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false},error:null};
+    if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','dock'],error:null};
+    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'resume-stage',expected_rows:50000,staged_rows:2},error:null};
+    if(name==='fast_append_erp_stage_batch_v1'){
+      appends.push({start:args.p_start_row,count:args.p_rows.length});
+      return {data:{staged_rows:args.p_start_row+args.p_rows.length},error:null};
+    }
+    if(name==='fast_seal_erp_stage_v1')return {data:{ok:true},error:null};
+    if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true},error:null};
+    throw new Error(`Unexpected RPC ${name}`);
+  }};
+  const result=await runErpSyncWorkerStep({supabase,fetcher,accessToken:'fixture-token',
+    env:key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify({drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder',processed:{soc:'processed-folder'}}):'',
+    status:async()=>{},cursor:{stageIndex:3,stageResults:[],attemptedByStage:{},folderSnapshot:{drive:{files:[]},cav:{files:[]},reserves:{files:[]},soc:{files:[file]}}}});
+  assert.equal(downloads,1);
+  assert.deepEqual(appends,[{start:2,count:3}], 'the committed prefix is trusted by the content-fingerprinted stage and is not retransmitted');
+  assert.equal(result.cursor.fileContinuation,undefined);
 });
 
 test('new XLSX stage downloads and unzips once, appending 5,000-row batches before continuation', async()=>{

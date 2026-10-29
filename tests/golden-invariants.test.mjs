@@ -3943,3 +3943,36 @@ test('Invariant 136: Home completion metadata precedes every full-row completion
   await work;
   assert.deepEqual(events, ['metadata', 'rows']);
 });
+
+test('Invariant 137: a leased cloud chunk queues its successor before workbook processing can terminate', async () => {
+  const events = [];
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['claimAndDispatchCloudStep'], {
+    jsonObject: value => value,
+    supabase: { rpc: async name => ({ data: name === 'get_erp_sync_status_v1'
+      ? { active: true, runId: 'run', requestedBy: 'authorized' }
+      : { claimed: true, workerId: 'owner', continuationStep: 1 } }) },
+    dispatchCloudErpSync: value => { assert.equal(value.runId, 'run'); events.push('successor'); },
+    executeCloudErpSyncStep: async () => { events.push('processing'); await new Promise(() => {}); },
+    EdgeRuntime: { waitUntil: () => events.push('retained') }, recordHandledError() {},
+  });
+  assert.equal(await context.claimAndDispatchCloudStep('run'), true);
+  assert.deepEqual(events, ['successor', 'processing', 'retained']);
+});
+
+test('Invariant 138: streamed XLSX callbacks retain at most one bounded raw batch', async () => {
+  const batches = [];
+  const context = runFunctions('supabase/functions/_shared/erp-sync.mjs', ['parseErpXlsxImportRows'], {
+    exports: {}, BATCH_SIZE: 5000, xlsxSheetContext: async () => ({ zip: {}, sheetPath: 'sheet' }), zipText: async () => '',
+    visitXlsxRows: async (_zip, _sheet, callback) => {
+      await callback('header');
+      for (let index = 0; index < 10001; index += 1) await callback(String(index));
+    },
+    parseXlsxRowXml: value => ({ cells: value === 'header' ? ['itemcode'] : [value] }),
+    normalizeErpHeader: value => value,
+  }, true);
+  const result = await context.parseErpXlsxImportRows(new Uint8Array(), 'reserves', {
+    batchSize: 5000, onBatch: async rows => { batches.push(rows.length); assert.ok(rows.length <= 5000); },
+  });
+  assert.deepEqual(batches, [5000, 5000, 1]);
+  assert.deepEqual(plain(result), { rowCount: 10001 });
+});
