@@ -38,13 +38,13 @@ test('v2.3.102 assets and worker upgrade purge previous cache generations', () =
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
     const asset = new URL(match[1], 'https://agmetricapp.com');
-    const expectedVersion = asset.pathname === '/assets/app-runtime.js' ? '2.3.102.4'
+    const expectedVersion = asset.pathname === '/assets/app-runtime.js' ? '2.3.102.5'
       : ['/assets/mobile-workspace.js', '/assets/photo-history-v2026090401.js', '/assets/inventory-list-contract.js',
         '/assets/app-shell-style-05.css', '/assets/app-styles.css'].includes(asset.pathname) ? '2.3.102.1' : '2.3.102';
     assert.equal(asset.searchParams.get('v'), expectedVersion, match[1]);
   }
   assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.102'/);
-  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'drawer-theme-r1'/);
+  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'customer-pairs-r1'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*window\.reloadForServiceWorkerUpdate\(\)[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
   const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.102' });

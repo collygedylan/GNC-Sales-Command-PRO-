@@ -2707,9 +2707,9 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.match(loader, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
   assert.match(loader, /maxRetries = options\.retryOnCancellation === true \? 4 : 0[\s\S]*getSupabaseReadErrorCode\(error\) !== 'REQUEST_ABORTED'/);
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.5`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.4/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.5/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3360,11 +3360,11 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   assert.match(module, /if\(readOnly\|\|requestBusy\)return;/);
   assert.match(module, /tray\.hidden=readOnly;notices\.hidden=readOnly/);
   const build = read('scripts/build-live-shell.mjs');
-  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
+  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.5`/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.102\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.4/);
-  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'drawer-theme-r1'/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.5/);
+  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'customer-pairs-r1'/);
 });
 
 test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
@@ -4202,4 +4202,24 @@ test('Invariant 149 (Request Folder Picker Enforces Current Physical Pair Owners
   assert.ok(groups.every(group => group.mapCount > 0), 'visible folders attach only to current owned mappings');
   assert.equal(context.addCustomRequestCustomerOption('Unmapped Customer', 'Unmapped Site'), null,
     'ordinary reps cannot add synthetic customer/consignee identities');
+});
+
+test('Invariant 150 (RPC Customer Options Retain the Physical Pair IDs Used by Validation)', async () => {
+  const context = vm.createContext({ window: {}, document: { getElementById: () => null } });
+  vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
+  const s07 = { ...mappingFixtureRow, unique_id: 'chance-s07', salesrepid: 'S07', salesrepname: 'Chance Alldredge',
+    customeridentityid: '00060', customername: 'Chance Customer', consigneeid: '00070', consigneename: 'North' };
+  const s17 = { ...mappingFixtureRow, unique_id: 'chance-s17', salesrepid: 'S17', salesrepname: 'Chance Alldredge',
+    customeridentityid: '00061', customername: 'Chance Customer', consigneeid: '00071', consigneename: 'South' };
+  context.customerRepMapRows = [s07, s17];
+  context.tempSelectedReqRep = 'Chance Alldredge';
+  context.tempSelectedReqSalesrepId = 'S17';
+  context.isRequestRowArchivedForCompletion = () => false;
+  context.fetchRequestUniversalCustomerOptions = async () => ({ rows: [s07, s17], revision: 'rpc-r1', salesrepId: 'S17', universal: false });
+  const entry = await context.loadRequestModalCustomerOptionsForRep('Chance Alldredge', true);
+  const pairs = entry.rows.filter(option => option.customeridentityid !== 'AGDATA_NA_CUSTOMER');
+  assert.deepEqual(plain(pairs.map(option => [option.salesrepid, option.request_selected_salesrep_id, option.consigneeid, option.consigneeidentityid])),
+    [['S07', 'S07', '00070', '00070'], ['S17', 'S17', '00071', '00071']]);
+  assert.ok(pairs.every(option => context.isActiveRequestCustomerMapping(option)),
+    'built RPC options preserve every physical identity field consumed by active-pair validation');
 });

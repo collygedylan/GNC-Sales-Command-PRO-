@@ -52429,8 +52429,13 @@ function toggleDriveQuickRequestItem(domId) {
             const consigneeName = String(consignee || '').trim();
             const label = String(customerName ? buildRequestCustomerValue(customerName, consigneeName) : consigneeName || '').trim();
             if (!label) return null;
+            const context = getRequestCustomerContext(source);
             return {
-                ...getRequestCustomerContext(source),
+                ...context,
+                // The active-pair validator consumes source IDs. Keep this physical
+                // ID aligned with the option payload instead of canonicalizing aliases.
+                salesrepid: context.request_selected_salesrep_id,
+                consigneeid: context.consigneeidentityid,
                 salesrepname: String(firstNonEmptyValue(source && source.SALESREPNAME, source && source.salesrepname, '') || '').trim(),
                 customerstatus: String(firstNonEmptyValue(source && source.CUSTOMERSTATUS, source && source.customerstatus, '') || '').trim(),
                 consigneestatus: String(firstNonEmptyValue(source && source.CONSIGNEESTATUS, source && source.consigneestatus, '') || '').trim(),

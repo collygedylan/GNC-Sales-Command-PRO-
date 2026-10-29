@@ -63,6 +63,36 @@ test('stale same-account mapping cache cannot show N/A consignee beneath a real 
   assert.equal(options.some(option=>option.customeridentityid!=='AGDATA_NA_CUSTOMER'&&option.consigneeidentityid==='AGDATA_NA_CONSIGNEE'),false);
 });
 
+test('RPC mapping load validates built options while preserving each physical source Sales Rep ID',async()=>{
+  const c=requestFixture();
+  c.tempSelectedReqRep='Rep One'; c.tempSelectedReqSalesrepId='01';
+  c.isRequestRowArchivedForCompletion=()=>false;
+  c.fetchRequestUniversalCustomerOptions=async()=>({rows:[{...row}],revision:'rpc-r1',salesrepId:'01',universal:false});
+  const built=c.buildRequestModalCustomerSearchOption(row.customername,row.consigneename,row);
+  assert.equal(c.isActiveRequestCustomerMapping(built),true,JSON.stringify(built));
+  const entry=await c.loadRequestModalCustomerOptionsForRep('Rep One',true);
+  assert.equal(entry.universal,false);
+  const option=entry.rows.find(candidate=>candidate.customeridentityid==='00012');
+  assert.ok(option);
+  assert.equal(option.salesrepid,'01');
+  assert.equal(option.request_selected_salesrep_id,'01');
+  assert.equal(c.isActiveRequestCustomerMapping(option),true,'built mapped options satisfy the same active pair validator as raw RPC rows');
+});
+
+test('RPC option construction retains each source ID across canonical rep aliases',async()=>{
+  const c=requestFixture();
+  const s07={...row,unique_id:'chance-s07',salesrepid:'S07',salesrepname:'Chance Alldredge',customeridentityid:'00060',customername:'Chance Customer',consigneeid:'00070',consigneename:'North'};
+  const s17={...row,unique_id:'chance-s17',salesrepid:'S17',salesrepname:'Chance Alldredge',customeridentityid:'00061',customername:'Chance Customer',consigneeid:'00071',consigneename:'South'};
+  c.customerRepMapRows=[s07,s17];
+  c.tempSelectedReqRep='Chance Alldredge'; c.tempSelectedReqSalesrepId='S17';
+  c.isRequestRowArchivedForCompletion=()=>false;
+  c.fetchRequestUniversalCustomerOptions=async()=>({rows:[s07,s17],revision:'rpc-r1',salesrepId:'S17',universal:false});
+  const entry=await c.loadRequestModalCustomerOptionsForRep('Chance Alldredge',true);
+  assert.deepEqual(Array.from(entry.rows.filter(option=>option.customeridentityid!=='AGDATA_NA_CUSTOMER'),option=>[
+    option.salesrepid,option.request_selected_salesrep_id,option.consigneeid,option.consigneeidentityid,
+  ]),[['S07','S07','00070','00070'],['S17','S17','00071','00071']]);
+});
+
 test('a cached universal directory cannot leak into a non-JD selected-rep picker',()=>{
   const c=requestFixture();
   const owner=c.syncRequestModalCustomerMappingOwner();
