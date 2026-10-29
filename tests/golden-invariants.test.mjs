@@ -1344,7 +1344,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.107"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.108"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1373,9 +1373,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.107"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.108"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.107"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.108"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2188,7 +2188,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.107/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.108/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2723,7 +2723,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.107/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.108/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3380,8 +3380,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.107/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.107/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.108/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.108/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3681,8 +3681,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.107/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.107/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.108/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.108/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5465,4 +5465,55 @@ test('Invariant 194 (Release migration transaction envelope is accepted by the c
   assert.match(body, /CREATE OR REPLACE FUNCTION public\.create_inventory_project_v1/);
   assert.throws(() => migrationBody('-- misplaced comment\n' + source), /TRANSACTION_REQUIRED/);
   assert.throws(() => migrationBody(body), /TRANSACTION_REQUIRED/);
+});
+
+
+test('Invariant 195 (Suspend fractional Excel serials retain calendar dates and distinct days)', () => {
+  const api = runFunctions('assets/app-runtime.js', ['parseDockCardPlanStartEpochDay', 'formatDockCardPlanStartValue']);
+  assert.equal(api.formatDockCardPlanStartValue('46329.333333333328'), '11/03/2026');
+  assert.equal(api.formatDockCardPlanStartValue('46330.75'), '11/04/2026');
+  assert.equal(api.parseDockCardPlanStartEpochDay('invalid'), null);
+});
+
+test('Invariant 196 (Numeric master evidence crosses typed PATCH as text with authorization intact)', async () => {
+  const input = { match:100, initial_ptr:-2, loc_match_qty:0, spec:'22-26" H' };
+  const browser = runFunctions('assets/app-runtime.js', ['normalizeSupabaseWriteBodyForTable','stripSupabaseWriteFields'], { ACTIVE_REQUEST_TABLE:'ph_requests_pending' });
+  assert.deepEqual(plain(browser.normalizeSupabaseWriteBodyForTable('ph_master_inventory','PATCH',input)), {match:'100',initial_ptr:'-2',loc_match_qty:'0',spec:'22-26" H'});
+  let writes = 0, permitted = true;
+  const api = runFunctions('supabase/functions/app-api/index.ts', ['handleDb'], {
+    normalizeTableName:value=>value, protectCustomerRequestDbWrite:()=>null,
+    hasTableWriteAccess:()=>permitted, AV_OPTION_EVAL_REQUESTS_TABLE:'other',
+    restRequest:async(table,method,query,body)=>{ writes++; assert.deepEqual(plain(body),{match:'100',initial_ptr:'-2',loc_match_qty:'0',spec:'22-26" H'}); return {ok:true}; },
+    readResponsePayload:async()=>null, jsonResponse:value=>({status:200,...value}), errorResponse:(error,status)=>({error,status})
+  });
+  assert.equal((await api.handleDb({role:'Admin',username:'actor'},{table:'ph_master_inventory',method:'PATCH',body:input})).status,200);
+  permitted = false;
+  assert.equal((await api.handleDb({role:'User',username:'actor'},{table:'ph_master_inventory',method:'PATCH',body:input})).status,403);
+  assert.equal(writes,1);
+});
+
+test('Invariant 197 (Suspend item hydration survives navigation and rejects changed accounts)', async () => {
+  let owner = 'account-a', resolve;
+  const pending = new Promise(done => { resolve = done; });
+  const context = { console, Date, URLSearchParams, Map, Set,
+    suspendTagItemHydration:new Map(), queueCardInventoryRenderVersion:0,
+    getSupabaseReadIdentityScope:()=>owner, hasAuthenticatedOperationalReadIdentity:()=>true,
+    getRequestItemCodeOptionItemCode:item=>item.ITEMCODE,
+    fetchRequestItemCodeOptionRowsFromSupabase:()=>pending,
+    runDedupeSupabaseRead:(key,fn,options)=>{assert.equal(options.retainOnGenerationChange,true);assert.equal(options.signal,null);return fn({signal:undefined});},
+    fetchAuthenticatedSupabaseReadPage:async()=>({rows:[{itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',spec:'22-26" H'}]}),
+    formatFetchedRows:rows=>rows, buildSearchIndex:row=>row, normalizeRowPhotoFields:row=>row,
+    window:{AgMetricQueueInventory:{createIndex:rows=>({rows})}}, markViewDirty:()=>{}, isViewVisible:()=>false
+  };
+  const api=runFunctions('assets/app-runtime.js',['hydrateSuspendTagItemOptions'],context);
+  api.hydrateSuspendTagItemOptions([{ITEMCODE:'item'}]);
+  const entry=context.suspendTagItemHydration.get('item');
+  resolve([{itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',ptronhand:'160'}]);
+  await entry.promise;
+  assert.equal(entry.rows[0].spec,'22-26" H'); assert.equal(entry.rows[0].ptronhand,'160');
+  context.suspendTagItemHydration.clear();
+  api.hydrateSuspendTagItemOptions([{ITEMCODE:'item'}]);
+  const discarded=context.suspendTagItemHydration.get('item'); owner='account-b';
+  await discarded.promise;
+  assert.equal(discarded.rows.length,0);
 });

@@ -27,6 +27,8 @@ const SUPABASE_METHODS = new Map([
   ['/rest/v1/rpc/get_request_capabilities', new Set(['POST'])],
   ['/rest/v1/rpc/report_app_health_event', new Set(['POST'])],
   ['/rest/v1/ph_app_settings', new Set(['GET'])],
+  ['/rest/v1/ph_master_inventory', new Set(['GET'])],
+  ['/rest/v1/ph_location_sales_notes', new Set(['GET'])],
   ['/rest/v1/ph_chat_participants', new Set(['GET'])],
   ['/rest/v1/ph_customer_consignee_sales_reps', new Set(['GET'])],
   ['/rest/v1/ph_department_calendar_events', new Set(['GET'])],

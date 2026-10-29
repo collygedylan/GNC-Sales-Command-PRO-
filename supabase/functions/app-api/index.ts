@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { runSocHistorySyncStep } from "../_shared/erp-history-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.107";
-const APP_RUNTIME_RELEASE = "AgData v2.3.107";
+const APP_RUNTIME_VERSION = "2.3.108";
+const APP_RUNTIME_RELEASE = "AgData v2.3.108";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -464,7 +464,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.107";
+  const appVersion = "2.3.108";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -5152,6 +5152,19 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
     body = prepared.body;
   }
 
+  // These physical ERP evidence columns are text even when a UI supplies numbers.
+  // Keep authorization above this conversion and leave all other fields strict.
+  if (table === "ph_master_inventory" && ["POST", "PATCH"].includes(method)) {
+    const normalizeMetrics = (row: unknown): unknown => {
+      if (!row || typeof row !== "object" || Array.isArray(row)) return row;
+      const next = { ...row as Record<string, unknown> };
+      for (const key of ["match", "initial_ptr", "loc_match_qty"]) {
+        if (typeof next[key] === "number" && Number.isFinite(next[key])) next[key] = String(next[key]);
+      }
+      return next;
+    };
+    body = Array.isArray(body) ? body.map(normalizeMetrics) : normalizeMetrics(body);
+  }
   const response = await restRequest(table, method, query, body);
   const responsePayload = await readResponsePayload(response);
   if (!response.ok) {

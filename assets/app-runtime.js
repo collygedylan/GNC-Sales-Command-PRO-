@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.107';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.108';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19215,6 +19215,17 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const safeTable = String(table || '').trim().toLowerCase();
             const safeMethod = String(method || '').trim().toUpperCase();
             let normalizedBody = body;
+            if (safeTable === 'ph_master_inventory' && ['POST', 'PATCH'].includes(safeMethod)) {
+                const normalizeMetrics = row => {
+                    if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
+                    const next = { ...row };
+                    ['match', 'initial_ptr', 'loc_match_qty'].forEach(key => {
+                        if (typeof next[key] === 'number' && Number.isFinite(next[key])) next[key] = String(next[key]);
+                    });
+                    return next;
+                };
+                normalizedBody = Array.isArray(body) ? body.map(normalizeMetrics) : normalizeMetrics(body);
+            }
             if (safeTable === ACTIVE_REQUEST_TABLE && (safeMethod === 'POST' || safeMethod === 'PATCH')) {
                 normalizedBody = normalizeActiveRequestWriteBody(body);
             }
@@ -26852,7 +26863,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.107').trim() || 'AgData v2.3.107';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.108').trim() || 'AgData v2.3.108';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -57756,8 +57767,8 @@ function toggleDriveQuickRequestItem(domId) {
                         readScope: currentScope, permission: currentPermission };
                 }
                 const inheritanceCandidates = preparedIndexes ? prepared.inheritanceCandidates : null;
-                hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12, candidates: inheritanceCandidates?.ncr });
-                hydrateMovedSeasonCurrentRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12, candidates: inheritanceCandidates?.moved });
+                hydrateNcrCurrentCropRowsFromSources({ remote: false, maxRemote: 12, candidates: inheritanceCandidates?.ncr });
+                hydrateMovedSeasonCurrentRowsFromSources({ remote: false, maxRemote: 12, candidates: inheritanceCandidates?.moved });
                 invalidateMasterDerivedInventories();
             }
 
@@ -91266,6 +91277,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const text = String(value === null || value === undefined ? '' : value).trim();
             if (!text) return null;
+            if (/^\d{5}(?:\.\d+)?$/.test(text)) {
+                const serial = Number(text);
+                if (serial >= 20000 && serial <= 90000) return Math.floor(Date.UTC(1899, 11, 30) / 86400000) + Math.floor(serial);
+            }
             let year = 0;
             let month = 0;
             let day = 0;
@@ -106962,7 +106977,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 requestSharedInventoryOptionIndex = index;
             }
             const name = getRequestItemCodeOptionCommonNameKey(item), size = getRequestItemCodeOptionContSizeKey(item);
-            return [...new Set([...(index.byItem.get(getRequestItemCodeOptionItemCode(item)) || []),
+            const targeted = suspendTagItemHydration.get(getRequestItemCodeOptionItemCode(item));
+            return [...new Set([...(targeted?.owner === owner ? targeted.rows : []), ...(index.byItem.get(getRequestItemCodeOptionItemCode(item)) || []),
                 ...(name ? (size ? index.byNameSize.get(JSON.stringify([name, size])) : index.byName.get(name)) || [] : [])])];
         }
         function hasCompleteRequestOptionSnapshot() {
@@ -107086,20 +107102,64 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         async function fetchRequestItemCodeOptionRowsFromSupabase(itemCode = '', options = {}) {
-            const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
-            const pageSize = Math.max(25, Math.min(100, Number(safeOptions.pageSize) || 100));
-            const maxRows = Math.max(pageSize, Number(safeOptions.maxRows) || 1200);
-            const rows = [];
-            for (let offset = 0; offset < maxRows; offset += pageSize) {
-                const page = await fetchMasterInitialRowsPage({ itemCode: String(itemCode || '').trim() }, pageSize, offset);
-                const pageRows = Array.isArray(page) ? page : [];
-                if (!pageRows.length) break;
-                retainVerifiedCardLocationOnHandRows(pageRows);
-                rows.push(...pageRows);
-                if (pageRows.length < pageSize) break;
-                if (offset + pageSize < maxRows) await yieldToUiFrame();
-            }
-            return rows;
+            const lookup = String(itemCode || '').trim();
+            if (!lookup) return [];
+            return runDedupeSupabaseRead('request-options:' + lookup, async ({ signal }) => {
+                if (!lookup.startsWith('&')) {
+                    const page = await fetchDirectMasterInventoryItemRows(lookup, { signal });
+                    const pageRows = Array.isArray(page) ? page : [];
+                    retainVerifiedCardLocationOnHandRows(pageRows);
+                    return pageRows;
+                }
+                const filter = new URLSearchParams(lookup.slice(1));
+                const query = new URLSearchParams({ select: '*', order: 'unique_id.asc', limit: String(Math.min(1200, Number(options.maxRows) || 1200)) });
+                for (const key of ['commonname', 'contsize']) if (filter.has(key)) query.set(key, filter.get(key));
+                return (await fetchAuthenticatedSupabaseReadPage('ph_master_inventory', query.toString(), { signal })).rows;
+            }, { retainOnGenerationChange: true, signal: null });
+        }
+
+        const suspendTagItemHydration = new Map();
+
+        function hydrateSuspendTagItemOptions(items = []) {
+            const owner = getSupabaseReadIdentityScope();
+            if (!hasAuthenticatedOperationalReadIdentity()) return;
+            for (const [key, entry] of suspendTagItemHydration) if (entry.owner !== owner) suspendTagItemHydration.delete(key);
+            const codes = [...new Set(items.map(item => getRequestItemCodeOptionItemCode(item)).filter(Boolean))];
+            codes.forEach(itemCode => {
+                const prior = suspendTagItemHydration.get(itemCode);
+                if (prior?.owner === owner && (prior.promise || Date.now() - prior.loadedAt < 120000)) return;
+                const entry = { owner, rows: prior?.owner === owner ? prior.rows : [], loadedAt: 0, promise: null };
+                suspendTagItemHydration.set(itemCode, entry);
+                entry.promise = Promise.all([
+                    fetchRequestItemCodeOptionRowsFromSupabase(itemCode),
+                    runDedupeSupabaseRead('suspend-location-evidence:' + itemCode, ({ signal }) =>
+                        fetchAuthenticatedSupabaseReadPage('ph_location_sales_notes', 'select=*&itemcode=eq.' + encodeURIComponent(itemCode) + '&limit=1000', { signal }),
+                        { retainOnGenerationChange: true, signal: null })
+                ]).then(([rows, notes]) => {
+                    if (owner !== getSupabaseReadIdentityScope()) return;
+                    const enriched = rows.map(row => {
+                        const note = notes.rows.filter(note => note.itemcode === row.itemcode && note.locationcode === row.locationcode
+                            && (!note.lotcode || note.lotcode === row.lotcode)).sort((a,b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
+                        if (!note) return row;
+                        const next = { ...row };
+                        for (const key of ['photo_link','photo_name','spec','caliper','av_note','sales_note']) if (!next[key] && note[key]) next[key] = note[key];
+                        return next;
+                    });
+                    entry.rows = formatFetchedRows(enriched, 'ph_master_inventory').map(row => buildSearchIndex(normalizeRowPhotoFields(row)));
+                    entry.index = window.AgMetricQueueInventory?.createIndex(entry.rows);
+                    entry.loadedAt = Date.now();
+                    queueCardInventoryRenderVersion += 1;
+                    markViewDirty('request');
+                    if (isViewVisible('request')) scheduleRequestRender(0, 0, true);
+                    if (isViewVisible('detail') && isDockSuspendDcRequestMirrorRow(activeItem)
+                        && getRequestItemCodeOptionItemCode(activeItem) === itemCode) {
+                        const state = ensureRequestItemCodeOptionState(activeItem);
+                        state.rows = entry.rows; state.rowsRevision += 1; state.cachedSignature = '';
+                        renderRequestMatchingInventoryOptions(activeItem, 'request', { skipLoad: true });
+                    }
+                }).catch(error => { entry.loadedAt = Date.now() - 115000; console.warn('Suspend item hydration deferred', error); })
+                    .finally(() => { entry.promise = null; });
+            });
         }
 
         function scheduleStaleRequestOptionMetricRefresh(item = activeItem, state = requestItemCodeOptionState, revision = '') {
@@ -116313,6 +116373,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
             const safePlan = plan && typeof plan === 'object' ? plan : {};
+            hydrateSuspendTagItemOptions(safePlan.rows || []);
             const renderSignature = String(safePlan.renderSignature || '');
             // Queue the bounded visible page together. Reading only as each
             // chunk renders lets each small batch restart the detached stage
@@ -147551,6 +147612,12 @@ C.14.043 C.15.000
         function getSuspendTagMetricDisplayFallback(item = null) {
             const helper = window.AgMetricQueueInventory;
             if (!helper || !item || !isDockSuspendDcRequestMirrorRow(item)) return null;
+            const targeted = suspendTagItemHydration.get(getRequestItemCodeOptionItemCode(item));
+            if (targeted?.owner === getSupabaseReadIdentityScope() && targeted.index) {
+                const source = findDockSuspendDcRequestSourceRow(item) || item;
+                const found = targeted.index.resolveSuspendTagDisplay(helper.identity(getSuspendTagInventoryIdentity(item, source)));
+                if (found?.row) return found;
+            }
             const context = getQueueCardInventoryContext();
             const authorization = getQueueCardInventoryAuthorizationContext();
             const state = getDatasetState('master');
@@ -148218,7 +148285,7 @@ C.14.043 C.15.000
                 if (isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag') {
                 const suspendTagInventoryRow = getOperationalCardInventoryRow(item);
                 const suspendTagReclassHtml = buildSuspendTagReclassActionHtml(item, nestedDockActionPressAttrs);
-                const suspendOrderField = (label, value) => `<span class="app-suspend-tag-order-field"><span>${esc(label)}</span><strong>${esc(value || '—')}</strong></span>`;
+                const suspendOrderField = (label, value) => `<span class="app-suspend-tag-order-field"><span>${esc(label)}: </span><strong>${esc(value || '—')}</strong></span>`;
                 const suspendDock = String(firstNonEmptyValue(item.DOCK_NUM, item.dock_num, item.DOCK, item.dock, '') || '').replace(/^dock\s*/i, '').trim();
                 const suspendOrderStripHtml = `<div class="app-suspend-tag-order-strip">${suspendOrderField('Dock', suspendDock)}${suspendOrderField('Drop', getDockStopOrDropValue(item))}${suspendOrderField('Qty', formatDockDisplayQty(getDockDisplayQty(item)))}${suspendOrderField('Plan Start', formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}${suspendOrderField('Consignee', requestConsignee)}${suspendOrderField('Sales Rep', suspendSalesRep || 'N/A')}</div>`;
                 const suspendHoldstopCode = String(firstNonEmptyValue(cleanHoldCode, '') || '').trim();
@@ -168740,6 +168807,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return false;
             }
             if (!canCurrentUserViewDockSuspendDcRequests()) return false;
+            hydrateSuspendTagItemOptions([mirrorRow]);
             retryPendingSuspendTagInventoryReconciliations();
             const tab = String(firstNonEmptyValue(safeOptions.preferredTab, 'request') || 'request').trim() || 'request';
             openDetail(uid, 'request', {
@@ -168747,7 +168815,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 skipRequestOpenInfoModal: true
             });
             if (safeOptions.openAvOptions) {
+                ensureRequestItemCodeOptionState(activeItem);
                 requestAvOptionsDropdownOpen = true;
+                renderRequestMatchingInventoryOptions(activeItem, 'request');
                 setTimeout(() => {
                     requestAvOptionsDropdownOpen = true;
                     renderRequestMatchingInventoryOptions(activeItem, activeDetailSourceView || lastView || 'request', { skipLoad: true });

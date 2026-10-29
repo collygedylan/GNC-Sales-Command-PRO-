@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.107",
+  "release": "AgData v2.3.108",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -729,7 +729,8 @@
         "isEvalReclassRowAssigned",
         "getDockSuspendDcRequestPlanstartValue",
         "getDockSuspendDcRequestPlanstartInfo",
-        "findDockSuspendDcRequestCardDisplayDataRow"
+        "findDockSuspendDcRequestCardDisplayDataRow",
+        "hydrateSuspendTagItemOptions"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"

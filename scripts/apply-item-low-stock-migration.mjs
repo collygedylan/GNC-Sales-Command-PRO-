@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 
-// AgData v2.3.107 restores row workflows and atomic Bloom project creation.
+// AgData v2.3.108 restores row workflows and atomic Bloom project creation.
 export const agdataV23107RowWorkflowsMigrationName = '20261029210000_agdata_v23107_row_workflows.sql';
 // v2.3.102 restores exact customer/consignee pair ownership and preserves import overrides.
 export const agdataV23102CustomerPairOwnershipMigrationName = '20261029130000_agdata_v23102_customer_pair_ownership.sql';
