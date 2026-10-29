@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 
-// v2.3.100 renews the existing shared browser/cloud ERP request lease.
+// v2.3.101 preserves the existing shared browser/cloud ERP request lease; the drawer release adds no migration.
 export const agdataV23100CloudSyncLeaseMigrationName = '20261029031000_agdata_v23100_cloud_sync_lease_renewal.sql';
 export const migrationName = '20260928145055_item_low_stock_targets.sql';
 export const perennialAssignmentMigrationName = '20260929013125_perennial_zone_assignment_override.sql';

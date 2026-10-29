@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.100",
+  "release": "AgData v2.3.101",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -366,6 +366,7 @@
         "switchView",
         "navigateQuickAccessView",
         "openManagersModules",
+        "syncDrawerPresentation",
         "showOnlyPrimaryView",
         "goBackUniversal",
         "updateGlobalBackButton",

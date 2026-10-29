@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.100';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.101';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26720,7 +26720,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.100').trim() || 'AgData v2.3.100';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.101').trim() || 'AgData v2.3.101';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26757,7 +26757,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
 
             const drawerLabel = document.getElementById('drawer-outdoor-mode-label');
-            if (drawerLabel) drawerLabel.textContent = enabled ? 'Outdoor Mode On' : 'Outdoor Mode Off';
+            if (drawerLabel) drawerLabel.textContent = enabled ? 'On' : 'Off';
         }
 
         function setOutdoorMode(enabled, options = {}) {
@@ -29400,7 +29400,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const indicator = document.getElementById('live-data-freshness');
             const dot = document.getElementById('live-data-warning-dot');
             const menu = document.getElementById('footer-menu-btn');
-            if (!indicator) return;
+            if (!indicator) {
+                if (dot) dot.hidden = true;
+                menu?.removeAttribute('aria-description');
+                updateDocksWriteControlGate();
+                updateSuspendTagWriteControlGate();
+                return;
+            }
             const enabled = canUseProductionLiveSync();
             indicator.hidden = !enabled;
             if (!enabled) {
@@ -61326,6 +61332,10 @@ function toggleDriveQuickRequestItem(domId) {
                 button.addEventListener('click', openRequestSalesImpact);
             }
             button.className = `request-sales-impact-entry request-sales-impact-entry-${variant}`;
+            if (variant === 'drawer') {
+                button.classList.add('drawer-item');
+                button.dataset.drawerView = 'request-sales-impact';
+            }
             button.innerHTML = '<i class="ph-bold ph-currency-dollar" aria-hidden="true"></i><span>Request Sales Impact ($)</span>';
             if (button.parentElement !== container) {
                 if (prepend) container.prepend(button);
@@ -61342,7 +61352,7 @@ function toggleDriveQuickRequestItem(domId) {
             const drawerAnchor = document.getElementById('drawer-historical-requests-btn');
             if (drawerAnchor?.parentElement) {
                 const drawerEntry = createRequestSalesImpactEntry(drawerAnchor.parentElement, 'drawer-request-sales-impact-btn', 'drawer');
-                if (drawerEntry && drawerEntry.previousElementSibling !== drawerAnchor) drawerAnchor.after(drawerEntry);
+                if (drawerEntry && drawerEntry.nextElementSibling !== drawerAnchor) drawerAnchor.before(drawerEntry);
             }
             createRequestSalesImpactEntry(document.getElementById('historical-requests-content'), 'historical-request-sales-impact-btn', 'historical', true);
             createRequestSalesImpactEntry(document.getElementById('sales-hub-grid'), 'sales-open-request-impact', 'hub');
@@ -61743,6 +61753,20 @@ function toggleDriveQuickRequestItem(domId) {
         function isDrawerOpen() {
             const drawer = document.getElementById('side-drawer');
             return !!(drawer && drawer.classList.contains('open'));
+        }
+
+        function syncDrawerPresentation() {
+            const drawer = document.getElementById('side-drawer');
+            if (!drawer) return;
+            const username = document.getElementById('drawer-user-name');
+            const role = document.getElementById('drawer-user-role');
+            if (username) username.textContent = String(nativeAuthProfile?.username || currentUser || 'Account');
+            if (role) role.textContent = String(getCurrentRoleAccessValue() || 'User');
+            const currentView = String(currentPrimaryViewId || getCurrentVisibleViewId() || 'home');
+            drawer.querySelectorAll('[data-drawer-view]').forEach((button) => {
+                if (button.dataset.drawerView === currentView) button.setAttribute('aria-current', 'page');
+                else button.removeAttribute('aria-current');
+            });
         }
 
         function setMenuOpenState(isOpen = false) {
@@ -79367,6 +79391,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             GncMobileWorkspace.shell();
             configureNavigationPreferences();
             const currentView = getCurrentVisibleViewId();
+            syncDrawerPresentation();
             const access = getRoleAccessState();
             const bottomNav = document.getElementById('bottom-nav');
             const navButtons = Array.from(document.querySelectorAll('#bottom-nav .footer-nav-btn'));

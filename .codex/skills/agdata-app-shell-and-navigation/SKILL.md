@@ -61,6 +61,7 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 
 ## Cross-Layer Blast Radius
 
+- The v2.3.101 drawer uses a pinned header/footer, four quick-action tiles, three ordered module groups and preferences below navigation. `syncDrawerPresentation` owns the current-account badge and exact-view `aria-current`; `createRequestSalesImpactEntry` retains owner authorization and places the uniform drawer row before Historical Requests. The Disease & Pest hub retains its nested Pest Management route. This presentation change does not modify Code.gs, SQL/RPC, app-api, read hydration or mutation authorization.
 - Keep all 12 Dylan Home tiles above the bottom navigation with no clipped sixth row; `Production` and `Smart Sales & Move` are permanent acceptance tiles. `switchView('smart-moves')` must start `warmSalesIntelligenceData` and render the view immediately while datasets hydrate.
 - Navigation changes must be traced through shell DOM/CSS, feature state, app-api reads, and any SQL readiness contract without inventing a local router or blocking the current authenticated view.
 
@@ -71,6 +72,7 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never put data-verification warnings or large settings blocks ahead of drawer navigation, apply static active borders to unrelated modules, or let dynamically inserted rows bypass the shared drawer style. Removing a status surface must preserve its independent write-control checks; synchronize current-view styling and identity from canonical live state, and retain existing action handlers and role gates when regrouping entries.
 - Never capture a lazy historical archive module owner before switching to its parent view when that owner key includes visible-view identity. Capture it after `switchView`, then guard the awaited module mount against the same account, parent view, navigation generation, and access.
 
 - Never collapse Drive card/program depth directly to size selection or consult cross-view history before exhausting the active Drive/AV drill. Global Back closes modal state first, then unwinds exactly one feature level while retaining the current search; only a separate root Back may clear search or leave the view.

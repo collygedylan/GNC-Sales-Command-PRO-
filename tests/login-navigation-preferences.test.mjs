@@ -4,10 +4,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
+import { JSDOM } from 'jsdom';
 
 const html = readComposedAppSource();
 const worker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const preferencesSource = readFileSync(new URL('../assets/navigation-preferences.js', import.meta.url), 'utf8');
+const styles = readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8');
+const shellStyles = readFileSync(new URL('../assets/app-shell-style-01.css', import.meta.url), 'utf8');
 
 function sliceBetween(startText, endText) {
   const start = html.indexOf(startText);
@@ -120,7 +123,7 @@ test('configuration, refresh, footer updates, and preference editor tolerate abs
     document: { getElementById: () => element(), querySelectorAll: () => [] },
     GncMobileWorkspace: { shell() {} }, getCurrentVisibleViewId: () => 'home', getRoleAccessState: () => ({}),
     canShowFooterViewButton: () => false, isSalesShellAccess: () => false,
-    scheduleIosBottomNavViewportLock() {}, setMenuOpenState() {}, switchView() {},
+    scheduleIosBottomNavViewportLock() {}, setMenuOpenState() {}, switchView() {}, syncDrawerPresentation() {},
     cartPanelOpen: false, selectedItems: new Set(),
     postAppFunctionJson: async () => { throw new Error('unavailable'); },
   });
@@ -257,4 +260,119 @@ test('saved admin shortcuts and nested quick-access routes remain selectable', (
     "'qc-docks': { parent: 'docks', access: 'qc' }",
     "'office-orders': { parent: 'sales-office', tab: 'orders', access: 'office' }",
     "'sales-drive': { parent: 'drive', access: 'sales' }"]) assert.ok(html.includes(marker), marker);
+});
+
+test('drawer groups retain every requested route and role gate without duplicate Pest or Data Status', () => {
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+  const drawer = document.getElementById('side-drawer');
+  assert.ok(drawer, 'drawer shell remains present');
+  assert.ok(document.getElementById('drawer-user-name'));
+  assert.ok(document.getElementById('drawer-user-role'));
+  assert.ok(document.getElementById('app-release-version'));
+  assert.equal(drawer.querySelector('#live-data-freshness'), null, 'Data Status is not a drawer menu item');
+
+  const expectedGroups = {
+    'field-inventory': ['drawer-drive-btn', 'drawer-av-btn', 'drawer-sales-inventory-btn', 'drawer-bunch-note-btn', 'drawer-bloom-picker-btn', 'drawer-request-btn', 'drawer-tasks-btn', 'drawer-moves-btn'],
+    'sales-orders-docks': ['drawer-docks-btn', 'drawer-sales-btn', 'drawer-sales-office-btn', 'drawer-hl-order-btn', 'drawer-reserves-btn', 'drawer-office-btn', 'drawer-historical-requests-btn'],
+    'management-production-qc': ['drawer-managers-btn', 'drawer-qc-btn', 'drawer-production-btn', 'drawer-crop-roll-btn', 'drawer-review-btn', 'drawer-low-stock-btn', 'drawer-move-up-btn', 'drawer-take-back-btn', 'drawer-grower-btn', 'drawer-disease-pest-btn', 'drawer-hours-btn', 'drawer-advertisement-btn', 'drawer-reports-btn', 'drawer-communication-btn'],
+  };
+  for (const [section, expectedIds] of Object.entries(expectedGroups)) {
+    const container = drawer.querySelector(`[data-drawer-section="${section}"]`);
+    assert.ok(container, `missing drawer group ${section}`);
+    assert.ok(container.querySelector('[data-drawer-section-title]'), `${section} has a visible heading`);
+    const actualIds = Array.from(container.querySelectorAll('.drawer-item')).map(item => item.id || item.dataset.drawerAction);
+    assert.deepEqual(actualIds, expectedIds, `${section} contains the exact requested routes in order`);
+  }
+
+  assert.equal(drawer.querySelectorAll('#drawer-disease-pest-btn').length, 1);
+  assert.equal(drawer.querySelector('#drawer-pest-management-btn'), null, 'redundant direct Pest shortcut is removed');
+  assert.ok(document.getElementById('disease-pest-open-pest-management'), 'Pest Management remains reachable inside its hub');
+  assert.ok(drawer.querySelector('#drawer-historical-requests-btn'), 'dynamic Sales Impact keeps its injection anchor');
+  assert.ok(drawer.querySelector('#drawer-historical-requests-btn').classList.contains('drawer-item'));
+  assert.ok(drawer.querySelector('#drawer-request-sales-impact-btn') === null, 'owner-scoped Sales Impact remains runtime-injected');
+
+  const roleGatedIds = ['drawer-drive-btn', 'drawer-av-btn', 'drawer-sales-inventory-btn', 'drawer-request-btn', 'drawer-tasks-btn', 'drawer-docks-btn', 'drawer-reserves-btn', 'drawer-office-btn', 'drawer-sales-office-btn', 'drawer-reports-btn'];
+  for (const id of roleGatedIds) {
+    assert.ok(drawer.querySelector(`#${id}`).classList.contains('role-access'), `${id} keeps its existing authorization gate`);
+  }
+  dom.window.close();
+});
+
+test('drawer quick actions, preferences, footer actions and shared visual classes stay intact', () => {
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+  const drawer = document.getElementById('side-drawer');
+  const quick = drawer.querySelector('#drawer-quick-actions');
+  assert.ok(quick);
+  assert.deepEqual(Array.from(quick.querySelectorAll('.drawer-action-tile')).map(item => item.id), [
+    'drawer-home-btn', 'drawer-force-sync-btn', 'drawer-outdoor-mode-btn', 'drawer-customize-shortcuts-btn',
+  ]);
+  assert.ok(quick.querySelector('#drawer-outdoor-mode-btn').hasAttribute('aria-pressed'));
+
+  const preferences = drawer.querySelector('#drawer-preferences-security');
+  assert.ok(preferences);
+  for (const id of ['ops-pilot-settings', 'aura-voice-settings', 'ops-security-settings', 'drawer-enable-push-btn']) assert.ok(preferences.querySelector(`#${id}`), `${id} is in preferences`);
+  assert.equal(preferences.querySelectorAll('#aura-voice-preference').length, 1);
+  assert.equal(preferences.querySelectorAll('#aura-auto-start-toggle').length, 1);
+  assert.ok(preferences.querySelector('#ops-passkey-settings button[onclick*="registerAppPasskey"]'));
+  assert.ok(preferences.querySelector('#ops-passkey-settings button[onclick*="manageAppPasskeys"]'));
+
+  const footer = drawer.querySelector('#drawer-footer');
+  assert.ok(footer);
+  assert.ok(footer.querySelector('#drawer-logout-btn'));
+  assert.ok(drawer.querySelector('[data-drawer-action="bloom-picker"]')?.closest('[data-drawer-section="field-inventory"]'), 'Bloom Picker remains in Field & Inventory');
+  assert.ok(footer.querySelector('#drawer-logout-btn').classList.contains('drawer-logout'));
+  const menuItems = drawer.querySelectorAll('.drawer-item');
+  assert.ok(menuItems.length >= 28, 'all existing module actions remain represented');
+  for (const item of menuItems) assert.ok(item.classList.contains('drawer-item'), 'module entries use the shared menu-row style');
+  assert.match(shellStyles, /\.drawer-item\{[^}]*display:flex/,
+    'shared drawer row keeps one common base layout rule');
+  assert.match(styles, /\.drawer-action-tile\s*\{/s, 'quick actions have a shared tile style');
+  assert.match(styles, /#drawer-preferences-security\s*\{[^}]*border/s, 'preferences use a shared card style');
+
+  const actionIds = ['drawer-home-btn', 'drawer-force-sync-btn', 'drawer-outdoor-mode-btn', 'drawer-enable-push-btn', 'drawer-communication-btn', 'drawer-sales-btn', 'drawer-crop-roll-btn', 'drawer-managers-btn', 'drawer-qc-btn', 'drawer-drive-btn', 'drawer-tasks-btn', 'drawer-bunch-note-btn', 'drawer-hl-order-btn', 'drawer-grower-btn', 'drawer-docks-btn', 'drawer-take-back-btn', 'drawer-av-btn', 'drawer-request-btn', 'drawer-reserves-btn', 'drawer-office-btn', 'drawer-sales-inventory-btn', 'drawer-production-btn', 'drawer-disease-pest-btn', 'drawer-sales-office-btn', 'drawer-moves-btn', 'drawer-historical-requests-btn', 'drawer-reports-btn', 'drawer-hours-btn', 'drawer-low-stock-btn', 'drawer-review-btn', 'drawer-move-up-btn', 'drawer-advertisement-btn', 'drawer-logout-btn'];
+  for (const id of actionIds) {
+    const item = drawer.querySelector(`#${id}`);
+    assert.ok(item, `${id} remains in the drawer`);
+    assert.ok(item.hasAttribute('onclick') || html.includes(`bindFastInvokeById('${id}'`), `${id} retains a click action`);
+  }
+  const clickCalls = [];
+  const clickContext = vm.createContext(Object.fromEntries([
+    'setMenuOpenState', 'openDrawerView', 'fetchBackgroundData', 'toggleMenu', 'toggleOutdoorMode',
+    'openFooterShortcutSettings', 'toggleCartPanel', 'manuallyEnablePushNotifications',
+    'openInventoryHubView', 'openSalesOfficeView', 'openDrawerMovesView', 'openManagerTableManagement',
+    'performLogout', 'toggleAuraHandsFreeAutoStart', 'registerAppPasskey', 'manageAppPasskeys',
+    'setAuraVoicePreference',
+  ].map(name => [name, (...args) => { clickCalls.push([name, ...args]); return true; }])));
+  for (const item of drawer.querySelectorAll('[onclick]')) {
+    clickCalls.length = 0;
+    const handler = vm.runInContext(`(function(event) { ${item.getAttribute('onclick')} })`, clickContext);
+    handler.call(item, { preventDefault() {} });
+    assert.ok(clickCalls.length, `${item.id || item.dataset.drawerAction || item.textContent.trim()} invokes its handler`);
+    const view = item.dataset.drawerView;
+    if (view && !['sales-inventory', 'sales-office', 'moves'].includes(view)) {
+      assert.deepEqual(clickCalls[0], ['openDrawerView', view], `${item.id} navigates to its declared module`);
+    }
+  }
+  clickCalls.length = 0;
+  const voice = drawer.querySelector('#aura-voice-preference');
+  vm.runInContext(`(function() { ${voice.getAttribute('onchange')} })`, clickContext).call(voice);
+  assert.deepEqual(clickCalls, [['setAuraVoicePreference', 'Kore']], 'AURA voice selector retains its save action');
+  for (const [id, method] of [
+    ['drawer-force-sync-btn', 'fetchBackgroundData'], ['drawer-outdoor-mode-btn', 'toggleOutdoorMode'],
+    ['drawer-customize-shortcuts-btn', 'openFooterShortcutSettings'], ['drawer-bloom-picker-btn', 'toggleCartPanel'],
+    ['drawer-enable-push-btn', 'manuallyEnablePushNotifications'], ['drawer-sales-inventory-btn', 'openInventoryHubView'],
+    ['drawer-sales-office-btn', 'openSalesOfficeView'], ['drawer-moves-btn', 'openDrawerMovesView'],
+    ['drawer-historical-requests-btn', 'openDrawerView'], ['drawer-logout-btn', 'performLogout'],
+    ['aura-auto-start-toggle', 'toggleAuraHandsFreeAutoStart'],
+  ]) {
+    const item = drawer.querySelector(`#${id}`);
+    clickCalls.length = 0;
+    vm.runInContext(`(function(event) { ${item.getAttribute('onclick')} })`, clickContext).call(item, { preventDefault() {} });
+    assert.equal(clickCalls[0]?.[0], method, `${id} invokes its preserved action`);
+  }
+  assert.match(html, /function createRequestSalesImpactEntry\([\s\S]*?classList\.add\(['"]drawer-item['"]\)/);
+  assert.match(html, /isRequestSalesImpactOwner\(\)[\s\S]*?createRequestSalesImpactEntry\(drawerAnchor\.parentElement/);
+  dom.window.close();
 });

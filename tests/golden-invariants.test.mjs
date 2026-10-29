@@ -2178,7 +2178,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.100\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.101\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2708,7 +2708,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.100\.4/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.101\.4/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3359,8 +3359,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.100\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.100\.4/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.101\.1/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.101\.4/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r4'/);
 });
 
@@ -3660,8 +3660,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.100\.1/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.100\.1/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.101\.1/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.101\.1/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -3999,4 +3999,64 @@ test('Invariant 140: SOC cell selection decodes only exact requested columns inc
   const selected = context.parseXlsxSelectedCells('<row r="2"><c r="A2" t="s"><v>0</v></c><c r="B2" t="inlineStr"><is><t>excluded</t></is></c><c r="AA2" t="inlineStr"><is><t>38&amp;A</t></is></c></row>', ['001'], wanted);
   assert.deepEqual(plain([...selected.entries()]), [[1, '001'], [27, '38&A']]);
   assert.equal(context.selectedCellPattern(wanted), context.selectedCellPattern(wanted));
+});
+
+test('Invariant 141: drawer identity and active row follow the current account and exact primary view', () => {
+  const buttons = ['home', 'drive', 'docks', 'request-sales-impact'].map(view => ({
+    dataset: { drawerView: view }, attributes: {},
+    setAttribute(name, value) { this.attributes[name] = value; },
+    removeAttribute(name) { delete this.attributes[name]; },
+  }));
+  const nodes = { 'side-drawer': { querySelectorAll: () => buttons }, 'drawer-user-name': {}, 'drawer-user-role': {} };
+  const context = runFunctions('assets/app-runtime.js', ['syncDrawerPresentation'], {
+    document: { getElementById: id => nodes[id] }, nativeAuthProfile: { username: 'first-user' },
+    currentUser: 'first-user', currentPrimaryViewId: 'drive', getCurrentRoleAccessValue: () => 'Admin',
+  });
+  context.syncDrawerPresentation();
+  assert.equal(nodes['drawer-user-name'].textContent, 'first-user');
+  assert.equal(nodes['drawer-user-role'].textContent, 'Admin');
+  assert.deepEqual(buttons.filter(button => button.attributes['aria-current'] === 'page').map(button => button.dataset.drawerView), ['drive']);
+  context.nativeAuthProfile = { username: 'second-user' };
+  context.currentPrimaryViewId = 'request-sales-impact';
+  context.getCurrentRoleAccessValue = () => 'Rep';
+  context.syncDrawerPresentation();
+  assert.equal(nodes['drawer-user-name'].textContent, 'second-user');
+  assert.equal(nodes['drawer-user-role'].textContent, 'Rep');
+  assert.deepEqual(buttons.filter(button => button.attributes['aria-current'] === 'page').map(button => button.dataset.drawerView), ['request-sales-impact']);
+});
+
+test('Invariant 142: removing the drawer freshness card preserves write gates without a stale Menu warning', () => {
+  const gates = [];
+  const dot = { hidden: false };
+  const menu = { removeAttribute: name => gates.push(name) };
+  const context = runFunctions('assets/app-runtime.js', ['renderProductionDataFreshness'], {
+    document: { getElementById: id => ({ 'live-data-warning-dot': dot, 'footer-menu-btn': menu })[id] || null },
+    updateDocksWriteControlGate: () => gates.push('docks'), updateSuspendTagWriteControlGate: () => gates.push('suspend'),
+  });
+  context.renderProductionDataFreshness({ state: 'Needs attention' });
+  assert.equal(dot.hidden, true);
+  assert.deepEqual(gates, ['aria-description', 'docks', 'suspend']);
+});
+
+test('Invariant 143: owner-scoped Sales Impact shares the drawer row contract and stays before Historical Requests', async () => {
+  const { JSDOM } = await import('jsdom');
+  const dom = new JSDOM('<section><button id="drawer-office-btn"></button><button id="drawer-historical-requests-btn"></button></section>');
+  let owner = true, opened = 0;
+  const context = runFunctions('assets/app-runtime.js', ['createRequestSalesImpactEntry', 'syncRequestSalesImpactEntrypoints'], {
+    document: dom.window.document, isRequestSalesImpactOwner: () => owner, openRequestSalesImpact: () => opened++,
+  });
+  try {
+    context.syncRequestSalesImpactEntrypoints();
+    context.syncRequestSalesImpactEntrypoints();
+    const button = dom.window.document.getElementById('drawer-request-sales-impact-btn');
+    assert.equal(dom.window.document.querySelectorAll('#drawer-request-sales-impact-btn').length, 1);
+    assert.equal(button.nextElementSibling.id, 'drawer-historical-requests-btn');
+    assert.equal(button.classList.contains('drawer-item'), true);
+    assert.equal(button.dataset.drawerView, 'request-sales-impact');
+    button.click();
+    assert.equal(opened, 1);
+    owner = false;
+    context.syncRequestSalesImpactEntrypoints();
+    assert.equal(dom.window.document.getElementById('drawer-request-sales-impact-btn'), null);
+  } finally { dom.window.close(); }
 });
