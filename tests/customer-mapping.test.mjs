@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import { mappingBrowserBundle, requestMappingFunctions, requestMappingSetup, mappingFixtureRow as row } from './helpers/customer-mapping-fixture.mjs';
-import { agdataV23102LegacyPairScopeMigrationName, agdataV2397CustomerMappingCrudMigrationName, migrationContractQuery, releaseDatabaseMigrations } from '../scripts/apply-item-low-stock-migration.mjs';
+import { agdataV23102DirectoryCanonicalKeysMigrationName, agdataV23102LegacyPairScopeMigrationName, agdataV2397CustomerMappingCrudMigrationName, migrationContractQuery, releaseDatabaseMigrations } from '../scripts/apply-item-low-stock-migration.mjs';
 
 const requestSubmissionSource = readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8');
 const requestSubmissionSandbox = { window: {} };
@@ -67,7 +67,7 @@ test('RPC mapping load validates built options while preserving each physical so
   const c=requestFixture();
   c.tempSelectedReqRep='Rep One'; c.tempSelectedReqSalesrepId='01';
   c.isRequestRowArchivedForCompletion=()=>false;
-  c.fetchRequestUniversalCustomerOptions=async()=>({rows:[{...row}],revision:'rpc-r1',salesrepId:'01',universal:false});
+  c.fetchRequestUniversalCustomerOptions=async()=>({rows:[{...row,salesrep_canonical_key:'profile-one'}],revision:'rpc-r1',salesrepId:'01',salesrepCanonicalKey:'profile-one',universal:false});
   const built=c.buildRequestModalCustomerSearchOption(row.customername,row.consigneename,row);
   assert.equal(c.isActiveRequestCustomerMapping(built),true,JSON.stringify(built));
   const entry=await c.loadRequestModalCustomerOptionsForRep('Rep One',true);
@@ -86,7 +86,7 @@ test('RPC option construction retains each source ID across canonical rep aliase
   c.customerRepMapRows=[s07,s17];
   c.tempSelectedReqRep='Chance Alldredge'; c.tempSelectedReqSalesrepId='S17';
   c.isRequestRowArchivedForCompletion=()=>false;
-  c.fetchRequestUniversalCustomerOptions=async()=>({rows:[s07,s17],revision:'rpc-r1',salesrepId:'S17',universal:false});
+  c.fetchRequestUniversalCustomerOptions=async()=>({rows:[{...s07,salesrep_canonical_key:'profile-chance'},{...s17,salesrep_canonical_key:'profile-chance'}],revision:'rpc-r1',salesrepId:'S17',salesrepCanonicalKey:'profile-chance',universal:false});
   const entry=await c.loadRequestModalCustomerOptionsForRep('Chance Alldredge',true);
   assert.deepEqual(Array.from(entry.rows.filter(option=>option.customeridentityid!=='AGDATA_NA_CUSTOMER'),option=>[
     option.salesrepid,option.request_selected_salesrep_id,option.consigneeid,option.consigneeidentityid,
@@ -106,7 +106,8 @@ test('cold name-resolved RPC rows bind the rep identity before rendering exact p
   c.parseExistingRequestFolderMetadata=folderId=>({dateIso:'',dateLabel:'',requestNumber:'',requestIdLabel:folderId});
   const rawRows=Array.from({length:326},(_,index)=>({...row,unique_id:`casey-${index+1}`,salesrepid:'S03',salesrepname:'Casey Rufener',
     customeridentityid:String(10000+index),customername:`Casey Customer ${index+1}`,consigneeid:String(20000+index),consigneename:`Casey Site ${index+1}`}));
-  c.fetchRequestUniversalCustomerOptions=async()=>({rows:rawRows,revision:'casey-rpc-r1',salesrepId:'S03',universal:false});
+  const keyedRawRows=rawRows.map(raw=>({...raw,salesrep_canonical_key:'profile-casey'}));
+  c.fetchRequestUniversalCustomerOptions=async()=>({rows:keyedRawRows,revision:'casey-rpc-r1',salesrepId:'S03',salesrepCanonicalKey:'profile-casey',universal:false});
   assert.equal(c.getRequestSelectedSalesrepId('Casey Rufener'),'','cold rep-name directory has not yet resolved S03');
   const entry=await c.loadRequestModalCustomerOptionsForRep('Casey Rufener',true);
   assert.equal(entry.rows.length,326);
@@ -114,11 +115,43 @@ test('cold name-resolved RPC rows bind the rep identity before rendering exact p
   const options=c.getRequestModalCustomerOptionsForRep('Casey Rufener');
   assert.equal(options.length,327,'rendered picker contains N/A plus all 326 validated RPC pairs');
   assert.deepEqual(Array.from(options.slice(1),option=>[option.salesrepid,option.customeridentityid,option.consigneeidentityid]),
-    rawRows.map(raw=>['S03',raw.customeridentityid,raw.consigneeid]));
+    keyedRawRows.map(raw=>['S03',raw.customeridentityid,raw.consigneeid]));
   const groups=c.buildExistingRequestFolderCustomerGroups('Casey Rufener');
   assert.equal(groups.length,327,'existing-folder customer picker renders the same N/A and exact RPC customer pairs');
   assert.equal(groups[0].key,'id:AGDATA_NA_CUSTOMER');
   assert.equal(groups.filter(group=>group.mapCount>0).length,327);
+});
+
+test('cold canonical-key RPC accepts differently named source aliases but rejects foreign profile rows',async()=>{
+  const c=requestFixture();
+  c.customerRepMapRows=[];
+  c.tempSelectedReqRep='Chance Alldredge'; c.tempSelectedReqSalesrepId='S07';
+  c.REQUEST_MODAL_REP_OPTIONS=[{label:'Chance Alldredge',token:c.normalizeRepMatchToken('Chance Alldredge'),collapsedToken:'chancealldredge'}];
+  c.isRequestRowArchivedForCompletion=()=>false;
+  c.canUseRequestMappedFoldersForCurrentUser=()=>true;
+  c.getRequestCustomerFolderLabel=(customer,consignee)=>customer||consignee||'Unknown Customer';
+  c.getRequestConsigneeFolderLabel=consignee=>consignee||'No Consignee';
+  c.normalizeRequestConsigneeFolderKey=value=>c.normalizeRepMatchToken(value);
+  c.parseExistingRequestFolderMetadata=folderId=>({dateIso:'',dateLabel:'',requestNumber:'',requestIdLabel:folderId});
+  const s07={...row,unique_id:'chance-s07',salesrepid:'S07',salesrepname:'Chance Alldredge',salesrep_canonical_key:'profile-chance',
+    customeridentityid:'00060',customername:'Chance Customer',consigneeid:'00070',consigneename:'North'};
+  const s17={...row,unique_id:'chance-s17',salesrepid:'S17',salesrepname:'Chance Alldredge - South TX',salesrep_canonical_key:'profile-chance',
+    customeridentityid:'00061',customername:'Chance Customer',consigneeid:'00071',consigneename:'South'};
+  const foreign={...row,unique_id:'foreign-s99',salesrepid:'S99',salesrepname:'Chance Alldredge - South TX',salesrep_canonical_key:'profile-foreign',
+    customeridentityid:'99999',customername:'Foreign Customer',consigneeid:'99998',consigneename:'Foreign Site'};
+  const unverified={...row,unique_id:'unverified-s07',salesrepid:'S07',salesrepname:'Chance Alldredge',
+    customeridentityid:'99997',customername:'Unverified Customer',consigneeid:'99996',consigneename:'Unverified Site'};
+  c.fetchRequestUniversalCustomerOptions=async()=>({rows:[s07,s17,foreign,unverified],revision:'rpc-alias-r1',salesrepId:'S07',salesrepCanonicalKey:'profile-chance',universal:false});
+  const entry=await c.loadRequestModalCustomerOptionsForRep('Chance Alldredge',true);
+  assert.equal(entry.salesrepCanonicalKey,'profile-chance');
+  const options=c.getRequestModalCustomerOptionsForRep('Chance Alldredge');
+  assert.deepEqual(Array.from(options,option=>[option.salesrepid,option.customeridentityid,option.consigneeidentityid]),[
+    ['S07','AGDATA_NA_CUSTOMER','AGDATA_NA_CONSIGNEE'],['S07','00060','00070'],['S17','00061','00071'],
+  ]);
+  assert.equal(options.some(option=>option.customeridentityid==='99999'),false,'a foreign canonical profile row cannot enter the picker');
+  assert.equal(options.some(option=>option.customeridentityid==='99997'),false,'a matching display name cannot replace a missing canonical key');
+  const groups=c.buildExistingRequestFolderCustomerGroups('Chance Alldredge');
+  assert.deepEqual(Array.from(groups,group=>group.key),['id:AGDATA_NA_CUSTOMER','id:00060','id:00061']);
 });
 
 test('a cached universal directory cannot leak into a non-JD selected-rep picker',()=>{
@@ -698,4 +731,16 @@ test('v2.3.102 legacy mapping routes scoped reads through one materialized rep c
   assert.doesNotMatch(migration,/request_mapping_rep_allowed_v1\([^)]*m\.salesrepid/);
   assert.match(migration,/jsonb_build_object\('salesrepid',g\.salesrepid,\s*'salesrepname',g\.salesrepname,\s*'rows',g\.rows\)/);
   assert.match(base,/create or replace function public\.request_customer_directory_v23102/);
+});
+
+
+test('v2.3.102 directory returns trusted canonical rep metadata without changing JD universal scope',()=>{
+  const source=readFileSync(new URL(`../supabase/migrations/${agdataV23102DirectoryCanonicalKeysMigrationName}`,import.meta.url),'utf8');
+  assert.equal(releaseDatabaseMigrations.indexOf(agdataV23102DirectoryCanonicalKeysMigrationName),releaseDatabaseMigrations.indexOf(agdataV23102LegacyPairScopeMigrationName)+1);
+  assert.match(source,/c\.salesrep_canonical_key/);
+  assert.match(source,/'salesrep_canonical_key',\s*salesrep_canonical_key/);
+  assert.match(source,/'salesrepCanonicalKey',selected_key/);
+  assert.match(source,/universal_actor then[\s\S]*?return jsonb_build_object[\s\S]*?'universal',true/);
+  assert.match(source,/'universal',false[\s\S]*?'salesrepCanonicalKey',selected_key/);
+  assert.match(migrationContractQuery(agdataV23102DirectoryCanonicalKeysMigrationName),/salesrepCanonicalKey/);
 });

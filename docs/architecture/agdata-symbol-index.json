@@ -509,6 +509,10 @@
           "is_jd_universal_request_tuple_v1",
           "require_active_customer_mapping_for_request_v1"
         ],
+        "supabase/migrations/20261029131000_agdata_v23102_directory_canonical_keys.sql": [
+          "request_customer_directory_v23102",
+          "salesrepCanonicalKey"
+        ],
         "supabase/migrations/20261029130500_agdata_v23102_legacy_pair_scope.sql": [
           "customer_rep_mapping_manage_v1",
           "request_customer_directory_v23102"
@@ -1100,6 +1104,10 @@
         "supabase/migrations/20261028222000_agdata_customer_mapping_crud_v2397.sql": [
           "customer_rep_mapping_manage_v1",
           "sales_private.customer_mapping_rows_v2397"
+        ],
+        "supabase/migrations/20261029131000_agdata_v23102_directory_canonical_keys.sql": [
+          "request_customer_directory_v23102",
+          "salesrepCanonicalKey"
         ],
         "supabase/migrations/20261029130500_agdata_v23102_legacy_pair_scope.sql": [
           "customer_rep_mapping_manage_v1",

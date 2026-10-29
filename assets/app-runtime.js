@@ -52437,6 +52437,7 @@ function toggleDriveQuickRequestItem(domId) {
                 salesrepid: context.request_selected_salesrep_id,
                 consigneeid: context.consigneeidentityid,
                 salesrepname: String(firstNonEmptyValue(source && source.SALESREPNAME, source && source.salesrepname, '') || '').trim(),
+                salesrep_canonical_key: String(firstNonEmptyValue(source && source.SALESREP_CANONICAL_KEY, source && source.salesrep_canonical_key, '') || '').trim(),
                 customerstatus: String(firstNonEmptyValue(source && source.CUSTOMERSTATUS, source && source.customerstatus, '') || '').trim(),
                 consigneestatus: String(firstNonEmptyValue(source && source.CONSIGNEESTATUS, source && source.consigneestatus, '') || '').trim(),
                 label,
@@ -52629,12 +52630,14 @@ function toggleDriveQuickRequestItem(domId) {
                 responses.push(...batch);
             }
             if (responses.some((response, page) => !response?.ok || !Array.isArray(response.rows)
-                || Number(response.total) !== total || Number(response.page) !== page || String(response.revision || '') !== String(first.revision || ''))) {
+                || Number(response.total) !== total || Number(response.page) !== page || String(response.revision || '') !== String(first.revision || '')
+                || String(response.salesrepCanonicalKey || '') !== String(first.salesrepCanonicalKey || ''))) {
                 throw new Error('The customer directory changed during loading. Retry the customer list.');
             }
             const rows = responses.flatMap(response => response.rows);
             if (rows.length !== total) throw new Error('The customer directory response was incomplete.');
-            return { rows, revision: String(first.revision || '0'), salesrepId: String(first.salesrepId || salesrepId || ''), universal: first.universal === true };
+            return { rows, revision: String(first.revision || '0'), salesrepId: String(first.salesrepId || salesrepId || ''),
+                salesrepCanonicalKey: String(first.salesrepCanonicalKey || ''), universal: first.universal === true };
         }
 
 
@@ -52706,6 +52709,7 @@ function toggleDriveQuickRequestItem(domId) {
             const load = (async () => {
                 let rows;
                 let resolvedByName = false;
+                let salesrepCanonicalKey = '';
                 const executiveDirectory = salesrepId === JD_EXECUTIVE_SALESREP_ID && isUniversalRequestDirectoryRep(requestedRepName);
                 const localRows = salesrepId && salesrepId !== JD_EXECUTIVE_SALESREP_ID
                     ? (Array.isArray(customerRepMapRows) ? customerRepMapRows : []).filter(row => {
@@ -52719,6 +52723,9 @@ function toggleDriveQuickRequestItem(domId) {
                     const remote = await fetchRequestUniversalCustomerOptions(requestedRepName, salesrepId);
                     const resolvedId = String(remote.salesrepId || salesrepId || '').trim();
                     if (remote.universal !== executiveDirectory) throw new Error('The customer directory scope did not match the selected rep.');
+                    const selectedCanonicalKey = String(remote.salesrepCanonicalKey || '').trim();
+                    if (!executiveDirectory && !selectedCanonicalKey) throw new Error('The customer directory did not identify the selected rep profile.');
+                    salesrepCanonicalKey = selectedCanonicalKey;
                     const remoteRows = remote.rows.filter(row => {
                         if (!isActiveRequestCustomerMapping(row)) return false;
                         const customerName = getCustomerRepMapCustomerValue(row);
@@ -52726,7 +52733,9 @@ function toggleDriveQuickRequestItem(domId) {
                         if (isRequestNaCustomerValue(consigneeName) && !isRequestNaCustomerValue(customerName)) return false;
                         if (executiveDirectory) return true;
                         const rowId = String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '') || '').trim();
-                        return !!resolvedId && matchSalesRepIdentity(getCustomerRepMapRepValue(row), canonicalName, rowId, resolvedId);
+                        const rowCanonicalKey = String(firstNonEmptyValue(row.SALESREP_CANONICAL_KEY, row.salesrep_canonical_key, '') || '').trim();
+                        const sameCanonicalProfile = !!rowCanonicalKey && rowCanonicalKey.toLowerCase() === selectedCanonicalKey.toLowerCase();
+                        return !!resolvedId && !!rowId && sameCanonicalProfile;
                     }).map(row => buildRequestModalCustomerSearchOption(
                         getCustomerRepMapCustomerValue(row), getCustomerRepMapConsigneeValue(row), row
                     )).filter(Boolean);
@@ -52786,7 +52795,7 @@ function toggleDriveQuickRequestItem(domId) {
                     if (normalizeRepMatchToken(normalizeRepDisplayOrder(tempSelectedReqRep))
                         === normalizeRepMatchToken(normalizeRepDisplayOrder(repName))) tempSelectedReqSalesrepId = salesrepId;
                 }
-                const entry = { rows, revision, signature, owner, universal: executiveDirectory, stale: false };
+                const entry = { rows, revision, signature, owner, salesrepCanonicalKey, universal: executiveDirectory, stale: false };
                 requestMappingRpcCache.set(salesrepId, entry);
                 requestModalCustomerOptionRowsCache.delete(salesrepId);
                 requestModalCustomerGroupCacheKey = '';
@@ -53020,9 +53029,13 @@ function toggleDriveQuickRequestItem(domId) {
                 const rowId = String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '') || '').trim();
                 const customerName = getCustomerRepMapCustomerValue(row);
                 const consigneeName = getCustomerRepMapConsigneeValue(row);
+                const rowCanonicalKey = String(firstNonEmptyValue(row.SALESREP_CANONICAL_KEY, row.salesrep_canonical_key, '') || '').trim();
+                const selectedCanonicalKey = String(sameOwnerEntry ? cached.salesrepCanonicalKey || '' : '').trim();
+                const verifiedCanonicalAlias = !!selectedCanonicalKey && !!rowCanonicalKey
+                    && rowCanonicalKey.toLowerCase() === selectedCanonicalKey.toLowerCase() && !!rowId;
                 if (!isActiveRequestCustomerMapping(row)
                     || (isRequestNaCustomerValue(consigneeName) && !isRequestNaCustomerValue(customerName))
-                    || !matchSalesRepIdentity(getCustomerRepMapRepValue(row), resolveCanonicalRequestRepName(repName) || repName, rowId, id)) return;
+                    || (!verifiedCanonicalAlias && !matchSalesRepIdentity(getCustomerRepMapRepValue(row), resolveCanonicalRequestRepName(repName) || repName, rowId, id))) return;
                 appendCustomerRepMapOption(options, row);
             });
             const merged = mergeRequestModalCustomerOptions(Array.from(options.values()), [buildRequestModalNaCustomerOption(id)]);

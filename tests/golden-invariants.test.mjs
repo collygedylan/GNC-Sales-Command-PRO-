@@ -2707,9 +2707,9 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.match(loader, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
   assert.match(loader, /maxRetries = options\.retryOnCancellation === true \? 4 : 0[\s\S]*getSupabaseReadErrorCode\(error\) !== 'REQUEST_ABORTED'/);
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.6`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.7`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.6/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.7/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3360,11 +3360,11 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   assert.match(module, /if\(readOnly\|\|requestBusy\)return;/);
   assert.match(module, /tray\.hidden=readOnly;notices\.hidden=readOnly/);
   const build = read('scripts/build-live-shell.mjs');
-  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.6`/);
+  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.7`/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.102\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.6/);
-  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'customer-pairs-r2'/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.7/);
+  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'customer-pairs-r3'/);
 });
 
 test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
@@ -4208,14 +4208,14 @@ test('Invariant 150 (RPC Customer Options Retain the Physical Pair IDs Used by V
   const context = vm.createContext({ window: {}, document: { getElementById: () => null } });
   vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
   const s07 = { ...mappingFixtureRow, unique_id: 'chance-s07', salesrepid: 'S07', salesrepname: 'Chance Alldredge',
-    customeridentityid: '00060', customername: 'Chance Customer', consigneeid: '00070', consigneename: 'North' };
+    salesrep_canonical_key: 'profile-chance', customeridentityid: '00060', customername: 'Chance Customer', consigneeid: '00070', consigneename: 'North' };
   const s17 = { ...mappingFixtureRow, unique_id: 'chance-s17', salesrepid: 'S17', salesrepname: 'Chance Alldredge',
-    customeridentityid: '00061', customername: 'Chance Customer', consigneeid: '00071', consigneename: 'South' };
+    salesrep_canonical_key: 'profile-chance', customeridentityid: '00061', customername: 'Chance Customer', consigneeid: '00071', consigneename: 'South' };
   context.customerRepMapRows = [s07, s17];
   context.tempSelectedReqRep = 'Chance Alldredge';
   context.tempSelectedReqSalesrepId = 'S17';
   context.isRequestRowArchivedForCompletion = () => false;
-  context.fetchRequestUniversalCustomerOptions = async () => ({ rows: [s07, s17], revision: 'rpc-r1', salesrepId: 'S17', universal: false });
+  context.fetchRequestUniversalCustomerOptions = async () => ({ rows: [s07, s17], revision: 'rpc-r1', salesrepId: 'S17', salesrepCanonicalKey: 'profile-chance', universal: false });
   const entry = await context.loadRequestModalCustomerOptionsForRep('Chance Alldredge', true);
   const pairs = entry.rows.filter(option => option.customeridentityid !== 'AGDATA_NA_CUSTOMER');
   assert.deepEqual(plain(pairs.map(option => [option.salesrepid, option.request_selected_salesrep_id, option.consigneeid, option.consigneeidentityid])),
@@ -4229,7 +4229,7 @@ test('Invariant 151 (Cold Name-Resolved RPC Pairs Bind the Selected Rep Before P
   vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
   const pairs = ['00031', '00032', '00033', '00034'].map((customerId, index) => ({
     ...mappingFixtureRow, unique_id: `casey-${index}`, salesrepid: 'S03', salesrepname: 'Casey Rufener',
-    customeridentityid: customerId, customername: `Casey Customer ${index}`, consigneeid: `0004${index}`,
+    salesrep_canonical_key: 'profile-casey', customeridentityid: customerId, customername: `Casey Customer ${index}`, consigneeid: `0004${index}`,
     consigneename: `Casey Site ${index}`,
   }));
   context.customerRepMapRows = [];
@@ -4242,7 +4242,7 @@ test('Invariant 151 (Cold Name-Resolved RPC Pairs Bind the Selected Rep Before P
   context.getRequestConsigneeFolderLabel = consignee => consignee || 'No Consignee';
   context.normalizeRequestConsigneeFolderKey = value => context.normalizeRepMatchToken(value);
   context.parseExistingRequestFolderMetadata = folderId => ({ dateIso: '', dateLabel: '', requestNumber: '', requestIdLabel: folderId });
-  context.fetchRequestUniversalCustomerOptions = async () => ({ rows: pairs, revision: 'casey-cold-r1', salesrepId: 'S03', universal: false });
+  context.fetchRequestUniversalCustomerOptions = async () => ({ rows: pairs, revision: 'casey-cold-r1', salesrepId: 'S03', salesrepCanonicalKey: 'profile-casey', universal: false });
   assert.equal(context.getRequestSelectedSalesrepId('Casey Rufener'), '', 'the fixture begins without a loaded directory index');
   const loaded = await context.loadRequestModalCustomerOptionsForRep('Casey Rufener', true);
   assert.equal(loaded.rows.length, pairs.length);
@@ -4254,4 +4254,41 @@ test('Invariant 151 (Cold Name-Resolved RPC Pairs Bind the Selected Rep Before P
   const groups = context.buildExistingRequestFolderCustomerGroups('Casey Rufener');
   assert.deepEqual(plain(groups.map(group => group.key)), ['id:AGDATA_NA_CUSTOMER', ...pairs.map(pair => `id:${pair.customeridentityid}`)]);
   assert.ok(groups.slice(1).every(group => group.mapCount > 0), 'the actual existing-folder picker retains every validated physical customer pair');
+});
+
+test('Invariant 152 (Canonical Rep Keys Preserve Alias-Owned Physical Pairs and Reject Foreign Profiles)', async () => {
+  const context = vm.createContext({ window: {}, document: { getElementById: () => null } });
+  vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
+  const s07 = { ...mappingFixtureRow, unique_id: 'chance-s07', salesrepid: 'S07', salesrepname: 'Chance Alldredge',
+    salesrep_canonical_key: 'profile-chance', customeridentityid: '00060', customername: 'Chance Customer', consigneeid: '00070', consigneename: 'North' };
+  const s17 = { ...mappingFixtureRow, unique_id: 'chance-s17', salesrepid: 'S17', salesrepname: 'Chance Alldredge - South TX',
+    salesrep_canonical_key: 'profile-chance', customeridentityid: '00061', customername: 'Chance Customer', consigneeid: '00071', consigneename: 'South' };
+  const foreign = { ...mappingFixtureRow, unique_id: 'foreign-s99', salesrepid: 'S99', salesrepname: 'Chance Alldredge - South TX',
+    salesrep_canonical_key: 'profile-foreign', customeridentityid: '99999', customername: 'Foreign Customer', consigneeid: '99998', consigneename: 'Foreign Site' };
+  const unverified = { ...mappingFixtureRow, unique_id: 'unverified-s07', salesrepid: 'S07', salesrepname: 'Chance Alldredge',
+    customeridentityid: '99997', customername: 'Unverified Customer', consigneeid: '99996', consigneename: 'Unverified Site' };
+  context.customerRepMapRows = [];
+  context.tempSelectedReqRep = 'Chance Alldredge';
+  context.tempSelectedReqSalesrepId = 'S07';
+  context.REQUEST_MODAL_REP_OPTIONS = [{ label: 'Chance Alldredge', token: context.normalizeRepMatchToken('Chance Alldredge'), collapsedToken: 'chancealldredge' }];
+  context.isRequestRowArchivedForCompletion = () => false;
+  context.canUseRequestMappedFoldersForCurrentUser = () => true;
+  context.getRequestCustomerFolderLabel = (customer, consignee) => customer || consignee || 'Unknown Customer';
+  context.getRequestConsigneeFolderLabel = consignee => consignee || 'No Consignee';
+  context.normalizeRequestConsigneeFolderKey = value => context.normalizeRepMatchToken(value);
+  context.parseExistingRequestFolderMetadata = folderId => ({ dateIso: '', dateLabel: '', requestNumber: '', requestIdLabel: folderId });
+  context.fetchRequestUniversalCustomerOptions = async () => ({ rows: [s07, s17, foreign, unverified], revision: 'chance-alias-r1',
+    salesrepId: 'S07', salesrepCanonicalKey: 'profile-chance', universal: false });
+  const loaded = await context.loadRequestModalCustomerOptionsForRep('Chance Alldredge', true);
+  assert.equal(loaded.salesrepCanonicalKey, 'profile-chance');
+  const options = context.getRequestModalCustomerOptionsForRep('Chance Alldredge');
+  assert.deepEqual(plain(options.map(option => [option.salesrepid, option.customeridentityid, option.consigneeidentityid])), [
+    ['S07', 'AGDATA_NA_CUSTOMER', 'AGDATA_NA_CONSIGNEE'], ['S07', '00060', '00070'], ['S17', '00061', '00071'],
+  ]);
+  const groups = context.buildExistingRequestFolderCustomerGroups('Chance Alldredge');
+  assert.deepEqual(plain(groups.map(group => group.key)), ['id:AGDATA_NA_CUSTOMER', 'id:00060', 'id:00061']);
+  assert.equal(options.some(option => option.customeridentityid === foreign.customeridentityid), false,
+    'matching display text cannot substitute for an authoritative matching canonical key');
+  assert.equal(options.some(option => option.customeridentityid === unverified.customeridentityid), false,
+    'a missing canonical key cannot be inferred from an exact display-name match');
 });
