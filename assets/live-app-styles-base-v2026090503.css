@@ -2730,6 +2730,27 @@ body #view-detail [data-suspend-av-sticky] {
     padding: 0.3rem 0.65rem;
     font-size: 0.8rem;
 }
+.argos-tx-title{font-size:clamp(1.35rem,5vw,1.5rem);font-weight:700}
+.argos-reclass-row-list{gap:.75rem;padding:.75rem}
+.argos-reclass-row-card{border-radius:.875rem}
+.argos-reclass-row-toggle{min-height:6rem;padding:1.125rem 1.25rem}
+.argos-reclass-row-toggle-copy>span:first-child{font-size:1.25rem;font-weight:700;line-height:1.25}
+.argos-reclass-row-toggle-meta{gap:.38rem;font-size:.72rem}
+.argos-reclass-row-toggle-meta span{padding:.28rem .48rem}
+.argos-reclass-row-title{padding:.72rem .85rem;font-size:.88rem}
+.argos-reclass-row-title em,.argos-reclass-row-edit-count{font-size:.65rem}
+.argos-reclass-row-grid{gap:.58rem;padding:.7rem}
+.argos-reclass-row-field>span{font-size:.62rem}
+.argos-reclass-row-input{min-height:2.8rem;font-size:1rem;padding:.58rem .68rem}
+.argos-reclass-action-btn{min-height:3.2rem;font-size:.88rem;padding:.68rem .75rem}
+.argos-reclass-action-panel{gap:.8rem;padding:.9rem}
+.argos-reclass-action-panel-title{font-size:.95rem}
+.argos-reclass-action-panel-title small{font-size:.82rem}
+.argos-reclass-action-proposal{padding:.72rem}
+.argos-reclass-action-proposal>span,.argos-reclass-action-proposal small{font-size:.86rem}
+.argos-reclass-row-select{padding:.7rem .85rem}
+.argos-reclass-row-select>small{font-size:.82rem}
+.argos-reclass-row-select>input{width:3rem;height:3rem}
 /* Keep the bottom navigation anchored to the device viewport, especially in iOS Safari/PWA mode. */
         body.ios-device #main-scroll-area{
             transform:none !important;
