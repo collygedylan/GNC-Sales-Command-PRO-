@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "0bb96a3c402a91b4470973d0b7f972ad0fb61fab",
+  "commit": "425ca78ccc6bb67dfa96792d8b206cf46af9c96e",
   "release": "AgData v2.3.101",
   "files": [
     {
@@ -265,8 +265,8 @@
     },
     {
       "path": "assets/app-styles.css",
-      "bytes": 47743,
-      "sha256": "5cd9efc78a4ab5e03a971f6a42f14e5d30ddc9d8268194d51acaa87aae903ad8"
+      "bytes": 59465,
+      "sha256": "97caafa863cf521c1f1da24674fd9415c854004759331a67b145918c1d8cfe9f"
     },
     {
       "path": "assets/assigned-items-table.js",
@@ -976,17 +976,17 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 188,
-      "sha256": "24af645e84d899dcce138d9116ee0b735b9bc12215c23af2f34903d21a824fe2"
+      "sha256": "c139173a3fa5d0d69527ec59bd456bd2e0aa8ca4cbef393428b105efd69599fc"
     },
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "24af645e84d899dcce138d9116ee0b735b9bc12215c23af2f34903d21a824fe2"
+      "sha256": "c139173a3fa5d0d69527ec59bd456bd2e0aa8ca4cbef393428b105efd69599fc"
     },
     {
-      "path": "deployments/0bb96a3c402a91b4470973d0b7f972ad0fb61fab.json",
+      "path": "deployments/425ca78ccc6bb67dfa96792d8b206cf46af9c96e.json",
       "bytes": 188,
-      "sha256": "24af645e84d899dcce138d9116ee0b735b9bc12215c23af2f34903d21a824fe2"
+      "sha256": "c139173a3fa5d0d69527ec59bd456bd2e0aa8ca4cbef393428b105efd69599fc"
     },
     {
       "path": "index.html",
@@ -1030,8 +1030,8 @@
     },
     {
       "path": "sw.js",
-      "bytes": 37227,
-      "sha256": "be625203cc5e84b549f68fb7f443b04ecce5402238687028da1347053fc2de59"
+      "bytes": 37217,
+      "sha256": "58b1c16c61e21057a1f894109b98c81ffa9f1c42af6c3e2b55f98b620bb994eb"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -1261,7 +1261,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "add5c633e7fc2695c037db4c5293231d35572b7db980480a2178fb7b15bea33f"
+      "sha256": "4e1370b4dde9a08bede39f230af1a523d8369d59cd0f8e33d5e521d39abc55c5"
     },
     {
       "path": "v2/v2-cache-migration.js",

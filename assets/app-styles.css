@@ -1515,3 +1515,254 @@ html body #app-wrapper .app-drive-card-with-reclass .app-card-bottom-btn--argos-
 #side-drawer .drawer-logout { min-height: 44px; justify-content: center; border-color: rgba(248, 113, 113, .28); background: rgba(127, 29, 29, .22); color: #fecaca; font-weight: 700; }
 #side-drawer .drawer-logout > i { color: #fca5a5; }
 @media (prefers-reduced-motion: reduce) { #side-drawer, .drawer-action-tile, #side-drawer .drawer-item { transition-duration: .01ms; } }
+
+/* Keep the navigation drawer on its dark emerald surface in every app theme. */
+html body.ops-precision-pilot #side-drawer,
+html body.ops-precision-pilot #side-drawer.open {
+  background: #071a12 !important;
+  background-color: #071a12 !important;
+  color: #ecfdf5 !important;
+  border-right-color: rgba(52, 211, 153, .2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html body.ops-precision-pilot #side-drawer .drawer-header {
+  display: grid !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  color: #f0fdf4 !important;
+  background: linear-gradient(135deg, #0b271a, #071a12 72%) !important;
+  background-color: #071a12 !important;
+}
+html body.ops-precision-pilot #side-drawer .drawer-header__title-row {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+html body.ops-precision-pilot #side-drawer .drawer-header__title,
+html body.ops-precision-pilot #side-drawer .drawer-user-name { color: #f0fdf4 !important; }
+html body.ops-precision-pilot #side-drawer .drawer-user-role,
+html body.ops-precision-pilot #side-drawer .drawer-version-pill { color: #a7f3d0 !important; }
+html body.ops-precision-pilot #side-drawer .drawer-close-btn {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  flex: 0 0 36px !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  color: #d1fae5 !important;
+  background: rgba(16, 42, 30, .75) !important;
+  border-color: rgba(167, 243, 208, .3) !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-scroll-area,
+html body.ops-precision-pilot #side-drawer #drawer-footer { background: #071a12 !important; }
+html body.ops-precision-pilot #side-drawer #drawer-modules .drawer-item,
+html body.ops-precision-pilot #side-drawer #drawer-modules #drawer-request-sales-impact-btn {
+  display: flex !important;
+  min-height: 44px !important;
+  padding: 10px 14px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  color: #ecfdf5 !important;
+  background: transparent !important;
+  font-weight: 500 !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-modules .drawer-item > i,
+html body.ops-precision-pilot #side-drawer #drawer-modules #drawer-request-sales-impact-btn > i {
+  box-sizing: content-box !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-modules .drawer-item.hidden,
+html body.ops-precision-pilot #side-drawer .drawer-action-tile.hidden,
+html body.ops-precision-pilot #side-drawer .hidden { display: none !important; }
+html body.ops-precision-pilot #side-drawer #drawer-modules .drawer-item:hover,
+html body.ops-precision-pilot #side-drawer #drawer-modules .drawer-item:focus-visible,
+html body.ops-precision-pilot #side-drawer #drawer-modules #drawer-request-sales-impact-btn:hover,
+html body.ops-precision-pilot #side-drawer #drawer-modules #drawer-request-sales-impact-btn:focus-visible {
+  color: #ecfdf5 !important;
+  background: rgba(16, 185, 129, .12) !important;
+  border-color: rgba(52, 211, 153, .25) !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-modules [data-drawer-view][aria-current="page"],
+html body.ops-precision-pilot #side-drawer #drawer-modules #drawer-request-sales-impact-btn[aria-current="page"] {
+  color: #6ee7b7 !important;
+  background: rgba(16, 185, 129, .2) !important;
+  border-color: rgba(52, 211, 153, .55) !important;
+  font-weight: 600 !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security,
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-settings,
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-security-settings {
+  color: #ecfdf5 !important;
+  background-color: rgba(16, 42, 30, .62) !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-settings { background: transparent !important; }
+html body.ops-precision-pilot #side-drawer #drawer-footer #drawer-logout-btn {
+  color: #fecaca !important;
+  background: rgba(127, 29, 29, .22) !important;
+}
+html body.ops-precision-pilot #side-drawer .drawer-header { grid-template-columns: minmax(0, 1fr); justify-content: stretch; }
+html body.ops-precision-pilot #side-drawer #drawer-modules .drawer-item > i { color: #6ee7b7 !important; }
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-settings__eyebrow,
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-settings__label { color: #a7f3d0 !important; }
+html body.ops-precision-pilot #side-drawer #drawer-footer #drawer-logout-btn > i { color: #fca5a5 !important; }
+
+/* Compact drawer preferences and keep the independently mounted AURA control below the drawer. */
+html body.ops-precision-pilot #side-drawer { z-index: 2000 !important; }
+html body.ops-precision-pilot:has(#side-drawer.open) [data-aura-root] .aura-fab { visibility: hidden; pointer-events: none; }
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security {
+  gap: 7px !important;
+  margin: 10px 0 0 !important;
+  padding: 9px !important;
+  border: 1px solid rgba(52, 211, 153, .18) !important;
+  border-radius: 12px !important;
+  background: rgba(16, 42, 30, .5) !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-settings,
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-security-settings {
+  display: grid !important;
+  gap: 5px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-settings__eyebrow { display: flex !important; gap: 6px; font-size: 10px !important; }
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-settings__group {
+  display: grid !important;
+  gap: 4px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-settings__label {
+  margin: 0 !important;
+  color: #a7f3d0 !important;
+  font-size: 9px !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-settings__note {
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #9ca3af !important;
+  font-size: 9px !important;
+  line-height: 1.25 !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-theme-selector {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 3px !important;
+  border-radius: 10px !important;
+  background: rgba(3, 18, 11, .46) !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-theme-selector .ops-theme-choice {
+  display: flex !important;
+  min-height: 38px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 7px 9px !important;
+  border: 1px solid rgba(52, 211, 153, .22) !important;
+  border-radius: 8px !important;
+  color: #d1fae5 !important;
+  background: rgba(16, 42, 30, .55) !important;
+  box-shadow: none !important;
+  text-align: center !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-theme-selector .ops-theme-choice::after { content: none !important; display: none !important; }
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-theme-selector .ops-theme-choice > i { grid-row: auto !important; font-size: 15px !important; }
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-theme-selector .ops-theme-choice > span { font-size: 11px !important; font-weight: 650 !important; }
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-theme-selector .ops-theme-choice[aria-pressed="true"] {
+  color: #ecfdf5 !important;
+  background: rgba(16, 185, 129, .22) !important;
+  border-color: rgba(52, 211, 153, .48) !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-segmented {
+  display: flex !important;
+  grid-auto-flow: initial !important;
+  gap: 8px !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-segmented > button {
+  min-height: 34px !important;
+  padding: 6px 8px !important;
+  border: 1px solid rgba(52, 211, 153, .22) !important;
+  border-radius: 8px !important;
+  color: #d1fae5 !important;
+  background: rgba(3, 18, 11, .46) !important;
+  box-shadow: none !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .drawer-aura-select {
+  min-height: 32px !important;
+  gap: 8px !important;
+  color: #a7f3d0 !important;
+  font-size: 10px !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security #aura-voice-preference {
+  min-height: 30px !important;
+  padding: 4px 7px !important;
+  background: #0b2116 !important;
+  color: #ecfdf5 !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security #aura-auto-start-toggle {
+  min-height: 34px !important;
+  padding: 6px 9px !important;
+  border: 1px solid rgba(52, 211, 153, .22) !important;
+  border-radius: 8px !important;
+  color: #d1fae5 !important;
+  background: rgba(3, 18, 11, .46) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security #drawer-enable-push-btn {
+  min-height: 36px !important;
+  padding: 7px 10px !important;
+  border-radius: 8px !important;
+  font-size: 10px !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-security-settings .ops-pilot-settings__group { gap: 4px !important; }
+html body.ops-precision-pilot #side-drawer #drawer-modules .drawer-item > i,
+html body.ops-precision-pilot #side-drawer #drawer-modules .drawer-item > i::before,
+html body.ops-precision-pilot #side-drawer #drawer-modules #drawer-request-sales-impact-btn > i,
+html body.ops-precision-pilot #side-drawer #drawer-quick-actions .drawer-action-tile > i {
+  color: #6ee7b7 !important;
+  -webkit-text-fill-color: #6ee7b7 !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .hidden { display: none !important; }
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-segmented > button[aria-pressed="true"] {
+  color: #ecfdf5 !important;
+  background: rgba(16, 185, 129, .22) !important;
+  border-color: rgba(52, 211, 153, .48) !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-modules .drawer-item > .premium-line-icon {
+  flex: 0 0 20px !important;
+  width: 20px !important;
+  height: 20px !important;
+  margin: 0 !important;
+  color: #6ee7b7 !important;
+}
+html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pilot-segmented {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
