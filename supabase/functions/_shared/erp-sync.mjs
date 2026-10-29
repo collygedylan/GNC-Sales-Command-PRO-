@@ -35,8 +35,7 @@ function hasImportableSocDock(row) {
 }
 function isImportableSocRow(row) {
   return Boolean(first(row,'itemcode','item'))&&(hasImportableSocDock(row)
-    ||first(row,'suspend').toUpperCase()==='SUSPEND'
-      &&first(row,'suspend-to','suspend_to','suspendto').toLowerCase()==='dc');
+    ||first(row,'suspend').toUpperCase()==='SUSPEND');
 }
 
 function recordsToObjects(records, keepEmpty = false) {
@@ -340,7 +339,7 @@ export async function parseErpXlsxPage(bytesLike,start=0,limit=ERP_ROWS_PER_CONT
       const values=parseXlsxSelectedCells(rowXml,predicateShared,wantedColumns);
       const dock=['dock','docknumber','tripnumber'].map(name=>get(values,name)).find(validSocDock)||'';
       return Boolean(get(values,'itemcode','item'))&&(validSocDock(dock)
-        ||get(values,'suspend').toUpperCase()==='SUSPEND'&&get(values,'suspendto').toLowerCase()==='dc');
+        ||get(values,'suspend').toUpperCase()==='SUSPEND');
     });
     const shared=await resolveSharedStrings(zip,sharedStringIndexes(eligible));
     rows=eligible.map(rowXml=>parseXlsxRowXml(rowXml,shared).cells);
@@ -364,6 +363,41 @@ export async function countImportableErpXlsxRows(bytesLike,dataset) {
   }
   if(!count||count>50000)throw new Error('ERP_ROWS_INVALID');
   return count;
+}
+
+export async function parseErpXlsxImportRows(bytesLike,dataset) {
+  const {zip,sheetPath}=await xlsxSheetContext(bytesLike);
+  const sharedXml=await zipText(zip,'xl/sharedStrings.xml');
+  const shared=[...sharedXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(match=>
+    [...match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(part=>xmlText(part[1])).join(''));
+  let headers=null,headerIndexes=null;
+  const rows=[];
+  await visitXlsxRows(zip,sheetPath,async(rowXml)=>{
+    if(!headers){
+      const cells=parseXlsxRowXml(rowXml,shared).cells;
+      if(cells.some(value=>normalizeErpHeader(value)==='itemcode')){
+        headers=cells.map((value,index)=>normalizeErpHeader(value)||`column${index+1}`);
+        headerIndexes=new Map(headers.map((header,index)=>[header,index+1]));
+      }
+      return false;
+    }
+    if(dataset==='soc'){
+      const wanted=new Set(['itemcode','item','dock','docknumber','tripnumber','suspend','suspendto']
+        .map(name=>headerIndexes.get(name)).filter(Boolean));
+      const selected=parseXlsxSelectedCells(rowXml,shared,wanted);
+      const value=(...names)=>names.map(name=>clean(selected.get(headerIndexes.get(name)))).find(item=>item!==null)??'';
+      const dock=['dock','docknumber','tripnumber'].map(name=>value(name)).find(validSocDock)||'';
+      if(!value('itemcode','item')||(!validSocDock(dock)&&value('suspend').toUpperCase()!=='SUSPEND'))return false;
+    }
+    const cells=parseXlsxRowXml(rowXml,shared).cells;
+    if(!cells.some(value=>String(value??'').trim()))return false;
+    rows.push(Object.fromEntries(headers.map((header,index)=>[header,cells[index]??''])));
+    if(rows.length>50000)throw new Error('ERP_ROWS_INVALID');
+    return false;
+  });
+  if(!headers)throw new Error('ERP_SOURCE_HEADER_MISSING');
+  if(!rows.length)throw new Error('ERP_SOURCE_EMPTY');
+  return rows;
 }
 
 function clean(value) {
@@ -535,36 +569,50 @@ function hashHex(bytes) {
   return crypto.subtle.digest('SHA-256',bytes).then(hash => [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join(''));
 }
 
-async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status}) {
+async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,continuation=false}) {
   const meta = {file_id:file.id,file_name:file.name,modified_at:file.modifiedTime || new Date().toISOString()};
   const {data:check,error:checkError} = await supabase.rpc('check_erp_file_sync_needed_v1',{
     p_dataset_key:dataset,p_file_id:file.id,p_file_name:file.name,p_modified_at:meta.modified_at,p_content_hash:file.md5Checksum || null,
   });
   if (checkError) throw checkError;
   if (check?.skip === true) {
-    await moveProcessed(fetcher,token,file,parentId,processedId);
-    return {key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1};
+    try { await moveProcessed(fetcher,token,file,parentId,processedId); }
+    catch (error) {
+      if (continuation) return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows:0,nextOffset:0,processedRows:0,identityCounts:{},moveAttempts:1}};
+      throw error;
+    }
+    const result={key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1};
+    return continuation?{done:true,result}:result;
   }
   const bytes = await sourceBytes(fetcher,token,file);
   meta.content_hash = await hashHex(bytes);
-  const raw = /\.csv$/i.test(file.name) ? parseErpCsv(new TextDecoder('utf-8').decode(bytes)) : await parseErpXlsx(bytes);
+  const isXlsx=/\.xlsx$/i.test(file.name);
+  const raw = !isXlsx ? parseErpCsv(new TextDecoder('utf-8').decode(bytes)) : await parseErpXlsxImportRows(bytes,dataset);
   const table = ({drive_around:'ph_master_inventory',cav:'ph_cav_import',reserves:'ph_reserves',soc:'ph_soc_master'})[dataset];
   if (!table) throw new Error(dataset === 'hl_po_parsed' ? 'HL_PO_ORIGINAL_PDF_REQUIRED' : 'ERP_DATASET_INVALID');
   const {data:columns,error:columnsError} = await supabase.rpc('fast_erp_import_columns_v1',{p_dataset_key:dataset});
   if (columnsError || !Array.isArray(columns) || !columns.length) throw columnsError || new Error('ERP_COLUMNS_UNAVAILABLE');
   const rows = await normalizeErpRows(raw,dataset,columns);
   const {data:begin,error:beginError} = await supabase.rpc('fast_begin_erp_stage_v1',{
-    p_dataset_key:dataset,p_file_meta:meta,p_expected_rows:rows.length,
+    p_dataset_key:dataset,p_file_meta:{...meta,...(isXlsx?{expected_rows_pending:true}:{})},p_expected_rows:isXlsx?50000:rows.length,
   });
   if (beginError) throw beginError;
   if (begin?.skipped === true) {
-    await moveProcessed(fetcher,token,file,parentId,processedId);
-    return {key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1};
+    try { await moveProcessed(fetcher,token,file,parentId,processedId); }
+    catch (error) {
+      if (continuation) return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows:rows.length,nextOffset:0,processedRows:rows.length,identityCounts:{},moveAttempts:1}};
+      throw error;
+    }
+    const result={key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1};
+    return continuation?{done:true,result}:result;
   }
   const stageId = String(begin?.stage_id || '');
-  if (!stageId || Number(begin.expected_rows) !== rows.length) throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
-  for (let offset = Number(begin.staged_rows) || 0; offset < rows.length; offset += BATCH_SIZE) {
+  const alreadyStaged=Number(begin?.staged_rows)||0;
+  if (!stageId || Number(begin.expected_rows) !== (isXlsx?50000:rows.length) || alreadyStaged>rows.length) throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
+  for (let offset = alreadyStaged; offset < rows.length; offset += BATCH_SIZE) {
     const batch = rows.slice(offset,offset+BATCH_SIZE);
+    await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
+      stageResultsDelta:{key:stageKey,stagedRows:offset,expectedRows:rows.length}});
     const {data,error} = await supabase.rpc('fast_append_erp_stage_batch_v1',{
       p_stage_id:stageId,p_start_row:offset,p_rows:batch,
     });
@@ -572,10 +620,22 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
     await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
       stageResultsDelta:{key:stageKey,stagedRows:offset+batch.length,expectedRows:rows.length}});
   }
+  if(isXlsx){
+    const {data:sealed,error:sealError}=await supabase.rpc('fast_seal_erp_stage_v1',{p_stage_id:stageId,p_expected_rows:rows.length});
+    if(sealError||sealed?.ok!==true)throw sealError||new Error('ERP_STAGE_SEAL_UNCONFIRMED');
+  }
+  await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
+    stageResultsDelta:{key:stageKey,stagedRows:rows.length,expectedRows:rows.length}});
   const {data:committed,error:commitError} = await supabase.rpc('fast_commit_erp_stage_swap_v1',{p_stage_id:stageId});
   if (commitError || committed?.ok !== true) throw commitError || new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
-  await moveProcessed(fetcher,token,file,parentId,processedId);
-  return {key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:rows.length};
+  const result={key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:rows.length};
+  try { await moveProcessed(fetcher,token,file,parentId,processedId); }
+  catch (error) {
+    if (continuation) return {done:false,state:{phase:'move',moveOutcome:'processed',expectedRows:rows.length,nextOffset:rows.length,
+      processedRows:rows.length,identityCounts:{},moveAttempts:1}};
+    throw error;
+  }
+  return continuation?{done:true,result}:result;
 }
 
 async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,state}) {
@@ -590,6 +650,7 @@ async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageK
       return {done:false,state:{...state,moveAttempts:attempts,lastMoveError:String(error?.message||'ERP_DRIVE_MOVE_FAILED').slice(0,120)}};
     }
   }
+  if (!state) return stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,continuation:true});
   const meta = {file_id:file.id,file_name:file.name,modified_at:file.modifiedTime || new Date().toISOString()};
   const {data:check,error:checkError} = await supabase.rpc('check_erp_file_sync_needed_v1',{
     p_dataset_key:dataset,p_file_id:file.id,p_file_name:file.name,p_modified_at:meta.modified_at,p_content_hash:file.md5Checksum||null,

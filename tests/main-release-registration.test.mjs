@@ -163,3 +163,17 @@ test('current-main, immutable artifact and privileged publishing safeguards surv
   assert.ok(!publisher.jobs.publish.steps.some(step => String(step.uses).startsWith('actions/checkout')));
   for (const marker of ['CANDIDATE_MERGE_NOT_CONFIRMED', 'CANDIDATE_MERGE_BASE_NOT_VALIDATED', 'candidate.head_sha === pr.merge_commit_sha']) assert.ok(commands(publisher.jobs.publish).includes(marker), marker);
 });
+
+test('cloud ERP lease renewal migration is scoped, private, and registered for exact installed verification', () => {
+  const name = '20261029031000_agdata_v23100_cloud_sync_lease_renewal.sql';
+  assert.equal(releaseDatabaseMigrations.filter(value => value === name).length, 1);
+  const sql = read(`supabase/migrations/${name}`);
+  assert.match(sql, /^begin;\s*set local lock_timeout/);
+  assert.match(sql, /worker_id=p_worker_id and active/);
+  assert.match(sql, /request_lease_until > stamp/);
+  assert.match(sql, /interval '140 seconds'/);
+  assert.match(sql, /from public, anon, authenticated/);
+  assert.match(sql, /to service_role/);
+  assert.doesNotMatch(sql, /create table|create view|ph_master_inventory|ph_app_users/);
+  assert.match(migrationContractQuery(name), /request_lease_until > stamp/);
+});

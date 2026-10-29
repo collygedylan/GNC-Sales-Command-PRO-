@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.99",
+  "release": "AgData v2.3.100",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -830,7 +830,9 @@
         "processDylanFileProcessedToasts",
         "getProductionLiveSyncCoordinator",
         "fetchDirectPostgrestReadPage",
-        "syncGoogleScriptButton"
+        "syncGoogleScriptButton",
+        "refreshManualSyncOnForeground",
+        "scheduleManualSyncCompletionRefresh"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -842,7 +844,10 @@
         "dispatchRequestDeliveryWorkerNow",
         "fast_erp_ingest",
         "handleErpSyncAction",
-        "processCloudErpSyncStep"
+        "processCloudErpSyncStep",
+        "claimAndDispatchCloudStep",
+        "executeCloudErpSyncStep",
+        "releaseCloudErpSyncStep"
       ],
       "Code.gs": [
         "mintDriveToken_",
@@ -930,7 +935,8 @@
           "validSocDock",
           "firstSocDock",
           "hasImportableSocDock",
-          "isImportableSocRow"
+          "isImportableSocRow",
+          "parseErpXlsxImportRows"
         ],
         "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
           "get_erp_sync_status_v1",
@@ -959,6 +965,9 @@
         ],
         "supabase/migrations/20261028190134_agdata_v2396_bounded_erp_row_count.sql": [
           "fast_seal_erp_stage_v1"
+        ],
+        "supabase/migrations/20261029031000_agdata_v23100_cloud_sync_lease_renewal.sql": [
+          "assert_erp_sync_worker_v1"
         ]
       }
     },

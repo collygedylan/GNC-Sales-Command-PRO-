@@ -97,6 +97,10 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never order dotted app releases as strings or treat an older remote manifest as a newer release; compare numeric major/minor/patch segments, including 2.3.100 > 2.3.99, through compareAgDataVersions.
+
+- Never advance a browser-owned ERP continuation without scheduling the next signed cloud request under EdgeRuntime.waitUntil after releasing the shared private.erp_sync_jobs lease. Renew that lease before every bounded append/publication; download and parse a new workbook once, and publish IDLE/Home metadata before background row hydration. A public.app_sync_runs lease must not be invented alongside the canonical private job.
+
 - Never collapse a physical Drive alias by UID or stable hash alone. Require exact full lineage, committed raw-stage source hash, one protected canonical row, no independent pending commands, and a locked revalidation of both rows and edit ledgers; audit full provenance and remap source-only evidence before deleting the alias.
 
 - Never key a processed-file toast by dataset revision or import poll time; deduplicate by dataset plus immutable source filename and available Drive modified/hash identity so unrelated revision bumps cannot repeat Dylan's toast.
@@ -131,4 +135,4 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Never label a full-row Manager surface as paged in the live-sync context; its coordinator cohort must match the renderer's actual canonical source reads or `DATASET_KEYS_INVALID` can suppress the view.
 - Never place private-schema names in app-api dataset-revision requests; mirror private low-stock changes onto the public `ph_eval_report_settings` revision and subscribe to that key so freshness remains observable without invalid requests.
 - Never treat a healthy Realtime socket or login-time snapshot as sufficient freshness: retain the 15-second no-store revision poll, focus/visibility wakeups, and revision-fenced background adapters for DRIVE, CAV, RESERVES, SOC, and HL Order.
-- Never filter SOC XLSX open orders by only the literal `dock` header; normalize `dock`, `docknumber`, and `tripnumber` aliases before counting, paging, and staging so valid dock rows remain regardless of Suspend status, while retaining the existing Suspend-DC exception.
+- Never filter SOC XLSX open orders by only the literal `dock` header; normalize `dock`, `docknumber`, and `tripnumber` aliases before counting, paging, and staging so valid dock rows remain regardless of Suspend status, while retaining every SUSPEND row at ingestion (downstream queue eligibility remains independently scoped).

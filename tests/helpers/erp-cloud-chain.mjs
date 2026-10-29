@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import { transform } from 'esbuild';
+
+export async function verifyCloudErpChaining(source, { releaseFailures = 0 } = {}) {
+  const pick = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
+  const code = [pick('function dispatchCloudErpSync(', 'async function handleErpSyncContinuation('),
+    pick('async function releaseCloudErpSyncStep(', 'async function mintCloudDriveAccessToken(')].join('\n');
+  const pending = [], events = [];
+  let active = true, leased = false, step = 0, processed = 0, cloudCalls = 0, waits = 0, releaseErrors = releaseFailures;
+  const context = vm.createContext({
+    ERP_SYNC_CLOUD_WORKER_KEY: 'fixture-private-key', SUPABASE_SERVICE_ROLE_KEY: 'fixture-service', SUPABASE_URL: 'https://fixture.invalid',
+    EdgeRuntime: { waitUntil: task => pending.push(task) }, AbortSignal, jsonObject: value => value,
+    recordHandledError: (...args) => { if (args[1] !== 'ERP_SYNC_LEASE_RELEASE_FAILED') throw new Error(JSON.stringify(args)); },
+    setTimeout: callback => { waits += 1; leased = false; queueMicrotask(callback); },
+    supabase: { rpc: async (name) => {
+      if (name === 'get_erp_sync_status_v1') return { data: { runId: 'run', active, requestedBy: 'authorized_actor' } };
+      if (name === 'claim_erp_sync_request_step_v1') {
+        if (leased || !active) { events.push('duplicate-denied'); return { data: { claimed: false } }; }
+        leased = true; step += 1; events.push('claim');
+        return { data: { claimed: true, workerId: 'owner', continuationStep: step } };
+      }
+      if (name === 'release_erp_sync_request_step_v1') { if (releaseErrors-- > 0) return { error: { message: 'temporary connection error' } }; leased = false; events.push('release'); return { data: true }; }
+      throw Error(name);
+    } },
+    processCloudErpSyncStep: async () => {
+      await Promise.resolve();
+      assert.equal(leased, true); processed += 1; events.push('process');
+      active = processed < 5;
+      return { result: { done: !active } };
+    },
+    fetch: async (_url, options) => {
+      cloudCalls += 1;
+      if (!releaseFailures) assert.equal(leased, false, 'the lease is released before self-invocation');
+      assert.equal(options.headers.authorization, 'Bearer fixture-private-key');
+      assert.deepEqual(JSON.parse(options.body), { action: 'erp_sync_continue', runId: 'run' });
+      const claimed = await context.claimAndDispatchCloudStep('run');
+      return { ok: true, json: async () => ({ claimed, active }) };
+    },
+  });
+  vm.runInContext((await transform(code + '\nglobalThis.claimAndDispatchCloudStep = claimAndDispatchCloudStep; globalThis.dispatchCloudErpSync = dispatchCloudErpSync;', { loader: 'ts', format: 'iife' })).code, context);
+  // A browser/cloud overlap cannot claim a second concurrent chunk.
+  const first = context.claimAndDispatchCloudStep('run');
+  const overlap = context.claimAndDispatchCloudStep('run');
+  assert.deepEqual(await Promise.all([first, overlap]), [true, false]);
+  for (let index = 0; index < pending.length; index += 1) await pending[index];
+  assert.equal(processed, 5, 'all stages finish with no browser continuation');
+  assert.equal(cloudCalls, releaseFailures >= 2 ? 5 : 4);
+  assert.equal(leased, false);
+  assert.equal(events.filter(value => value === 'release').length, releaseFailures >= 2 ? 4 : 5);
+  assert.ok(events.includes('duplicate-denied'));
+  return { processed, cloudCalls, waits };
+}

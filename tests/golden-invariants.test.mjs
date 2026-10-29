@@ -1334,7 +1334,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.99"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.100"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1363,9 +1363,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.99"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.100"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.99"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.100"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2178,7 +2178,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.99\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.100\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2406,7 +2406,8 @@ test('Invariant 87 (ERP API Allows Status Reads and Admin-Leased Cloud Continuat
   const calls = [];
   let claimed = false, steps = 0, releases = 0;
   const status = { active: false, currentStage: 'idle', stageResults: [] };
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep'], {
+    dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
     validateErpSyncCommand, ERP_SYNC_STAGES, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value).toLowerCase(), jsonObject: value => {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected JSON object');
@@ -2517,7 +2518,8 @@ test('Invariant 91 (RUN SCRIPT Claims Explicit Cloud Continuations and Retires t
   const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
   const calls = [];
   let claimCount = 0, stepClaimCount = 0, stepCalls = 0, releaseCount = 0;
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep'], {
+    dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
     ERP_SYNC_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value).trim().toLowerCase(), jsonObject: value => value || {},
     crypto: { randomUUID: () => '00000000-0000-4000-8000-000000000091' },
@@ -2706,7 +2708,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.99\.4/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.100\.4/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -2799,7 +2801,8 @@ test('Invariant 100 (RUN SCRIPT Drives Bounded Cloud Continuations Through IDLE)
 test('Invariant 101 (Empty Cloud Sync Completion Does Not Require a File Cursor)', async () => {
   const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
   const calls = [];
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep'], {
+    dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
     ERP_SYNC_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value || '').trim().toLowerCase(),
     jsonObject: value => {
@@ -3356,8 +3359,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.99\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.99\.4/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.100\.1/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.100\.4/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r4'/);
 });
 
@@ -3657,8 +3660,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.99\.1/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.99\.1/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.100\.1/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.100\.1/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -3882,8 +3885,8 @@ test('Invariant 132 (Service worker activation finishes without awaiting a clien
       registration: { navigationPreload: { enable: () => Promise.resolve() } },
       clients: { claim: () => Promise.resolve(), matchAll: async () => [client] }
     },
-    caches: { keys: async () => ['agdata-v2.3.97', 'agdata-v2.3.99'], delete: async key => { retired.push(key); return true; } },
-    isRetiredRootCacheName: key => key !== 'agdata-v2.3.99',
+    caches: { keys: async () => ['agdata-v2.3.97', 'agdata-v2.3.100'], delete: async key => { retired.push(key); return true; } },
+    isRetiredRootCacheName: key => key !== 'agdata-v2.3.100',
     broadcastShellVersion: async type => { assert.equal(type, 'GNC_SHELL_ACTIVATED'); },
     navigateClientToForcedUpgrade: target => target.navigate(),
     navigateInactiveClientsToCurrentShell: async () => {}
@@ -3896,4 +3899,47 @@ test('Invariant 132 (Service worker activation finishes without awaiting a clien
   assert.equal(navigateCalls, 0, 'activation does not initiate or await client.navigate');
   assert.deepEqual(retired, ['agdata-v2.3.97']);
   assert.match(worker, /navigateInactiveClientToCurrentShell\(event\.clientId, 'inactive-network-activity'\)/, 'later stale inactive-client refresh remains available');
+});
+
+test('Invariant 133: cloud ERP owns all remaining stages under the same lease after the browser leaves', async () => {
+  const { verifyCloudErpChaining } = await import('./helpers/erp-cloud-chain.mjs');
+  await verifyCloudErpChaining(read('supabase/functions/app-api/index.ts'));
+});
+
+test('Invariant 134: three-digit patch releases advance numerically without remote downgrade', () => {
+  const source = read('assets/app-lifecycle.js');
+  const context = vm.createContext({ root: {} });
+  vm.runInContext(source.slice(source.indexOf('    const normalizeAgDataVersion ='), source.indexOf('    const isAuthTransitionActive =')), context);
+  assert.equal(context.root.compareAgDataVersions('2.3.100', '2.3.99'), 1);
+  assert.equal(context.root.compareAgDataVersions('2.3.99', '2.3.100'), -1);
+  assert.equal(context.root.compareAgDataVersions('2.10.0', '2.9.999'), 1);
+});
+
+test('Invariant 135: SOC ingestion retains every physical Suspend row independently of DC queue eligibility', async () => {
+  const { normalizeErpRows } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const rows = await normalizeErpRows([
+    { itemcode: '001', suspend: 'SUSPEND', suspendto: 'Other', ordernum: '1', linenum: '1' },
+    { itemcode: '002', tripnumber: '38.0', ordernum: '1', linenum: '2' },
+    { itemcode: '003', dock: '0', ordernum: '1', linenum: '3' },
+  ], 'soc', ['unique_id', 'itemcode', 'dock', 'suspend', 'suspendto', 'ordernum', 'linenum']);
+  assert.deepEqual(rows.map(row => row.itemcode), ['001', '002']);
+});
+
+test('Invariant 136: Home completion metadata precedes every full-row completion refresh', async () => {
+  const events = [];
+  let timer, finishMetadata;
+  const context = runFunctions('assets/app-runtime.js', ['scheduleManualSyncCompletionRefresh'], {
+    manualSyncPostRefreshInFlight: false, currentUser: 'authorized-user', navigator: { onLine: true },
+    MANUAL_SYNC_COMPLETION_REFRESH_DELAY_MS: 0, MANUAL_SYNC_COMPLETION_CATCHUP_DELAY_MS: 0,
+    setTimeout: callback => { timer = callback; }, liveSyncMode: 'idle', updateSyncDiagnostics() {},
+    refreshDashboardSyncMetadata: () => new Promise(resolve => { events.push('metadata'); finishMetadata = resolve; }),
+    forceRefreshViewDatasets: () => { events.push('rows'); return Promise.resolve(); },
+    getManualSyncCompletionViewId: () => 'home', queueVisibleDatasetCatchup() {}, isTouchConstrainedDevice: () => false,
+  });
+  context.scheduleManualSyncCompletionRefresh();
+  const work = timer();
+  assert.deepEqual(events, ['metadata']);
+  finishMetadata();
+  await work;
+  assert.deepEqual(events, ['metadata', 'rows']);
 });

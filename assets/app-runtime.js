@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.99';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.100';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26720,7 +26720,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.99').trim() || 'AgData v2.3.99';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.100').trim() || 'AgData v2.3.100';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27941,13 +27941,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function scheduleManualSyncCompletionRefresh(delayMs = MANUAL_SYNC_COMPLETION_REFRESH_DELAY_MS) {
             if (manualSyncPostRefreshInFlight) return;
             manualSyncPostRefreshInFlight = true;
-            const runRefresh = () => {
+            const runRefresh = async () => {
                 if (!currentUser || navigator.onLine === false) {
                     manualSyncPostRefreshInFlight = false;
                     updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
                     return;
                 }
-                refreshDashboardSyncMetadata(true).catch(() => {});
+                // Publish the small Home file/status summary before starting any
+                // full operational row hydration. This keeps completion visible
+                // even when the newly imported tables are large.
+                await refreshDashboardSyncMetadata(true).catch(() => false);
                 forceRefreshViewDatasets(getManualSyncCompletionViewId(), {
                     force: true,
                     fastInitialPage: true,
@@ -27980,6 +27983,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const isActive = !!next.active;
             manualSyncStatusState = next;
             syncGoogleScriptButton();
+            if (wasActive && !isActive) updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
 
             if (next.runId === previous.runId && next.stageIndex > previous.stageIndex) {
                 dashboardSyncMetadataFetchedAt = 0;
@@ -27994,17 +27998,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         || completed.has(`${result.key}|${result.sourceFileName || ''}`)) continue;
                     showToast('File Processed', `${String(result.key || '').toUpperCase()} ${result.sourceFileName || ''} processed — Supabase updated`, false,
                         { fingerprint: `erp-sync:${next.runId}:${result.key}:${result.sourceFileName || ''}` });
-                    void refreshDashboardSyncMetadata(true);
-                    forceRefreshViewDatasets(getManualSyncCompletionViewId(), {
-                        force: true,
-                        fastInitialPage: true,
-                        includeBackground: false,
-                        allowWhileInteractive: true,
-                        interruptible: true,
-                        requeueOnInteraction: true,
-                        retryReason: 'manual-sync-stage-commit',
-                        retryForceLoadedRefresh: true
-                    }).catch(() => false);
+                    scheduleManualSyncCompletionRefresh(0);
                 }
             }
 
@@ -28023,7 +28017,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
             clearManualSyncStatusPoll();
             if (wasActive) {
-                updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
                 refreshRealtimeSubscriptionsForCurrentView(true);
                 scheduleManualSyncCompletionRefresh();
                 if (!next.error && typeof handlePoManagementManualSyncComplete === 'function') handlePoManagementManualSyncComplete();
@@ -28075,6 +28068,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             } finally {
                 manualSyncStatusPollInFlight = false;
             }
+        }
+
+        function refreshManualSyncOnForeground() {
+            if (!currentUser || document.hidden || navigator.onLine === false) return false;
+            lastManualSyncStatusCheckedAt = 0;
+            void refreshManualSyncStatus(true).catch(() => {});
+            void refreshDashboardSyncMetadata(true).catch(() => {});
+            return true;
         }
 
         function canRunManualInventoryImport() {
@@ -143605,6 +143606,7 @@ C.14.043 C.15.000
                 });
             }, { passive: true });
             window.addEventListener('focus', () => {
+                refreshManualSyncOnForeground();
                 scheduleLifecycleResumeWork('focus', {
                     delay: 80,
                     forceViewport: true,
@@ -143628,6 +143630,7 @@ C.14.043 C.15.000
                     cleanupRealtime();
                     return;
                 }
+                refreshManualSyncOnForeground();
                 scheduleLifecycleResumeWork('visibility', {
                     delay: 60,
                     forceViewport: true,

@@ -62,7 +62,7 @@ test('app-api connects strict validation to ERP actions and keeps status read-on
   assert.match(handler,/const command = validateErpSyncCommand\(payload\)/);
   assert.match(handler,/operation === "status"[^]*get_erp_sync_status_v1/);
   assert.match(handler,/claim_erp_sync_job_v2[^]*p_force_restart: true[^]*return jsonResponse\(\{ ok: true, status:"CONTINUE", data: initial \}\)/);
-  assert.match(handler,/operation === "continue"[^]*claim_erp_sync_request_step_v1[^]*processCloudErpSyncStep[^]*release_erp_sync_request_step_v1/);
+  assert.match(handler,/operation === "continue"[^]*claim_erp_sync_request_step_v1[^]*processCloudErpSyncStep[^]*releaseCloudErpSyncStep/);
   assert.match(handler,/for \(const privateField of \["workerId","worker_id","claimed"[^]*delete status\[privateField\]/);
   assert.doesNotMatch(handler,/runErpSyncWorker|EdgeRuntime\.waitUntil/);
   assert.ok(handler.indexOf('operation === "status"') < handler.indexOf('claim_erp_sync_job_v2'));
@@ -72,10 +72,10 @@ test('app-api connects strict validation to ERP actions and keeps status read-on
   assert.match(worker,/assert_erp_sync_worker_v1/);
   assert.match(worker,/fast_commit_erp_stage_swap_v1/);
   assert.match(source,/action === "erp_sync_worker"\) \{\s*return errorResponse\("The local ERP worker is disabled\.", 410/);
-  assert.doesNotMatch(handler,/queueCloudWorker|dispatchCloudErpSync/);
+  assert.match(handler,/dispatchCloudErpSync\(initial\)/);
   assert.match(source,/handleErpSyncAction\(session, payload, activeProfileForRequest\)/);
   assert.match(source,/runtime\.waitUntil\(task\)/);
-  assert.match(source,/claim_erp_sync_worker_step_v1[^]*p_step: step/);
+  assert.match(source,/claim_erp_sync_request_step_v1[^]*p_actor: String\(status.requestedBy/);
   assert.match(source,/action === "erp_sync_continue"[^]*handleErpSyncContinuation/);
   assert.match(source,/action: "mint_drive_token"[^]*actor: \{ system: "erp-sync-cloud-worker" \}/);
   assert.match(source,/data\.accessToken \|\| data\.access_token/);
@@ -156,13 +156,13 @@ test('streaming XLSX pages discover itemcode headers after report titles and pre
   assert.equal(await countImportableErpXlsxRows(bytes,'drive_around'),2);
 });
 
-test('cloud XLSX stages with a pending expected count and seals the exact normalized row count at EOF', async () => {
+test('cloud XLSX stages its exact row count in one invocation and commits once', async () => {
   const bytes=makeZip({
     'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
     'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
     'xl/worksheets/sheet1.xml':'<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>itemcode</t></is></c><c r="B1" t="inlineStr"><is><t>commonname</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>001</t></is></c><c r="B2" t="inlineStr"><is><t>Blue Grass</t></is></c></row></sheetData></worksheet>',
   });
-  let archived=false,sealCalls=0;
+  let archived=false,appendCalls=0,sealCalls=0,commitCalls=0;
   const fakeFetch=async(input,init={})=>{
     const url=new URL(input);
     if(url.pathname.endsWith('/files')){
@@ -183,26 +183,26 @@ test('cloud XLSX stages with a pending expected count and seals the exact normal
       assert.equal(args.p_file_meta.expected_rows_pending,true);
       return {data:{stage_id:'xlsx-stage',expected_rows:50000,staged_rows:0}};
     }
-    if(name==='fast_append_erp_stage_batch_v1')return {data:{staged_rows:args.p_start_row+args.p_rows.length}};
-    if(name==='fast_seal_erp_stage_v1'){
-      sealCalls+=1;assert.equal(args.p_stage_id,'xlsx-stage');assert.equal(args.p_expected_rows,1);
-      return {data:{ok:true,expected_rows:1,staged_rows:1}};
-    }
-    if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true}};
+    if(name==='fast_append_erp_stage_batch_v1'){appendCalls+=1;return {data:{staged_rows:args.p_start_row+args.p_rows.length}};}
+    if(name==='fast_seal_erp_stage_v1'){sealCalls+=1;assert.equal(args.p_expected_rows,1);return {data:{ok:true}};}
+    if(name==='fast_commit_erp_stage_swap_v1'){commitCalls+=1;return {data:{ok:true}};}
     throw new Error(`unexpected RPC ${name}`);
   }};
   const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder',processed:{drive:'drive-processed'}};
   const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
   const result=await runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token'});
+  assert.equal(appendCalls,1);
   assert.equal(sealCalls,1);
+  assert.equal(commitCalls,1);
   assert.equal(archived,true);
   assert.equal(result.cursor.stageResults[0].rowCount,1);
+  assert.equal(result.cursor.fileContinuation,undefined);
 });
 
-test('SOC XLSX pages filter itemcode/dock/Suspend-DC rows before full cell decoding and preserve raw offsets', async () => {
+test('SOC XLSX pages filter itemcode/dock/Suspend rows before full cell decoding and preserve raw offsets', async () => {
   const headers=['itemcode','dock','suspend','suspend-to','commonname'];
   const row=(n,values)=>`<row r="${n}">${values.map((value,index)=>`<c r="${String.fromCharCode(65+index)}${n}" t="inlineStr"><is><t>${value}</t></is></c>`).join('')}</row>`;
-  const sheet=`<worksheet><sheetData>${row(1,headers)}${row(2,['001','D1','','','Plant 1'])}${row(3,['002','','','','Excluded'])}${row(4,['003','','SUSPEND','dc','Plant 3'])}</sheetData></worksheet>`;
+  const sheet=`<worksheet><sheetData>${row(1,headers)}${row(2,['001','D1','','','Plant 1'])}${row(3,['002','','','','Excluded'])}${row(4,['003','','SUSPEND','','Plant 3'])}</sheetData></worksheet>`;
   const bytes=makeZip({
     'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
     'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
@@ -292,7 +292,7 @@ test('worker commits each staged batch before archiving and completes the empty 
   assert.ok(calls.indexOf('fast_commit_erp_stage_swap_v1') < calls.indexOf('archive'));
   assert.equal(calls.filter(name=>name==='fast_begin_erp_stage_v1').length,1);
   assert.deepEqual(status.filter(patch=>patch.currentStage).map(patch=>patch.currentStage),
-    ['drive','drive','cav','reserves','soc','hl_po_parsed','idle']);
+    ['drive','drive','drive','drive','cav','reserves','soc','hl_po_parsed','idle']);
   assert.equal(result.stageResults.length,5);
 });
 
@@ -401,7 +401,7 @@ test('cloud continuation processes at most one source file per invocation and re
   assert.equal(listed.length,5);
 });
 
-test('cloud ERP file work yields bounded row chunks and retries a failed Processed move without recommit', async () => {
+test('cloud CSV import stages all 5,200 rows before retrying a failed Processed move without recommit', async () => {
   const rows=Array.from({length:5200},(_,index)=>`item-${index},Plant ${index},1`).join('\n');
   const csv=`itemcode,commonname,ptravailable\n${rows}\n`;
   let committed=0, appended=0, moveAttempts=0, archived=false;
@@ -436,17 +436,13 @@ test('cloud ERP file work yields bounded row chunks and retries a failed Process
   const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
   const run=cursor=>runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token',cursor});
   const first=await run();
-  assert.equal(first.cursor.fileContinuation.state.nextOffset,5000);
-  assert.equal(appended,5000);
+  assert.equal(first.cursor.fileContinuation.state.phase,'move');
+  assert.equal(appended,5200);
   const second=await run(first.cursor);
-  assert.equal(second.cursor.fileContinuation.state.phase,'move');
-  assert.equal(committed,1);
-  assert.equal(archived,false);
-  const third=await run(second.cursor);
   assert.equal(committed,1);
   assert.equal(moveAttempts,2);
   assert.equal(archived,true);
-  assert.equal(third.cursor.stageResults[0].rowCount,5200);
+  assert.equal(second.cursor.stageResults[0].rowCount,5200);
 });
 
 test('a failed source is attempted once, then the next continuation advances to the next stage', async () => {
@@ -526,4 +522,35 @@ test('folder snapshot persistence preserves an in-flight row offset before resum
   assert.equal(first.stageIndex,0);
   assert.equal(first.fileContinuation.state.nextOffset,12000);
   assert.equal(first.fileContinuation.state.processedRows,8000);
+});
+
+test('cloud waitUntil self-chaining completes every stage after the browser leaves and shares the request lease', async () => {
+  const { verifyCloudErpChaining } = await import('./helpers/erp-cloud-chain.mjs');
+  await verifyCloudErpChaining(await readFile(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8'));
+});
+
+test('release semver orders three-digit patches numerically and ignores older remote releases', async () => {
+  const vm = await import('node:vm');
+  const source = await readFile(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
+  const code = source.slice(source.indexOf('    const normalizeAgDataVersion ='), source.indexOf('    const isAuthTransitionActive ='));
+  const context = vm.createContext({ root: {} });
+  vm.runInContext(code, context);
+  const compare = context.root.compareAgDataVersions;
+  assert.equal(compare('AgData v2.3.100', '2.3.99'), 1);
+  assert.equal(compare('2.3.99', '2.3.100'), -1);
+  assert.equal(compare('2.3.100', 'v2.3.100'), 0);
+  assert.equal(compare('2.10.0', '2.9.999'), 1);
+  assert.match(source, /compareAgDataVersions\(target, current\) <= 0/);
+});
+
+// These focused suites execute the download-count and deferred-hydration behaviors
+// as part of the requested ERP integration target too.
+await import('./erp-sync-staging.test.mjs');
+await import('./erp-sync-ui-completion.test.mjs');
+
+test('cloud continuation retries a failed lease release and recovers after a busy lease expires', async () => {
+  const { verifyCloudErpChaining } = await import('./helpers/erp-cloud-chain.mjs');
+  const source = await readFile(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+  assert.equal((await verifyCloudErpChaining(source, { releaseFailures: 1 })).waits, 0);
+  assert.equal((await verifyCloudErpChaining(source, { releaseFailures: 2 })).waits, 1);
 });
