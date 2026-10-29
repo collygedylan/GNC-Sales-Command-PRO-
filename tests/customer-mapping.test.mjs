@@ -93,6 +93,34 @@ test('RPC option construction retains each source ID across canonical rep aliase
   ]),[['S07','S07','00070','00070'],['S17','S17','00071','00071']]);
 });
 
+test('cold name-resolved RPC rows bind the rep identity before rendering exact picker pairs',async()=>{
+  const c=requestFixture();
+  c.customerRepMapRows=[];
+  c.tempSelectedReqRep='Casey Rufener'; c.tempSelectedReqSalesrepId='S03';
+  c.REQUEST_MODAL_REP_OPTIONS=[{label:'Casey Rufener',token:c.normalizeRepMatchToken('Casey Rufener'),collapsedToken:'caseyrufener'}];
+  c.isRequestRowArchivedForCompletion=()=>false;
+  c.canUseRequestMappedFoldersForCurrentUser=()=>true;
+  c.getRequestCustomerFolderLabel=(customer,consignee)=>customer||consignee||'Unknown Customer';
+  c.getRequestConsigneeFolderLabel=consignee=>consignee||'No Consignee';
+  c.normalizeRequestConsigneeFolderKey=value=>c.normalizeRepMatchToken(value);
+  c.parseExistingRequestFolderMetadata=folderId=>({dateIso:'',dateLabel:'',requestNumber:'',requestIdLabel:folderId});
+  const rawRows=Array.from({length:326},(_,index)=>({...row,unique_id:`casey-${index+1}`,salesrepid:'S03',salesrepname:'Casey Rufener',
+    customeridentityid:String(10000+index),customername:`Casey Customer ${index+1}`,consigneeid:String(20000+index),consigneename:`Casey Site ${index+1}`}));
+  c.fetchRequestUniversalCustomerOptions=async()=>({rows:rawRows,revision:'casey-rpc-r1',salesrepId:'S03',universal:false});
+  assert.equal(c.getRequestSelectedSalesrepId('Casey Rufener'),'','cold rep-name directory has not yet resolved S03');
+  const entry=await c.loadRequestModalCustomerOptionsForRep('Casey Rufener',true);
+  assert.equal(entry.rows.length,326);
+  assert.equal(c.getRequestSelectedSalesrepId('Casey Rufener'),'S03','validated RPC rows register the exact source ID for the selected name');
+  const options=c.getRequestModalCustomerOptionsForRep('Casey Rufener');
+  assert.equal(options.length,327,'rendered picker contains N/A plus all 326 validated RPC pairs');
+  assert.deepEqual(Array.from(options.slice(1),option=>[option.salesrepid,option.customeridentityid,option.consigneeidentityid]),
+    rawRows.map(raw=>['S03',raw.customeridentityid,raw.consigneeid]));
+  const groups=c.buildExistingRequestFolderCustomerGroups('Casey Rufener');
+  assert.equal(groups.length,327,'existing-folder customer picker renders the same N/A and exact RPC customer pairs');
+  assert.equal(groups[0].key,'id:AGDATA_NA_CUSTOMER');
+  assert.equal(groups.filter(group=>group.mapCount>0).length,327);
+});
+
 test('a cached universal directory cannot leak into a non-JD selected-rep picker',()=>{
   const c=requestFixture();
   const owner=c.syncRequestModalCustomerMappingOwner();

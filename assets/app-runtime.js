@@ -52772,8 +52772,14 @@ function toggleDriveQuickRequestItem(domId) {
                 if (new Set(identities).size !== rows.length) throw new Error('Customer mapping identities are ambiguous.');
                 if (!getRequestSelectedSalesrepId(repName) && salesrepId && !executiveDirectory) {
                     resolvedByName = true;
-                    const mergedRows = new Map((Array.isArray(customerRepMapRows) ? customerRepMapRows : []).map(row => [row.unique_id, row]));
-                    (getRequestMappedRepDirectory().rowsBySalesrepId.get(salesrepId) || []).forEach(row => mergedRows.set(row.unique_id, row));
+                    const mappingPairKey = row => JSON.stringify([
+                            String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, row.request_selected_salesrep_id, '') || '').trim().toUpperCase(),
+                            String(firstNonEmptyValue(row.CUSTOMERIDENTITYID, row.customeridentityid, '') || '').trim().toUpperCase(),
+                            String(firstNonEmptyValue(row.CONSIGNEEID, row.consigneeid, row.consigneeidentityid, '') || '').trim().toUpperCase()
+                    ]);
+                    const mergedRows = new Map((Array.isArray(customerRepMapRows) ? customerRepMapRows : []).map(row => [mappingPairKey(row), row]));
+                    (getRequestMappedRepDirectory().rowsBySalesrepId.get(salesrepId) || []).forEach(row => mergedRows.set(mappingPairKey(row), row));
+                    rows.forEach(row => mergedRows.set(mappingPairKey(row), row));
                     customerRepMapRows = Array.from(mergedRows.values());
                     Object.defineProperty(customerRepMapRows, 'mappingRevision', { value: signature });
                     requestMappedRepSource = null;

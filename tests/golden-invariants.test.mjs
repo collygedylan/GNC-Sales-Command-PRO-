@@ -2707,9 +2707,9 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.match(loader, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
   assert.match(loader, /maxRetries = options\.retryOnCancellation === true \? 4 : 0[\s\S]*getSupabaseReadErrorCode\(error\) !== 'REQUEST_ABORTED'/);
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.5`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.6`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.5/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.6/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3360,11 +3360,11 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   assert.match(module, /if\(readOnly\|\|requestBusy\)return;/);
   assert.match(module, /tray\.hidden=readOnly;notices\.hidden=readOnly/);
   const build = read('scripts/build-live-shell.mjs');
-  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.5`/);
+  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.6`/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.102\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.5/);
-  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'customer-pairs-r1'/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.6/);
+  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'customer-pairs-r2'/);
 });
 
 test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
@@ -4222,4 +4222,36 @@ test('Invariant 150 (RPC Customer Options Retain the Physical Pair IDs Used by V
     [['S07', 'S07', '00070', '00070'], ['S17', 'S17', '00071', '00071']]);
   assert.ok(pairs.every(option => context.isActiveRequestCustomerMapping(option)),
     'built RPC options preserve every physical identity field consumed by active-pair validation');
+});
+
+test('Invariant 151 (Cold Name-Resolved RPC Pairs Bind the Selected Rep Before Picker Rendering)', async () => {
+  const context = vm.createContext({ window: {}, document: { getElementById: () => null } });
+  vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
+  const pairs = ['00031', '00032', '00033', '00034'].map((customerId, index) => ({
+    ...mappingFixtureRow, unique_id: `casey-${index}`, salesrepid: 'S03', salesrepname: 'Casey Rufener',
+    customeridentityid: customerId, customername: `Casey Customer ${index}`, consigneeid: `0004${index}`,
+    consigneename: `Casey Site ${index}`,
+  }));
+  context.customerRepMapRows = [];
+  context.tempSelectedReqRep = 'Casey Rufener';
+  context.tempSelectedReqSalesrepId = 'S03';
+  context.REQUEST_MODAL_REP_OPTIONS = [{ label: 'Casey Rufener', token: context.normalizeRepMatchToken('Casey Rufener'), collapsedToken: 'caseyrufener' }];
+  context.isRequestRowArchivedForCompletion = () => false;
+  context.canUseRequestMappedFoldersForCurrentUser = () => true;
+  context.getRequestCustomerFolderLabel = (customer, consignee) => customer || consignee || 'Unknown Customer';
+  context.getRequestConsigneeFolderLabel = consignee => consignee || 'No Consignee';
+  context.normalizeRequestConsigneeFolderKey = value => context.normalizeRepMatchToken(value);
+  context.parseExistingRequestFolderMetadata = folderId => ({ dateIso: '', dateLabel: '', requestNumber: '', requestIdLabel: folderId });
+  context.fetchRequestUniversalCustomerOptions = async () => ({ rows: pairs, revision: 'casey-cold-r1', salesrepId: 'S03', universal: false });
+  assert.equal(context.getRequestSelectedSalesrepId('Casey Rufener'), '', 'the fixture begins without a loaded directory index');
+  const loaded = await context.loadRequestModalCustomerOptionsForRep('Casey Rufener', true);
+  assert.equal(loaded.rows.length, pairs.length);
+  assert.equal(context.getRequestSelectedSalesrepId('Casey Rufener'), 'S03', 'validated RPC rows bind the source rep identity');
+  const options = context.getRequestModalCustomerOptionsForRep('Casey Rufener');
+  assert.deepEqual(plain(options.map(option => [option.salesrepid, option.customeridentityid, option.consigneeidentityid])), [
+    ['S03', 'AGDATA_NA_CUSTOMER', 'AGDATA_NA_CONSIGNEE'], ...pairs.map(pair => ['S03', pair.customeridentityid, pair.consigneeid]),
+  ]);
+  const groups = context.buildExistingRequestFolderCustomerGroups('Casey Rufener');
+  assert.deepEqual(plain(groups.map(group => group.key)), ['id:AGDATA_NA_CUSTOMER', ...pairs.map(pair => `id:${pair.customeridentityid}`)]);
+  assert.ok(groups.slice(1).every(group => group.mapCount > 0), 'the actual existing-folder picker retains every validated physical customer pair');
 });
