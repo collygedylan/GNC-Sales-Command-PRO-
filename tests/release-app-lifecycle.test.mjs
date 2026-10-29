@@ -40,11 +40,11 @@ test('v2.3.101 assets and worker upgrade purge previous cache generations', () =
     const asset = new URL(match[1], 'https://agmetricapp.com');
     const expectedVersion = asset.pathname === '/assets/app-runtime.js' ? '2.3.101.4'
       : ['/assets/mobile-workspace.js', '/assets/photo-history-v2026090401.js', '/assets/inventory-list-contract.js',
-        '/assets/app-shell-style-05.css'].includes(asset.pathname) ? '2.3.101.1' : '2.3.101';
+        '/assets/app-shell-style-05.css', '/assets/app-styles.css'].includes(asset.pathname) ? '2.3.101.1' : '2.3.101';
     assert.equal(asset.searchParams.get('v'), expectedVersion, match[1]);
   }
   assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.101'/);
-  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r4'/);
+  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'drawer-theme-r1'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*window\.reloadForServiceWorkerUpdate\(\)[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
   const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.101' });

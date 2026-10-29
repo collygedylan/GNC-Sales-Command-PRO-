@@ -3361,7 +3361,7 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.101\.1/);
   assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.101\.4/);
-  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-erp-continuation-r4'/);
+  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'drawer-theme-r1'/);
 });
 
 test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
@@ -4058,5 +4058,30 @@ test('Invariant 143: owner-scoped Sales Impact shares the drawer row contract an
     owner = false;
     context.syncRequestSalesImpactEntrypoints();
     assert.equal(dom.window.document.getElementById('drawer-request-sales-impact-btn'), null);
+  } finally { dom.window.close(); }
+});
+
+test('Invariant 144: drawer theme isolation preserves dark contrast, compact close control and hidden role rows', async () => {
+  const { JSDOM } = await import('jsdom');
+  const dom = new JSDOM('<body class="ops-precision-pilot"><div id="side-drawer"><header class="drawer-header"><button class="drawer-close-btn">Close</button></header><nav id="drawer-modules"><button class="drawer-item">Drive</button><button class="drawer-item hidden">Restricted</button></nav></div></body>');
+  try {
+    const style = dom.window.document.createElement('style');
+    // Exercise the theme-owned important declarations that caused the live regression.
+    style.textContent = read('assets/ops-precision-pilot.css') + '\n' + read('assets/app-styles.css');
+    dom.window.document.head.appendChild(style);
+    for (const theme of ['light', 'dark']) {
+      dom.window.document.body.dataset.opsTheme = theme;
+      for (const outdoor of [false, true]) {
+        dom.window.document.body.classList.toggle('outdoor-mode', outdoor);
+        const computed = selector => dom.window.getComputedStyle(dom.window.document.querySelector(selector));
+        assert.equal(computed('#side-drawer').backgroundColor, 'rgb(7, 26, 18)');
+        assert.equal(computed('.drawer-item').color, 'rgb(236, 253, 245)');
+        assert.equal(computed('.drawer-item').fontWeight, '500');
+        assert.equal(computed('.drawer-close-btn').width, '36px');
+        assert.equal(computed('.drawer-close-btn').height, '36px');
+        assert.equal(computed('.drawer-close-btn').minHeight, '36px');
+        assert.equal(computed('.drawer-item.hidden').display, 'none');
+      }
+    }
   } finally { dom.window.close(); }
 });
