@@ -14,6 +14,7 @@ import { mappingFixtureRow, requestMappingFunctions, requestMappingSetup } from 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceCache = new Map();
 const syntaxCache = new Map();
+const functionIndexes = new Map();
 
 function read(file) {
   if (!sourceCache.has(file)) sourceCache.set(file, readFileSync(path.join(root, file), 'utf8'));
@@ -30,12 +31,16 @@ function syntax(file) {
 
 function functionSource(file, name) {
   const sourceFile = syntax(file);
-  let match = null;
-  const visit = node => {
-    if (!match && ts.isFunctionDeclaration(node) && node.name?.text === name) match = node;
-    if (!match) ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
+  if (!functionIndexes.has(file)) {
+    const index = new Map();
+    const visit = node => {
+      if (ts.isFunctionDeclaration(node) && node.name && !index.has(node.name.text)) index.set(node.name.text, node);
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+    functionIndexes.set(file, index);
+  }
+  const match = functionIndexes.get(file).get(name);
   assert.ok(match, `${file}:${name}`);
   return match.getText(sourceFile);
 }
@@ -1335,7 +1340,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.102"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.103"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1364,9 +1369,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.102"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.103"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.102"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.103"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2179,7 +2184,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.102\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.103\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2246,7 +2251,7 @@ test('Invariant 83 (One Click Starts One Sync and Status Polling Never Dispatche
     isRunScriptActive: false, window: {}, currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan',
     document: { hidden: false }, navigator: { onLine: true }, console,
     manualSyncStatusState: null, manualSyncStatusPollInFlight: false, lastManualSyncStatusCheckedAt: 0,
-    MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'],
+    MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'transactions_keyed', 'stine_lumber', 'pikes', 'hl_po_parsed'],
     MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
     releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true,
     hasActiveManualSync: () => false, syncGoogleScriptButton() {}, showToast() {},
@@ -2404,12 +2409,13 @@ test('Invariant 86 (PostgreSQL Sync Status Cannot Dispatch Imports Through Backg
 
 test('Invariant 87 (ERP API Allows Status Reads and Admin-Leased Cloud Continuations)', async () => {
   const { validateErpSyncCommand, ERP_SYNC_STAGES } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const { SECONDARY_ERP_STAGES } = await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
   const calls = [];
   let claimed = false, steps = 0, releases = 0;
   const status = { active: false, currentStage: 'idle', stageResults: [] };
   const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep'], {
     dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
-    validateErpSyncCommand, ERP_SYNC_STAGES, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
+    validateErpSyncCommand, ERP_SYNC_STAGES, SECONDARY_ERP_STAGES, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value).toLowerCase(), jsonObject: value => {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected JSON object');
       return value;
@@ -2517,11 +2523,12 @@ test('Invariant 90 (IPv6 CLI Link Failures Are Classified Without Exposing Conne
 
 test('Invariant 91 (RUN SCRIPT Claims Explicit Cloud Continuations and Retires the Local Daemon)', async () => {
   const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const { SECONDARY_ERP_STAGES } = await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
   const calls = [];
   let claimCount = 0, stepClaimCount = 0, stepCalls = 0, releaseCount = 0;
   const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep'], {
     dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
-    ERP_SYNC_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
+    ERP_SYNC_STAGES, SECONDARY_ERP_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value).trim().toLowerCase(), jsonObject: value => value || {},
     crypto: { randomUUID: () => '00000000-0000-4000-8000-000000000091' },
     jsonResponse: value => value, errorResponse: (message, status, extra) => ({ ok: false, status, ...extra }),
@@ -2558,7 +2565,7 @@ test('Invariant 91 (RUN SCRIPT Claims Explicit Cloud Continuations and Retires t
   const started = await context.handleErpSyncAction(session, command, actor);
   assert.equal(started.status, 'CONTINUE');
   assert.equal(started.data.runId, '00000000-0000-4000-8000-000000000091');
-  assert.deepEqual(started.data.stageOrder, ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']);
+  assert.deepEqual(plain(started.data.stageOrder), ['drive', 'cav', 'reserves', 'soc', 'transactions_keyed', 'stine_lumber', 'pikes', 'hl_po_parsed']);
   const duplicate = await context.handleErpSyncAction(session, command, actor);
   assert.equal(duplicate.data.runId, '00000000-0000-4000-8000-000000000091');
   assert.equal(duplicate.status, 'CONTINUE');
@@ -2707,9 +2714,9 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.match(loader, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
   assert.match(loader, /maxRetries = options\.retryOnCancellation === true \? 4 : 0[\s\S]*getSupabaseReadErrorCode\(error\) !== 'REQUEST_ABORTED'/);
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.8`/);
+  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.8/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.103/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -2788,7 +2795,7 @@ test('Invariant 100 (RUN SCRIPT Drives Bounded Cloud Continuations Through IDLE)
   await context.runGoogleAppsScriptTrigger();
   assert.deepEqual(plain(writes[0]), {
     action: 'erp_sync', operation: 'start', commandId: 'sync-command-100',
-    maxAttemptsPerStage: 1, force: true, forceRestart: true
+    maxAttemptsPerStage: 1, force: true, forceRestart: true, maxRowsPerSlice: 2500
   });
   assert.deepEqual(writes.slice(1).map(write => [write.action, write.operation, write.runId]), [
     ['erp_sync', 'continue', 'run-100'],
@@ -2803,10 +2810,11 @@ test('Invariant 100 (RUN SCRIPT Drives Bounded Cloud Continuations Through IDLE)
 
 test('Invariant 101 (Empty Cloud Sync Completion Does Not Require a File Cursor)', async () => {
   const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const { SECONDARY_ERP_STAGES } = await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
   const calls = [];
   const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep'], {
     dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
-    ERP_SYNC_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
+    ERP_SYNC_STAGES, SECONDARY_ERP_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value || '').trim().toLowerCase(),
     jsonObject: value => {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected JSON object');
@@ -2884,6 +2892,7 @@ test('Invariant 102 (Cloud XLSX Seals Its Exact Parsed Count Before Commit and M
     if (url.pathname.endsWith('/files/drive-file-102') && init.method === 'PATCH') {
       events.push('move'); moved = true; return Response.json({ id: 'drive-file-102' });
     }
+    if (url.pathname.endsWith('/files/drive-file-102') && url.searchParams.get('fields') === 'id,parents') return Response.json({parents:['drive-folder']});
     if (url.pathname.endsWith('/files/drive-file-102')) return new Response(workbook);
     throw new Error(`Unexpected Drive request ${url}`);
   };
@@ -3360,11 +3369,11 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   assert.match(module, /if\(readOnly\|\|requestBusy\)return;/);
   assert.match(module, /tray\.hidden=readOnly;notices\.hidden=readOnly/);
   const build = read('scripts/build-live-shell.mjs');
-  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.8`/);
+  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.102\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.8/);
-  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'customer-pairs-r4'/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.103\.1/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.103/);
+  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
 test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
@@ -3663,8 +3672,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.102\.1/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.102\.1/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.103\.1/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.103\.1/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -4335,4 +4344,160 @@ test('Invariant 153 (Warm Partial Rep Cache Stays Visible While Normal Selection
   ]);
   assert.deepEqual(plain(context.buildExistingRequestFolderCustomerGroups('Chance Alldredge - South TX').map(group => group.key)),
     ['id:AGDATA_NA_CUSTOMER', 'id:00060', 'id:00061']);
+});
+
+test('Invariant 154 (JD Global Directory Retries After Same-Actor Ownership Refresh)', async () => {
+  const context = vm.createContext({ window: {}, document: { getElementById: () => null } });
+  vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
+  context.currentUser = 'jd_jones';
+  context.nativeAuthProfile = { username: 'jd_jones' };
+  context.tempSelectedReqRep = 'Rep Two';
+  context.tempSelectedReqSalesrepId = '02';
+  context.resetRequestCustomerSelectionState = () => {};
+  context.isRequestRowArchivedForCompletion = () => false;
+  context.canUseRequestMappedFoldersForCurrentUser = () => true;
+  context.getRequestCustomerFolderLabel = (customer, consignee) => customer || consignee || 'Unknown Customer';
+  context.getRequestConsigneeFolderLabel = consignee => consignee || 'No Consignee';
+  context.normalizeRequestConsigneeFolderKey = value => context.normalizeRepMatchToken(value);
+  context.parseExistingRequestFolderMetadata = folderId => ({ dateIso: '', dateLabel: '', requestNumber: '', requestIdLabel: folderId });
+  context.syncRequestModalCustomerMappingOwner();
+  const globalPair = { ...mappingFixtureRow, unique_id: 'jd-global-refresh', salesrepid: 'AGDATA_EXECUTIVE_ALL',
+    salesrepname: 'JD Jones', customeridentityid: '00999', customername: 'Other Territory',
+    consigneeid: '00888', consigneename: 'Global Site' };
+  let fetchCount = 0;
+  context.fetchRequestUniversalCustomerOptions = async (_repName, salesrepId) => {
+    fetchCount += 1;
+    if (fetchCount === 1) context.appAccessSnapshotState.snapshot.dataPermissionVersion = 'perm-2';
+    return { rows: [globalPair], revision: `jd-refresh-${fetchCount}`, salesrepId,
+      salesrepCanonicalKey: '', universal: true };
+  };
+  const ready = await context.ensureRequestModalCustomerOptionsReady();
+  assert.equal(fetchCount, 2, 'the owner-scoped response is discarded and retried once under the current permission version');
+  assert.equal(ready, true);
+  assert.equal(context.requestModalCustomerOptionsLoading, false);
+  assert.equal(context.requestModalCustomerOptionsError, '');
+  const entry = context.requestMappingRpcCache.get('AGDATA_EXECUTIVE_ALL');
+  assert.equal(entry.owner, context.getRequestModalLookupOwnerSignature());
+  assert.equal(entry.universal, true);
+  assert.equal(context.getRequestSelectedSalesrepId('Rep Two'), 'AGDATA_EXECUTIVE_ALL');
+  assert.ok(context.getRequestModalCustomerOptionsForRep('Rep Two').some(option => option.customeridentityid === '00999'),
+    'the authenticated JD actor keeps global customer pairs while another rep is selected');
+});
+
+test('Invariant 155 (Cloud ERP Retries Persist Bounded Rows Before Atomic Publication)', async () => {
+  const { stageFileContinuation } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const lines=Array.from({length:1201},(_,index)=>`item-${index},Plant ${index},1`).join('\n');
+  const bytes=`itemcode,commonname,ptravailable\n${lines}\n`;
+  const file={id:'golden-erp-bounded',name:'Drive.csv',modifiedTime:'2026-10-29T12:00:00Z',parents:['drop-folder','shared-folder']};
+  const appended=[];let committed=0,archived=false;
+  const fetcher=async(input,init={})=>{
+    const url=new URL(input);
+    if(url.pathname.endsWith('/files/golden-erp-bounded')&&url.searchParams.get('alt')==='media')return new Response(bytes);
+    if(url.pathname.endsWith('/files/golden-erp-bounded')&&url.searchParams.has('fields')&&init.method!=='PATCH')
+      return Response.json({id:file.id,parents:file.parents});
+    if(url.pathname.endsWith('/files/golden-erp-bounded')&&init.method==='PATCH'){
+      assert.equal(url.searchParams.get('removeParents'),'drop-folder,shared-folder');archived=true;return Response.json({id:file.id});
+    }
+    throw new Error(`unexpected Drive request ${url}`);
+  };
+  const supabase={rpc:async(name,args)=>{
+    if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false}};
+    if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','commonname','ptravailable']};
+    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'golden-stage',expected_rows:1201,staged_rows:0}};
+    if(name==='fast_append_erp_stage_batch_v1'){
+      appended.push(args.p_rows.length);return {data:{staged_rows:args.p_start_row+args.p_rows.length}};
+    }
+    if(name==='fast_commit_erp_stage_swap_v1'){committed+=1;return {data:{ok:true}};}
+    throw new Error(`unexpected ERP RPC ${name}`);
+  }};
+  let state=null,result;
+  for(let slice=0;slice<5;slice+=1){
+    result=await stageFileContinuation({supabase,fetcher,token:'fixture-token',file,dataset:'drive_around',stageKey:'drive',
+      parentId:'drop-folder',processedId:'processed-folder',status:async()=>{},state,maxRowsPerSlice:600});
+    if(result.done)break;
+    state=result.state;
+    assert.ok(state.processedRows<1201||state.phase==='finalize'||state.phase==='move');
+  }
+  assert.equal(result.done,true);
+  assert.deepEqual(appended,[600,600,1]);
+  assert.equal(committed,1);
+  assert.equal(archived,true);
+});
+
+test('Invariant 156 (Sales Rep Bloom Actions Expose Only Share and Request)', () => {
+  const makeElement = initialClasses => {
+    const classes = new Set(initialClasses || []);
+    return { dataset: {}, innerText: '', className: '', setAttribute() {},
+      classList: { toggle(name, enabled) { if (enabled) classes.add(name); else classes.delete(name); }, contains(name) { return classes.has(name); } },
+      hasClass: name => classes.has(name) };
+  };
+  const actionIds = ['global-action-bar','footer-cart-btn','footer-cart-badge','sel-count','cart-helper-text',
+    'bloom-picker-actions-toggle','bloom-picker-actions-icon','bloom-picker-actions-list','batch-share-menu-wrap',
+    'batch-btn-assign','batch-btn-eval-task','batch-btn-ncr','batch-btn-request','batch-btn-move','batch-btn-flyer',
+    'batch-btn-take-back','batch-btn-endcap','batch-btn-shear','batch-btn-bloom-order','batch-btn-project'];
+  const roleCases = ['Sales Rep','sales_rep','salesrep','Sales','Manager'];
+  for (const role of roleCases) {
+    const elements = Object.fromEntries(actionIds.map(id => [id, makeElement(id === 'bloom-picker-actions-list' ? ['hidden'] : [])]));
+    const context = vm.createContext({
+      currentRole: role, currentUser: 'rep-user', document: { getElementById: id => elements[id] || null }, window: {},
+      selectedItems: new Set(['row-1']), selectedItemSources: new Map(), cartPanelOpen: true, bloomPickerActionsOpen: true,
+      getCartSelectedItems: () => [{ DOM_ID: 'row-1' }], renderBloomPickerTrayRows() {}, syncBloomShareMenuUi() {}, syncGlobalHeaderChrome() {},
+      canUseFullDriveBloomPickerActions: () => true, canUseCartInventoryActions: () => true, canSubmitBloomPickerOrder: () => true,
+      canUseDriveQuickRequest: () => true, isRequestLikeItem: () => false, isDockLikeItem: () => false,
+      isSalesOfficeLikeItem: () => false, canUseEvalTaskAssignment: () => false, getEvalTaskSelectionItems: () => [],
+      canCreateLocationWorkJob: () => false, canUseGroupedBloomNcr: () => false, canCreateShearLocationInquiry: () => false,
+    });
+    runFunctions('assets/app-runtime.js', ['normalizeRoleAccessToken','getBloomPickerActionVisibility','updateGlobalActionBar'], context);
+    vm.runInContext(`currentRole = ${JSON.stringify(role)}; getRoleAccessState = () => { const normalized = normalizeRoleAccessToken(currentRole); const isSalesRole = ['SALES','SALE','SALESUSER','SALESROLE'].includes(normalized); const isRep = isSalesRole || normalized === 'REP' || normalized === 'SALESREP' || normalized.includes('SALESREP'); return { isRep, isRepLike: isRep, isCsr: false }; };`, context);
+    context.updateGlobalActionBar();
+    assert.equal(elements['batch-share-menu-wrap'].hasClass('hidden'), false, `${role}: Share remains visible`);
+    assert.equal(elements['batch-btn-request'].hasClass('hidden'), false, `${role}: Request remains visible`);
+    if (role === 'Manager') {
+      assert.equal(elements['batch-btn-project'].hasClass('hidden'), false, 'Project remains visible to non-Sales-Rep roles');
+      continue;
+    }
+    assert.equal(elements['batch-btn-project'].hasClass('hidden'), true, `${role}: Project is hidden`);
+    for (const id of ['batch-btn-assign','batch-btn-eval-task','batch-btn-ncr','batch-btn-move','batch-btn-flyer',
+      'batch-btn-take-back','batch-btn-endcap','batch-btn-shear','batch-btn-bloom-order']) {
+      assert.equal(elements[id].hasClass('hidden'), true, `${role}: ${id} is hidden`);
+    }
+  }
+});
+
+test('Invariant 157 (Transient RUN SCRIPT Slice Failures Reduce Rows and Stop After Six Retries)', async () => {
+  const context = vm.createContext({ module: { exports: {} }, Date, Promise,
+    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000, APP_API_FUNCTION_URL: '/app-api',
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
+    applyManualSyncStatus() {}, setTimeout: callback => { callback(); return 0; } });
+  context.postAppFunctionJson = async (_url, body) => {
+    context.sliceRowLimits.push(body.maxRowsPerSlice);
+    if (context.sliceFailures-- > 0) throw Object.assign(new Error('worker limit'), { status: 546 });
+    return { ok: true, status: 'DONE', data: { runStatus: { active: false, runId: 'run-six-retries' } } };
+  };
+  context.sliceRowLimits = [];
+  context.sliceFailures = 6;
+  runFunctions('assets/app-runtime.js', ['getTransientManualErpSliceStatus','reduceManualErpSliceLimit','continueManualErpSync'], context);
+  const result = await context.continueManualErpSync({ runId: 'run-six-retries' });
+  assert.equal(result.active, false);
+  assert.deepEqual(plain(context.sliceRowLimits), [2500,1250,600,600,600,600,600]);
+});
+
+
+test('Invariant 158 (Secondary Cloud Imports Finalize Before Moving Actual Drive Parents)', async () => {
+  const {runSecondaryErpSyncStep,SECONDARY_ERP_STAGES}=await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
+  const stage=SECONDARY_ERP_STAGES.find(row=>row.key==='pikes'),calls=[];
+  const folders=Object.fromEntries(SECONDARY_ERP_STAGES.map(row=>[row.key,{files:[],listDurationMs:0}]));
+  folders.pikes.files=[{id:'source-file',name:'order.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}];
+  const db={rpc:async(name,args)=>{calls.push(name);if(name==='prepare_manager_order_import_v2')return {data:{status:'importing',batchId:'00000000-0000-4000-8000-000000000001'}};
+    if(name==='upsert_secondary_erp_delta_v23103'){assert.equal(args.p_rows.length,1);assert.match(args.p_rows[0].row_state_hash,/^[a-f0-9]{64}$/);return {data:{changed:1}};}
+    return {data:{status:'archive_pending'}};}};
+  const fetcher=async(url,options={})=>{const parsed=new URL(url);if(parsed.searchParams.get('alt')==='media')return new Response(new Uint8Array([1,2,3]));
+    if(options.method==='PATCH'){assert.ok(calls.includes('finalize_pikes_order_import'));assert.equal(parsed.searchParams.get('removeParents'),'actual-parent,pending-parent');assert.equal(parsed.searchParams.get('addParents'),stage.processed);calls.push('moved');return Response.json({id:'source-file'});}
+    return Response.json({parents:['actual-parent','pending-parent']});};
+  const first=await runSecondaryErpSyncStep({supabase:db,fetcher,accessToken:'fixture',env:()=>'',status:async()=>{},cursor:{secondaryFolders:folders},
+    parseWorkbook:async()=>[{name:'Order',rows:[['Item','Order Tot','Pick Notes'],['001','4','North']]}]});
+  assert.equal(first.done,false);assert.ok(calls.indexOf('moved')>calls.indexOf('finalize_pikes_order_import'));
+  assert.ok(calls.indexOf('mark_pikes_order_file_archived')>calls.indexOf('moved'));
+  const final=await runSecondaryErpSyncStep({supabase:db,fetcher:()=>{throw Error('No repeat download');},accessToken:'fixture',env:()=>'',status:async()=>{},cursor:first.cursor});
+  assert.equal(final.done,true);
 });

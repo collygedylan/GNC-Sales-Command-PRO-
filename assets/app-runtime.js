@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.102';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.103';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26720,7 +26720,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.102').trim() || 'AgData v2.3.102';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.103').trim() || 'AgData v2.3.103';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28162,7 +28162,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     commandId: crypto.randomUUID(),
                     maxAttemptsPerStage: 1,
                     force: true,
-                    forceRestart: true
+                    forceRestart: true,
+                    maxRowsPerSlice: 2500
                 };
                 const queuedAt = new Date().toISOString();
                 applyManualSyncStatus({
@@ -28254,21 +28255,40 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const deadline = Date.now() + MANUAL_SYNC_SCRIPT_TIMEOUT_MS;
             let step = 0;
             let consecutiveFailures = 0;
+            let sliceRetryCount = 0;
+            let maxRowsPerSlice = Math.max(600, Math.min(2500, Number(initialStatus.maxRowsPerSlice) || 2500));
             while (step < maxSteps && Date.now() < deadline) {
                 let response;
                 try {
                     response = await postAppFunctionJson(APP_API_FUNCTION_URL, {
                         action: 'erp_sync',
                         operation: 'continue',
-                        runId
+                        runId,
+                        maxRowsPerSlice
                     }, { timeoutMs: Math.min(135000, Math.max(1000, deadline - Date.now())), label: 'Continue cloud sync' });
                 } catch (error) {
+                    const transientStatus = getTransientManualErpSliceStatus(error);
+                    if (transientStatus) {
+                        if (sliceRetryCount >= 6) throw error;
+                        sliceRetryCount += 1;
+                        maxRowsPerSlice = reduceManualErpSliceLimit(maxRowsPerSlice);
+                        await new Promise(resolve => setTimeout(resolve, Math.min(250 * sliceRetryCount, 1000)));
+                        continue;
+                    }
                     consecutiveFailures += 1;
                     if (consecutiveFailures > 3) throw error;
                     await new Promise(resolve => setTimeout(resolve, Math.min(1500 * consecutiveFailures, 4000)));
                     continue;
                 }
                 if (!response?.ok) {
+                    const transientStatus = getTransientManualErpSliceStatus(response);
+                    if (transientStatus) {
+                        if (sliceRetryCount >= 6) throw new Error(response?.message || response?.code || `ERP_SYNC_SLICE_FAILED_${transientStatus}`);
+                        sliceRetryCount += 1;
+                        maxRowsPerSlice = reduceManualErpSliceLimit(maxRowsPerSlice);
+                        await new Promise(resolve => setTimeout(resolve, Math.min(250 * sliceRetryCount, 1000)));
+                        continue;
+                    }
                     consecutiveFailures += 1;
                     if (consecutiveFailures > 3) throw new Error(response?.message || response?.code || 'ERP_SYNC_CONTINUE_FAILED');
                     await new Promise(resolve => setTimeout(resolve, Math.min(1500 * consecutiveFailures, 4000)));
@@ -28277,6 +28297,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 consecutiveFailures = 0;
                 step += 1;
                 const payload = response.data || response;
+                if (!Number(response.retryAfterMs || response.retry_after_ms || payload.retryAfterMs || payload.retry_after_ms || 0)) sliceRetryCount = 0;
                 const runStatus = payload.runStatus || payload.durableStatus || payload.statusData
                     || (typeof payload.active === 'boolean' ? payload : null);
                 const continuationStatus = String(firstNonEmptyValue(response.status, payload.status, '')).trim().toUpperCase();
@@ -28291,6 +28312,22 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 await new Promise(resolve => setTimeout(resolve, Math.max(0, Math.min(retryAfterMs, 5000))));
             }
             throw new Error(step >= maxSteps ? 'ERP_SYNC_CONTINUE_STEP_LIMIT' : 'ERP_SYNC_CONTINUE_DEADLINE');
+        }
+
+        function getTransientManualErpSliceStatus(value = {}) {
+            const candidates = [value?.status, value?.statusCode, value?.status_code, value?.payload?.status,
+                value?.payload?.statusCode, value?.payload?.status_code, value?.error?.status];
+            for (const candidate of candidates) {
+                const status = Number(candidate);
+                if ([500, 502, 504, 546].includes(status)) return status;
+            }
+            return 0;
+        }
+
+        function reduceManualErpSliceLimit(current = 2500) {
+            const rows = Number(current) || 2500;
+            if (rows > 1250) return 1250;
+            return 600;
         }
 
         function getGlobalHeaderChromeState() {
@@ -52448,9 +52485,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildRequestModalNaCustomerOption(selectedSalesrepId = '') {
+            const resolvedRepName = resolveCanonicalRequestRepName(tempSelectedReqRep) || String(tempSelectedReqRep || '').trim();
             return buildRequestModalCustomerSearchOption(REQUEST_NA_CUSTOMER_NAME, REQUEST_NA_CONSIGNEE_NAME, {
                 customeridentityid: 'AGDATA_NA_CUSTOMER',
                 consigneeidentityid: 'AGDATA_NA_CONSIGNEE',
+                salesrepid: String(selectedSalesrepId || '').trim(),
+                salesrepname: resolvedRepName || 'JD Jones',
+                customerstatus: 'A',
+                consigneestatus: 'A',
                 request_selected_salesrep_id: String(selectedSalesrepId || '').trim()
             });
         }
@@ -52961,7 +53003,8 @@ function toggleDriveQuickRequestItem(domId) {
                 if (requestModalCustomerOptionsReady && verifiedDirectory) return Promise.resolve(true);
             }
             if (!force && requestModalCustomerOptionsLoadPromise) return requestModalCustomerOptionsLoadPromise;
-            const generation = ++requestMappingReadGeneration;
+            let generation = ++requestMappingReadGeneration;
+            const requestActor = normalizePushUsername(currentUser || nativeAuthProfile?.username || '');
             const requestGeneration = requestModalAsyncGeneration;
             const rep = tempSelectedReqRep;
             requestModalCustomerOptionsLoading = true;
@@ -52970,11 +53013,32 @@ function toggleDriveQuickRequestItem(domId) {
             const loadPromise = (async () => {
                 if (!rep) await prefetchRequestModalCustomerOptions(force);
                 if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration) return false;
-                const entry = await loadRequestModalCustomerOptionsForRep(rep, false,
-                    () => requestGeneration === requestModalAsyncGeneration && generation === requestMappingReadGeneration && rep === tempSelectedReqRep);
+                let entry = null;
+                for (let attempt = 0; attempt < 2; attempt += 1) {
+                    const attemptOwner = getRequestModalLookupOwnerSignature();
+                    const attemptSecurityEpoch = requestMappingSecurityEpoch;
+                    entry = await loadRequestModalCustomerOptionsForRep(rep, false,
+                        () => requestGeneration === requestModalAsyncGeneration && generation === requestMappingReadGeneration && rep === tempSelectedReqRep);
+                    if (entry) break;
+                    const stillCurrent = requestGeneration === requestModalAsyncGeneration && rep === tempSelectedReqRep
+                        && requestActor && requestActor === normalizePushUsername(currentUser || nativeAuthProfile?.username || '');
+                    const scopeChanged = attemptOwner !== getRequestModalLookupOwnerSignature()
+                        || attemptSecurityEpoch !== requestMappingSecurityEpoch;
+                    if (attempt === 0 && stillCurrent && scopeChanged) {
+                        // A same-user permission/identity refresh invalidated the in-flight result. Rebind
+                        // to the new owner and retry once; actual rep or account switches still cancel.
+                        syncRequestModalCustomerMappingOwner();
+                        generation = requestMappingReadGeneration;
+                        requestModalCustomerOptionsLoading = true;
+                        requestModalCustomerOptionsLoadPromise = loadPromise;
+                        continue;
+                    }
+                    break;
+                }
                 if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration || rep !== tempSelectedReqRep) return false;
+                if (!entry) return false;
                 const id = getRequestSelectedSalesrepId(rep)
-                    || String(entry?.rows?.[0]?.salesrepid || entry?.rows?.[0]?.SALESREPID || '').trim();
+                    || String(entry.rows?.[0]?.salesrepid || entry.rows?.[0]?.SALESREPID || '').trim();
                 tempSelectedReqSalesrepId = id;
                 requestModalCustomerOptionsCacheKey = `${id || 'all'}:${entry.revision}`;
                 requestExistingFolderGroupsCacheKey = '';
@@ -96087,6 +96151,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function getBloomPickerActionVisibility(items = getCartSelectedItems()) {
             if (items.some((item) => item && item.HL_ORDER === true)) return {};
             const access = getRoleAccessState();
+            const showProject = !access.isRep;
             const canUseFullDriveActions = canUseFullDriveBloomPickerActions(items);
             const canUseInventoryActions = canUseCartInventoryActions(items);
             const canUseBloomOrders = canSubmitBloomPickerOrder(items);
@@ -96129,11 +96194,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     showNcr: false,
                     showRequest: canUseFullDriveActions ? canUseInventoryActions : (hasRepBloomOnlySelection ? false : canUseInventoryActions),
                     showMove: false,
-                    showFlyer: canUseFullDriveActions ? canUseFlyerFromBloom : (hasRepBloomOnlySelection ? false : canUseFlyerFromBloom),
-                    showTakeBack: canUseFullDriveActions && canUseInventoryActions,
-                    showEndCap: canUseFullDriveActions && canUseInventoryActions,
+                    showFlyer: access.isRep ? false : (canUseFullDriveActions ? canUseFlyerFromBloom : (hasRepBloomOnlySelection ? false : canUseFlyerFromBloom)),
+                    showTakeBack: access.isRep ? false : canUseFullDriveActions && canUseInventoryActions,
+                    showEndCap: access.isRep ? false : canUseFullDriveActions && canUseInventoryActions,
                     showShear: false,
-                    showBloomOrder: canUseBloomOrders,
+                    showBloomOrder: access.isRep ? false : canUseBloomOrders,
+                    showProject,
                     canUseInventoryActions,
                     canUseBloomOrders
                 };
@@ -96152,6 +96218,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 showEndCap: canUseInventoryActions,
                 showShear: canUseInventoryActions && canCreateShearLocationInquiry(),
                 showBloomOrder: canUseBloomOrders,
+                showProject,
                 canUseInventoryActions,
                 canUseBloomOrders
             };
@@ -144908,11 +144975,12 @@ C.14.043 C.15.000
             const btnEndCap=document.getElementById('batch-btn-endcap');
             const btnShear=document.getElementById('batch-btn-shear');
             const btnBloomOrder=document.getElementById('batch-btn-bloom-order');
+            const btnProject=document.getElementById('batch-btn-project');
             const hasItems=selectedItems.size>0;
             const items=getCartSelectedItems();
             const actionVisibility=getBloomPickerActionVisibility(items);
             const hasShareOptions=!!(actionVisibility.showCopy || actionVisibility.showEmail || actionVisibility.showText);
-            const hasAnyAction=!!(hasShareOptions || actionVisibility.showAssign || actionVisibility.showEvalTask || actionVisibility.showNcr || actionVisibility.showRequest || actionVisibility.showMove || actionVisibility.showFlyer || actionVisibility.showTakeBack || actionVisibility.showEndCap || actionVisibility.showShear || actionVisibility.showBloomOrder);
+            const hasAnyAction=!!(hasShareOptions || actionVisibility.showAssign || actionVisibility.showEvalTask || actionVisibility.showNcr || actionVisibility.showRequest || actionVisibility.showMove || actionVisibility.showFlyer || actionVisibility.showTakeBack || actionVisibility.showEndCap || actionVisibility.showShear || actionVisibility.showBloomOrder || actionVisibility.showProject);
             if(!hasItems || !cartPanelOpen || !hasAnyAction){
                 bloomPickerActionsOpen=false;
                 bloomShareMenuOpen=false;
@@ -144949,6 +145017,7 @@ C.14.043 C.15.000
             if(btnEndCap)btnEndCap.classList.toggle('hidden', !bloomPickerActionsOpen || !actionVisibility.showEndCap);
             if(btnShear)btnShear.classList.toggle('hidden', !bloomPickerActionsOpen || !actionVisibility.showShear);
             if(btnBloomOrder)btnBloomOrder.classList.toggle('hidden', !bloomPickerActionsOpen || !actionVisibility.showBloomOrder);
+            if(btnProject)btnProject.classList.toggle('hidden', !bloomPickerActionsOpen || !actionVisibility.showProject);
             if(helper)helper.classList.toggle('hidden', !bloomPickerActionsOpen || !hasItems || actionVisibility.canUseInventoryActions || actionVisibility.canUseBloomOrders);
             if(bar)bar.classList.toggle('hidden', !hasItems||!cartPanelOpen);
             syncBloomShareMenuUi(actionVisibility);

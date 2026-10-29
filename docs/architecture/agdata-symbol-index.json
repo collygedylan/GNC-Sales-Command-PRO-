@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.102",
+  "release": "AgData v2.3.103",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -10,7 +10,8 @@
     "supabase/functions/_shared/erp-sync.mjs",
     "scripts/local-erp-sync-worker.mjs",
     "supabase/functions/_shared/production-workflow.ts",
-    "Code.gs"
+    "Code.gs",
+    "supabase/functions/_shared/erp-secondary-sync.mjs"
   ],
   "sharedAssets": {
     "assets/location-code.js": [
@@ -847,7 +848,9 @@
         "fetchDirectPostgrestReadPage",
         "syncGoogleScriptButton",
         "refreshManualSyncOnForeground",
-        "scheduleManualSyncCompletionRefresh"
+        "scheduleManualSyncCompletionRefresh",
+        "getTransientManualErpSliceStatus",
+        "reduceManualErpSliceLimit"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -955,7 +958,8 @@
           "compactErpRowsPreservingNullColumnUnion",
           "xlsxColumnLetters",
           "selectedCellPattern",
-          "parseXlsxSelectedCells"
+          "parseXlsxSelectedCells",
+          "resolveErpRowsPerSlice"
         ],
         "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
           "get_erp_sync_status_v1",
@@ -986,6 +990,20 @@
           "fast_seal_erp_stage_v1"
         ],
         "supabase/migrations/20261029031000_agdata_v23100_cloud_sync_lease_renewal.sql": [
+          "assert_erp_sync_worker_v1"
+        ],
+        "supabase/functions/_shared/erp-secondary-sync.mjs": [
+          "runSecondaryErpSyncStep",
+          "prefetchSecondaryFolders",
+          "buildSecondaryRows",
+          "readSecondarySheet"
+        ],
+        "supabase/migrations/20261029132500_agdata_v23103_secondary_delta_imports.sql": [
+          "upsert_secondary_erp_delta_v23103",
+          "hl_po_pdf_stage"
+        ],
+        "supabase/migrations/20261029132000_agdata_v23103_bounded_erp_request_lease.sql": [
+          "claim_erp_sync_request_step_v1",
           "assert_erp_sync_worker_v1"
         ]
       }

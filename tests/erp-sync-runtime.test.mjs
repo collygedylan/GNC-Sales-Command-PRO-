@@ -5,6 +5,13 @@ import { deflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { countImportableErpXlsxRows, createBoundedByteStream, isLegacyRunScriptAction, normalizeErpRows, parseErpCsv, parseErpXlsx, parseErpXlsxPage, runErpSyncWorker, runErpSyncWorkerStep, shouldIgnoreErpFile, validateErpSyncCommand } from '../supabase/functions/_shared/erp-sync.mjs';
 
+function mockDriveMetadata(url,init){
+  if(!url.pathname.match(/\/files\/[^/]+$/)||!url.searchParams.has('fields')||init?.method==='PATCH')return null;
+  const id=decodeURIComponent(url.pathname.split('/').at(-1));
+  const parent=id.includes('cav')||id==='good-cav'?'cav-folder':id.includes('soc')||id.includes('resume')?'soc-folder':'drive-folder';
+  return Response.json({id,parents:id==='soc-bounded'?['soc-folder','shared-folder']:[parent]});
+}
+
 function makeZip(entries) {
   const locals = [], central = [];
   let offset = 0;
@@ -41,11 +48,17 @@ test('ERP sync accepts one forced start attempt or a read-only status request', 
   assert.deepEqual(validateErpSyncCommand({action:'erp_sync',operation:'status'}),{ok:true,operation:'status'});
   const runId='29f77c6e-9f1a-4f43-bf1a-46783d8a90bf';
   assert.deepEqual(validateErpSyncCommand({action:'erp_sync',operation:'continue',runId}),{ok:true,operation:'continue',runId});
+  assert.deepEqual(validateErpSyncCommand({action:'erp_sync',operation:'start',commandId,force:true,forceRestart:true,maxAttemptsPerStage:1,maxRowsPerSlice:600}),
+    {ok:true,operation:'start',commandId,maxRowsPerSlice:600});
+  assert.deepEqual(validateErpSyncCommand({action:'erp_sync',operation:'continue',runId,maxRowsPerSlice:600}),
+    {ok:true,operation:'continue',runId,maxRowsPerSlice:600});
   for (const payload of [
     {action:'erp_sync',operation:'start',commandId,force:true,forceRestart:true,maxAttemptsPerStage:2},
     {action:'erp_sync',operation:'start',commandId,force:true,maxAttemptsPerStage:1,actor:'megan_kelly'},
     {action:'erp_sync',operation:'status',force:true},
     {action:'erp_sync',operation:'continue',runId:'not-a-uuid'},
+    {action:'erp_sync',operation:'continue',runId,maxRowsPerSlice:500},
+    {action:'erp_sync',operation:'start',commandId,force:true,forceRestart:true,maxAttemptsPerStage:1,maxRowsPerSlice:3000},
     {action:'erp_sync',operation:'manual_continue'},
   ]) assert.equal(validateErpSyncCommand(payload).ok,false);
 });
@@ -165,6 +178,7 @@ test('cloud XLSX stages its exact row count in one invocation and commits once',
   let archived=false,appendCalls=0,sealCalls=0,commitCalls=0;
   const fakeFetch=async(input,init={})=>{
     const url=new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files')){
       const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
       return Response.json({files:folder==='drive-folder'&&!archived?[{id:'xlsx-1',name:'Drive.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',modifiedTime:'2026-10-28T12:00:00Z',parents:['drive-folder']}]:[]});
@@ -256,11 +270,12 @@ test('live row mapping preserves canonical physical identities and CAV aliases',
     ['B','7','8','9','10','hold','11']);
 });
 
-test('worker commits each staged batch before archiving and completes the empty HL folder', async () => {
+test('worker commits each staged batch before archiving and completes the four ERP core stages', async () => {
   const calls = [], status = [];
   let sourceListed = true;
   const fakeFetch = async (input, init = {}) => {
     const url = new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if (url.pathname.endsWith('/files')) {
       if (init.method === 'POST') return Response.json({id:'processed-folder'});
       const folder = url.searchParams.get('q').match(/'([^']+)'/)[1];
@@ -288,18 +303,18 @@ test('worker commits each staged batch before archiving and completes the empty 
     env:key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):''});
   assert.equal(result.ok,true);
   assert.equal(result.stageResults.find(row=>row.key==='drive').outcome,'processed');
-  assert.equal(result.stageResults.find(row=>row.key==='hl_po_parsed').outcome,'UP_TO_DATE');
   assert.ok(calls.indexOf('fast_commit_erp_stage_swap_v1') < calls.indexOf('archive'));
   assert.equal(calls.filter(name=>name==='fast_begin_erp_stage_v1').length,1);
   assert.deepEqual(status.filter(patch=>patch.currentStage).map(patch=>patch.currentStage),
-    ['drive','drive','drive','drive','cav','reserves','soc','hl_po_parsed','idle']);
-  assert.equal(result.stageResults.length,5);
+    ['drive','drive','drive','drive','cav','reserves','soc','idle']);
+  assert.equal(result.stageResults.length,4);
 });
 
 test('unchanged file is archived without download or duplicate stage writes', async () => {
   const calls=[];
   const fakeFetch=async(input,init={})=>{
     const url=new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files')){
       const query=url.searchParams.get('q');
       assert.doesNotMatch(query,/name contains/);
@@ -333,6 +348,7 @@ test('stage read failure continues sequentially and ends IDLE with a visible err
   const statuses=[];
   const fakeFetch=async(input)=>{
     const url=new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
     if(folder==='drive-folder')return Response.json({error:'fixture'}, {status:503});
     return Response.json({files:[]});
@@ -343,12 +359,12 @@ test('stage read failure continues sequentially and ends IDLE with a visible err
   const final=statuses.at(-1);
   assert.equal(result.ok,false);
   assert.deepEqual(statuses.filter(patch=>patch.currentStage).map(patch=>patch.currentStage),
-    ['drive','cav','reserves','soc','hl_po_parsed','idle']);
+    ['drive','cav','reserves','soc','idle']);
   assert.equal(final.active,false);
   assert.equal(final.status,'failed');
   assert.equal(final.currentStage,'idle');
   assert.equal(final.errorCode,'ERP_SYNC_STAGE_FAILED');
-  assert.equal(final.stageResults.length,5);
+  assert.equal(final.stageResults.length,4);
 });
 
 test('cloud continuation processes at most one source file per invocation and resumes without re-import', async () => {
@@ -359,6 +375,7 @@ test('cloud continuation processes at most one source file per invocation and re
   const archived=[], begins=[],listed=[];
   const fakeFetch=async(input,init={})=>{
     const url=new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files')){
       const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
       listed.push(folder);
@@ -393,20 +410,17 @@ test('cloud continuation processes at most one source file per invocation and re
   assert.equal(final.done,true);
   assert.deepEqual(begins,['file-1','file-2']);
   assert.equal(final.cursor.stageResults.filter(row=>row.outcome==='processed').length,2);
-  const emptyHl=final.cursor.stageResults.find(row=>row.key==='hl_po_parsed');
-  assert.equal(emptyHl.outcome,'UP_TO_DATE');
-  assert.ok(Number.isFinite(emptyHl.durationMs)&&emptyHl.durationMs>=0);
-  assert.ok(Number.isFinite(emptyHl.listDurationMs)&&emptyHl.listDurationMs>=0);
-  assert.deepEqual([...new Set(listed)].sort(),['cav-folder','drive-folder','hl-folder','reserves-folder','soc-folder'].sort());
-  assert.equal(listed.length,5);
+  assert.deepEqual([...new Set(listed)].sort(),['cav-folder','drive-folder','reserves-folder','soc-folder'].sort());
+  assert.equal(listed.length,4);
 });
 
-test('cloud CSV import stages all 5,200 rows before retrying a failed Processed move without recommit', async () => {
+test('cloud CSV import bounds each 5,200-row slice and retries a failed Processed move without recommit', async () => {
   const rows=Array.from({length:5200},(_,index)=>`item-${index},Plant ${index},1`).join('\n');
   const csv=`itemcode,commonname,ptravailable\n${rows}\n`;
   let committed=0, appended=0, moveAttempts=0, archived=false;
   const fakeFetch=async(input,init={})=>{
     const url=new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files')) {
       const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
       return Response.json({files:folder==='drive-folder'&&!archived?[{id:'large-file',name:'Drive Large.csv',modifiedTime:'2026-10-28T12:00:00Z',parents:['drive-folder']}]:[]});
@@ -435,9 +449,12 @@ test('cloud CSV import stages all 5,200 rows before retrying a failed Processed 
   const folders={drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder',processed:{drive:'processed-folder'}};
   const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
   const run=cursor=>runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token',cursor});
-  const first=await run();
+  let first=await run();
+  assert.equal(first.cursor.fileContinuation.state.processedRows,2500);
+  for(let attempt=0;first.cursor.fileContinuation.state.phase!=='move'&&attempt<8;attempt+=1)first=await run(first.cursor);
   assert.equal(first.cursor.fileContinuation.state.phase,'move');
   assert.equal(appended,5200);
+  assert.equal(committed,1);
   const second=await run(first.cursor);
   assert.equal(committed,1);
   assert.equal(moveAttempts,2);
@@ -449,6 +466,7 @@ test('a failed source is attempted once, then the next continuation advances to 
   const archived=[],listed=[];
   const fakeFetch=async(input,init={})=>{
     const url=new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files')){
       const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];listed.push(folder);
       const files=folder==='drive-folder'&&!archived.includes('bad-drive')

@@ -433,6 +433,38 @@ test('manual cloud continuation has a ten-minute overall deadline and finite ste
     assert.deepEqual(timeouts, [135000, 135000, 135000, 135000, 120000], 'each request remains below the 140-second lease');
 });
 
+test('manual ERP slices retry transient 5xx and 546 errors with bounded row limits', async () => {
+    const continuationStart = html.indexOf('        async function continueManualErpSync(');
+    const continuationEnd = html.slice(continuationStart + 1).search(/\r?\n        (?:async )?function \w+\(/);
+    assert.ok(continuationStart > 0 && continuationEnd > 0);
+    const source = ['getTransientManualErpSliceStatus', 'reduceManualErpSliceLimit'].map(inlineFunctionSource)
+        .concat(html.slice(continuationStart, continuationStart + 1 + continuationEnd)).join('\n');
+    const rowLimits = [];
+    const statuses = [500, 502, 546];
+    let successfulSlices = 0;
+    const sandbox = {
+        module: { exports: {} }, Date,
+        MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000,
+        firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
+        APP_API_FUNCTION_URL: '/app-api',
+        postAppFunctionJson: async (_url, body) => {
+            rowLimits.push(body.maxRowsPerSlice);
+            const status = statuses.shift();
+            if (status) throw Object.assign(new Error(`worker ${status}`), { status });
+            successfulSlices += 1;
+            return { ok: true, status: successfulSlices === 1 ? 'CONTINUE' : 'DONE',
+                data: { runStatus: { active: successfulSlices !== 2, runId: 'run-slice-retry' } } };
+        },
+        applyManualSyncStatus() {},
+        setTimeout: callback => { callback(); return 0; },
+        Promise,
+    };
+    vm.runInNewContext(`${source}\nmodule.exports = continueManualErpSync;`, sandbox);
+    const result = await sandbox.module.exports({ runId: 'run-slice-retry' });
+    assert.equal(result.active, false);
+    assert.deepEqual(rowLimits, [2500, 1250, 600, 600, 600]);
+});
+
 test('header timestamp accepts any current-scope data cohort and ignores empty navigation statuses', () => {
     const sandbox = { module: { exports: {} }, Date, JSON, Number, String,
         productionVerifiedViewKey: context => context.expectedKey };

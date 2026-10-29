@@ -97,6 +97,9 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never treat a source-specific first slice as permission to process a whole workbook, reuse a single source folder as removeParents, or mark a secondary file processed before its established finalizer succeeds. Register server-only secondary imports and preserve exact source row keys with hash-based no-op updates.
+- Never retry a transient manual ERP slice failure with the same row cap indefinitely; retry HTTP 500/502/504/546 at most six times, lowering the requested slice from 2500 to 1250 to 600 rows, then resume normal 2500-row slices after a successful retry.
+
 - Never allocate matches for every SOC cell merely to discard most of them afterward. Cache a selector for the exact header-derived item, Dock and Suspend columns, preserving sparse/shared/inline values and avoiding full-row decoding for excluded rows.
 
 - Never drop every null-valued source key to shrink staged ERP JSON: the importer derives its update-column union from those keys. Preserve the first occurrence of every column and all nonnull values; exclude Drive protected raw-field payloads from compaction.
@@ -142,3 +145,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Never place private-schema names in app-api dataset-revision requests; mirror private low-stock changes onto the public `ph_eval_report_settings` revision and subscribe to that key so freshness remains observable without invalid requests.
 - Never treat a healthy Realtime socket or login-time snapshot as sufficient freshness: retain the 15-second no-store revision poll, focus/visibility wakeups, and revision-fenced background adapters for DRIVE, CAV, RESERVES, SOC, and HL Order.
 - Never filter SOC XLSX open orders by only the literal `dock` header; normalize `dock`, `docknumber`, and `tripnumber` aliases before counting, paging, and staging so valid dock rows remain regardless of Suspend status, while retaining every SUSPEND row at ingestion (downstream queue eligibility remains independently scoped).
+
+## v2.3.103 bounded cloud and secondary imports
+
+Cross-layer blast radius: Code.gs folder identities and prepare/finalize/archive contracts remain canonical; app-api continues the four core stages then the four secondary stages using erp-secondary-sync.mjs. Browser transient retries pass a 600–2500 row cap; core parsing stops at 700 ms or its row budget and persists the raw offset. SQL request leases expire after 12 seconds. Secondary source rows retain their physical keys and use row_state_hash equality to skip unchanged updates; HL PDF pages retain immutable replay validation. Drive moves fetch actual parents before PATCH. Existing READY data and paused historical backfills remain unchanged. No new browser startup reads are introduced.

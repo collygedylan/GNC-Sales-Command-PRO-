@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
 import test from 'node:test';
-import { compactErpRowsPreservingNullColumnUnion, parseErpXlsxImportRows, parseErpXlsxPage, runErpSyncWorkerStep } from '../supabase/functions/_shared/erp-sync.mjs';
+import { compactErpRowsPreservingNullColumnUnion, parseErpXlsxImportRows, parseErpXlsxPage, resolveErpRowsPerSlice, runErpSyncWorkerStep } from '../supabase/functions/_shared/erp-sync.mjs';
+
+function mockDriveMetadata(url,init){
+  if(!url.pathname.match(/\/files\/[^/]+$/)||!url.searchParams.has('fields')||init?.method==='PATCH')return null;
+  const id=decodeURIComponent(url.pathname.split('/').at(-1));
+  return Response.json({id,parents:id==='resume-xlsx'?['soc-folder']:id==='soc-bounded'?['soc-folder','shared-folder']:['soc-folder']});
+}
 
 function makeZip(entries) {
   const locals=[],central=[];let offset=0;
@@ -55,6 +61,58 @@ test('SOC selected-cell prefilter preserves shared-string and sparse-column deco
   });
   const page=await parseErpXlsxPage(bytes,0,10,{dataset:'soc'});
   assert.deepEqual(page.rows.map(row=>[row.itemcode,row.dock,row.extra]),[['006','D6','ignored extra']]);
+});
+
+test('cloud SOC XLSX caps each continuation at the requested retry slice and removes every actual Drive parent',async()=>{
+  const xmlRows=[inlineRow(1,['itemcode','dock'])];
+  for(let index=1;index<=1601;index+=1)xmlRows.push(inlineRow(index+1,[String(index),`D${index}`]));
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${xmlRows.join('')}</sheetData></worksheet>`,
+  });
+  assert.equal(resolveErpRowsPerSlice('soc'),1500);
+  assert.equal(resolveErpRowsPerSlice('drive_around'),2500);
+  assert.equal(resolveErpRowsPerSlice('soc',600),600);
+  const appended=[];let archived=false;
+  const file={id:'soc-bounded',name:'SOC.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder','shared-folder']};
+  const fetcher=async(input,init={})=>{
+    const url=new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
+    if(url.pathname.endsWith('/files')&&init.method!=='POST'){
+      const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
+      return Response.json({files:folder==='soc-folder'&&!archived?[file]:[]});
+    }
+    if(url.pathname.endsWith('/files/soc-bounded')&&url.searchParams.get('alt')==='media')return new Response(bytes);
+    if(url.pathname.endsWith('/files/soc-bounded')&&init.method==='PATCH'){
+      assert.equal(url.searchParams.get('removeParents'),'soc-folder,shared-folder');archived=true;return Response.json({id:file.id});
+    }
+    if(url.pathname.endsWith('/files/soc-bounded')&&url.searchParams.has('fields'))return Response.json({id:file.id,parents:file.parents});
+    throw new Error(`unexpected Drive request ${init.method||'GET'} ${url}`);
+  };
+  const supabase={rpc:async(name,args)=>{
+    if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false}};
+    if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','dock']};
+    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'soc-bounded-stage',expected_rows:50000,staged_rows:0}};
+    if(name==='fast_append_erp_stage_batch_v1'){
+      appended.push(args.p_rows.length);return {data:{staged_rows:args.p_start_row+args.p_rows.length}};
+    }
+    if(name==='fast_seal_erp_stage_v1')return {data:{ok:true}};
+    if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true}};
+    throw new Error(`unexpected RPC ${name}`);
+  }};
+  const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify({drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',
+    soc:'soc-folder',processed:{soc:'processed-folder'}}):'';
+  const run=cursor=>runErpSyncWorkerStep({supabase,fetcher,env,status:async()=>{},accessToken:'fixture-token',maxRowsPerSlice:600,cursor});
+  const first=await run();
+  assert.equal(first.done,false);assert.equal(first.cursor.fileContinuation.state.processedRows,600);
+  const second=await run(first.cursor);
+  assert.equal(second.done,false);assert.equal(second.cursor.fileContinuation.state.processedRows,1200);
+  let final=await run(second.cursor);
+  for(let attempt=0;!final.done&&attempt<3;attempt+=1)final=await run(final.cursor);
+  assert.equal(final.done,true);assert.deepEqual(appended,[600,600,401]);assert.equal(archived,true);
+  assert.equal(final.cursor.stageResults.find(result=>result.key==='soc').rowCount,1601);
 });
 
 test('streaming XLSX parser releases each bounded raw batch to its consumer', async()=>{
@@ -116,6 +174,7 @@ test('XLSX stage resumes the identical persisted prefix before appending its rem
     modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder']};
   const fetcher=async(input,init={})=>{
     const url=new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files/resume-xlsx')&&url.searchParams.get('alt')==='media'){downloads+=1;return new Response(bytes);}
     if(url.pathname.endsWith('/files/resume-xlsx')&&init.method==='PATCH')return Response.json({id:file.id});
     throw new Error(`Unexpected Drive request: ${init.method||'GET'} ${url.pathname}`);
@@ -140,7 +199,7 @@ test('XLSX stage resumes the identical persisted prefix before appending its rem
   assert.equal(result.cursor.fileContinuation,undefined);
 });
 
-test('new XLSX stage downloads and unzips once, appending 5,000-row batches before continuation', async()=>{
+test('new SOC XLSX stage appends at most 1,500 rows per continuation and publishes once', async()=>{
   const xmlRows=[inlineRow(1,['itemcode','dock'])];
   for(let index=1;index<=10001;index+=1)xmlRows.push(inlineRow(index+1,[String(index),`D${index}`]));
   const bytes=makeZip({
@@ -153,6 +212,7 @@ test('new XLSX stage downloads and unzips once, appending 5,000-row batches befo
     modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder']};
   const fetcher=async(input,init={})=>{
     const url=new URL(input);
+    const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files/soc-xlsx-1')&&url.searchParams.get('alt')==='media'){downloads+=1;return new Response(bytes);}
     if(url.pathname.endsWith('/files/soc-xlsx-1')&&init.method==='PATCH'){archived=true;return Response.json({id:file.id});}
     throw new Error(`Unexpected Drive request: ${init.method||'GET'} ${url.pathname}`);
@@ -171,15 +231,20 @@ test('new XLSX stage downloads and unzips once, appending 5,000-row batches befo
     if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true},error:null};
     throw new Error(`Unexpected RPC ${name}`);
   }};
-  const result=await runErpSyncWorkerStep({supabase,fetcher,accessToken:'fixture-token',env:name=>({
+  const env=name=>({
     ERP_SYNC_DROP_FOLDERS_JSON:JSON.stringify({drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',soc:'soc-folder',hl_po_parsed:'hl-folder',processed:{soc:'processed-folder'}}),
-  })[name],status:async update=>status.push(update),cursor:{stageIndex:3,stageResults:[],attemptedByStage:{},folderSnapshot:{
+  })[name];
+  const run=cursor=>runErpSyncWorkerStep({supabase,fetcher,accessToken:'fixture-token',env,status:async update=>status.push(update),cursor});
+  let result=await run({stageIndex:3,stageResults:[],attemptedByStage:{},folderSnapshot:{
     drive:{files:[]},cav:{files:[]},reserves:{files:[]},soc:{files:[file]},
-  }}});
-  assert.equal(downloads,1,'the source workbook is downloaded once for the complete new stage');
+  }});
+  while(!result.done&&result.cursor.fileContinuation)result=await run(result.cursor);
+  assert.ok(downloads>1,'each bounded page revalidates the source file');
   assert.equal(archived,true);
-  assert.equal(calls.filter(call=>call.name==='fast_append_erp_stage_batch_v1').length,3);
-  assert.deepEqual(calls.filter(call=>call.name==='fast_append_erp_stage_batch_v1').map(call=>call.args.p_rows.length),[5000,5000,1]);
+  const appendCalls=calls.filter(call=>call.name==='fast_append_erp_stage_batch_v1');
+  assert.equal(appendCalls.reduce((sum,call)=>sum+call.args.p_rows.length,0),10001);
+  assert.ok(appendCalls.every(call=>call.args.p_rows.length<=1500));
+  assert.ok(appendCalls.length>3);
   assert.equal(calls.filter(call=>call.name==='fast_seal_erp_stage_v1').length,1);
   assert.equal(calls.filter(call=>call.name==='fast_commit_erp_stage_swap_v1').length,1);
   assert.equal(result.cursor.fileContinuation,undefined,'a completed file needs no browser-driven page continuation');

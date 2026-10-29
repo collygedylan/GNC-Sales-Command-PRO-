@@ -97,3 +97,7 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 - Never create versioned throwaway validators, amend/force-push, claim unmeasured evidence, or continue refactoring after the required gate passes.
 - Never add a runtime release-descriptor fetch path without emitting that exact path in the prepared Pages artifact and covering it in the focused release contract.
 - Never approve a supposedly universal workflow fix that tests only one account, one Sales Rep display format, or one role while equivalent active identities remain gated.
+
+## v2.3.103 single-publication release contract
+
+An explicit single-push release preserves completed mapping changes, prepares all source and SQL work first, applies validated migrations and app-api before one main push, and publishes one version. Explicit bounded live validation replaces broad rep loops: at most two screens, under 45 seconds, with browser.close in finally and process.exit after a recorded result. Long cloud imports continue independently of the browser; audit their durable completion without extending the browser loop. Never claim timing targets or empty folders from an unfinished job.

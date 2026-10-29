@@ -9,6 +9,22 @@ import yaml from 'js-yaml';
 import { agdataV2390PostgresManualSyncMigrationName, agdataV2391CloudErpContinuationsMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
 import { applyScopedMigrationWithSupabaseCli, buildScopedMigrationApplySql, buildScopedMigrationExistingCheckSql } from '../scripts/apply-item-low-stock-migration.mjs';
 import { agdataV23102CustomerPairOwnershipMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
+import { agdataV23103BoundedErpRequestLeaseMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
+
+test('v2.3.103 bounds cloud ERP request leases and registers its forward contract after customer directory migrations', async () => {
+  const { releaseDatabaseMigrations, migrationContractQuery } = await import('../scripts/apply-item-low-stock-migration.mjs');
+  const baseIndex=releaseDatabaseMigrations.indexOf('20261029130000_agdata_v23102_customer_pair_ownership.sql');
+  const boundedIndex=releaseDatabaseMigrations.indexOf(agdataV23103BoundedErpRequestLeaseMigrationName);
+  assert.ok(baseIndex>=0&&boundedIndex>baseIndex);
+  assert.equal(agdataV23103BoundedErpRequestLeaseMigrationName,'20261029132000_agdata_v23103_bounded_erp_request_lease.sql');
+  const contract=migrationContractQuery(agdataV23103BoundedErpRequestLeaseMigrationName);
+  assert.match(contract,/interval ''12 seconds''/);
+  assert.match(contract,/has_function_privilege\('service_role'/);
+  const sql=fs.readFileSync(new URL(`../supabase/migrations/${agdataV23103BoundedErpRequestLeaseMigrationName}`,import.meta.url),'utf8');
+  assert.match(sql,/request_lease_until=stamp\+interval '12 seconds'/);
+  assert.match(sql,/request_lease_until is null then null/);
+  assert.match(sql,/set local statement_timeout='15s'/);
+});
 
 test('customer pair ownership migration registers private RPC, invoker view and guarded repair contracts', async () => {
   const { releaseDatabaseMigrations, migrationContractQuery } = await import('../scripts/apply-item-low-stock-migration.mjs');

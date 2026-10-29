@@ -222,6 +222,38 @@ test('JD retains the universal directory while another rep is selected and keeps
   assert.ok(options.some(option=>option.customeridentityid==='00999'&&option.request_selected_salesrep_id==='AGDATA_EXECUTIVE_ALL'));
 });
 
+test('JD retries a still-current global customer load after its ownership scope changes midflight',async()=>{
+  const c=requestFixture();
+  c.document.getElementById=()=>null;
+  c.currentUser='jd_jones'; c.nativeAuthProfile={username:'jd_jones'};
+  c.tempSelectedReqRep='Rep Two'; c.tempSelectedReqSalesrepId='02';
+  c.isRequestRowArchivedForCompletion=()=>false;
+  c.canUseRequestMappedFoldersForCurrentUser=()=>true;
+  c.resetRequestCustomerSelectionState=()=>{};
+  c.syncRequestModalCustomerMappingOwner();
+  const globalPair={...row,unique_id:'jd-global-pair',salesrepid:'AGDATA_EXECUTIVE_ALL',salesrepname:'JD Jones',
+    customeridentityid:'00999',customername:'Other Territory',consigneeid:'00888',consigneename:'Global Site'};
+  let calls=0;
+  c.loadRequestModalCustomerOptionsForRep=async()=>{
+    calls++;
+    if(calls===1){c.appAccessSnapshotState.snapshot.dataPermissionVersion='perm-2';return null;}
+    const owner=c.syncRequestModalCustomerMappingOwner();
+    const entry={rows:[globalPair],revision:'jd-r2',signature:'current',owner,universal:true};
+    c.requestMappingRpcCache.set('AGDATA_EXECUTIVE_ALL',entry);
+    return entry;
+  };
+  const ready=await c.ensureRequestModalCustomerOptionsReady();
+  assert.equal(calls,2,'one current-scope retry follows the discarded owner-scoped response');
+  assert.equal(ready,true);
+  assert.equal(c.requestModalCustomerOptionsError,'');
+  assert.equal(c.requestModalCustomerOptionsLoading,false);
+  const entry=c.requestMappingRpcCache.get('AGDATA_EXECUTIVE_ALL');
+  assert.equal(entry.owner,c.getRequestModalLookupOwnerSignature());
+  assert.equal(entry.universal,true);
+  assert.equal(c.getRequestSelectedSalesrepId('Rep Two'),'AGDATA_EXECUTIVE_ALL');
+  assert.ok(c.getRequestModalCustomerOptionsForRep('Rep Two').some(option=>option.customeridentityid==='00999'),
+    'JD global choices remain available while another rep is selected');
+});
 test('existing Request folder picker omits active folders whose physical pair is not owned by the selected rep',()=>{
   const c=requestFixture();
   c.canUseRequestMappedFoldersForCurrentUser=()=>true;
