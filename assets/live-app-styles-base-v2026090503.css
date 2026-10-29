@@ -2772,12 +2772,12 @@ body #view-detail [data-suspend-av-sticky] {
 .app-inline-thumb-count,.app-av-photo-count{white-space:nowrap;min-width:36px;max-width:none;line-height:18px;padding:1px 5px}
 .photo-thumb-date.app-inline-thumb-date{display:block;position:static;text-align:center;white-space:nowrap;margin-top:4px}
 .suspend-planstart-badge{display:inline-flex;border-radius:999px;background:var(--suspend-tag-accent,#d9385a);color:#fff;padding:4px 8px;font-size:11px;font-weight:800;white-space:nowrap}
-.app-suspend-tag-compact-card.app-planstart-day-0{--suspend-tag-accent:#d9385a;background:#ffe4e8!important;border-color:#d9385a!important;color:#142522}
-.app-suspend-tag-compact-card.app-planstart-day-1{--suspend-tag-accent:#0284c7;background:#e0f2fe!important;border-color:#0284c7!important;color:#142522}
-.app-suspend-tag-compact-card.app-planstart-day-2{--suspend-tag-accent:#d97706;background:#fef3c7!important;border-color:#d97706!important;color:#142522}
-.app-suspend-tag-compact-card.app-planstart-day-3{--suspend-tag-accent:#059669;background:#d1fae5!important;border-color:#059669!important;color:#142522}
-.app-suspend-tag-compact-card.app-planstart-day-4{--suspend-tag-accent:#7c3aed;background:#ede9fe!important;border-color:#7c3aed!important;color:#142522}
-.app-suspend-tag-compact-card.app-planstart-day-5{--suspend-tag-accent:#ea580c;background:#ffedd5!important;border-color:#ea580c!important;color:#142522}
+body #view-request #request-content .app-suspend-tag-compact-card.app-planstart-day-0{--suspend-tag-accent:#d9385a;background:#ffe4e8!important;border-color:#d9385a!important;color:#142522}
+body #view-request #request-content .app-suspend-tag-compact-card.app-planstart-day-1{--suspend-tag-accent:#0284c7;background:#e0f2fe!important;border-color:#0284c7!important;color:#142522}
+body #view-request #request-content .app-suspend-tag-compact-card.app-planstart-day-2{--suspend-tag-accent:#d97706;background:#fef3c7!important;border-color:#d97706!important;color:#142522}
+body #view-request #request-content .app-suspend-tag-compact-card.app-planstart-day-3{--suspend-tag-accent:#059669;background:#d1fae5!important;border-color:#059669!important;color:#142522}
+body #view-request #request-content .app-suspend-tag-compact-card.app-planstart-day-4{--suspend-tag-accent:#7c3aed;background:#ede9fe!important;border-color:#7c3aed!important;color:#142522}
+body #view-request #request-content .app-suspend-tag-compact-card.app-planstart-day-5{--suspend-tag-accent:#ea580c;background:#ffedd5!important;border-color:#ea580c!important;color:#142522}
 
 #bloom-inventory-project-modal{width:min(640px,94vw);max-height:90dvh;overflow:auto;border:1px solid #94a3b8;border-radius:18px;padding:20px;color:var(--text-main,#142522);background:var(--bg-surface,#fff)}
 #bloom-inventory-project-modal::backdrop{background:#00170fbb}

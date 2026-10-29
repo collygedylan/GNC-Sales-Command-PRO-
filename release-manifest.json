@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "789cd4d57ad2fc37740731efc6f646f09befe241",
+  "commit": "9804f7501a8d36cfaca388a336a3ad10ca464283",
   "release": "AgData v2.3.108",
   "files": [
     {
@@ -545,8 +545,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8720356,
-      "sha256": "ed8423c0ab78a1e7c267d65274d905eabbd37ddcc2c793f0eac9701b54fffab1"
+      "bytes": 8720862,
+      "sha256": "c417f470ee284bdc6b82d88ae38096e073ef0d0f29a4353551d27991d5645d78"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -555,8 +555,8 @@
     },
     {
       "path": "assets/live-app-styles-base-v2026090503.css",
-      "bytes": 543889,
-      "sha256": "5ada9991f00f9058ff4d8eba581113ac8964e516ac9e77395b0ba350d1d49e2f"
+      "bytes": 544105,
+      "sha256": "b58725567435ca15322580f98d3e3a0fee25e6862e38360a83e32e29f1d00a6b"
     },
     {
       "path": "assets/live-sync-adapters.js",
@@ -960,8 +960,8 @@
     },
     {
       "path": "assets/vendor/supabase-browser-2.112.3.min.js",
-      "bytes": 1094094,
-      "sha256": "b8113cf6a78685f637d3f641fa2ecd8ba622cd675e7eda98db45491f05365c88"
+      "bytes": 1095998,
+      "sha256": "b28bb3e4404659e688ea645e9704831e5375b5b19adfdf0910af7f70681acfe7"
     },
     {
       "path": "components/common/auraQueryPanel.js",
@@ -976,17 +976,17 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 188,
-      "sha256": "d358fe0c8c610c65634ff51c43e03d4428cb6d60c48c919806b399ca07561c61"
+      "sha256": "85b2965210e56eb8d3766bf7f379478c76a899572b22a0a3ae9fbe1ecd4b640f"
     },
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "d358fe0c8c610c65634ff51c43e03d4428cb6d60c48c919806b399ca07561c61"
+      "sha256": "85b2965210e56eb8d3766bf7f379478c76a899572b22a0a3ae9fbe1ecd4b640f"
     },
     {
-      "path": "deployments/789cd4d57ad2fc37740731efc6f646f09befe241.json",
+      "path": "deployments/9804f7501a8d36cfaca388a336a3ad10ca464283.json",
       "bytes": 188,
-      "sha256": "d358fe0c8c610c65634ff51c43e03d4428cb6d60c48c919806b399ca07561c61"
+      "sha256": "85b2965210e56eb8d3766bf7f379478c76a899572b22a0a3ae9fbe1ecd4b640f"
     },
     {
       "path": "index.html",
@@ -1261,7 +1261,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "dc8160ca850b4d19c4edc4438067049ed9022f3ea2f66d4ecbee911b6ba90218"
+      "sha256": "9db42091e7e948b380a78231be91b069e6395777cc698f986d03e89a367677dd"
     },
     {
       "path": "v2/v2-cache-migration.js",
