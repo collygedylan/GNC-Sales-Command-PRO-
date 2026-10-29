@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "269a4a195cc45d435df8b7156b00e1b5c48311f4",
+  "commit": "58371974347b2f19a0f6e7aada760690ff5cf5f2",
   "release": "AgData v2.3.102",
   "files": [
     {
@@ -545,8 +545,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8682370,
-      "sha256": "6824e82c35aa314f886550484a7ba8148ddbbd6b518f99d5950d49922194be57"
+      "bytes": 8682818,
+      "sha256": "4362a3bb4eebde5192d7535dac003ba0ad93a15e5fd68f776a07fa3b90b4b9f5"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -976,22 +976,22 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 188,
-      "sha256": "b2d9101bb55a9ddcad288ee82c0c6742d164fbcb3c5d9140bc84bf73c0d4ab89"
+      "sha256": "b568fa633c56dfcd72c9417791d502b3683320e2120ac306dace6a47a043c30a"
     },
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "b2d9101bb55a9ddcad288ee82c0c6742d164fbcb3c5d9140bc84bf73c0d4ab89"
+      "sha256": "b568fa633c56dfcd72c9417791d502b3683320e2120ac306dace6a47a043c30a"
     },
     {
-      "path": "deployments/269a4a195cc45d435df8b7156b00e1b5c48311f4.json",
+      "path": "deployments/58371974347b2f19a0f6e7aada760690ff5cf5f2.json",
       "bytes": 188,
-      "sha256": "b2d9101bb55a9ddcad288ee82c0c6742d164fbcb3c5d9140bc84bf73c0d4ab89"
+      "sha256": "b568fa633c56dfcd72c9417791d502b3683320e2120ac306dace6a47a043c30a"
     },
     {
       "path": "index.html",
       "bytes": 381461,
-      "sha256": "657996fb1cd2cf88d55463c0b2c6945abd56a5e4a5f123e4ade000aee800d184"
+      "sha256": "2df8793626488d73ce6c59e0e2505c7ab0441352943f8e28791aec52f7f313d6"
     },
     {
       "path": "manifest.json",
@@ -1031,7 +1031,7 @@
     {
       "path": "sw.js",
       "bytes": 37219,
-      "sha256": "ae1961c58112e1983ddcbcc8cd64a841a169f0821bf7b2ec773ac4a84dbe72eb"
+      "sha256": "c9418e79d66eaa7a82fee58ce16a763ffe47c34ab8ec8ee5fdfab29598096504"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -1261,7 +1261,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "e0e2d3bfc2cb5a7887a8c5b39625d3a1b029fded725beaeb7e329a4582544e0d"
+      "sha256": "b52e8fb3b253ea692da829fe442851d878553db23d4e681ae38a7c2433da9c2f"
     },
     {
       "path": "v2/v2-cache-migration.js",
