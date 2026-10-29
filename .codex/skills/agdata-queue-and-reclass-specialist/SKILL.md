@@ -96,6 +96,8 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never squeeze Reclass metrics beside its title: the collapsed 74px card has a single-line title and full-width four-cell metric row. Suspend display may fall back to the same item/location when its SOC lot differs; exact source evidence remains separate. Show Plan Start in badge and metadata, with chronologically assigned date colors. Render one Suspend AV card layer and one selected-location action.
+
 - Never close a Reclass inquiry before its exact idempotent payload is durably staged, and never keep the modal blocked on the network after that local draft is saved; retry uncertain outcomes with the same token and retain a visible failed draft for honest recovery.
 
 - Never tie optimistic Reclass lifetime to the visible modal: persist the exact command before dispatch, close immediately, fence stale snapshots using pending row markers, and reconcile or roll back in the original account without repainting a newer draft. Send as Review uses the same atomic move command before assigning remaining review work. Never clone Hold Since/Until onto an unheld destination or render a Hold footer without a meaningful code.

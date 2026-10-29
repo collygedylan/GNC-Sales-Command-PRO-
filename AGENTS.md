@@ -105,3 +105,7 @@ Every modified `Code.gs` entrypoint and authorization dependency must be registe
     - **Nightly Coverage:** Retain all full Node, SQL/import, backend, browser, and performance suites behind the Nightly/manual-full-regression gate; moving checks off daytime delivery does not remove their coverage. Tooling-only releases must make zero application runtime changes and must not replay prior application deployment work merely because an old publication baseline differs.
     - **Decoupled Pipelines:** GitHub Pages frontend publication (`pages-static.yml`) and Supabase/Apps Script backend deployments (`publish-candidate.yml`) are decoupled so unchanged backend gates never block a frontend release, and manual/automatic triggers both publish cleanly without receipt-hash bureaucracy.
     - **Ordered Full-Stack Releases:** When a release modifies both backend and frontend, apply Supabase SQL migrations and Edge Functions first, apply any `Code.gs` patch second, and publish the GitHub Pages frontend immediately upon completion.
+
+## AgData v2.3.107 release contract
+
+The explicit v2.3.107 release is main-thread only, retains the local v2.3.106 read deduplication, and authorizes scoped SQL, app-api and main publication without permission pauses. Its validation is one tooling-gate invocation, no Deno, linked-CLI SQL only, and one under-30-second Chromium DOM check; cold hydration duration and cancelled superseded reads are diagnostic only. No test emails or historical backfill are authorized.

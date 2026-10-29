@@ -16,7 +16,7 @@ function databaseRestModule() {
   }
   return restExports;
 }
-export function databaseBridge(fetcher) {
+export function databaseBridge(fetcher, decodeInventoryCsv) {
   if (!exports) {
     const bundle = buildSync({ absWorkingDir: root, entryPoints: ['services/liveDatabase.ts'], bundle: true,
       platform: 'node', format: 'cjs', write: false, external: ['@supabase/supabase-js'], logLevel: 'silent' });
@@ -24,7 +24,7 @@ export function databaseBridge(fetcher) {
     new Function('require', 'module', 'exports', bundle.outputFiles[0].text)(require, module, module.exports);
     exports = module.exports;
   }
-  return exports.createLegacyDatabaseBridge(fetcher);
+  return exports.createLegacyDatabaseBridge(fetcher, decodeInventoryCsv);
 }
 export function appApiDatabaseBridge(fetcher) {
   const rest = databaseRestModule();

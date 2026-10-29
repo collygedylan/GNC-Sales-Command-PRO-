@@ -5,6 +5,7 @@ import { validateSchema, type Schema } from './database-contract-runtime.ts';
 type Table = keyof Database['public']['Tables'] | keyof Database['public']['Views'];
 type Rpc = keyof Database['public']['Functions'];
 export type FetchWithTimeout = (url: string, init: RequestInit, timeout: number, label: string) => Promise<Response>;
+export type InventoryCsvDecoder = (text: string, expectedColumns: readonly string[]) => unknown;
 const has = (value: object, key: PropertyKey) => Object.prototype.hasOwnProperty.call(value, key);
 export function tableName(input: unknown): Table {
   if (typeof input !== 'string' || !has(contracts.tables, input)) throw new Error('Unknown database table. Refresh the application before retrying.');
@@ -106,7 +107,17 @@ async function validateSuccessfulJson(response: Response, schema: Schema, label:
   if (schema && typeof schema === 'object' && 'object' in schema && Array.isArray(parsed)) {
     for (const row of parsed) validateSchema(schema, row, `${label} response`);
   } else validateSchema(schema, parsed, `${label} response`);
+  return cacheValidatedData(response, parsed);
+}
+function cacheValidatedData(response: Response, data: unknown) {
+  try { Object.defineProperty(response, '__gncValidatedData', { value: data, enumerable: false, configurable: true }); }
+  catch { /* The caller can still parse the untouched response body. */ }
   return response;
+}
+function csvExpectedColumns(query: string) {
+  const select = new URLSearchParams(query).get('select');
+  if (!select || select === '*') throw new Error('Master CSV responses require an explicit column projection.');
+  return select.split(',').map(value => value.trim());
 }
 export function tableRequest<T extends Table>(table: T, query: string, init: RequestInit) {
   const checkedQuery = validateQuery(table, query);
@@ -116,8 +127,13 @@ export function tableRequest<T extends Table>(table: T, query: string, init: Req
   else if (!['GET', 'HEAD', 'DELETE'].includes(method)) throw new Error('Unsupported database method.');
   return checkedQuery;
 }
-export function createDatabaseRestBridge(fetcher: FetchWithTimeout, aliases: Readonly<Record<string, Table>> = {}) {
+export function createDatabaseRestBridge(
+  fetcher: FetchWithTimeout,
+  aliases: Readonly<Record<string, Table>> = {},
+  decodeInventoryCsv?: InventoryCsvDecoder,
+) {
   return {
+    supportsInventoryCsv: typeof decodeInventoryCsv === 'function',
     async fetchTable(baseUrl: string, inputTable: unknown, inputQuery: unknown, init: RequestInit, timeout: number, label: string) {
       const isAlias = typeof inputTable === 'string' && !has(contracts.tables, inputTable) && has(aliases, inputTable);
       const table = isAlias ? tableName(aliases[inputTable as string]) : tableName(inputTable);
@@ -125,7 +141,18 @@ export function createDatabaseRestBridge(fetcher: FetchWithTimeout, aliases: Rea
       if (typeof inputQuery !== 'string') throw new Error('Invalid database query.');
       const query = tableRequest(table, inputQuery, init);
       const response = await fetcher(`${baseUrl.replace(/\/$/, '')}/rest/v1/${transportTable}${query ? '?' + query : ''}`, init, timeout, label);
-      return validateSuccessfulJson(response, tableResponseSchema(table, query), `${table} table`, String(init.method || 'GET').toUpperCase());
+      const method = String(init.method || 'GET').toUpperCase();
+      const acceptsCsv = new Headers(init.headers).get('accept')?.split(',')
+        .some(value => value.trim().split(';')[0].toLowerCase() === 'text/csv') === true;
+      const isMasterCsv = !isAlias && table === 'ph_master_inventory' && method === 'GET' && acceptsCsv
+        && /^text\/csv(?:;|$)/i.test(response.headers.get('content-type') || '');
+      if (isMasterCsv) {
+        if (!decodeInventoryCsv) throw new Error('Master CSV decoder is unavailable.');
+        const rows = decodeInventoryCsv(await response.clone().text(), csvExpectedColumns(query));
+        validateRows(tableResponseSchema(table, query), rows, `${table} CSV table`);
+        return cacheValidatedData(response, rows);
+      }
+      return validateSuccessfulJson(response, tableResponseSchema(table, query), `${table} table`, method);
     },
     async fetchRpc(baseUrl: string, inputName: unknown, init: RequestInit, timeout: number, label: string) {
       const name = rpcName(inputName);

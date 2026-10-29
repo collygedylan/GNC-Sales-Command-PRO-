@@ -19881,6 +19881,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_inventory_project_v1: {
+        Args: { p_actor_id: string; p_project_id: string; p_payload: Json }
+        Returns: Json
+      }
       suspend_tag_command_v1: {
         Args: {
           p_actor_id: string

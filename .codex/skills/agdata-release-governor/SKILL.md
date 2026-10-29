@@ -85,6 +85,8 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never fail a release solely on cold-cache bulk download seconds or navigation-cancelled background reads. The explicit v2.3.107 release uses one tooling-gate invocation, no Deno, linked-CLI SQL, and one bounded live DOM check; correct harness faults without permission pauses. Preserve behavioral/security assertions.
+
 - Never register a release migration name without adding its installed-state query to `migrationContractQuery`; the cloud runner must validate the exact live behavior after history verification.
 
 - Never set the Pages fast-gate timeout so tightly that successful validation is killed during mandatory action cleanup; retain a bounded cleanup margin while measuring the real gate duration.

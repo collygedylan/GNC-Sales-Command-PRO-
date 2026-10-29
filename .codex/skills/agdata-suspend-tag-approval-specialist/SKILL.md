@@ -33,6 +33,9 @@ node --test tests/suspend-tag-dataset.test.mjs tests/role-access-parity.test.mjs
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never reject an acknowledged authorized edit solely because its resolved source/revision changed or its photo list contains concurrent additions; retain same-account fencing and strict send/retry receipt validation (Invariant 193).
+
+- Never use awaiting_rep, approved, source revision or import readiness as a photo/edit/add-candidate UI gate. The authenticated atomic command resolves one physical source, merges photo evidence and supersedes an old pending approval round while preserving frozen receipts and decision authorization. False Block edits keep tag evidence; only exact real inventory locations receive stock evidence.
 
 - Never render a manual Location/Lot fill form in Suspend AV Options; additions must use checked master inventory options. Route Suspend rows to `addSelectedDockSuspendDcRequestOptions` before applying the Request folder requirement, since Suspend source rows may have no Request folder.
 

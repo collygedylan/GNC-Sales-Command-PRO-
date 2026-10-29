@@ -75,6 +75,8 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never register an implementation without its owning symbol and behavior invariant. v2.3.107 adds user-invoked project_create_from_bloom, service-only create_inventory_project_v1, and an inventory_projects broadcast refresh; projects_read remains the existing authenticated read route.
+
 - Never equate a realtime connection or row event with complete cold hydration. Register per-owner source buffering, full-load replay, requester eligibility, assigned Eval Reclass and cloud-history continuation behavior together, with no wildcard browser fixture.
 
 - Never create a second sync engine or substitute client Broadcast row claims for database authorization. Register the existing coordinator's row-patch helpers, physical source subscriptions, and opaque revision hints together; preserve draft/owner tests and report actual production timings separately from local synchronous behavior.

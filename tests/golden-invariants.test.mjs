@@ -1344,7 +1344,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.106"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.107"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1373,9 +1373,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.106"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.107"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.106"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.107"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2188,7 +2188,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.106/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.107/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2667,11 +2667,12 @@ test('Invariant 94 (Suspend Close, AV Options, Processed Toasts, and Eval Filter
   const requestItemOptions = functionSource('assets/app-runtime.js', 'loadRequestItemCodeOptions');
   assert.match(requestItemOptions, /const retainedRows = forceRefresh \? sharedRows : \[\.\.\.sharedRows, \.\.\.\(Array\.isArray\(state\.rows\) \? state\.rows : \[\]\)\];/);
   assert.match(requestItemOptions, /formatFetchedRows\(forceRefresh \? \[\.\.\.rawRows, \.\.\.retainedRows\] : \[\.\.\.retainedRows, \.\.\.rawRows\]/);
-  assert.match(runtime, /operation !== 'close' && \['save', 'complete', 'send', 'retry'\]/);
+  assert.match(runtime, /operation !== 'close' && \['send', 'retry'\]/);
+  assert.match(runtime, /!\['save', 'complete', 'close'\]\.includes\(operation\) && !writeProof/);
   assert.match(runtime, /sourceIdentity: getSuspendTagStableSourceIdentity\(mirror\)/);
-  assert.match(runtime, /skipRequestOpenInfoModal:\s*safeOptions\.openAvOptions === true \|\| safeOptions\.focusEvidenceEditor === true/);
+  assert.match(functionSource('assets/app-runtime.js', 'openDockSuspendDcRequestUpdate'), /skipRequestOpenInfoModal:\s*true/);
   assert.match(runtime, /EVAL_USER_FILTER_USERS = new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'\]\)/);
-  assert.match(edge, /sourceIdentity[\s\S]*operation !== 'close'/);
+  assert.match(edge, /sourceIdentity[\s\S]*!\['close', 'add_candidates', 'save', 'complete'\]\.includes\(operation\)/);
   assert.match(migration, /suspend-close-stable-identity-v2392[\s\S]*p_operation<>'close'[\s\S]*suspend-tag-complete:/);
   assert.match(migration, /ph_suspend_history[\s\S]*security_invoker=true/);
 });
@@ -2722,7 +2723,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.106/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.107/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3379,8 +3380,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.106/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.106/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.107/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.107/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3680,8 +3681,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.106/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.106/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.107/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.107/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5094,4 +5095,365 @@ test('Invariant 179 (Eval Redaction Preserves Safe Array Read Metadata)', async 
   assert.equal(rows.readMeta.rowCompleteness, 'complete');
   assert.equal(rows.readMeta.fieldCoverage, 'full');
   assert.equal(rows.readMeta.search, undefined);
+});
+
+test('Invariant 180 (cold full hydration is shared across Home and coordinator callers)', async () => {
+  const runtime = read('assets/app-runtime.js');
+  const homeContext = functionSource('assets/app-runtime.js', 'getProductionLiveSyncContext');
+  const homeFallback = homeContext.slice(homeContext.indexOf("if (view === 'home'"), homeContext.indexOf('const hasDataCohort'));
+  assert.match(homeFallback, /getProductionCoreLiveProjection\('master', view, foregroundContext\)/,
+    'Home fallback must use the canonical projection selector while a cold full master load is active');
+  assert.match(homeFallback, /createProductionCoreLiveAdapter\('master', projection/);
+
+  const loaderSource = runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad'));
+  assert.match(loaderSource, /coldSourceHydrations\.has\(key\)[\s\S]*?coldPromise\?\.ownerIdentity === owner[\s\S]*?await state\.fullPromise/,
+    'the coordinator path must join the same owner’s in-flight cold full promise before creating another adapter');
+  assert.match(functionSource('assets/app-runtime.js', 'hydrateColdSource'),
+    /Object\.defineProperty\(promise, 'ownerIdentity', \{ value: owner/,
+    'the cold promise must carry its identity owner for safe joining');
+
+  const makeCase = identity => {
+    let resolveFull;
+    const fullPromise = new Promise(resolve => { resolveFull = resolve; });
+    const state = { fullPromise };
+    let coordinatorCalls = 0;
+    const coldPromise = Promise.resolve(true);
+    Object.defineProperty(coldPromise, 'ownerIdentity', { value: identity });
+    const context = runFunctions('assets/app-runtime.js', ['ensureDatasetLoaded'], {
+      RETIRED_DATASET_KEYS: new Set(), DATASET_DEFINITIONS: { warehouseAssignedItems: {} },
+      coldSourceHydrations: new Map([['warehouseAssignedItems', coldPromise]]),
+      getSupabaseReadIdentityScope: () => identity,
+      getDatasetState: () => state,
+      canUseProductionLiveSync: () => true,
+      getProductionLiveSyncContext() { coordinatorCalls += 1; throw new Error('duplicate live-sync adapter'); },
+      getProductionLiveSyncCoordinator() { coordinatorCalls += 1; throw new Error('duplicate live-sync adapter'); },
+      createProductionCoreLiveAdapter() { coordinatorCalls += 1; throw new Error('duplicate live-sync adapter'); },
+      getDatasetRenderRowCount: () => 0,
+    });
+    return { promise: context.ensureDatasetLoaded('warehouseAssignedItems', 'full'), resolveFull, calls: () => coordinatorCalls };
+  };
+
+  const sameOwner = makeCase('account-a');
+  assert.equal(sameOwner.calls(), 0, 'same-owner cold full load joins without starting a coordinator request');
+  sameOwner.resolveFull(true);
+  assert.equal(await sameOwner.promise, true, 'joined caller receives the cold full result');
+
+  let currentOwner = 'account-a';
+  let resolveStale;
+  const staleFullPromise = new Promise(resolve => { resolveStale = resolve; });
+  const staleState = { fullPromise: staleFullPromise };
+  const staleColdPromise = Promise.resolve(true);
+  Object.defineProperty(staleColdPromise, 'ownerIdentity', { value: 'account-a' });
+  let staleCoordinatorCalls = 0;
+  const staleContext = runFunctions('assets/app-runtime.js', ['ensureDatasetLoaded'], {
+    RETIRED_DATASET_KEYS: new Set(), DATASET_DEFINITIONS: { warehouseAssignedItems: {} },
+    coldSourceHydrations: new Map([['warehouseAssignedItems', staleColdPromise]]),
+    getSupabaseReadIdentityScope: () => currentOwner,
+    getDatasetState: () => staleState,
+    canUseProductionLiveSync: () => true,
+    getProductionLiveSyncContext() { staleCoordinatorCalls += 1; throw new Error('unexpected coordinator path'); },
+    getProductionLiveSyncCoordinator() { staleCoordinatorCalls += 1; throw new Error('unexpected coordinator path'); },
+    createProductionCoreLiveAdapter() { staleCoordinatorCalls += 1; throw new Error('unexpected coordinator path'); },
+    getDatasetRenderRowCount: () => 0,
+  });
+  const staleJoin = staleContext.ensureDatasetLoaded('warehouseAssignedItems', 'full');
+  currentOwner = 'account-c';
+  resolveStale(true);
+  assert.equal(await staleJoin, false, 'an identity change while awaiting the cold promise discards its result');
+  assert.equal(staleCoordinatorCalls, 0, 'stale cold work is not replaced by a second coordinator fetch');
+
+  const assignmentReader = functionSource('assets/app-runtime.js', 'fetchAllSupabaseRows');
+  assert.match(assignmentReader, /identityScopedAssignmentRead = String\(table \|\| ''\)\.trim\(\) === WAREHOUSE_ASSIGNED_ITEMS_TABLE/,
+    'the physical assignment table must share its canonical full-snapshot query across callers');
+  const routed = [];
+  const routing = runFunctions('assets/app-runtime.js', ['fetchAllSupabaseRows'], {
+    REQUEST_HISTORY_TABLE: 'history', SALES_CREDIT_REQUESTS_TABLE: 'credits', WAREHOUSE_ASSIGNED_ITEMS_TABLE: 'ph_inventory_row_assignments',
+    runDedupeSupabaseRead: (_key, _task, options) => { routed.push(options); return Promise.resolve([]); },
+  });
+  const signal = new AbortController().signal;
+  await routing.fetchAllSupabaseRows('ph_inventory_row_assignments', 'select=*', { signal });
+  assert.equal(routed[0].signal, null); assert.equal(routed[0].retainOnGenerationChange, true);
+  await routing.fetchAllSupabaseRows('ph_soc_master', 'select=*', { signal, retainOnGenerationChange: true });
+  assert.equal(routed[1].signal, null); assert.equal(routed[1].retainOnGenerationChange, true);
+  await routing.fetchAllSupabaseRows('ph_soc_master', 'select=*', { signal });
+  assert.equal(routed[2].signal, signal); assert.equal(routed[2].retainOnGenerationChange, false);
+});
+
+
+test('Invariant 181 (Assigned History Shares Four Bounded Parallel Batches And Rejects Missing Codes)', async () => {
+  let active = 0, peak = 0, calls = 0, omitCode = false;
+  const ctx = runFunctions('assets/app-runtime.js', ['fetchManagerItemLowStockTargets', 'normalizeManagerItemLowStockTargetCode', 'runDedupeSupabaseRead'], {
+    AbortController, SUPABASE_READ_TIMEOUT_MS: 1000, productionLiveSyncReadGeneration: 1,
+    getSupabaseReadIdentityScope: () => 'same-account',
+    getSupabaseReadCooldownKey: (owner, key) => owner + key,
+    getSupabaseReadTerminalKey: (owner, key) => owner + key,
+    supabaseReadInFlight: new Map(), supabaseReadLatestByKey: new Map(), supabaseReadTerminalDenials: new Map(),
+    supabaseReadFailureCooldowns: new Map(), incrementInternalPerfCounter() {},
+    runSupabaseReadTask: task => task(), runSupabaseReadWithBackoff: (_key, task) => task(),
+    redactEvalSensitiveData: value => value,
+    supabaseRpc: async (name, body, options) => {
+      assert.equal(name, 'get_eval_item_low_stock_targets_v1');
+      assert.ok(body.p_itemcodes.length <= 500); assert.equal(options.signal.aborted, false);
+      calls++; active++; peak = Math.max(peak, active);
+      await new Promise(resolve => setTimeout(resolve, 3)); active--;
+      return body.p_itemcodes.filter(code => !omitCode || code !== 'CODE-0000').map(itemcode_normalized => ({ itemcode_normalized, mean_quantity: 12.5 }));
+    },
+  });
+  const codes = Array.from({ length: 2101 }, (_, index) => 'CODE-' + String(index).padStart(4, '0'));
+  const [first, second] = await Promise.all([ctx.fetchManagerItemLowStockTargets(codes), ctx.fetchManagerItemLowStockTargets(codes.slice().reverse())]);
+  assert.equal(calls, 5, 'UI and coordinator share one request set despite source ordering');
+  assert.equal(peak, 4); assert.equal(first.length, codes.length); assert.equal(second.length, codes.length);
+  assert.equal(new Set(first.map(row => row.itemcode_normalized)).size, codes.length);
+  assert.equal((await ctx.fetchManagerItemLowStockTargets([])).length, 0); assert.equal(calls, 5);
+  omitCode = true;
+  await assert.rejects(ctx.fetchManagerItemLowStockTargets(codes), /omitted 1 requested ItemCode summaries/);
+});
+
+test('Invariant 182 (cold reads and revision metadata survive view generations but remain identity fenced)', async () => {
+  const runtime = read('assets/app-runtime.js');
+  const coldLoader = functionSource('assets/app-runtime.js', 'hydrateColdSource');
+  assert.match(coldLoader, /retryOnCancellation: true,\s*retainOnGenerationChange: true/);
+  const datasetLoader = runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad'));
+  assert.match(datasetLoader, /options\.retainOnGenerationChange === true \? \{ retainOnGenerationChange: true \} : \{\}/,
+    'explicit cold-read retention must reach generic full dataset fetches');
+  const genericReader = functionSource('assets/app-runtime.js', 'fetchAllSupabaseRows');
+  assert.match(genericReader, /signal: identityScopedAssignmentRead \|\| identityScopedOperationalRead \|\| opts\.retainOnGenerationChange === true \? null/,
+    'explicitly retained generic reads must detach their initiating view signal');
+
+  let owner = 'same-account';
+  let callCount = 0;
+  const transportSignals = [];
+  const dedupeOptions = [];
+  const ctx = runFunctions('assets/app-runtime.js', ['supabaseRpc'], {
+    APP_API_FUNCTION_URL: '/app-api',
+    assertEvalDataSourceAllowed() {},
+    getSupabaseReadIdentityScope: () => owner,
+    staleSupabaseReadScopeError: () => Object.assign(new Error('stale identity'), { code: 'STALE_SCOPE' }),
+    runDedupeSupabaseRead: async (key, task, options) => {
+      callCount += 1; dedupeOptions.push({ key, ...options });
+      return task({ signal: new AbortController().signal });
+    },
+    postAppFunctionJson: async (_url, payload, options) => {
+      transportSignals.push(options.signal);
+      return { ok: true, data: { accepted: payload.datasetKeys } };
+    },
+  });
+  const external = new AbortController();
+  const result = await ctx.supabaseRpc('get_my_dataset_revisions_v1', {
+    p_dataset_keys: [' ph_soc_master ', 'ph_master_inventory', 'ph_soc_master'],
+  }, { signal: external.signal });
+  assert.deepEqual(Array.from(result.accepted), ['ph_master_inventory', 'ph_soc_master']);
+  assert.equal(callCount, 1);
+  assert.equal(dedupeOptions[0].key, 'dataset-revisions:["ph_master_inventory","ph_soc_master"]');
+  assert.equal(dedupeOptions[0].signal, null, 'a view cancellation cannot abort the shared revisions transport');
+  assert.equal(dedupeOptions[0].retainOnGenerationChange, true, 'navigation/permission generation changes retain same-account metadata work');
+  assert.ok(transportSignals[0] instanceof AbortSignal);
+
+  const preAborted = new AbortController(); preAborted.abort();
+  await assert.rejects(ctx.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_soc_master'] }, { signal: preAborted.signal }),
+    error => error?.code === 'REQUEST_ABORTED');
+  assert.equal(callCount, 1, 'an already-cancelled caller must not start the network request');
+
+  let releaseTransport;
+  const fenced = runFunctions('assets/app-runtime.js', ['supabaseRpc'], {
+    APP_API_FUNCTION_URL: '/app-api', assertEvalDataSourceAllowed: () => {},
+    getSupabaseReadIdentityScope: () => owner,
+    staleSupabaseReadScopeError: () => Object.assign(new Error('stale identity'), { code: 'STALE_SCOPE' }),
+    runDedupeSupabaseRead: (_key, task) => task({ signal: new AbortController().signal }),
+    postAppFunctionJson: () => new Promise(resolve => { releaseTransport = resolve; }),
+  });
+  const pending = fenced.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_soc_master'] });
+  owner = 'different-account';
+  releaseTransport({ ok: true, data: { shouldNotEscape: true } });
+  await assert.rejects(pending, error => error?.code === 'STALE_SCOPE', 'a retained response cannot cross an account change');
+
+  let readOwner = 'owner-a';
+  let generation = 1;
+  let factoryCalls = 0;
+  let finishFirstRead;
+  const readCtx = runFunctions('assets/app-runtime.js', ['runDedupeSupabaseRead'], {
+    AbortController,
+    productionLiveSyncReadGeneration: generation,
+    getSupabaseReadIdentityScope: () => readOwner,
+    getSupabaseReadCooldownKey: (identity, key) => `${identity}:${key}`,
+    getSupabaseReadTerminalKey: (identity, key) => `${identity}:${key}`,
+    supabaseReadInFlight: new Map(), supabaseReadLatestByKey: new Map(),
+    supabaseReadTerminalDenials: new Map(), supabaseReadFailureCooldowns: new Map(),
+    incrementInternalPerfCounter() {},
+    runSupabaseReadTask: task => task(), runSupabaseReadWithBackoff: (_key, task) => task(),
+    redactEvalSensitiveData: value => value,
+    staleSupabaseReadScopeError: () => Object.assign(new Error('stale read'), { code: 'STALE_SCOPE' }),
+  });
+  const coldRead = readCtx.runDedupeSupabaseRead('all:ph_soc_master:select=*', () => {
+    factoryCalls += 1; return new Promise(resolve => { finishFirstRead = resolve; });
+  }, { retainOnGenerationChange: true });
+  generation += 1;
+  readCtx.productionLiveSyncReadGeneration = generation;
+  const coordinatorRead = readCtx.runDedupeSupabaseRead('all:ph_soc_master:select=*', () => {
+    factoryCalls += 1; return Promise.resolve('duplicate');
+  });
+  assert.equal(factoryCalls, 1, 'ordinary coordinator callers join a retained same-owner cold transport across generations');
+  finishFirstRead('shared');
+  assert.equal(await coldRead, 'shared');
+  assert.equal(await coordinatorRead, 'shared');
+
+  readOwner = 'owner-b';
+  let finishSecondRead;
+  const otherAccountRead = readCtx.runDedupeSupabaseRead('all:ph_soc_master:select=*', () => {
+    factoryCalls += 1; return new Promise(resolve => { finishSecondRead = resolve; });
+  });
+  assert.equal(factoryCalls, 2, 'a different account cannot join the previous owner’s retained result');
+  finishSecondRead('owner-b');
+  assert.equal(await otherAccountRead, 'owner-b');
+});
+
+
+test('Invariant 183 (Authenticated Inventory And Operational Reads Survive Caller Navigation)', async () => {
+  let owner = 'account-a', finish, transportSignal, readCount = 0;
+  const internal = new AbortController();
+  const ctx = runFunctions('assets/app-runtime.js', ['requestInventoryRead'], {
+    productionLiveSyncCoordinator: null, SUPABASE_READ_TIMEOUT_MS: 1000, APP_API_FUNCTION_URL: 'https://fixture.invalid',
+    appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'v1' } },
+    getSupabaseReadIdentityScope: () => owner, hasAuthenticatedOperationalReadIdentity: () => true,
+    staleSupabaseReadScopeError: () => new Error('owner changed'), suspendProductionInventoryReadForReadiness() {},
+    runDedupeSupabaseRead: (_key, task, options) => {
+      assert.equal(options.signal, null); assert.equal(options.retainOnGenerationChange, true);
+      readCount++; return task({ signal: internal.signal });
+    },
+    postAppFunctionJson: async (_url, _body, options) => { transportSignal = options.signal; return new Promise(resolve => { finish = resolve; }); },
+  });
+  const caller = new AbortController();
+  const pending = ctx.requestInventoryRead('master_page', { dataset: 'avOpen' }, { signal: caller.signal });
+  assert.equal(transportSignal, internal.signal); caller.abort(); assert.equal(transportSignal.aborted, false);
+  finish({ ok: true, data: { rows: [] } }); assert.equal((await pending).rows.length, 0);
+  await assert.rejects(ctx.requestInventoryRead('master_page', {}, { signal: caller.signal }), /cancelled/); assert.equal(readCount, 1);
+  const stale = ctx.requestInventoryRead('master_page', {}); owner = 'account-b';
+  finish({ ok: true, data: { rows: [] } }); await assert.rejects(stale, /owner changed/);
+  let routed;
+  const snapshots = runFunctions('assets/app-runtime.js', ['fetchAllSupabaseRows'], {
+    REQUEST_HISTORY_TABLE: 'history', SALES_CREDIT_REQUESTS_TABLE: 'credits', WAREHOUSE_ASSIGNED_ITEMS_TABLE: 'assignments',
+    hasAuthenticatedOperationalReadIdentity: () => true,
+    runDedupeSupabaseRead: (_key, _task, options) => { routed = options; return Promise.resolve([]); },
+  });
+  await snapshots.fetchAllSupabaseRows('ph_sales_office', 'select=*', { signal: new AbortController().signal });
+  assert.equal(routed.signal, null); assert.equal(routed.retainOnGenerationChange, true);
+});
+
+test('Invariant 184 (master CSV contract decodes exact text, null, numeric and timestamp values)', () => {
+  const context = vm.createContext({ module: { exports: {} } });
+  vm.runInContext(read('assets/inventory-list-contract.js'), context);
+  const contract = context.module.exports;
+  assert.equal(contract.physicalColumns.length, 218, 'CSV support leaves the audited physical projection unchanged');
+  const columns = ['unique_id', 'commonname', 'loc_match_pct', 'last_updated', 'av_note'];
+  const decoded = contract.decodeCsvRows('unique_id,commonname,loc_match_pct,last_updated,av_note\n'
+    + 'row-a,"Rose, ""Maple""\nTree",0.25,2026-10-29 12:30:45.123456+00,""\n'
+    + 'row-b,,,,""', columns);
+  assert.equal(decoded.length, 2);
+  assert.equal(decoded[0].commonname, 'Rose, "Maple"\nTree');
+  assert.equal(decoded[0].loc_match_pct, 0.25);
+  assert.equal(decoded[0].last_updated, '2026-10-29T12:30:45.123456+00:00');
+  assert.equal(decoded[1].commonname, null);
+  assert.equal(decoded[1].loc_match_pct, null);
+  assert.equal(decoded[1].last_updated, null);
+  assert.equal(decoded[1].av_note, '');
+  assert.throws(() => contract.decodeCsvRows('unique_id,unknown\nrow-a,x', columns), /unexpected CSV header/);
+  assert.throws(() => contract.decodeCsvRows('unique_id,commonname,loc_match_pct,last_updated,av_note\nrow-a,Rose,0.25', columns), /unexpected CSV row width/);
+});
+
+
+test('Invariant 185 (typed master CSV bridge validates before returning cached rows)', async () => {
+  const bridge = databaseBridge(async () => new Response('unique_id\nrow-1\n', {headers:{'content-type':'text/csv'}}), (text,columns) => {
+    assert.deepEqual([...columns],['unique_id']); return [{unique_id:'row-1'}];
+  });
+  assert.equal(bridge.supportsInventoryCsv,true);
+  const response = await bridge.fetchTable('https://example.com','ph_master_inventory','select=unique_id',{headers:{accept:'text/csv'}},100,'master');
+  assert.deepEqual(response.__gncValidatedData,[{unique_id:'row-1'}]);
+  assert.equal(await response.text(),'unique_id\nrow-1\n');
+});
+
+test('Invariant 186 (Drive and AV open LOCATION for reviewed negative and stopped rows)', () => {
+  const ctx=runFunctions('assets/app-runtime.js',['getPrimaryDetailTabForItemContext','formatInventoryHoldSince'],{
+    activeDetailSourceView:'',lastView:'',activeTaskTab:'',activeAVTab:'reserves',firstNonEmptyValue:(...values)=>values.find(v=>v!==undefined&&v!==null&&v!==''),Date
+  });
+  for(const source of ['drive','av']) for(const row of [{PTRREVIEWED:12,PTRAVAILABLE:-2,HOLDSTOPCODE:'S'},{DATE_COMPLETED:'2026-10-29',APP_TAB_ASSIGNMENT:'season'}]) assert.equal(ctx.getPrimaryDetailTabForItemContext(row,source),'location');
+  assert.equal(ctx.formatInventoryHoldSince(46259),'8/25/2026');
+  assert.equal(ctx.formatInventoryHoldSince('1/1/46259'),'8/25/2026');
+});
+
+test('Invariant 187 (Suspend photo proof survives navigation but never an account change)', async () => {
+  let owner='one';const item={UNIQUE_ID:'tag',suspend_tag_status:'awaiting_rep'};
+  const ctx=runFunctions('assets/app-runtime.js',['loadCurrentSuspendTagPhotoRow','isCurrentSuspendTagPhotoProof','canCurrentUserWorkRequestItem'],{
+    suspendTagPhotoProofs:new WeakSet(),AbortController,getDockSuspendDcRequestSourceUid:()=> 'tag',isDockSuspendDcRequestMirrorRow:()=>true,
+    canCurrentUserViewDockSuspendDcRequests:()=>true,getProductionLiveSyncContext:()=>({scope:owner,dataPermissionVersion:'p'}),
+    findDockSuspendDcRequestSourceRow:()=>item,getSuspendTagWriteVersion:()=>0,getSupabaseReadIdentityScope:()=>owner
+  });
+  const proof=await ctx.loadCurrentSuspendTagPhotoRow(item);assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof,item),true);
+  owner='two';assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof,item),false);
+  assert.doesNotMatch(functionSource('assets/app-runtime.js','loadCurrentSuspendTagPhotoRow'),/supabaseRpc|suspendTagApi|REVIEW_LOCKED/);
+});
+
+test('Invariant 188 (Reclass metrics occupy their own full-width unbroken row)', () => {
+  const css=read('assets/app-shell-style-05.css');
+  assert.match(css,/\.argos-reclass-row-toggle\{display:grid;grid-template-columns:minmax\(0,1fr\) auto;[^}]*height:74px/);
+  assert.match(css,/\.argos-reclass-row-toggle-meta\{grid-column:1\/-1;display:grid;width:100%;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(css,/\.argos-reclass-row-toggle-meta span\{[^}]*white-space:nowrap/);
+  const html=read('assets/app-runtime.js');
+  assert.ok(html.indexOf('<span class="argos-reclass-row-toggle-meta">${metrics}</span></button>')>0);
+});
+
+test('Invariant 189 (Suspend colors distinguish dates across weeks and print Plan Start)', () => {
+  const rows=[{PLANSTART:'10/26/2026'},{PLANSTART:'11/02/2026'},{PLANSTART:'11/03/2026'}];
+  const ctx=runFunctions('assets/app-runtime.js',['parseDockCardPlanStartEpochDay','getDockSuspendDcRequestPlanstartInfo','formatDockCardPlanStartValue'],{
+    socInventory:rows,DOCK_SUSPEND_PLANSTART_ALIASES:['PLANSTART'],getDockSuspendDcRequestPlanstartValue:row=>row.PLANSTART,isDockSuspendDcRequestRowAnyStatus:()=>true,Date,Intl
+  });
+  assert.equal(new Set(rows.map(row=>ctx.getDockSuspendDcRequestPlanstartInfo(row).tone)).size,3);
+  assert.equal(ctx.formatDockCardPlanStartValue(rows[0].PLANSTART),'10/26/2026');
+  assert.match(read('assets/app-runtime.js'),/suspendOrderField\('Plan Start'/);
+});
+
+test('Invariant 190 (Suspend lot fallback stays at the same physical location and source)', () => {
+  const ctx=vm.createContext({});vm.runInContext(read('assets/queue-inventory-hydration.js'),ctx);
+  const rows=[{UNIQUE_ID:'sh',ITEMCODE:'003566.051.1',LOCATIONCODE:'A.06.000',LOTCODE:'27.S1',SOURCE:'SH',PTRONHAND:160,PTRAVAILABLE:160,PTRREVIEWED:0,S_LTS:264,LOC_MATCH_QTY:64,PHOTO_LINK:'sh.jpg'},
+    {UNIQUE_ID:'ld',ITEMCODE:'003566.051.1',LOCATIONCODE:'A.06.000',LOTCODE:'27.S1',SOURCE:'LD',PTRONHAND:104,PTRAVAILABLE:104,PTRREVIEWED:0,S_LTS:264,LOC_MATCH_QTY:8,PHOTO_LINK:'ld.jpg'}];
+  const index=ctx.AgMetricQueueInventory.createIndex(rows);
+  const result=index.resolveSuspendTagDisplay({itemcode:'003566.051.1',locationcode:'A.06.000',lotcode:'27.F1',source:'SH'});
+  assert.equal(result.row.PTRONHAND,160);assert.equal(result.row.LOC_ON_HAND,264);assert.equal(result.row.PHOTO_LINK,'sh.jpg');assert.equal(result.row.LOC_MATCH_QTY,64);
+  assert.equal(index.resolveSuspendTagDisplay({itemcode:'003566.051.1',locationcode:'0.00.111',lotcode:'27.F1'}).status,'missing');
+});
+
+test('Invariant 191 (Bloom opens project creation directly with all grading fields)', async () => {
+  let shown=0;const nodes=new Map();const modal={innerHTML:'',showModal:()=>shown++,querySelector:selector=>{if(!nodes.has(selector))nodes.set(selector,{innerHTML:'',textContent:''});return nodes.get(selector);}};
+  const ctx=runFunctions('assets/app-runtime.js',['addInventoryRowsToProject'],{
+    bloomInventoryProjectDraft:null,crypto:{randomUUID:()=> 'command'},getSupabaseReadIdentityScope:()=> 'owner',isRepReadOnlyUser:()=>false,
+    document:{getElementById:()=>modal},getAllRequestModalRepOptions:()=>[{label:'Rep One'}],getAssignableAppUserOptions:()=>[{username:'grader',display:'Grade Person'}],
+    ensureRequestRepUserOptionsReady:async()=>[],ensureAssignableAppUsers:async()=>[],normalizeRepDisplayOrder:value=>value,esc:String
+  });
+  await ctx.addInventoryRowsToProject([{ITEMCODE:'x',COMMONNAME:'Tree',LOCATIONCODE:'A.01.000'}]);
+  assert.equal(shown,1);for(const label of ['Sales Rep Name','Customer Name','Consignee Name','Qty Needed Graded','What They Are Marked With','Who Needs to Grade Them'])assert.ok(modal.innerHTML.includes(label));
+  assert.doesNotMatch(modal.innerHTML,/Load More|Create an Inventory Project before/);
+  assert.match(read('supabase/migrations/20261029210000_agdata_v23107_row_workflows.sql'),/PROJECT_COMMAND_CONFLICT/);
+});
+
+
+test('Invariant 192 (Suspend AV has one action and no nested Reclass card)', () => {
+  const source=functionSource('assets/app-runtime.js','renderRequestMatchingInventoryOptions');
+  assert.ok(source.includes('suspendFillTag ? `<div class="suspend-av-option-evidence">'));
+  assert.ok(source.includes('+ ADD SELECTED LOCATION(S) TO TAG'));
+  assert.ok(!source.includes('${suspendFillTag && addButtonHtml ? addButtonHtml'));
+  const api=runFunctions('supabase/functions/_shared/suspend-tag.ts',['handleSuspendTag'],{
+    exports:{},SUSPEND_TAG_EDITORS:new Set(['dylan_collyge']),SUSPEND_TAG_AUTHORIZED_ROLES:new Set(['ADMIN']),jsonValue:value=>value,
+  },true);
+  return api.handleSuspendTag({rpc:async(name,args)=>{assert.equal(name,'suspend_tag_command_v1');assert.equal(args.p_payload.sourceIdentity.dock,'36');return {data:{ok:true,rows:[]}};}},
+    {id:'actor',username:'dylan_collyge',role:'Admin'}, {operation:'add_candidates',expectedVersion:0,payload:{sourceUid:'tag',sourceIdentity:{dock:'36'},inventoryIds:['master']}}).then(result=>assert.equal(result.ok,true));
+});
+
+test('Invariant 193 (Suspend edit receipts accept newer sources and concurrent photos without relaxing send confirmation)', () => {
+  const source = functionSource('assets/app-runtime.js', 'runSuspendTagRowCommand');
+  const receipt = source.slice(source.indexOf('const editableOperation ='), source.indexOf('const receiptRow ='));
+  const run = (operation, row, patch = {}) => vm.runInNewContext(receipt, { operation, result: {ok:true,row}, sourceUid:'old-source', expectedRevision:'old-revision', photoOnly:Object.keys(patch).length>0, patch, getDockSuspendCompletionRevision:r=>r.last_updated });
+  const row = {unique_id:'current-source',last_updated:'current-revision',suspend_tag_version:4,suspend_tag_status:'pending',dock_photo_link:'old,new'};
+  assert.doesNotThrow(()=>run('save',row,{dock_photo_link:'new'}));
+  assert.throws(()=>run('save',{...row,dock_photo_link:'old'},{dock_photo_link:'new'}),/did not confirm/);
+  assert.throws(()=>run('send',row),/did not confirm/);
+  assert.doesNotThrow(()=>run('complete',{...row,suspend_tag_status:'completed',date_completed:'2026-10-29T12:00:00Z'}));
 });

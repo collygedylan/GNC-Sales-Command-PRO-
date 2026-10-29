@@ -1,6 +1,6 @@
 import { createClient, type PostgrestSingleResponse, type SupabaseClient, type SupabaseClientOptions } from '@supabase/supabase-js';
 import type { Database } from '../supabase/functions/_shared/database.types';
-import { createDatabaseRestBridge, type FetchWithTimeout } from './databaseRest';
+import { createDatabaseRestBridge, type FetchWithTimeout, type InventoryCsvDecoder } from './databaseRest';
 import { confirmedDriveEvidence, driveEvidenceRevision, driveEvidenceColumns } from './driveEvidence';
 import { requestRecipientDirectoryFromResult } from './requestRecipients';
 import { reclassShearedProposal } from './reclassSheared';
@@ -21,9 +21,9 @@ type Profile = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'leg
 export function databaseClient(url: string, key: string, options?: SupabaseClientOptions<'public'>) {
   return createClient<Database>(url, key, options);
 }
-export function createLegacyDatabaseBridge(fetcher: FetchWithTimeout) {
+export function createLegacyDatabaseBridge(fetcher: FetchWithTimeout, decodeInventoryCsv?: InventoryCsvDecoder) {
   return {
-    ...createDatabaseRestBridge(fetcher, browserDatabaseTableAliases),
+    ...createDatabaseRestBridge(fetcher, browserDatabaseTableAliases, decodeInventoryCsv),
     confirmedDriveEvidence, driveEvidenceRevision, driveEvidenceColumns,
     requestRecipientDirectoryFromResult,
     reclassShearedProposal,

@@ -89,6 +89,8 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never require an existing Inventory Project before Bloom Project can open. The creator captures mapped Sales Rep/customer/consignee, per-row quantity/markings/grader and retains its command UUID across retries. create_inventory_project_v1 atomically persists existing project tables, rejects Sales Rep creation and unmapped pairs, and broadcasts a project refresh without email.
+
 - Never give Bloom Picker a lower-resolution photo path or omit canonical photo count/date and saved Spec/Caliper evidence from the selected physical row.
 
 - Never restore a delivery worker by granting browser roles access to private outbox, worker-state, email-thread, completed-history tables or worker RPCs; `Code.gs` and app-api use the service role while browser history stays on its authorized reader.

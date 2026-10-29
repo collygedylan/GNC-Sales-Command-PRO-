@@ -59,13 +59,25 @@
         'tagdeptnote', 'taggingchargeperitem', 'transactionnumber', 'txloadinstructions', 'unitprice',
         'wingdingunits', 'zonecode',
     ].sort());
-    const numericColumns = new Set([
+    const csvNumericColumns = new Set([
         'flyer_match', 'flyer_loc_match_qty', 'flyer_initial_ptr',
-        'eval_task_recount_qty', 'eval_task_moved_up_qty'
+        'eval_task_recount_qty', 'eval_task_moved_up_qty', 'loc_match_pct',
+        'baseline_on_hand', 'initial_photo_match_qty', 'loc_photo_match',
     ]);
     const aliases = Object.freeze(columns.map((column, index) => 'f' + index));
     const select = columns.map((column, index) => aliases[index] + ':' + column).join(',');
     const metadataKey = '__inventoryCompleteness';
+    const numericColumns = new Set([
+        'flyer_match', 'flyer_loc_match_qty', 'flyer_initial_ptr',
+        'eval_task_recount_qty', 'eval_task_moved_up_qty'
+    ]);
+    const csvTimestampColumns = new Set([
+        'last_updated', 'date_completed', 'flyer_completed', 'ncr_requested_at',
+        'hold_release_approved_at', 'eval_task_assigned_at', 'eval_task_completed_at',
+        'av_rule_bundle_updated_at', 'av_rule_av_note_updated_at', 'av_rule_spec_updated_at',
+        'av_rule_match_updated_at', 'av_rule_caliper_updated_at', 'av_rule_photo_updated_at',
+        'av_rule_last_cleared_at', 'photo_date',
+    ]);
     const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
     function invalid(message) {
         const error = new Error('Invalid inventory list contract: ' + message);
@@ -101,6 +113,93 @@
             const decoded = decodeRow(row);
             if (seen.has(decoded.unique_id)) throw invalid('duplicate row identity');
             seen.add(decoded.unique_id);
+            return decoded;
+        });
+    }
+    function decodeCsvRows(text, expectedColumns) {
+        if (typeof text !== 'string') throw invalid('expected CSV text');
+        if (!Array.isArray(expectedColumns) || !expectedColumns.length
+            || expectedColumns.some((column) => typeof column !== 'string' || !physicalColumns.includes(column))
+            || new Set(expectedColumns).size !== expectedColumns.length) throw invalid('invalid expected CSV columns');
+        const rows = [];
+        let row = [], value = '', inQuotes = false, afterQuote = false, fieldQuoted = false;
+        const pushField = () => {
+            row.push({ value, quoted: fieldQuoted });
+            value = '';
+            fieldQuoted = false;
+            afterQuote = false;
+        };
+        const pushRow = () => {
+            pushField();
+            rows.push(row);
+            row = [];
+        };
+        for (let index = 0; index < text.length; index += 1) {
+            const character = text[index];
+            if (inQuotes) {
+                if (character === '"') {
+                    if (text[index + 1] === '"') { value += '"'; index += 1; }
+                    else { inQuotes = false; afterQuote = true; }
+                } else value += character;
+                continue;
+            }
+            if (afterQuote) {
+                if (character === ',') pushField();
+                else if (character === '\n') pushRow();
+                else if (character === '\r' && text[index + 1] === '\n') { index += 1; pushRow(); }
+                else throw invalid('unexpected content after quoted CSV field');
+                continue;
+            }
+            if (character === '"') {
+                if (value !== '') throw invalid('unexpected quote in unquoted CSV field');
+                inQuotes = true;
+                fieldQuoted = true;
+            } else if (character === ',') pushField();
+            else if (character === '\n') pushRow();
+            else if (character === '\r' && text[index + 1] === '\n') { index += 1; pushRow(); }
+            else value += character;
+        }
+        if (inQuotes) throw invalid('unterminated quoted CSV field');
+        if (afterQuote || value !== '' || row.length || fieldQuoted) pushRow();
+        if (!rows.length) throw invalid('missing CSV header');
+        const header = rows.shift().map((field, index) => index === 0 ? field.value.replace(/^\uFEFF/, '') : field.value);
+        if (header.length !== expectedColumns.length || header.some((column, index) => column !== expectedColumns[index])) {
+            throw invalid('unexpected CSV header');
+        }
+        const timestamp = (column, field) => {
+            const raw = field.value;
+            if (!raw && !field.quoted) return null;
+            if (!csvTimestampColumns.has(column)) return raw;
+            const match = raw.match(/^(\d{4}-\d\d-\d\d) (\d\d:\d\d:\d\d)(\.\d+)?([+-]\d\d(?::?\d\d)?)$/);
+            if (match) {
+                const zone = match[4].includes(':') ? match[4] : `${match[4]}:00`;
+                return `${match[1]}T${match[2]}${match[3] || ''}${zone}`;
+            }
+            const iso = raw.match(/^(\d{4}-\d\d-\d\d)[T ](\d\d:\d\d:\d\d)(\.\d+)?(Z|[+-]\d\d:\d\d)$/);
+            if (iso) return `${iso[1]}T${iso[2]}${iso[3] || ''}${iso[4]}`;
+            throw invalid(`invalid CSV timestamp for ${column}`);
+        };
+        const seenIds = new Set();
+        return rows.map((fields) => {
+            if (fields.length !== expectedColumns.length) throw invalid('unexpected CSV row width');
+            const decoded = {};
+            expectedColumns.forEach((column, index) => {
+                const field = fields[index];
+                if (!field.value && !field.quoted) { decoded[column] = null; return; }
+                if (csvNumericColumns.has(column)) {
+                    if (field.value === '') throw invalid(`invalid CSV number for ${column}`);
+                    const value = Number(field.value);
+                    if (!Number.isFinite(value)) throw invalid(`invalid CSV number for ${column}`);
+                    decoded[column] = value;
+                    return;
+                }
+                decoded[column] = timestamp(column, field);
+            });
+            if (expectedColumns.includes('unique_id')) {
+                if (!decoded.unique_id || !decoded.unique_id.trim()) throw invalid('missing row identity');
+                if (seenIds.has(decoded.unique_id)) throw invalid('duplicate row identity');
+                seenIds.add(decoded.unique_id);
+            }
             return decoded;
         });
     }
@@ -141,6 +240,6 @@
         return (row.unique_id || row.UNIQUE_ID) === fence.uniqueId
             && Object.keys(fence).every((key) => metadata[key] === fence[key]);
     }
-    return Object.freeze({ version, columns, physicalColumns, aliases, metadataKey, buildQuery, decodeRow, decodeRows,
+    return Object.freeze({ version, columns, physicalColumns, aliases, metadataKey, buildQuery, decodeRow, decodeRows, decodeCsvRows,
         markListRow, markDetailRow, getCompleteness, isListRow, isDetailRow });
 });

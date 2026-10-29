@@ -96511,6 +96511,38 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "create_inventory_project_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_project_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "suspend_tag_command_v1": {
       "oneOf": [
         {
@@ -109487,6 +109519,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "submit_manager_season_priority_v2": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "create_inventory_project_v1": {
       "oneOf": [
         "json"
       ]

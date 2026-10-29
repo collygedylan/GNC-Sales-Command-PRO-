@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { runSocHistorySyncStep } from "../_shared/erp-history-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.106";
-const APP_RUNTIME_RELEASE = "AgData v2.3.106";
+const APP_RUNTIME_VERSION = "2.3.107";
+const APP_RUNTIME_RELEASE = "AgData v2.3.107";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -464,7 +464,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.106";
+  const appVersion = "2.3.107";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -1815,6 +1815,16 @@ async function handleInventoryProjects(actor: Record<string, unknown>, payload: 
       : { data: [], error: null };
     if (rowsError) throw rowsError;
     return { projects: projects || [], rows: rows || [] };
+  }
+  if (action === "project_create_from_bloom") {
+    if (String(actor.role || "").replace(/[^a-z]/gi, "").toLowerCase() === "salesrep") throw new Error("PROJECT_FORBIDDEN");
+    const projectId = String(payload.projectId || "");
+    if (!/^[0-9a-f-]{36}$/i.test(projectId)) throw new Error("PROJECT_ID_INVALID");
+    const { data, error } = await supabase.rpc("create_inventory_project_v1", {
+      p_actor_id: String(actor.id), p_project_id: projectId, p_payload: jsonValue(payload),
+    });
+    if (error) throw error;
+    return data;
   }
   if (action === "project_save") {
     const projectName = String(payload.projectName || "").trim();
@@ -7668,7 +7678,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       return databaseFailureResponse("AV Note options are temporarily unavailable.", error, "AV_NOTE_OPTIONS_FAILED");
     }
   }
-  if (["projects_read", "project_save", "project_add_rows", "project_update_row", "project_delete"].includes(action)) {
+  if (["projects_read", "project_save", "project_add_rows", "project_update_row", "project_delete", "project_create_from_bloom"].includes(action)) {
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401);
     try { return jsonResponse({ ok:true, data:await handleInventoryProjects(await resolveActiveSessionProfile(session), payload) }); }
     catch (error) { return databaseFailureResponse("Projects are temporarily unavailable.", error, "PROJECTS_REQUEST_FAILED"); }

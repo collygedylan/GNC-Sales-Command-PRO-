@@ -100,6 +100,8 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never hide LOCATION or route Drive/AV cards into read-only overview based on assignment, Review, Available, Hold/Stop or completion. Authorized Admin/Manager and assigned Eval editors retain editable LOCATION. Render cached item demand immediately; normalize Excel serial hold dates. Photo fallback keys include physical UID or source/priority.
+
 - Never leave a transient content-addressed photo upload as a manual-only retry; retry network and temporary server failures with the same optimized payload and stop immediately when the request is canceled or its account scope changes.
 
 - Never infer live photo/evidence authority from an Admin role or a previously opened Manager tab: hydrate the canonical Assigned Items index at login, evaluate the displayed physical row with `canUserMakeLiveChangesOnRow`, and repeat Jorge's exact-row/itemcode assignment check in Edge and PostgreSQL before every live write.

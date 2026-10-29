@@ -1,7 +1,13 @@
 // @test-group: inventory
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+
+const contractContext = vm.createContext({ module: { exports: {} } });
+vm.runInContext(fs.readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), contractContext);
+const inventoryContract = contractContext.module.exports;
 
 test('inventory read fixture applies Normal Drive commonname exact filtering', () => {
   const rows = [
@@ -96,4 +102,32 @@ test('browser inventory rows normalize matching lower and uppercase physical ali
   const projected = inventoryReadFixture.readMasterPage([canonical], { dataset: 'master', projection: 'full', limit: 1 });
   assert.equal(projected.rows[0].ptronhand, '390');
   assert.equal(projected.rows[0].ptravailable, '390');
+});
+
+test('inventory CSV decoder preserves typed values, null versus empty, escaping, and embedded newlines', () => {
+  const expected = ['unique_id', 'commonname', 'desigitem', 'loc_match_pct', 'last_updated', 'av_note'];
+  const csv = '\uFEFF' + expected.join(',') + '\r\n'
+    + 'row-1,"Red, ""Maple""\r\nTree",,0.250,2026-10-29 12:30:45.123456+00,""\r\n'
+    + 'row-2,,"",,,"line one\nline two"\r\n';
+  const rows = inventoryContract.decodeCsvRows(csv, expected);
+  assert.equal(rows.length, 2);
+  assert.deepEqual({ ...rows[0] }, {
+    unique_id: 'row-1', commonname: 'Red, "Maple"\r\nTree', desigitem: null, loc_match_pct: 0.25,
+    last_updated: '2026-10-29T12:30:45.123456+00:00', av_note: '',
+  });
+  assert.deepEqual({ ...rows[1] }, {
+    unique_id: 'row-2', commonname: null, desigitem: '', loc_match_pct: null, last_updated: null,
+    av_note: 'line one\nline two',
+  });
+});
+
+test('inventory CSV decoder rejects unknown headers, malformed rows, and invalid typed values', () => {
+  const expected = ['unique_id', 'loc_match_pct', 'last_updated'];
+  assert.throws(() => inventoryContract.decodeCsvRows('unique_id,unknown,last_updated\na,1,2026-10-29 12:30:45+00', expected), /unexpected CSV header/);
+  assert.throws(() => inventoryContract.decodeCsvRows('unique_id,loc_match_pct,last_updated\na,1', expected), /unexpected CSV row width/);
+  assert.throws(() => inventoryContract.decodeCsvRows('unique_id,loc_match_pct,last_updated\na,not-a-number,2026-10-29 12:30:45+00', expected), /invalid CSV number/);
+  assert.throws(() => inventoryContract.decodeCsvRows('unique_id,loc_match_pct,last_updated\na,1,not-a-timestamp', expected), /invalid CSV timestamp/);
+  assert.throws(() => inventoryContract.decodeCsvRows('unique_id,loc_match_pct,last_updated\n"unterminated,1,2026-10-29 12:30:45+00', expected), /unterminated quoted CSV field/);
+  assert.throws(() => inventoryContract.decodeCsvRows('unique_id,loc_match_pct,last_updated\na,1,2026-10-29 12:30:45+00', ['unique_id', 'unrecognized']), /invalid expected CSV columns/);
+  assert.throws(() => inventoryContract.decodeCsvRows('unique_id,loc_match_pct,last_updated\na,1,2026-10-29 12:30:45+00\na,2,2026-10-29 12:30:45+00', expected), /duplicate row identity/);
 });

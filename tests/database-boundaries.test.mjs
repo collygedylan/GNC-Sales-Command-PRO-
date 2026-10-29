@@ -2,6 +2,7 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 import { appApiDatabaseBridge, databaseBridge } from './helpers/database-bridge.mjs';
 import { databaseContracts, generateContracts } from '../scripts/generate-database-contracts.mjs';
 import { inspectDatabaseBoundary } from '../scripts/check-database-boundaries.mjs';
@@ -119,6 +120,8 @@ test('successful JSON table responses validate projected aliases, JSON paths, an
   assert.equal(result, validResponse, 'validation preserves the original response, status, and headers');
   assert.equal(result.status, 206);
   assert.equal(result.headers.get('content-range'), '0-0/1');
+  assert.deepEqual(result.__gncValidatedData, [{ uid: '000012', template: 'modern' }]);
+  assert.equal(Object.getOwnPropertyDescriptor(result, '__gncValidatedData').enumerable, false);
   assert.deepEqual(await result.json(), [{ uid: '000012', template: 'modern' }], 'validation leaves the response body readable');
 
   const invalidTable = databaseBridge(async () => new Response(JSON.stringify([{ uid: 12, template: 'modern' }]), {
@@ -246,4 +249,41 @@ test('legacy shell routes database reads/writes through the checked adapter', ()
   assert.doesNotMatch(html, /client\.from\(['"]profiles/);
   assert.match(html, /GncDatabase\.readProfile\(client, session\.user\.id\)/);
   assert.match(html, /GncDatabase\.fetchTable/);
+});
+
+test('only explicit master CSV requests use the typed decoder and keep the original response readable', async () => {
+  const contractContext = vm.createContext({ module: { exports: {} } });
+  vm.runInContext(readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), contractContext);
+  const contract = contractContext.module.exports;
+  const csv = 'unique_id,loc_match_pct,last_updated\nrow-1,0.25,2026-10-29 12:30:45.123456+00\n';
+  let requestUrl = '';
+  const response = new Response(csv, { status: 206, headers: {
+    'content-type': 'text/csv; charset=utf-8', 'content-range': '0-0/1',
+  } });
+  const bridge = databaseBridge(async url => { requestUrl = url; return response; },
+    (text, columns) => contract.decodeCsvRows(text, columns));
+  assert.equal(bridge.supportsInventoryCsv, true);
+  const result = await bridge.fetchTable('https://fixture.invalid', 'ph_master_inventory',
+    'select=unique_id,loc_match_pct,last_updated&order=unique_id.asc&limit=1',
+    { method: 'GET', headers: { Accept: 'text/csv' } }, 1000, 'master CSV');
+  assert.match(requestUrl, /\/rest\/v1\/ph_master_inventory\?/);
+  assert.equal(result, response);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.__gncValidatedData)), [{
+    unique_id: 'row-1', loc_match_pct: 0.25, last_updated: '2026-10-29T12:30:45.123456+00:00',
+  }]);
+  assert.equal(Object.getOwnPropertyDescriptor(result, '__gncValidatedData').enumerable, false);
+  assert.equal(await result.text(), csv, 'validation leaves the original CSV body readable');
+
+  const legacyBridge = databaseBridge(async () => new Response('unique_id\nrow-1', {
+    headers: { 'content-type': 'text/csv' },
+  }));
+  assert.equal(legacyBridge.supportsInventoryCsv, false, 'older or unconfigured bridges do not advertise CSV support');
+  await assert.rejects(legacyBridge.fetchTable('https://fixture.invalid', 'ph_master_inventory', 'select=unique_id',
+    { method: 'GET', headers: { Accept: 'text/csv' } }, 1000, 'missing decoder'), /Master CSV decoder is unavailable/);
+
+  const wrongTable = databaseBridge(async () => new Response('unique_id\nrow-1', {
+    headers: { 'content-type': 'text/csv' },
+  }), (text, columns) => contract.decodeCsvRows(text, columns));
+  await assert.rejects(wrongTable.fetchTable('https://fixture.invalid', 'ph_soc_master', 'select=unique_id',
+    { method: 'GET', headers: { Accept: 'text/csv' } }, 1000, 'CSV must stay master-only'), /successful response was not valid JSON/);
 });

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.106",
+  "release": "AgData v2.3.107",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -16,6 +16,9 @@
   "sharedAssets": {
     "assets/location-code.js": [
       "compareLocationCodeNatural"
+    ],
+    "assets/inventory-list-contract.js": [
+      "decodeCsvRows"
     ]
   },
   "canonicalContracts": {
@@ -457,7 +460,11 @@
         "buildInventoryShareGalleryUrl",
         "formatInventoryItemsText",
         "formatInventoryItemsHtml",
-        "dedupeRequestModalRepUsers"
+        "dedupeRequestModalRepUsers",
+        "addInventoryRowsToProject",
+        "updateBloomProjectCustomers",
+        "updateBloomProjectConsignees",
+        "submitBloomInventoryProject"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -466,7 +473,8 @@
         "handleSeasonSalesOfficeAction",
         "handleHistoricalRequestsReadAction",
         "handleRequestSalesImpactAction",
-        "dispatchAuthenticatedDeliveryWake"
+        "dispatchAuthenticatedDeliveryWake",
+        "handleInventoryProjects"
       ],
       "Code.gs": [
         "collectRequestRecipients_",
@@ -607,7 +615,12 @@
         "getLiveDriveNoteRow",
         "renderManagerSeasonPriorityLiveNotes",
         "getDriveDetailFieldRawValue",
-        "postPhotoUploadWithTransientRetry"
+        "postPhotoUploadWithTransientRetry",
+        "getPrimaryDetailTabForItemContext",
+        "configureDetailTabsForItem",
+        "formatInventoryHoldSince",
+        "renderDriveDemandPanel",
+        "getMasterPhotoFallbackKey"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -713,7 +726,10 @@
         "persistPendingReclassDeliveryDraft",
         "dispatchPendingReclassDeliveryDraft",
         "isProtectedDriveReclassPayload",
-        "isEvalReclassRowAssigned"
+        "isEvalReclassRowAssigned",
+        "getDockSuspendDcRequestPlanstartValue",
+        "getDockSuspendDcRequestPlanstartInfo",
+        "findDockSuspendDcRequestCardDisplayDataRow"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -882,9 +898,14 @@
         "replayHydratedRowPatches",
         "hydrateColdSource",
         "ensureColdOperationalHydration",
+        "getProductionCoreLiveProjection",
+        "ensureDatasetLoaded",
         "hasAuthenticatedOperationalReadIdentity",
         "redactEvalSensitiveData",
+        "supabaseRpc",
+        "fetchAllSupabaseRows",
         "fetchAllInventoryReadRows",
+        "fetchManagerItemLowStockTargets",
         "hydrateFirstDatasetPageForRender"
       ],
       "assets/runtime-watchdog.js": [],
@@ -1087,7 +1108,11 @@
         "isFalseBlockLocation",
         "buildSuspendTagActions",
         "openSuspendTagApproval",
-        "getSuspendTagStableSourceIdentity"
+        "getSuspendTagStableSourceIdentity",
+        "loadCurrentSuspendTagPhotoRow",
+        "persistSuspendTagUploadedPhoto",
+        "runSuspendTagRowCommand",
+        "addSelectedDockSuspendDcRequestOptions"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [],
@@ -1101,6 +1126,10 @@
           "request_customer_directory_v2394",
           "is_universal_request_tuple_v2394",
           "suspend-physical-identity-v2394"
+        ],
+        "supabase/migrations/20261029210000_agdata_v23107_row_workflows.sql": [
+          "resolve_edit_source_v23107",
+          "create_inventory_project_v1"
         ]
       }
     },
