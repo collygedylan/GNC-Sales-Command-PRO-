@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
 import test from 'node:test';
-import { parseErpXlsxImportRows, parseErpXlsxPage, runErpSyncWorkerStep } from '../supabase/functions/_shared/erp-sync.mjs';
+import { compactErpRowsPreservingNullColumnUnion, parseErpXlsxImportRows, parseErpXlsxPage, runErpSyncWorkerStep } from '../supabase/functions/_shared/erp-sync.mjs';
 
 function makeZip(entries) {
   const locals=[],central=[];let offset=0;
@@ -42,6 +42,21 @@ test('SOC fast prefilter retains Suspend rows regardless of Suspend-To while rej
   assert.deepEqual(page.rows.map(row=>row.itemcode),['001','002','003']);
 });
 
+test('SOC selected-cell prefilter preserves shared-string and sparse-column decoding',async()=>{
+  const bytes=makeZip({
+    'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/sharedStrings.xml':'<sst><si><t>itemcode</t></si><si><t>dock</t></si><si><t>suspend</t></si><si><t>006</t></si><si><t>D6</t></si><si><t>ignored extra</t></si></sst>',
+    'xl/worksheets/sheet1.xml':'<worksheet><sheetData>'+
+      '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c><c r="D1" t="inlineStr"><is><t>extra</t></is></c></row>'+
+      '<row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2" t="s"><v>4</v></c><c r="D2" t="s"><v>5</v></c></row>'+
+      '<row r="3"><c r="A3" t="s"><v>3</v></c><c r="D3" t="s"><v>5</v></c></row>'+
+      '</sheetData></worksheet>',
+  });
+  const page=await parseErpXlsxPage(bytes,0,10,{dataset:'soc'});
+  assert.deepEqual(page.rows.map(row=>[row.itemcode,row.dock,row.extra]),[['006','D6','ignored extra']]);
+});
+
 test('streaming XLSX parser releases each bounded raw batch to its consumer', async()=>{
   const xmlRows=[inlineRow(1,['itemcode','dock'])];
   for(let index=1;index<=11;index+=1)xmlRows.push(inlineRow(index+1,[String(index),`D${index}`]));
@@ -70,6 +85,22 @@ test('streaming parser emits 10,001 XLSX rows as bounded 5,000-row callbacks',as
   assert.deepEqual(batchSizes,[5000,5000,1]);
   assert.equal(result.rowCount,10001);
   assert.equal('rows' in result,false);
+});
+
+test('non-Drive null compaction preserves the full SQL source-column union and row values',()=>{
+  const original=[
+    {unique_id:'r1',itemcode:'001',blank_first:null,late_value:null},
+    {unique_id:'r2',itemcode:'002',blank_first:null,late_value:'present',sparse:null},
+    {unique_id:'r3',itemcode:'003',blank_first:'filled later',late_value:null,sparse:null},
+  ];
+  const expected=structuredClone(original),compacted=structuredClone(original),seen=new Set();
+  compactErpRowsPreservingNullColumnUnion(compacted,seen);
+  const union=rowSet=>new Set(rowSet.flatMap(row=>Object.keys(row)));
+  const keys=[...union(expected)].sort();
+  assert.deepEqual([...union(compacted)].sort(),keys);
+  const expand=rowSet=>rowSet.map(row=>Object.fromEntries(keys.map(key=>[key,row[key]??null])));
+  assert.deepEqual(expand(compacted),expand(expected));
+  assert.ok(JSON.stringify(compacted).length<JSON.stringify(expected).length);
 });
 
 test('XLSX stage resumes the identical persisted prefix before appending its remaining rows',async()=>{

@@ -3976,3 +3976,27 @@ test('Invariant 138: streamed XLSX callbacks retain at most one bounded raw batc
   assert.deepEqual(batches, [5000, 5000, 1]);
   assert.deepEqual(plain(result), { rowCount: 10001 });
 });
+
+test('Invariant 139: compact ERP batches preserve explicit null-clearing columns and typed values', async () => {
+  const { compactErpRowsPreservingNullColumnUnion } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  const original = [{ unique_id:'a', itemcode:'001', note:null, quantity:'3' },
+    { unique_id:'b', itemcode:'002', note:null, quantity:null },
+    { unique_id:'c', itemcode:'003', note:'new', quantity:null, later_column:null }];
+  const rows = original.map(row => ({ ...row }));
+  compactErpRowsPreservingNullColumnUnion(rows);
+  const columns = list => [...new Set(list.flatMap(Object.keys))].sort();
+  assert.deepEqual(columns(rows), columns(original));
+  const expand = list => list.map(row => Object.fromEntries(columns(original).map(key => [key, row[key] ?? null])));
+  assert.deepEqual(expand(rows), expand(original));
+  assert.ok(JSON.stringify(rows).length < JSON.stringify(original).length);
+});
+
+test('Invariant 140: SOC cell selection decodes only exact requested columns including sparse shared values', () => {
+  const context = runFunctions('supabase/functions/_shared/erp-sync.mjs',
+    ['xlsxColumnLetters', 'selectedCellPattern', 'parseXlsxSelectedCells', 'sharedValue', 'xmlText'],
+    { selectedCellPatternCache: new WeakMap() }, true);
+  const wanted = new Set([1, 27]);
+  const selected = context.parseXlsxSelectedCells('<row r="2"><c r="A2" t="s"><v>0</v></c><c r="B2" t="inlineStr"><is><t>excluded</t></is></c><c r="AA2" t="inlineStr"><is><t>38&amp;A</t></is></c></row>', ['001'], wanted);
+  assert.deepEqual(plain([...selected.entries()]), [[1, '001'], [27, '38&A']]);
+  assert.equal(context.selectedCellPattern(wanted), context.selectedCellPattern(wanted));
+});

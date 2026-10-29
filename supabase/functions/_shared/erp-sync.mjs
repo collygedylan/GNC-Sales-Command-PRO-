@@ -94,7 +94,9 @@ export function parseErpCsv(text) {
 }
 
 function xmlText(value) {
-  return String(value || '').replace(/&#x([0-9a-f]+);/gi,(_match,code)=>String.fromCodePoint(parseInt(code,16)))
+  const text=String(value||'');
+  if(!text.includes('&'))return text;
+  return text.replace(/&#x([0-9a-f]+);/gi,(_match,code)=>String.fromCodePoint(parseInt(code,16)))
     .replace(/&#([0-9]+);/g,(_match,code)=>String.fromCodePoint(parseInt(code,10)))
     .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
     .replace(/&apos;/g,"'").replace(/&amp;/g,'&');
@@ -193,6 +195,22 @@ function sharedValue(shared,index) {
   return shared instanceof Map?shared.get(index)??'':shared[index]??'';
 }
 
+const selectedCellPatternCache=new WeakMap();
+function xlsxColumnLetters(value){
+  let index=Number(value),letters='';
+  while(index>0){const remainder=(index-1)%26;letters=String.fromCharCode(65+remainder)+letters;index=Math.floor((index-1)/26);}
+  return letters;
+}
+function selectedCellPattern(wantedColumns){
+  let pattern=selectedCellPatternCache.get(wantedColumns);
+  if(pattern)return pattern;
+  const columns=[...wantedColumns].map(xlsxColumnLetters).filter(Boolean).sort((left,right)=>right.length-left.length||left.localeCompare(right));
+  const refs=columns.map(value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
+  pattern=refs?new RegExp(`<c\\b(?=[^>]*?\\br="(?:${refs})\\d+"[^>]*>)([^>]*?)(?:/\\s*>|>([\\s\\S]*?)<\\/c>)`,'gi'):/\b(?!)/g;
+  selectedCellPatternCache.set(wantedColumns,pattern);
+  return pattern;
+}
+
 function parseXlsxRowXml(rowXml, shared) {
   const opening=rowXml.match(/^<row\b([^>]*)>/)?.[1]||'';
   const rowNumber=Number(opening.match(/\br="(\d+)"/)?.[1]||0);
@@ -204,9 +222,9 @@ function parseXlsxRowXml(rowXml, shared) {
     if(!column)continue;
     const type=cellMatch[1].match(/\bt="([^"]+)"/)?.[1], cellContent=cellMatch[2]||'';
     const raw=cellContent.match(/<v\b[^>]*>([\s\S]*?)<\/v>/)?.[1];
-    const inline=[...cellContent.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(match=>xmlText(match[1])).join('');
-    let value=raw===undefined?inline:xmlText(raw);
-    if(type==='s')value=sharedValue(shared,Number(value));
+    let value;
+    if(raw!==undefined){const decoded=xmlText(raw);value=type==='s'?sharedValue(shared,Number(decoded)):decoded;}
+    else value=[...cellContent.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(match=>xmlText(match[1])).join('');
     cells[column-1]=value;
   }
   return {rowNumber,cells:cells.map(value=>value??'')};
@@ -215,14 +233,16 @@ function parseXlsxRowXml(rowXml, shared) {
 function parseXlsxSelectedCells(rowXml,shared,wantedColumns) {
   const result=new Map();
   const content=rowXml.slice(rowXml.indexOf('>')+1).replace(/<\/row>\s*$/,'');
-  for(const cellMatch of content.matchAll(/<c\b([^>]*?)(?:\/\s*>|>([\s\S]*?)<\/c>)/g)){
+  for(const cellMatch of content.matchAll(selectedCellPattern(wantedColumns))){
     const ref=cellMatch[1].match(/\br="([A-Z]+)\d+"/i)?.[1]||'';let column=0;
     for(const char of ref.toUpperCase())column=column*26+char.charCodeAt(0)-64;
     if(!wantedColumns.has(column))continue;
     const type=cellMatch[1].match(/\bt="([^"]+)"/)?.[1],cellContent=cellMatch[2]||'';
     const raw=cellContent.match(/<v\b[^>]*>([\s\S]*?)<\/v>/)?.[1];
-    const inline=[...cellContent.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(match=>xmlText(match[1])).join('');
-    let value=raw===undefined?inline:xmlText(raw);if(type==='s')value=sharedValue(shared,Number(value));result.set(column,value);
+    let value;
+    if(raw!==undefined){const decoded=xmlText(raw);value=type==='s'?sharedValue(shared,Number(decoded)):decoded;}
+    else value=[...cellContent.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(match=>xmlText(match[1])).join('');
+    result.set(column,value);
   }
   return result;
 }
@@ -374,7 +394,7 @@ export async function parseErpXlsxImportRows(bytesLike,dataset,options={}) {
   const batchSize=Math.max(1,Math.min(10000,Math.floor(Number(options.batchSize)||BATCH_SIZE)));
   let headers=null,headerIndexes=null;
   const rows=[];let rawBatch=[],parsedRowCount=0;
-  const wantedSocColumns=new Set(['itemcode','item','dock','docknumber','tripnumber','suspend','suspendto']);
+  let wantedSocColumns=null;
   const flushBatch=async()=>{
     if(!rawBatch.length)return;
     const batch=rawBatch;rawBatch=[];
@@ -386,12 +406,13 @@ export async function parseErpXlsxImportRows(bytesLike,dataset,options={}) {
       if(cells.some(value=>normalizeErpHeader(value)==='itemcode')){
         headers=cells.map((value,index)=>normalizeErpHeader(value)||`column${index+1}`);
         headerIndexes=new Map(headers.map((header,index)=>[header,index+1]));
+        if(dataset==='soc')wantedSocColumns=new Set(['itemcode','item','dock','docknumber','tripnumber','suspend','suspendto']
+          .map(name=>headerIndexes.get(name)).filter(Boolean));
       }
       return false;
     }
     if(dataset==='soc'){
-      const wanted=new Set([...wantedSocColumns].map(name=>headerIndexes.get(name)).filter(Boolean));
-      const selected=parseXlsxSelectedCells(rowXml,shared,wanted);
+      const selected=parseXlsxSelectedCells(rowXml,shared,wantedSocColumns);
       const value=(...names)=>names.map(name=>clean(selected.get(headerIndexes.get(name)))).find(item=>item!==null)??'';
       const dock=['dock','docknumber','tripnumber'].map(name=>value(name)).find(validSocDock)||'';
       if(!value('itemcode','item')||(!validSocDock(dock)&&value('suspend').toUpperCase()!=='SUSPEND'))return false;
@@ -508,6 +529,18 @@ export async function normalizeErpRows(rawRows, dataset, columns) {
   return result.rows;
 }
 
+export function compactErpRowsPreservingNullColumnUnion(rows,seenColumns=new Set()) {
+  if(!Array.isArray(rows)||!(seenColumns instanceof Set))throw new Error('ERP_ROW_COMPACTION_INPUT_INVALID');
+  for(const row of rows){
+    if(!row||typeof row!=='object'||Array.isArray(row))throw new Error('ERP_ROW_COMPACTION_INPUT_INVALID');
+    for(const [column,value] of Object.entries(row)){
+      if(value===null&&seenColumns.has(column))delete row[column];
+      else seenColumns.add(column);
+    }
+  }
+  return rows;
+}
+
 function countImportableRows(rawRows,dataset) {
   return rawRows.reduce((count,row) => count + (Boolean(first(row,'itemcode','item'))
     && (dataset !== 'soc' || isImportableSocRow(row)) ? 1 : 0),0);
@@ -611,6 +644,7 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
   const {data:columns,error:columnsError} = await supabase.rpc('fast_erp_import_columns_v1',{p_dataset_key:dataset});
   if (columnsError || !Array.isArray(columns) || !columns.length) throw columnsError || new Error('ERP_COLUMNS_UNAVAILABLE');
   let expectedRows=0,processedRows=0,identityCounts={},stageId='',alreadyStaged=0,stagedRows=0;
+  const stageColumnsSeen=new Set();
   const beginStage=async(pExpectedRows,pending)=>{
     const {data,error}=await supabase.rpc('fast_begin_erp_stage_v1',{
       p_dataset_key:dataset,p_file_meta:{...meta,...(pending?{expected_rows_pending:true}:{})},p_expected_rows:pExpectedRows,
@@ -659,7 +693,9 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
       const startRow=processedRows;
       const chunk=await normalizeErpRowsChunk(rawBatch,dataset,columns,{start:0,limit:rawBatch.length,
         priorRowCount:processedRows,identityCounts});
+      rawBatch.length=0;
       processedRows=chunk.rowCount;identityCounts=chunk.identityCounts;
+      if(dataset!=='drive_around')compactErpRowsPreservingNullColumnUnion(chunk.rows,stageColumnsSeen);
       if(chunk.rows.length)await appendNormalizedRows(chunk.rows,startRow);
     }});
     expectedRows=processedRows;

@@ -936,7 +936,11 @@
           "firstSocDock",
           "hasImportableSocDock",
           "isImportableSocRow",
-          "parseErpXlsxImportRows"
+          "parseErpXlsxImportRows",
+          "compactErpRowsPreservingNullColumnUnion",
+          "xlsxColumnLetters",
+          "selectedCellPattern",
+          "parseXlsxSelectedCells"
         ],
         "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
           "get_erp_sync_status_v1",

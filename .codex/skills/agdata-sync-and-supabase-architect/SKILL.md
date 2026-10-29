@@ -97,6 +97,10 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never allocate matches for every SOC cell merely to discard most of them afterward. Cache a selector for the exact header-derived item, Dock and Suspend columns, preserving sparse/shared/inline values and avoiding full-row decoding for excluded rows.
+
+- Never drop every null-valued source key to shrink staged ERP JSON: the importer derives its update-column union from those keys. Preserve the first occurrence of every column and all nonnull values; exclude Drive protected raw-field payloads from compaction.
+
 - Never retain a full raw XLSX row array alongside a second full normalized snapshot in an Edge worker. Stream one worksheet pass through at most 5,000 raw rows, normalize and append that batch, release it, and seal the final count; renew the lease around each bounded write. A parser-only benchmark does not establish hosted memory or full-run completion.
 
 - Never order dotted app releases as strings or treat an older remote manifest as a newer release; compare numeric major/minor/patch segments, including 2.3.100 > 2.3.99, through compareAgDataVersions.
