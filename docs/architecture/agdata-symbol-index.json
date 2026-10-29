@@ -290,6 +290,10 @@
         {
           "file": "supabase/functions/app-api/index.ts",
           "symbol": "dispatchCloudErpSync"
+        },
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "withCloudErpSyncLeaseHeartbeat"
         }
       ],
       "contracts": [
@@ -863,6 +867,7 @@
         "fast_erp_ingest",
         "handleErpSyncAction",
         "processCloudErpSyncStep",
+        "withCloudErpSyncLeaseHeartbeat",
         "claimAndDispatchCloudStep",
         "executeCloudErpSyncStep",
         "releaseCloudErpSyncStep"

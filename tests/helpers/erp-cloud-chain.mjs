@@ -5,7 +5,8 @@ import { transform } from 'esbuild';
 export async function verifyCloudErpChaining(source, { releaseFailures = 0 } = {}) {
   const pick = (start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
   const code = [pick('function dispatchCloudErpSync(', 'async function handleErpSyncContinuation('),
-    pick('async function releaseCloudErpSyncStep(', 'async function mintCloudDriveAccessToken(')].join('\n');
+    pick('async function releaseCloudErpSyncStep(', 'async function mintCloudDriveAccessToken('),
+    pick('async function withCloudErpSyncLeaseHeartbeat<', 'async function processCloudErpSyncStep(')].join('\n');
   const pending = [], events = [];
   let active = true, leased = false, step = 0, processed = 0, cloudCalls = 0, waits = 0, releaseErrors = releaseFailures;
   const context = vm.createContext({
@@ -13,6 +14,7 @@ export async function verifyCloudErpChaining(source, { releaseFailures = 0 } = {
     EdgeRuntime: { waitUntil: task => pending.push(task) }, AbortSignal, jsonObject: value => value,
     recordHandledError: (...args) => { if (args[1] !== 'ERP_SYNC_LEASE_RELEASE_FAILED') throw new Error(JSON.stringify(args)); },
     setTimeout: callback => { waits += 1; if (releaseFailures && releaseErrors <= 0) leased = false; setImmediate(callback); },
+    setInterval: () => ({ inert: true }), clearInterval: () => {},
     supabase: { rpc: async (name) => {
       if (name === 'get_erp_sync_status_v1') return { data: { runId: 'run', active, requestedBy: 'authorized_actor' } };
       if (name === 'claim_erp_sync_request_step_v1') {

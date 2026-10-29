@@ -6925,6 +6925,36 @@ async function failCloudErpSync(runId: string, error: unknown, message: string) 
   recordHandledError("app-api", "ERP_SYNC_WORKER_FAILED", error, 500);
 }
 
+async function withCloudErpSyncLeaseHeartbeat<T>(runId: string, workerId: string, work: () => Promise<T>): Promise<T> {
+  let stopped = false;
+  let inFlight: Promise<void> | null = null;
+  const heartbeat = async () => {
+    const { error } = await supabase.rpc("assert_erp_sync_worker_v1" as never, {
+      p_run_id: runId, p_worker_id: workerId,
+    } as never);
+    if (error) throw error;
+  };
+  const timer = setInterval(() => {
+    if (stopped || inFlight) return;
+    inFlight = heartbeat().catch(() => undefined).finally(() => { inFlight = null; });
+  }, 4000);
+  try {
+    const result = await work();
+    stopped = true;
+    clearInterval(timer);
+    const pending = inFlight;
+    if (pending) await pending;
+    // A renewal already in flight can observe the just-written inactive terminal status.
+    // processCloudErpSyncStep asserts ownership before every durable status write.
+    return result;
+  } finally {
+    stopped = true;
+    clearInterval(timer);
+    const pending = inFlight;
+    if (pending) await pending;
+  }
+}
+
 async function processCloudErpSyncStep(runId: string, workerId: string, step: number, claimedStatus: Record<string, unknown>, maxRowsPerSlice?: number) {
   const status = claimedStatus.status && typeof claimedStatus.status === "object" ? jsonObject(claimedStatus.status) : claimedStatus;
   const cursor = status.continuationCursor && typeof status.continuationCursor === "object"
@@ -7006,7 +7036,7 @@ async function releaseCloudErpSyncStep(runId: string, workerId: string, step: nu
 
 async function executeCloudErpSyncStep(runId: string, workerId: string, step: number, claimedStatus: Record<string, unknown>) {
   try {
-    await processCloudErpSyncStep(runId,workerId,step,claimedStatus);
+    await withCloudErpSyncLeaseHeartbeat(runId,workerId,() => processCloudErpSyncStep(runId,workerId,step,claimedStatus));
   } finally {
     await releaseCloudErpSyncStep(runId,workerId,step);
   }
@@ -7078,7 +7108,7 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     }
     dispatchCloudErpSync({ runId });
     try {
-      const {result,status:durableStatus} = await processCloudErpSyncStep(runId,workerId,step,status,Number(command.maxRowsPerSlice)||undefined);
+      const {result,status:durableStatus} = await withCloudErpSyncLeaseHeartbeat(runId,workerId,() => processCloudErpSyncStep(runId,workerId,step,status,Number(command.maxRowsPerSlice)||undefined));
       const active = result.done !== true;
       const cursor = durableStatus.continuationCursor && typeof durableStatus.continuationCursor === "object"
         ? jsonObject(durableStatus.continuationCursor) : {};

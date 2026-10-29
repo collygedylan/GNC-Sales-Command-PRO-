@@ -2413,8 +2413,9 @@ test('Invariant 87 (ERP API Allows Status Reads and Admin-Leased Cloud Continuat
   const calls = [];
   let claimed = false, steps = 0, releases = 0;
   const status = { active: false, currentStage: 'idle', stageResults: [] };
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep'], {
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep', 'withCloudErpSyncLeaseHeartbeat'], {
     dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
+    setInterval: () => 1, clearInterval: () => {},
     validateErpSyncCommand, ERP_SYNC_STAGES, SECONDARY_ERP_STAGES, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value).toLowerCase(), jsonObject: value => {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected JSON object');
@@ -2526,8 +2527,9 @@ test('Invariant 91 (RUN SCRIPT Claims Explicit Cloud Continuations and Retires t
   const { SECONDARY_ERP_STAGES } = await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
   const calls = [];
   let claimCount = 0, stepClaimCount = 0, stepCalls = 0, releaseCount = 0;
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep'], {
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep', 'withCloudErpSyncLeaseHeartbeat'], {
     dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
+    setInterval: () => 1, clearInterval: () => {},
     ERP_SYNC_STAGES, SECONDARY_ERP_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value).trim().toLowerCase(), jsonObject: value => value || {},
     crypto: { randomUUID: () => '00000000-0000-4000-8000-000000000091' },
@@ -2812,8 +2814,9 @@ test('Invariant 101 (Empty Cloud Sync Completion Does Not Require a File Cursor)
   const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
   const { SECONDARY_ERP_STAGES } = await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
   const calls = [];
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep'], {
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep', 'withCloudErpSyncLeaseHeartbeat'], {
     dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
+    setInterval: () => 1, clearInterval: () => {},
     ERP_SYNC_STAGES, SECONDARY_ERP_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     normalizeUsername: value => String(value || '').trim().toLowerCase(),
     jsonObject: value => {
@@ -4513,4 +4516,61 @@ test('Invariant 159 (HL PDF Drop Skips Historical Native Sheets Without Moving T
     return Response.json({parents:[]});};
   const folders=await prefetchSecondaryFolders(fetcher,'fixture');
   assert.deepEqual(folders.hl_po_parsed.files.map(file=>file.id),['pending-pdf']);
+});
+
+test('Invariant 160 (Cloud ERP Finalization Renews Its Lease and Stops Safely)', async () => {
+  let tick = null;
+  let cleared = false;
+  let renewals = 0;
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['withCloudErpSyncLeaseHeartbeat'], {
+    supabase: { rpc: async (name, args) => {
+      assert.equal(name, 'assert_erp_sync_worker_v1');
+      assert.deepEqual(plain(args), { p_run_id: 'run-160', p_worker_id: 'worker-160' });
+      renewals += 1;
+      return { error: null };
+    } },
+    setInterval: callback => { tick = callback; return 1; },
+    clearInterval: () => { cleared = true; },
+  });
+  let finishWork;
+  const pendingWork = new Promise(resolve => { finishWork = resolve; });
+  const work = context.withCloudErpSyncLeaseHeartbeat('run-160', 'worker-160', () => pendingWork);
+  tick();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(renewals, 1, 'the in-flight atomic work renews its canonical lease');
+  finishWork('committed');
+  assert.equal(await work, 'committed');
+  assert.equal(cleared, true, 'the timer stops when work completes');
+
+  let terminalTick = null;
+  const terminalContext = runFunctions('supabase/functions/app-api/index.ts', ['withCloudErpSyncLeaseHeartbeat'], {
+    supabase: { rpc: async () => ({ error: { code: 'LEASE_INVALID' } }) },
+    setInterval: callback => { terminalTick = callback; return 1; },
+    clearInterval() {},
+  });
+  let finishTerminalWork;
+  const terminalPending = new Promise(resolve => { finishTerminalWork = resolve; });
+  const terminalWork = terminalContext.withCloudErpSyncLeaseHeartbeat('run-160', 'worker-160', () => terminalPending);
+  terminalTick();
+  await Promise.resolve();
+  await Promise.resolve();
+  finishTerminalWork('terminal-write-already-committed');
+  assert.equal(await terminalWork, 'terminal-write-already-committed',
+    'an already-started renewal may observe the terminal inactive status after durable completion');
+
+  let failedTick = null;
+  let failedTimerCleared = false;
+  const failedContext = runFunctions('supabase/functions/app-api/index.ts', ['withCloudErpSyncLeaseHeartbeat'], {
+    supabase: { rpc: async () => ({ error: { code: 'LEASE_INVALID' } }) },
+    setInterval: callback => { failedTick = callback; return 1; },
+    clearInterval: () => { failedTimerCleared = true; },
+  });
+  const failedWork = failedContext.withCloudErpSyncLeaseHeartbeat('run-160', 'expired-worker', async () => {
+    failedTick();
+    await Promise.resolve();
+    throw new Error('ERP_SYNC_WORKER_LEASE_INVALID');
+  });
+  await assert.rejects(failedWork, /ERP_SYNC_WORKER_LEASE_INVALID/);
+  assert.equal(failedTimerCleared, true, 'the timer stops when worker work fails');
 });
